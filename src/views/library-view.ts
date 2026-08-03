@@ -100,11 +100,30 @@ export class LibraryView extends ItemView {
         'Rebuild views', () => this.plugin.generate());
       return;
     }
-    pageHeader(root, 'Reference', 'Library',
-      'Shelves carry the reading strategy; the registry carries everything registered. Use is per unit — never a global source score.');
+    pageHeader(root, '', 'Library');
 
-    const controls = root.createDiv({ cls: 'los-library-controls' });
-    const input = controls.createEl('input', {
+    // Three panes, and only the middle one is dense: modes and filters on the
+    // left, the list in the middle, one record's detail on the right. The five
+    // modes used to be horizontal pills above a facet bar above a filter chip
+    // above the list — four stacked control strips before any content.
+    const layout = root.createDiv({ cls: 'los-library-layout' });
+    const rail = layout.createDiv({ cls: 'los-library-rail' });
+    for (const [value, label] of LIBRARY_MODES) {
+      const count = this.plugin.store.of(value).length;
+      const tab = rail.createEl('button', {
+        cls: `los-library-mode is-clickable${this.type === value ? ' is-active' : ''}`,
+        attr: { type: 'button', 'aria-pressed': String(this.type === value) },
+      });
+      tab.createSpan({ text: label });
+      tab.createSpan({ cls: 'los-micro', text: String(count) });
+      tab.addEventListener('click', () => {
+        this.type = value; this.selectedId = null; this.facet = 'all'; this.domain = ''; this.render();
+      });
+    }
+    if (this.type === 'source' || this.domain) this.renderFilters(rail);
+
+    const centre = layout.createDiv({ cls: 'los-library-centre' });
+    const input = centre.createEl('input', {
       cls: 'los-search',
       attr: { type: 'search', placeholder: 'Search titles, IDs, aliases, authors…', 'aria-label': 'Library search' },
     });
@@ -118,26 +137,7 @@ export class LibraryView extends ItemView {
       next?.focus();
       if (position != null) next?.setSelectionRange(position, position);
     });
-    button(controls, 'Full-text / OCR search', () => this.plugin.openFullTextSearch(this.query), 'quiet');
-
-    const tabs = root.createDiv({ cls: 'los-library-tabs' });
-    for (const [value, label] of LIBRARY_MODES) {
-      const count = this.plugin.store.of(value).length;
-      const tab = button(tabs, `${label} (${count})`, () => {
-        this.type = value; this.selectedId = null; this.facet = 'all'; this.domain = ''; this.render();
-      }, this.type === value ? 'cta' : 'quiet');
-      tab.setAttribute('aria-pressed', String(this.type === value));
-    }
-
-    if (this.type === 'source') this.renderFacets(root);
-    if (this.domain) {
-      const active = root.createDiv({ cls: 'los-library-filter' });
-      active.createSpan({ text: `Domain: ${this.domain}` });
-      button(active, 'Clear', () => { this.domain = ''; this.selectedId = null; this.render(); }, 'quiet');
-    }
-
-    const layout = root.createDiv({ cls: 'los-library-layout' });
-    const list = layout.createDiv({ cls: 'los-library-list' });
+    const list = centre.createDiv({ cls: 'los-library-list' });
     const rows = this.rows();
     if (this.selectedId && !rows.some((row) => row.id === this.selectedId)) this.selectedId = null;
     if (!this.selectedId && rows.length) this.selectedId = rows[0].id;
@@ -149,23 +149,32 @@ export class LibraryView extends ItemView {
     if (this.type === 'collection') this.renderShelfList(list, rows);
     else this.renderFlatList(list, rows);
 
+    button(centre, 'Full-text / OCR search', () => this.plugin.openFullTextSearch(this.query), 'quiet');
+
     this.detailEl = layout.createDiv({ cls: 'los-library-detail' });
     this.renderDetail(rows.find((row) => row.id === this.selectedId));
-    viewFooter(root);
   }
 
-  renderFacets(root) {
-    const bar = root.createDiv({ cls: 'los-library-facets' });
-    bar.createSpan({ cls: 'los-kicker', text: 'Filter' });
+  /** Facets are a refinement, not a permanent fixture — they stay folded until
+   *  the learner has decided the list is too big. */
+  renderFilters(rail) {
+    const label = this.facet === 'all' && !this.domain ? 'Filters' : 'Filters · active';
+    const body = disclosure(rail, label, 'los-library-filters');
+    if (this.domain) {
+      const active = body.createDiv({ cls: 'los-library-filter' });
+      active.createSpan({ text: `Domain: ${this.domain}` });
+      button(active, 'Clear', () => { this.domain = ''; this.selectedId = null; this.render(); }, 'quiet');
+    }
+    if (this.type !== 'source') return;
     const all = this.plugin.store.of('source');
-    for (const [value, label] of SOURCE_FACETS) {
+    for (const [value, facetLabel] of SOURCE_FACETS) {
       const previous = this.facet;
       this.facet = value;
       const count = all.filter((row) => this.matchesFacet(row)).length;
       this.facet = previous;
-      const chipEl = button(bar, `${label} · ${count}`, () => {
+      const chipEl = button(body, `${facetLabel} · ${count}`, () => {
         this.facet = value; this.selectedId = null; this.render();
-      }, this.facet === value ? 'cta' : 'quiet');
+      }, this.facet === value ? 'row' : 'quiet');
       chipEl.setAttribute('aria-pressed', String(this.facet === value));
     }
   }
@@ -186,7 +195,8 @@ export class LibraryView extends ItemView {
 
   renderFlatList(list, rows) {
     for (const record of rows) {
-      let meta = record.id;
+      // Never the raw ID: a list line should say what the record *is*.
+      let meta = [record.domain, record.role, record.status].filter(Boolean).join(' · ');
       if (record.type === 'source') {
         const shelves = this.shelfIndex().get(record.id) || [];
         meta = [record.source_type, record.year,
@@ -207,7 +217,7 @@ export class LibraryView extends ItemView {
     icon(row.createSpan(), ICONS[record.type] || 'circle');
     const copy = row.createSpan({ cls: 'los-item-copy' });
     copy.createSpan({ text: record.title || record.id });
-    copy.createSpan({ cls: 'los-micro', text: meta || record.id });
+    if (meta) copy.createSpan({ cls: 'los-micro', text: meta });
     row.addEventListener('click', () => { this.selectedId = record.id; this.render(); });
     return row;
   }
@@ -219,7 +229,6 @@ export class LibraryView extends ItemView {
     if (!record) { empty(detail, 'Choose a record', 'The detail pane shows evidence and curriculum usage.'); return; }
     detail.createDiv({ cls: 'los-kicker', text: record.type === 'collection' ? 'shelf' : record.type });
     detail.createEl('h2', { text: record.title || record.id });
-    detail.createDiv({ cls: 'los-detail-id', text: record.id });
     if (record.summary) detail.createEl('p', { text: record.summary });
 
     const actions = detail.createDiv({ cls: 'los-actions' });
@@ -227,7 +236,6 @@ export class LibraryView extends ItemView {
     if (record.material_path) button(actions, 'Open local copy', () => this.plugin.openMaterialPath(record.material_path), 'quiet');
     if (record.path) button(actions, record.type === 'note' ? 'Open note' : 'Open authored file',
       () => this.plugin.openAuthoredPath(record.path), 'quiet');
-    button(actions, 'Copy ID', () => this.plugin.copyText(record.id), 'quiet');
 
     if (record.attachments?.length) {
       const attachments = section(detail, 'Attachments', 'Open the original handwriting, image, or PDF.');
@@ -241,10 +249,48 @@ export class LibraryView extends ItemView {
     if (record.type === 'collection') this.renderShelfDetail(detail, record);
     if (record.type === 'source') this.renderSourceDetail(detail, record);
 
-    const related = this.plugin.store.related(record.id);
-    if (related.length) {
-      const wrap = section(detail, 'Related');
-      for (const row of related.slice(0, 24)) chip(wrap, row.rec, (rec) => this.plugin.openRecord(rec));
+    this.renderRelated(detail, record);
+
+    // An operator ID is not study content. It stays one disclosure away, with
+    // the copy action beside it rather than in the main action row.
+    const technical = disclosure(detail, 'Technical details', 'los-technical-details');
+    const idRow = technical.createDiv({ cls: 'los-fact-row' });
+    idRow.createSpan({ cls: 'los-fact-label', text: 'Record ID' });
+    idRow.createSpan({ cls: 'los-fact-value los-detail-id', text: record.id });
+    button(technical, 'Copy ID', () => this.plugin.copyText(record.id), 'quiet');
+    if (record.path) {
+      const pathRow = technical.createDiv({ cls: 'los-fact-row' });
+      pathRow.createSpan({ cls: 'los-fact-label', text: 'Path' });
+      pathRow.createSpan({ cls: 'los-fact-value', text: record.path });
+    }
+  }
+
+  /** Related records grouped by what the relation *means*, five at a time.
+   *  Twenty-four undifferentiated chips is a pile, not a map. */
+  renderRelated(detail, record) {
+    const labels = {
+      unit: 'Used in units', concept: 'Connected concepts', note: 'Referenced by notes',
+      source: 'Related sources', collection: 'On shelves', module: 'Modules',
+      workspace: 'Workspaces', program: 'Areas',
+    };
+    const groups = new Map();
+    for (const row of this.plugin.store.related(record.id)) {
+      const key = row.rec?.type || 'record';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row.rec);
+    }
+    if (!groups.size) return;
+    const wrap = section(detail, 'Related');
+    for (const [type, rows] of [...groups.entries()].sort((a, b) => b[1].length - a[1].length)) {
+      const group = wrap.createDiv({ cls: 'los-related-group' });
+      group.createDiv({ cls: 'los-group-title', text: `${labels[type] || type} · ${rows.length}` });
+      const shown = group.createDiv({ cls: 'los-related-chips' });
+      for (const rec of rows.slice(0, 5)) chip(shown, rec, (row) => this.plugin.openRecord(row));
+      if (rows.length > 5) {
+        const rest = disclosure(group, `View all ${rows.length}`);
+        const restChips = rest.createDiv({ cls: 'los-related-chips' });
+        for (const rec of rows.slice(5)) chip(restChips, rec, (row) => this.plugin.openRecord(row));
+      }
     }
   }
 

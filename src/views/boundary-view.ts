@@ -20,6 +20,5 @@ export class BoundaryView extends ItemView {
       guard.createEl('p', { text: 'Master’s planning is quarantined from current Bachelor’s work and all default search. This surface exposes only the boundary record.' });
       button(guard, 'Open Master’s Planning boundary', () => new Notice('Open the quarantined folder manually only for a deliberate planning session.'), 'quiet');
     }
-    viewFooter(root);
   }
 }

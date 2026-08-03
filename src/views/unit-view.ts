@@ -1,3 +1,10 @@
+/**
+ * The Unit is where learning actually happens, so it gets the strictest
+ * discipline: three columns (stages / current work / notes), and exactly three
+ * visible actions. Everything else — pause, skip, gap, shelving, AI, session
+ * end — is one overflow away. Sixteen equally-weighted buttons is not a
+ * workspace, it is a control panel.
+ */
 export class UnitView extends ItemView {
   constructor(leaf, plugin) {
     super(leaf); this.plugin = plugin; this.unitId = null; this.stageId = null;
@@ -27,9 +34,6 @@ export class UnitView extends ItemView {
     const header = pageHeader(root, `${module?.title || unit.module_id} · ${unit.kind}`, unit.title, unit.scope);
     const headerActions = header.createDiv({ cls: 'los-actions' });
     button(headerActions, 'Back to module', () => this.plugin.openModule(unit.module_id), 'quiet');
-    button(headerActions, 'Ask AI with unit context', () => this.plugin.askAiScoped(
-      'Help with this unit. Treat the active file as supplementary context only.',
-      { moduleId: unit.module_id, unitId: unit.id, stageId: this.stageId }), 'quiet');
 
     const studyMap = this.plugin.store.mapForUnit(unit.id);
     if (!studyMap) {
@@ -40,7 +44,7 @@ export class UnitView extends ItemView {
           'Propose one study-map JSON document for this unit. Do not write files; include exact source actions and done-when criteria.',
           { moduleId: unit.module_id, unitId: unit.id, componentId: unit.component_id }));
       this.renderArtifacts(root, unit);
-      viewFooter(root); return;
+      return;
     }
     // A study map whose `stages` is missing or not an array used to throw here
     // and blank the whole workspace. Normalise once, then work from `map`.
@@ -51,7 +55,7 @@ export class UnitView extends ItemView {
       empty(bare, 'This study map has no stages yet',
         'Stage authoring belongs to the core — import a map or add stages there, then rebuild views.');
       this.renderArtifacts(root, unit);
-      viewFooter(root); return;
+      return;
     }
     const map = { ...studyMap, stages };
     if (!this.stageId || !stages.some((row) => row.id === this.stageId)) {
@@ -63,8 +67,9 @@ export class UnitView extends ItemView {
     this.renderRail(layout, unit, map, stage);
     this.renderStage(layout, unit, map, stage);
     this.renderNotes(layout, unit, map, stage);
-    this.renderArtifacts(root, unit);
-    viewFooter(root);
+    this.renderActionBar(root, unit, map, stage);
+    const more = disclosure(root, 'Unit artifacts and evidence', 'los-unit-extras');
+    this.renderArtifacts(more, unit);
   }
 
   renderRail(layout, unit, studyMap, current) {
@@ -79,14 +84,10 @@ export class UnitView extends ItemView {
       const copy = row.createSpan({ cls: 'los-stage-copy' });
       copy.createSpan({ text: stage.title });
       const hasDraft = this.plugin.getStageDraft(unit.id, stage.id, stage.notes_text || '').dirty;
-      copy.createSpan({ cls: 'los-micro', text: `${stage.status}${hasDraft ? ' · unsaved draft' : ''}` });
+      const marker = stage.status === 'complete' ? 'Complete' : hasDraft ? 'Unsaved draft' : '';
+      if (marker) copy.createSpan({ cls: 'los-micro', text: marker });
       row.addEventListener('click', () => this.selectStage(stage.id));
     }
-    const mapActions = rail.createDiv({ cls: 'los-stack-actions' });
-    if (current.status !== 'active') button(mapActions, 'Revisit stage', () => this.mutate(
-      () => this.plugin.gateway.progress(unit.id, current.id, 'revisit')));
-    button(mapActions, 'Pause unit', () => this.mutate(
-      () => this.plugin.gateway.progress(unit.id, current.id, 'paused')), 'quiet');
   }
 
   renderStage(layout, unit, studyMap, stage) {
@@ -94,10 +95,14 @@ export class UnitView extends ItemView {
     const top = center.createDiv({ cls: 'los-stage-heading' });
     top.createDiv({ cls: 'los-kicker', text: stage.exam_critical ? 'Exam-critical stage' : stage.scope_triage });
     top.createEl('h2', { text: stage.title });
-    top.createEl('p', { text: stage.objective });
+    if (stage.objective) {
+      const goal = center.createDiv({ cls: 'los-stage-goal' });
+      goal.createDiv({ cls: 'los-kicker', text: 'Goal' });
+      goal.createEl('p', { text: stage.objective });
+    }
     if (stage.estimate_minutes) badge(top, `${stage.estimate_minutes} min`, 'role');
 
-    const resources = section(center, 'Exact resources', 'Only the actions for this stage.');
+    const resources = section(center, 'Resources');
     // Array.isArray, not a truthy length check: a string here used to render
     // one blank row per character, because for...of walks a string by character.
     const stageResources = Array.isArray(stage.resources)
@@ -115,37 +120,69 @@ export class UnitView extends ItemView {
       }
       const actions = row.createDiv({ cls: 'los-actions los-resource-actions' });
       if (resource.url || resource.vault_path) button(actions, 'Open', () => this.plugin.openResource(resource), 'quiet');
+      // Three feedback buttons per resource used to outweigh the resource
+      // itself; the judgment is still one click away, it just no longer
+      // competes with the thing the learner came to read.
       if (resource.source_id) {
-        button(actions, 'Helpful', () => this.mutate(
-          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'helpful')), 'tertiary');
-        button(actions, 'Too advanced', () => this.mutate(
-          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'too-advanced')), 'tertiary');
-        button(actions, 'Useful for review', () => this.mutate(
-          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'useful-for-review')), 'tertiary');
+        overflowMenu(actions, [
+          ['Helpful', () => this.mutate(() => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'helpful'))],
+          ['Too advanced', () => this.mutate(() => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'too-advanced'))],
+          ['Useful for review', () => this.mutate(() => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'useful-for-review'))],
+        ], `Rate ${resource.label}`);
       }
     }
 
-    const done = section(center, 'Done when');
-    const list = done.createEl('ul');
     const criteria = Array.isArray(stage.done_when)
       ? stage.done_when.filter((row) => typeof row === 'string' && row.trim()) : [];
-    for (const criterion of criteria) list.createEl('li', { text: criterion });
-    const actions = center.createDiv({ cls: 'los-actions los-stage-actions' });
-    button(actions, 'Complete stage', () => this.mutate(
-      () => this.plugin.gateway.progress(unit.id, stage.id, 'complete')), 'cta');
-    button(actions, 'Skip stage', () => this.mutate(
-      () => this.plugin.gateway.progress(unit.id, stage.id, 'skipped')), 'quiet');
-    button(actions, 'I found a gap', () => this.mutate(
-      () => this.plugin.gateway.detour(unit.id, stage.id, 'Prerequisite gap', 'required-now')), 'quiet');
-    button(actions, 'Prepare shelving', () => this.plugin.openShelving(unit.id), 'quiet');
-    button(actions, 'End learning session', () => this.plugin.reviewSessionEnd(), 'quiet');
+    if (criteria.length) {
+      const done = section(center, 'Done when');
+      const marks = this.plugin.getDoneWhen(unit.id, stage.id);
+      const list = done.createDiv({ cls: 'los-donewhen-list' });
+      for (const [index, criterion] of criteria.entries()) {
+        const row = list.createEl('label', { cls: 'los-donewhen-row' });
+        const box = row.createEl('input', {
+          attr: { type: 'checkbox', 'aria-label': criterion },
+        });
+        if (marks[index]) box.setAttr('checked', 'checked');
+        box.checked = Boolean(marks[index]);
+        box.addEventListener('change', () => {
+          this.plugin.setDoneWhen(unit.id, stage.id, index, Boolean(box.checked));
+          row.toggleClass('is-checked', Boolean(box.checked));
+        });
+        row.toggleClass('is-checked', Boolean(marks[index]));
+        row.createSpan({ text: criterion });
+      }
+    }
+  }
+
+  /** Two actions and one menu. The primary is filled; nothing else on this
+   *  screen may be. */
+  renderActionBar(root, unit, studyMap, stage) {
+    const bar = root.createDiv({ cls: 'los-unit-actionbar' });
+    button(bar, 'Save note', () => this.saveStageNote(unit, stage, this.noteEditor?.value ?? ''));
+    button(bar, 'Mark complete', () => this.mutate(
+      () => this.plugin.gateway.progress(unit.id, stage.id, 'complete'),
+      () => this.plugin.clearDoneWhen(unit.id, stage.id)), 'cta');
+    overflowMenu(bar, [
+      stage.status !== 'active' && ['Revisit stage', () => this.mutate(
+        () => this.plugin.gateway.progress(unit.id, stage.id, 'revisit'))],
+      ['Pause unit', () => this.mutate(() => this.plugin.gateway.progress(unit.id, stage.id, 'paused'))],
+      ['Skip stage', () => this.mutate(() => this.plugin.gateway.progress(unit.id, stage.id, 'skipped'))],
+      ['Report prerequisite gap', () => this.mutate(
+        () => this.plugin.gateway.detour(unit.id, stage.id, 'Prerequisite gap', 'required-now'))],
+      ['Prepare shelving', () => this.plugin.openShelving(unit.id)],
+      this.plugin.settings.showAiRecommendation && ['Ask AI with stage context', () => this.plugin.askAiScoped(
+        'Help with this stage. Treat the active file as supplementary context only.',
+        { moduleId: unit.module_id, unitId: unit.id, stageId: stage.id })],
+      ['End learning session', () => this.plugin.reviewSessionEnd()],
+    ], 'More unit actions');
   }
 
   renderNotes(layout, unit, studyMap, stage) {
     const panel = layout.createDiv({ cls: 'los-note-panel' });
     panel.createEl('h2', { text: 'Working note' });
-    panel.createEl('p', { cls: 'los-muted', text: 'Stage-bound scratch. No concept ID or filing destination needed.' });
     const editor = panel.createEl('textarea', { cls: 'los-note-editor', attr: { 'aria-label': 'Stage working note' } });
+    this.noteEditor = editor;
     const savedText = stage.notes_text || '';
     const draft = this.plugin.getStageDraft(unit.id, stage.id, savedText);
     editor.value = draft.text;
@@ -160,34 +197,35 @@ export class UnitView extends ItemView {
       updateStatus();
     });
     updateStatus();
-    button(panel, 'Save note', () => this.saveStageNote(unit, stage, editor.value), 'cta');
-    const attachments = section(panel, 'Attachments');
+
+    const attachments = panel.createDiv({ cls: 'los-attachments' });
     const stageAttachments = Array.isArray(stage.attachments) ? stage.attachments.filter(Boolean) : [];
-    if (!stageAttachments.length) attachments.createEl('p', { text: 'Attach handwriting or a PDF through the guarded stage-attach action.' });
     for (const attachment of stageAttachments) {
       const path = typeof attachment === 'string' ? attachment : attachment.path || attachment.vault_path;
       const label = typeof attachment === 'string' ? attachment.split('/').pop() : attachment.label || path;
-      if (path) button(attachments, `Open ${label}`, () => this.plugin.openAuthoredPath(path), 'quiet');
+      if (path) button(attachments, label, () => this.plugin.openAuthoredPath(path), 'quiet');
       else attachments.createDiv({ text: label || 'Attachment' });
     }
     const picker = attachments.createEl('input', {
       cls: 'los-file-input', attr: { type: 'file', 'aria-label': 'Choose stage attachment' },
     });
-    button(attachments, 'Attach selected file', () => {
+    button(attachments, 'Attach file', () => {
       const file = picker.files?.[0];
       const localPath = localFilePath(file);
       if (!localPath) { new Notice('Choose a local handwriting, image, or PDF file first.'); return; }
       this.mutate(() => this.plugin.gateway.attach(unit.id, stage.id, localPath, file.name));
     }, 'quiet');
+
     for (const detour of studyMap.detours || []) {
       if (detour.spawned_by_stage !== stage.id || detour.status === 'resolved') continue;
-      const row = section(panel, 'Open prerequisite detour');
+      const row = panel.createDiv({ cls: 'los-detour-row' });
+      row.createEl('strong', { text: 'Open prerequisite detour' });
       row.createEl('p', { text: `${detour.title} · ${detour.classification} · returns here` });
       button(row, 'Resolve and return', () => this.mutate(
         () => this.plugin.gateway.resolveDetour(unit.id, detour.id, 'Resolved from the unit workspace.')), 'quiet');
     }
     if (stage.source_feedback?.length) {
-      const feedback = section(panel, 'Source-use evidence');
+      const feedback = disclosure(panel, `Source-use evidence (${stage.source_feedback.length})`);
       for (const row of stage.source_feedback) feedback.createDiv({ cls: 'los-row', text: `${row.source_id} · ${row.feedback}` });
     }
   }
@@ -211,30 +249,30 @@ export class UnitView extends ItemView {
   }
 
   /**
-   * One write at a time. Two fast clicks used to spawn two CLI subprocesses
-   * carrying the same --expected-snapshot, so the second raced the projection
-   * the first had already moved.
+   * Every write goes through the plugin-wide queue, so two clicks in two views
+   * can no longer race the same `--expected-snapshot`.
    */
-  async mutate(action) {
-    if (this.busy) { new Notice('A LearningOS write is already running.'); return; }
-    this.busy = true;
-    try { await action(); await this.plugin.reloadStore(); this.render(); }
-    catch (error) { new Notice(error?.message || String(error)); }
-    finally { this.busy = false; }
+  async mutate(action, onConfirmed = null) {
+    // A second click on the same control is a slip, not a second intention, so
+    // the view drops it. The queue below still serializes anything that does
+    // get through from another view.
+    if (this.plugin.gateway.isBusy) { new Notice('A LearningOS write is already running.'); return; }
+    try {
+      await this.plugin.mutate(action);
+      onConfirmed?.();
+      this.render();
+    } catch (error) { new Notice(error?.message || String(error)); }
   }
 
   async saveStageNote(unit, stage, text) {
-    if (this.busy) { new Notice('A LearningOS write is already running.'); return; }
-    this.busy = true;
     try {
-      await this.plugin.gateway.saveNote(unit.id, stage.id, text);
+      await this.plugin.mutate(() => this.plugin.gateway.saveNote(unit.id, stage.id, text));
       // Reached only on a confirmed ok — the gateway rejects empty or
       // unreadable output — so the draft is safe to drop here and only here.
       this.plugin.clearStageDraft(unit.id, stage.id);
-      await this.plugin.reloadStore();
       new Notice('Stage note saved.');
+      this.render();
     } catch (error) { new Notice(error?.message || String(error)); }
-    finally { this.busy = false; }
   }
 
   async selectStage(stageId) {

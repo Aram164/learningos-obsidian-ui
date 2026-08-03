@@ -89,7 +89,15 @@ class Setting {
   constructor(el) { this.el = el.createDiv({ cls: 'setting-item' }); }
   setName(n) { this.name = n; return this; }
   setDesc(d) { this.desc = d; return this; }
-  addText(cb) { cb({ onChange: () => {} }); return this; }
+  addText(cb) {
+    const control = {
+      setValue() { return this; },
+      setPlaceholder() { return this; },
+      onChange() { return this; },
+    };
+    cb(control);
+    return this;
+  }
   addToggle(cb) { cb({ setValue: () => ({ onChange: () => {} }) }); return this; }
   addButton(cb) {
     cb({

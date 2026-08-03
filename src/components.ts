@@ -40,6 +40,67 @@ export function section(parent, title, description = '') {
   return wrap;
 }
 
+/**
+ * Progressive disclosure primitive. Native `<details>` so it is keyboard
+ * reachable and readable with no script, which is also why the overflow menu
+ * below is built on it rather than on Obsidian's `Menu`.
+ */
+export function disclosure(parent, summaryText, cls = '') {
+  const details = parent.createEl('details', { cls: `los-disclosure ${cls}`.trim() });
+  details.createEl('summary', { text: summaryText });
+  return details.createDiv({ cls: 'los-disclosure-body' });
+}
+
+/**
+ * The `•••` overflow. Secondary operations stay reachable in one place instead
+ * of competing with the two actions the learner actually came for.
+ */
+export function overflowMenu(parent, items, label = 'More actions') {
+  const rows = items.filter(Boolean);
+  if (!rows.length) return null;
+  const details = parent.createEl('details', { cls: 'los-overflow' });
+  const summary = details.createEl('summary', { cls: 'los-overflow-trigger', text: '•••' });
+  summary.setAttrs({ 'aria-label': label, role: 'button' });
+  const body = details.createDiv({ cls: 'los-overflow-body' });
+  for (const [itemLabel, action] of rows) {
+    button(body, itemLabel, () => { details.removeAttribute?.('open'); action(); }, 'menu');
+  }
+  return details;
+}
+
+/**
+ * One learning row: what it is, where you are, one way in. Replaces the
+ * Module/Status/Next-up table — a status badge is only worth the space when the
+ * state needs the learner to do something.
+ */
+export function progressRow(parent, plugin, module, nextUp = '') {
+  const row = parent.createDiv({ cls: 'los-learning-row' });
+  const copy = row.createDiv({ cls: 'los-learning-copy' });
+  const title = button(copy, module.title, () => plugin.openModule(module.id), 'row');
+  title.addClass('los-learning-title');
+  if (nextUp) copy.createDiv({ cls: 'los-learning-next', text: nextUp });
+  const progress = plugin.store.progress(module.id);
+  const meta = row.createDiv({ cls: 'los-learning-meta' });
+  meta.createSpan({
+    cls: 'los-micro',
+    text: `${progress.stages_complete || 0} of ${progress.stages_total || 0} stages`,
+  });
+  if (progress.units_needing_map) badge(meta, `${progress.units_needing_map} need a map`, 'needs-map');
+  return row;
+}
+
+/**
+ * A projected URL is core data, but core data is not a licence to hand an
+ * arbitrary scheme to Electron. Anything outside the allowlist is refused
+ * before it can reach a viewer.
+ */
+export function safeWebUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    return SAFE_URL_PROTOCOLS.includes(url.protocol) ? url : null;
+  } catch (_) { return null; }
+}
+
 export function empty(parent, title, detail, actionLabel, action) {
   const el = parent.createDiv({ cls: 'los-empty' });
   el.createEl('h3', { text: title });
@@ -133,6 +194,10 @@ export function moduleCard(parent, plugin, module) {
   return card;
 }
 
-export function viewFooter(parent) {
-  parent.createDiv({ cls: 'los-footer', text: 'Presentation only · facts live in the LearningOS core · buttons are conveniences, never duties.' });
-}
+/**
+ * The ownership statement is architecture policy, not study content. Repeating
+ * it under every screen made the product read as internal tooling, so it is
+ * stated once in Settings → About (DESIGN.md records the change).
+ */
+export const OWNERSHIP_STATEMENT =
+  'Presentation only · facts live in the LearningOS core · buttons are conveniences, never duties.';

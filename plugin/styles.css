@@ -146,98 +146,73 @@
 .los-s-complete::before { background: var(--color-purple); }
 .los-s-ready-to-shelve::before { background: var(--color-cyan); }
 
-/* Home command centre */
-.los-resume-section { margin-bottom: var(--los-3); }
-.los-resume-card {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--los-4);
-  align-items: center;
+/* Home: Continue, Upcoming, My learning, Attention — and nothing else.
+ * Level 3 (raised) is spent on the Continue card, because it is the one thing
+ * on this screen the learner is meant to act on. */
+.los-continue {
+  margin-bottom: var(--los-5);
   padding: var(--los-3) var(--los-4);
   border: 1px solid var(--interactive-accent);
   border-radius: var(--los-r-lg);
   background: var(--los-surface-raised);
 }
-.los-resume-card h2 { margin: 1px 0 var(--los-1); font-size: 17px !important; }
-.los-resume-progress { display: flex; min-width: 0; flex-wrap: wrap; gap: var(--los-1) var(--los-3); color: var(--text-muted); }
-.los-resume-progress > span:first-child { color: var(--text-normal); }
-
-.los-priority-section { margin-bottom: var(--los-4); }
-.los-priority-section > h2 { margin-bottom: var(--los-2); }
-.los-priority-bar {
-  position: relative;
+.los-continue-body {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: var(--los-3);
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--los-4);
   align-items: center;
-  min-height: 40px;
-  padding: var(--los-2) var(--los-3);
-  border: 1px solid var(--los-line);
-  border-radius: var(--los-r-md);
-  background: var(--los-surface);
+}
+.los-continue-copy { min-width: 0; }
+.los-continue-copy h2 { margin: 2px 0 var(--los-1); font-size: 20px !important; }
+.los-continue-module { color: var(--text-muted); font-size: 12px; }
+.los-continue-meta { display: flex; flex-wrap: wrap; gap: var(--los-1) var(--los-3); color: var(--text-muted); font-size: 13px; }
+.los-priority-line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--los-2);
+  align-items: baseline;
+  margin-top: var(--los-3);
+  padding-top: var(--los-2);
+  border-top: 1px solid var(--los-line);
+  color: var(--text-muted);
+  font-size: 13px;
 }
 .los-priority-icon { color: var(--text-accent); }
-.los-priority-copy { display: flex; min-width: 0; align-items: baseline; gap: var(--los-3); }
-.los-priority-copy strong { flex: 0 0 auto; font-size: 13px; }
-.los-priority-copy span {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--text-muted);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.los-coordination-details { min-width: max-content; }
-.los-coordination-details > summary { cursor: pointer; color: var(--text-accent); font-size: 13px; font-weight: 600; }
-.los-coordination-panel {
-  grid-column: 1 / -1;
-  margin-top: var(--los-2);
-  padding: var(--los-3);
-  border-top: 1px solid var(--los-line);
-}
-.los-coordination-details[open] { grid-column: 1 / -1; min-width: 0; }
-.los-coordination-details[open] > summary { width: max-content; margin-left: auto; }
-.los-coordination-row { display: grid; grid-template-columns: minmax(90px, auto) minmax(0, 1fr); gap: var(--los-3); padding-top: var(--los-2); }
-.los-coordination-row p { margin: 0; color: var(--text-muted); }
 
-.los-command-centre { display: grid; grid-template-columns: minmax(0, 1.18fr) minmax(0, 0.82fr); gap: var(--los-5); }
-.los-command-column { display: flex; min-width: 0; flex-direction: column; gap: var(--los-5); }
-.los-command-block { min-width: 0; }
-.los-command-heading { display: flex; align-items: baseline; justify-content: space-between; gap: var(--los-2); }
-.los-table-wrap { min-width: 0; border-top: 1px solid var(--los-line-strong); }
-.los-data-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
-.los-data-table th, .los-data-table td {
+.los-home-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--los-5); }
+.los-home-column { display: flex; min-width: 0; flex-direction: column; gap: var(--los-2); }
+.los-home-column > h2 { margin: 0 0 var(--los-1); }
+
+/* Learning rows: what it is, where you are, one way in. No status column —
+ * a badge is only worth the space when the state needs an action. */
+.los-learning-list { display: grid; gap: 0; }
+.los-learning-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--los-3);
+  align-items: baseline;
   min-width: 0;
-  padding: var(--los-2) var(--los-2);
+  padding: var(--los-2) 0;
   border-bottom: 1px solid var(--los-line);
-  overflow-wrap: break-word;
-  word-break: normal;
-  text-align: left;
-  vertical-align: top;
 }
-.los-data-table th {
-  color: var(--text-faint);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-}
-.los-data-table th:nth-child(1), .los-data-table td:nth-child(1) { width: 38%; }
-.los-data-table th:nth-child(2), .los-data-table td:nth-child(2) { width: 20%; }
-.los-data-table th:nth-child(3), .los-data-table td:nth-child(3) { width: 42%; }
-.los-data-table .los-btn--row {
+.los-learning-copy { min-width: 0; }
+.los-learning-next { color: var(--text-muted); font-size: 12px; overflow-wrap: break-word; word-break: normal; }
+.los-learning-meta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--los-1) var(--los-2); }
+.los-btn.los-learning-title {
   display: inline;
   min-height: 24px !important;
   padding: 0 !important;
   border-color: transparent !important;
-  border-radius: 2px;
+  background: transparent !important;
   color: var(--text-normal);
   font-weight: 650;
 }
-.los-data-table .los-btn--row:hover { background: transparent !important; color: var(--text-accent); }
-.los-next-up { color: var(--text-muted); font-size: 13px; }
+.los-btn.los-learning-title:hover { background: transparent !important; color: var(--text-accent); }
 
-.los-deadline-list { display: grid; gap: 0; border-top: 1px solid var(--los-line-strong); }
-.los-deadline-card {
+/* Two columns, always: a bounded date and flexible content. Actions live
+ * inside the content column so they can never squeeze the prose. */
+.los-date-list { display: grid; gap: 0; border-top: 1px solid var(--los-line-strong); }
+.los-date-row {
   display: grid;
   grid-template-columns: minmax(126px, 148px) minmax(0, 1fr);
   gap: var(--los-3);
@@ -246,17 +221,26 @@
   border-bottom: 1px solid var(--los-line);
 }
 .los-deadline-registration-window { box-shadow: inset 2px 0 0 var(--color-orange); }
-.los-deadline-date { min-width: 0; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
-.los-deadline-copy { min-width: 0; overflow-wrap: break-word; word-break: normal; }
-.los-deadline-copy > div:not(.los-actions) { color: var(--text-muted); }
-.los-deadline-copy p { margin: var(--los-1) 0; color: var(--text-muted); font-size: 12px; }
-.los-deadline-actions { margin-top: var(--los-1); }
-.los-deadline-actions .los-btn { min-height: 24px; padding: 1px var(--los-2); font-size: 12px; }
+.los-date-when { min-width: 0; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
+.los-date-copy { min-width: 0; overflow-wrap: break-word; word-break: normal; }
+.los-date-copy > div:not(.los-actions) { color: var(--text-muted); font-size: 12px; }
+.los-date-copy p { margin: var(--los-1) 0; color: var(--text-muted); font-size: 12px; }
+.los-date-copy .los-actions { margin-top: var(--los-1); }
 .los-deadline-history { margin-top: var(--los-2); color: var(--text-muted); }
-.los-deadline-history > summary { min-height: 24px; cursor: pointer; font-size: 12px; }
-.los-deadline-action-details { margin-top: var(--los-1); }
-.los-deadline-action-details > summary { min-height: 24px; cursor: pointer; color: var(--text-accent); font-size: 12px; }
-.los-deadline-action-row { display: grid; grid-template-columns: minmax(64px, auto) minmax(0, 1fr); gap: var(--los-2); align-items: baseline; padding: var(--los-1) 0; }
+
+/* One compact row instead of three queue cards competing with current work. */
+.los-attention {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-2);
+  align-items: center;
+  margin-top: var(--los-5);
+  padding-top: var(--los-2);
+  border-top: 1px solid var(--los-line);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.los-attention-icon { color: var(--color-orange); }
 .los-deadline-action-row .los-btn--row { min-height: 24px !important; padding: 0 !important; border-color: transparent !important; color: var(--text-accent); font-weight: 650; }
 .los-deadline-action-row span { color: var(--text-muted); font-size: 12px; }
 
@@ -300,23 +284,34 @@
 .los-next-action { margin: var(--los-2) 0; padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--background-primary); }
 .los-next-action p { margin: var(--los-1) 0; color: var(--text-normal); }
 
+/* A true three-column workspace: stage rail | current work | notes.
+ * The note editor stays beside the task instead of below it, because writing
+ * while reading is the whole point of the screen. */
 .los-unit-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 26%) minmax(360px, 1fr);
+  grid-template-columns: 220px minmax(420px, 1fr) minmax(280px, 340px);
   gap: var(--los-3);
-  max-width: 1320px;
-  margin: 0 auto var(--los-5);
+  max-width: 1440px;
+  margin: 0 auto var(--los-3);
   align-items: start;
 }
-.los-stage-rail, .los-stage-workspace, .los-note-panel {
+.los-stage-workspace, .los-note-panel {
   min-width: 0;
   padding: var(--los-3);
   border: 1px solid var(--los-line);
   border-radius: var(--los-r-md);
   background: var(--los-surface);
 }
-.los-stage-rail { padding: var(--los-2); }
-.los-note-panel { grid-column: 1 / -1; }
+.los-stage-rail { min-width: 0; padding: var(--los-2); }
+.los-note-panel {
+  position: sticky;
+  top: var(--los-2);
+  max-height: calc(100vh - 48px);
+  overflow: auto;
+}
+.los-note-panel h2 { margin-top: 0; }
+.los-attachments, .los-detour-row { margin-top: var(--los-3); padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
+.los-detour-row p { margin: var(--los-1) 0; color: var(--text-muted); font-size: 12px; }
 .los-stage-rail h2 { padding: var(--los-1) var(--los-2); }
 .los-stage-row {
   display: flex;
@@ -346,8 +341,37 @@
 .los-resource-row > .los-actions { grid-column: 2; }
 .los-resource-copy { min-width: 0; }
 .los-resource-copy > * { display: block; margin-bottom: var(--los-1); }
-.los-resource-actions { gap: var(--los-1); }
-.los-stage-actions { margin-top: var(--los-3); }
+.los-resource-actions { gap: var(--los-1); align-items: center; }
+.los-stage-goal { margin-bottom: var(--los-3); }
+.los-stage-goal p { margin: var(--los-1) 0 0; }
+
+/* Done-when as working checkboxes. UI-owned state: the core still learns only
+ * "complete", from stage-progress. */
+.los-donewhen-list { display: grid; gap: var(--los-1); }
+.los-donewhen-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--los-2);
+  align-items: baseline;
+  min-height: 28px;
+  padding: var(--los-1) 0;
+  cursor: pointer;
+}
+.los-donewhen-row.is-checked { color: var(--text-faint); text-decoration: line-through; }
+
+/* Two actions and one menu — the only action surface on the screen. */
+.los-unit-actionbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-2);
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 1440px;
+  margin: 0 auto var(--los-4);
+  padding-top: var(--los-2);
+  border-top: 1px solid var(--los-line);
+}
+.los-unit-extras { max-width: 1440px; margin: 0 auto var(--los-5); }
 .los-note-editor {
   width: 100%;
   min-height: 220px;
@@ -367,14 +391,49 @@
 .los-draft-status { margin: calc(-1 * var(--los-1)) 0 var(--los-2); color: var(--text-muted); font-size: 12px; }
 .los-draft-status.is-dirty { color: var(--color-orange); }
 
-/* Library, shelving, inbox and boundary surfaces */
-.los-library-controls { display: flex; max-width: 1180px; margin: 0 auto var(--los-3); gap: var(--los-2); flex-wrap: wrap; }
-.los-search { min-width: min(100%, 280px); min-height: 30px; flex: 1; padding: var(--los-1) var(--los-2); border: 1px solid var(--los-line); background: var(--background-primary); }
-.los-library-layout { display: grid; grid-template-columns: minmax(220px, 32%) minmax(0, 1fr); gap: var(--los-3); max-width: 1180px; margin: 0 auto var(--los-5); }
+/* Library: three panes, and only the middle one is dense. The five modes used
+ * to be pills above a facet bar above a filter chip above the list — four
+ * stacked control strips before any content appeared. */
+.los-search { width: 100%; min-width: 0; min-height: 30px; padding: var(--los-1) var(--los-2); border: 1px solid var(--los-line); background: var(--background-primary); }
+.los-library-layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) minmax(280px, 34%);
+  gap: var(--los-3);
+  max-width: 1320px;
+  margin: 0 auto var(--los-5);
+  align-items: start;
+}
+.los-library-rail { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.los-library-mode {
+  display: flex;
+  width: 100%;
+  min-height: 30px !important;
+  gap: var(--los-2);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--los-1) var(--los-2) !important;
+  border: 0 !important;
+  border-radius: var(--los-r-sm);
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  text-align: left;
+}
+.los-library-mode:hover { background: var(--background-modifier-hover) !important; color: var(--text-normal) !important; }
+.los-library-mode.is-active {
+  background: var(--background-modifier-hover) !important;
+  color: var(--text-normal) !important;
+  box-shadow: inset 2px 0 0 var(--interactive-accent);
+}
+.los-library-filters { margin-top: var(--los-3); }
+.los-library-filters .los-disclosure-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--los-1); }
+.los-library-centre { display: flex; min-width: 0; flex-direction: column; gap: var(--los-2); }
 .los-library-list, .los-library-detail { min-width: 0; border: 1px solid var(--los-line); border-radius: var(--los-r-md); background: var(--los-surface); }
 .los-library-list { max-height: 70vh; overflow: auto; padding: var(--los-1); }
 .los-library-detail { padding: var(--los-4); overflow-wrap: break-word; word-break: normal; }
-.los-detail-id { overflow-wrap: anywhere; }
+.los-detail-id { overflow-wrap: anywhere; font-family: var(--font-monospace); font-size: 12px; }
+.los-related-group { margin-bottom: var(--los-3); }
+.los-related-chips { display: flex; flex-wrap: wrap; gap: var(--los-1); }
+.los-technical-details { margin-top: var(--los-4); padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
 .los-item { display: flex; width: 100%; min-height: 36px !important; gap: var(--los-2); align-items: center; padding: var(--los-2) !important; border: 0 !important; background: transparent !important; }
 .los-item:hover, .los-item.is-selected { background: var(--background-modifier-hover) !important; }
 .los-item-copy { display: flex; min-width: 0; flex-direction: column; overflow-wrap: break-word; }
@@ -452,7 +511,96 @@
 .los-empty { padding: var(--los-4); border: 1px dashed var(--los-line-strong); border-radius: var(--los-r-md); color: var(--text-muted); }
 .los-empty h3 { color: var(--text-normal); }
 .los-empty p { margin: var(--los-1) 0 var(--los-2); }
-.los-footer { max-width: 1180px; margin: var(--los-6) auto var(--los-3); padding-top: var(--los-2); border-top: 1px solid var(--los-line); color: var(--text-faint); font-size: 11px; }
+
+/* Progressive disclosure. Native details, so it works with the keyboard and
+ * with no script at all. */
+.los-disclosure > summary { min-height: 28px; padding: var(--los-1) 0; color: var(--text-accent); cursor: pointer; font-size: 13px; }
+.los-disclosure-body { padding: var(--los-2) 0; }
+.los-coordination-row { display: grid; grid-template-columns: minmax(90px, auto) minmax(0, 1fr); gap: var(--los-3); padding-top: var(--los-2); }
+.los-coordination-row p { margin: 0; color: var(--text-muted); }
+
+/* The ••• overflow. One place for every secondary operation. */
+.los-overflow { position: relative; display: inline-block; }
+.los-overflow-trigger {
+  display: inline-flex;
+  min-width: 32px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--los-2);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  list-style: none;
+}
+.los-overflow-trigger::-webkit-details-marker { display: none; }
+.los-overflow-trigger:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.los-overflow-body {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  display: flex;
+  min-width: 200px;
+  flex-direction: column;
+  padding: var(--los-1);
+  border: 1px solid var(--los-line-strong);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+  box-shadow: var(--shadow-s);
+}
+.los-btn--menu {
+  min-height: 30px !important;
+  justify-content: flex-start !important;
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--text-normal) !important;
+  text-align: left;
+}
+.los-btn--menu:hover { background: var(--background-modifier-hover) !important; }
+
+/* Fact lists: Logistics and Diagnostics, never a learner-facing screen. */
+.los-fact-list { display: grid; gap: 0; border-top: 1px solid var(--los-line); }
+.los-fact-row { display: grid; grid-template-columns: minmax(120px, 30%) minmax(0, 1fr); gap: var(--los-3); padding: var(--los-1) 0; border-bottom: 1px solid var(--los-line); }
+.los-fact-label { color: var(--text-muted); font-size: 12px; }
+.los-fact-value { min-width: 0; overflow-wrap: break-word; word-break: normal; }
+
+/* Module header: one line of facts, not six labelled rows. */
+.los-module-facts { color: var(--text-muted); font-size: 13px; }
+.los-subtabs { display: flex; flex-wrap: wrap; gap: var(--los-1); margin-bottom: var(--los-3); }
+.los-overview { display: flex; flex-direction: column; gap: var(--los-3); align-items: flex-start; }
+.los-overview-progress { color: var(--text-muted); }
+
+/* Review: the decision queues, one row each. */
+.los-review-list { display: grid; gap: 0; border-top: 1px solid var(--los-line-strong); }
+.los-review-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--los-3);
+  align-items: center;
+  padding: var(--los-3) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-review-copy { min-width: 0; }
+.los-review-heading { display: flex; gap: var(--los-2); align-items: baseline; }
+.los-review-count { color: var(--text-accent); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.los-review-clear { color: var(--text-faint); }
+
+/* Diagnostics: states, not a green dot. */
+.los-diagnostic-status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--los-3);
+  align-items: center;
+  margin-bottom: var(--los-4);
+  padding: var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+.los-diagnostic-glyph { font-size: 20px; }
+.los-diagnostic-report { overflow-x: auto; margin-top: var(--los-3); padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--background-primary); color: var(--text-muted); font-size: 12px; white-space: pre-wrap; }
 
 .los-btn, .los-chip {
   display: inline-flex;
@@ -463,8 +611,10 @@
 }
 .los-btn { min-height: 28px !important; padding: var(--los-1) var(--los-3) !important; }
 .los-actions > .los-btn { text-align: left; }
-.los-btn--cta { border-color: var(--interactive-accent) !important; background: transparent !important; color: var(--text-accent) !important; font-weight: 650; }
-.los-btn--cta:hover { background: var(--background-modifier-hover) !important; color: var(--text-accent-hover) !important; }
+/* Filled, not outlined. An outlined "primary" beside outlined secondaries is
+ * not a hierarchy — only one filled action may appear in one visible context. */
+.los-btn--cta { border-color: var(--interactive-accent) !important; background: var(--interactive-accent) !important; color: var(--text-on-accent) !important; font-weight: 650; }
+.los-btn--cta:hover { background: var(--interactive-accent-hover) !important; color: var(--text-on-accent) !important; }
 .los-btn--quiet { background: transparent !important; color: var(--text-muted) !important; }
 .los-btn--quiet:hover { background: var(--background-modifier-hover) !important; color: var(--text-normal) !important; }
 .los-btn--tertiary { min-height: 24px !important; padding: 1px var(--los-2) !important; border-color: transparent !important; color: var(--text-muted) !important; font-size: 12px; }
@@ -481,44 +631,70 @@
 .los-nav-brand { display: flex; align-items: center; gap: var(--los-2); padding: var(--los-2); margin-bottom: var(--los-2); }
 .los-brand-mark { display: grid; width: 28px; height: 28px; place-items: center; border-radius: var(--los-r-sm); background: var(--interactive-accent); color: var(--text-on-accent); }
 .los-nav-label { margin: var(--los-4) var(--los-2) var(--los-1); }
-.los-app-nav-item { display: flex; width: 100%; min-height: 32px !important; gap: var(--los-2); align-items: center; margin-bottom: 2px !important; padding: var(--los-1) var(--los-2) !important; border: 0 !important; background: var(--los-surface) !important; color: var(--text-muted) !important; }
+.los-nav-primary { display: flex; flex-direction: column; }
+/* No border on an ordinary navigation row; the active destination is the only
+ * thing here that needs a surface. */
+.los-app-nav-item {
+  display: flex;
+  width: 100%;
+  min-height: 34px !important;
+  gap: var(--los-2);
+  align-items: center;
+  margin-bottom: 2px !important;
+  padding: var(--los-1) var(--los-2) !important;
+  border: 0 !important;
+  border-radius: var(--los-r-sm);
+  background: transparent !important;
+  color: var(--text-muted) !important;
+}
 .los-app-nav-item:hover { background: var(--background-modifier-hover) !important; color: var(--text-normal) !important; }
-.los-nav-foot { margin-top: var(--los-4); }
+.los-app-nav-item.is-active {
+  background: var(--background-modifier-hover) !important;
+  color: var(--text-normal) !important;
+  box-shadow: inset 3px 0 0 var(--interactive-accent);
+  font-weight: 650;
+}
+.los-nav-more { margin-top: var(--los-4); padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
+.los-nav-more-trigger { min-height: 28px; padding: var(--los-1) var(--los-2); color: var(--text-faint); cursor: pointer; font-size: 12px; }
+.los-nav-secondary { display: flex; flex-direction: column; margin-top: var(--los-1); }
 
 @media (max-width: 1020px) {
-  .los-command-centre { grid-template-columns: minmax(0, 1fr) minmax(300px, 0.76fr); gap: var(--los-4); }
-  .los-unit-layout { grid-template-columns: minmax(190px, 27%) minmax(0, 1fr); }
+  .los-home-columns { grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr); gap: var(--los-4); }
+  /* Rail and task stay side by side; the note panel drops below them. */
+  .los-unit-layout { grid-template-columns: 200px minmax(0, 1fr); }
+  .los-note-panel { position: static; grid-column: 1 / -1; max-height: none; }
+  .los-library-layout { grid-template-columns: 160px minmax(0, 1fr); }
+  .los-library-detail { grid-column: 1 / -1; }
 }
 
 @media (max-width: 720px) {
   .los-root { padding: var(--los-3); }
   .los-page-header { margin-bottom: var(--los-4); }
   .los-section { margin-bottom: var(--los-5); }
-  .los-resume-card, .los-unit-layout, .los-library-layout, .los-queue-grid,
-  .los-capture-grid, .los-command-centre { grid-template-columns: minmax(0, 1fr); }
-  .los-command-column { gap: var(--los-4); }
+  .los-continue-body, .los-unit-layout, .los-library-layout, .los-capture-grid,
+  .los-home-columns { grid-template-columns: minmax(0, 1fr); }
+  .los-home-column { gap: var(--los-2); }
   .los-card-grid, .los-workspace-grid { grid-template-columns: minmax(0, 1fr); }
   .los-note-panel { grid-column: auto; }
   .los-resource-row > .los-actions { grid-column: 1 / -1; }
-  .los-resume-card > .los-actions { justify-content: flex-start; }
-  .los-priority-copy { display: block; }
-  .los-priority-copy strong { display: block; margin-bottom: 2px; }
+  .los-continue-body > .los-actions { justify-content: flex-start; }
+  .los-library-rail { flex-direction: row; flex-wrap: wrap; }
+  .los-library-mode { width: auto; }
+  .los-unit-actionbar { justify-content: space-between; }
 }
 
 @media (max-width: 480px) {
   .los-root { padding: var(--los-3); font-size: 14px; }
   .los-root h1 { font-size: 24px !important; }
-  .los-resume-card { grid-template-columns: minmax(0, 1fr); padding: var(--los-3); }
-  .los-priority-bar { grid-template-columns: auto minmax(0, 1fr); }
-  .los-coordination-details { grid-column: 2; min-width: 0; }
+  .los-continue { padding: var(--los-3); }
+  .los-priority-line { grid-template-columns: minmax(0, 1fr); }
   .los-coordination-row { grid-template-columns: minmax(0, 1fr); gap: var(--los-1); }
-  .los-deadline-card { grid-template-columns: minmax(0, 1fr); gap: var(--los-1); }
-  .los-data-table, .los-data-table tbody, .los-data-table tr, .los-data-table td { display: block; width: 100% !important; }
-  .los-data-table thead { display: none; }
-  .los-data-table tr { padding: var(--los-2) 0; border-bottom: 1px solid var(--los-line); }
-  .los-data-table td { display: grid; grid-template-columns: 72px minmax(0, 1fr); padding: 2px var(--los-1); border: 0; }
-  .los-data-table td::before { content: attr(data-label); color: var(--text-faint); font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  .los-date-row { grid-template-columns: minmax(0, 1fr); gap: var(--los-1); }
+  .los-learning-row, .los-review-row { grid-template-columns: minmax(0, 1fr); gap: var(--los-1); }
+  .los-learning-meta { justify-content: flex-start; }
+  .los-fact-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .los-library-detail, .los-card, .los-stage-workspace, .los-note-panel { padding: var(--los-3); }
+  .los-overflow-body { right: auto; left: 0; min-width: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

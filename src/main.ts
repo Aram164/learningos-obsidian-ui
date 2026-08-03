@@ -5,6 +5,7 @@ export class LearningOSUI extends Plugin {
     this.settings.uiDrafts.stages ||= {};
     this.settings.uiDrafts.selectedStages ||= {};
     this.settings.uiDrafts.inbox ||= { title: '', text: '' };
+    this.settings.uiDrafts.doneWhen ||= {};
     this.draftSaveTimer = null;
     for (const type of LEGACY_VIEW_TYPES) this.app.workspace.detachLeavesOfType(type);
     this.store = new ManifestStore(this.app);
@@ -19,6 +20,8 @@ export class LearningOSUI extends Plugin {
     this.registerView(VIEW_ATLAS, (leaf) => new AtlasView(leaf, this));
     this.registerView(VIEW_SHELVING, (leaf) => new ShelvingView(leaf, this));
     this.registerView(VIEW_BOUNDARY, (leaf) => new BoundaryView(leaf, this));
+    this.registerView(VIEW_REVIEW, (leaf) => new ReviewView(leaf, this));
+    this.registerView(VIEW_DIAGNOSTICS, (leaf) => new DiagnosticsView(leaf, this));
     this.addSettingTab(new LearningOSSettingsTab(this.app, this));
     this.addRibbonIcon('route', 'Open LearningOS', () => this.openHome());
     this.addCommand({ id: 'open-home', name: 'Open Home', callback: () => this.openHome() });
@@ -46,7 +49,8 @@ export class LearningOSUI extends Plugin {
     if (this.draftSaveTimer) clearTimeout(this.draftSaveTimer);
     void this.saveData(this.settings);
     for (const type of [VIEW_HOME, VIEW_NAV, VIEW_PROGRAM, VIEW_MODULE, VIEW_UNIT,
-      VIEW_LIBRARY, VIEW_ATLAS, VIEW_SHELVING, VIEW_BOUNDARY]) this.app.workspace.detachLeavesOfType(type);
+      VIEW_LIBRARY, VIEW_ATLAS, VIEW_SHELVING, VIEW_BOUNDARY, VIEW_REVIEW,
+      VIEW_DIAGNOSTICS]) this.app.workspace.detachLeavesOfType(type);
   }
 
   scheduleDraftSave() {
@@ -79,6 +83,24 @@ export class LearningOSUI extends Plugin {
     else delete this.settings.uiDrafts.selectedStages[unitId];
     this.scheduleDraftSave();
   }
+  /** Done-when ticks are UI-owned working state: they help the learner see how
+   *  far through a stage's criteria they are, and are never a second record of
+   *  completion. The core still learns only "complete" from `stage-progress`. */
+  getDoneWhen(unitId, stageId) {
+    return this.settings.uiDrafts.doneWhen[this.stageDraftKey(unitId, stageId)] || [];
+  }
+  setDoneWhen(unitId, stageId, index, checked) {
+    const key = this.stageDraftKey(unitId, stageId);
+    const marks = [...(this.settings.uiDrafts.doneWhen[key] || [])];
+    marks[index] = checked;
+    if (marks.some(Boolean)) this.settings.uiDrafts.doneWhen[key] = marks;
+    else delete this.settings.uiDrafts.doneWhen[key];
+    this.scheduleDraftSave();
+  }
+  clearDoneWhen(unitId, stageId) {
+    delete this.settings.uiDrafts.doneWhen[this.stageDraftKey(unitId, stageId)];
+    this.scheduleDraftSave();
+  }
   getInboxDraft() { return { ...this.settings.uiDrafts.inbox }; }
   setInboxDraft(title, text) {
     this.settings.uiDrafts.inbox = { title, text };
@@ -89,10 +111,35 @@ export class LearningOSUI extends Plugin {
     this.scheduleDraftSave();
   }
 
+  /**
+   * Interpreter resolution, in order: an explicitly configured path, the POSIX
+   * venv, the Windows venv, then the PATH names. Reported rather than guessed —
+   * when a write button dies, Diagnostics has to be able to say which binary
+   * was tried and where it looked.
+   */
+  /** The plugin's own version, kept off the `manifest.` access path so the
+   *  contract-key test cannot mistake it for a projection field. */
+  uiVersion() { const info = this.manifest; return info?.version || 'unknown'; }
+
+  resolvePython() {
+    const base = this.app.vault.adapter.getBasePath();
+    const configured = String(this.settings.pythonPath || '').trim();
+    const candidates = [
+      [configured, 'configured in settings'],
+      [nodePath.join(base, '.venv', 'bin', 'python'), 'project virtual environment'],
+      [nodePath.join(base, '.venv', 'Scripts', 'python.exe'), 'project virtual environment (Windows)'],
+    ].filter(([path]) => path);
+    const attempted = candidates.map(([path]) => path);
+    for (const [path, origin] of candidates) {
+      if (fs.existsSync(path)) return { path, origin, attempted };
+    }
+    const fallback = process?.platform === 'win32' ? 'python' : 'python3';
+    return { path: fallback, origin: 'PATH fallback', attempted: [...attempted, fallback] };
+  }
+
   runLos(args, callback) {
     const base = this.app.vault.adapter.getBasePath();
-    const bundled = nodePath.join(base, '.venv', 'bin', 'python');
-    const python = fs.existsSync(bundled) ? bundled : 'python3';
+    const python = this.resolvePython().path;
     const script = nodePath.join(base, 'tools', 'los.py');
     execFile(python, [script, ...args], { cwd: base, timeout: 180000, maxBuffer: 8 * 1024 * 1024 }, callback);
   }
@@ -115,20 +162,41 @@ export class LearningOSUI extends Plugin {
     return leaf;
   }
 
+  /** The active destination is a display fact, so the Navigator is the only
+   *  thing it redraws — never the working view the learner is reading. */
+  setActiveNav(key) {
+    this.activeNav = key;
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_NAV)) leaf.view?.render?.();
+  }
+
   async openNav() { return this.openView(VIEW_NAV, {}, 'left'); }
   async openHome() {
+    this.setActiveNav('home');
     const leaf = await this.openView(VIEW_HOME);
     if (this.settings.pinHome) leaf.setPinned?.(true);
     return leaf;
   }
+  /** Learn is one destination; the areas are sub-areas inside it. */
+  openLearn(programId = null) {
+    const area = programId || this.settings.learnArea || LEARN_AREAS[0][0];
+    this.settings.learnArea = area;
+    this.scheduleDraftSave();
+    this.setActiveNav('learn');
+    return this.openView(VIEW_PROGRAM, { programId: area });
+  }
+  openCapture() { this.setActiveNav('capture'); return this.openView(VIEW_PROGRAM, { programId: 'inbox' }); }
+  openReview() { this.setActiveNav('review'); return this.openView(VIEW_REVIEW, {}); }
+  openDiagnostics() { this.setActiveNav('diagnostics'); return this.openView(VIEW_DIAGNOSTICS, {}); }
   openProgram(programId) { return this.openView(VIEW_PROGRAM, { programId }); }
-  openModule(moduleId) { return this.openView(VIEW_MODULE, { moduleId }); }
+  openModule(moduleId) { this.setActiveNav('learn'); return this.openView(VIEW_MODULE, { moduleId }); }
   openUnit(unitId, stageId = null) {
     const selectedStage = stageId || this.getSelectedStage(unitId);
     if (selectedStage) this.setSelectedStage(unitId, selectedStage);
+    this.setActiveNav('learn');
     return this.openView(VIEW_UNIT, { unitId, stageId: selectedStage });
   }
   openLibrary(recordId = undefined, recordType = undefined) {
+    this.setActiveNav('library');
     const state = {};
     if (recordId !== undefined) state.recordId = recordId;
     if (recordType !== undefined) state.recordType = recordType;
@@ -138,9 +206,12 @@ export class LearningOSUI extends Plugin {
   openLibraryFiltered(recordType, domain = '') {
     return this.openView(VIEW_LIBRARY, { recordType, domain, recordId: null, query: '' });
   }
-  openAtlas(domain = null) { return this.openView(VIEW_ATLAS, { domain }); }
-  openShelving(unitId = null) { return this.openView(VIEW_SHELVING, { unitId }); }
-  openBoundary(boundaryId) { return this.openView(VIEW_BOUNDARY, { boundaryId }); }
+  openAtlas(domain = null) { this.setActiveNav('atlas'); return this.openView(VIEW_ATLAS, { domain }); }
+  openShelving(unitId = null) { this.setActiveNav('review'); return this.openView(VIEW_SHELVING, { unitId }); }
+  openBoundary(boundaryId) {
+    this.setActiveNav(boundaryId === 'program-job-boundary' ? 'job' : 'masters');
+    return this.openView(VIEW_BOUNDARY, { boundaryId });
+  }
   openResume() {
     const pointer = this.store.data?.resume_pointer;
     return pointer ? this.openUnit(pointer.unit_id, pointer.stage_id) : this.openHome();
@@ -165,11 +236,27 @@ export class LearningOSUI extends Plugin {
     }
   }
 
+  /**
+   * One transaction at a time, across every view. A per-view `busy` flag only
+   * ever protected the view that owned it — a stage completion and an inbox
+   * capture started from different leaves could still overlap, each carrying an
+   * `--expected-snapshot` the other had already invalidated.
+   */
+  async mutate(action, { reload = true } = {}) {
+    return this.gateway.enqueue(async () => {
+      const result = await action();
+      if (reload) await this.reloadStore();
+      return result;
+    });
+  }
+
   async generate() {
     try {
-      await this.gateway.call(['validate'], { expectJson: false });
-      await this.gateway.call(['generate'], { expectJson: false });
-      await this.reloadStore(); new Notice('LearningOS projection rebuilt.');
+      await this.mutate(async () => {
+        await this.gateway.call(['validate'], { expectJson: false });
+        await this.gateway.call(['generate'], { expectJson: false });
+      });
+      new Notice('LearningOS projection rebuilt.');
     } catch (error) { new Notice(error?.message || String(error)); }
   }
 
@@ -264,8 +351,12 @@ export class LearningOSUI extends Plugin {
   openResource(resource) {
     if (resource.vault_path) return this.openVaultPath(resource.vault_path);
     if (resource.url) {
+      // A projected URL is still untrusted input to a viewer: `javascript:`,
+      // `data:` and `file:` never reach Electron.
+      const url = safeWebUrl(resource.url);
+      if (!url) { new Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`); return false; }
       const leaf = this.app.workspace.getLeaf(true);
-      return leaf.setViewState({ type: 'webviewer', active: true, state: { url: resource.url } });
+      return leaf.setViewState({ type: 'webviewer', active: true, state: { url: url.href } });
     }
   }
   copyText(value) {

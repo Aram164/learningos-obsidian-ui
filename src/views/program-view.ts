@@ -20,35 +20,63 @@ export class ProgramView extends ItemView {
     if (this.programId === 'inbox') return this.renderInbox(root);
     const program = this.plugin.store.get(this.programId);
     if (!program) { empty(root, 'Area unavailable', 'Return Home and choose another area.'); return; }
-    pageHeader(root, 'Program / area', program.title, program.description || '');
+    pageHeader(root, '', 'Learn');
+    // The areas are sub-areas of one destination now, so the switcher lives in
+    // the page rather than eating three permanent sidebar slots.
+    const tabs = root.createDiv({ cls: 'los-tabs', attr: { role: 'tablist' } });
+    for (const [areaId, title] of LEARN_AREAS) {
+      const active = areaId === program.id;
+      const tab = button(tabs, title, () => this.plugin.openLearn(areaId), active ? 'cta' : 'quiet');
+      tab.setAttrs({ role: 'tab', 'aria-selected': String(active) });
+    }
+    if (program.description) root.createEl('p', { cls: 'los-muted', text: program.description });
+
+    const modules = this.plugin.store.modulesFor(program.id);
+    const list = root.createDiv({ cls: 'los-learning-list' });
+    if (!modules.length) empty(root, 'No modules in this area yet', 'Nothing is hidden.');
+    for (const module of modules) progressRow(list, this.plugin, module);
+
     if (program.semester_bound) {
-      const semesters = section(root, 'Semesters');
+      const semesters = disclosure(root, 'Semesters');
       for (const semester of program.semesters || []) {
         const row = semesters.createDiv({ cls: 'los-row' });
         row.createEl('strong', { text: semester.title }); badge(row, semester.status, semester.status);
       }
-      empty(semesters, 'Past semesters remain visible', 'Archived semesters appear here after the turn-semester workflow.');
     }
-    const modules = section(root, 'Modules');
-    const grid = modules.createDiv({ cls: 'los-card-grid' });
-    for (const module of this.plugin.store.modulesFor(program.id)) moduleCard(grid, this.plugin, module);
-    viewFooter(root);
+    this.renderCoordination(root);
+  }
+
+  /**
+   * The full coordination record — commitments, dependencies, deferrals — moved
+   * off Home to here. Home carries the one-line priority; this is where the
+   * whole decision layer is read when the learner actually wants it.
+   */
+  renderCoordination(root) {
+    const coordination = this.plugin.store.get('coordination');
+    const rows = ['Priorities', 'Commitments', 'Dependencies', 'Deferrals']
+      .map((heading) => [heading, projectedExcerpt(coordination?.sections?.[heading], 1600)])
+      .filter(([, body]) => body);
+    if (!rows.length) return;
+    const panel = disclosure(root, 'Semester coordination', 'los-coordination-details');
+    for (const [heading, body] of rows) {
+      const row = panel.createDiv({ cls: 'los-coordination-row' });
+      row.createEl('strong', { text: heading });
+      row.createEl('p', { text: body });
+    }
   }
 
   renderNeedsMap(root) {
-    pageHeader(root, 'Queue', 'Units needing a study map');
+    pageHeader(root, 'Review', 'Units needing a study map');
     const grid = root.createDiv({ cls: 'los-card-grid' });
     for (const unit of this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id))) {
       unitCard(grid, this.plugin, unit);
     }
-    viewFooter(root);
   }
 
   renderInbox(root) {
-    pageHeader(root, 'Capture', 'Inbox', 'You capture; the operator files.');
+    pageHeader(root, '', 'Capture', 'You capture; the operator files.');
     const count = this.plugin.store.data?.counts?.inbox_items || 0;
     const wrap = section(root, `${count} item${count === 1 ? '' : 's'} awaiting routing`);
-    wrap.createEl('p', { cls: 'los-muted', text: 'No filing decision is required. Text and files land in work/inbox/ through the core capture gateway.' });
     const form = wrap.createDiv({ cls: 'los-capture-grid' });
     const textPanel = form.createDiv({ cls: 'los-capture-panel' });
     textPanel.createEl('h3', { text: 'Quick text' });
@@ -100,21 +128,20 @@ export class ProgramView extends ItemView {
       if (!localPath) { new Notice('Choose a local file first.'); return; }
       this.capture(() => this.plugin.gateway.captureFile(localPath), () => { picker.value = ''; });
     }, 'quiet');
-    viewFooter(root);
   }
 
   async capture(action, clear) {
-    if (this.busy) { new Notice('A capture is already running.'); return; }
-    this.busy = true;
+    if (this.plugin.gateway.isBusy) new Notice('Queued behind the running LearningOS write.');
     try {
-      await action();
-      await this.plugin.gateway.call(['generate'], { expectJson: false });
+      await this.plugin.mutate(async () => {
+        await action();
+        await this.plugin.gateway.call(['generate'], { expectJson: false });
+      });
       // Only after the core confirmed the capture in JSON — clearing earlier
       // is what used to lose the thought when the CLI answered with garbage.
       clear?.();
-      await this.plugin.reloadStore();
       new Notice('Captured to the LearningOS inbox.');
+      this.render();
     } catch (error) { new Notice(error?.message || String(error)); }
-    finally { this.busy = false; }
   }
 }

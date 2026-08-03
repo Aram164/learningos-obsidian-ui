@@ -18,21 +18,49 @@ The interface carries usability while the core carries meaning.
 6. **Honest emptiness.** Missing maps, artifacts, proposals and offline CLI
    states explain the next safe action without inventing completion.
 
+7. **Progressive disclosure.** Show what is needed now, then nearby context,
+   then technical detail only on request. Record IDs, operator metadata,
+   coordination prose, past dates and diagnostics are available but never
+   default. A screen that presents every valid fact at one weight has made no
+   decision on the learner's behalf.
+8. **One filled action per visible context.** Primary is a filled accent
+   button, secondary is a neutral outline, tertiary is a text or menu item.
+   Secondary operations live in a `•••` overflow rather than competing with the
+   two the learner came for.
+
+## Navigation
+
+Five permanent destinations: **Home, Learn, Library, Capture, Review.** Areas
+(Bachelor's / Skills / Thesis) are sub-areas inside Learn; the decision queues
+(Shelving / Garden / Inbox / needs-a-map) are Review. Domain atlas, the
+Master's and Job boundaries, Diagnostics and *Rebuild projection* live under
+**More** — maintenance is never mixed with study destinations.
+
 ## Primary patterns
 
-- **Home**: compact command centre with a slim resume row and one-line
-  core-owned semester priority; academic dates and Bachelor's modules share the
-  primary column, while Skills and Thesis keep independent tables in the
-  secondary column. Workspace next actions are projected into the relevant
-  module row. Missing-map, shelving, inbox, and boundary rows remain visible
-  below the command centre without competing with current work.
+- **Home**: one Continue card carrying the resume stage and the only filled
+  primary action on the screen, a one-line core-owned priority, Upcoming
+  (three nearest dates, the rest folded), My learning (every area's modules as
+  compact progress rows), and one Attention row linking to Review. Boundaries,
+  full coordination detail and maintenance controls are *not* on Home.
 - **Program**: current/past semester facts and module cards. Academic status is
   never applied to skills/projects.
-- **Module**: administrative header where applicable, stable component tabs,
-  all units grouped by state, module source roles/routes, related workspaces.
-- **Unit**: ordered stage rail; objective/resources/done-when; stage note,
-  attachments and use evidence; durable artifact section; feedback, detour,
-  shelving, scoped-AI and session-end actions.
+- **Module**: four tabs — Overview / Units / Resources / Logistics — with
+  **Units** the default for any module that has them. The header carries one
+  line of facts (`semester · credits · exam`); institution, code, status and
+  examination prose live in Logistics.
+- **Unit**: a true three-column workspace — stage rail | current stage | sticky
+  note panel — and exactly three visible actions: *Save note*, *Mark complete*,
+  and a `•••` overflow holding pause, skip, prerequisite gap, shelving, scoped
+  AI and session end. Resource feedback collapses into a per-resource rate
+  menu. `Done when` criteria are interactive checkboxes whose ticks are
+  UI-owned working state — the core still learns only "complete", from
+  `stage-progress`.
+- **Review**: every decision queue in one destination — ready to shelve, inbox,
+  units needing a map, the Garden.
+- **Diagnostics**: contract versions, projection freshness (`✓ current`,
+  `● stale`, `? core unavailable`), resolved Python interpreter and its
+  attempted paths. Under More, never on Home.
 - **Library**: secondary structural search and source master/detail. Global
   identity/evaluations remain distinct from unit use. Omnisearch provides
   full-text/OCR retrieval without becoming canonical metadata.
@@ -60,8 +88,21 @@ alignment, line height, wrapping, hover, focus, and disabled behavior. Shared
 variants are primary (`--cta`), secondary (default), quiet, row, and tertiary.
 Row actions keep the whole label readable with normal word wrapping; they never
 allow character-by-character wrapping. Shared primitives also include badges,
-typed chips, compact data tables, two-column academic-date rows, cards, empty
-states, sections, page headers, and the always-visible ownership footer.
+typed chips, learning progress rows, two-column academic-date rows, cards,
+empty states, sections, page headers, `disclosure()` and `overflowMenu()`.
+
+**Amended 2026-08-03: the always-visible ownership footer is retired.** It
+stated architecture policy under every screen, which made the product read as
+internal tooling rather than a study cockpit. The statement is now made once,
+in Settings → About and on the Diagnostics view; `OWNERSHIP_STATEMENT` is the
+single copy. This supersedes the earlier "always-visible ownership footer"
+primitive.
+
+**Borders carry meaning.** They mark selection, focus, an editable area, or a
+boundary that needs review — not ordinary navigation, module, resource or queue
+rows, which are separated by dividers and whitespace instead. Raised surfaces
+are spent on the Continue card, the stage workspace, the note editor, the
+selected Library detail and modals; everything else sits on the page.
 
 Copy is sentence case and action-led: *Resume stage*, *Save note*, *Complete
 stage*, *Attach selected file*, *Approve selected changes*, *End learning

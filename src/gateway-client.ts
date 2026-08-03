@@ -1,5 +1,26 @@
 export class GatewayClient {
-  constructor(plugin) { this.plugin = plugin; }
+  constructor(plugin) {
+    this.plugin = plugin;
+    // The write lock lives here, not in a view, because the thing being
+    // protected is the single CLI process and the snapshot it was handed.
+    this.chain = Promise.resolve();
+    this.pending = 0;
+  }
+
+  /**
+   * Serialize every mutation, wherever it was clicked. Failures do not poison
+   * the chain: the next task runs regardless of how the previous one settled,
+   * but never alongside it.
+   */
+  enqueue(task) {
+    this.pending += 1;
+    const run = this.chain.then(task, task);
+    this.chain = run.then(() => undefined, () => undefined)
+      .then(() => { this.pending -= 1; });
+    return run;
+  }
+
+  get isBusy() { return this.pending > 0; }
 
   /**
    * Every mutating command answers in JSON. Unreadable or empty output means

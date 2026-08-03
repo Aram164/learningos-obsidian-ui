@@ -16,6 +16,7 @@ const files = [
   'src/views/atlas-view.ts',
   'src/views/shelving-view.ts',
   'src/views/boundary-view.ts',
+  'src/views/review-view.ts',
   'src/views/nav-view.ts',
   'src/settings.ts',
   'src/main.ts',

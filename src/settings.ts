@@ -14,8 +14,22 @@ export class LearningOSSettingsTab extends PluginSettingTab {
           this.plugin.settings[key] = value; await this.plugin.saveData(this.plugin.settings);
         }));
     }
+    new Setting(root).setName('Python interpreter')
+      .setDesc('Leave blank to auto-detect: the project virtual environment, then the system Python.')
+      .addText((text) => text
+        .setValue(this.plugin.settings.pythonPath || '')
+        .onChange(async (value) => {
+          this.plugin.settings.pythonPath = value.trim();
+          await this.plugin.saveData(this.plugin.settings);
+        }));
     new Setting(root).setName('Validate and rebuild').setDesc('Run the canonical core projection pipeline.')
       .addButton((control) => control.setButtonText('Rebuild').setCta().onClick(() => this.plugin.generate()));
+    new Setting(root).setName('Diagnostics').setDesc('Contract versions, projection freshness, interpreter.')
+      .addButton((control) => control.setButtonText('Open').onClick(() => this.plugin.openDiagnostics()));
+
+    // Stated once, here — not repeated under every screen (DESIGN.md).
+    root.createEl('h3', { text: 'About LearningOS' });
+    root.createEl('p', { cls: 'los-muted', text: OWNERSHIP_STATEMENT });
   }
 }
 

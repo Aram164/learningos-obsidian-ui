@@ -17,6 +17,19 @@ const VIEW_LIBRARY = 'learningos-library';
 const VIEW_ATLAS = 'learningos-atlas';
 const VIEW_SHELVING = 'learningos-shelving';
 const VIEW_BOUNDARY = 'learningos-boundary';
+const VIEW_REVIEW = 'learningos-review';
+const VIEW_DIAGNOSTICS = 'learningos-diagnostics';
+
+/**
+ * The five permanent destinations. Areas became sub-areas of Learn and the
+ * decision queues became Review, so the sidebar stops presenting the whole
+ * system before the learner has done anything. Everything else lives in More.
+ */
+const LEARN_AREAS = [
+  ['program-bachelors', 'Bachelor’s'],
+  ['program-skills', 'Skills'],
+  ['program-thesis-projects', 'Thesis & projects'],
+];
 const LEGACY_VIEW_TYPES = [
   'learningos-dashboard', 'learningos-explorer', 'learningos-learning-path',
   'learningos-shelve-review', 'learningos-job-boundary',
@@ -27,7 +40,15 @@ const DEFAULT_SETTINGS = {
   pinHome: true,
   collapseSidebars: true,
   showAiRecommendation: true,
+  navMoreOpen: false,
+  learnArea: 'program-bachelors',
+  pythonPath: '',
 };
+
+/** Protocols an interface layer may hand to a viewer. Everything else — and
+ *  above all `javascript:`, `data:` and `file:` — is refused before it can
+ *  reach Electron. */
+const SAFE_URL_PROTOCOLS = ['https:', 'http:'];
 
 const STATUS_ORDER = [
   'active', 'ready', 'not-started', 'needs-map', 'paused',
@@ -169,7 +190,28 @@ class ManifestStore {
 
 /* ---- src/gateway-client.ts ---- */
 class GatewayClient {
-  constructor(plugin) { this.plugin = plugin; }
+  constructor(plugin) {
+    this.plugin = plugin;
+    // The write lock lives here, not in a view, because the thing being
+    // protected is the single CLI process and the snapshot it was handed.
+    this.chain = Promise.resolve();
+    this.pending = 0;
+  }
+
+  /**
+   * Serialize every mutation, wherever it was clicked. Failures do not poison
+   * the chain: the next task runs regardless of how the previous one settled,
+   * but never alongside it.
+   */
+  enqueue(task) {
+    this.pending += 1;
+    const run = this.chain.then(task, task);
+    this.chain = run.then(() => undefined, () => undefined)
+      .then(() => { this.pending -= 1; });
+    return run;
+  }
+
+  get isBusy() { return this.pending > 0; }
 
   /**
    * Every mutating command answers in JSON. Unreadable or empty output means
@@ -315,6 +357,67 @@ function section(parent, title, description = '') {
   return wrap;
 }
 
+/**
+ * Progressive disclosure primitive. Native `<details>` so it is keyboard
+ * reachable and readable with no script, which is also why the overflow menu
+ * below is built on it rather than on Obsidian's `Menu`.
+ */
+function disclosure(parent, summaryText, cls = '') {
+  const details = parent.createEl('details', { cls: `los-disclosure ${cls}`.trim() });
+  details.createEl('summary', { text: summaryText });
+  return details.createDiv({ cls: 'los-disclosure-body' });
+}
+
+/**
+ * The `•••` overflow. Secondary operations stay reachable in one place instead
+ * of competing with the two actions the learner actually came for.
+ */
+function overflowMenu(parent, items, label = 'More actions') {
+  const rows = items.filter(Boolean);
+  if (!rows.length) return null;
+  const details = parent.createEl('details', { cls: 'los-overflow' });
+  const summary = details.createEl('summary', { cls: 'los-overflow-trigger', text: '•••' });
+  summary.setAttrs({ 'aria-label': label, role: 'button' });
+  const body = details.createDiv({ cls: 'los-overflow-body' });
+  for (const [itemLabel, action] of rows) {
+    button(body, itemLabel, () => { details.removeAttribute?.('open'); action(); }, 'menu');
+  }
+  return details;
+}
+
+/**
+ * One learning row: what it is, where you are, one way in. Replaces the
+ * Module/Status/Next-up table — a status badge is only worth the space when the
+ * state needs the learner to do something.
+ */
+function progressRow(parent, plugin, module, nextUp = '') {
+  const row = parent.createDiv({ cls: 'los-learning-row' });
+  const copy = row.createDiv({ cls: 'los-learning-copy' });
+  const title = button(copy, module.title, () => plugin.openModule(module.id), 'row');
+  title.addClass('los-learning-title');
+  if (nextUp) copy.createDiv({ cls: 'los-learning-next', text: nextUp });
+  const progress = plugin.store.progress(module.id);
+  const meta = row.createDiv({ cls: 'los-learning-meta' });
+  meta.createSpan({
+    cls: 'los-micro',
+    text: `${progress.stages_complete || 0} of ${progress.stages_total || 0} stages`,
+  });
+  if (progress.units_needing_map) badge(meta, `${progress.units_needing_map} need a map`, 'needs-map');
+  return row;
+}
+
+/**
+ * A projected URL is core data, but core data is not a licence to hand an
+ * arbitrary scheme to Electron. Anything outside the allowlist is refused
+ * before it can reach a viewer.
+ */
+function safeWebUrl(value) {
+  try {
+    const url = new URL(String(value || ''));
+    return SAFE_URL_PROTOCOLS.includes(url.protocol) ? url : null;
+  } catch (_) { return null; }
+}
+
 function empty(parent, title, detail, actionLabel, action) {
   const el = parent.createDiv({ cls: 'los-empty' });
   el.createEl('h3', { text: title });
@@ -408,11 +511,23 @@ function moduleCard(parent, plugin, module) {
   return card;
 }
 
-function viewFooter(parent) {
-  parent.createDiv({ cls: 'los-footer', text: 'Presentation only · facts live in the LearningOS core · buttons are conveniences, never duties.' });
-}
+/**
+ * The ownership statement is architecture policy, not study content. Repeating
+ * it under every screen made the product read as internal tooling, so it is
+ * stated once in Settings → About (DESIGN.md records the change).
+ */
+const OWNERSHIP_STATEMENT =
+  'Presentation only · facts live in the LearningOS core · buttons are conveniences, never duties.';
 
 /* ---- src/views/home-view.ts ---- */
+/**
+ * Home answers one question: what should I do now?
+ *
+ * Continue, Upcoming, My learning, Attention — in that order, and nothing else.
+ * Boundaries, full coordination detail, diagnostics and maintenance moved to
+ * where they belong; a learner opening the app should not have to read the
+ * whole system before continuing.
+ */
 class HomeView extends ItemView {
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
   getViewType() { return VIEW_HOME; }
@@ -429,195 +544,128 @@ class HomeView extends ItemView {
         'Rebuild views', () => this.plugin.generate());
       return;
     }
-    pageHeader(root, '', 'Current work');
-    root.createSpan({ cls: 'los-sr-only', text: 'Bachelor’s first. Every path stays visible.' });
-    this.renderResume(root);
-    this.renderDecisionLayer(root);
-    this.renderCommandCentre(root);
-    this.renderQueues(root);
-    this.renderBoundaries(root);
-    viewFooter(root);
+    const header = pageHeader(root, '', 'Today');
+    const headerActions = header.createDiv({ cls: 'los-actions' });
+    button(headerActions, 'Capture', () => this.plugin.openCapture(), 'quiet');
+    this.renderContinue(root);
+    const columns = root.createDiv({ cls: 'los-home-columns' });
+    this.renderUpcoming(columns.createDiv({ cls: 'los-home-column' }));
+    this.renderLearning(columns.createDiv({ cls: 'los-home-column' }));
+    this.renderAttention(root);
   }
 
-  renderDecisionLayer(root) {
-    const wrap = root.createDiv({ cls: 'los-section los-priority-section' });
-    wrap.createEl('h2', { text: 'Semester priority' });
-    const bar = wrap.createDiv({ cls: 'los-priority-bar' });
-    icon(bar.createSpan({ cls: 'los-priority-icon' }), 'flag');
-    const coordination = this.plugin.store.get('coordination');
-    const priority = projectedExcerpt(coordination?.sections?.Priorities);
-    const copy = bar.createDiv({ cls: 'los-priority-copy' });
-    copy.createEl('strong', { text: 'Priority decision' });
-    copy.createSpan({ text: priority || 'No current priority decision.' });
-    const contextRows = ['Commitments', 'Dependencies', 'Deferrals']
-      .map((heading) => [heading, projectedExcerpt(coordination?.sections?.[heading])])
-      .filter(([, body]) => body);
-    if (priority || contextRows.length) {
-      const details = bar.createEl('details', { cls: 'los-coordination-details' });
-      details.createEl('summary', { text: 'View details' });
-      const panel = details.createDiv({ cls: 'los-coordination-panel' });
-      panel.createEl('h3', { text: 'Coordination context' });
-      if (priority) {
-        const row = panel.createDiv({ cls: 'los-coordination-row' });
-        row.createEl('strong', { text: 'Priorities' });
-        row.createEl('p', { text: priority });
-      }
-      for (const [heading, body] of contextRows) {
-        const row = panel.createDiv({ cls: 'los-coordination-row' });
-        row.createEl('strong', { text: heading });
-        row.createEl('p', { text: body });
-      }
-    }
-  }
-
-  nextWorkspaceDate(workspace) {
-    if (workspace.deadline) return String(workspace.deadline);
-    const moduleIds = new Set(workspace.module_ids || []);
-    const dates = [];
-    for (const row of this.plugin.store.data.academic_deadlines || []) {
-      if (row.kind === 'exam' && moduleIds.has(row.module_id)) dates.push(row.start_date);
-      if (row.kind === 'registration-window' &&
-          (row.modules || []).some((module) => moduleIds.has(module.module_id))) dates.push(row.start_date);
-    }
-    return dates.filter(Boolean).sort()[0] || '9999';
-  }
-
-  renderResume(root) {
+  /** The one primary action on the screen. */
+  renderContinue(root) {
     const pointer = this.plugin.store.data.resume_pointer || {};
     const unit = this.plugin.store.get(pointer.unit_id);
     const map = this.plugin.store.get(pointer.study_map_id);
     const stage = this.plugin.store.stage(pointer.stage_id);
-    const wrap = root.createDiv({ cls: 'los-section los-resume-section' });
+    const wrap = root.createDiv({ cls: 'los-continue' });
     if (!unit || !stage) {
-      empty(wrap, 'Nothing to resume yet', 'Choose any module and unit below.');
+      empty(wrap, 'Nothing to resume yet', 'Open Learn and choose any module.',
+        'Open Learn', () => this.plugin.openLearn());
       return;
     }
-    const card = wrap.createDiv({ cls: 'los-resume-card' });
-    const copy = card.createDiv({ cls: 'los-resume-copy' });
-    copy.createDiv({ cls: 'los-kicker', text: this.plugin.store.get(unit.module_id)?.title || unit.module_id });
-    copy.createEl('h2', { text: unit.title });
-    const progress = copy.createDiv({ cls: 'los-resume-progress' });
-    progress.createSpan({ text: stage.title });
+    wrap.createDiv({ cls: 'los-kicker', text: 'Continue' });
+    const body = wrap.createDiv({ cls: 'los-continue-body' });
+    const copy = body.createDiv({ cls: 'los-continue-copy' });
+    const module = this.plugin.store.get(unit.module_id);
+    copy.createDiv({ cls: 'los-continue-module', text: `${module?.code || module?.title || unit.module_id} · ${unit.title}` });
+    copy.createEl('h2', { text: stage.title });
     const stages = Array.isArray(map?.stages) ? map.stages.filter(Boolean) : [];
-    progress.createSpan({ cls: 'los-progress-copy', text: `${stages.filter((row) => row?.status === 'complete').length} of ${stages.length} stages complete` });
-    const actions = card.createDiv({ cls: 'los-actions' });
-    button(actions, 'Resume stage', () => this.plugin.openUnit(unit.id, stage.id), 'cta');
-    if (this.plugin.settings.showAiRecommendation) {
-      button(actions, 'Ask AI about this stage', () => this.plugin.askAiScoped(
-        'Recommend the smallest useful next action. Do not hide alternative units.',
-        { moduleId: unit.module_id, unitId: unit.id, stageId: stage.id }), 'quiet');
+    const position = stages.findIndex((row) => row?.id === stage.id);
+    const meta = copy.createDiv({ cls: 'los-continue-meta' });
+    if (stages.length) {
+      meta.createSpan({ text: `Stage ${position >= 0 ? position + 1 : 1} of ${stages.length}` });
     }
-  }
-
-  renderCommandCentre(root) {
-    const layout = root.createDiv({ cls: 'los-section los-command-centre' });
-    const primary = layout.createDiv({ cls: 'los-command-column' });
-    const secondary = layout.createDiv({ cls: 'los-command-column' });
-    const deadlines = this.plugin.store.data.academic_deadlines || [];
-    this.renderAcademicDates(primary, deadlines);
-    this.renderAcademic(primary);
-    this.renderArea(secondary, 'program-skills', 'Skills');
-    this.renderArea(secondary, 'program-thesis-projects', 'Thesis');
-  }
-
-  renderAcademic(parent) {
-    const wrap = parent.createDiv({ cls: 'los-command-block' });
-    const current = (this.plugin.store.data.semesters || []).find((row) => row.status === 'current');
-    const heading = wrap.createDiv({ cls: 'los-command-heading' });
-    heading.createEl('h2', { text: 'Bachelor modules' });
-    if (current) badge(heading, current.title, 'active');
-    this.renderModuleTable(wrap, this.plugin.store.modulesFor('program-bachelors'));
+    if (stage.estimate_minutes) meta.createSpan({ text: `${stage.estimate_minutes} min planned` });
+    const actions = body.createDiv({ cls: 'los-actions' });
+    button(actions, 'Continue learning', () => this.plugin.openUnit(unit.id, stage.id), 'cta');
+    const priority = projectedExcerpt(this.plugin.store.get('coordination')?.sections?.Priorities, 180);
+    if (priority) {
+      const bar = wrap.createDiv({ cls: 'los-priority-line' });
+      icon(bar.createSpan({ cls: 'los-priority-icon' }), 'flag');
+      bar.createSpan({ text: priority });
+    }
   }
 
   /* The core records every sitting truthfully, history included; deciding what
    * is still ahead is a live display and therefore the interface's job (ADR-006
    * — the determinism rule binds generated files, not rendered views). */
-  renderAcademicDates(parent, deadlines) {
-    const wrap = parent.createDiv({ cls: 'los-command-block los-academic-dates' });
-    wrap.createEl('h2', { text: 'Academic dates' });
+  renderUpcoming(parent) {
+    parent.createEl('h2', { text: 'Upcoming' });
+    const deadlines = this.plugin.store.rows('academic_deadlines');
     const today = new Date().toISOString().slice(0, 10);
     const ahead = deadlines.filter((row) => (row.end_date || row.start_date) >= today);
-    const past = deadlines.filter((row) => (row.end_date || row.start_date) < today);
-    if (ahead.length) this.renderDeadlineList(wrap, ahead.slice(0, 3));
-    else empty(wrap, 'Nothing scheduled ahead', 'Every recorded sitting is in the past.');
-    if (ahead.length > 3) {
-      const details = wrap.createEl('details', { cls: 'los-deadline-history los-deadline-more' });
-      details.createEl('summary', { text: `More upcoming dates (${ahead.length - 3})` });
-      this.renderDeadlineList(details, ahead.slice(3));
+    if (!ahead.length) {
+      empty(parent, 'Nothing scheduled ahead', 'Every recorded sitting is in the past.');
+      return;
     }
-    if (past.length) {
-      const details = wrap.createEl('details', { cls: 'los-deadline-history' });
-      details.createEl('summary', { text: `Past dates (${past.length})` });
-      this.renderDeadlineList(details, past);
+    this.renderDeadlineRows(parent, ahead.slice(0, 3));
+    if (ahead.length > 3) {
+      const rest = disclosure(parent, `${ahead.length - 3} more`);
+      this.renderDeadlineRows(rest, ahead.slice(3));
     }
   }
 
-  renderDeadlineList(wrap, deadlines) {
-    const list = wrap.createDiv({ cls: 'los-deadline-list' });
-    for (const row of deadlines) {
-      const card = list.createDiv({ cls: `los-deadline-card los-deadline-${row.kind}` });
+  renderDeadlineRows(parent, rows) {
+    const list = parent.createDiv({ cls: 'los-date-list' });
+    for (const row of rows) {
+      const item = list.createDiv({ cls: `los-date-row los-deadline-${row.kind}` });
       const date = row.end_date && row.end_date !== row.start_date
         ? `${row.start_date} → ${row.end_date}` : row.start_date;
-      card.createDiv({ cls: 'los-deadline-date', text: date });
-      const copy = card.createDiv({ cls: 'los-deadline-copy' });
+      item.createDiv({ cls: 'los-date-when', text: date });
+      const copy = item.createDiv({ cls: 'los-date-copy' });
       copy.createEl('strong', { text: row.label });
       if (row.kind === 'registration-window') {
         const modules = row.modules || [];
         const moduleTitle = (module) => module.title
           || this.plugin.store.get(module.module_id)?.title || module.module_id;
         copy.createDiv({ cls: 'los-micro', text: modules.map(moduleTitle).join(' · ') });
-        const details = copy.createEl('details', { cls: 'los-deadline-action-details' });
-        details.createEl('summary', { text: `${modules.length} registration action${modules.length === 1 ? '' : 's'}` });
-        const actions = details.createDiv({ cls: 'los-deadline-actions' });
+        const actions = copy.createDiv({ cls: 'los-actions' });
         for (const module of modules) {
-          const title = moduleTitle(module);
-          const rowAction = actions.createDiv({ cls: 'los-deadline-action-row' });
           const record = this.plugin.store.get(module.module_id);
-          const open = button(rowAction, record?.code || title, () => this.plugin.openModule(module.module_id), 'row');
-          open.setAttribute('aria-label', `Open ${title}`);
-          if (module.action) rowAction.createSpan({ text: module.action });
+          const open = button(actions, record?.code || moduleTitle(module),
+            () => this.plugin.openModule(module.module_id), 'row');
+          open.setAttribute('aria-label', `Open ${moduleTitle(module)}`);
         }
       } else {
-        copy.createDiv({ text: row.title });
-        const facts = copy.createDiv({ cls: 'los-row' });
-        badge(facts, row.registration_state || 'unregistered', row.registration_state || 'needs-map');
-        if (row.time) facts.createSpan({ cls: 'los-micro', text: row.time });
-        if (row.notes) copy.createEl('p', { cls: 'los-micro', text: row.notes });
-        const actions = copy.createDiv({ cls: 'los-actions los-deadline-actions' });
-        const moduleTitle = this.plugin.store.get(row.module_id)?.title;
-        button(actions, `Open ${moduleTitle || 'module'}`, () => this.plugin.openModule(row.module_id), 'quiet');
+        copy.createDiv({ cls: 'los-micro', text: row.title || '' });
+        if (row.registration_state && row.registration_state !== 'registered') {
+          badge(copy, row.registration_state, 'needs-map');
+        }
+        const open = button(copy, this.plugin.store.get(row.module_id)?.code || 'Open module',
+          () => this.plugin.openModule(row.module_id), 'row');
+        open.setAttribute('aria-label', `Open ${this.plugin.store.get(row.module_id)?.title || 'module'}`);
       }
     }
   }
 
-  renderArea(parent, programId, title) {
-    const wrap = parent.createDiv({ cls: 'los-command-block' });
-    wrap.createEl('h2', { text: title });
-    const modules = this.plugin.store.modulesFor(programId);
-    if (!modules.length) { empty(wrap, `No ${title.toLocaleLowerCase()} modules yet`, 'Nothing is hidden.'); return; }
-    this.renderModuleTable(wrap, modules);
+  /** Every area stays enumerated and reachable — compact, not hidden. */
+  renderLearning(parent) {
+    parent.createEl('h2', { text: 'My learning' });
+    let rendered = 0;
+    for (const [programId, title] of LEARN_AREAS) {
+      const modules = this.plugin.store.modulesFor(programId);
+      if (!modules.length) continue;
+      rendered += modules.length;
+      parent.createDiv({ cls: 'los-group-title', text: title });
+      const list = parent.createDiv({ cls: 'los-learning-list' });
+      for (const module of modules) progressRow(list, this.plugin, module, this.moduleNextAction(module));
+    }
+    if (!rendered) empty(parent, 'No modules yet', 'Nothing is hidden — areas appear here as modules are added.');
   }
 
-  renderModuleTable(wrap, modules) {
-    const tableWrap = wrap.createDiv({ cls: 'los-table-wrap' });
-    const table = tableWrap.createEl('table', { cls: 'los-data-table' });
-    const head = table.createEl('thead').createEl('tr');
-    for (const title of ['Module', 'Status', 'Next up']) head.createEl('th', { text: title, attr: { scope: 'col' } });
-    const body = table.createEl('tbody');
-    for (const module of modules) {
-      const row = body.createEl('tr');
-      const title = row.createEl('td', { attr: { 'data-label': 'Module' } });
-      button(title, module.title, () => this.plugin.openModule(module.id), 'row');
-      const progress = this.plugin.store.progress(module.id);
-      const state = row.createEl('td', { attr: { 'data-label': 'Status' } });
-      badge(state, module.status, module.status);
-      state.createDiv({ cls: 'los-micro', text: `${progress.stages_complete || 0}/${progress.stages_total || 0} stages` });
-      row.createEl('td', {
-        cls: 'los-next-up',
-        text: this.moduleNextAction(module),
-        attr: { 'data-label': 'Next up' },
-      });
+  nextWorkspaceDate(workspace) {
+    if (workspace.deadline) return String(workspace.deadline);
+    const moduleIds = new Set(workspace.module_ids || []);
+    const dates = [];
+    for (const row of this.plugin.store.rows('academic_deadlines')) {
+      if (row.kind === 'exam' && moduleIds.has(row.module_id)) dates.push(row.start_date);
+      if (row.kind === 'registration-window' &&
+          (row.modules || []).some((module) => moduleIds.has(module.module_id))) dates.push(row.start_date);
     }
+    return dates.filter(Boolean).sort()[0] || '9999';
   }
 
   moduleNextAction(module) {
@@ -638,48 +686,27 @@ class HomeView extends ItemView {
         || (map.stages || []).find((row) => row.status !== 'complete');
       if (stage?.title) return stage.title;
     }
-    return 'No next action recorded';
+    return '';
   }
 
-  renderQueues(root) {
-    const wrap = section(root, 'Queues');
-    const queues = wrap.createDiv({ cls: 'los-queue-grid' });
-    const needs = this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id));
-    const shelving = this.plugin.store.units().filter((row) => row.status === 'ready-to-shelve');
-    const rows = [
-      ['Needs a map', needs.length, () => this.plugin.openProgram('queue-needs-map')],
-      ['Ready to shelve', shelving.length, () => shelving[0] && this.plugin.openShelving(shelving[0].id)],
-      ['Inbox', this.plugin.store.data.counts?.inbox_items || 0, () => this.plugin.openProgram('inbox')],
-    ];
-    for (const [label, count, action] of rows) {
-      const card = queues.createEl('button', {
-        cls: 'los-queue-card is-clickable',
-        attr: { type: 'button', 'aria-label': `Open ${label} queue: ${count} items` },
-      });
-      card.createDiv({ text: label });
-      card.createDiv({ cls: 'los-queue-count', text: String(count) });
-      card.addEventListener('click', action);
-      if (label === 'Ready to shelve' && count === 0) {
-        card.disabled = true;
-        card.setAttribute('aria-label', 'No units are ready to shelve');
-      }
+  /** One compact row, not three queue cards competing with current work. */
+  renderAttention(root) {
+    const inbox = this.plugin.store.data.counts?.inbox_items || 0;
+    const shelving = this.plugin.store.units().filter((row) => row.status === 'ready-to-shelve').length;
+    const needsMap = this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id)).length;
+    const parts = [
+      inbox && `${inbox} inbox item${inbox === 1 ? '' : 's'}`,
+      shelving && `${shelving} unit${shelving === 1 ? '' : 's'} ready to shelve`,
+      needsMap && `${needsMap} unit${needsMap === 1 ? '' : 's'} without a map`,
+    ].filter(Boolean);
+    const row = root.createDiv({ cls: 'los-attention' });
+    if (!parts.length) {
+      row.createSpan({ cls: 'los-micro', text: 'Nothing waiting on a decision.' });
+      return;
     }
-  }
-
-  renderBoundaries(root) {
-    const wrap = section(root, 'Boundaries');
-    const grid = wrap.createDiv({ cls: 'los-boundary-grid' });
-    for (const boundary of this.plugin.store.rows('quarantine_boundaries')) {
-      const card = grid.createEl('button', {
-        cls: 'los-boundary-card is-clickable',
-        attr: { type: 'button', 'aria-label': `Open boundary: ${boundary.title}` },
-      });
-      icon(card.createSpan(), 'shield');
-      card.createEl('h3', { text: boundary.title });
-      const policy = boundaryPolicy(boundary.description);
-      if (policy) card.createEl('p', { text: policy });
-      card.addEventListener('click', () => this.plugin.openBoundary(boundary.id));
-    }
+    icon(row.createSpan({ cls: 'los-attention-icon' }), 'bell');
+    row.createSpan({ text: `Attention: ${parts.join(' · ')}` });
+    button(row, 'Review', () => this.plugin.openReview(), 'quiet');
   }
 }
 
@@ -706,35 +733,63 @@ class ProgramView extends ItemView {
     if (this.programId === 'inbox') return this.renderInbox(root);
     const program = this.plugin.store.get(this.programId);
     if (!program) { empty(root, 'Area unavailable', 'Return Home and choose another area.'); return; }
-    pageHeader(root, 'Program / area', program.title, program.description || '');
+    pageHeader(root, '', 'Learn');
+    // The areas are sub-areas of one destination now, so the switcher lives in
+    // the page rather than eating three permanent sidebar slots.
+    const tabs = root.createDiv({ cls: 'los-tabs', attr: { role: 'tablist' } });
+    for (const [areaId, title] of LEARN_AREAS) {
+      const active = areaId === program.id;
+      const tab = button(tabs, title, () => this.plugin.openLearn(areaId), active ? 'cta' : 'quiet');
+      tab.setAttrs({ role: 'tab', 'aria-selected': String(active) });
+    }
+    if (program.description) root.createEl('p', { cls: 'los-muted', text: program.description });
+
+    const modules = this.plugin.store.modulesFor(program.id);
+    const list = root.createDiv({ cls: 'los-learning-list' });
+    if (!modules.length) empty(root, 'No modules in this area yet', 'Nothing is hidden.');
+    for (const module of modules) progressRow(list, this.plugin, module);
+
     if (program.semester_bound) {
-      const semesters = section(root, 'Semesters');
+      const semesters = disclosure(root, 'Semesters');
       for (const semester of program.semesters || []) {
         const row = semesters.createDiv({ cls: 'los-row' });
         row.createEl('strong', { text: semester.title }); badge(row, semester.status, semester.status);
       }
-      empty(semesters, 'Past semesters remain visible', 'Archived semesters appear here after the turn-semester workflow.');
     }
-    const modules = section(root, 'Modules');
-    const grid = modules.createDiv({ cls: 'los-card-grid' });
-    for (const module of this.plugin.store.modulesFor(program.id)) moduleCard(grid, this.plugin, module);
-    viewFooter(root);
+    this.renderCoordination(root);
+  }
+
+  /**
+   * The full coordination record — commitments, dependencies, deferrals — moved
+   * off Home to here. Home carries the one-line priority; this is where the
+   * whole decision layer is read when the learner actually wants it.
+   */
+  renderCoordination(root) {
+    const coordination = this.plugin.store.get('coordination');
+    const rows = ['Priorities', 'Commitments', 'Dependencies', 'Deferrals']
+      .map((heading) => [heading, projectedExcerpt(coordination?.sections?.[heading], 1600)])
+      .filter(([, body]) => body);
+    if (!rows.length) return;
+    const panel = disclosure(root, 'Semester coordination', 'los-coordination-details');
+    for (const [heading, body] of rows) {
+      const row = panel.createDiv({ cls: 'los-coordination-row' });
+      row.createEl('strong', { text: heading });
+      row.createEl('p', { text: body });
+    }
   }
 
   renderNeedsMap(root) {
-    pageHeader(root, 'Queue', 'Units needing a study map');
+    pageHeader(root, 'Review', 'Units needing a study map');
     const grid = root.createDiv({ cls: 'los-card-grid' });
     for (const unit of this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id))) {
       unitCard(grid, this.plugin, unit);
     }
-    viewFooter(root);
   }
 
   renderInbox(root) {
-    pageHeader(root, 'Capture', 'Inbox', 'You capture; the operator files.');
+    pageHeader(root, '', 'Capture', 'You capture; the operator files.');
     const count = this.plugin.store.data?.counts?.inbox_items || 0;
     const wrap = section(root, `${count} item${count === 1 ? '' : 's'} awaiting routing`);
-    wrap.createEl('p', { cls: 'los-muted', text: 'No filing decision is required. Text and files land in work/inbox/ through the core capture gateway.' });
     const form = wrap.createDiv({ cls: 'los-capture-grid' });
     const textPanel = form.createDiv({ cls: 'los-capture-panel' });
     textPanel.createEl('h3', { text: 'Quick text' });
@@ -786,96 +841,156 @@ class ProgramView extends ItemView {
       if (!localPath) { new Notice('Choose a local file first.'); return; }
       this.capture(() => this.plugin.gateway.captureFile(localPath), () => { picker.value = ''; });
     }, 'quiet');
-    viewFooter(root);
   }
 
   async capture(action, clear) {
-    if (this.busy) { new Notice('A capture is already running.'); return; }
-    this.busy = true;
+    if (this.plugin.gateway.isBusy) new Notice('Queued behind the running LearningOS write.');
     try {
-      await action();
-      await this.plugin.gateway.call(['generate'], { expectJson: false });
+      await this.plugin.mutate(async () => {
+        await action();
+        await this.plugin.gateway.call(['generate'], { expectJson: false });
+      });
       // Only after the core confirmed the capture in JSON — clearing earlier
       // is what used to lose the thought when the CLI answered with garbage.
       clear?.();
-      await this.plugin.reloadStore();
       new Notice('Captured to the LearningOS inbox.');
+      this.render();
     } catch (error) { new Notice(error?.message || String(error)); }
-    finally { this.busy = false; }
   }
 }
 
 /* ---- src/views/module-view.ts ---- */
+/**
+ * Four tabs, because a module page was four pages wearing one coat: learning
+ * work, resources, and administration each have their own reading mode. Units
+ * is the default — the learner is here to study, not to check a credit count.
+ */
 class ModuleView extends ItemView {
-  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.moduleId = null; this.componentId = null; }
+  constructor(leaf, plugin) {
+    super(leaf); this.plugin = plugin; this.moduleId = null; this.componentId = null; this.tab = null;
+  }
   getViewType() { return VIEW_MODULE; }
   getDisplayText() { return 'LearningOS · Module'; }
   async setState(state) {
     const nextModuleId = state?.moduleId || this.moduleId;
-    if (nextModuleId !== this.moduleId) this.componentId = null;
+    if (nextModuleId !== this.moduleId) { this.componentId = null; this.tab = null; }
     this.moduleId = nextModuleId;
     if (Object.prototype.hasOwnProperty.call(state || {}, 'componentId')) this.componentId = state.componentId || null;
+    if (Object.prototype.hasOwnProperty.call(state || {}, 'tab')) this.tab = state.tab || null;
     this.render();
   }
-  getState() { return { moduleId: this.moduleId, componentId: this.componentId }; }
+  getState() { return { moduleId: this.moduleId, componentId: this.componentId, tab: this.tab }; }
   async onOpen() {
     this.moduleId = this.leaf.state?.moduleId || this.moduleId;
     this.componentId = this.leaf.state?.componentId || null;
+    this.tab = this.leaf.state?.tab || null;
     this.render();
+  }
+
+  /** Units unless there is nothing to study yet. */
+  defaultTab(module) {
+    return this.plugin.store.unitsFor(module.id).length ? 'units' : 'overview';
   }
 
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-module-view');
     const module = this.plugin.store.get(this.moduleId);
-    if (!module) { empty(root, 'Module unavailable', 'Return to the program view.'); return; }
+    if (!module) { empty(root, 'Module unavailable', 'Return to Learn and choose another module.'); return; }
+    const tab = this.tab || this.defaultTab(module);
     const header = pageHeader(root, module.kind, module.title);
-    const facts = header.createDiv({ cls: 'los-facts' });
-    for (const [label, value] of [['Status', module.status], ['Institution', module.institution],
-      ['Code', module.code], ['Semester', module.semester], ['Credits', module.credits]]) {
-      if (value != null) facts.createDiv({ text: `${label}: ${value}` });
-    }
-    if (module.examination?.type) facts.createDiv({ text: `Examination: ${module.examination.type}` });
-    this.renderAcademicDates(root, module);
+    header.createDiv({ cls: 'los-module-facts', text: this.headline(module) });
 
+    const tabs = root.createDiv({ cls: 'los-tabs', attr: { role: 'tablist' } });
+    for (const [key, label] of [['overview', 'Overview'], ['units', 'Units'],
+      ['resources', 'Resources'], ['logistics', 'Logistics']]) {
+      const control = button(tabs, label, () => this.selectTab(key), key === tab ? 'cta' : 'quiet');
+      control.setAttrs({ role: 'tab', 'aria-selected': String(key === tab) });
+    }
+
+    if (tab === 'overview') this.renderOverview(root, module);
+    else if (tab === 'units') this.renderUnits(root, module);
+    else if (tab === 'resources') this.renderSources(root, module);
+    else this.renderLogistics(root, module);
+  }
+
+  /** One line instead of six labelled facts; the rest is in Logistics. */
+  headline(module) {
+    const nextDate = this.deadlinesFor(module)
+      .filter((row) => (row.end_date || row.start_date) >= new Date().toISOString().slice(0, 10))
+      .map((row) => row.start_date)[0];
+    return [
+      module.semester,
+      module.credits != null ? `${module.credits} LP` : '',
+      module.examination?.type ? `${module.examination.type}${nextDate ? ` ${nextDate}` : ''}` : '',
+    ].filter(Boolean).join(' · ');
+  }
+
+  renderOverview(root, module) {
+    const progress = this.plugin.store.progress(module.id);
+    const wrap = root.createDiv({ cls: 'los-overview' });
+    wrap.createDiv({
+      cls: 'los-overview-progress',
+      text: `${progress.stages_complete || 0} of ${progress.stages_total || 0} stages complete across ${progress.units_total || 0} unit${progress.units_total === 1 ? '' : 's'}`,
+    });
+    const workspaces = this.plugin.store.workspacesForModule(module.id);
+    for (const workspace of workspaces) workspaceCard(wrap, this.plugin, workspace, module.id);
+    if (!workspaces.length) {
+      empty(wrap, 'No active coordination workspace', 'The module/unit tree still owns study state.');
+    }
+    const next = this.plugin.store.unitsFor(module.id).find((unit) => unit.status === 'active')
+      || this.plugin.store.unitsFor(module.id)[0];
+    if (next) button(wrap, `Continue ${next.title}`, () => this.plugin.openUnit(next.id), 'cta');
+    const ahead = this.deadlinesFor(module)
+      .filter((row) => (row.end_date || row.start_date) >= new Date().toISOString().slice(0, 10));
+    if (ahead.length) this.renderDeadlineRows(wrap, module, ahead.slice(0, 1));
+  }
+
+  renderUnits(root, module) {
     if ((module.components || []).length) {
-      const tabs = root.createDiv({ cls: 'los-tabs', attr: { role: 'tablist' } });
+      const tabs = root.createDiv({ cls: 'los-subtabs', attr: { role: 'tablist' } });
       const allTab = button(tabs, 'All components', () => this.selectComponent(null),
-        this.componentId ? 'quiet' : 'cta');
+        this.componentId ? 'quiet' : 'row');
       allTab.setAttrs({ role: 'tab', 'aria-selected': String(!this.componentId) });
       for (const component of module.components) {
         const tab = button(tabs, component.short_title || component.title,
-          () => this.selectComponent(component.id), this.componentId === component.id ? 'cta' : 'quiet');
+          () => this.selectComponent(component.id), this.componentId === component.id ? 'row' : 'quiet');
         tab.setAttrs({ role: 'tab', 'aria-selected': String(this.componentId === component.id) });
       }
     }
-
     const units = this.plugin.store.unitsFor(module.id, this.componentId);
-    const unitSection = section(root, 'Units', 'Choose any lecture/topic without losing another unit’s state.');
-    if (!units.length) empty(unitSection, 'No units in this component', 'Return to all components.');
+    if (!units.length) { empty(root, 'No units in this component', 'Return to all components.'); return; }
     for (const status of STATUS_ORDER) {
       const rows = units.filter((unit) => unit.status === status);
       if (!rows.length) continue;
-      unitSection.createEl('h3', { cls: 'los-group-title', text: status.replaceAll('-', ' ') });
-      const grid = unitSection.createDiv({ cls: 'los-card-grid' });
+      root.createDiv({ cls: 'los-group-title', text: status.replaceAll('-', ' ') });
+      const grid = root.createDiv({ cls: 'los-card-grid' });
       for (const unit of rows) unitCard(grid, this.plugin, unit);
     }
+  }
 
-    this.renderSources(root, module);
-    const workspaceSection = section(root, 'Related workspaces');
-    const workspaces = this.plugin.store.workspacesForModule(module.id);
-    if (!workspaces.length) empty(workspaceSection, 'No active coordination workspace', 'The module/unit tree still owns study state.');
-    else {
-      const grid = workspaceSection.createDiv({ cls: 'los-card-grid' });
-      for (const workspace of workspaces) workspaceCard(grid, this.plugin, workspace, module.id);
+  renderLogistics(root, module) {
+    const facts = root.createDiv({ cls: 'los-fact-list' });
+    for (const [label, value] of [['Status', module.status], ['Institution', module.institution],
+      ['Code', module.code], ['Semester', module.semester], ['Credits', module.credits],
+      ['Examination', module.examination?.type]]) {
+      if (value == null) continue;
+      const row = facts.createDiv({ cls: 'los-fact-row' });
+      row.createSpan({ cls: 'los-fact-label', text: label });
+      row.createSpan({ cls: 'los-fact-value', text: String(value) });
     }
-    viewFooter(root);
+    if (module.examination?.notes) root.createEl('p', { cls: 'los-muted', text: module.examination.notes });
+    this.renderAcademicDates(root, module);
+  }
+
+  deadlinesFor(module) {
+    const rows = this.plugin.store.rows('academic_deadlines').filter((row) =>
+      row.module_id === module.id || (row.modules || []).some((entry) => entry.module_id === module.id));
+    return rows.sort((a, b) => String(a.start_date || '').localeCompare(String(b.start_date || '')));
   }
 
   renderAcademicDates(root, module) {
-    const rows = (this.plugin.store.data.academic_deadlines || []).filter((row) =>
-      row.module_id === module.id || (row.modules || []).some((entry) => entry.module_id === module.id));
+    const rows = this.deadlinesFor(module);
     if (!rows.length) return;
-    rows.sort((a, b) => String(a.start_date || '').localeCompare(String(b.start_date || '')));
     const wrap = section(root, 'Academic dates', 'Registration windows and exam sittings for this module.');
     const today = new Date().toISOString().slice(0, 10);
     const ahead = rows.filter((row) => (row.end_date || row.start_date) >= today);
@@ -883,33 +998,39 @@ class ModuleView extends ItemView {
     if (ahead.length) this.renderDeadlineRows(wrap, module, ahead);
     else empty(wrap, 'No upcoming date recorded', 'Past dates remain available below.');
     if (past.length) {
-      const history = wrap.createEl('details', { cls: 'los-deadline-history' });
-      history.createEl('summary', { text: `Past dates (${past.length})` });
+      const history = disclosure(wrap, `Past dates (${past.length})`, 'los-deadline-history');
       this.renderDeadlineRows(history, module, past);
     }
   }
 
   renderDeadlineRows(wrap, module, rows) {
-    const list = wrap.createDiv({ cls: 'los-deadline-list' });
+    const list = wrap.createDiv({ cls: 'los-date-list' });
     for (const row of rows) {
-      const card = list.createDiv({ cls: `los-deadline-card los-deadline-${row.kind}` });
+      const card = list.createDiv({ cls: `los-date-row los-deadline-${row.kind}` });
       const date = row.end_date && row.end_date !== row.start_date
         ? `${row.start_date} → ${row.end_date}` : row.start_date;
-      card.createDiv({ cls: 'los-deadline-date', text: date });
-      const copy = card.createDiv({ cls: 'los-deadline-copy' });
+      card.createDiv({ cls: 'los-date-when', text: date });
+      const copy = card.createDiv({ cls: 'los-date-copy' });
       copy.createEl('strong', { text: row.label });
       if (row.kind === 'registration-window') {
         const entry = (row.modules || []).find((item) => item.module_id === module.id);
-        copy.createDiv({ cls: 'los-micro', text: module.title });
-        if (entry?.action) copy.createEl('p', { text: entry.action });
+        if (entry?.action) copy.createEl('p', { cls: 'los-micro', text: entry.action });
       } else {
-        copy.createDiv({ text: row.title || module.title });
+        copy.createDiv({ cls: 'los-micro', text: row.title || module.title });
         const facts = copy.createDiv({ cls: 'los-row' });
         badge(facts, row.registration_state || 'unregistered', row.registration_state || 'needs-map');
         if (row.time) facts.createSpan({ cls: 'los-micro', text: row.time });
-        if (row.notes) copy.createEl('p', { cls: 'los-micro', text: row.notes });
       }
     }
+  }
+
+  async selectTab(tab) {
+    this.tab = tab;
+    await this.leaf.setViewState({
+      type: VIEW_MODULE,
+      active: true,
+      state: { moduleId: this.moduleId, componentId: this.componentId, tab },
+    });
   }
 
   async selectComponent(componentId) {
@@ -917,22 +1038,25 @@ class ModuleView extends ItemView {
     await this.leaf.setViewState({
       type: VIEW_MODULE,
       active: true,
-      state: { moduleId: this.moduleId, componentId: this.componentId },
+      state: { moduleId: this.moduleId, componentId: this.componentId, tab: this.tab || 'units' },
     });
   }
 
   renderSources(root, module) {
-    const wrap = section(root, 'Module source map', 'Roles in this module—not global quality scores.');
     const sourceMap = this.plugin.store.sourceMap(module.id);
-    if (!sourceMap?.sources?.length) { empty(wrap, 'No routed module sources yet', 'Sources remain globally registered.'); return; }
+    if (!sourceMap?.sources?.length) {
+      empty(root, 'No routed module sources yet', 'Sources remain globally registered.');
+      return;
+    }
+    root.createEl('p', { cls: 'los-muted', text: 'Roles in this module — not global quality scores.' });
     const groups = new Map();
     for (const entry of sourceMap.sources) {
       if (!groups.has(entry.role)) groups.set(entry.role, []);
       groups.get(entry.role).push(entry);
     }
     for (const [role, entries] of groups) {
-      const group = wrap.createDiv({ cls: 'los-source-role' });
-      group.createEl('h3', { text: role.replaceAll('-', ' ') });
+      const group = root.createDiv({ cls: 'los-source-role' });
+      group.createDiv({ cls: 'los-group-title', text: role.replaceAll('-', ' ') });
       for (const entry of entries) {
         const row = group.createDiv({ cls: 'los-row' });
         chip(row, this.plugin.store.get(entry.source_id), (record) => this.plugin.openLibrary(record.id));
@@ -944,6 +1068,13 @@ class ModuleView extends ItemView {
 }
 
 /* ---- src/views/unit-view.ts ---- */
+/**
+ * The Unit is where learning actually happens, so it gets the strictest
+ * discipline: three columns (stages / current work / notes), and exactly three
+ * visible actions. Everything else — pause, skip, gap, shelving, AI, session
+ * end — is one overflow away. Sixteen equally-weighted buttons is not a
+ * workspace, it is a control panel.
+ */
 class UnitView extends ItemView {
   constructor(leaf, plugin) {
     super(leaf); this.plugin = plugin; this.unitId = null; this.stageId = null;
@@ -973,9 +1104,6 @@ class UnitView extends ItemView {
     const header = pageHeader(root, `${module?.title || unit.module_id} · ${unit.kind}`, unit.title, unit.scope);
     const headerActions = header.createDiv({ cls: 'los-actions' });
     button(headerActions, 'Back to module', () => this.plugin.openModule(unit.module_id), 'quiet');
-    button(headerActions, 'Ask AI with unit context', () => this.plugin.askAiScoped(
-      'Help with this unit. Treat the active file as supplementary context only.',
-      { moduleId: unit.module_id, unitId: unit.id, stageId: this.stageId }), 'quiet');
 
     const studyMap = this.plugin.store.mapForUnit(unit.id);
     if (!studyMap) {
@@ -986,7 +1114,7 @@ class UnitView extends ItemView {
           'Propose one study-map JSON document for this unit. Do not write files; include exact source actions and done-when criteria.',
           { moduleId: unit.module_id, unitId: unit.id, componentId: unit.component_id }));
       this.renderArtifacts(root, unit);
-      viewFooter(root); return;
+      return;
     }
     // A study map whose `stages` is missing or not an array used to throw here
     // and blank the whole workspace. Normalise once, then work from `map`.
@@ -997,7 +1125,7 @@ class UnitView extends ItemView {
       empty(bare, 'This study map has no stages yet',
         'Stage authoring belongs to the core — import a map or add stages there, then rebuild views.');
       this.renderArtifacts(root, unit);
-      viewFooter(root); return;
+      return;
     }
     const map = { ...studyMap, stages };
     if (!this.stageId || !stages.some((row) => row.id === this.stageId)) {
@@ -1009,8 +1137,9 @@ class UnitView extends ItemView {
     this.renderRail(layout, unit, map, stage);
     this.renderStage(layout, unit, map, stage);
     this.renderNotes(layout, unit, map, stage);
-    this.renderArtifacts(root, unit);
-    viewFooter(root);
+    this.renderActionBar(root, unit, map, stage);
+    const more = disclosure(root, 'Unit artifacts and evidence', 'los-unit-extras');
+    this.renderArtifacts(more, unit);
   }
 
   renderRail(layout, unit, studyMap, current) {
@@ -1025,14 +1154,10 @@ class UnitView extends ItemView {
       const copy = row.createSpan({ cls: 'los-stage-copy' });
       copy.createSpan({ text: stage.title });
       const hasDraft = this.plugin.getStageDraft(unit.id, stage.id, stage.notes_text || '').dirty;
-      copy.createSpan({ cls: 'los-micro', text: `${stage.status}${hasDraft ? ' · unsaved draft' : ''}` });
+      const marker = stage.status === 'complete' ? 'Complete' : hasDraft ? 'Unsaved draft' : '';
+      if (marker) copy.createSpan({ cls: 'los-micro', text: marker });
       row.addEventListener('click', () => this.selectStage(stage.id));
     }
-    const mapActions = rail.createDiv({ cls: 'los-stack-actions' });
-    if (current.status !== 'active') button(mapActions, 'Revisit stage', () => this.mutate(
-      () => this.plugin.gateway.progress(unit.id, current.id, 'revisit')));
-    button(mapActions, 'Pause unit', () => this.mutate(
-      () => this.plugin.gateway.progress(unit.id, current.id, 'paused')), 'quiet');
   }
 
   renderStage(layout, unit, studyMap, stage) {
@@ -1040,10 +1165,14 @@ class UnitView extends ItemView {
     const top = center.createDiv({ cls: 'los-stage-heading' });
     top.createDiv({ cls: 'los-kicker', text: stage.exam_critical ? 'Exam-critical stage' : stage.scope_triage });
     top.createEl('h2', { text: stage.title });
-    top.createEl('p', { text: stage.objective });
+    if (stage.objective) {
+      const goal = center.createDiv({ cls: 'los-stage-goal' });
+      goal.createDiv({ cls: 'los-kicker', text: 'Goal' });
+      goal.createEl('p', { text: stage.objective });
+    }
     if (stage.estimate_minutes) badge(top, `${stage.estimate_minutes} min`, 'role');
 
-    const resources = section(center, 'Exact resources', 'Only the actions for this stage.');
+    const resources = section(center, 'Resources');
     // Array.isArray, not a truthy length check: a string here used to render
     // one blank row per character, because for...of walks a string by character.
     const stageResources = Array.isArray(stage.resources)
@@ -1061,37 +1190,69 @@ class UnitView extends ItemView {
       }
       const actions = row.createDiv({ cls: 'los-actions los-resource-actions' });
       if (resource.url || resource.vault_path) button(actions, 'Open', () => this.plugin.openResource(resource), 'quiet');
+      // Three feedback buttons per resource used to outweigh the resource
+      // itself; the judgment is still one click away, it just no longer
+      // competes with the thing the learner came to read.
       if (resource.source_id) {
-        button(actions, 'Helpful', () => this.mutate(
-          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'helpful')), 'tertiary');
-        button(actions, 'Too advanced', () => this.mutate(
-          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'too-advanced')), 'tertiary');
-        button(actions, 'Useful for review', () => this.mutate(
-          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'useful-for-review')), 'tertiary');
+        overflowMenu(actions, [
+          ['Helpful', () => this.mutate(() => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'helpful'))],
+          ['Too advanced', () => this.mutate(() => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'too-advanced'))],
+          ['Useful for review', () => this.mutate(() => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'useful-for-review'))],
+        ], `Rate ${resource.label}`);
       }
     }
 
-    const done = section(center, 'Done when');
-    const list = done.createEl('ul');
     const criteria = Array.isArray(stage.done_when)
       ? stage.done_when.filter((row) => typeof row === 'string' && row.trim()) : [];
-    for (const criterion of criteria) list.createEl('li', { text: criterion });
-    const actions = center.createDiv({ cls: 'los-actions los-stage-actions' });
-    button(actions, 'Complete stage', () => this.mutate(
-      () => this.plugin.gateway.progress(unit.id, stage.id, 'complete')), 'cta');
-    button(actions, 'Skip stage', () => this.mutate(
-      () => this.plugin.gateway.progress(unit.id, stage.id, 'skipped')), 'quiet');
-    button(actions, 'I found a gap', () => this.mutate(
-      () => this.plugin.gateway.detour(unit.id, stage.id, 'Prerequisite gap', 'required-now')), 'quiet');
-    button(actions, 'Prepare shelving', () => this.plugin.openShelving(unit.id), 'quiet');
-    button(actions, 'End learning session', () => this.plugin.reviewSessionEnd(), 'quiet');
+    if (criteria.length) {
+      const done = section(center, 'Done when');
+      const marks = this.plugin.getDoneWhen(unit.id, stage.id);
+      const list = done.createDiv({ cls: 'los-donewhen-list' });
+      for (const [index, criterion] of criteria.entries()) {
+        const row = list.createEl('label', { cls: 'los-donewhen-row' });
+        const box = row.createEl('input', {
+          attr: { type: 'checkbox', 'aria-label': criterion },
+        });
+        if (marks[index]) box.setAttr('checked', 'checked');
+        box.checked = Boolean(marks[index]);
+        box.addEventListener('change', () => {
+          this.plugin.setDoneWhen(unit.id, stage.id, index, Boolean(box.checked));
+          row.toggleClass('is-checked', Boolean(box.checked));
+        });
+        row.toggleClass('is-checked', Boolean(marks[index]));
+        row.createSpan({ text: criterion });
+      }
+    }
+  }
+
+  /** Two actions and one menu. The primary is filled; nothing else on this
+   *  screen may be. */
+  renderActionBar(root, unit, studyMap, stage) {
+    const bar = root.createDiv({ cls: 'los-unit-actionbar' });
+    button(bar, 'Save note', () => this.saveStageNote(unit, stage, this.noteEditor?.value ?? ''));
+    button(bar, 'Mark complete', () => this.mutate(
+      () => this.plugin.gateway.progress(unit.id, stage.id, 'complete'),
+      () => this.plugin.clearDoneWhen(unit.id, stage.id)), 'cta');
+    overflowMenu(bar, [
+      stage.status !== 'active' && ['Revisit stage', () => this.mutate(
+        () => this.plugin.gateway.progress(unit.id, stage.id, 'revisit'))],
+      ['Pause unit', () => this.mutate(() => this.plugin.gateway.progress(unit.id, stage.id, 'paused'))],
+      ['Skip stage', () => this.mutate(() => this.plugin.gateway.progress(unit.id, stage.id, 'skipped'))],
+      ['Report prerequisite gap', () => this.mutate(
+        () => this.plugin.gateway.detour(unit.id, stage.id, 'Prerequisite gap', 'required-now'))],
+      ['Prepare shelving', () => this.plugin.openShelving(unit.id)],
+      this.plugin.settings.showAiRecommendation && ['Ask AI with stage context', () => this.plugin.askAiScoped(
+        'Help with this stage. Treat the active file as supplementary context only.',
+        { moduleId: unit.module_id, unitId: unit.id, stageId: stage.id })],
+      ['End learning session', () => this.plugin.reviewSessionEnd()],
+    ], 'More unit actions');
   }
 
   renderNotes(layout, unit, studyMap, stage) {
     const panel = layout.createDiv({ cls: 'los-note-panel' });
     panel.createEl('h2', { text: 'Working note' });
-    panel.createEl('p', { cls: 'los-muted', text: 'Stage-bound scratch. No concept ID or filing destination needed.' });
     const editor = panel.createEl('textarea', { cls: 'los-note-editor', attr: { 'aria-label': 'Stage working note' } });
+    this.noteEditor = editor;
     const savedText = stage.notes_text || '';
     const draft = this.plugin.getStageDraft(unit.id, stage.id, savedText);
     editor.value = draft.text;
@@ -1106,34 +1267,35 @@ class UnitView extends ItemView {
       updateStatus();
     });
     updateStatus();
-    button(panel, 'Save note', () => this.saveStageNote(unit, stage, editor.value), 'cta');
-    const attachments = section(panel, 'Attachments');
+
+    const attachments = panel.createDiv({ cls: 'los-attachments' });
     const stageAttachments = Array.isArray(stage.attachments) ? stage.attachments.filter(Boolean) : [];
-    if (!stageAttachments.length) attachments.createEl('p', { text: 'Attach handwriting or a PDF through the guarded stage-attach action.' });
     for (const attachment of stageAttachments) {
       const path = typeof attachment === 'string' ? attachment : attachment.path || attachment.vault_path;
       const label = typeof attachment === 'string' ? attachment.split('/').pop() : attachment.label || path;
-      if (path) button(attachments, `Open ${label}`, () => this.plugin.openAuthoredPath(path), 'quiet');
+      if (path) button(attachments, label, () => this.plugin.openAuthoredPath(path), 'quiet');
       else attachments.createDiv({ text: label || 'Attachment' });
     }
     const picker = attachments.createEl('input', {
       cls: 'los-file-input', attr: { type: 'file', 'aria-label': 'Choose stage attachment' },
     });
-    button(attachments, 'Attach selected file', () => {
+    button(attachments, 'Attach file', () => {
       const file = picker.files?.[0];
       const localPath = localFilePath(file);
       if (!localPath) { new Notice('Choose a local handwriting, image, or PDF file first.'); return; }
       this.mutate(() => this.plugin.gateway.attach(unit.id, stage.id, localPath, file.name));
     }, 'quiet');
+
     for (const detour of studyMap.detours || []) {
       if (detour.spawned_by_stage !== stage.id || detour.status === 'resolved') continue;
-      const row = section(panel, 'Open prerequisite detour');
+      const row = panel.createDiv({ cls: 'los-detour-row' });
+      row.createEl('strong', { text: 'Open prerequisite detour' });
       row.createEl('p', { text: `${detour.title} · ${detour.classification} · returns here` });
       button(row, 'Resolve and return', () => this.mutate(
         () => this.plugin.gateway.resolveDetour(unit.id, detour.id, 'Resolved from the unit workspace.')), 'quiet');
     }
     if (stage.source_feedback?.length) {
-      const feedback = section(panel, 'Source-use evidence');
+      const feedback = disclosure(panel, `Source-use evidence (${stage.source_feedback.length})`);
       for (const row of stage.source_feedback) feedback.createDiv({ cls: 'los-row', text: `${row.source_id} · ${row.feedback}` });
     }
   }
@@ -1157,30 +1319,30 @@ class UnitView extends ItemView {
   }
 
   /**
-   * One write at a time. Two fast clicks used to spawn two CLI subprocesses
-   * carrying the same --expected-snapshot, so the second raced the projection
-   * the first had already moved.
+   * Every write goes through the plugin-wide queue, so two clicks in two views
+   * can no longer race the same `--expected-snapshot`.
    */
-  async mutate(action) {
-    if (this.busy) { new Notice('A LearningOS write is already running.'); return; }
-    this.busy = true;
-    try { await action(); await this.plugin.reloadStore(); this.render(); }
-    catch (error) { new Notice(error?.message || String(error)); }
-    finally { this.busy = false; }
+  async mutate(action, onConfirmed = null) {
+    // A second click on the same control is a slip, not a second intention, so
+    // the view drops it. The queue below still serializes anything that does
+    // get through from another view.
+    if (this.plugin.gateway.isBusy) { new Notice('A LearningOS write is already running.'); return; }
+    try {
+      await this.plugin.mutate(action);
+      onConfirmed?.();
+      this.render();
+    } catch (error) { new Notice(error?.message || String(error)); }
   }
 
   async saveStageNote(unit, stage, text) {
-    if (this.busy) { new Notice('A LearningOS write is already running.'); return; }
-    this.busy = true;
     try {
-      await this.plugin.gateway.saveNote(unit.id, stage.id, text);
+      await this.plugin.mutate(() => this.plugin.gateway.saveNote(unit.id, stage.id, text));
       // Reached only on a confirmed ok — the gateway rejects empty or
       // unreadable output — so the draft is safe to drop here and only here.
       this.plugin.clearStageDraft(unit.id, stage.id);
-      await this.plugin.reloadStore();
       new Notice('Stage note saved.');
+      this.render();
     } catch (error) { new Notice(error?.message || String(error)); }
-    finally { this.busy = false; }
   }
 
   async selectStage(stageId) {
@@ -1297,11 +1459,30 @@ class LibraryView extends ItemView {
         'Rebuild views', () => this.plugin.generate());
       return;
     }
-    pageHeader(root, 'Reference', 'Library',
-      'Shelves carry the reading strategy; the registry carries everything registered. Use is per unit — never a global source score.');
+    pageHeader(root, '', 'Library');
 
-    const controls = root.createDiv({ cls: 'los-library-controls' });
-    const input = controls.createEl('input', {
+    // Three panes, and only the middle one is dense: modes and filters on the
+    // left, the list in the middle, one record's detail on the right. The five
+    // modes used to be horizontal pills above a facet bar above a filter chip
+    // above the list — four stacked control strips before any content.
+    const layout = root.createDiv({ cls: 'los-library-layout' });
+    const rail = layout.createDiv({ cls: 'los-library-rail' });
+    for (const [value, label] of LIBRARY_MODES) {
+      const count = this.plugin.store.of(value).length;
+      const tab = rail.createEl('button', {
+        cls: `los-library-mode is-clickable${this.type === value ? ' is-active' : ''}`,
+        attr: { type: 'button', 'aria-pressed': String(this.type === value) },
+      });
+      tab.createSpan({ text: label });
+      tab.createSpan({ cls: 'los-micro', text: String(count) });
+      tab.addEventListener('click', () => {
+        this.type = value; this.selectedId = null; this.facet = 'all'; this.domain = ''; this.render();
+      });
+    }
+    if (this.type === 'source' || this.domain) this.renderFilters(rail);
+
+    const centre = layout.createDiv({ cls: 'los-library-centre' });
+    const input = centre.createEl('input', {
       cls: 'los-search',
       attr: { type: 'search', placeholder: 'Search titles, IDs, aliases, authors…', 'aria-label': 'Library search' },
     });
@@ -1315,26 +1496,7 @@ class LibraryView extends ItemView {
       next?.focus();
       if (position != null) next?.setSelectionRange(position, position);
     });
-    button(controls, 'Full-text / OCR search', () => this.plugin.openFullTextSearch(this.query), 'quiet');
-
-    const tabs = root.createDiv({ cls: 'los-library-tabs' });
-    for (const [value, label] of LIBRARY_MODES) {
-      const count = this.plugin.store.of(value).length;
-      const tab = button(tabs, `${label} (${count})`, () => {
-        this.type = value; this.selectedId = null; this.facet = 'all'; this.domain = ''; this.render();
-      }, this.type === value ? 'cta' : 'quiet');
-      tab.setAttribute('aria-pressed', String(this.type === value));
-    }
-
-    if (this.type === 'source') this.renderFacets(root);
-    if (this.domain) {
-      const active = root.createDiv({ cls: 'los-library-filter' });
-      active.createSpan({ text: `Domain: ${this.domain}` });
-      button(active, 'Clear', () => { this.domain = ''; this.selectedId = null; this.render(); }, 'quiet');
-    }
-
-    const layout = root.createDiv({ cls: 'los-library-layout' });
-    const list = layout.createDiv({ cls: 'los-library-list' });
+    const list = centre.createDiv({ cls: 'los-library-list' });
     const rows = this.rows();
     if (this.selectedId && !rows.some((row) => row.id === this.selectedId)) this.selectedId = null;
     if (!this.selectedId && rows.length) this.selectedId = rows[0].id;
@@ -1346,23 +1508,32 @@ class LibraryView extends ItemView {
     if (this.type === 'collection') this.renderShelfList(list, rows);
     else this.renderFlatList(list, rows);
 
+    button(centre, 'Full-text / OCR search', () => this.plugin.openFullTextSearch(this.query), 'quiet');
+
     this.detailEl = layout.createDiv({ cls: 'los-library-detail' });
     this.renderDetail(rows.find((row) => row.id === this.selectedId));
-    viewFooter(root);
   }
 
-  renderFacets(root) {
-    const bar = root.createDiv({ cls: 'los-library-facets' });
-    bar.createSpan({ cls: 'los-kicker', text: 'Filter' });
+  /** Facets are a refinement, not a permanent fixture — they stay folded until
+   *  the learner has decided the list is too big. */
+  renderFilters(rail) {
+    const label = this.facet === 'all' && !this.domain ? 'Filters' : 'Filters · active';
+    const body = disclosure(rail, label, 'los-library-filters');
+    if (this.domain) {
+      const active = body.createDiv({ cls: 'los-library-filter' });
+      active.createSpan({ text: `Domain: ${this.domain}` });
+      button(active, 'Clear', () => { this.domain = ''; this.selectedId = null; this.render(); }, 'quiet');
+    }
+    if (this.type !== 'source') return;
     const all = this.plugin.store.of('source');
-    for (const [value, label] of SOURCE_FACETS) {
+    for (const [value, facetLabel] of SOURCE_FACETS) {
       const previous = this.facet;
       this.facet = value;
       const count = all.filter((row) => this.matchesFacet(row)).length;
       this.facet = previous;
-      const chipEl = button(bar, `${label} · ${count}`, () => {
+      const chipEl = button(body, `${facetLabel} · ${count}`, () => {
         this.facet = value; this.selectedId = null; this.render();
-      }, this.facet === value ? 'cta' : 'quiet');
+      }, this.facet === value ? 'row' : 'quiet');
       chipEl.setAttribute('aria-pressed', String(this.facet === value));
     }
   }
@@ -1383,7 +1554,8 @@ class LibraryView extends ItemView {
 
   renderFlatList(list, rows) {
     for (const record of rows) {
-      let meta = record.id;
+      // Never the raw ID: a list line should say what the record *is*.
+      let meta = [record.domain, record.role, record.status].filter(Boolean).join(' · ');
       if (record.type === 'source') {
         const shelves = this.shelfIndex().get(record.id) || [];
         meta = [record.source_type, record.year,
@@ -1404,7 +1576,7 @@ class LibraryView extends ItemView {
     icon(row.createSpan(), ICONS[record.type] || 'circle');
     const copy = row.createSpan({ cls: 'los-item-copy' });
     copy.createSpan({ text: record.title || record.id });
-    copy.createSpan({ cls: 'los-micro', text: meta || record.id });
+    if (meta) copy.createSpan({ cls: 'los-micro', text: meta });
     row.addEventListener('click', () => { this.selectedId = record.id; this.render(); });
     return row;
   }
@@ -1416,7 +1588,6 @@ class LibraryView extends ItemView {
     if (!record) { empty(detail, 'Choose a record', 'The detail pane shows evidence and curriculum usage.'); return; }
     detail.createDiv({ cls: 'los-kicker', text: record.type === 'collection' ? 'shelf' : record.type });
     detail.createEl('h2', { text: record.title || record.id });
-    detail.createDiv({ cls: 'los-detail-id', text: record.id });
     if (record.summary) detail.createEl('p', { text: record.summary });
 
     const actions = detail.createDiv({ cls: 'los-actions' });
@@ -1424,7 +1595,6 @@ class LibraryView extends ItemView {
     if (record.material_path) button(actions, 'Open local copy', () => this.plugin.openMaterialPath(record.material_path), 'quiet');
     if (record.path) button(actions, record.type === 'note' ? 'Open note' : 'Open authored file',
       () => this.plugin.openAuthoredPath(record.path), 'quiet');
-    button(actions, 'Copy ID', () => this.plugin.copyText(record.id), 'quiet');
 
     if (record.attachments?.length) {
       const attachments = section(detail, 'Attachments', 'Open the original handwriting, image, or PDF.');
@@ -1438,10 +1608,48 @@ class LibraryView extends ItemView {
     if (record.type === 'collection') this.renderShelfDetail(detail, record);
     if (record.type === 'source') this.renderSourceDetail(detail, record);
 
-    const related = this.plugin.store.related(record.id);
-    if (related.length) {
-      const wrap = section(detail, 'Related');
-      for (const row of related.slice(0, 24)) chip(wrap, row.rec, (rec) => this.plugin.openRecord(rec));
+    this.renderRelated(detail, record);
+
+    // An operator ID is not study content. It stays one disclosure away, with
+    // the copy action beside it rather than in the main action row.
+    const technical = disclosure(detail, 'Technical details', 'los-technical-details');
+    const idRow = technical.createDiv({ cls: 'los-fact-row' });
+    idRow.createSpan({ cls: 'los-fact-label', text: 'Record ID' });
+    idRow.createSpan({ cls: 'los-fact-value los-detail-id', text: record.id });
+    button(technical, 'Copy ID', () => this.plugin.copyText(record.id), 'quiet');
+    if (record.path) {
+      const pathRow = technical.createDiv({ cls: 'los-fact-row' });
+      pathRow.createSpan({ cls: 'los-fact-label', text: 'Path' });
+      pathRow.createSpan({ cls: 'los-fact-value', text: record.path });
+    }
+  }
+
+  /** Related records grouped by what the relation *means*, five at a time.
+   *  Twenty-four undifferentiated chips is a pile, not a map. */
+  renderRelated(detail, record) {
+    const labels = {
+      unit: 'Used in units', concept: 'Connected concepts', note: 'Referenced by notes',
+      source: 'Related sources', collection: 'On shelves', module: 'Modules',
+      workspace: 'Workspaces', program: 'Areas',
+    };
+    const groups = new Map();
+    for (const row of this.plugin.store.related(record.id)) {
+      const key = row.rec?.type || 'record';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(row.rec);
+    }
+    if (!groups.size) return;
+    const wrap = section(detail, 'Related');
+    for (const [type, rows] of [...groups.entries()].sort((a, b) => b[1].length - a[1].length)) {
+      const group = wrap.createDiv({ cls: 'los-related-group' });
+      group.createDiv({ cls: 'los-group-title', text: `${labels[type] || type} · ${rows.length}` });
+      const shown = group.createDiv({ cls: 'los-related-chips' });
+      for (const rec of rows.slice(0, 5)) chip(shown, rec, (row) => this.plugin.openRecord(row));
+      if (rows.length > 5) {
+        const rest = disclosure(group, `View all ${rows.length}`);
+        const restChips = rest.createDiv({ cls: 'los-related-chips' });
+        for (const rec of rows.slice(5)) chip(restChips, rec, (row) => this.plugin.openRecord(row));
+      }
     }
   }
 
@@ -1610,7 +1818,6 @@ class AtlasView extends ItemView {
     const body = root.createDiv({ cls: 'los-atlas-body' });
     this.renderDomain(body, current);
     this.renderBoundaries(root);
-    viewFooter(root);
   }
 
   noteRow(parent, note) {
@@ -1722,7 +1929,7 @@ class ShelvingView extends ItemView {
     const unit = this.plugin.store.get(this.unitId);
     pageHeader(root, 'Approval gate', 'Shelving',
       unit ? `${unit.title}: review durable changes before the gateway applies them.` : 'Choose a unit that is ready to shelve.');
-    if (!unit) { this.renderQueue(root); viewFooter(root); return; }
+    if (!unit) { this.renderQueue(root); return; }
     const map = this.plugin.store.mapForUnit(unit.id);
     const proposal = this.proposal || (map?.shelving?.state === 'proposed' ? map.shelving : null);
     if (!proposal?.items?.length) {
@@ -1733,7 +1940,7 @@ class ShelvingView extends ItemView {
       button(wrap, 'Ask AI to explain shelving criteria', () => this.plugin.askAiScoped(
         'Explain which stage notes might be durable. Do not write or apply canonical changes.',
         { moduleId: unit.module_id, unitId: unit.id }), 'quiet');
-      viewFooter(root); return;
+      return;
     }
     if (!this.selected.size) {
       for (const item of proposal.items) if (item.selected !== false) this.selected.add(item.id);
@@ -1760,7 +1967,6 @@ class ShelvingView extends ItemView {
     button(actions, 'Ask AI to review proposal', () => this.plugin.askAiScoped(
       `Review these shelving proposal IDs: ${[...this.selected].join(', ')}. Do not apply changes.`,
       { moduleId: unit.module_id, unitId: unit.id }), 'quiet');
-    viewFooter(root);
   }
 
   renderQueue(root) {
@@ -1772,8 +1978,8 @@ class ShelvingView extends ItemView {
 
   async prepare() {
     try {
-      await this.plugin.gateway.prepareShelving(this.unitId);
-      await this.plugin.reloadStore(); await this.loadProposal(); this.render();
+      await this.plugin.mutate(() => this.plugin.gateway.prepareShelving(this.unitId));
+      await this.loadProposal(); this.render();
     }
     catch (error) { new Notice(error?.message || String(error)); }
   }
@@ -1781,8 +1987,8 @@ class ShelvingView extends ItemView {
   async apply() {
     if (!this.selected.size) { new Notice('Select at least one proposal.'); return; }
     try {
-      await this.plugin.gateway.applyShelving(this.unitId, [...this.selected]);
-      await this.plugin.reloadStore(); this.proposal = null; this.selected.clear(); this.render();
+      await this.plugin.mutate(() => this.plugin.gateway.applyShelving(this.unitId, [...this.selected]));
+      this.proposal = null; this.selected.clear(); this.render();
     } catch (error) { new Notice(error?.message || String(error)); }
   }
 }
@@ -1810,11 +2016,148 @@ class BoundaryView extends ItemView {
       guard.createEl('p', { text: 'Master’s planning is quarantined from current Bachelor’s work and all default search. This surface exposes only the boundary record.' });
       button(guard, 'Open Master’s Planning boundary', () => new Notice('Open the quarantined folder manually only for a deliberate planning session.'), 'quiet');
     }
-    viewFooter(root);
+  }
+}
+
+/* ---- src/views/review-view.ts ---- */
+/**
+ * Review — the decision queues in one place. Shelving proposals, units without
+ * a map, inbox items awaiting routing and the Garden's harvest pressure are all
+ * the same question ("what needs a decision from me?"), so they stop occupying
+ * four separate permanent destinations.
+ */
+class ReviewView extends ItemView {
+  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
+  getViewType() { return VIEW_REVIEW; }
+  getDisplayText() { return 'LearningOS · Review'; }
+  getIcon() { return 'check-check'; }
+  async onOpen() { this.render(); }
+
+  render() {
+    const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-review-view');
+    if (!this.plugin.store.ready) {
+      pageHeader(root, 'LearningOS', 'Projection unavailable');
+      empty(root, 'The interface contract could not be loaded', this.plugin.store.error,
+        'Rebuild views', () => this.plugin.generate());
+      return;
+    }
+    pageHeader(root, '', 'Review', 'Everything waiting on a decision from you.');
+    const shelving = this.plugin.store.units().filter((row) => row.status === 'ready-to-shelve');
+    const needsMap = this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id));
+    const inbox = this.plugin.store.data.counts?.inbox_items || 0;
+
+    const list = root.createDiv({ cls: 'los-review-list' });
+    this.queue(list, 'Ready to shelve', shelving.length,
+      'Units whose working notes are ready to become durable knowledge.',
+      shelving.length ? ['Review proposals', () => this.plugin.openShelving(shelving[0].id)] : null);
+    this.queue(list, 'Inbox', inbox,
+      'Captured items the operator has not routed yet.',
+      ['Open capture', () => this.plugin.openCapture()]);
+    this.queue(list, 'Needs a study map', needsMap.length,
+      'Units with no current study script.',
+      needsMap.length ? ['Open the queue', () => this.plugin.openProgram('queue-needs-map')] : null);
+    this.queue(list, 'Garden', null,
+      'Half-formed ideas gestating outside the canon; harvest promotes them.',
+      ['Open the Garden', () => this.plugin.openVaultPath('bases/garden.base')]);
+
+    if (needsMap.length) {
+      const detail = disclosure(root, `Units needing a map (${needsMap.length})`);
+      const grid = detail.createDiv({ cls: 'los-card-grid' });
+      for (const unit of needsMap) unitCard(grid, this.plugin, unit);
+    }
+  }
+
+  queue(parent, label, count, detail, action) {
+    const row = parent.createDiv({ cls: 'los-review-row' });
+    const copy = row.createDiv({ cls: 'los-review-copy' });
+    const heading = copy.createDiv({ cls: 'los-review-heading' });
+    heading.createEl('strong', { text: label });
+    if (count != null) heading.createSpan({ cls: 'los-review-count', text: String(count) });
+    copy.createDiv({ cls: 'los-micro', text: detail });
+    if (action) button(row, action[0], action[1], count ? 'cta' : 'quiet');
+    else row.createSpan({ cls: 'los-micro los-review-clear', text: 'Nothing waiting' });
+    return row;
+  }
+}
+
+/**
+ * Diagnostics — everything the learner does not need while studying. Lives
+ * under More, never on Home. A green/red badge is not enough for a layer that
+ * can be stale, warning, erroring, or talking to no core at all.
+ */
+class DiagnosticsView extends ItemView {
+  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.report = ''; }
+  getViewType() { return VIEW_DIAGNOSTICS; }
+  getDisplayText() { return 'LearningOS · Diagnostics'; }
+  getIcon() { return 'activity'; }
+  async onOpen() { this.render(); }
+
+  state() {
+    if (!this.plugin.store.ready) return ['?', 'Core unavailable', this.plugin.store.error];
+    if (this.plugin.store.data?._generated?.source_dirty) {
+      return ['●', 'Canonical files changed; projection is stale', 'Rebuild to bring the interface back in step.'];
+    }
+    return ['✓', 'Valid and current', 'The projection matches the canonical tree as of its last rebuild.'];
+  }
+
+  render() {
+    const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-diagnostics-view');
+    pageHeader(root, 'More', 'Diagnostics');
+    const [glyph, title, detail] = this.state();
+    const status = root.createDiv({ cls: 'los-diagnostic-status' });
+    status.createSpan({ cls: 'los-diagnostic-glyph', text: glyph });
+    const copy = status.createDiv();
+    copy.createEl('strong', { text: title });
+    copy.createDiv({ cls: 'los-micro', text: detail });
+
+    const generated = this.plugin.store.data?._generated || {};
+    const facts = section(root, 'Contract and versions');
+    const table = facts.createDiv({ cls: 'los-fact-list' });
+    for (const [label, value] of [
+      ['Manifest contract', generated.contract_version ?? 'unknown'],
+      ['UI expects contract', CONTRACT_VERSION],
+      ['UI version', this.plugin.uiVersion()],
+      ['Generator', generated.generator || 'unknown'],
+      ['Projection built', generated.generated_at || 'unknown'],
+      ['Snapshot', generated.snapshot_id || 'unknown'],
+      ['Source revision', generated.source_revision || 'unknown'],
+      ['Python interpreter', this.plugin.resolvePython().path],
+      ['Interpreter source', this.plugin.resolvePython().origin],
+    ]) {
+      const row = table.createDiv({ cls: 'los-fact-row' });
+      row.createSpan({ cls: 'los-fact-label', text: label });
+      row.createSpan({ cls: 'los-fact-value', text: String(value) });
+    }
+
+    const actions = root.createDiv({ cls: 'los-actions' });
+    button(actions, 'Validate and rebuild', () => this.plugin.generate(), 'cta');
+    button(actions, 'Test the interpreter', () => this.testInterpreter(), 'quiet');
+    if (this.report) root.createEl('pre', { cls: 'los-diagnostic-report', text: this.report });
+
+    const policy = section(root, 'About LearningOS');
+    policy.createEl('p', { text: OWNERSHIP_STATEMENT });
+  }
+
+  async testInterpreter() {
+    const resolved = this.plugin.resolvePython();
+    try {
+      const result = await this.plugin.gateway.call(['status', '--json']);
+      this.report = `${resolved.path} (${resolved.origin})\nCore answered: ${JSON.stringify(result).slice(0, 400)}`;
+    } catch (error) {
+      this.report = `${resolved.path} (${resolved.origin})\nFailed: ${error?.message || String(error)}\nTried: ${resolved.attempted.join(', ')}`;
+    }
+    this.render();
   }
 }
 
 /* ---- src/views/nav-view.ts ---- */
+/**
+ * Five permanent destinations, nothing else. Areas (Bachelor's / Skills /
+ * Thesis) are sub-areas of Learn; the decision queues (Shelving / Garden /
+ * Inbox) are Review; atlas, boundaries, diagnostics and maintenance live under
+ * More. The sidebar's job is to make the next step obvious, not to prove the
+ * system is large.
+ */
 class NavView extends ItemView {
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
   getViewType() { return VIEW_NAV; }
@@ -1822,31 +2165,45 @@ class NavView extends ItemView {
   getIcon() { return 'route'; }
   async onOpen() { this.render(); }
 
-  nav(parent, iconName, label, action) {
-    const row = parent.createEl('button', { cls: 'los-app-nav-item is-clickable', attr: { type: 'button' } });
-    icon(row.createSpan(), iconName); row.createSpan({ text: label }); row.addEventListener('click', action);
+  nav(parent, iconName, label, key, action) {
+    const active = this.plugin.activeNav === key;
+    const row = parent.createEl('button', {
+      cls: `los-app-nav-item is-clickable${active ? ' is-active' : ''}`,
+      attr: { type: 'button', 'aria-current': active ? 'page' : 'false' },
+    });
+    icon(row.createSpan(), iconName);
+    row.createSpan({ text: label });
+    row.addEventListener('click', action);
+    return row;
   }
 
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-app-nav');
     const brand = root.createDiv({ cls: 'los-nav-brand' });
     icon(brand.createSpan({ cls: 'los-brand-mark' }), 'route'); brand.createEl('strong', { text: 'LearningOS' });
-    this.nav(root, 'home', 'Home', () => this.plugin.openHome());
-    root.createDiv({ cls: 'los-nav-label', text: 'Areas' });
-    this.nav(root, 'graduation-cap', 'Bachelor’s', () => this.plugin.openProgram('program-bachelors'));
-    this.nav(root, 'wrench', 'Skills', () => this.plugin.openProgram('program-skills'));
-    this.nav(root, 'flask-conical', 'Thesis & projects', () => this.plugin.openProgram('program-thesis-projects'));
-    root.createDiv({ cls: 'los-nav-label', text: 'Workflow' });
-    this.nav(root, 'archive-restore', 'Shelving', () => this.plugin.openShelving());
-    this.nav(root, 'library', 'Library', () => this.plugin.openLibrary());
-    this.nav(root, 'sprout', 'Garden', () => this.plugin.openVaultPath('bases/garden.base'));
-    this.nav(root, 'map', 'Domain atlas', () => this.plugin.openAtlas());
-    this.nav(root, 'inbox', 'Inbox', () => this.plugin.openProgram('inbox'));
-    root.createDiv({ cls: 'los-nav-label', text: 'Boundaries' });
-    this.nav(root, 'shield', 'Master’s', () => this.plugin.openBoundary('program-masters-planning'));
-    this.nav(root, 'shield-alert', 'Job', () => this.plugin.openBoundary('program-job-boundary'));
-    const foot = root.createDiv({ cls: 'los-nav-foot' });
-    button(foot, 'Rebuild projection', () => this.plugin.generate(), 'quiet');
+
+    const primary = root.createDiv({ cls: 'los-nav-primary' });
+    this.nav(primary, 'home', 'Home', 'home', () => this.plugin.openHome());
+    this.nav(primary, 'graduation-cap', 'Learn', 'learn', () => this.plugin.openLearn());
+    this.nav(primary, 'library', 'Library', 'library', () => this.plugin.openLibrary());
+    this.nav(primary, 'plus', 'Capture', 'capture', () => this.plugin.openCapture());
+    this.nav(primary, 'check-check', 'Review', 'review', () => this.plugin.openReview());
+
+    const more = root.createEl('details', { cls: 'los-nav-more' });
+    if (this.plugin.settings.navMoreOpen) more.setAttr('open', 'open');
+    more.createEl('summary', { cls: 'los-nav-more-trigger', text: 'More' });
+    more.addEventListener('toggle', () => {
+      this.plugin.settings.navMoreOpen = Boolean(more.open ?? more.attrs?.open);
+      this.plugin.scheduleDraftSave();
+    });
+    const secondary = more.createDiv({ cls: 'los-nav-secondary' });
+    this.nav(secondary, 'map', 'Domain atlas', 'atlas', () => this.plugin.openAtlas());
+    this.nav(secondary, 'shield', 'Master’s boundary', 'masters',
+      () => this.plugin.openBoundary('program-masters-planning'));
+    this.nav(secondary, 'shield-alert', 'Job boundary', 'job',
+      () => this.plugin.openBoundary('program-job-boundary'));
+    this.nav(secondary, 'activity', 'Diagnostics', 'diagnostics', () => this.plugin.openDiagnostics());
+    this.nav(secondary, 'refresh-cw', 'Rebuild projection', 'rebuild', () => this.plugin.generate());
   }
 }
 
@@ -1867,8 +2224,22 @@ class LearningOSSettingsTab extends PluginSettingTab {
           this.plugin.settings[key] = value; await this.plugin.saveData(this.plugin.settings);
         }));
     }
+    new Setting(root).setName('Python interpreter')
+      .setDesc('Leave blank to auto-detect: the project virtual environment, then the system Python.')
+      .addText((text) => text
+        .setValue(this.plugin.settings.pythonPath || '')
+        .onChange(async (value) => {
+          this.plugin.settings.pythonPath = value.trim();
+          await this.plugin.saveData(this.plugin.settings);
+        }));
     new Setting(root).setName('Validate and rebuild').setDesc('Run the canonical core projection pipeline.')
       .addButton((control) => control.setButtonText('Rebuild').setCta().onClick(() => this.plugin.generate()));
+    new Setting(root).setName('Diagnostics').setDesc('Contract versions, projection freshness, interpreter.')
+      .addButton((control) => control.setButtonText('Open').onClick(() => this.plugin.openDiagnostics()));
+
+    // Stated once, here — not repeated under every screen (DESIGN.md).
+    root.createEl('h3', { text: 'About LearningOS' });
+    root.createEl('p', { cls: 'los-muted', text: OWNERSHIP_STATEMENT });
   }
 }
 
@@ -1912,6 +2283,7 @@ class LearningOSUI extends Plugin {
     this.settings.uiDrafts.stages ||= {};
     this.settings.uiDrafts.selectedStages ||= {};
     this.settings.uiDrafts.inbox ||= { title: '', text: '' };
+    this.settings.uiDrafts.doneWhen ||= {};
     this.draftSaveTimer = null;
     for (const type of LEGACY_VIEW_TYPES) this.app.workspace.detachLeavesOfType(type);
     this.store = new ManifestStore(this.app);
@@ -1926,6 +2298,8 @@ class LearningOSUI extends Plugin {
     this.registerView(VIEW_ATLAS, (leaf) => new AtlasView(leaf, this));
     this.registerView(VIEW_SHELVING, (leaf) => new ShelvingView(leaf, this));
     this.registerView(VIEW_BOUNDARY, (leaf) => new BoundaryView(leaf, this));
+    this.registerView(VIEW_REVIEW, (leaf) => new ReviewView(leaf, this));
+    this.registerView(VIEW_DIAGNOSTICS, (leaf) => new DiagnosticsView(leaf, this));
     this.addSettingTab(new LearningOSSettingsTab(this.app, this));
     this.addRibbonIcon('route', 'Open LearningOS', () => this.openHome());
     this.addCommand({ id: 'open-home', name: 'Open Home', callback: () => this.openHome() });
@@ -1953,7 +2327,8 @@ class LearningOSUI extends Plugin {
     if (this.draftSaveTimer) clearTimeout(this.draftSaveTimer);
     void this.saveData(this.settings);
     for (const type of [VIEW_HOME, VIEW_NAV, VIEW_PROGRAM, VIEW_MODULE, VIEW_UNIT,
-      VIEW_LIBRARY, VIEW_ATLAS, VIEW_SHELVING, VIEW_BOUNDARY]) this.app.workspace.detachLeavesOfType(type);
+      VIEW_LIBRARY, VIEW_ATLAS, VIEW_SHELVING, VIEW_BOUNDARY, VIEW_REVIEW,
+      VIEW_DIAGNOSTICS]) this.app.workspace.detachLeavesOfType(type);
   }
 
   scheduleDraftSave() {
@@ -1986,6 +2361,24 @@ class LearningOSUI extends Plugin {
     else delete this.settings.uiDrafts.selectedStages[unitId];
     this.scheduleDraftSave();
   }
+  /** Done-when ticks are UI-owned working state: they help the learner see how
+   *  far through a stage's criteria they are, and are never a second record of
+   *  completion. The core still learns only "complete" from `stage-progress`. */
+  getDoneWhen(unitId, stageId) {
+    return this.settings.uiDrafts.doneWhen[this.stageDraftKey(unitId, stageId)] || [];
+  }
+  setDoneWhen(unitId, stageId, index, checked) {
+    const key = this.stageDraftKey(unitId, stageId);
+    const marks = [...(this.settings.uiDrafts.doneWhen[key] || [])];
+    marks[index] = checked;
+    if (marks.some(Boolean)) this.settings.uiDrafts.doneWhen[key] = marks;
+    else delete this.settings.uiDrafts.doneWhen[key];
+    this.scheduleDraftSave();
+  }
+  clearDoneWhen(unitId, stageId) {
+    delete this.settings.uiDrafts.doneWhen[this.stageDraftKey(unitId, stageId)];
+    this.scheduleDraftSave();
+  }
   getInboxDraft() { return { ...this.settings.uiDrafts.inbox }; }
   setInboxDraft(title, text) {
     this.settings.uiDrafts.inbox = { title, text };
@@ -1996,10 +2389,35 @@ class LearningOSUI extends Plugin {
     this.scheduleDraftSave();
   }
 
+  /**
+   * Interpreter resolution, in order: an explicitly configured path, the POSIX
+   * venv, the Windows venv, then the PATH names. Reported rather than guessed —
+   * when a write button dies, Diagnostics has to be able to say which binary
+   * was tried and where it looked.
+   */
+  /** The plugin's own version, kept off the `manifest.` access path so the
+   *  contract-key test cannot mistake it for a projection field. */
+  uiVersion() { const info = this.manifest; return info?.version || 'unknown'; }
+
+  resolvePython() {
+    const base = this.app.vault.adapter.getBasePath();
+    const configured = String(this.settings.pythonPath || '').trim();
+    const candidates = [
+      [configured, 'configured in settings'],
+      [nodePath.join(base, '.venv', 'bin', 'python'), 'project virtual environment'],
+      [nodePath.join(base, '.venv', 'Scripts', 'python.exe'), 'project virtual environment (Windows)'],
+    ].filter(([path]) => path);
+    const attempted = candidates.map(([path]) => path);
+    for (const [path, origin] of candidates) {
+      if (fs.existsSync(path)) return { path, origin, attempted };
+    }
+    const fallback = process?.platform === 'win32' ? 'python' : 'python3';
+    return { path: fallback, origin: 'PATH fallback', attempted: [...attempted, fallback] };
+  }
+
   runLos(args, callback) {
     const base = this.app.vault.adapter.getBasePath();
-    const bundled = nodePath.join(base, '.venv', 'bin', 'python');
-    const python = fs.existsSync(bundled) ? bundled : 'python3';
+    const python = this.resolvePython().path;
     const script = nodePath.join(base, 'tools', 'los.py');
     execFile(python, [script, ...args], { cwd: base, timeout: 180000, maxBuffer: 8 * 1024 * 1024 }, callback);
   }
@@ -2022,20 +2440,41 @@ class LearningOSUI extends Plugin {
     return leaf;
   }
 
+  /** The active destination is a display fact, so the Navigator is the only
+   *  thing it redraws — never the working view the learner is reading. */
+  setActiveNav(key) {
+    this.activeNav = key;
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_NAV)) leaf.view?.render?.();
+  }
+
   async openNav() { return this.openView(VIEW_NAV, {}, 'left'); }
   async openHome() {
+    this.setActiveNav('home');
     const leaf = await this.openView(VIEW_HOME);
     if (this.settings.pinHome) leaf.setPinned?.(true);
     return leaf;
   }
+  /** Learn is one destination; the areas are sub-areas inside it. */
+  openLearn(programId = null) {
+    const area = programId || this.settings.learnArea || LEARN_AREAS[0][0];
+    this.settings.learnArea = area;
+    this.scheduleDraftSave();
+    this.setActiveNav('learn');
+    return this.openView(VIEW_PROGRAM, { programId: area });
+  }
+  openCapture() { this.setActiveNav('capture'); return this.openView(VIEW_PROGRAM, { programId: 'inbox' }); }
+  openReview() { this.setActiveNav('review'); return this.openView(VIEW_REVIEW, {}); }
+  openDiagnostics() { this.setActiveNav('diagnostics'); return this.openView(VIEW_DIAGNOSTICS, {}); }
   openProgram(programId) { return this.openView(VIEW_PROGRAM, { programId }); }
-  openModule(moduleId) { return this.openView(VIEW_MODULE, { moduleId }); }
+  openModule(moduleId) { this.setActiveNav('learn'); return this.openView(VIEW_MODULE, { moduleId }); }
   openUnit(unitId, stageId = null) {
     const selectedStage = stageId || this.getSelectedStage(unitId);
     if (selectedStage) this.setSelectedStage(unitId, selectedStage);
+    this.setActiveNav('learn');
     return this.openView(VIEW_UNIT, { unitId, stageId: selectedStage });
   }
   openLibrary(recordId = undefined, recordType = undefined) {
+    this.setActiveNav('library');
     const state = {};
     if (recordId !== undefined) state.recordId = recordId;
     if (recordType !== undefined) state.recordType = recordType;
@@ -2045,9 +2484,12 @@ class LearningOSUI extends Plugin {
   openLibraryFiltered(recordType, domain = '') {
     return this.openView(VIEW_LIBRARY, { recordType, domain, recordId: null, query: '' });
   }
-  openAtlas(domain = null) { return this.openView(VIEW_ATLAS, { domain }); }
-  openShelving(unitId = null) { return this.openView(VIEW_SHELVING, { unitId }); }
-  openBoundary(boundaryId) { return this.openView(VIEW_BOUNDARY, { boundaryId }); }
+  openAtlas(domain = null) { this.setActiveNav('atlas'); return this.openView(VIEW_ATLAS, { domain }); }
+  openShelving(unitId = null) { this.setActiveNav('review'); return this.openView(VIEW_SHELVING, { unitId }); }
+  openBoundary(boundaryId) {
+    this.setActiveNav(boundaryId === 'program-job-boundary' ? 'job' : 'masters');
+    return this.openView(VIEW_BOUNDARY, { boundaryId });
+  }
   openResume() {
     const pointer = this.store.data?.resume_pointer;
     return pointer ? this.openUnit(pointer.unit_id, pointer.stage_id) : this.openHome();
@@ -2072,11 +2514,27 @@ class LearningOSUI extends Plugin {
     }
   }
 
+  /**
+   * One transaction at a time, across every view. A per-view `busy` flag only
+   * ever protected the view that owned it — a stage completion and an inbox
+   * capture started from different leaves could still overlap, each carrying an
+   * `--expected-snapshot` the other had already invalidated.
+   */
+  async mutate(action, { reload = true } = {}) {
+    return this.gateway.enqueue(async () => {
+      const result = await action();
+      if (reload) await this.reloadStore();
+      return result;
+    });
+  }
+
   async generate() {
     try {
-      await this.gateway.call(['validate'], { expectJson: false });
-      await this.gateway.call(['generate'], { expectJson: false });
-      await this.reloadStore(); new Notice('LearningOS projection rebuilt.');
+      await this.mutate(async () => {
+        await this.gateway.call(['validate'], { expectJson: false });
+        await this.gateway.call(['generate'], { expectJson: false });
+      });
+      new Notice('LearningOS projection rebuilt.');
     } catch (error) { new Notice(error?.message || String(error)); }
   }
 
@@ -2171,8 +2629,12 @@ class LearningOSUI extends Plugin {
   openResource(resource) {
     if (resource.vault_path) return this.openVaultPath(resource.vault_path);
     if (resource.url) {
+      // A projected URL is still untrusted input to a viewer: `javascript:`,
+      // `data:` and `file:` never reach Electron.
+      const url = safeWebUrl(resource.url);
+      if (!url) { new Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`); return false; }
       const leaf = this.app.workspace.getLeaf(true);
-      return leaf.setViewState({ type: 'webviewer', active: true, state: { url: resource.url } });
+      return leaf.setViewState({ type: 'webviewer', active: true, state: { url: url.href } });
     }
   }
   copyText(value) {

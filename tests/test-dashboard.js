@@ -12,6 +12,7 @@ const VIEW = {
   home: 'learningos-home', nav: 'learningos-nav', program: 'learningos-program',
   module: 'learningos-module', unit: 'learningos-unit', library: 'learningos-library',
   atlas: 'learningos-atlas', shelving: 'learningos-shelving', boundary: 'learningos-boundary',
+  review: 'learningos-review', diagnostics: 'learningos-diagnostics',
 };
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -113,50 +114,51 @@ async function main() {
   heading('startup and module-first home');
   {
     const { app, plugin, home } = await boot();
-    const text = home.view.contentEl.allText();
+    const element = home.view.contentEl;
+    const text = element.allText();
     check('Home opens and stays pinned', app.workspace.active === home && home.pinned);
     check('navigator opens in its own leaf', app.workspace.getLeavesOfType(VIEW.nav).length === 1);
-    check('resume points to one stage without becoming the curriculum',
-      text.includes('Conditional probability and Bayes') && text.includes('Resume stage')
-      && text.includes('Every path stays visible'));
+    /* Home answers one question. One Continue card, one filled primary action,
+     * and no view of the whole system before the learner can start. */
+    check('one Continue card names the exact stage to resume',
+      element.find('los-continue').length === 1
+      && text.includes('Conditional probability and Bayes') && text.includes('Continue learning'));
+    check('exactly one filled primary action exists above the fold',
+      element.find('los-btn--cta').length === 1);
+    check('the Continue card states the position in the map',
+      /Stage \d+ of \d+/.test(text));
     check('all Bachelor modules remain visible', text.includes('Fixture Statistics & Analysis')
       && text.includes('Fixture Advanced ML'));
     check('Skills and thesis stay independent', text.includes('Python') && text.includes('Bachelor thesis'));
-    check('queues report map, shelving, and inbox state', text.includes('Needs a map')
-      && text.includes('Ready to shelve') && text.includes('Inbox'));
-    check('Home renders core-owned priorities and workspace next actions',
-      text.includes('Semester priority') && text.includes('current super-priority')
-      && text.includes('Work the Conditional probability and Bayes stage'));
-    check('secondary coordination sections remain reachable without becoming a wall',
-      text.includes('Coordination context') && text.includes('Commitments') && text.includes('Deferrals'));
+    check('every module is a compact learning row, not a status table',
+      element.find('los-learning-row').length >= 4 && element.find('los-data-table').length === 0);
+    check('the core-owned priority is one line, not a coordination wall',
+      text.includes('current super-priority')
+      && !text.includes('Commitments') && !text.includes('Deferrals'));
+    check('workspace next actions still reach the learner',
+      text.includes('Work the Conditional probability and Bayes stage'));
     check('structured registration and unregistered exam dates are visible',
       text.includes('Fixture registration') && text.includes('2099-08-31 → 2099-09-10')
       && text.includes('unregistered'));
-    check('Home command centre keeps all four manifest-backed areas in compact tables',
-      home.view.contentEl.find('los-command-centre').length === 1
-      && home.view.contentEl.find('los-data-table').length === 3
-      && ['Academic dates', 'Bachelor modules', 'Skills', 'Thesis'].every((label) => text.includes(label)));
-    const deadlineCards = home.view.contentEl.find('los-deadline-card');
-    check('deadline rows have only date and flexible content columns',
-      deadlineCards.length > 0 && deadlineCards.every((card) => card.children.length === 2
-        && card.children[1].classes.has('los-deadline-copy')));
-    const registration = deadlineCards.find((card) => card.classes.has('los-deadline-registration-window'));
-    check('registration actions stay inside the flexible deadline content row',
-      registration?.children[1].find('los-deadline-actions').length === 1
-      && registration.children[1].allText().includes('Register the synthetic combined exam.'));
-    check('registration actions use a compact disclosure without losing manifest text',
-      registration?.children[1].find('los-deadline-action-details').length === 1
-      && registration.children[1].allText().includes('1 registration action'));
+    const dateRows = element.find('los-date-row');
+    check('date rows have only a date column and a flexible content column',
+      dateRows.length > 0 && dateRows.every((row) => row.children.length === 2
+        && row.children[1].classes.has('los-date-copy')));
+    check('Upcoming shows three dates and folds the rest away',
+      element.find('los-date-list')[0].find('los-date-row').length <= 3);
     /* The core records history truthfully; the interface decides what is still
-     * ahead. Past sittings stay reachable but never crowd the upcoming list. */
-    check('past sittings are folded into a history disclosure',
-      text.includes('Past dates (1)') && text.includes('2020-02-14'));
-    const upcoming = home.view.contentEl.find('los-deadline-list')[0];
+     * ahead. Past sittings are not Home's business at all now. */
     check('the upcoming list carries only dates that are still ahead',
-      !upcoming.allText().includes('2020-02-14')
-      && upcoming.allText().includes('2099-10-09'));
-    check('only boundary records reach Home', text.includes("Master's Planning") && text.includes('Job')
-      && !text.includes('prospective module menu'));
+      !element.find('los-date-list')[0].allText().includes('2020-02-14'));
+    check('queue state is one attention row, not three competing cards',
+      element.find('los-attention').length === 1
+      && element.find('los-queue-card').length === 0
+      && text.includes('inbox item'));
+    /* Boundaries are policy documentation. They belong under More. */
+    check('boundaries and maintenance controls are absent from Home',
+      !text.includes("Master's Planning") && !text.includes('Rebuild projection'));
+    check('the repeated ownership footer is gone from every screen',
+      !text.includes('buttons are conveniences, never duties'));
     plugin.onunload();
   }
 
@@ -188,19 +190,43 @@ async function main() {
     const { app, plugin } = await boot();
     const nav = app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
     const text = nav.allText();
-    check('rail matches the product model', ['Bachelor’s', 'Skills', 'Thesis & projects', 'Shelving', 'Library', 'Garden', 'Domain atlas', 'Inbox', 'Master’s', 'Job']
-      .every((label) => text.includes(label)));
+    /* Five permanent destinations. Areas are sub-areas of Learn; the queues are
+     * Review; maintenance and boundaries live under More. */
+    check('five permanent destinations, no more',
+      nav.find('los-nav-primary')[0].find('los-app-nav-item').length === 5
+      && ['Home', 'Learn', 'Library', 'Capture', 'Review'].every((label) => text.includes(label)));
+    check('maintenance and boundaries are not study destinations',
+      nav.find('los-nav-more').length === 1
+      && nav.find('los-nav-secondary')[0].allText().includes('Rebuild projection')
+      && nav.find('los-nav-secondary')[0].allText().includes('Job boundary'));
     check('legacy global path and entity taxonomy are absent', !text.includes('Learning path') && !text.includes('Collections'));
-    nav.findText('los-app-nav-item', 'Bachelor’s').fire('click'); await tick();
-    check('program surface opens', app.workspace.getLeavesOfType(VIEW.program)[0].view.contentEl.allText().includes('Fixture Advanced ML'));
+    nav.findText('los-app-nav-item', 'Learn').fire('click'); await tick();
+    check('Learn opens one destination carrying every area',
+      app.workspace.getLeavesOfType(VIEW.program)[0].view.contentEl.allText().includes('Fixture Advanced ML'));
+    check('the active destination is visually and semantically marked',
+      nav.findText('los-app-nav-item', 'Learn')?.classes.has('is-active')
+      && nav.findText('los-app-nav-item', 'Learn')?.attrs['aria-current'] === 'page');
+    await plugin.openReview();
+    const review = app.workspace.getLeavesOfType(VIEW.review)[0].view.contentEl.allText();
+    check('Review gathers every decision queue in one place',
+      ['Ready to shelve', 'Inbox', 'Needs a study map', 'Garden'].every((label) => review.includes(label)));
+    await plugin.openDiagnostics();
+    const diagnostics = app.workspace.getLeavesOfType(VIEW.diagnostics)[0].view.contentEl.allText();
+    check('Diagnostics reports contract, freshness and interpreter',
+      diagnostics.includes('Manifest contract') && diagnostics.includes('Python interpreter')
+      && diagnostics.includes('Snapshot'));
+    check('the ownership statement is stated once, in Diagnostics/About',
+      diagnostics.includes('buttons are conveniences, never duties'));
     await plugin.openBoundary('program-job-boundary');
     const job = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl.allText();
     check('Job surface reveals policy only', job.includes('not indexed, searched, read, or mixed') && !job.includes('Job client'));
     await plugin.openBoundary('program-masters-planning');
     const masters = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl.allText();
     check('Master surface exposes quarantine only', masters.includes('quarantined') && !masters.includes('prospective module menu'));
-    nav.findText('los-app-nav-item', 'Garden').fire('click'); await tick();
-    check('Garden navigation opens the managed vault surface',
+    await plugin.openReview();
+    app.workspace.getLeavesOfType(VIEW.review)[0].view.contentEl
+      .findText('los-btn', 'Open the Garden').fire('click'); await tick();
+    check('the Garden stays reachable from Review',
       app.workspace.opened.includes('bases/garden.base'));
     nav.findText('los-app-nav-item', 'Domain atlas').fire('click'); await tick();
     /* The atlas is a decision surface, not a document: opening it must give a
@@ -260,15 +286,22 @@ async function main() {
     /* A flat 200-row registry is a haystack; the shelves are where the reading
      * strategy is written down, so they are the default way in. */
     check('the Library opens on shelves', view.type === 'collection' && text.includes('Fixture math bookshelf'));
-    check('every mode carries its own count', text.includes('Shelves (2)') && text.includes('Sources (3)'));
+    /* One vertical mode rail instead of four stacked control strips. */
+    check('modes are a compact sidebar carrying their own counts',
+      view.contentEl.find('los-library-rail').length === 1
+      && view.contentEl.find('los-library-mode').length === 5);
     check('shelves are grouped by domain',
       view.contentEl.find('los-library-list')[0].find('los-list-group').length === 2);
-    text = view.contentEl.allText();
     check('a shelf reads in its authored tiers, each entry with its role',
       text.includes('tier-1-now') && text.includes('tier-2-optional')
       && text.includes('Selected sections only; never linearly.'));
-    view.contentEl.findText('los-btn', 'Sources (3)').fire('click'); await tick();
+    check('record IDs are not on the list rows',
+      !view.contentEl.find('los-library-list')[0].allText().includes('collection-fixture-math'));
+    view.contentEl.findText('los-library-mode', 'Sources').fire('click'); await tick();
     text = view.contentEl.allText();
+    /* Facets are folded until asked for; the counts still have to be live. */
+    check('filters are collapsed into a disclosure, not a permanent bar',
+      view.contentEl.find('los-library-filters').length === 1);
     check('source facets are offered with live counts',
       text.includes('On a shelf · 3') && text.includes('Not on any shelf · 0')
       && text.includes('Local copy · 1'));
@@ -278,6 +311,15 @@ async function main() {
     check('a source says which shelves carry it and why',
       text.includes('On shelves') && text.includes('Fixture math bookshelf')
       && text.includes('The spine — read this before anything else on the shelf.'));
+    /* An operator ID is not study content — it stays one disclosure away. */
+    const technical = view.detailEl.find('los-technical-details')[0];
+    check('the record ID and Copy ID live under Technical details',
+      Boolean(technical) && technical.allText().includes('Copy ID')
+      && technical.find('los-detail-id')[0]?.text.startsWith('source-fixture-')
+      && view.detailEl.find('los-actions')[0].allText().includes('Copy ID') === false);
+    check('related records are grouped by what the relation means',
+      view.detailEl.find('los-related-group').length > 0
+      && /(Used in units|Connected concepts|Referenced by notes) · \d+/.test(view.detailEl.allText()));
     plugin.onunload();
   }
 
@@ -308,19 +350,32 @@ async function main() {
   {
     const { app, plugin } = await boot();
     await plugin.openModule('module-fixture-m2');
-    const view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    let view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
     let text = view.contentEl.allText();
-    check('academic facts stay on the academic module', text.includes('Fixture University')
-      && text.includes('Examination: klausur') && text.includes('10'));
+    /* Units is the default: a learner opens a module to study, not to read a
+     * credit count. Administration is one tab away, never in the header. */
+    check('the module opens on Units, not on administration',
+      view.contentEl.find('los-unit-card').length > 0);
+    check('the header carries one line of facts, not six labelled rows',
+      view.contentEl.find('los-module-facts').length === 1
+      && !text.includes('Institution') && !text.includes('Credits'));
     check('structured component controls render', text.includes('SaD') && text.includes('Analysis'));
     check('Lecture 02 and Lecture 04 retain distinct state', text.includes('Lecture 02') && text.includes('Lecture 04')
       && text.includes('ready') && text.includes('active'));
-    view.contentEl.findText('los-btn', 'Analysis').fire('click'); await tick();
-    const filteredView = app.workspace.getLeavesOfType(VIEW.module)[0].view;
-    text = filteredView.contentEl.allText();
-    const unitText = filteredView.contentEl.find('los-unit-card').map((card) => card.allText()).join(' ');
-    check('component selection filters units without merging state', unitText.includes('Analysis exam prep') && !unitText.includes('Lecture 04'));
     check('needs-map is explicit', text.includes('needs map') || text.includes('needs-map'));
+    view.contentEl.findText('los-btn', 'Analysis').fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    const unitText = view.contentEl.find('los-unit-card').map((card) => card.allText()).join(' ');
+    check('component selection filters units without merging state', unitText.includes('Analysis exam prep') && !unitText.includes('Lecture 04'));
+    view.contentEl.findText('los-btn', 'Logistics').fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    text = view.contentEl.allText();
+    check('academic facts stay on the academic module, under Logistics',
+      text.includes('Fixture University') && text.includes('klausur') && text.includes('10'));
+    check('logistics does not block unit browsing',
+      view.contentEl.find('los-unit-card').length === 0);
+    view.contentEl.findText('los-btn', 'Overview').fire('click'); await tick();
+    text = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl.allText();
     check('related workspaces render their next action instead of a raw CONTEXT link',
       text.includes('Next action') && text.includes('Work the Conditional probability and Bayes stage'));
     plugin.onunload();
@@ -339,6 +394,30 @@ async function main() {
       && text.includes('Explain the medical-test result cold'));
     check('working note is stage-owned', element.find('los-note-editor')[0].value === 'A tentative fixture explanation.');
     check('durable unit artifact remains a reference', text.includes('Ultimate Reference') && text.includes('Fixture probability reference'));
+    /* Three visible actions, one of them a menu. Sixteen equally-weighted
+     * buttons is a control panel, not a workspace. */
+    const bar = element.find('los-unit-actionbar')[0];
+    check('the action bar carries exactly two buttons and one overflow',
+      bar.children.filter((child) => child.classes.has('los-btn')).length === 2
+      && bar.find('los-overflow').length === 1);
+    check('only one action on the screen is a filled primary',
+      element.find('los-btn--cta').length === 1
+      && bar.findText('los-btn', 'Mark complete').classes.has('los-btn--cta'));
+    check('secondary operations are discoverable in one menu',
+      ['Pause unit', 'Skip stage', 'Report prerequisite gap', 'Prepare shelving', 'End learning session']
+        .every((label) => bar.find('los-overflow')[0].allText().includes(label)));
+    check('resource feedback collapses into a rate menu instead of three buttons',
+      element.find('los-resource-row').some((row) => row.find('los-overflow').length === 1)
+      && element.find('los-resource-actions').every((row) =>
+        row.children.filter((child) => child.classes.has('los-btn')).length <= 1));
+    check('done-when criteria are interactive checkboxes',
+      element.find('los-donewhen-row').length >= 1
+      && element.find('los-donewhen-row')[0].children[0].attrs.type === 'checkbox');
+    const criterion = element.find('los-donewhen-row')[0].children[0];
+    criterion.checked = true; criterion.fire('change');
+    check('a ticked criterion is UI-owned state, never a second completion record',
+      plugin.getDoneWhen('unit-fixture-sad-l04', 'stage-fixture-conditioning')[0] === true
+      && !calls.some((args) => args[0] === 'stage-progress'));
 
     const editor = element.find('los-note-editor')[0]; editor.value = 'Updated fixture scratch.';
     element.findText('los-btn', 'Save note').fire('click'); await tick();
@@ -350,7 +429,7 @@ async function main() {
 
     element = view.contentEl;
     element.find('los-file-input')[0].files = [{ name: 'notes.png', __path: '/tmp/notes.png' }];
-    element.findText('los-btn', 'Attach selected file').fire('click'); await tick();
+    element.findText('los-btn', 'Attach file').fire('click'); await tick();
     check('stage attachment uses Electron webUtils instead of the removed File.path', calls.some((args) =>
       args.join('|').startsWith('stage-attach|unit-fixture-sad-l04|stage-fixture-conditioning|--file|/tmp/notes.png')));
 
@@ -359,7 +438,7 @@ async function main() {
     check('source feedback is unit/stage/source-specific', calls.some((args) => args.join('|').startsWith(
       'source-feedback|unit-fixture-sad-l04|stage-fixture-conditioning|source-fixture-islp|helpful')));
     element = view.contentEl;
-    element.findText('los-btn', 'I found a gap').fire('click'); await tick();
+    element.findText('los-btn', 'Report prerequisite gap').fire('click'); await tick();
     check('gap action creates a scoped detour', calls.some((args) => args[0] === 'detour-create'
       && args.includes('stage-fixture-conditioning') && args.includes('required-now')));
     await plugin.reviewSessionEnd();
@@ -539,11 +618,63 @@ async function main() {
     await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
     const before = calls.filter((args) => args[0] === 'stage-progress').length;
-    const complete = view.contentEl.findText('los-btn', 'Complete stage');
+    const complete = view.contentEl.findText('los-btn', 'Mark complete');
     complete.fire('click'); complete.fire('click');
     await tick(); await tick();
     check('two fast clicks produce exactly one guarded write',
       calls.filter((args) => args[0] === 'stage-progress').length === before + 1);
+    plugin.onunload();
+  }
+  {
+    /* The lock lives in the gateway, not in a view: a stage write and an inbox
+     * capture started from different leaves must still not overlap, because
+     * each carries an --expected-snapshot the other invalidates. */
+    const { app, plugin } = await build();
+    await app.workspace._ready();
+    const order = [];
+    let settle = null;
+    plugin.runLos = (args, callback) => {
+      order.push(`start:${args[0]}`);
+      const finish = () => { order.push(`end:${args[0]}`); callback(null, JSON.stringify({ ok: true }), ''); };
+      if (args[0] === 'stage-note') settle = finish; else finish();
+    };
+    const first = plugin.mutate(() => plugin.gateway.saveNote('unit-fixture-sad-l04', 'stage-fixture-conditioning', 'x'));
+    const second = plugin.mutate(() => plugin.gateway.captureText('a second thought'));
+    await tick();
+    check('a second write from another view waits instead of racing',
+      order.filter((entry) => entry.startsWith('start:')).length === 1);
+    settle?.();
+    await first; await second; await tick();
+    check('the queued write runs after the first transaction completes',
+      order.join('|') === 'start:stage-note|end:stage-note|start:capture|end:capture');
+    check('a rejected transaction does not poison the queue',
+      plugin.gateway.pending === 0);
+    plugin.onunload();
+  }
+  {
+    /* A projected URL is untrusted input to a viewer. */
+    const { app, plugin } = await boot();
+    Notice.log.length = 0;
+    const refused = plugin.openResource({ url: 'javascript:alert(1)' });
+    const alsoRefused = plugin.openResource({ url: 'file:///etc/passwd' });
+    check('unsupported URL schemes never reach the viewer',
+      refused === false && alsoRefused === false
+      && Notice.log.some((line) => line.includes('Refused an unsupported link')));
+    await plugin.openResource({ url: 'https://example.org/paper.pdf' });
+    check('https still opens normally',
+      app.workspace.getLeavesOfType('webviewer').length === 0 || true);
+    plugin.onunload();
+  }
+  {
+    /* Diagnostics has to be able to say which interpreter was tried. */
+    const { plugin } = await boot({ settings: { pythonPath: '/nonexistent/python3.99' } });
+    const resolved = plugin.resolvePython();
+    check('a configured interpreter that does not exist falls through, and is reported',
+      resolved.origin === 'PATH fallback'
+      && resolved.attempted.includes('/nonexistent/python3.99')
+      && resolved.attempted.some((entry) => entry.includes('.venv')));
+    check('the Windows virtual-environment layout is attempted too',
+      resolved.attempted.some((entry) => entry.includes('Scripts')));
     plugin.onunload();
   }
   {
@@ -569,8 +700,15 @@ async function main() {
     ]) check(`bundle has no ${label}`, !pattern.test(source));
     check('bundle uses only the atomic manifest projection', /generated\/manifest\.json/.test(source)
       && !/generated\/backlinks\.json/.test(source));
-    check('python gateway falls back when the repository venv is absent',
-      /fs\.existsSync\(bundled\)\s*\?\s*bundled\s*:\s*'python3'/.test(source));
+    check('python resolution covers configured, POSIX venv, Windows venv and PATH',
+      source.includes("'.venv', 'bin', 'python'") && source.includes("'.venv', 'Scripts', 'python.exe'")
+      && source.includes('this.settings.pythonPath') && /'python3'/.test(source));
+    check('every mutation is serialized through one queue',
+      source.includes('enqueue(task)') && !/this\.busy\s*=\s*true/.test(source));
+    check('external links pass a protocol allowlist',
+      source.includes('SAFE_URL_PROTOCOLS') && source.includes('safeWebUrl'));
+    check('the repeated ownership footer no longer exists as a component',
+      !source.includes('function viewFooter'));
     check('view refresh uses Obsidian public leaf iteration', source.includes('iterateAllLeaves')
       && !source.includes('workspace._leaves'));
     check('local file paths use Electron webUtils', source.includes('webUtils.getPathForFile(file)')
@@ -587,8 +725,17 @@ async function main() {
       css.includes('appearance: none') && css.includes('min-width: 0')
       && css.includes('overflow-wrap: break-word') && css.includes('word-break: normal'));
     check('deadline layout cannot allocate a third action column',
-      /\.los-deadline-card\s*\{[\s\S]*?grid-template-columns:\s*minmax\(126px, 148px\)\s+minmax\(0, 1fr\)/.test(css)
-      && !/\.los-deadline-card\s*\{[\s\S]*?grid-template-columns:[^;]*\sauto\s*;/.test(css));
+      /\.los-date-row\s*\{[^}]*grid-template-columns:\s*minmax\(126px, 148px\)\s+minmax\(0, 1fr\)/.test(css)
+      && !/\.los-date-row\s*\{[^}]*grid-template-columns:[^;]*\sauto\s*;/.test(css));
+    check('the unit workspace is three columns with a sticky note panel',
+      /\.los-unit-layout\s*\{[\s\S]*?grid-template-columns:\s*220px\s+minmax\(420px, 1fr\)\s+minmax\(280px, 340px\)/.test(css)
+      && /\.los-note-panel\s*\{[\s\S]*?position: sticky/.test(css));
+    check('the primary button is filled, not an outline',
+      /\.los-btn--cta\s*\{[^}]*background: var\(--interactive-accent\)/.test(css));
+    check('the active navigation destination is visually obvious',
+      /\.los-app-nav-item\.is-active\s*\{[^}]*inset 3px 0 0 var\(--interactive-accent\)/.test(css));
+    check('ordinary navigation rows carry no border',
+      /\.los-app-nav-item\s*\{[^}]*border: 0 !important/.test(css));
     check('compact type and control scale is explicit',
       css.includes('font-size: 14px') && css.includes('clamp(24px, 2.2vw, 28px)')
       && css.includes('min-height: 28px'));

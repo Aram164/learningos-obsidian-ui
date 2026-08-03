@@ -77,7 +77,6 @@ export class AtlasView extends ItemView {
     const body = root.createDiv({ cls: 'los-atlas-body' });
     this.renderDomain(body, current);
     this.renderBoundaries(root);
-    viewFooter(root);
   }
 
   noteRow(parent, note) {
