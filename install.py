@@ -17,8 +17,8 @@ What it does (and nothing else):
   5. VERIFIES (never edits) that the core .gitignore covers .obsidian/,
      /bases/ and /.trash/ — the installer must not touch core-tracked files.
   6. Optionally downloads checksum-pinned Agentic Copilot, Omnisearch, Text
-     Extractor, and PDF++; configures Agentic Copilot through the Codex safety
-     wrapper.
+     Extractor, and PDF++; MERGES LearningOS safety/indexing keys while keeping
+     other plugin preferences.
   7. Runs `los.py status` as a smoke test of the CLI gateway.
 
 The UI test suite runs FIRST and a failure aborts the install (CLAUDE.md hard
@@ -143,13 +143,46 @@ def run_ui_tests(node: str | None = None) -> None:
     if node_bin is None or not Path(node_bin).is_file():
         sys.exit("install: Node not found — refusing an untested install. Pass "
                  "--node /absolute/path/to/node, or explicitly use --skip-tests.")
+    build = subprocess.run([node_bin, str(HERE / "build.mjs")], cwd=HERE,
+                           capture_output=True, text=True, timeout=120)
+    if build.returncode != 0:
+        print(build.stdout)
+        print(build.stderr, file=sys.stderr)
+        sys.exit("install: UI build FAILED — nothing was written")
     proc = subprocess.run([node_bin, str(suite)], cwd=HERE,
                           capture_output=True, text=True, timeout=120)
     if proc.returncode != 0:
         print(proc.stdout)
         sys.exit("install: UI tests FAILED — nothing was written (hard rule 8)")
     passed = proc.stdout.count("  ok   ")
-    log(f"UI tests ✓  ({passed} checks, fixture vault)")
+    log(f"UI build + tests ✓  ({passed} checks, fixture vault)")
+
+
+def merge_plugin_settings(vault: Path, plugin_id: str, config_name: str,
+                          dry: bool, extra: dict | None = None) -> None:
+    """Merge only LearningOS-managed keys into a community plugin's data.
+
+    A plugin upgrade or reinstall must never erase unrelated user preferences.
+    """
+    src = json.loads((HERE / "vault-config" / config_name).read_text(encoding="utf-8"))
+    src.pop("_comment", None)
+    if extra:
+        src.update(extra)
+    target = vault / ".obsidian" / "plugins" / plugin_id / "data.json"
+    current = {}
+    if target.is_file():
+        try:
+            current = json.loads(target.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            log(f"WARNING: {target} invalid — replacing plugin settings")
+    merged = {**current, **src}
+    changed = [key for key, value in src.items() if current.get(key) != value]
+    log(f"ecosystem config: {plugin_id}: {len(src)} managed key(s), "
+        f"{len(changed)} changed{': ' + ', '.join(changed) if changed else ''}")
+    if not dry:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(merged, indent=2, sort_keys=True) + "\n",
+                          encoding="utf-8")
 
 
 def install_ecosystem(vault: Path, dry: bool) -> list[str]:
@@ -182,22 +215,14 @@ def install_ecosystem(vault: Path, dry: bool) -> list[str]:
                 staged = tmp_dir / filename
                 staged.write_bytes(content)
                 shutil.copy2(staged, existing)
-        if plugin_id == "agentic-copilot":
-            wrapper = vault / "tools" / "codex_obsidian.py"
-            if not wrapper.is_file():
-                sys.exit(f"install: Agentic Copilot needs {wrapper}")
-            data = {
-                "selectedAgent": "custom",
-                "customBinaryPath": str(wrapper),
-                "customArgs": "",
-                "workingDirectory": "vault",
-                "includeActiveFile": True,
-                "includeSelection": True,
-                "maxSessions": 1,
-                "editApprovalMode": "approve",
-            }
-            (dest / "data.json").write_text(
-                json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    wrapper = vault / "tools" / "codex_obsidian.py"
+    if not dry and not wrapper.is_file():
+        sys.exit(f"install: Agentic Copilot needs {wrapper}")
+    merge_plugin_settings(vault, "agentic-copilot", "agentic-copilot.json", dry,
+                          {"customBinaryPath": str(wrapper)})
+    merge_plugin_settings(vault, "omnisearch", "omnisearch.json", dry)
+    merge_plugin_settings(vault, "text-extractor", "text-extractor.json", dry)
+    merge_plugin_settings(vault, "pdf-plus", "pdf-plus.json", dry)
     return installed
 
 

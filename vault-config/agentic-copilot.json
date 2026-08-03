@@ -1,0 +1,10 @@
+{
+  "_comment": "LearningOS uses the guarded Codex wrapper and requires approval for edits. The installer fills the vault-specific wrapper path.",
+  "selectedAgent": "custom",
+  "customArgs": "",
+  "workingDirectory": "vault",
+  "includeActiveFile": true,
+  "includeSelection": true,
+  "maxSessions": 1,
+  "editApprovalMode": "approve"
+}

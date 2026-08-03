@@ -23,21 +23,25 @@ here.
    canonical Markdown or YAML from UI code.** If a view needs a field the
    manifest lacks, add it CORE-side and regenerate — do not regex for it.
    Corollary: the app must render fully with the CLI unavailable.
-3. Send mutations only through explicit CLI commands (`capture`, `path-note`,
-   `path-progress`, `path-attach`, `generate`, `validate`). Never rewrite YAML
-   registries or canonical notes from UI code. AI canonical changes require a
-   rendered shelving proposal and explicit selected-item approval.
+3. Send mutations only through explicit CLI commands (`stage-note`,
+   `stage-progress`, `stage-attach`, `source-feedback`, detour commands,
+   selected-only shelving, `session-end`, `generate`, `validate`). Every stage
+   mutation carries the current snapshot. Never rewrite YAML registries or
+   canonical notes from UI code. AI canonical changes require an
+   action-specific capability, scope check, rendered proposal where semantic,
+   and explicit selected-item approval.
 4. Do not duplicate LearningOS validation or business rules in TypeScript —
    one implementation of every rule, and it lives in the core.
 5. Treat generated files as disposable; never cache them as truth.
 6. Keep ordinary Markdown compatible with every editor: no Obsidian-only
    meaning in canonical notes, no required `[[wikilinks]]`.
 7. Ship the vault safety configuration with the installer (core gitignores
-   `.obsidian/`): link auto-update OFF, no drag-in attachments,
-   `generated/` and `archive/` excluded from recency surfaces.
-8. Run UI tests before installation (`node tests/test-dashboard.js`);
-   `install.py` runs them and aborts on failure. Installing into the real
-   vault requires Aram's explicit confirmation.
+   `.obsidian/`): link auto-update OFF, attachments captured into the inbox,
+   and `generated/`, `archive/`, registries, migration and curriculum
+   quarantine excluded from default search.
+8. Build and run UI tests before installation (`node build.mjs`, then
+   `node tests/test-dashboard.js`); `install.py` runs both and aborts on
+   failure. Installing into the real vault requires explicit authorization.
 9. The app never writes the core directly. Cross-layer changes are made
    core-side first (schema/gateway/projection), then consumed here.
 10. Job/ quarantine applies unchanged (core CLAUDE.md §13): never read, index,
@@ -51,9 +55,11 @@ here.
 13. **All usability constraints live here** (Aram, 2026-08-03). The core is
     allowed to be optimised for robustness and efficacy at the cost of being
     unpleasant to browse; this project is what makes it usable. Concretely:
-    no primary view may present a bare list of links. The current stage owns
-    its resources and notes; record references are typed actions or chips.
-    Follow `DESIGN.md`; extend it rather than inventing CSS.
+    no primary view may present a bare list of links. Home shows all current
+    Bachelor's modules plus separate Skills/Thesis areas; resume is only a
+    shortcut. The current stage owns its resources and notes; record references
+    are typed actions or chips. Follow `DESIGN.md`; extend it rather than
+    inventing CSS.
 
 ## Anti-goals (from core ADR-006 and the 2026-07-16 external review)
 

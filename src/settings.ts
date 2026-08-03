@@ -1,0 +1,52 @@
+export class LearningOSSettingsTab extends PluginSettingTab {
+  constructor(app, plugin) { super(app, plugin); this.plugin = plugin; }
+  display() {
+    const root = this.containerEl; root.empty();
+    root.createEl('h2', { text: 'LearningOS UI' });
+    for (const [key, name, description] of [
+      ['openHomeOnStartup', 'Open Home on startup', 'Open the module-first Home view when the vault becomes ready.'],
+      ['pinHome', 'Pin Home', 'Keep the Home leaf available while opening units.'],
+      ['collapseSidebars', 'Collapse the right sidebar', 'Keep the learning workspace visually focused.'],
+      ['showAiRecommendation', 'Show scoped AI action', 'Display AI buttons that always include explicit curriculum context.'],
+    ]) {
+      new Setting(root).setName(name).setDesc(description).addToggle((toggle) => toggle
+        .setValue(this.plugin.settings[key]).onChange(async (value) => {
+          this.plugin.settings[key] = value; await this.plugin.saveData(this.plugin.settings);
+        }));
+    }
+    new Setting(root).setName('Validate and rebuild').setDesc('Run the canonical core projection pipeline.')
+      .addButton((control) => control.setButtonText('Rebuild').setCta().onClick(() => this.plugin.generate()));
+  }
+}
+
+export class SessionEndModal extends Modal {
+  constructor(app, plugin, review) { super(app); this.plugin = plugin; this.review = review; }
+  onOpen() {
+    const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-session-modal');
+    pageHeader(root, 'Explicit Git closure', 'End learning session',
+      'Only files recorded by guarded learning actions can be staged. Unrelated changes remain untouched.');
+    const owned = section(root, 'Session-owned changes');
+    if (!(this.review.owned_changes || []).length) empty(owned, 'No owned changes', 'There is nothing to commit from this session.');
+    for (const file of this.review.owned_changes || []) owned.createEl('code', { text: file });
+    const unrelated = section(root, 'Unrelated changes (excluded)');
+    if (!(this.review.unrelated_changes || []).length) unrelated.createEl('p', { text: 'None.' });
+    for (const file of this.review.unrelated_changes || []) unrelated.createEl('code', { text: file });
+    const message = root.createEl('input', {
+      cls: 'los-search', attr: { type: 'text', placeholder: 'Commit message', 'aria-label': 'Learning session commit message' },
+    });
+    const pushRow = root.createDiv({ cls: 'los-row' });
+    const push = pushRow.createEl('input', { attr: { type: 'checkbox', 'aria-label': 'Push after commit' } });
+    pushRow.createSpan({ text: 'Push after the scoped commit succeeds' });
+    const actions = root.createDiv({ cls: 'los-actions' });
+    button(actions, 'Commit session-owned files', async () => {
+      if (!message.value.trim()) { new Notice('Enter a commit message first.'); return; }
+      try {
+        const result = await this.plugin.gateway.endSession(message.value.trim(), Boolean(push.checked));
+        new Notice(result.pushed ? 'Learning session committed and pushed.' : 'Learning session committed.');
+        this.close();
+      } catch (error) { new Notice(error?.message || String(error)); }
+    }, 'cta');
+    button(actions, 'Close without committing', () => this.close(), 'quiet');
+  }
+  onClose() { this.contentEl.empty(); }
+}

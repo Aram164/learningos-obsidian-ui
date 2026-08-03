@@ -1,358 +1,113 @@
 {
   "_generated": {
-    "contract_version": 1,
-    "generated_at": "2026-08-03",
-    "generator": "fixture",
-    "snapshot_id": "sha256:fixture-snapshot",
+    "contract_version": 2,
+    "generated_at": "2099-04-01",
+    "generator": "synthetic-fixture-v2",
+    "snapshot_id": "sha256:fixture-v2-snapshot",
     "source_dirty": false,
-    "source_fingerprint": "fixture-snapshot",
-    "source_revision": "fixture-revision",
-    "warning": "SYNTHETIC. Mirrors the real manifest schema (learning_os.genout.build_manifest) so UI tests exercise the same shapes. Never real data."
+    "source_fingerprint": "fixture-v2-snapshot",
+    "source_revision": "fixture-v2-revision",
+    "warning": "SYNTHETIC fixture only. Never real curriculum or knowledge."
   },
   "counts": {
-    "collections": 1,
-    "concepts": 2,
-    "modules": 1,
-    "learning_paths": 1,
-    "learning_paths_active": 1,
-    "notes": 1,
-    "notes_reviewed": 0,
-    "notes_with_evidence": 0,
-    "relations": 1,
+    "programs": 5,
+    "modules": 4,
+    "units": 7,
+    "study_maps": 6,
+    "stages": 12,
+    "stages_complete": 2,
+    "units_needing_map": 1,
     "sources": 3,
-    "workspaces_active": 1,
-    "workspaces_archived": 1
+    "notes": 1,
+    "concepts": 2,
+    "inbox_items": 2,
+    "workspaces_active": 1
+  },
+  "programs": [
+    { "id": "program-bachelors", "type": "program", "kind": "academic", "title": "Bachelor's", "description": "Synthetic current degree.", "semester_bound": true, "status": "active", "default": true,
+      "semesters": [{ "id": "semester-sose-2099", "title": "SoSe 2099", "status": "current", "order": 209901 }] },
+    { "id": "program-skills", "type": "program", "kind": "skills", "title": "Skills", "description": "Independent skill tracks.", "semester_bound": false, "status": "active" },
+    { "id": "program-thesis-projects", "type": "program", "kind": "projects", "title": "Thesis & projects", "description": "Milestone-led work.", "semester_bound": false, "status": "active" },
+    { "id": "program-masters-planning", "type": "program", "kind": "quarantine", "title": "Master's Planning", "status": "quarantined" },
+    { "id": "program-job-boundary", "type": "program", "kind": "boundary", "title": "Job", "status": "boundary-only" }
+  ],
+  "semesters": [
+    { "id": "semester-sose-2099", "program_id": "program-bachelors", "title": "SoSe 2099", "status": "current", "order": 209901 }
+  ],
+  "modules": [
+    { "id": "module-fixture-m2", "type": "module", "kind": "academic", "area_id": "program-bachelors", "title": "Fixture Statistics & Analysis", "status": "enrolled", "institution": "Fixture University", "code": "M2F", "semester": "sose-2099", "credits": 10,
+      "components": [{ "id": "component-fixture-sad", "title": "Fixture Statistics", "short_title": "SaD", "order": 1 }, { "id": "component-fixture-analysis", "title": "Fixture Analysis", "short_title": "Analysis", "order": 2 }],
+      "examination": { "type": "klausur", "notes": "Synthetic combined exam." },
+      "unit_order": ["unit-fixture-sad-l02", "unit-fixture-sad-l04", "unit-fixture-analysis"] },
+    { "id": "module-fixture-aml", "type": "module", "kind": "academic", "area_id": "program-bachelors", "title": "Fixture Advanced ML", "status": "enrolled", "institution": "Fixture University", "code": "AMLF", "semester": "sose-2099", "unit_order": ["unit-fixture-aml-l03", "unit-fixture-aml-l04"] },
+    { "id": "module-fixture-python", "type": "module", "kind": "skill", "area_id": "program-skills", "title": "Python", "status": "active", "unit_order": ["unit-fixture-python-oop"] },
+    { "id": "module-fixture-thesis", "type": "module", "kind": "project", "area_id": "program-thesis-projects", "title": "Bachelor thesis", "status": "active", "unit_order": ["unit-fixture-thesis-landscape"] }
+  ],
+  "units": [
+    { "id": "unit-fixture-sad-l02", "type": "unit", "kind": "lecture", "module_id": "module-fixture-m2", "component_id": "component-fixture-sad", "title": "SaD Lecture 02 — Descriptive statistics", "scope": "Synthetic Lecture 02 scope.", "status": "ready", "order": 2, "current_study_map": "study-map-fixture-sad-l02", "artifacts": {} },
+    { "id": "unit-fixture-sad-l04", "type": "unit", "kind": "lecture", "module_id": "module-fixture-m2", "component_id": "component-fixture-sad", "title": "SaD Lecture 04 — Probability & Bayes", "scope": "Synthetic Lecture 04 scope.", "status": "active", "order": 4, "current_study_map": "study-map-fixture-sad-l04", "artifacts": { "ultimate_reference": "note-fixture-probability" } },
+    { "id": "unit-fixture-analysis", "type": "unit", "kind": "exam-prep", "module_id": "module-fixture-m2", "component_id": "component-fixture-analysis", "title": "Analysis exam prep", "scope": "Needs a map from confirmed course scope.", "status": "needs-map", "order": 20, "artifacts": {} },
+    { "id": "unit-fixture-aml-l03", "type": "unit", "kind": "lecture", "module_id": "module-fixture-aml", "title": "AML Lecture 03 — Linear regression", "scope": "ISLP Chapter 3 §§3.1–3.3.", "status": "ready", "order": 3, "current_study_map": "study-map-fixture-aml-l03", "artifacts": {} },
+    { "id": "unit-fixture-aml-l04", "type": "unit", "kind": "lecture", "module_id": "module-fixture-aml", "title": "AML Lecture 04 — Classification", "scope": "ISLP §3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2.", "status": "ready", "order": 4, "current_study_map": "study-map-fixture-aml-l04", "artifacts": {} },
+    { "id": "unit-fixture-python-oop", "type": "unit", "kind": "topic", "module_id": "module-fixture-python", "title": "Python OOP scope", "scope": "Classes and object collaboration; no completion claim.", "status": "ready", "order": 1, "current_study_map": "study-map-fixture-python-oop", "artifacts": {} },
+    { "id": "unit-fixture-thesis-landscape", "type": "unit", "kind": "milestone", "module_id": "module-fixture-thesis", "title": "Thesis literature landscape", "scope": "Build the verified evidence landscape.", "status": "ready-to-shelve", "order": 1, "current_study_map": "study-map-fixture-thesis", "artifacts": {} }
+  ],
+  "study_maps": [
+    { "id": "study-map-fixture-sad-l02", "type": "study-map", "module_id": "module-fixture-m2", "unit_id": "unit-fixture-sad-l02", "status": "ready", "current_stage": "stage-l02-start", "shelving": { "state": "none" }, "detours": [],
+      "stages": [{ "id": "stage-l02-start", "title": "Lecture 02 start", "status": "active", "objective": "Read the confirmed lecture scope.", "scope_triage": "required-now", "resources": [], "done_when": ["Explain the fixture summary."], "working_note": "curriculum/fixture/l02/stages/stage-l02-start/notes.md", "notes_text": "", "attachments": [], "source_feedback": [] }] },
+    { "id": "study-map-fixture-sad-l04", "type": "study-map", "module_id": "module-fixture-m2", "unit_id": "unit-fixture-sad-l04", "status": "active", "current_stage": "stage-fixture-conditioning", "shelving": { "state": "none" }, "detours": [],
+      "stages": [
+        { "id": "stage-fixture-foundations", "title": "Event spaces", "status": "complete", "objective": "Establish outcome and event vocabulary.", "scope_triage": "required-now", "estimate_minutes": 20, "resources": [{ "kind": "read", "label": "Fixture book, Chapter 1", "source_id": "source-fixture-book", "locator": "Chapter 1" }], "done_when": ["Explain outcomes and events."], "working_note": "curriculum/fixture/l04/stages/stage-fixture-foundations/notes.md", "notes_text": "My completed fixture reasoning.", "attachments": [], "source_feedback": [] },
+        { "id": "stage-fixture-conditioning", "title": "Conditional probability and Bayes", "status": "active", "objective": "Work the central medical-test fixture without base-rate neglect.", "scope_triage": "required-now", "estimate_minutes": 45, "exam_critical": true, "concepts": ["concept-bedingte-wahrscheinlichkeit"], "resources": [{ "kind": "watch", "label": "Fixture Bayes explainer", "url": "https://example.invalid/bayes" }, { "kind": "practise", "label": "Fixture exercise B3", "source_id": "source-fixture-islp", "vault_path": "knowledge/notes/mathematics/note-fixture-probability.md" }], "done_when": ["Explain the medical-test result cold."], "working_note": "curriculum/fixture/l04/stages/stage-fixture-conditioning/notes.md", "notes_text": "A tentative fixture explanation.", "attachments": [], "source_feedback": [] },
+        { "id": "stage-fixture-self-test", "title": "Practice and self-test", "status": "pending", "objective": "Recall the complete argument.", "scope_triage": "required-now", "resources": [], "done_when": ["Pass the fixture self-test."], "working_note": "curriculum/fixture/l04/stages/stage-fixture-self-test/notes.md", "notes_text": "", "attachments": [], "source_feedback": [] }
+      ] },
+    { "id": "study-map-fixture-aml-l03", "type": "study-map", "module_id": "module-fixture-aml", "unit_id": "unit-fixture-aml-l03", "status": "ready", "current_stage": "stage-aml-l03", "shelving": { "state": "none" }, "detours": [], "stages": [{ "id": "stage-aml-l03", "title": "Regression geometry", "status": "active", "objective": "Connect the selected ISLP sections.", "scope_triage": "required-now", "resources": [{ "kind": "read", "label": "ISLP Chapter 3 §§3.1–3.3", "source_id": "source-fixture-islp", "locator": "Chapter 3 §§3.1–3.3" }], "done_when": ["Derive the fit."], "working_note": "curriculum/fixture/aml-l03/stages/stage-aml-l03/notes.md", "notes_text": "", "attachments": [], "source_feedback": [] }] },
+    { "id": "study-map-fixture-aml-l04", "type": "study-map", "module_id": "module-fixture-aml", "unit_id": "unit-fixture-aml-l04", "status": "ready", "current_stage": "stage-aml-l04", "shelving": { "state": "none" }, "detours": [], "stages": [{ "id": "stage-aml-l04", "title": "Classification scope", "status": "active", "objective": "Use only explicitly selected sections.", "scope_triage": "required-now", "resources": [{ "kind": "read", "label": "ISLP selected sections", "source_id": "source-fixture-islp", "locator": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2" }], "done_when": ["Separate in-scope from skipped."], "working_note": "curriculum/fixture/aml-l04/stages/stage-aml-l04/notes.md", "notes_text": "", "attachments": [], "source_feedback": [] }] },
+    { "id": "study-map-fixture-python-oop", "type": "study-map", "module_id": "module-fixture-python", "unit_id": "unit-fixture-python-oop", "status": "ready", "current_stage": "stage-python-oop", "shelving": { "state": "none" }, "detours": [], "stages": [{ "id": "stage-python-oop", "title": "Object collaboration", "status": "active", "objective": "Model one small system.", "scope_triage": "required-now", "resources": [], "done_when": ["Explain the object boundaries."], "working_note": "curriculum/fixture/python/stages/stage-python-oop/notes.md", "notes_text": "", "attachments": [], "source_feedback": [] }] },
+    { "id": "study-map-fixture-thesis", "type": "study-map", "module_id": "module-fixture-thesis", "unit_id": "unit-fixture-thesis-landscape", "status": "ready-to-shelve", "current_stage": "stage-thesis-landscape", "detours": [], "shelving": { "state": "proposed", "summary": "Two synthetic candidates.", "items": [{ "id": "proposal-note", "title": "Fixture synthesis", "destination": "knowledge/notes/research/note-fixture-synthesis.md", "rationale": "The reasoning has an independent purpose.", "diff": "+ Preserve fixture wording.", "selected": true }, { "id": "proposal-garden", "title": "Open fixture question", "destination": "knowledge/garden/open-fixture.md", "rationale": "Still uncertain.", "diff": "+ Track uncertainty.", "selected": false }] }, "stages": [{ "id": "stage-thesis-landscape", "title": "Evidence landscape", "status": "active", "objective": "Map verified synthetic evidence.", "scope_triage": "required-now", "resources": [], "done_when": ["Every claim has evidence."], "working_note": "curriculum/fixture/thesis/stages/stage-thesis-landscape/notes.md", "notes_text": "", "attachments": [], "source_feedback": [] }] }
+  ],
+  "module_source_maps": [
+    { "id": "source-map-fixture-m2", "type": "module-source-map", "module_id": "module-fixture-m2", "sources": [{ "source_id": "source-fixture-book", "role": "spine", "priority": 1, "why": "Synthetic probability spine.", "unit_routes": ["unit-fixture-sad-l02", "unit-fixture-sad-l04"] }] },
+    { "id": "source-map-fixture-aml", "type": "module-source-map", "module_id": "module-fixture-aml", "sources": [{ "source_id": "source-fixture-islp", "role": "spine", "priority": 1, "why": "Selected sections only.", "unit_routes": ["unit-fixture-aml-l03", "unit-fixture-aml-l04"] }] }
+  ],
+  "resume_pointer": { "type": "resume-pointer", "module_id": "module-fixture-m2", "unit_id": "unit-fixture-sad-l04", "study_map_id": "study-map-fixture-sad-l04", "stage_id": "stage-fixture-conditioning", "updated": "2099-04-01" },
+  "quarantine_boundaries": [
+    { "id": "program-job-boundary", "kind": "boundary", "title": "Job", "status": "boundary-only", "description": "Hard confidentiality boundary. Job content never enters LearningOS.", "boundary_action": "Request explicit Job access" },
+    { "id": "program-masters-planning", "kind": "quarantine", "title": "Master's Planning", "status": "quarantined", "description": "Prospective planning excluded from current work and default search.", "boundary_action": "Open Master's Planning" }
+  ],
+  "exam_spine": [{ "date": "2099-10-09", "module_id": "module-fixture-m2", "termin": 2, "title": "Fixture Statistics & Analysis" }],
+  "progress": {
+    "module-fixture-m2": { "units_total": 3, "units_complete": 0, "units_needing_map": 1, "stages_total": 4, "stages_complete": 1 },
+    "module-fixture-aml": { "units_total": 2, "units_complete": 0, "units_needing_map": 0, "stages_total": 2, "stages_complete": 0 },
+    "module-fixture-python": { "units_total": 1, "units_complete": 0, "units_needing_map": 0, "stages_total": 1, "stages_complete": 0 },
+    "module-fixture-thesis": { "units_total": 1, "units_complete": 0, "units_needing_map": 0, "stages_total": 1, "stages_complete": 0 }
+  },
+  "indexes": {
+    "module_to_units": { "module-fixture-m2": ["unit-fixture-sad-l02", "unit-fixture-sad-l04", "unit-fixture-analysis"], "module-fixture-aml": ["unit-fixture-aml-l03", "unit-fixture-aml-l04"], "module-fixture-python": ["unit-fixture-python-oop"], "module-fixture-thesis": ["unit-fixture-thesis-landscape"] },
+    "unit_to_study_map": { "unit-fixture-sad-l02": "study-map-fixture-sad-l02", "unit-fixture-sad-l04": "study-map-fixture-sad-l04", "unit-fixture-aml-l03": "study-map-fixture-aml-l03", "unit-fixture-aml-l04": "study-map-fixture-aml-l04", "unit-fixture-python-oop": "study-map-fixture-python-oop", "unit-fixture-thesis-landscape": "study-map-fixture-thesis" },
+    "component_to_units": { "component-fixture-sad": ["unit-fixture-sad-l02", "unit-fixture-sad-l04"], "component-fixture-analysis": ["unit-fixture-analysis"] },
+    "source_to_modules": { "source-fixture-book": ["module-fixture-m2"], "source-fixture-islp": ["module-fixture-aml"] },
+    "source_to_units": { "source-fixture-book": ["unit-fixture-sad-l02", "unit-fixture-sad-l04"], "source-fixture-islp": ["unit-fixture-sad-l04", "unit-fixture-aml-l03", "unit-fixture-aml-l04"] }
   },
   "backlinks": {
-    "concept_relations": {
-      "concept-demo": {
-        "incoming": [{ "from": "concept-downstream", "type": "builds-on" }],
-        "outgoing": []
-      },
-      "concept-downstream": {
-        "incoming": [],
-        "outgoing": [{ "to": "concept-demo", "type": "builds-on" }]
-      }
-    },
-    "concept_to_notes": { "concept-demo": ["note-fixture-demo"] },
-    "module_to_workspaces": { "module-fixture": ["workspace-fixture"] },
-    "note_incoming": {},
-    "source_to_notes": { "source-fixture-online": ["note-fixture-demo"] },
-    "workspace_to_notes": { "workspace-fixture": ["note-fixture-demo"] }
+    "concept_relations": { "concept-bedingte-wahrscheinlichkeit": { "incoming": [], "outgoing": [] } },
+    "concept_to_notes": { "concept-bedingte-wahrscheinlichkeit": ["note-fixture-probability"] },
+    "module_to_units": { "module-fixture-m2": ["unit-fixture-sad-l02", "unit-fixture-sad-l04", "unit-fixture-analysis"] },
+    "module_to_workspaces": { "module-fixture-m2": ["workspace-fixture-m2"] },
+    "source_to_notes": { "source-fixture-book": ["note-fixture-probability"] },
+    "source_to_units": { "source-fixture-book": ["unit-fixture-sad-l02", "unit-fixture-sad-l04"], "source-fixture-islp": ["unit-fixture-sad-l04", "unit-fixture-aml-l03", "unit-fixture-aml-l04"] },
+    "unit_to_workspaces": { "unit-fixture-sad-l04": ["workspace-fixture-m2"] },
+    "workspace_to_notes": { "workspace-fixture-m2": ["note-fixture-probability"] },
+    "note_incoming": {}
   },
-  "exam_spine": [
-    {
-      "date": "2099-10-09",
-      "module_id": "module-fixture",
-      "termin": 2,
-      "title": "Fixture Kombimodul (FIX + TURE)",
-      "notes": "Synthetic exam facts. Never real."
-    }
-  ],
   "records": [
-    {
-      "id": "note-fixture-demo",
-      "type": "note",
-      "title": "Fixture demo note",
-      "path": "knowledge/notes/mathematics/note-fixture-demo.md",
-      "domain": "mathematics",
-      "summary": "Synthetic content for UI development. Never real knowledge.",
-      "role": "synthesis",
-      "state": "evolving",
-      "authorship": "mine",
-      "concepts": [
-        "concept-demo"
-      ],
-      "sources": [
-        "source-fixture-online"
-      ],
-      "contexts": [
-        "workspace-fixture"
-      ],
-      "attachments": [],
-      "evidence": [],
-      "supersedes": [],
-      "reviewed": null
-    },
-    {
-      "id": "concept-demo",
-      "type": "concept",
-      "title": "Demonstration concept",
-      "path": "knowledge/concepts.yaml",
-      "aliases": [
-        "demo",
-        "example concept"
-      ],
-      "deprecated": false
-    },
-    {
-      "id": "concept-downstream",
-      "type": "concept",
-      "title": "Downstream concept",
-      "path": "knowledge/concepts.yaml",
-      "aliases": [],
-      "deprecated": false
-    },
-    {
-      "id": "source-fixture-online",
-      "type": "source",
-      "title": "Fixture online source",
-      "path": "sources/registry/fixture.yaml",
-      "source_type": "video",
-      "url": "https://example.invalid/fixture",
-      "material": null,
-      "material_path": null,
-      "material_exists": false,
-      "authors": [
-        "A. Fixture"
-      ],
-      "organization": null,
-      "year": 2026,
-      "identifiers": {},
-      "roles": [
-        "intuition"
-      ],
-      "evaluations": [
-        {
-          "roles": [
-            "intuition"
-          ],
-          "strengths": [
-            "Pictures before proofs"
-          ],
-          "weaknesses": [
-            "No exercises"
-          ],
-          "verdict": null
-        }
-      ]
-    },
-    {
-      "id": "source-fixture-local",
-      "type": "source",
-      "title": "Fixture local book",
-      "path": "sources/registry/fixture.yaml",
-      "source_type": "book",
-      "url": null,
-      "material": "material://source-fixture-local/book.pdf",
-      "material_path": "materials/Books/fixture/book.pdf",
-      "material_exists": true,
-      "authors": [
-        "B. Fixture"
-      ],
-      "organization": "Fixture Press",
-      "year": 2020,
-      "identifiers": {
-        "isbn": "000-0-00-000000-0"
-      },
-      "roles": [
-        "reference",
-        "exercise"
-      ],
-      "evaluations": [
-        {
-          "roles": [
-            "reference"
-          ],
-          "strengths": [
-            "Complete tables"
-          ],
-          "weaknesses": [],
-          "verdict": "keep on the shelf",
-          "concepts": [
-            "concept-demo"
-          ],
-          "useful_sections": [
-            {
-              "section": "Ch. 2 — Fixtures",
-              "note": "the only chapter that matters"
-            }
-          ]
-        },
-        {
-          "roles": [
-            "exercise"
-          ],
-          "strengths": [],
-          "weaknesses": [],
-          "verdict": null,
-          "concepts": [
-            "concept-downstream"
-          ],
-          "useful_sections": [
-            {
-              "section": "Appendix A",
-              "note": "drills"
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "id": "source-fixture-bare",
-      "type": "source",
-      "title": "Fixture source with no location",
-      "path": "sources/registry/fixture.yaml",
-      "source_type": "other",
-      "url": null,
-      "material": null,
-      "material_path": null,
-      "material_exists": false,
-      "authors": [],
-      "organization": null,
-      "year": null,
-      "identifiers": {},
-      "roles": [],
-      "evaluations": []
-    },
-    {
-      "id": "module-fixture",
-      "type": "module",
-      "title": "Fixture Kombimodul (FIX + TURE)",
-      "path": "records/modules.yaml",
-      "status": "enrolled",
-      "institution": "Fixture University",
-      "code": "FIX",
-      "credits": 10,
-      "semester": "sose-2099",
-      "components": [
-        "Fixture A",
-        "Fixture B"
-      ],
-      "examination": {
-        "type": "klausur",
-        "notes": "Synthetic exam notes."
-      },
-      "attempts": [
-        {
-          "termin": 1,
-          "date": "2099-07-27",
-          "result": "withdrawn"
-        }
-      ],
-      "grade": null
-    },
-    {
-      "id": "workspace-fixture",
-      "type": "workspace",
-      "title": "Fixture workspace",
-      "path": "work/active/workspace-fixture/CONTEXT.md",
-      "status": "active",
-      "standing": false,
-      "archived": false,
-      "deadline": null,
-      "objective": "Exercise the workspaces.base shelf.",
-      "next_action": "Nothing — synthetic.",
-      "concepts": [
-        "concept-demo"
-      ],
-      "notes": [
-        "note-fixture-demo"
-      ],
-      "sources": [
-        "source-fixture-local"
-      ]
-    },
-    {
-      "id": "workspace-fixture-archived",
-      "type": "workspace",
-      "title": "Archived fixture workspace",
-      "path": "archive/workspaces/2099/workspace-fixture-archived/CONTEXT.md",
-      "status": "archived",
-      "standing": false,
-      "archived": true,
-      "deadline": null,
-      "objective": "",
-      "next_action": "",
-      "concepts": [],
-      "notes": [],
-      "sources": []
-    },
-    {
-      "id": "fixture-bookshelf",
-      "type": "collection",
-      "title": "Fixture bookshelf",
-      "path": "sources/collections/fixture-bookshelf.yaml",
-      "sources": [
-        "source-fixture-local",
-        "source-fixture-online"
-      ]
-    },
-    {
-      "id": "path-fixture-probability",
-      "type": "learning-path",
-      "title": "Fixture probability path",
-      "path": "work/active/workspace-fixture/paths/path-fixture-probability.yaml",
-      "workspace_id": "workspace-fixture",
-      "area": "university",
-      "module_id": "module-fixture",
-      "status": "active",
-      "current_stage": "stage-conditioning",
-      "created": "2099-01-01",
-      "updated": "2099-01-02",
-      "objective": "Learn a fixture topic through ordered stages.",
-      "source_plan": "work/active/workspace-fixture/inputs/fixture-plan.md",
-      "archived": false,
-      "shelving": { "state": "none" },
-      "stages": [
-        {
-          "id": "stage-foundations",
-          "title": "Foundations",
-          "status": "complete",
-          "objective": "Establish the fixture vocabulary.",
-          "estimate_minutes": 20,
-          "concepts": ["concept-demo"],
-          "resources": [{
-            "kind": "read",
-            "label": "Fixture local book, Chapter 1",
-            "source_id": "source-fixture-local",
-            "locator": "Chapter 1"
-          }],
-          "done_when": ["Explain the fixture vocabulary."],
-          "notes_path": "work/active/workspace-fixture/scratch/paths/path-fixture-probability/stage-foundations.md",
-          "notes_text": "My completed fixture reasoning.",
-          "notes_updated": "2099-01-01"
-        },
-        {
-          "id": "stage-conditioning",
-          "title": "Conditional fixture",
-          "status": "active",
-          "objective": "Work the central fixture example without memorizing it.",
-          "estimate_minutes": 45,
-          "exam_critical": true,
-          "concepts": ["concept-demo"],
-          "resources": [
-            { "kind": "watch", "label": "Fixture explainer", "url": "https://example.invalid/fixture" },
-            { "kind": "practice", "label": "Fixture exercise B3", "vault_path": "knowledge/notes/mathematics/note-fixture-demo.md" }
-          ],
-          "done_when": ["Explain the fixture result cold."],
-          "notes_path": "work/active/workspace-fixture/scratch/paths/path-fixture-probability/stage-conditioning.md",
-          "notes_text": "A tentative fixture explanation.",
-          "notes_updated": null
-        },
-        {
-          "id": "stage-self-test",
-          "title": "Practice and self-test",
-          "status": "pending",
-          "objective": "Check the fixture explanation under recall.",
-          "estimate_minutes": 30,
-          "concepts": ["concept-downstream"],
-          "resources": [],
-          "done_when": ["Pass the fixture self-test."],
-          "notes_path": "work/active/workspace-fixture/scratch/paths/path-fixture-probability/stage-self-test.md",
-          "notes_text": "",
-          "notes_updated": null
-        }
-      ]
-    }
+    { "id": "source-fixture-book", "type": "source", "title": "Fixture probability book", "path": "sources/registry/fixture.yaml", "source_type": "book", "material_path": "materials/Books/fixture.pdf", "material_exists": true, "authors": ["B. Fixture"], "organization": "Fixture Press", "year": 2098, "aliases": ["Wahrscheinlichkeitsbuch"], "evaluations": [{ "verdict": "Useful inside the routed unit.", "reading_plan": ["Chapter 1 — Events", "Chapter 2 — Bayes"] }] },
+    { "id": "source-fixture-islp", "type": "source", "title": "Fixture Introduction to Statistical Learning with Python", "path": "sources/registry/fixture.yaml", "source_type": "book", "url": "https://example.invalid/islp", "authors": ["F. Author"], "aliases": ["ISLP"], "evaluations": [{ "verdict": "Use selected sections, not the whole book.", "reading_plan": ["Chapter 3 §§3.1–3.3", "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2"] }] },
+    { "id": "source-fixture-video", "type": "source", "title": "Fixture Bayes video", "path": "sources/registry/fixture.yaml", "source_type": "video", "url": "https://example.invalid/bayes", "authors": [], "evaluations": [] },
+    { "id": "concept-bedingte-wahrscheinlichkeit", "type": "concept", "title": "Conditional probability", "path": "knowledge/concepts.yaml", "aliases": ["bedingte Wahrscheinlichkeit", "conditioning"] },
+    { "id": "concept-bayes", "type": "concept", "title": "Bayes theorem", "path": "knowledge/concepts.yaml", "aliases": ["Satz von Bayes"] },
+    { "id": "note-fixture-probability", "type": "note", "title": "Fixture probability reference", "path": "knowledge/notes/mathematics/note-fixture-probability.md", "summary": "Synthetic durable reference.", "concepts": ["concept-bedingte-wahrscheinlichkeit"], "sources": ["source-fixture-book"], "contexts": ["workspace-fixture-m2"] },
+    { "id": "workspace-fixture-m2", "type": "workspace", "title": "Fixture M2 exam prep", "path": "work/active/workspace-fixture-m2/CONTEXT.md", "status": "active", "program_ids": ["program-bachelors"], "module_ids": ["module-fixture-m2"], "unit_ids": ["unit-fixture-sad-l04"], "notes": ["note-fixture-probability"], "sources": ["source-fixture-book"] }
   ],
-  "relations": [
-    {
-      "from": "concept-downstream",
-      "type": "builds-on",
-      "to": "concept-demo",
-      "context": "synthetic edge",
-      "source": "note-fixture-demo"
-    }
-  ]
+  "relations": []
 }

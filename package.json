@@ -1,0 +1,9 @@
+{
+  "name": "learningos-ui",
+  "private": true,
+  "version": "2.0.0",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node build.mjs && node tests/test-dashboard.js"
+  }
+}

@@ -302,6 +302,7 @@ function makeApp(vaultRoot) {
             const factory = app._plugin.views[st.type];
             if (!factory) return; // e.g. core 'webviewer'
             this.view = factory(this);
+            if (this.view.setState) await this.view.setState(this.state || {}, {});
             await this.view.onOpen();
           },
           async openFile(f) { app.workspace.opened.push(f.path); },

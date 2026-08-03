@@ -1,9 +1,9 @@
 {
   "id": "learningos-ui",
   "name": "LearningOS UI",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "minAppVersion": "1.9.0",
-  "description": "Stage-focused LearningOS desktop: resume an AI-created learning path, keep working notes attached to each stage, review AI shelving proposals, and use the record library only when needed. Reads one atomic manifest and writes only through the guarded los.py gateway.",
+  "description": "Module-first LearningOS desktop for programs, modules, units, stage workspaces, scoped AI, and selected-only shelving. Reads one atomic manifest and writes only through the guarded los.py gateway.",
   "author": "Aram + operator",
   "isDesktopOnly": true
 }
