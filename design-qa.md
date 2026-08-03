@@ -2,8 +2,8 @@
 
 ## Visual source and implementation
 
-- Selected source: `/Users/aramaljanadi/.codex/visualizations/2026/08/03/019fc813-e1f8-7331-9ae0-140039e75a7a/learningos-audit/selected-home-command-centre.png`
-- Wide live implementation: `/Users/aramaljanadi/.codex/visualizations/2026/08/03/019fc813-e1f8-7331-9ae0-140039e75a7a/learningos-audit/final-home-light-1256.png`
+- Selected source: `selected-home-command-centre.png` (local audit capture, not in this repo).
+- Wide live implementation: `final-home-light-1256.png`.
 - Responsive live implementation: `final-home-dark-720.png`, `final-home-light-720.png`, `final-home-dark-480.png`, and `final-home-light-480.png` in the same audit directory.
 - Related live views: `final-module-light-1256.png`, `final-unit-light-1256.png`, and `final-unit-keyboard-focus-light-1256.png` in the same audit directory.
 
