@@ -10,24 +10,39 @@ project must obey is `CLAUDE.md` here.
 
 ## Status
 
-**v0.1.0 shipped 2026-08-03** (gate lifted by Aram same day: "forget about M2
-… I want the whole thing working now"). Installed into the live vault by
+**v0.3.0 — 2026-08-03.** v0.1 shipped the plugin, v0.2 the dashboard, v0.3
+made the dashboard actually appear. Installed into the live vault by
 `install.py`. Track and improve this layer in its own Claude project, not in
-the core project. GitHub remote (e.g. `Aram164/LearningOS-Obsidian`) still to
-be created by Aram.
+the core project.
 
-## What v0.1 contains
+**Git: local-only, no remote** (Aram's decision, 2026-08-03). This directory
+is its own git repository with no GitHub remote and no place in the core
+`LearningOS` repo or in `semestercontext` (whose `.gitignore` covers all of
+`LearningOS/`). Commit here for history; nothing is pushed anywhere. If that
+ever changes, the choice to revisit is a remote for *this* repo — not folding
+the interface into the core, which ADR-006 keeps separate.
+
+## What v0.3 contains
 
 - `plugin/` — single-file plugin, **no build step** (`main.js` +
-  `manifest.json` + `styles.css`). **v0.2: the Dashboard** — a rendered home
-  view that auto-opens on startup: exam countdown tiles, "continue where I
-  stopped" workspace cards (status/deadline badges + next action, click to
-  open), queues, recent notes, one-click links to shelves/canvas/views, and
-  action buttons (Capture, Rebuild, Validate). Plus ribbon/commands for all
-  of the above and a status-bar validation state + next-exam countdown
-  (display-side countdowns are fine — the determinism rule binds generated
-  *files*, not live UI). The generated `reading-room.md` stays the plain-text
-  home for every non-Obsidian surface.
+  `manifest.json` + `styles.css`). **The Dashboard** is the home view on every
+  launch: a hero countdown to the nearest exam, tiles for the rest of the
+  spine, a stat strip (notes/concepts/sources/inbox/garden/reviewed %), a
+  "continue where I stopped" grid of workspace cards (status stripe, deadline,
+  next action, last touched), recently changed notes, a jump rail to
+  shelves/canvas/generated views, and action buttons (Capture, Rebuild,
+  Validate, Refresh). It re-renders when files under `work/` or `knowledge/`
+  change. Plus ribbon/commands for all of the above and a status-bar
+  validation state + next-exam countdown (display-side countdowns are fine —
+  the determinism rule binds generated *files*, not live UI). The generated
+  `reading-room.md` stays the plain-text home for every non-Obsidian surface.
+- **App behaviour** (Settings → LearningOS UI, all toggleable): open the
+  dashboard on startup, pin it as the home tab, collapse both sidebars at
+  launch, app chrome, live refresh.
+- `tests/` — Node test suite against an Obsidian stub and the fixture vault
+  (`node tests/test-dashboard.js`). `install.py` runs it and aborts on
+  failure. Covers the startup path, the settings, the render, degraded
+  no-CLI mode, and the ADR-006 write boundary.
 - `bases/` — shelf definitions (Obsidian Bases): notes (all / recently
   changed / needs review / rough-or-evolving / exam artifacts / with
   evidence / by domain), garden (ripest first), workspaces (active/archived).
@@ -46,8 +61,15 @@ python3 /Users/aramaljanadi/Desktop/semestercontext/LearningOS/obsidian-ui/insta
 ```
 
 Then open `LearningOS/repository/` as a vault in Obsidian and, if prompted,
-turn OFF Restricted mode (enables the plugin). The core side renders the data:
-`concept-canvas.canvas` and `reading-room.md` come from `make views`.
+turn OFF Restricted mode (enables the plugin). If Obsidian is already running,
+reload it (`Cmd+R`) — plugin code is only read at load. The core side renders
+the data: `concept-canvas.canvas` and `reading-room.md` come from `make views`.
+
+## Test
+
+```bash
+cd /Users/aramaljanadi/Desktop/semestercontext/LearningOS/obsidian-ui && node tests/test-dashboard.js
+```
 
 ## What this project may touch
 

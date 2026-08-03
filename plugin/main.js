@@ -1,16 +1,26 @@
-/* LearningOS UI v0.2.0 — single-file plugin, no build step (boundary rule:
+/* LearningOS UI v0.3.0 — single-file plugin, no build step (boundary rule:
  * no Node build system near the core). Presentation and interaction ONLY:
  * reads come from `los.py status --json`, generated/ views, and vault
  * metadata (frontmatter, mtimes); the one write is capture into work/inbox/
  * (the architecture's designated judgment-free surface, ADR-006). No YAML
  * rewriting, no rule reimplementation, no canonical edits.
  *
- * v0.2: the Dashboard — a real rendered home view (workspace cards, exam
- * countdown tiles, queues, recent notes, action buttons). The generated
- * reading-room.md stays the plain-text fallback for every other editor. */
+ * v0.2: the Dashboard — a rendered home view instead of a markdown wall.
+ * v0.3: "it should feel like an app". Three changes:
+ *   1. The dashboard is the guaranteed home. v0.2 opened it only when no file
+ *      was restored — Obsidian ALWAYS restores one, so it never fired and the
+ *      vault looked like a plain folder of markdown. Now it opens, focuses,
+ *      and pins itself on every launch (pinned = links from it open in new
+ *      tabs, so home is never clobbered).
+ *   2. App chrome: sidebars collapsed at launch, `body.los-app` styling hooks,
+ *      a home-tab accent. Every behaviour is a setting, none is forced.
+ *   3. A designed dashboard: hero countdown, stat strip, workspace grid,
+ *      live re-render on vault changes. */
 'use strict';
 
-const { Plugin, ItemView, Modal, Notice, Setting } = require('obsidian');
+const {
+  Plugin, PluginSettingTab, ItemView, Modal, Notice, Setting, setIcon,
+} = require('obsidian');
 const { execFile } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -20,6 +30,46 @@ const READING_ROOM = 'generated/reading-room.md';
 const CANVAS = 'generated/concept-canvas.canvas';
 const INBOX = 'work/inbox';
 const STATUS_REFRESH_MS = 15 * 60 * 1000;
+const RERENDER_DEBOUNCE_MS = 1200;
+
+const DEFAULTS = {
+  openOnStartup: true,   // dashboard is the home view on every launch
+  pinDashboard: true,    // home tab survives every click
+  collapseSidebars: true, // app, not file browser
+  appChrome: true,       // body.los-app styling hooks
+  liveRefresh: true,     // re-render when vault files change
+};
+
+const DAY = 86400000;
+
+function daysUntil(iso) {
+  const d = new Date(`${String(iso).slice(0, 10)}T00:00:00`);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((d - today) / DAY);
+}
+
+function shortDay(n) {
+  if (n === 0) return 'today';
+  if (n === 1) return 'tomorrow';
+  if (n > 0) return `in ${n}d`;
+  return `${-n}d ago`;
+}
+
+function relTime(ms) {
+  const d = Math.round((Date.now() - ms) / DAY);
+  if (d <= 0) return 'today';
+  if (d === 1) return 'yesterday';
+  if (d < 30) return `${d}d ago`;
+  if (d < 365) return `${Math.round(d / 30)}mo ago`;
+  return `${Math.round(d / 365)}y ago`;
+}
+
+/** Module short-name out of a spine title like "… (SaD + AN)". */
+function examShort(title) {
+  const m = /\(([^)]{1,24})\)/.exec(title || '');
+  return m ? m[1] : String(title || '').split(/[—–-]/)[0].trim().slice(0, 22);
+}
 
 /* ------------------------------------------------------------- modals */
 
@@ -32,6 +82,7 @@ class CaptureModal extends Modal {
   }
   onOpen() {
     const { contentEl } = this;
+    contentEl.addClass('los-modal');
     contentEl.createEl('h3', { text: 'Capture to inbox' });
     contentEl.createEl('p', {
       text: 'Lands in work/inbox/ — no naming, no filing. The operator routes it.',
@@ -44,12 +95,23 @@ class CaptureModal extends Modal {
     ta.style.width = '100%';
     ta.placeholder = 'The thought, link, fragment…';
     ta.addEventListener('input', () => { this.bodyText = ta.value; });
+    ta.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        this.close();
+        this.onSubmit(this.titleText, this.bodyText);
+      }
+    });
     new Setting(contentEl)
       .addButton((b) => b.setButtonText('Capture').setCta().onClick(() => {
         this.close();
         this.onSubmit(this.titleText, this.bodyText);
       }))
       .addButton((b) => b.setButtonText('Cancel').onClick(() => this.close()));
+    contentEl.createEl('p', {
+      text: '⌘/Ctrl + Enter to capture.',
+      cls: 'setting-item-description',
+    });
     window.setTimeout(() => ta.focus(), 20);
   }
   onClose() { this.contentEl.empty(); }
@@ -60,8 +122,12 @@ class StatusModal extends Modal {
   onOpen() {
     const { contentEl } = this;
     const p = this.payload;
+    contentEl.addClass('los-modal');
     contentEl.createEl('h3', { text: 'LearningOS status' });
-    if (!p) { contentEl.createEl('p', { text: 'status --json failed — see notice.' }); return; }
+    if (!p) {
+      contentEl.createEl('p', { text: 'status --json failed — see notice.' });
+      return;
+    }
     const c = p.counts || {};
     const v = p.validation || {};
     const lines = [
@@ -74,7 +140,9 @@ class StatusModal extends Modal {
     if (Array.isArray(p.exam_spine) && p.exam_spine.length) {
       contentEl.createEl('h4', { text: 'Exam spine' });
       for (const e of p.exam_spine) {
-        contentEl.createEl('p', { text: `${e.date} — ${e.title} (Termin ${e.termin})` });
+        contentEl.createEl('p', {
+          text: `${e.date} — ${e.title} (Termin ${e.termin})`,
+        });
       }
     }
     contentEl.createEl('p', {
@@ -98,10 +166,6 @@ class DashboardView extends ItemView {
 
   async onOpen() { await this.render(); }
   onClose() { return Promise.resolve(); }
-
-  daysUntil(iso) {
-    return Math.ceil((new Date(iso) - new Date()) / 86400000);
-  }
 
   openPath(p) {
     const f = this.app.vault.getAbstractFileByPath(p);
@@ -131,10 +195,13 @@ class DashboardView extends ItemView {
         status: String(fm.status || ''),
         standing: !!fm.standing,
         deadline: fm.deadline ? String(fm.deadline) : '',
+        mtime: f.stat.mtime,
         next,
       });
     }
-    out.sort((a, b) => (a.standing - b.standing) || a.id.localeCompare(b.id));
+    const rank = (w) => (w.status === 'active' ? 0 : w.status === 'blocked' ? 2 : 1)
+      + (w.standing ? 0.5 : 0);
+    out.sort((a, b) => (rank(a) - rank(b)) || (b.mtime - a.mtime));
     return out;
   }
 
@@ -145,7 +212,13 @@ class DashboardView extends ItemView {
       .slice(0, n)
       .map((f) => {
         const fm = (this.app.metadataCache.getFileCache(f) || {}).frontmatter || {};
-        return { file: f, title: fm.title || f.basename, state: fm.state || '', mtime: f.stat.mtime };
+        return {
+          file: f,
+          title: fm.title || f.basename,
+          state: fm.state || '',
+          domain: (f.parent && f.parent.name) || '',
+          mtime: f.stat.mtime,
+        };
       });
   }
 
@@ -155,122 +228,255 @@ class DashboardView extends ItemView {
     return folder.children.filter((c) => !c.name.startsWith('.')).length;
   }
 
+  /* -------------------------------------------------------- fragments */
+
+  renderHeader(el) {
+    const plugin = this.plugin;
+    const head = el.createDiv({ cls: 'los-head' });
+    const title = head.createDiv({ cls: 'los-title' });
+    title.createEl('h1', { text: 'LearningOS' });
+    title.createDiv({
+      cls: 'los-subtitle',
+      text: new Date().toLocaleDateString(undefined, {
+        weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+      }),
+    });
+    const actions = head.createDiv({ cls: 'los-actions' });
+    const btn = (label, icon, cta, fn) => {
+      const b = actions.createEl('button', { cls: 'los-btn' });
+      const ic = b.createSpan({ cls: 'los-btn-icon' });
+      try { setIcon(ic, icon); } catch (e) { ic.remove(); }
+      b.createSpan({ text: label });
+      if (cta) b.addClass('mod-cta');
+      b.addEventListener('click', fn);
+    };
+    btn('Capture', 'inbox', true, () => plugin.capture());
+    btn('Rebuild', 'refresh-cw', false, () => plugin.rebuild(() => this.render()));
+    btn('Validate', 'shield-check', false, () => plugin.validateRepo());
+    btn('Refresh', 'rotate-cw', false, () => plugin.refreshStatus(true));
+  }
+
+  renderBanner(el, payload) {
+    const v = payload && payload.validation;
+    const banner = el.createDiv({ cls: 'los-banner' });
+    if (!payload) {
+      banner.addClass('los-warn');
+      banner.setText('CLI unavailable — vault views still shown. Fix: `make setup` in the repository.');
+      return;
+    }
+    if (v && v.ok) {
+      banner.addClass('los-ok');
+      banner.setText('validation OK · 0 errors, 0 warnings');
+      return;
+    }
+    if (v) {
+      banner.addClass('los-warn', 'is-clickable');
+      banner.setText(`validation: ${v.errors} error(s), ${v.warnings} warning(s) — open report`);
+      banner.addEventListener('click',
+        () => this.openPath('generated/reports/validation-report.md'));
+    }
+  }
+
+  renderHero(el, spine) {
+    if (!spine.length) return;
+    const upcoming = spine
+      .map((e) => ({ ...e, days: daysUntil(e.date) }))
+      .sort((a, b) => a.days - b.days);
+    const next = upcoming.find((e) => e.days >= 0) || upcoming[upcoming.length - 1];
+
+    const hero = el.createDiv({ cls: 'los-hero is-clickable' });
+    hero.addEventListener('click', () => this.openPath('generated/coordination-view.md'));
+    const left = hero.createDiv({ cls: 'los-hero-main' });
+    left.createDiv({ cls: 'los-hero-label', text: 'Next exam' });
+    left.createDiv({ cls: 'los-hero-name', text: examShort(next.title) });
+    left.createDiv({
+      cls: 'los-hero-sub',
+      text: `${next.date} · Termin ${next.termin} · ${next.title}`,
+    });
+    const right = hero.createDiv({ cls: 'los-hero-count' });
+    right.createDiv({
+      cls: 'los-hero-days',
+      text: next.days >= 0 ? String(next.days) : String(-next.days),
+    });
+    right.createDiv({
+      cls: 'los-hero-unit',
+      text: next.days >= 0 ? (next.days === 1 ? 'day left' : 'days left') : 'days ago',
+    });
+
+    const rest = upcoming.filter((e) => e !== next);
+    if (!rest.length) return;
+    const tiles = el.createDiv({ cls: 'los-tiles' });
+    for (const e of rest) {
+      const t = tiles.createDiv({ cls: 'los-tile is-clickable' });
+      if (e.days < 0) t.addClass('los-dim');
+      t.createDiv({ cls: 'los-tile-days', text: shortDay(e.days) });
+      t.createDiv({ cls: 'los-tile-name', text: examShort(e.title) });
+      t.createDiv({ cls: 'los-tile-sub', text: `${e.date} · Termin ${e.termin}` });
+      t.addEventListener('click', () => this.openPath('generated/coordination-view.md'));
+    }
+  }
+
+  renderStats(el, payload) {
+    const c = (payload && payload.counts) || {};
+    const a = (payload && payload.adoption) || {};
+    const strip = el.createDiv({ cls: 'los-stats' });
+    const stat = (value, label, onClick) => {
+      const s = strip.createDiv({ cls: 'los-stat' });
+      s.createDiv({ cls: 'los-stat-value', text: String(value) });
+      s.createDiv({ cls: 'los-stat-label', text: label });
+      if (onClick) {
+        s.addClass('is-clickable');
+        s.addEventListener('click', onClick);
+      }
+    };
+    const inbox = this.folderCount(INBOX);
+    const garden = this.folderCount('knowledge/garden');
+    stat(c.notes != null ? c.notes : '—', 'notes',
+      () => this.openPath('bases/notes.base'));
+    stat(c.concepts != null ? c.concepts : '—', 'concepts',
+      () => this.openPath('generated/concept-index.md'));
+    stat(c.sources != null ? c.sources : '—', 'sources',
+      () => this.openPath('generated/source-index.md'));
+    stat(inbox, 'in inbox');
+    stat(garden, 'gestating', () => this.openPath('bases/garden.base'));
+    if (a.notes_reviewed != null && c.notes) {
+      stat(`${Math.round((a.notes_reviewed / c.notes) * 100)}%`, 'reviewed');
+    }
+  }
+
+  renderWorkspaces(col, cards) {
+    col.createEl('h3', { text: 'Continue where I stopped' });
+    if (!cards.length) {
+      col.createDiv({ cls: 'los-empty', text: 'No active workspaces.' });
+      return;
+    }
+    const grid = col.createDiv({ cls: 'los-grid' });
+    for (const w of cards) {
+      const c = grid.createDiv({ cls: `los-card is-clickable los-s-${w.status || 'none'}` });
+      if (w.status !== 'active') c.addClass('los-dim');
+      const top = c.createDiv({ cls: 'los-card-top' });
+      top.createSpan({ cls: 'los-card-title', text: w.title });
+      const badges = c.createDiv({ cls: 'los-badges' });
+      if (w.status) badges.createSpan({ cls: `los-badge los-b-${w.status}`, text: w.status });
+      if (w.standing) badges.createSpan({ cls: 'los-badge', text: 'standing' });
+      if (w.deadline) {
+        badges.createSpan({
+          cls: 'los-badge',
+          text: `due ${w.deadline} · ${shortDay(daysUntil(w.deadline))}`,
+        });
+      }
+      if (w.next) c.createDiv({ cls: 'los-card-next', text: w.next });
+      c.createDiv({ cls: 'los-card-foot', text: `touched ${relTime(w.mtime)}` });
+      c.addEventListener('click', () => this.app.workspace.getLeaf(false).openFile(w.file));
+    }
+  }
+
+  renderRail(col) {
+    col.createEl('h3', { text: 'Open' });
+    const links = col.createDiv({ cls: 'los-links' });
+    const link = (label, icon, p) => {
+      const li = links.createDiv({ cls: 'los-link is-clickable' });
+      const ic = li.createSpan({ cls: 'los-link-icon' });
+      try { setIcon(ic, icon); } catch (e) { ic.remove(); }
+      li.createSpan({ text: label });
+      li.addEventListener('click', () => this.openPath(p));
+    };
+    link('Note shelves', 'library', 'bases/notes.base');
+    link('Workspaces', 'briefcase', 'bases/workspaces.base');
+    link('Garden', 'sprout', 'bases/garden.base');
+    link('Concept canvas', 'network', CANVAS);
+    link('Coordination', 'calendar-days', 'generated/coordination-view.md');
+    link('Domain atlas', 'map', 'generated/domain-atlas.md');
+    link('Health report', 'activity', 'generated/reports/health.md');
+    link('Reading room', 'book-open', READING_ROOM);
+  }
+
+  renderRecent(col) {
+    col.createEl('h3', { text: 'Recently changed notes' });
+    const recent = this.recentNotes(8);
+    if (!recent.length) {
+      col.createDiv({ cls: 'los-empty', text: 'No notes under knowledge/notes/ yet.' });
+      return;
+    }
+    const list = col.createDiv({ cls: 'los-rows' });
+    for (const r of recent) {
+      const row = list.createDiv({ cls: 'los-row is-clickable' });
+      row.createSpan({ cls: 'los-row-title', text: r.title });
+      const meta = row.createSpan({ cls: 'los-row-meta' });
+      if (r.domain) meta.createSpan({ cls: 'los-badge', text: r.domain });
+      if (r.state) meta.createSpan({ cls: 'los-badge', text: String(r.state) });
+      meta.createSpan({ cls: 'los-row-time', text: relTime(r.mtime) });
+      row.addEventListener('click', () => this.app.workspace.getLeaf(false).openFile(r.file));
+    }
+  }
+
+  /* ------------------------------------------------------------ render */
+
   async render() {
     const el = this.contentEl;
     el.empty();
     el.addClass('los-dash');
-    const plugin = this.plugin;
-    const payload = plugin.lastStatus;
+    const payload = this.plugin.lastStatus;
 
-    /* header + actions */
-    const head = el.createDiv({ cls: 'los-head' });
-    head.createEl('h2', { text: 'LearningOS' });
-    const actions = head.createDiv({ cls: 'los-actions' });
-    const btn = (label, cta, fn) => {
-      const b = actions.createEl('button', { text: label });
-      if (cta) b.addClass('mod-cta');
-      b.addEventListener('click', fn);
-    };
-    btn('Capture', true, () => plugin.capture());
-    btn('Rebuild views', false, () => plugin.rebuild(() => this.render()));
-    btn('Validate', false, () => plugin.validateRepo());
-    btn('Refresh', false, () => plugin.refreshStatus(true));
+    this.renderHeader(el);
+    this.renderBanner(el, payload);
+    this.renderHero(el, (payload && payload.exam_spine) || []);
+    this.renderStats(el, payload);
 
-    /* validation banner */
-    const v = payload && payload.validation;
-    const banner = el.createDiv({ cls: 'los-banner' });
-    if (!payload) {
-      banner.setText('CLI status unavailable — vault views still shown. Fix: make setup in the repository.');
-      banner.addClass('los-warn');
-    } else if (v && v.ok) {
-      banner.setText('validation OK · 0 errors, 0 warnings');
-      banner.addClass('los-ok');
-    } else if (v) {
-      banner.setText(`validation: ${v.errors} error(s), ${v.warnings} warning(s) — see generated/reports/validation-report.md`);
-      banner.addClass('los-warn');
-      banner.style.cursor = 'pointer';
-      banner.addEventListener('click', () => this.openPath('generated/reports/validation-report.md'));
-    }
-
-    /* exam tiles */
-    const spine = (payload && payload.exam_spine) || [];
-    if (spine.length) {
-      const tiles = el.createDiv({ cls: 'los-tiles' });
-      for (const e of spine) {
-        const t = tiles.createDiv({ cls: 'los-tile' });
-        const d = this.daysUntil(e.date);
-        t.createDiv({ cls: 'los-tile-days', text: d >= 0 ? `${d}d` : `${-d}d ago` });
-        const m = /\(([A-Za-z0-9+ ]+)\)/.exec(e.title || '');
-        t.createDiv({ cls: 'los-tile-name', text: m ? m[1] : e.title });
-        t.createDiv({ cls: 'los-tile-sub', text: `${e.date} · Termin ${e.termin}` });
-        t.addEventListener('click', () => this.openPath('generated/coordination-view.md'));
-      }
-    }
-
-    /* two columns: workspaces | right rail */
     const cols = el.createDiv({ cls: 'los-cols' });
-    const left = cols.createDiv({ cls: 'los-col-main' });
-    const right = cols.createDiv({ cls: 'los-col-side' });
+    const main = cols.createDiv({ cls: 'los-col-main' });
+    const side = cols.createDiv({ cls: 'los-col-side' });
 
-    left.createEl('h3', { text: 'Continue where I stopped' });
-    const cards = await this.workspaceCards();
-    if (!cards.length) left.createEl('p', { text: '(no active workspaces)' });
-    for (const w of cards) {
-      const c = left.createDiv({ cls: 'los-card' + (w.status !== 'active' ? ' los-dim' : '') });
-      const top = c.createDiv({ cls: 'los-card-top' });
-      top.createSpan({ cls: 'los-card-title', text: w.title });
-      const badges = top.createSpan({ cls: 'los-badges' });
-      badges.createSpan({ cls: 'los-badge', text: w.status });
-      if (w.standing) badges.createSpan({ cls: 'los-badge', text: 'standing' });
-      if (w.deadline) badges.createSpan({ cls: 'los-badge', text: `due ${w.deadline}` });
-      if (w.next) c.createDiv({ cls: 'los-card-next', text: `→ ${w.next}` });
-      c.addEventListener('click', () => this.app.workspace.getLeaf(false).openFile(w.file));
-    }
-
-    right.createEl('h3', { text: 'Queues' });
-    const q = right.createEl('ul', { cls: 'los-list' });
-    const inbox = this.folderCount(INBOX);
-    const garden = this.folderCount('knowledge/garden');
-    q.createEl('li', { text: `inbox: ${inbox} — operator routes` });
-    const gLi = q.createEl('li', { text: `garden: ${garden} gestating` });
-    gLi.style.cursor = 'pointer';
-    gLi.addEventListener('click', () => this.openPath('bases/garden.base'));
-    if (payload) {
-      const a = payload.adoption || {};
-      const n = (payload.counts || {}).notes;
-      q.createEl('li', { text: `reviewed ${a.notes_reviewed}/${n} · evidence ${a.notes_with_evidence}/${n}` });
-    }
-
-    right.createEl('h3', { text: 'Open' });
-    const links = right.createEl('ul', { cls: 'los-list' });
-    const link = (label, p) => {
-      const li = links.createEl('li', { text: label });
-      li.style.cursor = 'pointer';
-      li.addEventListener('click', () => this.openPath(p));
-    };
-    link('Note shelves', 'bases/notes.base');
-    link('Workspace shelf', 'bases/workspaces.base');
-    link('Concept canvas', CANVAS);
-    link('Coordination view', 'generated/coordination-view.md');
-    link('Domain atlas', 'generated/domain-atlas.md');
-    link('Health report', 'generated/reports/health.md');
-    link('Reading room (plain-text home)', READING_ROOM);
-
-    left.createEl('h3', { text: 'Recently changed notes' });
-    const rec = left.createEl('ul', { cls: 'los-list' });
-    for (const r of this.recentNotes(8)) {
-      const when = window.moment ? window.moment(r.mtime).format('YYYY-MM-DD') :
-        new Date(r.mtime).toISOString().slice(0, 10);
-      const li = rec.createEl('li', { text: `${when} · ${r.title}${r.state ? ` · ${r.state}` : ''}` });
-      li.style.cursor = 'pointer';
-      li.addEventListener('click', () => this.app.workspace.getLeaf(false).openFile(r.file));
-    }
+    this.renderWorkspaces(main, await this.workspaceCards());
+    this.renderRecent(main);
+    this.renderRail(side);
 
     el.createDiv({
       cls: 'los-foot',
-      text: 'Presentation only — facts live in records/ + work/, knowledge in knowledge/. ' +
-        'Views rebuild on every commit; buttons here are conveniences, never duties (WORKFLOWS §25).',
+      text: 'Presentation only — facts live in records/ + work/, knowledge in knowledge/. '
+        + 'Views rebuild on every commit; buttons here are conveniences, never duties (WORKFLOWS §25).',
     });
+  }
+}
+
+/* ------------------------------------------------------------ settings */
+
+class LearningOSSettingTab extends PluginSettingTab {
+  constructor(app, plugin) { super(app, plugin); this.plugin = plugin; }
+  display() {
+    const { containerEl } = this;
+    containerEl.empty();
+    containerEl.createEl('h3', { text: 'LearningOS UI' });
+    containerEl.createEl('p', {
+      cls: 'setting-item-description',
+      text: 'Presentation only. Canonical data, validation and rules live in the '
+        + 'LearningOS core (ADR-006); nothing here changes meaning.',
+    });
+
+    const toggle = (name, desc, key, after) => {
+      new Setting(containerEl).setName(name).setDesc(desc).addToggle((t) =>
+        t.setValue(this.plugin.settings[key]).onChange(async (v) => {
+          this.plugin.settings[key] = v;
+          await this.plugin.saveSettings();
+          if (after) after(v);
+        }));
+    };
+
+    toggle('Open dashboard on startup',
+      'Make the dashboard the home view every time the vault opens.',
+      'openOnStartup');
+    toggle('Pin the dashboard tab',
+      'Home stays put — links open in new tabs instead of replacing it.',
+      'pinDashboard', () => this.plugin.applyPin());
+    toggle('Collapse sidebars on startup',
+      'Opens as an application rather than a file browser. Both sidebars stay one click away.',
+      'collapseSidebars');
+    toggle('App chrome',
+      'Adds LearningOS styling to the window (home-tab accent, calmer chrome).',
+      'appChrome', () => this.plugin.applyChrome());
+    toggle('Live refresh',
+      'Re-render the dashboard when vault files change.',
+      'liveRefresh');
   }
 }
 
@@ -299,11 +505,46 @@ module.exports = class LearningOSUI extends Plugin {
       (err, stdout, stderr) => cb(err, String(stdout || ''), String(stderr || '')));
   }
 
-  async openDashboard() {
-    const existing = this.app.workspace.getLeavesOfType(VIEW_TYPE);
-    if (existing.length) { this.app.workspace.revealLeaf(existing[0]); return; }
-    const leaf = this.app.workspace.getLeaf(false);
-    await leaf.setViewState({ type: VIEW_TYPE, active: true });
+  async loadSettings() {
+    this.settings = Object.assign({}, DEFAULTS, await this.loadData());
+  }
+  async saveSettings() { await this.saveData(this.settings); }
+
+  /* ------------------------------------------------------ app chrome */
+
+  applyChrome() {
+    document.body.classList.toggle('los-app', !!this.settings.appChrome);
+  }
+
+  applyPin() {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_TYPE)) {
+      if (typeof leaf.setPinned === 'function') leaf.setPinned(!!this.settings.pinDashboard);
+    }
+  }
+
+  collapseSidebars() {
+    const w = this.app.workspace;
+    try {
+      if (w.leftSplit && typeof w.leftSplit.collapse === 'function') w.leftSplit.collapse();
+      if (w.rightSplit && typeof w.rightSplit.collapse === 'function') w.rightSplit.collapse();
+    } catch (e) { /* layout not ready — harmless */ }
+  }
+
+  /** The home view. `startup` opens a NEW tab so a restored file is kept. */
+  async openDashboard(opts) {
+    const startup = !!(opts && opts.startup);
+    const w = this.app.workspace;
+    let leaf = w.getLeavesOfType(VIEW_TYPE)[0];
+    if (!leaf) {
+      leaf = w.getLeaf(startup ? true : false);
+      await leaf.setViewState({ type: VIEW_TYPE, active: true });
+    }
+    if (this.settings.pinDashboard && typeof leaf.setPinned === 'function') {
+      leaf.setPinned(true);
+    }
+    w.revealLeaf(leaf);
+    w.setActiveLeaf(leaf, { focus: true });
+    return leaf;
   }
 
   rerenderDashboards() {
@@ -312,11 +553,20 @@ module.exports = class LearningOSUI extends Plugin {
     }
   }
 
+  scheduleRerender() {
+    if (!this.settings.liveRefresh) return;
+    window.clearTimeout(this._rerenderTimer);
+    this._rerenderTimer = window.setTimeout(() => this.rerenderDashboards(),
+      RERENDER_DEBOUNCE_MS);
+  }
+
   async openReadingRoom() {
     const f = this.app.vault.getAbstractFileByPath(READING_ROOM);
     if (!f) { new Notice('reading-room.md missing — run Rebuild views'); return; }
     await this.app.workspace.getLeaf(false).openFile(f);
   }
+
+  /* --------------------------------------------------------- actions */
 
   capture() {
     new CaptureModal(this.app, async (title, body) => {
@@ -341,7 +591,10 @@ module.exports = class LearningOSUI extends Plugin {
   rebuild(done) {
     new Notice('LearningOS: rebuilding views…');
     this.runLos(['generate'], (err, stdout, stderr) => {
-      if (err) { new Notice(`Rebuild FAILED:\n${(stderr || err.message).slice(0, 300)}`, 10000); return; }
+      if (err) {
+        new Notice(`Rebuild FAILED:\n${(stderr || err.message).slice(0, 300)}`, 10000);
+        return;
+      }
       new Notice('Views rebuilt ✓');
       this.refreshStatus();
       if (typeof done === 'function') done();
@@ -352,7 +605,11 @@ module.exports = class LearningOSUI extends Plugin {
     new Notice('LearningOS: validating…');
     this.runLos(['validate'], (err, stdout, stderr) => {
       const tail = stdout.trim().split('\n').pop() || '';
-      if (err) { new Notice(`Validation: ${tail || stderr.slice(0, 200)}`, 10000); return; }
+      if (err) {
+        new Notice(`Validation: ${tail || stderr.slice(0, 200)}`, 10000);
+        this.refreshStatus();
+        return;
+      }
       new Notice(`Validation: ${tail}`);
       this.refreshStatus();
     });
@@ -386,11 +643,10 @@ module.exports = class LearningOSUI extends Plugin {
           const ok = p.validation && p.validation.ok;
           let exam = '';
           if (Array.isArray(p.exam_spine) && p.exam_spine.length) {
-            const e = p.exam_spine[0];
-            const days = Math.ceil((new Date(e.date) - new Date()) / 86400000);
-            const m = /\(([A-Za-z0-9+]+)\)/.exec(e.title || '');
-            const short = m ? m[1] : String(e.title || '').slice(0, 10);
-            exam = ` · ${short} ${days >= 0 ? `in ${days}d` : `${-days}d ago`}`;
+            const up = p.exam_spine.map((e) => ({ ...e, days: daysUntil(e.date) }))
+              .sort((a, b) => a.days - b.days);
+            const e = up.find((x) => x.days >= 0) || up[up.length - 1];
+            exam = ` · ${examShort(e.title)} ${shortDay(e.days)}`;
           }
           const val = ok ? '✓' : `✗ ${p.validation.errors}E/${p.validation.warnings}W`;
           this.statusEl.setText(`LOS ${val}${exam}`);
@@ -402,9 +658,14 @@ module.exports = class LearningOSUI extends Plugin {
     });
   }
 
-  onload() {
+  /* -------------------------------------------------------- lifecycle */
+
+  async onload() {
     this.lastStatus = null;
+    await this.loadSettings();
+
     this.registerView(VIEW_TYPE, (leaf) => new DashboardView(leaf, this));
+    this.addSettingTab(new LearningOSSettingTab(this.app, this));
 
     this.addRibbonIcon('layout-dashboard', 'LearningOS: dashboard', () => this.openDashboard());
     this.addRibbonIcon('inbox', 'LearningOS: capture to inbox', () => this.capture());
@@ -416,25 +677,46 @@ module.exports = class LearningOSUI extends Plugin {
     this.addCommand({ id: 'rebuild-views', name: 'Rebuild generated views', callback: () => this.rebuild() });
     this.addCommand({ id: 'validate', name: 'Validate repository', callback: () => this.validateRepo() });
     this.addCommand({ id: 'status', name: 'Show status', callback: () => this.showStatus() });
-    this.addCommand({ id: 'open-concept-canvas', name: 'Open concept canvas', callback: () => {
-      const f = this.app.vault.getAbstractFileByPath(CANVAS);
-      if (!f) { new Notice('concept-canvas.canvas missing — run Rebuild views'); return; }
-      this.app.workspace.getLeaf(false).openFile(f);
-    } });
+    this.addCommand({
+      id: 'open-concept-canvas',
+      name: 'Open concept canvas',
+      callback: () => {
+        const f = this.app.vault.getAbstractFileByPath(CANVAS);
+        if (!f) { new Notice('concept-canvas.canvas missing — run Rebuild views'); return; }
+        this.app.workspace.getLeaf(false).openFile(f);
+      },
+    });
 
     this.statusEl = this.addStatusBarItem();
     this.statusEl.setText('LOS …');
     this.statusEl.style.cursor = 'pointer';
     this.registerDomEvent(this.statusEl, 'click', () => this.showStatus());
 
-    this.app.workspace.onLayoutReady(() => {
+    this.applyChrome();
+
+    /* Live-ish dashboard: vault edits under work/ and knowledge/ re-render. */
+    const touched = (f) => f && typeof f.path === 'string'
+      && (f.path.startsWith('work/') || f.path.startsWith('knowledge/'));
+    for (const ev of ['modify', 'create', 'delete', 'rename']) {
+      this.registerEvent(this.app.vault.on(ev, (f) => {
+        if (touched(f)) this.scheduleRerender();
+      }));
+    }
+
+    this.app.workspace.onLayoutReady(async () => {
       this.refreshStatus();
       this.registerInterval(window.setInterval(() => this.refreshStatus(), STATUS_REFRESH_MS));
-      if (!this.app.workspace.getActiveFile()) this.openDashboard();
+      /* v0.2 gated this on "no active file" — Obsidian always restores one, so
+       * the dashboard never appeared and the vault looked like raw markdown. */
+      if (this.settings.openOnStartup) await this.openDashboard({ startup: true });
+      else this.applyPin();
+      if (this.settings.collapseSidebars) this.collapseSidebars();
     });
   }
 
   onunload() {
+    window.clearTimeout(this._rerenderTimer);
+    document.body.classList.remove('los-app');
     this.app.workspace.detachLeavesOfType(VIEW_TYPE);
   }
 };

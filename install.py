@@ -15,6 +15,9 @@ What it does (and nothing else):
      /bases/ and /.trash/ — the installer must not touch core-tracked files.
   6. Runs `los.py status` as a smoke test of the CLI gateway.
 
+The UI test suite runs FIRST and a failure aborts the install (CLAUDE.md hard
+rule 8). `--skip-tests` exists for machines without Node.
+
 Boundary (core ADR-006): everything written lands at gitignored paths; the
 core repository's tracked tree is never modified from here.
 """
@@ -96,6 +99,25 @@ def verify_gitignore(vault: Path) -> None:
         log(".gitignore covers .obsidian/, /bases/, /.trash/ ✓")
 
 
+def run_ui_tests() -> None:
+    """Hard rule 8: UI tests run before installation, failures abort."""
+    suite = HERE / "tests" / "test-dashboard.js"
+    if not suite.is_file():
+        log("WARNING: tests/test-dashboard.js missing — installing untested")
+        return
+    if shutil.which("node") is None:
+        log("WARNING: node not found — skipping UI tests (install with --skip-tests "
+            "to silence this)")
+        return
+    proc = subprocess.run(["node", str(suite)], cwd=HERE,
+                          capture_output=True, text=True, timeout=120)
+    if proc.returncode != 0:
+        print(proc.stdout)
+        sys.exit("install: UI tests FAILED — nothing was written (hard rule 8)")
+    passed = proc.stdout.count("  ok   ")
+    log(f"UI tests ✓  ({passed} checks, fixture vault)")
+
+
 def smoke_test_cli(vault: Path) -> None:
     los = vault / "tools" / "los.py"
     if not los.is_file():
@@ -118,7 +140,12 @@ def main() -> int:
     ap.add_argument("--vault", default=None,
                     help="vault root (default: ../repository next to obsidian-ui/)")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--skip-tests", action="store_true",
+                    help="skip the Node UI test suite (not recommended)")
     args = ap.parse_args()
+
+    if not args.skip_tests:
+        run_ui_tests()
 
     vault = Path(args.vault).resolve() if args.vault \
         else (HERE.parent / "repository").resolve()
@@ -137,8 +164,11 @@ def main() -> int:
         smoke_test_cli(vault)
 
     log("done. Open the vault in Obsidian; if it asks, turn OFF Restricted "
-        "mode to activate the LearningOS UI plugin. The dashboard opens on "
-        "startup (generated/reading-room.md stays the plain-text fallback).")
+        "mode to activate the LearningOS UI plugin. If Obsidian is already "
+        "running, reload it (Cmd+R) to pick up a new plugin build. The "
+        "dashboard is the home view on every launch — behaviour toggles live "
+        "in Settings → LearningOS UI (generated/reading-room.md stays the "
+        "plain-text fallback for other editors).")
     return 0
 
 

@@ -32,12 +32,19 @@ here.
 7. Ship the vault safety configuration with the installer (core gitignores
    `.obsidian/`): link auto-update OFF, no drag-in attachments,
    `generated/` and `archive/` excluded from recency surfaces.
-8. Run UI tests before installation; installing into the real vault requires
-   Aram's explicit confirmation.
+8. Run UI tests before installation (`node tests/test-dashboard.js`);
+   `install.py` runs them and aborts on failure. Installing into the real
+   vault requires Aram's explicit confirmation.
 9. The core repository is read-only territory for this project — never
    commit, edit, or restructure anything under `../repository/` from here.
 10. Job/ quarantine applies unchanged (core CLAUDE.md §13): never read, index,
     or surface `Job/` content in any view.
+11. This repository is **local-only** (Aram, 2026-08-03): its own git history,
+    no GitHub remote, not folded into the core repo. Commit freely here; never
+    add a remote or push without asking.
+12. Every app-like behaviour (startup view, pinning, sidebars, chrome) must be
+    a setting with a sane default. The interface may be opinionated; it may
+    not be unescapable.
 
 ## Anti-goals (from core ADR-006 and the 2026-07-16 external review)
 
