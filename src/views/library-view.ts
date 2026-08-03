@@ -5,14 +5,28 @@ export class LibraryView extends ItemView {
   getViewType() { return VIEW_LIBRARY; }
   getDisplayText() { return 'LearningOS · Library'; }
   async setState(state) {
-    this.type = state?.recordType || this.type;
-    this.selectedId = state?.recordId || this.selectedId;
+    const hasType = Object.prototype.hasOwnProperty.call(state || {}, 'recordType');
+    const hasRecord = Object.prototype.hasOwnProperty.call(state || {}, 'recordId');
+    const hasQuery = Object.prototype.hasOwnProperty.call(state || {}, 'query');
+    if (hasType && state.recordType) this.type = state.recordType;
+    if (hasRecord) {
+      this.selectedId = state.recordId || null;
+      const record = this.plugin.store.get(this.selectedId);
+      if (!hasType && record?.type) this.type = record.type;
+      if (this.selectedId) this.query = '';
+    }
+    if (hasQuery) this.query = state.query || '';
     this.render();
   }
-  getState() { return { recordType: this.type, recordId: this.selectedId }; }
+  getState() { return { recordType: this.type, recordId: this.selectedId, query: this.query }; }
   async onOpen() {
-    this.type = this.leaf.state?.recordType || this.type;
-    this.selectedId = this.leaf.state?.recordId || this.selectedId;
+    const state = this.leaf.state || {};
+    if (state.recordType) this.type = state.recordType;
+    if (state.recordId) {
+      this.selectedId = state.recordId;
+      this.type = state.recordType || this.plugin.store.get(state.recordId)?.type || this.type;
+      this.query = '';
+    } else if (Object.prototype.hasOwnProperty.call(state, 'query')) this.query = state.query || '';
     this.render();
   }
 
@@ -25,15 +39,26 @@ export class LibraryView extends ItemView {
       cls: 'los-search', attr: { type: 'search', placeholder: 'Search titles, IDs, aliases, authors…', 'aria-label': 'Library search' },
     });
     input.value = this.query;
-    input.addEventListener('input', (event) => { this.query = event.target?.value ?? input.value; this.render(); });
-    button(controls, 'Full-text / OCR search', () => this.plugin.openFullTextSearch(), 'quiet');
+    input.addEventListener('input', (event) => {
+      this.query = event.target?.value ?? input.value;
+      this.selectedId = null;
+      const position = input.selectionStart;
+      this.render();
+      const next = this.contentEl.querySelector('.los-search');
+      next?.focus();
+      if (position != null) next?.setSelectionRange(position, position);
+    });
+    button(controls, 'Full-text / OCR search', () => this.plugin.openFullTextSearch(this.query), 'quiet');
     for (const [value, label] of [['source', 'Sources'], ['note', 'Notes'], ['concept', 'Concepts'], ['workspace', 'Workspaces']]) {
-      button(controls, label, () => { this.type = value; this.selectedId = null; this.render(); },
+      const tab = button(controls, label, () => { this.type = value; this.selectedId = null; this.render(); },
         this.type === value ? 'cta' : 'quiet');
+      tab.setAttribute('aria-pressed', String(this.type === value));
     }
     const layout = root.createDiv({ cls: 'los-library-layout' });
     const list = layout.createDiv({ cls: 'los-library-list' });
     const rows = this.plugin.store.search(this.query, [this.type]);
+    if (this.selectedId && !rows.some((row) => row.id === this.selectedId)) this.selectedId = null;
+    if (!this.selectedId && rows.length) this.selectedId = rows[0].id;
     if (!rows.length) empty(list, 'No matching records', 'Try a title, an ID, or a German/English alias.');
     for (const record of rows) {
       const row = list.createEl('button', {
@@ -47,7 +72,7 @@ export class LibraryView extends ItemView {
       row.addEventListener('click', () => { this.selectedId = record.id; this.render(); });
     }
     this.detailEl = layout.createDiv({ cls: 'los-library-detail' });
-    this.renderDetail(this.plugin.store.get(this.selectedId) || rows[0]);
+    this.renderDetail(rows.find((row) => row.id === this.selectedId));
     viewFooter(root);
   }
 
@@ -60,9 +85,19 @@ export class LibraryView extends ItemView {
     if (record.summary) detail.createEl('p', { text: record.summary });
     const actions = detail.createDiv({ cls: 'los-actions' });
     if (record.url) button(actions, 'Open online', () => this.plugin.openResource({ url: record.url }), 'cta');
-    if (record.material_path) button(actions, 'Open local copy', () => this.plugin.openResource({ vault_path: record.material_path }), 'quiet');
-    if (record.path) button(actions, 'Open registry file', () => this.plugin.openVaultPath(record.path), 'quiet');
+    if (record.material_path) button(actions, 'Open local copy', () => this.plugin.openMaterialPath(record.material_path), 'quiet');
+    if (record.path) button(actions, record.type === 'note' ? 'Open note' : 'Open authored file',
+      () => this.plugin.openAuthoredPath(record.path), 'quiet');
     button(actions, 'Copy ID', () => this.plugin.copyText(record.id), 'quiet');
+
+    if (record.attachments?.length) {
+      const attachments = section(detail, 'Attachments', 'Open the original handwriting, image, or PDF.');
+      for (const attachment of record.attachments) {
+        const path = typeof attachment === 'string' ? attachment : attachment.path || attachment.vault_path;
+        const label = typeof attachment === 'string' ? attachment.split('/').pop() : attachment.label || path;
+        if (path) button(attachments, `Open ${label}`, () => this.plugin.openAuthoredPath(path), 'quiet');
+      }
+    }
 
     if (record.type === 'source') {
       const facts = section(detail, 'Source facts');

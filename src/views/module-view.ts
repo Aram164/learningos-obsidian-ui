@@ -2,9 +2,19 @@ export class ModuleView extends ItemView {
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.moduleId = null; this.componentId = null; }
   getViewType() { return VIEW_MODULE; }
   getDisplayText() { return 'LearningOS · Module'; }
-  async setState(state) { this.moduleId = state?.moduleId || this.moduleId; this.render(); }
-  getState() { return { moduleId: this.moduleId }; }
-  async onOpen() { this.moduleId = this.leaf.state?.moduleId || this.moduleId; this.render(); }
+  async setState(state) {
+    const nextModuleId = state?.moduleId || this.moduleId;
+    if (nextModuleId !== this.moduleId) this.componentId = null;
+    this.moduleId = nextModuleId;
+    if (Object.prototype.hasOwnProperty.call(state || {}, 'componentId')) this.componentId = state.componentId || null;
+    this.render();
+  }
+  getState() { return { moduleId: this.moduleId, componentId: this.componentId }; }
+  async onOpen() {
+    this.moduleId = this.leaf.state?.moduleId || this.moduleId;
+    this.componentId = this.leaf.state?.componentId || null;
+    this.render();
+  }
 
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-module-view');
@@ -17,15 +27,17 @@ export class ModuleView extends ItemView {
       if (value != null) facts.createDiv({ text: `${label}: ${value}` });
     }
     if (module.examination?.type) facts.createDiv({ text: `Examination: ${module.examination.type}` });
+    this.renderAcademicDates(root, module);
 
     if ((module.components || []).length) {
       const tabs = root.createDiv({ cls: 'los-tabs', attr: { role: 'tablist' } });
-      button(tabs, 'All components', () => { this.componentId = null; this.render(); },
+      const allTab = button(tabs, 'All components', () => this.selectComponent(null),
         this.componentId ? 'quiet' : 'cta');
+      allTab.setAttrs({ role: 'tab', 'aria-selected': String(!this.componentId) });
       for (const component of module.components) {
-        button(tabs, component.short_title || component.title, () => {
-          this.componentId = component.id; this.render();
-        }, this.componentId === component.id ? 'cta' : 'quiet');
+        const tab = button(tabs, component.short_title || component.title,
+          () => this.selectComponent(component.id), this.componentId === component.id ? 'cta' : 'quiet');
+        tab.setAttrs({ role: 'tab', 'aria-selected': String(this.componentId === component.id) });
       }
     }
 
@@ -44,8 +56,61 @@ export class ModuleView extends ItemView {
     const workspaceSection = section(root, 'Related workspaces');
     const workspaces = this.plugin.store.workspacesForModule(module.id);
     if (!workspaces.length) empty(workspaceSection, 'No active coordination workspace', 'The module/unit tree still owns study state.');
-    else for (const workspace of workspaces) chip(workspaceSection, workspace, (row) => this.plugin.openRecord(row));
+    else {
+      const grid = workspaceSection.createDiv({ cls: 'los-card-grid' });
+      for (const workspace of workspaces) workspaceCard(grid, this.plugin, workspace, module.id);
+    }
     viewFooter(root);
+  }
+
+  renderAcademicDates(root, module) {
+    const rows = (this.plugin.store.data.academic_deadlines || []).filter((row) =>
+      row.module_id === module.id || (row.modules || []).some((entry) => entry.module_id === module.id));
+    if (!rows.length) return;
+    rows.sort((a, b) => String(a.start_date || '').localeCompare(String(b.start_date || '')));
+    const wrap = section(root, 'Academic dates', 'Registration windows and exam sittings for this module.');
+    const today = new Date().toISOString().slice(0, 10);
+    const ahead = rows.filter((row) => (row.end_date || row.start_date) >= today);
+    const past = rows.filter((row) => (row.end_date || row.start_date) < today);
+    if (ahead.length) this.renderDeadlineRows(wrap, module, ahead);
+    else empty(wrap, 'No upcoming date recorded', 'Past dates remain available below.');
+    if (past.length) {
+      const history = wrap.createEl('details', { cls: 'los-deadline-history' });
+      history.createEl('summary', { text: `Past dates (${past.length})` });
+      this.renderDeadlineRows(history, module, past);
+    }
+  }
+
+  renderDeadlineRows(wrap, module, rows) {
+    const list = wrap.createDiv({ cls: 'los-deadline-list' });
+    for (const row of rows) {
+      const card = list.createDiv({ cls: `los-deadline-card los-deadline-${row.kind}` });
+      const date = row.end_date && row.end_date !== row.start_date
+        ? `${row.start_date} → ${row.end_date}` : row.start_date;
+      card.createDiv({ cls: 'los-deadline-date', text: date });
+      const copy = card.createDiv({ cls: 'los-deadline-copy' });
+      copy.createEl('strong', { text: row.label });
+      if (row.kind === 'registration-window') {
+        const entry = (row.modules || []).find((item) => item.module_id === module.id);
+        copy.createDiv({ cls: 'los-micro', text: module.title });
+        if (entry?.action) copy.createEl('p', { text: entry.action });
+      } else {
+        copy.createDiv({ text: row.title || module.title });
+        const facts = copy.createDiv({ cls: 'los-row' });
+        badge(facts, row.registration_state || 'unregistered', row.registration_state || 'needs-map');
+        if (row.time) facts.createSpan({ cls: 'los-micro', text: row.time });
+        if (row.notes) copy.createEl('p', { cls: 'los-micro', text: row.notes });
+      }
+    }
+  }
+
+  async selectComponent(componentId) {
+    this.componentId = componentId;
+    await this.leaf.setViewState({
+      type: VIEW_MODULE,
+      active: true,
+      state: { moduleId: this.moduleId, componentId: this.componentId },
+    });
   }
 
   renderSources(root, module) {

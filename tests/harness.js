@@ -40,8 +40,11 @@ class El {
   empty() { this.children = []; this.text = ''; return this; }
   addClass(...c) { c.forEach((x) => this.classes.add(x)); return this; }
   removeClass(...c) { c.forEach((x) => this.classes.delete(x)); return this; }
+  toggleClass(c, on) { this.classList.toggle(c, on); return this; }
   setText(t) { this.text = String(t); return this; }
   setAttr(k, v) { this.attrs[k] = v; return this; }
+  setAttrs(attrs) { Object.assign(this.attrs, attrs); return this; }
+  setAttribute(k, v) { return this.setAttr(k, v); }
   remove() { return this; }
   focus() { return this; }
   addEventListener(ev, fn) { (this.listeners[ev] ||= []).push(fn); }
@@ -160,10 +163,14 @@ function setIcon(el, name) { el.setAttr('data-icon', name); }
 const stub = {
   Plugin, PluginSettingTab, ItemView, Modal, SuggestModal, Notice, Setting, setIcon,
 };
+const electronStub = {
+  webUtils: { getPathForFile(file) { return file?.__path || ''; } },
+};
 
 const origLoad = Module._load;
 Module._load = function patched(request, ...rest) {
   if (request === 'obsidian') return stub;
+  if (request === 'electron') return electronStub;
   return origLoad.call(this, request, ...rest);
 };
 
@@ -277,10 +284,10 @@ function makeApp(vaultRoot) {
       }),
     },
     workspace: {
-      _leaves: leaves,
       activeFile: null,
       getActiveFile() { return this.activeFile; },
       getLeavesOfType(t) { return leaves.filter((l) => l.viewType === t); },
+      iterateAllLeaves(callback) { for (const leaf of [...leaves]) callback(leaf); },
       makeLeaf(newTab, side) {
         const leaf = {
           app,

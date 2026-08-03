@@ -1,6 +1,11 @@
 export class LearningOSUI extends Plugin {
   async onload() {
     this.settings = { ...DEFAULT_SETTINGS, ...(await this.loadData()) };
+    this.settings.uiDrafts ||= { stages: {}, selectedStages: {}, inbox: { title: '', text: '' } };
+    this.settings.uiDrafts.stages ||= {};
+    this.settings.uiDrafts.selectedStages ||= {};
+    this.settings.uiDrafts.inbox ||= { title: '', text: '' };
+    this.draftSaveTimer = null;
     for (const type of LEGACY_VIEW_TYPES) this.app.workspace.detachLeavesOfType(type);
     this.store = new ManifestStore(this.app);
     this.gateway = new GatewayClient(this);
@@ -36,14 +41,56 @@ export class LearningOSUI extends Plugin {
   }
 
   onunload() {
+    if (this.draftSaveTimer) clearTimeout(this.draftSaveTimer);
+    void this.saveData(this.settings);
     for (const type of [VIEW_HOME, VIEW_NAV, VIEW_PROGRAM, VIEW_MODULE, VIEW_UNIT,
       VIEW_LIBRARY, VIEW_SHELVING, VIEW_BOUNDARY]) this.app.workspace.detachLeavesOfType(type);
+  }
+
+  scheduleDraftSave() {
+    if (this.draftSaveTimer) clearTimeout(this.draftSaveTimer);
+    this.draftSaveTimer = setTimeout(() => {
+      this.draftSaveTimer = null;
+      void this.saveData(this.settings);
+    }, 250);
+  }
+
+  stageDraftKey(unitId, stageId) { return `${unitId}::${stageId}`; }
+  getStageDraft(unitId, stageId, savedText = '') {
+    const key = this.stageDraftKey(unitId, stageId);
+    const entry = this.settings.uiDrafts.stages[key];
+    return { text: entry?.text ?? savedText, dirty: entry != null && entry.text !== savedText };
+  }
+  setStageDraft(unitId, stageId, text, savedText = '') {
+    const key = this.stageDraftKey(unitId, stageId);
+    if (text === savedText) delete this.settings.uiDrafts.stages[key];
+    else this.settings.uiDrafts.stages[key] = { text };
+    this.scheduleDraftSave();
+  }
+  clearStageDraft(unitId, stageId) {
+    delete this.settings.uiDrafts.stages[this.stageDraftKey(unitId, stageId)];
+    this.scheduleDraftSave();
+  }
+  getSelectedStage(unitId) { return this.settings.uiDrafts.selectedStages[unitId] || null; }
+  setSelectedStage(unitId, stageId) {
+    if (stageId) this.settings.uiDrafts.selectedStages[unitId] = stageId;
+    else delete this.settings.uiDrafts.selectedStages[unitId];
+    this.scheduleDraftSave();
+  }
+  getInboxDraft() { return { ...this.settings.uiDrafts.inbox }; }
+  setInboxDraft(title, text) {
+    this.settings.uiDrafts.inbox = { title, text };
+    this.scheduleDraftSave();
+  }
+  clearInboxDraft() {
+    this.settings.uiDrafts.inbox = { title: '', text: '' };
+    this.scheduleDraftSave();
   }
 
   runLos(args, callback) {
     const base = this.app.vault.adapter.getBasePath();
     const bundled = nodePath.join(base, '.venv', 'bin', 'python');
-    const python = bundled;
+    const python = fs.existsSync(bundled) ? bundled : 'python3';
     const script = nodePath.join(base, 'tools', 'los.py');
     execFile(python, [script, ...args], { cwd: base, timeout: 180000, maxBuffer: 8 * 1024 * 1024 }, callback);
   }
@@ -51,7 +98,7 @@ export class LearningOSUI extends Plugin {
   async reloadStore() {
     const ok = await this.store.load();
     if (!ok) throw new Error(this.store.error);
-    for (const leaf of this.app.workspace._leaves || []) leaf.view?.render?.();
+    this.app.workspace.iterateAllLeaves((leaf) => leaf.view?.render?.());
   }
 
   async openView(type, state = {}, side = 'main', remember = true) {
@@ -74,17 +121,41 @@ export class LearningOSUI extends Plugin {
   }
   openProgram(programId) { return this.openView(VIEW_PROGRAM, { programId }); }
   openModule(moduleId) { return this.openView(VIEW_MODULE, { moduleId }); }
-  openUnit(unitId, stageId = null) { return this.openView(VIEW_UNIT, { unitId, stageId }); }
-  openLibrary(recordId = null, recordType = 'source') { return this.openView(VIEW_LIBRARY, { recordId, recordType }); }
+  openUnit(unitId, stageId = null) {
+    const selectedStage = stageId || this.getSelectedStage(unitId);
+    if (selectedStage) this.setSelectedStage(unitId, selectedStage);
+    return this.openView(VIEW_UNIT, { unitId, stageId: selectedStage });
+  }
+  openLibrary(recordId = undefined, recordType = undefined) {
+    const state = {};
+    if (recordId !== undefined) state.recordId = recordId;
+    if (recordType !== undefined) state.recordType = recordType;
+    return this.openView(VIEW_LIBRARY, state);
+  }
   openShelving(unitId = null) { return this.openView(VIEW_SHELVING, { unitId }); }
   openBoundary(boundaryId) { return this.openView(VIEW_BOUNDARY, { boundaryId }); }
   openResume() {
     const pointer = this.store.data?.resume_pointer;
     return pointer ? this.openUnit(pointer.unit_id, pointer.stage_id) : this.openHome();
   }
-  openFullTextSearch() {
+  openFullTextSearch(query = '') {
     const ok = this.app.commands?.executeCommandById?.('omnisearch:show-modal');
     if (!ok) new Notice('Omnisearch is unavailable; structural Library search still works.');
+    else if (query.trim()) {
+      let attempts = 0;
+      const transfer = () => {
+        const input = [...document.querySelectorAll('.prompt-input')]
+          .find((candidate) => candidate.offsetParent !== null);
+        if (!input && attempts++ < 20) { setTimeout(transfer, 50); return; }
+        if (!input || input.value) return;
+        input.value = query;
+        input.dispatchEvent(new InputEvent('input', {
+          bubbles: true, inputType: 'insertText', data: query,
+        }));
+        input.focus();
+      };
+      setTimeout(transfer, 50);
+    }
   }
 
   async generate() {
@@ -106,7 +177,47 @@ export class LearningOSUI extends Plugin {
   async openVaultPath(path) {
     const file = this.app.vault.getAbstractFileByPath(path);
     if (!file) { new Notice(`File unavailable: ${path}`); return; }
-    await this.app.workspace.getLeaf(true).openFile(file);
+    let existing = null;
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (!existing && leaf.view?.file?.path === path) existing = leaf;
+    });
+    if (existing) {
+      this.app.workspace.revealLeaf(existing);
+      this.app.workspace.setActiveLeaf?.(existing, { focus: true });
+      return existing;
+    }
+    const leaf = this.app.workspace.getLeaf(true);
+    await leaf.openFile(file);
+    return leaf;
+  }
+  async openExternalPath(path, successMessage = 'Opened in the default app.') {
+    if (!path || !fs.existsSync(path)) { new Notice(`File unavailable: ${path || 'unknown path'}`); return false; }
+    const error = await shell.openPath(path);
+    if (error) { new Notice(`Could not open file: ${error}`); return false; }
+    new Notice(successMessage);
+    return true;
+  }
+  openMaterialPath(path) {
+    const vault = this.app.vault.adapter.getBasePath();
+    const learningRoot = nodePath.dirname(vault);
+    const materialsRoot = nodePath.resolve(learningRoot, 'materials');
+    const fullPath = nodePath.resolve(learningRoot, path || '');
+    const relative = nodePath.relative(materialsRoot, fullPath);
+    if (!path || relative.startsWith('..') || nodePath.isAbsolute(relative)) {
+      new Notice(`Unsafe material path refused: ${path || 'unknown path'}`); return false;
+    }
+    return this.openExternalPath(fullPath, 'Opened the local material in its default app.');
+  }
+  openAuthoredPath(path) {
+    const extension = nodePath.extname(path || '').toLocaleLowerCase();
+    if (['.md', '.pdf', '.canvas', '.base'].includes(extension)) return this.openVaultPath(path);
+    const base = this.app.vault.adapter.getBasePath();
+    const fullPath = nodePath.resolve(base, path || '');
+    const relative = nodePath.relative(base, fullPath);
+    if (!path || relative.startsWith('..') || nodePath.isAbsolute(relative)) {
+      new Notice(`Unsafe vault path refused: ${path || 'unknown path'}`); return false;
+    }
+    return this.openExternalPath(fullPath, 'Opened the authored file in its default app.');
   }
   openRecord(record) {
     if (!record) return;
@@ -114,7 +225,14 @@ export class LearningOSUI extends Plugin {
     if (record.type === 'module') return this.openModule(record.id);
     if (record.type === 'program') return this.openProgram(record.id);
     if (record.type === 'source') return this.openLibrary(record.id, 'source');
-    if (record.path) return this.openVaultPath(record.path);
+    if (record.type === 'note' || record.type === 'concept') return this.openLibrary(record.id, record.type);
+    if (record.type === 'workspace') {
+      const unit = (record.unit_ids || []).map((id) => this.store.get(id)).find(Boolean);
+      if (unit) return this.openUnit(unit.id);
+      const module = (record.module_ids || []).map((id) => this.store.get(id)).find(Boolean);
+      return module ? this.openModule(module.id) : this.openHome();
+    }
+    if (record.path) return this.openAuthoredPath(record.path);
   }
   openResource(resource) {
     if (resource.vault_path) return this.openVaultPath(resource.vault_path);

@@ -22,7 +22,11 @@ export class ManifestStore {
       this.snapshotId = manifest._generated.snapshot_id;
       this.records = manifest.records || [];
       this.byId = new Map(this.records.filter((row) => row?.id).map((row) => [row.id, row]));
-      for (const group of ['programs', 'modules', 'units', 'study_maps']) {
+      // `stages` is the core's flat by-id index (each stage carries its
+      // study_map_id/unit_id/module_id). `study_maps[].stages` stays the
+      // ordering authority for rails and progress counts — index plus ordered
+      // list, never two traversals of the same access path (ADR-006, fifth).
+      for (const group of ['programs', 'modules', 'units', 'study_maps', 'stages']) {
         for (const row of manifest[group] || []) if (row?.id) this.byId.set(row.id, row);
       }
       this.ready = true;
@@ -50,8 +54,10 @@ export class ManifestStore {
     const mapId = this.data?.indexes?.unit_to_study_map?.[unitId];
     return mapId ? this.get(mapId) : null;
   }
-  stage(mapId, stageId) {
-    return (this.get(mapId)?.stages || []).find((row) => row.id === stageId) || null;
+  /** Resolve a stage from its ID alone through the core's flat index. */
+  stage(stageId) {
+    const stage = this.get(stageId);
+    return stage?.study_map_id ? stage : null;
   }
   sourceMap(moduleId) {
     return (this.data?.module_source_maps || []).find((row) => row.module_id === moduleId) || null;

@@ -133,16 +133,56 @@ def verify_gitignore(vault: Path) -> None:
         log(".gitignore covers .obsidian/, /bases/, /.trash/ ✓")
 
 
+def node_candidates() -> list[Path]:
+    """Where a Node binary plausibly lives on this machine, best first.
+
+    A GUI-launched or bare shell often has none of these on PATH, so refusing
+    the install because `which node` came back empty is a false negative. The
+    installer looks in the usual places itself rather than making the caller
+    paste an absolute path (which is how a cache directory ended up hardcoded
+    in the README).
+    """
+    found: list[Path] = []
+    which = shutil.which("node")
+    if which:
+        found.append(Path(which))
+    found += [Path("/opt/homebrew/bin/node"),          # Homebrew, Apple silicon
+              Path("/usr/local/bin/node"),             # Homebrew, Intel / manual
+              Path("/usr/bin/node")]                   # system / Linux
+    # nvm and Volta keep versioned trees; take the highest version present.
+    for root, glob in ((Path.home() / ".nvm" / "versions" / "node", "*/bin/node"),
+                       (Path.home() / ".volta" / "tools" / "image" / "node", "*/bin/node")):
+        if root.is_dir():
+            found += sorted(root.glob(glob), reverse=True)
+    # Bundled agent runtimes (the path this project's README used to hardcode).
+    runtimes = Path.home() / ".cache" / "codex-runtimes"
+    if runtimes.is_dir():
+        found += sorted(runtimes.glob("*/dependencies/node/bin/node"), reverse=True)
+    return found
+
+
+def resolve_node(explicit: str | None) -> str:
+    if explicit:
+        if not Path(explicit).is_file():
+            sys.exit(f"install: --node {explicit} is not a file")
+        return explicit
+    for candidate in node_candidates():
+        if candidate.is_file():
+            return str(candidate)
+    sys.exit("install: Node not found — refusing an untested install.\n"
+             "  Looked in: PATH, /opt/homebrew/bin, /usr/local/bin, /usr/bin, "
+             "~/.nvm, ~/.volta, ~/.cache/codex-runtimes.\n"
+             "  Pass --node /absolute/path/to/node, or explicitly use --skip-tests.")
+
+
 def run_ui_tests(node: str | None = None) -> None:
     """Hard rule 8: UI tests run before installation, failures abort."""
     suite = HERE / "tests" / "test-dashboard.js"
     if not suite.is_file():
         log("WARNING: tests/test-dashboard.js missing — installing untested")
         return
-    node_bin = node or shutil.which("node")
-    if node_bin is None or not Path(node_bin).is_file():
-        sys.exit("install: Node not found — refusing an untested install. Pass "
-                 "--node /absolute/path/to/node, or explicitly use --skip-tests.")
+    node_bin = resolve_node(node)
+    log(f"node: {node_bin}")
     build = subprocess.run([node_bin, str(HERE / "build.mjs")], cwd=HERE,
                            capture_output=True, text=True, timeout=120)
     if build.returncode != 0:

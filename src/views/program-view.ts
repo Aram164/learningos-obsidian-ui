@@ -30,7 +30,7 @@ export class ProgramView extends ItemView {
   renderNeedsMap(root) {
     pageHeader(root, 'Queue', 'Units needing a study map');
     const grid = root.createDiv({ cls: 'los-card-grid' });
-    for (const unit of this.plugin.store.units().filter((row) => row.status === 'needs-map')) {
+    for (const unit of this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id))) {
       unitCard(grid, this.plugin, unit);
     }
     viewFooter(root);
@@ -40,7 +40,68 @@ export class ProgramView extends ItemView {
     pageHeader(root, 'Capture', 'Inbox', 'You capture; the operator files.');
     const count = this.plugin.store.data.counts?.inbox_items || 0;
     const wrap = section(root, `${count} item${count === 1 ? '' : 's'} awaiting routing`);
-    empty(wrap, 'No filing decision is required here', 'Use the capture command or drop material into work/inbox/.');
+    wrap.createEl('p', { cls: 'los-muted', text: 'No filing decision is required. Text and files land in work/inbox/ through the core capture gateway.' });
+    const form = wrap.createDiv({ cls: 'los-capture-grid' });
+    const textPanel = form.createDiv({ cls: 'los-capture-panel' });
+    textPanel.createEl('h3', { text: 'Quick text' });
+    const title = textPanel.createEl('input', {
+      cls: 'los-search los-capture-title',
+      attr: { type: 'text', placeholder: 'Optional title', 'aria-label': 'Capture title' },
+    });
+    const editor = textPanel.createEl('textarea', {
+      cls: 'los-note-editor los-capture-editor',
+      attr: { placeholder: 'Paste a link, thought, question, or fragment…', 'aria-label': 'Capture text' },
+    });
+    const draft = this.plugin.getInboxDraft();
+    title.value = draft.title || '';
+    editor.value = draft.text || '';
+    const status = textPanel.createDiv({ cls: 'los-draft-status', attr: { 'aria-live': 'polite' } });
+    const captureButton = button(textPanel, 'Capture text', () => {
+      const text = editor.value.trim();
+      if (!text) { new Notice('Enter some text before capturing.'); editor.focus(); return; }
+      this.capture(
+        () => this.plugin.gateway.captureText(text, title.value.trim()),
+        () => {
+          this.plugin.clearInboxDraft();
+          editor.value = '';
+          title.value = '';
+        });
+    }, 'cta');
+    const syncDraft = () => {
+      const hasDraft = Boolean(title.value || editor.value);
+      this.plugin.setInboxDraft(title.value, editor.value);
+      captureButton.disabled = !editor.value.trim();
+      status.setText(hasDraft ? 'Draft kept locally until capture.' : 'Nothing entered yet.');
+      status.toggleClass('is-dirty', hasDraft);
+    };
+    title.addEventListener('input', syncDraft);
+    editor.addEventListener('input', syncDraft);
+    captureButton.disabled = !editor.value.trim();
+    status.setText((title.value || editor.value) ? 'Draft kept locally until capture.' : 'Nothing entered yet.');
+    status.toggleClass('is-dirty', Boolean(title.value || editor.value));
+
+    const filePanel = form.createDiv({ cls: 'los-capture-panel' });
+    filePanel.createEl('h3', { text: 'File or handwriting' });
+    filePanel.createEl('p', { cls: 'los-muted', text: 'The original is copied into the inbox; it is not moved or renamed.' });
+    const picker = filePanel.createEl('input', {
+      cls: 'los-file-input los-capture-file',
+      attr: { type: 'file', 'aria-label': 'Choose inbox capture file' },
+    });
+    button(filePanel, 'Capture selected file', () => {
+      const localPath = localFilePath(picker.files?.[0]);
+      if (!localPath) { new Notice('Choose a local file first.'); return; }
+      this.capture(() => this.plugin.gateway.captureFile(localPath), () => { picker.value = ''; });
+    }, 'quiet');
     viewFooter(root);
+  }
+
+  async capture(action, clear) {
+    try {
+      await action();
+      await this.plugin.gateway.call(['generate']);
+      clear?.();
+      await this.plugin.reloadStore();
+      new Notice('Captured to the LearningOS inbox.');
+    } catch (error) { new Notice(error?.message || String(error)); }
   }
 }

@@ -37,6 +37,14 @@ export class GatewayClient {
     if (label) args.push('--label', label);
     return this.call([...args, ...this.guard()]);
   }
+  captureText(text, title = '') {
+    const args = ['capture', '--text', text];
+    if (title) args.push('--title', title);
+    return this.call(args);
+  }
+  captureFile(filePath) {
+    return this.call(['capture', '--file', filePath]);
+  }
   prepareShelving(unitId) {
     return this.call(['shelving-prepare', unitId, ...this.guard()]);
   }
@@ -56,7 +64,7 @@ export function explicitAiContext(plugin, context = {}) {
   const module = context.moduleId ? plugin.store.get(context.moduleId) :
     (unit ? plugin.store.get(unit.module_id) : null);
   const studyMap = unit ? plugin.store.mapForUnit(unit.id) : null;
-  const stage = context.stageId && studyMap ? plugin.store.stage(studyMap.id, context.stageId) : null;
+  const stage = context.stageId ? plugin.store.stage(context.stageId) : null;
   const resources = stage?.resources || [];
   return {
     area_program_id: context.programId || module?.area_id || null,

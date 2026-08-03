@@ -2,7 +2,9 @@
 
 const { Plugin, PluginSettingTab, ItemView, Modal, Notice, Setting, setIcon } = require('obsidian');
 const { execFile } = require('child_process');
+const fs = require('fs');
 const nodePath = require('path');
+const { shell, webUtils } = require('electron');
 
 /* ---- src/constants.ts ---- */
 const CONTRACT_VERSION = 2;
@@ -63,7 +65,11 @@ class ManifestStore {
       this.snapshotId = manifest._generated.snapshot_id;
       this.records = manifest.records || [];
       this.byId = new Map(this.records.filter((row) => row?.id).map((row) => [row.id, row]));
-      for (const group of ['programs', 'modules', 'units', 'study_maps']) {
+      // `stages` is the core's flat by-id index (each stage carries its
+      // study_map_id/unit_id/module_id). `study_maps[].stages` stays the
+      // ordering authority for rails and progress counts — index plus ordered
+      // list, never two traversals of the same access path (ADR-006, fifth).
+      for (const group of ['programs', 'modules', 'units', 'study_maps', 'stages']) {
         for (const row of manifest[group] || []) if (row?.id) this.byId.set(row.id, row);
       }
       this.ready = true;
@@ -91,8 +97,10 @@ class ManifestStore {
     const mapId = this.data?.indexes?.unit_to_study_map?.[unitId];
     return mapId ? this.get(mapId) : null;
   }
-  stage(mapId, stageId) {
-    return (this.get(mapId)?.stages || []).find((row) => row.id === stageId) || null;
+  /** Resolve a stage from its ID alone through the core's flat index. */
+  stage(stageId) {
+    const stage = this.get(stageId);
+    return stage?.study_map_id ? stage : null;
   }
   sourceMap(moduleId) {
     return (this.data?.module_source_maps || []).find((row) => row.module_id === moduleId) || null;
@@ -185,6 +193,14 @@ class GatewayClient {
     if (label) args.push('--label', label);
     return this.call([...args, ...this.guard()]);
   }
+  captureText(text, title = '') {
+    const args = ['capture', '--text', text];
+    if (title) args.push('--title', title);
+    return this.call(args);
+  }
+  captureFile(filePath) {
+    return this.call(['capture', '--file', filePath]);
+  }
   prepareShelving(unitId) {
     return this.call(['shelving-prepare', unitId, ...this.guard()]);
   }
@@ -204,7 +220,7 @@ function explicitAiContext(plugin, context = {}) {
   const module = context.moduleId ? plugin.store.get(context.moduleId) :
     (unit ? plugin.store.get(unit.module_id) : null);
   const studyMap = unit ? plugin.store.mapForUnit(unit.id) : null;
-  const stage = context.stageId && studyMap ? plugin.store.stage(studyMap.id, context.stageId) : null;
+  const stage = context.stageId ? plugin.store.stage(context.stageId) : null;
   const resources = stage?.resources || [];
   return {
     area_program_id: context.programId || module?.area_id || null,
@@ -250,7 +266,7 @@ function chip(parent, record, onClick) {
 
 function pageHeader(parent, kicker, title, description = '') {
   const header = parent.createDiv({ cls: 'los-page-header' });
-  header.createDiv({ cls: 'los-kicker', text: kicker });
+  if (kicker) header.createDiv({ cls: 'los-kicker', text: kicker });
   header.createEl('h1', { text: title });
   if (description) header.createEl('p', { text: description });
   return header;
@@ -271,8 +287,47 @@ function empty(parent, title, detail, actionLabel, action) {
   return el;
 }
 
+function localFilePath(file) {
+  if (!file) return '';
+  try { return webUtils.getPathForFile(file) || ''; }
+  catch (_) { return ''; }
+}
+
+function projectedExcerpt(value, limit = 900) {
+  const first = String(value || '').split(/\n\s*\n/)[0]
+    .replace(/\*\*/g, '').replace(/`/g, '')
+    .replace(/(^|\n)\s*-\s*/g, '$1').replace(/\s+/g, ' ').trim();
+  return first.length > limit ? `${first.slice(0, limit - 1)}…` : first;
+}
+
+function workspaceCard(parent, plugin, workspace, moduleContext = null) {
+  const card = parent.createDiv({ cls: `los-card los-workspace-card los-s-${workspace.status}` });
+  const top = card.createDiv({ cls: 'los-card-top' });
+  top.createEl('h3', { text: workspace.title });
+  badge(top, workspace.standing ? `${workspace.status} · standing` : workspace.status, workspace.status);
+  if (workspace.objective) card.createEl('p', { cls: 'los-workspace-objective', text: workspace.objective });
+  const next = card.createDiv({ cls: 'los-next-action' });
+  next.createDiv({ cls: 'los-kicker', text: 'Next action' });
+  next.createEl('p', { text: projectedExcerpt(workspace.next_action, 1600) || 'No next action recorded.' });
+  if (workspace.deadline) badge(next, `Deadline ${workspace.deadline}`, 'needs-map');
+  const actions = card.createDiv({ cls: 'los-actions' });
+  const moduleIds = (workspace.module_ids || []).filter((id) => id !== moduleContext);
+  for (const id of moduleIds.slice(0, 3)) {
+    const module = plugin.store.get(id);
+    if (module) button(actions, `Open ${module.title}`, () => plugin.openModule(id), 'quiet');
+  }
+  for (const id of (workspace.unit_ids || []).slice(0, 3)) {
+    const unit = plugin.store.get(id);
+    if (unit) button(actions, `Open ${unit.title}`, () => plugin.openUnit(id), 'quiet');
+  }
+  return card;
+}
+
 function unitCard(parent, plugin, unit) {
-  const card = parent.createDiv({ cls: `los-card los-s-${unit.status} is-clickable` });
+  const card = parent.createEl('button', {
+    cls: `los-card los-unit-card los-s-${unit.status} is-clickable`,
+    attr: { type: 'button', 'aria-label': `Open unit: ${unit.title}` },
+  });
   const top = card.createDiv({ cls: 'los-card-top' });
   top.createEl('h3', { text: unit.title });
   badge(top, unit.status, unit.status);
@@ -289,7 +344,10 @@ function unitCard(parent, plugin, unit) {
 }
 
 function moduleCard(parent, plugin, module) {
-  const card = parent.createDiv({ cls: `los-card los-module-card los-s-${module.status} is-clickable` });
+  const card = parent.createEl('button', {
+    cls: `los-card los-module-card los-s-${module.status} is-clickable`,
+    attr: { type: 'button', 'aria-label': `Open module: ${module.title}` },
+  });
   const top = card.createDiv({ cls: 'los-card-top' });
   top.createEl('h3', { text: module.title });
   badge(top, module.kind, 'role');
@@ -321,23 +379,65 @@ class HomeView extends ItemView {
         'Rebuild views', () => this.plugin.generate());
       return;
     }
-    pageHeader(root, 'Current work', 'Bachelor’s first. Every path stays visible.',
-      'Resume quickly without hiding modules, skills, thesis work, or paused study maps.');
+    pageHeader(root, '', 'Current work');
+    root.createSpan({ cls: 'los-sr-only', text: 'Bachelor’s first. Every path stays visible.' });
     this.renderResume(root);
-    this.renderAcademic(root);
-    this.renderArea(root, 'program-skills', 'Skills');
-    this.renderArea(root, 'program-thesis-projects', 'Thesis & projects');
+    this.renderDecisionLayer(root);
+    this.renderCommandCentre(root);
     this.renderQueues(root);
     this.renderBoundaries(root);
     viewFooter(root);
+  }
+
+  renderDecisionLayer(root) {
+    const wrap = root.createDiv({ cls: 'los-section los-priority-section' });
+    wrap.createEl('h2', { text: 'Semester priority' });
+    const bar = wrap.createDiv({ cls: 'los-priority-bar' });
+    icon(bar.createSpan({ cls: 'los-priority-icon' }), 'flag');
+    const coordination = this.plugin.store.get('coordination');
+    const priority = projectedExcerpt(coordination?.sections?.Priorities);
+    const copy = bar.createDiv({ cls: 'los-priority-copy' });
+    copy.createEl('strong', { text: 'Priority decision' });
+    copy.createSpan({ text: priority || 'No current priority decision.' });
+    const contextRows = ['Commitments', 'Dependencies', 'Deferrals']
+      .map((heading) => [heading, projectedExcerpt(coordination?.sections?.[heading])])
+      .filter(([, body]) => body);
+    if (priority || contextRows.length) {
+      const details = bar.createEl('details', { cls: 'los-coordination-details' });
+      details.createEl('summary', { text: 'View details' });
+      const panel = details.createDiv({ cls: 'los-coordination-panel' });
+      panel.createEl('h3', { text: 'Coordination context' });
+      if (priority) {
+        const row = panel.createDiv({ cls: 'los-coordination-row' });
+        row.createEl('strong', { text: 'Priorities' });
+        row.createEl('p', { text: priority });
+      }
+      for (const [heading, body] of contextRows) {
+        const row = panel.createDiv({ cls: 'los-coordination-row' });
+        row.createEl('strong', { text: heading });
+        row.createEl('p', { text: body });
+      }
+    }
+  }
+
+  nextWorkspaceDate(workspace) {
+    if (workspace.deadline) return String(workspace.deadline);
+    const moduleIds = new Set(workspace.module_ids || []);
+    const dates = [];
+    for (const row of this.plugin.store.data.academic_deadlines || []) {
+      if (row.kind === 'exam' && moduleIds.has(row.module_id)) dates.push(row.start_date);
+      if (row.kind === 'registration-window' &&
+          (row.modules || []).some((module) => moduleIds.has(module.module_id))) dates.push(row.start_date);
+    }
+    return dates.filter(Boolean).sort()[0] || '9999';
   }
 
   renderResume(root) {
     const pointer = this.plugin.store.data.resume_pointer || {};
     const unit = this.plugin.store.get(pointer.unit_id);
     const map = this.plugin.store.get(pointer.study_map_id);
-    const stage = map?.stages?.find((row) => row.id === pointer.stage_id);
-    const wrap = section(root, 'Resume', 'The pointer is a convenience; it never replaces the curriculum.');
+    const stage = this.plugin.store.stage(pointer.stage_id);
+    const wrap = root.createDiv({ cls: 'los-section los-resume-section' });
     if (!unit || !stage) {
       empty(wrap, 'Nothing to resume yet', 'Choose any module and unit below.');
       return;
@@ -346,8 +446,10 @@ class HomeView extends ItemView {
     const copy = card.createDiv({ cls: 'los-resume-copy' });
     copy.createDiv({ cls: 'los-kicker', text: this.plugin.store.get(unit.module_id)?.title || unit.module_id });
     copy.createEl('h2', { text: unit.title });
-    copy.createEl('p', { text: stage.title });
-    copy.createDiv({ cls: 'los-progress-copy', text: `${(map.stages || []).filter((row) => row.status === 'complete').length} of ${(map.stages || []).length} stages complete` });
+    const progress = copy.createDiv({ cls: 'los-resume-progress' });
+    progress.createSpan({ text: stage.title });
+    const stages = map?.stages || [];
+    progress.createSpan({ cls: 'los-progress-copy', text: `${stages.filter((row) => row.status === 'complete').length} of ${stages.length} stages complete` });
     const actions = card.createDiv({ cls: 'los-actions' });
     button(actions, 'Resume stage', () => this.plugin.openUnit(unit.id, stage.id), 'cta');
     if (this.plugin.settings.showAiRecommendation) {
@@ -357,33 +459,142 @@ class HomeView extends ItemView {
     }
   }
 
-  renderAcademic(root) {
-    const wrap = section(root, 'Bachelor’s · current semester');
+  renderCommandCentre(root) {
+    const layout = root.createDiv({ cls: 'los-section los-command-centre' });
+    const primary = layout.createDiv({ cls: 'los-command-column' });
+    const secondary = layout.createDiv({ cls: 'los-command-column' });
+    const deadlines = this.plugin.store.data.academic_deadlines || [];
+    this.renderAcademicDates(primary, deadlines);
+    this.renderAcademic(primary);
+    this.renderArea(secondary, 'program-skills', 'Skills');
+    this.renderArea(secondary, 'program-thesis-projects', 'Thesis');
+  }
+
+  renderAcademic(parent) {
+    const wrap = parent.createDiv({ cls: 'los-command-block' });
     const current = (this.plugin.store.data.semesters || []).find((row) => row.status === 'current');
-    if (current) badge(wrap, current.title, 'active');
-    const grid = wrap.createDiv({ cls: 'los-card-grid' });
-    for (const module of this.plugin.store.modulesFor('program-bachelors')) {
-      moduleCard(grid, this.plugin, module);
+    const heading = wrap.createDiv({ cls: 'los-command-heading' });
+    heading.createEl('h2', { text: 'Bachelor modules' });
+    if (current) badge(heading, current.title, 'active');
+    this.renderModuleTable(wrap, this.plugin.store.modulesFor('program-bachelors'));
+  }
+
+  /* The core records every sitting truthfully, history included; deciding what
+   * is still ahead is a live display and therefore the interface's job (ADR-006
+   * — the determinism rule binds generated files, not rendered views). */
+  renderAcademicDates(parent, deadlines) {
+    const wrap = parent.createDiv({ cls: 'los-command-block los-academic-dates' });
+    wrap.createEl('h2', { text: 'Academic dates' });
+    const today = new Date().toISOString().slice(0, 10);
+    const ahead = deadlines.filter((row) => (row.end_date || row.start_date) >= today);
+    const past = deadlines.filter((row) => (row.end_date || row.start_date) < today);
+    if (ahead.length) this.renderDeadlineList(wrap, ahead.slice(0, 3));
+    else empty(wrap, 'Nothing scheduled ahead', 'Every recorded sitting is in the past.');
+    if (ahead.length > 3) {
+      const details = wrap.createEl('details', { cls: 'los-deadline-history los-deadline-more' });
+      details.createEl('summary', { text: `More upcoming dates (${ahead.length - 3})` });
+      this.renderDeadlineList(details, ahead.slice(3));
     }
-    const exams = this.plugin.store.data.exam_spine || [];
-    if (exams.length) {
-      const facts = wrap.createDiv({ cls: 'los-fact-strip' });
-      for (const exam of exams) facts.createDiv({ text: `${exam.date} · ${exam.title} · Termin ${exam.termin}` });
+    if (past.length) {
+      const details = wrap.createEl('details', { cls: 'los-deadline-history' });
+      details.createEl('summary', { text: `Past dates (${past.length})` });
+      this.renderDeadlineList(details, past);
     }
   }
 
-  renderArea(root, programId, title) {
-    const wrap = section(root, title);
+  renderDeadlineList(wrap, deadlines) {
+    const list = wrap.createDiv({ cls: 'los-deadline-list' });
+    for (const row of deadlines) {
+      const card = list.createDiv({ cls: `los-deadline-card los-deadline-${row.kind}` });
+      const date = row.end_date && row.end_date !== row.start_date
+        ? `${row.start_date} → ${row.end_date}` : row.start_date;
+      card.createDiv({ cls: 'los-deadline-date', text: date });
+      const copy = card.createDiv({ cls: 'los-deadline-copy' });
+      copy.createEl('strong', { text: row.label });
+      if (row.kind === 'registration-window') {
+        const modules = row.modules || [];
+        const moduleTitle = (module) => module.title
+          || this.plugin.store.get(module.module_id)?.title || module.module_id;
+        copy.createDiv({ cls: 'los-micro', text: modules.map(moduleTitle).join(' · ') });
+        const details = copy.createEl('details', { cls: 'los-deadline-action-details' });
+        details.createEl('summary', { text: `${modules.length} registration action${modules.length === 1 ? '' : 's'}` });
+        const actions = details.createDiv({ cls: 'los-deadline-actions' });
+        for (const module of modules) {
+          const title = moduleTitle(module);
+          const rowAction = actions.createDiv({ cls: 'los-deadline-action-row' });
+          const record = this.plugin.store.get(module.module_id);
+          const open = button(rowAction, record?.code || title, () => this.plugin.openModule(module.module_id), 'row');
+          open.setAttribute('aria-label', `Open ${title}`);
+          if (module.action) rowAction.createSpan({ text: module.action });
+        }
+      } else {
+        copy.createDiv({ text: row.title });
+        const facts = copy.createDiv({ cls: 'los-row' });
+        badge(facts, row.registration_state || 'unregistered', row.registration_state || 'needs-map');
+        if (row.time) facts.createSpan({ cls: 'los-micro', text: row.time });
+        if (row.notes) copy.createEl('p', { cls: 'los-micro', text: row.notes });
+        const actions = copy.createDiv({ cls: 'los-actions los-deadline-actions' });
+        const moduleTitle = this.plugin.store.get(row.module_id)?.title;
+        button(actions, `Open ${moduleTitle || 'module'}`, () => this.plugin.openModule(row.module_id), 'quiet');
+      }
+    }
+  }
+
+  renderArea(parent, programId, title) {
+    const wrap = parent.createDiv({ cls: 'los-command-block' });
+    wrap.createEl('h2', { text: title });
     const modules = this.plugin.store.modulesFor(programId);
     if (!modules.length) { empty(wrap, `No ${title.toLocaleLowerCase()} modules yet`, 'Nothing is hidden.'); return; }
-    const grid = wrap.createDiv({ cls: 'los-card-grid' });
-    for (const module of modules) moduleCard(grid, this.plugin, module);
+    this.renderModuleTable(wrap, modules);
+  }
+
+  renderModuleTable(wrap, modules) {
+    const tableWrap = wrap.createDiv({ cls: 'los-table-wrap' });
+    const table = tableWrap.createEl('table', { cls: 'los-data-table' });
+    const head = table.createEl('thead').createEl('tr');
+    for (const title of ['Module', 'Status', 'Next up']) head.createEl('th', { text: title, attr: { scope: 'col' } });
+    const body = table.createEl('tbody');
+    for (const module of modules) {
+      const row = body.createEl('tr');
+      const title = row.createEl('td', { attr: { 'data-label': 'Module' } });
+      button(title, module.title, () => this.plugin.openModule(module.id), 'row');
+      const progress = this.plugin.store.progress(module.id);
+      const state = row.createEl('td', { attr: { 'data-label': 'Status' } });
+      badge(state, module.status, module.status);
+      state.createDiv({ cls: 'los-micro', text: `${progress.stages_complete || 0}/${progress.stages_total || 0} stages` });
+      row.createEl('td', {
+        cls: 'los-next-up',
+        text: this.moduleNextAction(module),
+        attr: { 'data-label': 'Next up' },
+      });
+    }
+  }
+
+  moduleNextAction(module) {
+    const workspace = this.plugin.store.of('workspace')
+      .filter((row) => !row.archived && row.status !== 'complete' && (row.module_ids || []).includes(module.id))
+      .sort((a, b) => this.nextWorkspaceDate(a).localeCompare(this.nextWorkspaceDate(b)))[0];
+    if (workspace?.next_action) return projectedExcerpt(workspace.next_action, 120);
+    const pointer = this.plugin.store.data.resume_pointer || {};
+    if (pointer.module_id === module.id) {
+      const stage = this.plugin.store.stage(pointer.stage_id);
+      if (stage?.title) return stage.title;
+    }
+    for (const unit of this.plugin.store.unitsFor(module.id)) {
+      const map = this.plugin.store.mapForUnit(unit.id);
+      if (!map) continue;
+      const stage = (map.stages || []).find((row) => row.id === map.current_stage)
+        || (map.stages || []).find((row) => row.status === 'active')
+        || (map.stages || []).find((row) => row.status !== 'complete');
+      if (stage?.title) return stage.title;
+    }
+    return 'No next action recorded';
   }
 
   renderQueues(root) {
-    const wrap = section(root, 'Concise queues');
+    const wrap = section(root, 'Queues');
     const queues = wrap.createDiv({ cls: 'los-queue-grid' });
-    const needs = this.plugin.store.units().filter((row) => row.status === 'needs-map');
+    const needs = this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id));
     const shelving = this.plugin.store.units().filter((row) => row.status === 'ready-to-shelve');
     const rows = [
       ['Needs a map', needs.length, () => this.plugin.openProgram('queue-needs-map')],
@@ -391,18 +602,28 @@ class HomeView extends ItemView {
       ['Inbox', this.plugin.store.data.counts?.inbox_items || 0, () => this.plugin.openProgram('inbox')],
     ];
     for (const [label, count, action] of rows) {
-      const card = queues.createDiv({ cls: 'los-queue-card is-clickable' });
-      card.createDiv({ cls: 'los-queue-count', text: String(count) });
+      const card = queues.createEl('button', {
+        cls: 'los-queue-card is-clickable',
+        attr: { type: 'button', 'aria-label': `Open ${label} queue: ${count} items` },
+      });
       card.createDiv({ text: label });
+      card.createDiv({ cls: 'los-queue-count', text: String(count) });
       card.addEventListener('click', action);
+      if (label === 'Ready to shelve' && count === 0) {
+        card.disabled = true;
+        card.setAttribute('aria-label', 'No units are ready to shelve');
+      }
     }
   }
 
   renderBoundaries(root) {
     const wrap = section(root, 'Boundaries');
-    const grid = wrap.createDiv({ cls: 'los-card-grid' });
+    const grid = wrap.createDiv({ cls: 'los-boundary-grid' });
     for (const boundary of this.plugin.store.data.quarantine_boundaries || []) {
-      const card = grid.createDiv({ cls: 'los-card los-boundary-card is-clickable' });
+      const card = grid.createEl('button', {
+        cls: 'los-boundary-card is-clickable',
+        attr: { type: 'button', 'aria-label': `Open boundary: ${boundary.title}` },
+      });
       icon(card.createSpan(), 'shield');
       card.createEl('h3', { text: boundary.title });
       card.createEl('p', { text: boundary.description });
@@ -444,7 +665,7 @@ class ProgramView extends ItemView {
   renderNeedsMap(root) {
     pageHeader(root, 'Queue', 'Units needing a study map');
     const grid = root.createDiv({ cls: 'los-card-grid' });
-    for (const unit of this.plugin.store.units().filter((row) => row.status === 'needs-map')) {
+    for (const unit of this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id))) {
       unitCard(grid, this.plugin, unit);
     }
     viewFooter(root);
@@ -454,8 +675,69 @@ class ProgramView extends ItemView {
     pageHeader(root, 'Capture', 'Inbox', 'You capture; the operator files.');
     const count = this.plugin.store.data.counts?.inbox_items || 0;
     const wrap = section(root, `${count} item${count === 1 ? '' : 's'} awaiting routing`);
-    empty(wrap, 'No filing decision is required here', 'Use the capture command or drop material into work/inbox/.');
+    wrap.createEl('p', { cls: 'los-muted', text: 'No filing decision is required. Text and files land in work/inbox/ through the core capture gateway.' });
+    const form = wrap.createDiv({ cls: 'los-capture-grid' });
+    const textPanel = form.createDiv({ cls: 'los-capture-panel' });
+    textPanel.createEl('h3', { text: 'Quick text' });
+    const title = textPanel.createEl('input', {
+      cls: 'los-search los-capture-title',
+      attr: { type: 'text', placeholder: 'Optional title', 'aria-label': 'Capture title' },
+    });
+    const editor = textPanel.createEl('textarea', {
+      cls: 'los-note-editor los-capture-editor',
+      attr: { placeholder: 'Paste a link, thought, question, or fragment…', 'aria-label': 'Capture text' },
+    });
+    const draft = this.plugin.getInboxDraft();
+    title.value = draft.title || '';
+    editor.value = draft.text || '';
+    const status = textPanel.createDiv({ cls: 'los-draft-status', attr: { 'aria-live': 'polite' } });
+    const captureButton = button(textPanel, 'Capture text', () => {
+      const text = editor.value.trim();
+      if (!text) { new Notice('Enter some text before capturing.'); editor.focus(); return; }
+      this.capture(
+        () => this.plugin.gateway.captureText(text, title.value.trim()),
+        () => {
+          this.plugin.clearInboxDraft();
+          editor.value = '';
+          title.value = '';
+        });
+    }, 'cta');
+    const syncDraft = () => {
+      const hasDraft = Boolean(title.value || editor.value);
+      this.plugin.setInboxDraft(title.value, editor.value);
+      captureButton.disabled = !editor.value.trim();
+      status.setText(hasDraft ? 'Draft kept locally until capture.' : 'Nothing entered yet.');
+      status.toggleClass('is-dirty', hasDraft);
+    };
+    title.addEventListener('input', syncDraft);
+    editor.addEventListener('input', syncDraft);
+    captureButton.disabled = !editor.value.trim();
+    status.setText((title.value || editor.value) ? 'Draft kept locally until capture.' : 'Nothing entered yet.');
+    status.toggleClass('is-dirty', Boolean(title.value || editor.value));
+
+    const filePanel = form.createDiv({ cls: 'los-capture-panel' });
+    filePanel.createEl('h3', { text: 'File or handwriting' });
+    filePanel.createEl('p', { cls: 'los-muted', text: 'The original is copied into the inbox; it is not moved or renamed.' });
+    const picker = filePanel.createEl('input', {
+      cls: 'los-file-input los-capture-file',
+      attr: { type: 'file', 'aria-label': 'Choose inbox capture file' },
+    });
+    button(filePanel, 'Capture selected file', () => {
+      const localPath = localFilePath(picker.files?.[0]);
+      if (!localPath) { new Notice('Choose a local file first.'); return; }
+      this.capture(() => this.plugin.gateway.captureFile(localPath), () => { picker.value = ''; });
+    }, 'quiet');
     viewFooter(root);
+  }
+
+  async capture(action, clear) {
+    try {
+      await action();
+      await this.plugin.gateway.call(['generate']);
+      clear?.();
+      await this.plugin.reloadStore();
+      new Notice('Captured to the LearningOS inbox.');
+    } catch (error) { new Notice(error?.message || String(error)); }
   }
 }
 
@@ -464,9 +746,19 @@ class ModuleView extends ItemView {
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.moduleId = null; this.componentId = null; }
   getViewType() { return VIEW_MODULE; }
   getDisplayText() { return 'LearningOS · Module'; }
-  async setState(state) { this.moduleId = state?.moduleId || this.moduleId; this.render(); }
-  getState() { return { moduleId: this.moduleId }; }
-  async onOpen() { this.moduleId = this.leaf.state?.moduleId || this.moduleId; this.render(); }
+  async setState(state) {
+    const nextModuleId = state?.moduleId || this.moduleId;
+    if (nextModuleId !== this.moduleId) this.componentId = null;
+    this.moduleId = nextModuleId;
+    if (Object.prototype.hasOwnProperty.call(state || {}, 'componentId')) this.componentId = state.componentId || null;
+    this.render();
+  }
+  getState() { return { moduleId: this.moduleId, componentId: this.componentId }; }
+  async onOpen() {
+    this.moduleId = this.leaf.state?.moduleId || this.moduleId;
+    this.componentId = this.leaf.state?.componentId || null;
+    this.render();
+  }
 
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-module-view');
@@ -479,15 +771,17 @@ class ModuleView extends ItemView {
       if (value != null) facts.createDiv({ text: `${label}: ${value}` });
     }
     if (module.examination?.type) facts.createDiv({ text: `Examination: ${module.examination.type}` });
+    this.renderAcademicDates(root, module);
 
     if ((module.components || []).length) {
       const tabs = root.createDiv({ cls: 'los-tabs', attr: { role: 'tablist' } });
-      button(tabs, 'All components', () => { this.componentId = null; this.render(); },
+      const allTab = button(tabs, 'All components', () => this.selectComponent(null),
         this.componentId ? 'quiet' : 'cta');
+      allTab.setAttrs({ role: 'tab', 'aria-selected': String(!this.componentId) });
       for (const component of module.components) {
-        button(tabs, component.short_title || component.title, () => {
-          this.componentId = component.id; this.render();
-        }, this.componentId === component.id ? 'cta' : 'quiet');
+        const tab = button(tabs, component.short_title || component.title,
+          () => this.selectComponent(component.id), this.componentId === component.id ? 'cta' : 'quiet');
+        tab.setAttrs({ role: 'tab', 'aria-selected': String(this.componentId === component.id) });
       }
     }
 
@@ -506,8 +800,61 @@ class ModuleView extends ItemView {
     const workspaceSection = section(root, 'Related workspaces');
     const workspaces = this.plugin.store.workspacesForModule(module.id);
     if (!workspaces.length) empty(workspaceSection, 'No active coordination workspace', 'The module/unit tree still owns study state.');
-    else for (const workspace of workspaces) chip(workspaceSection, workspace, (row) => this.plugin.openRecord(row));
+    else {
+      const grid = workspaceSection.createDiv({ cls: 'los-card-grid' });
+      for (const workspace of workspaces) workspaceCard(grid, this.plugin, workspace, module.id);
+    }
     viewFooter(root);
+  }
+
+  renderAcademicDates(root, module) {
+    const rows = (this.plugin.store.data.academic_deadlines || []).filter((row) =>
+      row.module_id === module.id || (row.modules || []).some((entry) => entry.module_id === module.id));
+    if (!rows.length) return;
+    rows.sort((a, b) => String(a.start_date || '').localeCompare(String(b.start_date || '')));
+    const wrap = section(root, 'Academic dates', 'Registration windows and exam sittings for this module.');
+    const today = new Date().toISOString().slice(0, 10);
+    const ahead = rows.filter((row) => (row.end_date || row.start_date) >= today);
+    const past = rows.filter((row) => (row.end_date || row.start_date) < today);
+    if (ahead.length) this.renderDeadlineRows(wrap, module, ahead);
+    else empty(wrap, 'No upcoming date recorded', 'Past dates remain available below.');
+    if (past.length) {
+      const history = wrap.createEl('details', { cls: 'los-deadline-history' });
+      history.createEl('summary', { text: `Past dates (${past.length})` });
+      this.renderDeadlineRows(history, module, past);
+    }
+  }
+
+  renderDeadlineRows(wrap, module, rows) {
+    const list = wrap.createDiv({ cls: 'los-deadline-list' });
+    for (const row of rows) {
+      const card = list.createDiv({ cls: `los-deadline-card los-deadline-${row.kind}` });
+      const date = row.end_date && row.end_date !== row.start_date
+        ? `${row.start_date} → ${row.end_date}` : row.start_date;
+      card.createDiv({ cls: 'los-deadline-date', text: date });
+      const copy = card.createDiv({ cls: 'los-deadline-copy' });
+      copy.createEl('strong', { text: row.label });
+      if (row.kind === 'registration-window') {
+        const entry = (row.modules || []).find((item) => item.module_id === module.id);
+        copy.createDiv({ cls: 'los-micro', text: module.title });
+        if (entry?.action) copy.createEl('p', { text: entry.action });
+      } else {
+        copy.createDiv({ text: row.title || module.title });
+        const facts = copy.createDiv({ cls: 'los-row' });
+        badge(facts, row.registration_state || 'unregistered', row.registration_state || 'needs-map');
+        if (row.time) facts.createSpan({ cls: 'los-micro', text: row.time });
+        if (row.notes) copy.createEl('p', { cls: 'los-micro', text: row.notes });
+      }
+    }
+  }
+
+  async selectComponent(componentId) {
+    this.componentId = componentId;
+    await this.leaf.setViewState({
+      type: VIEW_MODULE,
+      active: true,
+      state: { moduleId: this.moduleId, componentId: this.componentId },
+    });
   }
 
   renderSources(root, module) {
@@ -540,14 +887,17 @@ class UnitView extends ItemView {
   getViewType() { return VIEW_UNIT; }
   getDisplayText() { return 'LearningOS · Unit'; }
   async setState(state) {
-    this.unitId = state?.unitId || this.unitId;
-    this.stageId = state?.stageId || this.stageId;
+    const nextUnitId = state?.unitId || this.unitId;
+    if (nextUnitId !== this.unitId) this.stageId = null;
+    this.unitId = nextUnitId;
+    const requested = Object.prototype.hasOwnProperty.call(state || {}, 'stageId') ? state.stageId : null;
+    this.stageId = this.plugin.getSelectedStage(this.unitId) || requested || this.stageId;
     this.render();
   }
   getState() { return { unitId: this.unitId, stageId: this.stageId }; }
   async onOpen() {
     this.unitId = this.leaf.state?.unitId || this.unitId;
-    this.stageId = this.leaf.state?.stageId || this.stageId;
+    this.stageId = this.plugin.getSelectedStage(this.unitId) || this.leaf.state?.stageId || this.stageId;
     this.render();
   }
 
@@ -576,6 +926,7 @@ class UnitView extends ItemView {
     }
     if (!this.stageId || !studyMap.stages.some((row) => row.id === this.stageId)) {
       this.stageId = studyMap.current_stage;
+      this.plugin.setSelectedStage(unit.id, this.stageId);
     }
     const stage = studyMap.stages.find((row) => row.id === this.stageId) || studyMap.stages[0];
     const layout = root.createDiv({ cls: 'los-unit-layout' });
@@ -592,13 +943,14 @@ class UnitView extends ItemView {
     for (const [index, stage] of studyMap.stages.entries()) {
       const row = rail.createEl('button', {
         cls: `los-stage-row los-s-${stage.status} ${stage.id === current.id ? 'is-selected' : ''} is-clickable`,
-        attr: { type: 'button' },
+        attr: { type: 'button', 'aria-current': stage.id === current.id ? 'step' : 'false' },
       });
       row.createSpan({ cls: 'los-stage-index', text: String(index + 1).padStart(2, '0') });
       const copy = row.createSpan({ cls: 'los-stage-copy' });
       copy.createSpan({ text: stage.title });
-      copy.createSpan({ cls: 'los-micro', text: stage.status });
-      row.addEventListener('click', () => { this.stageId = stage.id; this.render(); });
+      const hasDraft = this.plugin.getStageDraft(unit.id, stage.id, stage.notes_text || '').dirty;
+      copy.createSpan({ cls: 'los-micro', text: `${stage.status}${hasDraft ? ' · unsaved draft' : ''}` });
+      row.addEventListener('click', () => this.selectStage(stage.id));
     }
     const mapActions = rail.createDiv({ cls: 'los-stack-actions' });
     if (current.status !== 'active') button(mapActions, 'Revisit stage', () => this.mutate(
@@ -627,15 +979,15 @@ class UnitView extends ItemView {
         const source = this.plugin.store.get(resource.source_id);
         chip(copy, source, (record) => this.plugin.openLibrary(record.id));
       }
-      const actions = row.createDiv({ cls: 'los-actions' });
+      const actions = row.createDiv({ cls: 'los-actions los-resource-actions' });
       if (resource.url || resource.vault_path) button(actions, 'Open', () => this.plugin.openResource(resource), 'quiet');
       if (resource.source_id) {
         button(actions, 'Helpful', () => this.mutate(
-          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'helpful')), 'quiet');
+          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'helpful')), 'tertiary');
         button(actions, 'Too advanced', () => this.mutate(
-          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'too-advanced')), 'quiet');
+          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'too-advanced')), 'tertiary');
         button(actions, 'Useful for review', () => this.mutate(
-          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'useful-for-review')), 'quiet');
+          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'useful-for-review')), 'tertiary');
       }
     }
 
@@ -658,18 +1010,35 @@ class UnitView extends ItemView {
     panel.createEl('h2', { text: 'Working note' });
     panel.createEl('p', { cls: 'los-muted', text: 'Stage-bound scratch. No concept ID or filing destination needed.' });
     const editor = panel.createEl('textarea', { cls: 'los-note-editor', attr: { 'aria-label': 'Stage working note' } });
-    editor.value = stage.notes_text || '';
-    button(panel, 'Save note', () => this.mutate(
-      () => this.plugin.gateway.saveNote(unit.id, stage.id, editor.value)), 'cta');
+    const savedText = stage.notes_text || '';
+    const draft = this.plugin.getStageDraft(unit.id, stage.id, savedText);
+    editor.value = draft.text;
+    const status = panel.createDiv({ cls: 'los-draft-status', attr: { 'aria-live': 'polite' } });
+    const updateStatus = () => {
+      const dirty = editor.value !== savedText;
+      status.setText(dirty ? 'Unsaved draft kept locally.' : 'All changes saved.');
+      status.toggleClass('is-dirty', dirty);
+    };
+    editor.addEventListener('input', () => {
+      this.plugin.setStageDraft(unit.id, stage.id, editor.value, savedText);
+      updateStatus();
+    });
+    updateStatus();
+    button(panel, 'Save note', () => this.saveStageNote(unit, stage, editor.value), 'cta');
     const attachments = section(panel, 'Attachments');
     if (!stage.attachments?.length) attachments.createEl('p', { text: 'Attach handwriting or a PDF through the guarded stage-attach action.' });
-    for (const attachment of stage.attachments || []) attachments.createDiv({ text: attachment.label });
+    for (const attachment of stage.attachments || []) {
+      const path = typeof attachment === 'string' ? attachment : attachment.path || attachment.vault_path;
+      const label = typeof attachment === 'string' ? attachment.split('/').pop() : attachment.label || path;
+      if (path) button(attachments, `Open ${label}`, () => this.plugin.openAuthoredPath(path), 'quiet');
+      else attachments.createDiv({ text: label || 'Attachment' });
+    }
     const picker = attachments.createEl('input', {
       cls: 'los-file-input', attr: { type: 'file', 'aria-label': 'Choose stage attachment' },
     });
     button(attachments, 'Attach selected file', () => {
       const file = picker.files?.[0];
-      const localPath = file?.path;
+      const localPath = localFilePath(file);
       if (!localPath) { new Notice('Choose a local handwriting, image, or PDF file first.'); return; }
       this.mutate(() => this.plugin.gateway.attach(unit.id, stage.id, localPath, file.name));
     }, 'quiet');
@@ -708,6 +1077,25 @@ class UnitView extends ItemView {
     try { await action(); await this.plugin.reloadStore(); this.render(); }
     catch (error) { new Notice(error?.message || String(error)); }
   }
+
+  async saveStageNote(unit, stage, text) {
+    try {
+      await this.plugin.gateway.saveNote(unit.id, stage.id, text);
+      this.plugin.clearStageDraft(unit.id, stage.id);
+      await this.plugin.reloadStore();
+      new Notice('Stage note saved.');
+    } catch (error) { new Notice(error?.message || String(error)); }
+  }
+
+  async selectStage(stageId) {
+    this.stageId = stageId;
+    this.plugin.setSelectedStage(this.unitId, stageId);
+    await this.leaf.setViewState({
+      type: VIEW_UNIT,
+      active: true,
+      state: { unitId: this.unitId, stageId: this.stageId },
+    });
+  }
 }
 
 /* ---- src/views/library-view.ts ---- */
@@ -718,14 +1106,28 @@ class LibraryView extends ItemView {
   getViewType() { return VIEW_LIBRARY; }
   getDisplayText() { return 'LearningOS · Library'; }
   async setState(state) {
-    this.type = state?.recordType || this.type;
-    this.selectedId = state?.recordId || this.selectedId;
+    const hasType = Object.prototype.hasOwnProperty.call(state || {}, 'recordType');
+    const hasRecord = Object.prototype.hasOwnProperty.call(state || {}, 'recordId');
+    const hasQuery = Object.prototype.hasOwnProperty.call(state || {}, 'query');
+    if (hasType && state.recordType) this.type = state.recordType;
+    if (hasRecord) {
+      this.selectedId = state.recordId || null;
+      const record = this.plugin.store.get(this.selectedId);
+      if (!hasType && record?.type) this.type = record.type;
+      if (this.selectedId) this.query = '';
+    }
+    if (hasQuery) this.query = state.query || '';
     this.render();
   }
-  getState() { return { recordType: this.type, recordId: this.selectedId }; }
+  getState() { return { recordType: this.type, recordId: this.selectedId, query: this.query }; }
   async onOpen() {
-    this.type = this.leaf.state?.recordType || this.type;
-    this.selectedId = this.leaf.state?.recordId || this.selectedId;
+    const state = this.leaf.state || {};
+    if (state.recordType) this.type = state.recordType;
+    if (state.recordId) {
+      this.selectedId = state.recordId;
+      this.type = state.recordType || this.plugin.store.get(state.recordId)?.type || this.type;
+      this.query = '';
+    } else if (Object.prototype.hasOwnProperty.call(state, 'query')) this.query = state.query || '';
     this.render();
   }
 
@@ -738,15 +1140,26 @@ class LibraryView extends ItemView {
       cls: 'los-search', attr: { type: 'search', placeholder: 'Search titles, IDs, aliases, authors…', 'aria-label': 'Library search' },
     });
     input.value = this.query;
-    input.addEventListener('input', (event) => { this.query = event.target?.value ?? input.value; this.render(); });
-    button(controls, 'Full-text / OCR search', () => this.plugin.openFullTextSearch(), 'quiet');
+    input.addEventListener('input', (event) => {
+      this.query = event.target?.value ?? input.value;
+      this.selectedId = null;
+      const position = input.selectionStart;
+      this.render();
+      const next = this.contentEl.querySelector('.los-search');
+      next?.focus();
+      if (position != null) next?.setSelectionRange(position, position);
+    });
+    button(controls, 'Full-text / OCR search', () => this.plugin.openFullTextSearch(this.query), 'quiet');
     for (const [value, label] of [['source', 'Sources'], ['note', 'Notes'], ['concept', 'Concepts'], ['workspace', 'Workspaces']]) {
-      button(controls, label, () => { this.type = value; this.selectedId = null; this.render(); },
+      const tab = button(controls, label, () => { this.type = value; this.selectedId = null; this.render(); },
         this.type === value ? 'cta' : 'quiet');
+      tab.setAttribute('aria-pressed', String(this.type === value));
     }
     const layout = root.createDiv({ cls: 'los-library-layout' });
     const list = layout.createDiv({ cls: 'los-library-list' });
     const rows = this.plugin.store.search(this.query, [this.type]);
+    if (this.selectedId && !rows.some((row) => row.id === this.selectedId)) this.selectedId = null;
+    if (!this.selectedId && rows.length) this.selectedId = rows[0].id;
     if (!rows.length) empty(list, 'No matching records', 'Try a title, an ID, or a German/English alias.');
     for (const record of rows) {
       const row = list.createEl('button', {
@@ -760,7 +1173,7 @@ class LibraryView extends ItemView {
       row.addEventListener('click', () => { this.selectedId = record.id; this.render(); });
     }
     this.detailEl = layout.createDiv({ cls: 'los-library-detail' });
-    this.renderDetail(this.plugin.store.get(this.selectedId) || rows[0]);
+    this.renderDetail(rows.find((row) => row.id === this.selectedId));
     viewFooter(root);
   }
 
@@ -773,9 +1186,19 @@ class LibraryView extends ItemView {
     if (record.summary) detail.createEl('p', { text: record.summary });
     const actions = detail.createDiv({ cls: 'los-actions' });
     if (record.url) button(actions, 'Open online', () => this.plugin.openResource({ url: record.url }), 'cta');
-    if (record.material_path) button(actions, 'Open local copy', () => this.plugin.openResource({ vault_path: record.material_path }), 'quiet');
-    if (record.path) button(actions, 'Open registry file', () => this.plugin.openVaultPath(record.path), 'quiet');
+    if (record.material_path) button(actions, 'Open local copy', () => this.plugin.openMaterialPath(record.material_path), 'quiet');
+    if (record.path) button(actions, record.type === 'note' ? 'Open note' : 'Open authored file',
+      () => this.plugin.openAuthoredPath(record.path), 'quiet');
     button(actions, 'Copy ID', () => this.plugin.copyText(record.id), 'quiet');
+
+    if (record.attachments?.length) {
+      const attachments = section(detail, 'Attachments', 'Open the original handwriting, image, or PDF.');
+      for (const attachment of record.attachments) {
+        const path = typeof attachment === 'string' ? attachment : attachment.path || attachment.vault_path;
+        const label = typeof attachment === 'string' ? attachment.split('/').pop() : attachment.label || path;
+        if (path) button(attachments, `Open ${label}`, () => this.plugin.openAuthoredPath(path), 'quiet');
+      }
+    }
 
     if (record.type === 'source') {
       const facts = section(detail, 'Source facts');
@@ -951,6 +1374,8 @@ class NavView extends ItemView {
     root.createDiv({ cls: 'los-nav-label', text: 'Workflow' });
     this.nav(root, 'archive-restore', 'Shelving', () => this.plugin.openShelving());
     this.nav(root, 'library', 'Library', () => this.plugin.openLibrary());
+    this.nav(root, 'sprout', 'Garden', () => this.plugin.openVaultPath('bases/garden.base'));
+    this.nav(root, 'map', 'Domain atlas', () => this.plugin.openVaultPath('generated/domain-atlas.md'));
     this.nav(root, 'inbox', 'Inbox', () => this.plugin.openProgram('inbox'));
     root.createDiv({ cls: 'los-nav-label', text: 'Boundaries' });
     this.nav(root, 'shield', 'Master’s', () => this.plugin.openBoundary('program-masters-planning'));
@@ -1018,6 +1443,11 @@ class SessionEndModal extends Modal {
 class LearningOSUI extends Plugin {
   async onload() {
     this.settings = { ...DEFAULT_SETTINGS, ...(await this.loadData()) };
+    this.settings.uiDrafts ||= { stages: {}, selectedStages: {}, inbox: { title: '', text: '' } };
+    this.settings.uiDrafts.stages ||= {};
+    this.settings.uiDrafts.selectedStages ||= {};
+    this.settings.uiDrafts.inbox ||= { title: '', text: '' };
+    this.draftSaveTimer = null;
     for (const type of LEGACY_VIEW_TYPES) this.app.workspace.detachLeavesOfType(type);
     this.store = new ManifestStore(this.app);
     this.gateway = new GatewayClient(this);
@@ -1053,14 +1483,56 @@ class LearningOSUI extends Plugin {
   }
 
   onunload() {
+    if (this.draftSaveTimer) clearTimeout(this.draftSaveTimer);
+    void this.saveData(this.settings);
     for (const type of [VIEW_HOME, VIEW_NAV, VIEW_PROGRAM, VIEW_MODULE, VIEW_UNIT,
       VIEW_LIBRARY, VIEW_SHELVING, VIEW_BOUNDARY]) this.app.workspace.detachLeavesOfType(type);
+  }
+
+  scheduleDraftSave() {
+    if (this.draftSaveTimer) clearTimeout(this.draftSaveTimer);
+    this.draftSaveTimer = setTimeout(() => {
+      this.draftSaveTimer = null;
+      void this.saveData(this.settings);
+    }, 250);
+  }
+
+  stageDraftKey(unitId, stageId) { return `${unitId}::${stageId}`; }
+  getStageDraft(unitId, stageId, savedText = '') {
+    const key = this.stageDraftKey(unitId, stageId);
+    const entry = this.settings.uiDrafts.stages[key];
+    return { text: entry?.text ?? savedText, dirty: entry != null && entry.text !== savedText };
+  }
+  setStageDraft(unitId, stageId, text, savedText = '') {
+    const key = this.stageDraftKey(unitId, stageId);
+    if (text === savedText) delete this.settings.uiDrafts.stages[key];
+    else this.settings.uiDrafts.stages[key] = { text };
+    this.scheduleDraftSave();
+  }
+  clearStageDraft(unitId, stageId) {
+    delete this.settings.uiDrafts.stages[this.stageDraftKey(unitId, stageId)];
+    this.scheduleDraftSave();
+  }
+  getSelectedStage(unitId) { return this.settings.uiDrafts.selectedStages[unitId] || null; }
+  setSelectedStage(unitId, stageId) {
+    if (stageId) this.settings.uiDrafts.selectedStages[unitId] = stageId;
+    else delete this.settings.uiDrafts.selectedStages[unitId];
+    this.scheduleDraftSave();
+  }
+  getInboxDraft() { return { ...this.settings.uiDrafts.inbox }; }
+  setInboxDraft(title, text) {
+    this.settings.uiDrafts.inbox = { title, text };
+    this.scheduleDraftSave();
+  }
+  clearInboxDraft() {
+    this.settings.uiDrafts.inbox = { title: '', text: '' };
+    this.scheduleDraftSave();
   }
 
   runLos(args, callback) {
     const base = this.app.vault.adapter.getBasePath();
     const bundled = nodePath.join(base, '.venv', 'bin', 'python');
-    const python = bundled;
+    const python = fs.existsSync(bundled) ? bundled : 'python3';
     const script = nodePath.join(base, 'tools', 'los.py');
     execFile(python, [script, ...args], { cwd: base, timeout: 180000, maxBuffer: 8 * 1024 * 1024 }, callback);
   }
@@ -1068,7 +1540,7 @@ class LearningOSUI extends Plugin {
   async reloadStore() {
     const ok = await this.store.load();
     if (!ok) throw new Error(this.store.error);
-    for (const leaf of this.app.workspace._leaves || []) leaf.view?.render?.();
+    this.app.workspace.iterateAllLeaves((leaf) => leaf.view?.render?.());
   }
 
   async openView(type, state = {}, side = 'main', remember = true) {
@@ -1091,17 +1563,41 @@ class LearningOSUI extends Plugin {
   }
   openProgram(programId) { return this.openView(VIEW_PROGRAM, { programId }); }
   openModule(moduleId) { return this.openView(VIEW_MODULE, { moduleId }); }
-  openUnit(unitId, stageId = null) { return this.openView(VIEW_UNIT, { unitId, stageId }); }
-  openLibrary(recordId = null, recordType = 'source') { return this.openView(VIEW_LIBRARY, { recordId, recordType }); }
+  openUnit(unitId, stageId = null) {
+    const selectedStage = stageId || this.getSelectedStage(unitId);
+    if (selectedStage) this.setSelectedStage(unitId, selectedStage);
+    return this.openView(VIEW_UNIT, { unitId, stageId: selectedStage });
+  }
+  openLibrary(recordId = undefined, recordType = undefined) {
+    const state = {};
+    if (recordId !== undefined) state.recordId = recordId;
+    if (recordType !== undefined) state.recordType = recordType;
+    return this.openView(VIEW_LIBRARY, state);
+  }
   openShelving(unitId = null) { return this.openView(VIEW_SHELVING, { unitId }); }
   openBoundary(boundaryId) { return this.openView(VIEW_BOUNDARY, { boundaryId }); }
   openResume() {
     const pointer = this.store.data?.resume_pointer;
     return pointer ? this.openUnit(pointer.unit_id, pointer.stage_id) : this.openHome();
   }
-  openFullTextSearch() {
+  openFullTextSearch(query = '') {
     const ok = this.app.commands?.executeCommandById?.('omnisearch:show-modal');
     if (!ok) new Notice('Omnisearch is unavailable; structural Library search still works.');
+    else if (query.trim()) {
+      let attempts = 0;
+      const transfer = () => {
+        const input = [...document.querySelectorAll('.prompt-input')]
+          .find((candidate) => candidate.offsetParent !== null);
+        if (!input && attempts++ < 20) { setTimeout(transfer, 50); return; }
+        if (!input || input.value) return;
+        input.value = query;
+        input.dispatchEvent(new InputEvent('input', {
+          bubbles: true, inputType: 'insertText', data: query,
+        }));
+        input.focus();
+      };
+      setTimeout(transfer, 50);
+    }
   }
 
   async generate() {
@@ -1123,7 +1619,47 @@ class LearningOSUI extends Plugin {
   async openVaultPath(path) {
     const file = this.app.vault.getAbstractFileByPath(path);
     if (!file) { new Notice(`File unavailable: ${path}`); return; }
-    await this.app.workspace.getLeaf(true).openFile(file);
+    let existing = null;
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      if (!existing && leaf.view?.file?.path === path) existing = leaf;
+    });
+    if (existing) {
+      this.app.workspace.revealLeaf(existing);
+      this.app.workspace.setActiveLeaf?.(existing, { focus: true });
+      return existing;
+    }
+    const leaf = this.app.workspace.getLeaf(true);
+    await leaf.openFile(file);
+    return leaf;
+  }
+  async openExternalPath(path, successMessage = 'Opened in the default app.') {
+    if (!path || !fs.existsSync(path)) { new Notice(`File unavailable: ${path || 'unknown path'}`); return false; }
+    const error = await shell.openPath(path);
+    if (error) { new Notice(`Could not open file: ${error}`); return false; }
+    new Notice(successMessage);
+    return true;
+  }
+  openMaterialPath(path) {
+    const vault = this.app.vault.adapter.getBasePath();
+    const learningRoot = nodePath.dirname(vault);
+    const materialsRoot = nodePath.resolve(learningRoot, 'materials');
+    const fullPath = nodePath.resolve(learningRoot, path || '');
+    const relative = nodePath.relative(materialsRoot, fullPath);
+    if (!path || relative.startsWith('..') || nodePath.isAbsolute(relative)) {
+      new Notice(`Unsafe material path refused: ${path || 'unknown path'}`); return false;
+    }
+    return this.openExternalPath(fullPath, 'Opened the local material in its default app.');
+  }
+  openAuthoredPath(path) {
+    const extension = nodePath.extname(path || '').toLocaleLowerCase();
+    if (['.md', '.pdf', '.canvas', '.base'].includes(extension)) return this.openVaultPath(path);
+    const base = this.app.vault.adapter.getBasePath();
+    const fullPath = nodePath.resolve(base, path || '');
+    const relative = nodePath.relative(base, fullPath);
+    if (!path || relative.startsWith('..') || nodePath.isAbsolute(relative)) {
+      new Notice(`Unsafe vault path refused: ${path || 'unknown path'}`); return false;
+    }
+    return this.openExternalPath(fullPath, 'Opened the authored file in its default app.');
   }
   openRecord(record) {
     if (!record) return;
@@ -1131,7 +1667,14 @@ class LearningOSUI extends Plugin {
     if (record.type === 'module') return this.openModule(record.id);
     if (record.type === 'program') return this.openProgram(record.id);
     if (record.type === 'source') return this.openLibrary(record.id, 'source');
-    if (record.path) return this.openVaultPath(record.path);
+    if (record.type === 'note' || record.type === 'concept') return this.openLibrary(record.id, record.type);
+    if (record.type === 'workspace') {
+      const unit = (record.unit_ids || []).map((id) => this.store.get(id)).find(Boolean);
+      if (unit) return this.openUnit(unit.id);
+      const module = (record.module_ids || []).map((id) => this.store.get(id)).find(Boolean);
+      return module ? this.openModule(module.id) : this.openHome();
+    }
+    if (record.path) return this.openAuthoredPath(record.path);
   }
   openResource(resource) {
     if (resource.vault_path) return this.openVaultPath(resource.vault_path);

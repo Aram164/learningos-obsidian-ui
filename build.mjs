@@ -20,10 +20,10 @@ const files = [
   'src/main.ts',
 ];
 
-const header = `'use strict';\n\nconst { Plugin, PluginSettingTab, ItemView, Modal, Notice, Setting, setIcon } = require('obsidian');\nconst { execFile } = require('child_process');\nconst nodePath = require('path');\n`;
+const header = `'use strict';\n\nconst { Plugin, PluginSettingTab, ItemView, Modal, Notice, Setting, setIcon } = require('obsidian');\nconst { execFile } = require('child_process');\nconst fs = require('fs');\nconst nodePath = require('path');\nconst { shell, webUtils } = require('electron');\n`;
 const sections = files.map((relative) => {
   const source = fs.readFileSync(path.join(root, relative), 'utf8')
-    .replace(/^export\s+/gm, '');
+    .replace(/^export\s+(?=(?:class|const|function)\s+[A-Za-z_$])/gm, '');
   return `\n/* ---- ${relative} ---- */\n${source.trim()}\n`;
 });
 const output = `${header}${sections.join('')}\nmodule.exports = LearningOSUI;\n`;

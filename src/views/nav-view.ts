@@ -22,6 +22,8 @@ export class NavView extends ItemView {
     root.createDiv({ cls: 'los-nav-label', text: 'Workflow' });
     this.nav(root, 'archive-restore', 'Shelving', () => this.plugin.openShelving());
     this.nav(root, 'library', 'Library', () => this.plugin.openLibrary());
+    this.nav(root, 'sprout', 'Garden', () => this.plugin.openVaultPath('bases/garden.base'));
+    this.nav(root, 'map', 'Domain atlas', () => this.plugin.openVaultPath('generated/domain-atlas.md'));
     this.nav(root, 'inbox', 'Inbox', () => this.plugin.openProgram('inbox'));
     root.createDiv({ cls: 'los-nav-label', text: 'Boundaries' });
     this.nav(root, 'shield', 'Master’s', () => this.plugin.openBoundary('program-masters-planning'));

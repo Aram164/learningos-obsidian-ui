@@ -5,14 +5,17 @@ export class UnitView extends ItemView {
   getViewType() { return VIEW_UNIT; }
   getDisplayText() { return 'LearningOS · Unit'; }
   async setState(state) {
-    this.unitId = state?.unitId || this.unitId;
-    this.stageId = state?.stageId || this.stageId;
+    const nextUnitId = state?.unitId || this.unitId;
+    if (nextUnitId !== this.unitId) this.stageId = null;
+    this.unitId = nextUnitId;
+    const requested = Object.prototype.hasOwnProperty.call(state || {}, 'stageId') ? state.stageId : null;
+    this.stageId = this.plugin.getSelectedStage(this.unitId) || requested || this.stageId;
     this.render();
   }
   getState() { return { unitId: this.unitId, stageId: this.stageId }; }
   async onOpen() {
     this.unitId = this.leaf.state?.unitId || this.unitId;
-    this.stageId = this.leaf.state?.stageId || this.stageId;
+    this.stageId = this.plugin.getSelectedStage(this.unitId) || this.leaf.state?.stageId || this.stageId;
     this.render();
   }
 
@@ -41,6 +44,7 @@ export class UnitView extends ItemView {
     }
     if (!this.stageId || !studyMap.stages.some((row) => row.id === this.stageId)) {
       this.stageId = studyMap.current_stage;
+      this.plugin.setSelectedStage(unit.id, this.stageId);
     }
     const stage = studyMap.stages.find((row) => row.id === this.stageId) || studyMap.stages[0];
     const layout = root.createDiv({ cls: 'los-unit-layout' });
@@ -57,13 +61,14 @@ export class UnitView extends ItemView {
     for (const [index, stage] of studyMap.stages.entries()) {
       const row = rail.createEl('button', {
         cls: `los-stage-row los-s-${stage.status} ${stage.id === current.id ? 'is-selected' : ''} is-clickable`,
-        attr: { type: 'button' },
+        attr: { type: 'button', 'aria-current': stage.id === current.id ? 'step' : 'false' },
       });
       row.createSpan({ cls: 'los-stage-index', text: String(index + 1).padStart(2, '0') });
       const copy = row.createSpan({ cls: 'los-stage-copy' });
       copy.createSpan({ text: stage.title });
-      copy.createSpan({ cls: 'los-micro', text: stage.status });
-      row.addEventListener('click', () => { this.stageId = stage.id; this.render(); });
+      const hasDraft = this.plugin.getStageDraft(unit.id, stage.id, stage.notes_text || '').dirty;
+      copy.createSpan({ cls: 'los-micro', text: `${stage.status}${hasDraft ? ' · unsaved draft' : ''}` });
+      row.addEventListener('click', () => this.selectStage(stage.id));
     }
     const mapActions = rail.createDiv({ cls: 'los-stack-actions' });
     if (current.status !== 'active') button(mapActions, 'Revisit stage', () => this.mutate(
@@ -92,15 +97,15 @@ export class UnitView extends ItemView {
         const source = this.plugin.store.get(resource.source_id);
         chip(copy, source, (record) => this.plugin.openLibrary(record.id));
       }
-      const actions = row.createDiv({ cls: 'los-actions' });
+      const actions = row.createDiv({ cls: 'los-actions los-resource-actions' });
       if (resource.url || resource.vault_path) button(actions, 'Open', () => this.plugin.openResource(resource), 'quiet');
       if (resource.source_id) {
         button(actions, 'Helpful', () => this.mutate(
-          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'helpful')), 'quiet');
+          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'helpful')), 'tertiary');
         button(actions, 'Too advanced', () => this.mutate(
-          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'too-advanced')), 'quiet');
+          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'too-advanced')), 'tertiary');
         button(actions, 'Useful for review', () => this.mutate(
-          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'useful-for-review')), 'quiet');
+          () => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, 'useful-for-review')), 'tertiary');
       }
     }
 
@@ -123,18 +128,35 @@ export class UnitView extends ItemView {
     panel.createEl('h2', { text: 'Working note' });
     panel.createEl('p', { cls: 'los-muted', text: 'Stage-bound scratch. No concept ID or filing destination needed.' });
     const editor = panel.createEl('textarea', { cls: 'los-note-editor', attr: { 'aria-label': 'Stage working note' } });
-    editor.value = stage.notes_text || '';
-    button(panel, 'Save note', () => this.mutate(
-      () => this.plugin.gateway.saveNote(unit.id, stage.id, editor.value)), 'cta');
+    const savedText = stage.notes_text || '';
+    const draft = this.plugin.getStageDraft(unit.id, stage.id, savedText);
+    editor.value = draft.text;
+    const status = panel.createDiv({ cls: 'los-draft-status', attr: { 'aria-live': 'polite' } });
+    const updateStatus = () => {
+      const dirty = editor.value !== savedText;
+      status.setText(dirty ? 'Unsaved draft kept locally.' : 'All changes saved.');
+      status.toggleClass('is-dirty', dirty);
+    };
+    editor.addEventListener('input', () => {
+      this.plugin.setStageDraft(unit.id, stage.id, editor.value, savedText);
+      updateStatus();
+    });
+    updateStatus();
+    button(panel, 'Save note', () => this.saveStageNote(unit, stage, editor.value), 'cta');
     const attachments = section(panel, 'Attachments');
     if (!stage.attachments?.length) attachments.createEl('p', { text: 'Attach handwriting or a PDF through the guarded stage-attach action.' });
-    for (const attachment of stage.attachments || []) attachments.createDiv({ text: attachment.label });
+    for (const attachment of stage.attachments || []) {
+      const path = typeof attachment === 'string' ? attachment : attachment.path || attachment.vault_path;
+      const label = typeof attachment === 'string' ? attachment.split('/').pop() : attachment.label || path;
+      if (path) button(attachments, `Open ${label}`, () => this.plugin.openAuthoredPath(path), 'quiet');
+      else attachments.createDiv({ text: label || 'Attachment' });
+    }
     const picker = attachments.createEl('input', {
       cls: 'los-file-input', attr: { type: 'file', 'aria-label': 'Choose stage attachment' },
     });
     button(attachments, 'Attach selected file', () => {
       const file = picker.files?.[0];
-      const localPath = file?.path;
+      const localPath = localFilePath(file);
       if (!localPath) { new Notice('Choose a local handwriting, image, or PDF file first.'); return; }
       this.mutate(() => this.plugin.gateway.attach(unit.id, stage.id, localPath, file.name));
     }, 'quiet');
@@ -172,5 +194,24 @@ export class UnitView extends ItemView {
   async mutate(action) {
     try { await action(); await this.plugin.reloadStore(); this.render(); }
     catch (error) { new Notice(error?.message || String(error)); }
+  }
+
+  async saveStageNote(unit, stage, text) {
+    try {
+      await this.plugin.gateway.saveNote(unit.id, stage.id, text);
+      this.plugin.clearStageDraft(unit.id, stage.id);
+      await this.plugin.reloadStore();
+      new Notice('Stage note saved.');
+    } catch (error) { new Notice(error?.message || String(error)); }
+  }
+
+  async selectStage(stageId) {
+    this.stageId = stageId;
+    this.plugin.setSelectedStage(this.unitId, stageId);
+    await this.leaf.setViewState({
+      type: VIEW_UNIT,
+      active: true,
+      state: { unitId: this.unitId, stageId: this.stageId },
+    });
   }
 }

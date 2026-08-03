@@ -19,13 +19,15 @@ second source of truth.
    then optionally commit and push only those files.
 
 Navigation is **Home · Bachelor's · Skills · Thesis & projects · Shelving
-· Library · Inbox · Master's · Job**. Master's and Job are policy-only
+· Library · Garden · Domain atlas · Inbox · Master's · Job**. Master's and Job are policy-only
 boundary views; quarantined content is not in the manifest or default search.
 
 ## Engineering boundary
 
-- Modular TypeScript-valid source lives under `src/`; `build.mjs` produces the
-  required bundled `plugin/main.js` with no Node dependency in the core.
+- Modular TypeScript-syntax source lives under `src/`; `build.mjs` concatenates
+  it into the required `plugin/main.js`. The source files share build-injected
+  Obsidian/Electron globals; this project does not claim an import-based `tsc`
+  architecture. The core has no Node dependency.
 - The app reads only atomic `generated/manifest.json` contract v2. It never
   parses canonical Markdown/YAML and remains useful when Python is offline.
 - Mutations use `tools/los.py` action-specific commands: `stage-note`,
@@ -47,15 +49,21 @@ OCR, HTTP API off, quarantine exclusions, and direct PDF editing off. See
 ## Build, test, install
 
 ```bash
-NODE=/Users/aramaljanadi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node
-$NODE build.mjs
-$NODE tests/test-dashboard.js
-python3 install.py --node "$NODE" --ecosystem
+python3 install.py                 # build + test + install into ../repository
+python3 install.py --ecosystem     # + the pinned AI/search/OCR/PDF plugins
+python3 install.py --dry-run       # print actions only
 ```
 
 `install.py` builds and runs the synthetic fixture suite before writing. It
 merges vault/plugin settings, verifies pinned downloads, installs only into
 gitignored vault paths, and smoke-tests the CLI. Reload Obsidian with `Cmd+R`.
+
+It finds Node itself — PATH first, then `/opt/homebrew/bin`, `/usr/local/bin`,
+`/usr/bin`, `~/.nvm`, `~/.volta`, and bundled agent runtimes under
+`~/.cache/codex-runtimes` — and prints which binary it used. A GUI-launched or
+bare shell often has none of these on PATH, which is not a reason to refuse the
+install. Override with `--node /absolute/path/to/node`; run the steps by hand
+with `<node> build.mjs` and `<node> tests/test-dashboard.js`.
 
 This repository is local-only and has no remote. Core and UI remain separate
 ownership layers; the core remains portable plain files and Git.

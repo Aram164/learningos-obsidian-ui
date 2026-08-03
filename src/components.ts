@@ -27,7 +27,7 @@ export function chip(parent, record, onClick) {
 
 export function pageHeader(parent, kicker, title, description = '') {
   const header = parent.createDiv({ cls: 'los-page-header' });
-  header.createDiv({ cls: 'los-kicker', text: kicker });
+  if (kicker) header.createDiv({ cls: 'los-kicker', text: kicker });
   header.createEl('h1', { text: title });
   if (description) header.createEl('p', { text: description });
   return header;
@@ -48,8 +48,47 @@ export function empty(parent, title, detail, actionLabel, action) {
   return el;
 }
 
+export function localFilePath(file) {
+  if (!file) return '';
+  try { return webUtils.getPathForFile(file) || ''; }
+  catch (_) { return ''; }
+}
+
+export function projectedExcerpt(value, limit = 900) {
+  const first = String(value || '').split(/\n\s*\n/)[0]
+    .replace(/\*\*/g, '').replace(/`/g, '')
+    .replace(/(^|\n)\s*-\s*/g, '$1').replace(/\s+/g, ' ').trim();
+  return first.length > limit ? `${first.slice(0, limit - 1)}…` : first;
+}
+
+export function workspaceCard(parent, plugin, workspace, moduleContext = null) {
+  const card = parent.createDiv({ cls: `los-card los-workspace-card los-s-${workspace.status}` });
+  const top = card.createDiv({ cls: 'los-card-top' });
+  top.createEl('h3', { text: workspace.title });
+  badge(top, workspace.standing ? `${workspace.status} · standing` : workspace.status, workspace.status);
+  if (workspace.objective) card.createEl('p', { cls: 'los-workspace-objective', text: workspace.objective });
+  const next = card.createDiv({ cls: 'los-next-action' });
+  next.createDiv({ cls: 'los-kicker', text: 'Next action' });
+  next.createEl('p', { text: projectedExcerpt(workspace.next_action, 1600) || 'No next action recorded.' });
+  if (workspace.deadline) badge(next, `Deadline ${workspace.deadline}`, 'needs-map');
+  const actions = card.createDiv({ cls: 'los-actions' });
+  const moduleIds = (workspace.module_ids || []).filter((id) => id !== moduleContext);
+  for (const id of moduleIds.slice(0, 3)) {
+    const module = plugin.store.get(id);
+    if (module) button(actions, `Open ${module.title}`, () => plugin.openModule(id), 'quiet');
+  }
+  for (const id of (workspace.unit_ids || []).slice(0, 3)) {
+    const unit = plugin.store.get(id);
+    if (unit) button(actions, `Open ${unit.title}`, () => plugin.openUnit(id), 'quiet');
+  }
+  return card;
+}
+
 export function unitCard(parent, plugin, unit) {
-  const card = parent.createDiv({ cls: `los-card los-s-${unit.status} is-clickable` });
+  const card = parent.createEl('button', {
+    cls: `los-card los-unit-card los-s-${unit.status} is-clickable`,
+    attr: { type: 'button', 'aria-label': `Open unit: ${unit.title}` },
+  });
   const top = card.createDiv({ cls: 'los-card-top' });
   top.createEl('h3', { text: unit.title });
   badge(top, unit.status, unit.status);
@@ -66,7 +105,10 @@ export function unitCard(parent, plugin, unit) {
 }
 
 export function moduleCard(parent, plugin, module) {
-  const card = parent.createDiv({ cls: `los-card los-module-card los-s-${module.status} is-clickable` });
+  const card = parent.createEl('button', {
+    cls: `los-card los-module-card los-s-${module.status} is-clickable`,
+    attr: { type: 'button', 'aria-label': `Open module: ${module.title}` },
+  });
   const top = card.createDiv({ cls: 'los-card-top' });
   top.createEl('h3', { text: module.title });
   badge(top, module.kind, 'role');
