@@ -160,8 +160,8 @@ export class LearningOSUI extends Plugin {
 
   async generate() {
     try {
-      await this.gateway.call(['validate']);
-      await this.gateway.call(['generate']);
+      await this.gateway.call(['validate'], { expectJson: false });
+      await this.gateway.call(['generate'], { expectJson: false });
       await this.reloadStore(); new Notice('LearningOS projection rebuilt.');
     } catch (error) { new Notice(error?.message || String(error)); }
   }
@@ -174,7 +174,24 @@ export class LearningOSUI extends Plugin {
     } catch (error) { new Notice(error?.message || String(error)); return null; }
   }
 
+  /**
+   * Hard rule 10 (core CLAUDE.md §13): `Job/` is quarantined. This is its
+   * mechanical enforcement. A `Job/…` path never leaves the vault, so the
+   * escape checks in the open helpers below cannot catch it — and every open
+   * funnels through one of them.
+   */
+  isQuarantinedPath(path) {
+    const posix = String(path || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+    return posix === 'Job' || posix.startsWith('Job/') || posix.includes('/Job/');
+  }
+  refuseQuarantined(path) {
+    if (!this.isQuarantinedPath(path)) return false;
+    new Notice('Job/ is quarantined — LearningOS never opens or displays it.');
+    return true;
+  }
+
   async openVaultPath(path) {
+    if (this.refuseQuarantined(path)) return;
     const file = this.app.vault.getAbstractFileByPath(path);
     if (!file) { new Notice(`File unavailable: ${path}`); return; }
     let existing = null;
@@ -191,6 +208,7 @@ export class LearningOSUI extends Plugin {
     return leaf;
   }
   async openExternalPath(path, successMessage = 'Opened in the default app.') {
+    if (this.refuseQuarantined(path)) return false;
     if (!path || !fs.existsSync(path)) { new Notice(`File unavailable: ${path || 'unknown path'}`); return false; }
     const error = await shell.openPath(path);
     if (error) { new Notice(`Could not open file: ${error}`); return false; }
@@ -209,6 +227,7 @@ export class LearningOSUI extends Plugin {
     return this.openExternalPath(fullPath, 'Opened the local material in its default app.');
   }
   openAuthoredPath(path) {
+    if (this.refuseQuarantined(path)) return false;
     const extension = nodePath.extname(path || '').toLocaleLowerCase();
     if (['.md', '.pdf', '.canvas', '.base'].includes(extension)) return this.openVaultPath(path);
     const base = this.app.vault.adapter.getBasePath();

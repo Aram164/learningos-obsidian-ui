@@ -4,6 +4,9 @@ export class ManifestStore {
     this.ready = false;
     this.error = '';
     this.data = null;
+    // Initialised here, not only inside load()'s success branch: a failed load
+    // must still leave every accessor safe to call.
+    this.records = [];
     this.byId = new Map();
   }
 
@@ -20,7 +23,7 @@ export class ManifestStore {
       this.data = manifest;
       this.contractVersion = version;
       this.snapshotId = manifest._generated.snapshot_id;
-      this.records = manifest.records || [];
+      this.records = (manifest.records || []).filter((row) => row && typeof row === 'object');
       this.byId = new Map(this.records.filter((row) => row?.id).map((row) => [row.id, row]));
       // `stages` is the core's flat by-id index (each stage carries its
       // study_map_id/unit_id/module_id). `study_maps[].stages` stays the
@@ -40,11 +43,20 @@ export class ManifestStore {
   }
 
   get(id) { return this.byId.get(id) || null; }
-  of(type) { return this.records.filter((row) => row.type === type); }
-  programs() { return this.data?.programs || []; }
-  modules() { return this.data?.modules || []; }
-  units() { return this.data?.units || []; }
-  studyMaps() { return this.data?.study_maps || []; }
+  of(type) { return this.records.filter((row) => row?.type === type); }
+  /**
+   * One null row anywhere in a projected array used to take Home down on
+   * startup. Every list accessor drops non-objects at the boundary, so no view
+   * has to defend itself row by row.
+   */
+  rows(group) {
+    const value = this.data?.[group];
+    return Array.isArray(value) ? value.filter((row) => row && typeof row === 'object') : [];
+  }
+  programs() { return this.rows('programs'); }
+  modules() { return this.rows('modules'); }
+  units() { return this.rows('units'); }
+  studyMaps() { return this.rows('study_maps'); }
   modulesFor(programId) { return this.modules().filter((row) => row.area_id === programId); }
   unitsFor(moduleId, componentId = null) {
     const rows = this.units().filter((row) => row.module_id === moduleId);
@@ -60,7 +72,7 @@ export class ManifestStore {
     return stage?.study_map_id ? stage : null;
   }
   sourceMap(moduleId) {
-    return (this.data?.module_source_maps || []).find((row) => row.module_id === moduleId) || null;
+    return this.rows('module_source_maps').find((row) => row.module_id === moduleId) || null;
   }
   progress(moduleId) { return this.data?.progress?.[moduleId] || {}; }
   workspacesForModule(moduleId) {
@@ -75,7 +87,7 @@ export class ManifestStore {
   search(query, types = null) {
     const words = String(query || '').toLocaleLowerCase().split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
-    const rows = this.records.filter((row) => !allowed || allowed.has(row.type));
+    const rows = this.records.filter((row) => row && (!allowed || allowed.has(row.type)));
     if (!words.length) return rows;
     const strict = rows.filter((row) => {
       const hay = [row.id, row.title, ...(row.aliases || []), ...(row.authors || []),

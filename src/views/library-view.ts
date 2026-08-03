@@ -32,6 +32,14 @@ export class LibraryView extends ItemView {
 
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-library-view');
+    // Reachable from the Navigator regardless of projection health, so it must
+    // degrade rather than search an unloaded record set.
+    if (!this.plugin.store.ready) {
+      pageHeader(root, 'Reference', 'Projection unavailable');
+      empty(root, 'The interface contract could not be loaded', this.plugin.store.error,
+        'Rebuild views', () => this.plugin.generate());
+      return;
+    }
     pageHeader(root, 'Reference', 'Library',
       'Search registered sources, notes, concepts, and workspaces without turning the catalogue into the curriculum.');
     const controls = root.createDiv({ cls: 'los-library-controls' });

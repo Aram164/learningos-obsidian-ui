@@ -83,8 +83,8 @@ export class HomeView extends ItemView {
     copy.createEl('h2', { text: unit.title });
     const progress = copy.createDiv({ cls: 'los-resume-progress' });
     progress.createSpan({ text: stage.title });
-    const stages = map?.stages || [];
-    progress.createSpan({ cls: 'los-progress-copy', text: `${stages.filter((row) => row.status === 'complete').length} of ${stages.length} stages complete` });
+    const stages = Array.isArray(map?.stages) ? map.stages.filter(Boolean) : [];
+    progress.createSpan({ cls: 'los-progress-copy', text: `${stages.filter((row) => row?.status === 'complete').length} of ${stages.length} stages complete` });
     const actions = card.createDiv({ cls: 'los-actions' });
     button(actions, 'Resume stage', () => this.plugin.openUnit(unit.id, stage.id), 'cta');
     if (this.plugin.settings.showAiRecommendation) {
@@ -254,14 +254,15 @@ export class HomeView extends ItemView {
   renderBoundaries(root) {
     const wrap = section(root, 'Boundaries');
     const grid = wrap.createDiv({ cls: 'los-boundary-grid' });
-    for (const boundary of this.plugin.store.data.quarantine_boundaries || []) {
+    for (const boundary of this.plugin.store.rows('quarantine_boundaries')) {
       const card = grid.createEl('button', {
         cls: 'los-boundary-card is-clickable',
         attr: { type: 'button', 'aria-label': `Open boundary: ${boundary.title}` },
       });
       icon(card.createSpan(), 'shield');
       card.createEl('h3', { text: boundary.title });
-      card.createEl('p', { text: boundary.description });
+      const policy = boundaryPolicy(boundary.description);
+      if (policy) card.createEl('p', { text: policy });
       card.addEventListener('click', () => this.plugin.openBoundary(boundary.id));
     }
   }

@@ -42,15 +42,27 @@ export class UnitView extends ItemView {
       this.renderArtifacts(root, unit);
       viewFooter(root); return;
     }
-    if (!this.stageId || !studyMap.stages.some((row) => row.id === this.stageId)) {
-      this.stageId = studyMap.current_stage;
+    // A study map whose `stages` is missing or not an array used to throw here
+    // and blank the whole workspace. Normalise once, then work from `map`.
+    const stages = Array.isArray(studyMap.stages)
+      ? studyMap.stages.filter((row) => row && typeof row === 'object') : [];
+    if (!stages.length) {
+      const bare = section(root, 'Study map needs stages');
+      empty(bare, 'This study map has no stages yet',
+        'Stage authoring belongs to the core — import a map or add stages there, then rebuild views.');
+      this.renderArtifacts(root, unit);
+      viewFooter(root); return;
+    }
+    const map = { ...studyMap, stages };
+    if (!this.stageId || !stages.some((row) => row.id === this.stageId)) {
+      this.stageId = map.current_stage;
       this.plugin.setSelectedStage(unit.id, this.stageId);
     }
-    const stage = studyMap.stages.find((row) => row.id === this.stageId) || studyMap.stages[0];
+    const stage = stages.find((row) => row.id === this.stageId) || stages[0];
     const layout = root.createDiv({ cls: 'los-unit-layout' });
-    this.renderRail(layout, unit, studyMap, stage);
-    this.renderStage(layout, unit, studyMap, stage);
-    this.renderNotes(layout, unit, studyMap, stage);
+    this.renderRail(layout, unit, map, stage);
+    this.renderStage(layout, unit, map, stage);
+    this.renderNotes(layout, unit, map, stage);
     this.renderArtifacts(root, unit);
     viewFooter(root);
   }
@@ -86,8 +98,12 @@ export class UnitView extends ItemView {
     if (stage.estimate_minutes) badge(top, `${stage.estimate_minutes} min`, 'role');
 
     const resources = section(center, 'Exact resources', 'Only the actions for this stage.');
-    if (!stage.resources?.length) empty(resources, 'No source action selected', 'Use the unit scope and ask AI for a proposal.');
-    for (const resource of stage.resources || []) {
+    // Array.isArray, not a truthy length check: a string here used to render
+    // one blank row per character, because for...of walks a string by character.
+    const stageResources = Array.isArray(stage.resources)
+      ? stage.resources.filter((row) => row && typeof row === 'object') : [];
+    if (!stageResources.length) empty(resources, 'No source action selected', 'Use the unit scope and ask AI for a proposal.');
+    for (const resource of stageResources) {
       const row = resources.createDiv({ cls: 'los-resource-row' });
       icon(row.createSpan(), resource.kind === 'watch' ? 'play' : resource.kind === 'practise' ? 'pencil-line' : 'book-open');
       const copy = row.createDiv({ cls: 'los-resource-copy' });
@@ -111,7 +127,9 @@ export class UnitView extends ItemView {
 
     const done = section(center, 'Done when');
     const list = done.createEl('ul');
-    for (const criterion of stage.done_when || []) list.createEl('li', { text: criterion });
+    const criteria = Array.isArray(stage.done_when)
+      ? stage.done_when.filter((row) => typeof row === 'string' && row.trim()) : [];
+    for (const criterion of criteria) list.createEl('li', { text: criterion });
     const actions = center.createDiv({ cls: 'los-actions los-stage-actions' });
     button(actions, 'Complete stage', () => this.mutate(
       () => this.plugin.gateway.progress(unit.id, stage.id, 'complete')), 'cta');
@@ -144,8 +162,9 @@ export class UnitView extends ItemView {
     updateStatus();
     button(panel, 'Save note', () => this.saveStageNote(unit, stage, editor.value), 'cta');
     const attachments = section(panel, 'Attachments');
-    if (!stage.attachments?.length) attachments.createEl('p', { text: 'Attach handwriting or a PDF through the guarded stage-attach action.' });
-    for (const attachment of stage.attachments || []) {
+    const stageAttachments = Array.isArray(stage.attachments) ? stage.attachments.filter(Boolean) : [];
+    if (!stageAttachments.length) attachments.createEl('p', { text: 'Attach handwriting or a PDF through the guarded stage-attach action.' });
+    for (const attachment of stageAttachments) {
       const path = typeof attachment === 'string' ? attachment : attachment.path || attachment.vault_path;
       const label = typeof attachment === 'string' ? attachment.split('/').pop() : attachment.label || path;
       if (path) button(attachments, `Open ${label}`, () => this.plugin.openAuthoredPath(path), 'quiet');
@@ -191,18 +210,31 @@ export class UnitView extends ItemView {
     if (!count) empty(wrap, 'No durable artifact linked yet', 'Working notes stay with the stage until shelving is approved.');
   }
 
+  /**
+   * One write at a time. Two fast clicks used to spawn two CLI subprocesses
+   * carrying the same --expected-snapshot, so the second raced the projection
+   * the first had already moved.
+   */
   async mutate(action) {
+    if (this.busy) { new Notice('A LearningOS write is already running.'); return; }
+    this.busy = true;
     try { await action(); await this.plugin.reloadStore(); this.render(); }
     catch (error) { new Notice(error?.message || String(error)); }
+    finally { this.busy = false; }
   }
 
   async saveStageNote(unit, stage, text) {
+    if (this.busy) { new Notice('A LearningOS write is already running.'); return; }
+    this.busy = true;
     try {
       await this.plugin.gateway.saveNote(unit.id, stage.id, text);
+      // Reached only on a confirmed ok — the gateway rejects empty or
+      // unreadable output — so the draft is safe to drop here and only here.
       this.plugin.clearStageDraft(unit.id, stage.id);
       await this.plugin.reloadStore();
       new Notice('Stage note saved.');
     } catch (error) { new Notice(error?.message || String(error)); }
+    finally { this.busy = false; }
   }
 
   async selectStage(stageId) {

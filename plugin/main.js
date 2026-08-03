@@ -47,6 +47,9 @@ class ManifestStore {
     this.ready = false;
     this.error = '';
     this.data = null;
+    // Initialised here, not only inside load()'s success branch: a failed load
+    // must still leave every accessor safe to call.
+    this.records = [];
     this.byId = new Map();
   }
 
@@ -63,7 +66,7 @@ class ManifestStore {
       this.data = manifest;
       this.contractVersion = version;
       this.snapshotId = manifest._generated.snapshot_id;
-      this.records = manifest.records || [];
+      this.records = (manifest.records || []).filter((row) => row && typeof row === 'object');
       this.byId = new Map(this.records.filter((row) => row?.id).map((row) => [row.id, row]));
       // `stages` is the core's flat by-id index (each stage carries its
       // study_map_id/unit_id/module_id). `study_maps[].stages` stays the
@@ -83,11 +86,20 @@ class ManifestStore {
   }
 
   get(id) { return this.byId.get(id) || null; }
-  of(type) { return this.records.filter((row) => row.type === type); }
-  programs() { return this.data?.programs || []; }
-  modules() { return this.data?.modules || []; }
-  units() { return this.data?.units || []; }
-  studyMaps() { return this.data?.study_maps || []; }
+  of(type) { return this.records.filter((row) => row?.type === type); }
+  /**
+   * One null row anywhere in a projected array used to take Home down on
+   * startup. Every list accessor drops non-objects at the boundary, so no view
+   * has to defend itself row by row.
+   */
+  rows(group) {
+    const value = this.data?.[group];
+    return Array.isArray(value) ? value.filter((row) => row && typeof row === 'object') : [];
+  }
+  programs() { return this.rows('programs'); }
+  modules() { return this.rows('modules'); }
+  units() { return this.rows('units'); }
+  studyMaps() { return this.rows('study_maps'); }
   modulesFor(programId) { return this.modules().filter((row) => row.area_id === programId); }
   unitsFor(moduleId, componentId = null) {
     const rows = this.units().filter((row) => row.module_id === moduleId);
@@ -103,7 +115,7 @@ class ManifestStore {
     return stage?.study_map_id ? stage : null;
   }
   sourceMap(moduleId) {
-    return (this.data?.module_source_maps || []).find((row) => row.module_id === moduleId) || null;
+    return this.rows('module_source_maps').find((row) => row.module_id === moduleId) || null;
   }
   progress(moduleId) { return this.data?.progress?.[moduleId] || {}; }
   workspacesForModule(moduleId) {
@@ -118,7 +130,7 @@ class ManifestStore {
   search(query, types = null) {
     const words = String(query || '').toLocaleLowerCase().split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
-    const rows = this.records.filter((row) => !allowed || allowed.has(row.type));
+    const rows = this.records.filter((row) => row && (!allowed || allowed.has(row.type)));
     if (!words.length) return rows;
     const strict = rows.filter((row) => {
       const hay = [row.id, row.title, ...(row.aliases || []), ...(row.authors || []),
@@ -157,14 +169,34 @@ class ManifestStore {
 class GatewayClient {
   constructor(plugin) { this.plugin = plugin; }
 
-  call(args) {
+  /**
+   * Every mutating command answers in JSON. Unreadable or empty output means
+   * the write was NOT confirmed, so this must reject: call sites clear
+   * UI-owned drafts on resolve, and resolving on garbage would destroy the
+   * learner's text behind a success notice. `expectJson: false` is only for
+   * the text-reporting commands (`validate`, `generate`).
+   */
+  call(args, { expectJson = true } = {}) {
     return new Promise((resolve, reject) => {
       this.plugin.runLos(args, (error, stdout, stderr) => {
-        if (error) reject(new Error(stderr || error.message || String(error)));
-        else {
-          try { resolve(stdout ? JSON.parse(stdout) : { ok: true }); }
-          catch (_) { resolve({ ok: true, stdout }); }
+        if (error) { reject(new Error(stderr || error.message || String(error))); return; }
+        const raw = String(stdout ?? '').trim();
+        if (!expectJson) { resolve({ ok: true, stdout: raw }); return; }
+        if (!raw) {
+          reject(new Error('LearningOS wrote nothing back, so the change is unconfirmed. Your draft was kept.'));
+          return;
         }
+        let parsed = null;
+        try { parsed = JSON.parse(raw); }
+        catch (_) {
+          reject(new Error(`LearningOS answered with unreadable output, so the change is unconfirmed and your draft was kept: ${raw.slice(0, 160)}`));
+          return;
+        }
+        if (!parsed || typeof parsed !== 'object' || parsed.ok === false) {
+          reject(new Error(parsed?.error || 'LearningOS refused the change; your draft was kept.'));
+          return;
+        }
+        resolve(parsed);
       });
     });
   }
@@ -194,12 +226,14 @@ class GatewayClient {
     return this.call([...args, ...this.guard()]);
   }
   captureText(text, title = '') {
-    const args = ['capture', '--text', text];
+    // `--json` so an inbox capture is confirmed structurally; the plain-text
+    // form stays the human default in a terminal.
+    const args = ['capture', '--json', '--text', text];
     if (title) args.push('--title', title);
     return this.call(args);
   }
   captureFile(filePath) {
-    return this.call(['capture', '--file', filePath]);
+    return this.call(['capture', '--json', '--file', filePath]);
   }
   prepareShelving(unitId) {
     return this.call(['shelving-prepare', unitId, ...this.guard()]);
@@ -297,7 +331,21 @@ function projectedExcerpt(value, limit = 900) {
   const first = String(value || '').split(/\n\s*\n/)[0]
     .replace(/\*\*/g, '').replace(/`/g, '')
     .replace(/(^|\n)\s*-\s*/g, '$1').replace(/\s+/g, ' ').trim();
-  return first.length > limit ? `${first.slice(0, limit - 1)}…` : first;
+  if (first.length <= limit) return first;
+  // Slice by code point: a plain .slice() could cut an emoji in half and leak a
+  // lone surrogate into the DOM.
+  return `${Array.from(first).slice(0, limit - 1).join('')}…`;
+}
+
+/**
+ * Boundary cards exist to prove nothing quarantined was loaded, so they show
+ * short core-authored policy prose only: capped, single paragraph, and never a
+ * `Job/` path. The field is core-owned, but this is the one view where trusting
+ * the manifest has no upside.
+ */
+function boundaryPolicy(value) {
+  const text = projectedExcerpt(value, 300);
+  return /(^|[\s([<'"])Job\//.test(text) ? '' : text;
 }
 
 function workspaceCard(parent, plugin, workspace, moduleContext = null) {
@@ -448,8 +496,8 @@ class HomeView extends ItemView {
     copy.createEl('h2', { text: unit.title });
     const progress = copy.createDiv({ cls: 'los-resume-progress' });
     progress.createSpan({ text: stage.title });
-    const stages = map?.stages || [];
-    progress.createSpan({ cls: 'los-progress-copy', text: `${stages.filter((row) => row.status === 'complete').length} of ${stages.length} stages complete` });
+    const stages = Array.isArray(map?.stages) ? map.stages.filter(Boolean) : [];
+    progress.createSpan({ cls: 'los-progress-copy', text: `${stages.filter((row) => row?.status === 'complete').length} of ${stages.length} stages complete` });
     const actions = card.createDiv({ cls: 'los-actions' });
     button(actions, 'Resume stage', () => this.plugin.openUnit(unit.id, stage.id), 'cta');
     if (this.plugin.settings.showAiRecommendation) {
@@ -619,14 +667,15 @@ class HomeView extends ItemView {
   renderBoundaries(root) {
     const wrap = section(root, 'Boundaries');
     const grid = wrap.createDiv({ cls: 'los-boundary-grid' });
-    for (const boundary of this.plugin.store.data.quarantine_boundaries || []) {
+    for (const boundary of this.plugin.store.rows('quarantine_boundaries')) {
       const card = grid.createEl('button', {
         cls: 'los-boundary-card is-clickable',
         attr: { type: 'button', 'aria-label': `Open boundary: ${boundary.title}` },
       });
       icon(card.createSpan(), 'shield');
       card.createEl('h3', { text: boundary.title });
-      card.createEl('p', { text: boundary.description });
+      const policy = boundaryPolicy(boundary.description);
+      if (policy) card.createEl('p', { text: policy });
       card.addEventListener('click', () => this.plugin.openBoundary(boundary.id));
     }
   }
@@ -643,6 +692,14 @@ class ProgramView extends ItemView {
 
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-program-view');
+    // The Navigator can reach this view whatever the projection's health, so it
+    // has to degrade like Home rather than throw on a null manifest.
+    if (!this.plugin.store.ready) {
+      pageHeader(root, 'LearningOS', 'Projection unavailable');
+      empty(root, 'The interface contract could not be loaded', this.plugin.store.error,
+        'Rebuild views', () => this.plugin.generate());
+      return;
+    }
     if (this.programId === 'queue-needs-map') return this.renderNeedsMap(root);
     if (this.programId === 'inbox') return this.renderInbox(root);
     const program = this.plugin.store.get(this.programId);
@@ -673,7 +730,7 @@ class ProgramView extends ItemView {
 
   renderInbox(root) {
     pageHeader(root, 'Capture', 'Inbox', 'You capture; the operator files.');
-    const count = this.plugin.store.data.counts?.inbox_items || 0;
+    const count = this.plugin.store.data?.counts?.inbox_items || 0;
     const wrap = section(root, `${count} item${count === 1 ? '' : 's'} awaiting routing`);
     wrap.createEl('p', { cls: 'los-muted', text: 'No filing decision is required. Text and files land in work/inbox/ through the core capture gateway.' });
     const form = wrap.createDiv({ cls: 'los-capture-grid' });
@@ -731,13 +788,18 @@ class ProgramView extends ItemView {
   }
 
   async capture(action, clear) {
+    if (this.busy) { new Notice('A capture is already running.'); return; }
+    this.busy = true;
     try {
       await action();
-      await this.plugin.gateway.call(['generate']);
+      await this.plugin.gateway.call(['generate'], { expectJson: false });
+      // Only after the core confirmed the capture in JSON — clearing earlier
+      // is what used to lose the thought when the CLI answered with garbage.
       clear?.();
       await this.plugin.reloadStore();
       new Notice('Captured to the LearningOS inbox.');
     } catch (error) { new Notice(error?.message || String(error)); }
+    finally { this.busy = false; }
   }
 }
 
@@ -924,15 +986,27 @@ class UnitView extends ItemView {
       this.renderArtifacts(root, unit);
       viewFooter(root); return;
     }
-    if (!this.stageId || !studyMap.stages.some((row) => row.id === this.stageId)) {
-      this.stageId = studyMap.current_stage;
+    // A study map whose `stages` is missing or not an array used to throw here
+    // and blank the whole workspace. Normalise once, then work from `map`.
+    const stages = Array.isArray(studyMap.stages)
+      ? studyMap.stages.filter((row) => row && typeof row === 'object') : [];
+    if (!stages.length) {
+      const bare = section(root, 'Study map needs stages');
+      empty(bare, 'This study map has no stages yet',
+        'Stage authoring belongs to the core — import a map or add stages there, then rebuild views.');
+      this.renderArtifacts(root, unit);
+      viewFooter(root); return;
+    }
+    const map = { ...studyMap, stages };
+    if (!this.stageId || !stages.some((row) => row.id === this.stageId)) {
+      this.stageId = map.current_stage;
       this.plugin.setSelectedStage(unit.id, this.stageId);
     }
-    const stage = studyMap.stages.find((row) => row.id === this.stageId) || studyMap.stages[0];
+    const stage = stages.find((row) => row.id === this.stageId) || stages[0];
     const layout = root.createDiv({ cls: 'los-unit-layout' });
-    this.renderRail(layout, unit, studyMap, stage);
-    this.renderStage(layout, unit, studyMap, stage);
-    this.renderNotes(layout, unit, studyMap, stage);
+    this.renderRail(layout, unit, map, stage);
+    this.renderStage(layout, unit, map, stage);
+    this.renderNotes(layout, unit, map, stage);
     this.renderArtifacts(root, unit);
     viewFooter(root);
   }
@@ -968,8 +1042,12 @@ class UnitView extends ItemView {
     if (stage.estimate_minutes) badge(top, `${stage.estimate_minutes} min`, 'role');
 
     const resources = section(center, 'Exact resources', 'Only the actions for this stage.');
-    if (!stage.resources?.length) empty(resources, 'No source action selected', 'Use the unit scope and ask AI for a proposal.');
-    for (const resource of stage.resources || []) {
+    // Array.isArray, not a truthy length check: a string here used to render
+    // one blank row per character, because for...of walks a string by character.
+    const stageResources = Array.isArray(stage.resources)
+      ? stage.resources.filter((row) => row && typeof row === 'object') : [];
+    if (!stageResources.length) empty(resources, 'No source action selected', 'Use the unit scope and ask AI for a proposal.');
+    for (const resource of stageResources) {
       const row = resources.createDiv({ cls: 'los-resource-row' });
       icon(row.createSpan(), resource.kind === 'watch' ? 'play' : resource.kind === 'practise' ? 'pencil-line' : 'book-open');
       const copy = row.createDiv({ cls: 'los-resource-copy' });
@@ -993,7 +1071,9 @@ class UnitView extends ItemView {
 
     const done = section(center, 'Done when');
     const list = done.createEl('ul');
-    for (const criterion of stage.done_when || []) list.createEl('li', { text: criterion });
+    const criteria = Array.isArray(stage.done_when)
+      ? stage.done_when.filter((row) => typeof row === 'string' && row.trim()) : [];
+    for (const criterion of criteria) list.createEl('li', { text: criterion });
     const actions = center.createDiv({ cls: 'los-actions los-stage-actions' });
     button(actions, 'Complete stage', () => this.mutate(
       () => this.plugin.gateway.progress(unit.id, stage.id, 'complete')), 'cta');
@@ -1026,8 +1106,9 @@ class UnitView extends ItemView {
     updateStatus();
     button(panel, 'Save note', () => this.saveStageNote(unit, stage, editor.value), 'cta');
     const attachments = section(panel, 'Attachments');
-    if (!stage.attachments?.length) attachments.createEl('p', { text: 'Attach handwriting or a PDF through the guarded stage-attach action.' });
-    for (const attachment of stage.attachments || []) {
+    const stageAttachments = Array.isArray(stage.attachments) ? stage.attachments.filter(Boolean) : [];
+    if (!stageAttachments.length) attachments.createEl('p', { text: 'Attach handwriting or a PDF through the guarded stage-attach action.' });
+    for (const attachment of stageAttachments) {
       const path = typeof attachment === 'string' ? attachment : attachment.path || attachment.vault_path;
       const label = typeof attachment === 'string' ? attachment.split('/').pop() : attachment.label || path;
       if (path) button(attachments, `Open ${label}`, () => this.plugin.openAuthoredPath(path), 'quiet');
@@ -1073,18 +1154,31 @@ class UnitView extends ItemView {
     if (!count) empty(wrap, 'No durable artifact linked yet', 'Working notes stay with the stage until shelving is approved.');
   }
 
+  /**
+   * One write at a time. Two fast clicks used to spawn two CLI subprocesses
+   * carrying the same --expected-snapshot, so the second raced the projection
+   * the first had already moved.
+   */
   async mutate(action) {
+    if (this.busy) { new Notice('A LearningOS write is already running.'); return; }
+    this.busy = true;
     try { await action(); await this.plugin.reloadStore(); this.render(); }
     catch (error) { new Notice(error?.message || String(error)); }
+    finally { this.busy = false; }
   }
 
   async saveStageNote(unit, stage, text) {
+    if (this.busy) { new Notice('A LearningOS write is already running.'); return; }
+    this.busy = true;
     try {
       await this.plugin.gateway.saveNote(unit.id, stage.id, text);
+      // Reached only on a confirmed ok — the gateway rejects empty or
+      // unreadable output — so the draft is safe to drop here and only here.
       this.plugin.clearStageDraft(unit.id, stage.id);
       await this.plugin.reloadStore();
       new Notice('Stage note saved.');
     } catch (error) { new Notice(error?.message || String(error)); }
+    finally { this.busy = false; }
   }
 
   async selectStage(stageId) {
@@ -1133,6 +1227,14 @@ class LibraryView extends ItemView {
 
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-library-view');
+    // Reachable from the Navigator regardless of projection health, so it must
+    // degrade rather than search an unloaded record set.
+    if (!this.plugin.store.ready) {
+      pageHeader(root, 'Reference', 'Projection unavailable');
+      empty(root, 'The interface contract could not be loaded', this.plugin.store.error,
+        'Rebuild views', () => this.plugin.generate());
+      return;
+    }
     pageHeader(root, 'Reference', 'Library',
       'Search registered sources, notes, concepts, and workspaces without turning the catalogue into the curriculum.');
     const controls = root.createDiv({ cls: 'los-library-controls' });
@@ -1336,7 +1438,7 @@ class BoundaryView extends ItemView {
     const boundary = (this.plugin.store.data?.quarantine_boundaries || [])
       .find((row) => row.id === this.boundaryId);
     if (!boundary) { empty(root, 'Boundary unavailable', 'No quarantined content was loaded.'); return; }
-    pageHeader(root, 'Deliberate boundary', boundary.title, boundary.description);
+    pageHeader(root, 'Deliberate boundary', boundary.title, boundaryPolicy(boundary.description));
     const guard = section(root, 'What this means');
     if (boundary.id === 'program-job-boundary') {
       guard.createEl('p', { text: 'Job content is not indexed, searched, read, or mixed into LearningOS. Access requires a separate, explicit request.' });
@@ -1602,8 +1704,8 @@ class LearningOSUI extends Plugin {
 
   async generate() {
     try {
-      await this.gateway.call(['validate']);
-      await this.gateway.call(['generate']);
+      await this.gateway.call(['validate'], { expectJson: false });
+      await this.gateway.call(['generate'], { expectJson: false });
       await this.reloadStore(); new Notice('LearningOS projection rebuilt.');
     } catch (error) { new Notice(error?.message || String(error)); }
   }
@@ -1616,7 +1718,24 @@ class LearningOSUI extends Plugin {
     } catch (error) { new Notice(error?.message || String(error)); return null; }
   }
 
+  /**
+   * Hard rule 10 (core CLAUDE.md §13): `Job/` is quarantined. This is its
+   * mechanical enforcement. A `Job/…` path never leaves the vault, so the
+   * escape checks in the open helpers below cannot catch it — and every open
+   * funnels through one of them.
+   */
+  isQuarantinedPath(path) {
+    const posix = String(path || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+    return posix === 'Job' || posix.startsWith('Job/') || posix.includes('/Job/');
+  }
+  refuseQuarantined(path) {
+    if (!this.isQuarantinedPath(path)) return false;
+    new Notice('Job/ is quarantined — LearningOS never opens or displays it.');
+    return true;
+  }
+
   async openVaultPath(path) {
+    if (this.refuseQuarantined(path)) return;
     const file = this.app.vault.getAbstractFileByPath(path);
     if (!file) { new Notice(`File unavailable: ${path}`); return; }
     let existing = null;
@@ -1633,6 +1752,7 @@ class LearningOSUI extends Plugin {
     return leaf;
   }
   async openExternalPath(path, successMessage = 'Opened in the default app.') {
+    if (this.refuseQuarantined(path)) return false;
     if (!path || !fs.existsSync(path)) { new Notice(`File unavailable: ${path || 'unknown path'}`); return false; }
     const error = await shell.openPath(path);
     if (error) { new Notice(`Could not open file: ${error}`); return false; }
@@ -1651,6 +1771,7 @@ class LearningOSUI extends Plugin {
     return this.openExternalPath(fullPath, 'Opened the local material in its default app.');
   }
   openAuthoredPath(path) {
+    if (this.refuseQuarantined(path)) return false;
     const extension = nodePath.extname(path || '').toLocaleLowerCase();
     if (['.md', '.pdf', '.canvas', '.base'].includes(extension)) return this.openVaultPath(path);
     const base = this.app.vault.adapter.getBasePath();

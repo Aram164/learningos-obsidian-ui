@@ -11,7 +11,7 @@ export class BoundaryView extends ItemView {
     const boundary = (this.plugin.store.data?.quarantine_boundaries || [])
       .find((row) => row.id === this.boundaryId);
     if (!boundary) { empty(root, 'Boundary unavailable', 'No quarantined content was loaded.'); return; }
-    pageHeader(root, 'Deliberate boundary', boundary.title, boundary.description);
+    pageHeader(root, 'Deliberate boundary', boundary.title, boundaryPolicy(boundary.description));
     const guard = section(root, 'What this means');
     if (boundary.id === 'program-job-boundary') {
       guard.createEl('p', { text: 'Job content is not indexed, searched, read, or mixed into LearningOS. Access requires a separate, explicit request.' });

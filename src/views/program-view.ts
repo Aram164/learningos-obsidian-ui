@@ -8,6 +8,14 @@ export class ProgramView extends ItemView {
 
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-program-view');
+    // The Navigator can reach this view whatever the projection's health, so it
+    // has to degrade like Home rather than throw on a null manifest.
+    if (!this.plugin.store.ready) {
+      pageHeader(root, 'LearningOS', 'Projection unavailable');
+      empty(root, 'The interface contract could not be loaded', this.plugin.store.error,
+        'Rebuild views', () => this.plugin.generate());
+      return;
+    }
     if (this.programId === 'queue-needs-map') return this.renderNeedsMap(root);
     if (this.programId === 'inbox') return this.renderInbox(root);
     const program = this.plugin.store.get(this.programId);
@@ -38,7 +46,7 @@ export class ProgramView extends ItemView {
 
   renderInbox(root) {
     pageHeader(root, 'Capture', 'Inbox', 'You capture; the operator files.');
-    const count = this.plugin.store.data.counts?.inbox_items || 0;
+    const count = this.plugin.store.data?.counts?.inbox_items || 0;
     const wrap = section(root, `${count} item${count === 1 ? '' : 's'} awaiting routing`);
     wrap.createEl('p', { cls: 'los-muted', text: 'No filing decision is required. Text and files land in work/inbox/ through the core capture gateway.' });
     const form = wrap.createDiv({ cls: 'los-capture-grid' });
@@ -96,12 +104,17 @@ export class ProgramView extends ItemView {
   }
 
   async capture(action, clear) {
+    if (this.busy) { new Notice('A capture is already running.'); return; }
+    this.busy = true;
     try {
       await action();
-      await this.plugin.gateway.call(['generate']);
+      await this.plugin.gateway.call(['generate'], { expectJson: false });
+      // Only after the core confirmed the capture in JSON — clearing earlier
+      // is what used to lose the thought when the CLI answered with garbage.
       clear?.();
       await this.plugin.reloadStore();
       new Notice('Captured to the LearningOS inbox.');
     } catch (error) { new Notice(error?.message || String(error)); }
+    finally { this.busy = false; }
   }
 }

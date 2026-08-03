@@ -58,7 +58,21 @@ export function projectedExcerpt(value, limit = 900) {
   const first = String(value || '').split(/\n\s*\n/)[0]
     .replace(/\*\*/g, '').replace(/`/g, '')
     .replace(/(^|\n)\s*-\s*/g, '$1').replace(/\s+/g, ' ').trim();
-  return first.length > limit ? `${first.slice(0, limit - 1)}…` : first;
+  if (first.length <= limit) return first;
+  // Slice by code point: a plain .slice() could cut an emoji in half and leak a
+  // lone surrogate into the DOM.
+  return `${Array.from(first).slice(0, limit - 1).join('')}…`;
+}
+
+/**
+ * Boundary cards exist to prove nothing quarantined was loaded, so they show
+ * short core-authored policy prose only: capped, single paragraph, and never a
+ * `Job/` path. The field is core-owned, but this is the one view where trusting
+ * the manifest has no upside.
+ */
+export function boundaryPolicy(value) {
+  const text = projectedExcerpt(value, 300);
+  return /(^|[\s([<'"])Job\//.test(text) ? '' : text;
 }
 
 export function workspaceCard(parent, plugin, workspace, moduleContext = null) {

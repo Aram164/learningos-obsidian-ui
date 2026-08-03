@@ -1,14 +1,34 @@
 export class GatewayClient {
   constructor(plugin) { this.plugin = plugin; }
 
-  call(args) {
+  /**
+   * Every mutating command answers in JSON. Unreadable or empty output means
+   * the write was NOT confirmed, so this must reject: call sites clear
+   * UI-owned drafts on resolve, and resolving on garbage would destroy the
+   * learner's text behind a success notice. `expectJson: false` is only for
+   * the text-reporting commands (`validate`, `generate`).
+   */
+  call(args, { expectJson = true } = {}) {
     return new Promise((resolve, reject) => {
       this.plugin.runLos(args, (error, stdout, stderr) => {
-        if (error) reject(new Error(stderr || error.message || String(error)));
-        else {
-          try { resolve(stdout ? JSON.parse(stdout) : { ok: true }); }
-          catch (_) { resolve({ ok: true, stdout }); }
+        if (error) { reject(new Error(stderr || error.message || String(error))); return; }
+        const raw = String(stdout ?? '').trim();
+        if (!expectJson) { resolve({ ok: true, stdout: raw }); return; }
+        if (!raw) {
+          reject(new Error('LearningOS wrote nothing back, so the change is unconfirmed. Your draft was kept.'));
+          return;
         }
+        let parsed = null;
+        try { parsed = JSON.parse(raw); }
+        catch (_) {
+          reject(new Error(`LearningOS answered with unreadable output, so the change is unconfirmed and your draft was kept: ${raw.slice(0, 160)}`));
+          return;
+        }
+        if (!parsed || typeof parsed !== 'object' || parsed.ok === false) {
+          reject(new Error(parsed?.error || 'LearningOS refused the change; your draft was kept.'));
+          return;
+        }
+        resolve(parsed);
       });
     });
   }
@@ -38,12 +58,14 @@ export class GatewayClient {
     return this.call([...args, ...this.guard()]);
   }
   captureText(text, title = '') {
-    const args = ['capture', '--text', text];
+    // `--json` so an inbox capture is confirmed structurally; the plain-text
+    // form stays the human default in a terminal.
+    const args = ['capture', '--json', '--text', text];
     if (title) args.push('--title', title);
     return this.call(args);
   }
   captureFile(filePath) {
-    return this.call(['capture', '--file', filePath]);
+    return this.call(['capture', '--json', '--file', filePath]);
   }
   prepareShelving(unitId) {
     return this.call(['shelving-prepare', unitId, ...this.guard()]);

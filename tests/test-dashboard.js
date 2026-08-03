@@ -3,7 +3,7 @@
 
 const path = require('path');
 const fs = require('fs');
-const { makeApp } = require('./harness');
+const { makeApp, Notice } = require('./harness');
 
 const ROOT = path.resolve(__dirname, '..');
 const FIXTURE = path.join(ROOT, 'fixture-vault');
@@ -225,7 +225,7 @@ async function main() {
     element.find('los-capture-file')[0].files = [{ name: 'handwriting.png', __path: '/tmp/handwriting.png' }];
     element.findText('los-btn', 'Capture selected file').fire('click'); await tick(); await tick();
     check('file capture resolves the Electron File through webUtils', calls.some((args) =>
-      args.join('|') === 'capture|--file|/tmp/handwriting.png'));
+      args.join('|') === 'capture|--json|--file|/tmp/handwriting.png'));
     plugin.onunload();
   }
 
@@ -347,6 +347,140 @@ async function main() {
   {
     const { plugin, home } = await boot({ offline: true });
     check('offline CLI does not prevent read-only rendering', home.view.contentEl.allText().includes('Fixture Advanced ML'));
+    plugin.onunload();
+  }
+
+  heading('broken gateways and hostile projections');
+  {
+    /* A CLI that exits 0 but answers with garbage used to clear the draft
+     * behind a "saved" notice, destroying the learner's only copy. */
+    const { app, plugin } = await boot();
+    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const saved = 'A tentative fixture explanation.';
+    const risked = 'Text that must survive a broken CLI.';
+    plugin.setStageDraft('unit-fixture-sad-l04', 'stage-fixture-conditioning', risked, saved);
+    view.contentEl.find('los-note-editor')[0].value = risked;
+    plugin.runLos = (args, callback) => callback(null, 'NOT JSON {{{ broken CLI', '');
+    Notice.log.length = 0;
+    view.contentEl.findText('los-btn', 'Save note').fire('click'); await tick(); await tick();
+    check('unreadable CLI output is never reported as a saved note',
+      Notice.log.length > 0 && !Notice.log.some((line) => line.includes('Stage note saved.')));
+    check('an unconfirmed save keeps the working-note draft',
+      plugin.getStageDraft('unit-fixture-sad-l04', 'stage-fixture-conditioning', saved).text === risked);
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    await plugin.openProgram('inbox');
+    const view = app.workspace.getLeavesOfType(VIEW.program)[0].view;
+    const thought = 'A thought that must not vanish.';
+    plugin.setInboxDraft('', thought);
+    view.contentEl.find('los-capture-editor')[0].value = thought;
+    plugin.runLos = (args, callback) => callback(null, '', '');
+    Notice.log.length = 0;
+    view.contentEl.findText('los-btn', 'Capture text').fire('click'); await tick(); await tick();
+    check('a capture the core never confirmed keeps the inbox draft',
+      plugin.getInboxDraft().text === thought
+      && !Notice.log.some((line) => line.includes('Captured to the LearningOS inbox.')));
+    plugin.onunload();
+  }
+  {
+    /* Hard rule 10: a Job/ path never leaves the vault, so the escape checks in
+     * the open helpers cannot see it. Refusal has to be explicit. */
+    const { app, plugin } = await boot();
+    Notice.log.length = 0;
+    await plugin.openVaultPath('Job/secret-plan.md');
+    plugin.openAuthoredPath('Job/notes/offer.md');
+    plugin.openAuthoredPath('Job/scan.png');
+    await plugin.openResource({ vault_path: 'Job/secret-plan.md' });
+    check('every open path refuses Job/',
+      !app.workspace.opened.some((entry) => String(entry).startsWith('Job/')));
+    check('the quarantine refusal is visible to the learner',
+      Notice.log.some((line) => line.includes('quarantined')));
+    const boundaries = plugin.store.rows('quarantine_boundaries');
+    boundaries[0].description = 'Leak probe: Job/private/offer.md salary numbers';
+    await plugin.openBoundary(boundaries[0].id);
+    check('a boundary card refuses to display a Job/ reference',
+      !app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl.allText().includes('salary numbers'));
+    plugin.onunload();
+  }
+  {
+    /* One null row anywhere in the projection used to blank Home on startup. */
+    const { app, plugin, home } = await boot();
+    plugin.store.data.modules.push(null);
+    plugin.store.data.units.push(null);
+    plugin.store.data.study_maps.push(null);
+    plugin.store.records.push(null);
+    home.view.render();
+    check('a null row in the projection does not blank Home',
+      home.view.contentEl.allText().includes('Fixture Advanced ML'));
+    await plugin.openLibrary('source-fixture-islp');
+    check('Library still searches around a null record',
+      app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.find('los-item').length > 0);
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    const Store = plugin.store.constructor;
+    const fresh = new Store(app);
+    check('a store that never loaded still answers list queries',
+      Array.isArray(fresh.records) && fresh.of('source').length === 0
+      && fresh.search('anything').length === 0 && fresh.units().length === 0);
+    plugin.store.ready = false;
+    plugin.store.data = null;
+    plugin.store.error = 'Projection unavailable — rebuild it to continue.';
+    await plugin.openProgram('inbox');
+    app.workspace.getLeavesOfType(VIEW.program)[0].view.render();
+    check('Inbox degrades instead of reading a null projection',
+      app.workspace.getLeavesOfType(VIEW.program)[0].view.contentEl.allText().includes('Projection unavailable'));
+    await plugin.openLibrary();
+    app.workspace.getLeavesOfType(VIEW.library)[0].view.render();
+    check('Library degrades instead of searching an unloaded record set',
+      app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.allText().includes('Projection unavailable'));
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    /* The nested `study_maps[].stages` list is what the workspace renders; the
+     * flat `stages` index is a separate shape (ADR-006, fifth addendum). */
+    const map = plugin.store.get('study-map-fixture-sad-l04');
+    const nested = map.stages.find((row) => row.id === 'stage-fixture-conditioning');
+    nested.resources = 'Chapter 3 §§3.1–3.3';
+    nested.done_when = 'Explain it cold.';
+    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    check('a string where a list belongs renders an empty state, not one row per character',
+      view.contentEl.find('los-resource-row').length === 0
+      && view.contentEl.allText().includes('No source action selected'));
+    delete map.stages;
+    view.render();
+    check('a study map without stages shows an empty state instead of throwing',
+      view.contentEl.allText().includes('no stages yet'));
+    plugin.onunload();
+  }
+  {
+    const { app, plugin, calls } = await boot();
+    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const before = calls.filter((args) => args[0] === 'stage-progress').length;
+    const complete = view.contentEl.findText('los-btn', 'Complete stage');
+    complete.fire('click'); complete.fire('click');
+    await tick(); await tick();
+    check('two fast clicks produce exactly one guarded write',
+      calls.filter((args) => args[0] === 'stage-progress').length === before + 1);
+    plugin.onunload();
+  }
+  {
+    const { plugin, home } = await boot();
+    const workspace = plugin.store.of('workspace')[0];
+    // An emoji sits exactly on the 120-code-point cut used by the module row,
+    // which is where a plain .slice() left a lone high surrogate.
+    workspace.next_action = `${'a'.repeat(118)}😀 ${'b'.repeat(1500)}😀 tail`;
+    home.view.render();
+    const text = home.view.contentEl.allText();
+    check('excerpt truncation never leaves half an emoji in the DOM',
+      text.includes('😀') && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(text));
     plugin.onunload();
   }
   {
