@@ -16,6 +16,7 @@ export class LearningOSUI extends Plugin {
     this.registerView(VIEW_MODULE, (leaf) => new ModuleView(leaf, this));
     this.registerView(VIEW_UNIT, (leaf) => new UnitView(leaf, this));
     this.registerView(VIEW_LIBRARY, (leaf) => new LibraryView(leaf, this));
+    this.registerView(VIEW_ATLAS, (leaf) => new AtlasView(leaf, this));
     this.registerView(VIEW_SHELVING, (leaf) => new ShelvingView(leaf, this));
     this.registerView(VIEW_BOUNDARY, (leaf) => new BoundaryView(leaf, this));
     this.addSettingTab(new LearningOSSettingsTab(this.app, this));
@@ -23,6 +24,7 @@ export class LearningOSUI extends Plugin {
     this.addCommand({ id: 'open-home', name: 'Open Home', callback: () => this.openHome() });
     this.addCommand({ id: 'open-current-stage', name: 'Open current stage', callback: () => this.openResume() });
     this.addCommand({ id: 'open-library', name: 'Open Library', callback: () => this.openLibrary() });
+    this.addCommand({ id: 'open-atlas', name: 'Open Domain atlas', callback: () => this.openAtlas() });
     this.addCommand({ id: 'rebuild-projection', name: 'Validate and rebuild projection', callback: () => this.generate() });
     this.addCommand({ id: 'end-learning-session', name: 'End learning session safely', callback: () => this.reviewSessionEnd() });
     this.app.workspace.onLayoutReady(async () => {
@@ -44,7 +46,7 @@ export class LearningOSUI extends Plugin {
     if (this.draftSaveTimer) clearTimeout(this.draftSaveTimer);
     void this.saveData(this.settings);
     for (const type of [VIEW_HOME, VIEW_NAV, VIEW_PROGRAM, VIEW_MODULE, VIEW_UNIT,
-      VIEW_LIBRARY, VIEW_SHELVING, VIEW_BOUNDARY]) this.app.workspace.detachLeavesOfType(type);
+      VIEW_LIBRARY, VIEW_ATLAS, VIEW_SHELVING, VIEW_BOUNDARY]) this.app.workspace.detachLeavesOfType(type);
   }
 
   scheduleDraftSave() {
@@ -132,6 +134,11 @@ export class LearningOSUI extends Plugin {
     if (recordType !== undefined) state.recordType = recordType;
     return this.openView(VIEW_LIBRARY, state);
   }
+  /** Library opened on a whole slice — a type, optionally one domain — not a record. */
+  openLibraryFiltered(recordType, domain = '') {
+    return this.openView(VIEW_LIBRARY, { recordType, domain, recordId: null, query: '' });
+  }
+  openAtlas(domain = null) { return this.openView(VIEW_ATLAS, { domain }); }
   openShelving(unitId = null) { return this.openView(VIEW_SHELVING, { unitId }); }
   openBoundary(boundaryId) { return this.openView(VIEW_BOUNDARY, { boundaryId }); }
   openResume() {
@@ -244,6 +251,7 @@ export class LearningOSUI extends Plugin {
     if (record.type === 'module') return this.openModule(record.id);
     if (record.type === 'program') return this.openProgram(record.id);
     if (record.type === 'source') return this.openLibrary(record.id, 'source');
+    if (record.type === 'collection') return this.openLibrary(record.id, 'collection');
     if (record.type === 'note' || record.type === 'concept') return this.openLibrary(record.id, record.type);
     if (record.type === 'workspace') {
       const unit = (record.unit_ids || []).map((id) => this.store.get(id)).find(Boolean);

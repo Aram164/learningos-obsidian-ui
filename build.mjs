@@ -13,6 +13,7 @@ const files = [
   'src/views/module-view.ts',
   'src/views/unit-view.ts',
   'src/views/library-view.ts',
+  'src/views/atlas-view.ts',
   'src/views/shelving-view.ts',
   'src/views/boundary-view.ts',
   'src/views/nav-view.ts',

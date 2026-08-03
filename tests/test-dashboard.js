@@ -11,7 +11,7 @@ const LearningOSUI = require(path.join(ROOT, 'plugin', 'main.js'));
 const VIEW = {
   home: 'learningos-home', nav: 'learningos-nav', program: 'learningos-program',
   module: 'learningos-module', unit: 'learningos-unit', library: 'learningos-library',
-  shelving: 'learningos-shelving', boundary: 'learningos-boundary',
+  atlas: 'learningos-atlas', shelving: 'learningos-shelving', boundary: 'learningos-boundary',
 };
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
@@ -200,9 +200,84 @@ async function main() {
     const masters = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl.allText();
     check('Master surface exposes quarantine only', masters.includes('quarantined') && !masters.includes('prospective module menu'));
     nav.findText('los-app-nav-item', 'Garden').fire('click'); await tick();
+    check('Garden navigation opens the managed vault surface',
+      app.workspace.opened.includes('bases/garden.base'));
     nav.findText('los-app-nav-item', 'Domain atlas').fire('click'); await tick();
-    check('Garden and domain atlas navigation opens managed vault surfaces',
-      app.workspace.opened.includes('bases/garden.base') && app.workspace.opened.includes('generated/domain-atlas.md'));
+    /* The atlas is a decision surface, not a document: opening it must give a
+     * navigable view. The Markdown file stays reachable from inside it, because
+     * it is still the session-bootstrap artifact (core CLAUDE.md §2.8). */
+    const atlas = app.workspace.getLeavesOfType(VIEW.atlas)[0]?.view;
+    check('Domain atlas navigation opens the atlas view, not a Markdown wall',
+      Boolean(atlas) && !app.workspace.opened.includes('generated/domain-atlas.md'));
+    atlas.contentEl.findText('los-btn', 'Open the generated atlas file').fire('click'); await tick();
+    check('the generated atlas file stays reachable from the view',
+      app.workspace.opened.includes('generated/domain-atlas.md'));
+    plugin.onunload();
+  }
+
+  heading('domain atlas reach');
+  {
+    const { app, plugin } = await boot();
+    await plugin.openAtlas();
+    const view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    let text = view.contentEl.allText();
+    /* ADR-005: the atlas exists so a session does not collapse into the active
+     * workspace's domain. Counting the territory is not mapping it — every
+     * domain must list its actual notes and shelves. */
+    check('every domain with content appears, not just the active one',
+      text.includes('mathematics') && text.includes('programming'));
+    check('notes are enumerated and identified, not merely counted',
+      text.includes('Fixture probability reference') && text.includes('note-fixture-probability'));
+    check('wiring hubs are called out for the domain that has one',
+      view.contentEl.find('los-atlas-tile').length === 2 && text.includes('1 crosswalk')
+      && text.includes('1 note ·') && text.includes('1 shelf ('));
+    check('shelves carry their own rule for use',
+      text.includes('Fixture math bookshelf') && text.includes('one spine, one supplement'));
+    check('quarantined strata are named but not opened',
+      text.includes('Job') && text.includes('Master') && !text.includes('Job client'));
+    view.contentEl.findText('los-item', 'Fixture probability reference').fire('click'); await tick();
+    check('an atlas row opens the note it names',
+      app.workspace.opened.includes('knowledge/notes/mathematics/note-fixture-probability.md'));
+    view.contentEl.findText('los-shelf-entry-title', 'Fixture math bookshelf (2)').fire('click'); await tick();
+    const library = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check('an atlas shelf opens that shelf in the Library',
+      library.contentEl.allText().includes('The spine — read this before anything else on the shelf.'));
+    await plugin.openAtlas();
+    app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl
+      .findText('los-btn', 'Browse these notes in the Library').fire('click'); await tick();
+    text = app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.allText();
+    check('the atlas can hand a whole domain to the Library',
+      text.includes('Domain: mathematics') && !text.includes('Fixture Python wiring crosswalk'));
+    plugin.onunload();
+  }
+
+  heading('library navigability');
+  {
+    const { app, plugin } = await boot();
+    await plugin.openLibrary();
+    const view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    let text = view.contentEl.allText();
+    /* A flat 200-row registry is a haystack; the shelves are where the reading
+     * strategy is written down, so they are the default way in. */
+    check('the Library opens on shelves', view.type === 'collection' && text.includes('Fixture math bookshelf'));
+    check('every mode carries its own count', text.includes('Shelves (2)') && text.includes('Sources (3)'));
+    check('shelves are grouped by domain',
+      view.contentEl.find('los-library-list')[0].find('los-list-group').length === 2);
+    text = view.contentEl.allText();
+    check('a shelf reads in its authored tiers, each entry with its role',
+      text.includes('tier-1-now') && text.includes('tier-2-optional')
+      && text.includes('Selected sections only; never linearly.'));
+    view.contentEl.findText('los-btn', 'Sources (3)').fire('click'); await tick();
+    text = view.contentEl.allText();
+    check('source facets are offered with live counts',
+      text.includes('On a shelf · 3') && text.includes('Not on any shelf · 0')
+      && text.includes('Local copy · 1'));
+    view.contentEl.findText('los-btn', 'Local copy · 1').fire('click'); await tick();
+    check('a facet narrows the list', view.contentEl.find('los-item').length === 1);
+    text = view.contentEl.allText();
+    check('a source says which shelves carry it and why',
+      text.includes('On shelves') && text.includes('Fixture math bookshelf')
+      && text.includes('The spine — read this before anything else on the shelf.'));
     plugin.onunload();
   }
 
