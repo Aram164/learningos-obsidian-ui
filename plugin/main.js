@@ -32,6 +32,9 @@ const path = require('path');
 const VIEW_DASH = 'learningos-dashboard';
 const VIEW_NAV = 'learningos-nav';
 const VIEW_EXPLORER = 'learningos-explorer';
+const VIEW_PATH = 'learningos-learning-path';
+const VIEW_SHELVE = 'learningos-shelve-review';
+const VIEW_JOB = 'learningos-job-boundary';
 
 const MANIFEST = 'generated/manifest.json';
 const BACKLINKS = 'generated/backlinks.json';
@@ -126,6 +129,7 @@ const TYPE_META = {
   source: { icon: 'library', label: 'Source', plural: 'Sources' },
   module: { icon: 'graduation-cap', label: 'Module', plural: 'Modules' },
   workspace: { icon: 'briefcase', label: 'Workspace', plural: 'Workspaces' },
+  'learning-path': { icon: 'route', label: 'Learning path', plural: 'Learning paths' },
   collection: { icon: 'boxes', label: 'Collection', plural: 'Collections' },
   coordination: { icon: 'calendar-days', label: 'Coordination', plural: 'Coordination' },
 };
@@ -158,6 +162,8 @@ class Store {
     this.counts = {};
     this.backlinks = {};
     this.generatedAt = null;
+    this.snapshotId = null;
+    this.contractVersion = null;
   }
 
   async read(p) {
@@ -168,17 +174,20 @@ class Store {
 
   async load() {
     try {
-      const [m, b] = await Promise.all([
-        this.read(MANIFEST),
-        this.read(BACKLINKS).catch(() => ({})),
-      ]);
+      const m = await this.read(MANIFEST);
+      const contract = (m._generated || {}).contract_version;
+      if (contract !== 1) {
+        throw new Error(`Unsupported manifest contract ${contract == null ? 'legacy' : contract}; rebuild views`);
+      }
       this.records = m.records || [];
       this.relations = m.relations || [];
       this.examSpine = (m.exam_spine || []).map((e) => ({ ...e, days: daysUntil(e.date) }))
         .sort((a, b2) => a.days - b2.days);
       this.counts = m.counts || {};
       this.generatedAt = (m._generated || {}).generated_at || null;
-      this.backlinks = b || {};
+      this.snapshotId = (m._generated || {}).snapshot_id || null;
+      this.contractVersion = contract;
+      this.backlinks = m.backlinks || {};
       this.byId = new Map(this.records.map((r) => [r.id, r]));
       this.byType = new Map();
       for (const r of this.records) {
@@ -500,6 +509,10 @@ class ExplorerView extends ItemView {
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') { input.value = ''; this.query = ''; this.renderResults(); }
+    });
+    button(bar, 'Search note contents', 'scan-search', {
+      quiet: true, onClick: () => this.plugin.openFullTextSearch(),
+      tooltip: 'Open Omnisearch for full-text and OCR search',
     });
 
     /* --- facet row -------------------------------------------------- */
@@ -1113,6 +1126,308 @@ class DashboardView extends ItemView {
 }
 
 /* =====================================================================
+ * Learning workflow app — focus first, library second
+ * ================================================================== */
+
+function currentStage(pathRec) {
+  const stages = pathRec && pathRec.stages || [];
+  return stages.find((s) => s.id === pathRec.current_stage)
+    || stages.find((s) => s.status === 'active') || stages[0] || null;
+}
+
+function pathProgress(pathRec) {
+  const stages = pathRec.stages || [];
+  return { done: stages.filter((s) => s.status === 'complete').length, total: stages.length };
+}
+
+class LearningHomeView extends ItemView {
+  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
+  getViewType() { return VIEW_DASH; }
+  getIcon() { return 'home'; }
+  getDisplayText() { return 'LearningOS · Home'; }
+  async onOpen() { await this.render(); }
+  onClose() { return Promise.resolve(); }
+
+  async render() {
+    const el = this.contentEl;
+    el.empty();
+    el.addClass('los-root', 'los-home-v2');
+    const store = this.plugin.store;
+    if (!store.ready) { this.plugin.renderStoreError(el); return; }
+    const top = el.createDiv({ cls: 'los-page-head' });
+    const titles = top.createDiv();
+    titles.createDiv({ cls: 'los-kicker', text: new Date().toLocaleDateString(undefined, {
+      weekday: 'long', day: 'numeric', month: 'long',
+    }) });
+    titles.createEl('h1', { text: 'Continue learning' });
+    button(top, 'New path with AI', 'sparkles', {
+      onClick: () => this.plugin.askAi('[LearningOS approved operational write] Create a focused learning path for the subtopic in my active file or selection. If that context does not identify a subtopic, return one concise question and do not write yet. Otherwise write a workspace-owned path YAML that follows system/schema/learning-path.schema.json, validate, and regenerate.'),
+    });
+
+    const paths = store.of('learning-path').filter((p) => !p.archived
+      && ['active', 'paused', 'ready-to-shelve'].includes(p.status));
+    const pathRec = paths.find((p) => p.status === 'active') || paths[0];
+    if (!pathRec) {
+      const empty = el.createDiv({ cls: 'los-focus-card' });
+      emptyState(empty, 'No active learning path',
+        'Ask AI to turn a lecture, job topic, or question into an ordered set of stages.');
+      button(empty, 'Create path with AI', 'sparkles', { cta: true,
+        onClick: () => this.plugin.askAi('[LearningOS approved operational write] Create a learning path for the subtopic in my active file or selection. If no subtopic is identifiable, ask one concise question and do not write.') });
+      return;
+    }
+
+    const progress = pathProgress(pathRec);
+    const stage = currentStage(pathRec);
+    const card = el.createDiv({ cls: 'los-focus-card' });
+    const identity = card.createDiv({ cls: 'los-focus-main' });
+    identity.createDiv({ cls: 'los-kicker', text: `${titleCase(pathRec.area)} · ${pathRec.workspace_id}` });
+    identity.createEl('h2', { text: pathRec.title });
+    if (pathRec.objective) identity.createEl('p', { cls: 'los-focus-objective', text: pathRec.objective });
+    const meter = identity.createDiv({ cls: 'los-progress', attr: {
+      role: 'progressbar', 'aria-valuemin': '0', 'aria-valuemax': String(progress.total),
+      'aria-valuenow': String(progress.done),
+    } });
+    const fill = meter.createDiv({ cls: 'los-progress-fill' });
+    fill.style.width = `${progress.total ? (progress.done / progress.total) * 100 : 0}%`;
+    identity.createDiv({ cls: 'los-muted', text: `${progress.done} of ${progress.total} stages complete` });
+    const resume = card.createDiv({ cls: 'los-resume-card' });
+    resume.createDiv({ cls: 'los-kicker', text: pathRec.status === 'ready-to-shelve' ? 'Ready to shelve' : 'Resume here' });
+    resume.createEl('h3', { text: stage ? stage.title : pathRec.title });
+    if (stage) resume.createEl('p', { text: stage.objective });
+    button(resume, pathRec.status === 'ready-to-shelve' ? 'Review shelving' : 'Resume stage',
+      pathRec.status === 'ready-to-shelve' ? 'archive-restore' : 'play', { cta: true,
+        onClick: () => pathRec.status === 'ready-to-shelve'
+          ? this.plugin.openShelve(pathRec.id) : this.plugin.openPath(pathRec.id) });
+
+    const summary = el.createDiv({ cls: 'los-home-summary' });
+    const notes = (pathRec.stages || []).filter((s) => (s.notes_text || '').trim()).length;
+    const info = [
+      ['Working notes', `${notes} stage note${notes === 1 ? '' : 's'}`, 'sticky-note',
+        () => this.plugin.openPath(pathRec.id)],
+      ['Ready to shelve', pathRec.status === 'ready-to-shelve' || (pathRec.shelving || {}).state === 'proposed'
+        ? 'Proposal needs your review' : 'Nothing waiting', 'archive-restore',
+        () => this.plugin.openShelve(pathRec.id)],
+      ['Job area', 'Separate and hidden by default', 'shield', () => this.plugin.openJobBoundary()],
+    ];
+    for (const [label, value, iconName, action] of info) {
+      const item = summary.createDiv({ cls: 'los-summary-card is-clickable' });
+      icon(item, iconName);
+      item.createEl('h3', { text: label });
+      item.createEl('p', { text: value });
+      item.addEventListener('click', action);
+    }
+  }
+}
+
+class LearningPathView extends ItemView {
+  constructor(leaf, plugin) {
+    super(leaf); this.plugin = plugin; this.pathId = null; this.stageId = null;
+  }
+  getViewType() { return VIEW_PATH; }
+  getIcon() { return 'route'; }
+  getDisplayText() { return 'LearningOS · Learning path'; }
+  async onOpen() { await this.render(); }
+  onClose() { return Promise.resolve(); }
+  show(pathId, stageId) { this.pathId = pathId; this.stageId = stageId || null; this.render(); }
+
+  pathRecord() {
+    const store = this.plugin.store;
+    return store.get(this.pathId) || store.of('learning-path').find((p) => p.status === 'active')
+      || store.of('learning-path')[0] || null;
+  }
+
+  async render() {
+    const el = this.contentEl;
+    el.empty(); el.addClass('los-root', 'los-path-view');
+    if (!this.plugin.store.ready) { this.plugin.renderStoreError(el); return; }
+    const pathRec = this.pathRecord();
+    if (!pathRec) { emptyState(el, 'No learning path', 'Create one with AI from Home.'); return; }
+    this.pathId = pathRec.id;
+    const stages = pathRec.stages || [];
+    let stage = stages.find((s) => s.id === this.stageId) || currentStage(pathRec);
+    if (!stage) { emptyState(el, 'This path has no stages', 'Ask AI to repair the path.'); return; }
+    this.stageId = stage.id;
+
+    const head = el.createDiv({ cls: 'los-page-head' });
+    const title = head.createDiv();
+    title.createDiv({ cls: 'los-kicker', text: `${titleCase(pathRec.area)} · ${pathRec.workspace_id}` });
+    title.createEl('h1', { text: pathRec.title });
+    button(head, 'Ask AI about this stage', 'sparkles', {
+      onClick: () => this.plugin.askAi(`Help me with ${pathRec.id}, stage ${stage.id}. Read the path through los inspect, keep the answer scoped to this stage, and preserve my working notes.`),
+    });
+
+    const layout = el.createDiv({ cls: 'los-path-layout' });
+    const rail = layout.createDiv({ cls: 'los-stage-rail' });
+    stages.forEach((s, index) => {
+      const row = rail.createEl('button', { cls: `los-stage-row${s.id === stage.id ? ' is-active' : ''}` });
+      row.createSpan({ cls: 'los-stage-mark', text: s.status === 'complete' ? '✓' : `${index + 1}` });
+      row.createSpan({ text: s.title });
+      row.addEventListener('click', () => { this.stageId = s.id; this.render(); });
+    });
+
+    const work = layout.createDiv({ cls: 'los-stage-work' });
+    const meta = [
+      `Stage ${stages.indexOf(stage) + 1}`,
+      stage.estimate_minutes ? `about ${stage.estimate_minutes} min` : null,
+      stage.exam_critical ? 'exam-critical' : null,
+    ].filter(Boolean).join(' · ');
+    work.createDiv({ cls: 'los-kicker', text: meta });
+    work.createEl('h2', { text: stage.title });
+    work.createEl('p', { cls: 'los-stage-objective', text: stage.objective });
+    for (const resource of stage.resources || []) {
+      const r = work.createDiv({ cls: 'los-resource-row is-clickable' });
+      r.createSpan({ cls: 'los-resource-kind', text: titleCase(resource.kind) });
+      const body = r.createDiv();
+      body.createDiv({ cls: 'los-resource-title', text: resource.label });
+      if (resource.locator) body.createDiv({ cls: 'los-muted', text: resource.locator });
+      r.addEventListener('click', () => this.plugin.openPathResource(resource));
+    }
+    const done = work.createDiv({ cls: 'los-done-when' });
+    done.createDiv({ cls: 'los-kicker', text: 'Done when' });
+    for (const criterion of stage.done_when || []) done.createEl('p', { text: criterion });
+    const actions = work.createDiv({ cls: 'los-actions' });
+    if (stage.status === 'active') {
+      button(actions, 'Complete stage', 'check', { cta: true,
+        onClick: () => this.plugin.progressPath(pathRec.id, stage.id, 'complete') });
+      button(actions, 'Skip for now', 'skip-forward', {
+        onClick: () => this.plugin.progressPath(pathRec.id, stage.id, 'skipped') });
+    } else {
+      button(actions, stage.status === 'complete' ? 'Revisit stage' : 'Start stage',
+        stage.status === 'complete' ? 'rotate-ccw' : 'play', { cta: true,
+          onClick: () => this.plugin.progressPath(pathRec.id, stage.id, 'active') });
+    }
+    button(actions, 'I found a gap', 'circle-help', { onClick: () => this.plugin.askAi(
+      `I found a gap while working on ${pathRec.id}, stage ${stage.id}. Ask me what is missing, then propose the smallest prerequisite detour without expanding the whole path.`) });
+
+    const notes = layout.createDiv({ cls: 'los-stage-notes' });
+    notes.createDiv({ cls: 'los-kicker', text: 'Working note · saved to this stage' });
+    notes.createEl('h2', { text: 'My reasoning' });
+    const textarea = notes.createEl('textarea', { cls: 'los-note-editor', attr: {
+      placeholder: 'Write the explanation, attempt, uncertainty, or correction here…',
+      'aria-label': `Working notes for ${stage.title}`,
+    } });
+    textarea.value = stage.notes_text || '';
+    button(notes, 'Save note', 'save', { cta: true, onClick: () =>
+      this.plugin.saveStageNote(pathRec.id, stage.id, textarea.value) });
+    button(notes, 'Attach handwriting', 'paperclip', { onClick: () =>
+      this.plugin.attachStageFile(pathRec.id, stage.id) });
+    for (const attachment of stage.attachments || []) {
+      const linked = notes.createEl('button', { cls: 'los-attachment-link' });
+      icon(linked, 'file-scan'); linked.createSpan({ text: attachment.label });
+      linked.addEventListener('click', () => this.plugin.openVaultPath(attachment.path));
+    }
+    notes.createEl('p', { cls: 'los-muted', text: 'No concept ID or destination needed yet. Shelving happens later.' });
+  }
+}
+
+class ShelveReviewView extends ItemView {
+  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.pathId = null; }
+  getViewType() { return VIEW_SHELVE; }
+  getIcon() { return 'archive-restore'; }
+  getDisplayText() { return 'LearningOS · Shelve review'; }
+  async onOpen() { await this.render(); }
+  onClose() { return Promise.resolve(); }
+  show(pathId) { this.pathId = pathId || null; this.render(); }
+  async render() {
+    const el = this.contentEl;
+    el.empty(); el.addClass('los-root', 'los-shelve-view');
+    if (!this.plugin.store.ready) { this.plugin.renderStoreError(el); return; }
+    const pathRec = this.plugin.store.get(this.pathId)
+      || this.plugin.store.of('learning-path').find((p) => p.status === 'ready-to-shelve')
+      || this.plugin.store.of('learning-path')[0];
+    if (!pathRec) { emptyState(el, 'Nothing to shelve', 'Finish a learning path first.'); return; }
+    this.pathId = pathRec.id;
+    const shelving = pathRec.shelving || {};
+    const head = el.createDiv({ cls: 'los-page-head' });
+    const titles = head.createDiv();
+    titles.createDiv({ cls: 'los-kicker', text: 'AI proposal · original wording preserved' });
+    titles.createEl('h1', { text: `Shelve ${pathRec.title}` });
+    if (shelving.state !== 'proposed' || !(shelving.items || []).length) {
+      const empty = el.createDiv({ cls: 'los-focus-card' });
+      emptyState(empty, 'No shelving proposal yet',
+        'AI will inspect every stage note and propose durable notes, Garden items, links, and the path archive. Nothing canonical changes at this step.');
+      button(empty, 'Ask AI to prepare proposal', 'sparkles', { cta: true,
+        onClick: () => this.plugin.askAi(`[LearningOS approved operational write] Prepare a shelving proposal for ${pathRec.id}. Follow system/OPERATOR.md: preserve my wording, write only the proposal into the path shelving block, validate, regenerate, and do not apply canonical changes.`) });
+      return;
+    }
+    if (shelving.summary) el.createEl('p', { cls: 'los-shelve-summary', text: shelving.summary });
+    const choices = [];
+    for (const item of shelving.items) {
+      const row = el.createEl('label', { cls: 'los-proposal-row' });
+      const check = row.createEl('input', { attr: { type: 'checkbox' } });
+      check.checked = item.selected !== false;
+      const body = row.createDiv();
+      body.createEl('strong', { text: item.title });
+      body.createEl('p', { text: item.rationale });
+      body.createDiv({ cls: 'los-muted', text: `${titleCase(item.kind)} · ${item.destination}` });
+      if (item.diff) body.createEl('pre', { cls: 'los-proposal-diff', text: item.diff });
+      choices.push([item.id, check]);
+    }
+    const validation = el.createDiv({ cls: 'los-validation-preview' });
+    validation.createEl('strong', { text: 'Approval gate' });
+    validation.createEl('p', { text: 'Selected changes will be sent back to AI for a reviewable apply → validate → regenerate transaction.' });
+    const actions = el.createDiv({ cls: 'los-actions los-actions--end' });
+    button(actions, 'Send corrections to AI', 'message-square', { onClick: () =>
+      this.plugin.askAi(`Revise the shelving proposal for ${pathRec.id}. Ask me for corrections before changing the proposal.`) });
+    button(actions, 'Approve selected changes', 'check-check', { cta: true, onClick: () => {
+      const selected = choices.filter(([, c]) => c.checked).map(([id]) => id);
+      this.plugin.askAi(`[LearningOS approved shelving apply] I explicitly approve these shelving proposal items for ${pathRec.id}: ${selected.join(', ')}. Apply only those items, show diffs, validate, regenerate, and archive the path only if all approved durable outputs exist.`);
+    } });
+  }
+}
+
+class JobBoundaryView extends ItemView {
+  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
+  getViewType() { return VIEW_JOB; }
+  getIcon() { return 'shield'; }
+  getDisplayText() { return 'LearningOS · Job area'; }
+  async onOpen() { await this.render(); }
+  onClose() { return Promise.resolve(); }
+  async render() {
+    const el = this.contentEl;
+    el.empty(); el.addClass('los-root', 'los-job-boundary');
+    el.createDiv({ cls: 'los-kicker', text: 'Separate area · quarantine preserved' });
+    el.createEl('h1', { text: 'Job learning' });
+    el.createEl('p', { text: 'Job material is deliberately not indexed, searched, or mixed into the university library. Open it only for an explicit job task.' });
+    const row = el.createDiv({ cls: 'los-actions' });
+    button(row, 'Open Job folder', 'folder-open', { cta: true, onClick: () => this.plugin.openJobFolder() });
+    button(row, 'Ask AI for a Job path', 'sparkles', { onClick: () => this.plugin.askAi(
+      '[LearningOS approved Job task] This is an explicit Job-area task. Use my active file or selection as the subtopic; if it is unclear, ask one question and do not write. Operate only inside the quarantined Job workspace for this task. Do not import it into LearningOS unless I explicitly approve promotion.') });
+  }
+}
+
+class AppNavView extends ItemView {
+  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
+  getViewType() { return VIEW_NAV; }
+  getIcon() { return 'panel-left'; }
+  getDisplayText() { return 'LearningOS'; }
+  async onOpen() { await this.render(); }
+  onClose() { return Promise.resolve(); }
+  async render() {
+    const el = this.contentEl;
+    el.empty(); el.addClass('los-root', 'los-app-nav');
+    const brand = el.createDiv({ cls: 'los-nav-brand' });
+    brand.createDiv({ cls: 'los-brand-mark', text: 'L' });
+    brand.createEl('strong', { text: 'LearningOS' });
+    const nav = (label, iconName, action) => {
+      const item = el.createEl('button', { cls: 'los-app-nav-item' });
+      icon(item, iconName); item.createSpan({ text: label }); item.addEventListener('click', action);
+      return item;
+    };
+    nav('Home', 'home', () => this.plugin.openDashboard());
+    nav('Learning path', 'route', () => this.plugin.openPath());
+    nav('Shelve review', 'archive-restore', () => this.plugin.openShelve());
+    nav('Library', 'library', () => this.plugin.openExplorer('note'));
+    el.createDiv({ cls: 'los-nav-label', text: 'Areas' });
+    nav('University', 'graduation-cap', () => this.plugin.openDashboard());
+    nav('Job', 'shield', () => this.plugin.openJobBoundary());
+    const foot = el.createDiv({ cls: 'los-nav-foot' });
+    button(foot, 'Ask AI', 'sparkles', { cta: true, onClick: () => this.plugin.askAi(
+      'Open with python tools/los.py bootstrap, then ask what I want to learn or organize.') });
+  }
+}
+
+/* =====================================================================
  * Finder — fuzzy over everything
  * ================================================================== */
 
@@ -1142,6 +1457,7 @@ class FinderModal extends SuggestModal {
   }
   onChooseSuggestion(rec) {
     if (rec.type === 'note' || rec.type === 'workspace') this.plugin.openVaultPath(rec.path);
+    else if (rec.type === 'learning-path') this.plugin.openPath(rec.id);
     else this.plugin.openExplorer(rec.type, { selected: rec.id });
   }
 }
@@ -1383,6 +1699,41 @@ module.exports = class LearningOSUI extends Plugin {
     return leaf;
   }
 
+  async openPath(pathId, stageId) {
+    const w = this.app.workspace;
+    let leaf = w.getLeavesOfType(VIEW_PATH)[0];
+    if (!leaf) {
+      leaf = w.getLeaf(true);
+      await leaf.setViewState({ type: VIEW_PATH, active: true });
+    }
+    w.revealLeaf(leaf); w.setActiveLeaf(leaf, { focus: true });
+    if (leaf.view && leaf.view.show) leaf.view.show(pathId, stageId);
+    return leaf;
+  }
+
+  async openShelve(pathId) {
+    const w = this.app.workspace;
+    let leaf = w.getLeavesOfType(VIEW_SHELVE)[0];
+    if (!leaf) {
+      leaf = w.getLeaf(true);
+      await leaf.setViewState({ type: VIEW_SHELVE, active: true });
+    }
+    w.revealLeaf(leaf); w.setActiveLeaf(leaf, { focus: true });
+    if (leaf.view && leaf.view.show) leaf.view.show(pathId);
+    return leaf;
+  }
+
+  async openJobBoundary() {
+    const w = this.app.workspace;
+    let leaf = w.getLeavesOfType(VIEW_JOB)[0];
+    if (!leaf) {
+      leaf = w.getLeaf(true);
+      await leaf.setViewState({ type: VIEW_JOB, active: true });
+    }
+    w.revealLeaf(leaf); w.setActiveLeaf(leaf, { focus: true });
+    return leaf;
+  }
+
   async openNav() {
     if (this.app.workspace.getLeavesOfType(VIEW_NAV).length) return;
     const leaf = this.app.workspace.getLeftLeaf(false);
@@ -1397,6 +1748,101 @@ module.exports = class LearningOSUI extends Plugin {
   openFinder() {
     if (!this.store.ready) { new Notice('Projection not loaded — run Rebuild views'); return; }
     new FinderModal(this.app, this).open();
+  }
+
+  openFullTextSearch() {
+    const commands = this.app.commands;
+    if (commands && commands.listCommands && commands.executeCommandById) {
+      const target = commands.listCommands().find((c) => /omnisearch/i.test(`${c.id} ${c.name}`));
+      if (target) { commands.executeCommandById(target.id); return; }
+    }
+    new Notice('Omnisearch is not active. Enable it in Settings → Community plugins.');
+  }
+
+  askAi(prompt) {
+    const full = `LearningOS request\n\n${prompt}\n\nUse system/OPERATOR.md and the tools/los.py gateway. Do not scan Job unless this request explicitly says it is a Job-area task.`;
+    try { navigator.clipboard.writeText(full); } catch (e) { /* best effort */ }
+    const commands = this.app.commands;
+    if (commands && commands.listCommands && commands.executeCommandById) {
+      const available = commands.listCommands();
+      const preferred = available.find((c) => /agentic.copilot/i.test(`${c.id} ${c.name}`))
+        || available.find((c) => /copilot|ai chat|assistant/i.test(`${c.id} ${c.name}`));
+      if (preferred) {
+        commands.executeCommandById(preferred.id);
+        new Notice('LearningOS prompt copied — paste it into the AI panel.');
+        return;
+      }
+    }
+    new Notice('AI prompt copied. Open Agentic Copilot and paste it; no files were changed.');
+  }
+
+  openPathResource(resource) {
+    if (resource.url) { this.openUrl(resource.url); return; }
+    if (resource.vault_path) { this.openVaultPath(resource.vault_path); return; }
+    if (resource.source_id) {
+      this.openExplorer('source', { selected: resource.source_id });
+      return;
+    }
+    new Notice('This resource has no openable location yet.');
+  }
+
+  runLosPromise(args) {
+    return new Promise((resolve, reject) => this.runLos(args, (err, stdout, stderr) => {
+      if (err) reject(new Error((stderr || stdout || err.message).trim()));
+      else resolve(stdout);
+    }));
+  }
+
+  async saveStageNote(pathId, stageId, text) {
+    try {
+      await this.runLosPromise(['path-note', pathId, stageId, '--replace', '--text', text,
+        '--expected-snapshot', this.store.snapshotId]);
+      await this.reload();
+      new Notice('Stage note saved ✓');
+    } catch (e) {
+      new Notice(`Save failed: ${e.message}`, 10000);
+    }
+  }
+
+  async progressPath(pathId, stageId, status) {
+    try {
+      await this.runLosPromise(['path-progress', pathId, stageId, status,
+        '--expected-snapshot', this.store.snapshotId]);
+      await this.reload();
+      new Notice(status === 'complete' ? 'Stage complete — next stage ready ✓' : 'Path updated ✓');
+    } catch (e) {
+      new Notice(`Progress update failed: ${e.message}`, 10000);
+    }
+  }
+
+  attachStageFile(pathId, stageId) {
+    if (!document.createElement) {
+      new Notice('File picker unavailable in this environment.'); return;
+    }
+    const picker = document.createElement('input');
+    picker.type = 'file';
+    picker.accept = 'application/pdf,image/*';
+    picker.addEventListener('change', async () => {
+      const selected = picker.files && picker.files[0];
+      if (!selected || !selected.path) { new Notice('Could not resolve the selected file.'); return; }
+      try {
+        await this.runLosPromise(['path-attach', pathId, stageId, '--file', selected.path,
+          '--label', selected.name, '--expected-snapshot', this.store.snapshotId]);
+        await this.reload();
+        new Notice('Handwriting attached to this stage ✓');
+      } catch (e) { new Notice(`Attachment failed: ${e.message}`, 10000); }
+    });
+    picker.click();
+  }
+
+  openJobFolder() {
+    const base = this.basePath();
+    if (!base) { new Notice('Job folder is available only in the desktop app.'); return; }
+    const job = path.resolve(base, '..', '..', 'Job');
+    try {
+      const { shell } = require('electron');
+      shell.openPath(job);
+    } catch (e) { new Notice(`Open it manually: ${job}`); }
   }
 
   renderStoreError(el, compact) {
@@ -1414,7 +1860,7 @@ module.exports = class LearningOSUI extends Plugin {
   }
 
   rerenderAll() {
-    for (const type of [VIEW_DASH, VIEW_NAV, VIEW_EXPLORER]) {
+    for (const type of [VIEW_DASH, VIEW_NAV, VIEW_EXPLORER, VIEW_PATH, VIEW_SHELVE, VIEW_JOB]) {
       for (const leaf of this.app.workspace.getLeavesOfType(type)) {
         if (leaf.view && leaf.view.render) leaf.view.render();
       }
@@ -1545,9 +1991,12 @@ module.exports = class LearningOSUI extends Plugin {
     await this.loadSettings();
     this.store = new Store(this.app);
 
-    this.registerView(VIEW_DASH, (leaf) => new DashboardView(leaf, this));
-    this.registerView(VIEW_NAV, (leaf) => new NavView(leaf, this));
+    this.registerView(VIEW_DASH, (leaf) => new LearningHomeView(leaf, this));
+    this.registerView(VIEW_NAV, (leaf) => new AppNavView(leaf, this));
     this.registerView(VIEW_EXPLORER, (leaf) => new ExplorerView(leaf, this));
+    this.registerView(VIEW_PATH, (leaf) => new LearningPathView(leaf, this));
+    this.registerView(VIEW_SHELVE, (leaf) => new ShelveReviewView(leaf, this));
+    this.registerView(VIEW_JOB, (leaf) => new JobBoundaryView(leaf, this));
     this.addSettingTab(new LearningOSSettingTab(this.app, this));
 
     this.addRibbonIcon('layout-dashboard', 'LearningOS: dashboard', () => this.openDashboard());
@@ -1556,6 +2005,8 @@ module.exports = class LearningOSUI extends Plugin {
 
     const cmd = (id, name, callback) => this.addCommand({ id, name, callback });
     cmd('open-dashboard', 'Open dashboard', () => this.openDashboard());
+    cmd('open-learning-path', 'Open current learning path', () => this.openPath());
+    cmd('open-shelve-review', 'Review shelving proposal', () => this.openShelve());
     cmd('find', 'Find anything', () => this.openFinder());
     cmd('browse-sources', 'Browse sources', () => this.openExplorer('source'));
     cmd('browse-notes', 'Browse notes', () => this.openExplorer('note'));
@@ -1604,7 +2055,7 @@ module.exports = class LearningOSUI extends Plugin {
   onunload() {
     window.clearTimeout(this._reloadTimer);
     document.body.classList.remove('los-app');
-    for (const t of [VIEW_DASH, VIEW_NAV, VIEW_EXPLORER]) {
+    for (const t of [VIEW_DASH, VIEW_NAV, VIEW_EXPLORER, VIEW_PATH, VIEW_SHELVE, VIEW_JOB]) {
       this.app.workspace.detachLeavesOfType(t);
     }
   }

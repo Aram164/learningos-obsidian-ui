@@ -8,6 +8,10 @@
   "trashOption": "local",
   "userIgnoreFilters": [
     "archive/",
+    "generated/",
+    "system/",
+    "sources/",
+    "records/",
     ".venv/",
     ".trash/",
     "migration/"

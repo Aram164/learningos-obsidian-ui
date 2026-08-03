@@ -17,17 +17,16 @@ here.
 1. Develop against a **fixture vault** (`fixture-vault/`, synthetic data),
    never the real repository vault.
 2. Read canonical state only through `../repository/generated/`
-   (`manifest.json` is the interface contract, `backlinks.json` the reverse
-   index) and, for the validation badge only, the CLI
+   (`manifest.json` is the versioned, atomic interface contract and contains
+   its reverse indexes) and, for the validation badge only, the CLI
    (`python ../repository/tools/los.py status --json`). **Never parse
    canonical Markdown or YAML from UI code.** If a view needs a field the
    manifest lacks, add it CORE-side and regenerate — do not regex for it.
    Corollary: the app must render fully with the CLI unavailable.
-3. Send mutations only through explicit CLI commands (today: `capture`) or by
-   creating NEW files inside `work/inbox/` (ADR-006 blesses the inbox as the
-   judgment-free capture surface — that is what the plugin's Capture modal
-   does). Never rewrite YAML registries. Never create, rename, move, or edit
-   canonical notes from UI code.
+3. Send mutations only through explicit CLI commands (`capture`, `path-note`,
+   `path-progress`, `path-attach`, `generate`, `validate`). Never rewrite YAML
+   registries or canonical notes from UI code. AI canonical changes require a
+   rendered shelving proposal and explicit selected-item approval.
 4. Do not duplicate LearningOS validation or business rules in TypeScript —
    one implementation of every rule, and it lives in the core.
 5. Treat generated files as disposable; never cache them as truth.
@@ -39,8 +38,8 @@ here.
 8. Run UI tests before installation (`node tests/test-dashboard.js`);
    `install.py` runs them and aborts on failure. Installing into the real
    vault requires Aram's explicit confirmation.
-9. The core repository is read-only territory for this project — never
-   commit, edit, or restructure anything under `../repository/` from here.
+9. The app never writes the core directly. Cross-layer changes are made
+   core-side first (schema/gateway/projection), then consumed here.
 10. Job/ quarantine applies unchanged (core CLAUDE.md §13): never read, index,
     or surface `Job/` content in any view.
 11. This repository is **local-only** (Aram, 2026-08-03): its own git history,
@@ -52,12 +51,13 @@ here.
 13. **All usability constraints live here** (Aram, 2026-08-03). The core is
     allowed to be optimised for robustness and efficacy at the cost of being
     unpleasant to browse; this project is what makes it usable. Concretely:
-    no view may present a bare list of links — a reference to another record
-    is a typed, clickable chip, and every surface offers search, counts and
-    a way onward. Follow `DESIGN.md`; extend it rather than inventing CSS.
+    no primary view may present a bare list of links. The current stage owns
+    its resources and notes; record references are typed actions or chips.
+    Follow `DESIGN.md`; extend it rather than inventing CSS.
 
 ## Anti-goals (from core ADR-006 and the 2026-07-16 external review)
 
 No second canonical graph; no Dataview dependency for core meaning; no second
-inbox (Daily Notes); no plugin sprawl; no REST server; no competing graph
-system; no interface maintained that nobody uses.
+inbox (Daily Notes); no ungoverned plugin sprawl; no REST server; no competing
+graph system; no interface maintained that nobody uses. Curated integrations
+and exclusions are recorded in `ECOSYSTEM.md`.

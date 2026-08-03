@@ -4,21 +4,26 @@
     python3 install.py                 # into ../repository (the live vault)
     python3 install.py --vault PATH    # into another vault (e.g. fixture-vault)
     python3 install.py --dry-run       # print actions only
+    python3 install.py --ecosystem     # + pinned AI/search/OCR/PDF plugins
 
 What it does (and nothing else):
   1. MERGES the managed safety keys of vault-config/app.json into
      <vault>/.obsidian/app.json (user settings survive; ours win on conflict).
   1b. MERGES the managed core-plugin states of vault-config/core-plugins.json
      (Web Viewer on, Daily Notes off, …) — unnamed core plugins are untouched.
-  2. Enables the plugin in <vault>/.obsidian/community-plugins.json.
+  2. Enables the LearningOS plugin (and curated ecosystem when requested).
   3. Copies plugin/  -> <vault>/.obsidian/plugins/learningos-ui/.
   4. Copies bases/*.base -> <vault>/bases/.
   5. VERIFIES (never edits) that the core .gitignore covers .obsidian/,
      /bases/ and /.trash/ — the installer must not touch core-tracked files.
-  6. Runs `los.py status` as a smoke test of the CLI gateway.
+  6. Optionally downloads checksum-pinned Agentic Copilot, Omnisearch, Text
+     Extractor, and PDF++; configures Agentic Copilot through the Codex safety
+     wrapper.
+  7. Runs `los.py status` as a smoke test of the CLI gateway.
 
 The UI test suite runs FIRST and a failure aborts the install (CLAUDE.md hard
-rule 8). `--skip-tests` exists for machines without Node.
+rule 8). Missing Node is a hard failure unless `--skip-tests` is explicitly
+chosen; `--node /absolute/path` supports bundled runtimes.
 
 Boundary (core ADR-006): everything written lands at gitignored paths; the
 core repository's tracked tree is never modified from here.
@@ -27,10 +32,13 @@ core repository's tracked tree is never modified from here.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import shutil
 import subprocess
 import sys
+import tempfile
+import urllib.request
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -86,7 +94,7 @@ def merge_core_plugins(vault: Path, dry: bool) -> None:
                           encoding="utf-8")
 
 
-def enable_plugin(vault: Path, dry: bool) -> None:
+def enable_plugins(vault: Path, dry: bool, extra: list[str] | None = None) -> None:
     target = vault / ".obsidian" / "community-plugins.json"
     plugins: list[str] = []
     if target.is_file():
@@ -94,8 +102,9 @@ def enable_plugin(vault: Path, dry: bool) -> None:
             plugins = json.loads(target.read_text(encoding="utf-8")) or []
         except json.JSONDecodeError:
             log(f"WARNING: {target} invalid — rewriting")
-    if PLUGIN_ID not in plugins:
-        plugins.append(PLUGIN_ID)
+    for plugin_id in [PLUGIN_ID, *(extra or [])]:
+        if plugin_id not in plugins:
+            plugins.append(plugin_id)
     log(f"community-plugins.json: {plugins}")
     if not dry:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -124,23 +133,72 @@ def verify_gitignore(vault: Path) -> None:
         log(".gitignore covers .obsidian/, /bases/, /.trash/ ✓")
 
 
-def run_ui_tests() -> None:
+def run_ui_tests(node: str | None = None) -> None:
     """Hard rule 8: UI tests run before installation, failures abort."""
     suite = HERE / "tests" / "test-dashboard.js"
     if not suite.is_file():
         log("WARNING: tests/test-dashboard.js missing — installing untested")
         return
-    if shutil.which("node") is None:
-        log("WARNING: node not found — skipping UI tests (install with --skip-tests "
-            "to silence this)")
-        return
-    proc = subprocess.run(["node", str(suite)], cwd=HERE,
+    node_bin = node or shutil.which("node")
+    if node_bin is None or not Path(node_bin).is_file():
+        sys.exit("install: Node not found — refusing an untested install. Pass "
+                 "--node /absolute/path/to/node, or explicitly use --skip-tests.")
+    proc = subprocess.run([node_bin, str(suite)], cwd=HERE,
                           capture_output=True, text=True, timeout=120)
     if proc.returncode != 0:
         print(proc.stdout)
         sys.exit("install: UI tests FAILED — nothing was written (hard rule 8)")
     passed = proc.stdout.count("  ok   ")
     log(f"UI tests ✓  ({passed} checks, fixture vault)")
+
+
+def install_ecosystem(vault: Path, dry: bool) -> list[str]:
+    """Install pinned, checksum-verified plugins that serve the learning flow."""
+    spec = json.loads((HERE / "ecosystem-plugins.json").read_text(encoding="utf-8"))
+    installed: list[str] = []
+    for plugin in spec["plugins"]:
+        plugin_id = plugin["id"]
+        dest = vault / ".obsidian" / "plugins" / plugin_id
+        log(f"ecosystem: {plugin['name']} {plugin['version']} ({plugin['purpose']})")
+        installed.append(plugin_id)
+        if dry:
+            continue
+        dest.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix=f"learningos-{plugin_id}-") as tmp:
+            tmp_dir = Path(tmp)
+            for filename, meta in plugin["files"].items():
+                existing = dest / filename
+                if existing.is_file() and hashlib.sha256(existing.read_bytes()).hexdigest() \
+                        == meta["sha256"]:
+                    continue
+                request = urllib.request.Request(
+                    meta["url"], headers={"User-Agent": "LearningOS-Obsidian-installer/1"})
+                with urllib.request.urlopen(request, timeout=90) as response:
+                    content = response.read()
+                actual = hashlib.sha256(content).hexdigest()
+                if actual != meta["sha256"]:
+                    sys.exit(f"install: checksum mismatch for {plugin_id}/{filename}: "
+                             f"expected {meta['sha256']}, got {actual}")
+                staged = tmp_dir / filename
+                staged.write_bytes(content)
+                shutil.copy2(staged, existing)
+        if plugin_id == "agentic-copilot":
+            wrapper = vault / "tools" / "codex_obsidian.py"
+            if not wrapper.is_file():
+                sys.exit(f"install: Agentic Copilot needs {wrapper}")
+            data = {
+                "selectedAgent": "custom",
+                "customBinaryPath": str(wrapper),
+                "customArgs": "",
+                "workingDirectory": "vault",
+                "includeActiveFile": True,
+                "includeSelection": True,
+                "maxSessions": 1,
+                "editApprovalMode": "approve",
+            }
+            (dest / "data.json").write_text(
+                json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return installed
 
 
 def smoke_test_cli(vault: Path) -> None:
@@ -167,10 +225,14 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--skip-tests", action="store_true",
                     help="skip the Node UI test suite (not recommended)")
+    ap.add_argument("--node", default=None,
+                    help="absolute Node executable for the UI test gate")
+    ap.add_argument("--ecosystem", action="store_true",
+                    help="install pinned Agentic Copilot, Omnisearch, Text Extractor, and PDF++")
     args = ap.parse_args()
 
     if not args.skip_tests:
-        run_ui_tests()
+        run_ui_tests(args.node)
 
     vault = Path(args.vault).resolve() if args.vault \
         else (HERE.parent / "repository").resolve()
@@ -181,7 +243,8 @@ def main() -> int:
 
     merge_app_json(vault, args.dry_run)
     merge_core_plugins(vault, args.dry_run)
-    enable_plugin(vault, args.dry_run)
+    ecosystem_ids = install_ecosystem(vault, args.dry_run) if args.ecosystem else []
+    enable_plugins(vault, args.dry_run, ecosystem_ids)
     copy_tree(HERE / "plugin", vault / ".obsidian" / "plugins" / PLUGIN_ID,
               "*", args.dry_run)
     copy_tree(HERE / "bases", vault / "bases", "*.base", args.dry_run)

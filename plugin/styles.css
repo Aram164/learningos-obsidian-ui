@@ -50,6 +50,197 @@
   --los-collection: var(--color-pink);
 }
 
+/* =====================================================================
+ * v1 learning workflow shell
+ * ================================================================== */
+
+.los-page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--los-4);
+  margin-bottom: var(--los-5);
+}
+
+.los-page-head h1,
+.los-page-head h2 { margin: var(--los-1) 0 0; }
+
+.los-home-v2,
+.los-path-view,
+.los-shelve-view,
+.los-job-boundary {
+  padding: var(--los-5);
+  background: var(--background-primary);
+}
+
+.los-focus-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 32%);
+  gap: var(--los-5);
+  padding: var(--los-5);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-lg);
+  background: var(--los-surface);
+}
+
+.los-focus-main h2,
+.los-resume-card h3 { margin: var(--los-1) 0 var(--los-2); }
+.los-focus-objective { color: var(--text-muted); max-width: 72ch; }
+
+.los-progress {
+  height: var(--los-2);
+  margin: var(--los-4) 0 var(--los-2);
+  overflow: hidden;
+  border-radius: var(--los-r-pill);
+  background: var(--background-modifier-border);
+}
+
+.los-progress-fill { height: 100%; background: var(--interactive-accent); }
+
+.los-resume-card {
+  padding: var(--los-4);
+  border-radius: var(--los-r-md);
+  background: var(--interactive-accent);
+  color: var(--text-on-accent);
+}
+
+.los-resume-card .los-kicker,
+.los-resume-card p { color: var(--text-on-accent); }
+.los-resume-card .los-btn { background: var(--background-primary); color: var(--text-normal); }
+
+.los-home-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--los-3);
+  margin-top: var(--los-4);
+}
+
+.los-summary-card {
+  padding: var(--los-4);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+
+.los-summary-card h3 { margin: var(--los-2) 0 var(--los-1); }
+.los-summary-card p { margin: 0; color: var(--text-muted); }
+
+.los-path-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 22%) minmax(320px, 1fr) minmax(260px, 30%);
+  gap: var(--los-3);
+  align-items: start;
+}
+
+.los-stage-rail,
+.los-stage-work,
+.los-stage-notes {
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+
+.los-stage-rail { padding: var(--los-2); }
+.los-stage-work,
+.los-stage-notes { padding: var(--los-4); }
+
+.los-stage-row {
+  display: flex;
+  width: 100%;
+  gap: var(--los-2);
+  align-items: flex-start;
+  padding: var(--los-3);
+  border: 0;
+  border-radius: var(--los-r-sm);
+  background: transparent;
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.los-stage-row:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.los-stage-row.is-active { background: var(--background-modifier-active-hover); color: var(--text-normal); }
+.los-stage-mark { min-width: var(--los-4); color: var(--interactive-accent); }
+
+.los-stage-work h2,
+.los-stage-notes h2 { margin: var(--los-1) 0 var(--los-2); }
+.los-stage-objective { margin-top: 0; }
+
+.los-resource-row {
+  display: grid;
+  grid-template-columns: 82px minmax(0, 1fr);
+  gap: var(--los-3);
+  padding: var(--los-3) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+
+.los-resource-kind { color: var(--text-muted); }
+.los-resource-title { font-weight: 600; }
+.los-done-when { margin-top: var(--los-4); padding-top: var(--los-3); }
+
+.los-note-editor {
+  width: 100%;
+  min-height: 280px;
+  margin: var(--los-3) 0;
+  padding: var(--los-3);
+  resize: vertical;
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-sm);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font: inherit;
+}
+
+.los-attachment-link {
+  display: flex;
+  align-items: center;
+  gap: var(--los-2);
+  width: 100%;
+  margin-top: var(--los-2);
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-sm);
+  background: var(--background-primary);
+  color: var(--text-normal);
+  text-align: left;
+}
+
+.los-proposal-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--los-3);
+  margin-bottom: var(--los-3);
+  padding: var(--los-4);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+
+.los-proposal-row p { margin: var(--los-1) 0; }
+.los-proposal-diff { white-space: pre-wrap; color: var(--text-muted); }
+.los-validation-preview { margin: var(--los-4) 0; padding: var(--los-4); border-left: 3px solid var(--interactive-accent); background: var(--los-surface); }
+.los-actions--end { justify-content: flex-end; }
+
+.los-app-nav { padding: var(--los-3); }
+.los-nav-brand { display: flex; align-items: center; gap: var(--los-2); padding: var(--los-3); margin-bottom: var(--los-3); }
+.los-brand-mark { display: grid; place-items: center; width: var(--los-6); height: var(--los-6); border-radius: var(--los-r-sm); background: var(--interactive-accent); color: var(--text-on-accent); }
+.los-app-nav-item { display: flex; align-items: center; gap: var(--los-3); width: 100%; padding: var(--los-3); border: 0; border-radius: var(--los-r-sm); background: transparent; color: var(--text-muted); text-align: left; }
+.los-app-nav-item:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.los-nav-label { margin: var(--los-5) var(--los-3) var(--los-2); color: var(--text-faint); font-size: var(--los-micro); text-transform: uppercase; letter-spacing: 0.08em; }
+.los-nav-foot { margin-top: var(--los-5); }
+
+@media (max-width: 1000px) {
+  .los-path-layout { grid-template-columns: minmax(160px, 28%) minmax(0, 1fr); }
+  .los-stage-notes { grid-column: 1 / -1; }
+}
+
+@media (max-width: 700px) {
+  .los-page-head { flex-direction: column; }
+  .los-focus-card,
+  .los-home-summary,
+  .los-path-layout { grid-template-columns: 1fr; }
+  .los-stage-notes { grid-column: auto; }
+}
+
 .los-root { overflow-y: auto; }
 .los-root .is-clickable { cursor: pointer; }
 .los-root .is-dim { opacity: 0.5; }

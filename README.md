@@ -1,131 +1,83 @@
-# LearningOS Obsidian UI — interface layer
+# LearningOS Obsidian app
 
-The human desktop for LearningOS: Obsidian opens the `../repository/` vault;
-this project builds the views, shelves, dashboards, and safe action buttons
-that make it comfortable. **Presentation and interaction only** — LearningOS
-core (`../repository/`) owns all canonical data, validation, and business
-rules. The boundary is fixed in the core repository's
-`system/adr/ADR-006-interface-layer-boundary-2026-08-03.md`; the contract this
-project must obey is `CLAUDE.md` here.
+The human work surface for LearningOS. Obsidian opens `../repository/` as the
+vault; this project turns the rigorous file-based core into a stage-focused
+learning app without becoming another source of truth.
 
-## Status
+## v1 workflow
 
-**v0.4.0 — 2026-08-03.** v0.1 shipped the plugin, v0.2 the dashboard, v0.3
-made the dashboard actually appear, v0.4 made the thing navigable and took
-over browsing from `materials/INDEX.html`. Installed into the live vault by
-`install.py`. Track and improve this layer in its own Claude project, not in
-the core project.
+1. Pick or ask AI to create a learning path for one subtopic.
+2. Resume its current stage. Watch/read/practice resources, completion criteria,
+   and the working note stay in one view.
+3. Save typed notes or attach a handwritten PDF/image to that stage. No filing,
+   note ID, concept ID, or destination is required while learning.
+4. Complete, skip, revisit, or detour a stage without losing its reasoning.
+5. Ask AI to prepare a shelving proposal after the path is ready.
+6. Review proposed durable notes/Garden items, destinations, rationale, and
+   diffs. Only explicitly selected items may be applied.
 
-**Division of labour (Aram, 2026-08-03):** the core optimises for robustness,
-correctness and efficacy and is *not* required to be pleasant to browse. All
-usability constraints move here. If something is hard to find, that is a bug
-in this project.
+The primary navigation is now **Home · Learning path · Shelve review ·
+Library**. University and Job are separate areas; Job remains quarantined and
+is never indexed by the LearningOS vault.
 
-**Git: local-only, no remote** (Aram's decision, 2026-08-03). This directory
-is its own git repository with no GitHub remote and no place in the core
-`LearningOS` repo or in `semestercontext` (whose `.gitignore` covers all of
-`LearningOS/`). Commit here for history; nothing is pushed anywhere. If that
-ever changes, the choice to revisit is a remote for *this* repo — not folding
-the interface into the core, which ADR-006 keeps separate.
+## Architecture
 
-## What v0.4 contains
+- The core owns schemas, records, paths, validation, routing, and semantics.
+- The app reads only `generated/manifest.json`, a versioned atomic snapshot that
+  now includes its backlinks. It never races two projection files or parses
+  canonical Markdown/YAML.
+- Mechanical writes use `tools/los.py`: `path-note`, `path-progress`,
+  `path-attach`, `capture`, and `generate`. Stage writes carry the manifest
+  snapshot ID, so stale windows cannot overwrite newer work.
+- AI uses the vendor-neutral `system/OPERATOR.md` contract and the same gateway.
+  Shelving remains proposal → explicit approval → apply → validate → regenerate.
+- The Library retains the existing master/detail record explorer as a secondary
+  retrieval surface.
 
-**The read path changed.** Everything is rendered from
-`generated/manifest.json` + `generated/backlinks.json` — the manifest is the
-interface contract (ADR-006 addendum 4) and now carries workspace
-`next_action`/`objective`, source `url`/`material_path`/`roles`/`evaluations`
-(including per-section reading plans), note `domain`/`summary`, and the
-`exam_spine`. Consequences: no Markdown is parsed by UI code, no rule is
-reimplemented, and **the whole app works with no Python running** — a broken
-venv degrades one banner instead of the interface.
+## Curated ecosystem
 
-- `plugin/` — single-file plugin, **no build step** (`main.js` +
-  `manifest.json` + `styles.css`).
-  - **Dashboard** — the home view on every launch: exam hero + countdown,
-    spine tiles, a six-stat strip where every stat navigates, workspace cards
-    (status stripe, deadline, next action, linked-record counts), recently
-    changed notes, queues, and a reference shelf of local sources.
-  - **Explorer** — a master/detail browser over every record type. Type tabs
-    with counts, a search field, facets derived from the data (kind, role,
-    domain, state, status — with counts), and a detail pane: facts grid,
-    prose, evaluations (strengths/weaknesses), **Where to look** (which
-    chapter or lecture covers which concept, as clickable chips), and every
-    connected record grouped and clickable. Chip clicks push history, so Back
-    works. This is what replaced `materials/INDEX.html`.
-  - **Navigator** — a left rail: Home, Find, one entry per record type with
-    counts, queues (inbox / garden / unreviewed), generated views, actions,
-    and your active workspaces.
-  - **Finder** — fuzzy search over all ~400 records; notes and workspaces open
-    as files, everything else opens in the Explorer.
-  - Source actions: **Open online** (in Obsidian's Web Viewer when enabled,
-    else the browser) and **Open local copy** (resolved by the core, not by
-    the UI).
-- **App behaviour** (Settings → LearningOS UI, all toggleable): dashboard on
-  startup, pinned home tab, Navigator, collapsed sidebars, app chrome,
-  in-app source links, live refresh.
-- **Vault hygiene** — `vault-config/core-plugins.json` merges managed core
-  plugin states with a written rationale for each: Web Viewer **on** (136
-  sources have URLs), Daily Notes **off** (no second inbox), link graph
-  **off** (the concept canvas is the curated graph), Sync/Publish off.
-- `DESIGN.md` — the design system: tokens, five components, four patterns,
-  copy rules, and the anti-patterns it exists to prevent.
-- `tests/` — Node suite against an Obsidian stub and the fixture vault
-  (`node tests/test-dashboard.js`, ~70 checks). `install.py` runs it and
-  aborts on failure. Covers the store, startup, settings, dashboard,
-  explorer, navigator, finder, both degraded modes (CLI down, projection
-  missing), the open verbs, and the ADR-006 write boundary — including a
-  check that no UI code parses canonical Markdown and that the CSS contains
-  no hardcoded colours.
-- `bases/` — shelf definitions (Obsidian Bases): notes (all / recently
-  changed / needs review / rough-or-evolving / exam artifacts / with
-  evidence / by domain), garden (ripest first), workspaces (active/archived).
-- `vault-config/app.json` — the managed safety keys (merged, never
-  clobbered): link auto-update OFF, Markdown links, attachments→`work/inbox/`,
-  local trash, archive/venv excluded from search.
-- `install.py` — idempotent installer; writes ONLY to gitignored vault paths
-  (`.obsidian/`, `bases/`); verifies but never edits core-tracked files.
-- `fixture-vault/` — synthetic vault for development (hard rule: never
-  develop against the live vault).
+`ecosystem-plugins.json` pins release URLs and SHA-256 checksums for:
+
+- Agentic Copilot, configured to the local Codex safety wrapper;
+- Omnisearch plus Text Extractor for full-text and OCR search;
+- PDF++ for stage-owned and durable PDF annotations.
+
+See `ECOSYSTEM.md` for responsibilities and the plugins deliberately excluded
+because they duplicate the graph, inbox, operator gateway, or semantic index.
+
+The Codex wrapper (`../repository/tools/codex_obsidian.py`) is read-only by
+default. Only LearningOS UI actions carrying an explicit operational, shelving,
+or Job approval marker grant a write sandbox, and every write-enabled run ends
+with validation and projection regeneration.
 
 ## Install / update
 
+Use the bundled Node path when `node` is not on the shell PATH:
+
 ```bash
-python3 /Users/aramaljanadi/Desktop/semestercontext/LearningOS/obsidian-ui/install.py
+python3 /Users/aramaljanadi/Desktop/semestercontext/LearningOS/obsidian-ui/install.py \
+  --node /Users/aramaljanadi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node \
+  --ecosystem
 ```
 
-Then open `LearningOS/repository/` as a vault in Obsidian and, if prompted,
-turn OFF Restricted mode (enables the plugin). If Obsidian is already running,
-reload it (`Cmd+R`) — plugin code is only read at load. The core side renders
-the data: `concept-canvas.canvas` and `reading-room.md` come from `make views`.
+The installer refuses an untested install unless `--skip-tests` is explicitly
+given. It merges safety settings, installs only into gitignored vault paths,
+verifies pinned plugin checksums, enables the integrations, and smoke-tests the
+core CLI. Reload Obsidian with `Cmd+R` after an update.
 
 ## Test
 
 ```bash
-cd /Users/aramaljanadi/Desktop/semestercontext/LearningOS/obsidian-ui && node tests/test-dashboard.js
+/Users/aramaljanadi/.cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node \
+  /Users/aramaljanadi/Desktop/semestercontext/LearningOS/obsidian-ui/tests/test-dashboard.js
 ```
 
-## What this project may touch
+Tests run only against `fixture-vault/`. They cover the versioned store, home,
+navigation, learning path, mixed capture, shelving approval, Job boundary,
+secondary Library, degraded modes, and the core/UI write boundary.
 
-- `python ../repository/tools/los.py` — `status --json` · `validate` ·
-  `generate` · `capture` (the CLI mutation channel), plus direct note
-  creation into `work/inbox/` (blessed by ADR-006 as the judgment-free
-  capture surface).
-- `../repository/generated/` — read-only; entry point `reading-room.md`,
-  machine projection `manifest.json`.
+## Repository policy
 
-Nothing else. See `CLAUDE.md`.
-
-## Design input
-
-`inputs/LearningOS-Obsidian-Architecture.md` — Aram's plan (2026-08-03), as
-reviewed against the core contract that same day (see ADR-006 for what was
-adopted core-side, rejected, or deferred). Its implementation order still
-applies here from step 4 onward (fixture vault → read-only dashboard → shelves
-→ source explorer → canvas → forms).
-
-## First success criterion (from the 2026-07-16 external review)
-
-An interface nobody uses is a dead second interface and gets deleted, not
-maintained. The first deliverable must be something actually opened daily —
-start with the read-only reading-room/dashboard experience, prove it earns a
-place, then grow.
+This project is its own local-only Git repository. The core and UI remain
+separate repositories and separate ownership layers. All app styling uses
+Obsidian theme variables; all core meaning remains portable plain files.

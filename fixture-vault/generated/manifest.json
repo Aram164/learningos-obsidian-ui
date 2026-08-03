@@ -1,13 +1,20 @@
 {
   "_generated": {
+    "contract_version": 1,
     "generated_at": "2026-08-03",
     "generator": "fixture",
+    "snapshot_id": "sha256:fixture-snapshot",
+    "source_dirty": false,
+    "source_fingerprint": "fixture-snapshot",
+    "source_revision": "fixture-revision",
     "warning": "SYNTHETIC. Mirrors the real manifest schema (learning_os.genout.build_manifest) so UI tests exercise the same shapes. Never real data."
   },
   "counts": {
     "collections": 1,
     "concepts": 2,
     "modules": 1,
+    "learning_paths": 1,
+    "learning_paths_active": 1,
     "notes": 1,
     "notes_reviewed": 0,
     "notes_with_evidence": 0,
@@ -15,6 +22,23 @@
     "sources": 3,
     "workspaces_active": 1,
     "workspaces_archived": 1
+  },
+  "backlinks": {
+    "concept_relations": {
+      "concept-demo": {
+        "incoming": [{ "from": "concept-downstream", "type": "builds-on" }],
+        "outgoing": []
+      },
+      "concept-downstream": {
+        "incoming": [],
+        "outgoing": [{ "to": "concept-demo", "type": "builds-on" }]
+      }
+    },
+    "concept_to_notes": { "concept-demo": ["note-fixture-demo"] },
+    "module_to_workspaces": { "module-fixture": ["workspace-fixture"] },
+    "note_incoming": {},
+    "source_to_notes": { "source-fixture-online": ["note-fixture-demo"] },
+    "workspace_to_notes": { "workspace-fixture": ["note-fixture-demo"] }
   },
   "exam_spine": [
     {
@@ -252,6 +276,73 @@
       "sources": [
         "source-fixture-local",
         "source-fixture-online"
+      ]
+    },
+    {
+      "id": "path-fixture-probability",
+      "type": "learning-path",
+      "title": "Fixture probability path",
+      "path": "work/active/workspace-fixture/paths/path-fixture-probability.yaml",
+      "workspace_id": "workspace-fixture",
+      "area": "university",
+      "module_id": "module-fixture",
+      "status": "active",
+      "current_stage": "stage-conditioning",
+      "created": "2099-01-01",
+      "updated": "2099-01-02",
+      "objective": "Learn a fixture topic through ordered stages.",
+      "source_plan": "work/active/workspace-fixture/inputs/fixture-plan.md",
+      "archived": false,
+      "shelving": { "state": "none" },
+      "stages": [
+        {
+          "id": "stage-foundations",
+          "title": "Foundations",
+          "status": "complete",
+          "objective": "Establish the fixture vocabulary.",
+          "estimate_minutes": 20,
+          "concepts": ["concept-demo"],
+          "resources": [{
+            "kind": "read",
+            "label": "Fixture local book, Chapter 1",
+            "source_id": "source-fixture-local",
+            "locator": "Chapter 1"
+          }],
+          "done_when": ["Explain the fixture vocabulary."],
+          "notes_path": "work/active/workspace-fixture/scratch/paths/path-fixture-probability/stage-foundations.md",
+          "notes_text": "My completed fixture reasoning.",
+          "notes_updated": "2099-01-01"
+        },
+        {
+          "id": "stage-conditioning",
+          "title": "Conditional fixture",
+          "status": "active",
+          "objective": "Work the central fixture example without memorizing it.",
+          "estimate_minutes": 45,
+          "exam_critical": true,
+          "concepts": ["concept-demo"],
+          "resources": [
+            { "kind": "watch", "label": "Fixture explainer", "url": "https://example.invalid/fixture" },
+            { "kind": "practice", "label": "Fixture exercise B3", "vault_path": "knowledge/notes/mathematics/note-fixture-demo.md" }
+          ],
+          "done_when": ["Explain the fixture result cold."],
+          "notes_path": "work/active/workspace-fixture/scratch/paths/path-fixture-probability/stage-conditioning.md",
+          "notes_text": "A tentative fixture explanation.",
+          "notes_updated": null
+        },
+        {
+          "id": "stage-self-test",
+          "title": "Practice and self-test",
+          "status": "pending",
+          "objective": "Check the fixture explanation under recall.",
+          "estimate_minutes": 30,
+          "concepts": ["concept-downstream"],
+          "resources": [],
+          "done_when": ["Pass the fixture self-test."],
+          "notes_path": "work/active/workspace-fixture/scratch/paths/path-fixture-probability/stage-self-test.md",
+          "notes_text": "",
+          "notes_updated": null
+        }
       ]
     }
   ],
