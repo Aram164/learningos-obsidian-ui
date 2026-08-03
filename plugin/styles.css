@@ -1,0 +1,52 @@
+/* LearningOS dashboard — theme-variable styling only (light/dark safe). */
+
+.los-dash { padding: 16px 24px; overflow-y: auto; }
+
+.los-head { display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px; }
+.los-head h2 { margin: 0; }
+.los-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.los-banner { margin: 12px 0; padding: 8px 12px; border-radius: 8px;
+  font-size: var(--font-ui-small); }
+.los-ok { background: rgba(var(--color-green-rgb), 0.12);
+  color: var(--color-green); }
+.los-warn { background: rgba(var(--color-red-rgb), 0.12);
+  color: var(--color-red); }
+
+.los-tiles { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+.los-tile { background: var(--background-secondary); border-radius: 10px;
+  padding: 10px 16px; min-width: 130px; cursor: pointer;
+  border: 1px solid var(--background-modifier-border); }
+.los-tile:hover { border-color: var(--interactive-accent); }
+.los-tile-days { font-size: 1.5em; font-weight: 700;
+  color: var(--interactive-accent); }
+.los-tile-name { font-weight: 600; margin-top: 2px; }
+.los-tile-sub { font-size: var(--font-ui-smaller); color: var(--text-muted); }
+
+.los-cols { display: flex; gap: 24px; align-items: flex-start;
+  flex-wrap: wrap; }
+.los-col-main { flex: 2 1 380px; min-width: 320px; }
+.los-col-side { flex: 1 1 220px; min-width: 200px; }
+
+.los-card { background: var(--background-secondary); border-radius: 10px;
+  padding: 10px 14px; margin-bottom: 8px; cursor: pointer;
+  border: 1px solid var(--background-modifier-border); }
+.los-card:hover { border-color: var(--interactive-accent); }
+.los-dim { opacity: 0.55; }
+.los-card-top { display: flex; justify-content: space-between; gap: 8px;
+  align-items: baseline; flex-wrap: wrap; }
+.los-card-title { font-weight: 600; }
+.los-badges { display: flex; gap: 4px; flex-wrap: wrap; }
+.los-badge { font-size: var(--font-ui-smaller); background: var(--background-modifier-border);
+  border-radius: 999px; padding: 1px 8px; color: var(--text-muted); }
+.los-card-next { margin-top: 4px; font-size: var(--font-ui-small);
+  color: var(--text-muted); }
+
+.los-list { list-style: none; padding-left: 0; margin: 4px 0 12px; }
+.los-list li { padding: 3px 0; border-bottom: 1px solid
+  var(--background-modifier-border); font-size: var(--font-ui-small); }
+.los-list li:hover { color: var(--interactive-accent); }
+
+.los-foot { margin-top: 16px; font-size: var(--font-ui-smaller);
+  color: var(--text-faint); }

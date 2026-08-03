@@ -137,8 +137,8 @@ def main() -> int:
         smoke_test_cli(vault)
 
     log("done. Open the vault in Obsidian; if it asks, turn OFF Restricted "
-        "mode to activate the LearningOS UI plugin. The reading room opens "
-        "on startup.")
+        "mode to activate the LearningOS UI plugin. The dashboard opens on "
+        "startup (generated/reading-room.md stays the plain-text fallback).")
     return 0
 
 

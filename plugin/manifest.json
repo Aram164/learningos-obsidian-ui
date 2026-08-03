@@ -1,9 +1,9 @@
 {
   "id": "learningos-ui",
   "name": "LearningOS UI",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "minAppVersion": "1.9.0",
-  "description": "Desktop for LearningOS: reading room home page, capture to inbox, rebuild/validate via the los.py CLI, exam countdown. Presentation only - all rules live in the LearningOS core.",
+  "description": "Desktop for LearningOS: live dashboard (workspace cards, exam countdown, queues, recent notes), capture to inbox, rebuild/validate via the los.py CLI. Presentation only - all rules live in the LearningOS core.",
   "author": "Aram + operator",
   "isDesktopOnly": true
 }

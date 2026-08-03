@@ -19,10 +19,15 @@ be created by Aram.
 ## What v0.1 contains
 
 - `plugin/` — single-file plugin, **no build step** (`main.js` +
-  `manifest.json`): reading room auto-opens on startup; ribbon + commands for
-  Capture-to-inbox, Rebuild views, Validate, Status, Concept canvas; status
-  bar shows validation state + next-exam countdown (display-side countdowns
-  are fine — the determinism rule binds generated *files*, not live UI).
+  `manifest.json` + `styles.css`). **v0.2: the Dashboard** — a rendered home
+  view that auto-opens on startup: exam countdown tiles, "continue where I
+  stopped" workspace cards (status/deadline badges + next action, click to
+  open), queues, recent notes, one-click links to shelves/canvas/views, and
+  action buttons (Capture, Rebuild, Validate). Plus ribbon/commands for all
+  of the above and a status-bar validation state + next-exam countdown
+  (display-side countdowns are fine — the determinism rule binds generated
+  *files*, not live UI). The generated `reading-room.md` stays the plain-text
+  home for every non-Obsidian surface.
 - `bases/` — shelf definitions (Obsidian Bases): notes (all / recently
   changed / needs review / rough-or-evolving / exam artifacts / with
   evidence / by domain), garden (ripest first), workspaces (active/archived).
