@@ -1,0 +1,41 @@
+# Workspace shelf: every CONTEXT.md (type: workspace). Status/deadline come
+# from workspace frontmatter — the canonical owner (ARCHITECTURE §4).
+filters:
+  and:
+    - 'note.type == "workspace"'
+properties:
+  note.status:
+    displayName: Status
+  note.standing:
+    displayName: Standing
+  note.deadline:
+    displayName: Deadline
+  file.mtime:
+    displayName: Touched
+views:
+  - type: table
+    name: Active
+    filters:
+      and:
+        - 'file.path.startsWith("work/active/")'
+    order:
+      - title
+      - status
+      - standing
+      - deadline
+      - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
+  - type: table
+    name: Archived
+    filters:
+      and:
+        - 'file.path.startsWith("archive/")'
+    order:
+      - title
+      - status
+      - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC

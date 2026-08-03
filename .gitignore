@@ -1,0 +1,4 @@
+node_modules/
+.DS_Store
+fixture-vault/.obsidian/plugins/
+fixture-vault/bases/

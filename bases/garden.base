@@ -1,0 +1,23 @@
+# The Garden through Bases: free-form ideas gestating in knowledge/garden/
+# (no frontmatter by design — file properties only). Oldest first = ripest
+# for the harvest-or-prune call. The Nebula (generated/nebula.md) stays the
+# canonical-side lens; this is just a friendlier surface over the same files.
+filters:
+  and:
+    - 'file.path.startsWith("knowledge/garden/")'
+    - 'file.ext == "md"'
+views:
+  - type: cards
+    name: Ripest first
+    sort:
+      - property: file.mtime
+        direction: ASC
+  - type: table
+    name: All garden notes
+    order:
+      - file.name
+      - file.mtime
+      - file.size
+    sort:
+      - property: file.mtime
+        direction: ASC

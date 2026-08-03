@@ -1,0 +1,15 @@
+{
+  "_comment": "Managed safety keys for the LearningOS vault (ADR-006). install.py MERGES these into .obsidian/app.json - other user settings survive. alwaysUpdateLinks stays false because filename==note-id is a core invariant and renames are operator events; useMarkdownLinks keeps any hand-authored links editor-agnostic; attachments dropped into Obsidian land in work/inbox/ for operator routing; local trash keeps deletes recoverable; archive and venv stay out of search.",
+  "alwaysUpdateLinks": false,
+  "useMarkdownLinks": true,
+  "newLinkFormat": "relative",
+  "attachmentFolderPath": "work/inbox",
+  "readableLineLength": true,
+  "trashOption": "local",
+  "userIgnoreFilters": [
+    "archive/",
+    ".venv/",
+    ".trash/",
+    "migration/"
+  ]
+}
