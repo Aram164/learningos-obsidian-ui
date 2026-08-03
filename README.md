@@ -10,10 +10,16 @@ project must obey is `CLAUDE.md` here.
 
 ## Status
 
-**v0.3.0 — 2026-08-03.** v0.1 shipped the plugin, v0.2 the dashboard, v0.3
-made the dashboard actually appear. Installed into the live vault by
+**v0.4.0 — 2026-08-03.** v0.1 shipped the plugin, v0.2 the dashboard, v0.3
+made the dashboard actually appear, v0.4 made the thing navigable and took
+over browsing from `materials/INDEX.html`. Installed into the live vault by
 `install.py`. Track and improve this layer in its own Claude project, not in
 the core project.
+
+**Division of labour (Aram, 2026-08-03):** the core optimises for robustness,
+correctness and efficacy and is *not* required to be pleasant to browse. All
+usability constraints move here. If something is hard to find, that is a bug
+in this project.
 
 **Git: local-only, no remote** (Aram's decision, 2026-08-03). This directory
 is its own git repository with no GitHub remote and no place in the core
@@ -22,27 +28,54 @@ is its own git repository with no GitHub remote and no place in the core
 ever changes, the choice to revisit is a remote for *this* repo — not folding
 the interface into the core, which ADR-006 keeps separate.
 
-## What v0.3 contains
+## What v0.4 contains
+
+**The read path changed.** Everything is rendered from
+`generated/manifest.json` + `generated/backlinks.json` — the manifest is the
+interface contract (ADR-006 addendum 4) and now carries workspace
+`next_action`/`objective`, source `url`/`material_path`/`roles`/`evaluations`
+(including per-section reading plans), note `domain`/`summary`, and the
+`exam_spine`. Consequences: no Markdown is parsed by UI code, no rule is
+reimplemented, and **the whole app works with no Python running** — a broken
+venv degrades one banner instead of the interface.
 
 - `plugin/` — single-file plugin, **no build step** (`main.js` +
-  `manifest.json` + `styles.css`). **The Dashboard** is the home view on every
-  launch: a hero countdown to the nearest exam, tiles for the rest of the
-  spine, a stat strip (notes/concepts/sources/inbox/garden/reviewed %), a
-  "continue where I stopped" grid of workspace cards (status stripe, deadline,
-  next action, last touched), recently changed notes, a jump rail to
-  shelves/canvas/generated views, and action buttons (Capture, Rebuild,
-  Validate, Refresh). It re-renders when files under `work/` or `knowledge/`
-  change. Plus ribbon/commands for all of the above and a status-bar
-  validation state + next-exam countdown (display-side countdowns are fine —
-  the determinism rule binds generated *files*, not live UI). The generated
-  `reading-room.md` stays the plain-text home for every non-Obsidian surface.
-- **App behaviour** (Settings → LearningOS UI, all toggleable): open the
-  dashboard on startup, pin it as the home tab, collapse both sidebars at
-  launch, app chrome, live refresh.
-- `tests/` — Node test suite against an Obsidian stub and the fixture vault
-  (`node tests/test-dashboard.js`). `install.py` runs it and aborts on
-  failure. Covers the startup path, the settings, the render, degraded
-  no-CLI mode, and the ADR-006 write boundary.
+  `manifest.json` + `styles.css`).
+  - **Dashboard** — the home view on every launch: exam hero + countdown,
+    spine tiles, a six-stat strip where every stat navigates, workspace cards
+    (status stripe, deadline, next action, linked-record counts), recently
+    changed notes, queues, and a reference shelf of local sources.
+  - **Explorer** — a master/detail browser over every record type. Type tabs
+    with counts, a search field, facets derived from the data (kind, role,
+    domain, state, status — with counts), and a detail pane: facts grid,
+    prose, evaluations (strengths/weaknesses), **Where to look** (which
+    chapter or lecture covers which concept, as clickable chips), and every
+    connected record grouped and clickable. Chip clicks push history, so Back
+    works. This is what replaced `materials/INDEX.html`.
+  - **Navigator** — a left rail: Home, Find, one entry per record type with
+    counts, queues (inbox / garden / unreviewed), generated views, actions,
+    and your active workspaces.
+  - **Finder** — fuzzy search over all ~400 records; notes and workspaces open
+    as files, everything else opens in the Explorer.
+  - Source actions: **Open online** (in Obsidian's Web Viewer when enabled,
+    else the browser) and **Open local copy** (resolved by the core, not by
+    the UI).
+- **App behaviour** (Settings → LearningOS UI, all toggleable): dashboard on
+  startup, pinned home tab, Navigator, collapsed sidebars, app chrome,
+  in-app source links, live refresh.
+- **Vault hygiene** — `vault-config/core-plugins.json` merges managed core
+  plugin states with a written rationale for each: Web Viewer **on** (136
+  sources have URLs), Daily Notes **off** (no second inbox), link graph
+  **off** (the concept canvas is the curated graph), Sync/Publish off.
+- `DESIGN.md` — the design system: tokens, five components, four patterns,
+  copy rules, and the anti-patterns it exists to prevent.
+- `tests/` — Node suite against an Obsidian stub and the fixture vault
+  (`node tests/test-dashboard.js`, ~70 checks). `install.py` runs it and
+  aborts on failure. Covers the store, startup, settings, dashboard,
+  explorer, navigator, finder, both degraded modes (CLI down, projection
+  missing), the open verbs, and the ADR-006 write boundary — including a
+  check that no UI code parses canonical Markdown and that the CSS contains
+  no hardcoded colours.
 - `bases/` — shelf definitions (Obsidian Bases): notes (all / recently
   changed / needs review / rough-or-evolving / exam artifacts / with
   evidence / by domain), garden (ripest first), workspaces (active/archived).

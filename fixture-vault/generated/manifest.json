@@ -1,0 +1,267 @@
+{
+  "_generated": {
+    "generated_at": "2026-08-03",
+    "generator": "fixture",
+    "warning": "SYNTHETIC. Mirrors the real manifest schema (learning_os.genout.build_manifest) so UI tests exercise the same shapes. Never real data."
+  },
+  "counts": {
+    "collections": 1,
+    "concepts": 2,
+    "modules": 1,
+    "notes": 1,
+    "notes_reviewed": 0,
+    "notes_with_evidence": 0,
+    "relations": 1,
+    "sources": 3,
+    "workspaces_active": 1,
+    "workspaces_archived": 1
+  },
+  "exam_spine": [
+    {
+      "date": "2099-10-09",
+      "module_id": "module-fixture",
+      "termin": 2,
+      "title": "Fixture Kombimodul (FIX + TURE)",
+      "notes": "Synthetic exam facts. Never real."
+    }
+  ],
+  "records": [
+    {
+      "id": "note-fixture-demo",
+      "type": "note",
+      "title": "Fixture demo note",
+      "path": "knowledge/notes/mathematics/note-fixture-demo.md",
+      "domain": "mathematics",
+      "summary": "Synthetic content for UI development. Never real knowledge.",
+      "role": "synthesis",
+      "state": "evolving",
+      "authorship": "mine",
+      "concepts": [
+        "concept-demo"
+      ],
+      "sources": [
+        "source-fixture-online"
+      ],
+      "contexts": [
+        "workspace-fixture"
+      ],
+      "attachments": [],
+      "evidence": [],
+      "supersedes": [],
+      "reviewed": null
+    },
+    {
+      "id": "concept-demo",
+      "type": "concept",
+      "title": "Demonstration concept",
+      "path": "knowledge/concepts.yaml",
+      "aliases": [
+        "demo",
+        "example concept"
+      ],
+      "deprecated": false
+    },
+    {
+      "id": "concept-downstream",
+      "type": "concept",
+      "title": "Downstream concept",
+      "path": "knowledge/concepts.yaml",
+      "aliases": [],
+      "deprecated": false
+    },
+    {
+      "id": "source-fixture-online",
+      "type": "source",
+      "title": "Fixture online source",
+      "path": "sources/registry/fixture.yaml",
+      "source_type": "video",
+      "url": "https://example.invalid/fixture",
+      "material": null,
+      "material_path": null,
+      "material_exists": false,
+      "authors": [
+        "A. Fixture"
+      ],
+      "organization": null,
+      "year": 2026,
+      "identifiers": {},
+      "roles": [
+        "intuition"
+      ],
+      "evaluations": [
+        {
+          "roles": [
+            "intuition"
+          ],
+          "strengths": [
+            "Pictures before proofs"
+          ],
+          "weaknesses": [
+            "No exercises"
+          ],
+          "verdict": null
+        }
+      ]
+    },
+    {
+      "id": "source-fixture-local",
+      "type": "source",
+      "title": "Fixture local book",
+      "path": "sources/registry/fixture.yaml",
+      "source_type": "book",
+      "url": null,
+      "material": "material://source-fixture-local/book.pdf",
+      "material_path": "materials/Books/fixture/book.pdf",
+      "material_exists": true,
+      "authors": [
+        "B. Fixture"
+      ],
+      "organization": "Fixture Press",
+      "year": 2020,
+      "identifiers": {
+        "isbn": "000-0-00-000000-0"
+      },
+      "roles": [
+        "reference",
+        "exercise"
+      ],
+      "evaluations": [
+        {
+          "roles": [
+            "reference"
+          ],
+          "strengths": [
+            "Complete tables"
+          ],
+          "weaknesses": [],
+          "verdict": "keep on the shelf",
+          "concepts": [
+            "concept-demo"
+          ],
+          "useful_sections": [
+            {
+              "section": "Ch. 2 — Fixtures",
+              "note": "the only chapter that matters"
+            }
+          ]
+        },
+        {
+          "roles": [
+            "exercise"
+          ],
+          "strengths": [],
+          "weaknesses": [],
+          "verdict": null,
+          "concepts": [
+            "concept-downstream"
+          ],
+          "useful_sections": [
+            {
+              "section": "Appendix A",
+              "note": "drills"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "source-fixture-bare",
+      "type": "source",
+      "title": "Fixture source with no location",
+      "path": "sources/registry/fixture.yaml",
+      "source_type": "other",
+      "url": null,
+      "material": null,
+      "material_path": null,
+      "material_exists": false,
+      "authors": [],
+      "organization": null,
+      "year": null,
+      "identifiers": {},
+      "roles": [],
+      "evaluations": []
+    },
+    {
+      "id": "module-fixture",
+      "type": "module",
+      "title": "Fixture Kombimodul (FIX + TURE)",
+      "path": "records/modules.yaml",
+      "status": "enrolled",
+      "institution": "Fixture University",
+      "code": "FIX",
+      "credits": 10,
+      "semester": "sose-2099",
+      "components": [
+        "Fixture A",
+        "Fixture B"
+      ],
+      "examination": {
+        "type": "klausur",
+        "notes": "Synthetic exam notes."
+      },
+      "attempts": [
+        {
+          "termin": 1,
+          "date": "2099-07-27",
+          "result": "withdrawn"
+        }
+      ],
+      "grade": null
+    },
+    {
+      "id": "workspace-fixture",
+      "type": "workspace",
+      "title": "Fixture workspace",
+      "path": "work/active/workspace-fixture/CONTEXT.md",
+      "status": "active",
+      "standing": false,
+      "archived": false,
+      "deadline": null,
+      "objective": "Exercise the workspaces.base shelf.",
+      "next_action": "Nothing — synthetic.",
+      "concepts": [
+        "concept-demo"
+      ],
+      "notes": [
+        "note-fixture-demo"
+      ],
+      "sources": [
+        "source-fixture-local"
+      ]
+    },
+    {
+      "id": "workspace-fixture-archived",
+      "type": "workspace",
+      "title": "Archived fixture workspace",
+      "path": "archive/workspaces/2099/workspace-fixture-archived/CONTEXT.md",
+      "status": "archived",
+      "standing": false,
+      "archived": true,
+      "deadline": null,
+      "objective": "",
+      "next_action": "",
+      "concepts": [],
+      "notes": [],
+      "sources": []
+    },
+    {
+      "id": "fixture-bookshelf",
+      "type": "collection",
+      "title": "Fixture bookshelf",
+      "path": "sources/collections/fixture-bookshelf.yaml",
+      "sources": [
+        "source-fixture-local",
+        "source-fixture-online"
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "from": "concept-downstream",
+      "type": "builds-on",
+      "to": "concept-demo",
+      "context": "synthetic edge",
+      "source": "note-fixture-demo"
+    }
+  ]
+}

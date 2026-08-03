@@ -1,0 +1,12 @@
+{
+  "bases": true,
+  "canvas": true,
+  "daily-notes": false,
+  "graph": false,
+  "markdown-importer": false,
+  "properties": true,
+  "publish": false,
+  "sync": false,
+  "webviewer": true,
+  "zk-prefixer": false
+}

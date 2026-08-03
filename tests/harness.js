@@ -17,6 +17,7 @@ class El {
     this.text = '';
     this.attrs = {};
     this.style = {};
+    this.value = '';
     this.listeners = {};
     this.classList = {
       add: (...c) => c.forEach((x) => this.classes.add(x)),
@@ -42,8 +43,13 @@ class El {
   setText(t) { this.text = String(t); return this; }
   setAttr(k, v) { this.attrs[k] = v; return this; }
   remove() { return this; }
+  focus() { return this; }
   addEventListener(ev, fn) { (this.listeners[ev] ||= []).push(fn); }
-  fire(ev) { (this.listeners[ev] || []).forEach((f) => f({ preventDefault() {} })); }
+  fire(ev, extra) {
+    const e = Object.assign({ preventDefault() {}, stopPropagation() {} }, extra);
+    (this.listeners[ev] || []).forEach((f) => f(e));
+    return this;
+  }
   /* helpers for assertions */
   allText() {
     return [this.text, ...this.children.map((c) => c.allText())]
@@ -54,6 +60,10 @@ class El {
     if (this.classes.has(cls)) hits.push(this);
     for (const c of this.children) hits.push(...c.find(cls));
     return hits;
+  }
+  /** First descendant carrying `cls` whose text contains `needle`. */
+  findText(cls, needle) {
+    return this.find(cls).find((e) => e.allText().includes(needle)) || null;
   }
 }
 
@@ -85,6 +95,24 @@ class Setting {
       onClick() { return this; },
     });
     return this;
+  }
+}
+
+class SuggestModal {
+  constructor(app) { this.app = app; this.query = ''; }
+  setPlaceholder(p) { this.placeholder = p; }
+  setInstructions(i) { this.instructions = i; }
+  open() { SuggestModal.last = this; }
+  close() {}
+  /** test helper: run the real getSuggestions/renderSuggestion pipeline */
+  probe(query) {
+    const hits = this.getSuggestions(query);
+    const rendered = hits.slice(0, 5).map((h) => {
+      const el = new El('div');
+      this.renderSuggestion(h, el);
+      return el;
+    });
+    return { hits, rendered };
   }
 }
 
@@ -130,7 +158,7 @@ class Plugin {
 function setIcon(el, name) { el.setAttr('data-icon', name); }
 
 const stub = {
-  Plugin, PluginSettingTab, ItemView, Modal, Notice, Setting, setIcon,
+  Plugin, PluginSettingTab, ItemView, Modal, SuggestModal, Notice, Setting, setIcon,
 };
 
 const origLoad = Module._load;
@@ -149,6 +177,18 @@ global.window = {
   moment: null,
 };
 global.document = { body: new El('body') };
+/* Node 22 exposes a getter-only global `navigator`; add the clipboard the
+ * plugin uses without replacing the object. */
+try {
+  if (!global.navigator) {
+    Object.defineProperty(global, 'navigator', { value: {}, configurable: true });
+  }
+  if (!global.navigator.clipboard) {
+    Object.defineProperty(global.navigator, 'clipboard', {
+      value: { writeText() {} }, configurable: true,
+    });
+  }
+} catch (e) { /* clipboard action is best-effort in tests */ }
 
 /* --------------------------------------------------------- fake vault */
 
@@ -214,8 +254,16 @@ function makeApp(vaultRoot) {
 
   const leaves = [];
   const app = {
+    internalPlugins: {
+      enabled: new Set(),
+      getPluginById(id) { return { enabled: app.internalPlugins.enabled.has(id) }; },
+    },
     vault: {
-      adapter: { getBasePath: () => vaultRoot },
+      adapter: {
+        getBasePath: () => vaultRoot,
+        exists: async (p) => fs.existsSync(path.join(vaultRoot, p)),
+        read: async (p) => fs.readFileSync(path.join(vaultRoot, p), 'utf8'),
+      },
       getMarkdownFiles: () => files.filter((f) => f.extension === 'md'),
       getAbstractFileByPath: (p) => byPath.get(p) || folders.get(p) || null,
       cachedRead: async (f) => fs.readFileSync(path.join(vaultRoot, f.path), 'utf8'),
@@ -233,17 +281,27 @@ function makeApp(vaultRoot) {
       activeFile: null,
       getActiveFile() { return this.activeFile; },
       getLeavesOfType(t) { return leaves.filter((l) => l.viewType === t); },
-      getLeaf(newTab) {
+      makeLeaf(newTab, side) {
         const leaf = {
           app,
           viewType: null,
           view: null,
           pinned: false,
+          side: side || 'main',
           newTab: !!newTab,
+          detached: false,
           setPinned(v) { this.pinned = v; },
+          detach() {
+            this.detached = true;
+            const i = leaves.indexOf(this);
+            if (i >= 0) leaves.splice(i, 1);
+          },
           async setViewState(st) {
             this.viewType = st.type;
-            this.view = app._plugin.views[st.type](this);
+            this.state = st.state || null;
+            const factory = app._plugin.views[st.type];
+            if (!factory) return; // e.g. core 'webviewer'
+            this.view = factory(this);
             await this.view.onOpen();
           },
           async openFile(f) { app.workspace.opened.push(f.path); },
@@ -251,12 +309,17 @@ function makeApp(vaultRoot) {
         leaves.push(leaf);
         return leaf;
       },
+      getLeaf(newTab) { return app.workspace.makeLeaf(newTab, 'main'); },
+      getLeftLeaf() { return app.workspace.makeLeaf(false, 'left'); },
+      getRightLeaf() { return app.workspace.makeLeaf(false, 'right'); },
       revealLeaf(l) { app.workspace.revealed = l; },
       setActiveLeaf(l) { app.workspace.active = l; },
       onLayoutReady(cb) { app.workspace._ready = cb; },
       leftSplit: { collapsed: false, collapse() { this.collapsed = true; } },
       rightSplit: { collapsed: false, collapse() { this.collapsed = true; } },
-      detachLeavesOfType() {},
+      detachLeavesOfType(t) {
+        for (const l of leaves.filter((x) => x.viewType === t)) l.detach();
+      },
       opened: [],
     },
   };

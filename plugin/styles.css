@@ -1,220 +1,153 @@
-/* LearningOS UI v0.3 — theme-variable styling only (light/dark safe).
- * Two scopes:
- *   .los-dash  — the dashboard view itself
- *   body.los-app — optional window chrome (toggle in plugin settings) */
+/* =====================================================================
+ * LearningOS UI — design system v1 (documented in ../DESIGN.md)
+ *
+ * Rule: no raw hex, ever. Colour comes from Obsidian theme variables so the
+ * interface follows whatever theme and light/dark mode is active. Everything
+ * else comes from the --los-* tokens below — if a value is not a token, it is
+ * a bug.
+ * ================================================================== */
 
-/* ------------------------------------------------------------- layout */
+.los-root {
+  /* space — 4pt scale */
+  --los-1: 4px;
+  --los-2: 8px;
+  --los-3: 12px;
+  --los-4: 16px;
+  --los-5: 24px;
+  --los-6: 32px;
+  --los-7: 48px;
 
-.los-dash {
-  padding: 28px 32px 40px;
-  overflow-y: auto;
-  --los-radius: 12px;
-  --los-gap: 14px;
+  /* radius */
+  --los-r-sm: 6px;
+  --los-r-md: 10px;
+  --los-r-lg: 14px;
+  --los-r-pill: 999px;
+
+  /* type */
+  --los-display: 2.6rem;
+  --los-h1: 1.7rem;
+  --los-h2: 1.25rem;
+  --los-h3: 0.78rem; /* uppercase section label */
+  --los-body: var(--font-ui-medium);
+  --los-small: var(--font-ui-small);
+  --los-micro: var(--font-ui-smaller);
+
+  /* surfaces */
+  --los-surface: var(--background-secondary);
+  --los-surface-2: var(--background-primary-alt);
+  --los-line: var(--background-modifier-border);
+  --los-line-strong: var(--background-modifier-border-hover);
+
+  /* motion */
+  --los-fast: 110ms ease;
+
+  /* record-type accents — one hue per canonical type */
+  --los-note: var(--color-blue);
+  --los-concept: var(--color-purple);
+  --los-source: var(--color-orange);
+  --los-module: var(--color-green);
+  --los-workspace: var(--color-cyan);
+  --los-collection: var(--color-pink);
 }
-.los-dash > * { max-width: 1180px; }
 
-.los-dash h3 {
-  margin: 26px 0 10px;
-  font-size: var(--font-ui-medium);
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  font-weight: 600;
+.los-root { overflow-y: auto; }
+.los-root .is-clickable { cursor: pointer; }
+.los-root .is-dim { opacity: 0.5; }
+.los-muted { color: var(--text-muted); font-size: var(--los-small); }
+
+/* keyboard focus is not optional */
+.los-root .is-clickable:focus-visible,
+.los-root button:focus-visible,
+.los-root input:focus-visible {
+  outline: 2px solid var(--interactive-accent);
+  outline-offset: 2px;
+  border-radius: var(--los-r-sm);
 }
 
-.los-dash .is-clickable { cursor: pointer; }
+/* type accents */
+.los-t-note { color: var(--los-note); }
+.los-t-concept { color: var(--los-concept); }
+.los-t-source { color: var(--los-source); }
+.los-t-module { color: var(--los-module); }
+.los-t-workspace { color: var(--los-workspace); }
+.los-t-collection { color: var(--los-collection); }
 
-/* ------------------------------------------------------------- header */
+/* =====================================================================
+ * components
+ * ================================================================== */
 
-.los-head {
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-.los-title h1 {
-  margin: 0;
-  font-size: 2em;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
-}
-.los-subtitle {
-  color: var(--text-muted);
-  font-size: var(--font-ui-small);
-  margin-top: 4px;
-}
-
-.los-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+/* --- button ------------------------------------------------------- */
 .los-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: var(--font-ui-small);
+  gap: var(--los-2);
+  padding: 6px var(--los-3);
+  border-radius: var(--los-r-sm);
+  font-size: var(--los-small);
+  white-space: nowrap;
 }
+.los-btn--cta { background: var(--interactive-accent); color: var(--text-on-accent); }
+.los-btn--cta:hover { background: var(--interactive-accent-hover); }
+.los-btn--quiet {
+  background: transparent;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+.los-btn--quiet:hover { color: var(--text-normal); background: var(--background-modifier-hover); }
 .los-btn-icon { display: inline-flex; }
 .los-btn-icon svg { width: 15px; height: 15px; }
+.los-actions { display: flex; gap: var(--los-2); flex-wrap: wrap; }
 
-/* ------------------------------------------------------------ banner */
-
-.los-banner {
-  margin: 16px 0 0;
-  padding: 9px 14px;
-  border-radius: 8px;
-  font-size: var(--font-ui-small);
+/* --- badge -------------------------------------------------------- */
+.los-badge {
+  font-size: var(--los-micro);
+  line-height: 1.6;
+  background: var(--los-line);
+  color: var(--text-muted);
+  border-radius: var(--los-r-pill);
+  padding: 0 9px;
+  white-space: nowrap;
 }
-.los-ok {
-  background: rgba(var(--color-green-rgb), 0.12);
-  color: var(--color-green);
-}
-.los-warn {
-  background: rgba(var(--color-red-rgb), 0.12);
-  color: var(--color-red);
-}
+.los-badge--active { background: rgba(var(--color-green-rgb), 0.18); color: var(--color-green); }
+.los-badge--blocked { background: rgba(var(--color-red-rgb), 0.16); color: var(--color-red); }
+.los-badge--paused { background: rgba(var(--color-yellow-rgb), 0.18); color: var(--color-yellow); }
+.los-badge--role { background: rgba(var(--interactive-accent-rgb), 0.16); color: var(--text-accent); }
+.los-badges { display: flex; gap: var(--los-1); flex-wrap: wrap; margin-top: var(--los-2); }
 
-/* -------------------------------------------------------------- hero */
-
-.los-hero {
-  margin-top: var(--los-gap);
-  display: flex;
+/* --- chip: a typed reference to another record --------------------- */
+.los-chip {
+  display: inline-flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  flex-wrap: wrap;
-  padding: 22px 26px;
-  border-radius: var(--los-radius);
-  border: 1px solid var(--background-modifier-border);
-  background: linear-gradient(
-    135deg,
-    rgba(var(--interactive-accent-rgb), 0.16),
-    var(--background-secondary) 62%
-  );
-  transition: border-color 120ms ease;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 10px 4px 8px;
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-pill);
+  background: var(--los-surface);
+  font-size: var(--los-small);
+  transition: border-color var(--los-fast), background var(--los-fast);
 }
-.los-hero:hover { border-color: var(--interactive-accent); }
-.los-hero-label {
-  font-size: var(--font-ui-smaller);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
+.los-chip:hover { border-color: currentColor; background: var(--background-modifier-hover); }
+.los-chip-icon { display: inline-flex; flex: 0 0 auto; }
+.los-chip-icon svg { width: 13px; height: 13px; }
+.los-chip-text {
+  color: var(--text-normal);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.los-hero-name {
-  font-size: 1.7em;
-  font-weight: 700;
-  line-height: 1.2;
-  margin-top: 2px;
-}
-.los-hero-sub {
-  color: var(--text-muted);
-  font-size: var(--font-ui-small);
-  margin-top: 4px;
-}
-.los-hero-count { text-align: right; }
-.los-hero-days {
-  font-size: 3.4em;
-  font-weight: 800;
-  line-height: 0.95;
-  color: var(--interactive-accent);
-  font-variant-numeric: tabular-nums;
-}
-.los-hero-unit {
-  font-size: var(--font-ui-smaller);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
+.los-chip-label { color: var(--text-faint); font-size: var(--los-micro); }
+.los-chips { display: flex; flex-wrap: wrap; gap: var(--los-1); }
 
-/* ------------------------------------------------------------- tiles */
-
-.los-tiles {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 10px;
-}
-.los-tile {
-  flex: 0 1 auto;
-  min-width: 150px;
-  padding: 10px 16px;
-  border-radius: 10px;
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
-}
-.los-tile:hover { border-color: var(--interactive-accent); }
-.los-tile-days {
-  font-size: 1.15em;
-  font-weight: 700;
-  color: var(--interactive-accent);
-}
-.los-tile-name { font-weight: 600; margin-top: 2px; }
-.los-tile-sub {
-  font-size: var(--font-ui-smaller);
-  color: var(--text-muted);
-}
-.los-dim { opacity: 0.5; }
-
-/* ------------------------------------------------------------- stats */
-
-.los-stats {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 16px;
-}
-.los-stat {
-  flex: 1 1 110px;
-  min-width: 96px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  background: var(--background-secondary);
-  border: 1px solid transparent;
-}
-.los-stat.is-clickable:hover { border-color: var(--interactive-accent); }
-.los-stat-value {
-  font-size: 1.5em;
-  font-weight: 700;
-  line-height: 1.1;
-  font-variant-numeric: tabular-nums;
-}
-.los-stat-label {
-  font-size: var(--font-ui-smaller);
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-top: 2px;
-}
-
-/* ------------------------------------------------------------ columns */
-
-.los-cols {
-  display: flex;
-  gap: 32px;
-  align-items: flex-start;
-  flex-wrap: wrap;
-  margin-top: 8px;
-}
-.los-col-main { flex: 3 1 460px; min-width: 320px; }
-.los-col-side { flex: 1 1 200px; min-width: 190px; }
-
-/* ------------------------------------------------------- workspace grid */
-
-.los-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
-  gap: var(--los-gap);
-}
+/* --- card --------------------------------------------------------- */
 .los-card {
   position: relative;
-  padding: 14px 16px 12px 18px;
-  border-radius: var(--los-radius);
-  background: var(--background-secondary);
-  border: 1px solid var(--background-modifier-border);
+  padding: var(--los-3) var(--los-4) var(--los-3) 18px;
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-lg);
+  background: var(--los-surface);
   overflow: hidden;
-  transition: border-color 120ms ease, transform 120ms ease;
+  transition: border-color var(--los-fast), transform var(--los-fast);
 }
 .los-card::before {
   content: '';
@@ -226,110 +159,509 @@
 .los-card.los-s-active::before { background: var(--color-green); }
 .los-card.los-s-blocked::before { background: var(--color-red); }
 .los-card.los-s-paused::before { background: var(--color-yellow); }
-.los-card:hover {
-  border-color: var(--interactive-accent);
-  transform: translateY(-1px);
-}
-.los-card-top { display: flex; gap: 8px; align-items: baseline; }
-.los-card-title { font-weight: 600; line-height: 1.3; }
+.los-card:hover { border-color: var(--interactive-accent); transform: translateY(-1px); }
+.los-card-title { font-weight: 600; line-height: 1.35; }
 .los-card-next {
-  margin-top: 8px;
-  font-size: var(--font-ui-small);
-  color: var(--text-normal);
+  margin-top: var(--los-2);
+  font-size: var(--los-small);
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
 .los-card-foot {
-  margin-top: 8px;
-  font-size: var(--font-ui-smaller);
+  margin-top: var(--los-2);
+  display: flex;
+  justify-content: space-between;
+  gap: var(--los-2);
+  font-size: var(--los-micro);
   color: var(--text-faint);
 }
-
-.los-badges { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 8px; }
-.los-badge {
-  font-size: var(--font-ui-smaller);
-  background: var(--background-modifier-border);
-  border-radius: 999px;
-  padding: 1px 9px;
-  color: var(--text-muted);
-  white-space: nowrap;
+.los-card-more:hover { color: var(--text-accent); }
+.los-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--los-3);
 }
-.los-b-active { background: rgba(var(--color-green-rgb), 0.18); color: var(--color-green); }
-.los-b-blocked { background: rgba(var(--color-red-rgb), 0.16); color: var(--color-red); }
 
-/* -------------------------------------------------------------- rows */
-
+/* --- row list ----------------------------------------------------- */
 .los-rows { display: flex; flex-direction: column; }
 .los-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 4px;
-  border-bottom: 1px solid var(--background-modifier-border);
-  font-size: var(--font-ui-small);
+  gap: var(--los-2);
+  padding: 7px var(--los-1);
+  border-bottom: 1px solid var(--los-line);
+  font-size: var(--los-small);
 }
+.los-row:last-child { border-bottom: none; }
 .los-row:hover { color: var(--text-accent); }
-.los-row-title {
+.los-row-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.los-row-meta { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+/* --- section header ----------------------------------------------- */
+.los-section {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--los-2);
+  margin: var(--los-5) 0 var(--los-2);
+}
+.los-section-title {
+  margin: 0;
+  font-size: var(--los-h3);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.los-section-action { font-size: var(--los-small); color: var(--text-accent); }
+.los-section-action:hover { text-decoration: underline; }
+
+/* --- empty state -------------------------------------------------- */
+.los-empty {
+  padding: var(--los-4);
+  border: 1px dashed var(--los-line);
+  border-radius: var(--los-r-md);
+  color: var(--text-muted);
+}
+.los-empty-title { font-weight: 600; color: var(--text-normal); }
+.los-empty-hint { font-size: var(--los-small); margin-top: var(--los-1); }
+.los-empty--error { border-color: var(--color-red); }
+.los-empty--error .los-actions { margin-top: var(--los-3); }
+
+/* --- banner ------------------------------------------------------- */
+.los-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--los-2);
+  margin-top: var(--los-4);
+  padding: 9px var(--los-3);
+  border-radius: var(--los-r-md);
+  font-size: var(--los-small);
+}
+.los-banner-icon svg { width: 15px; height: 15px; }
+.los-banner--ok { background: rgba(var(--color-green-rgb), 0.12); color: var(--color-green); }
+.los-banner--warn { background: rgba(var(--color-red-rgb), 0.12); color: var(--color-red); }
+.los-banner--info { background: var(--los-surface); color: var(--text-muted); }
+
+/* =====================================================================
+ * pattern: dashboard
+ * ================================================================== */
+
+.los-dash { padding: var(--los-6) var(--los-6) var(--los-7); }
+.los-dash > * { max-width: 1240px; }
+
+.los-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--los-3);
+  flex-wrap: wrap;
+  padding-bottom: var(--los-4);
+  border-bottom: 1px solid var(--los-line);
+}
+.los-h1 { margin: 0; font-size: var(--los-h1); letter-spacing: -0.02em; line-height: 1.1; }
+
+.los-kicker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--los-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+.los-kicker-icon svg { width: 13px; height: 13px; }
+.los-kicker-sep { opacity: 0.5; }
+
+.los-hero {
+  margin-top: var(--los-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--los-5);
+  flex-wrap: wrap;
+  padding: var(--los-5);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-lg);
+  background: linear-gradient(135deg,
+    rgba(var(--interactive-accent-rgb), 0.16), var(--los-surface) 62%);
+  transition: border-color var(--los-fast);
+}
+.los-hero:hover { border-color: var(--interactive-accent); }
+.los-hero-name { font-size: var(--los-h1); font-weight: 700; line-height: 1.2; margin-top: 2px; }
+.los-hero-count { text-align: right; }
+.los-hero-days {
+  font-size: var(--los-display);
+  font-weight: 800;
+  line-height: 0.95;
+  color: var(--interactive-accent);
+  font-variant-numeric: tabular-nums;
+}
+.los-hero-unit {
+  font-size: var(--los-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.los-tiles { display: flex; gap: var(--los-2); flex-wrap: wrap; margin-top: var(--los-2); }
+.los-tile {
+  min-width: 150px;
+  padding: var(--los-2) var(--los-4);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+.los-tile:hover { border-color: var(--interactive-accent); }
+.los-tile-days { font-weight: 700; color: var(--interactive-accent); }
+.los-tile-name { font-weight: 600; margin-top: 2px; }
+
+.los-stats { display: flex; gap: var(--los-2); flex-wrap: wrap; margin-top: var(--los-4); }
+.los-stat {
+  flex: 1 1 110px;
+  min-width: 96px;
+  padding: var(--los-3);
+  border: 1px solid transparent;
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+  transition: border-color var(--los-fast);
+}
+.los-stat:hover { border-color: var(--interactive-accent); }
+.los-stat-value { font-size: 1.5em; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.los-stat-label {
+  font-size: var(--los-micro);
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+}
+
+.los-cols { display: flex; gap: var(--los-6); align-items: flex-start; flex-wrap: wrap; }
+.los-col-main { flex: 3 1 460px; min-width: 320px; }
+.los-col-side { flex: 1 1 220px; min-width: 200px; }
+
+.los-foot {
+  margin-top: var(--los-6);
+  padding-top: var(--los-3);
+  border-top: 1px solid var(--los-line);
+  font-size: var(--los-micro);
+  color: var(--text-faint);
+}
+
+/* =====================================================================
+ * pattern: explorer (master / detail)
+ * ================================================================== */
+
+.los-explorer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 0;
+  overflow: hidden;
+}
+
+.los-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--los-3);
+  flex-wrap: wrap;
+  padding: var(--los-3) var(--los-4);
+  border-bottom: 1px solid var(--los-line);
+}
+.los-tabs { display: flex; gap: var(--los-1); flex-wrap: wrap; }
+.los-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px var(--los-3);
+  border-radius: var(--los-r-pill);
+  font-size: var(--los-small);
+  color: var(--text-muted);
+  transition: background var(--los-fast), color var(--los-fast);
+}
+.los-tab:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.los-tab.is-active { background: var(--interactive-accent); color: var(--text-on-accent); }
+.los-tab-icon svg { width: 14px; height: 14px; }
+.los-tab-count { font-size: var(--los-micro); opacity: 0.75; font-variant-numeric: tabular-nums; }
+
+.los-search {
+  display: flex;
+  align-items: center;
+  gap: var(--los-2);
+  flex: 1 1 220px;
+  max-width: 380px;
+  padding: 0 var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-pill);
+  background: var(--los-surface);
+}
+.los-search:focus-within { border-color: var(--interactive-accent); }
+.los-search-icon { color: var(--text-faint); display: inline-flex; }
+.los-search-icon svg { width: 14px; height: 14px; }
+.los-search-input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+  padding: 6px 0;
+  font-size: var(--los-small);
+}
+.los-search-input:focus { box-shadow: none; }
+
+.los-facets {
+  display: flex;
+  gap: var(--los-4);
+  flex-wrap: wrap;
+  padding: var(--los-2) var(--los-4);
+  border-bottom: 1px solid var(--los-line);
+}
+.los-facet-group { display: flex; align-items: center; gap: var(--los-1); flex-wrap: wrap; }
+.los-facet-label {
+  font-size: var(--los-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin-right: var(--los-1);
+}
+.los-facet {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 10px;
+  border-radius: var(--los-r-pill);
+  font-size: var(--los-micro);
+  color: var(--text-muted);
+  background: var(--los-surface);
+  transition: background var(--los-fast), color var(--los-fast);
+}
+.los-facet:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.los-facet.is-active {
+  background: rgba(var(--interactive-accent-rgb), 0.2);
+  color: var(--text-accent);
+  font-weight: 600;
+}
+.los-facet-count { opacity: 0.6; font-variant-numeric: tabular-nums; }
+
+.los-split { display: flex; flex: 1; min-height: 0; }
+.los-list {
+  flex: 0 0 340px;
+  border-right: 1px solid var(--los-line);
+  overflow-y: auto;
+  padding: var(--los-2) 0;
+}
+.los-list-head {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--los-1) var(--los-4) var(--los-2);
+  font-size: var(--los-micro);
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.los-list-clear { color: var(--text-accent); }
+.los-list-more { padding: var(--los-3) var(--los-4); font-size: var(--los-micro); color: var(--text-faint); }
+.los-list .los-empty { margin: var(--los-3) var(--los-4); }
+
+.los-item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--los-2);
+  padding: var(--los-2) var(--los-4);
+  border-left: 2px solid transparent;
+}
+.los-item:hover { background: var(--background-modifier-hover); }
+.los-item.is-selected {
+  background: var(--background-modifier-hover);
+  border-left-color: var(--interactive-accent);
+}
+.los-item-icon { flex: 0 0 auto; margin-top: 2px; display: inline-flex; }
+.los-item-icon svg { width: 15px; height: 15px; }
+.los-item-body { flex: 1; min-width: 0; }
+.los-item-title {
+  font-size: var(--los-small);
+  font-weight: 500;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.los-item-sub {
+  font-size: var(--los-micro);
+  color: var(--text-muted);
+  margin-top: 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.los-row-meta {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  flex-shrink: 0;
+.los-item-marks { display: flex; align-items: center; gap: var(--los-1); flex: 0 0 auto; }
+.los-mark { color: var(--text-faint); display: inline-flex; }
+.los-mark svg { width: 12px; height: 12px; }
+
+.los-detail { flex: 1; min-width: 0; overflow-y: auto; padding: var(--los-5) var(--los-6); }
+.los-detail-head { margin-bottom: var(--los-3); }
+.los-detail-title { margin: var(--los-1) 0 0; font-size: var(--los-h2); line-height: 1.25; }
+.los-detail-id {
+  font-family: var(--font-monospace);
+  font-size: var(--los-micro);
+  color: var(--text-faint);
+  margin-top: 2px;
 }
-.los-row-time { color: var(--text-faint); font-size: var(--font-ui-smaller); }
+.los-detail-actions { display: flex; gap: var(--los-2); flex-wrap: wrap; margin-bottom: var(--los-4); }
 
-/* -------------------------------------------------------------- rail */
-
-.los-links { display: flex; flex-direction: column; gap: 2px; }
-.los-link {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 7px 10px;
-  border-radius: 8px;
-  font-size: var(--font-ui-small);
+.los-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: var(--los-2) var(--los-4);
+  padding: var(--los-3) 0;
+  border-top: 1px solid var(--los-line);
+  border-bottom: 1px solid var(--los-line);
 }
-.los-link:hover { background: var(--background-modifier-hover); }
-.los-link-icon { display: inline-flex; color: var(--text-muted); }
-.los-link-icon svg { width: 15px; height: 15px; }
-
-/* ------------------------------------------------------------- misc */
-
-.los-empty {
-  padding: 14px 16px;
-  border-radius: 10px;
-  border: 1px dashed var(--background-modifier-border);
-  color: var(--text-muted);
-  font-size: var(--font-ui-small);
-}
-.los-foot {
-  margin-top: 32px;
-  padding-top: 14px;
-  border-top: 1px solid var(--background-modifier-border);
-  font-size: var(--font-ui-smaller);
+.los-fact-key {
+  font-size: var(--los-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--text-faint);
 }
+.los-fact-value { font-size: var(--los-small); word-break: break-word; }
+
+.los-prose { margin-top: var(--los-4); }
+.los-prose-key {
+  font-size: var(--los-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin-bottom: var(--los-1);
+}
+.los-prose-text { font-size: var(--los-small); line-height: 1.55; }
+
+.los-eval {
+  padding: var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+  margin-bottom: var(--los-2);
+}
+.los-eval-roles { display: flex; gap: var(--los-1); flex-wrap: wrap; margin-bottom: var(--los-2); }
+.los-eval-verdict { font-size: var(--los-small); font-weight: 600; margin-bottom: var(--los-1); }
+.los-eval-line {
+  display: flex;
+  gap: var(--los-2);
+  font-size: var(--los-small);
+  line-height: 1.5;
+  margin-top: var(--los-1);
+}
+.los-eval-icon { flex: 0 0 auto; margin-top: 3px; display: inline-flex; }
+.los-eval-icon svg { width: 12px; height: 12px; }
+.los-eval-plus .los-eval-icon { color: var(--color-green); }
+.los-eval-minus .los-eval-icon { color: var(--color-orange); }
+
+/* reading plan: which section of a source covers what */
+.los-toc { display: flex; flex-direction: column; }
+.los-toc-row {
+  padding: var(--los-2) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-toc-row:last-child { border-bottom: none; }
+.los-toc-section { font-size: var(--los-small); font-weight: 600; }
+.los-toc-note {
+  font-size: var(--los-small);
+  color: var(--text-muted);
+  margin-top: 2px;
+  line-height: 1.5;
+}
+.los-toc-row .los-chips { margin-top: var(--los-1); }
+
+.los-chipgroup { margin-bottom: var(--los-3); }
+.los-chipgroup-label {
+  font-size: var(--los-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin-bottom: var(--los-1);
+}
+
+/* =====================================================================
+ * pattern: navigator (left dock)
+ * ================================================================== */
+
+.los-nav { padding: var(--los-2) var(--los-2) var(--los-5); }
+.los-nav-home,
+.los-nav-find,
+.los-nav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--los-2);
+  padding: 6px var(--los-2);
+  border-radius: var(--los-r-sm);
+  font-size: var(--los-small);
+  transition: background var(--los-fast);
+}
+.los-nav-home:hover,
+.los-nav-find:hover,
+.los-nav-item:hover { background: var(--background-modifier-hover); }
+.los-nav-home { font-weight: 600; }
+.los-nav-find { color: var(--text-muted); margin-bottom: var(--los-2); }
+.los-nav-icon { display: inline-flex; color: var(--text-muted); flex: 0 0 auto; }
+.los-nav-icon svg { width: 15px; height: 15px; }
+.los-nav-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.los-nav-count {
+  font-size: var(--los-micro);
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.los-nav-group {
+  margin: var(--los-4) var(--los-2) var(--los-1);
+  font-size: var(--los-micro);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+.los-nav .los-empty { margin: var(--los-2); }
+
+/* =====================================================================
+ * pattern: finder suggestions
+ * ================================================================== */
+
+.los-suggest { display: flex; align-items: center; gap: var(--los-3); }
+.los-suggest svg { width: 16px; height: 16px; }
+.los-suggest-body { min-width: 0; }
+.los-suggest-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.los-suggest-sub {
+  font-size: var(--los-micro);
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .los-modal textarea { font-family: var(--font-text); }
 
-/* ------------------------------------------------- app chrome (opt-in) */
+/* =====================================================================
+ * app chrome (opt-in — Settings → LearningOS UI)
+ * ================================================================== */
 
-/* The dashboard is home: give its tab an accent and drop the pin glyph
- * clutter, so the window reads as an application with a home screen. */
-body.los-app .workspace-tab-header[data-type='learningos-dashboard'] {
+body.los-app .workspace-tab-header[data-type='learningos-dashboard'],
+body.los-app .workspace-tab-header[data-type='learningos-explorer'] {
   color: var(--text-accent);
 }
-body.los-app .workspace-tab-header[data-type='learningos-dashboard'].is-active {
+body.los-app .workspace-tab-header[data-type='learningos-dashboard'].is-active,
+body.los-app .workspace-tab-header[data-type='learningos-explorer'].is-active {
   font-weight: 600;
 }
-/* The dashboard supplies its own header — hide Obsidian's empty one. */
-body.los-app .workspace-leaf-content[data-type='learningos-dashboard']
-  > .view-header {
+/* our views bring their own headers */
+body.los-app .workspace-leaf-content[data-type='learningos-dashboard'] > .view-header,
+body.los-app .workspace-leaf-content[data-type='learningos-explorer'] > .view-header {
   display: none;
+}
+
+/* narrow window: explorer collapses to a single column */
+@media (max-width: 900px) {
+  .los-split { flex-direction: column; }
+  .los-list { flex: 0 0 auto; max-height: 40%; border-right: none; border-bottom: 1px solid var(--los-line); }
+  .los-detail { padding: var(--los-4); }
 }

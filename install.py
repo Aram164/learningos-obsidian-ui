@@ -8,6 +8,8 @@
 What it does (and nothing else):
   1. MERGES the managed safety keys of vault-config/app.json into
      <vault>/.obsidian/app.json (user settings survive; ours win on conflict).
+  1b. MERGES the managed core-plugin states of vault-config/core-plugins.json
+     (Web Viewer on, Daily Notes off, …) — unnamed core plugins are untouched.
   2. Enables the plugin in <vault>/.obsidian/community-plugins.json.
   3. Copies plugin/  -> <vault>/.obsidian/plugins/learningos-ui/.
   4. Copies bases/*.base -> <vault>/bases/.
@@ -55,6 +57,29 @@ def merge_app_json(vault: Path, dry: bool) -> None:
         (current.get("userIgnoreFilters") or []) + src["userIgnoreFilters"]))
     merged["userIgnoreFilters"] = filters
     log(f"app.json: merge {sorted(src)} into {target}")
+    if not dry:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json.dumps(merged, indent=2, sort_keys=True) + "\n",
+                          encoding="utf-8")
+
+
+def merge_core_plugins(vault: Path, dry: bool) -> None:
+    """Merge the managed CORE-plugin states. Only the keys we name are touched;
+    every other core plugin keeps whatever Aram set. Rationale per key lives in
+    vault-config/core-plugins.json."""
+    src = json.loads((HERE / "vault-config" / "core-plugins.json").read_text(encoding="utf-8"))
+    managed = {k: v for k, v in src.items() if not k.startswith("_")}
+    target = vault / ".obsidian" / "core-plugins.json"
+    current = {}
+    if target.is_file():
+        try:
+            current = json.loads(target.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            log(f"WARNING: {target} is not valid JSON — replacing it")
+    changed = {k: v for k, v in managed.items() if current.get(k) != v}
+    merged = {**current, **managed}
+    log(f"core-plugins.json: {len(managed)} managed key(s), "
+        f"{len(changed)} changed{': ' + ', '.join(f'{k}={v}' for k, v in changed.items()) if changed else ''}")
     if not dry:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(merged, indent=2, sort_keys=True) + "\n",
@@ -155,6 +180,7 @@ def main() -> int:
     log(f"vault: {vault} ({'LIVE LearningOS repository' if is_live else 'fixture/other'})")
 
     merge_app_json(vault, args.dry_run)
+    merge_core_plugins(vault, args.dry_run)
     enable_plugin(vault, args.dry_run)
     copy_tree(HERE / "plugin", vault / ".obsidian" / "plugins" / PLUGIN_ID,
               "*", args.dry_run)
