@@ -37,6 +37,10 @@ boundary views; quarantined content is not in the manifest or default search.
   of overwriting newer authored state.
 - AI prompts carry explicit area, module, component, unit, stage, source,
   material and snapshot context. The active file is supplementary only.
+- The Garden's **Shelve with AI** button is a registered `garden.shelve`
+  action, not a general prompt. It prepares an exact request bundle through the
+  core, exposes provider availability, and applies only an approved delivery.
+  Original Garden artifacts remain distinct from AI transcriptions and state.
 
 ## Curated ecosystem
 

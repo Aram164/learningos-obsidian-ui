@@ -18,6 +18,7 @@ const VIEW_ATLAS = 'learningos-atlas';
 const VIEW_SHELVING = 'learningos-shelving';
 const VIEW_BOUNDARY = 'learningos-boundary';
 const VIEW_REVIEW = 'learningos-review';
+const VIEW_GARDEN = 'learningos-garden';
 const VIEW_DIAGNOSTICS = 'learningos-diagnostics';
 
 /**
@@ -43,6 +44,7 @@ const DEFAULT_SETTINGS = {
   navMoreOpen: false,
   learnArea: 'program-bachelors',
   pythonPath: '',
+  preferredAiProvider: 'manual-bundle',
 };
 
 /** Protocols an interface layer may hand to a viewer. Everything else — and
@@ -123,6 +125,23 @@ class ManifestStore {
   modules() { return this.rows('modules'); }
   units() { return this.rows('units'); }
   studyMaps() { return this.rows('study_maps'); }
+  gardenEntries() { return this.rows('garden_entries'); }
+  aiAction(actionId) {
+    return this.rows('ai_actions_available').find((row) => row.id === actionId)
+      || (this.data?.ai_actions?.available || []).find((row) => row?.id === actionId) || null;
+  }
+  aiProviders() {
+    const rows = this.data?.ai_actions?.provider_adapters;
+    return Array.isArray(rows) ? rows.filter((row) => row && typeof row === 'object') : [];
+  }
+  aiRequestsForTarget(targetId) {
+    const rows = this.data?.ai_actions?.requests;
+    return (Array.isArray(rows) ? rows : []).filter((row) => row?.target?.id === targetId);
+  }
+  latestAiRequest(targetId) {
+    return this.aiRequestsForTarget(targetId)
+      .slice().sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0] || null;
+  }
   modulesFor(programId) { return this.modules().filter((row) => row.area_id === programId); }
   unitsFor(moduleId, componentId = null) {
     const rows = this.units().filter((row) => row.module_id === moduleId);
@@ -312,6 +331,37 @@ function explicitAiContext(plugin, context = {}) {
     manifest_snapshot: plugin.store.snapshotId,
     active_file_supplement: plugin.app.workspace.getActiveFile()?.path || null,
   };
+}
+
+/* ---- src/infrastructure/ai-action-client.ts ---- */
+/**
+ * Provider-independent client for the core AI-action gateway. The UI never
+ * sends an open-ended prompt or grants a provider direct vault access: it asks
+ * the core to persist an exact request bundle and later applies only a delivery
+ * that the core has already validated against the locked contract.
+ */
+class AIActionClient {
+  constructor(plugin) { this.plugin = plugin; }
+
+  providers() { return this.plugin.store.aiProviders(); }
+
+  prepareGardenShelving(targetId, provider = 'manual-bundle', jobExportConfirmed = false) {
+    const args = ['ai-action-prepare', '--action-id', 'garden.shelve',
+      '--target-kind', 'garden-note', '--target-id', targetId,
+      '--provider', provider, ...this.plugin.gateway.guard()];
+    if (jobExportConfirmed) args.push('--confirm-job-export');
+    return this.plugin.mutate(() => this.plugin.gateway.call(args));
+  }
+
+  status(requestId) {
+    return this.plugin.gateway.call(['ai-action-status', requestId]);
+  }
+
+  applyApprovedDelivery(deliveryId) {
+    return this.plugin.mutate(() => this.plugin.gateway.call([
+      'ai-action-apply-delivery', deliveryId,
+    ]));
+  }
 }
 
 /* ---- src/components.ts ---- */
@@ -518,6 +568,67 @@ function moduleCard(parent, plugin, module) {
  */
 const OWNERSHIP_STATEMENT =
   'Presentation only · facts live in the LearningOS core · buttons are conveniences, never duties.';
+
+/* ---- src/features/ai-actions/action-button.ts ---- */
+/** Compact, action-specific launcher. There is deliberately no generic
+ * "Ask AI" entry point: the action ID, target and provider are visible before
+ * the core prepares any context. */
+function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
+  const wrap = parent.createDiv({ cls: 'los-ai-action-row' });
+  const providers = plugin.aiActions.providers();
+  const available = providers.filter((row) => row.available);
+  let provider = available.some((row) => row.id === plugin.settings.preferredAiProvider)
+    ? plugin.settings.preferredAiProvider : (available[0]?.id || 'manual-bundle');
+  let jobConfirmed = !target.job_derived;
+
+  const select = wrap.createEl('select', {
+    cls: 'los-ai-provider',
+    attr: { 'aria-label': `AI provider for ${target.title}` },
+  });
+  for (const row of providers) {
+    const option = select.createEl('option', {
+      text: row.available ? row.id : `${row.id} (unavailable)`,
+      attr: { value: row.id },
+    });
+    option.value = row.id;
+    if (!row.available) option.setAttr('disabled', 'disabled');
+  }
+  select.value = provider;
+  select.addEventListener('change', () => {
+    provider = select.value;
+    plugin.settings.preferredAiProvider = provider;
+    plugin.scheduleDraftSave();
+  });
+
+  if (target.job_derived) {
+    const consent = wrap.createEl('label', { cls: 'los-ai-consent' });
+    const checkbox = consent.createEl('input', { attr: { type: 'checkbox' } });
+    consent.createSpan({ text: 'Confirm this exported item may leave the Job boundary' });
+    checkbox.addEventListener('change', () => { jobConfirmed = Boolean(checkbox.checked); });
+  }
+
+  const launch = button(wrap, 'Shelve with AI', async () => {
+    if (target.job_derived && !jobConfirmed) {
+      new Notice('Explicit export confirmation is required for job-derived material.');
+      return;
+    }
+    launch.setAttr('disabled', 'disabled');
+    launch.setText('Preparing…');
+    try {
+      const result = await plugin.aiActions.prepareGardenShelving(target.id, provider, jobConfirmed);
+      const bundlePath = result.bundle_path || result.request?.bundle_path;
+      new Notice(bundlePath ? `AI request prepared: ${bundlePath}` : 'AI request prepared.');
+      onChanged?.(result);
+    } catch (error) {
+      new Notice(error?.message || String(error));
+      launch.removeAttribute?.('disabled');
+      launch.setText('Shelve with AI');
+    }
+  }, 'quiet');
+  launch.addClass('los-ai-action-button');
+  if (!available.length) launch.setAttr('disabled', 'disabled');
+  return wrap;
+}
 
 /* ---- src/views/home-view.ts ---- */
 /**
@@ -2045,6 +2156,7 @@ class ReviewView extends ItemView {
     const shelving = this.plugin.store.units().filter((row) => row.status === 'ready-to-shelve');
     const needsMap = this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id));
     const inbox = this.plugin.store.data.counts?.inbox_items || 0;
+    const garden = this.plugin.store.gardenEntries();
 
     const list = root.createDiv({ cls: 'los-review-list' });
     this.queue(list, 'Ready to shelve', shelving.length,
@@ -2056,9 +2168,9 @@ class ReviewView extends ItemView {
     this.queue(list, 'Needs a study map', needsMap.length,
       'Units with no current study script.',
       needsMap.length ? ['Open the queue', () => this.plugin.openProgram('queue-needs-map')] : null);
-    this.queue(list, 'Garden', null,
-      'Half-formed ideas gestating outside the canon; harvest promotes them.',
-      ['Open the Garden', () => this.plugin.openVaultPath('bases/garden.base')]);
+    this.queue(list, 'Garden', garden.length,
+      'Half-formed ideas gestating outside the canon; approved AI actions may help prepare them for shelving.',
+      ['Open the Garden', () => this.plugin.openGarden()]);
 
     if (needsMap.length) {
       const detail = disclosure(root, `Units needing a map (${needsMap.length})`);
@@ -2147,6 +2259,81 @@ class DiagnosticsView extends ItemView {
       this.report = `${resolved.path} (${resolved.origin})\nFailed: ${error?.message || String(error)}\nTried: ${resolved.attempted.join(', ')}`;
     }
     this.render();
+  }
+}
+
+/* ---- src/views/garden-view.ts ---- */
+/** Garden is a review surface for seeds, not a second canonical knowledge
+ * browser. The original artifact is always opened as-is; AI-derived state and
+ * transcriptions are displayed as separate projected facts. */
+class GardenView extends ItemView {
+  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
+  getViewType() { return VIEW_GARDEN; }
+  getDisplayText() { return 'LearningOS · Garden'; }
+  getIcon() { return 'sprout'; }
+  async onOpen() { this.render(); }
+
+  render() {
+    const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-garden-view');
+    if (!this.plugin.store.ready) {
+      pageHeader(root, 'Review', 'Garden unavailable');
+      empty(root, 'The interface contract could not be loaded', this.plugin.store.error,
+        'Rebuild views', () => this.plugin.generate());
+      return;
+    }
+    pageHeader(root, 'Review', 'Garden',
+      'Seeds remain human-owned. “Shelve with AI” prepares a bounded request bundle; nothing changes until an approved delivery is applied.');
+    const toolbar = root.createDiv({ cls: 'los-actions' });
+    button(toolbar, 'Open Garden base', () => this.plugin.openVaultPath('bases/garden.base'), 'quiet');
+    button(toolbar, 'Refresh projection', () => this.plugin.generate(), 'quiet');
+
+    const entries = this.plugin.store.gardenEntries();
+    if (!entries.length) {
+      empty(root, 'No Garden seeds', 'Create a Markdown seed under knowledge/garden/.');
+      return;
+    }
+    const list = root.createDiv({ cls: 'los-garden-list' });
+    for (const target of entries) this.card(list, target);
+  }
+
+  card(parent, target) {
+    const card = parent.createDiv({ cls: `los-card los-garden-card los-garden-${target.state || 'seed'}` });
+    const top = card.createDiv({ cls: 'los-card-top' });
+    top.createEl('h2', { text: target.title || target.id });
+    badge(top, target.state || 'seed', target.state || 'seed');
+    card.createDiv({ cls: 'los-micro', text: target.path });
+    if (target.tags?.length) {
+      const tags = card.createDiv({ cls: 'los-garden-tags' });
+      for (const tag of target.tags) badge(tags, `#${tag}`, 'role');
+    }
+
+    const latest = this.plugin.store.latestAiRequest(target.id);
+    if (latest) {
+      const status = card.createDiv({ cls: 'los-ai-request-status' });
+      status.createEl('strong', { text: `AI request · ${latest.status}` });
+      status.createDiv({ cls: 'los-micro', text: `${latest.provider || 'manual-bundle'} · ${latest.id}` });
+      if (latest.bundle_path) status.createDiv({ cls: 'los-micro', text: latest.bundle_path });
+      const statusActions = status.createDiv({ cls: 'los-actions' });
+      if (latest.bundle_path) button(statusActions, 'Copy bundle path', () => this.plugin.copyText(latest.bundle_path), 'quiet');
+      if (latest.delivery_id && latest.status !== 'applied') {
+        button(statusActions, 'Apply approved delivery', async () => {
+          try {
+            await this.plugin.aiActions.applyApprovedDelivery(latest.delivery_id);
+            new Notice('Approved AI delivery applied and projection refreshed.');
+            this.render();
+          } catch (error) { new Notice(error?.message || String(error)); }
+        }, 'cta');
+      }
+      if (latest.receipt_id) badge(status, `receipt ${latest.receipt_id}`, 'complete');
+    }
+
+    const actions = card.createDiv({ cls: 'los-garden-actions' });
+    button(actions, 'Open original', () => this.plugin.openVaultPath(target.path), 'quiet');
+    if (target.transcription_path) {
+      button(actions, 'Open AI transcription', () => this.plugin.openVaultPath(target.transcription_path), 'quiet');
+    }
+    renderGardenShelveAction(actions, this.plugin, target, () => this.render());
+    return card;
   }
 }
 
@@ -2288,6 +2475,7 @@ class LearningOSUI extends Plugin {
     for (const type of LEGACY_VIEW_TYPES) this.app.workspace.detachLeavesOfType(type);
     this.store = new ManifestStore(this.app);
     this.gateway = new GatewayClient(this);
+    this.aiActions = new AIActionClient(this);
     await this.store.load();
     this.registerView(VIEW_HOME, (leaf) => new HomeView(leaf, this));
     this.registerView(VIEW_NAV, (leaf) => new NavView(leaf, this));
@@ -2299,6 +2487,7 @@ class LearningOSUI extends Plugin {
     this.registerView(VIEW_SHELVING, (leaf) => new ShelvingView(leaf, this));
     this.registerView(VIEW_BOUNDARY, (leaf) => new BoundaryView(leaf, this));
     this.registerView(VIEW_REVIEW, (leaf) => new ReviewView(leaf, this));
+    this.registerView(VIEW_GARDEN, (leaf) => new GardenView(leaf, this));
     this.registerView(VIEW_DIAGNOSTICS, (leaf) => new DiagnosticsView(leaf, this));
     this.addSettingTab(new LearningOSSettingsTab(this.app, this));
     this.addRibbonIcon('route', 'Open LearningOS', () => this.openHome());
@@ -2306,6 +2495,7 @@ class LearningOSUI extends Plugin {
     this.addCommand({ id: 'open-current-stage', name: 'Open current stage', callback: () => this.openResume() });
     this.addCommand({ id: 'open-library', name: 'Open Library', callback: () => this.openLibrary() });
     this.addCommand({ id: 'open-atlas', name: 'Open Domain atlas', callback: () => this.openAtlas() });
+    this.addCommand({ id: 'open-garden', name: 'Open Garden', callback: () => this.openGarden() });
     this.addCommand({ id: 'rebuild-projection', name: 'Validate and rebuild projection', callback: () => this.generate() });
     this.addCommand({ id: 'end-learning-session', name: 'End learning session safely', callback: () => this.reviewSessionEnd() });
     this.app.workspace.onLayoutReady(async () => {
@@ -2328,7 +2518,7 @@ class LearningOSUI extends Plugin {
     void this.saveData(this.settings);
     for (const type of [VIEW_HOME, VIEW_NAV, VIEW_PROGRAM, VIEW_MODULE, VIEW_UNIT,
       VIEW_LIBRARY, VIEW_ATLAS, VIEW_SHELVING, VIEW_BOUNDARY, VIEW_REVIEW,
-      VIEW_DIAGNOSTICS]) this.app.workspace.detachLeavesOfType(type);
+      VIEW_GARDEN, VIEW_DIAGNOSTICS]) this.app.workspace.detachLeavesOfType(type);
   }
 
   scheduleDraftSave() {
@@ -2464,6 +2654,7 @@ class LearningOSUI extends Plugin {
   }
   openCapture() { this.setActiveNav('capture'); return this.openView(VIEW_PROGRAM, { programId: 'inbox' }); }
   openReview() { this.setActiveNav('review'); return this.openView(VIEW_REVIEW, {}); }
+  openGarden() { this.setActiveNav('review'); return this.openView(VIEW_GARDEN, {}); }
   openDiagnostics() { this.setActiveNav('diagnostics'); return this.openView(VIEW_DIAGNOSTICS, {}); }
   openProgram(programId) { return this.openView(VIEW_PROGRAM, { programId }); }
   openModule(moduleId) { this.setActiveNav('learn'); return this.openView(VIEW_MODULE, { moduleId }); }

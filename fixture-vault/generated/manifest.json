@@ -115,7 +115,9 @@
   "study_maps": 6,
   "units": 7,
   "units_needing_map": 1,
-  "workspaces_active": 1
+  "workspaces_active": 1,
+  "garden_entries": 1,
+  "ai_action_requests": 1
  },
  "indexes": {
   "component_to_units": {
@@ -1149,5 +1151,71 @@
    "title": "Thesis literature landscape",
    "type": "unit"
   }
- ]
+ ],
+ "garden_entries": [
+  {
+   "id": "garden-note-fixture-soft-knn",
+   "type": "garden-note",
+   "title": "Attention looks like soft k-NN",
+   "path": "knowledge/garden/fixture-soft-knn.md",
+   "revision": "sha256:fixture-garden-revision",
+   "state": "seed",
+   "tags": [
+    "attention",
+    "ml"
+   ],
+   "job_derived": false,
+   "transcription_path": null,
+   "last_ai_request_id": "ai-request-fixture"
+  }
+ ],
+ "ai_actions": {
+  "contract_version": 1,
+  "available": [
+   {
+    "id": "garden.shelve",
+    "title": "Shelve with AI",
+    "description": "Prepare a bounded Garden seed for discussion.",
+    "target_kinds": [
+     "garden-note"
+    ],
+    "interaction_mode": "discussion",
+    "supported_providers": [
+     "manual-bundle",
+     "claude",
+     "chatgpt"
+    ]
+   }
+  ],
+  "provider_adapters": [
+   {
+    "id": "manual-bundle",
+    "available": true
+   },
+   {
+    "id": "claude",
+    "available": false
+   },
+   {
+    "id": "chatgpt",
+    "available": false
+   }
+  ],
+  "requests": [
+   {
+    "id": "ai-request-fixture",
+    "action_id": "garden.shelve",
+    "target": {
+     "kind": "garden-note",
+     "id": "garden-note-fixture-soft-knn"
+    },
+    "provider": "manual-bundle",
+    "status": "delivery-ready",
+    "created_at": "2099-03-31T12:00:00Z",
+    "delivery_id": "ai-delivery-fixture",
+    "receipt_id": null,
+    "bundle_path": "operations/ai-actions/requests/ai-request-fixture"
+   }
+  ]
+ }
 }

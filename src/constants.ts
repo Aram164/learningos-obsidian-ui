@@ -9,6 +9,7 @@ export const VIEW_ATLAS = 'learningos-atlas';
 export const VIEW_SHELVING = 'learningos-shelving';
 export const VIEW_BOUNDARY = 'learningos-boundary';
 export const VIEW_REVIEW = 'learningos-review';
+export const VIEW_GARDEN = 'learningos-garden';
 export const VIEW_DIAGNOSTICS = 'learningos-diagnostics';
 
 /**
@@ -34,6 +35,7 @@ export const DEFAULT_SETTINGS = {
   navMoreOpen: false,
   learnArea: 'program-bachelors',
   pythonPath: '',
+  preferredAiProvider: 'manual-bundle',
 };
 
 /** Protocols an interface layer may hand to a viewer. Everything else — and

@@ -10,6 +10,7 @@ export class LearningOSUI extends Plugin {
     for (const type of LEGACY_VIEW_TYPES) this.app.workspace.detachLeavesOfType(type);
     this.store = new ManifestStore(this.app);
     this.gateway = new GatewayClient(this);
+    this.aiActions = new AIActionClient(this);
     await this.store.load();
     this.registerView(VIEW_HOME, (leaf) => new HomeView(leaf, this));
     this.registerView(VIEW_NAV, (leaf) => new NavView(leaf, this));
@@ -21,6 +22,7 @@ export class LearningOSUI extends Plugin {
     this.registerView(VIEW_SHELVING, (leaf) => new ShelvingView(leaf, this));
     this.registerView(VIEW_BOUNDARY, (leaf) => new BoundaryView(leaf, this));
     this.registerView(VIEW_REVIEW, (leaf) => new ReviewView(leaf, this));
+    this.registerView(VIEW_GARDEN, (leaf) => new GardenView(leaf, this));
     this.registerView(VIEW_DIAGNOSTICS, (leaf) => new DiagnosticsView(leaf, this));
     this.addSettingTab(new LearningOSSettingsTab(this.app, this));
     this.addRibbonIcon('route', 'Open LearningOS', () => this.openHome());
@@ -28,6 +30,7 @@ export class LearningOSUI extends Plugin {
     this.addCommand({ id: 'open-current-stage', name: 'Open current stage', callback: () => this.openResume() });
     this.addCommand({ id: 'open-library', name: 'Open Library', callback: () => this.openLibrary() });
     this.addCommand({ id: 'open-atlas', name: 'Open Domain atlas', callback: () => this.openAtlas() });
+    this.addCommand({ id: 'open-garden', name: 'Open Garden', callback: () => this.openGarden() });
     this.addCommand({ id: 'rebuild-projection', name: 'Validate and rebuild projection', callback: () => this.generate() });
     this.addCommand({ id: 'end-learning-session', name: 'End learning session safely', callback: () => this.reviewSessionEnd() });
     this.app.workspace.onLayoutReady(async () => {
@@ -50,7 +53,7 @@ export class LearningOSUI extends Plugin {
     void this.saveData(this.settings);
     for (const type of [VIEW_HOME, VIEW_NAV, VIEW_PROGRAM, VIEW_MODULE, VIEW_UNIT,
       VIEW_LIBRARY, VIEW_ATLAS, VIEW_SHELVING, VIEW_BOUNDARY, VIEW_REVIEW,
-      VIEW_DIAGNOSTICS]) this.app.workspace.detachLeavesOfType(type);
+      VIEW_GARDEN, VIEW_DIAGNOSTICS]) this.app.workspace.detachLeavesOfType(type);
   }
 
   scheduleDraftSave() {
@@ -186,6 +189,7 @@ export class LearningOSUI extends Plugin {
   }
   openCapture() { this.setActiveNav('capture'); return this.openView(VIEW_PROGRAM, { programId: 'inbox' }); }
   openReview() { this.setActiveNav('review'); return this.openView(VIEW_REVIEW, {}); }
+  openGarden() { this.setActiveNav('review'); return this.openView(VIEW_GARDEN, {}); }
   openDiagnostics() { this.setActiveNav('diagnostics'); return this.openView(VIEW_DIAGNOSTICS, {}); }
   openProgram(programId) { return this.openView(VIEW_PROGRAM, { programId }); }
   openModule(moduleId) { this.setActiveNav('learn'); return this.openView(VIEW_MODULE, { moduleId }); }

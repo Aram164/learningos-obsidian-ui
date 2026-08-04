@@ -23,6 +23,7 @@ export class ReviewView extends ItemView {
     const shelving = this.plugin.store.units().filter((row) => row.status === 'ready-to-shelve');
     const needsMap = this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id));
     const inbox = this.plugin.store.data.counts?.inbox_items || 0;
+    const garden = this.plugin.store.gardenEntries();
 
     const list = root.createDiv({ cls: 'los-review-list' });
     this.queue(list, 'Ready to shelve', shelving.length,
@@ -34,9 +35,9 @@ export class ReviewView extends ItemView {
     this.queue(list, 'Needs a study map', needsMap.length,
       'Units with no current study script.',
       needsMap.length ? ['Open the queue', () => this.plugin.openProgram('queue-needs-map')] : null);
-    this.queue(list, 'Garden', null,
-      'Half-formed ideas gestating outside the canon; harvest promotes them.',
-      ['Open the Garden', () => this.plugin.openVaultPath('bases/garden.base')]);
+    this.queue(list, 'Garden', garden.length,
+      'Half-formed ideas gestating outside the canon; approved AI actions may help prepare them for shelving.',
+      ['Open the Garden', () => this.plugin.openGarden()]);
 
     if (needsMap.length) {
       const detail = disclosure(root, `Units needing a map (${needsMap.length})`);

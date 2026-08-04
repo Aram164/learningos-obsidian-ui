@@ -226,8 +226,8 @@ async function main() {
     await plugin.openReview();
     app.workspace.getLeavesOfType(VIEW.review)[0].view.contentEl
       .findText('los-btn', 'Open the Garden').fire('click'); await tick();
-    check('the Garden stays reachable from Review',
-      app.workspace.opened.includes('bases/garden.base'));
+    check('the Garden stays reachable from Review as a review surface',
+      Boolean(app.workspace.getLeavesOfType('learningos-garden')[0]));
     nav.findText('los-app-nav-item', 'Domain atlas').fire('click'); await tick();
     /* The atlas is a decision surface, not a document: opening it must give a
      * navigable view. The Markdown file stays reachable from inside it, because

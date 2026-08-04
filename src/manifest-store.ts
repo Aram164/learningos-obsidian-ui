@@ -57,6 +57,23 @@ export class ManifestStore {
   modules() { return this.rows('modules'); }
   units() { return this.rows('units'); }
   studyMaps() { return this.rows('study_maps'); }
+  gardenEntries() { return this.rows('garden_entries'); }
+  aiAction(actionId) {
+    return this.rows('ai_actions_available').find((row) => row.id === actionId)
+      || (this.data?.ai_actions?.available || []).find((row) => row?.id === actionId) || null;
+  }
+  aiProviders() {
+    const rows = this.data?.ai_actions?.provider_adapters;
+    return Array.isArray(rows) ? rows.filter((row) => row && typeof row === 'object') : [];
+  }
+  aiRequestsForTarget(targetId) {
+    const rows = this.data?.ai_actions?.requests;
+    return (Array.isArray(rows) ? rows : []).filter((row) => row?.target?.id === targetId);
+  }
+  latestAiRequest(targetId) {
+    return this.aiRequestsForTarget(targetId)
+      .slice().sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0] || null;
+  }
   modulesFor(programId) { return this.modules().filter((row) => row.area_id === programId); }
   unitsFor(moduleId, componentId = null) {
     const rows = this.units().filter((row) => row.module_id === moduleId);

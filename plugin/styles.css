@@ -705,3 +705,57 @@
     animation-iteration-count: 1 !important;
   }
 }
+
+/* Garden + AI actions: a bounded launcher beside the human-owned seed. */
+.los-garden-list {
+  display: grid;
+  max-width: 1180px;
+  margin: 0 auto;
+  gap: var(--los-3);
+}
+.los-garden-card { display: grid; gap: var(--los-2); }
+.los-garden-card h2 { margin: 0; }
+.los-garden-tags, .los-garden-actions, .los-ai-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-2);
+  align-items: center;
+}
+.los-garden-actions { padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
+.los-ai-action-row {
+  margin-left: auto;
+  padding-left: var(--los-2);
+  border-left: 1px solid var(--los-line);
+}
+.los-ai-provider {
+  min-height: 28px;
+  max-width: 180px;
+  padding: var(--los-1) var(--los-2);
+  border: 1px solid var(--los-line);
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+.los-ai-consent {
+  display: inline-flex;
+  max-width: 360px;
+  gap: var(--los-2);
+  align-items: center;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.los-ai-consent input { flex: 0 0 auto; }
+.los-ai-request-status {
+  display: grid;
+  gap: var(--los-1);
+  padding: var(--los-2);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-sm);
+  background: var(--background-primary);
+}
+.los-ai-action-button { white-space: nowrap !important; }
+
+@media (max-width: 720px) {
+  .los-garden-actions, .los-ai-action-row { align-items: stretch; }
+  .los-ai-action-row { width: 100%; margin-left: 0; padding: var(--los-2) 0 0; border-left: 0; border-top: 1px solid var(--los-line); }
+  .los-ai-provider { max-width: none; flex: 1 1 170px; }
+}
