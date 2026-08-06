@@ -1,5 +1,16 @@
 import { Modal } from 'obsidian';
 import { button, empty } from '../components';
+import type { ProjectionRecord } from '../contracts/manifest-v2';
+
+interface SearchCandidate {
+  id: string;
+  title: string;
+  aliases: string[];
+  authors: string[];
+  kind: string;
+  subtitle: string;
+  open: () => unknown;
+}
 
 /**
  * Structural LearningOS search.
@@ -11,7 +22,7 @@ import { button, empty } from '../components';
  */
 export class GlobalSearchModal extends Modal {
   [key: string]: any;
-  constructor(app, plugin, initialQuery = '') {
+  constructor(app: any, plugin: any, initialQuery = '') {
     super(app);
     this.plugin = plugin;
     this.query = String(initialQuery || '');
@@ -85,9 +96,14 @@ export class GlobalSearchModal extends Modal {
     }
   }
 
-  candidates() {
-    const rows = [];
-    const add = (record, kind, subtitle, open) => {
+  candidates(): SearchCandidate[] {
+    const rows: SearchCandidate[] = [];
+    const add = (
+      record: ProjectionRecord,
+      kind: string,
+      subtitle: string,
+      open: () => unknown,
+    ): void => {
       if (!record?.id || !record?.title) return;
       rows.push({
         id: record.id,
@@ -128,16 +144,18 @@ export class GlobalSearchModal extends Modal {
     return rows;
   }
 
-  matches(candidate) {
+  matches(candidate: SearchCandidate): boolean {
     const words = this.query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
     if (!words.length) return true;
     const haystack = [candidate.id, candidate.title, candidate.subtitle,
       ...candidate.aliases, ...candidate.authors]
       .filter(Boolean).join(' ').toLocaleLowerCase();
-    return words.every((word) => haystack.includes(word));
+    return words.every(
+      (word: string) => haystack.includes(word),
+    );
   }
 
-  rankedCandidates() {
+  rankedCandidates(): SearchCandidate[] {
     const needle = this.query.toLocaleLowerCase().trim();
     return this.candidates()
       .filter((candidate) => this.filter === 'all' || candidate.kind === this.filter)

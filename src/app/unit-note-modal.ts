@@ -1,5 +1,10 @@
 import { Modal, Notice } from 'obsidian';
 import { button, empty, localFilePath, pageHeader, section } from '../components';
+import type { ProjectionRecord } from '../contracts/manifest-v2';
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /**
  * One note after a learning session, attached to the unit rather than to every
@@ -8,7 +13,12 @@ import { button, empty, localFilePath, pageHeader, section } from '../components
  */
 export class UnitNoteModal extends Modal {
   [key: string]: any;
-  constructor(app, plugin, unit, studyMap) {
+  constructor(
+    app: any,
+    plugin: any,
+    unit: ProjectionRecord,
+    studyMap: ProjectionRecord | null,
+  ) {
     super(app);
     this.plugin = plugin;
     this.unit = unit;
@@ -20,12 +30,24 @@ export class UnitNoteModal extends Modal {
     const root = this.contentEl;
     root.empty();
     root.addClass('los-root', 'los-unit-note-modal');
-    const stages = Array.isArray(this.studyMap?.stages) ? this.studyMap.stages : [];
+    const stages: ProjectionRecord[] = Array.isArray(
+      this.studyMap?.stages,
+    ) ? this.studyMap.stages : [];
     const draft = this.plugin.getUnitNoteDraft(this.unit.id, stages);
-    this.recoveredStageIds = draft.recoveredStageIds || [];
-    this.referencedStageIds = [...new Set([
-      ...this.unrecordedCompletedStages(stages), ...this.recoveredStageIds,
-    ])];
+    const recoveredStageIds: string[] = Array.isArray(
+      draft.recoveredStageIds,
+    )
+      ? draft.recoveredStageIds.filter(
+        (id: unknown): id is string => typeof id === 'string',
+      )
+      : [];
+    this.recoveredStageIds = recoveredStageIds;
+    this.referencedStageIds = [
+      ...new Set<string>([
+        ...this.unrecordedCompletedStages(stages),
+        ...recoveredStageIds,
+      ]),
+    ];
 
     pageHeader(root, 'Learning session', 'Add note',
       'Attach one note after the stages you worked through. It belongs to the unit, not to one selected stage.');
@@ -33,7 +55,11 @@ export class UnitNoteModal extends Modal {
     const context = root.createDiv({ cls: 'los-unit-note-context' });
     context.createDiv({ cls: 'los-kicker', text: 'Stages covered' });
     if (this.referencedStageIds.length) {
-      const names = this.referencedStageIds.map((id) => stages.find((stage) => stage.id === id)?.title || id);
+      const names = this.referencedStageIds.map(
+        (id: string) => stages.find(
+          (stage: ProjectionRecord) => stage.id === id,
+        )?.title || id,
+      );
       context.createDiv({ text: names.join(' · ') });
     } else {
       context.createDiv({ cls: 'los-micro', text: 'No newly completed stage is required. You may still record a unit-level observation.' });
@@ -81,19 +107,35 @@ export class UnitNoteModal extends Modal {
     this.editor.focus();
   }
 
-  unrecordedCompletedStages(stages) {
-    const already = new Set((this.unit.note_sections || [])
-      .flatMap((section) => Array.isArray(section.stage_ids) ? section.stage_ids : []));
+  unrecordedCompletedStages(
+    stages: ProjectionRecord[],
+  ): string[] {
+    const already = new Set<string>(
+      (this.unit.note_sections || []).flatMap(
+        (section: ProjectionRecord) => Array.isArray(section.stage_ids)
+          ? section.stage_ids.filter(
+            (id: unknown): id is string => typeof id === 'string',
+          )
+          : [],
+      ),
+    );
     return stages
-      .filter((stage) => ['complete', 'skipped'].includes(stage.status) && !already.has(stage.id))
-      .map((stage) => stage.id);
+      .filter(
+        (stage: ProjectionRecord) =>
+          ['complete', 'skipped'].includes(String(stage.status))
+          && typeof stage.id === 'string'
+          && !already.has(stage.id),
+      )
+      .map((stage: ProjectionRecord) => String(stage.id));
   }
 
   async save() {
     const text = String(this.editor?.value || '');
     if (!text.trim()) { new Notice('Write a note before saving.'); this.editor?.focus(); return; }
     if (this.plugin.gateway.isBusy) { new Notice('A LearningOS write is already running.'); return; }
-    const filePaths = this.files.map((file) => localFilePath(file)).filter(Boolean);
+    const filePaths: string[] = this.files
+      .map((file: File) => localFilePath(file))
+      .filter((value: string) => Boolean(value));
     if (filePaths.length !== this.files.length) {
       new Notice('One selected attachment has no readable local path. Remove it and choose the file again.');
       return;
@@ -105,8 +147,8 @@ export class UnitNoteModal extends Modal {
       this.plugin.clearUnitNoteDraft(this.unit.id, this.recoveredStageIds);
       new Notice('Learning-session note saved.');
       this.close();
-    } catch (error) {
-      new Notice(error?.message || String(error));
+    } catch (error: unknown) {
+      new Notice(errorMessage(error));
     }
   }
 

@@ -2,34 +2,68 @@ import { setIcon } from 'obsidian';
 import { webUtils } from 'electron';
 import { ICONS, SAFE_URL_PROTOCOLS } from './constants';
 
-export function icon(el, name) { setIcon(el, name || 'circle'); return el; }
+type UiNode = any;
+type ProjectionRecord = Record<string, any>;
+type ClickHandler =
+  ((event: MouseEvent) => unknown) | null | undefined;
+type OverflowItem =
+  [string, () => unknown] | null | undefined | false;
 
-export function button(parent, label, onClick, variant = '') {
+export function icon(el: UiNode, name: string): UiNode {
+  setIcon(el, name || 'circle');
+  return el;
+}
+
+export function button(
+  parent: UiNode,
+  label: string,
+  onClick: ClickHandler,
+  variant = '',
+): UiNode {
   const el = parent.createEl('button', {
     cls: `los-btn is-clickable ${variant ? `los-btn--${variant}` : ''}`,
     text: label,
     attr: { type: 'button' },
   });
-  el.addEventListener('click', (event) => { event.preventDefault(); onClick?.(event); });
+  el.addEventListener('click', (event: MouseEvent) => {
+    event.preventDefault();
+    onClick?.(event);
+  });
   return el;
 }
 
-export function badge(parent, text, variant = '') {
+export function badge(
+  parent: UiNode,
+  text: string,
+  variant = '',
+): UiNode {
   return parent.createSpan({ cls: `los-badge ${variant ? `los-badge--${variant}` : ''}`, text });
 }
 
-export function chip(parent, record, onClick) {
+export function chip(
+  parent: UiNode,
+  record: ProjectionRecord,
+  onClick?: ((record: ProjectionRecord) => unknown) | null,
+): UiNode {
   const el = parent.createEl('button', {
     cls: `los-chip los-t-${record?.type || 'record'} is-clickable`,
     attr: { type: 'button' },
   });
-  icon(el.createSpan({ cls: 'los-chip-icon' }), ICONS[record?.type] || 'circle');
+  const iconName =
+    (ICONS as Record<string, string>)[String(record?.type || '')]
+    || 'circle';
+  icon(el.createSpan({ cls: 'los-chip-icon' }), iconName);
   el.createSpan({ text: record?.title || record?.id || 'Unknown' });
   if (onClick) el.addEventListener('click', () => onClick(record));
   return el;
 }
 
-export function pageHeader(parent, kicker, title, description = '') {
+export function pageHeader(
+  parent: UiNode,
+  kicker: string,
+  title: string,
+  description = '',
+): UiNode {
   const header = parent.createDiv({ cls: 'los-page-header' });
   if (kicker) header.createDiv({ cls: 'los-kicker', text: kicker });
   header.createEl('h1', { text: title });
@@ -37,7 +71,11 @@ export function pageHeader(parent, kicker, title, description = '') {
   return header;
 }
 
-export function section(parent, title, description = '') {
+export function section(
+  parent: UiNode,
+  title: string,
+  description = '',
+): UiNode {
   const wrap = parent.createDiv({ cls: 'los-section' });
   wrap.createEl('h2', { text: title });
   if (description) wrap.createEl('p', { cls: 'los-muted', text: description });
@@ -49,7 +87,11 @@ export function section(parent, title, description = '') {
  * reachable and readable with no script, which is also why the overflow menu
  * below is built on it rather than on Obsidian's `Menu`.
  */
-export function disclosure(parent, summaryText, cls = '') {
+export function disclosure(
+  parent: UiNode,
+  summaryText: string,
+  cls = '',
+): UiNode {
   const details = parent.createEl('details', { cls: `los-disclosure ${cls}`.trim() });
   details.createEl('summary', { text: summaryText });
   return details.createDiv({ cls: 'los-disclosure-body' });
@@ -59,8 +101,14 @@ export function disclosure(parent, summaryText, cls = '') {
  * The `•••` overflow. Secondary operations stay reachable in one place instead
  * of competing with the two actions the learner actually came for.
  */
-export function overflowMenu(parent, items, label = 'More actions') {
-  const rows = items.filter(Boolean);
+export function overflowMenu(
+  parent: UiNode,
+  items: readonly OverflowItem[],
+  label = 'More actions',
+): UiNode | null {
+  const rows = items.filter(Boolean) as Array<
+    [string, () => unknown]
+  >;
   if (!rows.length) return null;
   const details = parent.createEl('details', { cls: 'los-overflow' });
   const summary = details.createEl('summary', { cls: 'los-overflow-trigger', text: '•••' });
@@ -77,7 +125,12 @@ export function overflowMenu(parent, items, label = 'More actions') {
  * Module/Status/Next-up table — a status badge is only worth the space when the
  * state needs the learner to do something.
  */
-export function progressRow(parent, plugin, module, nextUp = '') {
+export function progressRow(
+  parent: UiNode,
+  plugin: any,
+  module: ProjectionRecord,
+  nextUp = '',
+): UiNode {
   const row = parent.createDiv({ cls: 'los-learning-row' });
   const copy = row.createDiv({ cls: 'los-learning-copy' });
   const title = button(copy, module.title, () => plugin.openModule(module.id), 'row');
@@ -98,14 +151,20 @@ export function progressRow(parent, plugin, module, nextUp = '') {
  * arbitrary scheme to Electron. Anything outside the allowlist is refused
  * before it can reach a viewer.
  */
-export function safeWebUrl(value) {
+export function safeWebUrl(value: unknown): URL | null {
   try {
     const url = new URL(String(value || ''));
     return SAFE_URL_PROTOCOLS.includes(url.protocol) ? url : null;
   } catch (_) { return null; }
 }
 
-export function empty(parent, title, detail, actionLabel = '', action = null) {
+export function empty(
+  parent: UiNode,
+  title: string,
+  detail: string,
+  actionLabel = '',
+  action: ClickHandler = null,
+): UiNode {
   const el = parent.createDiv({ cls: 'los-empty' });
   el.createEl('h3', { text: title });
   el.createEl('p', { text: detail });
@@ -113,13 +172,16 @@ export function empty(parent, title, detail, actionLabel = '', action = null) {
   return el;
 }
 
-export function localFilePath(file) {
+export function localFilePath(file: unknown): string {
   if (!file) return '';
   try { return webUtils.getPathForFile(file) || ''; }
   catch (_) { return ''; }
 }
 
-export function projectedExcerpt(value, limit = 900) {
+export function projectedExcerpt(
+  value: unknown,
+  limit = 900,
+): string {
   const first = String(value || '').split(/\n\s*\n/)[0]
     .replace(/\*\*/g, '').replace(/`/g, '')
     .replace(/(^|\n)\s*-\s*/g, '$1').replace(/\s+/g, ' ').trim();
@@ -135,12 +197,17 @@ export function projectedExcerpt(value, limit = 900) {
  * `Job/` path. The field is core-owned, but this is the one view where trusting
  * the manifest has no upside.
  */
-export function boundaryPolicy(value) {
+export function boundaryPolicy(value: unknown): string {
   const text = projectedExcerpt(value, 300);
   return /(^|[\s([<'"])Job\//.test(text) ? '' : text;
 }
 
-export function workspaceCard(parent, plugin, workspace, moduleContext = null) {
+export function workspaceCard(
+  parent: UiNode,
+  plugin: any,
+  workspace: ProjectionRecord,
+  moduleContext: string | null = null,
+): UiNode {
   const card = parent.createDiv({ cls: `los-card los-workspace-card los-s-${workspace.status}` });
   const top = card.createDiv({ cls: 'los-card-top' });
   top.createEl('h3', { text: workspace.title });
@@ -151,7 +218,9 @@ export function workspaceCard(parent, plugin, workspace, moduleContext = null) {
   next.createEl('p', { text: projectedExcerpt(workspace.next_action, 1600) || 'No next action recorded.' });
   if (workspace.deadline) badge(next, `Deadline ${workspace.deadline}`, 'needs-map');
   const actions = card.createDiv({ cls: 'los-actions' });
-  const moduleIds = (workspace.module_ids || []).filter((id) => id !== moduleContext);
+  const moduleIds: string[] = (workspace.module_ids || []).filter(
+    (id: string) => id !== moduleContext,
+  );
   for (const id of moduleIds.slice(0, 3)) {
     const module = plugin.store.get(id);
     if (module) button(actions, `Open ${module.title}`, () => plugin.openModule(id), 'quiet');
@@ -163,7 +232,11 @@ export function workspaceCard(parent, plugin, workspace, moduleContext = null) {
   return card;
 }
 
-export function unitCard(parent, plugin, unit) {
+export function unitCard(
+  parent: UiNode,
+  plugin: any,
+  unit: ProjectionRecord,
+): UiNode {
   const card = parent.createEl('button', {
     cls: `los-card los-unit-card los-s-${unit.status} is-clickable`,
     attr: { type: 'button', 'aria-label': `Open unit: ${unit.title}` },
@@ -174,7 +247,9 @@ export function unitCard(parent, plugin, unit) {
   card.createEl('p', { text: unit.scope });
   const map = plugin.store.mapForUnit(unit.id);
   if (map) {
-    const done = (map.stages || []).filter((row) => row.status === 'complete').length;
+    const done = (map.stages || []).filter(
+      (row: ProjectionRecord) => row.status === 'complete',
+    ).length;
     card.createDiv({ cls: 'los-progress-copy', text: `${done} of ${(map.stages || []).length} stages complete` });
   } else {
     card.createDiv({ cls: 'los-progress-copy', text: 'No study map yet' });
@@ -183,7 +258,11 @@ export function unitCard(parent, plugin, unit) {
   return card;
 }
 
-export function moduleCard(parent, plugin, module) {
+export function moduleCard(
+  parent: UiNode,
+  plugin: any,
+  module: ProjectionRecord,
+): UiNode {
   const card = parent.createEl('button', {
     cls: `los-card los-module-card los-s-${module.status} is-clickable`,
     attr: { type: 'button', 'aria-label': `Open module: ${module.title}` },

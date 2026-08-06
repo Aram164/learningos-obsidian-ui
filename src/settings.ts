@@ -1,35 +1,56 @@
 import { Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
 import { button, empty, OWNERSHIP_STATEMENT, pageHeader, section } from './components';
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export class LearningOSSettingsTab extends PluginSettingTab {
   [key: string]: any;
-  constructor(app, plugin) { super(app, plugin); this.plugin = plugin; }
+  constructor(app: any, plugin: any) {
+    super(app, plugin);
+    this.plugin = plugin;
+  }
   display() {
     const root = this.containerEl; root.empty();
     root.createEl('h2', { text: 'LearningOS UI' });
-    for (const [key, name, description] of [
+    const toggles: Array<[string, string, string]> = [
       ['openHomeOnStartup', 'Open Home on startup', 'Open the module-first Home view when the vault becomes ready.'],
       ['pinHome', 'Pin Home', 'Keep the Home leaf available while opening units.'],
       ['collapseSidebars', 'Collapse the right sidebar', 'Keep the learning workspace visually focused.'],
       ['showAiRecommendation', 'Show scoped AI action', 'Display AI buttons that always include explicit curriculum context.'],
-    ]) {
-      new Setting(root).setName(name).setDesc(description).addToggle((toggle) => toggle
-        .setValue(this.plugin.settings[key]).onChange(async (value) => {
-          this.plugin.settings[key] = value; await this.plugin.saveData(this.plugin.settings);
-        }));
+    ];
+    for (const [key, name, description] of toggles) {
+      new Setting(root).setName(name).setDesc(description).addToggle(
+        (toggle: any) => toggle
+        .setValue(this.plugin.settings[key]).onChange(
+          async (value: boolean) => {
+          this.plugin.settings[key] = value;
+          await this.plugin.saveData(this.plugin.settings);
+        }),
+      );
     }
     new Setting(root).setName('Python interpreter')
       .setDesc('Leave blank to auto-detect: the project virtual environment, then the system Python.')
-      .addText((text) => text
+      .addText((text: any) => text
         .setValue(this.plugin.settings.pythonPath || '')
-        .onChange(async (value) => {
+        .onChange(async (value: string) => {
           this.plugin.settings.pythonPath = value.trim();
           await this.plugin.saveData(this.plugin.settings);
         }));
     new Setting(root).setName('Validate and rebuild').setDesc('Run the canonical core projection pipeline.')
-      .addButton((control) => control.setButtonText('Rebuild').setCta().onClick(() => this.plugin.generate()));
+      .addButton(
+        (control: any) => control
+          .setButtonText('Rebuild')
+          .setCta()
+          .onClick(() => this.plugin.generate()),
+      );
     new Setting(root).setName('Diagnostics').setDesc('Contract versions, projection freshness, interpreter.')
-      .addButton((control) => control.setButtonText('Open').onClick(() => this.plugin.openDiagnostics()));
+      .addButton(
+        (control: any) => control
+          .setButtonText('Open')
+          .onClick(() => this.plugin.openDiagnostics()),
+      );
 
     // Stated once, here — not repeated under every screen (DESIGN.md).
     root.createEl('h3', { text: 'About LearningOS' });
@@ -39,7 +60,11 @@ export class LearningOSSettingsTab extends PluginSettingTab {
 
 export class SessionEndModal extends Modal {
   [key: string]: any;
-  constructor(app, plugin, review) { super(app); this.plugin = plugin; this.review = review; }
+  constructor(app: any, plugin: any, review: any) {
+    super(app);
+    this.plugin = plugin;
+    this.review = review;
+  }
   onOpen() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-session-modal');
     pageHeader(root, 'Explicit Git closure', 'End learning session',
@@ -63,7 +88,9 @@ export class SessionEndModal extends Modal {
         const result = await this.plugin.gateway.endSession(message.value.trim(), Boolean(push.checked));
         new Notice(result.pushed ? 'Learning session committed and pushed.' : 'Learning session committed.');
         this.close();
-      } catch (error) { new Notice(error?.message || String(error)); }
+      } catch (error: unknown) {
+        new Notice(errorMessage(error));
+      }
     }, 'cta');
     button(actions, 'Close without committing', () => this.close(), 'quiet');
   }
