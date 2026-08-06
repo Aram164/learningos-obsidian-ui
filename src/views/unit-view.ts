@@ -1,6 +1,13 @@
 import { ItemView, Notice } from 'obsidian';
 import { badge, button, chip, disclosure, empty, icon, overflowMenu, pageHeader, section } from '../components';
 import { VIEW_UNIT } from '../constants';
+import type { ProjectionRecord } from '../contracts/manifest-v2';
+
+type StageAttachment = string | ProjectionRecord;
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /**
  * The Unit is where learning actually happens, so it gets the strictest
@@ -10,12 +17,14 @@ import { VIEW_UNIT } from '../constants';
  */
 export class UnitView extends ItemView {
   [key: string]: any;
-  constructor(leaf, plugin) {
+  constructor(leaf: any, plugin: any) {
     super(leaf); this.plugin = plugin; this.unitId = null; this.stageId = null;
   }
   getViewType() { return VIEW_UNIT; }
   getDisplayText() { return 'LearningOS · Unit'; }
-  async setState(state) {
+  async setState(
+    state: Record<string, any> = {},
+  ): Promise<void> {
     const nextUnitId = state?.unitId || this.unitId;
     if (nextUnitId !== this.unitId) this.stageId = null;
     this.unitId = nextUnitId;
@@ -56,8 +65,12 @@ export class UnitView extends ItemView {
     }
     // A study map whose `stages` is missing or not an array used to throw here
     // and blank the whole workspace. Normalise once, then work from `map`.
-    const stages = Array.isArray(studyMap.stages)
-      ? studyMap.stages.filter((row) => row && typeof row === 'object') : [];
+    const stages: ProjectionRecord[] = Array.isArray(studyMap.stages)
+      ? studyMap.stages.filter(
+        (row: unknown): row is ProjectionRecord =>
+          Boolean(row) && typeof row === 'object',
+      )
+      : [];
     if (!stages.length) {
       const bare = section(root, 'Study map needs stages');
       empty(bare, 'This study map has no stages yet',
@@ -66,11 +79,15 @@ export class UnitView extends ItemView {
       return;
     }
     const map = { ...studyMap, stages };
-    if (!this.stageId || !stages.some((row) => row.id === this.stageId)) {
+    if (!this.stageId || !stages.some(
+      (row: ProjectionRecord) => row.id === this.stageId,
+    )) {
       this.stageId = map.current_stage;
       this.plugin.setSelectedStage(unit.id, this.stageId);
     }
-    const stage = stages.find((row) => row.id === this.stageId) || stages[0];
+    const stage = stages.find(
+      (row: ProjectionRecord) => row.id === this.stageId,
+    ) || stages[0];
     const layout = root.createDiv({ cls: 'los-unit-layout' });
     this.renderRail(layout, unit, map, stage);
     this.renderStage(layout, unit, map, stage);
@@ -79,7 +96,12 @@ export class UnitView extends ItemView {
     this.renderArtifacts(more, unit);
   }
 
-  renderRail(layout, unit, studyMap, current) {
+  renderRail(
+    layout: any,
+    unit: ProjectionRecord,
+    studyMap: ProjectionRecord,
+    current: ProjectionRecord,
+  ): void {
     const rail = layout.createDiv({ cls: 'los-stage-rail' });
     rail.createEl('h2', { text: 'Stages' });
     for (const [index, stage] of studyMap.stages.entries()) {
@@ -100,7 +122,12 @@ export class UnitView extends ItemView {
     if (draft.text.trim()) rail.createDiv({ cls: 'los-micro los-unit-note-draft', text: 'Unsaved unit-note draft kept locally.' });
   }
 
-  renderStage(layout, unit, studyMap, stage) {
+  renderStage(
+    layout: any,
+    unit: ProjectionRecord,
+    studyMap: ProjectionRecord,
+    stage: ProjectionRecord,
+  ): void {
     const center = layout.createDiv({ cls: 'los-stage-workspace' });
     const top = center.createDiv({ cls: 'los-stage-heading' });
     top.createDiv({ cls: 'los-kicker', text: stage.exam_critical ? 'Exam-critical stage' : stage.scope_triage });
@@ -115,8 +142,14 @@ export class UnitView extends ItemView {
     const resources = section(center, 'Resources');
     // Array.isArray, not a truthy length check: a string here used to render
     // one blank row per character, because for...of walks a string by character.
-    const stageResources = Array.isArray(stage.resources)
-      ? stage.resources.filter((row) => row && typeof row === 'object') : [];
+    const stageResources: ProjectionRecord[] = Array.isArray(
+      stage.resources,
+    )
+      ? stage.resources.filter(
+        (row: unknown): row is ProjectionRecord =>
+          Boolean(row) && typeof row === 'object',
+      )
+      : [];
     if (!stageResources.length) empty(resources, 'No source action selected', 'Use the unit scope and ask AI for a proposal.');
     for (const resource of stageResources) {
       const row = resources.createDiv({ cls: 'los-resource-row' });
@@ -126,7 +159,14 @@ export class UnitView extends ItemView {
       if (resource.locator) copy.createDiv({ cls: 'los-micro', text: resource.locator });
       if (resource.source_id) {
         const source = this.plugin.store.get(resource.source_id);
-        chip(copy, source, (record) => this.plugin.openLibrary(record.id));
+        if (source) {
+          chip(
+            copy,
+            source,
+            (record: ProjectionRecord) =>
+              this.plugin.openLibrary(record.id),
+          );
+        }
       }
       const actions = row.createDiv({ cls: 'los-actions los-resource-actions' });
       if (resource.url || resource.vault_path) button(actions, 'Open', () => this.plugin.openResource(resource), 'quiet');
@@ -142,8 +182,12 @@ export class UnitView extends ItemView {
       }
     }
 
-    const criteria = Array.isArray(stage.done_when)
-      ? stage.done_when.filter((row) => typeof row === 'string' && row.trim()) : [];
+    const criteria: string[] = Array.isArray(stage.done_when)
+      ? stage.done_when.filter(
+        (row: unknown): row is string =>
+          typeof row === 'string' && Boolean(row.trim()),
+      )
+      : [];
     if (criteria.length) {
       const done = section(center, 'Done when');
       const marks = this.plugin.getDoneWhen(unit.id, stage.id);
@@ -168,30 +212,104 @@ export class UnitView extends ItemView {
 
   /** One primary action and one menu. The primary is filled; nothing else on this
    *  screen may be. */
-  renderActionBar(root, unit, studyMap, stage) {
+  renderActionBar(
+    root: any,
+    unit: ProjectionRecord,
+    studyMap: ProjectionRecord,
+    stage: ProjectionRecord,
+  ): void {
     const bar = root.createDiv({ cls: 'los-unit-actionbar' });
     button(bar, 'Mark complete', () => this.mutate(
       () => this.plugin.gateway.progress(unit.id, stage.id, 'complete'),
       () => this.plugin.clearDoneWhen(unit.id, stage.id)), 'cta');
-    overflowMenu(bar, [
-      stage.status !== 'active' && ['Revisit stage', () => this.mutate(
-        () => this.plugin.gateway.progress(unit.id, stage.id, 'revisit'))],
-      ['Pause unit', () => this.mutate(() => this.plugin.gateway.progress(unit.id, stage.id, 'paused'))],
-      ['Skip stage', () => this.mutate(() => this.plugin.gateway.progress(unit.id, stage.id, 'skipped'))],
-      ['Report prerequisite gap', () => this.mutate(
-        () => this.plugin.gateway.detour(unit.id, stage.id, 'Prerequisite gap', 'required-now'))],
-      ['Prepare shelving', () => this.plugin.openShelving(unit.id)],
-      this.plugin.settings.showAiRecommendation && ['Ask AI with stage context', () => this.plugin.askAiScoped(
-        'Help with this stage. Treat the active file as supplementary context only.',
-        { moduleId: unit.module_id, projectId: this.plugin.store.projectForUnit(unit)?.id, unitId: unit.id, stageId: stage.id })],
-      ['End learning session', () => this.plugin.reviewSessionEnd()],
-    ], 'More unit actions');
+    const menuItems: Array<
+      [string, () => unknown] | false
+    > = [
+      stage.status !== 'active' && [
+        'Revisit stage',
+        () => this.mutate(
+          () => this.plugin.gateway.progress(
+            unit.id,
+            stage.id,
+            'revisit',
+          ),
+        ),
+      ],
+      [
+        'Pause unit',
+        () => this.mutate(
+          () => this.plugin.gateway.progress(
+            unit.id,
+            stage.id,
+            'paused',
+          ),
+        ),
+      ],
+      [
+        'Skip stage',
+        () => this.mutate(
+          () => this.plugin.gateway.progress(
+            unit.id,
+            stage.id,
+            'skipped',
+          ),
+        ),
+      ],
+      [
+        'Report prerequisite gap',
+        () => this.mutate(
+          () => this.plugin.gateway.detour(
+            unit.id,
+            stage.id,
+            'Prerequisite gap',
+            'required-now',
+          ),
+        ),
+      ],
+      [
+        'Prepare shelving',
+        () => this.plugin.openShelving(unit.id),
+      ],
+      this.plugin.settings.showAiRecommendation && [
+        'Ask AI with stage context',
+        () => this.plugin.askAiScoped(
+          'Help with this stage. Treat the active file as supplementary context only.',
+          {
+            moduleId: unit.module_id,
+            projectId:
+              this.plugin.store.projectForUnit(unit)?.id,
+            unitId: unit.id,
+            stageId: stage.id,
+          },
+        ),
+      ],
+      [
+        'End learning session',
+        () => this.plugin.reviewSessionEnd(),
+      ],
+    ];
+    overflowMenu(bar, menuItems, 'More unit actions');
   }
 
-  renderStageContext(center, unit, studyMap, stage) {
-    const stageAttachments = Array.isArray(stage.attachments) ? stage.attachments.filter(Boolean) : [];
-    const detours = (studyMap.detours || []).filter((row) => row.spawned_by_stage === stage.id && row.status !== 'resolved');
-    const feedbackRows = Array.isArray(stage.source_feedback) ? stage.source_feedback : [];
+  renderStageContext(
+    center: any,
+    unit: ProjectionRecord,
+    studyMap: ProjectionRecord,
+    stage: ProjectionRecord,
+  ): void {
+    const stageAttachments: StageAttachment[] = Array.isArray(
+      stage.attachments,
+    ) ? stage.attachments.filter(Boolean) : [];
+    const detours: ProjectionRecord[] = Array.isArray(
+      studyMap.detours,
+    ) ? studyMap.detours.filter(
+      (row: ProjectionRecord) =>
+        row.spawned_by_stage === stage.id
+        && row.status !== 'resolved',
+    ) : [];
+    const feedbackRows: ProjectionRecord[] = Array.isArray(
+      stage.source_feedback,
+    ) ? stage.source_feedback : [];
     if (!stageAttachments.length && !detours.length && !feedbackRows.length) return;
     const detail = disclosure(center, 'Stage context');
     for (const attachment of stageAttachments) {
@@ -209,7 +327,10 @@ export class UnitView extends ItemView {
     for (const row of feedbackRows) detail.createDiv({ cls: 'los-row', text: `${row.source_id} · ${row.feedback}` });
   }
 
-  renderArtifacts(root, unit) {
+  renderArtifacts(
+    root: any,
+    unit: ProjectionRecord,
+  ): void {
     const wrap = section(root, 'Unit artifacts', 'Durable notes remain globally canonical; this unit owns stable references.');
     const labels = { ultimate_reference: 'Ultimate Reference', exercise_bank: 'Exercise Bank', mock_exam: 'Mock Exam' };
     let count = 0;
@@ -231,7 +352,10 @@ export class UnitView extends ItemView {
    * Every write goes through the plugin-wide queue, so two clicks in two views
    * can no longer race the same `--expected-snapshot`.
    */
-  async mutate(action, onConfirmed = null) {
+  async mutate(
+    action: () => Promise<unknown>,
+    onConfirmed: (() => void) | null = null,
+  ): Promise<void> {
     // A second click on the same control is a slip, not a second intention, so
     // the view drops it. The queue below still serializes anything that does
     // get through from another view.
@@ -240,11 +364,13 @@ export class UnitView extends ItemView {
       await this.plugin.mutate(action);
       onConfirmed?.();
       this.render();
-    } catch (error) { new Notice(error?.message || String(error)); }
+    } catch (error: unknown) {
+      new Notice(errorMessage(error));
+    }
   }
 
 
-  async selectStage(stageId) {
+  async selectStage(stageId: string): Promise<void> {
     this.stageId = stageId;
     this.plugin.setSelectedStage(this.unitId, stageId);
     await this.leaf.setViewState({

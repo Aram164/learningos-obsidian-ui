@@ -1,6 +1,13 @@
 import { ItemView } from 'obsidian';
 import { button, chip, disclosure, empty, pageHeader, section } from '../components';
 import { VIEW_LIBRARY } from '../constants';
+import type { ProjectionRecord } from '../contracts/manifest-v2';
+
+interface ShelfMembership {
+  shelf: ProjectionRecord;
+  group?: string;
+  why?: string;
+}
 
 /**
  * Library navigation is deliberately full-page: choose a collection, choose a
@@ -13,7 +20,7 @@ export const SOURCE_FACETS = [
 
 export class LibraryView extends ItemView {
   [key: string]: any;
-  constructor(leaf, plugin) {
+  constructor(leaf: any, plugin: any) {
     super(leaf);
     this.plugin = plugin;
     this.screen = 'home';
@@ -43,7 +50,12 @@ export class LibraryView extends ItemView {
     this.recordType = state.recordType || this.recordType || 'note';
     this.domain = state.domain || '';
   }
-  async setState(state) { this.applyState(state); this.render(); }
+  async setState(
+    state: Record<string, any> = {},
+  ): Promise<void> {
+    this.applyState(state);
+    this.render();
+  }
   getState() {
     return {
       screen: this.screen, collection: this.collection, groupId: this.groupId,
@@ -54,14 +66,29 @@ export class LibraryView extends ItemView {
   }
   async onOpen() { this.applyState(this.leaf.state || {}); this.render(); }
 
-  shelfIndex() {
-    if (this._shelfIndex && this._shelfSnapshot === this.plugin.store.snapshotId) return this._shelfIndex;
-    const index = new Map();
-    for (const shelf of [...this.plugin.store.catalogues(), ...this.plugin.store.topicPacks()]) {
-      for (const entry of shelf.entries || []) {
-        if (!entry?.source) continue;
-        if (!index.has(entry.source)) index.set(entry.source, []);
-        index.get(entry.source).push({ shelf, group: entry.group, why: entry.why });
+  shelfIndex(): Map<string, ShelfMembership[]> {
+    if (
+      this._shelfIndex
+      && this._shelfSnapshot === this.plugin.store.snapshotId
+    ) return this._shelfIndex;
+    const index = new Map<string, ShelfMembership[]>();
+    for (const shelf of [
+      ...this.plugin.store.catalogues(),
+      ...this.plugin.store.topicPacks(),
+    ] as ProjectionRecord[]) {
+      const entries: ProjectionRecord[] = Array.isArray(shelf.entries)
+        ? shelf.entries
+        : [];
+      for (const entry of entries) {
+        if (typeof entry?.source !== 'string') continue;
+        const membership: ShelfMembership = {
+          shelf,
+          group: entry.group,
+          why: entry.why,
+        };
+        const current = index.get(entry.source);
+        if (current) current.push(membership);
+        else index.set(entry.source, [membership]);
       }
     }
     this._shelfIndex = index;
@@ -69,7 +96,7 @@ export class LibraryView extends ItemView {
     return index;
   }
 
-  matchesSourceFacet(record) {
+  matchesSourceFacet(record: ProjectionRecord): boolean {
     if (this.facet === 'all') return true;
     if (this.facet === 'local') return Boolean(record.material_exists || record.material_path);
     if (this.facet === 'online') return Boolean(record.url);
@@ -93,7 +120,7 @@ export class LibraryView extends ItemView {
     return this.renderHome(root);
   }
 
-  renderHome(root) {
+  renderHome(root: any): void {
     pageHeader(root, 'Library', 'Choose a thematic group',
       this.collection === 'topic-packs'
         ? 'Topic Packs are narrow, purpose-built and manually ordered collections.'
@@ -128,7 +155,7 @@ export class LibraryView extends ItemView {
     }
   }
 
-  renderCollectionSwitch(root) {
+  renderCollectionSwitch(root: any): void {
     const switcher = root.createDiv({ cls: 'los-collection-switch', attr: { role: 'tablist', 'aria-label': 'Library collection' } });
     for (const [id, label] of [['sources', 'Learning Sources'], ['topic-packs', 'Topic Packs']]) {
       const control = button(switcher, label, () => this.plugin.openLibraryHome(id), this.collection === id ? 'cta' : 'quiet');
@@ -136,7 +163,7 @@ export class LibraryView extends ItemView {
     }
   }
 
-  renderGroup(root) {
+  renderGroup(root: any): void {
     const group = this.plugin.store.get(this.groupId);
     const back = button(root, '‹ Library', () => this.plugin.back(), 'quiet');
     back.addClass('los-route-back');
@@ -171,14 +198,20 @@ export class LibraryView extends ItemView {
       ? this.plugin.store.topicPacksForGroup(group.id)
       : this.plugin.store.sourcesForGroup(group.id);
     const needle = this.query.trim().toLocaleLowerCase();
-    const rows = all.filter((record) => {
+    const rows = all.filter((record: ProjectionRecord) => {
       if (!isPacks && !this.matchesSourceFacet(record)) return false;
       if (!needle) return true;
       const hay = [record.id, record.title, record.purpose, record.summary,
         ...(record.aliases || []), ...(record.authors || []), record.organization]
         .filter(Boolean).join(' ').toLocaleLowerCase();
-      return needle.split(/\s+/).every((word) => hay.includes(word));
-    }).slice().sort((a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id)));
+      return needle.split(/\s+/).every(
+        (word: string) => hay.includes(word),
+      );
+    }).slice().sort(
+      (a: ProjectionRecord, b: ProjectionRecord) =>
+        String(a.title || a.id)
+          .localeCompare(String(b.title || b.id)),
+    );
 
     if (!all.length) {
       empty(root, isPacks ? 'No Topic Packs in this group' : 'No Learning Sources in this group',
@@ -206,7 +239,7 @@ export class LibraryView extends ItemView {
     });
   }
 
-  renderSourceFacets(parent) {
+  renderSourceFacets(parent: any): void {
     const facets = parent.createDiv({ cls: 'los-library-facets-inline', attr: { 'aria-label': 'Source filters' } });
     for (const [id, label] of SOURCE_FACETS) {
       const control = button(facets, label, async () => {
@@ -216,7 +249,11 @@ export class LibraryView extends ItemView {
     }
   }
 
-  renderRecordRow(list, record, isPack = false) {
+  renderRecordRow(
+    list: any,
+    record: ProjectionRecord,
+    isPack = false,
+  ): void {
     const row = list.createEl('button', {
       cls: 'los-route-row is-clickable',
       attr: { type: 'button', 'aria-label': `Open ${record.title}`, 'data-record-id': record.id },
@@ -237,7 +274,7 @@ export class LibraryView extends ItemView {
     });
   }
 
-  renderSourcePage(root) {
+  renderSourcePage(root: any): void {
     const record = this.plugin.store.get(this.resourceId);
     const back = button(root, '‹ Learning Sources', () => this.plugin.back(), 'quiet');
     back.addClass('los-route-back');
@@ -254,7 +291,7 @@ export class LibraryView extends ItemView {
     this.renderTechnical(detail, record);
   }
 
-  renderTopicPackPage(root) {
+  renderTopicPackPage(root: any): void {
     const pack = this.plugin.store.get(this.topicPackId);
     const back = button(root, '‹ Topic Packs', () => this.plugin.back(), 'quiet');
     back.addClass('los-route-back');
@@ -271,7 +308,7 @@ export class LibraryView extends ItemView {
     this.renderTechnical(detail, pack);
   }
 
-  renderCataloguePage(root) {
+  renderCataloguePage(root: any): void {
     const catalogue = this.plugin.store.get(this.catalogueId);
     const back = button(root, '‹ Library', () => this.plugin.back(), 'quiet');
     back.addClass('los-route-back');
@@ -286,16 +323,25 @@ export class LibraryView extends ItemView {
     this.renderTechnical(detail, catalogue);
   }
 
-  renderOrderedCollection(detail, collection, title) {
-    const entries = (collection.entries || []).filter((entry) => entry?.source);
+  renderOrderedCollection(
+    detail: any,
+    collection: ProjectionRecord,
+    title: string,
+  ): void {
+    const rawEntries: ProjectionRecord[] = Array.isArray(
+      collection.entries,
+    ) ? collection.entries : [];
+    const entries = rawEntries.filter(
+      (entry: ProjectionRecord) => Boolean(entry?.source),
+    );
     const wrap = section(detail, `${title} (${entries.length})`,
       'The order and grouping shown here come directly from the canonical collection.');
     if (!entries.length) {
       empty(wrap, 'Empty collection', 'No entries are currently registered.');
       return;
     }
-    let previousGroup = null;
-    entries.forEach((entry, index) => {
+    let previousGroup: string | null = null;
+    entries.forEach((entry: ProjectionRecord, index: number) => {
       if (entry.group && entry.group !== previousGroup) {
         wrap.createDiv({ cls: 'los-list-group', text: entry.group });
         previousGroup = entry.group;
@@ -318,7 +364,7 @@ export class LibraryView extends ItemView {
     });
   }
 
-  renderLegacyList(root) {
+  renderLegacyList(root: any): void {
     const back = button(root, '‹ Library', () => this.plugin.back(), 'quiet');
     back.addClass('los-route-back');
     const title = `${this.recordType.charAt(0).toUpperCase()}${this.recordType.slice(1)} records`;
@@ -335,8 +381,14 @@ export class LibraryView extends ItemView {
       this.render();
     });
     let rows = this.plugin.store.search(this.query, [this.recordType]);
-    if (this.domain) rows = rows.filter((row) => row.domain === this.domain);
-    rows = rows.slice().sort((a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id)));
+    if (this.domain) rows = rows.filter(
+      (row: ProjectionRecord) => row.domain === this.domain,
+    );
+    rows = rows.slice().sort(
+      (a: ProjectionRecord, b: ProjectionRecord) =>
+        String(a.title || a.id)
+          .localeCompare(String(b.title || b.id)),
+    );
     if (!rows.length) {
       empty(root, this.query ? 'No matching records' : 'No records',
         this.query ? 'Try a shorter title, alias or ID.' : `No ${this.recordType} records are projected.`);
@@ -360,14 +412,20 @@ export class LibraryView extends ItemView {
     }
   }
 
-  renderRecordActions(detail, record) {
+  renderRecordActions(
+    detail: any,
+    record: ProjectionRecord,
+  ): void {
     const actions = detail.createDiv({ cls: 'los-actions' });
     if (record.url) button(actions, 'Open online', () => this.plugin.openResource({ url: record.url }), 'cta');
     if (record.material_path) button(actions, 'Open local copy', () => this.plugin.openMaterialPath(record.material_path), 'quiet');
     if (record.path) button(actions, 'Open authored file', () => this.plugin.openAuthoredPath(record.path), 'quiet');
   }
 
-  renderAttachments(detail, record) {
+  renderAttachments(
+    detail: any,
+    record: ProjectionRecord,
+  ): void {
     if (!record.attachments?.length) return;
     const attachments = section(detail, 'Attachments', 'Open the original handwriting, image, or PDF.');
     for (const attachment of record.attachments) {
@@ -377,34 +435,69 @@ export class LibraryView extends ItemView {
     }
   }
 
-  renderRelated(detail, record) {
-    const labels = {
-      unit: 'Used in units', concept: 'Connected concepts', note: 'Referenced by notes',
-      source: 'Related sources', collection: 'In catalogues', 'topic-pack': 'In Topic Packs',
-      module: 'Modules', workspace: 'Workspaces', program: 'Areas',
+  renderRelated(
+    detail: any,
+    record: ProjectionRecord,
+  ): void {
+    const labels: Record<string, string> = {
+      unit: 'Used in units',
+      concept: 'Connected concepts',
+      note: 'Referenced by notes',
+      source: 'Related sources',
+      collection: 'In catalogues',
+      'topic-pack': 'In Topic Packs',
+      module: 'Modules',
+      workspace: 'Workspaces',
+      program: 'Areas',
     };
-    const groups = new Map();
+    const groups = new Map<string, ProjectionRecord[]>();
     for (const row of this.plugin.store.related(record.id)) {
-      const key = row.rec?.type || 'record';
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(row.rec);
+      const rec: ProjectionRecord | null = row?.rec || null;
+      if (!rec) continue;
+      const key = String(rec.type || 'record');
+      const current = groups.get(key);
+      if (current) current.push(rec);
+      else groups.set(key, [rec]);
     }
     if (!groups.size) return;
     const wrap = section(detail, 'Related');
-    for (const [type, rows] of [...groups.entries()].sort((a, b) => b[1].length - a[1].length)) {
+    const orderedGroups = [...groups.entries()].sort(
+      (a, b) => b[1].length - a[1].length,
+    );
+    for (const [type, rows] of orderedGroups) {
       const group = wrap.createDiv({ cls: 'los-related-group' });
-      group.createDiv({ cls: 'los-group-title', text: `${labels[type] || type} · ${rows.length}` });
+      group.createDiv({
+        cls: 'los-group-title',
+        text: `${labels[type] || type} · ${rows.length}`,
+      });
       const shown = group.createDiv({ cls: 'los-related-chips' });
-      for (const rec of rows.slice(0, 5)) chip(shown, rec, (row) => this.plugin.openRecord(row));
+      for (const rec of rows.slice(0, 5)) {
+        chip(
+          shown,
+          rec,
+          (row: ProjectionRecord) => this.plugin.openRecord(row),
+        );
+      }
       if (rows.length > 5) {
         const rest = disclosure(group, `View all ${rows.length}`);
-        const restChips = rest.createDiv({ cls: 'los-related-chips' });
-        for (const rec of rows.slice(5)) chip(restChips, rec, (row) => this.plugin.openRecord(row));
+        const restChips = rest.createDiv({
+          cls: 'los-related-chips',
+        });
+        for (const rec of rows.slice(5)) {
+          chip(
+            restChips,
+            rec,
+            (row: ProjectionRecord) => this.plugin.openRecord(row),
+          );
+        }
       }
     }
   }
 
-  renderSourceDetail(detail, record) {
+  renderSourceDetail(
+    detail: any,
+    record: ProjectionRecord,
+  ): void {
     const facts = section(detail, 'Source facts');
     for (const [label, value] of [['Authors', (record.authors || []).join(', ')],
       ['Organization', record.organization], ['Year', record.year], ['Type', record.source_type]]) {
@@ -437,8 +530,12 @@ export class LibraryView extends ItemView {
     if (!units.length) empty(used, 'Not routed to a unit', 'The source remains globally registered.');
     for (const unit of units) chip(used, unit, (row) => this.plugin.openUnit(row.id));
 
-    const evaluations = (record.evaluations || []).filter((row) => row.verdict || row.scope
-      || row.reading_plan?.length || row.useful_sections?.length);
+    const evaluations: ProjectionRecord[] = (
+      Array.isArray(record.evaluations) ? record.evaluations : []
+    ).filter(
+      (row: ProjectionRecord) => row.verdict || row.scope
+        || row.reading_plan?.length || row.useful_sections?.length,
+    );
     if (evaluations.length) {
       const evidence = section(detail, 'Existing evaluation evidence');
       for (const evaluation of evaluations) {
@@ -452,7 +549,10 @@ export class LibraryView extends ItemView {
     }
   }
 
-  renderTechnical(detail, record) {
+  renderTechnical(
+    detail: any,
+    record: ProjectionRecord,
+  ): void {
     const technical = disclosure(detail, 'Technical details', 'los-technical-details');
     const idRow = technical.createDiv({ cls: 'los-fact-row' });
     idRow.createSpan({ cls: 'los-fact-label', text: 'Record ID' });

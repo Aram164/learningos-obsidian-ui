@@ -1,6 +1,7 @@
 import { ItemView } from 'obsidian';
 import { badge, button, chip, disclosure, empty, pageHeader, section, unitCard, workspaceCard } from '../components';
 import { STATUS_ORDER, VIEW_MODULE } from '../constants';
+import type { ProjectionRecord } from '../contracts/manifest-v2';
 
 /**
  * Four tabs, because a module page was four pages wearing one coat: learning
@@ -9,7 +10,7 @@ import { STATUS_ORDER, VIEW_MODULE } from '../constants';
  */
 export class ModuleView extends ItemView {
   [key: string]: any;
-  constructor(leaf, plugin) {
+  constructor(leaf: any, plugin: any) {
     super(leaf);
     this.plugin = plugin;
     this.screen = 'groups';
@@ -43,7 +44,7 @@ export class ModuleView extends ItemView {
   async onOpen() { await this.setState(this.leaf.state || {}); }
 
   /** Units unless there is nothing to study yet. */
-  defaultTab(module) {
+  defaultTab(module: ProjectionRecord): string {
     return this.plugin.store.unitsFor(module.id).length ? 'units' : 'overview';
   }
 
@@ -54,7 +55,7 @@ export class ModuleView extends ItemView {
     return this.renderGroups(root);
   }
 
-  renderGroups(root) {
+  renderGroups(root: any): void {
     pageHeader(root, 'Modules', 'Choose a thematic group',
       'Modules stay organized by explicit core-owned domains. Open a group to see its contents.');
     const groups = this.plugin.store.thematicGroups();
@@ -81,7 +82,7 @@ export class ModuleView extends ItemView {
     }
   }
 
-  renderGroupList(root) {
+  renderGroupList(root: any): void {
     const group = this.plugin.store.get(this.groupId);
     const back = button(root, '‹ Modules', () => this.plugin.back(), 'quiet');
     back.addClass('los-route-back');
@@ -102,8 +103,12 @@ export class ModuleView extends ItemView {
     });
     const all = this.plugin.store.modulesForGroup(group.id);
     const needle = this.query.trim().toLocaleLowerCase();
-    const rows = all.filter((module) => !needle || [module.title, module.code, module.kind, module.semester]
-      .filter(Boolean).join(' ').toLocaleLowerCase().includes(needle));
+    const rows = all.filter((module: ProjectionRecord) =>
+      !needle || [module.title, module.code, module.kind, module.semester]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase()
+        .includes(needle));
     if (!all.length) {
       empty(root, 'No modules in this group', 'The group exists, but no modules currently reference it.');
       return;
@@ -135,7 +140,7 @@ export class ModuleView extends ItemView {
     }
   }
 
-  renderModuleDetail(root) {
+  renderModuleDetail(root: any): void {
     const module = this.plugin.store.get(this.moduleId);
     const back = button(root, '‹ Back', () => this.plugin.back(), 'quiet');
     back.addClass('los-route-back');
@@ -158,10 +163,14 @@ export class ModuleView extends ItemView {
   }
 
   /** One line instead of six labelled facts; the rest is in Logistics. */
-  headline(module) {
+  headline(module: ProjectionRecord): string {
     const nextDate = this.deadlinesFor(module)
-      .filter((row) => (row.end_date || row.start_date) >= new Date().toISOString().slice(0, 10))
-      .map((row) => row.start_date)[0];
+      .filter(
+        (row: ProjectionRecord) =>
+          (row.end_date || row.start_date)
+          >= new Date().toISOString().slice(0, 10),
+      )
+      .map((row: ProjectionRecord) => row.start_date)[0];
     return [
       module.semester,
       module.credits != null ? `${module.credits} LP` : '',
@@ -169,7 +178,10 @@ export class ModuleView extends ItemView {
     ].filter(Boolean).join(' · ');
   }
 
-  renderOverview(root, module) {
+  renderOverview(
+    root: any,
+    module: ProjectionRecord,
+  ): void {
     const progress = this.plugin.store.progress(module.id);
     const wrap = root.createDiv({ cls: 'los-overview' });
     wrap.createDiv({
@@ -181,15 +193,24 @@ export class ModuleView extends ItemView {
     if (!workspaces.length) {
       empty(wrap, 'No active coordination workspace', 'The module/unit tree still owns study state.');
     }
-    const next = this.plugin.store.unitsFor(module.id).find((unit) => unit.status === 'active')
+    const next = this.plugin.store.unitsFor(module.id).find(
+      (unit: ProjectionRecord) => unit.status === 'active',
+    )
       || this.plugin.store.unitsFor(module.id)[0];
     if (next) button(wrap, `Continue ${next.title}`, () => this.plugin.openUnit(next.id), 'cta');
     const ahead = this.deadlinesFor(module)
-      .filter((row) => (row.end_date || row.start_date) >= new Date().toISOString().slice(0, 10));
+      .filter(
+        (row: ProjectionRecord) =>
+          (row.end_date || row.start_date)
+          >= new Date().toISOString().slice(0, 10),
+      );
     if (ahead.length) this.renderDeadlineRows(wrap, module, ahead.slice(0, 1));
   }
 
-  renderUnits(root, module) {
+  renderUnits(
+    root: any,
+    module: ProjectionRecord,
+  ): void {
     if ((module.components || []).length) {
       const tabs = root.createDiv({ cls: 'los-subtabs', attr: { role: 'tablist' } });
       const allTab = button(tabs, 'All components', () => this.selectComponent(null),
@@ -204,7 +225,9 @@ export class ModuleView extends ItemView {
     const units = this.plugin.store.unitsFor(module.id, this.componentId);
     if (!units.length) { empty(root, 'No units in this component', 'Return to all components.'); return; }
     for (const status of STATUS_ORDER) {
-      const rows = units.filter((unit) => unit.status === status);
+      const rows = units.filter(
+        (unit: ProjectionRecord) => unit.status === status,
+      );
       if (!rows.length) continue;
       root.createDiv({ cls: 'los-group-title', text: status.replaceAll('-', ' ') });
       const grid = root.createDiv({ cls: 'los-card-grid' });
@@ -212,7 +235,10 @@ export class ModuleView extends ItemView {
     }
   }
 
-  renderLogistics(root, module) {
+  renderLogistics(
+    root: any,
+    module: ProjectionRecord,
+  ): void {
     const facts = root.createDiv({ cls: 'los-fact-list' });
     for (const [label, value] of [['Status', module.status], ['Institution', module.institution],
       ['Code', module.code], ['Semester', module.semester], ['Credits', module.credits],
@@ -226,19 +252,37 @@ export class ModuleView extends ItemView {
     this.renderAcademicDates(root, module);
   }
 
-  deadlinesFor(module) {
-    const rows = this.plugin.store.rows('academic_deadlines').filter((row) =>
-      row.module_id === module.id || (row.modules || []).some((entry) => entry.module_id === module.id));
-    return rows.sort((a, b) => String(a.start_date || '').localeCompare(String(b.start_date || '')));
+  deadlinesFor(module: ProjectionRecord): ProjectionRecord[] {
+    const rows = this.plugin.store.rows('academic_deadlines').filter(
+      (row: ProjectionRecord) => row.module_id === module.id
+        || (row.modules || []).some(
+          (entry: ProjectionRecord) =>
+            entry.module_id === module.id,
+        ),
+    );
+    return rows.sort(
+      (a: ProjectionRecord, b: ProjectionRecord) =>
+        String(a.start_date || '')
+          .localeCompare(String(b.start_date || '')),
+    );
   }
 
-  renderAcademicDates(root, module) {
+  renderAcademicDates(
+    root: any,
+    module: ProjectionRecord,
+  ): void {
     const rows = this.deadlinesFor(module);
     if (!rows.length) return;
     const wrap = section(root, 'Academic dates', 'Registration windows and exam sittings for this module.');
     const today = new Date().toISOString().slice(0, 10);
-    const ahead = rows.filter((row) => (row.end_date || row.start_date) >= today);
-    const past = rows.filter((row) => (row.end_date || row.start_date) < today);
+    const ahead = rows.filter(
+      (row: ProjectionRecord) =>
+        (row.end_date || row.start_date) >= today,
+    );
+    const past = rows.filter(
+      (row: ProjectionRecord) =>
+        (row.end_date || row.start_date) < today,
+    );
     if (ahead.length) this.renderDeadlineRows(wrap, module, ahead);
     else empty(wrap, 'No upcoming date recorded', 'Past dates remain available below.');
     if (past.length) {
@@ -247,7 +291,11 @@ export class ModuleView extends ItemView {
     }
   }
 
-  renderDeadlineRows(wrap, module, rows) {
+  renderDeadlineRows(
+    wrap: any,
+    module: ProjectionRecord,
+    rows: ProjectionRecord[],
+  ): void {
     const list = wrap.createDiv({ cls: 'los-date-list' });
     for (const row of rows) {
       const card = list.createDiv({ cls: `los-date-row los-deadline-${row.kind}` });
@@ -257,7 +305,9 @@ export class ModuleView extends ItemView {
       const copy = card.createDiv({ cls: 'los-date-copy' });
       copy.createEl('strong', { text: row.label });
       if (row.kind === 'registration-window') {
-        const entry = (row.modules || []).find((item) => item.module_id === module.id);
+        const entry = (row.modules || []).find(
+          (item: ProjectionRecord) => item.module_id === module.id,
+        );
         if (entry?.action) copy.createEl('p', { cls: 'los-micro', text: entry.action });
       } else {
         copy.createDiv({ cls: 'los-micro', text: row.title || module.title });
@@ -268,7 +318,7 @@ export class ModuleView extends ItemView {
     }
   }
 
-  async selectTab(tab) {
+  async selectTab(tab: string): Promise<void> {
     this.tab = tab;
     await this.plugin.router.remember({
       name: 'module-detail', moduleId: this.moduleId,
@@ -280,7 +330,9 @@ export class ModuleView extends ItemView {
     });
   }
 
-  async selectComponent(componentId) {
+  async selectComponent(
+    componentId: string | null,
+  ): Promise<void> {
     this.componentId = componentId;
     const tab = this.tab || 'units';
     await this.plugin.router.remember({
@@ -292,26 +344,47 @@ export class ModuleView extends ItemView {
     });
   }
 
-  renderSources(root, module) {
+  renderSources(
+    root: any,
+    module: ProjectionRecord,
+  ): void {
     const sourceMap = this.plugin.store.sourceMap(module.id);
     if (!sourceMap?.sources?.length) {
       empty(root, 'No routed module sources yet', 'Sources remain globally registered.');
       return;
     }
     root.createEl('p', { cls: 'los-muted', text: 'Roles in this module — not global quality scores.' });
-    const groups = new Map();
-    for (const entry of sourceMap.sources) {
-      if (!groups.has(entry.role)) groups.set(entry.role, []);
-      groups.get(entry.role).push(entry);
+    const groups = new Map<string, ProjectionRecord[]>();
+    for (const entry of sourceMap.sources as ProjectionRecord[]) {
+      const role = String(entry.role || 'unassigned');
+      const current = groups.get(role);
+      if (current) current.push(entry);
+      else groups.set(role, [entry]);
     }
     for (const [role, entries] of groups) {
       const group = root.createDiv({ cls: 'los-source-role' });
-      group.createDiv({ cls: 'los-group-title', text: role.replaceAll('-', ' ') });
+      group.createDiv({
+        cls: 'los-group-title',
+        text: role.replaceAll('-', ' '),
+      });
       for (const entry of entries) {
         const row = group.createDiv({ cls: 'los-row' });
-        chip(row, this.plugin.store.get(entry.source_id), (record) => this.plugin.openLibrary(record.id));
+        const source = this.plugin.store.get(entry.source_id);
+        if (source) {
+          chip(
+            row,
+            source,
+            (record: ProjectionRecord) =>
+              this.plugin.openLibrary(record.id),
+          );
+        }
         row.createEl('p', { text: entry.why });
-        if (entry.unit_routes?.length) row.createDiv({ cls: 'los-micro', text: `${entry.unit_routes.length} routed unit(s)` });
+        if (entry.unit_routes?.length) {
+          row.createDiv({
+            cls: 'los-micro',
+            text: `${entry.unit_routes.length} routed unit(s)`,
+          });
+        }
       }
     }
   }
