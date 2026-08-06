@@ -3096,6 +3096,7 @@ var ModuleView = class extends import_obsidian11.ItemView {
 // src/views/nav-view.ts
 var import_obsidian12 = require("obsidian");
 var NavView = class extends import_obsidian12.ItemView {
+  plugin;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -3597,6 +3598,7 @@ function errorMessage6(error) {
   return error instanceof Error ? error.message : String(error);
 }
 var ReviewView = class extends import_obsidian15.ItemView {
+  plugin;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -3635,7 +3637,7 @@ var ReviewView = class extends import_obsidian15.ItemView {
     const needsMap = this.plugin.store.units().filter(
       (row) => !this.plugin.store.mapForUnit(row.id)
     );
-    const inbox = this.plugin.store.data.counts?.inbox_items || 0;
+    const inbox = this.plugin.store.data?.counts?.inbox_items || 0;
     const garden = this.plugin.store.gardenEntries();
     const list = root.createDiv({ cls: "los-review-list" });
     this.queue(
@@ -4259,7 +4261,7 @@ function errorMessage9(error) {
 var LearningOSUI = class extends import_obsidian18.Plugin {
   async onload() {
     this.settings = { ...DEFAULT_SETTINGS, ...await this.loadData() };
-    this.settings.uiDrafts ||= { stages: {}, unitNotes: {}, selectedStages: {}, inbox: { title: "", text: "" } };
+    this.settings.uiDrafts ||= { stages: {}, unitNotes: {}, selectedStages: {}, inbox: { title: "", text: "" }, doneWhen: {} };
     this.settings.uiDrafts.stages ||= {};
     this.settings.uiDrafts.unitNotes ||= {};
     this.settings.uiDrafts.selectedStages ||= {};

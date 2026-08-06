@@ -1,9 +1,10 @@
-import { ItemView } from 'obsidian';
+import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
 import { badge, button, disclosure, empty, OWNERSHIP_STATEMENT, pageHeader, section, unitCard } from '../components';
 import { CONTRACT_VERSION, VIEW_DIAGNOSTICS, VIEW_REVIEW } from '../constants';
 import type { ProjectionRecord } from '../contracts/manifest-v2';
+import type { LearningOSUI } from '../main';
 
 type ReviewAction = [string, () => unknown];
 
@@ -20,6 +21,16 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+type ReviewPlugin = Pick<
+  LearningOSUI,
+  | 'generate'
+  | 'openCapture'
+  | 'openGarden'
+  | 'openProgram'
+  | 'openShelving'
+  | 'store'
+>;
+
 /**
  * Review — the decision queues in one place. Shelving proposals, units without
  * a map, inbox items awaiting routing and the Garden's harvest pressure are all
@@ -27,8 +38,12 @@ function errorMessage(error: unknown): string {
  * four separate permanent destinations.
  */
 export class ReviewView extends ItemView {
-  [key: string]: any;
-  constructor(leaf: any, plugin: any) {
+  private readonly plugin: ReviewPlugin;
+
+  constructor(
+    leaf: WorkspaceLeaf,
+    plugin: ReviewPlugin,
+  ) {
     super(leaf);
     this.plugin = plugin;
   }
@@ -53,7 +68,7 @@ export class ReviewView extends ItemView {
       (row: ProjectionRecord) =>
         !this.plugin.store.mapForUnit(row.id),
     );
-    const inbox = this.plugin.store.data.counts?.inbox_items || 0;
+    const inbox = this.plugin.store.data?.counts?.inbox_items || 0;
     const garden = this.plugin.store.gardenEntries();
 
     const list = root.createDiv({ cls: 'los-review-list' });
@@ -78,12 +93,12 @@ export class ReviewView extends ItemView {
   }
 
   queue(
-    parent: any,
+    parent: HTMLElement,
     label: string,
     count: number | null,
     detail: string,
     action: ReviewAction | null,
-  ): any {
+  ): HTMLElement {
     const row = parent.createDiv({ cls: 'los-review-row' });
     const copy = row.createDiv({ cls: 'los-review-copy' });
     const heading = copy.createDiv({ cls: 'los-review-heading' });

@@ -1,6 +1,32 @@
-import { ItemView } from 'obsidian';
+import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import { button, empty, icon } from '../components';
 import { VIEW_NAV } from '../constants';
+import type { LearningOSUI } from '../main';
+
+interface NavSettings {
+  navMoreOpen: boolean;
+}
+
+type NavPlugin = Pick<
+  LearningOSUI,
+  | 'generate'
+  | 'openAtlas'
+  | 'openBoundary'
+  | 'openCapture'
+  | 'openDiagnostics'
+  | 'openGarden'
+  | 'openGlobalSearch'
+  | 'openHome'
+  | 'openLearn'
+  | 'openLibrary'
+  | 'openModules'
+  | 'openProjects'
+  | 'openReview'
+  | 'scheduleDraftSave'
+> & {
+  readonly activeNav: string;
+  readonly settings: NavSettings;
+};
 
 /**
  * Seven permanent destinations, nothing else. Areas (Bachelor's / Skills /
@@ -10,8 +36,12 @@ import { VIEW_NAV } from '../constants';
  * system is large.
  */
 export class NavView extends ItemView {
-  [key: string]: any;
-  constructor(leaf: any, plugin: any) {
+  private readonly plugin: NavPlugin;
+
+  constructor(
+    leaf: WorkspaceLeaf,
+    plugin: NavPlugin,
+  ) {
     super(leaf);
     this.plugin = plugin;
   }
@@ -21,12 +51,12 @@ export class NavView extends ItemView {
   async onOpen() { this.render(); }
 
   nav(
-    parent: any,
+    parent: HTMLElement,
     iconName: string,
     label: string,
     key: string,
     action: (event: MouseEvent) => unknown,
-  ): any {
+  ): HTMLButtonElement {
     const active = this.plugin.activeNav === key;
     const row = parent.createEl('button', {
       cls: `los-app-nav-item is-clickable${active ? ' is-active' : ''}`,

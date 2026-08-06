@@ -60,16 +60,44 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+interface LearningOSStageDraft {
+  text: string;
+}
+
+interface LearningOSUnitNoteDraft {
+  title: string;
+  text: string;
+}
+
+interface LearningOSInboxDraft {
+  title: string;
+  text: string;
+}
+
+interface LearningOSUiDrafts {
+  stages: Record<string, LearningOSStageDraft>;
+  unitNotes: Record<string, LearningOSUnitNoteDraft>;
+  selectedStages: Record<string, string>;
+  inbox: LearningOSInboxDraft;
+  doneWhen: Record<string, boolean[]>;
+}
+
+type LearningOSSettings = typeof DEFAULT_SETTINGS & {
+  uiDrafts: LearningOSUiDrafts;
+};
+
 export class LearningOSUI extends Plugin {
   [key: string]: any;
 
   declare store: ManifestStore;
   declare router: ApplicationRouter;
   declare gateway: GatewayClient;
+  declare settings: LearningOSSettings;
+  declare activeNav: string;
 
   async onload() {
     this.settings = { ...DEFAULT_SETTINGS, ...(await this.loadData()) };
-    this.settings.uiDrafts ||= { stages: {}, unitNotes: {}, selectedStages: {}, inbox: { title: '', text: '' } };
+    this.settings.uiDrafts ||= { stages: {}, unitNotes: {}, selectedStages: {}, inbox: { title: '', text: '' }, doneWhen: {} };
     this.settings.uiDrafts.stages ||= {};
     this.settings.uiDrafts.unitNotes ||= {};
     this.settings.uiDrafts.selectedStages ||= {};
