@@ -247,6 +247,129 @@ async function main() {
     check('the navigator exposes a persistent accessible search launcher',
       nav.find('los-nav-search').length === 1
       && nav.find('los-nav-search')[0].attrs['aria-label'] === 'Search LearningOS');
+
+    /* Global search real-DOM and adversarial stress regression. */
+    const filterModal = plugin.openGlobalSearch('');
+    const filterTabs = Object.fromEntries(
+      filterModal.contentEl.find('los-search-tab')
+        .map((tab) => [tab.allText(), tab]),
+    );
+
+    filterTabs.Projects.fire('click');
+
+    check('search category filter works through real DOM attributes',
+      filterModal.filter === 'projects'
+      && filterTabs.Projects.getAttribute('aria-selected') === 'true'
+      && filterTabs.All.getAttribute('aria-selected') === 'false'
+      && filterModal.contentEl.find('los-search-result').length >= 1
+      && filterModal.contentEl.find('los-search-result')
+        .every((row) => row.allText().includes('Project')));
+
+    filterTabs['Learning sources'].fire('click');
+    filterTabs['Modules & units'].fire('click');
+    filterTabs.Projects.fire('click');
+
+    check('rapid filter switching leaves the final category authoritative',
+      filterModal.filter === 'projects'
+      && plugin.router.snapshot().overlay?.filter === 'projects'
+      && filterTabs.Projects.getAttribute('aria-selected') === 'true');
+
+    filterModal.input.value = 'Python';
+    filterModal.input.fire('input');
+
+    check('query and incompatible filter produce an explicit empty state',
+      filterModal.filter === 'projects'
+      && filterModal.contentEl.allText().includes('No structural results'));
+
+    filterModal.input.value = 'Bachelor thesis';
+    filterModal.input.fire('input');
+
+    check('query and project filter combine correctly',
+      filterModal.filter === 'projects'
+      && filterModal.contentEl.find('los-search-result').length >= 1
+      && filterModal.contentEl.allText().includes('Bachelor thesis'));
+
+    const clearFiltered = filterModal.contentEl.findText(
+      'los-btn',
+      'Clear search',
+    );
+
+    if (clearFiltered) clearFiltered.fire('click');
+
+    check('clearing a filtered search retains the selected category',
+      filterModal.filter === 'projects'
+      && filterTabs.Projects.getAttribute('aria-selected') === 'true');
+
+    filterModal.close();
+
+    const capModal = plugin.openGlobalSearch('');
+    capModal.candidates = () => Array.from(
+      { length: 30 },
+      (_, index) => ({
+        id: `stress-${index}`,
+        title: `Stress result ${String(index).padStart(2, '0')}`,
+        aliases: [],
+        authors: [],
+        kind: 'learning',
+        subtitle: 'Unit · Search stress fixture',
+        open() {},
+      }),
+    );
+    capModal.filter = 'learning';
+    capModal.renderTabs();
+    capModal.renderResults();
+
+    check('large result sets render only the documented first 24 rows',
+      capModal.contentEl.find('los-search-result').length === 24
+      && capModal.contentEl.allText().includes('6 more results'));
+
+    capModal.close();
+
+    const hostileModule = plugin.store.modules()[0];
+    const hostileSource = plugin.store.sources()[0];
+    const originalAliases = hostileModule.aliases;
+    const originalAuthors = hostileSource.authors;
+
+    hostileModule.aliases = 'Scalar Alias Probe';
+    hostileSource.authors = 'Scalar Author Probe';
+
+    let hostileError = null;
+    let aliasModal = null;
+    let authorModal = null;
+
+    try {
+      aliasModal = plugin.openGlobalSearch('Scalar Alias Probe');
+      check('scalar projected aliases remain searchable',
+        aliasModal.contentEl.allText().includes(hostileModule.title));
+
+      aliasModal.close();
+
+      authorModal = plugin.openGlobalSearch('Scalar Author Probe');
+      check('scalar projected authors remain searchable',
+        authorModal.contentEl.allText().includes(hostileSource.title));
+    } catch (error) {
+      hostileError = error;
+    } finally {
+      aliasModal?.close();
+      authorModal?.close();
+      hostileModule.aliases = originalAliases;
+      hostileSource.authors = originalAuthors;
+    }
+
+    check('hostile projected search values never crash rendering',
+      hostileError === null,
+      hostileError?.stack || String(hostileError || ''));
+
+    check('search source uses browser-compatible attribute access',
+      fs.readFileSync(
+        path.join(ROOT, 'src', 'app', 'global-search.ts'),
+        'utf8',
+      ).includes("getAttribute('data-filter')")
+      && !fs.readFileSync(
+        path.join(ROOT, 'src', 'app', 'global-search.ts'),
+        'utf8',
+      ).includes("tab.attrs['data-filter']"));
+
     plugin.onunload();
   }
 

@@ -45,6 +45,15 @@ class El {
   setAttr(k, v) { this.attrs[k] = v; return this; }
   setAttrs(attrs) { Object.assign(this.attrs, attrs); return this; }
   setAttribute(k, v) { return this.setAttr(k, v); }
+  getAttribute(k) {
+    return Object.prototype.hasOwnProperty.call(this.attrs, k)
+      ? this.attrs[k]
+      : null;
+  }
+  removeAttribute(k) {
+    delete this.attrs[k];
+    return this;
+  }
   remove() { return this; }
   focus() { return this; }
   addEventListener(ev, fn) { (this.listeners[ev] ||= []).push(fn); }

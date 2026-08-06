@@ -6,6 +6,17 @@
  * does not depend on Omnisearch. Full-text/OCR search remains an optional,
  * separate integration.
  */
+function projectedTextList(value) {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => String(item ?? '').trim())
+      .filter(Boolean);
+  }
+  if (value == null) return [];
+  const text = String(value).trim();
+  return text ? [text] : [];
+}
+
 export class GlobalSearchModal extends Modal {
   constructor(app, plugin, initialQuery = '') {
     super(app);
@@ -75,7 +86,7 @@ export class GlobalSearchModal extends Modal {
 
   renderTabs() {
     for (const tab of this.tabButtons || []) {
-      const active = tab.attrs['data-filter'] === this.filter;
+      const active = tab.getAttribute('data-filter') === this.filter;
       tab.toggleClass('is-active', active);
       tab.setAttribute('aria-selected', String(active));
     }
@@ -88,8 +99,8 @@ export class GlobalSearchModal extends Modal {
       rows.push({
         id: record.id,
         title: record.title,
-        aliases: record.aliases || [],
-        authors: record.authors || [],
+        aliases: projectedTextList(record.aliases),
+        authors: projectedTextList(record.authors),
         kind,
         subtitle,
         open,
@@ -109,7 +120,7 @@ export class GlobalSearchModal extends Modal {
       add(unit, 'learning', `Unit · ${module?.title || unit.module_id}`, () => this.plugin.openUnit(unit.id));
     }
     for (const source of this.plugin.store.sources()) {
-      const byline = (source.authors || []).join(', ') || source.organization || source.kind || 'Learning source';
+      const byline = projectedTextList(source.authors).join(', ') || source.organization || source.kind || 'Learning source';
       add(source, 'sources', `Learning source · ${byline}`, () => this.plugin.openLibrary(source.id, 'source'));
     }
     for (const pack of this.plugin.store.topicPacks()) {
