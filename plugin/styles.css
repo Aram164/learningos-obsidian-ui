@@ -2842,3 +2842,51 @@ body {
     transition: none;
   }
 }
+
+/* HOST-THEME SURFACE HARDENING */
+
+/*
+ * These inset surfaces belong to the fixed LearningOS beige/wine product
+ * language. They must not inherit dark Obsidian surface variables.
+ */
+
+.los-next-action {
+  background: var(--los-background-subtle) !important;
+}
+
+.los-next-action p {
+  color: var(--los-text-primary) !important;
+}
+
+.los-unit-note-context,
+.los-unit-note-attachments {
+  background: var(--los-background-subtle) !important;
+  color: var(--los-text-secondary) !important;
+}
+
+.los-proposal-diff,
+.los-diagnostic-report {
+  background: var(--los-background-subtle) !important;
+  color: var(--los-text-secondary) !important;
+}
+
+.los-group-count {
+  background: var(--los-background-subtle) !important;
+  color: var(--los-text-secondary) !important;
+}
+
+/*
+ * The source-chip rules predate the fixed Figma palette and use !important,
+ * so later generic button rules cannot displace their host-theme colors.
+ */
+
+.los-chip {
+  color: var(--los-text-secondary) !important;
+}
+
+.los-chip:hover {
+  border-color: var(--los-border-brand) !important;
+  background: var(--los-background-selected) !important;
+  color: var(--los-text-brand) !important;
+}
+

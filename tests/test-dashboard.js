@@ -1022,6 +1022,14 @@ async function main() {
     check('button-like components are insulated from Obsidian theme distortion',
       css.includes('appearance: none') && css.includes('min-width: 0')
       && css.includes('overflow-wrap: break-word') && css.includes('word-break: normal'));
+    check('theme-sensitive inset surfaces use LearningOS semantic tokens',
+      /\.los-next-action\s*\{[^}]*background:\s*var\(--los-background-subtle\)\s*!important/.test(css)
+      && /\.los-unit-note-context,\s*\.los-unit-note-attachments\s*\{[^}]*background:\s*var\(--los-background-subtle\)\s*!important[^}]*color:\s*var\(--los-text-secondary\)\s*!important/.test(css)
+      && /\.los-proposal-diff,\s*\.los-diagnostic-report\s*\{[^}]*background:\s*var\(--los-background-subtle\)\s*!important[^}]*color:\s*var\(--los-text-secondary\)\s*!important/.test(css)
+      && /\.los-group-count\s*\{[^}]*background:\s*var\(--los-background-subtle\)\s*!important[^}]*color:\s*var\(--los-text-secondary\)\s*!important/.test(css));
+    check('source chips keep semantic contrast in normal and hover states',
+      /\.los-chip\s*\{[^}]*color:\s*var\(--los-text-secondary\)\s*!important/.test(css)
+      && /\.los-chip:hover\s*\{[^}]*border-color:\s*var\(--los-border-brand\)\s*!important[^}]*background:\s*var\(--los-background-selected\)\s*!important[^}]*color:\s*var\(--los-text-brand\)\s*!important/.test(css));
     check('deadline layout cannot allocate a third action column',
       /\.los-date-row\s*\{[^}]*grid-template-columns:\s*minmax\(126px, 148px\)\s+minmax\(0, 1fr\)/.test(css)
       && !/\.los-date-row\s*\{[^}]*grid-template-columns:[^;]*\sauto\s*;/.test(css));
