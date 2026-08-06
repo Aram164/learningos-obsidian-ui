@@ -1,13 +1,26 @@
 import { ItemView, Notice } from 'obsidian';
 import { button, empty, pageHeader, section, unitCard } from '../components';
 import { VIEW_SHELVING } from '../constants';
+import type { ProjectionRecord } from '../contracts/manifest-v2';
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 export class ShelvingView extends ItemView {
   [key: string]: any;
-  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.unitId = null; this.proposal = null; this.selected = new Set(); }
+  constructor(leaf: any, plugin: any) {
+    super(leaf);
+    this.plugin = plugin;
+    this.unitId = null;
+    this.proposal = null;
+    this.selected = new Set<string>();
+  }
   getViewType() { return VIEW_SHELVING; }
   getDisplayText() { return 'LearningOS · Shelving'; }
-  async setState(state) {
+  async setState(
+    state: Record<string, any> = {},
+  ): Promise<void> {
     this.unitId = state?.unitId || this.unitId;
     await this.loadProposal(); this.render();
   }
@@ -65,9 +78,11 @@ export class ShelvingView extends ItemView {
       { moduleId: unit.module_id, unitId: unit.id }), 'quiet');
   }
 
-  renderQueue(root) {
+  renderQueue(root: any): void {
     const wrap = section(root, 'Ready to shelve');
-    const rows = this.plugin.store.units().filter((row) => row.status === 'ready-to-shelve');
+    const rows = this.plugin.store.units().filter(
+      (row: ProjectionRecord) => row.status === 'ready-to-shelve',
+    );
     if (!rows.length) empty(wrap, 'No unit is waiting', 'Keep working from any active unit.');
     for (const unit of rows) unitCard(wrap, this.plugin, unit);
   }
@@ -77,7 +92,9 @@ export class ShelvingView extends ItemView {
       await this.plugin.mutate(() => this.plugin.gateway.prepareShelving(this.unitId));
       await this.loadProposal(); this.render();
     }
-    catch (error) { new Notice(error?.message || String(error)); }
+    catch (error: unknown) {
+      new Notice(errorMessage(error));
+    }
   }
 
   async apply() {
@@ -85,6 +102,8 @@ export class ShelvingView extends ItemView {
     try {
       await this.plugin.mutate(() => this.plugin.gateway.applyShelving(this.unitId, [...this.selected]));
       this.proposal = null; this.selected.clear(); this.render();
-    } catch (error) { new Notice(error?.message || String(error)); }
+    } catch (error: unknown) {
+      new Notice(errorMessage(error));
+    }
   }
 }

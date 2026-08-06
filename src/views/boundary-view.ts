@@ -1,20 +1,32 @@
 import { ItemView, Notice } from 'obsidian';
 import { boundaryPolicy, button, empty, pageHeader, section } from '../components';
 import { VIEW_BOUNDARY } from '../constants';
+import type { ProjectionRecord } from '../contracts/manifest-v2';
 
 export class BoundaryView extends ItemView {
   [key: string]: any;
-  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.boundaryId = null; }
+  constructor(leaf: any, plugin: any) {
+    super(leaf);
+    this.plugin = plugin;
+    this.boundaryId = null;
+  }
   getViewType() { return VIEW_BOUNDARY; }
   getDisplayText() { return 'LearningOS · Boundary'; }
-  async setState(state) { this.boundaryId = state?.boundaryId || this.boundaryId; this.render(); }
+  async setState(
+    state: Record<string, any> = {},
+  ): Promise<void> {
+    this.boundaryId = state?.boundaryId || this.boundaryId;
+    this.render();
+  }
   getState() { return { boundaryId: this.boundaryId }; }
   async onOpen() { this.boundaryId = this.leaf.state?.boundaryId || this.boundaryId; this.render(); }
 
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-boundary-view');
     const boundary = (this.plugin.store.data?.quarantine_boundaries || [])
-      .find((row) => row.id === this.boundaryId);
+      .find(
+        (row: ProjectionRecord) => row.id === this.boundaryId,
+      );
     if (!boundary) { empty(root, 'Boundary unavailable', 'No quarantined content was loaded.'); return; }
     pageHeader(root, 'Deliberate boundary', boundary.title, boundaryPolicy(boundary.description));
     const guard = section(root, 'What this means');

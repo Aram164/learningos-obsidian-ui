@@ -11,13 +11,22 @@ import { VIEW_NAV } from '../constants';
  */
 export class NavView extends ItemView {
   [key: string]: any;
-  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
+  constructor(leaf: any, plugin: any) {
+    super(leaf);
+    this.plugin = plugin;
+  }
   getViewType() { return VIEW_NAV; }
   getDisplayText() { return 'LearningOS · Navigator'; }
   getIcon() { return 'route'; }
   async onOpen() { this.render(); }
 
-  nav(parent, iconName, label, key, action) {
+  nav(
+    parent: any,
+    iconName: string,
+    label: string,
+    key: string,
+    action: (event: MouseEvent) => unknown,
+  ): any {
     const active = this.plugin.activeNav === key;
     const row = parent.createEl('button', {
       cls: `los-app-nav-item is-clickable${active ? ' is-active' : ''}`,

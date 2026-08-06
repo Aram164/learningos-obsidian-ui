@@ -1,14 +1,29 @@
 import { Notice } from 'obsidian';
 import { button } from '../../components';
+import type { ProjectionRecord } from '../../contracts/manifest-v2';
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /** Compact, action-specific launcher. There is deliberately no generic
  * "Ask AI" entry point: the action ID, target and provider are visible before
  * the core prepares any context. */
-export function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
+export function renderGardenShelveAction(
+  parent: any,
+  plugin: any,
+  target: ProjectionRecord,
+  onChanged: ((result: ProjectionRecord) => unknown) | null = null,
+): any {
   const wrap = parent.createDiv({ cls: 'los-ai-action-row' });
-  const providers = plugin.aiActions.providers();
-  const available = providers.filter((row) => row.available);
-  let provider = available.some((row) => row.id === plugin.settings.preferredAiProvider)
+  const providers: ProjectionRecord[] = plugin.aiActions.providers();
+  const available = providers.filter(
+    (row: ProjectionRecord) => Boolean(row.available),
+  );
+  let provider: string = available.some(
+    (row: ProjectionRecord) =>
+      row.id === plugin.settings.preferredAiProvider,
+  )
     ? plugin.settings.preferredAiProvider : (available[0]?.id || 'manual-bundle');
   let jobConfirmed = !target.job_derived;
 
@@ -46,12 +61,17 @@ export function renderGardenShelveAction(parent, plugin, target, onChanged = nul
     launch.setAttr('disabled', 'disabled');
     launch.setText('Preparing…');
     try {
-      const result = await plugin.aiActions.prepareGardenShelving(target.id, provider, jobConfirmed);
+      const result: ProjectionRecord =
+        await plugin.aiActions.prepareGardenShelving(
+          target.id,
+          provider,
+          jobConfirmed,
+        );
       const bundlePath = result.bundle_path || result.request?.bundle_path;
       new Notice(bundlePath ? `AI request prepared: ${bundlePath}` : 'AI request prepared.');
       onChanged?.(result);
-    } catch (error) {
-      new Notice(error?.message || String(error));
+    } catch (error: unknown) {
+      new Notice(errorMessage(error));
       launch.removeAttribute?.('disabled');
       launch.setText('Shelve with AI');
     }

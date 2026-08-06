@@ -1,3 +1,5 @@
+import type { ProjectionRecord } from '../contracts/manifest-v2';
+
 /**
  * Provider-independent client for the core AI-action gateway. The UI never
  * sends an open-ended prompt or grants a provider direct vault access: it asks
@@ -6,11 +8,19 @@
  */
 export class AIActionClient {
   [key: string]: any;
-  constructor(plugin) { this.plugin = plugin; }
+  constructor(plugin: any) {
+    this.plugin = plugin;
+  }
 
-  providers() { return this.plugin.store.aiProviders(); }
+  providers(): ProjectionRecord[] {
+    return this.plugin.store.aiProviders();
+  }
 
-  prepareGardenShelving(targetId, provider = 'manual-bundle', jobExportConfirmed = false) {
+  prepareGardenShelving(
+    targetId: string,
+    provider = 'manual-bundle',
+    jobExportConfirmed = false,
+  ): Promise<ProjectionRecord> {
     const args = ['ai-action-prepare', '--action-id', 'garden.shelve',
       '--target-kind', 'garden-note', '--target-id', targetId,
       '--provider', provider, ...this.plugin.gateway.guard()];
@@ -18,11 +28,13 @@ export class AIActionClient {
     return this.plugin.mutate(() => this.plugin.gateway.call(args));
   }
 
-  status(requestId) {
+  status(requestId: string): Promise<ProjectionRecord> {
     return this.plugin.gateway.call(['ai-action-status', requestId]);
   }
 
-  applyApprovedDelivery(deliveryId) {
+  applyApprovedDelivery(
+    deliveryId: string,
+  ): Promise<ProjectionRecord> {
     return this.plugin.mutate(() => this.plugin.gateway.call([
       'ai-action-apply-delivery', deliveryId,
     ]));
