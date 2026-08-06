@@ -619,7 +619,21 @@
 .los-btn--quiet:hover { background: var(--background-modifier-hover) !important; color: var(--text-normal) !important; }
 .los-btn--tertiary { min-height: 24px !important; padding: 1px var(--los-2) !important; border-color: transparent !important; color: var(--text-muted) !important; font-size: 12px; }
 .los-btn--tertiary:hover { background: var(--background-modifier-hover) !important; color: var(--text-normal) !important; }
-.los-chip { min-height: 26px !important; padding: 2px var(--los-2) !important; border-radius: var(--los-r-pill) !important; background: var(--background-primary) !important; text-align: left; }
+.los-chip {
+  min-height: 26px !important;
+  padding: 2px var(--los-2) !important;
+  border: 1px solid var(--los-line) !important;
+  border-radius: var(--los-r-pill) !important;
+  background: var(--los-surface-raised) !important;
+  color: var(--text-muted) !important;
+  box-shadow: none !important;
+  text-align: left;
+}
+.los-chip:hover {
+  border-color: var(--los-line-strong) !important;
+  background: var(--background-modifier-hover) !important;
+  color: var(--text-normal) !important;
+}
 .los-chip > span:last-child { min-width: 0; overflow-wrap: break-word; word-break: normal; }
 .los-badge { display: inline-flex; max-width: 100%; padding: 1px var(--los-2); border-radius: var(--los-r-pill); background: var(--background-modifier-border); color: var(--text-muted); font-size: 11px; line-height: 1.5; white-space: normal; }
 .los-badge--active { color: var(--color-green); }
