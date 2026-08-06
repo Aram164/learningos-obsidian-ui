@@ -1,6 +1,13 @@
 import { ItemView } from 'obsidian';
 import { boundaryPolicy, button, empty, icon, pageHeader, projectedExcerpt, section } from '../components';
 import { ICONS, VIEW_ATLAS } from '../constants';
+import type { ProjectionRecord } from '../contracts/manifest-v2';
+
+interface AtlasDomain {
+  name: string;
+  notes: ProjectionRecord[];
+  shelves: ProjectionRecord[];
+}
 
 /**
  * Domain atlas — the cross-domain map (ADR-005).
@@ -16,23 +23,36 @@ export const ATLAS_ROLE_ORDER = ['crosswalk', 'reference', 'synthesis', 'exercis
 
 export class AtlasView extends ItemView {
   [key: string]: any;
-  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.domain = null; }
+  constructor(leaf: any, plugin: any) {
+    super(leaf);
+    this.plugin = plugin;
+    this.domain = null;
+  }
   getViewType() { return VIEW_ATLAS; }
   getDisplayText() { return 'LearningOS · Domain atlas'; }
   getIcon() { return 'map'; }
-  async setState(state) {
+  async setState(
+    state: Record<string, any> = {},
+  ): Promise<void> {
     if (state?.domain) this.domain = state.domain;
     this.render();
   }
   getState() { return { domain: this.domain }; }
   async onOpen() { this.domain = this.leaf.state?.domain || null; this.render(); }
 
-  atlas() {
-    const domains = new Map();
-    const bucket = (name) => {
-      const key = name || 'cross-domain';
-      if (!domains.has(key)) domains.set(key, { name: key, notes: [], shelves: [] });
-      return domains.get(key);
+  atlas(): AtlasDomain[] {
+    const domains = new Map<string, AtlasDomain>();
+    const bucket = (name: unknown): AtlasDomain => {
+      const key = String(name || 'cross-domain');
+      const existing = domains.get(key);
+      if (existing) return existing;
+      const created: AtlasDomain = {
+        name: key,
+        notes: [],
+        shelves: [],
+      };
+      domains.set(key, created);
+      return created;
     };
     for (const note of this.plugin.store.of('note')) bucket(note.domain).notes.push(note);
     for (const shelf of this.plugin.store.of('collection')) bucket(shelf.domain).shelves.push(shelf);
@@ -60,14 +80,21 @@ export class AtlasView extends ItemView {
 
     const glance = root.createDiv({ cls: 'los-atlas-glance' });
     for (const domain of domains) {
-      const entries = domain.shelves.reduce((total, shelf) => total + (shelf.entries || []).length, 0);
-      const crosswalks = domain.notes.filter((note) => note.role === 'crosswalk').length;
+      const entries = domain.shelves.reduce(
+        (total: number, shelf: ProjectionRecord) =>
+          total + (shelf.entries || []).length,
+        0,
+      );
+      const crosswalks = domain.notes.filter(
+        (note: ProjectionRecord) => note.role === 'crosswalk',
+      ).length;
       const tile = glance.createEl('button', {
         cls: `los-atlas-tile is-clickable ${domain.name === this.domain ? 'is-selected' : ''}`,
         attr: { type: 'button', 'aria-pressed': String(domain.name === this.domain) },
       });
       tile.createSpan({ cls: 'los-atlas-tile-name', text: domain.name });
-      const plural = (count, noun) => `${count} ${noun}${count === 1 ? '' : 's'}`;
+      const plural = (count: number, noun: string): string =>
+        `${count} ${noun}${count === 1 ? '' : 's'}`;
       tile.createSpan({
         cls: 'los-micro',
         text: [plural(domain.notes.length, 'note'),
@@ -84,7 +111,10 @@ export class AtlasView extends ItemView {
     this.renderBoundaries(root);
   }
 
-  noteRow(parent, note) {
+  noteRow(
+    parent: any,
+    note: ProjectionRecord,
+  ): any {
     const row = parent.createEl('button', { cls: 'los-item is-clickable', attr: { type: 'button' } });
     icon(row.createSpan(), ICONS.note);
     const copy = row.createSpan({ cls: 'los-item-copy' });
@@ -94,7 +124,10 @@ export class AtlasView extends ItemView {
     return row;
   }
 
-  renderDomain(parent, domain) {
+  renderDomain(
+    parent: any,
+    domain: AtlasDomain | undefined,
+  ): void {
     if (!domain) return;
     const header = parent.createDiv({ cls: 'los-atlas-domain-head' });
     header.createEl('h2', { text: domain.name });
@@ -102,29 +135,35 @@ export class AtlasView extends ItemView {
     button(actions, 'Browse these notes in the Library',
       () => this.plugin.openLibraryFiltered('note', domain.name), 'quiet');
 
-    const crosswalks = domain.notes.filter((note) => note.role === 'crosswalk');
+    const crosswalks = domain.notes.filter(
+      (note: ProjectionRecord) => note.role === 'crosswalk',
+    );
     if (crosswalks.length) {
       const wrap = section(parent, `Wiring hubs (${crosswalks.length})`,
         'Crosswalks carry the narrative that joins this domain’s sources and concepts — read one before opening a shelf.');
       for (const note of crosswalks) this.noteRow(wrap, note);
     }
 
-    const byRole = new Map();
+    const byRole = new Map<string, ProjectionRecord[]>();
     for (const note of domain.notes) {
-      const role = note.role || 'synthesis';
-      if (!byRole.has(role)) byRole.set(role, []);
-      byRole.get(role).push(note);
+      const role = String(note.role || 'synthesis');
+      const existingRows = byRole.get(role);
+      if (existingRows) existingRows.push(note);
+      else byRole.set(role, [note]);
     }
     const roles = [...byRole.keys()].sort((a, b) => {
-      const rank = (role) => (ATLAS_ROLE_ORDER.indexOf(role) + 1 || 99);
+      const rank = (role: string): number =>
+        (ATLAS_ROLE_ORDER.indexOf(role) + 1 || 99);
       return rank(a) - rank(b) || a.localeCompare(b);
     });
     if (domain.notes.length) {
       const notesWrap = section(parent, `Notes (${domain.notes.length})`,
         'Grouped by role. Opening a row opens the note itself.');
       for (const role of roles) {
-        const rows = byRole.get(role).slice()
-          .sort((a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id)));
+        const roleRows = byRole.get(role) || [];
+        const rows = roleRows.slice()
+          .sort((a, b) => String(a.title || a.id)
+            .localeCompare(String(b.title || b.id)));
         const group = notesWrap.createEl('details', { cls: 'los-atlas-group' });
         if (role === 'crosswalk' ? false : rows.length <= 12) group.setAttr('open', 'open');
         group.createEl('summary', { text: `${role} (${rows.length})` });
@@ -152,7 +191,7 @@ export class AtlasView extends ItemView {
     }
   }
 
-  renderBoundaries(root) {
+  renderBoundaries(root: any): void {
     const boundaries = this.plugin.store.rows('quarantine_boundaries');
     const wrap = section(root, 'Outside this map by policy',
       'Named so their absence is visible; their content is never loaded, indexed, or searched.');

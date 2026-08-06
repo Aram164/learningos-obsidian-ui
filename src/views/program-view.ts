@@ -1,13 +1,27 @@
 import { ItemView, Notice } from 'obsidian';
 import { badge, button, disclosure, empty, localFilePath, pageHeader, progressRow, projectedExcerpt, section, unitCard } from '../components';
 import { LEARN_AREAS, VIEW_PROGRAM } from '../constants';
+import type { ProjectionRecord } from '../contracts/manifest-v2';
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 export class ProgramView extends ItemView {
   [key: string]: any;
-  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.programId = null; }
+  constructor(leaf: any, plugin: any) {
+    super(leaf);
+    this.plugin = plugin;
+    this.programId = null;
+  }
   getViewType() { return VIEW_PROGRAM; }
   getDisplayText() { return 'LearningOS · Area'; }
-  async setState(state) { this.programId = state?.programId || this.programId; this.render(); }
+  async setState(
+    state: Record<string, any> = {},
+  ): Promise<void> {
+    this.programId = state?.programId || this.programId;
+    this.render();
+  }
   getState() { return { programId: this.programId }; }
   async onOpen() { this.programId = this.leaf.state?.programId || this.programId; this.render(); }
 
@@ -56,7 +70,7 @@ export class ProgramView extends ItemView {
    * off Home to here. Home carries the one-line priority; this is where the
    * whole decision layer is read when the learner actually wants it.
    */
-  renderCoordination(root) {
+  renderCoordination(root: any): void {
     const coordination = this.plugin.store.get('coordination');
     const rows = ['Priorities', 'Commitments', 'Dependencies', 'Deferrals']
       .map((heading) => [heading, projectedExcerpt(coordination?.sections?.[heading], 1600)])
@@ -70,15 +84,18 @@ export class ProgramView extends ItemView {
     }
   }
 
-  renderNeedsMap(root) {
+  renderNeedsMap(root: any): void {
     pageHeader(root, 'Review', 'Units needing a study map');
     const grid = root.createDiv({ cls: 'los-card-grid' });
-    for (const unit of this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id))) {
+    for (const unit of this.plugin.store.units().filter(
+      (row: ProjectionRecord) =>
+        !this.plugin.store.mapForUnit(row.id),
+    )) {
       unitCard(grid, this.plugin, unit);
     }
   }
 
-  renderInbox(root) {
+  renderInbox(root: any): void {
     pageHeader(root, '', 'Capture', 'You capture; the operator files.');
     const count = this.plugin.store.data?.counts?.inbox_items || 0;
     const wrap = section(root, `${count} item${count === 1 ? '' : 's'} awaiting routing`);
@@ -135,7 +152,10 @@ export class ProgramView extends ItemView {
     }, 'quiet');
   }
 
-  async capture(action, clear) {
+  async capture(
+    action: () => Promise<unknown>,
+    clear: (() => void) | null = null,
+  ): Promise<void> {
     if (this.plugin.gateway.isBusy) new Notice('Queued behind the running LearningOS write.');
     try {
       await this.plugin.mutate(async () => {
@@ -147,6 +167,8 @@ export class ProgramView extends ItemView {
       clear?.();
       new Notice('Captured to the LearningOS inbox.');
       this.render();
-    } catch (error) { new Notice(error?.message || String(error)); }
+    } catch (error: unknown) {
+      new Notice(errorMessage(error));
+    }
   }
 }

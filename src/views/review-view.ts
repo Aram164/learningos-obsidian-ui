@@ -3,6 +3,22 @@ import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
 import { badge, button, disclosure, empty, OWNERSHIP_STATEMENT, pageHeader, section, unitCard } from '../components';
 import { CONTRACT_VERSION, VIEW_DIAGNOSTICS, VIEW_REVIEW } from '../constants';
+import type { ProjectionRecord } from '../contracts/manifest-v2';
+
+type ReviewAction = [string, () => unknown];
+
+interface BuildInfo extends Record<string, any> {
+  ui_version: string;
+  manifest_contract_version: number;
+  source_revision: string;
+  source_fingerprint: string;
+  bundle_sha256: string;
+  node_version: string;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 /**
  * Review — the decision queues in one place. Shelving proposals, units without
@@ -12,7 +28,10 @@ import { CONTRACT_VERSION, VIEW_DIAGNOSTICS, VIEW_REVIEW } from '../constants';
  */
 export class ReviewView extends ItemView {
   [key: string]: any;
-  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
+  constructor(leaf: any, plugin: any) {
+    super(leaf);
+    this.plugin = plugin;
+  }
   getViewType() { return VIEW_REVIEW; }
   getDisplayText() { return 'LearningOS · Review'; }
   getIcon() { return 'check-check'; }
@@ -27,8 +46,13 @@ export class ReviewView extends ItemView {
       return;
     }
     pageHeader(root, '', 'Review', 'Everything waiting on a decision from you.');
-    const shelving = this.plugin.store.units().filter((row) => row.status === 'ready-to-shelve');
-    const needsMap = this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id));
+    const shelving = this.plugin.store.units().filter(
+      (row: ProjectionRecord) => row.status === 'ready-to-shelve',
+    );
+    const needsMap = this.plugin.store.units().filter(
+      (row: ProjectionRecord) =>
+        !this.plugin.store.mapForUnit(row.id),
+    );
     const inbox = this.plugin.store.data.counts?.inbox_items || 0;
     const garden = this.plugin.store.gardenEntries();
 
@@ -53,7 +77,13 @@ export class ReviewView extends ItemView {
     }
   }
 
-  queue(parent, label, count, detail, action) {
+  queue(
+    parent: any,
+    label: string,
+    count: number | null,
+    detail: string,
+    action: ReviewAction | null,
+  ): any {
     const row = parent.createDiv({ cls: 'los-review-row' });
     const copy = row.createDiv({ cls: 'los-review-copy' });
     const heading = copy.createDiv({ cls: 'los-review-heading' });
@@ -73,13 +103,17 @@ export class ReviewView extends ItemView {
  */
 export class DiagnosticsView extends ItemView {
   [key: string]: any;
-  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.report = ''; }
+  constructor(leaf: any, plugin: any) {
+    super(leaf);
+    this.plugin = plugin;
+    this.report = '';
+  }
   getViewType() { return VIEW_DIAGNOSTICS; }
   getDisplayText() { return 'LearningOS · Diagnostics'; }
   getIcon() { return 'activity'; }
   async onOpen() { this.render(); }
 
-  buildInfo() {
+  buildInfo(): BuildInfo {
     const fallback = {
       ui_version: this.plugin.uiVersion(),
       manifest_contract_version: CONTRACT_VERSION,
@@ -102,7 +136,7 @@ export class DiagnosticsView extends ItemView {
     }
   }
 
-  state() {
+  state(): [string, string, string] {
     if (!this.plugin.store.ready) return ['?', 'Core unavailable', this.plugin.store.error];
     if (this.plugin.store.data?._generated?.source_dirty) {
       return ['●', 'Canonical files changed; projection is stale', 'Rebuild to bring the interface back in step.'];
@@ -159,8 +193,8 @@ export class DiagnosticsView extends ItemView {
     try {
       const result = await this.plugin.gateway.call(['status', '--json']);
       this.report = `${resolved.path} (${resolved.origin})\nCore answered: ${JSON.stringify(result).slice(0, 400)}`;
-    } catch (error) {
-      this.report = `${resolved.path} (${resolved.origin})\nFailed: ${error?.message || String(error)}\nTried: ${resolved.attempted.join(', ')}`;
+    } catch (error: unknown) {
+      this.report = `${resolved.path} (${resolved.origin})\nFailed: ${errorMessage(error)}\nTried: ${resolved.attempted.join(', ')}`;
     }
     this.render();
   }
