@@ -1833,6 +1833,7 @@ function errorMessage4(error) {
   return error instanceof Error ? error.message : String(error);
 }
 var GardenView = class extends import_obsidian8.ItemView {
+  plugin;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;

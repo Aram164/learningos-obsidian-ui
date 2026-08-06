@@ -92,6 +92,7 @@ export class LearningOSUI extends Plugin {
   declare store: ManifestStore;
   declare router: ApplicationRouter;
   declare gateway: GatewayClient;
+  declare aiActions: AIActionClient;
   declare settings: LearningOSSettings;
   declare activeNav: string;
 

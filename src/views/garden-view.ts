@@ -1,19 +1,33 @@
-import { ItemView, Notice } from 'obsidian';
+import { ItemView, Notice, type WorkspaceLeaf } from 'obsidian';
 import { badge, button, empty, pageHeader } from '../components';
 import { VIEW_GARDEN } from '../constants';
 import { renderGardenShelveAction } from '../features/ai-actions/action-button';
 import type { ProjectionRecord } from '../contracts/manifest-v2';
+import type { LearningOSUI } from '../main';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+type GardenPlugin = Pick<
+  LearningOSUI,
+  | 'aiActions'
+  | 'copyText'
+  | 'generate'
+  | 'openVaultPath'
+  | 'store'
+>;
+
 /** Garden is a review surface for seeds, not a second canonical knowledge
  * browser. The original artifact is always opened as-is; AI-derived state and
  * transcriptions are displayed as separate projected facts. */
 export class GardenView extends ItemView {
-  [key: string]: any;
-  constructor(leaf: any, plugin: any) {
+  private readonly plugin: GardenPlugin;
+
+  constructor(
+    leaf: WorkspaceLeaf,
+    plugin: GardenPlugin,
+  ) {
     super(leaf);
     this.plugin = plugin;
   }
@@ -45,7 +59,10 @@ export class GardenView extends ItemView {
     for (const target of entries) this.card(list, target);
   }
 
-  card(parent: any, target: ProjectionRecord): any {
+  card(
+    parent: HTMLElement,
+    target: ProjectionRecord,
+  ): HTMLElement {
     const card = parent.createDiv({ cls: `los-card los-garden-card los-garden-${target.state || 'seed'}` });
     const top = card.createDiv({ cls: 'los-card-top' });
     top.createEl('h2', { text: target.title || target.id });
