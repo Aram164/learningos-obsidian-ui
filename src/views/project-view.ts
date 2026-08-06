@@ -1,11 +1,18 @@
 import { ItemView, Modal } from 'obsidian';
 import { badge, button, empty, pageHeader, projectedExcerpt, section } from '../components';
 import { VIEW_PROJECT } from '../constants';
+import type { ProjectionRecord } from '../contracts/manifest-v2';
 
 class ProjectLinkReasonModal extends Modal {
   [key: string]: any;
-  constructor(app, plugin, relationship) {
-    super(app); this.plugin = plugin; this.relationship = relationship;
+  constructor(
+    app: any,
+    plugin: any,
+    relationship: ProjectionRecord,
+  ) {
+    super(app);
+    this.plugin = plugin;
+    this.relationship = relationship;
   }
   onOpen() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-linked-reason-modal');
@@ -29,8 +36,11 @@ class ProjectLinkReasonModal extends Modal {
 /** Full-page first-class Projects navigation. */
 export class ProjectView extends ItemView {
   [key: string]: any;
-  constructor(leaf, plugin) {
-    super(leaf); this.plugin = plugin; this.screen = 'list'; this.projectId = null;
+  constructor(leaf: any, plugin: any) {
+    super(leaf);
+    this.plugin = plugin;
+    this.screen = 'list';
+    this.projectId = null;
     this.tab = 'overview'; this.query = ''; this.selectedElementId = null;
   }
   getViewType() { return VIEW_PROJECT; }
@@ -52,7 +62,7 @@ export class ProjectView extends ItemView {
     return this.renderList(root);
   }
 
-  renderList(root) {
+  renderList(root: any): void {
     pageHeader(root, 'Projects', 'Projects', 'Long-running work with its own structure, materials, files, and decisions.');
     const input = root.createEl('input', {
       cls: 'los-search los-project-search',
@@ -62,11 +72,17 @@ export class ProjectView extends ItemView {
     const results = root.createDiv({ cls: 'los-project-list' });
     const draw = () => {
       results.empty();
-      const words = String(input.value || '').toLocaleLowerCase().split(/\s+/).filter(Boolean);
-      const rows = this.plugin.store.projects().filter((project) => {
+      const words: string[] = String(input.value || '')
+        .toLocaleLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
+      const rows = this.plugin.store.projects().filter(
+        (project: ProjectionRecord) => {
         const hay = [project.id, project.title, project.objective, project.project_type]
           .filter(Boolean).join(' ').toLocaleLowerCase();
-        return words.every((word) => hay.includes(word));
+        return words.every(
+          (word: string) => hay.includes(word),
+        );
       });
       if (!rows.length) return empty(results, 'No projects found', 'No first-class project matches this query.', 'Clear search', () => {
         input.value = ''; input.fire('input');
@@ -96,7 +112,7 @@ export class ProjectView extends ItemView {
     draw();
   }
 
-  renderDetail(root) {
+  renderDetail(root: any) {
     const project = this.plugin.store.get(this.projectId);
     if (!project || project.type !== 'project') {
       pageHeader(root, 'Projects', 'Project not found');
@@ -124,7 +140,10 @@ export class ProjectView extends ItemView {
     return this.renderOverview(body, project);
   }
 
-  renderOverview(root, project) {
+  renderOverview(
+    root: any,
+    project: ProjectionRecord,
+  ): void {
     const overview = section(root, 'Overview');
     const meta = overview.createDiv({ cls: 'los-project-meta-grid' });
     for (const [label, value] of [
@@ -136,23 +155,42 @@ export class ProjectView extends ItemView {
     }
     if (project.boundaries?.notes) overview.createEl('p', { cls: 'los-muted', text: project.boundaries.notes });
     const units = section(root, 'Project units', 'Existing learning units remain reachable without turning the project into a module.');
-    const unitRows = (project.unit_ids || []).map((id) => this.plugin.store.get(id)).filter(Boolean);
+    const unitRows: ProjectionRecord[] = (
+      Array.isArray(project.unit_ids) ? project.unit_ids : []
+    )
+      .filter(
+        (id: unknown): id is string => typeof id === 'string',
+      )
+      .map((id: string) => this.plugin.store.get(id))
+      .filter(
+        (row: ProjectionRecord | null): row is ProjectionRecord =>
+          row !== null,
+      );
     if (!unitRows.length) empty(units, 'No units linked', 'This project can exist without a linear learning map.');
     for (const unit of unitRows) button(units, unit.title || unit.id, () => this.plugin.openUnit(unit.id), 'row');
   }
 
-  renderStructure(root, project) {
+  renderStructure(
+    root: any,
+    project: ProjectionRecord,
+  ) {
     const structure = project.structure || { kind: 'none', nodes: [] };
     const wrap = section(root, 'Structure', `Structure mode: ${structure.kind || 'none'}.`);
     if (!Array.isArray(structure.nodes) || !structure.nodes.length) return empty(wrap, 'No fixed structure', 'This project currently has no linear or nested step map.');
     const tree = wrap.createDiv({ cls: 'los-project-structure' });
-    const node = (parent, row, depth = 0) => {
+    const node = (
+      parent: any,
+      row: ProjectionRecord,
+      depth = 0,
+    ): void => {
       const item = parent.createDiv({ cls: `los-project-node los-project-node-depth-${Math.min(depth, 4)}` });
       const top = item.createDiv({ cls: 'los-card-top' }); top.createEl('h3', { text: row.title || row.id });
       if (row.status) badge(top, row.status, row.status);
       item.createDiv({ cls: 'los-micro', text: row.kind || 'step' });
       if (row.summary) item.createEl('p', { text: row.summary });
-      const children = Array.isArray(row.children) ? row.children : [];
+      const children: ProjectionRecord[] = Array.isArray(row.children)
+        ? row.children
+        : [];
       if (children.length) {
         const nested = item.createDiv({ cls: 'los-project-node-children' });
         for (const child of children) node(nested, child, depth + 1);
@@ -161,7 +199,10 @@ export class ProjectView extends ItemView {
     for (const row of structure.nodes) node(tree, row);
   }
 
-  renderLinked(root, project) {
+  renderLinked(
+    root: any,
+    project: ProjectionRecord,
+  ) {
     const wrap = section(root, 'Linked Materials', 'Links retain a core-authored reason rather than implying ownership.');
     const relationships = this.plugin.store.projectRelationships(project.id);
     if (!relationships.length) return empty(wrap, 'No linked materials', 'Links appear here when the project relationship projection contains them.');
@@ -177,9 +218,14 @@ export class ProjectView extends ItemView {
     }
   }
 
-  renderFiles(root, project) {
+  renderFiles(
+    root: any,
+    project: ProjectionRecord,
+  ) {
     const wrap = section(root, 'Files', 'Project-owned references; canonical content remains in plain files.');
-    const files = Array.isArray(project.files) ? project.files : [];
+    const files: ProjectionRecord[] = Array.isArray(project.files)
+      ? project.files
+      : [];
     if (!files.length) return empty(wrap, 'No files linked', 'Project files can be added through a declared core capability.');
     for (const file of files) {
       const row = wrap.createDiv({ cls: 'los-card los-project-file' });
@@ -190,9 +236,14 @@ export class ProjectView extends ItemView {
     }
   }
 
-  renderDecisions(root, project) {
+  renderDecisions(
+    root: any,
+    project: ProjectionRecord,
+  ) {
     const wrap = section(root, 'Decisions', 'Open questions and durable decisions, without manufacturing a completion score.');
-    const decisions = Array.isArray(project.decisions) ? project.decisions : [];
+    const decisions: ProjectionRecord[] = Array.isArray(
+      project.decisions,
+    ) ? project.decisions : [];
     if (!decisions.length) return empty(wrap, 'No decisions recorded', 'Decisions appear here when the project records them.');
     for (const decision of decisions) {
       const row = wrap.createDiv({ cls: 'los-card los-project-decision' });

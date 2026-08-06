@@ -1,6 +1,20 @@
 import { ItemView } from 'obsidian';
 import { button, empty, pageHeader, projectedExcerpt, section } from '../components';
 import { VIEW_HOME } from '../constants';
+import type { ProjectionRecord } from '../contracts/manifest-v2';
+
+interface HomeItem {
+  title: string;
+  detail: string;
+  actionLabel: string;
+  action: (() => unknown) | null;
+}
+
+interface ElsewhereRow {
+  record: ProjectionRecord;
+  type: string;
+  open: () => unknown;
+}
 
 /**
  * Home is the quiet starting point for a real working day.
@@ -11,13 +25,16 @@ import { VIEW_HOME } from '../constants';
  */
 export class HomeView extends ItemView {
   [key: string]: any;
-  constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
+  constructor(leaf: any, plugin: any) {
+    super(leaf);
+    this.plugin = plugin;
+  }
   getViewType() { return VIEW_HOME; }
   getDisplayText() { return 'LearningOS · Home'; }
   getIcon() { return 'home'; }
   async onOpen() { this.render(); }
 
-  greeting() {
+  greeting(): string {
     const hour = new Date().getHours();
     if (hour < 12) return 'Good morning';
     if (hour < 18) return 'Good afternoon';
@@ -49,7 +66,7 @@ export class HomeView extends ItemView {
   }
 
   /** The one filled action on Home. */
-  renderContinue(root) {
+  renderContinue(root: any): void {
     const pointer = this.plugin.store.data.resume_pointer || {};
     const unit = this.plugin.store.get(pointer.unit_id);
     const map = this.plugin.store.get(pointer.study_map_id);
@@ -70,8 +87,15 @@ export class HomeView extends ItemView {
       text: `${module?.title || unit.module_id} · ${unit.title}`,
     });
     copy.createEl('h2', { text: stage.title });
-    const stages = Array.isArray(map?.stages) ? map.stages.filter(Boolean) : [];
-    const position = stages.findIndex((row) => row?.id === stage.id);
+    const stages: ProjectionRecord[] = Array.isArray(map?.stages)
+      ? map.stages.filter(
+        (row: unknown): row is ProjectionRecord =>
+          Boolean(row) && typeof row === 'object',
+      )
+      : [];
+    const position = stages.findIndex(
+      (row: ProjectionRecord) => row.id === stage.id,
+    );
     const meta = copy.createDiv({ cls: 'los-continue-meta' });
     if (stages.length) meta.createSpan({ text: `Stage ${position >= 0 ? position + 1 : 1} of ${stages.length}` });
     if (stage.estimate_minutes) meta.createSpan({ text: `${stage.estimate_minutes} min planned` });
@@ -83,14 +107,24 @@ export class HomeView extends ItemView {
     button(actions, 'Continue session', () => this.plugin.openUnit(unit.id, stage.id), 'cta');
   }
 
-  renderToday(root) {
-    const sectionEl = section(root, 'Today', 'Only items likely to affect the next decision.');
-    const items = [];
+  renderToday(root: any): void {
+    const sectionEl = section(
+      root,
+      'Today',
+      'Only items likely to affect the next decision.',
+    );
+    const items: HomeItem[] = [];
     const today = new Date().toISOString().slice(0, 10);
     const upcoming = this.plugin.store.rows('academic_deadlines')
-      .filter((row) => (row.end_date || row.start_date || '') >= today)
-      .sort((left, right) => String(left.start_date || left.end_date)
-        .localeCompare(String(right.start_date || right.end_date)));
+      .filter(
+        (row: ProjectionRecord) =>
+          (row.end_date || row.start_date || '') >= today,
+      )
+      .sort(
+        (left: ProjectionRecord, right: ProjectionRecord) =>
+          String(left.start_date || left.end_date)
+            .localeCompare(String(right.start_date || right.end_date)),
+      );
 
     for (const deadline of upcoming.slice(0, 2)) {
       const moduleId = deadline.module_id || deadline.modules?.[0]?.module_id;
@@ -110,8 +144,13 @@ export class HomeView extends ItemView {
     }
 
     const inbox = this.plugin.store.data.counts?.inbox_items || 0;
-    const shelving = this.plugin.store.units().filter((row) => row.status === 'ready-to-shelve').length;
-    const needsMap = this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id)).length;
+    const shelving = this.plugin.store.units().filter(
+      (row: ProjectionRecord) => row.status === 'ready-to-shelve',
+    ).length;
+    const needsMap = this.plugin.store.units().filter(
+      (row: ProjectionRecord) =>
+        !this.plugin.store.mapForUnit(row.id),
+    ).length;
     const reviewCount = inbox + shelving + needsMap;
     if (reviewCount) {
       items.push({
@@ -142,18 +181,35 @@ export class HomeView extends ItemView {
     for (const item of items.slice(0, 4)) this.renderHomeRow(list, item);
   }
 
-  renderElsewhere(root) {
+  renderElsewhere(root: any): void {
     const sectionEl = section(root, 'Continue elsewhere',
       'Other active modules and projects, kept secondary to the current session.');
     const pointer = this.plugin.store.data.resume_pointer || {};
-    const rows = [
+    const rows: ElsewhereRow[] = [
       ...this.plugin.store.modules()
-        .filter((module) => module.id !== pointer.module_id)
-        .filter((module) => !['complete', 'archived'].includes(module.status))
-        .map((record) => ({ record, type: record.kind === 'skill' ? 'Skill' : 'Module', open: () => this.plugin.openModule(record.id) })),
+        .filter(
+          (module: ProjectionRecord) =>
+            module.id !== pointer.module_id,
+        )
+        .filter(
+          (module: ProjectionRecord) =>
+            !['complete', 'archived'].includes(module.status),
+        )
+        .map((record: ProjectionRecord): ElsewhereRow => ({
+          record,
+          type: record.kind === 'skill' ? 'Skill' : 'Module',
+          open: () => this.plugin.openModule(record.id),
+        })),
       ...this.plugin.store.projects()
-        .filter((project) => !['completed', 'archived'].includes(project.status))
-        .map((record) => ({ record, type: 'Project', open: () => this.plugin.openProject(record.id) })),
+        .filter(
+          (project: ProjectionRecord) =>
+            !['completed', 'archived'].includes(project.status),
+        )
+        .map((record: ProjectionRecord): ElsewhereRow => ({
+          record,
+          type: 'Project',
+          open: () => this.plugin.openProject(record.id),
+        })),
     ].slice(0, 5);
 
     if (!rows.length) {
@@ -170,7 +226,7 @@ export class HomeView extends ItemView {
     }
   }
 
-  renderHomeRow(parent, item) {
+  renderHomeRow(parent: any, item: HomeItem): any {
     const row = parent.createDiv({ cls: 'los-home-row' });
     const copy = row.createDiv({ cls: 'los-home-row-copy' });
     copy.createEl('strong', { text: item.title });
@@ -179,29 +235,48 @@ export class HomeView extends ItemView {
     return row;
   }
 
-  nextWorkspaceDate(workspace) {
+  nextWorkspaceDate(workspace: ProjectionRecord): string {
     if (workspace.deadline) return String(workspace.deadline);
-    const moduleIds = new Set(workspace.module_ids || []);
-    const dates = [];
+    const moduleIds = new Set<string>(
+      (Array.isArray(workspace.module_ids)
+        ? workspace.module_ids
+        : []
+      ).filter(
+        (id: unknown): id is string => typeof id === 'string',
+      ),
+    );
+    const dates: string[] = [];
     for (const row of this.plugin.store.rows('academic_deadlines')) {
       if (row.kind === 'exam' && moduleIds.has(row.module_id)) dates.push(row.start_date);
       if (row.kind === 'registration-window'
-          && (row.modules || []).some((module) => moduleIds.has(module.module_id))) dates.push(row.start_date);
+          && (row.modules || []).some(
+            (module: ProjectionRecord) =>
+              moduleIds.has(module.module_id),
+          )) dates.push(row.start_date);
     }
     return dates.filter(Boolean).sort()[0] || '9999';
   }
 
-  moduleNextAction(module) {
+  moduleNextAction(module: ProjectionRecord): string {
     const workspace = this.plugin.store.of('workspace')
-      .filter((row) => !row.archived && row.status !== 'complete' && (row.module_ids || []).includes(module.id))
-      .sort((a, b) => this.nextWorkspaceDate(a).localeCompare(this.nextWorkspaceDate(b)))[0];
+      .filter(
+        (row: ProjectionRecord) =>
+          !row.archived
+          && row.status !== 'complete'
+          && (row.module_ids || []).includes(module.id),
+      )
+      .sort(
+        (a: ProjectionRecord, b: ProjectionRecord) =>
+          this.nextWorkspaceDate(a)
+            .localeCompare(this.nextWorkspaceDate(b)),
+      )[0];
     if (workspace?.next_action) return projectedExcerpt(workspace.next_action, 100);
     for (const unit of this.plugin.store.unitsFor(module.id)) {
       const map = this.plugin.store.mapForUnit(unit.id);
       if (!map) continue;
-      const stage = (map.stages || []).find((row) => row.id === map.current_stage)
-        || (map.stages || []).find((row) => row.status === 'active')
-        || (map.stages || []).find((row) => row.status !== 'complete');
+      const stage = (map.stages || []).find((row: ProjectionRecord) => row.id === map.current_stage)
+        || (map.stages || []).find((row: ProjectionRecord) => row.status === 'active')
+        || (map.stages || []).find((row: ProjectionRecord) => row.status !== 'complete');
       if (stage?.title) return stage.title;
     }
     return '';
