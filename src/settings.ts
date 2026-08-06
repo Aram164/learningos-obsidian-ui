@@ -1,8 +1,19 @@
-import { Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { Modal, Notice, PluginSettingTab, Setting, type App } from 'obsidian';
 import { button, empty, OWNERSHIP_STATEMENT, pageHeader, section } from './components';
+import type { LearningOSUI } from './main';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+type SessionEndPlugin = Pick<
+  LearningOSUI,
+  'gateway'
+>;
+
+interface SessionReview {
+  owned_changes?: string[];
+  unrelated_changes?: string[];
 }
 
 export class LearningOSSettingsTab extends PluginSettingTab {
@@ -59,8 +70,14 @@ export class LearningOSSettingsTab extends PluginSettingTab {
 }
 
 export class SessionEndModal extends Modal {
-  [key: string]: any;
-  constructor(app: any, plugin: any, review: any) {
+  private readonly plugin: SessionEndPlugin;
+  private readonly review: SessionReview;
+
+  constructor(
+    app: App,
+    plugin: SessionEndPlugin,
+    review: SessionReview,
+  ) {
     super(app);
     this.plugin = plugin;
     this.review = review;

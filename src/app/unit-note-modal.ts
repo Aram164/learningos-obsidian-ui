@@ -1,10 +1,20 @@
-import { Modal, Notice } from 'obsidian';
+import { Modal, Notice, type App } from 'obsidian';
 import { button, empty, localFilePath, pageHeader, section } from '../components';
 import type { ProjectionRecord } from '../contracts/manifest-v2';
+import type { LearningOSUI } from '../main';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
+
+type UnitNotePlugin = Pick<
+  LearningOSUI,
+  | 'gateway'
+  | 'getUnitNoteDraft'
+  | 'setUnitNoteDraft'
+  | 'clearUnitNoteDraft'
+  | 'mutate'
+>;
 
 /**
  * One note after a learning session, attached to the unit rather than to every
@@ -12,10 +22,22 @@ function errorMessage(error: unknown): string {
  * confirms a write. Attachments are selected for the current save only.
  */
 export class UnitNoteModal extends Modal {
-  [key: string]: any;
+  private readonly plugin: UnitNotePlugin;
+  private readonly unit: ProjectionRecord;
+  private readonly studyMap: ProjectionRecord | null;
+
+  private files: File[] = [];
+  private recoveredStageIds: string[] = [];
+  private referencedStageIds: string[] = [];
+
+  private titleInput!: HTMLInputElement;
+  private editor!: HTMLTextAreaElement;
+  private fileInput!: HTMLInputElement;
+  private fileSummary!: HTMLDivElement;
+
   constructor(
-    app: any,
-    plugin: any,
+    app: App,
+    plugin: UnitNotePlugin,
     unit: ProjectionRecord,
     studyMap: ProjectionRecord | null,
   ) {

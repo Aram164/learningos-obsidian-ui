@@ -1,13 +1,24 @@
-import { ItemView, Modal } from 'obsidian';
+import { ItemView, Modal, type App } from 'obsidian';
 import { badge, button, empty, pageHeader, projectedExcerpt, section } from '../components';
 import { VIEW_PROJECT } from '../constants';
 import type { ProjectionRecord } from '../contracts/manifest-v2';
+import type { LearningOSUI } from '../main';
+
+type ProjectLinkPlugin = Pick<
+  LearningOSUI,
+  | 'router'
+  | 'store'
+  | 'openRecord'
+  | 'openAuthoredPath'
+>;
 
 class ProjectLinkReasonModal extends Modal {
-  [key: string]: any;
+  private readonly plugin: ProjectLinkPlugin;
+  private readonly relationship: ProjectionRecord;
+
   constructor(
-    app: any,
-    plugin: any,
+    app: App,
+    plugin: ProjectLinkPlugin,
     relationship: ProjectionRecord,
   ) {
     super(app);

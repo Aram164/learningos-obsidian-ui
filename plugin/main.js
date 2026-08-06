@@ -765,6 +765,16 @@ function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
 var UnitNoteModal = class extends import_obsidian3.Modal {
+  plugin;
+  unit;
+  studyMap;
+  files = [];
+  recoveredStageIds = [];
+  referencedStageIds = [];
+  titleInput;
+  editor;
+  fileInput;
+  fileSummary;
   constructor(app, plugin, unit, studyMap) {
     super(app);
     this.plugin = plugin;
@@ -1426,6 +1436,8 @@ var LearningOSSettingsTab = class extends import_obsidian4.PluginSettingTab {
   }
 };
 var SessionEndModal = class extends import_obsidian4.Modal {
+  plugin;
+  review;
   constructor(app, plugin, review) {
     super(app);
     this.plugin = plugin;
@@ -3336,6 +3348,8 @@ var ProgramView = class extends import_obsidian13.ItemView {
 // src/views/project-view.ts
 var import_obsidian14 = require("obsidian");
 var ProjectLinkReasonModal = class extends import_obsidian14.Modal {
+  plugin;
+  relationship;
   constructor(app, plugin, relationship) {
     super(app);
     this.plugin = plugin;

@@ -65,6 +65,7 @@ export class LearningOSUI extends Plugin {
 
   declare store: ManifestStore;
   declare router: ApplicationRouter;
+  declare gateway: GatewayClient;
 
   async onload() {
     this.settings = { ...DEFAULT_SETTINGS, ...(await this.loadData()) };
