@@ -555,7 +555,22 @@ export class LearningOSUI extends Plugin {
     if (record.path) return this.openAuthoredPath(record.path);
   }
   openResource(resource: ProjectionRecord) {
-    if (resource.vault_path) return this.openVaultPath(resource.vault_path);
+    const materialPath = typeof resource.material_path === 'string'
+      ? resource.material_path
+      : '';
+    if (materialPath.trim()) return this.openMaterialPath(materialPath);
+
+    const vaultPath = typeof resource.vault_path === 'string'
+      ? resource.vault_path
+      : '';
+    if (vaultPath.trim()) {
+      if (vaultPath.trim().toLowerCase().startsWith('material://')) {
+        new Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
+        return false;
+      }
+      return this.openVaultPath(vaultPath);
+    }
+
     if (resource.url) {
       // A projected URL is still untrusted input to a viewer: `javascript:`,
       // `data:` and `file:` never reach Electron.

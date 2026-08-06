@@ -171,8 +171,12 @@ export function explicitAiContext(
     unit_id: unit?.id || context.unitId || null,
     stage_id: stage?.id || context.stageId || null,
     selected_source_ids: [...new Set(resources.map((row) => row.source_id).filter(Boolean))],
-    selected_materials: resources.filter((row) => row.vault_path || row.url)
-      .map((row) => row.vault_path || row.url),
+    selected_materials: resources
+      .map((row) => row.material_uri
+        || row.vault_path
+        || row.url
+        || row.material_path)
+      .filter(Boolean),
     manifest_snapshot: plugin.store.snapshotId,
     active_file_supplement: plugin.app.workspace.getActiveFile()?.path || null,
   };

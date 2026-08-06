@@ -169,7 +169,9 @@ export class UnitView extends ItemView {
         }
       }
       const actions = row.createDiv({ cls: 'los-actions los-resource-actions' });
-      if (resource.url || resource.vault_path) button(actions, 'Open', () => this.plugin.openResource(resource), 'quiet');
+      if (resource.material_path || resource.url || resource.vault_path) {
+        button(actions, 'Open', () => this.plugin.openResource(resource), 'quiet');
+      }
       // Three feedback buttons per resource used to outweigh the resource
       // itself; the judgment is still one click away, it just no longer
       // competes with the thing the learner came to read.

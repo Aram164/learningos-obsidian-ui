@@ -1032,7 +1032,7 @@ function explicitAiContext(plugin, context = {}) {
     unit_id: unit?.id || context.unitId || null,
     stage_id: stage?.id || context.stageId || null,
     selected_source_ids: [...new Set(resources.map((row) => row.source_id).filter(Boolean))],
-    selected_materials: resources.filter((row) => row.vault_path || row.url).map((row) => row.vault_path || row.url),
+    selected_materials: resources.map((row) => row.material_uri || row.vault_path || row.url || row.material_path).filter(Boolean),
     manifest_snapshot: plugin.store.snapshotId,
     active_file_supplement: plugin.app.workspace.getActiveFile()?.path || null
   };
@@ -4042,7 +4042,9 @@ var UnitView = class extends import_obsidian17.ItemView {
         }
       }
       const actions = row.createDiv({ cls: "los-actions los-resource-actions" });
-      if (resource.url || resource.vault_path) button(actions, "Open", () => this.plugin.openResource(resource), "quiet");
+      if (resource.material_path || resource.url || resource.vault_path) {
+        button(actions, "Open", () => this.plugin.openResource(resource), "quiet");
+      }
       if (resource.source_id) {
         overflowMenu(actions, [
           ["Helpful", () => this.mutate(() => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, "helpful"))],
@@ -4696,7 +4698,16 @@ ${row.text.trim()}`).join("\n\n");
     if (record.path) return this.openAuthoredPath(record.path);
   }
   openResource(resource) {
-    if (resource.vault_path) return this.openVaultPath(resource.vault_path);
+    const materialPath = typeof resource.material_path === "string" ? resource.material_path : "";
+    if (materialPath.trim()) return this.openMaterialPath(materialPath);
+    const vaultPath = typeof resource.vault_path === "string" ? resource.vault_path : "";
+    if (vaultPath.trim()) {
+      if (vaultPath.trim().toLowerCase().startsWith("material://")) {
+        new import_obsidian18.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
+        return false;
+      }
+      return this.openVaultPath(vaultPath);
+    }
     if (resource.url) {
       const url = safeWebUrl(resource.url);
       if (!url) {

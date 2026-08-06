@@ -839,6 +839,178 @@ async function main() {
       app.workspace.getLeavesOfType('webviewer').length === 0 || true);
     plugin.onunload();
   }
+
+  heading('material consumer contract (red gate)');
+  {
+    const { plugin } = await boot();
+    const materialCalls = [];
+    const vaultCalls = [];
+    plugin.openMaterialPath = (value) => {
+      materialCalls.push(value);
+      return 'material-opened';
+    };
+    plugin.openVaultPath = async (value) => {
+      vaultCalls.push(value);
+      return 'vault-opened';
+    };
+
+    const projected = {
+      material_uri: 'material://source-fixture/paper.pdf',
+      material_path: 'materials/source-fixture/paper.pdf',
+      vault_path: 'material://source-fixture/paper.pdf',
+    };
+    const projectedResult = await Promise.resolve(plugin.openResource(projected));
+    check('material_path takes precedence over a material URI in vault_path',
+      projectedResult === 'material-opened'
+      && materialCalls.join('|') === 'materials/source-fixture/paper.pdf');
+    check('material opening never delegates a material URI to openVaultPath',
+      vaultCalls.length === 0,
+      `openVaultPath calls: ${JSON.stringify(vaultCalls)}`);
+
+    const callsBeforeLoneUri = vaultCalls.length;
+    const loneUriResult = await Promise.resolve(plugin.openResource({
+      vault_path: 'material://source-fixture/lone.pdf',
+    }));
+    check('a lone material URI without material_path is refused',
+      loneUriResult === false && vaultCalls.length === callsBeforeLoneUri,
+      `result=${String(loneUriResult)} calls=${JSON.stringify(vaultCalls)}`);
+
+    const ordinaryResult = await Promise.resolve(plugin.openResource({
+      vault_path: 'knowledge/notes/supplementary.md',
+    }));
+    check('ordinary vault paths still delegate to openVaultPath',
+      ordinaryResult === 'vault-opened'
+      && vaultCalls.at(-1) === 'knowledge/notes/supplementary.md');
+
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    const originalGetLeaf = app.workspace.getLeaf;
+    let webState = null;
+    app.workspace.getLeaf = () => ({
+      setViewState(state) {
+        webState = state;
+        return state;
+      },
+    });
+    Notice.log.length = 0;
+
+    const safe = plugin.openResource({ url: 'https://example.org/material.pdf' });
+    const unsafeJavascript = plugin.openResource({ url: 'javascript:alert(1)' });
+    const unsafeFile = plugin.openResource({ url: 'file:///etc/passwd' });
+
+    check('safe HTTPS resources retain the existing webviewer behavior',
+      safe === webState
+      && webState?.type === 'webviewer'
+      && webState?.state?.url === 'https://example.org/material.pdf');
+    check('unsafe URL schemes remain refused by the material consumer patch',
+      unsafeJavascript === false && unsafeFile === false
+      && Notice.log.filter((line) => line.includes('Refused an unsupported link')).length === 2);
+
+    app.workspace.getLeaf = originalGetLeaf;
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    const map = plugin.store.get('study-map-fixture-sad-l04');
+    const stage = map.stages.find((row) => row.id === 'stage-fixture-conditioning');
+    stage.resources = [{
+      kind: 'read',
+      label: 'Projected local material',
+      material_uri: 'material://source-fixture/projected.pdf',
+      material_path: 'materials/source-fixture/projected.pdf',
+    }];
+
+    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    check('a resource containing only material_path receives an Open button',
+      Boolean(view.contentEl.findText('los-btn', 'Open')));
+
+    plugin.onunload();
+  }
+  {
+    const { plugin } = await boot();
+    const stage = plugin.store.stage('stage-fixture-conditioning');
+    stage.resources = [
+      {
+        label: 'All identities',
+        material_uri: 'material://source-fixture/semantic.pdf',
+        vault_path: 'material://source-fixture/wrong-precedence.pdf',
+        url: 'https://example.org/wrong-precedence.pdf',
+        material_path: 'materials/source-fixture/wrong-precedence.pdf',
+      },
+      {
+        label: 'Vault fallback',
+        vault_path: 'knowledge/notes/supplementary.md',
+        url: 'https://example.org/wrong-vault-fallback.pdf',
+        material_path: 'materials/source-fixture/wrong-vault-fallback.pdf',
+      },
+      {
+        label: 'URL fallback',
+        url: 'https://example.org/url-fallback.pdf',
+        material_path: 'materials/source-fixture/wrong-url-fallback.pdf',
+      },
+      {
+        label: 'Physical fallback',
+        material_path: 'materials/source-fixture/physical-fallback.pdf',
+      },
+      {
+        label: 'No identity',
+        material_uri: '',
+        vault_path: '',
+        url: '',
+        material_path: '',
+      },
+    ];
+
+    plugin.copyText = () => {};
+    await plugin.askAiScoped('Probe selected material identity.', {
+      moduleId: 'module-fixture-sad',
+      unitId: 'unit-fixture-sad-l04',
+      stageId: 'stage-fixture-conditioning',
+    });
+
+    const match = plugin.lastAiPrompt.match(
+      /LearningOS explicit context \(authoritative\):\n([\s\S]*?)\n\nThe active file/,
+    );
+    let envelope = null;
+    try {
+      envelope = match ? JSON.parse(match[1]) : null;
+    } catch (_) {
+      envelope = null;
+    }
+    const selected = Array.isArray(envelope?.selected_materials)
+      ? envelope.selected_materials
+      : [];
+    const expected = [
+      'material://source-fixture/semantic.pdf',
+      'knowledge/notes/supplementary.md',
+      'https://example.org/url-fallback.pdf',
+      'materials/source-fixture/physical-fallback.pdf',
+    ];
+
+    check('AI selected_materials prefers material_uri',
+      selected[0] === expected[0],
+      `selected=${JSON.stringify(selected)}`);
+    check('AI selected_materials falls back to vault_path',
+      selected[1] === expected[1],
+      `selected=${JSON.stringify(selected)}`);
+    check('AI selected_materials falls back to URL',
+      selected[2] === expected[2],
+      `selected=${JSON.stringify(selected)}`);
+    check('AI selected_materials finally falls back to material_path',
+      selected[3] === expected[3],
+      `selected=${JSON.stringify(selected)}`);
+    check('AI selected_materials excludes rows without an identity',
+      selected.every((value) => typeof value === 'string' && Boolean(value)));
+    check('AI selected_materials preserves the frozen identity precedence',
+      JSON.stringify(selected) === JSON.stringify(expected),
+      `expected=${JSON.stringify(expected)} actual=${JSON.stringify(selected)}`);
+
+    plugin.onunload();
+  }
+
   {
     /* Diagnostics has to be able to say which interpreter was tried. */
     const { plugin } = await boot({ settings: { pythonPath: '/nonexistent/python3.99' } });
