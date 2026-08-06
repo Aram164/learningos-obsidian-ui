@@ -1,4 +1,8 @@
+import { Modal, Notice, PluginSettingTab, Setting } from 'obsidian';
+import { button, empty, OWNERSHIP_STATEMENT, pageHeader, section } from './components';
+
 export class LearningOSSettingsTab extends PluginSettingTab {
+  [key: string]: any;
   constructor(app, plugin) { super(app, plugin); this.plugin = plugin; }
   display() {
     const root = this.containerEl; root.empty();
@@ -34,6 +38,7 @@ export class LearningOSSettingsTab extends PluginSettingTab {
 }
 
 export class SessionEndModal extends Modal {
+  [key: string]: any;
   constructor(app, plugin, review) { super(app); this.plugin = plugin; this.review = review; }
   onOpen() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-session-modal');

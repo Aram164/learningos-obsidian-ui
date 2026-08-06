@@ -876,8 +876,10 @@ async function main() {
     check('bundle uses only the atomic manifest projection', /generated\/manifest\.json/.test(source)
       && !/generated\/backlinks\.json/.test(source));
     check('python resolution covers configured, POSIX venv, Windows venv and PATH',
-      source.includes("'.venv', 'bin', 'python'") && source.includes("'.venv', 'Scripts', 'python.exe'")
-      && source.includes('this.settings.pythonPath') && /'python3'/.test(source));
+      /\.join\(\s*base\s*,\s*["']\.venv["']\s*,\s*["']bin["']\s*,\s*["']python["']\s*\)/.test(source)
+      && /\.join\(\s*base\s*,\s*["']\.venv["']\s*,\s*["']Scripts["']\s*,\s*["']python\.exe["']\s*\)/.test(source)
+      && /this\.settings\.pythonPath/.test(source)
+      && /["']python3["']/.test(source));
     check('every mutation is serialized through one queue',
       source.includes('enqueue(task)') && !/this\.busy\s*=\s*true/.test(source));
     check('external links pass a protocol allowlist',
@@ -891,8 +893,14 @@ async function main() {
     check('bundle exposes action-specific writes', ['unit-note', 'stage-note', 'stage-progress', 'source-feedback',
       'stage-attach', 'detour-create', 'detour-resolve', 'shelving-prepare', 'shelving-apply',
       'session-end'].every((command) => source.includes(command)));
-    check('bundle is generated from modular TypeScript-syntax source', fs.readdirSync(path.join(ROOT, 'src', 'views')).length >= 8
-      && fs.readFileSync(path.join(ROOT, 'build.mjs'), 'utf8').includes('src/views/unit-view.ts'));
+    const buildSource = fs.readFileSync(path.join(ROOT, 'build.mjs'), 'utf8');
+    const mainSource = fs.readFileSync(path.join(ROOT, 'src', 'main.ts'), 'utf8');
+    check('bundle is generated from an explicit module graph',
+      fs.readdirSync(path.join(ROOT, 'src', 'views')).length >= 8
+      && buildSource.includes("entryPoints: ['src/main.ts']")
+      && buildSource.includes('bundle: true')
+      && mainSource.includes("from './views/unit-view'")
+      && !buildSource.includes('const files = ['));
     const css = fs.readFileSync(path.join(ROOT, 'plugin', 'styles.css'), 'utf8');
     check('theme variables only', (css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length === 0);
     check('narrow-screen workspace is responsive', css.includes('.los-unit-layout') && css.includes('@media (max-width: 720px)'));

@@ -1,3 +1,9 @@
+import { ItemView } from 'obsidian';
+import * as fs from 'node:fs';
+import * as nodePath from 'node:path';
+import { badge, button, disclosure, empty, OWNERSHIP_STATEMENT, pageHeader, section, unitCard } from '../components';
+import { CONTRACT_VERSION, VIEW_DIAGNOSTICS, VIEW_REVIEW } from '../constants';
+
 /**
  * Review — the decision queues in one place. Shelving proposals, units without
  * a map, inbox items awaiting routing and the Garden's harvest pressure are all
@@ -5,6 +11,7 @@
  * four separate permanent destinations.
  */
 export class ReviewView extends ItemView {
+  [key: string]: any;
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
   getViewType() { return VIEW_REVIEW; }
   getDisplayText() { return 'LearningOS · Review'; }
@@ -65,6 +72,7 @@ export class ReviewView extends ItemView {
  * can be stale, warning, erroring, or talking to no core at all.
  */
 export class DiagnosticsView extends ItemView {
+  [key: string]: any;
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.report = ''; }
   getViewType() { return VIEW_DIAGNOSTICS; }
   getDisplayText() { return 'LearningOS · Diagnostics'; }

@@ -1,4 +1,9 @@
+import { ItemView, Notice } from 'obsidian';
+import { button, empty, pageHeader, section, unitCard } from '../components';
+import { VIEW_SHELVING } from '../constants';
+
 export class ShelvingView extends ItemView {
+  [key: string]: any;
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.unitId = null; this.proposal = null; this.selected = new Set(); }
   getViewType() { return VIEW_SHELVING; }
   getDisplayText() { return 'LearningOS · Shelving'; }

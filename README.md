@@ -25,10 +25,14 @@ boundary views; quarantined content is not in the manifest or default search.
 
 ## Engineering boundary
 
-- Modular TypeScript-syntax source lives under `src/`; `build.mjs` deterministically concatenates
-  it into the required `plugin/main.js`. The source files share build-injected
-  Obsidian/Electron globals; this project does not claim an import-based `tsc`
-  architecture. The core has no Node dependency.
+- TypeScript source under `src/` uses explicit ESM imports and one `src/main.ts`
+  entrypoint. `build.mjs` uses esbuild to produce the deterministic CommonJS
+  `plugin/main.js`; Obsidian, Electron, CodeMirror and Node built-ins remain
+  runtime externals. A TypeScript module-bundling fallback exists only for
+  offline verification and is refused by CI unless explicitly enabled.
+- `npm run typecheck` checks all runtime source files. The versioned manifest
+  contract remains independently strict-checked before projected data reaches
+  the legacy view layer.
 - The app reads only atomic `generated/manifest.json` contract v2. It never
   parses canonical Markdown/YAML and remains useful when Python is offline.
 - Mutations use `tools/los.py` action-specific commands: `unit-note`, legacy `stage-note`,

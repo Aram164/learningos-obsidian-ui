@@ -1,3 +1,7 @@
+import { setIcon } from 'obsidian';
+import { webUtils } from 'electron';
+import { ICONS, SAFE_URL_PROTOCOLS } from './constants';
+
 export function icon(el, name) { setIcon(el, name || 'circle'); return el; }
 
 export function button(parent, label, onClick, variant = '') {
@@ -101,7 +105,7 @@ export function safeWebUrl(value) {
   } catch (_) { return null; }
 }
 
-export function empty(parent, title, detail, actionLabel, action) {
+export function empty(parent, title, detail, actionLabel = '', action = null) {
   const el = parent.createDiv({ cls: 'los-empty' });
   el.createEl('h3', { text: title });
   el.createEl('p', { text: detail });

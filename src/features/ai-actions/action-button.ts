@@ -1,3 +1,6 @@
+import { Notice } from 'obsidian';
+import { button } from '../../components';
+
 /** Compact, action-specific launcher. There is deliberately no generic
  * "Ask AI" entry point: the action ID, target and provider are visible before
  * the core prepares any context. */

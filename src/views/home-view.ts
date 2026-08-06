@@ -1,3 +1,7 @@
+import { ItemView } from 'obsidian';
+import { button, empty, pageHeader, projectedExcerpt, section } from '../components';
+import { VIEW_HOME } from '../constants';
+
 /**
  * Home is the quiet starting point for a real working day.
  *
@@ -6,6 +10,7 @@
  * few other places to continue remain reachable underneath it.
  */
 export class HomeView extends ItemView {
+  [key: string]: any;
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
   getViewType() { return VIEW_HOME; }
   getDisplayText() { return 'LearningOS · Home'; }

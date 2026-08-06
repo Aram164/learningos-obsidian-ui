@@ -5,6 +5,7 @@
  * that the core has already validated against the locked contract.
  */
 export class AIActionClient {
+  [key: string]: any;
   constructor(plugin) { this.plugin = plugin; }
 
   providers() { return this.plugin.store.aiProviders(); }

@@ -1,4 +1,9 @@
+import { ItemView, Notice } from 'obsidian';
+import { boundaryPolicy, button, empty, pageHeader, section } from '../components';
+import { VIEW_BOUNDARY } from '../constants';
+
 export class BoundaryView extends ItemView {
+  [key: string]: any;
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.boundaryId = null; }
   getViewType() { return VIEW_BOUNDARY; }
   getDisplayText() { return 'LearningOS · Boundary'; }

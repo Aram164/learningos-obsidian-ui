@@ -1,3 +1,7 @@
+import { ItemView } from 'obsidian';
+import { button, chip, disclosure, empty, pageHeader, section } from '../components';
+import { VIEW_LIBRARY } from '../constants';
+
 /**
  * Library navigation is deliberately full-page: choose a collection, choose a
  * core-projected thematic group, then open one record. No default selection and
@@ -8,6 +12,7 @@ export const SOURCE_FACETS = [
 ];
 
 export class LibraryView extends ItemView {
+  [key: string]: any;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -26,7 +31,7 @@ export class LibraryView extends ItemView {
   getViewType() { return VIEW_LIBRARY; }
   getDisplayText() { return 'LearningOS · Library'; }
 
-  applyState(state = {}) {
+  applyState(state: any = {}) {
     this.screen = state.screen || (state.recordId ? 'legacy-list' : 'home');
     this.collection = state.collection || this.collection || 'sources';
     this.groupId = state.groupId || state.fromGroupId || null;

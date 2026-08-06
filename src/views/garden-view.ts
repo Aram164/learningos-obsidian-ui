@@ -1,7 +1,13 @@
+import { ItemView, Notice } from 'obsidian';
+import { badge, button, empty, pageHeader } from '../components';
+import { VIEW_GARDEN } from '../constants';
+import { renderGardenShelveAction } from '../features/ai-actions/action-button';
+
 /** Garden is a review surface for seeds, not a second canonical knowledge
  * browser. The original artifact is always opened as-is; AI-derived state and
  * transcriptions are displayed as separate projected facts. */
 export class GardenView extends ItemView {
+  [key: string]: any;
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
   getViewType() { return VIEW_GARDEN; }
   getDisplayText() { return 'LearningOS · Garden'; }

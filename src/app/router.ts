@@ -1,9 +1,18 @@
+import {
+  LEARN_AREAS, VIEW_ATLAS, VIEW_BOUNDARY, VIEW_DIAGNOSTICS, VIEW_GARDEN,
+  VIEW_HOME, VIEW_LIBRARY, VIEW_MODULE, VIEW_NAV, VIEW_PROGRAM, VIEW_PROJECT,
+  VIEW_REVIEW, VIEW_SHELVING, VIEW_UNIT,
+} from '../constants';
+
 /**
  * Explicit application router introduced as a compatibility layer.
  * Product features navigate with route records; only this adapter knows leaves.
  */
 export class ApplicationRouter {
-  constructor(plugin) {
+  private readonly plugin: any;
+  navigation: any;
+  overlay: any;
+  constructor(plugin: any) {
     this.plugin = plugin;
     const saved = plugin.settings.navigation;
     this.navigation = saved?.version === 1 && saved.current
@@ -39,7 +48,7 @@ export class ApplicationRouter {
     return { name: 'home' };
   }
 
-  libraryRouteFromState(state = {}) {
+  libraryRouteFromState(state: any = {}) {
     if (state.screen === 'group') return {
       name: 'library-group', collection: state.collection || 'sources', groupId: state.groupId,
       query: state.query || '', facet: state.facet || 'all',
@@ -192,7 +201,7 @@ export class ApplicationRouter {
     return route;
   }
 
-  async navigate(route, options = {}) {
+  async navigate(route: any, options: any = {}) {
     if (!options.preserveOverlay) this.clearOverlay();
     const descriptor = this.descriptor(route);
     const remember = options.remember !== false;

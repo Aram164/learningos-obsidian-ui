@@ -1,4 +1,9 @@
+import { ItemView, Modal } from 'obsidian';
+import { badge, button, empty, pageHeader, projectedExcerpt, section } from '../components';
+import { VIEW_PROJECT } from '../constants';
+
 class ProjectLinkReasonModal extends Modal {
+  [key: string]: any;
   constructor(app, plugin, relationship) {
     super(app); this.plugin = plugin; this.relationship = relationship;
   }
@@ -23,13 +28,14 @@ class ProjectLinkReasonModal extends Modal {
 
 /** Full-page first-class Projects navigation. */
 export class ProjectView extends ItemView {
+  [key: string]: any;
   constructor(leaf, plugin) {
     super(leaf); this.plugin = plugin; this.screen = 'list'; this.projectId = null;
     this.tab = 'overview'; this.query = ''; this.selectedElementId = null;
   }
   getViewType() { return VIEW_PROJECT; }
   getDisplayText() { return 'LearningOS · Projects'; }
-  async setState(state = {}) {
+  async setState(state: any = {}) {
     this.screen = state.screen || (state.projectId ? 'detail' : 'list');
     this.projectId = state.projectId || null;
     this.tab = state.tab || 'overview';

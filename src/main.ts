@@ -1,4 +1,38 @@
+import { Plugin, Notice } from 'obsidian';
+import { execFile } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as nodePath from 'node:path';
+import process from 'node:process';
+import { shell } from 'electron';
+
+import { GlobalSearchModal } from './app/global-search';
+import { ApplicationRouter } from './app/router';
+import { UnitNoteModal } from './app/unit-note-modal';
+import { button, safeWebUrl } from './components';
+import {
+  DEFAULT_SETTINGS, LEARN_AREAS, LEGACY_VIEW_TYPES, VIEW_ATLAS, VIEW_BOUNDARY,
+  VIEW_DIAGNOSTICS, VIEW_GARDEN, VIEW_HOME, VIEW_LIBRARY, VIEW_MODULE, VIEW_NAV,
+  VIEW_PROGRAM, VIEW_PROJECT, VIEW_REVIEW, VIEW_SHELVING, VIEW_UNIT,
+} from './constants';
+import { GatewayClient, explicitAiContext } from './gateway-client';
+import { AIActionClient } from './infrastructure/ai-action-client';
+import { ManifestStore } from './manifest-store';
+import { LearningOSSettingsTab, SessionEndModal } from './settings';
+import { AtlasView } from './views/atlas-view';
+import { BoundaryView } from './views/boundary-view';
+import { GardenView } from './views/garden-view';
+import { HomeView } from './views/home-view';
+import { LibraryView } from './views/library-view';
+import { ModuleView } from './views/module-view';
+import { NavView } from './views/nav-view';
+import { ProgramView } from './views/program-view';
+import { ProjectView } from './views/project-view';
+import { DiagnosticsView, ReviewView } from './views/review-view';
+import { ShelvingView } from './views/shelving-view';
+import { UnitView } from './views/unit-view';
+
 export class LearningOSUI extends Plugin {
+  [key: string]: any;
   async onload() {
     this.settings = { ...DEFAULT_SETTINGS, ...(await this.loadData()) };
     this.settings.uiDrafts ||= { stages: {}, unitNotes: {}, selectedStages: {}, inbox: { title: '', text: '' } };
@@ -274,7 +308,7 @@ export class LearningOSUI extends Plugin {
     else if (query.trim()) {
       let attempts = 0;
       const transfer = () => {
-        const input = [...document.querySelectorAll('.prompt-input')]
+        const input = [...document.querySelectorAll<HTMLInputElement>('.prompt-input')]
           .find((candidate) => candidate.offsetParent !== null);
         if (!input && attempts++ < 20) { setTimeout(transfer, 50); return; }
         if (!input || input.value) return;
@@ -432,3 +466,5 @@ export class LearningOSUI extends Plugin {
     return prompt;
   }
 }
+
+export default LearningOSUI;

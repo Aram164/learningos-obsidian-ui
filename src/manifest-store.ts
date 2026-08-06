@@ -1,5 +1,17 @@
+import { CONTRACT_VERSION } from './constants';
+import { assertManifestV2 } from './contracts/manifest-v2';
+import type { ManifestV2 } from './contracts/manifest-v2';
+
 export class ManifestStore {
-  constructor(app) {
+  private readonly app: any;
+  ready: boolean;
+  error: string;
+  data: (ManifestV2 & Record<string, any>) | null;
+  records: any[];
+  byId: Map<string, any>;
+  contractVersion: number | null = null;
+  snapshotId: string | null = null;
+  constructor(app: any) {
     this.app = app;
     this.ready = false;
     this.error = '';
@@ -15,11 +27,13 @@ export class ManifestStore {
       if (!(await this.app.vault.adapter.exists('generated/manifest.json'))) {
         throw new Error('Projection unavailable — rebuild it to continue.');
       }
-      const manifest = JSON.parse(await this.app.vault.adapter.read('generated/manifest.json'));
-      const version = manifest?._generated?.contract_version;
+      const parsed: any = JSON.parse(await this.app.vault.adapter.read('generated/manifest.json'));
+      const version = parsed?._generated?.contract_version;
       if (version !== CONTRACT_VERSION) {
         throw new Error(`Unsupported manifest contract ${version ?? 'unknown'}; LearningOS UI requires contract ${CONTRACT_VERSION}.`);
       }
+      assertManifestV2(parsed);
+      const manifest: ManifestV2 & Record<string, any> = parsed;
       this.data = manifest;
       this.contractVersion = version;
       this.snapshotId = manifest._generated.snapshot_id;
@@ -30,14 +44,14 @@ export class ManifestStore {
       // ordering authority for rails and progress counts — index plus ordered
       // list, never two traversals of the same access path (ADR-006, fifth).
       for (const group of ['programs', 'modules', 'projects', 'units', 'study_maps', 'stages', 'thematic_groups', 'topic_packs']) {
-        for (const row of manifest[group] || []) if (row?.id) this.byId.set(row.id, row);
+        for (const row of (manifest as any)[group] || []) if (row?.id) this.byId.set(row.id, row);
       }
       this.ready = true;
       this.error = '';
       return true;
-    } catch (error) {
+    } catch (error: unknown) {
       this.ready = false;
-      this.error = error?.message || String(error);
+      this.error = error instanceof Error ? error.message : String(error);
       return false;
     }
   }
@@ -86,8 +100,9 @@ export class ManifestStore {
   studyMaps() { return this.rows('study_maps'); }
   gardenEntries() { return this.rows('garden_entries'); }
   aiAction(actionId) {
+    const available = this.data?.ai_actions?.available;
     return this.rows('ai_actions_available').find((row) => row.id === actionId)
-      || (this.data?.ai_actions?.available || []).find((row) => row?.id === actionId) || null;
+      || (Array.isArray(available) ? available : []).find((row) => row?.id === actionId) || null;
   }
   aiProviders() {
     const rows = this.data?.ai_actions?.provider_adapters;

@@ -1,9 +1,13 @@
+import { Modal, Notice } from 'obsidian';
+import { button, empty, localFilePath, pageHeader, section } from '../components';
+
 /**
  * One note after a learning session, attached to the unit rather than to every
  * selected stage. Text drafts are kept locally until the guarded core command
  * confirms a write. Attachments are selected for the current save only.
  */
 export class UnitNoteModal extends Modal {
+  [key: string]: any;
   constructor(app, plugin, unit, studyMap) {
     super(app);
     this.plugin = plugin;

@@ -1,3 +1,7 @@
+import { ItemView } from 'obsidian';
+import { button, empty, icon } from '../components';
+import { VIEW_NAV } from '../constants';
+
 /**
  * Seven permanent destinations, nothing else. Areas (Bachelor's / Skills /
  * Thesis) are sub-areas of Learn; the decision queues (Shelving / Garden /
@@ -6,6 +10,7 @@
  * system is large.
  */
 export class NavView extends ItemView {
+  [key: string]: any;
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; }
   getViewType() { return VIEW_NAV; }
   getDisplayText() { return 'LearningOS · Navigator'; }

@@ -1,3 +1,6 @@
+import { Modal } from 'obsidian';
+import { button, empty } from '../components';
+
 /**
  * Structural LearningOS search.
  *
@@ -7,6 +10,7 @@
  * separate integration.
  */
 export class GlobalSearchModal extends Modal {
+  [key: string]: any;
   constructor(app, plugin, initialQuery = '') {
     super(app);
     this.plugin = plugin;

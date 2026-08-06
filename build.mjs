@@ -2,49 +2,153 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const files = [
-  'src/constants.ts',
-  'src/app/router.ts',
-  'src/manifest-store.ts',
-  'src/gateway-client.ts',
-  'src/infrastructure/ai-action-client.ts',
-  'src/components.ts',
-  'src/app/global-search.ts',
-  'src/app/unit-note-modal.ts',
-  'src/features/ai-actions/action-button.ts',
-  'src/views/home-view.ts',
-  'src/views/program-view.ts',
-  'src/views/module-view.ts',
-  'src/views/project-view.ts',
-  'src/views/unit-view.ts',
-  'src/views/library-view.ts',
-  'src/views/atlas-view.ts',
-  'src/views/shelving-view.ts',
-  'src/views/boundary-view.ts',
-  'src/views/review-view.ts',
-  'src/views/garden-view.ts',
-  'src/views/nav-view.ts',
-  'src/settings.ts',
-  'src/main.ts',
-];
+const pluginDir = path.join(root, 'plugin');
+const outfile = path.join(pluginDir, 'main.js');
+fs.mkdirSync(pluginDir, { recursive: true });
 
-const header = `'use strict';\n\nconst { Plugin, PluginSettingTab, ItemView, Modal, Notice, Setting, setIcon } = require('obsidian');\nconst { execFile } = require('child_process');\nconst fs = require('fs');\nconst nodePath = require('path');\nconst { shell, webUtils } = require('electron');\n`;
-const sources = files.map((relative) => ({
+async function loadEsbuild() {
+  try {
+    const module = await import('esbuild');
+    return module.build;
+  } catch (error) {
+    if ((process.env.CI || process.env.LEARNINGOS_REQUIRE_ESBUILD === '1')
+        && process.env.LEARNINGOS_ALLOW_FALLBACK !== '1') {
+      throw new Error(`esbuild is required in CI/production builds: ${error.message}`);
+    }
+    return null;
+  }
+}
+
+async function loadTypeScript() {
+  try {
+    const module = await import('typescript');
+    return module.default || module;
+  } catch (_) {
+    const globalRoot = execFileSync('npm', ['root', '-g'], { encoding: 'utf8' }).trim();
+    const module = await import(pathToFileURL(path.join(globalRoot, 'typescript', 'lib', 'typescript.js')).href);
+    return module.default || module;
+  }
+}
+
+function resolveInternal(parentId, specifier) {
+  if (!specifier.startsWith('.')) return null;
+  const base = path.posix.normalize(path.posix.join(path.posix.dirname(parentId), specifier));
+  for (const candidate of [`${base}.ts`, path.posix.join(base, 'index.ts')]) {
+    if (fs.existsSync(path.join(root, candidate))) return candidate;
+  }
+  throw new Error(`Cannot resolve ${specifier} from ${parentId}`);
+}
+
+async function fallbackBundle() {
+  const ts = await loadTypeScript();
+  const entry = 'src/main.ts';
+  const queue = [entry];
+  const sources = new Map();
+
+  while (queue.length) {
+    const id = queue.shift();
+    if (sources.has(id)) continue;
+    const source = fs.readFileSync(path.join(root, id), 'utf8');
+    sources.set(id, source);
+    const imports = ts.preProcessFile(source, true, true).importedFiles
+      .map((item) => resolveInternal(id, item.fileName)).filter(Boolean);
+    for (const dependency of imports) if (!sources.has(dependency)) queue.push(dependency);
+  }
+
+  const modules = [...sources].sort(([left], [right]) => left.localeCompare(right));
+  const wrappers = modules.map(([id, source]) => {
+    const transpiled = ts.transpileModule(source, {
+      fileName: id,
+      compilerOptions: {
+        target: ts.ScriptTarget.ES2022,
+        module: ts.ModuleKind.CommonJS,
+        esModuleInterop: true,
+        importsNotUsedAsValues: ts.ImportsNotUsedAsValues.Remove,
+      },
+      reportDiagnostics: true,
+    });
+    const errors = (transpiled.diagnostics || []).filter((diagnostic) => diagnostic.category === ts.DiagnosticCategory.Error);
+    if (errors.length) {
+      const formatted = ts.formatDiagnosticsWithColorAndContext(errors, {
+        getCurrentDirectory: () => root,
+        getCanonicalFileName: (name) => name,
+        getNewLine: () => '\n',
+      });
+      throw new Error(formatted);
+    }
+    return `${JSON.stringify(id)}: function(module, exports, require) {\n${transpiled.outputText}\n}`;
+  });
+
+  const output = `'use strict';\n` +
+`// Offline verification fallback. CI and release builds require esbuild.\n` +
+`const __nativeRequire = require;\n` +
+`const __modules = {\n${wrappers.join(',\n')}\n};\n` +
+`const __cache = Object.create(null);\n` +
+`function __resolve(parentId, specifier) {\n` +
+`  if (!specifier.startsWith('.')) return null;\n` +
+`  const parent = parentId.split('/'); parent.pop();\n` +
+`  for (const part of specifier.split('/')) {\n` +
+`    if (!part || part === '.') continue;\n` +
+`    if (part === '..') parent.pop(); else parent.push(part);\n` +
+`  }\n` +
+`  const base = parent.join('/');\n` +
+`  if (__modules[base + '.ts']) return base + '.ts';\n` +
+`  if (__modules[base + '/index.ts']) return base + '/index.ts';\n` +
+`  throw new Error('Cannot resolve ' + specifier + ' from ' + parentId);\n` +
+`}\n` +
+`function __load(id) {\n` +
+`  if (__cache[id]) return __cache[id].exports;\n` +
+`  const factory = __modules[id];\n` +
+`  if (!factory) return __nativeRequire(id);\n` +
+`  const module = { exports: {} }; __cache[id] = module;\n` +
+`  factory(module, module.exports, (specifier) => {\n` +
+`    const resolved = __resolve(id, specifier);\n` +
+`    return resolved ? __load(resolved) : __nativeRequire(specifier);\n` +
+`  });\n` +
+`  return module.exports;\n` +
+`}\n` +
+`module.exports = __load('src/main.ts').default;\n`;
+  fs.writeFileSync(outfile, output, 'utf8');
+  return { bundler: 'typescript-fallback', modules: modules.map(([id]) => id) };
+}
+
+async function esbuildBundle(build) {
+  const result = await build({
+    absWorkingDir: root,
+    entryPoints: ['src/main.ts'],
+    outfile,
+    bundle: true,
+    format: 'cjs',
+    platform: 'node',
+    target: 'es2022',
+    external: ['obsidian', 'electron', '@codemirror/*', '@lezer/*', 'node:*'],
+    treeShaking: true,
+    sourcemap: false,
+    metafile: true,
+    logLevel: 'silent',
+    banner: { js: "'use strict';" },
+    // Preserve the plugin's historical CommonJS surface while source code uses
+    // the standard Obsidian default export.
+    footer: { js: 'module.exports = module.exports.default;' },
+  });
+  return {
+    bundler: 'esbuild',
+    modules: Object.keys(result.metafile.inputs)
+      .filter((relative) => relative.startsWith('src/') && relative.endsWith('.ts'))
+      .sort(),
+  };
+}
+
+const esbuild = await loadEsbuild();
+const buildResult = esbuild ? await esbuildBundle(esbuild) : await fallbackBundle();
+const output = fs.readFileSync(outfile);
+const sources = buildResult.modules.map((relative) => ({
   relative,
   source: fs.readFileSync(path.join(root, relative), 'utf8'),
 }));
-const sections = sources.map(({ relative, source }) => {
-  const stripped = source.replace(/^export\s+(?=(?:class|const|function)\s+[A-Za-z_$])/gm, '');
-  return `\n/* ---- ${relative} ---- */\n${stripped.trim()}\n`;
-});
-const output = `${header}${sections.join('')}\nmodule.exports = LearningOSUI;\n`;
-const pluginDir = path.join(root, 'plugin');
-fs.mkdirSync(pluginDir, { recursive: true });
-fs.writeFileSync(path.join(pluginDir, 'main.js'), output, 'utf8');
-
 const sha256 = (value) => `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 const pluginManifest = JSON.parse(fs.readFileSync(path.join(pluginDir, 'manifest.json'), 'utf8'));
 const contract = JSON.parse(fs.readFileSync(path.join(root, 'contracts', 'manifest-v2.lock.json'), 'utf8'));
@@ -59,18 +163,21 @@ if (!sourceRevision) {
 const sourceMaterial = [
   fs.readFileSync(path.join(root, 'build.mjs'), 'utf8'),
   fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
+  fs.readFileSync(path.join(root, 'tsconfig.json'), 'utf8'),
   fs.readFileSync(path.join(root, 'contracts', 'manifest-v2.lock.json'), 'utf8'),
   ...sources.flatMap(({ relative, source }) => [relative, source]),
 ].join('\0');
 const buildInfo = {
-  schema_version: 1,
+  schema_version: 2,
+  bundler: buildResult.bundler,
+  entry_point: 'src/main.ts',
   ui_version: pluginManifest.version,
   manifest_contract_version: contract.contract_version,
   source_revision: sourceRevision,
   source_fingerprint: sha256(sourceMaterial),
   bundle_sha256: sha256(output),
   node_version: process.version,
-  modules: files,
+  modules: buildResult.modules,
 };
 fs.writeFileSync(path.join(pluginDir, 'build-info.json'), `${JSON.stringify(buildInfo, null, 2)}\n`, 'utf8');
-console.log(`build: ${files.length} TypeScript modules -> plugin/main.js (${Buffer.byteLength(output)} bytes, ${buildInfo.bundle_sha256})`);
+console.log(`build: ${buildResult.bundler} bundled ${buildResult.modules.length} modules -> plugin/main.js (${output.byteLength} bytes, ${buildInfo.bundle_sha256})`);

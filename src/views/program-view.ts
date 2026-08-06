@@ -1,4 +1,9 @@
+import { ItemView, Notice } from 'obsidian';
+import { badge, button, disclosure, empty, localFilePath, pageHeader, progressRow, projectedExcerpt, section, unitCard } from '../components';
+import { LEARN_AREAS, VIEW_PROGRAM } from '../constants';
+
 export class ProgramView extends ItemView {
+  [key: string]: any;
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.programId = null; }
   getViewType() { return VIEW_PROGRAM; }
   getDisplayText() { return 'LearningOS · Area'; }

@@ -1,9 +1,14 @@
+import { ItemView } from 'obsidian';
+import { badge, button, chip, disclosure, empty, pageHeader, section, unitCard, workspaceCard } from '../components';
+import { STATUS_ORDER, VIEW_MODULE } from '../constants';
+
 /**
  * Four tabs, because a module page was four pages wearing one coat: learning
  * work, resources, and administration each have their own reading mode. Units
  * is the default — the learner is here to study, not to check a credit count.
  */
 export class ModuleView extends ItemView {
+  [key: string]: any;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -18,7 +23,7 @@ export class ModuleView extends ItemView {
   getViewType() { return VIEW_MODULE; }
   getDisplayText() { return 'LearningOS · Modules'; }
 
-  async setState(state = {}) {
+  async setState(state: any = {}) {
     this.screen = state.screen || (state.moduleId ? 'detail' : 'groups');
     this.groupId = state.groupId || null;
     this.query = state.query || '';

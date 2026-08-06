@@ -1,3 +1,7 @@
+import { ItemView } from 'obsidian';
+import { boundaryPolicy, button, empty, icon, pageHeader, projectedExcerpt, section } from '../components';
+import { ICONS, VIEW_ATLAS } from '../constants';
+
 /**
  * Domain atlas — the cross-domain map (ADR-005).
  *
@@ -11,6 +15,7 @@
 export const ATLAS_ROLE_ORDER = ['crosswalk', 'reference', 'synthesis', 'exercise-bank', 'mock-exam'];
 
 export class AtlasView extends ItemView {
+  [key: string]: any;
   constructor(leaf, plugin) { super(leaf); this.plugin = plugin; this.domain = null; }
   getViewType() { return VIEW_ATLAS; }
   getDisplayText() { return 'LearningOS · Domain atlas'; }

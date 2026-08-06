@@ -1,3 +1,7 @@
+import { ItemView, Notice } from 'obsidian';
+import { badge, button, chip, disclosure, empty, icon, overflowMenu, pageHeader, section } from '../components';
+import { VIEW_UNIT } from '../constants';
+
 /**
  * The Unit is where learning actually happens, so it gets the strictest
  * discipline: a stage rail and one current-work panel. Notes are added once
@@ -5,6 +9,7 @@
  * occupy a permanent panel or become mandatory per stage.
  */
 export class UnitView extends ItemView {
+  [key: string]: any;
   constructor(leaf, plugin) {
     super(leaf); this.plugin = plugin; this.unitId = null; this.stageId = null;
   }

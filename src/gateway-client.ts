@@ -1,5 +1,10 @@
+import process from 'node:process';
+
 export class GatewayClient {
-  constructor(plugin) {
+  private readonly plugin: any;
+  private chain: Promise<void>;
+  pending: number;
+  constructor(plugin: any) {
     this.plugin = plugin;
     // The write lock lives here, not in a view, because the thing being
     // protected is the single CLI process and the snapshot it was handed.
@@ -12,7 +17,7 @@ export class GatewayClient {
    * the chain: the next task runs regardless of how the previous one settled,
    * but never alongside it.
    */
-  enqueue(task) {
+  enqueue<T>(task: () => T | PromiseLike<T>): Promise<T> {
     this.pending += 1;
     const run = this.chain.then(task, task);
     this.chain = run.then(() => undefined, () => undefined)
@@ -29,7 +34,7 @@ export class GatewayClient {
    * learner's text behind a success notice. `expectJson: false` is only for
    * the text-reporting commands (`validate`, `generate`).
    */
-  call(args, { expectJson = true } = {}) {
+  call(args: string[], { expectJson = true }: { expectJson?: boolean } = {}): Promise<any> {
     return new Promise((resolve, reject) => {
       this.plugin.runLos(args, (error, stdout, stderr) => {
         if (error) { reject(new Error(stderr || error.message || String(error))); return; }
@@ -109,7 +114,7 @@ export class GatewayClient {
   }
 }
 
-export function explicitAiContext(plugin, context = {}) {
+export function explicitAiContext(plugin: any, context: any = {}) {
   const unit = context.unitId ? plugin.store.get(context.unitId) : null;
   const module = context.moduleId ? plugin.store.get(context.moduleId) :
     (unit ? plugin.store.get(unit.module_id) : null);
