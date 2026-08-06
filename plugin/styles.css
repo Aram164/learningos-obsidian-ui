@@ -994,3 +994,109 @@
   .los-project-link { align-items: stretch; flex-direction: column; }
   .los-project-node-children { margin-left: var(--size-4-2); }
 }
+
+
+/* LEARNINGOS STRICT TOKEN-ONLY PALETTE CANDIDATE */
+
+.workspace-leaf-content[data-type^="learningos-"] {
+  color-scheme: light;
+
+  --los-palette-canvas: rgb(247 244 236);
+  --los-palette-sidebar: rgb(236 230 216);
+  --los-palette-surface: rgb(255 253 249);
+  --los-palette-subtle: rgb(242 237 227);
+  --los-palette-selected: rgb(234 216 220);
+  --los-palette-selected-hover: rgb(226 203 209);
+  --los-palette-brand: rgb(122 49 67);
+  --los-palette-brand-hover: rgb(105 42 58);
+  --los-palette-text: rgb(36 41 33);
+  --los-palette-muted: rgb(98 104 95);
+  --los-palette-faint: rgb(129 134 125);
+  --los-palette-border: rgb(217 209 194);
+  --los-palette-on-brand: rgb(255 255 255);
+
+  --background-primary: var(--los-palette-canvas);
+  --background-primary-alt: var(--los-palette-surface);
+  --background-secondary: var(--los-palette-surface);
+  --background-secondary-alt: var(--los-palette-subtle);
+
+  --background-modifier-border: var(--los-palette-border);
+  --background-modifier-border-hover: var(--los-palette-brand);
+  --background-modifier-border-focus: var(--los-palette-brand);
+  --background-modifier-hover: var(--los-palette-selected);
+  --background-modifier-active-hover: var(--los-palette-selected-hover);
+
+  --interactive-normal: var(--los-palette-surface);
+  --interactive-hover: var(--los-palette-selected);
+  --interactive-accent: var(--los-palette-brand);
+  --interactive-accent-hover: var(--los-palette-brand-hover);
+  --interactive-accent-rgb: 122, 49, 67;
+
+  --text-normal: var(--los-palette-text);
+  --text-muted: var(--los-palette-muted);
+  --text-faint: var(--los-palette-faint);
+  --text-accent: var(--los-palette-brand);
+  --text-accent-hover: var(--los-palette-brand-hover);
+  --text-on-accent: var(--los-palette-on-brand);
+
+  --icon-color: var(--los-palette-muted);
+  --icon-color-hover: var(--los-palette-brand);
+  --icon-color-active: var(--los-palette-brand);
+
+  --nav-item-color: var(--los-palette-text);
+  --nav-item-color-hover: var(--los-palette-text);
+  --nav-item-color-active: var(--los-palette-brand);
+  --nav-item-background-hover: var(--los-palette-surface);
+  --nav-item-background-active: var(--los-palette-selected);
+}
+
+.workspace-leaf-content[data-type^="learningos-"],
+.workspace-leaf-content[data-type^="learningos-"] > .view-content {
+  background-color: var(--los-palette-canvas);
+}
+
+.workspace-leaf-content[data-type="learningos-nav"],
+.workspace-leaf-content[data-type="learningos-nav"] > .view-content,
+.workspace-leaf-content[data-type="learningos-nav"] .los-app-nav {
+  background-color: var(--los-palette-sidebar);
+}
+
+
+/* LEARNINGOS STRICT SPACING POLISH CANDIDATE
+ *
+ * Adds breathing room only between authored copy and adjacent controls.
+ * No columns, widths, positioning, navigation, or workspace geometry change.
+ */
+
+.workspace-leaf-content[data-type^="learningos-"] .los-actions,
+.workspace-leaf-content[data-type^="learningos-"] .los-tabs,
+.workspace-leaf-content[data-type^="learningos-"] .los-stack-actions {
+  column-gap: var(--los-3);
+  row-gap: var(--los-2);
+}
+
+.workspace-leaf-content[data-type^="learningos-"] .los-card > .los-actions,
+.workspace-leaf-content[data-type^="learningos-"] .los-workspace-card > .los-actions,
+.workspace-leaf-content[data-type^="learningos-"] .los-resource-copy + .los-actions,
+.workspace-leaf-content[data-type^="learningos-"] .los-date-copy > .los-actions,
+.workspace-leaf-content[data-type^="learningos-"] .los-stage-goal + .los-actions,
+.workspace-leaf-content[data-type^="learningos-"] .los-empty > .los-actions {
+  margin-top: var(--los-3);
+}
+
+.workspace-leaf-content[data-type^="learningos-"] .los-card p + .los-actions,
+.workspace-leaf-content[data-type^="learningos-"] .los-detail-page p + .los-actions,
+.workspace-leaf-content[data-type^="learningos-"] .los-garden-card p + .los-garden-actions {
+  margin-top: var(--los-3);
+}
+
+.workspace-leaf-content[data-type^="learningos-"] .los-resource-copy > *:last-child,
+.workspace-leaf-content[data-type^="learningos-"] .los-date-copy > *:last-child,
+.workspace-leaf-content[data-type^="learningos-"] .los-row > p:last-child {
+  margin-bottom: 0;
+}
+
+.workspace-leaf-content[data-type^="learningos-"] .los-unit-note-actions,
+.workspace-leaf-content[data-type^="learningos-"] .los-garden-actions {
+  gap: var(--los-3);
+}
