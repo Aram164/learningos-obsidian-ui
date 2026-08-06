@@ -6,8 +6,10 @@
  */
 export const MANIFEST_CONTRACT_VERSION = 2 as const;
 
-export type JsonRecord = Record<string, any>;
-export type ProjectionRecord = JsonRecord;
+export type JsonRecord = Record<string, unknown>;
+
+/** Dynamic UI projection until each manifest family has a dedicated interface. */
+export type ProjectionRecord = Record<string, any>;
 
 export interface UnitNoteAttachmentV2 { path: string; label: string; }
 export interface UnitNoteSectionV2 {
@@ -86,27 +88,27 @@ export interface GeneratedMetadataV2 extends JsonRecord {
 
 export interface ManifestV2 extends JsonRecord {
   _generated: GeneratedMetadataV2;
-  academic_deadlines: readonly JsonRecord[];
-  ai_actions: JsonRecord;
-  backlinks: JsonRecord;
-  counts: JsonRecord;
-  garden_entries: readonly JsonRecord[];
-  indexes: JsonRecord;
-  module_source_maps: readonly JsonRecord[];
-  modules: readonly JsonRecord[];
-  programs: readonly JsonRecord[];
-  progress: JsonRecord;
-  artifact_revisions: JsonRecord;
-  project_aliases: JsonRecord;
+  academic_deadlines: readonly ProjectionRecord[];
+  ai_actions: ProjectionRecord;
+  backlinks: ProjectionRecord;
+  counts: ProjectionRecord;
+  garden_entries: readonly ProjectionRecord[];
+  indexes: ProjectionRecord;
+  module_source_maps: readonly ProjectionRecord[];
+  modules: readonly ProjectionRecord[];
+  programs: readonly ProjectionRecord[];
+  progress: ProjectionRecord;
+  artifact_revisions: ProjectionRecord;
+  project_aliases: ProjectionRecord;
   project_relationships: readonly ProjectRelationshipV2[];
   projects: readonly ProjectV2[];
-  quarantine_boundaries: readonly JsonRecord[];
-  records: readonly JsonRecord[];
-  relations: readonly JsonRecord[];
-  resume_pointer: JsonRecord | null;
-  semesters: readonly JsonRecord[];
-  stages: readonly JsonRecord[];
-  study_maps: readonly JsonRecord[];
+  quarantine_boundaries: readonly ProjectionRecord[];
+  records: readonly ProjectionRecord[];
+  relations: readonly ProjectionRecord[];
+  resume_pointer: ProjectionRecord | null;
+  semesters: readonly ProjectionRecord[];
+  stages: readonly ProjectionRecord[];
+  study_maps: readonly ProjectionRecord[];
   thematic_groups: readonly ThematicGroupV2[];
   topic_packs: readonly TopicPackV2[];
   units: readonly UnitV2[];

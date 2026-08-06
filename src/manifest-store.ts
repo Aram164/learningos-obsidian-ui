@@ -3,13 +3,22 @@ import { assertManifestV2 } from './contracts/manifest-v2';
 import type {
   ManifestV2,
   ProjectionRecord,
+  UnitNoteSectionV2,
 } from './contracts/manifest-v2';
+
+function isRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return typeof value === 'object'
+    && value !== null
+    && !Array.isArray(value);
+}
 
 export class ManifestStore {
   private readonly app: any;
   ready: boolean;
   error: string;
-  data: (ManifestV2 & Record<string, any>) | null;
+  data: ManifestV2 | null;
   records: ProjectionRecord[];
   byId: Map<string, ProjectionRecord>;
   contractVersion: number | null = null;
@@ -30,13 +39,23 @@ export class ManifestStore {
       if (!(await this.app.vault.adapter.exists('generated/manifest.json'))) {
         throw new Error('Projection unavailable — rebuild it to continue.');
       }
-      const parsed: any = JSON.parse(await this.app.vault.adapter.read('generated/manifest.json'));
-      const version = parsed?._generated?.contract_version;
+      const parsed: unknown = JSON.parse(
+        await this.app.vault.adapter.read(
+          'generated/manifest.json',
+        ),
+      );
+      const generated = isRecord(parsed)
+        && isRecord(parsed._generated)
+        ? parsed._generated
+        : null;
+      const version = generated?.contract_version;
       if (version !== CONTRACT_VERSION) {
-        throw new Error(`Unsupported manifest contract ${version ?? 'unknown'}; LearningOS UI requires contract ${CONTRACT_VERSION}.`);
+        throw new Error(
+          `Unsupported manifest contract ${String(version ?? 'unknown')}; LearningOS UI requires contract ${CONTRACT_VERSION}.`,
+        );
       }
       assertManifestV2(parsed);
-      const manifest: ManifestV2 & Record<string, any> = parsed;
+      const manifest: ManifestV2 = parsed;
       this.data = manifest;
       this.contractVersion = version;
       this.snapshotId = manifest._generated.snapshot_id;
@@ -46,8 +65,22 @@ export class ManifestStore {
       // study_map_id/unit_id/module_id). `study_maps[].stages` stays the
       // ordering authority for rails and progress counts — index plus ordered
       // list, never two traversals of the same access path (ADR-006, fifth).
-      for (const group of ['programs', 'modules', 'projects', 'units', 'study_maps', 'stages', 'thematic_groups', 'topic_packs']) {
-        for (const row of (manifest as any)[group] || []) if (row?.id) this.byId.set(row.id, row);
+      const indexedGroups = [
+        'programs',
+        'modules',
+        'projects',
+        'units',
+        'study_maps',
+        'stages',
+        'thematic_groups',
+        'topic_packs',
+      ] as const;
+      for (const group of indexedGroups) {
+        for (const row of manifest[group]) {
+          if (typeof row?.id === 'string') {
+            this.byId.set(row.id, row);
+          }
+        }
       }
       this.ready = true;
       this.error = '';
@@ -109,8 +142,9 @@ export class ManifestStore {
     return this.topicPacks().filter((row) => (row.thematic_group_ids || []).includes(groupId));
   }
   units() { return this.rows('units'); }
-  unitNoteSections(unitId: string): any[] {
-    return this.get(unitId)?.note_sections || [];
+  unitNoteSections(unitId: string): UnitNoteSectionV2[] {
+    const sections = this.get(unitId)?.note_sections;
+    return Array.isArray(sections) ? sections : [];
   }
   studyMaps() { return this.rows('study_maps'); }
   gardenEntries() { return this.rows('garden_entries'); }

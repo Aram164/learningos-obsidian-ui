@@ -1,9 +1,9 @@
 import { setIcon } from 'obsidian';
 import { webUtils } from 'electron';
 import { ICONS, SAFE_URL_PROTOCOLS } from './constants';
+import type { ProjectionRecord } from './contracts/manifest-v2';
 
 type UiNode = any;
-type ProjectionRecord = Record<string, any>;
 type ClickHandler =
   ((event: MouseEvent) => unknown) | null | undefined;
 type OverflowItem =
