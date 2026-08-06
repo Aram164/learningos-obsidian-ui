@@ -30,6 +30,35 @@ import { ProjectView } from './views/project-view';
 import { DiagnosticsView, ReviewView } from './views/review-view';
 import { ShelvingView } from './views/shelving-view';
 import { UnitView } from './views/unit-view';
+import type { ProjectionRecord } from './contracts/manifest-v2';
+
+interface RecoveredStageDraft {
+  id: string;
+  title: string;
+  text: string;
+}
+
+interface UnitNoteDraft {
+  title: string;
+  text: string;
+  recoveredStageIds: string[];
+}
+
+interface PythonResolution {
+  path: string;
+  origin: string;
+  attempted: string[];
+}
+
+type LosCallback = (
+  error: Error | null,
+  stdout: string,
+  stderr: string,
+) => void;
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
 
 export class LearningOSUI extends Plugin {
   [key: string]: any;
@@ -48,19 +77,19 @@ export class LearningOSUI extends Plugin {
     this.aiActions = new AIActionClient(this);
     this.router = new ApplicationRouter(this);
     await this.store.load();
-    this.registerView(VIEW_HOME, (leaf) => new HomeView(leaf, this));
-    this.registerView(VIEW_NAV, (leaf) => new NavView(leaf, this));
-    this.registerView(VIEW_PROGRAM, (leaf) => new ProgramView(leaf, this));
-    this.registerView(VIEW_MODULE, (leaf) => new ModuleView(leaf, this));
-    this.registerView(VIEW_PROJECT, (leaf) => new ProjectView(leaf, this));
-    this.registerView(VIEW_UNIT, (leaf) => new UnitView(leaf, this));
-    this.registerView(VIEW_LIBRARY, (leaf) => new LibraryView(leaf, this));
-    this.registerView(VIEW_ATLAS, (leaf) => new AtlasView(leaf, this));
-    this.registerView(VIEW_SHELVING, (leaf) => new ShelvingView(leaf, this));
-    this.registerView(VIEW_BOUNDARY, (leaf) => new BoundaryView(leaf, this));
-    this.registerView(VIEW_REVIEW, (leaf) => new ReviewView(leaf, this));
-    this.registerView(VIEW_GARDEN, (leaf) => new GardenView(leaf, this));
-    this.registerView(VIEW_DIAGNOSTICS, (leaf) => new DiagnosticsView(leaf, this));
+    this.registerView(VIEW_HOME, (leaf: any) => new HomeView(leaf, this));
+    this.registerView(VIEW_NAV, (leaf: any) => new NavView(leaf, this));
+    this.registerView(VIEW_PROGRAM, (leaf: any) => new ProgramView(leaf, this));
+    this.registerView(VIEW_MODULE, (leaf: any) => new ModuleView(leaf, this));
+    this.registerView(VIEW_PROJECT, (leaf: any) => new ProjectView(leaf, this));
+    this.registerView(VIEW_UNIT, (leaf: any) => new UnitView(leaf, this));
+    this.registerView(VIEW_LIBRARY, (leaf: any) => new LibraryView(leaf, this));
+    this.registerView(VIEW_ATLAS, (leaf: any) => new AtlasView(leaf, this));
+    this.registerView(VIEW_SHELVING, (leaf: any) => new ShelvingView(leaf, this));
+    this.registerView(VIEW_BOUNDARY, (leaf: any) => new BoundaryView(leaf, this));
+    this.registerView(VIEW_REVIEW, (leaf: any) => new ReviewView(leaf, this));
+    this.registerView(VIEW_GARDEN, (leaf: any) => new GardenView(leaf, this));
+    this.registerView(VIEW_DIAGNOSTICS, (leaf: any) => new DiagnosticsView(leaf, this));
     this.addSettingTab(new LearningOSSettingsTab(this.app, this));
     this.addRibbonIcon('route', 'Open LearningOS', () => this.openHome());
     this.addCommand({ id: 'open-home', name: 'Open Home', callback: () => this.openHome() });
@@ -97,25 +126,37 @@ export class LearningOSUI extends Plugin {
     }, 250);
   }
 
-  stageDraftKey(unitId, stageId) { return `${unitId}::${stageId}`; }
-  getStageDraft(unitId, stageId, savedText = '') {
+  stageDraftKey(unitId: string, stageId: string): string { return `${unitId}::${stageId}`; }
+  getStageDraft(
+    unitId: string,
+    stageId: string,
+    savedText = '',
+  ): { text: string; dirty: boolean } {
     const key = this.stageDraftKey(unitId, stageId);
     const entry = this.settings.uiDrafts.stages[key];
     return { text: entry?.text ?? savedText, dirty: entry != null && entry.text !== savedText };
   }
-  setStageDraft(unitId, stageId, text, savedText = '') {
+  setStageDraft(
+    unitId: string,
+    stageId: string,
+    text: string,
+    savedText = '',
+  ): void {
     const key = this.stageDraftKey(unitId, stageId);
     if (text === savedText) delete this.settings.uiDrafts.stages[key];
     else this.settings.uiDrafts.stages[key] = { text };
     this.scheduleDraftSave();
   }
-  clearStageDraft(unitId, stageId) {
+  clearStageDraft(unitId: string, stageId: string): void {
     delete this.settings.uiDrafts.stages[this.stageDraftKey(unitId, stageId)];
     this.scheduleDraftSave();
   }
-  getUnitNoteDraft(unitId, stages = []) {
+  getUnitNoteDraft(
+    unitId: string,
+    stages: ProjectionRecord[] = [],
+  ): UnitNoteDraft {
     const saved = this.settings.uiDrafts.unitNotes[unitId];
-    const recovered = [];
+    const recovered: RecoveredStageDraft[] = [];
     for (const stage of stages || []) {
       const entry = this.settings.uiDrafts.stages[this.stageDraftKey(unitId, stage.id)];
       if (entry?.text?.trim()) recovered.push({ id: stage.id, title: stage.title || stage.id, text: entry.text });
@@ -129,25 +170,40 @@ export class LearningOSUI extends Plugin {
       recoveredStageIds: recovered.map((row) => row.id),
     };
   }
-  setUnitNoteDraft(unitId, title, text) {
+  setUnitNoteDraft(
+    unitId: string,
+    title: string,
+    text: string,
+  ): void {
     if (!String(title || '').trim() && !String(text || '').trim()) delete this.settings.uiDrafts.unitNotes[unitId];
     else this.settings.uiDrafts.unitNotes[unitId] = { title, text };
     this.scheduleDraftSave();
   }
-  clearUnitNoteDraft(unitId, recoveredStageIds = []) {
+  clearUnitNoteDraft(
+    unitId: string,
+    recoveredStageIds: readonly string[] = [],
+  ): void {
     delete this.settings.uiDrafts.unitNotes[unitId];
     for (const stageId of recoveredStageIds || []) {
       delete this.settings.uiDrafts.stages[this.stageDraftKey(unitId, stageId)];
     }
     this.scheduleDraftSave();
   }
-  openUnitNote(unit, studyMap) {
+  openUnitNote(
+    unit: ProjectionRecord,
+    studyMap: ProjectionRecord | null,
+  ): UnitNoteModal {
     const modal = new UnitNoteModal(this.app, this, unit, studyMap);
     modal.open();
     return modal;
   }
-  getSelectedStage(unitId) { return this.settings.uiDrafts.selectedStages[unitId] || null; }
-  setSelectedStage(unitId, stageId) {
+  getSelectedStage(unitId: string): string | null {
+    return this.settings.uiDrafts.selectedStages[unitId] || null;
+  }
+  setSelectedStage(
+    unitId: string,
+    stageId: string | null,
+  ): void {
     if (stageId) this.settings.uiDrafts.selectedStages[unitId] = stageId;
     else delete this.settings.uiDrafts.selectedStages[unitId];
     this.scheduleDraftSave();
@@ -155,23 +211,30 @@ export class LearningOSUI extends Plugin {
   /** Done-when ticks are UI-owned working state: they help the learner see how
    *  far through a stage's criteria they are, and are never a second record of
    *  completion. The core still learns only "complete" from `stage-progress`. */
-  getDoneWhen(unitId, stageId) {
+  getDoneWhen(unitId: string, stageId: string): boolean[] {
     return this.settings.uiDrafts.doneWhen[this.stageDraftKey(unitId, stageId)] || [];
   }
-  setDoneWhen(unitId, stageId, index, checked) {
+  setDoneWhen(
+    unitId: string,
+    stageId: string,
+    index: number,
+    checked: boolean,
+  ): void {
     const key = this.stageDraftKey(unitId, stageId);
-    const marks = [...(this.settings.uiDrafts.doneWhen[key] || [])];
+    const marks: boolean[] = [
+      ...(this.settings.uiDrafts.doneWhen[key] || []),
+    ];
     marks[index] = checked;
     if (marks.some(Boolean)) this.settings.uiDrafts.doneWhen[key] = marks;
     else delete this.settings.uiDrafts.doneWhen[key];
     this.scheduleDraftSave();
   }
-  clearDoneWhen(unitId, stageId) {
+  clearDoneWhen(unitId: string, stageId: string): void {
     delete this.settings.uiDrafts.doneWhen[this.stageDraftKey(unitId, stageId)];
     this.scheduleDraftSave();
   }
   getInboxDraft() { return { ...this.settings.uiDrafts.inbox }; }
-  setInboxDraft(title, text) {
+  setInboxDraft(title: string, text: string): void {
     this.settings.uiDrafts.inbox = { title, text };
     this.scheduleDraftSave();
   }
@@ -188,9 +251,12 @@ export class LearningOSUI extends Plugin {
    */
   /** The plugin's own version, kept off the `manifest.` access path so the
    *  contract-key test cannot mistake it for a projection field. */
-  uiVersion() { const info = this.manifest; return info?.version || 'unknown'; }
+  uiVersion(): string {
+    const info = this.manifest;
+    return info?.version || 'unknown';
+  }
 
-  resolvePython() {
+  resolvePython(): PythonResolution {
     const base = this.app.vault.adapter.getBasePath();
     const configured = String(this.settings.pythonPath || '').trim();
     const candidates = [
@@ -206,7 +272,7 @@ export class LearningOSUI extends Plugin {
     return { path: fallback, origin: 'PATH fallback', attempted: [...attempted, fallback] };
   }
 
-  runLos(args, callback) {
+  runLos(args: string[], callback: LosCallback): void {
     const base = this.app.vault.adapter.getBasePath();
     const python = this.resolvePython().path;
     const script = nodePath.join(base, 'tools', 'los.py');
@@ -216,12 +282,14 @@ export class LearningOSUI extends Plugin {
   async reloadStore() {
     const ok = await this.store.load();
     if (!ok) throw new Error(this.store.error);
-    this.app.workspace.iterateAllLeaves((leaf) => leaf.view?.render?.());
+    this.app.workspace.iterateAllLeaves(
+      (leaf: any) => leaf.view?.render?.(),
+    );
   }
 
   /** The active destination is a display fact, so the Navigator is the only
    *  thing it redraws — never the working view the learner is reading. */
-  setActiveNav(key) {
+  setActiveNav(key: string): void {
     this.activeNav = key;
     for (const leaf of this.app.workspace.getLeavesOfType(VIEW_NAV)) leaf.view?.render?.();
   }
@@ -229,7 +297,7 @@ export class LearningOSUI extends Plugin {
   async openNav() { return this.router.openNavigator(); }
   async openHome() { return this.router.navigate({ name: 'home' }); }
   /** Learn is one destination; the areas are sub-areas inside it. */
-  openLearn(programId = null) {
+  openLearn(programId: string | null = null) {
     const area = programId || this.settings.learnArea || LEARN_AREAS[0][0];
     this.settings.learnArea = area;
     this.scheduleDraftSave();
@@ -244,28 +312,39 @@ export class LearningOSUI extends Plugin {
     modal.open();
     return modal;
   }
-  openProgram(programId) { return this.router.navigate({ name: 'program', programId }); }
+  openProgram(programId: string) {
+    return this.router.navigate({ name: 'program', programId });
+  }
   openModules() { return this.router.navigate({ name: 'module-groups' }); }
   openProjects(query = '') { return this.router.navigate({ name: 'project-list', query }); }
-  openProject(projectId, tab = 'overview') {
+  openProject(projectId: string, tab = 'overview') {
     const current = this.router.snapshot().current;
     const changingTab = current?.name === 'project-detail' && current.projectId === projectId;
     return this.router.navigate({ name: 'project-detail', projectId, tab }, { pushHistory: !changingTab });
   }
-  openModuleGroup(groupId, query = '') {
+  openModuleGroup(groupId: string, query = '') {
     return this.router.navigate({ name: 'module-list', groupId, query });
   }
-  openModuleDetail(moduleId, componentId = null, tab = null) {
+  openModuleDetail(
+    moduleId: string,
+    componentId: string | null = null,
+    tab: string | null = null,
+  ) {
     return this.router.navigate({ name: 'module-detail', moduleId, componentId, tab });
   }
   /** Compatibility alias used by Learn, Home and existing deep links. */
-  openModule(moduleId, componentId = null) { return this.openModuleDetail(moduleId, componentId); }
-  openUnit(unitId, stageId = null) {
+  openModule(moduleId: string, componentId: string | null = null) {
+    return this.openModuleDetail(moduleId, componentId);
+  }
+  openUnit(unitId: string, stageId: string | null = null) {
     const selectedStage = stageId || this.getSelectedStage(unitId);
     if (selectedStage) this.setSelectedStage(unitId, selectedStage);
     return this.router.navigate({ name: 'unit', unitId, stageId: selectedStage });
   }
-  openLibrary(recordId = undefined, recordType = undefined) {
+  openLibrary(
+    recordId: string | null | undefined = undefined,
+    recordType: string | undefined = undefined,
+  ) {
     if (recordId === undefined || recordId === null) {
       return this.openLibraryHome(recordType === 'topic-pack' ? 'topic-packs' : 'sources');
     }
@@ -278,31 +357,51 @@ export class LearningOSUI extends Plugin {
   openLibraryHome(collection = 'sources') {
     return this.router.navigate({ name: 'library-home', collection });
   }
-  openLibraryGroup(collection, groupId, query = '', facet = 'all') {
+  openLibraryGroup(
+    collection: string,
+    groupId: string,
+    query = '',
+    facet = 'all',
+  ) {
     return this.router.navigate({ name: 'library-group', collection, groupId, query, facet });
   }
-  openSourceDetail(resourceId, fromGroupId = null, query = '', facet = 'all') {
+  openSourceDetail(
+    resourceId: string,
+    fromGroupId: string | null = null,
+    query = '',
+    facet = 'all',
+  ) {
     return this.router.navigate({ name: 'source-detail', resourceId, fromGroupId, query, facet });
   }
-  openTopicPackDetail(topicPackId, fromGroupId = null, query = '') {
+  openTopicPackDetail(
+    topicPackId: string,
+    fromGroupId: string | null = null,
+    query = '',
+  ) {
     return this.router.navigate({ name: 'topic-pack-detail', topicPackId, fromGroupId, query });
   }
-  openCatalogueDetail(catalogueId) {
+  openCatalogueDetail(catalogueId: string) {
     return this.router.navigate({ name: 'catalogue-detail', catalogueId });
   }
   /** Hidden compatibility surface used by Atlas and pre-migration deep links. */
-  openLibraryFiltered(recordType, domain = '') {
+  openLibraryFiltered(recordType: string, domain = '') {
     return this.router.navigate({ name: 'legacy-library-list', recordType, domain, query: '' });
   }
-  openAtlas(domain = null) { return this.router.navigate({ name: 'atlas', domain }); }
-  openShelving(unitId = null) { return this.router.navigate({ name: 'shelving', unitId }); }
-  openBoundary(boundaryId) { return this.router.navigate({ name: 'boundary', boundaryId }); }
+  openAtlas(domain: string | null = null) {
+    return this.router.navigate({ name: 'atlas', domain });
+  }
+  openShelving(unitId: string | null = null) {
+    return this.router.navigate({ name: 'shelving', unitId });
+  }
+  openBoundary(boundaryId: string) {
+    return this.router.navigate({ name: 'boundary', boundaryId });
+  }
   back() { return this.router.back(); }
   openResume() {
     const pointer = this.store.data?.resume_pointer;
     return pointer ? this.openUnit(pointer.unit_id, pointer.stage_id) : this.openHome();
   }
-  openFullTextSearch(query = '') {
+  openFullTextSearch(query = ''): void {
     const ok = this.app.commands?.executeCommandById?.('omnisearch:show-modal');
     if (!ok) new Notice('Omnisearch is unavailable; structural Library search still works.');
     else if (query.trim()) {
@@ -328,7 +427,10 @@ export class LearningOSUI extends Plugin {
    * capture started from different leaves could still overlap, each carrying an
    * `--expected-snapshot` the other had already invalidated.
    */
-  async mutate(action, { reload = true } = {}) {
+  async mutate(
+    action: () => any,
+    { reload = true }: { reload?: boolean } = {},
+  ): Promise<any> {
     return this.gateway.enqueue(async () => {
       const result = await action();
       if (reload) await this.reloadStore();
@@ -343,7 +445,9 @@ export class LearningOSUI extends Plugin {
         await this.gateway.call(['generate'], { expectJson: false });
       });
       new Notice('LearningOS projection rebuilt.');
-    } catch (error) { new Notice(error?.message || String(error)); }
+    } catch (error: unknown) {
+      new Notice(errorMessage(error));
+    }
   }
 
   async reviewSessionEnd() {
@@ -351,7 +455,10 @@ export class LearningOSUI extends Plugin {
       const review = await this.gateway.endSession();
       new SessionEndModal(this.app, this, review).open();
       return review;
-    } catch (error) { new Notice(error?.message || String(error)); return null; }
+    } catch (error: unknown) {
+      new Notice(errorMessage(error));
+      return null;
+    }
   }
 
   /**
@@ -360,22 +467,22 @@ export class LearningOSUI extends Plugin {
    * escape checks in the open helpers below cannot catch it — and every open
    * funnels through one of them.
    */
-  isQuarantinedPath(path) {
+  isQuarantinedPath(path: string): boolean {
     const posix = String(path || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
     return posix === 'Job' || posix.startsWith('Job/') || posix.includes('/Job/');
   }
-  refuseQuarantined(path) {
+  refuseQuarantined(path: string): boolean {
     if (!this.isQuarantinedPath(path)) return false;
     new Notice('Job/ is quarantined — LearningOS never opens or displays it.');
     return true;
   }
 
-  async openVaultPath(path) {
+  async openVaultPath(path: string) {
     if (this.refuseQuarantined(path)) return;
     const file = this.app.vault.getAbstractFileByPath(path);
     if (!file) { new Notice(`File unavailable: ${path}`); return; }
-    let existing = null;
-    this.app.workspace.iterateAllLeaves((leaf) => {
+    let existing: any = null;
+    this.app.workspace.iterateAllLeaves((leaf: any) => {
       if (!existing && leaf.view?.file?.path === path) existing = leaf;
     });
     if (existing) {
@@ -387,7 +494,10 @@ export class LearningOSUI extends Plugin {
     await leaf.openFile(file);
     return leaf;
   }
-  async openExternalPath(path, successMessage = 'Opened in the default app.') {
+  async openExternalPath(
+    path: string,
+    successMessage = 'Opened in the default app.',
+  ): Promise<boolean> {
     if (this.refuseQuarantined(path)) return false;
     if (!path || !fs.existsSync(path)) { new Notice(`File unavailable: ${path || 'unknown path'}`); return false; }
     const error = await shell.openPath(path);
@@ -395,7 +505,7 @@ export class LearningOSUI extends Plugin {
     new Notice(successMessage);
     return true;
   }
-  openMaterialPath(path) {
+  openMaterialPath(path: string) {
     const vault = this.app.vault.adapter.getBasePath();
     const learningRoot = nodePath.dirname(vault);
     const materialsRoot = nodePath.resolve(learningRoot, 'materials');
@@ -406,7 +516,7 @@ export class LearningOSUI extends Plugin {
     }
     return this.openExternalPath(fullPath, 'Opened the local material in its default app.');
   }
-  openAuthoredPath(path) {
+  openAuthoredPath(path: string) {
     if (this.refuseQuarantined(path)) return false;
     const extension = nodePath.extname(path || '').toLocaleLowerCase();
     if (['.md', '.pdf', '.canvas', '.base'].includes(extension)) return this.openVaultPath(path);
@@ -418,7 +528,7 @@ export class LearningOSUI extends Plugin {
     }
     return this.openExternalPath(fullPath, 'Opened the authored file in its default app.');
   }
-  openRecord(record) {
+  openRecord(record: ProjectionRecord | null | undefined) {
     if (!record) return;
     if (record.type === 'unit') return this.openUnit(record.id);
     if (record.type === 'module') return this.openModule(record.id);
@@ -433,14 +543,18 @@ export class LearningOSUI extends Plugin {
     }
     if (record.type === 'workspace') {
       if (record.project_id) return this.openProject(record.project_id);
-      const unit = (record.unit_ids || []).map((id) => this.store.get(id)).find(Boolean);
+      const unit = (record.unit_ids || [])
+        .map((id: string) => this.store.get(id))
+        .find(Boolean);
       if (unit) return this.openUnit(unit.id);
-      const module = (record.module_ids || []).map((id) => this.store.get(id)).find(Boolean);
+      const module = (record.module_ids || [])
+        .map((id: string) => this.store.get(id))
+        .find(Boolean);
       return module ? this.openModule(module.id) : this.openHome();
     }
     if (record.path) return this.openAuthoredPath(record.path);
   }
-  openResource(resource) {
+  openResource(resource: ProjectionRecord) {
     if (resource.vault_path) return this.openVaultPath(resource.vault_path);
     if (resource.url) {
       // A projected URL is still untrusted input to a viewer: `javascript:`,
@@ -451,12 +565,15 @@ export class LearningOSUI extends Plugin {
       return leaf.setViewState({ type: 'webviewer', active: true, state: { url: url.href } });
     }
   }
-  copyText(value) {
+  copyText(value: string): void {
     try { navigator.clipboard.writeText(value); new Notice(`Copied ${value}`); }
     catch (_) { new Notice(value); }
   }
 
-  async askAiScoped(request, context = {}) {
+  async askAiScoped(
+    request: string,
+    context: Record<string, string | undefined> = {},
+  ): Promise<string> {
     const envelope = explicitAiContext(this, context);
     const prompt = `${request}\n\nLearningOS explicit context (authoritative):\n${JSON.stringify(envelope, null, 2)}\n\nThe active file is supplementary context only. Use only action-specific LearningOS capabilities for writes; never infer a global course or learning path.`;
     this.lastAiPrompt = prompt;
