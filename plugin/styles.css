@@ -2406,3 +2406,425 @@ body {
     animation-duration: 0.01ms !important;
   }
 }
+
+
+/* FIGMA PRECISION POLISH 2
+ *
+ * Screenshot-driven corrections:
+ * - consistent centered content shell
+ * - card-based Review queues
+ * - integrated Garden action layout
+ * - stable Back alignment
+ * - calmer Module Unit cards
+ */
+
+
+/* Consistent back-navigation alignment */
+
+.los-route-back {
+  display: flex !important;
+  width: 100% !important;
+  max-width: 1122px !important;
+  min-height: 24px !important;
+  justify-content: flex-start;
+  margin: 0 auto 8px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  color: var(--los-text-brand) !important;
+  text-align: left;
+}
+
+.los-route-back:hover {
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--los-text-brand) !important;
+}
+
+
+/* Module detail alignment and card refinement */
+
+.los-module-view > .los-group-title {
+  width: 100%;
+  max-width: 1122px;
+  margin: 22px auto 10px;
+  color: var(--los-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  text-transform: capitalize;
+}
+
+.los-module-view > .los-card-grid {
+  width: 100%;
+  max-width: 1122px;
+  margin: 0 auto 20px;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.los-unit-card {
+  display: flex !important;
+  min-height: 138px !important;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 14px 15px !important;
+  text-align: left;
+}
+
+.los-unit-card .los-card-top {
+  display: grid;
+  width: 100%;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+}
+
+.los-unit-card h3 {
+  margin: 0;
+  font-size: 15px !important;
+  line-height: 20px;
+}
+
+.los-unit-card > p {
+  margin: 9px 0;
+  color: var(--los-text-secondary);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 19px;
+}
+
+.los-unit-card .los-progress-copy {
+  margin-top: auto;
+  color: var(--los-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.los-unit-card.los-s-ready {
+  border-color: var(--los-border-default) !important;
+}
+
+.los-unit-card:hover,
+.los-unit-card:focus-visible {
+  border-color: var(--los-border-brand) !important;
+}
+
+
+/* Review queue convergence */
+
+.los-review-view > .los-page-header {
+  margin-bottom: 28px;
+}
+
+.los-review-list {
+  display: grid;
+  width: 100%;
+  max-width: 1122px;
+  gap: 10px;
+  margin: 0 auto;
+}
+
+.los-review-row {
+  display: grid;
+  width: 100%;
+  min-height: 76px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  padding: 13px 16px;
+  border: 1px solid var(--los-border-default);
+  border-radius: 12px;
+  background: var(--los-background-surface);
+  box-shadow: var(--los-card-shadow);
+}
+
+.los-review-copy {
+  min-width: 0;
+}
+
+.los-review-heading {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+}
+
+.los-review-heading strong {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.los-review-count {
+  display: inline-grid;
+  min-width: 24px;
+  height: 24px;
+  place-items: center;
+  padding: 0 7px;
+  border-radius: var(--los-r-pill);
+  background: var(--los-background-selected);
+  color: var(--los-text-brand);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.los-review-copy > .los-micro {
+  margin-top: 3px;
+  color: var(--los-text-secondary) !important;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.los-review-row > .los-btn {
+  min-width: 126px;
+  justify-self: end;
+}
+
+.los-review-clear {
+  justify-self: end;
+  color: var(--los-text-secondary) !important;
+  font-size: 13px;
+}
+
+.los-review-view > .los-disclosure {
+  width: 100%;
+  max-width: 1122px;
+  margin: 18px auto 0;
+  overflow: hidden;
+  border: 1px solid var(--los-border-default);
+  border-radius: 12px;
+  background: var(--los-background-surface);
+  box-shadow: var(--los-card-shadow);
+}
+
+.los-review-view > .los-disclosure > summary {
+  min-height: 48px;
+  padding: 14px 16px;
+  color: var(--los-text-brand);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  list-style: none;
+}
+
+.los-review-view > .los-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.los-review-view > .los-disclosure > summary::before {
+  content: "›";
+  display: inline-block;
+  width: 18px;
+  color: var(--los-text-brand);
+  transition: transform 120ms ease;
+}
+
+.los-review-view > .los-disclosure[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+.los-review-view .los-disclosure-body {
+  padding: 0 16px 16px;
+}
+
+.los-review-view .los-disclosure-body .los-card-grid {
+  max-width: none;
+  margin: 0;
+}
+
+
+/* Garden shell and action hierarchy */
+
+.los-garden-view > .los-page-header {
+  margin-bottom: 28px;
+}
+
+.los-garden-toolbar {
+  top: 18px !important;
+}
+
+.los-garden-toolbar .los-btn {
+  min-width: 128px;
+}
+
+.los-garden-list {
+  display: grid;
+  width: 100%;
+  max-width: 1122px;
+  gap: 16px;
+  margin: 0 auto;
+}
+
+.los-garden-card {
+  padding: 20px !important;
+  border-color: var(--los-border-default) !important;
+  border-radius: 14px !important;
+  box-shadow: var(--los-card-shadow);
+}
+
+.los-garden-card:hover {
+  border-color: var(--los-border-default) !important;
+}
+
+.los-garden-card .los-card-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: start;
+}
+
+.los-garden-card .los-card-top h2 {
+  margin: 0;
+  font-size: 18px !important;
+  line-height: 24px;
+}
+
+.los-garden-card > .los-micro {
+  margin-top: 8px;
+  color: var(--los-text-secondary) !important;
+}
+
+.los-garden-tags {
+  display: flex;
+  gap: 7px;
+  margin: 14px 0 18px;
+  flex-wrap: wrap;
+}
+
+.los-garden-tags .los-badge {
+  background: var(--los-background-selected);
+  color: var(--los-text-brand) !important;
+}
+
+.los-ai-request-status {
+  margin: 16px 0;
+  padding: 14px 16px;
+  border: 1px solid var(--los-border-default);
+  border-radius: 12px;
+  background: var(--los-background-subtle);
+}
+
+.los-ai-request-status > strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.los-garden-actions {
+  display: flex;
+  gap: 10px;
+  align-items: end;
+  padding-top: 16px;
+  border-top: 1px solid var(--los-border-default);
+  flex-wrap: wrap;
+}
+
+.los-garden-actions > .los-btn {
+  min-width: 112px;
+}
+
+.los-ai-action-row {
+  display: grid;
+  min-width: min(100%, 330px);
+  grid-template-columns: minmax(160px, 1fr) auto;
+  gap: 10px;
+  align-items: end;
+  margin-left: auto;
+}
+
+.los-ai-provider {
+  min-height: 38px !important;
+  height: 38px;
+  padding: 8px 12px !important;
+  border-radius: 9px !important;
+  font-size: 13px;
+}
+
+.los-ai-action-button {
+  min-width: 132px;
+  height: 38px;
+  color: var(--los-text-brand) !important;
+}
+
+.los-ai-action-button:not([disabled]):hover {
+  border-color: var(--los-border-brand) !important;
+  background: var(--los-background-selected) !important;
+}
+
+.los-ai-consent {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  color: var(--los-text-secondary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.los-ai-consent input {
+  width: 18px;
+  min-height: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+}
+
+
+/* Slightly calmer Home rows */
+
+.los-home-row {
+  min-height: 60px;
+  padding: 11px 14px;
+}
+
+.los-home-row-copy strong {
+  letter-spacing: -0.01em;
+}
+
+
+/* Screenshot-size and narrow-screen corrections */
+
+@media (max-width: 1050px) {
+  .los-garden-toolbar {
+    position: static !important;
+    margin-top: 16px;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 720px) {
+  .los-review-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .los-review-row > .los-btn,
+  .los-review-clear {
+    justify-self: start;
+  }
+
+  .los-garden-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .los-ai-action-row {
+    width: 100%;
+    grid-template-columns: minmax(0, 1fr);
+    margin-left: 0;
+  }
+
+  .los-ai-action-button {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .los-review-view > .los-disclosure > summary::before {
+    transition: none;
+  }
+}

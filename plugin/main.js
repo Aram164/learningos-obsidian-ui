@@ -148,7 +148,7 @@ class ApplicationRouter {
       case 'learn': return { type: VIEW_PROGRAM, state: { programId: route.programId }, nav: 'learn' };
       case 'capture': return { type: VIEW_PROGRAM, state: { programId: 'inbox' }, nav: 'capture' };
       case 'review': return { type: VIEW_REVIEW, state: {}, nav: 'review' };
-      case 'garden': return { type: VIEW_GARDEN, state: {}, nav: 'review' };
+      case 'garden': return { type: VIEW_GARDEN, state: {}, nav: 'garden' };
       case 'diagnostics': return { type: VIEW_DIAGNOSTICS, state: {}, nav: 'diagnostics' };
       case 'program': return {
         type: VIEW_PROGRAM, state: { programId: route.programId },
@@ -3418,9 +3418,9 @@ class GardenView extends ItemView {
         'Rebuild views', () => this.plugin.generate());
       return;
     }
-    pageHeader(root, 'Review', 'Garden',
+    const header = pageHeader(root, 'Review', 'Garden',
       'Seeds remain human-owned. “Shelve with AI” prepares a bounded request bundle; nothing changes until an approved delivery is applied.');
-    const toolbar = root.createDiv({ cls: 'los-actions' });
+    const toolbar = header.createDiv({ cls: 'los-actions los-garden-toolbar' });
     button(toolbar, 'Open Garden base', () => this.plugin.openVaultPath('bases/garden.base'), 'quiet');
     button(toolbar, 'Refresh projection', () => this.plugin.generate(), 'quiet');
 

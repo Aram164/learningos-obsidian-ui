@@ -79,7 +79,7 @@ export class ApplicationRouter {
       case 'learn': return { type: VIEW_PROGRAM, state: { programId: route.programId }, nav: 'learn' };
       case 'capture': return { type: VIEW_PROGRAM, state: { programId: 'inbox' }, nav: 'capture' };
       case 'review': return { type: VIEW_REVIEW, state: {}, nav: 'review' };
-      case 'garden': return { type: VIEW_GARDEN, state: {}, nav: 'review' };
+      case 'garden': return { type: VIEW_GARDEN, state: {}, nav: 'garden' };
       case 'diagnostics': return { type: VIEW_DIAGNOSTICS, state: {}, nav: 'diagnostics' };
       case 'program': return {
         type: VIEW_PROGRAM, state: { programId: route.programId },
