@@ -1,4 +1,5 @@
 'use strict';
+"use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -139,7 +140,8 @@ function chip(parent, record, onClick) {
     cls: `los-chip los-t-${record?.type || "record"} is-clickable`,
     attr: { type: "button" }
   });
-  icon(el.createSpan({ cls: "los-chip-icon" }), ICONS[record?.type] || "circle");
+  const iconName = ICONS[String(record?.type || "")] || "circle";
+  icon(el.createSpan({ cls: "los-chip-icon" }), iconName);
   el.createSpan({ text: record?.title || record?.id || "Unknown" });
   if (onClick) el.addEventListener("click", () => onClick(record));
   return el;
@@ -235,7 +237,9 @@ function workspaceCard(parent, plugin, workspace, moduleContext = null) {
   next.createEl("p", { text: projectedExcerpt(workspace.next_action, 1600) || "No next action recorded." });
   if (workspace.deadline) badge(next, `Deadline ${workspace.deadline}`, "needs-map");
   const actions = card.createDiv({ cls: "los-actions" });
-  const moduleIds = (workspace.module_ids || []).filter((id) => id !== moduleContext);
+  const moduleIds = (workspace.module_ids || []).filter(
+    (id) => id !== moduleContext
+  );
   for (const id of moduleIds.slice(0, 3)) {
     const module2 = plugin.store.get(id);
     if (module2) button(actions, `Open ${module2.title}`, () => plugin.openModule(id), "quiet");
@@ -257,7 +261,9 @@ function unitCard(parent, plugin, unit) {
   card.createEl("p", { text: unit.scope });
   const map = plugin.store.mapForUnit(unit.id);
   if (map) {
-    const done = (map.stages || []).filter((row) => row.status === "complete").length;
+    const done = (map.stages || []).filter(
+      (row) => row.status === "complete"
+    ).length;
     card.createDiv({ cls: "los-progress-copy", text: `${done} of ${(map.stages || []).length} stages complete` });
   } else {
     card.createDiv({ cls: "los-progress-copy", text: "No study map yet" });
@@ -394,7 +400,9 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
       ...candidate.aliases,
       ...candidate.authors
     ].filter(Boolean).join(" ").toLocaleLowerCase();
-    return words.every((word) => haystack.includes(word));
+    return words.every(
+      (word) => haystack.includes(word)
+    );
   }
   rankedCandidates() {
     const needle = this.query.toLocaleLowerCase().trim();
@@ -746,6 +754,9 @@ var ApplicationRouter = class {
 
 // src/app/unit-note-modal.ts
 var import_obsidian3 = require("obsidian");
+function errorMessage(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 var UnitNoteModal = class extends import_obsidian3.Modal {
   constructor(app, plugin, unit, studyMap) {
     super(app);
@@ -758,13 +769,22 @@ var UnitNoteModal = class extends import_obsidian3.Modal {
     const root = this.contentEl;
     root.empty();
     root.addClass("los-root", "los-unit-note-modal");
-    const stages = Array.isArray(this.studyMap?.stages) ? this.studyMap.stages : [];
+    const stages = Array.isArray(
+      this.studyMap?.stages
+    ) ? this.studyMap.stages : [];
     const draft = this.plugin.getUnitNoteDraft(this.unit.id, stages);
-    this.recoveredStageIds = draft.recoveredStageIds || [];
-    this.referencedStageIds = [.../* @__PURE__ */ new Set([
-      ...this.unrecordedCompletedStages(stages),
-      ...this.recoveredStageIds
-    ])];
+    const recoveredStageIds = Array.isArray(
+      draft.recoveredStageIds
+    ) ? draft.recoveredStageIds.filter(
+      (id) => typeof id === "string"
+    ) : [];
+    this.recoveredStageIds = recoveredStageIds;
+    this.referencedStageIds = [
+      .../* @__PURE__ */ new Set([
+        ...this.unrecordedCompletedStages(stages),
+        ...recoveredStageIds
+      ])
+    ];
     pageHeader(
       root,
       "Learning session",
@@ -774,7 +794,11 @@ var UnitNoteModal = class extends import_obsidian3.Modal {
     const context = root.createDiv({ cls: "los-unit-note-context" });
     context.createDiv({ cls: "los-kicker", text: "Stages covered" });
     if (this.referencedStageIds.length) {
-      const names = this.referencedStageIds.map((id) => stages.find((stage) => stage.id === id)?.title || id);
+      const names = this.referencedStageIds.map(
+        (id) => stages.find(
+          (stage) => stage.id === id
+        )?.title || id
+      );
       context.createDiv({ text: names.join(" \xB7 ") });
     } else {
       context.createDiv({ cls: "los-micro", text: "No newly completed stage is required. You may still record a unit-level observation." });
@@ -815,8 +839,16 @@ var UnitNoteModal = class extends import_obsidian3.Modal {
     this.editor.focus();
   }
   unrecordedCompletedStages(stages) {
-    const already = new Set((this.unit.note_sections || []).flatMap((section3) => Array.isArray(section3.stage_ids) ? section3.stage_ids : []));
-    return stages.filter((stage) => ["complete", "skipped"].includes(stage.status) && !already.has(stage.id)).map((stage) => stage.id);
+    const already = new Set(
+      (this.unit.note_sections || []).flatMap(
+        (section3) => Array.isArray(section3.stage_ids) ? section3.stage_ids.filter(
+          (id) => typeof id === "string"
+        ) : []
+      )
+    );
+    return stages.filter(
+      (stage) => ["complete", "skipped"].includes(String(stage.status)) && typeof stage.id === "string" && !already.has(stage.id)
+    ).map((stage) => String(stage.id));
   }
   async save() {
     const text = String(this.editor?.value || "");
@@ -829,7 +861,7 @@ var UnitNoteModal = class extends import_obsidian3.Modal {
       new import_obsidian3.Notice("A LearningOS write is already running.");
       return;
     }
-    const filePaths = this.files.map((file) => localFilePath(file)).filter(Boolean);
+    const filePaths = this.files.map((file) => localFilePath(file)).filter((value) => Boolean(value));
     if (filePaths.length !== this.files.length) {
       new import_obsidian3.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
       return;
@@ -845,7 +877,7 @@ var UnitNoteModal = class extends import_obsidian3.Modal {
       new import_obsidian3.Notice("Learning-session note saved.");
       this.close();
     } catch (error) {
-      new import_obsidian3.Notice(error?.message || String(error));
+      new import_obsidian3.Notice(errorMessage(error));
     }
   }
   onClose() {
@@ -888,33 +920,36 @@ var GatewayClient = class {
    */
   call(args, { expectJson = true } = {}) {
     return new Promise((resolve2, reject) => {
-      this.plugin.runLos(args, (error, stdout, stderr) => {
-        if (error) {
-          reject(new Error(stderr || error.message || String(error)));
-          return;
+      this.plugin.runLos(
+        args,
+        (error, stdout, stderr) => {
+          if (error) {
+            reject(new Error(stderr || error.message || String(error)));
+            return;
+          }
+          const raw = String(stdout ?? "").trim();
+          if (!expectJson) {
+            resolve2({ ok: true, stdout: raw });
+            return;
+          }
+          if (!raw) {
+            reject(new Error("LearningOS wrote nothing back, so the change is unconfirmed. Your draft was kept."));
+            return;
+          }
+          let parsed = null;
+          try {
+            parsed = JSON.parse(raw);
+          } catch (_) {
+            reject(new Error(`LearningOS answered with unreadable output, so the change is unconfirmed and your draft was kept: ${raw.slice(0, 160)}`));
+            return;
+          }
+          if (!parsed || typeof parsed !== "object" || parsed.ok === false) {
+            reject(new Error(parsed?.error || "LearningOS refused the change; your draft was kept."));
+            return;
+          }
+          resolve2(parsed);
         }
-        const raw = String(stdout ?? "").trim();
-        if (!expectJson) {
-          resolve2({ ok: true, stdout: raw });
-          return;
-        }
-        if (!raw) {
-          reject(new Error("LearningOS wrote nothing back, so the change is unconfirmed. Your draft was kept."));
-          return;
-        }
-        let parsed = null;
-        try {
-          parsed = JSON.parse(raw);
-        } catch (_) {
-          reject(new Error(`LearningOS answered with unreadable output, so the change is unconfirmed and your draft was kept: ${raw.slice(0, 160)}`));
-          return;
-        }
-        if (!parsed || typeof parsed !== "object" || parsed.ok === false) {
-          reject(new Error(parsed?.error || "LearningOS refused the change; your draft was kept."));
-          return;
-        }
-        resolve2(parsed);
-      });
+      );
     });
   }
   guard() {
@@ -923,7 +958,12 @@ var GatewayClient = class {
   saveNote(unitId, stageId, text) {
     return this.call(["stage-note", unitId, stageId, "--replace", "--text", text, ...this.guard()]);
   }
-  saveUnitNote(unitId, { title = "", text, stageIds = [], filePaths = [] }) {
+  saveUnitNote(unitId, {
+    title = "",
+    text,
+    stageIds = [],
+    filePaths = []
+  }) {
     const args = ["unit-note", unitId, "--text", text];
     if (String(title).trim()) args.push("--title", String(title).trim());
     for (const stageId of stageIds || []) args.push("--stage-id", stageId);
@@ -984,7 +1024,7 @@ function explicitAiContext(plugin, context = {}) {
   const module2 = context.moduleId ? plugin.store.get(context.moduleId) : unit ? plugin.store.get(unit.module_id) : null;
   const studyMap = unit ? plugin.store.mapForUnit(unit.id) : null;
   const stage = context.stageId ? plugin.store.stage(context.stageId) : null;
-  const resources = stage?.resources || [];
+  const resources = Array.isArray(stage?.resources) ? stage.resources : [];
   return {
     area_program_id: context.programId || module2?.area_id || null,
     module_id: module2?.id || context.moduleId || null,
@@ -1085,6 +1125,9 @@ function assertManifestV2(value) {
 }
 
 // src/manifest-store.ts
+function isRecord2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 var ManifestStore = class {
   app;
   ready;
@@ -1107,10 +1150,17 @@ var ManifestStore = class {
       if (!await this.app.vault.adapter.exists("generated/manifest.json")) {
         throw new Error("Projection unavailable \u2014 rebuild it to continue.");
       }
-      const parsed = JSON.parse(await this.app.vault.adapter.read("generated/manifest.json"));
-      const version = parsed?._generated?.contract_version;
+      const parsed = JSON.parse(
+        await this.app.vault.adapter.read(
+          "generated/manifest.json"
+        )
+      );
+      const generated = isRecord2(parsed) && isRecord2(parsed._generated) ? parsed._generated : null;
+      const version = generated?.contract_version;
       if (version !== CONTRACT_VERSION) {
-        throw new Error(`Unsupported manifest contract ${version ?? "unknown"}; LearningOS UI requires contract ${CONTRACT_VERSION}.`);
+        throw new Error(
+          `Unsupported manifest contract ${String(version ?? "unknown")}; LearningOS UI requires contract ${CONTRACT_VERSION}.`
+        );
       }
       assertManifestV2(parsed);
       const manifest = parsed;
@@ -1119,8 +1169,22 @@ var ManifestStore = class {
       this.snapshotId = manifest._generated.snapshot_id;
       this.records = (manifest.records || []).filter((row) => row && typeof row === "object");
       this.byId = new Map(this.records.filter((row) => row?.id).map((row) => [row.id, row]));
-      for (const group of ["programs", "modules", "projects", "units", "study_maps", "stages", "thematic_groups", "topic_packs"]) {
-        for (const row of manifest[group] || []) if (row?.id) this.byId.set(row.id, row);
+      const indexedGroups = [
+        "programs",
+        "modules",
+        "projects",
+        "units",
+        "study_maps",
+        "stages",
+        "thematic_groups",
+        "topic_packs"
+      ];
+      for (const group of indexedGroups) {
+        for (const row of manifest[group]) {
+          if (typeof row?.id === "string") {
+            this.byId.set(row.id, row);
+          }
+        }
       }
       this.ready = true;
       this.error = "";
@@ -1191,7 +1255,8 @@ var ManifestStore = class {
     return this.rows("units");
   }
   unitNoteSections(unitId) {
-    return this.get(unitId)?.note_sections || [];
+    const sections = this.get(unitId)?.note_sections;
+    return Array.isArray(sections) ? sections : [];
   }
   studyMaps() {
     return this.rows("study_maps");
@@ -1237,11 +1302,22 @@ var ManifestStore = class {
     return this.data?.progress?.[moduleId] || {};
   }
   workspacesForModule(moduleId) {
-    const ids = this.data?.backlinks?.module_to_workspaces?.[moduleId] || [];
-    return ids.map((id) => this.get(id)).filter(Boolean);
+    const rawIds = this.data?.backlinks?.module_to_workspaces?.[moduleId];
+    const ids = Array.isArray(rawIds) ? rawIds.filter(
+      (id) => typeof id === "string"
+    ) : [];
+    return ids.map((id) => this.get(id)).filter(
+      (row) => row !== null
+    );
   }
   useUnits(sourceId) {
-    return (this.data?.indexes?.source_to_units?.[sourceId] || []).map((id) => this.get(id)).filter(Boolean);
+    const rawIds = this.data?.indexes?.source_to_units?.[sourceId];
+    const ids = Array.isArray(rawIds) ? rawIds.filter(
+      (id) => typeof id === "string"
+    ) : [];
+    return ids.map((id) => this.get(id)).filter(
+      (row) => row !== null
+    );
   }
   search(query, types = null) {
     const words = String(query || "").toLocaleLowerCase().split(/\s+/).filter(Boolean);
@@ -1300,6 +1376,9 @@ var ManifestStore = class {
 
 // src/settings.ts
 var import_obsidian4 = require("obsidian");
+function errorMessage2(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 var LearningOSSettingsTab = class extends import_obsidian4.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
@@ -1309,23 +1388,32 @@ var LearningOSSettingsTab = class extends import_obsidian4.PluginSettingTab {
     const root = this.containerEl;
     root.empty();
     root.createEl("h2", { text: "LearningOS UI" });
-    for (const [key, name, description] of [
+    const toggles = [
       ["openHomeOnStartup", "Open Home on startup", "Open the module-first Home view when the vault becomes ready."],
       ["pinHome", "Pin Home", "Keep the Home leaf available while opening units."],
       ["collapseSidebars", "Collapse the right sidebar", "Keep the learning workspace visually focused."],
       ["showAiRecommendation", "Show scoped AI action", "Display AI buttons that always include explicit curriculum context."]
-    ]) {
-      new import_obsidian4.Setting(root).setName(name).setDesc(description).addToggle((toggle) => toggle.setValue(this.plugin.settings[key]).onChange(async (value) => {
-        this.plugin.settings[key] = value;
-        await this.plugin.saveData(this.plugin.settings);
-      }));
+    ];
+    for (const [key, name, description] of toggles) {
+      new import_obsidian4.Setting(root).setName(name).setDesc(description).addToggle(
+        (toggle) => toggle.setValue(this.plugin.settings[key]).onChange(
+          async (value) => {
+            this.plugin.settings[key] = value;
+            await this.plugin.saveData(this.plugin.settings);
+          }
+        )
+      );
     }
     new import_obsidian4.Setting(root).setName("Python interpreter").setDesc("Leave blank to auto-detect: the project virtual environment, then the system Python.").addText((text) => text.setValue(this.plugin.settings.pythonPath || "").onChange(async (value) => {
       this.plugin.settings.pythonPath = value.trim();
       await this.plugin.saveData(this.plugin.settings);
     }));
-    new import_obsidian4.Setting(root).setName("Validate and rebuild").setDesc("Run the canonical core projection pipeline.").addButton((control) => control.setButtonText("Rebuild").setCta().onClick(() => this.plugin.generate()));
-    new import_obsidian4.Setting(root).setName("Diagnostics").setDesc("Contract versions, projection freshness, interpreter.").addButton((control) => control.setButtonText("Open").onClick(() => this.plugin.openDiagnostics()));
+    new import_obsidian4.Setting(root).setName("Validate and rebuild").setDesc("Run the canonical core projection pipeline.").addButton(
+      (control) => control.setButtonText("Rebuild").setCta().onClick(() => this.plugin.generate())
+    );
+    new import_obsidian4.Setting(root).setName("Diagnostics").setDesc("Contract versions, projection freshness, interpreter.").addButton(
+      (control) => control.setButtonText("Open").onClick(() => this.plugin.openDiagnostics())
+    );
     root.createEl("h3", { text: "About LearningOS" });
     root.createEl("p", { cls: "los-muted", text: OWNERSHIP_STATEMENT });
   }
@@ -1370,7 +1458,7 @@ var SessionEndModal = class extends import_obsidian4.Modal {
         new import_obsidian4.Notice(result.pushed ? "Learning session committed and pushed." : "Learning session committed.");
         this.close();
       } catch (error) {
-        new import_obsidian4.Notice(error?.message || String(error));
+        new import_obsidian4.Notice(errorMessage2(error));
       }
     }, "cta");
     button(actions, "Close without committing", () => this.close(), "quiet");
@@ -1398,7 +1486,7 @@ var AtlasView = class extends import_obsidian5.ItemView {
   getIcon() {
     return "map";
   }
-  async setState(state) {
+  async setState(state = {}) {
     if (state?.domain) this.domain = state.domain;
     this.render();
   }
@@ -1412,9 +1500,16 @@ var AtlasView = class extends import_obsidian5.ItemView {
   atlas() {
     const domains = /* @__PURE__ */ new Map();
     const bucket = (name) => {
-      const key = name || "cross-domain";
-      if (!domains.has(key)) domains.set(key, { name: key, notes: [], shelves: [] });
-      return domains.get(key);
+      const key = String(name || "cross-domain");
+      const existing = domains.get(key);
+      if (existing) return existing;
+      const created = {
+        name: key,
+        notes: [],
+        shelves: []
+      };
+      domains.set(key, created);
+      return created;
     };
     for (const note of this.plugin.store.of("note")) bucket(note.domain).notes.push(note);
     for (const shelf of this.plugin.store.of("collection")) bucket(shelf.domain).shelves.push(shelf);
@@ -1449,8 +1544,13 @@ var AtlasView = class extends import_obsidian5.ItemView {
     if (!this.domain || !domains.some((row) => row.name === this.domain)) this.domain = domains[0].name;
     const glance = root.createDiv({ cls: "los-atlas-glance" });
     for (const domain of domains) {
-      const entries = domain.shelves.reduce((total, shelf) => total + (shelf.entries || []).length, 0);
-      const crosswalks = domain.notes.filter((note) => note.role === "crosswalk").length;
+      const entries = domain.shelves.reduce(
+        (total, shelf) => total + (shelf.entries || []).length,
+        0
+      );
+      const crosswalks = domain.notes.filter(
+        (note) => note.role === "crosswalk"
+      ).length;
       const tile = glance.createEl("button", {
         cls: `los-atlas-tile is-clickable ${domain.name === this.domain ? "is-selected" : ""}`,
         attr: { type: "button", "aria-pressed": String(domain.name === this.domain) }
@@ -1495,7 +1595,9 @@ var AtlasView = class extends import_obsidian5.ItemView {
       () => this.plugin.openLibraryFiltered("note", domain.name),
       "quiet"
     );
-    const crosswalks = domain.notes.filter((note) => note.role === "crosswalk");
+    const crosswalks = domain.notes.filter(
+      (note) => note.role === "crosswalk"
+    );
     if (crosswalks.length) {
       const wrap = section(
         parent,
@@ -1506,9 +1608,10 @@ var AtlasView = class extends import_obsidian5.ItemView {
     }
     const byRole = /* @__PURE__ */ new Map();
     for (const note of domain.notes) {
-      const role = note.role || "synthesis";
-      if (!byRole.has(role)) byRole.set(role, []);
-      byRole.get(role).push(note);
+      const role = String(note.role || "synthesis");
+      const existingRows = byRole.get(role);
+      if (existingRows) existingRows.push(note);
+      else byRole.set(role, [note]);
     }
     const roles = [...byRole.keys()].sort((a, b) => {
       const rank = (role) => ATLAS_ROLE_ORDER.indexOf(role) + 1 || 99;
@@ -1521,7 +1624,8 @@ var AtlasView = class extends import_obsidian5.ItemView {
         "Grouped by role. Opening a row opens the note itself."
       );
       for (const role of roles) {
-        const rows = byRole.get(role).slice().sort((a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id)));
+        const roleRows = byRole.get(role) || [];
+        const rows = roleRows.slice().sort((a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id)));
         const group = notesWrap.createEl("details", { cls: "los-atlas-group" });
         if (role === "crosswalk" ? false : rows.length <= 12) group.setAttr("open", "open");
         group.createEl("summary", { text: `${role} (${rows.length})` });
@@ -1594,7 +1698,7 @@ var BoundaryView = class extends import_obsidian6.ItemView {
   getDisplayText() {
     return "LearningOS \xB7 Boundary";
   }
-  async setState(state) {
+  async setState(state = {}) {
     this.boundaryId = state?.boundaryId || this.boundaryId;
     this.render();
   }
@@ -1609,7 +1713,9 @@ var BoundaryView = class extends import_obsidian6.ItemView {
     const root = this.contentEl;
     root.empty();
     root.addClass("los-root", "los-boundary-view");
-    const boundary = (this.plugin.store.data?.quarantine_boundaries || []).find((row) => row.id === this.boundaryId);
+    const boundary = (this.plugin.store.data?.quarantine_boundaries || []).find(
+      (row) => row.id === this.boundaryId
+    );
     if (!boundary) {
       empty(root, "Boundary unavailable", "No quarantined content was loaded.");
       return;
@@ -1631,11 +1737,18 @@ var import_obsidian8 = require("obsidian");
 
 // src/features/ai-actions/action-button.ts
 var import_obsidian7 = require("obsidian");
+function errorMessage3(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const wrap = parent.createDiv({ cls: "los-ai-action-row" });
   const providers = plugin.aiActions.providers();
-  const available = providers.filter((row) => row.available);
-  let provider = available.some((row) => row.id === plugin.settings.preferredAiProvider) ? plugin.settings.preferredAiProvider : available[0]?.id || "manual-bundle";
+  const available = providers.filter(
+    (row) => Boolean(row.available)
+  );
+  let provider = available.some(
+    (row) => row.id === plugin.settings.preferredAiProvider
+  ) ? plugin.settings.preferredAiProvider : available[0]?.id || "manual-bundle";
   let jobConfirmed = !target.job_derived;
   const select = wrap.createEl("select", {
     cls: "los-ai-provider",
@@ -1671,12 +1784,16 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
     launch.setAttr("disabled", "disabled");
     launch.setText("Preparing\u2026");
     try {
-      const result = await plugin.aiActions.prepareGardenShelving(target.id, provider, jobConfirmed);
+      const result = await plugin.aiActions.prepareGardenShelving(
+        target.id,
+        provider,
+        jobConfirmed
+      );
       const bundlePath = result.bundle_path || result.request?.bundle_path;
       new import_obsidian7.Notice(bundlePath ? `AI request prepared: ${bundlePath}` : "AI request prepared.");
       onChanged?.(result);
     } catch (error) {
-      new import_obsidian7.Notice(error?.message || String(error));
+      new import_obsidian7.Notice(errorMessage3(error));
       launch.removeAttribute?.("disabled");
       launch.setText("Shelve with AI");
     }
@@ -1687,6 +1804,9 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
 }
 
 // src/views/garden-view.ts
+function errorMessage4(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 var GardenView = class extends import_obsidian8.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
@@ -1761,7 +1881,7 @@ var GardenView = class extends import_obsidian8.ItemView {
             new import_obsidian8.Notice("Approved AI delivery applied and projection refreshed.");
             this.render();
           } catch (error) {
-            new import_obsidian8.Notice(error?.message || String(error));
+            new import_obsidian8.Notice(errorMessage4(error));
           }
         }, "cta");
       }
@@ -1858,8 +1978,12 @@ var HomeView = class extends import_obsidian9.ItemView {
       text: `${module2?.title || unit.module_id} \xB7 ${unit.title}`
     });
     copy.createEl("h2", { text: stage.title });
-    const stages = Array.isArray(map?.stages) ? map.stages.filter(Boolean) : [];
-    const position = stages.findIndex((row) => row?.id === stage.id);
+    const stages = Array.isArray(map?.stages) ? map.stages.filter(
+      (row) => Boolean(row) && typeof row === "object"
+    ) : [];
+    const position = stages.findIndex(
+      (row) => row.id === stage.id
+    );
     const meta = copy.createDiv({ cls: "los-continue-meta" });
     if (stages.length) meta.createSpan({ text: `Stage ${position >= 0 ? position + 1 : 1} of ${stages.length}` });
     if (stage.estimate_minutes) meta.createSpan({ text: `${stage.estimate_minutes} min planned` });
@@ -1871,10 +1995,18 @@ var HomeView = class extends import_obsidian9.ItemView {
     button(actions, "Continue session", () => this.plugin.openUnit(unit.id, stage.id), "cta");
   }
   renderToday(root) {
-    const sectionEl = section(root, "Today", "Only items likely to affect the next decision.");
+    const sectionEl = section(
+      root,
+      "Today",
+      "Only items likely to affect the next decision."
+    );
     const items = [];
     const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-    const upcoming = this.plugin.store.rows("academic_deadlines").filter((row) => (row.end_date || row.start_date || "") >= today).sort((left, right) => String(left.start_date || left.end_date).localeCompare(String(right.start_date || right.end_date)));
+    const upcoming = this.plugin.store.rows("academic_deadlines").filter(
+      (row) => (row.end_date || row.start_date || "") >= today
+    ).sort(
+      (left, right) => String(left.start_date || left.end_date).localeCompare(String(right.start_date || right.end_date))
+    );
     for (const deadline of upcoming.slice(0, 2)) {
       const moduleId = deadline.module_id || deadline.modules?.[0]?.module_id;
       const title = deadline.kind === "registration-window" ? deadline.label : deadline.title || deadline.label;
@@ -1887,8 +2019,12 @@ var HomeView = class extends import_obsidian9.ItemView {
       });
     }
     const inbox = this.plugin.store.data.counts?.inbox_items || 0;
-    const shelving = this.plugin.store.units().filter((row) => row.status === "ready-to-shelve").length;
-    const needsMap = this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id)).length;
+    const shelving = this.plugin.store.units().filter(
+      (row) => row.status === "ready-to-shelve"
+    ).length;
+    const needsMap = this.plugin.store.units().filter(
+      (row) => !this.plugin.store.mapForUnit(row.id)
+    ).length;
     const reviewCount = inbox + shelving + needsMap;
     if (reviewCount) {
       items.push({
@@ -1926,8 +2062,22 @@ var HomeView = class extends import_obsidian9.ItemView {
     );
     const pointer = this.plugin.store.data.resume_pointer || {};
     const rows = [
-      ...this.plugin.store.modules().filter((module2) => module2.id !== pointer.module_id).filter((module2) => !["complete", "archived"].includes(module2.status)).map((record) => ({ record, type: record.kind === "skill" ? "Skill" : "Module", open: () => this.plugin.openModule(record.id) })),
-      ...this.plugin.store.projects().filter((project) => !["completed", "archived"].includes(project.status)).map((record) => ({ record, type: "Project", open: () => this.plugin.openProject(record.id) }))
+      ...this.plugin.store.modules().filter(
+        (module2) => module2.id !== pointer.module_id
+      ).filter(
+        (module2) => !["complete", "archived"].includes(module2.status)
+      ).map((record) => ({
+        record,
+        type: record.kind === "skill" ? "Skill" : "Module",
+        open: () => this.plugin.openModule(record.id)
+      })),
+      ...this.plugin.store.projects().filter(
+        (project) => !["completed", "archived"].includes(project.status)
+      ).map((record) => ({
+        record,
+        type: "Project",
+        open: () => this.plugin.openProject(record.id)
+      }))
     ].slice(0, 5);
     if (!rows.length) {
       empty(sectionEl, "No other active work", "New modules and projects will appear here when projected.");
@@ -1953,16 +2103,26 @@ var HomeView = class extends import_obsidian9.ItemView {
   }
   nextWorkspaceDate(workspace) {
     if (workspace.deadline) return String(workspace.deadline);
-    const moduleIds = new Set(workspace.module_ids || []);
+    const moduleIds = new Set(
+      (Array.isArray(workspace.module_ids) ? workspace.module_ids : []).filter(
+        (id) => typeof id === "string"
+      )
+    );
     const dates = [];
     for (const row of this.plugin.store.rows("academic_deadlines")) {
       if (row.kind === "exam" && moduleIds.has(row.module_id)) dates.push(row.start_date);
-      if (row.kind === "registration-window" && (row.modules || []).some((module2) => moduleIds.has(module2.module_id))) dates.push(row.start_date);
+      if (row.kind === "registration-window" && (row.modules || []).some(
+        (module2) => moduleIds.has(module2.module_id)
+      )) dates.push(row.start_date);
     }
     return dates.filter(Boolean).sort()[0] || "9999";
   }
   moduleNextAction(module2) {
-    const workspace = this.plugin.store.of("workspace").filter((row) => !row.archived && row.status !== "complete" && (row.module_ids || []).includes(module2.id)).sort((a, b) => this.nextWorkspaceDate(a).localeCompare(this.nextWorkspaceDate(b)))[0];
+    const workspace = this.plugin.store.of("workspace").filter(
+      (row) => !row.archived && row.status !== "complete" && (row.module_ids || []).includes(module2.id)
+    ).sort(
+      (a, b) => this.nextWorkspaceDate(a).localeCompare(this.nextWorkspaceDate(b))
+    )[0];
     if (workspace?.next_action) return projectedExcerpt(workspace.next_action, 100);
     for (const unit of this.plugin.store.unitsFor(module2.id)) {
       const map = this.plugin.store.mapForUnit(unit.id);
@@ -2016,7 +2176,7 @@ var LibraryView = class extends import_obsidian10.ItemView {
     this.recordType = state.recordType || this.recordType || "note";
     this.domain = state.domain || "";
   }
-  async setState(state) {
+  async setState(state = {}) {
     this.applyState(state);
     this.render();
   }
@@ -2041,11 +2201,21 @@ var LibraryView = class extends import_obsidian10.ItemView {
   shelfIndex() {
     if (this._shelfIndex && this._shelfSnapshot === this.plugin.store.snapshotId) return this._shelfIndex;
     const index = /* @__PURE__ */ new Map();
-    for (const shelf of [...this.plugin.store.catalogues(), ...this.plugin.store.topicPacks()]) {
-      for (const entry of shelf.entries || []) {
-        if (!entry?.source) continue;
-        if (!index.has(entry.source)) index.set(entry.source, []);
-        index.get(entry.source).push({ shelf, group: entry.group, why: entry.why });
+    for (const shelf of [
+      ...this.plugin.store.catalogues(),
+      ...this.plugin.store.topicPacks()
+    ]) {
+      const entries = Array.isArray(shelf.entries) ? shelf.entries : [];
+      for (const entry of entries) {
+        if (typeof entry?.source !== "string") continue;
+        const membership = {
+          shelf,
+          group: entry.group,
+          why: entry.why
+        };
+        const current = index.get(entry.source);
+        if (current) current.push(membership);
+        else index.set(entry.source, [membership]);
       }
     }
     this._shelfIndex = index;
@@ -2170,8 +2340,12 @@ var LibraryView = class extends import_obsidian10.ItemView {
         ...record.authors || [],
         record.organization
       ].filter(Boolean).join(" ").toLocaleLowerCase();
-      return needle.split(/\s+/).every((word) => hay.includes(word));
-    }).slice().sort((a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id)));
+      return needle.split(/\s+/).every(
+        (word) => hay.includes(word)
+      );
+    }).slice().sort(
+      (a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id))
+    );
     if (!all.length) {
       empty(
         root,
@@ -2287,7 +2461,12 @@ var LibraryView = class extends import_obsidian10.ItemView {
     this.renderTechnical(detail, catalogue);
   }
   renderOrderedCollection(detail, collection, title) {
-    const entries = (collection.entries || []).filter((entry) => entry?.source);
+    const rawEntries = Array.isArray(
+      collection.entries
+    ) ? collection.entries : [];
+    const entries = rawEntries.filter(
+      (entry) => Boolean(entry?.source)
+    );
     const wrap = section(
       detail,
       `${title} (${entries.length})`,
@@ -2344,8 +2523,12 @@ var LibraryView = class extends import_obsidian10.ItemView {
       this.render();
     });
     let rows = this.plugin.store.search(this.query, [this.recordType]);
-    if (this.domain) rows = rows.filter((row) => row.domain === this.domain);
-    rows = rows.slice().sort((a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id)));
+    if (this.domain) rows = rows.filter(
+      (row) => row.domain === this.domain
+    );
+    rows = rows.slice().sort(
+      (a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id))
+    );
     if (!rows.length) {
       empty(
         root,
@@ -2400,21 +2583,44 @@ var LibraryView = class extends import_obsidian10.ItemView {
     };
     const groups = /* @__PURE__ */ new Map();
     for (const row of this.plugin.store.related(record.id)) {
-      const key = row.rec?.type || "record";
-      if (!groups.has(key)) groups.set(key, []);
-      groups.get(key).push(row.rec);
+      const rec = row?.rec || null;
+      if (!rec) continue;
+      const key = String(rec.type || "record");
+      const current = groups.get(key);
+      if (current) current.push(rec);
+      else groups.set(key, [rec]);
     }
     if (!groups.size) return;
     const wrap = section(detail, "Related");
-    for (const [type, rows] of [...groups.entries()].sort((a, b) => b[1].length - a[1].length)) {
+    const orderedGroups = [...groups.entries()].sort(
+      (a, b) => b[1].length - a[1].length
+    );
+    for (const [type, rows] of orderedGroups) {
       const group = wrap.createDiv({ cls: "los-related-group" });
-      group.createDiv({ cls: "los-group-title", text: `${labels[type] || type} \xB7 ${rows.length}` });
+      group.createDiv({
+        cls: "los-group-title",
+        text: `${labels[type] || type} \xB7 ${rows.length}`
+      });
       const shown = group.createDiv({ cls: "los-related-chips" });
-      for (const rec of rows.slice(0, 5)) chip(shown, rec, (row) => this.plugin.openRecord(row));
+      for (const rec of rows.slice(0, 5)) {
+        chip(
+          shown,
+          rec,
+          (row) => this.plugin.openRecord(row)
+        );
+      }
       if (rows.length > 5) {
         const rest = disclosure(group, `View all ${rows.length}`);
-        const restChips = rest.createDiv({ cls: "los-related-chips" });
-        for (const rec of rows.slice(5)) chip(restChips, rec, (row) => this.plugin.openRecord(row));
+        const restChips = rest.createDiv({
+          cls: "los-related-chips"
+        });
+        for (const rec of rows.slice(5)) {
+          chip(
+            restChips,
+            rec,
+            (row) => this.plugin.openRecord(row)
+          );
+        }
       }
     }
   }
@@ -2456,7 +2662,9 @@ var LibraryView = class extends import_obsidian10.ItemView {
     const units = this.plugin.store.useUnits(record.id);
     if (!units.length) empty(used, "Not routed to a unit", "The source remains globally registered.");
     for (const unit of units) chip(used, unit, (row) => this.plugin.openUnit(row.id));
-    const evaluations = (record.evaluations || []).filter((row) => row.verdict || row.scope || row.reading_plan?.length || row.useful_sections?.length);
+    const evaluations = (Array.isArray(record.evaluations) ? record.evaluations : []).filter(
+      (row) => row.verdict || row.scope || row.reading_plan?.length || row.useful_sections?.length
+    );
     if (evaluations.length) {
       const evidence = section(detail, "Existing evaluation evidence");
       for (const evaluation of evaluations) {
@@ -2657,7 +2865,9 @@ var ModuleView = class extends import_obsidian11.ItemView {
   }
   /** One line instead of six labelled facts; the rest is in Logistics. */
   headline(module2) {
-    const nextDate = this.deadlinesFor(module2).filter((row) => (row.end_date || row.start_date) >= (/* @__PURE__ */ new Date()).toISOString().slice(0, 10)).map((row) => row.start_date)[0];
+    const nextDate = this.deadlinesFor(module2).filter(
+      (row) => (row.end_date || row.start_date) >= (/* @__PURE__ */ new Date()).toISOString().slice(0, 10)
+    ).map((row) => row.start_date)[0];
     return [
       module2.semester,
       module2.credits != null ? `${module2.credits} LP` : "",
@@ -2676,9 +2886,13 @@ var ModuleView = class extends import_obsidian11.ItemView {
     if (!workspaces.length) {
       empty(wrap, "No active coordination workspace", "The module/unit tree still owns study state.");
     }
-    const next = this.plugin.store.unitsFor(module2.id).find((unit) => unit.status === "active") || this.plugin.store.unitsFor(module2.id)[0];
+    const next = this.plugin.store.unitsFor(module2.id).find(
+      (unit) => unit.status === "active"
+    ) || this.plugin.store.unitsFor(module2.id)[0];
     if (next) button(wrap, `Continue ${next.title}`, () => this.plugin.openUnit(next.id), "cta");
-    const ahead = this.deadlinesFor(module2).filter((row) => (row.end_date || row.start_date) >= (/* @__PURE__ */ new Date()).toISOString().slice(0, 10));
+    const ahead = this.deadlinesFor(module2).filter(
+      (row) => (row.end_date || row.start_date) >= (/* @__PURE__ */ new Date()).toISOString().slice(0, 10)
+    );
     if (ahead.length) this.renderDeadlineRows(wrap, module2, ahead.slice(0, 1));
   }
   renderUnits(root, module2) {
@@ -2707,7 +2921,9 @@ var ModuleView = class extends import_obsidian11.ItemView {
       return;
     }
     for (const status of STATUS_ORDER) {
-      const rows = units.filter((unit) => unit.status === status);
+      const rows = units.filter(
+        (unit) => unit.status === status
+      );
       if (!rows.length) continue;
       root.createDiv({ cls: "los-group-title", text: status.replaceAll("-", " ") });
       const grid = root.createDiv({ cls: "los-card-grid" });
@@ -2733,16 +2949,26 @@ var ModuleView = class extends import_obsidian11.ItemView {
     this.renderAcademicDates(root, module2);
   }
   deadlinesFor(module2) {
-    const rows = this.plugin.store.rows("academic_deadlines").filter((row) => row.module_id === module2.id || (row.modules || []).some((entry) => entry.module_id === module2.id));
-    return rows.sort((a, b) => String(a.start_date || "").localeCompare(String(b.start_date || "")));
+    const rows = this.plugin.store.rows("academic_deadlines").filter(
+      (row) => row.module_id === module2.id || (row.modules || []).some(
+        (entry) => entry.module_id === module2.id
+      )
+    );
+    return rows.sort(
+      (a, b) => String(a.start_date || "").localeCompare(String(b.start_date || ""))
+    );
   }
   renderAcademicDates(root, module2) {
     const rows = this.deadlinesFor(module2);
     if (!rows.length) return;
     const wrap = section(root, "Academic dates", "Registration windows and exam sittings for this module.");
     const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-    const ahead = rows.filter((row) => (row.end_date || row.start_date) >= today);
-    const past = rows.filter((row) => (row.end_date || row.start_date) < today);
+    const ahead = rows.filter(
+      (row) => (row.end_date || row.start_date) >= today
+    );
+    const past = rows.filter(
+      (row) => (row.end_date || row.start_date) < today
+    );
     if (ahead.length) this.renderDeadlineRows(wrap, module2, ahead);
     else empty(wrap, "No upcoming date recorded", "Past dates remain available below.");
     if (past.length) {
@@ -2759,7 +2985,9 @@ var ModuleView = class extends import_obsidian11.ItemView {
       const copy = card.createDiv({ cls: "los-date-copy" });
       copy.createEl("strong", { text: row.label });
       if (row.kind === "registration-window") {
-        const entry = (row.modules || []).find((item) => item.module_id === module2.id);
+        const entry = (row.modules || []).find(
+          (item) => item.module_id === module2.id
+        );
         if (entry?.action) copy.createEl("p", { cls: "los-micro", text: entry.action });
       } else {
         copy.createDiv({ cls: "los-micro", text: row.title || module2.title });
@@ -2807,17 +3035,34 @@ var ModuleView = class extends import_obsidian11.ItemView {
     root.createEl("p", { cls: "los-muted", text: "Roles in this module \u2014 not global quality scores." });
     const groups = /* @__PURE__ */ new Map();
     for (const entry of sourceMap.sources) {
-      if (!groups.has(entry.role)) groups.set(entry.role, []);
-      groups.get(entry.role).push(entry);
+      const role = String(entry.role || "unassigned");
+      const current = groups.get(role);
+      if (current) current.push(entry);
+      else groups.set(role, [entry]);
     }
     for (const [role, entries] of groups) {
       const group = root.createDiv({ cls: "los-source-role" });
-      group.createDiv({ cls: "los-group-title", text: role.replaceAll("-", " ") });
+      group.createDiv({
+        cls: "los-group-title",
+        text: role.replaceAll("-", " ")
+      });
       for (const entry of entries) {
         const row = group.createDiv({ cls: "los-row" });
-        chip(row, this.plugin.store.get(entry.source_id), (record) => this.plugin.openLibrary(record.id));
+        const source = this.plugin.store.get(entry.source_id);
+        if (source) {
+          chip(
+            row,
+            source,
+            (record) => this.plugin.openLibrary(record.id)
+          );
+        }
         row.createEl("p", { text: entry.why });
-        if (entry.unit_routes?.length) row.createDiv({ cls: "los-micro", text: `${entry.unit_routes.length} routed unit(s)` });
+        if (entry.unit_routes?.length) {
+          row.createDiv({
+            cls: "los-micro",
+            text: `${entry.unit_routes.length} routed unit(s)`
+          });
+        }
       }
     }
   }
@@ -2905,6 +3150,9 @@ var NavView = class extends import_obsidian12.ItemView {
 
 // src/views/program-view.ts
 var import_obsidian13 = require("obsidian");
+function errorMessage5(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 var ProgramView = class extends import_obsidian13.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
@@ -2917,7 +3165,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
   getDisplayText() {
     return "LearningOS \xB7 Area";
   }
-  async setState(state) {
+  async setState(state = {}) {
     this.programId = state?.programId || this.programId;
     this.render();
   }
@@ -2991,7 +3239,9 @@ var ProgramView = class extends import_obsidian13.ItemView {
   renderNeedsMap(root) {
     pageHeader(root, "Review", "Units needing a study map");
     const grid = root.createDiv({ cls: "los-card-grid" });
-    for (const unit of this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id))) {
+    for (const unit of this.plugin.store.units().filter(
+      (row) => !this.plugin.store.mapForUnit(row.id)
+    )) {
       unitCard(grid, this.plugin, unit);
     }
   }
@@ -3060,7 +3310,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
       });
     }, "quiet");
   }
-  async capture(action, clear) {
+  async capture(action, clear = null) {
     if (this.plugin.gateway.isBusy) new import_obsidian13.Notice("Queued behind the running LearningOS write.");
     try {
       await this.plugin.mutate(async () => {
@@ -3071,7 +3321,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
       new import_obsidian13.Notice("Captured to the LearningOS inbox.");
       this.render();
     } catch (error) {
-      new import_obsidian13.Notice(error?.message || String(error));
+      new import_obsidian13.Notice(errorMessage5(error));
     }
   }
 };
@@ -3161,10 +3411,14 @@ var ProjectView = class extends import_obsidian14.ItemView {
     const draw = () => {
       results.empty();
       const words = String(input.value || "").toLocaleLowerCase().split(/\s+/).filter(Boolean);
-      const rows = this.plugin.store.projects().filter((project) => {
-        const hay = [project.id, project.title, project.objective, project.project_type].filter(Boolean).join(" ").toLocaleLowerCase();
-        return words.every((word) => hay.includes(word));
-      });
+      const rows = this.plugin.store.projects().filter(
+        (project) => {
+          const hay = [project.id, project.title, project.objective, project.project_type].filter(Boolean).join(" ").toLocaleLowerCase();
+          return words.every(
+            (word) => hay.includes(word)
+          );
+        }
+      );
       if (!rows.length) return empty(results, "No projects found", "No first-class project matches this query.", "Clear search", () => {
         input.value = "";
         input.fire("input");
@@ -3237,7 +3491,11 @@ var ProjectView = class extends import_obsidian14.ItemView {
     }
     if (project.boundaries?.notes) overview.createEl("p", { cls: "los-muted", text: project.boundaries.notes });
     const units = section(root, "Project units", "Existing learning units remain reachable without turning the project into a module.");
-    const unitRows = (project.unit_ids || []).map((id) => this.plugin.store.get(id)).filter(Boolean);
+    const unitRows = (Array.isArray(project.unit_ids) ? project.unit_ids : []).filter(
+      (id) => typeof id === "string"
+    ).map((id) => this.plugin.store.get(id)).filter(
+      (row) => row !== null
+    );
     if (!unitRows.length) empty(units, "No units linked", "This project can exist without a linear learning map.");
     for (const unit of unitRows) button(units, unit.title || unit.id, () => this.plugin.openUnit(unit.id), "row");
   }
@@ -3290,7 +3548,9 @@ var ProjectView = class extends import_obsidian14.ItemView {
   }
   renderDecisions(root, project) {
     const wrap = section(root, "Decisions", "Open questions and durable decisions, without manufacturing a completion score.");
-    const decisions = Array.isArray(project.decisions) ? project.decisions : [];
+    const decisions = Array.isArray(
+      project.decisions
+    ) ? project.decisions : [];
     if (!decisions.length) return empty(wrap, "No decisions recorded", "Decisions appear here when the project records them.");
     for (const decision of decisions) {
       const row = wrap.createDiv({ cls: "los-card los-project-decision" });
@@ -3306,6 +3566,9 @@ var ProjectView = class extends import_obsidian14.ItemView {
 var import_obsidian15 = require("obsidian");
 var fs = __toESM(require("node:fs"));
 var nodePath = __toESM(require("node:path"));
+function errorMessage6(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 var ReviewView = class extends import_obsidian15.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
@@ -3339,8 +3602,12 @@ var ReviewView = class extends import_obsidian15.ItemView {
       return;
     }
     pageHeader(root, "", "Review", "Everything waiting on a decision from you.");
-    const shelving = this.plugin.store.units().filter((row) => row.status === "ready-to-shelve");
-    const needsMap = this.plugin.store.units().filter((row) => !this.plugin.store.mapForUnit(row.id));
+    const shelving = this.plugin.store.units().filter(
+      (row) => row.status === "ready-to-shelve"
+    );
+    const needsMap = this.plugin.store.units().filter(
+      (row) => !this.plugin.store.mapForUnit(row.id)
+    );
     const inbox = this.plugin.store.data.counts?.inbox_items || 0;
     const garden = this.plugin.store.gardenEntries();
     const list = root.createDiv({ cls: "los-review-list" });
@@ -3486,7 +3753,7 @@ var DiagnosticsView = class extends import_obsidian15.ItemView {
 Core answered: ${JSON.stringify(result).slice(0, 400)}`;
     } catch (error) {
       this.report = `${resolved.path} (${resolved.origin})
-Failed: ${error?.message || String(error)}
+Failed: ${errorMessage6(error)}
 Tried: ${resolved.attempted.join(", ")}`;
     }
     this.render();
@@ -3495,6 +3762,9 @@ Tried: ${resolved.attempted.join(", ")}`;
 
 // src/views/shelving-view.ts
 var import_obsidian16 = require("obsidian");
+function errorMessage7(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 var ShelvingView = class extends import_obsidian16.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
@@ -3509,7 +3779,7 @@ var ShelvingView = class extends import_obsidian16.ItemView {
   getDisplayText() {
     return "LearningOS \xB7 Shelving";
   }
-  async setState(state) {
+  async setState(state = {}) {
     this.unitId = state?.unitId || this.unitId;
     await this.loadProposal();
     this.render();
@@ -3589,7 +3859,9 @@ var ShelvingView = class extends import_obsidian16.ItemView {
   }
   renderQueue(root) {
     const wrap = section(root, "Ready to shelve");
-    const rows = this.plugin.store.units().filter((row) => row.status === "ready-to-shelve");
+    const rows = this.plugin.store.units().filter(
+      (row) => row.status === "ready-to-shelve"
+    );
     if (!rows.length) empty(wrap, "No unit is waiting", "Keep working from any active unit.");
     for (const unit of rows) unitCard(wrap, this.plugin, unit);
   }
@@ -3599,7 +3871,7 @@ var ShelvingView = class extends import_obsidian16.ItemView {
       await this.loadProposal();
       this.render();
     } catch (error) {
-      new import_obsidian16.Notice(error?.message || String(error));
+      new import_obsidian16.Notice(errorMessage7(error));
     }
   }
   async apply() {
@@ -3613,13 +3885,16 @@ var ShelvingView = class extends import_obsidian16.ItemView {
       this.selected.clear();
       this.render();
     } catch (error) {
-      new import_obsidian16.Notice(error?.message || String(error));
+      new import_obsidian16.Notice(errorMessage7(error));
     }
   }
 };
 
 // src/views/unit-view.ts
 var import_obsidian17 = require("obsidian");
+function errorMessage8(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 var UnitView = class extends import_obsidian17.ItemView {
   constructor(leaf, plugin) {
     super(leaf);
@@ -3633,7 +3908,7 @@ var UnitView = class extends import_obsidian17.ItemView {
   getDisplayText() {
     return "LearningOS \xB7 Unit";
   }
-  async setState(state) {
+  async setState(state = {}) {
     const nextUnitId = state?.unitId || this.unitId;
     if (nextUnitId !== this.unitId) this.stageId = null;
     this.unitId = nextUnitId;
@@ -3682,7 +3957,9 @@ var UnitView = class extends import_obsidian17.ItemView {
       this.renderArtifacts(root, unit);
       return;
     }
-    const stages = Array.isArray(studyMap.stages) ? studyMap.stages.filter((row) => row && typeof row === "object") : [];
+    const stages = Array.isArray(studyMap.stages) ? studyMap.stages.filter(
+      (row) => Boolean(row) && typeof row === "object"
+    ) : [];
     if (!stages.length) {
       const bare = section(root, "Study map needs stages");
       empty(
@@ -3694,11 +3971,15 @@ var UnitView = class extends import_obsidian17.ItemView {
       return;
     }
     const map = { ...studyMap, stages };
-    if (!this.stageId || !stages.some((row) => row.id === this.stageId)) {
+    if (!this.stageId || !stages.some(
+      (row) => row.id === this.stageId
+    )) {
       this.stageId = map.current_stage;
       this.plugin.setSelectedStage(unit.id, this.stageId);
     }
-    const stage = stages.find((row) => row.id === this.stageId) || stages[0];
+    const stage = stages.find(
+      (row) => row.id === this.stageId
+    ) || stages[0];
     const layout = root.createDiv({ cls: "los-unit-layout" });
     this.renderRail(layout, unit, map, stage);
     this.renderStage(layout, unit, map, stage);
@@ -3738,7 +4019,11 @@ var UnitView = class extends import_obsidian17.ItemView {
     }
     if (stage.estimate_minutes) badge(top, `${stage.estimate_minutes} min`, "role");
     const resources = section(center, "Resources");
-    const stageResources = Array.isArray(stage.resources) ? stage.resources.filter((row) => row && typeof row === "object") : [];
+    const stageResources = Array.isArray(
+      stage.resources
+    ) ? stage.resources.filter(
+      (row) => Boolean(row) && typeof row === "object"
+    ) : [];
     if (!stageResources.length) empty(resources, "No source action selected", "Use the unit scope and ask AI for a proposal.");
     for (const resource of stageResources) {
       const row = resources.createDiv({ cls: "los-resource-row" });
@@ -3748,7 +4033,13 @@ var UnitView = class extends import_obsidian17.ItemView {
       if (resource.locator) copy.createDiv({ cls: "los-micro", text: resource.locator });
       if (resource.source_id) {
         const source = this.plugin.store.get(resource.source_id);
-        chip(copy, source, (record) => this.plugin.openLibrary(record.id));
+        if (source) {
+          chip(
+            copy,
+            source,
+            (record) => this.plugin.openLibrary(record.id)
+          );
+        }
       }
       const actions = row.createDiv({ cls: "los-actions los-resource-actions" });
       if (resource.url || resource.vault_path) button(actions, "Open", () => this.plugin.openResource(resource), "quiet");
@@ -3760,7 +4051,9 @@ var UnitView = class extends import_obsidian17.ItemView {
         ], `Rate ${resource.label}`);
       }
     }
-    const criteria = Array.isArray(stage.done_when) ? stage.done_when.filter((row) => typeof row === "string" && row.trim()) : [];
+    const criteria = Array.isArray(stage.done_when) ? stage.done_when.filter(
+      (row) => typeof row === "string" && Boolean(row.trim())
+    ) : [];
     if (criteria.length) {
       const done = section(center, "Done when");
       const marks = this.plugin.getDoneWhen(unit.id, stage.id);
@@ -3790,27 +4083,83 @@ var UnitView = class extends import_obsidian17.ItemView {
       () => this.plugin.gateway.progress(unit.id, stage.id, "complete"),
       () => this.plugin.clearDoneWhen(unit.id, stage.id)
     ), "cta");
-    overflowMenu(bar, [
-      stage.status !== "active" && ["Revisit stage", () => this.mutate(
-        () => this.plugin.gateway.progress(unit.id, stage.id, "revisit")
-      )],
-      ["Pause unit", () => this.mutate(() => this.plugin.gateway.progress(unit.id, stage.id, "paused"))],
-      ["Skip stage", () => this.mutate(() => this.plugin.gateway.progress(unit.id, stage.id, "skipped"))],
-      ["Report prerequisite gap", () => this.mutate(
-        () => this.plugin.gateway.detour(unit.id, stage.id, "Prerequisite gap", "required-now")
-      )],
-      ["Prepare shelving", () => this.plugin.openShelving(unit.id)],
-      this.plugin.settings.showAiRecommendation && ["Ask AI with stage context", () => this.plugin.askAiScoped(
-        "Help with this stage. Treat the active file as supplementary context only.",
-        { moduleId: unit.module_id, projectId: this.plugin.store.projectForUnit(unit)?.id, unitId: unit.id, stageId: stage.id }
-      )],
-      ["End learning session", () => this.plugin.reviewSessionEnd()]
-    ], "More unit actions");
+    const menuItems = [
+      stage.status !== "active" && [
+        "Revisit stage",
+        () => this.mutate(
+          () => this.plugin.gateway.progress(
+            unit.id,
+            stage.id,
+            "revisit"
+          )
+        )
+      ],
+      [
+        "Pause unit",
+        () => this.mutate(
+          () => this.plugin.gateway.progress(
+            unit.id,
+            stage.id,
+            "paused"
+          )
+        )
+      ],
+      [
+        "Skip stage",
+        () => this.mutate(
+          () => this.plugin.gateway.progress(
+            unit.id,
+            stage.id,
+            "skipped"
+          )
+        )
+      ],
+      [
+        "Report prerequisite gap",
+        () => this.mutate(
+          () => this.plugin.gateway.detour(
+            unit.id,
+            stage.id,
+            "Prerequisite gap",
+            "required-now"
+          )
+        )
+      ],
+      [
+        "Prepare shelving",
+        () => this.plugin.openShelving(unit.id)
+      ],
+      this.plugin.settings.showAiRecommendation && [
+        "Ask AI with stage context",
+        () => this.plugin.askAiScoped(
+          "Help with this stage. Treat the active file as supplementary context only.",
+          {
+            moduleId: unit.module_id,
+            projectId: this.plugin.store.projectForUnit(unit)?.id,
+            unitId: unit.id,
+            stageId: stage.id
+          }
+        )
+      ],
+      [
+        "End learning session",
+        () => this.plugin.reviewSessionEnd()
+      ]
+    ];
+    overflowMenu(bar, menuItems, "More unit actions");
   }
   renderStageContext(center, unit, studyMap, stage) {
-    const stageAttachments = Array.isArray(stage.attachments) ? stage.attachments.filter(Boolean) : [];
-    const detours = (studyMap.detours || []).filter((row) => row.spawned_by_stage === stage.id && row.status !== "resolved");
-    const feedbackRows = Array.isArray(stage.source_feedback) ? stage.source_feedback : [];
+    const stageAttachments = Array.isArray(
+      stage.attachments
+    ) ? stage.attachments.filter(Boolean) : [];
+    const detours = Array.isArray(
+      studyMap.detours
+    ) ? studyMap.detours.filter(
+      (row) => row.spawned_by_stage === stage.id && row.status !== "resolved"
+    ) : [];
+    const feedbackRows = Array.isArray(
+      stage.source_feedback
+    ) ? stage.source_feedback : [];
     if (!stageAttachments.length && !detours.length && !feedbackRows.length) return;
     const detail = disclosure(center, "Stage context");
     for (const attachment of stageAttachments) {
@@ -3860,7 +4209,7 @@ var UnitView = class extends import_obsidian17.ItemView {
       onConfirmed?.();
       this.render();
     } catch (error) {
-      new import_obsidian17.Notice(error?.message || String(error));
+      new import_obsidian17.Notice(errorMessage8(error));
     }
   }
   async selectStage(stageId) {
@@ -3875,6 +4224,9 @@ var UnitView = class extends import_obsidian17.ItemView {
 };
 
 // src/main.ts
+function errorMessage9(error) {
+  return error instanceof Error ? error.message : String(error);
+}
 var LearningOSUI = class extends import_obsidian18.Plugin {
   async onload() {
     this.settings = { ...DEFAULT_SETTINGS, ...await this.loadData() };
@@ -4017,7 +4369,9 @@ ${row.text.trim()}`).join("\n\n");
   }
   setDoneWhen(unitId, stageId, index, checked) {
     const key = this.stageDraftKey(unitId, stageId);
-    const marks = [...this.settings.uiDrafts.doneWhen[key] || []];
+    const marks = [
+      ...this.settings.uiDrafts.doneWhen[key] || []
+    ];
     marks[index] = checked;
     if (marks.some(Boolean)) this.settings.uiDrafts.doneWhen[key] = marks;
     else delete this.settings.uiDrafts.doneWhen[key];
@@ -4074,7 +4428,9 @@ ${row.text.trim()}`).join("\n\n");
   async reloadStore() {
     const ok = await this.store.load();
     if (!ok) throw new Error(this.store.error);
-    this.app.workspace.iterateAllLeaves((leaf) => leaf.view?.render?.());
+    this.app.workspace.iterateAllLeaves(
+      (leaf) => leaf.view?.render?.()
+    );
   }
   /** The active destination is a display fact, so the Navigator is the only
    *  thing it redraws — never the working view the learner is reading. */
@@ -4230,7 +4586,7 @@ ${row.text.trim()}`).join("\n\n");
       });
       new import_obsidian18.Notice("LearningOS projection rebuilt.");
     } catch (error) {
-      new import_obsidian18.Notice(error?.message || String(error));
+      new import_obsidian18.Notice(errorMessage9(error));
     }
   }
   async reviewSessionEnd() {
@@ -4239,7 +4595,7 @@ ${row.text.trim()}`).join("\n\n");
       new SessionEndModal(this.app, this, review).open();
       return review;
     } catch (error) {
-      new import_obsidian18.Notice(error?.message || String(error));
+      new import_obsidian18.Notice(errorMessage9(error));
       return null;
     }
   }
