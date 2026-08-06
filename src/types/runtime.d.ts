@@ -47,9 +47,22 @@ declare module 'obsidian' {
     constructor(...args: any[]);
   }
 
+  export interface WorkspaceLeaf {
+    readonly state?: Record<string, unknown>;
+
+    setViewState(viewState: {
+      type: string;
+      active?: boolean;
+      state?: Record<string, unknown>;
+    }): Promise<void> | void;
+  }
+
   export class ItemView {
-    [key: string]: any;
-    constructor(...args: any[]);
+    readonly app: App;
+    readonly leaf: WorkspaceLeaf;
+    readonly contentEl: HTMLElement;
+
+    constructor(leaf: WorkspaceLeaf);
   }
 
   export class Modal {

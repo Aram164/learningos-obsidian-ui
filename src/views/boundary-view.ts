@@ -1,25 +1,54 @@
-import { ItemView, Notice } from 'obsidian';
+import { ItemView, Notice, type WorkspaceLeaf } from 'obsidian';
 import { boundaryPolicy, button, empty, pageHeader, section } from '../components';
 import { VIEW_BOUNDARY } from '../constants';
 import type { ProjectionRecord } from '../contracts/manifest-v2';
+import type { LearningOSUI } from '../main';
+
+type BoundaryPlugin = Pick<
+  LearningOSUI,
+  'store'
+>;
+
+interface BoundaryViewState {
+  boundaryId?: string | null;
+}
 
 export class BoundaryView extends ItemView {
-  [key: string]: any;
-  constructor(leaf: any, plugin: any) {
+  private readonly plugin: BoundaryPlugin;
+  private boundaryId: string | null = null;
+
+  constructor(
+    leaf: WorkspaceLeaf,
+    plugin: BoundaryPlugin,
+  ) {
     super(leaf);
     this.plugin = plugin;
-    this.boundaryId = null;
   }
   getViewType() { return VIEW_BOUNDARY; }
   getDisplayText() { return 'LearningOS · Boundary'; }
   async setState(
-    state: Record<string, any> = {},
+    state: BoundaryViewState = {},
   ): Promise<void> {
-    this.boundaryId = state?.boundaryId || this.boundaryId;
+    if (typeof state.boundaryId === 'string') {
+      this.boundaryId = state.boundaryId;
+    }
+
     this.render();
   }
-  getState() { return { boundaryId: this.boundaryId }; }
-  async onOpen() { this.boundaryId = this.leaf.state?.boundaryId || this.boundaryId; this.render(); }
+
+  getState(): BoundaryViewState {
+    return { boundaryId: this.boundaryId };
+  }
+
+  async onOpen(): Promise<void> {
+    const boundaryId = this.leaf.state?.boundaryId;
+
+    if (typeof boundaryId === 'string') {
+      this.boundaryId = boundaryId;
+    }
+
+    this.render();
+  }
 
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-boundary-view');

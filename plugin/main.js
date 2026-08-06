@@ -1706,10 +1706,11 @@ var AtlasView = class extends import_obsidian5.ItemView {
 // src/views/boundary-view.ts
 var import_obsidian6 = require("obsidian");
 var BoundaryView = class extends import_obsidian6.ItemView {
+  plugin;
+  boundaryId = null;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
-    this.boundaryId = null;
   }
   getViewType() {
     return VIEW_BOUNDARY;
@@ -1718,14 +1719,19 @@ var BoundaryView = class extends import_obsidian6.ItemView {
     return "LearningOS \xB7 Boundary";
   }
   async setState(state = {}) {
-    this.boundaryId = state?.boundaryId || this.boundaryId;
+    if (typeof state.boundaryId === "string") {
+      this.boundaryId = state.boundaryId;
+    }
     this.render();
   }
   getState() {
     return { boundaryId: this.boundaryId };
   }
   async onOpen() {
-    this.boundaryId = this.leaf.state?.boundaryId || this.boundaryId;
+    const boundaryId = this.leaf.state?.boundaryId;
+    if (typeof boundaryId === "string") {
+      this.boundaryId = boundaryId;
+    }
     this.render();
   }
   render() {
