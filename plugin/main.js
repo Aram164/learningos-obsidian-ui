@@ -275,6 +275,13 @@ var OWNERSHIP_STATEMENT = "Presentation only \xB7 facts live in the LearningOS c
 
 // src/app/global-search.ts
 var GlobalSearchModal = class extends import_obsidian2.Modal {
+  plugin;
+  query;
+  filter;
+  input;
+  tabButtons = [];
+  tabs;
+  results;
   constructor(app, plugin, initialQuery = "") {
     super(app);
     this.plugin = plugin;

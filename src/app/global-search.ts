@@ -1,6 +1,8 @@
-import { Modal } from 'obsidian';
+import { Modal, type App } from 'obsidian';
 import { button, empty } from '../components';
 import type { ProjectionRecord } from '../contracts/manifest-v2';
+import type { ManifestStore } from '../manifest-store';
+import type { ApplicationRouter } from './router';
 
 interface SearchCandidate {
   id: string;
@@ -12,6 +14,41 @@ interface SearchCandidate {
   open: () => unknown;
 }
 
+type SearchFilter =
+  | 'all'
+  | 'learning'
+  | 'sources'
+  | 'projects';
+
+type SearchStore = Pick<
+  ManifestStore,
+  | 'modules'
+  | 'projects'
+  | 'units'
+  | 'sources'
+  | 'topicPacks'
+  | 'of'
+  | 'get'
+>;
+
+type SearchRouter = Pick<
+  ApplicationRouter,
+  | 'openOverlay'
+  | 'updateOverlay'
+  | 'clearOverlay'
+>;
+
+interface GlobalSearchPlugin {
+  readonly router: SearchRouter;
+  readonly store: SearchStore;
+
+  openModule(id: string): unknown;
+  openProject(id: string): unknown;
+  openUnit(id: string): unknown;
+  openLibrary(id: string, recordType: string): unknown;
+  openTopicPackDetail(id: string): unknown;
+}
+
 /**
  * Structural LearningOS search.
  *
@@ -21,8 +58,19 @@ interface SearchCandidate {
  * separate integration.
  */
 export class GlobalSearchModal extends Modal {
-  [key: string]: any;
-  constructor(app: any, plugin: any, initialQuery = '') {
+  private readonly plugin: GlobalSearchPlugin;
+  private query: string;
+  private filter: SearchFilter;
+  private input!: HTMLInputElement;
+  private tabButtons: HTMLElement[] = [];
+  private tabs!: HTMLDivElement;
+  private results!: HTMLDivElement;
+
+  constructor(
+    app: App,
+    plugin: GlobalSearchPlugin,
+    initialQuery = '',
+  ) {
     super(app);
     this.plugin = plugin;
     this.query = String(initialQuery || '');
@@ -64,7 +112,7 @@ export class GlobalSearchModal extends Modal {
       ['learning', 'Modules & units'],
       ['sources', 'Learning sources'],
       ['projects', 'Projects'],
-    ]) {
+    ] as const) {
       const tab = button(tabs, label, () => {
         this.filter = id;
         this.plugin.router.updateOverlay({ filter: id });
@@ -100,7 +148,7 @@ export class GlobalSearchModal extends Modal {
     const rows: SearchCandidate[] = [];
     const add = (
       record: ProjectionRecord,
-      kind: string,
+      kind: SearchCandidate['kind'],
       subtitle: string,
       open: () => unknown,
     ): void => {

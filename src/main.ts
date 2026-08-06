@@ -62,6 +62,10 @@ function errorMessage(error: unknown): string {
 
 export class LearningOSUI extends Plugin {
   [key: string]: any;
+
+  declare store: ManifestStore;
+  declare router: ApplicationRouter;
+
   async onload() {
     this.settings = { ...DEFAULT_SETTINGS, ...(await this.loadData()) };
     this.settings.uiDrafts ||= { stages: {}, unitNotes: {}, selectedStages: {}, inbox: { title: '', text: '' } };
