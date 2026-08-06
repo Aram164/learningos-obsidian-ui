@@ -15,7 +15,7 @@ class El {
     this.children = [];
     this.classes = new Set();
     this.text = '';
-    this.attrs = {};
+    this._attrs = {};
     this.style = {};
     this.value = '';
     this.listeners = {};
@@ -30,7 +30,7 @@ class El {
     const e = new El(tag);
     if (o.cls) String(o.cls).split(/\s+/).filter(Boolean).forEach((c) => e.classes.add(c));
     if (o.text != null) e.text = String(o.text);
-    if (o.attr) Object.assign(e.attrs, o.attr);
+    if (o.attr) Object.assign(e._attrs, o.attr);
     this.children.push(e);
     return e;
   }
@@ -42,9 +42,26 @@ class El {
   removeClass(...c) { c.forEach((x) => this.classes.delete(x)); return this; }
   toggleClass(c, on) { this.classList.toggle(c, on); return this; }
   setText(t) { this.text = String(t); return this; }
-  setAttr(k, v) { this.attrs[k] = v; return this; }
-  setAttrs(attrs) { Object.assign(this.attrs, attrs); return this; }
+  setAttr(k, v) { this._attrs[k] = v; return this; }
+  setAttrs(attrs) { Object.assign(this._attrs, attrs); return this; }
   setAttribute(k, v) { return this.setAttr(k, v); }
+  getAttribute(k) {
+    return Object.prototype.hasOwnProperty.call(this._attrs, k)
+      ? String(this._attrs[k])
+      : null;
+  }
+  hasAttribute(k) {
+    return Object.prototype.hasOwnProperty.call(this._attrs, k);
+  }
+  removeAttribute(k) {
+    delete this._attrs[k];
+    return this;
+  }
+  dispatchEvent(event) {
+    const type = event && event.type ? event.type : String(event);
+    this.fire(type, event);
+    return true;
+  }
   remove() { return this; }
   focus() { return this; }
   addEventListener(ev, fn) { (this.listeners[ev] ||= []).push(fn); }

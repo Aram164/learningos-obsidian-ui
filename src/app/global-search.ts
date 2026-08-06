@@ -90,7 +90,7 @@ export class GlobalSearchModal extends Modal {
 
   renderTabs() {
     for (const tab of this.tabButtons || []) {
-      const active = tab.attrs['data-filter'] === this.filter;
+      const active = tab.getAttribute('data-filter') === this.filter;
       tab.toggleClass('is-active', active);
       tab.setAttribute('aria-selected', String(active));
     }

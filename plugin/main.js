@@ -336,7 +336,7 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
   }
   renderTabs() {
     for (const tab of this.tabButtons || []) {
-      const active = tab.attrs["data-filter"] === this.filter;
+      const active = tab.getAttribute("data-filter") === this.filter;
       tab.toggleClass("is-active", active);
       tab.setAttribute("aria-selected", String(active));
     }
@@ -3123,7 +3123,7 @@ var NavView = class extends import_obsidian12.ItemView {
     if (this.plugin.settings.navMoreOpen) more.setAttr("open", "open");
     more.createEl("summary", { cls: "los-nav-more-trigger", text: "More" });
     more.addEventListener("toggle", () => {
-      this.plugin.settings.navMoreOpen = Boolean(more.open ?? more.attrs?.open);
+      this.plugin.settings.navMoreOpen = more.hasAttribute("open");
       this.plugin.scheduleDraftSave();
     });
     const secondary = more.createDiv({ cls: "los-nav-secondary" });
@@ -3421,7 +3421,7 @@ var ProjectView = class extends import_obsidian14.ItemView {
       );
       if (!rows.length) return empty(results, "No projects found", "No first-class project matches this query.", "Clear search", () => {
         input.value = "";
-        input.fire("input");
+        input.dispatchEvent(new Event("input"));
       });
       for (const project of rows) {
         const row = results.createEl("button", {

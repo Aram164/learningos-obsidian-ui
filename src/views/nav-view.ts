@@ -63,7 +63,7 @@ export class NavView extends ItemView {
     if (this.plugin.settings.navMoreOpen) more.setAttr('open', 'open');
     more.createEl('summary', { cls: 'los-nav-more-trigger', text: 'More' });
     more.addEventListener('toggle', () => {
-      this.plugin.settings.navMoreOpen = Boolean(more.open ?? more.attrs?.open);
+      this.plugin.settings.navMoreOpen = more.hasAttribute('open');
       this.plugin.scheduleDraftSave();
     });
     const secondary = more.createDiv({ cls: 'los-nav-secondary' });

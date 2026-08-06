@@ -246,7 +246,7 @@ async function main() {
     const nav = app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
     check('the navigator exposes a persistent accessible search launcher',
       nav.find('los-nav-search').length === 1
-      && nav.find('los-nav-search')[0].attrs['aria-label'] === 'Search LearningOS');
+      && nav.find('los-nav-search')[0].getAttribute('aria-label') === 'Search LearningOS');
     plugin.onunload();
   }
 
@@ -269,7 +269,7 @@ async function main() {
       app.workspace.getLeavesOfType(VIEW.program)[0].view.contentEl.allText().includes('Fixture Advanced ML'));
     check('the active destination is visually and semantically marked',
       nav.findText('los-app-nav-item', 'Learn')?.classes.has('is-active')
-      && nav.findText('los-app-nav-item', 'Learn')?.attrs['aria-current'] === 'page');
+      && nav.findText('los-app-nav-item', 'Learn')?.getAttribute('aria-current') === 'page');
     await plugin.openReview();
     const review = app.workspace.getLeavesOfType(VIEW.review)[0].view.contentEl.allText();
     check('Review gathers every decision queue in one place',
@@ -581,7 +581,7 @@ async function main() {
         row.children.filter((child) => child.classes.has('los-btn')).length <= 1));
     check('done-when criteria are interactive checkboxes',
       element.find('los-donewhen-row').length >= 1
-      && element.find('los-donewhen-row')[0].children[0].attrs.type === 'checkbox');
+      && element.find('los-donewhen-row')[0].children[0].getAttribute('type') === 'checkbox');
     const criterion = element.find('los-donewhen-row')[0].children[0];
     criterion.checked = true; criterion.fire('change');
     check('a ticked criterion is UI-owned state, never a second completion record',

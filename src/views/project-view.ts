@@ -85,7 +85,8 @@ export class ProjectView extends ItemView {
         );
       });
       if (!rows.length) return empty(results, 'No projects found', 'No first-class project matches this query.', 'Clear search', () => {
-        input.value = ''; input.fire('input');
+        input.value = '';
+        input.dispatchEvent(new Event('input'));
       });
       for (const project of rows) {
         const row = results.createEl('button', {
