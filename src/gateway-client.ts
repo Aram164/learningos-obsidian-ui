@@ -1,4 +1,5 @@
 import process from 'node:process';
+import type { ProjectionRecord } from './contracts/manifest-v2';
 
 export class GatewayClient {
   private readonly plugin: any;
@@ -36,7 +37,9 @@ export class GatewayClient {
    */
   call(args: string[], { expectJson = true }: { expectJson?: boolean } = {}): Promise<any> {
     return new Promise((resolve, reject) => {
-      this.plugin.runLos(args, (error, stdout, stderr) => {
+      this.plugin.runLos(
+        args,
+        (error: Error | null, stdout: string, stderr: string) => {
         if (error) { reject(new Error(stderr || error.message || String(error))); return; }
         const raw = String(stdout ?? '').trim();
         if (!expectJson) { resolve({ ok: true, stdout: raw }); return; }
@@ -55,58 +58,93 @@ export class GatewayClient {
           return;
         }
         resolve(parsed);
-      });
+        },
+      );
     });
   }
 
-  guard() { return ['--expected-snapshot', this.plugin.store.snapshotId]; }
-  saveNote(unitId, stageId, text) {
+  guard(): string[] {
+    return ['--expected-snapshot', this.plugin.store.snapshotId];
+  }
+  saveNote(unitId: string, stageId: string, text: string) {
     return this.call(['stage-note', unitId, stageId, '--replace', '--text', text, ...this.guard()]);
   }
-  saveUnitNote(unitId, { title = '', text, stageIds = [], filePaths = [] }) {
+  saveUnitNote(
+    unitId: string,
+    {
+      title = '',
+      text,
+      stageIds = [],
+      filePaths = [],
+    }: {
+      title?: string;
+      text: string;
+      stageIds?: readonly string[];
+      filePaths?: readonly string[];
+    },
+  ) {
     const args = ['unit-note', unitId, '--text', text];
     if (String(title).trim()) args.push('--title', String(title).trim());
     for (const stageId of stageIds || []) args.push('--stage-id', stageId);
     for (const filePath of filePaths || []) args.push('--attachment', filePath);
     return this.call([...args, ...this.guard()]);
   }
-  progress(unitId, stageId, status) {
+  progress(unitId: string, stageId: string, status: string) {
     return this.call(['stage-progress', unitId, stageId, status, ...this.guard()]);
   }
-  feedback(unitId, stageId, sourceId, feedback) {
+  feedback(
+    unitId: string,
+    stageId: string,
+    sourceId: string,
+    feedback: string,
+  ) {
     return this.call(['source-feedback', unitId, stageId, sourceId, feedback, ...this.guard()]);
   }
-  detour(unitId, stageId, title, classification = 'required-now') {
+  detour(
+    unitId: string,
+    stageId: string,
+    title: string,
+    classification = 'required-now',
+  ) {
     return this.call(['detour-create', unitId, stageId, '--title', title,
       '--classification', classification, ...this.guard()]);
   }
-  resolveDetour(unitId, detourId, resolution = '') {
+  resolveDetour(
+    unitId: string,
+    detourId: string,
+    resolution = '',
+  ) {
     const args = ['detour-resolve', unitId, detourId];
     if (resolution) args.push('--resolution', resolution);
     return this.call([...args, ...this.guard()]);
   }
-  attach(unitId, stageId, filePath, label = '') {
+  attach(
+    unitId: string,
+    stageId: string,
+    filePath: string,
+    label = '',
+  ) {
     const args = ['stage-attach', unitId, stageId, '--file', filePath];
     if (label) args.push('--label', label);
     return this.call([...args, ...this.guard()]);
   }
-  captureText(text, title = '') {
+  captureText(text: string, title = '') {
     // `--json` so an inbox capture is confirmed structurally; the plain-text
     // form stays the human default in a terminal.
     const args = ['capture', '--json', '--text', text];
     if (title) args.push('--title', title);
     return this.call(args);
   }
-  captureFile(filePath) {
+  captureFile(filePath: string) {
     return this.call(['capture', '--json', '--file', filePath]);
   }
-  prepareShelving(unitId) {
+  prepareShelving(unitId: string) {
     return this.call(['shelving-prepare', unitId, ...this.guard()]);
   }
-  applyShelving(unitId, selected) {
+  applyShelving(unitId: string, selected: readonly string[]) {
     return this.call(['shelving-apply', unitId, '--approve', '--selected', ...selected, ...this.guard()]);
   }
-  endSession(commitMessage = null, push = false) {
+  endSession(commitMessage: string | null = null, push = false) {
     const args = ['session-end'];
     if (commitMessage) args.push('--commit-message', commitMessage);
     if (push) args.push('--push');
@@ -114,13 +152,18 @@ export class GatewayClient {
   }
 }
 
-export function explicitAiContext(plugin: any, context: any = {}) {
+export function explicitAiContext(
+  plugin: any,
+  context: Record<string, string | undefined> = {},
+): ProjectionRecord {
   const unit = context.unitId ? plugin.store.get(context.unitId) : null;
   const module = context.moduleId ? plugin.store.get(context.moduleId) :
     (unit ? plugin.store.get(unit.module_id) : null);
   const studyMap = unit ? plugin.store.mapForUnit(unit.id) : null;
   const stage = context.stageId ? plugin.store.stage(context.stageId) : null;
-  const resources = stage?.resources || [];
+  const resources: ProjectionRecord[] = Array.isArray(stage?.resources)
+    ? stage.resources
+    : [];
   return {
     area_program_id: context.programId || module?.area_id || null,
     module_id: module?.id || context.moduleId || null,

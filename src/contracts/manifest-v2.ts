@@ -6,7 +6,8 @@
  */
 export const MANIFEST_CONTRACT_VERSION = 2 as const;
 
-type JsonRecord = Record<string, unknown>;
+export type JsonRecord = Record<string, any>;
+export type ProjectionRecord = JsonRecord;
 
 export interface UnitNoteAttachmentV2 { path: string; label: string; }
 export interface UnitNoteSectionV2 {

@@ -1,14 +1,17 @@
 import { CONTRACT_VERSION } from './constants';
 import { assertManifestV2 } from './contracts/manifest-v2';
-import type { ManifestV2 } from './contracts/manifest-v2';
+import type {
+  ManifestV2,
+  ProjectionRecord,
+} from './contracts/manifest-v2';
 
 export class ManifestStore {
   private readonly app: any;
   ready: boolean;
   error: string;
   data: (ManifestV2 & Record<string, any>) | null;
-  records: any[];
-  byId: Map<string, any>;
+  records: ProjectionRecord[];
+  byId: Map<string, ProjectionRecord>;
   contractVersion: number | null = null;
   snapshotId: string | null = null;
   constructor(app: any) {
@@ -56,27 +59,37 @@ export class ManifestStore {
     }
   }
 
-  get(id) { return this.byId.get(id) || null; }
-  of(type) { return this.records.filter((row) => row?.type === type); }
+  get(id: string): ProjectionRecord | null {
+    return this.byId.get(id) || null;
+  }
+  of(type: string): ProjectionRecord[] {
+    return this.records.filter((row) => row?.type === type);
+  }
   /**
    * One null row anywhere in a projected array used to take Home down on
    * startup. Every list accessor drops non-objects at the boundary, so no view
    * has to defend itself row by row.
    */
-  rows(group) {
+  rows(group: string): ProjectionRecord[] {
     const value = this.data?.[group];
     return Array.isArray(value) ? value.filter((row) => row && typeof row === 'object') : [];
   }
   programs() { return this.rows('programs'); }
   modules() { return this.rows('modules'); }
   projects() { return this.rows('projects'); }
-  projectRelationships(projectId = null) {
+  projectRelationships(
+    projectId: string | null = null,
+  ): ProjectionRecord[] {
     const rows = this.rows('project_relationships');
     return projectId ? rows.filter((row) => row.from_project_id === projectId) : rows;
   }
-  resolveProjectAlias(id) { return this.data?.project_aliases?.[id] || id; }
-  projectForUnit(unit) {
-    const ids = Array.isArray(unit?.project_ids) ? unit.project_ids : [];
+  resolveProjectAlias(id: string): string { return this.data?.project_aliases?.[id] || id; }
+  projectForUnit(
+    unit: ProjectionRecord | null | undefined,
+  ): ProjectionRecord | null {
+    const ids: string[] = Array.isArray(unit?.project_ids)
+      ? unit.project_ids
+      : [];
     return ids.map((id) => this.get(id)).find((row) => row?.type === 'project') || null;
   }
   thematicGroups() {
@@ -86,20 +99,22 @@ export class ManifestStore {
   sources() { return this.of('source'); }
   topicPacks() { return this.rows('topic_packs').length ? this.rows('topic_packs') : this.of('topic-pack'); }
   catalogues() { return this.of('collection').filter((row) => row.collection_kind !== 'topic-pack'); }
-  modulesForGroup(groupId) {
+  modulesForGroup(groupId: string): ProjectionRecord[] {
     return this.modules().filter((row) => (row.thematic_group_ids || []).includes(groupId));
   }
-  sourcesForGroup(groupId) {
+  sourcesForGroup(groupId: string): ProjectionRecord[] {
     return this.sources().filter((row) => (row.thematic_group_ids || []).includes(groupId));
   }
-  topicPacksForGroup(groupId) {
+  topicPacksForGroup(groupId: string): ProjectionRecord[] {
     return this.topicPacks().filter((row) => (row.thematic_group_ids || []).includes(groupId));
   }
   units() { return this.rows('units'); }
-  unitNoteSections(unitId) { return this.get(unitId)?.note_sections || []; }
+  unitNoteSections(unitId: string): any[] {
+    return this.get(unitId)?.note_sections || [];
+  }
   studyMaps() { return this.rows('study_maps'); }
   gardenEntries() { return this.rows('garden_entries'); }
-  aiAction(actionId) {
+  aiAction(actionId: string): ProjectionRecord | null {
     const available = this.data?.ai_actions?.available;
     return this.rows('ai_actions_available').find((row) => row.id === actionId)
       || (Array.isArray(available) ? available : []).find((row) => row?.id === actionId) || null;
@@ -108,42 +123,71 @@ export class ManifestStore {
     const rows = this.data?.ai_actions?.provider_adapters;
     return Array.isArray(rows) ? rows.filter((row) => row && typeof row === 'object') : [];
   }
-  aiRequestsForTarget(targetId) {
+  aiRequestsForTarget(targetId: string): ProjectionRecord[] {
     const rows = this.data?.ai_actions?.requests;
     return (Array.isArray(rows) ? rows : []).filter((row) => row?.target?.id === targetId);
   }
-  latestAiRequest(targetId) {
+  latestAiRequest(targetId: string): ProjectionRecord | null {
     return this.aiRequestsForTarget(targetId)
       .slice().sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0] || null;
   }
-  modulesFor(programId) { return this.modules().filter((row) => row.area_id === programId); }
-  unitsFor(moduleId, componentId = null) {
+  modulesFor(programId: string): ProjectionRecord[] { return this.modules().filter((row) => row.area_id === programId); }
+  unitsFor(
+    moduleId: string,
+    componentId: string | null = null,
+  ): ProjectionRecord[] {
     const rows = this.units().filter((row) => row.module_id === moduleId);
     return componentId ? rows.filter((row) => row.component_id === componentId) : rows;
   }
-  mapForUnit(unitId) {
+  mapForUnit(unitId: string): ProjectionRecord | null {
     const mapId = this.data?.indexes?.unit_to_study_map?.[unitId];
     return mapId ? this.get(mapId) : null;
   }
   /** Resolve a stage from its ID alone through the core's flat index. */
-  stage(stageId) {
+  stage(stageId: string): ProjectionRecord | null {
     const stage = this.get(stageId);
     return stage?.study_map_id ? stage : null;
   }
-  sourceMap(moduleId) {
+  sourceMap(moduleId: string): ProjectionRecord | null {
     return this.rows('module_source_maps').find((row) => row.module_id === moduleId) || null;
   }
-  progress(moduleId) { return this.data?.progress?.[moduleId] || {}; }
-  workspacesForModule(moduleId) {
-    const ids = this.data?.backlinks?.module_to_workspaces?.[moduleId] || [];
-    return ids.map((id) => this.get(id)).filter(Boolean);
+  progress(moduleId: string): ProjectionRecord {
+    return this.data?.progress?.[moduleId] || {};
   }
-  useUnits(sourceId) {
-    return (this.data?.indexes?.source_to_units?.[sourceId] || [])
-      .map((id) => this.get(id)).filter(Boolean);
+  workspacesForModule(moduleId: string): ProjectionRecord[] {
+    const rawIds =
+      this.data?.backlinks?.module_to_workspaces?.[moduleId];
+    const ids: string[] = Array.isArray(rawIds)
+      ? rawIds.filter(
+        (id: unknown): id is string => typeof id === 'string',
+      )
+      : [];
+    return ids
+      .map((id: string) => this.get(id))
+      .filter(
+        (row: ProjectionRecord | null): row is ProjectionRecord =>
+          row !== null,
+      );
+  }
+  useUnits(sourceId: string): ProjectionRecord[] {
+    const rawIds = this.data?.indexes?.source_to_units?.[sourceId];
+    const ids: string[] = Array.isArray(rawIds)
+      ? rawIds.filter(
+        (id: unknown): id is string => typeof id === 'string',
+      )
+      : [];
+    return ids
+      .map((id: string) => this.get(id))
+      .filter(
+        (row: ProjectionRecord | null): row is ProjectionRecord =>
+          row !== null,
+      );
   }
 
-  search(query, types = null) {
+  search(
+    query: string,
+    types: readonly string[] | null = null,
+  ): ProjectionRecord[] {
     const words = String(query || '').toLocaleLowerCase().split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
     const rows = this.records.filter((row) => row && (!allowed || allowed.has(row.type)));
@@ -164,10 +208,10 @@ export class ManifestStore {
     });
   }
 
-  related(id) {
+  related(id: string) {
     const record = this.get(id);
     if (!record) return [];
-    const ids = new Set();
+    const ids = new Set<string>();
     for (const key of ['concepts', 'sources', 'contexts', 'notes', 'program_ids',
       'module_ids', 'unit_ids', 'unit_order', 'related_module_ids']) {
       for (const value of record[key] || []) ids.add(value);

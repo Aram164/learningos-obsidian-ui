@@ -21,7 +21,7 @@ export class ApplicationRouter {
     this.overlay = null;
   }
 
-  fromLegacy(legacy) {
+  fromLegacy(legacy: any): any {
     const type = legacy?.type;
     const state = legacy?.state || {};
     if (type === VIEW_PROGRAM) {
@@ -82,7 +82,7 @@ export class ApplicationRouter {
     return { name: 'library-home', collection: state.recordType === 'topic-pack' ? 'topic-packs' : 'sources' };
   }
 
-  descriptor(route) {
+  descriptor(route: any): any {
     switch (route?.name) {
       case 'home': return { type: VIEW_HOME, state: {}, nav: 'home', pin: true };
       case 'learn': return { type: VIEW_PROGRAM, state: { programId: route.programId }, nav: 'learn' };
@@ -167,9 +167,15 @@ export class ApplicationRouter {
     }
   }
 
-  sameRoute(left, right) { return JSON.stringify(left) === JSON.stringify(right); }
+  sameRoute(left: unknown, right: unknown): boolean {
+    return JSON.stringify(left) === JSON.stringify(right);
+  }
 
-  async openLeaf(type, state = {}, side = 'main') {
+  async openLeaf(
+    type: string,
+    state: Record<string, any> = {},
+    side: 'main' | 'left' = 'main',
+  ): Promise<any> {
     let leaf = this.plugin.app.workspace.getLeavesOfType(type)[0];
     if (!leaf) {
       leaf = side === 'left'
@@ -190,12 +196,19 @@ export class ApplicationRouter {
     await this.plugin.saveData(this.plugin.settings);
   }
 
-  openOverlay(overlay) { this.overlay = { ...overlay }; return this.overlay; }
-  updateOverlay(patch) { if (!this.overlay) return null; this.overlay = { ...this.overlay, ...patch }; return this.overlay; }
+  openOverlay(overlay: Record<string, any>) {
+    this.overlay = { ...overlay };
+    return this.overlay;
+  }
+  updateOverlay(patch: Record<string, any>) {
+    if (!this.overlay) return null;
+    this.overlay = { ...this.overlay, ...patch };
+    return this.overlay;
+  }
   clearOverlay() { this.overlay = null; }
 
   /** Replace restorable route state without opening a leaf or adding history. */
-  async remember(route) {
+  async remember(route: any) {
     this.navigation.current = route;
     await this.persist();
     return route;
