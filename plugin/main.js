@@ -2606,7 +2606,7 @@ var LibraryView = class extends import_obsidian10.ItemView {
         chip(
           shown,
           rec,
-          (row) => this.plugin.openRecord(row)
+          (row) => this.plugin.openRelatedRecord(row)
         );
       }
       if (rows.length > 5) {
@@ -2618,7 +2618,7 @@ var LibraryView = class extends import_obsidian10.ItemView {
           chip(
             restChips,
             rec,
-            (row) => this.plugin.openRecord(row)
+            (row) => this.plugin.openRelatedRecord(row)
           );
         }
       }
@@ -4614,24 +4614,34 @@ ${row.text.trim()}`).join("\n\n");
     new import_obsidian18.Notice("Job/ is quarantined \u2014 LearningOS never opens or displays it.");
     return true;
   }
-  async openVaultPath(path) {
+  async openVaultPath(path, placement = "tab") {
     if (this.refuseQuarantined(path)) return;
     const file = this.app.vault.getAbstractFileByPath(path);
     if (!file) {
       new import_obsidian18.Notice(`File unavailable: ${path}`);
       return;
     }
-    let existing = null;
-    this.app.workspace.iterateAllLeaves((leaf2) => {
-      if (!existing && leaf2.view?.file?.path === path) existing = leaf2;
-    });
-    if (existing) {
-      this.app.workspace.revealLeaf(existing);
-      this.app.workspace.setActiveLeaf?.(existing, { focus: true });
-      return existing;
+    if (placement === "tab") {
+      let existing = null;
+      this.app.workspace.iterateAllLeaves((leaf2) => {
+        if (!existing && leaf2.view?.file?.path === path) {
+          existing = leaf2;
+        }
+      });
+      if (existing) {
+        this.app.workspace.revealLeaf(existing);
+        this.app.workspace.setActiveLeaf?.(
+          existing,
+          { focus: true }
+        );
+        return existing;
+      }
     }
-    const leaf = this.app.workspace.getLeaf(true);
+    const leaf = placement === "split" ? this.app.workspace.getLeaf("split", "vertical") : this.app.workspace.getLeaf(true);
     await leaf.openFile(file);
+    if (placement === "split") {
+      this.app.workspace.revealLeaf(leaf);
+    }
     return leaf;
   }
   async openExternalPath(path, successMessage = "Opened in the default app.") {
@@ -4660,10 +4670,12 @@ ${row.text.trim()}`).join("\n\n");
     }
     return this.openExternalPath(fullPath, "Opened the local material in its default app.");
   }
-  openAuthoredPath(path) {
+  openAuthoredPath(path, placement = "tab") {
     if (this.refuseQuarantined(path)) return false;
     const extension = nodePath2.extname(path || "").toLocaleLowerCase();
-    if ([".md", ".pdf", ".canvas", ".base"].includes(extension)) return this.openVaultPath(path);
+    if ([".md", ".pdf", ".canvas", ".base"].includes(extension)) {
+      return this.openVaultPath(path, placement);
+    }
     const base = this.app.vault.adapter.getBasePath();
     const fullPath = nodePath2.resolve(base, path || "");
     const relative2 = nodePath2.relative(base, fullPath);
@@ -4672,6 +4684,13 @@ ${row.text.trim()}`).join("\n\n");
       return false;
     }
     return this.openExternalPath(fullPath, "Opened the authored file in its default app.");
+  }
+  openRelatedRecord(record) {
+    if (!record) return;
+    if ((record.type === "note" || record.type === "concept") && record.path) {
+      return this.openAuthoredPath(record.path, "split");
+    }
+    return this.openRecord(record);
   }
   openRecord(record) {
     if (!record) return;
