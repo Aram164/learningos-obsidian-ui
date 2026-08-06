@@ -50,6 +50,8 @@ interface PythonResolution {
   attempted: string[];
 }
 
+type VaultOpenPlacement = 'tab' | 'split';
+
 type LosCallback = (
   error: Error | null,
   stdout: string,
@@ -477,21 +479,44 @@ export class LearningOSUI extends Plugin {
     return true;
   }
 
-  async openVaultPath(path: string) {
+  async openVaultPath(
+    path: string,
+    placement: VaultOpenPlacement = 'tab',
+  ) {
     if (this.refuseQuarantined(path)) return;
     const file = this.app.vault.getAbstractFileByPath(path);
-    if (!file) { new Notice(`File unavailable: ${path}`); return; }
-    let existing: any = null;
-    this.app.workspace.iterateAllLeaves((leaf: any) => {
-      if (!existing && leaf.view?.file?.path === path) existing = leaf;
-    });
-    if (existing) {
-      this.app.workspace.revealLeaf(existing);
-      this.app.workspace.setActiveLeaf?.(existing, { focus: true });
-      return existing;
+    if (!file) {
+      new Notice(`File unavailable: ${path}`);
+      return;
     }
-    const leaf = this.app.workspace.getLeaf(true);
+
+    if (placement === 'tab') {
+      let existing: any = null;
+      this.app.workspace.iterateAllLeaves((leaf: any) => {
+        if (!existing && leaf.view?.file?.path === path) {
+          existing = leaf;
+        }
+      });
+      if (existing) {
+        this.app.workspace.revealLeaf(existing);
+        this.app.workspace.setActiveLeaf?.(
+          existing,
+          { focus: true },
+        );
+        return existing;
+      }
+    }
+
+    const leaf = placement === 'split'
+      ? this.app.workspace.getLeaf('split', 'vertical')
+      : this.app.workspace.getLeaf(true);
+
     await leaf.openFile(file);
+
+    if (placement === 'split') {
+      this.app.workspace.revealLeaf(leaf);
+    }
+
     return leaf;
   }
   async openExternalPath(
@@ -516,10 +541,15 @@ export class LearningOSUI extends Plugin {
     }
     return this.openExternalPath(fullPath, 'Opened the local material in its default app.');
   }
-  openAuthoredPath(path: string) {
+  openAuthoredPath(
+    path: string,
+    placement: VaultOpenPlacement = 'tab',
+  ) {
     if (this.refuseQuarantined(path)) return false;
     const extension = nodePath.extname(path || '').toLocaleLowerCase();
-    if (['.md', '.pdf', '.canvas', '.base'].includes(extension)) return this.openVaultPath(path);
+    if (['.md', '.pdf', '.canvas', '.base'].includes(extension)) {
+      return this.openVaultPath(path, placement);
+    }
     const base = this.app.vault.adapter.getBasePath();
     const fullPath = nodePath.resolve(base, path || '');
     const relative = nodePath.relative(base, fullPath);
@@ -528,6 +558,19 @@ export class LearningOSUI extends Plugin {
     }
     return this.openExternalPath(fullPath, 'Opened the authored file in its default app.');
   }
+  openRelatedRecord(
+    record: ProjectionRecord | null | undefined,
+  ) {
+    if (!record) return;
+    if (
+      (record.type === 'note' || record.type === 'concept')
+      && record.path
+    ) {
+      return this.openAuthoredPath(record.path, 'split');
+    }
+    return this.openRecord(record);
+  }
+
   openRecord(record: ProjectionRecord | null | undefined) {
     if (!record) return;
     if (record.type === 'unit') return this.openUnit(record.id);

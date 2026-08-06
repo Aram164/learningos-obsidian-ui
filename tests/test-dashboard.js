@@ -388,6 +388,36 @@ async function main() {
       Boolean(technical) && technical.allText().includes('Copy ID')
       && technical.find('los-detail-id')[0]?.text === 'source-fixture-book');
 
+    const routeBeforeRelated = plugin.router.snapshot().current;
+    const originalRelated = plugin.store.related;
+    plugin.store.related = () => [{
+      rec: {
+        id: 'note-fixture-probability',
+        type: 'note',
+        title: 'Fixture probability note',
+        path: 'knowledge/notes/mathematics/note-fixture-probability.md',
+      },
+    }];
+    const relatedProbe = view.contentEl.createDiv({
+      cls: 'los-related-probe',
+    });
+    view.renderRelated(
+      relatedProbe,
+      { id: 'source-fixture-book' },
+    );
+    relatedProbe.find('los-chip')[0].fire('click');
+    await tick();
+    plugin.store.related = originalRelated;
+    const relatedLeaf = app.workspace.revealed;
+    check('related notes open beside LearningOS instead of replacing it',
+      relatedLeaf?.placement === 'split'
+      && relatedLeaf?.direction === 'vertical'
+      && app.workspace.opened.at(-1)
+        === 'knowledge/notes/mathematics/note-fixture-probability.md'
+      && app.workspace.getLeavesOfType(VIEW.library).length === 1
+      && JSON.stringify(plugin.router.snapshot().current)
+        === JSON.stringify(routeBeforeRelated));
+
     await plugin.openLibraryHome('topic-packs');
     view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
     check('Topic Packs starts at thematic groups rather than source types',

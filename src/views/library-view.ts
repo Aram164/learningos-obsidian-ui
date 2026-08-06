@@ -475,7 +475,7 @@ export class LibraryView extends ItemView {
         chip(
           shown,
           rec,
-          (row: ProjectionRecord) => this.plugin.openRecord(row),
+          (row: ProjectionRecord) => this.plugin.openRelatedRecord(row),
         );
       }
       if (rows.length > 5) {
@@ -487,7 +487,7 @@ export class LibraryView extends ItemView {
           chip(
             restChips,
             rec,
-            (row: ProjectionRecord) => this.plugin.openRecord(row),
+            (row: ProjectionRecord) => this.plugin.openRelatedRecord(row),
           );
         }
       }

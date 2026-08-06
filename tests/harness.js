@@ -325,7 +325,15 @@ function makeApp(vaultRoot) {
         leaves.push(leaf);
         return leaf;
       },
-      getLeaf(newTab) { return app.workspace.makeLeaf(newTab, 'main'); },
+      getLeaf(placement, direction) {
+        const leaf = app.workspace.makeLeaf(
+          placement,
+          'main',
+        );
+        leaf.placement = placement;
+        leaf.direction = direction || null;
+        return leaf;
+      },
       getLeftLeaf() { return app.workspace.makeLeaf(false, 'left'); },
       getRightLeaf() { return app.workspace.makeLeaf(false, 'right'); },
       revealLeaf(l) { app.workspace.revealed = l; },
