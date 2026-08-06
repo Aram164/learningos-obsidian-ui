@@ -1254,7 +1254,7 @@ class HomeView extends ItemView {
       return;
     }
 
-    const header = pageHeader(root, 'Home', this.greeting(),
+    const header = pageHeader(root, 'Home', `${this.greeting()}, Aram`,
       'Resume what matters without rebuilding the context first.');
     header.addClass('los-home-header');
     const actions = header.createDiv({ cls: 'los-actions los-home-header-actions' });
@@ -1631,28 +1631,74 @@ class ModuleView extends ItemView {
   renderGroups(root) {
     pageHeader(root, 'Modules', 'Choose a thematic group',
       'Modules stay organized by explicit core-owned domains. Open a group to see its contents.');
-    const groups = this.plugin.store.thematicGroups();
-    if (!groups.length) {
+    const allGroups = this.plugin.store.thematicGroups();
+    if (!allGroups.length) {
       empty(root, 'No thematic groups', 'Rebuild the projection after defining thematic-group metadata.');
       return;
     }
+
+    const search = root.createEl('input', {
+      cls: 'los-search los-group-search',
+      attr: {
+        type: 'search',
+        placeholder: 'Search thematic groups…',
+        'aria-label': 'Search thematic groups',
+      },
+    });
+    search.value = this.query;
+
     const grid = root.createDiv({ cls: 'los-group-grid' });
-    for (const group of groups) {
-      const modules = this.plugin.store.modulesForGroup(group.id);
-      const card = grid.createEl('button', {
-        cls: 'los-group-card is-clickable',
-        attr: { type: 'button', 'aria-label': `Open ${group.title}` },
-      });
-      const head = card.createDiv({ cls: 'los-group-card-header' });
-      head.createEl('h2', { text: group.title });
-      head.createSpan({ cls: 'los-group-count', text: `${modules.length} module${modules.length === 1 ? '' : 's'}` });
-      if (group.description) card.createEl('p', { text: group.description });
-      card.createSpan({ cls: 'los-route-open', text: 'Open →' });
-      card.addEventListener('click', () => {
-        this.selectedElementId = group.id;
-        this.plugin.openModuleGroup(group.id);
-      });
-    }
+    const draw = () => {
+      grid.empty();
+      const needle = String(search.value || '').trim().toLocaleLowerCase();
+      const groups = allGroups.filter((group) => !needle
+        || [group.title, group.description, group.id]
+          .filter(Boolean).join(' ').toLocaleLowerCase().includes(needle));
+
+      if (!groups.length) {
+        empty(grid, 'No matching groups',
+          `No thematic group matches “${String(search.value || '').trim()}”.`,
+          'Clear search', () => {
+            search.value = '';
+            this.query = '';
+            draw();
+            search.focus();
+          });
+        return;
+      }
+
+      for (const group of groups) {
+        const modules = this.plugin.store.modulesForGroup(group.id);
+        const card = grid.createEl('button', {
+          cls: 'los-group-card is-clickable',
+          attr: { type: 'button', 'aria-label': `Open ${group.title}` },
+        });
+        const head = card.createDiv({ cls: 'los-group-card-header' });
+        const markText = String(group.short_title || group.title || '•')
+          .split(/\s+/).filter(Boolean)
+          .map((part) => part[0]).join('')
+          .slice(0, 2).toLocaleUpperCase();
+        head.createSpan({ cls: 'los-group-mark', text: markText || '•' });
+        const heading = head.createDiv({ cls: 'los-group-heading' });
+        heading.createEl('h2', { text: group.title });
+        heading.createSpan({
+          cls: 'los-group-count',
+          text: `${modules.length} module${modules.length === 1 ? '' : 's'}`,
+        });
+        if (group.description) card.createEl('p', { text: group.description });
+        card.createSpan({ cls: 'los-route-open', text: 'Open →' });
+        card.addEventListener('click', () => {
+          this.selectedElementId = group.id;
+          this.plugin.openModuleGroup(group.id);
+        });
+      }
+    };
+
+    search.addEventListener('input', () => {
+      this.query = search.value;
+      draw();
+    });
+    draw();
   }
 
   renderGroupList(root) {
@@ -1990,9 +2036,10 @@ class ProjectView extends ItemView {
       pageHeader(root, 'Projects', 'Project not found');
       return empty(root, 'This project is unavailable', 'The current projection does not contain this project.', 'Back to projects', () => this.plugin.openProjects());
     }
+    const back = button(root, '‹ Projects', () => this.plugin.back(), 'quiet');
+    back.addClass('los-route-back');
     const head = pageHeader(root, 'Project', project.title, project.objective || '');
     const headActions = head.createDiv({ cls: 'los-actions' });
-    button(headActions, 'Back', () => this.plugin.back(), 'quiet');
     badge(headActions, project.status || 'planned', project.status || 'planned');
 
     const tabs = root.createDiv({ cls: 'los-project-tabs', attr: { role: 'tablist', 'aria-label': 'Project sections' } });
@@ -2013,20 +2060,57 @@ class ProjectView extends ItemView {
   }
 
   renderOverview(root, project) {
-    const overview = section(root, 'Overview');
-    const meta = overview.createDiv({ cls: 'los-project-meta-grid' });
-    for (const [label, value] of [
-      ['Type', project.project_type || 'Project'], ['Status', project.status || 'planned'],
-      ['Confidentiality', project.boundaries?.confidentiality || 'unspecified'],
-      ['External code access', project.boundaries?.external_code_access || 'unspecified'],
-    ]) {
-      const row = meta.createDiv({ cls: 'los-project-meta' }); row.createDiv({ cls: 'los-kicker', text: label }); row.createEl('strong', { text: value });
+    const brief = section(root, 'Project brief');
+    const briefCard = brief.createDiv({ cls: 'los-project-brief' });
+    const briefTop = briefCard.createDiv({ cls: 'los-card-top' });
+    briefTop.createDiv({ cls: 'los-project-brief-label', text: 'Research aim' });
+    badge(briefTop, project.status || 'planned', project.status || 'planned');
+    briefCard.createEl('p', {
+      text: projectedExcerpt(project.objective, 1200)
+        || 'No project objective has been recorded yet.',
+    });
+    const briefFacts = briefCard.createDiv({ cls: 'los-project-brief-facts' });
+    for (const value of [
+      project.project_type || 'Project',
+      project.boundaries?.confidentiality,
+      project.boundaries?.external_code_access,
+    ].filter(Boolean)) {
+      briefFacts.createSpan({ text: String(value) });
     }
-    if (project.boundaries?.notes) overview.createEl('p', { cls: 'los-muted', text: project.boundaries.notes });
-    const units = section(root, 'Project units', 'Existing learning units remain reachable without turning the project into a module.');
-    const unitRows = (project.unit_ids || []).map((id) => this.plugin.store.get(id)).filter(Boolean);
-    if (!unitRows.length) empty(units, 'No units linked', 'This project can exist without a linear learning map.');
-    for (const unit of unitRows) button(units, unit.title || unit.id, () => this.plugin.openUnit(unit.id), 'row');
+
+    const work = section(root, 'Work areas');
+    const units = (project.unit_ids || [])
+      .map((id) => this.plugin.store.get(id))
+      .filter(Boolean);
+
+    if (!units.length) {
+      empty(work, 'No work areas linked',
+        'Project-owned Units will appear here without imposing a completion percentage.');
+    } else {
+      const list = work.createDiv({ cls: 'los-project-work-list' });
+      for (const unit of units) {
+        const row = button(list, unit.title || unit.id,
+          () => this.plugin.openUnit(unit.id), 'row');
+        row.addClass('los-project-work-area');
+        row.createSpan({
+          cls: 'los-project-work-area-meta',
+          text: unit.scope || unit.kind || 'Project unit',
+        });
+        row.createSpan({ cls: 'los-route-open', text: 'Open →' });
+      }
+    }
+
+    const connections = section(root, 'Project connections');
+    const relationships = this.plugin.store.projectRelationships(project.id);
+    const connectionFacts = [
+      `${relationships.length} linked material${relationships.length === 1 ? '' : 's'}`,
+      `${(project.linked_module_ids || []).length} linked module${(project.linked_module_ids || []).length === 1 ? '' : 's'}`,
+      `${(project.files || []).length} file${(project.files || []).length === 1 ? '' : 's'}`,
+    ];
+    connections.createEl('p', {
+      cls: 'los-project-connections',
+      text: connectionFacts.join(' · '),
+    });
   }
 
   renderStructure(root, project) {
@@ -2187,6 +2271,24 @@ class UnitView extends ItemView {
     add.addClass('los-add-unit-note');
     const draft = this.plugin.getUnitNoteDraft(unit.id, studyMap.stages);
     if (draft.text.trim()) rail.createDiv({ cls: 'los-micro los-unit-note-draft', text: 'Unsaved unit-note draft kept locally.' });
+
+    const completed = studyMap.stages
+      .filter((stage) => stage.status === 'complete').length;
+    const percent = studyMap.stages.length
+      ? Math.round((completed / studyMap.stages.length) * 100)
+      : 0;
+    const progress = rail.createDiv({ cls: 'los-unit-progress' });
+    progress.createDiv({ cls: 'los-kicker', text: 'Unit progress' });
+    const track = progress.createDiv({ cls: 'los-unit-progress-track' });
+    const fill = track.createDiv({ cls: 'los-unit-progress-fill' });
+    fill.setAttr('style', `width: ${percent}%`);
+    progress.createDiv({
+      cls: 'los-micro',
+      text: `Stage ${Math.min(
+        studyMap.stages.findIndex((stage) => stage.id === current.id) + 1,
+        studyMap.stages.length,
+      )} of ${studyMap.stages.length}`,
+    });
   }
 
   renderStage(layout, unit, studyMap, stage) {
@@ -2202,6 +2304,7 @@ class UnitView extends ItemView {
     if (stage.estimate_minutes) badge(top, `${stage.estimate_minutes} min`, 'role');
 
     const resources = section(center, 'Resources');
+    resources.addClass('los-stage-resources');
     // Array.isArray, not a truthy length check: a string here used to render
     // one blank row per character, because for...of walks a string by character.
     const stageResources = Array.isArray(stage.resources)
@@ -2235,6 +2338,7 @@ class UnitView extends ItemView {
       ? stage.done_when.filter((row) => typeof row === 'string' && row.trim()) : [];
     if (criteria.length) {
       const done = section(center, 'Done when');
+      done.addClass('los-stage-done');
       const marks = this.plugin.getDoneWhen(unit.id, stage.id);
       const list = done.createDiv({ cls: 'los-donewhen-list' });
       for (const [index, criterion] of criteria.entries()) {
@@ -2441,33 +2545,78 @@ class LibraryView extends ItemView {
         ? 'Topic Packs are narrow, purpose-built and manually ordered collections.'
         : 'Open a domain to browse its learning sources.');
     this.renderCollectionSwitch(root);
-    const groups = this.plugin.store.thematicGroups();
-    if (!groups.length) {
+
+    const allGroups = this.plugin.store.thematicGroups();
+    if (!allGroups.length) {
       empty(root, 'No thematic groups', 'Rebuild the projection after defining thematic-group metadata.');
       return;
     }
-    const grid = root.createDiv({ cls: 'los-group-grid los-library-group-grid' });
-    for (const group of groups) {
-      const count = this.collection === 'topic-packs'
-        ? this.plugin.store.topicPacksForGroup(group.id).length
-        : this.plugin.store.sourcesForGroup(group.id).length;
-      const card = grid.createEl('button', {
-        cls: 'los-group-card is-clickable',
-        attr: { type: 'button', 'aria-label': `Open ${group.title}` },
-      });
-      const head = card.createDiv({ cls: 'los-group-card-header' });
-      head.createEl('h2', { text: group.title });
-      head.createSpan({
-        cls: 'los-group-count',
-        text: `${count} ${this.collection === 'topic-packs' ? `pack${count === 1 ? '' : 's'}` : `source${count === 1 ? '' : 's'}`}`,
-      });
-      if (group.description) card.createEl('p', { text: group.description });
-      card.createSpan({ cls: 'los-route-open', text: 'Open →' });
-      card.addEventListener('click', () => {
-        this.selectedElementId = group.id;
-        this.plugin.openLibraryGroup(this.collection, group.id);
-      });
-    }
+
+    const search = root.createEl('input', {
+      cls: 'los-search los-group-search',
+      attr: {
+        type: 'search',
+        placeholder: 'Search thematic groups…',
+        'aria-label': 'Search Library thematic groups',
+      },
+    });
+    search.value = '';
+
+    const grid = root.createDiv({
+      cls: 'los-group-grid los-library-group-grid',
+    });
+
+    const draw = () => {
+      grid.empty();
+      const needle = String(search.value || '').trim().toLocaleLowerCase();
+      const groups = allGroups.filter((group) => !needle
+        || [group.title, group.description, group.id]
+          .filter(Boolean).join(' ').toLocaleLowerCase().includes(needle));
+
+      if (!groups.length) {
+        empty(grid, 'No matching groups',
+          `No Library group matches “${String(search.value || '').trim()}”.`,
+          'Clear search', () => {
+            search.value = '';
+            draw();
+            search.focus();
+          });
+        return;
+      }
+
+      for (const group of groups) {
+        const count = this.collection === 'topic-packs'
+          ? this.plugin.store.topicPacksForGroup(group.id).length
+          : this.plugin.store.sourcesForGroup(group.id).length;
+        const card = grid.createEl('button', {
+          cls: 'los-group-card is-clickable',
+          attr: { type: 'button', 'aria-label': `Open ${group.title}` },
+        });
+        const head = card.createDiv({ cls: 'los-group-card-header' });
+        const markText = String(group.short_title || group.title || '•')
+          .split(/\s+/).filter(Boolean)
+          .map((part) => part[0]).join('')
+          .slice(0, 2).toLocaleUpperCase();
+        head.createSpan({ cls: 'los-group-mark', text: markText || '•' });
+        const heading = head.createDiv({ cls: 'los-group-heading' });
+        heading.createEl('h2', { text: group.title });
+        heading.createSpan({
+          cls: 'los-group-count',
+          text: `${count} ${this.collection === 'topic-packs'
+            ? `pack${count === 1 ? '' : 's'}`
+            : `source${count === 1 ? '' : 's'}`}`,
+        });
+        if (group.description) card.createEl('p', { text: group.description });
+        card.createSpan({ cls: 'los-route-open', text: 'Open →' });
+        card.addEventListener('click', () => {
+          this.selectedElementId = group.id;
+          this.plugin.openLibraryGroup(this.collection, group.id);
+        });
+      }
+    };
+
+    search.addEventListener('input', draw);
+    draw();
   }
 
   renderCollectionSwitch(root) {
@@ -3355,7 +3504,7 @@ class NavView extends ItemView {
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-app-nav');
     const brand = root.createDiv({ cls: 'los-nav-brand' });
-    icon(brand.createSpan({ cls: 'los-brand-mark' }), 'route');
+    brand.createSpan({ cls: 'los-brand-mark', text: 'L' });
     brand.createEl('strong', { text: 'LearningOS' });
     const search = brand.createEl('button', {
       cls: 'los-nav-search is-clickable',
@@ -3373,9 +3522,10 @@ class NavView extends ItemView {
     this.nav(primary, 'sprout', 'Garden', 'garden', () => this.plugin.openGarden());
     this.nav(primary, 'check-check', 'Review', 'review', () => this.plugin.openReview());
 
-    const more = root.createEl('details', { cls: 'los-nav-more' });
+    const utility = root.createDiv({ cls: 'los-nav-utility' });
+    const more = utility.createEl('details', { cls: 'los-nav-more' });
     if (this.plugin.settings.navMoreOpen) more.setAttr('open', 'open');
-    more.createEl('summary', { cls: 'los-nav-more-trigger', text: 'More' });
+    more.createEl('summary', { cls: 'los-nav-more-trigger', text: 'Theme' });
     more.addEventListener('toggle', () => {
       this.plugin.settings.navMoreOpen = Boolean(more.open ?? more.attrs?.open);
       this.plugin.scheduleDraftSave();
@@ -3389,6 +3539,8 @@ class NavView extends ItemView {
       () => this.plugin.openBoundary('program-job-boundary'));
     this.nav(secondary, 'activity', 'Diagnostics', 'diagnostics', () => this.plugin.openDiagnostics());
     this.nav(secondary, 'refresh-cw', 'Rebuild projection', 'rebuild', () => this.plugin.generate());
+    this.nav(utility, 'settings', 'Diagnostics', 'diagnostics',
+      () => this.plugin.openDiagnostics()).addClass('los-nav-diagnostics');
   }
 }
 

@@ -96,9 +96,10 @@ export class ProjectView extends ItemView {
       pageHeader(root, 'Projects', 'Project not found');
       return empty(root, 'This project is unavailable', 'The current projection does not contain this project.', 'Back to projects', () => this.plugin.openProjects());
     }
+    const back = button(root, '‹ Projects', () => this.plugin.back(), 'quiet');
+    back.addClass('los-route-back');
     const head = pageHeader(root, 'Project', project.title, project.objective || '');
     const headActions = head.createDiv({ cls: 'los-actions' });
-    button(headActions, 'Back', () => this.plugin.back(), 'quiet');
     badge(headActions, project.status || 'planned', project.status || 'planned');
 
     const tabs = root.createDiv({ cls: 'los-project-tabs', attr: { role: 'tablist', 'aria-label': 'Project sections' } });
@@ -119,20 +120,57 @@ export class ProjectView extends ItemView {
   }
 
   renderOverview(root, project) {
-    const overview = section(root, 'Overview');
-    const meta = overview.createDiv({ cls: 'los-project-meta-grid' });
-    for (const [label, value] of [
-      ['Type', project.project_type || 'Project'], ['Status', project.status || 'planned'],
-      ['Confidentiality', project.boundaries?.confidentiality || 'unspecified'],
-      ['External code access', project.boundaries?.external_code_access || 'unspecified'],
-    ]) {
-      const row = meta.createDiv({ cls: 'los-project-meta' }); row.createDiv({ cls: 'los-kicker', text: label }); row.createEl('strong', { text: value });
+    const brief = section(root, 'Project brief');
+    const briefCard = brief.createDiv({ cls: 'los-project-brief' });
+    const briefTop = briefCard.createDiv({ cls: 'los-card-top' });
+    briefTop.createDiv({ cls: 'los-project-brief-label', text: 'Research aim' });
+    badge(briefTop, project.status || 'planned', project.status || 'planned');
+    briefCard.createEl('p', {
+      text: projectedExcerpt(project.objective, 1200)
+        || 'No project objective has been recorded yet.',
+    });
+    const briefFacts = briefCard.createDiv({ cls: 'los-project-brief-facts' });
+    for (const value of [
+      project.project_type || 'Project',
+      project.boundaries?.confidentiality,
+      project.boundaries?.external_code_access,
+    ].filter(Boolean)) {
+      briefFacts.createSpan({ text: String(value) });
     }
-    if (project.boundaries?.notes) overview.createEl('p', { cls: 'los-muted', text: project.boundaries.notes });
-    const units = section(root, 'Project units', 'Existing learning units remain reachable without turning the project into a module.');
-    const unitRows = (project.unit_ids || []).map((id) => this.plugin.store.get(id)).filter(Boolean);
-    if (!unitRows.length) empty(units, 'No units linked', 'This project can exist without a linear learning map.');
-    for (const unit of unitRows) button(units, unit.title || unit.id, () => this.plugin.openUnit(unit.id), 'row');
+
+    const work = section(root, 'Work areas');
+    const units = (project.unit_ids || [])
+      .map((id) => this.plugin.store.get(id))
+      .filter(Boolean);
+
+    if (!units.length) {
+      empty(work, 'No work areas linked',
+        'Project-owned Units will appear here without imposing a completion percentage.');
+    } else {
+      const list = work.createDiv({ cls: 'los-project-work-list' });
+      for (const unit of units) {
+        const row = button(list, unit.title || unit.id,
+          () => this.plugin.openUnit(unit.id), 'row');
+        row.addClass('los-project-work-area');
+        row.createSpan({
+          cls: 'los-project-work-area-meta',
+          text: unit.scope || unit.kind || 'Project unit',
+        });
+        row.createSpan({ cls: 'los-route-open', text: 'Open →' });
+      }
+    }
+
+    const connections = section(root, 'Project connections');
+    const relationships = this.plugin.store.projectRelationships(project.id);
+    const connectionFacts = [
+      `${relationships.length} linked material${relationships.length === 1 ? '' : 's'}`,
+      `${(project.linked_module_ids || []).length} linked module${(project.linked_module_ids || []).length === 1 ? '' : 's'}`,
+      `${(project.files || []).length} file${(project.files || []).length === 1 ? '' : 's'}`,
+    ];
+    connections.createEl('p', {
+      cls: 'los-project-connections',
+      text: connectionFacts.join(' · '),
+    });
   }
 
   renderStructure(root, project) {

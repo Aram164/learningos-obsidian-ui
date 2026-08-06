@@ -52,28 +52,74 @@ export class ModuleView extends ItemView {
   renderGroups(root) {
     pageHeader(root, 'Modules', 'Choose a thematic group',
       'Modules stay organized by explicit core-owned domains. Open a group to see its contents.');
-    const groups = this.plugin.store.thematicGroups();
-    if (!groups.length) {
+    const allGroups = this.plugin.store.thematicGroups();
+    if (!allGroups.length) {
       empty(root, 'No thematic groups', 'Rebuild the projection after defining thematic-group metadata.');
       return;
     }
+
+    const search = root.createEl('input', {
+      cls: 'los-search los-group-search',
+      attr: {
+        type: 'search',
+        placeholder: 'Search thematic groups…',
+        'aria-label': 'Search thematic groups',
+      },
+    });
+    search.value = this.query;
+
     const grid = root.createDiv({ cls: 'los-group-grid' });
-    for (const group of groups) {
-      const modules = this.plugin.store.modulesForGroup(group.id);
-      const card = grid.createEl('button', {
-        cls: 'los-group-card is-clickable',
-        attr: { type: 'button', 'aria-label': `Open ${group.title}` },
-      });
-      const head = card.createDiv({ cls: 'los-group-card-header' });
-      head.createEl('h2', { text: group.title });
-      head.createSpan({ cls: 'los-group-count', text: `${modules.length} module${modules.length === 1 ? '' : 's'}` });
-      if (group.description) card.createEl('p', { text: group.description });
-      card.createSpan({ cls: 'los-route-open', text: 'Open →' });
-      card.addEventListener('click', () => {
-        this.selectedElementId = group.id;
-        this.plugin.openModuleGroup(group.id);
-      });
-    }
+    const draw = () => {
+      grid.empty();
+      const needle = String(search.value || '').trim().toLocaleLowerCase();
+      const groups = allGroups.filter((group) => !needle
+        || [group.title, group.description, group.id]
+          .filter(Boolean).join(' ').toLocaleLowerCase().includes(needle));
+
+      if (!groups.length) {
+        empty(grid, 'No matching groups',
+          `No thematic group matches “${String(search.value || '').trim()}”.`,
+          'Clear search', () => {
+            search.value = '';
+            this.query = '';
+            draw();
+            search.focus();
+          });
+        return;
+      }
+
+      for (const group of groups) {
+        const modules = this.plugin.store.modulesForGroup(group.id);
+        const card = grid.createEl('button', {
+          cls: 'los-group-card is-clickable',
+          attr: { type: 'button', 'aria-label': `Open ${group.title}` },
+        });
+        const head = card.createDiv({ cls: 'los-group-card-header' });
+        const markText = String(group.short_title || group.title || '•')
+          .split(/\s+/).filter(Boolean)
+          .map((part) => part[0]).join('')
+          .slice(0, 2).toLocaleUpperCase();
+        head.createSpan({ cls: 'los-group-mark', text: markText || '•' });
+        const heading = head.createDiv({ cls: 'los-group-heading' });
+        heading.createEl('h2', { text: group.title });
+        heading.createSpan({
+          cls: 'los-group-count',
+          text: `${modules.length} module${modules.length === 1 ? '' : 's'}`,
+        });
+        if (group.description) card.createEl('p', { text: group.description });
+        card.createSpan({ cls: 'los-route-open', text: 'Open →' });
+        card.addEventListener('click', () => {
+          this.selectedElementId = group.id;
+          this.plugin.openModuleGroup(group.id);
+        });
+      }
+    };
+
+    search.addEventListener('input', () => {
+      this.query = search.value;
+      draw();
+    });
+    draw();
   }
 
   renderGroupList(root) {

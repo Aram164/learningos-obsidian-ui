@@ -994,3 +994,1415 @@
   .los-project-link { align-items: stretch; flex-direction: column; }
   .los-project-node-children { margin-left: var(--size-4-2); }
 }
+
+/* FIGMA FIDELITY LAYER — LearningOS App Demo
+ *
+ * Visual source:
+ * LearningOS App Demo — Product Screens
+ *
+ * The functional DOM and application router remain unchanged. This layer
+ * replaces the compact Obsidian-theme treatment with the approved beige /
+ * wine-red product language.
+ */
+
+body {
+  --los-background-canvas: rgb(247 244 236);
+  --los-background-sidebar: rgb(236 230 216);
+  --los-background-surface: rgb(255 253 249);
+  --los-background-selected: rgb(234 216 220);
+  --los-background-subtle: rgb(242 237 227);
+  --los-background-brand: rgb(122 49 67);
+  --los-text-primary: rgb(36 41 33);
+  --los-text-secondary: rgb(98 104 95);
+  --los-text-brand: rgb(122 49 67);
+  --los-text-on-brand: rgb(255 255 255);
+  --los-border-default: rgb(217 209 194);
+  --los-border-brand: rgb(122 49 67);
+  --los-card-shadow: 0 1px 2px rgb(36 41 33 / 0.08);
+}
+
+.workspace-leaf-content[data-type^="learningos-"] {
+  background: var(--los-background-canvas);
+}
+
+.workspace-leaf-content[data-type^="learningos-"] > .view-header {
+  display: none;
+}
+
+.workspace-leaf-content[data-type^="learningos-"] > .view-content {
+  padding: 0;
+  background: var(--los-background-canvas);
+}
+
+.workspace-leaf-content[data-type="learningos-nav"] {
+  min-width: 232px;
+  background: var(--los-background-sidebar);
+}
+
+.workspace-leaf-content[data-type="learningos-nav"] > .view-content {
+  overflow: hidden;
+  background: var(--los-background-sidebar);
+}
+
+.los-root {
+  --los-1: 4px;
+  --los-2: 8px;
+  --los-3: 12px;
+  --los-4: 16px;
+  --los-5: 24px;
+  --los-6: 32px;
+  --los-r-sm: 6px;
+  --los-r-md: 9px;
+  --los-r-lg: 12px;
+  --los-r-xl: 14px;
+  --los-r-window: 20px;
+  --los-r-pill: 999px;
+  --los-surface: var(--los-background-surface);
+  --los-surface-raised: var(--los-background-surface);
+  --los-line: var(--los-border-default);
+  --los-line-strong: var(--los-border-default);
+
+  min-height: 100%;
+  padding: 40px clamp(24px, 3.3vw, 46px) 64px;
+  background: var(--los-background-canvas);
+  color: var(--los-text-primary);
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.los-root h1,
+.los-root h2,
+.los-root h3,
+.los-root strong {
+  color: var(--los-text-primary);
+}
+
+.los-root h1 {
+  margin: 4px 0;
+  font-size: 30px !important;
+  font-weight: 700;
+  line-height: 36px;
+  letter-spacing: 0;
+}
+
+.los-root h2 {
+  margin: 0 0 12px;
+  font-size: 18px !important;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.los-root h3 {
+  margin: 0 0 4px;
+  font-size: 15px !important;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.los-root p {
+  color: var(--los-text-secondary);
+  line-height: 20px;
+}
+
+.los-muted,
+.los-micro,
+.los-progress-copy,
+.los-detail-id,
+.los-route-meta,
+.los-group-count {
+  color: var(--los-text-secondary) !important;
+}
+
+.los-micro,
+.los-detail-id,
+.los-route-meta {
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.los-kicker,
+.los-nav-label {
+  color: var(--los-text-brand) !important;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 14px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.los-page-header {
+  position: relative;
+  width: 100%;
+  max-width: 1122px;
+  min-height: 76px;
+  margin: 0 auto 32px;
+  padding-right: 220px;
+}
+
+.los-page-header > p {
+  max-width: 760px;
+  margin: 4px 0 0;
+  color: var(--los-text-secondary);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.los-page-header > .los-actions,
+.los-home-header-actions {
+  position: absolute;
+  top: 22px;
+  right: 0;
+  justify-content: flex-end;
+}
+
+.los-section {
+  width: 100%;
+  max-width: 1122px;
+  margin: 0 auto 36px;
+}
+
+.los-section > .los-muted {
+  margin: -6px 0 16px;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.los-root button,
+.los-root input,
+.los-root textarea,
+.los-root select {
+  font-family: inherit;
+}
+
+.los-root button {
+  min-height: 36px;
+  padding: 9px 14px;
+  border: 1px solid var(--los-border-default);
+  border-radius: 9px;
+  background: var(--los-background-surface);
+  color: var(--los-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.los-root button:hover {
+  border-color: var(--los-border-brand);
+  background: var(--los-background-surface);
+  color: var(--los-text-brand);
+}
+
+.los-root .los-btn--cta {
+  border-color: var(--los-border-brand) !important;
+  background: var(--los-background-brand) !important;
+  color: var(--los-text-on-brand) !important;
+}
+
+.los-root .los-btn--quiet {
+  border-color: var(--los-border-default) !important;
+  background: var(--los-background-surface) !important;
+  color: var(--los-text-primary) !important;
+}
+
+.los-root .los-btn--tertiary,
+.los-root .los-btn--row {
+  min-height: auto;
+  padding: 4px 0;
+  border-color: transparent !important;
+  background: transparent !important;
+  color: var(--los-text-brand) !important;
+}
+
+.los-root .los-btn--tertiary:hover,
+.los-root .los-btn--row:hover {
+  color: var(--los-text-brand) !important;
+  text-decoration: none;
+}
+
+.los-search,
+.los-root input[type="search"],
+.los-root input[type="text"],
+.los-root textarea,
+.los-root select {
+  width: 100%;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid var(--los-border-default);
+  border-radius: 12px;
+  background: var(--los-background-surface);
+  color: var(--los-text-primary);
+  box-shadow: none;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.los-search::placeholder,
+.los-root input::placeholder,
+.los-root textarea::placeholder {
+  color: var(--los-text-secondary);
+  opacity: 1;
+}
+
+.los-search:focus,
+.los-root input:focus,
+.los-root textarea:focus,
+.los-root select:focus {
+  border-color: var(--los-border-brand);
+  box-shadow: 0 0 0 2px rgb(122 49 67 / 0.12);
+}
+
+.los-card,
+.los-artifact-card,
+.los-evidence-card,
+.los-workspace-card,
+.los-project-brief,
+.los-resource-row,
+.los-route-row,
+.los-home-row,
+.los-project-work-area,
+.los-project-node,
+.los-project-link,
+.los-project-file,
+.los-project-decision,
+.los-pack-entry {
+  border: 1px solid var(--los-border-default);
+  border-radius: 12px;
+  background: var(--los-background-surface);
+  box-shadow: var(--los-card-shadow);
+}
+
+.los-card::before {
+  display: none;
+}
+
+.los-card:hover,
+.los-route-row:hover,
+.los-home-row:hover,
+.los-group-card:hover,
+.los-project-work-area:hover {
+  border-color: var(--los-border-brand);
+  transform: none;
+}
+
+.los-card-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.los-badge {
+  min-height: 24px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: var(--los-r-pill);
+  background: var(--los-background-subtle);
+  color: var(--los-text-secondary) !important;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.los-badge--active,
+.los-badge--in-progress,
+.los-badge--planned,
+.los-badge--ready,
+.los-badge--role {
+  background: var(--los-background-selected);
+  color: var(--los-text-brand) !important;
+}
+
+
+/* Navigator */
+
+.los-app-nav {
+  display: flex;
+  width: 100%;
+  min-height: 100%;
+  flex-direction: column;
+  padding: 24px 16px 18px;
+  overflow: visible;
+  border-radius: 20px 0 0 20px;
+  background: var(--los-background-sidebar);
+}
+
+.los-nav-brand {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) 32px;
+  gap: 12px;
+  align-items: center;
+  margin: 0 6px 28px;
+  padding: 0;
+}
+
+.los-nav-brand strong {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 24px;
+}
+
+.los-brand-mark {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--los-background-brand);
+  color: var(--los-text-on-brand);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.los-nav-search {
+  display: grid;
+  width: 32px !important;
+  min-width: 32px !important;
+  height: 32px;
+  min-height: 32px !important;
+  place-items: center;
+  padding: 0 !important;
+  border: 1px solid var(--los-border-default) !important;
+  border-radius: 10px !important;
+  background: var(--los-background-surface) !important;
+  color: var(--los-text-secondary) !important;
+}
+
+.los-nav-search svg {
+  width: 15px;
+  height: 15px;
+}
+
+.los-nav-primary {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.los-app-nav-item {
+  display: flex;
+  width: 100%;
+  min-height: 40px !important;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  color: var(--los-text-primary) !important;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+.los-app-nav-item svg {
+  width: 15px;
+  height: 15px;
+  color: currentColor;
+}
+
+.los-app-nav-item:hover {
+  background: rgb(255 253 249 / 0.48) !important;
+  color: var(--los-text-primary) !important;
+}
+
+.los-app-nav-item.is-active {
+  background: var(--los-background-selected) !important;
+  color: var(--los-text-brand) !important;
+  box-shadow: none;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.los-nav-utility {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.los-nav-more {
+  position: relative;
+}
+
+.los-nav-more-trigger {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  color: var(--los-text-secondary);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 18px;
+  list-style: none;
+}
+
+.los-nav-more-trigger::before {
+  content: "◐";
+  width: 15px;
+  color: var(--los-text-secondary);
+  text-align: center;
+}
+
+.los-nav-more-trigger::-webkit-details-marker {
+  display: none;
+}
+
+.los-nav-more[open] .los-nav-more-trigger {
+  background: var(--los-background-selected);
+  color: var(--los-text-brand);
+}
+
+.los-nav-secondary {
+  position: absolute;
+  left: 0;
+  bottom: 44px;
+  z-index: 30;
+  width: 216px;
+  max-height: 360px;
+  padding: 8px;
+  overflow-y: auto;
+  border: 1px solid var(--los-border-default);
+  border-radius: 14px;
+  background: var(--los-background-surface);
+  box-shadow: 0 12px 32px rgb(36 41 33 / 0.16);
+}
+
+.los-nav-diagnostics {
+  color: var(--los-text-secondary) !important;
+}
+
+
+/* Home */
+
+.los-home-header {
+  min-height: 84px;
+}
+
+.los-home-header-actions .los-btn:last-child {
+  min-width: 122px;
+  border-color: var(--los-border-brand) !important;
+  background: var(--los-background-brand) !important;
+  color: var(--los-text-on-brand) !important;
+}
+
+.los-home-header-actions .los-btn:last-child::after {
+  content: "  ⌘K";
+}
+
+.los-continue {
+  position: relative;
+  width: 100%;
+  max-width: 1122px;
+  min-height: 180px;
+  margin: 0 auto 32px;
+  padding: 20px 22px;
+  border: 1px solid var(--los-border-default);
+  border-radius: 14px;
+  background: var(--los-background-surface);
+  box-shadow: var(--los-card-shadow);
+}
+
+.los-continue:has(.los-continue-body)::after {
+  content: "Active";
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  min-width: 62px;
+  padding: 5px 12px;
+  border-radius: var(--los-r-pill);
+  background: var(--los-background-selected);
+  color: var(--los-text-brand);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 16px;
+  text-align: center;
+}
+
+.los-continue-body {
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-height: 120px;
+  align-items: end;
+  gap: 24px;
+}
+
+.los-continue-copy h2 {
+  margin: 10px 0 8px;
+  font-size: 22px !important;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.los-continue-module {
+  color: var(--los-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.los-continue-context {
+  margin-top: 12px;
+  color: var(--los-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.los-continue-meta {
+  gap: 8px;
+  color: var(--los-text-secondary);
+  font-size: 13px;
+}
+
+.los-home .los-section {
+  margin-bottom: 30px;
+}
+
+.los-home .los-section > .los-muted {
+  display: none;
+}
+
+.los-home-list {
+  display: grid;
+  gap: 10px;
+}
+
+.los-home-row {
+  display: grid;
+  min-height: 58px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  padding: 10px 14px;
+}
+
+.los-home-row-copy strong {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.los-home-row .los-btn {
+  color: var(--los-text-brand) !important;
+}
+
+
+/* Group overviews and full-page lists */
+
+.los-group-search {
+  display: block;
+  width: 100%;
+  max-width: 1122px;
+  margin: 0 auto 20px;
+}
+
+.los-group-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px 12px;
+  max-width: 1122px;
+}
+
+.los-group-grid > .los-empty {
+  grid-column: 1 / -1;
+}
+
+.los-group-card {
+  position: relative;
+  display: grid;
+  min-height: 156px !important;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 20px !important;
+  border: 1px solid var(--los-border-default) !important;
+  border-radius: 14px !important;
+  background: var(--los-background-surface) !important;
+  box-shadow: var(--los-card-shadow);
+  color: var(--los-text-primary) !important;
+}
+
+.los-group-card-header {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.los-group-mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--los-background-subtle);
+  color: var(--los-text-brand);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.los-group-card:first-child .los-group-mark {
+  background: var(--los-background-brand);
+  color: var(--los-text-on-brand);
+}
+
+.los-group-heading h2 {
+  margin: 0 0 6px;
+  font-size: 15px !important;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.los-group-count {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.los-group-card > p {
+  margin: 0;
+  color: var(--los-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.los-route-open {
+  align-self: end;
+  justify-self: end;
+  color: var(--los-text-brand);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.los-route-back {
+  display: inline-flex !important;
+  width: auto !important;
+  margin: 0 auto 8px calc((100% - min(1122px, 100%)) / 2);
+  padding-left: 0 !important;
+  color: var(--los-text-brand) !important;
+}
+
+.los-route-search,
+.los-project-search {
+  display: block;
+  max-width: 1122px;
+  margin: 0 auto 20px;
+}
+
+.los-route-list,
+.los-project-list {
+  display: grid;
+  max-width: 1122px;
+  gap: 12px;
+  margin: 0 auto;
+}
+
+.los-route-row {
+  display: grid;
+  width: 100%;
+  min-height: 64px !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  padding: 11px 16px !important;
+  text-align: left;
+}
+
+.los-route-row-copy strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.los-route-meta {
+  margin-top: 3px;
+}
+
+
+/* Tabs and detail pages */
+
+.los-tabs,
+.los-project-tabs,
+.los-collection-switch,
+.los-search-tabs {
+  display: flex;
+  width: 100%;
+  max-width: 1122px;
+  gap: 28px;
+  margin: 0 auto 30px;
+  padding: 0;
+  border-bottom: 1px solid var(--los-border-default);
+}
+
+.los-tabs .los-btn,
+.los-project-tabs .los-btn,
+.los-collection-switch .los-btn,
+.los-search-tabs .los-btn {
+  min-height: 48px;
+  padding: 12px 0 11px;
+  border: 0 !important;
+  border-bottom: 3px solid transparent !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  color: var(--los-text-secondary) !important;
+}
+
+.los-tabs .los-btn--cta,
+.los-project-tabs .los-btn.is-active,
+.los-collection-switch .los-btn--cta,
+.los-search-tab.is-active {
+  border-bottom-color: var(--los-border-brand) !important;
+  background: transparent !important;
+  color: var(--los-text-brand) !important;
+}
+
+.los-subtabs {
+  display: flex;
+  max-width: 1122px;
+  gap: 8px;
+  margin: 0 auto 20px;
+  flex-wrap: wrap;
+}
+
+.los-subtabs .los-btn {
+  min-height: 32px;
+  padding: 7px 12px;
+  border-radius: var(--los-r-pill);
+  background: var(--los-background-surface);
+}
+
+.los-module-facts {
+  margin-top: 10px;
+  color: var(--los-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.los-overview,
+.los-fact-list,
+.los-detail-page,
+.los-project-body {
+  width: 100%;
+  max-width: 1122px;
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.los-overview-progress {
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: var(--los-background-subtle);
+  color: var(--los-text-secondary);
+  font-size: 13px;
+}
+
+
+/* Projects */
+
+.los-project-row {
+  width: 100%;
+  min-height: 126px !important;
+  padding: 20px !important;
+  border-radius: 14px !important;
+}
+
+.los-project-tabs {
+  margin-top: -8px;
+}
+
+.los-project-brief {
+  padding: 18px 20px;
+  border-radius: 14px;
+}
+
+.los-project-brief-label {
+  color: var(--los-text-brand);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.los-project-brief > p {
+  margin: 12px 0;
+  max-width: 920px;
+  color: var(--los-text-primary);
+}
+
+.los-project-brief-facts {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.los-project-brief-facts span {
+  padding: 4px 10px;
+  border-radius: var(--los-r-pill);
+  background: var(--los-background-subtle);
+  color: var(--los-text-secondary);
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.los-project-work-list {
+  display: grid;
+  gap: 12px;
+}
+
+.los-project-work-area {
+  display: grid !important;
+  width: 100%;
+  min-height: 64px !important;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(0, 1.4fr) auto;
+  gap: 20px;
+  align-items: center;
+  padding: 10px 16px !important;
+  color: var(--los-text-primary) !important;
+  text-align: left;
+}
+
+.los-project-work-area-meta {
+  color: var(--los-text-secondary);
+  font-size: 11px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+.los-project-connections {
+  color: var(--los-text-secondary);
+}
+
+.los-project-meta-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.los-project-meta {
+  padding: 16px;
+  border: 1px solid var(--los-border-default);
+  border-radius: 12px;
+  background: var(--los-background-surface);
+}
+
+.los-project-structure,
+.los-project-node-children {
+  display: grid;
+  gap: 12px;
+}
+
+.los-project-node {
+  padding: 16px;
+}
+
+.los-project-link,
+.los-project-file,
+.los-project-decision {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 16px;
+}
+
+
+/* Learn workspace */
+
+.los-unit-view > .los-page-header {
+  margin-bottom: 26px;
+}
+
+.los-unit-layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 14px;
+  width: 100%;
+  max-width: 1122px;
+  margin: 0 auto 16px;
+  align-items: stretch;
+}
+
+.los-stage-rail,
+.los-stage-workspace {
+  min-width: 0;
+  border: 1px solid var(--los-border-default);
+  border-radius: 14px;
+  background: var(--los-background-surface);
+}
+
+.los-stage-rail {
+  display: flex;
+  min-height: 650px;
+  flex-direction: column;
+  padding: 16px 10px;
+}
+
+.los-stage-rail h2 {
+  margin: 0 7px 10px;
+  color: var(--los-text-brand);
+  font-size: 11px !important;
+  font-weight: 700;
+  line-height: 14px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.los-stage-row {
+  display: grid !important;
+  width: 100%;
+  min-height: 40px !important;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 2px;
+  align-items: center;
+  margin-bottom: 4px;
+  padding: 8px 8px !important;
+  border: 0 !important;
+  border-radius: 9px !important;
+  background: transparent !important;
+  color: var(--los-text-primary) !important;
+  font-size: 13px;
+  font-weight: 400;
+}
+
+.los-stage-row.is-selected {
+  background: var(--los-background-selected) !important;
+  color: var(--los-text-brand) !important;
+  font-weight: 600;
+}
+
+.los-stage-index {
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.los-stage-copy {
+  display: grid;
+  gap: 1px;
+}
+
+.los-add-unit-note {
+  width: auto;
+  align-self: flex-start;
+  margin: 18px 7px 0;
+}
+
+.los-unit-note-draft {
+  margin: 8px 7px;
+}
+
+.los-unit-progress {
+  margin: auto 7px 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--los-border-default);
+}
+
+.los-unit-progress-track {
+  width: 100%;
+  height: 8px;
+  margin: 14px 0 10px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--los-background-subtle);
+}
+
+.los-unit-progress-fill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--los-background-brand);
+}
+
+.los-stage-workspace {
+  display: flex;
+  min-height: 650px;
+  flex-direction: column;
+  padding: 22px 22px 74px;
+}
+
+.los-stage-heading {
+  order: 1;
+  position: relative;
+  margin-bottom: 10px;
+}
+
+.los-stage-heading h2 {
+  margin-top: 10px;
+  font-size: 22px !important;
+  font-weight: 700;
+  line-height: 28px;
+}
+
+.los-stage-heading .los-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.los-stage-goal {
+  order: 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.los-stage-goal .los-kicker {
+  display: none;
+}
+
+.los-stage-goal p {
+  margin: 0 0 22px;
+  max-width: 760px;
+}
+
+.los-stage-done {
+  order: 2;
+  margin: 14px 0 24px;
+}
+
+.los-stage-resources {
+  order: 3;
+  margin: 0;
+}
+
+.los-donewhen-list {
+  display: grid;
+  gap: 14px;
+}
+
+.los-donewhen-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+  color: var(--los-text-primary);
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.los-donewhen-row input {
+  width: 18px;
+  min-height: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  border-radius: 6px;
+}
+
+.los-resource-row {
+  display: grid;
+  min-height: 76px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+}
+
+.los-resource-row > svg {
+  color: var(--los-text-brand);
+}
+
+.los-resource-copy strong {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.los-resource-actions {
+  justify-content: flex-end;
+}
+
+.los-unit-actionbar {
+  display: flex;
+  width: 100%;
+  max-width: 1122px;
+  justify-content: flex-end;
+  gap: 8px;
+  margin: 0 auto 20px;
+}
+
+.los-unit-extras {
+  width: 100%;
+  max-width: 1122px;
+  margin: 0 auto;
+}
+
+
+/* Library and detail records */
+
+.los-collection-switch {
+  margin-top: -8px;
+}
+
+.los-library-toolbar {
+  display: grid;
+  max-width: 1122px;
+  grid-template-columns: minmax(280px, 1fr) auto;
+  gap: 12px;
+  margin: 0 auto 20px;
+}
+
+.los-library-facets-inline {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.los-library-facets-inline .los-btn[aria-pressed="true"] {
+  border-color: var(--los-border-brand) !important;
+  background: var(--los-background-selected) !important;
+  color: var(--los-text-brand) !important;
+}
+
+.los-pack-entry {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  margin-bottom: 10px;
+  padding: 14px;
+}
+
+.los-pack-order {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--los-background-subtle);
+  color: var(--los-text-brand);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+
+/* Garden, Review, Diagnostics and secondary screens */
+
+.los-review-view .los-card,
+.los-garden-view .los-card,
+.los-shelving-view .los-card,
+.los-diagnostics-view .los-card,
+.los-program-view .los-card,
+.los-atlas-view .los-card {
+  padding: 16px;
+}
+
+.los-queue-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.los-queue-card {
+  min-height: 84px !important;
+  padding: 16px !important;
+  border: 1px solid var(--los-border-default) !important;
+  border-radius: 12px !important;
+  background: var(--los-background-surface) !important;
+}
+
+.los-empty {
+  padding: 28px;
+  border: 1px dashed var(--los-border-default);
+  border-radius: 14px;
+  background: rgb(255 253 249 / 0.55);
+  text-align: left;
+}
+
+.los-empty p {
+  margin: 6px 0 16px;
+}
+
+
+/* Search and temporary drawers / modals */
+
+.modal-container {
+  background: rgb(36 41 33 / 0.24);
+}
+
+.modal:has(.los-global-search) {
+  width: min(920px, calc(100vw - 48px));
+  max-width: 920px;
+  border: 1px solid var(--los-border-default);
+  border-radius: 20px;
+  background: var(--los-background-surface);
+  box-shadow: 0 24px 72px rgb(36 41 33 / 0.22);
+}
+
+.modal:has(.los-unit-note-modal),
+.modal:has(.los-linked-reason-modal) {
+  width: min(620px, calc(100vw - 48px));
+  border: 1px solid var(--los-border-default);
+  border-radius: 20px;
+  background: var(--los-background-surface);
+  box-shadow: 0 24px 72px rgb(36 41 33 / 0.22);
+}
+
+.los-global-search,
+.los-unit-note-modal,
+.los-linked-reason-modal {
+  padding: 24px;
+  background: var(--los-background-surface);
+}
+
+.los-search-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: start;
+  margin-bottom: 18px;
+}
+
+.los-search-header h2 {
+  margin-top: 6px;
+  font-size: 22px !important;
+  line-height: 28px;
+}
+
+.los-global-search-input {
+  margin-bottom: 16px;
+}
+
+.los-search-result-list {
+  display: grid;
+  max-height: 480px;
+  gap: 8px;
+  overflow-y: auto;
+}
+
+.los-search-summary {
+  display: flex;
+  justify-content: space-between;
+  margin: 12px 0;
+  color: var(--los-text-secondary);
+  font-size: 13px;
+}
+
+.los-search-result {
+  display: grid !important;
+  width: 100%;
+  min-height: 62px !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 10px 14px !important;
+  border: 1px solid var(--los-border-default) !important;
+  border-radius: 11px !important;
+  background: var(--los-background-surface) !important;
+  text-align: left;
+}
+
+.los-search-open {
+  color: var(--los-text-brand);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+
+/* Responsive convergence */
+
+@media (max-width: 1050px) {
+  .los-root {
+    padding: 30px 24px 52px;
+  }
+
+  .los-page-header {
+    padding-right: 0;
+  }
+
+  .los-page-header > .los-actions,
+  .los-home-header-actions {
+    position: static;
+    margin-top: 16px;
+    justify-content: flex-start;
+  }
+
+  .los-group-grid,
+  .los-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .los-project-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .los-library-toolbar {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .workspace-leaf-content[data-type="learningos-nav"] {
+    min-width: 196px;
+  }
+
+  .los-app-nav {
+    padding: 18px 10px;
+  }
+
+  .los-root {
+    padding: 24px 16px 42px;
+  }
+
+  .los-root h1 {
+    font-size: 26px !important;
+    line-height: 32px;
+  }
+
+  .los-unit-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .los-stage-rail,
+  .los-stage-workspace {
+    min-height: auto;
+  }
+
+  .los-stage-rail {
+    max-height: none;
+  }
+
+  .los-continue-body,
+  .los-home-row,
+  .los-route-row,
+  .los-project-work-area,
+  .los-project-link,
+  .los-project-file,
+  .los-project-decision,
+  .los-resource-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .los-continue:has(.los-continue-body)::after {
+    position: static;
+    display: inline-block;
+    margin: 8px 0;
+  }
+
+  .los-tabs,
+  .los-project-tabs,
+  .los-collection-switch,
+  .los-search-tabs {
+    gap: 18px;
+    overflow-x: auto;
+  }
+
+  .los-project-meta-grid,
+  .los-queue-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .los-project-work-area-meta,
+  .los-route-open {
+    justify-self: start;
+  }
+
+  .los-nav-secondary {
+    width: 184px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .los-root *,
+  .los-root *::before,
+  .los-root *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

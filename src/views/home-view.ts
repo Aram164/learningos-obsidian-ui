@@ -30,7 +30,7 @@ export class HomeView extends ItemView {
       return;
     }
 
-    const header = pageHeader(root, 'Home', this.greeting(),
+    const header = pageHeader(root, 'Home', `${this.greeting()}, Aram`,
       'Resume what matters without rebuilding the context first.');
     header.addClass('los-home-header');
     const actions = header.createDiv({ cls: 'los-actions los-home-header-actions' });

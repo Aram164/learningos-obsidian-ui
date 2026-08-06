@@ -27,7 +27,7 @@ export class NavView extends ItemView {
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-app-nav');
     const brand = root.createDiv({ cls: 'los-nav-brand' });
-    icon(brand.createSpan({ cls: 'los-brand-mark' }), 'route');
+    brand.createSpan({ cls: 'los-brand-mark', text: 'L' });
     brand.createEl('strong', { text: 'LearningOS' });
     const search = brand.createEl('button', {
       cls: 'los-nav-search is-clickable',
@@ -45,9 +45,10 @@ export class NavView extends ItemView {
     this.nav(primary, 'sprout', 'Garden', 'garden', () => this.plugin.openGarden());
     this.nav(primary, 'check-check', 'Review', 'review', () => this.plugin.openReview());
 
-    const more = root.createEl('details', { cls: 'los-nav-more' });
+    const utility = root.createDiv({ cls: 'los-nav-utility' });
+    const more = utility.createEl('details', { cls: 'los-nav-more' });
     if (this.plugin.settings.navMoreOpen) more.setAttr('open', 'open');
-    more.createEl('summary', { cls: 'los-nav-more-trigger', text: 'More' });
+    more.createEl('summary', { cls: 'los-nav-more-trigger', text: 'Theme' });
     more.addEventListener('toggle', () => {
       this.plugin.settings.navMoreOpen = Boolean(more.open ?? more.attrs?.open);
       this.plugin.scheduleDraftSave();
@@ -61,5 +62,7 @@ export class NavView extends ItemView {
       () => this.plugin.openBoundary('program-job-boundary'));
     this.nav(secondary, 'activity', 'Diagnostics', 'diagnostics', () => this.plugin.openDiagnostics());
     this.nav(secondary, 'refresh-cw', 'Rebuild projection', 'rebuild', () => this.plugin.generate());
+    this.nav(utility, 'settings', 'Diagnostics', 'diagnostics',
+      () => this.plugin.openDiagnostics()).addClass('los-nav-diagnostics');
   }
 }

@@ -93,6 +93,24 @@ export class UnitView extends ItemView {
     add.addClass('los-add-unit-note');
     const draft = this.plugin.getUnitNoteDraft(unit.id, studyMap.stages);
     if (draft.text.trim()) rail.createDiv({ cls: 'los-micro los-unit-note-draft', text: 'Unsaved unit-note draft kept locally.' });
+
+    const completed = studyMap.stages
+      .filter((stage) => stage.status === 'complete').length;
+    const percent = studyMap.stages.length
+      ? Math.round((completed / studyMap.stages.length) * 100)
+      : 0;
+    const progress = rail.createDiv({ cls: 'los-unit-progress' });
+    progress.createDiv({ cls: 'los-kicker', text: 'Unit progress' });
+    const track = progress.createDiv({ cls: 'los-unit-progress-track' });
+    const fill = track.createDiv({ cls: 'los-unit-progress-fill' });
+    fill.setAttr('style', `width: ${percent}%`);
+    progress.createDiv({
+      cls: 'los-micro',
+      text: `Stage ${Math.min(
+        studyMap.stages.findIndex((stage) => stage.id === current.id) + 1,
+        studyMap.stages.length,
+      )} of ${studyMap.stages.length}`,
+    });
   }
 
   renderStage(layout, unit, studyMap, stage) {
@@ -108,6 +126,7 @@ export class UnitView extends ItemView {
     if (stage.estimate_minutes) badge(top, `${stage.estimate_minutes} min`, 'role');
 
     const resources = section(center, 'Resources');
+    resources.addClass('los-stage-resources');
     // Array.isArray, not a truthy length check: a string here used to render
     // one blank row per character, because for...of walks a string by character.
     const stageResources = Array.isArray(stage.resources)
@@ -141,6 +160,7 @@ export class UnitView extends ItemView {
       ? stage.done_when.filter((row) => typeof row === 'string' && row.trim()) : [];
     if (criteria.length) {
       const done = section(center, 'Done when');
+      done.addClass('los-stage-done');
       const marks = this.plugin.getDoneWhen(unit.id, stage.id);
       const list = done.createDiv({ cls: 'los-donewhen-list' });
       for (const [index, criterion] of criteria.entries()) {
