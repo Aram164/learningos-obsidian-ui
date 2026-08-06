@@ -1,8 +1,9 @@
 export class LearningOSUI extends Plugin {
   async onload() {
     this.settings = { ...DEFAULT_SETTINGS, ...(await this.loadData()) };
-    this.settings.uiDrafts ||= { stages: {}, selectedStages: {}, inbox: { title: '', text: '' } };
+    this.settings.uiDrafts ||= { stages: {}, unitNotes: {}, selectedStages: {}, inbox: { title: '', text: '' } };
     this.settings.uiDrafts.stages ||= {};
+    this.settings.uiDrafts.unitNotes ||= {};
     this.settings.uiDrafts.selectedStages ||= {};
     this.settings.uiDrafts.inbox ||= { title: '', text: '' };
     this.settings.uiDrafts.doneWhen ||= {};
@@ -11,11 +12,13 @@ export class LearningOSUI extends Plugin {
     this.store = new ManifestStore(this.app);
     this.gateway = new GatewayClient(this);
     this.aiActions = new AIActionClient(this);
+    this.router = new ApplicationRouter(this);
     await this.store.load();
     this.registerView(VIEW_HOME, (leaf) => new HomeView(leaf, this));
     this.registerView(VIEW_NAV, (leaf) => new NavView(leaf, this));
     this.registerView(VIEW_PROGRAM, (leaf) => new ProgramView(leaf, this));
     this.registerView(VIEW_MODULE, (leaf) => new ModuleView(leaf, this));
+    this.registerView(VIEW_PROJECT, (leaf) => new ProjectView(leaf, this));
     this.registerView(VIEW_UNIT, (leaf) => new UnitView(leaf, this));
     this.registerView(VIEW_LIBRARY, (leaf) => new LibraryView(leaf, this));
     this.registerView(VIEW_ATLAS, (leaf) => new AtlasView(leaf, this));
@@ -28,30 +31,26 @@ export class LearningOSUI extends Plugin {
     this.addRibbonIcon('route', 'Open LearningOS', () => this.openHome());
     this.addCommand({ id: 'open-home', name: 'Open Home', callback: () => this.openHome() });
     this.addCommand({ id: 'open-current-stage', name: 'Open current stage', callback: () => this.openResume() });
+    this.addCommand({ id: 'open-modules', name: 'Open Modules', callback: () => this.openModules() });
+    this.addCommand({ id: 'open-projects', name: 'Open Projects', callback: () => this.openProjects() });
     this.addCommand({ id: 'open-library', name: 'Open Library', callback: () => this.openLibrary() });
+    this.addCommand({ id: 'open-global-search', name: 'Search LearningOS', callback: () => this.openGlobalSearch() });
     this.addCommand({ id: 'open-atlas', name: 'Open Domain atlas', callback: () => this.openAtlas() });
     this.addCommand({ id: 'open-garden', name: 'Open Garden', callback: () => this.openGarden() });
     this.addCommand({ id: 'rebuild-projection', name: 'Validate and rebuild projection', callback: () => this.generate() });
     this.addCommand({ id: 'end-learning-session', name: 'End learning session safely', callback: () => this.reviewSessionEnd() });
     this.app.workspace.onLayoutReady(async () => {
       for (const type of LEGACY_VIEW_TYPES) this.app.workspace.detachLeavesOfType(type);
-      await this.openNav();
+      await this.router.openNavigator();
       if (this.settings.collapseSidebars) this.app.workspace.rightSplit?.collapse();
-      if (this.settings.openHomeOnStartup) {
-        const restore = this.settings.lastView;
-        if (restore?.type && restore.type !== VIEW_HOME) {
-          const home = await this.openView(VIEW_HOME, {}, 'main', false);
-          if (this.settings.pinHome) home.setPinned?.(true);
-          await this.openView(restore.type, restore.state || {}, 'main', false);
-        } else await this.openHome();
-      }
+      if (this.settings.openHomeOnStartup) await this.router.restore();
     });
   }
 
   onunload() {
     if (this.draftSaveTimer) clearTimeout(this.draftSaveTimer);
     void this.saveData(this.settings);
-    for (const type of [VIEW_HOME, VIEW_NAV, VIEW_PROGRAM, VIEW_MODULE, VIEW_UNIT,
+    for (const type of [VIEW_HOME, VIEW_NAV, VIEW_PROGRAM, VIEW_MODULE, VIEW_PROJECT, VIEW_UNIT,
       VIEW_LIBRARY, VIEW_ATLAS, VIEW_SHELVING, VIEW_BOUNDARY, VIEW_REVIEW,
       VIEW_GARDEN, VIEW_DIAGNOSTICS]) this.app.workspace.detachLeavesOfType(type);
   }
@@ -79,6 +78,39 @@ export class LearningOSUI extends Plugin {
   clearStageDraft(unitId, stageId) {
     delete this.settings.uiDrafts.stages[this.stageDraftKey(unitId, stageId)];
     this.scheduleDraftSave();
+  }
+  getUnitNoteDraft(unitId, stages = []) {
+    const saved = this.settings.uiDrafts.unitNotes[unitId];
+    const recovered = [];
+    for (const stage of stages || []) {
+      const entry = this.settings.uiDrafts.stages[this.stageDraftKey(unitId, stage.id)];
+      if (entry?.text?.trim()) recovered.push({ id: stage.id, title: stage.title || stage.id, text: entry.text });
+    }
+    const recoveredText = recovered
+      .map((row) => `### ${row.title}\n\n${row.text.trim()}`).join('\n\n');
+    const savedText = String(saved?.text || '').trim();
+    return {
+      title: saved?.title || (recovered.length ? 'Recovered stage drafts' : ''),
+      text: [savedText, recoveredText].filter(Boolean).join('\n\n'),
+      recoveredStageIds: recovered.map((row) => row.id),
+    };
+  }
+  setUnitNoteDraft(unitId, title, text) {
+    if (!String(title || '').trim() && !String(text || '').trim()) delete this.settings.uiDrafts.unitNotes[unitId];
+    else this.settings.uiDrafts.unitNotes[unitId] = { title, text };
+    this.scheduleDraftSave();
+  }
+  clearUnitNoteDraft(unitId, recoveredStageIds = []) {
+    delete this.settings.uiDrafts.unitNotes[unitId];
+    for (const stageId of recoveredStageIds || []) {
+      delete this.settings.uiDrafts.stages[this.stageDraftKey(unitId, stageId)];
+    }
+    this.scheduleDraftSave();
+  }
+  openUnitNote(unit, studyMap) {
+    const modal = new UnitNoteModal(this.app, this, unit, studyMap);
+    modal.open();
+    return modal;
   }
   getSelectedStage(unitId) { return this.settings.uiDrafts.selectedStages[unitId] || null; }
   setSelectedStage(unitId, stageId) {
@@ -153,18 +185,6 @@ export class LearningOSUI extends Plugin {
     this.app.workspace.iterateAllLeaves((leaf) => leaf.view?.render?.());
   }
 
-  async openView(type, state = {}, side = 'main', remember = true) {
-    let leaf = this.app.workspace.getLeavesOfType(type)[0];
-    if (!leaf) leaf = side === 'left' ? this.app.workspace.getLeftLeaf(false) : this.app.workspace.getLeaf(true);
-    await leaf.setViewState({ type, active: true, state });
-    this.app.workspace.revealLeaf(leaf); this.app.workspace.setActiveLeaf?.(leaf, { focus: true });
-    if (remember && side === 'main') {
-      this.settings.lastView = { type, state };
-      await this.saveData(this.settings);
-    }
-    return leaf;
-  }
-
   /** The active destination is a display fact, so the Navigator is the only
    *  thing it redraws — never the working view the learner is reading. */
   setActiveNav(key) {
@@ -172,50 +192,78 @@ export class LearningOSUI extends Plugin {
     for (const leaf of this.app.workspace.getLeavesOfType(VIEW_NAV)) leaf.view?.render?.();
   }
 
-  async openNav() { return this.openView(VIEW_NAV, {}, 'left'); }
-  async openHome() {
-    this.setActiveNav('home');
-    const leaf = await this.openView(VIEW_HOME);
-    if (this.settings.pinHome) leaf.setPinned?.(true);
-    return leaf;
-  }
+  async openNav() { return this.router.openNavigator(); }
+  async openHome() { return this.router.navigate({ name: 'home' }); }
   /** Learn is one destination; the areas are sub-areas inside it. */
   openLearn(programId = null) {
     const area = programId || this.settings.learnArea || LEARN_AREAS[0][0];
     this.settings.learnArea = area;
     this.scheduleDraftSave();
-    this.setActiveNav('learn');
-    return this.openView(VIEW_PROGRAM, { programId: area });
+    return this.router.navigate({ name: 'learn', programId: area });
   }
-  openCapture() { this.setActiveNav('capture'); return this.openView(VIEW_PROGRAM, { programId: 'inbox' }); }
-  openReview() { this.setActiveNav('review'); return this.openView(VIEW_REVIEW, {}); }
-  openGarden() { this.setActiveNav('review'); return this.openView(VIEW_GARDEN, {}); }
-  openDiagnostics() { this.setActiveNav('diagnostics'); return this.openView(VIEW_DIAGNOSTICS, {}); }
-  openProgram(programId) { return this.openView(VIEW_PROGRAM, { programId }); }
-  openModule(moduleId) { this.setActiveNav('learn'); return this.openView(VIEW_MODULE, { moduleId }); }
+  openCapture() { return this.router.navigate({ name: 'capture' }); }
+  openReview() { return this.router.navigate({ name: 'review' }); }
+  openGarden() { return this.router.navigate({ name: 'garden' }); }
+  openDiagnostics() { return this.router.navigate({ name: 'diagnostics' }); }
+  openGlobalSearch(query = '') {
+    const modal = new GlobalSearchModal(this.app, this, query);
+    modal.open();
+    return modal;
+  }
+  openProgram(programId) { return this.router.navigate({ name: 'program', programId }); }
+  openModules() { return this.router.navigate({ name: 'module-groups' }); }
+  openProjects(query = '') { return this.router.navigate({ name: 'project-list', query }); }
+  openProject(projectId, tab = 'overview') {
+    const current = this.router.snapshot().current;
+    const changingTab = current?.name === 'project-detail' && current.projectId === projectId;
+    return this.router.navigate({ name: 'project-detail', projectId, tab }, { pushHistory: !changingTab });
+  }
+  openModuleGroup(groupId, query = '') {
+    return this.router.navigate({ name: 'module-list', groupId, query });
+  }
+  openModuleDetail(moduleId, componentId = null, tab = null) {
+    return this.router.navigate({ name: 'module-detail', moduleId, componentId, tab });
+  }
+  /** Compatibility alias used by Learn, Home and existing deep links. */
+  openModule(moduleId, componentId = null) { return this.openModuleDetail(moduleId, componentId); }
   openUnit(unitId, stageId = null) {
     const selectedStage = stageId || this.getSelectedStage(unitId);
     if (selectedStage) this.setSelectedStage(unitId, selectedStage);
-    this.setActiveNav('learn');
-    return this.openView(VIEW_UNIT, { unitId, stageId: selectedStage });
+    return this.router.navigate({ name: 'unit', unitId, stageId: selectedStage });
   }
   openLibrary(recordId = undefined, recordType = undefined) {
-    this.setActiveNav('library');
-    const state = {};
-    if (recordId !== undefined) state.recordId = recordId;
-    if (recordType !== undefined) state.recordType = recordType;
-    return this.openView(VIEW_LIBRARY, state);
+    if (recordId === undefined || recordId === null) {
+      return this.openLibraryHome(recordType === 'topic-pack' ? 'topic-packs' : 'sources');
+    }
+    const record = this.store.get(recordId);
+    if (record?.type === 'source' || recordType === 'source') return this.openSourceDetail(recordId);
+    if (record?.type === 'topic-pack' || recordType === 'topic-pack') return this.openTopicPackDetail(recordId);
+    if (record?.type === 'collection' || recordType === 'collection') return this.openCatalogueDetail(recordId);
+    return this.router.navigate({ name: 'legacy-library-list', recordType: recordType || record?.type || 'note', query: '' });
   }
-  /** Library opened on a whole slice — a type, optionally one domain — not a record. */
+  openLibraryHome(collection = 'sources') {
+    return this.router.navigate({ name: 'library-home', collection });
+  }
+  openLibraryGroup(collection, groupId, query = '', facet = 'all') {
+    return this.router.navigate({ name: 'library-group', collection, groupId, query, facet });
+  }
+  openSourceDetail(resourceId, fromGroupId = null, query = '', facet = 'all') {
+    return this.router.navigate({ name: 'source-detail', resourceId, fromGroupId, query, facet });
+  }
+  openTopicPackDetail(topicPackId, fromGroupId = null, query = '') {
+    return this.router.navigate({ name: 'topic-pack-detail', topicPackId, fromGroupId, query });
+  }
+  openCatalogueDetail(catalogueId) {
+    return this.router.navigate({ name: 'catalogue-detail', catalogueId });
+  }
+  /** Hidden compatibility surface used by Atlas and pre-migration deep links. */
   openLibraryFiltered(recordType, domain = '') {
-    return this.openView(VIEW_LIBRARY, { recordType, domain, recordId: null, query: '' });
+    return this.router.navigate({ name: 'legacy-library-list', recordType, domain, query: '' });
   }
-  openAtlas(domain = null) { this.setActiveNav('atlas'); return this.openView(VIEW_ATLAS, { domain }); }
-  openShelving(unitId = null) { this.setActiveNav('review'); return this.openView(VIEW_SHELVING, { unitId }); }
-  openBoundary(boundaryId) {
-    this.setActiveNav(boundaryId === 'program-job-boundary' ? 'job' : 'masters');
-    return this.openView(VIEW_BOUNDARY, { boundaryId });
-  }
+  openAtlas(domain = null) { return this.router.navigate({ name: 'atlas', domain }); }
+  openShelving(unitId = null) { return this.router.navigate({ name: 'shelving', unitId }); }
+  openBoundary(boundaryId) { return this.router.navigate({ name: 'boundary', boundaryId }); }
+  back() { return this.router.back(); }
   openResume() {
     const pointer = this.store.data?.resume_pointer;
     return pointer ? this.openUnit(pointer.unit_id, pointer.stage_id) : this.openHome();
@@ -340,11 +388,17 @@ export class LearningOSUI extends Plugin {
     if (!record) return;
     if (record.type === 'unit') return this.openUnit(record.id);
     if (record.type === 'module') return this.openModule(record.id);
+    if (record.type === 'project') return this.openProject(record.id);
     if (record.type === 'program') return this.openProgram(record.id);
-    if (record.type === 'source') return this.openLibrary(record.id, 'source');
-    if (record.type === 'collection') return this.openLibrary(record.id, 'collection');
-    if (record.type === 'note' || record.type === 'concept') return this.openLibrary(record.id, record.type);
+    if (record.type === 'source') return this.openSourceDetail(record.id);
+    if (record.type === 'topic-pack') return this.openTopicPackDetail(record.id);
+    if (record.type === 'collection') return this.openCatalogueDetail(record.id);
+    if (record.type === 'note' || record.type === 'concept') {
+      if (record.path) return this.openAuthoredPath(record.path);
+      return this.openLibraryFiltered(record.type);
+    }
     if (record.type === 'workspace') {
+      if (record.project_id) return this.openProject(record.project_id);
       const unit = (record.unit_ids || []).map((id) => this.store.get(id)).find(Boolean);
       if (unit) return this.openUnit(unit.id);
       const module = (record.module_ids || []).map((id) => this.store.get(id)).find(Boolean);

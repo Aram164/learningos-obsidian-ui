@@ -30,29 +30,35 @@ The interface carries usability while the core carries meaning.
 
 ## Navigation
 
-Five permanent destinations: **Home, Learn, Library, Capture, Review.** Areas
-(Bachelor's / Skills / Thesis) are sub-areas inside Learn; the decision queues
+Six permanent destinations: **Home, Modules, Learn, Library, Capture, Review.**
+Modules begins with explicit thematic groups and opens full-page lists/details. Areas
+(Bachelor's / Skills / Thesis) remain sub-areas inside Learn; the decision queues
 (Shelving / Garden / Inbox / needs-a-map) are Review. Domain atlas, the
 Master's and Job boundaries, Diagnostics and *Rebuild projection* live under
 **More** — maintenance is never mixed with study destinations.
 
 ## Primary patterns
 
-- **Home**: one Continue card carrying the resume stage and the only filled
-  primary action on the screen, a one-line core-owned priority, Upcoming
-  (three nearest dates, the rest folded), My learning (every area's modules as
-  compact progress rows), and one Attention row linking to Review. Boundaries,
-  full coordination detail and maintenance controls are *not* on Home.
+- **Home**: one Continue card carrying the resumable stage and the only filled
+  primary action on the screen, followed by a short **Today** list and a short
+  **Continue elsewhere** list. Home is not the module catalogue, project
+  dashboard, or queue overview. Capture and structural Search remain secondary
+  actions; boundaries, full coordination detail and maintenance controls are
+  *not* on Home.
 - **Program**: current/past semester facts and module cards. Academic status is
   never applied to skills/projects.
-- **Module**: four tabs — Overview / Units / Resources / Logistics — with
+- **Modules**: thematic groups → full-page module list → full-page module detail.
+  Group membership is projected by the core, never inferred from titles or
+  paths. Back restores the group query, selected row and scroll position. The
+  detail keeps four tabs — Overview / Units / Resources / Logistics — with
   **Units** the default for any module that has them. The header carries one
   line of facts (`semester · credits · exam`); institution, code, status and
   examination prose live in Logistics.
-- **Unit**: a true three-column workspace — stage rail | current stage | sticky
-  note panel — and exactly three visible actions: *Save note*, *Mark complete*,
-  and a `•••` overflow holding pause, skip, prerequisite gap, shelving, scoped
-  AI and session end. Resource feedback collapses into a per-resource rate
+- **Unit**: a two-column workspace — stage rail | current stage. **Add note**
+  follows the stage list and opens a temporary unit/session-note modal rather
+  than permanently splitting the workspace. The stage action bar keeps one
+  primary action and a `•••` overflow holding pause, skip, prerequisite gap,
+  shelving, scoped AI and session end. Resource feedback collapses into a per-resource rate
   menu. `Done when` criteria are interactive checkboxes whose ticks are
   UI-owned working state — the core still learns only "complete", from
   `stage-progress`.
@@ -61,9 +67,17 @@ Master's and Job boundaries, Diagnostics and *Rebuild projection* live under
 - **Diagnostics**: contract versions, projection freshness (`✓ current`,
   `● stale`, `? core unavailable`), resolved Python interpreter and its
   attempted paths. Under More, never on Home.
-- **Library**: secondary structural search and source master/detail. Global
-  identity/evaluations remain distinct from unit use. Omnisearch provides
-  full-text/OCR retrieval without becoming canonical metadata.
+- **Global Search**: a manifest-only overlay available from every application
+  route. It searches projected modules, units, sources, and compatibility
+  projects, preserves the current route while open, and opens the owning route
+  for the selected result. It does not parse files or replace full-text/OCR
+  retrieval.
+- **Library**: **Learning Sources** and **Topic Packs** are distinct top-level
+  collections. Each follows thematic groups → full-page list → full-page detail,
+  with no automatic first selection and no permanent detail column. Topic Packs
+  expose one explicit purpose and preserve canonical manual entry order; they
+  are not a source type. Back restores collection, group, query, filters,
+  selected row and scroll. Omnisearch remains an optional full-text/OCR fallback.
 - **Shelving**: native selected-item review; apply is explicit and delegated to
   the core. AI may explain or propose but cannot broadly write.
 - **Inbox**: zero-friction text/file capture through `los.py capture`; the
@@ -101,10 +115,10 @@ primitive.
 **Borders carry meaning.** They mark selection, focus, an editable area, or a
 boundary that needs review — not ordinary navigation, module, resource or queue
 rows, which are separated by dividers and whitespace instead. Raised surfaces
-are spent on the Continue card, the stage workspace, the note editor, the
+are spent on the Continue card, the stage workspace, the note modal, the
 selected Library detail and modals; everything else sits on the page.
 
-Copy is sentence case and action-led: *Resume stage*, *Save note*, *Complete
+Copy is sentence case and action-led: *Resume stage*, *Add note*, *Complete
 stage*, *Attach selected file*, *Approve selected changes*, *End learning
 session*. The learner is never asked for IDs or filing destinations while
 working.
@@ -121,8 +135,7 @@ clear success or failure feedback.
 
 ## Responsive and accessibility contract
 
-At wide widths Home uses a two-column command centre and Unit uses rail/work/note.
-Below 720 px both become a single column. Academic-date rows keep a stable date
+Home uses one focused content column at every width; rows stack their action below the label on narrow screens. Unit still uses rail/work/note at wide widths and becomes a single column below 720 px. Academic-date rows keep a stable date
 plus flexible-content grid until 480 px, when the date stacks above the content;
 actions always remain inside the flexible content row. Compact tables stack
 their labeled cells at 480 px. Resource actions wrap below their label. Every

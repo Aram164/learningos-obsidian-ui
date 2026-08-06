@@ -3,14 +3,14 @@
 
 const path = require('path');
 const fs = require('fs');
-const { makeApp, Notice } = require('./harness');
+const { makeApp, Notice, stub } = require('./harness');
 
 const ROOT = path.resolve(__dirname, '..');
 const FIXTURE = path.join(ROOT, 'fixture-vault');
 const LearningOSUI = require(path.join(ROOT, 'plugin', 'main.js'));
 const VIEW = {
   home: 'learningos-home', nav: 'learningos-nav', program: 'learningos-program',
-  module: 'learningos-module', unit: 'learningos-unit', library: 'learningos-library',
+  module: 'learningos-module', project: 'learningos-project', unit: 'learningos-unit', library: 'learningos-library',
   atlas: 'learningos-atlas', shelving: 'learningos-shelving', boundary: 'learningos-boundary',
   review: 'learningos-review', diagnostics: 'learningos-diagnostics',
 };
@@ -60,7 +60,7 @@ async function main() {
     check('manifest contract v2 loads', plugin.store.ready && plugin.store.contractVersion === 2, plugin.store.error);
     check('snapshot guard is loaded', plugin.store.snapshotId === 'sha256:fixture-v2-snapshot');
     check('program/module/unit/map collections load atomically', plugin.store.programs().length === 5
-      && plugin.store.modules().length === 4 && plugin.store.units().length === 7
+      && plugin.store.modules().length === 3 && plugin.store.projects().length === 1 && plugin.store.units().length === 7
       && plugin.store.studyMaps().length === 6);
     check('reverse indexes resolve the active unit map',
       plugin.store.mapForUnit('unit-fixture-sad-l04').id === 'study-map-fixture-sad-l04');
@@ -111,50 +111,34 @@ async function main() {
     plugin.onunload();
   }
 
-  heading('startup and module-first home');
+  heading('startup and focused home');
   {
     const { app, plugin, home } = await boot();
     const element = home.view.contentEl;
     const text = element.allText();
     check('Home opens and stays pinned', app.workspace.active === home && home.pinned);
     check('navigator opens in its own leaf', app.workspace.getLeavesOfType(VIEW.nav).length === 1);
-    /* Home answers one question. One Continue card, one filled primary action,
-     * and no view of the whole system before the learner can start. */
     check('one Continue card names the exact stage to resume',
       element.find('los-continue').length === 1
-      && text.includes('Conditional probability and Bayes') && text.includes('Continue learning'));
-    check('exactly one filled primary action exists above the fold',
+      && text.includes('Conditional probability and Bayes') && text.includes('Continue session'));
+    check('exactly one filled primary action exists on Home',
       element.find('los-btn--cta').length === 1);
     check('the Continue card states the position in the map',
       /Stage \d+ of \d+/.test(text));
-    check('all Bachelor modules remain visible', text.includes('Fixture Statistics & Analysis')
-      && text.includes('Fixture Advanced ML'));
-    check('Skills and thesis stay independent', text.includes('Python') && text.includes('Bachelor thesis'));
-    check('every module is a compact learning row, not a status table',
-      element.find('los-learning-row').length >= 4 && element.find('los-data-table').length === 0);
-    check('the core-owned priority is one line, not a coordination wall',
-      text.includes('current super-priority')
-      && !text.includes('Commitments') && !text.includes('Deferrals'));
-    check('workspace next actions still reach the learner',
-      text.includes('Work the Conditional probability and Bayes stage'));
-    check('structured registration and unregistered exam dates are visible',
-      text.includes('Fixture registration') && text.includes('2099-08-31 → 2099-09-10')
-      && text.includes('unregistered'));
-    const dateRows = element.find('los-date-row');
-    check('date rows have only a date column and a flexible content column',
-      dateRows.length > 0 && dateRows.every((row) => row.children.length === 2
-        && row.children[1].classes.has('los-date-copy')));
-    check('Upcoming shows three dates and folds the rest away',
-      element.find('los-date-list')[0].find('los-date-row').length <= 3);
-    /* The core records history truthfully; the interface decides what is still
-     * ahead. Past sittings are not Home's business at all now. */
-    check('the upcoming list carries only dates that are still ahead',
-      !element.find('los-date-list')[0].allText().includes('2020-02-14'));
-    check('queue state is one attention row, not three competing cards',
-      element.find('los-attention').length === 1
+    check('Home exposes Capture and structural Search without making them primary',
+      element.findText('los-btn', 'Capture') && element.findText('los-btn', 'Search')
+      && !element.findText('los-btn', 'Search').classes.has('los-btn--cta'));
+    check('Today contains time-sensitive work and a review entry',
+      text.includes('Fixture registration') && text.includes('decision')
+      && text.includes('Recent Garden capture'));
+    check('Continue elsewhere is a short resume list, not the complete catalogue',
+      element.find('los-home-row').length <= 8
+      && text.includes('Fixture Advanced ML') && text.includes('Python') && text.includes('Bachelor thesis'));
+    check('Home no longer renders module progress rows or a queue dashboard',
+      element.find('los-learning-row').length === 0
       && element.find('los-queue-card').length === 0
-      && text.includes('inbox item'));
-    /* Boundaries are policy documentation. They belong under More. */
+      && element.find('los-attention').length === 0);
+    check('Home does not show progress percentages', !/\d+%/.test(text));
     check('boundaries and maintenance controls are absent from Home',
       !text.includes("Master's Planning") && !text.includes('Rebuild projection'));
     check('the repeated ownership footer is gone from every screen',
@@ -185,16 +169,96 @@ async function main() {
     plugin.onunload();
   }
 
+  heading('explicit application router');
+  {
+    const { app, plugin } = await boot();
+    await plugin.openLibraryGroup('sources', 'thematic-group-mathematics', 'probability', 'local');
+    const libraryBefore = app.workspace.getLeavesOfType(VIEW.library)[0];
+    libraryBefore.view.contentEl.scrollTop = 144;
+    libraryBefore.view.selectedElementId = 'source-fixture-book';
+    await plugin.openModule('module-fixture-m2');
+    const beforeBack = plugin.router.snapshot();
+    check('feature navigation persists a product route rather than an Obsidian view type',
+      beforeBack.current.name === 'module-detail' && beforeBack.current.moduleId === 'module-fixture-m2'
+      && !('type' in beforeBack.current));
+    await plugin.back();
+    const restored = plugin.router.snapshot();
+    const library = app.workspace.getLeavesOfType(VIEW.library)[0];
+    check('Back restores the prior route, filters, selection, and scroll position',
+      restored.current.name === 'library-group' && restored.current.collection === 'sources'
+      && restored.current.groupId === 'thematic-group-mathematics'
+      && restored.current.query === 'probability' && restored.current.facet === 'local'
+      && library?.view?.screen === 'group' && library.view.contentEl.scrollTop === 144
+      && library.view.selectedElementId === 'source-fixture-book');
+    check('the compatibility router is the only runtime owner of leaf navigation',
+      fs.readFileSync(path.join(ROOT, 'src', 'main.ts'), 'utf8').includes('this.router.navigate')
+      && !fs.readFileSync(path.join(ROOT, 'src', 'main.ts'), 'utf8').includes('async openView('));
+    plugin.onunload();
+  }
+
+  heading('global structural search');
+  {
+    const { app, plugin } = await boot();
+    await plugin.openLibraryHome('sources');
+    const routeBeforeSearch = plugin.router.snapshot().current;
+    const modal = plugin.openGlobalSearch('Advanced ML');
+    const overlay = plugin.router.snapshot();
+    check('opening search preserves the current application route',
+      routeBeforeSearch.name === 'library-home' && overlay.current.name === 'library-home');
+    check('the router records search as transient overlay state',
+      overlay.overlay?.kind === 'global-search' && overlay.overlay.query === 'Advanced ML');
+    check('search returns projected module identities',
+      modal.contentEl.allText().includes('Fixture Advanced ML')
+      && modal.contentEl.find('los-search-result').length >= 1);
+    const moduleResult = modal.contentEl.find('los-search-result')
+      .find((row) => row.children[0]?.children[0]?.text === 'Fixture Advanced ML');
+    moduleResult.fire('click');
+    await tick(); await tick();
+    const opened = plugin.router.snapshot();
+    check('choosing a result closes the overlay and opens the owning route',
+      opened.overlay === null && opened.current.name === 'module-detail'
+      && opened.current.moduleId === 'module-fixture-aml');
+
+    const projectSearch = plugin.openGlobalSearch('Bachelor thesis');
+    const projectResult = projectSearch.contentEl.find('los-search-result')
+      .find((row) => row.allText().includes('Bachelor thesis'));
+    check('global search returns first-class projects', Boolean(projectResult));
+    projectResult.fire('click'); await tick(); await tick();
+    check('a project search result opens the project route',
+      plugin.router.snapshot().current.name === 'project-detail'
+      && plugin.router.snapshot().current.projectId === 'project-fixture-thesis');
+
+    const emptySearch = plugin.openGlobalSearch('definitely-unfindable-fixture');
+    check('no-results is explicit and offers a clear action',
+      emptySearch.contentEl.allText().includes('No structural results')
+      && Boolean(emptySearch.contentEl.findText('los-btn', 'Clear search')));
+    emptySearch.contentEl.findText('los-btn', 'Clear search').fire('click');
+    check('clearing search restores quick access without changing the route',
+      emptySearch.contentEl.allText().includes('Quick access')
+      && plugin.router.snapshot().current.projectId === 'project-fixture-thesis');
+    emptySearch.close();
+    check('closing search clears only overlay state',
+      plugin.router.snapshot().overlay === null
+      && plugin.router.snapshot().current.projectId === 'project-fixture-thesis');
+
+    const command = plugin.commands.find((row) => row.id === 'open-global-search');
+    check('global search is available as an Obsidian command', Boolean(command));
+    const nav = app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
+    check('the navigator exposes a persistent accessible search launcher',
+      nav.find('los-nav-search').length === 1
+      && nav.find('los-nav-search')[0].attrs['aria-label'] === 'Search LearningOS');
+    plugin.onunload();
+  }
+
   heading('navigation and boundaries');
   {
     const { app, plugin } = await boot();
     const nav = app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
     const text = nav.allText();
-    /* Five permanent destinations. Areas are sub-areas of Learn; the queues are
-     * Review; maintenance and boundaries live under More. */
-    check('five permanent destinations, no more',
-      nav.find('los-nav-primary')[0].find('los-app-nav-item').length === 5
-      && ['Home', 'Learn', 'Library', 'Capture', 'Review'].every((label) => text.includes(label)));
+    /* Seven permanent destinations from the approved application IA. */
+    check('seven permanent destinations, no more',
+      nav.find('los-nav-primary')[0].find('los-app-nav-item').length === 7
+      && ['Home', 'Modules', 'Learn', 'Projects', 'Library', 'Garden', 'Review'].every((label) => text.includes(label)));
     check('maintenance and boundaries are not study destinations',
       nav.find('los-nav-more').length === 1
       && nav.find('los-nav-secondary')[0].allText().includes('Rebuild projection')
@@ -215,6 +279,10 @@ async function main() {
     check('Diagnostics reports contract, freshness and interpreter',
       diagnostics.includes('Manifest contract') && diagnostics.includes('Python interpreter')
       && diagnostics.includes('Snapshot'));
+    check('Diagnostics exposes the installed UI build identity',
+      diagnostics.includes('UI source revision') && diagnostics.includes('UI source fingerprint')
+      && diagnostics.includes('UI bundle fingerprint') && diagnostics.includes('Build Node')
+      && diagnostics.includes('Copy build identity'));
     check('the ownership statement is stated once, in Diagnostics/About',
       diagnostics.includes('buttons are conveniences, never duties'));
     await plugin.openBoundary('program-job-boundary');
@@ -281,45 +349,64 @@ async function main() {
   {
     const { app, plugin } = await boot();
     await plugin.openLibrary();
-    const view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    let view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
     let text = view.contentEl.allText();
-    /* A flat 200-row registry is a haystack; the shelves are where the reading
-     * strategy is written down, so they are the default way in. */
-    check('the Library opens on shelves', view.type === 'collection' && text.includes('Fixture math bookshelf'));
-    /* One vertical mode rail instead of four stacked control strips. */
-    check('modes are a compact sidebar carrying their own counts',
-      view.contentEl.find('los-library-rail').length === 1
-      && view.contentEl.find('los-library-mode').length === 5);
-    check('shelves are grouped by domain',
-      view.contentEl.find('los-library-list')[0].find('los-list-group').length === 2);
-    check('a shelf reads in its authored tiers, each entry with its role',
-      text.includes('tier-1-now') && text.includes('tier-2-optional')
-      && text.includes('Selected sections only; never linearly.'));
-    check('record IDs are not on the list rows',
-      !view.contentEl.find('los-library-list')[0].allText().includes('collection-fixture-math'));
-    view.contentEl.findText('los-library-mode', 'Sources').fire('click'); await tick();
+    check('Library opens on Learning Sources thematic groups only',
+      view.screen === 'home' && view.collection === 'sources'
+      && view.contentEl.find('los-group-card').length === 5
+      && view.contentEl.find('los-route-row').length === 0
+      && view.contentEl.find('los-library-detail').length === 0);
+    check('Learning Sources and Topic Packs are distinct top-level collections',
+      view.contentEl.find('los-collection-switch').length === 1
+      && ['Learning Sources', 'Topic Packs'].every((label) => text.includes(label)));
+
+    view.contentEl.findText('los-group-card', 'Mathematics').fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
     text = view.contentEl.allText();
-    /* Facets are folded until asked for; the counts still have to be live. */
-    check('filters are collapsed into a disclosure, not a permanent bar',
-      view.contentEl.find('los-library-filters').length === 1);
-    check('source facets are offered with live counts',
-      text.includes('On a shelf · 3') && text.includes('Not on any shelf · 0')
-      && text.includes('Local copy · 1'));
-    view.contentEl.findText('los-btn', 'Local copy · 1').fire('click'); await tick();
-    check('a facet narrows the list', view.contentEl.find('los-item').length === 1);
+    check('selecting a source group replaces the route with one full-page list',
+      view.screen === 'group' && view.groupId === 'thematic-group-mathematics'
+      && view.contentEl.find('los-route-row').length === 3
+      && view.contentEl.find('los-library-layout').length === 0
+      && view.contentEl.find('los-library-detail').length === 0);
+    check('no source record is automatically selected',
+      view.resourceId === null && !text.includes('Technical details'));
+    check('source filters and full-text fallback remain available',
+      ['All', 'Local copy', 'Online', 'Used in a unit'].every((label) => text.includes(label))
+      && text.includes('Full-text / OCR search'));
+    view.contentEl.findText('los-btn', 'Local copy').fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check('a source facet narrows the full-page list', view.contentEl.find('los-route-row').length === 1);
+    view.contentEl.find('los-route-row')[0].fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
     text = view.contentEl.allText();
-    check('a source says which shelves carry it and why',
-      text.includes('On shelves') && text.includes('Fixture math bookshelf')
+    check('source detail is a full page and preserves collection rationale',
+      view.screen === 'source-detail' && view.contentEl.find('los-detail-page').length === 1
+      && text.includes('Fixture math bookshelf')
       && text.includes('The spine — read this before anything else on the shelf.'));
-    /* An operator ID is not study content — it stays one disclosure away. */
-    const technical = view.detailEl.find('los-technical-details')[0];
-    check('the record ID and Copy ID live under Technical details',
+    const technical = view.contentEl.find('los-technical-details')[0];
+    check('record ID and Copy ID stay under Technical details',
       Boolean(technical) && technical.allText().includes('Copy ID')
-      && technical.find('los-detail-id')[0]?.text.startsWith('source-fixture-')
-      && view.detailEl.find('los-actions')[0].allText().includes('Copy ID') === false);
-    check('related records are grouped by what the relation means',
-      view.detailEl.find('los-related-group').length > 0
-      && /(Used in units|Connected concepts|Referenced by notes) · \d+/.test(view.detailEl.allText()));
+      && technical.find('los-detail-id')[0]?.text === 'source-fixture-book');
+
+    await plugin.openLibraryHome('topic-packs');
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check('Topic Packs starts at thematic groups rather than source types',
+      view.collection === 'topic-packs' && view.contentEl.find('los-group-card').length === 5
+      && view.contentEl.find('los-route-row').length === 0);
+    view.contentEl.findText('los-group-card', 'Machine Learning').fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check('a Topic Pack group opens a full-page pack list',
+      view.screen === 'group' && view.collection === 'topic-packs'
+      && view.contentEl.find('los-route-row').length === 1
+      && view.contentEl.allText().includes('Fixture ML evaluation pack'));
+    view.contentEl.find('los-route-row')[0].fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    text = view.contentEl.allText();
+    check('Topic Pack detail states one explicit purpose and preserves manual order',
+      view.screen === 'topic-pack-detail'
+      && text.includes('Compare one bounded set of model-evaluation choices.')
+      && view.contentEl.find('los-pack-entry').length === 2
+      && view.contentEl.find('los-pack-order').map((el) => el.text).join(',') === '1,2');
     plugin.onunload();
   }
 
@@ -349,9 +436,30 @@ async function main() {
   heading('module and component ownership');
   {
     const { app, plugin } = await boot();
-    await plugin.openModule('module-fixture-m2');
+    await plugin.openModules();
     let view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
     let text = view.contentEl.allText();
+    check('Modules opens on explicit thematic groups only',
+      view.screen === 'groups' && view.contentEl.find('los-group-card').length === 5
+      && view.contentEl.find('los-unit-card').length === 0);
+    view.contentEl.findText('los-group-card', 'Mathematics').fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    check('selecting a group replaces the route with a full-page module list',
+      view.screen === 'list' && view.groupId === 'thematic-group-mathematics'
+      && view.contentEl.find('los-route-row').length === 2
+      && view.contentEl.find('los-unit-card').length === 0);
+    const search = view.contentEl.find('los-route-search')[0];
+    search.value = 'M2F'; search.fire('input'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    check('module query is persisted on the product route',
+      plugin.router.snapshot().current.name === 'module-list'
+      && plugin.router.snapshot().current.query === 'M2F'
+      && view.contentEl.find('los-route-row').length === 1);
+    view.contentEl.find('los-route-row')[0].fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    text = view.contentEl.allText();
+    check('a module opens as a full-page detail route',
+      view.screen === 'detail' && plugin.router.snapshot().current.name === 'module-detail');
     /* Units is the default: a learner opens a module to study, not to read a
      * credit count. Administration is one tab away, never in the header. */
     check('the module opens on Units, not on administration',
@@ -378,6 +486,65 @@ async function main() {
     text = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl.allText();
     check('related workspaces render their next action instead of a raw CONTEXT link',
       text.includes('Next action') && text.includes('Work the Conditional probability and Bayes stage'));
+    await plugin.back();
+    view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    check('Back restores the module group query and full-page list',
+      view.screen === 'list' && view.query === 'M2F' && view.contentEl.find('los-route-row').length === 1);
+    plugin.onunload();
+  }
+
+  heading('first-class project navigation');
+  {
+    const { app, plugin } = await boot();
+    await plugin.openProjects();
+    const listLeaf = app.workspace.getLeavesOfType(VIEW.project)[0];
+    const listText = listLeaf.view.contentEl.allText();
+    check('Projects opens as a full-page first-class list',
+      plugin.router.snapshot().current.name === 'project-list'
+      && listText.includes('Bachelor thesis') && listLeaf.view.contentEl.find('los-project-row').length === 1);
+    check('the project list does not render a universal completion percentage', !/\d+%/.test(listText));
+    listLeaf.view.contentEl.scrollTop = 177;
+    listLeaf.view.selectedElementId = 'project-fixture-thesis';
+    listLeaf.view.contentEl.find('los-project-row')[0].fire('click');
+    await tick(); await tick();
+    const detail = app.workspace.getLeavesOfType(VIEW.project)[0].view;
+    check('opening a project replaces the route rather than splitting the screen',
+      plugin.router.snapshot().current.name === 'project-detail'
+      && detail.contentEl.allText().includes('Overview')
+      && detail.contentEl.find('los-project-list').length === 0);
+    check('project detail exposes the approved five tabs',
+      ['Overview', 'Structure', 'Linked Materials', 'Files', 'Decisions']
+        .every((label) => detail.contentEl.allText().includes(label)));
+    detail.contentEl.findText('los-btn', 'Thesis landscape').fire('click'); await tick();
+    const projectUnit = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    check('project-owned units retain first-class project context',
+      projectUnit.contentEl.allText().includes('Bachelor thesis')
+      && projectUnit.contentEl.findText('los-btn', 'Back to project'));
+    projectUnit.contentEl.findText('los-btn', 'Back to project').fire('click'); await tick();
+    await plugin.openProject('project-fixture-thesis', 'structure');
+    const structure = app.workspace.getLeavesOfType(VIEW.project)[0].view.contentEl.allText();
+    check('parallel and nested project structure renders without a percentage',
+      structure.includes('Landscape and scope') && structure.includes('Confirm scope')
+      && structure.includes('Experiments') && structure.includes('Baseline map') && !/\d+%/.test(structure));
+    await plugin.openProject('project-fixture-thesis', 'linked-materials');
+    const linked = app.workspace.getLeavesOfType(VIEW.project)[0].view.contentEl;
+    check('linked modules and Topic Packs render from projected relationships',
+      linked.allText().includes('Fixture Advanced ML') && linked.allText().includes('Fixture ML evaluation pack'));
+    linked.findText('los-btn', 'Why linked').fire('click');
+    check('Why linked is an inspect-only temporary drawer/modal with a core-authored reason',
+      stub.Modal.last?.contentEl?.allText().includes('Advanced ML supplies the evaluation vocabulary')
+      && stub.Modal.last?.contentEl?.allText().includes('Provides evaluation vocabulary and systems methods')
+      && stub.Modal.last?.contentEl?.findText('los-btn', 'Open target')
+      && plugin.router.snapshot().overlay?.kind === 'linked-material-reason');
+    stub.Modal.last.close();
+    check('closing Why linked restores the project route and clears transient state',
+      plugin.router.snapshot().current.name === 'project-detail' && plugin.router.snapshot().overlay === null);
+    await plugin.back();
+    const restored = app.workspace.getLeavesOfType(VIEW.project)[0];
+    check('Back restores the project list selection and scroll position',
+      plugin.router.snapshot().current.name === 'project-list'
+      && restored.view.contentEl.scrollTop === 177
+      && restored.view.selectedElementId === 'project-fixture-thesis');
     plugin.onunload();
   }
 
@@ -392,13 +559,15 @@ async function main() {
       && text.includes('medical-test fixture'));
     check('stage has exact resources and done-when criteria', element.find('los-resource-row').length === 2
       && text.includes('Explain the medical-test result cold'));
-    check('working note is stage-owned', element.find('los-note-editor')[0].value === 'A tentative fixture explanation.');
+    check('no permanent stage note editor remains', element.find('los-note-editor').length === 0);
+    check('Add note follows the final stage in the rail', element.find('los-stage-rail')[0].findText('los-btn', 'Add note'));
+    check('existing unit note sections are projected', plugin.store.get('unit-fixture-sad-l04').note_sections[0].title === 'Foundations session');
     check('durable unit artifact remains a reference', text.includes('Ultimate Reference') && text.includes('Fixture probability reference'));
     /* Three visible actions, one of them a menu. Sixteen equally-weighted
      * buttons is a control panel, not a workspace. */
     const bar = element.find('los-unit-actionbar')[0];
-    check('the action bar carries exactly two buttons and one overflow',
-      bar.children.filter((child) => child.classes.has('los-btn')).length === 2
+    check('the action bar carries one primary button and one overflow',
+      bar.children.filter((child) => child.classes.has('los-btn')).length === 1
       && bar.find('los-overflow').length === 1);
     check('only one action on the screen is a filled primary',
       element.find('los-btn--cta').length === 1
@@ -419,19 +588,21 @@ async function main() {
       plugin.getDoneWhen('unit-fixture-sad-l04', 'stage-fixture-conditioning')[0] === true
       && !calls.some((args) => args[0] === 'stage-progress'));
 
-    const editor = element.find('los-note-editor')[0]; editor.value = 'Updated fixture scratch.';
-    element.findText('los-btn', 'Save note').fire('click'); await tick();
-    const noteCall = calls.find((args) => args[0] === 'stage-note');
-    check('note save uses action-specific gateway', noteCall?.slice(0, 5).join('|')
-      === 'stage-note|unit-fixture-sad-l04|stage-fixture-conditioning|--replace|--text');
+    const noteModal = plugin.openUnitNote(plugin.store.get('unit-fixture-sad-l04'), plugin.store.mapForUnit('unit-fixture-sad-l04'));
+    check('the note modal references completed stages not already recorded',
+      noteModal.referencedStageIds.length === 0 && noteModal.contentEl.allText().includes('unit-level observation'));
+    noteModal.editor.value = 'Updated fixture session synthesis.';
+    noteModal.editor.fire('input');
+    noteModal.fileInput.files = [{ name: 'notes.png', __path: '/tmp/notes.png' }];
+    noteModal.fileInput.fire('change');
+    noteModal.contentEl.findText('los-btn', 'Save note').fire('click'); await tick(); await tick();
+    const noteCall = calls.find((args) => args[0] === 'unit-note');
+    check('session note save uses the unit-level action-specific gateway',
+      noteCall?.slice(0, 4).join('|') === 'unit-note|unit-fixture-sad-l04|--text|Updated fixture session synthesis.');
+    check('unit note attachments use Electron webUtils instead of the removed File.path',
+      noteCall?.includes('--attachment') && noteCall?.includes('/tmp/notes.png'));
     check('mutation carries optimistic snapshot token', noteCall?.includes('--expected-snapshot')
       && noteCall?.includes('sha256:fixture-v2-snapshot'));
-
-    element = view.contentEl;
-    element.find('los-file-input')[0].files = [{ name: 'notes.png', __path: '/tmp/notes.png' }];
-    element.findText('los-btn', 'Attach file').fire('click'); await tick();
-    check('stage attachment uses Electron webUtils instead of the removed File.path', calls.some((args) =>
-      args.join('|').startsWith('stage-attach|unit-fixture-sad-l04|stage-fixture-conditioning|--file|/tmp/notes.png')));
 
     element = view.contentEl;
     element.findText('los-btn', 'Helpful').fire('click'); await tick();
@@ -484,16 +655,18 @@ async function main() {
   heading('secondary library and exact source selections');
   {
     const { app, plugin } = await boot();
-    await plugin.openLibrary('source-fixture-islp');
-    const view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    check('library is searchable master/detail', view.contentEl.find('los-item').length === 3);
-    check('full-text/OCR fallback is explicit', view.contentEl.allText().includes('Full-text / OCR search'));
-    check('ISLP detail preserves exact reading selections', view.detailEl.allText().includes('Chapter 3 §§3.1–3.3')
-      && view.detailEl.allText().includes('§7.1 only'));
-    check('source use routes back to several distinct units', view.detailEl.allText().includes('AML Lecture 03')
-      && view.detailEl.allText().includes('AML Lecture 04'));
-    view.query = 'Wahrscheinlichkeitsbuch'; view.render();
-    check('German source aliases search successfully', view.contentEl.find('los-item').length === 1);
+    await plugin.openSourceDetail('source-fixture-islp');
+    let view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check('source opening behavior lands on a full-page detail',
+      view.screen === 'source-detail' && view.contentEl.find('los-route-row').length === 0);
+    check('ISLP detail preserves exact reading selections', view.contentEl.allText().includes('Chapter 3 §§3.1–3.3')
+      && view.contentEl.allText().includes('§7.1 only'));
+    check('source use routes back to several distinct units', view.contentEl.allText().includes('AML Lecture 03')
+      && view.contentEl.allText().includes('AML Lecture 04'));
+    await plugin.openLibraryGroup('sources', 'thematic-group-mathematics', 'Wahrscheinlichkeitsbuch');
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check('German source aliases search successfully', view.contentEl.find('los-route-row').length === 1
+      && view.contentEl.allText().includes('Fixture probability book'));
     plugin.onunload();
   }
 
@@ -511,17 +684,17 @@ async function main() {
     const { app, plugin } = await boot();
     await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
-    const saved = 'A tentative fixture explanation.';
     const risked = 'Text that must survive a broken CLI.';
-    plugin.setStageDraft('unit-fixture-sad-l04', 'stage-fixture-conditioning', risked, saved);
-    view.contentEl.find('los-note-editor')[0].value = risked;
+    plugin.setUnitNoteDraft('unit-fixture-sad-l04', '', risked);
+    const modal = plugin.openUnitNote(plugin.store.get('unit-fixture-sad-l04'), plugin.store.mapForUnit('unit-fixture-sad-l04'));
+    modal.editor.value = risked; modal.editor.fire('input');
     plugin.runLos = (args, callback) => callback(null, 'NOT JSON {{{ broken CLI', '');
     Notice.log.length = 0;
-    view.contentEl.findText('los-btn', 'Save note').fire('click'); await tick(); await tick();
+    modal.contentEl.findText('los-btn', 'Save note').fire('click'); await tick(); await tick();
     check('unreadable CLI output is never reported as a saved note',
-      Notice.log.length > 0 && !Notice.log.some((line) => line.includes('Stage note saved.')));
-    check('an unconfirmed save keeps the working-note draft',
-      plugin.getStageDraft('unit-fixture-sad-l04', 'stage-fixture-conditioning', saved).text === risked);
+      Notice.log.length > 0 && !Notice.log.some((line) => line.includes('Learning-session note saved.')));
+    check('an unconfirmed save keeps the unit-note draft',
+      plugin.getUnitNoteDraft('unit-fixture-sad-l04').text === risked);
     plugin.onunload();
   }
   {
@@ -570,8 +743,9 @@ async function main() {
     check('a null row in the projection does not blank Home',
       home.view.contentEl.allText().includes('Fixture Advanced ML'));
     await plugin.openLibrary('source-fixture-islp');
-    check('Library still searches around a null record',
-      app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.find('los-item').length > 0);
+    check('Library still opens a source around a null record',
+      app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.find('los-detail-page').length === 1
+      && app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.allText().includes('Fixture Introduction to Statistical Learning with Python'));
     plugin.onunload();
   }
   {
@@ -636,9 +810,9 @@ async function main() {
     plugin.runLos = (args, callback) => {
       order.push(`start:${args[0]}`);
       const finish = () => { order.push(`end:${args[0]}`); callback(null, JSON.stringify({ ok: true }), ''); };
-      if (args[0] === 'stage-note') settle = finish; else finish();
+      if (args[0] === 'unit-note') settle = finish; else finish();
     };
-    const first = plugin.mutate(() => plugin.gateway.saveNote('unit-fixture-sad-l04', 'stage-fixture-conditioning', 'x'));
+    const first = plugin.mutate(() => plugin.gateway.saveUnitNote('unit-fixture-sad-l04', { text: 'x' }));
     const second = plugin.mutate(() => plugin.gateway.captureText('a second thought'));
     await tick();
     check('a second write from another view waits instead of racing',
@@ -646,7 +820,7 @@ async function main() {
     settle?.();
     await first; await second; await tick();
     check('the queued write runs after the first transaction completes',
-      order.join('|') === 'start:stage-note|end:stage-note|start:capture|end:capture');
+      order.join('|') === 'start:unit-note|end:unit-note|start:capture|end:capture');
     check('a rejected transaction does not poison the queue',
       plugin.gateway.pending === 0);
     plugin.onunload();
@@ -682,7 +856,8 @@ async function main() {
     const workspace = plugin.store.of('workspace')[0];
     // An emoji sits exactly on the 120-code-point cut used by the module row,
     // which is where a plain .slice() left a lone high surrogate.
-    workspace.next_action = `${'a'.repeat(118)}😀 ${'b'.repeat(1500)}😀 tail`;
+    workspace.module_ids = [...new Set([...(workspace.module_ids || []), 'module-fixture-aml'])];
+    workspace.next_action = `${'a'.repeat(98)}😀 ${'b'.repeat(1500)}😀 tail`;
     home.view.render();
     const text = home.view.contentEl.allText();
     check('excerpt truncation never leaves half an emoji in the DOM',
@@ -713,7 +888,7 @@ async function main() {
       && !source.includes('workspace._leaves'));
     check('local file paths use Electron webUtils', source.includes('webUtils.getPathForFile(file)')
       && !/function localFilePath\([\s\S]*?return file\??\.path/.test(source));
-    check('bundle exposes action-specific writes', ['stage-note', 'stage-progress', 'source-feedback',
+    check('bundle exposes action-specific writes', ['unit-note', 'stage-note', 'stage-progress', 'source-feedback',
       'stage-attach', 'detour-create', 'detour-resolve', 'shelving-prepare', 'shelving-apply',
       'session-end'].every((command) => source.includes(command)));
     check('bundle is generated from modular TypeScript-syntax source', fs.readdirSync(path.join(ROOT, 'src', 'views')).length >= 8
@@ -727,9 +902,9 @@ async function main() {
     check('deadline layout cannot allocate a third action column',
       /\.los-date-row\s*\{[^}]*grid-template-columns:\s*minmax\(126px, 148px\)\s+minmax\(0, 1fr\)/.test(css)
       && !/\.los-date-row\s*\{[^}]*grid-template-columns:[^;]*\sauto\s*;/.test(css));
-    check('the unit workspace is three columns with a sticky note panel',
-      /\.los-unit-layout\s*\{[\s\S]*?grid-template-columns:\s*220px\s+minmax\(420px, 1fr\)\s+minmax\(280px, 340px\)/.test(css)
-      && /\.los-note-panel\s*\{[\s\S]*?position: sticky/.test(css));
+    check('the unit workspace is two columns and notes are a temporary modal',
+      /\.los-unit-layout\s*\{[\s\S]*?grid-template-columns:\s*232px\s+minmax\(0, 1fr\)/.test(css)
+      && css.includes('.los-unit-note-modal') && !css.includes('.los-note-panel'));
     check('the primary button is filled, not an outline',
       /\.los-btn--cta\s*\{[^}]*background: var\(--interactive-accent\)/.test(css));
     check('the active navigation destination is visually obvious',

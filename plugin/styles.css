@@ -284,18 +284,18 @@
 .los-next-action { margin: var(--los-2) 0; padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--background-primary); }
 .los-next-action p { margin: var(--los-1) 0; color: var(--text-normal); }
 
-/* A true three-column workspace: stage rail | current work | notes.
- * The note editor stays beside the task instead of below it, because writing
- * while reading is the whole point of the screen. */
+/* Focused learning workspace: stage rail | current work.
+ * One Add note action follows the ordered stages; note capture opens as a
+ * temporary modal instead of consuming a permanent third column. */
 .los-unit-layout {
   display: grid;
-  grid-template-columns: 220px minmax(420px, 1fr) minmax(280px, 340px);
+  grid-template-columns: 232px minmax(0, 1fr);
   gap: var(--los-3);
-  max-width: 1440px;
+  max-width: 1240px;
   margin: 0 auto var(--los-3);
   align-items: start;
 }
-.los-stage-workspace, .los-note-panel {
+.los-stage-workspace {
   min-width: 0;
   padding: var(--los-3);
   border: 1px solid var(--los-line);
@@ -303,16 +303,9 @@
   background: var(--los-surface);
 }
 .los-stage-rail { min-width: 0; padding: var(--los-2); }
-.los-note-panel {
-  position: sticky;
-  top: var(--los-2);
-  max-height: calc(100vh - 48px);
-  overflow: auto;
-}
-.los-note-panel h2 { margin-top: 0; }
-.los-attachments, .los-detour-row { margin-top: var(--los-3); padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
-.los-detour-row p { margin: var(--los-1) 0; color: var(--text-muted); font-size: 12px; }
 .los-stage-rail h2 { padding: var(--los-1) var(--los-2); }
+.los-add-unit-note { width: 100%; justify-content: flex-start; margin-top: var(--los-2); }
+.los-unit-note-draft { padding: var(--los-1) var(--los-2); color: var(--text-accent); }
 .los-stage-row {
   display: flex;
   width: 100%;
@@ -344,6 +337,13 @@
 .los-resource-actions { gap: var(--los-1); align-items: center; }
 .los-stage-goal { margin-bottom: var(--los-3); }
 .los-stage-goal p { margin: var(--los-1) 0 0; }
+.los-unit-note-modal { width: min(92vw, 640px); }
+.los-unit-note-context, .los-unit-note-attachments { margin: var(--los-3) 0; padding: var(--los-3); border: 1px solid var(--los-line); border-radius: var(--los-r-sm); background: var(--background-primary); }
+.los-unit-note-title { width: 100%; margin-bottom: var(--los-2); }
+.los-unit-note-editor { min-height: 260px; }
+.los-unit-note-actions { justify-content: flex-end; margin-top: var(--los-3); }
+.los-attachments, .los-detour-row { margin-top: var(--los-3); padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
+.los-detour-row p { margin: var(--los-1) 0; color: var(--text-muted); font-size: 12px; }
 
 /* Done-when as working checkboxes. UI-owned state: the core still learns only
  * "complete", from stage-progress. */
@@ -660,9 +660,7 @@
 
 @media (max-width: 1020px) {
   .los-home-columns { grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr); gap: var(--los-4); }
-  /* Rail and task stay side by side; the note panel drops below them. */
   .los-unit-layout { grid-template-columns: 200px minmax(0, 1fr); }
-  .los-note-panel { position: static; grid-column: 1 / -1; max-height: none; }
   .los-library-layout { grid-template-columns: 160px minmax(0, 1fr); }
   .los-library-detail { grid-column: 1 / -1; }
 }
@@ -675,7 +673,6 @@
   .los-home-columns { grid-template-columns: minmax(0, 1fr); }
   .los-home-column { gap: var(--los-2); }
   .los-card-grid, .los-workspace-grid { grid-template-columns: minmax(0, 1fr); }
-  .los-note-panel { grid-column: auto; }
   .los-resource-row > .los-actions { grid-column: 1 / -1; }
   .los-continue-body > .los-actions { justify-content: flex-start; }
   .los-library-rail { flex-direction: row; flex-wrap: wrap; }
@@ -693,7 +690,7 @@
   .los-learning-row, .los-review-row { grid-template-columns: minmax(0, 1fr); gap: var(--los-1); }
   .los-learning-meta { justify-content: flex-start; }
   .los-fact-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
-  .los-library-detail, .los-card, .los-stage-workspace, .los-note-panel { padding: var(--los-3); }
+  .los-library-detail, .los-card, .los-stage-workspace { padding: var(--los-3); }
   .los-overflow-body { right: auto; left: 0; min-width: 0; }
 }
 
@@ -758,4 +755,242 @@
   .los-garden-actions, .los-ai-action-row { align-items: stretch; }
   .los-ai-action-row { width: 100%; margin-left: 0; padding: var(--los-2) 0 0; border-left: 0; border-top: 1px solid var(--los-line); }
   .los-ai-provider { max-width: none; flex: 1 1 170px; }
+}
+
+/* Home convergence: one resumable session, a short Today list, then a short
+ * Continue elsewhere list. Home is not a module catalogue or queue dashboard. */
+.los-home-header { position: relative; padding-right: 180px; }
+.los-home-header-actions { position: absolute; top: 4px; right: 0; }
+.los-continue-context { margin-top: var(--los-2); color: var(--text-muted); font-size: 12px; }
+.los-home-list { display: grid; border-top: 1px solid var(--los-line-strong); }
+.los-home-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--los-3);
+  align-items: center;
+  min-width: 0;
+  padding: var(--los-3) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-home-row-copy { min-width: 0; }
+.los-home-row-copy > strong { display: block; overflow-wrap: break-word; }
+.los-home-row-copy .los-micro { margin-top: 2px; }
+
+/* Persistent structural search launcher in the application navigator. */
+.los-nav-brand > strong { min-width: 0; flex: 1; }
+.los-nav-search {
+  display: grid !important;
+  width: 30px;
+  min-width: 30px !important;
+  height: 30px !important;
+  min-height: 30px !important;
+  padding: 0 !important;
+  place-items: center;
+  border-color: var(--los-line) !important;
+  border-radius: var(--los-r-md) !important;
+  color: var(--text-muted) !important;
+}
+
+/* Global structural search. It is an overlay over the current product route,
+ * never a replacement source of truth and never a file index. */
+.los-global-search {
+  width: min(860px, 82vw);
+  min-height: 0;
+  max-height: min(760px, 82vh);
+  padding: var(--los-4);
+  overflow: hidden;
+}
+.los-search-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--los-4);
+  margin-bottom: var(--los-3);
+}
+.los-search-header h2 { margin: 2px 0 0; font-size: 20px !important; }
+.los-global-search-input { min-height: 42px !important; padding: var(--los-2) var(--los-3) !important; }
+.los-search-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-1);
+  margin: var(--los-3) 0;
+  padding-bottom: var(--los-2);
+  border-bottom: 1px solid var(--los-line);
+}
+.los-search-tab.is-active {
+  border-color: var(--interactive-accent) !important;
+  background: var(--background-modifier-hover) !important;
+  color: var(--text-normal) !important;
+  font-weight: 650;
+}
+.los-search-results { max-height: min(520px, 58vh); overflow-y: auto; }
+.los-search-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--los-3);
+  align-items: baseline;
+  padding: 0 0 var(--los-2);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.los-search-result-list { display: grid; }
+.los-search-result {
+  display: grid !important;
+  width: 100%;
+  min-height: 58px !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--los-3);
+  align-items: center;
+  padding: var(--los-2) var(--los-3) !important;
+  border: 0 !important;
+  border-bottom: 1px solid var(--los-line) !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  text-align: left;
+}
+.los-search-result:hover, .los-search-result:focus-visible { background: var(--background-modifier-hover) !important; }
+.los-search-result-copy { min-width: 0; }
+.los-search-result-copy strong { display: block; overflow-wrap: break-word; }
+.los-search-open { color: var(--text-accent); font-size: 12px; font-weight: 650; white-space: nowrap; }
+
+@media (max-width: 720px) {
+  .los-home-header { padding-right: 0; }
+  .los-home-header-actions { position: static; margin-top: var(--los-3); }
+  .los-global-search { width: min(94vw, 860px); max-height: 88vh; padding: var(--los-3); }
+}
+
+@media (max-width: 480px) {
+  .los-home-row, .los-search-result { grid-template-columns: minmax(0, 1fr); }
+  .los-search-open { justify-self: start; }
+  .los-search-header { align-items: center; }
+  .los-search-header h2 { font-size: 17px !important; }
+}
+
+/* Full-page thematic navigation for Modules and Library. */
+.los-route-back {
+  display: inline-flex;
+  width: auto;
+  margin: 0 auto var(--los-3);
+  color: var(--text-muted);
+}
+.los-group-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--los-4);
+  max-width: 1180px;
+  margin: 0 auto;
+}
+.los-group-card {
+  position: relative;
+  display: grid;
+  min-height: 142px !important;
+  padding: var(--los-5) !important;
+  border-radius: var(--los-r-lg) !important;
+  background: var(--los-surface) !important;
+}
+.los-group-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--los-3);
+}
+.los-group-card-header h2 { margin: 0 !important; }
+.los-group-card p { margin: var(--los-3) 0 var(--los-5); color: var(--text-muted); }
+.los-group-count {
+  flex: 0 0 auto;
+  padding: 3px 9px;
+  border-radius: var(--los-r-pill);
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.los-route-open {
+  align-self: end;
+  justify-self: end;
+  color: var(--text-accent);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.los-route-search { display: block; max-width: 1180px; margin: 0 auto var(--los-4); min-height: 42px; }
+.los-route-list {
+  display: grid;
+  gap: var(--los-2);
+  max-width: 1180px;
+  margin: 0 auto;
+}
+.los-route-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--los-4);
+  width: 100%;
+  min-height: 64px !important;
+  padding: var(--los-3) var(--los-4) !important;
+  border-radius: var(--los-r-md) !important;
+  background: var(--los-surface) !important;
+}
+.los-route-row-copy { min-width: 0; }
+.los-route-row-copy strong { display: block; overflow-wrap: break-word; }
+.los-route-meta { margin-top: 3px; color: var(--text-muted); font-size: 12px; overflow-wrap: break-word; }
+.los-collection-switch {
+  display: flex;
+  gap: var(--los-2);
+  max-width: 1180px;
+  margin: 0 auto var(--los-5);
+  padding-bottom: var(--los-3);
+  border-bottom: 1px solid var(--los-line);
+}
+.los-library-toolbar { max-width: 1180px; margin: 0 auto var(--los-4); }
+.los-library-toolbar .los-route-search { margin-bottom: var(--los-3); }
+.los-library-facets-inline { display: flex; flex-wrap: wrap; gap: var(--los-2); }
+.los-detail-page { max-width: 1180px; margin: 0 auto; }
+.los-detail-page > .los-page-header { margin-left: 0; margin-right: 0; }
+.los-pack-purpose {
+  margin: 0;
+  padding: var(--los-4);
+  border-left: 3px solid var(--interactive-accent);
+  border-radius: 0 var(--los-r-md) var(--los-r-md) 0;
+  background: var(--los-surface);
+}
+.los-pack-entry {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  gap: var(--los-3);
+  padding: var(--los-3) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-pack-order {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--los-r-pill);
+  background: var(--background-modifier-hover);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .los-group-grid { grid-template-columns: minmax(0, 1fr); }
+  .los-route-row { grid-template-columns: minmax(0, 1fr); }
+  .los-route-open { justify-self: start; }
+  .los-collection-switch { flex-direction: column; }
+}
+
+/* First-class Projects */
+.los-project-list { display: grid; gap: var(--size-4-3); margin-top: var(--size-4-4); }
+.los-project-row { width: 100%; text-align: left; appearance: none; min-width: 0; }
+.los-project-tabs { display: flex; flex-wrap: wrap; gap: var(--size-2-2); margin: var(--size-4-4) 0; }
+.los-project-tabs .is-active { background: var(--background-modifier-hover); box-shadow: inset 0 -2px 0 var(--interactive-accent); }
+.los-project-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--size-4-3); }
+.los-project-meta, .los-project-node { border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); padding: var(--size-4-3); }
+.los-project-structure, .los-project-node-children { display: grid; gap: var(--size-4-3); }
+.los-project-node-children { margin-top: var(--size-4-3); margin-left: var(--size-4-4); }
+.los-project-link { display: flex; align-items: center; justify-content: space-between; gap: var(--size-4-3); }
+.los-project-link-copy { min-width: 0; }
+@media (max-width: 720px) {
+  .los-project-link { align-items: stretch; flex-direction: column; }
+  .los-project-node-children { margin-left: var(--size-4-2); }
 }

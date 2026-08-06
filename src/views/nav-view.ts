@@ -1,5 +1,5 @@
 /**
- * Five permanent destinations, nothing else. Areas (Bachelor's / Skills /
+ * Seven permanent destinations, nothing else. Areas (Bachelor's / Skills /
  * Thesis) are sub-areas of Learn; the decision queues (Shelving / Garden /
  * Inbox) are Review; atlas, boundaries, diagnostics and maintenance live under
  * More. The sidebar's job is to make the next step obvious, not to prove the
@@ -27,13 +27,22 @@ export class NavView extends ItemView {
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-app-nav');
     const brand = root.createDiv({ cls: 'los-nav-brand' });
-    icon(brand.createSpan({ cls: 'los-brand-mark' }), 'route'); brand.createEl('strong', { text: 'LearningOS' });
+    icon(brand.createSpan({ cls: 'los-brand-mark' }), 'route');
+    brand.createEl('strong', { text: 'LearningOS' });
+    const search = brand.createEl('button', {
+      cls: 'los-nav-search is-clickable',
+      attr: { type: 'button', 'aria-label': 'Search LearningOS', title: 'Search LearningOS' },
+    });
+    icon(search.createSpan(), 'search');
+    search.addEventListener('click', () => this.plugin.openGlobalSearch());
 
     const primary = root.createDiv({ cls: 'los-nav-primary' });
     this.nav(primary, 'home', 'Home', 'home', () => this.plugin.openHome());
+    this.nav(primary, 'layout-grid', 'Modules', 'modules', () => this.plugin.openModules());
     this.nav(primary, 'graduation-cap', 'Learn', 'learn', () => this.plugin.openLearn());
+    this.nav(primary, 'briefcase-business', 'Projects', 'projects', () => this.plugin.openProjects());
     this.nav(primary, 'library', 'Library', 'library', () => this.plugin.openLibrary());
-    this.nav(primary, 'plus', 'Capture', 'capture', () => this.plugin.openCapture());
+    this.nav(primary, 'sprout', 'Garden', 'garden', () => this.plugin.openGarden());
     this.nav(primary, 'check-check', 'Review', 'review', () => this.plugin.openReview());
 
     const more = root.createEl('details', { cls: 'los-nav-more' });
@@ -44,6 +53,7 @@ export class NavView extends ItemView {
       this.plugin.scheduleDraftSave();
     });
     const secondary = more.createDiv({ cls: 'los-nav-secondary' });
+    this.nav(secondary, 'plus', 'Capture', 'capture', () => this.plugin.openCapture());
     this.nav(secondary, 'map', 'Domain atlas', 'atlas', () => this.plugin.openAtlas());
     this.nav(secondary, 'shield', 'Master’s boundary', 'masters',
       () => this.plugin.openBoundary('program-masters-planning'));

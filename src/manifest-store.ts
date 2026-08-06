@@ -29,7 +29,7 @@ export class ManifestStore {
       // study_map_id/unit_id/module_id). `study_maps[].stages` stays the
       // ordering authority for rails and progress counts — index plus ordered
       // list, never two traversals of the same access path (ADR-006, fifth).
-      for (const group of ['programs', 'modules', 'units', 'study_maps', 'stages']) {
+      for (const group of ['programs', 'modules', 'projects', 'units', 'study_maps', 'stages', 'thematic_groups', 'topic_packs']) {
         for (const row of manifest[group] || []) if (row?.id) this.byId.set(row.id, row);
       }
       this.ready = true;
@@ -55,7 +55,34 @@ export class ManifestStore {
   }
   programs() { return this.rows('programs'); }
   modules() { return this.rows('modules'); }
+  projects() { return this.rows('projects'); }
+  projectRelationships(projectId = null) {
+    const rows = this.rows('project_relationships');
+    return projectId ? rows.filter((row) => row.from_project_id === projectId) : rows;
+  }
+  resolveProjectAlias(id) { return this.data?.project_aliases?.[id] || id; }
+  projectForUnit(unit) {
+    const ids = Array.isArray(unit?.project_ids) ? unit.project_ids : [];
+    return ids.map((id) => this.get(id)).find((row) => row?.type === 'project') || null;
+  }
+  thematicGroups() {
+    return this.rows('thematic_groups').slice().sort((a, b) =>
+      Number(a.order || 0) - Number(b.order || 0) || String(a.title || '').localeCompare(String(b.title || '')));
+  }
+  sources() { return this.of('source'); }
+  topicPacks() { return this.rows('topic_packs').length ? this.rows('topic_packs') : this.of('topic-pack'); }
+  catalogues() { return this.of('collection').filter((row) => row.collection_kind !== 'topic-pack'); }
+  modulesForGroup(groupId) {
+    return this.modules().filter((row) => (row.thematic_group_ids || []).includes(groupId));
+  }
+  sourcesForGroup(groupId) {
+    return this.sources().filter((row) => (row.thematic_group_ids || []).includes(groupId));
+  }
+  topicPacksForGroup(groupId) {
+    return this.topicPacks().filter((row) => (row.thematic_group_ids || []).includes(groupId));
+  }
   units() { return this.rows('units'); }
+  unitNoteSections(unitId) { return this.get(unitId)?.note_sections || []; }
   studyMaps() { return this.rows('study_maps'); }
   gardenEntries() { return this.rows('garden_entries'); }
   aiAction(actionId) {
@@ -134,6 +161,10 @@ export class ManifestStore {
       if (table && typeof table === 'object' && Array.isArray(table[id])) {
         for (const value of table[id]) ids.add(typeof value === 'string' ? value : value.from);
       }
+    }
+    for (const relationship of this.projectRelationships()) {
+      if (relationship.from_project_id === id) ids.add(relationship.to_id);
+      if (relationship.to_id === id) ids.add(relationship.from_project_id);
     }
     return [...ids].map((value) => ({ rec: this.get(value) })).filter((row) => row.rec);
   }

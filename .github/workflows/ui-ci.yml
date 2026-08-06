@@ -1,0 +1,31 @@
+name: UI CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install pinned development dependencies
+        run: npm install --ignore-scripts
+      - name: Typecheck, contract-check, build and test
+        run: npm run check
+      - name: Exercise the fixture installer path
+        run: python3 install.py --vault fixture-vault --dry-run --node "$(command -v node)"
+      - name: Upload built plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: learningos-ui-plugin
+          path: plugin/
+          if-no-files-found: error

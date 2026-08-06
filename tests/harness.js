@@ -79,7 +79,7 @@ Notice.log = [];
 
 class Modal {
   constructor(app) { this.app = app; this.contentEl = new El('div'); }
-  open() { this.onOpen(); }
+  open() { Modal.last = this; this.onOpen(); }
   close() { this.onClose && this.onClose(); }
   onOpen() {}
   onClose() {}

@@ -1,65 +1,58 @@
 /**
- * Library — the reference surface.
- *
- * Shelves come first. A registry of 228 sources in one flat list is a haystack;
- * the 16 curated collections are the only place the *reading strategy* is
- * written down (spine vs supplement, tier, when to reach for it), so they are
- * the default way in. Sources, notes, concepts and workspaces stay reachable as
- * modes, each with the facets that make a few hundred rows navigable.
- *
- * Presentation only: every judgment shown here is authored core-side — this view
- * groups and counts, and never invents an ordering the canon does not carry.
+ * Library navigation is deliberately full-page: choose a collection, choose a
+ * core-projected thematic group, then open one record. No default selection and
+ * no permanent master/detail columns.
  */
-export const LIBRARY_MODES = [
-  ['collection', 'Shelves'], ['source', 'Sources'], ['note', 'Notes'],
-  ['concept', 'Concepts'], ['workspace', 'Workspaces'],
-];
-
 export const SOURCE_FACETS = [
-  ['all', 'All'], ['shelved', 'On a shelf'], ['unshelved', 'Not on any shelf'],
-  ['local', 'Local copy'], ['online', 'Online'], ['in-unit', 'Used in a unit'],
+  ['all', 'All'], ['local', 'Local copy'], ['online', 'Online'], ['in-unit', 'Used in a unit'],
 ];
 
 export class LibraryView extends ItemView {
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
+    this.screen = 'home';
+    this.collection = 'sources';
+    this.groupId = null;
     this.query = '';
-    this.type = 'collection';
-    this.selectedId = null;
     this.facet = 'all';
+    this.resourceId = null;
+    this.topicPackId = null;
+    this.catalogueId = null;
+    this.recordType = 'note';
     this.domain = '';
+    this.selectedElementId = null;
   }
   getViewType() { return VIEW_LIBRARY; }
   getDisplayText() { return 'LearningOS · Library'; }
 
-  applyState(state) {
-    const has = (key) => Object.prototype.hasOwnProperty.call(state || {}, key);
-    if (has('recordType') && state.recordType) this.type = state.recordType;
-    if (has('domain')) this.domain = state.domain || '';
-    if (has('facet')) this.facet = state.facet || 'all';
-    if (has('recordId')) {
-      this.selectedId = state.recordId || null;
-      const record = this.plugin.store.get(this.selectedId);
-      if (!has('recordType') && record?.type) this.type = record.type;
-      if (this.selectedId) this.query = '';
-    }
-    if (has('query')) this.query = state.query || '';
+  applyState(state = {}) {
+    this.screen = state.screen || (state.recordId ? 'legacy-list' : 'home');
+    this.collection = state.collection || this.collection || 'sources';
+    this.groupId = state.groupId || state.fromGroupId || null;
+    this.query = state.query || '';
+    this.facet = state.facet || 'all';
+    this.resourceId = state.resourceId || null;
+    this.topicPackId = state.topicPackId || null;
+    this.catalogueId = state.catalogueId || null;
+    this.recordType = state.recordType || this.recordType || 'note';
+    this.domain = state.domain || '';
   }
   async setState(state) { this.applyState(state); this.render(); }
   getState() {
-    return { recordType: this.type, recordId: this.selectedId, query: this.query,
-      facet: this.facet, domain: this.domain };
+    return {
+      screen: this.screen, collection: this.collection, groupId: this.groupId,
+      query: this.query, facet: this.facet, resourceId: this.resourceId,
+      topicPackId: this.topicPackId, catalogueId: this.catalogueId,
+      recordType: this.recordType, domain: this.domain,
+    };
   }
   async onOpen() { this.applyState(this.leaf.state || {}); this.render(); }
 
-  // -------------------------------------------------------------- shelf index
-
-  /** source id → the shelves that carry it, with this shelf's own reason. */
   shelfIndex() {
     if (this._shelfIndex && this._shelfSnapshot === this.plugin.store.snapshotId) return this._shelfIndex;
     const index = new Map();
-    for (const shelf of this.plugin.store.of('collection')) {
+    for (const shelf of [...this.plugin.store.catalogues(), ...this.plugin.store.topicPacks()]) {
       for (const entry of shelf.entries || []) {
         if (!entry?.source) continue;
         if (!index.has(entry.source)) index.set(entry.source, []);
@@ -71,207 +64,319 @@ export class LibraryView extends ItemView {
     return index;
   }
 
-  matchesFacet(record) {
-    if (this.type !== 'source' || this.facet === 'all') return true;
-    const shelves = this.shelfIndex().get(record.id) || [];
-    if (this.facet === 'shelved') return shelves.length > 0;
-    if (this.facet === 'unshelved') return shelves.length === 0;
-    if (this.facet === 'local') return Boolean(record.material_exists);
+  matchesSourceFacet(record) {
+    if (this.facet === 'all') return true;
+    if (this.facet === 'local') return Boolean(record.material_exists || record.material_path);
     if (this.facet === 'online') return Boolean(record.url);
     if (this.facet === 'in-unit') return this.plugin.store.useUnits(record.id).length > 0;
     return true;
   }
 
-  rows() {
-    let rows = this.plugin.store.search(this.query, [this.type]).filter((row) => this.matchesFacet(row));
-    if (this.domain) rows = rows.filter((row) => (row.domain || '') === this.domain);
-    return rows.slice().sort((a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id)));
-  }
-
-  // ------------------------------------------------------------------ render
-
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-library-view');
-    // Reachable from the Navigator regardless of projection health, so it must
-    // degrade rather than search an unloaded record set.
     if (!this.plugin.store.ready) {
-      pageHeader(root, 'Reference', 'Projection unavailable');
+      pageHeader(root, 'Library', 'Projection unavailable');
       empty(root, 'The interface contract could not be loaded', this.plugin.store.error,
         'Rebuild views', () => this.plugin.generate());
       return;
     }
-    pageHeader(root, '', 'Library');
+    if (this.screen === 'group') return this.renderGroup(root);
+    if (this.screen === 'source-detail') return this.renderSourcePage(root);
+    if (this.screen === 'topic-pack-detail') return this.renderTopicPackPage(root);
+    if (this.screen === 'catalogue-detail') return this.renderCataloguePage(root);
+    if (this.screen === 'legacy-list') return this.renderLegacyList(root);
+    return this.renderHome(root);
+  }
 
-    // Three panes, and only the middle one is dense: modes and filters on the
-    // left, the list in the middle, one record's detail on the right. The five
-    // modes used to be horizontal pills above a facet bar above a filter chip
-    // above the list — four stacked control strips before any content.
-    const layout = root.createDiv({ cls: 'los-library-layout' });
-    const rail = layout.createDiv({ cls: 'los-library-rail' });
-    for (const [value, label] of LIBRARY_MODES) {
-      const count = this.plugin.store.of(value).length;
-      const tab = rail.createEl('button', {
-        cls: `los-library-mode is-clickable${this.type === value ? ' is-active' : ''}`,
-        attr: { type: 'button', 'aria-pressed': String(this.type === value) },
+  renderHome(root) {
+    pageHeader(root, 'Library', 'Choose a thematic group',
+      this.collection === 'topic-packs'
+        ? 'Topic Packs are narrow, purpose-built and manually ordered collections.'
+        : 'Open a domain to browse its learning sources.');
+    this.renderCollectionSwitch(root);
+    const groups = this.plugin.store.thematicGroups();
+    if (!groups.length) {
+      empty(root, 'No thematic groups', 'Rebuild the projection after defining thematic-group metadata.');
+      return;
+    }
+    const grid = root.createDiv({ cls: 'los-group-grid los-library-group-grid' });
+    for (const group of groups) {
+      const count = this.collection === 'topic-packs'
+        ? this.plugin.store.topicPacksForGroup(group.id).length
+        : this.plugin.store.sourcesForGroup(group.id).length;
+      const card = grid.createEl('button', {
+        cls: 'los-group-card is-clickable',
+        attr: { type: 'button', 'aria-label': `Open ${group.title}` },
       });
-      tab.createSpan({ text: label });
-      tab.createSpan({ cls: 'los-micro', text: String(count) });
-      tab.addEventListener('click', () => {
-        this.type = value; this.selectedId = null; this.facet = 'all'; this.domain = ''; this.render();
+      const head = card.createDiv({ cls: 'los-group-card-header' });
+      head.createEl('h2', { text: group.title });
+      head.createSpan({
+        cls: 'los-group-count',
+        text: `${count} ${this.collection === 'topic-packs' ? `pack${count === 1 ? '' : 's'}` : `source${count === 1 ? '' : 's'}`}`,
+      });
+      if (group.description) card.createEl('p', { text: group.description });
+      card.createSpan({ cls: 'los-route-open', text: 'Open →' });
+      card.addEventListener('click', () => {
+        this.selectedElementId = group.id;
+        this.plugin.openLibraryGroup(this.collection, group.id);
       });
     }
-    if (this.type === 'source' || this.domain) this.renderFilters(rail);
+  }
 
-    const centre = layout.createDiv({ cls: 'los-library-centre' });
-    const input = centre.createEl('input', {
-      cls: 'los-search',
-      attr: { type: 'search', placeholder: 'Search titles, IDs, aliases, authors…', 'aria-label': 'Library search' },
+  renderCollectionSwitch(root) {
+    const switcher = root.createDiv({ cls: 'los-collection-switch', attr: { role: 'tablist', 'aria-label': 'Library collection' } });
+    for (const [id, label] of [['sources', 'Learning Sources'], ['topic-packs', 'Topic Packs']]) {
+      const control = button(switcher, label, () => this.plugin.openLibraryHome(id), this.collection === id ? 'cta' : 'quiet');
+      control.setAttrs({ role: 'tab', 'aria-selected': String(this.collection === id) });
+    }
+  }
+
+  renderGroup(root) {
+    const group = this.plugin.store.get(this.groupId);
+    const back = button(root, '‹ Library', () => this.plugin.back(), 'quiet');
+    back.addClass('los-route-back');
+    if (!group) {
+      empty(root, 'Thematic group unavailable', 'Return to Library and choose another group.', 'Back', () => this.plugin.back());
+      return;
+    }
+    const isPacks = this.collection === 'topic-packs';
+    pageHeader(root, isPacks ? 'Topic Packs' : 'Learning Sources', group.title,
+      isPacks ? 'Purpose-built collections in this thematic group.' : 'Learning sources in this thematic group.');
+    const toolbar = root.createDiv({ cls: 'los-library-toolbar' });
+    const input = toolbar.createEl('input', {
+      cls: 'los-search los-route-search',
+      attr: {
+        type: 'search',
+        placeholder: `Search ${group.title} ${isPacks ? 'topic packs' : 'sources'}…`,
+        'aria-label': `Search ${group.title} ${isPacks ? 'topic packs' : 'sources'}`,
+      },
     });
     input.value = this.query;
-    input.addEventListener('input', (event) => {
-      this.query = event.target?.value ?? input.value;
-      this.selectedId = null;
-      const position = input.selectionStart;
+    input.addEventListener('input', async () => {
+      this.query = input.value;
+      await this.rememberGroup();
       this.render();
-      const next = this.contentEl.querySelector('.los-search');
-      next?.focus();
-      if (position != null) next?.setSelectionRange(position, position);
     });
-    const list = centre.createDiv({ cls: 'los-library-list' });
-    const rows = this.rows();
-    if (this.selectedId && !rows.some((row) => row.id === this.selectedId)) this.selectedId = null;
-    if (!this.selectedId && rows.length) this.selectedId = rows[0].id;
+    if (!isPacks) {
+      this.renderSourceFacets(toolbar);
+      button(toolbar, 'Full-text / OCR search', () => this.plugin.openFullTextSearch(this.query), 'quiet');
+    }
+
+    const all = isPacks
+      ? this.plugin.store.topicPacksForGroup(group.id)
+      : this.plugin.store.sourcesForGroup(group.id);
+    const needle = this.query.trim().toLocaleLowerCase();
+    const rows = all.filter((record) => {
+      if (!isPacks && !this.matchesSourceFacet(record)) return false;
+      if (!needle) return true;
+      const hay = [record.id, record.title, record.purpose, record.summary,
+        ...(record.aliases || []), ...(record.authors || []), record.organization]
+        .filter(Boolean).join(' ').toLocaleLowerCase();
+      return needle.split(/\s+/).every((word) => hay.includes(word));
+    }).slice().sort((a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id)));
+
+    if (!all.length) {
+      empty(root, isPacks ? 'No Topic Packs in this group' : 'No Learning Sources in this group',
+        isPacks
+          ? 'The group exists, but no purpose-built pack currently references it.'
+          : 'The group exists, but no learning source currently references it.');
+      return;
+    }
     if (!rows.length) {
-      empty(list, 'No matching records',
-        this.facet === 'all' ? 'Try a title, an ID, or a German/English alias.'
-          : 'No record matches this filter — clear it or widen the search.');
+      empty(root, 'No matching results',
+        `Nothing in ${group.title} matches the current search and filters.`,
+        'Clear search and filters', async () => {
+          this.query = ''; this.facet = 'all'; await this.rememberGroup(); this.render();
+        });
+      return;
     }
-    if (this.type === 'collection') this.renderShelfList(list, rows);
-    else this.renderFlatList(list, rows);
-
-    button(centre, 'Full-text / OCR search', () => this.plugin.openFullTextSearch(this.query), 'quiet');
-
-    this.detailEl = layout.createDiv({ cls: 'los-library-detail' });
-    this.renderDetail(rows.find((row) => row.id === this.selectedId));
+    const list = root.createDiv({ cls: 'los-route-list los-library-route-list' });
+    for (const record of rows) this.renderRecordRow(list, record, isPacks);
   }
 
-  /** Facets are a refinement, not a permanent fixture — they stay folded until
-   *  the learner has decided the list is too big. */
-  renderFilters(rail) {
-    const label = this.facet === 'all' && !this.domain ? 'Filters' : 'Filters · active';
-    const body = disclosure(rail, label, 'los-library-filters');
-    if (this.domain) {
-      const active = body.createDiv({ cls: 'los-library-filter' });
-      active.createSpan({ text: `Domain: ${this.domain}` });
-      button(active, 'Clear', () => { this.domain = ''; this.selectedId = null; this.render(); }, 'quiet');
-    }
-    if (this.type !== 'source') return;
-    const all = this.plugin.store.of('source');
-    for (const [value, facetLabel] of SOURCE_FACETS) {
-      const previous = this.facet;
-      this.facet = value;
-      const count = all.filter((row) => this.matchesFacet(row)).length;
-      this.facet = previous;
-      const chipEl = button(body, `${facetLabel} · ${count}`, () => {
-        this.facet = value; this.selectedId = null; this.render();
-      }, this.facet === value ? 'row' : 'quiet');
-      chipEl.setAttribute('aria-pressed', String(this.facet === value));
-    }
-  }
-
-  /** Shelves grouped by the domain the core assigns them. */
-  renderShelfList(list, rows) {
-    const byDomain = new Map();
-    for (const row of rows) {
-      const domain = row.domain || 'cross-domain';
-      if (!byDomain.has(domain)) byDomain.set(domain, []);
-      byDomain.get(domain).push(row);
-    }
-    for (const domain of [...byDomain.keys()].sort()) {
-      list.createDiv({ cls: 'los-list-group', text: domain });
-      for (const record of byDomain.get(domain)) this.listRow(list, record, `${(record.entries || []).length} entries`);
-    }
-  }
-
-  renderFlatList(list, rows) {
-    for (const record of rows) {
-      // Never the raw ID: a list line should say what the record *is*.
-      let meta = [record.domain, record.role, record.status].filter(Boolean).join(' · ');
-      if (record.type === 'source') {
-        const shelves = this.shelfIndex().get(record.id) || [];
-        meta = [record.source_type, record.year,
-          shelves.length ? `${shelves.length} shelf${shelves.length > 1 ? 'ves' : ''}` : 'no shelf',
-          record.material_exists ? 'local' : null].filter(Boolean).join(' · ');
-      } else if (record.type === 'note') {
-        meta = [record.role, record.domain, record.state].filter(Boolean).join(' · ');
-      }
-      this.listRow(list, record, meta);
-    }
-  }
-
-  listRow(list, record, meta) {
-    const row = list.createEl('button', {
-      cls: `los-item ${record.id === this.selectedId ? 'is-selected' : ''}`,
-      attr: { type: 'button' },
+  async rememberGroup() {
+    return this.plugin.router.remember({
+      name: 'library-group', collection: this.collection, groupId: this.groupId,
+      query: this.query, facet: this.facet,
     });
-    icon(row.createSpan(), ICONS[record.type] || 'circle');
-    const copy = row.createSpan({ cls: 'los-item-copy' });
-    copy.createSpan({ text: record.title || record.id });
-    if (meta) copy.createSpan({ cls: 'los-micro', text: meta });
-    row.addEventListener('click', () => { this.selectedId = record.id; this.render(); });
-    return row;
   }
 
-  // ------------------------------------------------------------------ detail
+  renderSourceFacets(parent) {
+    const facets = parent.createDiv({ cls: 'los-library-facets-inline', attr: { 'aria-label': 'Source filters' } });
+    for (const [id, label] of SOURCE_FACETS) {
+      const control = button(facets, label, async () => {
+        this.facet = id; await this.rememberGroup(); this.render();
+      }, this.facet === id ? 'row' : 'quiet');
+      control.setAttribute('aria-pressed', String(this.facet === id));
+    }
+  }
 
-  renderDetail(record) {
-    const detail = this.detailEl;
-    if (!record) { empty(detail, 'Choose a record', 'The detail pane shows evidence and curriculum usage.'); return; }
-    detail.createDiv({ cls: 'los-kicker', text: record.type === 'collection' ? 'shelf' : record.type });
-    detail.createEl('h2', { text: record.title || record.id });
-    if (record.summary) detail.createEl('p', { text: record.summary });
+  renderRecordRow(list, record, isPack = false) {
+    const row = list.createEl('button', {
+      cls: 'los-route-row is-clickable',
+      attr: { type: 'button', 'aria-label': `Open ${record.title}`, 'data-record-id': record.id },
+    });
+    const copy = row.createDiv({ cls: 'los-route-row-copy' });
+    copy.createEl('strong', { text: record.title || record.id });
+    const meta = isPack
+      ? [record.purpose, `${(record.entries || []).length} items`].filter(Boolean).join(' · ')
+      : [record.source_type, record.year, record.organization,
+        record.material_exists || record.material_path ? 'local' : null,
+        record.url ? 'online' : null].filter(Boolean).join(' · ');
+    if (meta) copy.createDiv({ cls: 'los-route-meta', text: meta });
+    row.createSpan({ cls: 'los-route-open', text: 'Open →' });
+    row.addEventListener('click', () => {
+      this.selectedElementId = record.id;
+      if (isPack) this.plugin.openTopicPackDetail(record.id, this.groupId, this.query);
+      else this.plugin.openSourceDetail(record.id, this.groupId, this.query, this.facet);
+    });
+  }
 
+  renderSourcePage(root) {
+    const record = this.plugin.store.get(this.resourceId);
+    const back = button(root, '‹ Learning Sources', () => this.plugin.back(), 'quiet');
+    back.addClass('los-route-back');
+    if (!record || record.type !== 'source') {
+      empty(root, 'Learning source unavailable', 'The projected source could not be found.', 'Back', () => this.plugin.back());
+      return;
+    }
+    const detail = root.createDiv({ cls: 'los-detail-page' });
+    pageHeader(detail, 'Learning Source', record.title || record.id, record.summary || '');
+    this.renderRecordActions(detail, record);
+    this.renderAttachments(detail, record);
+    this.renderSourceDetail(detail, record);
+    this.renderRelated(detail, record);
+    this.renderTechnical(detail, record);
+  }
+
+  renderTopicPackPage(root) {
+    const pack = this.plugin.store.get(this.topicPackId);
+    const back = button(root, '‹ Topic Packs', () => this.plugin.back(), 'quiet');
+    back.addClass('los-route-back');
+    if (!pack || pack.type !== 'topic-pack') {
+      empty(root, 'Topic Pack unavailable', 'The projected Topic Pack could not be found.', 'Back', () => this.plugin.back());
+      return;
+    }
+    const detail = root.createDiv({ cls: 'los-detail-page los-topic-pack-detail' });
+    pageHeader(detail, 'Topic Pack', pack.title || pack.id, pack.summary || '');
+    const purpose = section(detail, 'Purpose');
+    purpose.createEl('p', { cls: 'los-pack-purpose', text: pack.purpose || 'No purpose recorded.' });
+    this.renderOrderedCollection(detail, pack, 'Pack contents');
+    this.renderRelated(detail, pack);
+    this.renderTechnical(detail, pack);
+  }
+
+  renderCataloguePage(root) {
+    const catalogue = this.plugin.store.get(this.catalogueId);
+    const back = button(root, '‹ Library', () => this.plugin.back(), 'quiet');
+    back.addClass('los-route-back');
+    if (!catalogue || catalogue.type !== 'collection') {
+      empty(root, 'Source catalogue unavailable', 'The projected catalogue could not be found.', 'Back', () => this.plugin.back());
+      return;
+    }
+    const detail = root.createDiv({ cls: 'los-detail-page los-catalogue-detail' });
+    pageHeader(detail, 'Source Catalogue', catalogue.title || catalogue.id, catalogue.summary || '');
+    this.renderOrderedCollection(detail, catalogue, 'Catalogue entries');
+    this.renderRelated(detail, catalogue);
+    this.renderTechnical(detail, catalogue);
+  }
+
+  renderOrderedCollection(detail, collection, title) {
+    const entries = (collection.entries || []).filter((entry) => entry?.source);
+    const wrap = section(detail, `${title} (${entries.length})`,
+      'The order and grouping shown here come directly from the canonical collection.');
+    if (!entries.length) {
+      empty(wrap, 'Empty collection', 'No entries are currently registered.');
+      return;
+    }
+    let previousGroup = null;
+    entries.forEach((entry, index) => {
+      if (entry.group && entry.group !== previousGroup) {
+        wrap.createDiv({ cls: 'los-list-group', text: entry.group });
+        previousGroup = entry.group;
+      }
+      const source = this.plugin.store.get(entry.source);
+      const row = wrap.createDiv({ cls: 'los-pack-entry' });
+      row.createSpan({ cls: 'los-pack-order', text: String(index + 1) });
+      const copy = row.createDiv({ cls: 'los-route-row-copy' });
+      const open = copy.createEl('button', {
+        cls: 'los-shelf-entry-title is-clickable',
+        attr: { type: 'button' },
+        text: source?.title || entry.source,
+      });
+      open.addEventListener('click', () => source && this.plugin.openSourceDetail(source.id, this.groupId));
+      if (entry.why) copy.createDiv({ cls: 'los-shelf-why', text: entry.why });
+      const facts = [source?.source_type, source?.year,
+        source?.material_exists || source?.material_path ? 'local' : null,
+        source?.url ? 'online' : null].filter(Boolean).join(' · ');
+      if (facts) copy.createDiv({ cls: 'los-route-meta', text: facts });
+    });
+  }
+
+  renderLegacyList(root) {
+    const back = button(root, '‹ Library', () => this.plugin.back(), 'quiet');
+    back.addClass('los-route-back');
+    const title = `${this.recordType.charAt(0).toUpperCase()}${this.recordType.slice(1)} records`;
+    pageHeader(root, 'Compatibility view', title,
+      this.domain ? `Domain: ${this.domain}` : 'Legacy record families remain reachable until their migration gate closes.');
+    const input = root.createEl('input', {
+      cls: 'los-search los-route-search',
+      attr: { type: 'search', placeholder: `Search ${this.recordType} records…`, 'aria-label': `Search ${this.recordType}` },
+    });
+    input.value = this.query;
+    input.addEventListener('input', async () => {
+      this.query = input.value;
+      await this.plugin.router.remember({ name: 'legacy-library-list', recordType: this.recordType, query: this.query, domain: this.domain });
+      this.render();
+    });
+    let rows = this.plugin.store.search(this.query, [this.recordType]);
+    if (this.domain) rows = rows.filter((row) => row.domain === this.domain);
+    rows = rows.slice().sort((a, b) => String(a.title || a.id).localeCompare(String(b.title || b.id)));
+    if (!rows.length) {
+      empty(root, this.query ? 'No matching records' : 'No records',
+        this.query ? 'Try a shorter title, alias or ID.' : `No ${this.recordType} records are projected.`);
+      return;
+    }
+    const list = root.createDiv({ cls: 'los-route-list' });
+    for (const record of rows) {
+      const row = list.createEl('button', {
+        cls: 'los-route-row is-clickable',
+        attr: { type: 'button', 'data-record-id': record.id },
+      });
+      const copy = row.createDiv({ cls: 'los-route-row-copy' });
+      copy.createEl('strong', { text: record.title || record.id });
+      copy.createDiv({ cls: 'los-route-meta', text: [record.role, record.domain, record.state].filter(Boolean).join(' · ') });
+      row.createSpan({ cls: 'los-route-open', text: record.path ? 'Open file →' : 'Open →' });
+      row.addEventListener('click', () => {
+        this.selectedElementId = record.id;
+        if (record.path) this.plugin.openAuthoredPath(record.path);
+        else this.plugin.openRecord(record);
+      });
+    }
+  }
+
+  renderRecordActions(detail, record) {
     const actions = detail.createDiv({ cls: 'los-actions' });
     if (record.url) button(actions, 'Open online', () => this.plugin.openResource({ url: record.url }), 'cta');
     if (record.material_path) button(actions, 'Open local copy', () => this.plugin.openMaterialPath(record.material_path), 'quiet');
-    if (record.path) button(actions, record.type === 'note' ? 'Open note' : 'Open authored file',
-      () => this.plugin.openAuthoredPath(record.path), 'quiet');
+    if (record.path) button(actions, 'Open authored file', () => this.plugin.openAuthoredPath(record.path), 'quiet');
+  }
 
-    if (record.attachments?.length) {
-      const attachments = section(detail, 'Attachments', 'Open the original handwriting, image, or PDF.');
-      for (const attachment of record.attachments) {
-        const path = typeof attachment === 'string' ? attachment : attachment.path || attachment.vault_path;
-        const label = typeof attachment === 'string' ? attachment.split('/').pop() : attachment.label || path;
-        if (path) button(attachments, `Open ${label}`, () => this.plugin.openAuthoredPath(path), 'quiet');
-      }
-    }
-
-    if (record.type === 'collection') this.renderShelfDetail(detail, record);
-    if (record.type === 'source') this.renderSourceDetail(detail, record);
-
-    this.renderRelated(detail, record);
-
-    // An operator ID is not study content. It stays one disclosure away, with
-    // the copy action beside it rather than in the main action row.
-    const technical = disclosure(detail, 'Technical details', 'los-technical-details');
-    const idRow = technical.createDiv({ cls: 'los-fact-row' });
-    idRow.createSpan({ cls: 'los-fact-label', text: 'Record ID' });
-    idRow.createSpan({ cls: 'los-fact-value los-detail-id', text: record.id });
-    button(technical, 'Copy ID', () => this.plugin.copyText(record.id), 'quiet');
-    if (record.path) {
-      const pathRow = technical.createDiv({ cls: 'los-fact-row' });
-      pathRow.createSpan({ cls: 'los-fact-label', text: 'Path' });
-      pathRow.createSpan({ cls: 'los-fact-value', text: record.path });
+  renderAttachments(detail, record) {
+    if (!record.attachments?.length) return;
+    const attachments = section(detail, 'Attachments', 'Open the original handwriting, image, or PDF.');
+    for (const attachment of record.attachments) {
+      const path = typeof attachment === 'string' ? attachment : attachment.path || attachment.vault_path;
+      const label = typeof attachment === 'string' ? attachment.split('/').pop() : attachment.label || path;
+      if (path) button(attachments, `Open ${label}`, () => this.plugin.openAuthoredPath(path), 'quiet');
     }
   }
 
-  /** Related records grouped by what the relation *means*, five at a time.
-   *  Twenty-four undifferentiated chips is a pile, not a map. */
   renderRelated(detail, record) {
     const labels = {
       unit: 'Used in units', concept: 'Connected concepts', note: 'Referenced by notes',
-      source: 'Related sources', collection: 'On shelves', module: 'Modules',
-      workspace: 'Workspaces', program: 'Areas',
+      source: 'Related sources', collection: 'In catalogues', 'topic-pack': 'In Topic Packs',
+      module: 'Modules', workspace: 'Workspaces', program: 'Areas',
     };
     const groups = new Map();
     for (const row of this.plugin.store.related(record.id)) {
@@ -294,66 +399,32 @@ export class LibraryView extends ItemView {
     }
   }
 
-  /** A shelf reads in its authored order, grouped by the author's own tiers. */
-  renderShelfDetail(detail, shelf) {
-    const entries = (shelf.entries || []).filter((entry) => entry?.source);
-    const wrap = section(detail, `Reading list (${entries.length})`,
-      'Order and grouping are the shelf’s own; each line says the entry’s role in this list.');
-    if (!entries.length) { empty(wrap, 'Empty shelf', 'No entries are registered on this collection.'); return; }
-    const groups = [];
-    for (const entry of entries) {
-      const name = entry.group || '';
-      const last = groups[groups.length - 1];
-      if (last && last.name === name) last.rows.push(entry);
-      else groups.push({ name, rows: [entry] });
-    }
-    for (const group of groups) {
-      if (group.name) wrap.createDiv({ cls: 'los-list-group', text: group.name });
-      for (const entry of group.rows) {
-        const source = this.plugin.store.get(entry.source);
-        const row = wrap.createDiv({ cls: 'los-shelf-entry' });
-        const head = row.createEl('button', { cls: 'los-shelf-entry-title is-clickable', attr: { type: 'button' } });
-        icon(head.createSpan(), ICONS.source);
-        head.createSpan({ text: source?.title || entry.source });
-        head.addEventListener('click', () => {
-          if (source) { this.type = 'source'; this.selectedId = source.id; this.facet = 'all'; this.query = ''; this.render(); }
-        });
-        const facts = [source?.source_type, source?.year,
-          source?.material_exists ? 'local copy' : null, source?.url ? 'online' : 'no link'].filter(Boolean);
-        if (facts.length) row.createDiv({ cls: 'los-micro', text: facts.join(' · ') });
-        if (entry.why) row.createDiv({ cls: 'los-shelf-why', text: entry.why });
-        const rowActions = row.createDiv({ cls: 'los-actions' });
-        if (source?.url) button(rowActions, 'Open online', () => this.plugin.openResource({ url: source.url }), 'quiet');
-        if (source?.material_path) button(rowActions, 'Open local copy', () => this.plugin.openMaterialPath(source.material_path), 'quiet');
-      }
-    }
-  }
-
   renderSourceDetail(detail, record) {
     const facts = section(detail, 'Source facts');
     for (const [label, value] of [['Authors', (record.authors || []).join(', ')],
-      ['Organization', record.organization], ['Year', record.year],
-      ['Type', record.source_type]]) {
-      if (value) facts.createDiv({ cls: 'los-row', text: `${label}: ${value}` });
+      ['Organization', record.organization], ['Year', record.year], ['Type', record.source_type]]) {
+      if (!value) continue;
+      const row = facts.createDiv({ cls: 'los-fact-row' });
+      row.createSpan({ cls: 'los-fact-label', text: label });
+      row.createSpan({ cls: 'los-fact-value', text: String(value) });
     }
 
-    const shelves = this.shelfIndex().get(record.id) || [];
-    const onShelves = section(detail, 'On shelves',
-      'Where this source sits in a curated list, and the role it plays there.');
-    if (!shelves.length) {
-      empty(onShelves, 'Not on any shelf',
-        'Registered but uncurated — it surfaces only through concept links and note references.');
-    }
-    for (const row of shelves) {
-      const line = onShelves.createDiv({ cls: 'los-shelf-entry' });
-      const head = line.createEl('button', { cls: 'los-shelf-entry-title is-clickable', attr: { type: 'button' } });
-      icon(head.createSpan(), 'library');
-      head.createSpan({ text: row.shelf.title || row.shelf.id });
-      head.addEventListener('click', () => {
-        this.type = 'collection'; this.selectedId = row.shelf.id; this.query = ''; this.render();
+    const memberships = this.shelfIndex().get(record.id) || [];
+    const placed = section(detail, 'Collections',
+      'Where this source sits and the explicit role it plays there.');
+    if (!memberships.length) empty(placed, 'Not in a collection', 'The source remains globally registered.');
+    for (const membership of memberships) {
+      const line = placed.createDiv({ cls: 'los-shelf-entry' });
+      const head = line.createEl('button', {
+        cls: 'los-shelf-entry-title is-clickable', attr: { type: 'button' },
+        text: membership.shelf.title || membership.shelf.id,
       });
-      if (row.group) line.createDiv({ cls: 'los-micro', text: row.group });
-      if (row.why) line.createDiv({ cls: 'los-shelf-why', text: row.why });
+      head.addEventListener('click', () => {
+        if (membership.shelf.type === 'topic-pack') this.plugin.openTopicPackDetail(membership.shelf.id);
+        else this.plugin.openCatalogueDetail(membership.shelf.id);
+      });
+      if (membership.group) line.createDiv({ cls: 'los-micro', text: membership.group });
+      if (membership.why) line.createDiv({ cls: 'los-shelf-why', text: membership.why });
     }
 
     const used = section(detail, 'Used in units', 'Use is module/unit-specific; it is not a global source score.');
@@ -368,13 +439,24 @@ export class LibraryView extends ItemView {
       for (const evaluation of evaluations) {
         const card = evidence.createDiv({ cls: 'los-evidence-card' });
         if (evaluation.verdict) card.createEl('p', { text: evaluation.verdict });
-        for (const selection of evaluation.reading_plan || []) {
-          card.createDiv({ cls: 'los-row', text: selection });
-        }
+        for (const selection of evaluation.reading_plan || []) card.createDiv({ cls: 'los-row', text: selection });
         for (const selection of evaluation.useful_sections || []) {
           card.createDiv({ cls: 'los-row', text: `${selection.section}${selection.note ? ` — ${selection.note}` : ''}` });
         }
       }
+    }
+  }
+
+  renderTechnical(detail, record) {
+    const technical = disclosure(detail, 'Technical details', 'los-technical-details');
+    const idRow = technical.createDiv({ cls: 'los-fact-row' });
+    idRow.createSpan({ cls: 'los-fact-label', text: 'Record ID' });
+    idRow.createSpan({ cls: 'los-fact-value los-detail-id', text: record.id });
+    button(technical, 'Copy ID', () => this.plugin.copyText(record.id), 'quiet');
+    if (record.path) {
+      const pathRow = technical.createDiv({ cls: 'los-fact-row' });
+      pathRow.createSpan({ cls: 'los-fact-label', text: 'Path' });
+      pathRow.createSpan({ cls: 'los-fact-value', text: record.path });
     }
   }
 }

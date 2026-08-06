@@ -23,7 +23,7 @@ here.
    canonical Markdown or YAML from UI code.** If a view needs a field the
    manifest lacks, add it CORE-side and regenerate — do not regex for it.
    Corollary: the app must render fully with the CLI unavailable.
-3. Send mutations only through explicit CLI commands (`stage-note`,
+3. Send mutations only through explicit CLI commands (`unit-note`, `stage-note`,
    `stage-progress`, `stage-attach`, `source-feedback`, detour commands,
    selected-only shelving, `session-end`, `generate`, `validate`). Every stage
    mutation carries the current snapshot. Never rewrite YAML registries or
@@ -39,9 +39,10 @@ here.
    `.obsidian/`): link auto-update OFF, attachments captured into the inbox,
    and `generated/`, `archive/`, registries, migration and curriculum
    quarantine excluded from default search.
-8. Build and run UI tests before installation (`node build.mjs`, then
-   `node tests/test-dashboard.js`); `install.py` runs both and aborts on
-   failure. Installing into the real vault requires explicit authorization.
+8. Run the complete checked development gate (`npm run check`) before
+   installation or review. `install.py` independently reruns the runtime build
+   and synthetic fixture tests and aborts on failure. Installing into the real
+   vault requires explicit authorization.
 9. The app never writes the core directly. Cross-layer changes are made
    core-side first (schema/gateway/projection), then consumed here.
 10. Job/ quarantine applies unchanged (core CLAUDE.md §13): never read, index,
@@ -57,7 +58,7 @@ here.
     unpleasant to browse; this project is what makes it usable. Concretely:
     no primary view may present a bare list of links. Home shows all current
     Bachelor's modules plus separate Skills/Thesis areas; resume is only a
-    shortcut. The current stage owns its resources and notes; record references
+    shortcut. The current stage owns its resources; a single session note is attached to the unit after the relevant stages; record references
     are typed actions or chips. Follow `DESIGN.md`; extend it rather than
     inventing CSS.
 

@@ -71,6 +71,29 @@ export class DiagnosticsView extends ItemView {
   getIcon() { return 'activity'; }
   async onOpen() { this.render(); }
 
+  buildInfo() {
+    const fallback = {
+      ui_version: this.plugin.uiVersion(),
+      manifest_contract_version: CONTRACT_VERSION,
+      source_revision: 'unavailable',
+      source_fingerprint: 'unavailable',
+      bundle_sha256: 'unavailable',
+      node_version: 'unavailable',
+    };
+    try {
+      const base = this.plugin.app.vault.adapter.getBasePath();
+      const pluginInfo = this.plugin.manifest || {};
+      const directory = pluginInfo.dir
+        || nodePath.join('.obsidian', 'plugins', pluginInfo.id || 'learningos-ui');
+      const target = nodePath.join(base, directory, 'build-info.json');
+      if (!fs.existsSync(target)) return fallback;
+      const parsed = JSON.parse(fs.readFileSync(target, 'utf8'));
+      return { ...fallback, ...parsed };
+    } catch (_) {
+      return fallback;
+    }
+  }
+
   state() {
     if (!this.plugin.store.ready) return ['?', 'Core unavailable', this.plugin.store.error];
     if (this.plugin.store.data?._generated?.source_dirty) {
@@ -90,12 +113,17 @@ export class DiagnosticsView extends ItemView {
     copy.createDiv({ cls: 'los-micro', text: detail });
 
     const generated = this.plugin.store.data?._generated || {};
+    const build = this.buildInfo();
     const facts = section(root, 'Contract and versions');
     const table = facts.createDiv({ cls: 'los-fact-list' });
     for (const [label, value] of [
       ['Manifest contract', generated.contract_version ?? 'unknown'],
       ['UI expects contract', CONTRACT_VERSION],
       ['UI version', this.plugin.uiVersion()],
+      ['UI source revision', build.source_revision],
+      ['UI source fingerprint', build.source_fingerprint],
+      ['UI bundle fingerprint', build.bundle_sha256],
+      ['Build Node', build.node_version],
       ['Generator', generated.generator || 'unknown'],
       ['Projection built', generated.generated_at || 'unknown'],
       ['Snapshot', generated.snapshot_id || 'unknown'],
@@ -111,6 +139,7 @@ export class DiagnosticsView extends ItemView {
     const actions = root.createDiv({ cls: 'los-actions' });
     button(actions, 'Validate and rebuild', () => this.plugin.generate(), 'cta');
     button(actions, 'Test the interpreter', () => this.testInterpreter(), 'quiet');
+    button(actions, 'Copy build identity', () => this.plugin.copyText(JSON.stringify(build, null, 2)), 'quiet');
     if (this.report) root.createEl('pre', { cls: 'los-diagnostic-report', text: this.report });
 
     const policy = section(root, 'About LearningOS');

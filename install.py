@@ -176,10 +176,14 @@ def resolve_node(explicit: str | None) -> str:
 
 
 def run_ui_tests(node: str | None = None) -> None:
-    """Hard rule 8: UI tests run before installation, failures abort."""
-    suite = HERE / "tests" / "test-dashboard.js"
-    if not suite.is_file():
-        log("WARNING: tests/test-dashboard.js missing — installing untested")
+    """Hard rule 8: runtime fixture tests run before installation."""
+    suites = [
+        HERE / "tests" / "test-dashboard.js",
+        HERE / "tests" / "test-ai-actions.js",
+    ]
+    missing = [suite.name for suite in suites if not suite.is_file()]
+    if missing:
+        log(f"WARNING: missing UI suite(s) {missing} — installing untested")
         return
     node_bin = resolve_node(node)
     log(f"node: {node_bin}")
@@ -189,13 +193,16 @@ def run_ui_tests(node: str | None = None) -> None:
         print(build.stdout)
         print(build.stderr, file=sys.stderr)
         sys.exit("install: UI build FAILED — nothing was written")
-    proc = subprocess.run([node_bin, str(suite)], cwd=HERE,
-                          capture_output=True, text=True, timeout=120)
-    if proc.returncode != 0:
-        print(proc.stdout)
-        sys.exit("install: UI tests FAILED — nothing was written (hard rule 8)")
-    passed = proc.stdout.count("  ok   ")
-    log(f"UI build + tests ✓  ({passed} checks, fixture vault)")
+    passed = 0
+    for suite in suites:
+        proc = subprocess.run([node_bin, str(suite)], cwd=HERE,
+                              capture_output=True, text=True, timeout=120)
+        if proc.returncode != 0:
+            print(proc.stdout)
+            print(proc.stderr, file=sys.stderr)
+            sys.exit(f"install: {suite.name} FAILED — nothing was written (hard rule 8)")
+        passed += proc.stdout.count("  ok   ")
+    log(f"UI build + tests ✓  ({passed} checks, fixture vault, {len(suites)} suites)")
 
 
 def merge_plugin_settings(vault: Path, plugin_id: str, config_name: str,

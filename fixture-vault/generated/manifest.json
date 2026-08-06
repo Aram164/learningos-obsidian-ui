@@ -106,7 +106,7 @@
   "collections": 2,
   "concepts": 2,
   "inbox_items": 2,
-  "modules": 4,
+  "modules": 3,
   "notes": 1,
   "programs": 5,
   "sources": 3,
@@ -117,7 +117,10 @@
   "units_needing_map": 1,
   "workspaces_active": 1,
   "garden_entries": 1,
-  "ai_action_requests": 1
+  "ai_action_requests": 1,
+  "thematic_groups": 5,
+  "topic_packs": 1,
+  "projects": 1
  },
  "indexes": {
   "component_to_units": {
@@ -172,6 +175,23 @@
    "unit-fixture-sad-l02": "study-map-fixture-sad-l02",
    "unit-fixture-sad-l04": "study-map-fixture-sad-l04",
    "unit-fixture-thesis-landscape": "study-map-fixture-thesis"
+  },
+  "project_to_units": {
+   "project-fixture-thesis": [
+    "unit-fixture-thesis-landscape"
+   ]
+  },
+  "project_to_workspaces": {
+   "project-fixture-thesis": []
+  },
+  "project_to_relationships": {
+   "project-fixture-thesis": [
+    "relationship-fixture-thesis-aml",
+    "relationship-fixture-thesis-pack"
+   ]
+  },
+  "project_aliases": {
+   "module-fixture-thesis": "project-fixture-thesis"
   }
  },
  "module_source_maps": [
@@ -263,6 +283,9 @@
     "unit-fixture-sad-l02",
     "unit-fixture-sad-l04",
     "unit-fixture-analysis"
+   ],
+   "thematic_group_ids": [
+    "thematic-group-mathematics"
    ]
   },
   {
@@ -278,6 +301,10 @@
    "unit_order": [
     "unit-fixture-aml-l03",
     "unit-fixture-aml-l04"
+   ],
+   "thematic_group_ids": [
+    "thematic-group-machine-learning",
+    "thematic-group-mathematics"
    ]
   },
   {
@@ -289,17 +316,9 @@
    "type": "module",
    "unit_order": [
     "unit-fixture-python-oop"
-   ]
-  },
-  {
-   "area_id": "program-thesis-projects",
-   "id": "module-fixture-thesis",
-   "kind": "project",
-   "status": "active",
-   "title": "Bachelor thesis",
-   "type": "module",
-   "unit_order": [
-    "unit-fixture-thesis-landscape"
+   ],
+   "thematic_group_ids": [
+    "thematic-group-programming-languages"
    ]
   }
  ],
@@ -428,7 +447,10 @@
    "source_type": "book",
    "title": "Fixture probability book",
    "type": "source",
-   "year": 2098
+   "year": 2098,
+   "thematic_group_ids": [
+    "thematic-group-mathematics"
+   ]
   },
   {
    "aliases": [
@@ -451,7 +473,11 @@
    "source_type": "book",
    "title": "Fixture Introduction to Statistical Learning with Python",
    "type": "source",
-   "url": "https://example.invalid/islp"
+   "url": "https://example.invalid/islp",
+   "thematic_group_ids": [
+    "thematic-group-machine-learning",
+    "thematic-group-mathematics"
+   ]
   },
   {
    "authors": [],
@@ -461,7 +487,10 @@
    "source_type": "video",
    "title": "Fixture Bayes video",
    "type": "source",
-   "url": "https://example.invalid/bayes"
+   "url": "https://example.invalid/bayes",
+   "thematic_group_ids": [
+    "thematic-group-mathematics"
+   ]
   },
   {
    "aliases": [
@@ -574,7 +603,12 @@
    ],
    "summary": "Synthetic shelf: one spine, one supplement.",
    "title": "Fixture math bookshelf",
-   "type": "collection"
+   "type": "collection",
+   "collection_kind": "catalogue",
+   "thematic_group_ids": [
+    "thematic-group-mathematics"
+   ],
+   "purpose": null
   },
   {
    "domain": "programming",
@@ -592,7 +626,131 @@
    ],
    "summary": "Synthetic second-domain shelf.",
    "title": "Fixture programming shelf",
-   "type": "collection"
+   "type": "collection",
+   "collection_kind": "catalogue",
+   "thematic_group_ids": [
+    "thematic-group-programming-languages"
+   ],
+   "purpose": null
+  },
+  {
+   "id": "fixture-evaluation-pack",
+   "type": "topic-pack",
+   "collection_kind": "topic-pack",
+   "title": "Fixture ML evaluation pack",
+   "path": "sources/collections/fixture-evaluation-pack.yaml",
+   "thematic_group_ids": [
+    "thematic-group-machine-learning"
+   ],
+   "purpose": "Compare one bounded set of model-evaluation choices.",
+   "summary": "A narrow manually ordered fixture pack.",
+   "domain": "machine-learning",
+   "sources": [
+    "source-fixture-islp",
+    "source-fixture-book"
+   ],
+   "entries": [
+    {
+     "source": "source-fixture-islp",
+     "group": "method",
+     "why": "Establish the evaluation vocabulary."
+    },
+    {
+     "source": "source-fixture-book",
+     "group": "check",
+     "why": "Check the probability assumptions."
+    }
+   ]
+  },
+  {
+   "schema_version": 1,
+   "id": "project-fixture-thesis",
+   "type": "project",
+   "revision": 1,
+   "title": "Bachelor thesis",
+   "project_type": "thesis",
+   "status": "active",
+   "root_uri": "github://Aram164/LearningOS",
+   "objective": "Explore and optimize MLE agents for medical use cases.",
+   "milestone_ids": [
+    "milestone-fixture-scope"
+   ],
+   "linked_module_ids": [
+    "module-fixture-aml"
+   ],
+   "unit_ids": [
+    "unit-fixture-thesis-landscape"
+   ],
+   "workspace_ids": [],
+   "thematic_group_ids": [
+    "thematic-group-machine-learning"
+   ],
+   "boundaries": {
+    "confidentiality": "private",
+    "external_code_access": "approved",
+    "notes": "Job material remains quarantined."
+   },
+   "structure": {
+    "kind": "parallel",
+    "nodes": [
+     {
+      "id": "workstream-fixture-landscape",
+      "title": "Landscape and scope",
+      "kind": "workstream",
+      "status": "active",
+      "children": [
+       {
+        "id": "step-fixture-scope",
+        "title": "Confirm scope",
+        "kind": "step",
+        "status": "active"
+       }
+      ]
+     },
+     {
+      "id": "workstream-fixture-experiments",
+      "title": "Experiments",
+      "kind": "workstream",
+      "status": "planned",
+      "children": [
+       {
+        "id": "step-map-fixture-baseline",
+        "title": "Baseline map",
+        "kind": "step-map",
+        "status": "planned",
+        "children": [
+         {
+          "id": "step-fixture-baseline",
+          "title": "Run baseline",
+          "kind": "step",
+          "status": "planned"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "files": [
+    {
+     "label": "Landscape plan",
+     "path": "work/active/fixture-thesis-plan.md",
+     "kind": "working"
+    }
+   ],
+   "decisions": [
+    {
+     "id": "decision-fixture-budget",
+     "title": "Compute budget",
+     "status": "open",
+     "summary": "Confirm the bounded compute budget."
+    }
+   ],
+   "relationship_ids": [
+    "relationship-fixture-thesis-aml",
+    "relationship-fixture-thesis-pack"
+   ],
+   "path": "projects/registry/project-fixture-thesis.yaml"
   }
  ],
  "relations": [],
@@ -1074,7 +1232,11 @@
    "scope": "Synthetic Lecture 02 scope.",
    "status": "ready",
    "title": "SaD Lecture 02 — Descriptive statistics",
-   "type": "unit"
+   "type": "unit",
+   "notes_text": "",
+   "note_sections": [],
+   "notes_updated": null,
+   "project_ids": []
   },
   {
    "artifacts": {
@@ -1089,7 +1251,23 @@
    "scope": "Synthetic Lecture 04 scope.",
    "status": "active",
    "title": "SaD Lecture 04 — Probability & Bayes",
-   "type": "unit"
+   "type": "unit",
+   "notes_text": "<!-- learningos:unit-note {\"attachments\":[],\"recorded_at\":\"2099-03-01T18:00:00+00:00\",\"stage_ids\":[\"stage-fixture-foundations\"],\"title\":\"Foundations session\"} -->\n## Foundations session\n\nI connected the counting rule to the probability model.\n",
+   "note_sections": [
+    {
+     "recorded_at": "2099-03-01T18:00:00+00:00",
+     "title": "Foundations session",
+     "stage_ids": [
+      "stage-fixture-foundations"
+     ],
+     "attachments": [],
+     "text": "I connected the counting rule to the probability model.",
+     "summary": "I connected the counting rule to the probability model."
+    }
+   ],
+   "notes_updated": "2099-03-01",
+   "working_note": "curriculum/modules/module-fixture-m2/units/unit-fixture-sad-l04/notes.md",
+   "project_ids": []
   },
   {
    "artifacts": {},
@@ -1101,7 +1279,11 @@
    "scope": "Needs a map from confirmed course scope.",
    "status": "needs-map",
    "title": "Analysis exam prep",
-   "type": "unit"
+   "type": "unit",
+   "notes_text": "",
+   "note_sections": [],
+   "notes_updated": null,
+   "project_ids": []
   },
   {
    "artifacts": {},
@@ -1113,7 +1295,11 @@
    "scope": "ISLP Chapter 3 §§3.1–3.3.",
    "status": "ready",
    "title": "AML Lecture 03 — Linear regression",
-   "type": "unit"
+   "type": "unit",
+   "notes_text": "",
+   "note_sections": [],
+   "notes_updated": null,
+   "project_ids": []
   },
   {
    "artifacts": {},
@@ -1125,7 +1311,11 @@
    "scope": "ISLP §3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2.",
    "status": "ready",
    "title": "AML Lecture 04 — Classification",
-   "type": "unit"
+   "type": "unit",
+   "notes_text": "",
+   "note_sections": [],
+   "notes_updated": null,
+   "project_ids": []
   },
   {
    "artifacts": {},
@@ -1137,7 +1327,11 @@
    "scope": "Classes and object collaboration; no completion claim.",
    "status": "ready",
    "title": "Python OOP scope",
-   "type": "unit"
+   "type": "unit",
+   "notes_text": "",
+   "note_sections": [],
+   "notes_updated": null,
+   "project_ids": []
   },
   {
    "artifacts": {},
@@ -1148,8 +1342,14 @@
    "order": 1,
    "scope": "Build the verified evidence landscape.",
    "status": "ready-to-shelve",
-   "title": "Thesis literature landscape",
-   "type": "unit"
+   "title": "Thesis landscape",
+   "type": "unit",
+   "notes_text": "",
+   "note_sections": [],
+   "notes_updated": null,
+   "project_ids": [
+    "project-fixture-thesis"
+   ]
   }
  ],
  "garden_entries": [
@@ -1217,5 +1417,190 @@
     "bundle_path": "operations/ai-actions/requests/ai-request-fixture"
    }
   ]
+ },
+ "thematic_groups": [
+  {
+   "id": "thematic-group-machine-learning",
+   "title": "Machine Learning",
+   "description": "Models and ML systems.",
+   "order": 10
+  },
+  {
+   "id": "thematic-group-mathematics",
+   "title": "Mathematics",
+   "description": "Probability, statistics and analysis.",
+   "order": 20
+  },
+  {
+   "id": "thematic-group-cs-theory",
+   "title": "CS Theory",
+   "description": "Algorithms and formal reasoning.",
+   "order": 30
+  },
+  {
+   "id": "thematic-group-programming-languages",
+   "title": "Programming Languages",
+   "description": "Python and language mechanics.",
+   "order": 40
+  },
+  {
+   "id": "thematic-group-data-systems",
+   "title": "Data Systems",
+   "description": "Databases, provenance and pipelines.",
+   "order": 50
+  }
+ ],
+ "topic_packs": [
+  {
+   "id": "fixture-evaluation-pack",
+   "type": "topic-pack",
+   "collection_kind": "topic-pack",
+   "title": "Fixture ML evaluation pack",
+   "path": "sources/collections/fixture-evaluation-pack.yaml",
+   "thematic_group_ids": [
+    "thematic-group-machine-learning"
+   ],
+   "purpose": "Compare one bounded set of model-evaluation choices.",
+   "summary": "A narrow manually ordered fixture pack.",
+   "domain": "machine-learning",
+   "sources": [
+    "source-fixture-islp",
+    "source-fixture-book"
+   ],
+   "entries": [
+    {
+     "source": "source-fixture-islp",
+     "group": "method",
+     "why": "Establish the evaluation vocabulary."
+    },
+    {
+     "source": "source-fixture-book",
+     "group": "check",
+     "why": "Check the probability assumptions."
+    }
+   ]
+  }
+ ],
+ "projects": [
+  {
+   "schema_version": 1,
+   "id": "project-fixture-thesis",
+   "type": "project",
+   "revision": 1,
+   "title": "Bachelor thesis",
+   "project_type": "thesis",
+   "status": "active",
+   "root_uri": "github://Aram164/LearningOS",
+   "objective": "Explore and optimize MLE agents for medical use cases.",
+   "milestone_ids": [
+    "milestone-fixture-scope"
+   ],
+   "linked_module_ids": [
+    "module-fixture-aml"
+   ],
+   "unit_ids": [
+    "unit-fixture-thesis-landscape"
+   ],
+   "workspace_ids": [],
+   "thematic_group_ids": [
+    "thematic-group-machine-learning"
+   ],
+   "boundaries": {
+    "confidentiality": "private",
+    "external_code_access": "approved",
+    "notes": "Job material remains quarantined."
+   },
+   "structure": {
+    "kind": "parallel",
+    "nodes": [
+     {
+      "id": "workstream-fixture-landscape",
+      "title": "Landscape and scope",
+      "kind": "workstream",
+      "status": "active",
+      "children": [
+       {
+        "id": "step-fixture-scope",
+        "title": "Confirm scope",
+        "kind": "step",
+        "status": "active"
+       }
+      ]
+     },
+     {
+      "id": "workstream-fixture-experiments",
+      "title": "Experiments",
+      "kind": "workstream",
+      "status": "planned",
+      "children": [
+       {
+        "id": "step-map-fixture-baseline",
+        "title": "Baseline map",
+        "kind": "step-map",
+        "status": "planned",
+        "children": [
+         {
+          "id": "step-fixture-baseline",
+          "title": "Run baseline",
+          "kind": "step",
+          "status": "planned"
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   },
+   "files": [
+    {
+     "label": "Landscape plan",
+     "path": "work/active/fixture-thesis-plan.md",
+     "kind": "working"
+    }
+   ],
+   "decisions": [
+    {
+     "id": "decision-fixture-budget",
+     "title": "Compute budget",
+     "status": "open",
+     "summary": "Confirm the bounded compute budget."
+    }
+   ],
+   "relationship_ids": [
+    "relationship-fixture-thesis-aml",
+    "relationship-fixture-thesis-pack"
+   ],
+   "path": "projects/registry/project-fixture-thesis.yaml"
+  }
+ ],
+ "project_relationships": [
+  {
+   "id": "relationship-fixture-thesis-aml",
+   "type": "project-relationship",
+   "from_project_id": "project-fixture-thesis",
+   "to_id": "module-fixture-aml",
+   "to_type": "module",
+   "relation_type": "informs",
+   "reason": "Advanced ML supplies the evaluation vocabulary.",
+   "path": "projects/relations/project-relations.yaml",
+   "contribution": "Provides evaluation vocabulary and systems methods for the thesis experiments."
+  },
+  {
+   "id": "relationship-fixture-thesis-pack",
+   "type": "project-relationship",
+   "from_project_id": "project-fixture-thesis",
+   "to_id": "fixture-evaluation-pack",
+   "to_type": "topic-pack",
+   "relation_type": "uses",
+   "reason": "The pack provides a narrow experiment support shelf.",
+   "path": "projects/relations/project-relations.yaml",
+   "contribution": "Keeps the selected evaluation materials in deliberate working order."
+  }
+ ],
+ "project_aliases": {
+  "module-fixture-thesis": "project-fixture-thesis"
+ },
+ "artifact_revisions": {
+  "project-fixture-thesis": 1
  }
 }

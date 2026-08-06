@@ -2,8 +2,19 @@
   "name": "learningos-ui",
   "private": true,
   "version": "2.0.0",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "build": "node build.mjs",
-    "test": "node build.mjs && node tests/test-dashboard.js && node tests/test-ai-actions.js"
+    "typecheck": "tsc -p tsconfig.contract.json --noEmit",
+    "contract:check": "node scripts/check-contract.mjs",
+    "test:ui": "node tests/test-dashboard.js && node tests/test-ai-actions.js",
+    "test": "npm run build && npm run typecheck && npm run contract:check && npm run test:ui",
+    "check": "npm run test && node scripts/check-build.mjs",
+    "build:info": "node scripts/print-build-info.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.8.3"
   }
 }

@@ -58,6 +58,13 @@ export class GatewayClient {
   saveNote(unitId, stageId, text) {
     return this.call(['stage-note', unitId, stageId, '--replace', '--text', text, ...this.guard()]);
   }
+  saveUnitNote(unitId, { title = '', text, stageIds = [], filePaths = [] }) {
+    const args = ['unit-note', unitId, '--text', text];
+    if (String(title).trim()) args.push('--title', String(title).trim());
+    for (const stageId of stageIds || []) args.push('--stage-id', stageId);
+    for (const filePath of filePaths || []) args.push('--attachment', filePath);
+    return this.call([...args, ...this.guard()]);
+  }
   progress(unitId, stageId, status) {
     return this.call(['stage-progress', unitId, stageId, status, ...this.guard()]);
   }

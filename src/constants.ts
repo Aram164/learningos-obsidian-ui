@@ -3,6 +3,7 @@ export const VIEW_HOME = 'learningos-home';
 export const VIEW_NAV = 'learningos-nav';
 export const VIEW_PROGRAM = 'learningos-program';
 export const VIEW_MODULE = 'learningos-module';
+export const VIEW_PROJECT = 'learningos-project';
 export const VIEW_UNIT = 'learningos-unit';
 export const VIEW_LIBRARY = 'learningos-library';
 export const VIEW_ATLAS = 'learningos-atlas';
@@ -13,7 +14,7 @@ export const VIEW_GARDEN = 'learningos-garden';
 export const VIEW_DIAGNOSTICS = 'learningos-diagnostics';
 
 /**
- * The five permanent destinations. Areas became sub-areas of Learn and the
+ * The six permanent destinations. Areas became sub-areas of Learn and the
  * decision queues became Review, so the sidebar stops presenting the whole
  * system before the learner has done anything. Everything else lives in More.
  */
@@ -49,9 +50,9 @@ export const STATUS_ORDER = [
 ];
 
 export const ICONS = {
-  program: 'graduation-cap', module: 'book-open', unit: 'layers-3',
+  program: 'graduation-cap', module: 'book-open', project: 'briefcase-business', unit: 'layers-3',
   'study-map': 'route', stage: 'list-checks', note: 'file-text',
   concept: 'network', source: 'library', workspace: 'briefcase-business',
   boundary: 'shield', skills: 'wrench', projects: 'flask-conical',
-  collection: 'library-big', atlas: 'map',
+  collection: 'library-big', 'topic-pack': 'notebook-tabs', atlas: 'map',
 };

@@ -5,25 +5,37 @@
  */
 export class ModuleView extends ItemView {
   constructor(leaf, plugin) {
-    super(leaf); this.plugin = plugin; this.moduleId = null; this.componentId = null; this.tab = null;
+    super(leaf);
+    this.plugin = plugin;
+    this.screen = 'groups';
+    this.groupId = null;
+    this.query = '';
+    this.moduleId = null;
+    this.componentId = null;
+    this.tab = null;
+    this.selectedElementId = null;
   }
   getViewType() { return VIEW_MODULE; }
-  getDisplayText() { return 'LearningOS · Module'; }
-  async setState(state) {
-    const nextModuleId = state?.moduleId || this.moduleId;
+  getDisplayText() { return 'LearningOS · Modules'; }
+
+  async setState(state = {}) {
+    this.screen = state.screen || (state.moduleId ? 'detail' : 'groups');
+    this.groupId = state.groupId || null;
+    this.query = state.query || '';
+    const nextModuleId = state.moduleId || null;
     if (nextModuleId !== this.moduleId) { this.componentId = null; this.tab = null; }
     this.moduleId = nextModuleId;
-    if (Object.prototype.hasOwnProperty.call(state || {}, 'componentId')) this.componentId = state.componentId || null;
-    if (Object.prototype.hasOwnProperty.call(state || {}, 'tab')) this.tab = state.tab || null;
+    if (Object.prototype.hasOwnProperty.call(state, 'componentId')) this.componentId = state.componentId || null;
+    if (Object.prototype.hasOwnProperty.call(state, 'tab')) this.tab = state.tab || null;
     this.render();
   }
-  getState() { return { moduleId: this.moduleId, componentId: this.componentId, tab: this.tab }; }
-  async onOpen() {
-    this.moduleId = this.leaf.state?.moduleId || this.moduleId;
-    this.componentId = this.leaf.state?.componentId || null;
-    this.tab = this.leaf.state?.tab || null;
-    this.render();
+  getState() {
+    return {
+      screen: this.screen, groupId: this.groupId, query: this.query,
+      moduleId: this.moduleId, componentId: this.componentId, tab: this.tab,
+    };
   }
+  async onOpen() { await this.setState(this.leaf.state || {}); }
 
   /** Units unless there is nothing to study yet. */
   defaultTab(module) {
@@ -32,8 +44,97 @@ export class ModuleView extends ItemView {
 
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-module-view');
+    if (this.screen === 'list') return this.renderGroupList(root);
+    if (this.screen === 'detail') return this.renderModuleDetail(root);
+    return this.renderGroups(root);
+  }
+
+  renderGroups(root) {
+    pageHeader(root, 'Modules', 'Choose a thematic group',
+      'Modules stay organized by explicit core-owned domains. Open a group to see its contents.');
+    const groups = this.plugin.store.thematicGroups();
+    if (!groups.length) {
+      empty(root, 'No thematic groups', 'Rebuild the projection after defining thematic-group metadata.');
+      return;
+    }
+    const grid = root.createDiv({ cls: 'los-group-grid' });
+    for (const group of groups) {
+      const modules = this.plugin.store.modulesForGroup(group.id);
+      const card = grid.createEl('button', {
+        cls: 'los-group-card is-clickable',
+        attr: { type: 'button', 'aria-label': `Open ${group.title}` },
+      });
+      const head = card.createDiv({ cls: 'los-group-card-header' });
+      head.createEl('h2', { text: group.title });
+      head.createSpan({ cls: 'los-group-count', text: `${modules.length} module${modules.length === 1 ? '' : 's'}` });
+      if (group.description) card.createEl('p', { text: group.description });
+      card.createSpan({ cls: 'los-route-open', text: 'Open →' });
+      card.addEventListener('click', () => {
+        this.selectedElementId = group.id;
+        this.plugin.openModuleGroup(group.id);
+      });
+    }
+  }
+
+  renderGroupList(root) {
+    const group = this.plugin.store.get(this.groupId);
+    const back = button(root, '‹ Modules', () => this.plugin.back(), 'quiet');
+    back.addClass('los-route-back');
+    if (!group) {
+      empty(root, 'Thematic group unavailable', 'Return to Modules and choose another group.', 'Back', () => this.plugin.back());
+      return;
+    }
+    pageHeader(root, 'Modules', group.title, group.description || 'Modules in this thematic group.');
+    const search = root.createEl('input', {
+      cls: 'los-search los-route-search',
+      attr: { type: 'search', placeholder: `Search ${group.title} modules…`, 'aria-label': `Search ${group.title} modules` },
+    });
+    search.value = this.query;
+    search.addEventListener('input', async () => {
+      this.query = search.value;
+      await this.plugin.router.remember({ name: 'module-list', groupId: this.groupId, query: this.query });
+      this.render();
+    });
+    const all = this.plugin.store.modulesForGroup(group.id);
+    const needle = this.query.trim().toLocaleLowerCase();
+    const rows = all.filter((module) => !needle || [module.title, module.code, module.kind, module.semester]
+      .filter(Boolean).join(' ').toLocaleLowerCase().includes(needle));
+    if (!all.length) {
+      empty(root, 'No modules in this group', 'The group exists, but no modules currently reference it.');
+      return;
+    }
+    if (!rows.length) {
+      empty(root, 'No matching modules', `Nothing in ${group.title} matches “${this.query.trim()}”.`,
+        'Clear search', async () => {
+          this.query = '';
+          await this.plugin.router.remember({ name: 'module-list', groupId: this.groupId, query: '' });
+          this.render();
+        });
+      return;
+    }
+    const list = root.createDiv({ cls: 'los-route-list' });
+    for (const module of rows) {
+      const row = list.createEl('button', {
+        cls: 'los-route-row is-clickable',
+        attr: { type: 'button', 'aria-label': `Open module: ${module.title}`, 'data-record-id': module.id },
+      });
+      const copy = row.createDiv({ cls: 'los-route-row-copy' });
+      copy.createEl('strong', { text: module.title });
+      const meta = [module.code, module.kind, module.semester, module.status].filter(Boolean).join(' · ');
+      if (meta) copy.createDiv({ cls: 'los-route-meta', text: meta });
+      row.createSpan({ cls: 'los-route-open', text: 'Open →' });
+      row.addEventListener('click', () => {
+        this.selectedElementId = module.id;
+        this.plugin.openModuleDetail(module.id);
+      });
+    }
+  }
+
+  renderModuleDetail(root) {
     const module = this.plugin.store.get(this.moduleId);
-    if (!module) { empty(root, 'Module unavailable', 'Return to Learn and choose another module.'); return; }
+    const back = button(root, '‹ Back', () => this.plugin.back(), 'quiet');
+    back.addClass('los-route-back');
+    if (!module) { empty(root, 'Module unavailable', 'Return to Modules and choose another module.'); return; }
     const tab = this.tab || this.defaultTab(module);
     const header = pageHeader(root, module.kind, module.title);
     header.createDiv({ cls: 'los-module-facts', text: this.headline(module) });
@@ -164,19 +265,25 @@ export class ModuleView extends ItemView {
 
   async selectTab(tab) {
     this.tab = tab;
+    await this.plugin.router.remember({
+      name: 'module-detail', moduleId: this.moduleId,
+      componentId: this.componentId, tab,
+    });
     await this.leaf.setViewState({
-      type: VIEW_MODULE,
-      active: true,
-      state: { moduleId: this.moduleId, componentId: this.componentId, tab },
+      type: VIEW_MODULE, active: true,
+      state: { screen: 'detail', moduleId: this.moduleId, componentId: this.componentId, tab },
     });
   }
 
   async selectComponent(componentId) {
     this.componentId = componentId;
+    const tab = this.tab || 'units';
+    await this.plugin.router.remember({
+      name: 'module-detail', moduleId: this.moduleId, componentId, tab,
+    });
     await this.leaf.setViewState({
-      type: VIEW_MODULE,
-      active: true,
-      state: { moduleId: this.moduleId, componentId: this.componentId, tab: this.tab || 'units' },
+      type: VIEW_MODULE, active: true,
+      state: { screen: 'detail', moduleId: this.moduleId, componentId, tab },
     });
   }
 

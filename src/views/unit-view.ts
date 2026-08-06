@@ -1,9 +1,8 @@
 /**
  * The Unit is where learning actually happens, so it gets the strictest
- * discipline: three columns (stages / current work / notes), and exactly three
- * visible actions. Everything else — pause, skip, gap, shelving, AI, session
- * end — is one overflow away. Sixteen equally-weighted buttons is not a
- * workspace, it is a control panel.
+ * discipline: a stage rail and one current-work panel. Notes are added once
+ * after a learning session from the action at the end of the rail; they never
+ * occupy a permanent panel or become mandatory per stage.
  */
 export class UnitView extends ItemView {
   constructor(leaf, plugin) {
@@ -31,9 +30,13 @@ export class UnitView extends ItemView {
     const unit = this.plugin.store.get(this.unitId);
     if (!unit) { empty(root, 'Unit unavailable', 'Return to its module.'); return; }
     const module = this.plugin.store.get(unit.module_id);
-    const header = pageHeader(root, `${module?.title || unit.module_id} · ${unit.kind}`, unit.title, unit.scope);
+    const project = this.plugin.store.projectForUnit(unit);
+    const owner = project || module;
+    const ownerLabel = owner?.title || unit.module_id;
+    const header = pageHeader(root, `${ownerLabel} · ${unit.kind}`, unit.title, unit.scope);
     const headerActions = header.createDiv({ cls: 'los-actions' });
-    button(headerActions, 'Back to module', () => this.plugin.openModule(unit.module_id), 'quiet');
+    if (project) button(headerActions, 'Back to project', () => this.plugin.back(), 'quiet');
+    else button(headerActions, 'Back to module', () => this.plugin.openModule(unit.module_id), 'quiet');
 
     const studyMap = this.plugin.store.mapForUnit(unit.id);
     if (!studyMap) {
@@ -42,7 +45,7 @@ export class UnitView extends ItemView {
         'AI may propose a scoped map; the core imports it only after review.',
         'Create map with AI', () => this.plugin.askAiScoped(
           'Propose one study-map JSON document for this unit. Do not write files; include exact source actions and done-when criteria.',
-          { moduleId: unit.module_id, unitId: unit.id, componentId: unit.component_id }));
+          { moduleId: unit.module_id, projectId: project?.id, unitId: unit.id, componentId: unit.component_id }));
       this.renderArtifacts(root, unit);
       return;
     }
@@ -66,7 +69,6 @@ export class UnitView extends ItemView {
     const layout = root.createDiv({ cls: 'los-unit-layout' });
     this.renderRail(layout, unit, map, stage);
     this.renderStage(layout, unit, map, stage);
-    this.renderNotes(layout, unit, map, stage);
     this.renderActionBar(root, unit, map, stage);
     const more = disclosure(root, 'Unit artifacts and evidence', 'los-unit-extras');
     this.renderArtifacts(more, unit);
@@ -83,11 +85,14 @@ export class UnitView extends ItemView {
       row.createSpan({ cls: 'los-stage-index', text: String(index + 1).padStart(2, '0') });
       const copy = row.createSpan({ cls: 'los-stage-copy' });
       copy.createSpan({ text: stage.title });
-      const hasDraft = this.plugin.getStageDraft(unit.id, stage.id, stage.notes_text || '').dirty;
-      const marker = stage.status === 'complete' ? 'Complete' : hasDraft ? 'Unsaved draft' : '';
+      const marker = stage.status === 'complete' ? 'Complete' : stage.status === 'skipped' ? 'Skipped' : '';
       if (marker) copy.createSpan({ cls: 'los-micro', text: marker });
       row.addEventListener('click', () => this.selectStage(stage.id));
     }
+    const add = button(rail, 'Add note', () => this.plugin.openUnitNote(unit, studyMap), 'quiet');
+    add.addClass('los-add-unit-note');
+    const draft = this.plugin.getUnitNoteDraft(unit.id, studyMap.stages);
+    if (draft.text.trim()) rail.createDiv({ cls: 'los-micro los-unit-note-draft', text: 'Unsaved unit-note draft kept locally.' });
   }
 
   renderStage(layout, unit, studyMap, stage) {
@@ -153,13 +158,13 @@ export class UnitView extends ItemView {
         row.createSpan({ text: criterion });
       }
     }
+    this.renderStageContext(center, unit, studyMap, stage);
   }
 
-  /** Two actions and one menu. The primary is filled; nothing else on this
+  /** One primary action and one menu. The primary is filled; nothing else on this
    *  screen may be. */
   renderActionBar(root, unit, studyMap, stage) {
     const bar = root.createDiv({ cls: 'los-unit-actionbar' });
-    button(bar, 'Save note', () => this.saveStageNote(unit, stage, this.noteEditor?.value ?? ''));
     button(bar, 'Mark complete', () => this.mutate(
       () => this.plugin.gateway.progress(unit.id, stage.id, 'complete'),
       () => this.plugin.clearDoneWhen(unit.id, stage.id)), 'cta');
@@ -173,61 +178,30 @@ export class UnitView extends ItemView {
       ['Prepare shelving', () => this.plugin.openShelving(unit.id)],
       this.plugin.settings.showAiRecommendation && ['Ask AI with stage context', () => this.plugin.askAiScoped(
         'Help with this stage. Treat the active file as supplementary context only.',
-        { moduleId: unit.module_id, unitId: unit.id, stageId: stage.id })],
+        { moduleId: unit.module_id, projectId: this.plugin.store.projectForUnit(unit)?.id, unitId: unit.id, stageId: stage.id })],
       ['End learning session', () => this.plugin.reviewSessionEnd()],
     ], 'More unit actions');
   }
 
-  renderNotes(layout, unit, studyMap, stage) {
-    const panel = layout.createDiv({ cls: 'los-note-panel' });
-    panel.createEl('h2', { text: 'Working note' });
-    const editor = panel.createEl('textarea', { cls: 'los-note-editor', attr: { 'aria-label': 'Stage working note' } });
-    this.noteEditor = editor;
-    const savedText = stage.notes_text || '';
-    const draft = this.plugin.getStageDraft(unit.id, stage.id, savedText);
-    editor.value = draft.text;
-    const status = panel.createDiv({ cls: 'los-draft-status', attr: { 'aria-live': 'polite' } });
-    const updateStatus = () => {
-      const dirty = editor.value !== savedText;
-      status.setText(dirty ? 'Unsaved draft kept locally.' : 'All changes saved.');
-      status.toggleClass('is-dirty', dirty);
-    };
-    editor.addEventListener('input', () => {
-      this.plugin.setStageDraft(unit.id, stage.id, editor.value, savedText);
-      updateStatus();
-    });
-    updateStatus();
-
-    const attachments = panel.createDiv({ cls: 'los-attachments' });
+  renderStageContext(center, unit, studyMap, stage) {
     const stageAttachments = Array.isArray(stage.attachments) ? stage.attachments.filter(Boolean) : [];
+    const detours = (studyMap.detours || []).filter((row) => row.spawned_by_stage === stage.id && row.status !== 'resolved');
+    const feedbackRows = Array.isArray(stage.source_feedback) ? stage.source_feedback : [];
+    if (!stageAttachments.length && !detours.length && !feedbackRows.length) return;
+    const detail = disclosure(center, 'Stage context');
     for (const attachment of stageAttachments) {
       const path = typeof attachment === 'string' ? attachment : attachment.path || attachment.vault_path;
       const label = typeof attachment === 'string' ? attachment.split('/').pop() : attachment.label || path;
-      if (path) button(attachments, label, () => this.plugin.openAuthoredPath(path), 'quiet');
-      else attachments.createDiv({ text: label || 'Attachment' });
+      if (path) button(detail, label, () => this.plugin.openAuthoredPath(path), 'quiet');
     }
-    const picker = attachments.createEl('input', {
-      cls: 'los-file-input', attr: { type: 'file', 'aria-label': 'Choose stage attachment' },
-    });
-    button(attachments, 'Attach file', () => {
-      const file = picker.files?.[0];
-      const localPath = localFilePath(file);
-      if (!localPath) { new Notice('Choose a local handwriting, image, or PDF file first.'); return; }
-      this.mutate(() => this.plugin.gateway.attach(unit.id, stage.id, localPath, file.name));
-    }, 'quiet');
-
-    for (const detour of studyMap.detours || []) {
-      if (detour.spawned_by_stage !== stage.id || detour.status === 'resolved') continue;
-      const row = panel.createDiv({ cls: 'los-detour-row' });
+    for (const detour of detours) {
+      const row = detail.createDiv({ cls: 'los-detour-row' });
       row.createEl('strong', { text: 'Open prerequisite detour' });
       row.createEl('p', { text: `${detour.title} · ${detour.classification} · returns here` });
       button(row, 'Resolve and return', () => this.mutate(
         () => this.plugin.gateway.resolveDetour(unit.id, detour.id, 'Resolved from the unit workspace.')), 'quiet');
     }
-    if (stage.source_feedback?.length) {
-      const feedback = disclosure(panel, `Source-use evidence (${stage.source_feedback.length})`);
-      for (const row of stage.source_feedback) feedback.createDiv({ cls: 'los-row', text: `${row.source_id} · ${row.feedback}` });
-    }
+    for (const row of feedbackRows) detail.createDiv({ cls: 'los-row', text: `${row.source_id} · ${row.feedback}` });
   }
 
   renderArtifacts(root, unit) {
@@ -264,16 +238,6 @@ export class UnitView extends ItemView {
     } catch (error) { new Notice(error?.message || String(error)); }
   }
 
-  async saveStageNote(unit, stage, text) {
-    try {
-      await this.plugin.mutate(() => this.plugin.gateway.saveNote(unit.id, stage.id, text));
-      // Reached only on a confirmed ok — the gateway rejects empty or
-      // unreadable output — so the draft is safe to drop here and only here.
-      this.plugin.clearStageDraft(unit.id, stage.id);
-      new Notice('Stage note saved.');
-      this.render();
-    } catch (error) { new Notice(error?.message || String(error)); }
-  }
 
   async selectStage(stageId) {
     this.stageId = stageId;
