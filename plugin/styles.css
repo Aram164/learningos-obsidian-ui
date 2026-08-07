@@ -198,7 +198,7 @@
 .los-learning-copy { min-width: 0; }
 .los-learning-next { color: var(--text-muted); font-size: 12px; overflow-wrap: break-word; word-break: normal; }
 .los-learning-meta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--los-1) var(--los-2); }
-.los-btn.los-learning-title {
+.los-root .los-btn.los-learning-title {
   display: inline;
   min-height: 24px !important;
   padding: 0 !important;
@@ -207,7 +207,7 @@
   color: var(--text-normal);
   font-weight: 650;
 }
-.los-btn.los-learning-title:hover { background: transparent !important; color: var(--text-accent); }
+.los-root .los-btn.los-learning-title:hover { background: transparent; color: var(--text-accent); }
 
 /* Two columns, always: a bounded date and flexible content. Actions live
  * inside the content column so they can never squeeze the prose. */
@@ -550,7 +550,7 @@
   background: var(--los-surface-raised);
   box-shadow: var(--shadow-s);
 }
-.los-btn--menu {
+.los-root .los-btn--menu {
   min-height: 30px !important;
   justify-content: flex-start !important;
   border-color: transparent !important;
@@ -558,7 +558,7 @@
   color: var(--text-normal) !important;
   text-align: left;
 }
-.los-btn--menu:hover { background: var(--background-modifier-hover) !important; }
+.los-root .los-btn--menu:hover { background: var(--background-modifier-hover); }
 
 /* Fact lists: Logistics and Diagnostics, never a learner-facing screen. */
 .los-fact-list { display: grid; gap: 0; border-top: 1px solid var(--los-line); }
@@ -602,25 +602,25 @@
 .los-diagnostic-glyph { font-size: 20px; }
 .los-diagnostic-report { overflow-x: auto; margin-top: var(--los-3); padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--background-primary); color: var(--text-muted); font-size: 12px; white-space: pre-wrap; }
 
-.los-btn, .los-chip {
+.los-root .los-btn, .los-root .los-chip {
   display: inline-flex;
   max-width: 100%;
   align-items: center;
   justify-content: center;
   gap: var(--los-2);
 }
-.los-btn { min-height: 28px !important; padding: var(--los-1) var(--los-3) !important; }
-.los-actions > .los-btn { text-align: left; }
+.los-root .los-btn { min-height: 28px; padding: var(--los-1) var(--los-3); }
+.los-root .los-actions > .los-btn { text-align: left; }
 /* Filled, not outlined. An outlined "primary" beside outlined secondaries is
  * not a hierarchy — only one filled action may appear in one visible context. */
-.los-btn--cta { border-color: var(--interactive-accent) !important; background: var(--interactive-accent) !important; color: var(--text-on-accent) !important; font-weight: 650; }
-.los-btn--cta:hover { background: var(--interactive-accent-hover) !important; color: var(--text-on-accent) !important; }
-.los-btn--quiet { background: transparent !important; color: var(--text-muted) !important; }
-.los-btn--quiet:hover { background: var(--background-modifier-hover) !important; color: var(--text-normal) !important; }
-.los-btn--tertiary { min-height: 24px !important; padding: 1px var(--los-2) !important; border-color: transparent !important; color: var(--text-muted) !important; font-size: 12px; }
-.los-btn--tertiary:hover { background: var(--background-modifier-hover) !important; color: var(--text-normal) !important; }
-.los-chip { min-height: 26px !important; padding: 2px var(--los-2) !important; border-radius: var(--los-r-pill) !important; background: var(--background-primary) !important; text-align: left; }
-.los-chip > span:last-child { min-width: 0; overflow-wrap: break-word; word-break: normal; }
+.los-root .los-btn--cta { border-color: var(--interactive-accent); background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 650; }
+.los-root .los-btn--cta:hover { background: var(--interactive-accent-hover); color: var(--text-on-accent); }
+.los-root .los-btn--quiet { background: transparent; color: var(--text-muted); }
+.los-root .los-btn--quiet:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.los-root .los-btn--tertiary { min-height: 24px; padding: 1px var(--los-2); border-color: transparent; color: var(--text-muted); font-size: 12px; }
+.los-root .los-btn--tertiary:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.los-root .los-chip { min-height: 26px; padding: 2px var(--los-2); border-radius: var(--los-r-pill); background: var(--background-primary); text-align: left; }
+.los-root .los-chip > span:last-child { min-width: 0; overflow-wrap: break-word; word-break: normal; }
 .los-badge { display: inline-flex; max-width: 100%; padding: 1px var(--los-2); border-radius: var(--los-r-pill); background: var(--background-modifier-border); color: var(--text-muted); font-size: 11px; line-height: 1.5; white-space: normal; }
 .los-badge--active { color: var(--color-green); }
 .los-badge--needs-map { color: var(--color-orange); }
