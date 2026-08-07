@@ -1409,7 +1409,6 @@ function errorMessage2(error) {
 var LearningOSSettingsTab = class extends import_obsidian4.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
-    this.plugin = plugin;
   }
   display() {
     const root = this.containerEl;

@@ -40,11 +40,43 @@ declare module 'obsidian' {
 
   export class Plugin {
     [key: string]: any;
+
+    saveData(data: unknown): Promise<void>;
+  }
+
+  export interface ToggleComponent {
+    setValue(value: boolean): this;
+    onChange(
+      callback: (value: boolean) => unknown,
+    ): this;
+  }
+
+  export interface TextComponent {
+    setValue(value: string): this;
+    onChange(
+      callback: (value: string) => unknown,
+    ): this;
+  }
+
+  export interface ButtonComponent {
+    setButtonText(text: string): this;
+    setCta(): this;
+    onClick(
+      callback: () => unknown,
+    ): this;
   }
 
   export class PluginSettingTab {
-    [key: string]: any;
-    constructor(...args: any[]);
+    readonly app: App;
+    readonly plugin: Plugin;
+    readonly containerEl: HTMLElement;
+
+    constructor(
+      app: App,
+      plugin: Plugin,
+    );
+
+    display(): void;
   }
 
   export interface WorkspaceLeaf {
@@ -80,8 +112,28 @@ declare module 'obsidian' {
   }
 
   export class Setting {
-    [key: string]: any;
-    constructor(...args: any[]);
+    constructor(containerEl: HTMLElement);
+
+    setName(name: string): this;
+    setDesc(description: string): this;
+
+    addToggle(
+      callback: (
+        component: ToggleComponent,
+      ) => unknown,
+    ): this;
+
+    addText(
+      callback: (
+        component: TextComponent,
+      ) => unknown,
+    ): this;
+
+    addButton(
+      callback: (
+        component: ButtonComponent,
+      ) => unknown,
+    ): this;
   }
 
   export function setIcon(

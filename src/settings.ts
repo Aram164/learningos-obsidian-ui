@@ -1,6 +1,31 @@
-import { Modal, Notice, PluginSettingTab, Setting, type App } from 'obsidian';
+import {
+  Modal,
+  Notice,
+  PluginSettingTab,
+  Setting,
+  type App,
+  type ButtonComponent,
+  type Plugin,
+  type TextComponent,
+  type ToggleComponent,
+} from 'obsidian';
 import { button, empty, OWNERSHIP_STATEMENT, pageHeader, section } from './components';
 import type { LearningOSUI } from './main';
+
+type ToggleSettingKey =
+  | 'openHomeOnStartup'
+  | 'pinHome'
+  | 'collapseSidebars'
+  | 'showAiRecommendation';
+
+type SettingsPlugin =
+  Plugin
+  & Pick<
+    LearningOSUI,
+    | 'generate'
+    | 'openDiagnostics'
+    | 'settings'
+  >;
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -17,15 +42,26 @@ interface SessionReview {
 }
 
 export class LearningOSSettingsTab extends PluginSettingTab {
-  [key: string]: any;
-  constructor(app: any, plugin: any) {
+  declare readonly plugin: SettingsPlugin;
+
+  constructor(
+    app: App,
+    plugin: SettingsPlugin,
+  ) {
     super(app, plugin);
-    this.plugin = plugin;
   }
-  display() {
+
+  display(): void {
     const root = this.containerEl; root.empty();
     root.createEl('h2', { text: 'LearningOS UI' });
-    const toggles: Array<[string, string, string]> = [
+    const toggles:
+      ReadonlyArray<
+        readonly [
+          ToggleSettingKey,
+          string,
+          string,
+        ]
+      > = [
       ['openHomeOnStartup', 'Open Home on startup', 'Open the module-first Home view when the vault becomes ready.'],
       ['pinHome', 'Pin Home', 'Keep the Home leaf available while opening units.'],
       ['collapseSidebars', 'Collapse the right sidebar', 'Keep the learning workspace visually focused.'],
@@ -33,7 +69,7 @@ export class LearningOSSettingsTab extends PluginSettingTab {
     ];
     for (const [key, name, description] of toggles) {
       new Setting(root).setName(name).setDesc(description).addToggle(
-        (toggle: any) => toggle
+        (toggle: ToggleComponent) => toggle
         .setValue(this.plugin.settings[key]).onChange(
           async (value: boolean) => {
           this.plugin.settings[key] = value;
@@ -43,7 +79,7 @@ export class LearningOSSettingsTab extends PluginSettingTab {
     }
     new Setting(root).setName('Python interpreter')
       .setDesc('Leave blank to auto-detect: the project virtual environment, then the system Python.')
-      .addText((text: any) => text
+      .addText((text: TextComponent) => text
         .setValue(this.plugin.settings.pythonPath || '')
         .onChange(async (value: string) => {
           this.plugin.settings.pythonPath = value.trim();
@@ -51,14 +87,14 @@ export class LearningOSSettingsTab extends PluginSettingTab {
         }));
     new Setting(root).setName('Validate and rebuild').setDesc('Run the canonical core projection pipeline.')
       .addButton(
-        (control: any) => control
+        (control: ButtonComponent) => control
           .setButtonText('Rebuild')
           .setCta()
           .onClick(() => this.plugin.generate()),
       );
     new Setting(root).setName('Diagnostics').setDesc('Contract versions, projection freshness, interpreter.')
       .addButton(
-        (control: any) => control
+        (control: ButtonComponent) => control
           .setButtonText('Open')
           .onClick(() => this.plugin.openDiagnostics()),
       );
@@ -82,7 +118,7 @@ export class SessionEndModal extends Modal {
     this.plugin = plugin;
     this.review = review;
   }
-  onOpen() {
+  onOpen(): void {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-session-modal');
     pageHeader(root, 'Explicit Git closure', 'End learning session',
       'Only files recorded by guarded learning actions can be staged. Unrelated changes remain untouched.');
@@ -111,5 +147,5 @@ export class SessionEndModal extends Modal {
     }, 'cta');
     button(actions, 'Close without committing', () => this.close(), 'quiet');
   }
-  onClose() { this.contentEl.empty(); }
+  onClose(): void { this.contentEl.empty(); }
 }
