@@ -14,8 +14,17 @@ function isRecord(
     && !Array.isArray(value);
 }
 
+interface ManifestStoreHost {
+  vault: {
+    adapter: {
+      exists(path: string): Promise<boolean>;
+      read(path: string): Promise<string>;
+    };
+  };
+}
+
 export class ManifestStore {
-  private readonly app: any;
+  private readonly app: ManifestStoreHost;
   ready: boolean;
   error: string;
   data: ManifestV2 | null;
@@ -23,7 +32,7 @@ export class ManifestStore {
   byId: Map<string, ProjectionRecord>;
   contractVersion: number | null = null;
   snapshotId: string | null = null;
-  constructor(app: any) {
+  constructor(app: ManifestStoreHost) {
     this.app = app;
     this.ready = false;
     this.error = '';

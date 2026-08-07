@@ -104,6 +104,14 @@ declare module 'obsidian' {
 
   export interface VaultAdapter {
     getBasePath(): string;
+
+    exists(
+      path: string,
+    ): Promise<boolean>;
+
+    read(
+      path: string,
+    ): Promise<string>;
   }
 
   export interface Vault {
