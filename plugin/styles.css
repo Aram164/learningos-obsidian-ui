@@ -634,23 +634,23 @@
 .los-nav-primary { display: flex; flex-direction: column; }
 /* No border on an ordinary navigation row; the active destination is the only
  * thing here that needs a surface. */
-.los-app-nav-item {
+.los-root .los-app-nav-item {
   display: flex;
   width: 100%;
-  min-height: 34px !important;
+  min-height: 34px;
   gap: var(--los-2);
   align-items: center;
-  margin-bottom: 2px !important;
-  padding: var(--los-1) var(--los-2) !important;
+  margin-bottom: 2px;
+  padding: var(--los-1) var(--los-2);
   border: 0 !important;
   border-radius: var(--los-r-sm);
-  background: transparent !important;
-  color: var(--text-muted) !important;
+  background: transparent;
+  color: var(--text-muted);
 }
-.los-app-nav-item:hover { background: var(--background-modifier-hover) !important; color: var(--text-normal) !important; }
-.los-app-nav-item.is-active {
-  background: var(--background-modifier-hover) !important;
-  color: var(--text-normal) !important;
+.los-root .los-app-nav-item:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.los-root .los-app-nav-item.is-active {
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
   box-shadow: inset 3px 0 0 var(--interactive-accent);
   font-weight: 650;
 }
@@ -778,17 +778,17 @@
 
 /* Persistent structural search launcher in the application navigator. */
 .los-nav-brand > strong { min-width: 0; flex: 1; }
-.los-nav-search {
-  display: grid !important;
+.los-root .los-nav-search {
+  display: grid;
   width: 30px;
-  min-width: 30px !important;
-  height: 30px !important;
-  min-height: 30px !important;
-  padding: 0 !important;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
   place-items: center;
-  border-color: var(--los-line) !important;
-  border-radius: var(--los-r-md) !important;
-  color: var(--text-muted) !important;
+  border-color: var(--los-line);
+  border-radius: var(--los-r-md);
+  color: var(--text-muted);
 }
 
 /* Global structural search. It is an overlay over the current product route,
@@ -807,7 +807,7 @@
   gap: var(--los-4);
   margin-bottom: var(--los-3);
 }
-.los-search-header h2 { margin: 2px 0 0; font-size: 20px !important; }
+.los-root .los-search-header h2 { margin: 2px 0 0; font-size: 20px; }
 .los-global-search-input { min-height: 42px !important; padding: var(--los-2) var(--los-3) !important; }
 .los-search-tabs {
   display: flex;
@@ -817,10 +817,10 @@
   padding-bottom: var(--los-2);
   border-bottom: 1px solid var(--los-line);
 }
-.los-search-tab.is-active {
-  border-color: var(--interactive-accent) !important;
-  background: var(--background-modifier-hover) !important;
-  color: var(--text-normal) !important;
+.los-root .los-search-tab.is-active {
+  border-color: var(--interactive-accent);
+  background: var(--background-modifier-hover);
+  color: var(--text-normal);
   font-weight: 650;
 }
 .los-search-results { max-height: min(520px, 58vh); overflow-y: auto; }
@@ -834,21 +834,21 @@
   font-size: 12px;
 }
 .los-search-result-list { display: grid; }
-.los-search-result {
-  display: grid !important;
+.los-root .los-search-result {
+  display: grid;
   width: 100%;
-  min-height: 58px !important;
+  min-height: 58px;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--los-3);
   align-items: center;
-  padding: var(--los-2) var(--los-3) !important;
-  border: 0 !important;
-  border-bottom: 1px solid var(--los-line) !important;
-  border-radius: 0 !important;
-  background: transparent !important;
+  padding: var(--los-2) var(--los-3);
+  border: 0;
+  border-bottom: 1px solid var(--los-line);
+  border-radius: 0;
+  background: transparent;
   text-align: left;
 }
-.los-search-result:hover, .los-search-result:focus-visible { background: var(--background-modifier-hover) !important; }
+.los-root .los-search-result:hover, .los-root .los-search-result:focus-visible { background: var(--background-modifier-hover); }
 .los-search-result-copy { min-width: 0; }
 .los-search-result-copy strong { display: block; overflow-wrap: break-word; }
 .los-search-open { color: var(--text-accent); font-size: 12px; font-weight: 650; white-space: nowrap; }
@@ -863,7 +863,7 @@
   .los-home-row, .los-search-result { grid-template-columns: minmax(0, 1fr); }
   .los-search-open { justify-self: start; }
   .los-search-header { align-items: center; }
-  .los-search-header h2 { font-size: 17px !important; }
+  .los-root .los-search-header h2 { font-size: 17px; }
 }
 
 /* Full-page thematic navigation for Modules and Library. */
