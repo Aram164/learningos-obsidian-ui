@@ -946,6 +946,36 @@ var UnitNoteModal = class extends import_obsidian3.Modal {
 };
 
 // src/contracts/gateway-v1.ts
+var EXIT_PROJECTION_CONFLICT = 3;
+var GatewayError = class extends Error {
+  exitCode;
+  constructor(message, exitCode = null) {
+    super(message);
+    this.name = "GatewayError";
+    this.exitCode = exitCode;
+  }
+  get isProjectionConflict() {
+    return this.exitCode === EXIT_PROJECTION_CONFLICT;
+  }
+};
+function isProjectionConflict(error) {
+  return error instanceof GatewayError && error.isProjectionConflict;
+}
+function exitCodeOf(error) {
+  const code = error?.code;
+  return typeof code === "number" ? code : null;
+}
+function structuredError(stdout) {
+  const raw = String(stdout ?? "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw);
+    const message = parsed?.error;
+    return typeof message === "string" ? message.trim() : "";
+  } catch (_) {
+    return "";
+  }
+}
 function asStringList(value) {
   return Array.isArray(value) ? value.filter((entry) => typeof entry === "string") : [];
 }
@@ -1001,7 +1031,8 @@ var GatewayClient = class {
         args,
         (error, stdout, stderr) => {
           if (error) {
-            reject(new Error(stderr || error.message || String(error)));
+            const reason = structuredError(stdout) || stderr.trim() || error.message || String(error);
+            reject(new GatewayError(reason, exitCodeOf(error)));
             return;
           }
           const raw = String(stdout ?? "").trim();
@@ -1021,7 +1052,10 @@ var GatewayClient = class {
             return;
           }
           if (!parsed || typeof parsed !== "object" || parsed.ok === false) {
-            reject(new Error(parsed?.error || "LearningOS refused the change; your draft was kept."));
+            reject(new GatewayError(
+              parsed?.error || "LearningOS refused the change; your draft was kept.",
+              exitCodeOf(error)
+            ));
             return;
           }
           resolve2(parsed);
@@ -1050,12 +1084,6 @@ var GatewayClient = class {
       { stdin: JSON.stringify(envelope) }
     );
   }
-  /**
-   * The snapshot guard is what makes a write refusable, so a missing snapshot
-   * id must stop the write rather than travel to the CLI as the string
-   * "null" — which would be compared against a real snapshot and refused with
-   * a misleading message, or worse, matched by accident.
-   */
   /**
    * The snapshot guard is what makes a write refusable, so a missing snapshot
    * id must stop the write rather than travel to the CLI as the string
@@ -8240,12 +8268,40 @@ ${row.text.trim()}`).join("\n\n");
    * capture started from different leaves could still overlap, each carrying an
    * `--expected-snapshot` the other had already invalidated.
    */
-  async mutate(action, { reload = true } = {}) {
+  async mutate(action, { reload = true, healStaleProjection = true } = {}) {
     return this.gateway.enqueue(async () => {
-      const result = await action();
-      if (reload) await this.reloadStore();
-      return result;
+      try {
+        const result = await action();
+        if (reload) await this.reloadStore();
+        return result;
+      } catch (error) {
+        if (!healStaleProjection || !isProjectionConflict(error)) throw error;
+        return this.rebuildAndRetry(action, reload);
+      }
     });
+  }
+  /**
+   * The core refuses a write whose snapshot is behind the authored tree and
+   * says "reload before writing" — but the app's reload re-reads
+   * `generated/manifest.json`, which is exactly as stale as the snapshot that
+   * was just refused. Only rebuilding the projection moves it forward.
+   *
+   * This is the normal case, not an edge one: planning happens in Claude, so
+   * canonical files change between app sessions by design. Without this the
+   * first write after any authoring session fails, and the advice on screen
+   * does not fix it.
+   *
+   * Retrying is safe because a conflict is refused whole — partial application
+   * of a validated transaction is a forbidden operation in the core's
+   * capability contract, so nothing was written to repeat.
+   */
+  async rebuildAndRetry(action, reload) {
+    new import_obsidian18.Notice("Canonical files changed since this view loaded \u2014 rebuilding the projection, then retrying.");
+    await this.gateway.call(["generate"], { expectJson: false });
+    await this.reloadStore();
+    const result = await action();
+    if (reload) await this.reloadStore();
+    return result;
   }
   async generate() {
     try {
