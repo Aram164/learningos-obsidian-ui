@@ -5278,10 +5278,213 @@ var ShelvingView = class extends import_obsidian16.ItemView {
 
 // src/views/unit-view.ts
 var import_obsidian17 = require("obsidian");
+var ARTIFACT_LABELS = [
+  [
+    "ultimate_reference",
+    "Ultimate Reference"
+  ],
+  [
+    "exercise_bank",
+    "Exercise Bank"
+  ],
+  [
+    "mock_exam",
+    "Mock Exam"
+  ]
+];
 function errorMessage8(error) {
   return error instanceof Error ? error.message : String(error);
 }
+function isRecord8(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function projectedString4(value) {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+function projectedText3(value) {
+  if (typeof value !== "string" && typeof value !== "number") {
+    return null;
+  }
+  const text = String(value);
+  return text.length ? text : null;
+}
+function projectedRecords3(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(
+    (candidate) => isRecord8(candidate)
+  );
+}
+function projectedStrings3(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(
+    (candidate) => typeof candidate === "string" && candidate.length > 0
+  );
+}
+function projectedLabel4(record, fallback = "Untitled") {
+  if (!record) {
+    return fallback;
+  }
+  return projectedString4(record.title) ?? projectedString4(record.label) ?? projectedString4(record.id) ?? fallback;
+}
+function readUnitViewState(value) {
+  if (!isRecord8(value)) {
+    return {
+      hasStageId: false
+    };
+  }
+  const hasStageId = Object.prototype.hasOwnProperty.call(
+    value,
+    "stageId"
+  );
+  const unitId = projectedString4(value.unitId) ?? void 0;
+  const stageId = !hasStageId ? void 0 : value.stageId === null ? null : projectedString4(value.stageId);
+  return {
+    unitId,
+    stageId,
+    hasStageId
+  };
+}
+function readUnitRecord(record, fallbackId) {
+  if (!record) {
+    return null;
+  }
+  const id = projectedString4(record.id) ?? fallbackId;
+  const moduleId = projectedString4(record.module_id);
+  if (!id || !moduleId) {
+    return null;
+  }
+  return {
+    record,
+    id,
+    moduleId,
+    componentId: projectedString4(record.component_id),
+    kind: projectedString4(record.kind) ?? "unit",
+    title: projectedString4(record.title) ?? id,
+    scope: projectedText3(record.scope) ?? ""
+  };
+}
+function readResource(record) {
+  const label = projectedString4(record.label) ?? projectedString4(record.title) ?? projectedString4(record.source_id) ?? "Resource";
+  return {
+    record,
+    kind: projectedString4(record.kind) ?? "read",
+    label,
+    locator: projectedText3(record.locator),
+    sourceId: projectedString4(record.source_id),
+    canOpen: Boolean(
+      projectedString4(record.material_path) ?? projectedString4(record.url) ?? projectedString4(record.vault_path)
+    )
+  };
+}
+function readStageAttachment(value) {
+  if (typeof value === "string") {
+    if (!value.length) {
+      return null;
+    }
+    return {
+      path: value,
+      label: value.split("/").pop() || value
+    };
+  }
+  if (!isRecord8(value)) {
+    return null;
+  }
+  const path = projectedString4(value.path) ?? projectedString4(value.vault_path);
+  if (!path) {
+    return null;
+  }
+  return {
+    path,
+    label: projectedString4(value.label) ?? path
+  };
+}
+function readStage(record) {
+  const id = projectedString4(record.id);
+  if (!id) {
+    return null;
+  }
+  const attachments = Array.isArray(
+    record.attachments
+  ) ? record.attachments.map(readStageAttachment).filter(
+    (attachment) => attachment !== null
+  ) : [];
+  return {
+    record,
+    id,
+    title: projectedString4(record.title) ?? id,
+    status: projectedString4(record.status) ?? "active",
+    scopeTriage: projectedText3(record.scope_triage) ?? "",
+    objective: projectedText3(record.objective),
+    estimateMinutes: projectedText3(record.estimate_minutes),
+    examCritical: record.exam_critical === true,
+    resources: projectedRecords3(
+      record.resources
+    ).map(readResource),
+    doneWhen: projectedStrings3(
+      record.done_when
+    ).filter(
+      (criterion) => Boolean(criterion.trim())
+    ),
+    attachments,
+    sourceFeedback: projectedRecords3(
+      record.source_feedback
+    )
+  };
+}
+function readStudyMap(record) {
+  const stages = projectedRecords3(
+    record.stages
+  ).map(readStage).filter(
+    (stage) => stage !== null
+  );
+  return {
+    record,
+    currentStageId: projectedString4(
+      record.current_stage
+    ),
+    stages,
+    detours: projectedRecords3(record.detours)
+  };
+}
+function readArtifacts(value) {
+  if (!isRecord8(value)) {
+    return {
+      named: [],
+      other: []
+    };
+  }
+  const named = [];
+  for (const [key] of ARTIFACT_LABELS) {
+    const id = projectedString4(value[key]);
+    if (id) {
+      named.push([key, id]);
+    }
+  }
+  return {
+    named,
+    other: projectedStrings3(value.other)
+  };
+}
+function artifactLabel(key) {
+  return ARTIFACT_LABELS.find(
+    ([candidate]) => candidate === key
+  )?.[1] ?? key;
+}
+function fallbackRecord(id) {
+  return {
+    id,
+    type: "record",
+    title: id
+  };
+}
 var UnitView = class extends import_obsidian17.ItemView {
+  plugin;
+  unitId;
+  stageId;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -5295,41 +5498,108 @@ var UnitView = class extends import_obsidian17.ItemView {
     return "LearningOS \xB7 Unit";
   }
   async setState(state = {}) {
-    const nextUnitId = state?.unitId || this.unitId;
-    if (nextUnitId !== this.unitId) this.stageId = null;
+    const parsed = readUnitViewState(state);
+    const nextUnitId = parsed.unitId ?? this.unitId;
+    if (nextUnitId !== this.unitId) {
+      this.stageId = null;
+    }
     this.unitId = nextUnitId;
-    const requested = Object.prototype.hasOwnProperty.call(state || {}, "stageId") ? state.stageId : null;
-    this.stageId = this.plugin.getSelectedStage(this.unitId) || requested || this.stageId;
+    const requestedStageId = parsed.hasStageId ? parsed.stageId ?? null : null;
+    const selectedStageId = this.unitId ? this.plugin.getSelectedStage(
+      this.unitId
+    ) : null;
+    this.stageId = selectedStageId ?? requestedStageId ?? this.stageId;
     this.render();
   }
   getState() {
-    return { unitId: this.unitId, stageId: this.stageId };
+    return {
+      unitId: this.unitId,
+      stageId: this.stageId
+    };
   }
   async onOpen() {
-    this.unitId = this.leaf.state?.unitId || this.unitId;
-    this.stageId = this.plugin.getSelectedStage(this.unitId) || this.leaf.state?.stageId || this.stageId;
+    const state = readUnitViewState(
+      this.leaf.state
+    );
+    this.unitId = state.unitId ?? this.unitId;
+    const selectedStageId = this.unitId ? this.plugin.getSelectedStage(
+      this.unitId
+    ) : null;
+    this.stageId = selectedStageId ?? (state.hasStageId ? state.stageId ?? null : null) ?? this.stageId;
     this.render();
   }
   render() {
     const root = this.contentEl;
     root.empty();
-    root.addClass("los-root", "los-unit-view");
-    const unit = this.plugin.store.get(this.unitId);
+    root.addClass(
+      "los-root",
+      "los-unit-view"
+    );
+    const routeUnitId = this.unitId;
+    const projectedUnit = routeUnitId ? this.plugin.store.get(
+      routeUnitId
+    ) : null;
+    const unit = readUnitRecord(
+      projectedUnit,
+      routeUnitId
+    );
     if (!unit) {
-      empty(root, "Unit unavailable", "Return to its module.");
+      empty(
+        root,
+        "Unit unavailable",
+        "Return to its module."
+      );
       return;
     }
-    const module2 = this.plugin.store.get(unit.module_id);
-    const project = this.plugin.store.projectForUnit(unit);
-    const owner = project || module2;
-    const ownerLabel = owner?.title || unit.module_id;
-    const header = pageHeader(root, `${ownerLabel} \xB7 ${unit.kind}`, unit.title, unit.scope);
-    const headerActions = header.createDiv({ cls: "los-actions" });
-    if (project) button(headerActions, "Back to project", () => this.plugin.back(), "quiet");
-    else button(headerActions, "Back to module", () => this.plugin.openModule(unit.module_id), "quiet");
-    const studyMap = this.plugin.store.mapForUnit(unit.id);
-    if (!studyMap) {
-      const missing = section(root, "Study map needed");
+    const module2 = this.plugin.store.get(
+      unit.moduleId
+    );
+    const project = this.plugin.store.projectForUnit(
+      unit.record
+    );
+    const ownerLabel = projectedLabel4(
+      project,
+      projectedLabel4(
+        module2,
+        unit.moduleId
+      )
+    );
+    const header = pageHeader(
+      root,
+      `${ownerLabel} \xB7 ${unit.kind}`,
+      unit.title,
+      unit.scope
+    );
+    const headerActions = header.createDiv({
+      cls: "los-actions"
+    });
+    if (project) {
+      button(
+        headerActions,
+        "Back to project",
+        () => this.plugin.back(),
+        "quiet"
+      );
+    } else {
+      button(
+        headerActions,
+        "Back to module",
+        () => this.plugin.openModule(
+          unit.moduleId
+        ),
+        "quiet"
+      );
+    }
+    const projectedStudyMap = this.plugin.store.mapForUnit(
+      unit.id
+    );
+    if (!projectedStudyMap) {
+      const missing = section(
+        root,
+        "Study map needed"
+      );
+      const projectId = projectedString4(project?.id) ?? void 0;
+      const componentId = unit.componentId ?? void 0;
       empty(
         missing,
         "This unit has no current study script",
@@ -5337,140 +5607,388 @@ var UnitView = class extends import_obsidian17.ItemView {
         "Create map with AI",
         () => this.plugin.askAiScoped(
           "Propose one study-map JSON document for this unit. Do not write files; include exact source actions and done-when criteria.",
-          { moduleId: unit.module_id, projectId: project?.id, unitId: unit.id, componentId: unit.component_id }
+          {
+            moduleId: unit.moduleId,
+            projectId,
+            unitId: unit.id,
+            componentId
+          }
         )
       );
-      this.renderArtifacts(root, unit);
+      this.renderArtifacts(
+        root,
+        unit
+      );
       return;
     }
-    const stages = Array.isArray(studyMap.stages) ? studyMap.stages.filter(
-      (row) => Boolean(row) && typeof row === "object"
-    ) : [];
-    if (!stages.length) {
-      const bare = section(root, "Study map needs stages");
+    const studyMap = readStudyMap(
+      projectedStudyMap
+    );
+    if (!studyMap.stages.length) {
+      const bare = section(
+        root,
+        "Study map needs stages"
+      );
       empty(
         bare,
         "This study map has no stages yet",
         "Stage authoring belongs to the core \u2014 import a map or add stages there, then rebuild views."
       );
-      this.renderArtifacts(root, unit);
+      this.renderArtifacts(
+        root,
+        unit
+      );
       return;
     }
-    const map = { ...studyMap, stages };
-    if (!this.stageId || !stages.some(
-      (row) => row.id === this.stageId
-    )) {
-      this.stageId = map.current_stage;
-      this.plugin.setSelectedStage(unit.id, this.stageId);
+    const stageIds = new Set(
+      studyMap.stages.map(
+        (stage2) => stage2.id
+      )
+    );
+    if (!this.stageId || !stageIds.has(this.stageId)) {
+      this.stageId = studyMap.currentStageId && stageIds.has(
+        studyMap.currentStageId
+      ) ? studyMap.currentStageId : studyMap.stages[0].id;
+      this.plugin.setSelectedStage(
+        unit.id,
+        this.stageId
+      );
     }
-    const stage = stages.find(
-      (row) => row.id === this.stageId
-    ) || stages[0];
-    const layout = root.createDiv({ cls: "los-unit-layout" });
-    this.renderRail(layout, unit, map, stage);
-    this.renderStage(layout, unit, map, stage);
-    this.renderActionBar(root, unit, map, stage);
-    const more = disclosure(root, "Unit artifacts and evidence", "los-unit-extras");
-    this.renderArtifacts(more, unit);
+    const stage = studyMap.stages.find(
+      (candidate) => candidate.id === this.stageId
+    ) ?? studyMap.stages[0];
+    const layout = root.createDiv({
+      cls: "los-unit-layout"
+    });
+    this.renderRail(
+      layout,
+      unit,
+      studyMap,
+      stage
+    );
+    this.renderStage(
+      layout,
+      unit,
+      studyMap,
+      stage
+    );
+    this.renderActionBar(
+      root,
+      unit,
+      stage
+    );
+    const more = disclosure(
+      root,
+      "Unit artifacts and evidence",
+      "los-unit-extras"
+    );
+    this.renderArtifacts(
+      more,
+      unit
+    );
   }
   renderRail(layout, unit, studyMap, current) {
-    const rail = layout.createDiv({ cls: "los-stage-rail" });
-    rail.createEl("h2", { text: "Stages" });
+    const rail = layout.createDiv({
+      cls: "los-stage-rail"
+    });
+    rail.createEl("h2", {
+      text: "Stages"
+    });
     for (const [index, stage] of studyMap.stages.entries()) {
-      const row = rail.createEl("button", {
-        cls: `los-stage-row los-s-${stage.status} ${stage.id === current.id ? "is-selected" : ""} is-clickable`,
-        attr: { type: "button", "aria-current": stage.id === current.id ? "step" : "false" }
+      const selected = stage.id === current.id;
+      const row = rail.createEl(
+        "button",
+        {
+          cls: `los-stage-row los-s-${stage.status} ${selected ? "is-selected" : ""} is-clickable`,
+          attr: {
+            type: "button",
+            "aria-current": selected ? "step" : "false"
+          }
+        }
+      );
+      row.createSpan({
+        cls: "los-stage-index",
+        text: String(index + 1).padStart(2, "0")
       });
-      row.createSpan({ cls: "los-stage-index", text: String(index + 1).padStart(2, "0") });
-      const copy = row.createSpan({ cls: "los-stage-copy" });
-      copy.createSpan({ text: stage.title });
+      const copy = row.createSpan({
+        cls: "los-stage-copy"
+      });
+      copy.createSpan({
+        text: stage.title
+      });
       const marker = stage.status === "complete" ? "Complete" : stage.status === "skipped" ? "Skipped" : "";
-      if (marker) copy.createSpan({ cls: "los-micro", text: marker });
-      row.addEventListener("click", () => this.selectStage(stage.id));
+      if (marker) {
+        copy.createSpan({
+          cls: "los-micro",
+          text: marker
+        });
+      }
+      row.addEventListener(
+        "click",
+        () => {
+          void this.selectStage(
+            stage.id
+          );
+        }
+      );
     }
-    const add = button(rail, "Add note", () => this.plugin.openUnitNote(unit, studyMap), "quiet");
-    add.addClass("los-add-unit-note");
-    const draft = this.plugin.getUnitNoteDraft(unit.id, studyMap.stages);
-    if (draft.text.trim()) rail.createDiv({ cls: "los-micro los-unit-note-draft", text: "Unsaved unit-note draft kept locally." });
+    const stageRecords = studyMap.stages.map(
+      (stage) => stage.record
+    );
+    const add = button(
+      rail,
+      "Add note",
+      () => this.plugin.openUnitNote(
+        unit.record,
+        studyMap.record
+      ),
+      "quiet"
+    );
+    add.addClass(
+      "los-add-unit-note"
+    );
+    const draft = this.plugin.getUnitNoteDraft(
+      unit.id,
+      stageRecords
+    );
+    if (typeof draft.text === "string" && draft.text.trim()) {
+      rail.createDiv({
+        cls: "los-micro los-unit-note-draft",
+        text: "Unsaved unit-note draft kept locally."
+      });
+    }
   }
   renderStage(layout, unit, studyMap, stage) {
-    const center = layout.createDiv({ cls: "los-stage-workspace" });
-    const top = center.createDiv({ cls: "los-stage-heading" });
-    top.createDiv({ cls: "los-kicker", text: stage.exam_critical ? "Exam-critical stage" : stage.scope_triage });
-    top.createEl("h2", { text: stage.title });
+    const center = layout.createDiv({
+      cls: "los-stage-workspace"
+    });
+    const top = center.createDiv({
+      cls: "los-stage-heading"
+    });
+    top.createDiv({
+      cls: "los-kicker",
+      text: stage.examCritical ? "Exam-critical stage" : stage.scopeTriage
+    });
+    top.createEl("h2", {
+      text: stage.title
+    });
     if (stage.objective) {
-      const goal = center.createDiv({ cls: "los-stage-goal" });
-      goal.createDiv({ cls: "los-kicker", text: "Goal" });
-      goal.createEl("p", { text: stage.objective });
+      const goal = center.createDiv({
+        cls: "los-stage-goal"
+      });
+      goal.createDiv({
+        cls: "los-kicker",
+        text: "Goal"
+      });
+      goal.createEl("p", {
+        text: stage.objective
+      });
     }
-    if (stage.estimate_minutes) badge(top, `${stage.estimate_minutes} min`, "role");
-    const resources = section(center, "Resources");
-    const stageResources = Array.isArray(
-      stage.resources
-    ) ? stage.resources.filter(
-      (row) => Boolean(row) && typeof row === "object"
-    ) : [];
-    if (!stageResources.length) empty(resources, "No source action selected", "Use the unit scope and ask AI for a proposal.");
-    for (const resource of stageResources) {
-      const row = resources.createDiv({ cls: "los-resource-row" });
-      icon(row.createSpan(), resource.kind === "watch" ? "play" : resource.kind === "practise" ? "pencil-line" : "book-open");
-      const copy = row.createDiv({ cls: "los-resource-copy" });
-      copy.createEl("strong", { text: resource.label });
-      if (resource.locator) copy.createDiv({ cls: "los-micro", text: resource.locator });
-      if (resource.source_id) {
-        const source = this.plugin.store.get(resource.source_id);
+    if (stage.estimateMinutes) {
+      badge(
+        top,
+        `${stage.estimateMinutes} min`,
+        "role"
+      );
+    }
+    const resources = section(
+      center,
+      "Resources"
+    );
+    if (!stage.resources.length) {
+      empty(
+        resources,
+        "No source action selected",
+        "Use the unit scope and ask AI for a proposal."
+      );
+    }
+    for (const resource of stage.resources) {
+      const row = resources.createDiv({
+        cls: "los-resource-row"
+      });
+      const iconName = resource.kind === "watch" ? "play" : resource.kind === "practise" ? "pencil-line" : "book-open";
+      icon(
+        row.createSpan(),
+        iconName
+      );
+      const copy = row.createDiv({
+        cls: "los-resource-copy"
+      });
+      copy.createEl("strong", {
+        text: resource.label
+      });
+      if (resource.locator) {
+        copy.createDiv({
+          cls: "los-micro",
+          text: resource.locator
+        });
+      }
+      if (resource.sourceId) {
+        const source = this.plugin.store.get(
+          resource.sourceId
+        );
         if (source) {
           chip(
             copy,
             source,
-            (record) => this.plugin.openLibrary(record.id)
+            (record) => {
+              const recordId = projectedString4(record.id);
+              return recordId ? this.plugin.openLibrary(
+                recordId
+              ) : void 0;
+            }
           );
         }
       }
-      const actions = row.createDiv({ cls: "los-actions los-resource-actions" });
-      if (resource.material_path || resource.url || resource.vault_path) {
-        button(actions, "Open", () => this.plugin.openResource(resource), "quiet");
+      const actions = row.createDiv({
+        cls: "los-actions los-resource-actions"
+      });
+      if (resource.canOpen) {
+        button(
+          actions,
+          "Open",
+          () => this.plugin.openResource(
+            resource.record
+          ),
+          "quiet"
+        );
       }
-      if (resource.source_id) {
-        overflowMenu(actions, [
-          ["Helpful", () => this.mutate(() => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, "helpful"))],
-          ["Too advanced", () => this.mutate(() => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, "too-advanced"))],
-          ["Useful for review", () => this.mutate(() => this.plugin.gateway.feedback(unit.id, stage.id, resource.source_id, "useful-for-review"))]
-        ], `Rate ${resource.label}`);
+      if (resource.sourceId) {
+        const sourceId = resource.sourceId;
+        const menuItems = [
+          [
+            "Helpful",
+            () => this.mutate(
+              () => this.plugin.gateway.feedback(
+                unit.id,
+                stage.id,
+                sourceId,
+                "helpful"
+              )
+            )
+          ],
+          [
+            "Too advanced",
+            () => this.mutate(
+              () => this.plugin.gateway.feedback(
+                unit.id,
+                stage.id,
+                sourceId,
+                "too-advanced"
+              )
+            )
+          ],
+          [
+            "Useful for review",
+            () => this.mutate(
+              () => this.plugin.gateway.feedback(
+                unit.id,
+                stage.id,
+                sourceId,
+                "useful-for-review"
+              )
+            )
+          ]
+        ];
+        overflowMenu(
+          actions,
+          menuItems,
+          `Rate ${resource.label}`
+        );
       }
     }
-    const criteria = Array.isArray(stage.done_when) ? stage.done_when.filter(
-      (row) => typeof row === "string" && Boolean(row.trim())
-    ) : [];
-    if (criteria.length) {
-      const done = section(center, "Done when");
-      const marks = this.plugin.getDoneWhen(unit.id, stage.id);
-      const list = done.createDiv({ cls: "los-donewhen-list" });
-      for (const [index, criterion] of criteria.entries()) {
-        const row = list.createEl("label", { cls: "los-donewhen-row" });
-        const box = row.createEl("input", {
-          attr: { type: "checkbox", "aria-label": criterion }
+    if (stage.doneWhen.length) {
+      const done = section(
+        center,
+        "Done when"
+      );
+      const marks = this.plugin.getDoneWhen(
+        unit.id,
+        stage.id
+      );
+      const list = done.createDiv({
+        cls: "los-donewhen-list"
+      });
+      for (const [index, criterion] of stage.doneWhen.entries()) {
+        const row = list.createEl(
+          "label",
+          {
+            cls: "los-donewhen-row"
+          }
+        );
+        const box = row.createEl(
+          "input",
+          {
+            attr: {
+              type: "checkbox",
+              "aria-label": criterion
+            }
+          }
+        );
+        const checked = Boolean(marks[index]);
+        if (checked) {
+          box.setAttr(
+            "checked",
+            "checked"
+          );
+        }
+        box.checked = checked;
+        box.addEventListener(
+          "change",
+          () => {
+            const nextChecked = Boolean(box.checked);
+            this.plugin.setDoneWhen(
+              unit.id,
+              stage.id,
+              index,
+              nextChecked
+            );
+            row.toggleClass(
+              "is-checked",
+              nextChecked
+            );
+          }
+        );
+        row.toggleClass(
+          "is-checked",
+          checked
+        );
+        row.createSpan({
+          text: criterion
         });
-        if (marks[index]) box.setAttr("checked", "checked");
-        box.checked = Boolean(marks[index]);
-        box.addEventListener("change", () => {
-          this.plugin.setDoneWhen(unit.id, stage.id, index, Boolean(box.checked));
-          row.toggleClass("is-checked", Boolean(box.checked));
-        });
-        row.toggleClass("is-checked", Boolean(marks[index]));
-        row.createSpan({ text: criterion });
       }
     }
-    this.renderStageContext(center, unit, studyMap, stage);
+    this.renderStageContext(
+      center,
+      unit,
+      studyMap,
+      stage
+    );
   }
-  /** One primary action and one menu. The primary is filled; nothing else on this
-   *  screen may be. */
-  renderActionBar(root, unit, studyMap, stage) {
-    const bar = root.createDiv({ cls: "los-unit-actionbar" });
-    button(bar, "Mark complete", () => this.mutate(
-      () => this.plugin.gateway.progress(unit.id, stage.id, "complete"),
-      () => this.plugin.clearDoneWhen(unit.id, stage.id)
-    ), "cta");
+  /**
+   * One primary action and one menu. The primary is filled; nothing else on
+   * this screen may be.
+   */
+  renderActionBar(root, unit, stage) {
+    const bar = root.createDiv({
+      cls: "los-unit-actionbar"
+    });
+    button(
+      bar,
+      "Mark complete",
+      () => this.mutate(
+        () => this.plugin.gateway.progress(
+          unit.id,
+          stage.id,
+          "complete"
+        ),
+        () => this.plugin.clearDoneWhen(
+          unit.id,
+          stage.id
+        )
+      ),
+      "cta"
+    );
     const menuItems = [
       stage.status !== "active" && [
         "Revisit stage",
@@ -5515,73 +6033,155 @@ var UnitView = class extends import_obsidian17.ItemView {
       ],
       [
         "Prepare shelving",
-        () => this.plugin.openShelving(unit.id)
+        () => this.plugin.openShelving(
+          unit.id
+        )
       ],
       this.plugin.settings.showAiRecommendation && [
         "Ask AI with stage context",
-        () => this.plugin.askAiScoped(
-          "Help with this stage. Treat the active file as supplementary context only.",
-          {
-            moduleId: unit.module_id,
-            projectId: this.plugin.store.projectForUnit(unit)?.id,
-            unitId: unit.id,
-            stageId: stage.id
-          }
-        )
+        () => {
+          const project = this.plugin.store.projectForUnit(
+            unit.record
+          );
+          const projectId = projectedString4(project?.id) ?? void 0;
+          return this.plugin.askAiScoped(
+            "Help with this stage. Treat the active file as supplementary context only.",
+            {
+              moduleId: unit.moduleId,
+              projectId,
+              unitId: unit.id,
+              stageId: stage.id
+            }
+          );
+        }
       ],
       [
         "End learning session",
         () => this.plugin.reviewSessionEnd()
       ]
     ];
-    overflowMenu(bar, menuItems, "More unit actions");
+    overflowMenu(
+      bar,
+      menuItems,
+      "More unit actions"
+    );
   }
   renderStageContext(center, unit, studyMap, stage) {
-    const stageAttachments = Array.isArray(
-      stage.attachments
-    ) ? stage.attachments.filter(Boolean) : [];
-    const detours = Array.isArray(
-      studyMap.detours
-    ) ? studyMap.detours.filter(
-      (row) => row.spawned_by_stage === stage.id && row.status !== "resolved"
-    ) : [];
-    const feedbackRows = Array.isArray(
-      stage.source_feedback
-    ) ? stage.source_feedback : [];
-    if (!stageAttachments.length && !detours.length && !feedbackRows.length) return;
-    const detail = disclosure(center, "Stage context");
-    for (const attachment of stageAttachments) {
-      const path = typeof attachment === "string" ? attachment : attachment.path || attachment.vault_path;
-      const label = typeof attachment === "string" ? attachment.split("/").pop() : attachment.label || path;
-      if (path) button(detail, label, () => this.plugin.openAuthoredPath(path), "quiet");
+    const detours = studyMap.detours.filter(
+      (row) => projectedString4(
+        row.spawned_by_stage
+      ) === stage.id && projectedString4(
+        row.status
+      ) !== "resolved" && projectedString4(
+        row.id
+      ) !== null
+    );
+    if (!stage.attachments.length && !detours.length && !stage.sourceFeedback.length) {
+      return;
+    }
+    const detail = disclosure(
+      center,
+      "Stage context"
+    );
+    for (const attachment of stage.attachments) {
+      button(
+        detail,
+        attachment.label,
+        () => this.plugin.openAuthoredPath(
+          attachment.path
+        ),
+        "quiet"
+      );
     }
     for (const detour of detours) {
-      const row = detail.createDiv({ cls: "los-detour-row" });
-      row.createEl("strong", { text: "Open prerequisite detour" });
-      row.createEl("p", { text: `${detour.title} \xB7 ${detour.classification} \xB7 returns here` });
-      button(row, "Resolve and return", () => this.mutate(
-        () => this.plugin.gateway.resolveDetour(unit.id, detour.id, "Resolved from the unit workspace.")
-      ), "quiet");
+      const detourId = projectedString4(detour.id);
+      if (!detourId) {
+        continue;
+      }
+      const title = projectedString4(detour.title) ?? "Prerequisite detour";
+      const classification = projectedString4(
+        detour.classification
+      ) ?? "required-now";
+      const row = detail.createDiv({
+        cls: "los-detour-row"
+      });
+      row.createEl("strong", {
+        text: "Open prerequisite detour"
+      });
+      row.createEl("p", {
+        text: `${title} \xB7 ${classification} \xB7 returns here`
+      });
+      button(
+        row,
+        "Resolve and return",
+        () => this.mutate(
+          () => this.plugin.gateway.resolveDetour(
+            unit.id,
+            detourId,
+            "Resolved from the unit workspace."
+          )
+        ),
+        "quiet"
+      );
     }
-    for (const row of feedbackRows) detail.createDiv({ cls: "los-row", text: `${row.source_id} \xB7 ${row.feedback}` });
+    for (const feedback of stage.sourceFeedback) {
+      const sourceId = projectedString4(
+        feedback.source_id
+      ) ?? "Unknown source";
+      const value = projectedText3(
+        feedback.feedback
+      ) ?? "Feedback recorded";
+      detail.createDiv({
+        cls: "los-row",
+        text: `${sourceId} \xB7 ${value}`
+      });
+    }
   }
   renderArtifacts(root, unit) {
-    const wrap = section(root, "Unit artifacts", "Durable notes remain globally canonical; this unit owns stable references.");
-    const labels = { ultimate_reference: "Ultimate Reference", exercise_bank: "Exercise Bank", mock_exam: "Mock Exam" };
+    const wrap = section(
+      root,
+      "Unit artifacts",
+      "Durable notes remain globally canonical; this unit owns stable references."
+    );
+    const artifacts = readArtifacts(
+      unit.record.artifacts
+    );
     let count = 0;
-    for (const [key, label] of Object.entries(labels)) {
-      const id = unit.artifacts?.[key];
-      if (!id) continue;
+    for (const [key, id] of artifacts.named) {
       count += 1;
-      const card = wrap.createDiv({ cls: "los-artifact-card" });
-      card.createEl("h3", { text: label });
-      chip(card, this.plugin.store.get(id), (record) => this.plugin.openRecord(record));
+      const card = wrap.createDiv({
+        cls: "los-artifact-card"
+      });
+      card.createEl("h3", {
+        text: artifactLabel(key)
+      });
+      const record = this.plugin.store.get(id) ?? fallbackRecord(id);
+      chip(
+        card,
+        record,
+        (selected) => this.plugin.openRecord(
+          selected
+        )
+      );
     }
-    for (const id of unit.artifacts?.other || []) {
+    for (const id of artifacts.other) {
       count += 1;
-      chip(wrap, this.plugin.store.get(id), (record) => this.plugin.openRecord(record));
+      const record = this.plugin.store.get(id) ?? fallbackRecord(id);
+      chip(
+        wrap,
+        record,
+        (selected) => this.plugin.openRecord(
+          selected
+        )
+      );
     }
-    if (!count) empty(wrap, "No durable artifact linked yet", "Working notes stay with the stage until shelving is approved.");
+    if (!count) {
+      empty(
+        wrap,
+        "No durable artifact linked yet",
+        "Working notes stay with the stage until shelving is approved."
+      );
+    }
   }
   /**
    * Every write goes through the plugin-wide queue, so two clicks in two views
@@ -5589,24 +6189,43 @@ var UnitView = class extends import_obsidian17.ItemView {
    */
   async mutate(action, onConfirmed = null) {
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian17.Notice("A LearningOS write is already running.");
+      new import_obsidian17.Notice(
+        "A LearningOS write is already running."
+      );
       return;
     }
     try {
-      await this.plugin.mutate(action);
+      await this.plugin.mutate(
+        action
+      );
       onConfirmed?.();
       this.render();
     } catch (error) {
-      new import_obsidian17.Notice(errorMessage8(error));
+      new import_obsidian17.Notice(
+        errorMessage8(error)
+      );
     }
   }
   async selectStage(stageId) {
+    const unitId = this.unitId;
+    if (!unitId) {
+      new import_obsidian17.Notice(
+        "This unit is no longer available."
+      );
+      return;
+    }
     this.stageId = stageId;
-    this.plugin.setSelectedStage(this.unitId, stageId);
+    this.plugin.setSelectedStage(
+      unitId,
+      stageId
+    );
     await this.leaf.setViewState({
       type: VIEW_UNIT,
       active: true,
-      state: { unitId: this.unitId, stageId: this.stageId }
+      state: {
+        unitId,
+        stageId
+      }
     });
   }
 };
