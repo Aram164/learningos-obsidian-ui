@@ -302,20 +302,70 @@ declare module 'electron' {
 }
 
 declare module 'node:child_process' {
-  export function execFile(...args: any[]): any;
+  export interface ExecFileOptions {
+    cwd?: string;
+    timeout?: number;
+    maxBuffer?: number;
+  }
+
+  export interface ChildProcess {}
+
+  export type ExecFileCallback = (
+    error: Error | null,
+    stdout: string,
+    stderr: string,
+  ) => void;
+
+  export function execFile(
+    file: string,
+    args: readonly string[],
+    options: ExecFileOptions,
+    callback: ExecFileCallback,
+  ): ChildProcess;
 }
 
 declare module 'node:fs' {
-  const value: any;
-  export = value;
+  export function existsSync(
+    path: string,
+  ): boolean;
+
+  export function readFileSync(
+    path: string,
+    encoding: 'utf8',
+  ): string;
 }
 
 declare module 'node:path' {
-  const value: any;
-  export = value;
+  export function join(
+    ...paths: string[]
+  ): string;
+
+  export function dirname(
+    path: string,
+  ): string;
+
+  export function resolve(
+    ...paths: string[]
+  ): string;
+
+  export function relative(
+    from: string,
+    to: string,
+  ): string;
+
+  export function isAbsolute(
+    path: string,
+  ): boolean;
+
+  export function extname(
+    path: string,
+  ): string;
 }
 
 declare module 'node:process' {
-  const value: any;
-  export default value;
+  const process: {
+    readonly platform: string;
+  };
+
+  export default process;
 }
