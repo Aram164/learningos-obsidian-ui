@@ -3823,13 +3823,45 @@ var import_obsidian16 = require("obsidian");
 function errorMessage7(error) {
   return error instanceof Error ? error.message : String(error);
 }
+function isRecord4(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function optionalString(value) {
+  return typeof value === "string" ? value : void 0;
+}
+function readShelvingProposal(value) {
+  if (!isRecord4(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
+    return null;
+  }
+  const items = [];
+  for (const candidate of value.items) {
+    if (!isRecord4(candidate) || typeof candidate.id !== "string" || typeof candidate.title !== "string") {
+      continue;
+    }
+    const item = {
+      id: candidate.id,
+      title: candidate.title,
+      destination: optionalString(candidate.destination),
+      rationale: optionalString(candidate.rationale),
+      diff: optionalString(candidate.diff),
+      selected: typeof candidate.selected === "boolean" ? candidate.selected : void 0
+    };
+    items.push(item);
+  }
+  return {
+    state: "proposed",
+    summary: optionalString(value.summary),
+    items
+  };
+}
 var ShelvingView = class extends import_obsidian16.ItemView {
+  plugin;
+  unitId = null;
+  proposal = null;
+  selected = /* @__PURE__ */ new Set();
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
-    this.unitId = null;
-    this.proposal = null;
-    this.selected = /* @__PURE__ */ new Set();
   }
   getViewType() {
     return VIEW_SHELVING;
@@ -3838,7 +3870,9 @@ var ShelvingView = class extends import_obsidian16.ItemView {
     return "LearningOS \xB7 Shelving";
   }
   async setState(state = {}) {
-    this.unitId = state?.unitId || this.unitId;
+    if (typeof state.unitId === "string") {
+      this.unitId = state.unitId;
+    }
     await this.loadProposal();
     this.render();
   }
@@ -3846,20 +3880,26 @@ var ShelvingView = class extends import_obsidian16.ItemView {
     return { unitId: this.unitId };
   }
   async onOpen() {
-    this.unitId = this.leaf.state?.unitId || this.unitId;
+    const unitId = this.leaf.state?.unitId;
+    if (typeof unitId === "string") {
+      this.unitId = unitId;
+    }
     await this.loadProposal();
     this.render();
   }
   async loadProposal() {
-    if (!this.unitId) return;
+    if (!this.unitId) {
+      this.proposal = null;
+      return;
+    }
     const map = this.plugin.store.mapForUnit(this.unitId);
-    if (map?.shelving?.state === "proposed") this.proposal = map.shelving;
+    this.proposal = readShelvingProposal(map?.shelving);
   }
   render() {
     const root = this.contentEl;
     root.empty();
     root.addClass("los-root", "los-shelving-view");
-    const unit = this.plugin.store.get(this.unitId);
+    const unit = this.unitId ? this.plugin.store.get(this.unitId) : null;
     pageHeader(
       root,
       "Approval gate",
@@ -3871,7 +3911,7 @@ var ShelvingView = class extends import_obsidian16.ItemView {
       return;
     }
     const map = this.plugin.store.mapForUnit(unit.id);
-    const proposal = this.proposal || (map?.shelving?.state === "proposed" ? map.shelving : null);
+    const proposal = this.proposal ?? readShelvingProposal(map?.shelving);
     if (!proposal?.items?.length) {
       const wrap = section(root, "No proposal yet");
       empty(
@@ -3924,8 +3964,15 @@ var ShelvingView = class extends import_obsidian16.ItemView {
     for (const unit of rows) unitCard(wrap, this.plugin, unit);
   }
   async prepare() {
+    const unitId = this.unitId;
+    if (!unitId) {
+      new import_obsidian16.Notice("Choose a unit before preparing shelving.");
+      return;
+    }
     try {
-      await this.plugin.mutate(() => this.plugin.gateway.prepareShelving(this.unitId));
+      await this.plugin.mutate(
+        () => this.plugin.gateway.prepareShelving(unitId)
+      );
       await this.loadProposal();
       this.render();
     } catch (error) {
@@ -3933,12 +3980,22 @@ var ShelvingView = class extends import_obsidian16.ItemView {
     }
   }
   async apply() {
+    const unitId = this.unitId;
+    if (!unitId) {
+      new import_obsidian16.Notice("Choose a unit before applying shelving.");
+      return;
+    }
     if (!this.selected.size) {
       new import_obsidian16.Notice("Select at least one proposal.");
       return;
     }
     try {
-      await this.plugin.mutate(() => this.plugin.gateway.applyShelving(this.unitId, [...this.selected]));
+      await this.plugin.mutate(
+        () => this.plugin.gateway.applyShelving(
+          unitId,
+          [...this.selected]
+        )
+      );
       this.proposal = null;
       this.selected.clear();
       this.render();
