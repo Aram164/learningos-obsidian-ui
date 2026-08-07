@@ -1057,6 +1057,7 @@ function explicitAiContext(plugin, context = {}) {
 
 // src/infrastructure/ai-action-client.ts
 var AIActionClient = class {
+  plugin;
   constructor(plugin) {
     this.plugin = plugin;
   }
@@ -1076,17 +1077,26 @@ var AIActionClient = class {
       provider,
       ...this.plugin.gateway.guard()
     ];
-    if (jobExportConfirmed) args.push("--confirm-job-export");
-    return this.plugin.mutate(() => this.plugin.gateway.call(args));
+    if (jobExportConfirmed) {
+      args.push("--confirm-job-export");
+    }
+    return this.plugin.mutate(
+      () => this.plugin.gateway.call(args)
+    );
   }
   status(requestId) {
-    return this.plugin.gateway.call(["ai-action-status", requestId]);
+    return this.plugin.gateway.call([
+      "ai-action-status",
+      requestId
+    ]);
   }
   applyApprovedDelivery(deliveryId) {
-    return this.plugin.mutate(() => this.plugin.gateway.call([
-      "ai-action-apply-delivery",
-      deliveryId
-    ]));
+    return this.plugin.mutate(
+      () => this.plugin.gateway.call([
+        "ai-action-apply-delivery",
+        deliveryId
+      ])
+    );
   }
 };
 
