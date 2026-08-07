@@ -32,6 +32,8 @@ type ProgramPlugin = Pick<
   | 'getInboxDraft'
   | 'mutate'
   | 'openLearn'
+  | 'openModule'
+  | 'openUnit'
   | 'setInboxDraft'
   | 'store'
 >;

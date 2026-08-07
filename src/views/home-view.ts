@@ -31,10 +31,10 @@ interface ElsewhereRow {
 }
 
 interface HomeResumePointer {
-  readonly unit_id?: string;
-  readonly study_map_id?: string;
-  readonly stage_id?: string;
-  readonly module_id?: string;
+  readonly unit_id?: string | undefined;
+  readonly study_map_id?: string | undefined;
+  readonly stage_id?: string | undefined;
+  readonly module_id?: string | undefined;
 }
 
 type HomePlugin = Pick<

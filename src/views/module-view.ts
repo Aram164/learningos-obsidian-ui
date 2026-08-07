@@ -52,8 +52,8 @@ interface ParsedModuleViewState {
   readonly groupId: string | null;
   readonly query: string;
   readonly moduleId: string | null;
-  readonly componentId?: string | null;
-  readonly tab?: ModuleTab | null;
+  readonly componentId?: string | null | undefined;
+  readonly tab?: ModuleTab | null | undefined;
   readonly hasComponentId: boolean;
   readonly hasTab: boolean;
 }
@@ -131,6 +131,7 @@ type ModulePlugin = Pick<
   LearningOSUI,
   | 'back'
   | 'openLibrary'
+  | 'openModule'
   | 'openModuleDetail'
   | 'openModuleGroup'
   | 'openUnit'

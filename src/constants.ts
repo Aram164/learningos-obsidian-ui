@@ -18,11 +18,13 @@ export const VIEW_DIAGNOSTICS = 'learningos-diagnostics';
  * decision queues became Review, so the sidebar stops presenting the whole
  * system before the learner has done anything. Everything else lives in More.
  */
+/* `as const` so the first area is a known-present literal: several call sites
+ * fall back to LEARN_AREAS[0][0] as the default area. */
 export const LEARN_AREAS = [
   ['program-bachelors', 'Bachelor’s'],
   ['program-skills', 'Skills'],
   ['program-thesis-projects', 'Thesis & projects'],
-];
+] as const;
 export const LEGACY_VIEW_TYPES = [
   'learningos-dashboard', 'learningos-explorer', 'learningos-learning-path',
   'learningos-shelve-review', 'learningos-job-boundary',

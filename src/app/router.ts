@@ -51,9 +51,9 @@ interface NavigationOptions {
   remember?: boolean;
   pushHistory?: boolean;
   scrollTop?: number;
-  selectedElementId?: string;
+  selectedElementId?: string | undefined;
   restoreScrollTop?: number;
-  restoreSelectedElementId?: string;
+  restoreSelectedElementId?: string | undefined;
 }
 
 /**

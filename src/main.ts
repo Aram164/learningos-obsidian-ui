@@ -320,11 +320,12 @@ export class LearningOSUI extends Plugin {
   resolvePython(): PythonResolution {
     const base = this.app.vault.adapter.getBasePath();
     const configured = String(this.settings.pythonPath || '').trim();
-    const candidates = [
+    const searchOrder: Array<readonly [string, string]> = [
       [configured, 'configured in settings'],
       [nodePath.join(base, '.venv', 'bin', 'python'), 'project virtual environment'],
       [nodePath.join(base, '.venv', 'Scripts', 'python.exe'), 'project virtual environment (Windows)'],
-    ].filter(([path]) => path);
+    ];
+    const candidates = searchOrder.filter(([path]) => path);
     const attempted = candidates.map(([path]) => path);
     for (const [path, origin] of candidates) {
       if (fs.existsSync(path)) return { path, origin, attempted };
@@ -493,10 +494,10 @@ export class LearningOSUI extends Plugin {
    * capture started from different leaves could still overlap, each carrying an
    * `--expected-snapshot` the other had already invalidated.
    */
-  async mutate(
-    action: () => any,
+  async mutate<T>(
+    action: () => T | PromiseLike<T>,
     { reload = true }: { reload?: boolean } = {},
-  ): Promise<any> {
+  ): Promise<T> {
     return this.gateway.enqueue(async () => {
       const result = await action();
       if (reload) await this.reloadStore();

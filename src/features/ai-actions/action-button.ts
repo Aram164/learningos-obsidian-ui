@@ -1,6 +1,19 @@
 import { Notice } from 'obsidian';
 import { button } from '../../components';
 import type { ProjectionRecord } from '../../contracts/manifest-v2';
+import type { LearningOSUI } from '../../main';
+
+/**
+ * The launcher needs the AI-action client, the remembered provider preference,
+ * and a way to persist that preference. Nothing else — in particular it never
+ * reaches the gateway or the store directly.
+ */
+type AiActionHost = Pick<
+  LearningOSUI,
+  | 'aiActions'
+  | 'scheduleDraftSave'
+  | 'settings'
+>;
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -10,11 +23,11 @@ function errorMessage(error: unknown): string {
  * "Ask AI" entry point: the action ID, target and provider are visible before
  * the core prepares any context. */
 export function renderGardenShelveAction(
-  parent: any,
-  plugin: any,
+  parent: HTMLElement,
+  plugin: AiActionHost,
   target: ProjectionRecord,
   onChanged: ((result: ProjectionRecord) => unknown) | null = null,
-): any {
+): HTMLElement {
   const wrap = parent.createDiv({ cls: 'los-ai-action-row' });
   const providers: ProjectionRecord[] = plugin.aiActions.providers();
   const available = providers.filter(

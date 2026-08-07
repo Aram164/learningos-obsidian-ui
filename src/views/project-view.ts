@@ -35,10 +35,10 @@ type ProjectTab =
   (typeof PROJECT_TABS)[number][0];
 
 interface ProjectViewState {
-  readonly screen?: ProjectScreen;
-  readonly projectId?: string | null;
-  readonly tab?: ProjectTab;
-  readonly query?: string;
+  readonly screen?: ProjectScreen | undefined;
+  readonly projectId?: string | null | undefined;
+  readonly tab?: ProjectTab | undefined;
+  readonly query?: string | undefined;
 }
 
 interface ProjectBoundaries {

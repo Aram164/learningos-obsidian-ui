@@ -15,15 +15,15 @@ interface ShelvingViewState {
 interface ShelvingProposalItem {
   readonly id: string;
   readonly title: string;
-  readonly destination?: string;
-  readonly rationale?: string;
-  readonly diff?: string;
-  readonly selected?: boolean;
+  readonly destination?: string | undefined;
+  readonly rationale?: string | undefined;
+  readonly diff?: string | undefined;
+  readonly selected?: boolean | undefined;
 }
 
 interface ShelvingProposal {
   readonly state: 'proposed';
-  readonly summary?: string;
+  readonly summary?: string | undefined;
   readonly items: readonly ShelvingProposalItem[];
 }
 
@@ -32,6 +32,8 @@ type ShelvingPlugin = Pick<
   | 'askAiScoped'
   | 'gateway'
   | 'mutate'
+  | 'openModule'
+  | 'openUnit'
   | 'store'
 >;
 

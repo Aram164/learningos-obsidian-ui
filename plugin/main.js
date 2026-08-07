@@ -218,7 +218,8 @@ function localFilePath(file) {
   }
 }
 function projectedExcerpt(value, limit = 900) {
-  const first = String(value || "").split(/\n\s*\n/)[0].replace(/\*\*/g, "").replace(/`/g, "").replace(/(^|\n)\s*-\s*/g, "$1").replace(/\s+/g, " ").trim();
+  const [paragraph = ""] = String(value || "").split(/\n\s*\n/);
+  const first = paragraph.replace(/\*\*/g, "").replace(/`/g, "").replace(/(^|\n)\s*-\s*/g, "$1").replace(/\s+/g, " ").trim();
   if (first.length <= limit) return first;
   return `${Array.from(first).slice(0, limit - 1).join("")}\u2026`;
 }
@@ -6495,7 +6496,7 @@ var ReviewView = class extends import_obsidian15.ItemView {
       "Ready to shelve",
       shelving.length,
       "Units whose working notes are ready to become durable knowledge.",
-      shelving.length ? ["Review proposals", () => this.plugin.openShelving(shelving[0].id)] : null
+      shelving.length ? ["Review proposals", () => this.plugin.openShelving(shelving[0]?.id)] : null
     );
     this.queue(
       list,
@@ -7199,7 +7200,8 @@ var UnitView = class extends import_obsidian17.ItemView {
     const studyMap = readStudyMap(
       projectedStudyMap
     );
-    if (!studyMap.stages.length) {
+    const firstStage = studyMap.stages[0];
+    if (!firstStage) {
       const bare = section(
         root,
         "Study map needs stages"
@@ -7223,7 +7225,7 @@ var UnitView = class extends import_obsidian17.ItemView {
     if (!this.stageId || !stageIds.has(this.stageId)) {
       this.stageId = studyMap.currentStageId && stageIds.has(
         studyMap.currentStageId
-      ) ? studyMap.currentStageId : studyMap.stages[0].id;
+      ) ? studyMap.currentStageId : firstStage.id;
       this.plugin.setSelectedStage(
         unit.id,
         this.stageId
@@ -7231,7 +7233,7 @@ var UnitView = class extends import_obsidian17.ItemView {
     }
     const stage = studyMap.stages.find(
       (candidate) => candidate.id === this.stageId
-    ) ?? studyMap.stages[0];
+    ) ?? firstStage;
     const layout = root.createDiv({
       cls: "los-unit-layout"
     });
@@ -8006,11 +8008,12 @@ ${row.text.trim()}`).join("\n\n");
   resolvePython() {
     const base = this.app.vault.adapter.getBasePath();
     const configured = String(this.settings.pythonPath || "").trim();
-    const candidates = [
+    const searchOrder = [
       [configured, "configured in settings"],
       [nodePath2.join(base, ".venv", "bin", "python"), "project virtual environment"],
       [nodePath2.join(base, ".venv", "Scripts", "python.exe"), "project virtual environment (Windows)"]
-    ].filter(([path]) => path);
+    ];
+    const candidates = searchOrder.filter(([path]) => path);
     const attempted = candidates.map(([path]) => path);
     for (const [path, origin] of candidates) {
       if (fs2.existsSync(path)) return { path, origin, attempted };

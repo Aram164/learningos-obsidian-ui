@@ -37,8 +37,8 @@ const ARTIFACT_LABELS = [
 ] as const;
 
 interface ParsedUnitViewState {
-  readonly unitId?: string;
-  readonly stageId?: string | null;
+  readonly unitId?: string | undefined;
+  readonly stageId?: string | null | undefined;
   readonly hasStageId: boolean;
 }
 
@@ -722,7 +722,12 @@ export class UnitView extends ItemView {
         projectedStudyMap,
       );
 
-    if (!studyMap.stages.length) {
+    /* Deriving the first stage here rather than testing `.length` is what lets
+     * the compiler carry "this map has stages" through the rest of the render;
+     * the two conditions are equivalent. */
+    const firstStage = studyMap.stages[0];
+
+    if (!firstStage) {
       const bare = section(
         root,
         'Study map needs stages',
@@ -760,7 +765,7 @@ export class UnitView extends ItemView {
           )
         )
           ? studyMap.currentStageId
-          : studyMap.stages[0].id;
+          : firstStage.id;
 
       this.plugin.setSelectedStage(
         unit.id,
@@ -774,7 +779,7 @@ export class UnitView extends ItemView {
           candidate.id
           === this.stageId,
       )
-      ?? studyMap.stages[0];
+      ?? firstStage;
 
     const layout = root.createDiv({
       cls: 'los-unit-layout',

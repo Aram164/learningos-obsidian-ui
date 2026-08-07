@@ -70,8 +70,10 @@ type ReviewPlugin = Pick<
   | 'generate'
   | 'openCapture'
   | 'openGarden'
+  | 'openModule'
   | 'openProgram'
   | 'openShelving'
+  | 'openUnit'
   | 'store'
 >;
 
@@ -120,7 +122,7 @@ export class ReviewView extends ItemView {
     const list = root.createDiv({ cls: 'los-review-list' });
     this.queue(list, 'Ready to shelve', shelving.length,
       'Units whose working notes are ready to become durable knowledge.',
-      shelving.length ? ['Review proposals', () => this.plugin.openShelving(shelving[0].id)] : null);
+      shelving.length ? ['Review proposals', () => this.plugin.openShelving(shelving[0]?.id)] : null);
     this.queue(list, 'Inbox', inbox,
       'Captured items the operator has not routed yet.',
       ['Open capture', () => this.plugin.openCapture()]);

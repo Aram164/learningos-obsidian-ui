@@ -2,8 +2,29 @@ import { setIcon } from 'obsidian';
 import { webUtils } from 'electron';
 import { ICONS, SAFE_URL_PROTOCOLS } from './constants';
 import type { ProjectionRecord } from './contracts/manifest-v2';
+import type { LearningOSUI } from './main';
 
-type UiNode = any;
+/**
+ * The card components read the projection and navigate. That is the whole
+ * surface they need — they must not reach further into the plugin.
+ */
+type CardHost = Pick<
+  LearningOSUI,
+  | 'openModule'
+  | 'openUnit'
+  | 'store'
+>;
+
+/*
+ * The DOM node type every component takes and returns.
+ *
+ * This is deliberately the real `HTMLElement` rather than a bespoke shape:
+ * `src/types/runtime.d.ts` already augments the global interface with
+ * Obsidian's sugar (`createEl`, `createDiv`, `setAttrs`, …), so an alias buys
+ * fidelity to the host for free. Anything the host does not provide — the
+ * harness's `attrs` bag, `fire()` — is now a compile error at the call site.
+ */
+type UiNode = HTMLElement;
 type ClickHandler =
   ((event: MouseEvent) => unknown) | null | undefined;
 type OverflowItem =
@@ -19,7 +40,7 @@ export function button(
   label: string,
   onClick: ClickHandler,
   variant = '',
-): UiNode {
+): HTMLButtonElement {
   const el = parent.createEl('button', {
     cls: `los-btn is-clickable ${variant ? `los-btn--${variant}` : ''}`,
     text: label,
@@ -127,7 +148,7 @@ export function overflowMenu(
  */
 export function progressRow(
   parent: UiNode,
-  plugin: any,
+  plugin: CardHost,
   module: ProjectionRecord,
   nextUp = '',
 ): UiNode {
@@ -182,7 +203,8 @@ export function projectedExcerpt(
   value: unknown,
   limit = 900,
 ): string {
-  const first = String(value || '').split(/\n\s*\n/)[0]
+  const [paragraph = ''] = String(value || '').split(/\n\s*\n/);
+  const first = paragraph
     .replace(/\*\*/g, '').replace(/`/g, '')
     .replace(/(^|\n)\s*-\s*/g, '$1').replace(/\s+/g, ' ').trim();
   if (first.length <= limit) return first;
@@ -204,7 +226,7 @@ export function boundaryPolicy(value: unknown): string {
 
 export function workspaceCard(
   parent: UiNode,
-  plugin: any,
+  plugin: CardHost,
   workspace: ProjectionRecord,
   moduleContext: string | null = null,
 ): UiNode {
@@ -234,7 +256,7 @@ export function workspaceCard(
 
 export function unitCard(
   parent: UiNode,
-  plugin: any,
+  plugin: CardHost,
   unit: ProjectionRecord,
 ): UiNode {
   const card = parent.createEl('button', {
@@ -260,7 +282,7 @@ export function unitCard(
 
 export function moduleCard(
   parent: UiNode,
-  plugin: any,
+  plugin: CardHost,
   module: ProjectionRecord,
 ): UiNode {
   const card = parent.createEl('button', {

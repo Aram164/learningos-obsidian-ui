@@ -15,6 +15,8 @@ type GardenPlugin = Pick<
   | 'copyText'
   | 'generate'
   | 'openVaultPath'
+  | 'scheduleDraftSave'
+  | 'settings'
   | 'store'
 >;
 

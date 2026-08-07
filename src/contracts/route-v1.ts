@@ -44,7 +44,7 @@ export type ApplicationRouteV1 =
 export interface NavigationEntryV1 {
   route: ApplicationRouteV1;
   scrollTop: number;
-  selectedElementId?: string;
+  selectedElementId?: string | undefined;
 }
 
 export interface GlobalSearchOverlayV1 {
