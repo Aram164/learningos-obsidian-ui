@@ -1,11 +1,26 @@
 import process from 'node:process';
 import type { ProjectionRecord } from './contracts/manifest-v2';
+import type { GatewayResultV1 } from './contracts/gateway-v1';
+
+type LosCallback = (
+  error: Error | null,
+  stdout: string,
+  stderr: string,
+) => void;
+
+/** Everything the gateway needs from its host: one process runner, one snapshot id. */
+interface GatewayHost {
+  runLos(args: string[], callback: LosCallback): void;
+  store: {
+    snapshotId: string | null;
+  };
+}
 
 export class GatewayClient {
-  private readonly plugin: any;
+  private readonly plugin: GatewayHost;
   private chain: Promise<void>;
   pending: number;
-  constructor(plugin: any) {
+  constructor(plugin: GatewayHost) {
     this.plugin = plugin;
     // The write lock lives here, not in a view, because the thing being
     // protected is the single CLI process and the snapshot it was handed.
@@ -35,7 +50,10 @@ export class GatewayClient {
    * learner's text behind a success notice. `expectJson: false` is only for
    * the text-reporting commands (`validate`, `generate`).
    */
-  call(args: string[], { expectJson = true }: { expectJson?: boolean } = {}): Promise<any> {
+  call(
+    args: string[],
+    { expectJson = true }: { expectJson?: boolean } = {},
+  ): Promise<GatewayResultV1> {
     return new Promise((resolve, reject) => {
       this.plugin.runLos(
         args,
@@ -63,8 +81,18 @@ export class GatewayClient {
     });
   }
 
+  /**
+   * The snapshot guard is what makes a write refusable, so a missing snapshot
+   * id must stop the write rather than travel to the CLI as the string
+   * "null" — which would be compared against a real snapshot and refused with
+   * a misleading message, or worse, matched by accident.
+   */
   guard(): string[] {
-    return ['--expected-snapshot', this.plugin.store.snapshotId];
+    const snapshotId = this.plugin.store.snapshotId;
+    if (!snapshotId) {
+      throw new Error('LearningOS has no loaded snapshot to guard this change against; nothing was written.');
+    }
+    return ['--expected-snapshot', snapshotId];
   }
   saveNote(unitId: string, stageId: string, text: string) {
     return this.call(['stage-note', unitId, stageId, '--replace', '--text', text, ...this.guard()]);
@@ -152,8 +180,26 @@ export class GatewayClient {
   }
 }
 
+/**
+ * A wider surface than GatewayHost: building an AI context bundle is a read
+ * across the projection plus the one supplementary fact about the editor.
+ */
+interface AiContextHost {
+  store: {
+    get(id: string): ProjectionRecord | null;
+    mapForUnit(unitId: string): ProjectionRecord | null;
+    stage(stageId: string): ProjectionRecord | null;
+    snapshotId: string | null;
+  };
+  app: {
+    workspace: {
+      getActiveFile?(): { readonly path: string } | null;
+    };
+  };
+}
+
 export function explicitAiContext(
-  plugin: any,
+  plugin: AiContextHost,
   context: Record<string, string | undefined> = {},
 ): ProjectionRecord {
   const unit = context.unitId ? plugin.store.get(context.unitId) : null;
@@ -178,6 +224,6 @@ export function explicitAiContext(
         || row.material_path)
       .filter(Boolean),
     manifest_snapshot: plugin.store.snapshotId,
-    active_file_supplement: plugin.app.workspace.getActiveFile()?.path || null,
+    active_file_supplement: plugin.app.workspace.getActiveFile?.()?.path || null,
   };
 }

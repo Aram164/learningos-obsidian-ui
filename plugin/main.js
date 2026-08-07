@@ -944,6 +944,18 @@ var UnitNoteModal = class extends import_obsidian3.Modal {
   }
 };
 
+// src/contracts/gateway-v1.ts
+function asStringList(value) {
+  return Array.isArray(value) ? value.filter((entry) => typeof entry === "string") : [];
+}
+function asSessionReview(result) {
+  return {
+    owned_changes: asStringList(result.owned_changes),
+    unrelated_changes: asStringList(result.unrelated_changes),
+    pushed: result.pushed === true
+  };
+}
+
 // src/gateway-client.ts
 var GatewayClient = class {
   plugin;
@@ -1011,8 +1023,18 @@ var GatewayClient = class {
       );
     });
   }
+  /**
+   * The snapshot guard is what makes a write refusable, so a missing snapshot
+   * id must stop the write rather than travel to the CLI as the string
+   * "null" — which would be compared against a real snapshot and refused with
+   * a misleading message, or worse, matched by accident.
+   */
   guard() {
-    return ["--expected-snapshot", this.plugin.store.snapshotId];
+    const snapshotId = this.plugin.store.snapshotId;
+    if (!snapshotId) {
+      throw new Error("LearningOS has no loaded snapshot to guard this change against; nothing was written.");
+    }
+    return ["--expected-snapshot", snapshotId];
   }
   saveNote(unitId, stageId, text) {
     return this.call(["stage-note", unitId, stageId, "--replace", "--text", text, ...this.guard()]);
@@ -1093,7 +1115,7 @@ function explicitAiContext(plugin, context = {}) {
     selected_source_ids: [...new Set(resources.map((row) => row.source_id).filter(Boolean))],
     selected_materials: resources.map((row) => row.material_uri || row.vault_path || row.url || row.material_path).filter(Boolean),
     manifest_snapshot: plugin.store.snapshotId,
-    active_file_supplement: plugin.app.workspace.getActiveFile()?.path || null
+    active_file_supplement: plugin.app.workspace.getActiveFile?.()?.path || null
   };
 }
 
@@ -1524,7 +1546,9 @@ var SessionEndModal = class extends import_obsidian4.Modal {
         return;
       }
       try {
-        const result = await this.plugin.gateway.endSession(message.value.trim(), Boolean(push.checked));
+        const result = asSessionReview(
+          await this.plugin.gateway.endSession(message.value.trim(), Boolean(push.checked))
+        );
         new import_obsidian4.Notice(result.pushed ? "Learning session committed and pushed." : "Learning session committed.");
         this.close();
       } catch (error) {
@@ -8175,7 +8199,7 @@ ${row.text.trim()}`).join("\n\n");
   }
   async reviewSessionEnd() {
     try {
-      const review = await this.gateway.endSession();
+      const review = asSessionReview(await this.gateway.endSession());
       new SessionEndModal(this.app, this, review).open();
       return review;
     } catch (error) {

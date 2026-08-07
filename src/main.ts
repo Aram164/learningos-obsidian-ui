@@ -13,6 +13,7 @@ import { GlobalSearchModal } from './app/global-search';
 import { ApplicationRouter } from './app/router';
 import { UnitNoteModal } from './app/unit-note-modal';
 import { button, safeWebUrl } from './components';
+import { asSessionReview } from './contracts/gateway-v1';
 import { asLibraryCollection, asProjectDetailTab } from './contracts/route-v1';
 import {
   DEFAULT_SETTINGS, LEARN_AREAS, LEGACY_VIEW_TYPES, VIEW_ATLAS, VIEW_BOUNDARY,
@@ -517,7 +518,7 @@ export class LearningOSUI extends Plugin {
 
   async reviewSessionEnd() {
     try {
-      const review = await this.gateway.endSession();
+      const review = asSessionReview(await this.gateway.endSession());
       new SessionEndModal(this.app, this, review).open();
       return review;
     } catch (error: unknown) {

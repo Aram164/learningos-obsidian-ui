@@ -10,6 +10,8 @@ import {
   type ToggleComponent,
 } from 'obsidian';
 import { button, empty, OWNERSHIP_STATEMENT, pageHeader, section } from './components';
+import { asSessionReview } from './contracts/gateway-v1';
+import type { SessionReviewV1 } from './contracts/gateway-v1';
 import type { LearningOSUI } from './main';
 
 type ToggleSettingKey =
@@ -36,10 +38,7 @@ type SessionEndPlugin = Pick<
   'gateway'
 >;
 
-interface SessionReview {
-  owned_changes?: string[];
-  unrelated_changes?: string[];
-}
+type SessionReview = SessionReviewV1;
 
 export class LearningOSSettingsTab extends PluginSettingTab {
   declare readonly plugin: SettingsPlugin;
@@ -138,7 +137,9 @@ export class SessionEndModal extends Modal {
     button(actions, 'Commit session-owned files', async () => {
       if (!message.value.trim()) { new Notice('Enter a commit message first.'); return; }
       try {
-        const result = await this.plugin.gateway.endSession(message.value.trim(), Boolean(push.checked));
+        const result = asSessionReview(
+          await this.plugin.gateway.endSession(message.value.trim(), Boolean(push.checked)),
+        );
         new Notice(result.pushed ? 'Learning session committed and pushed.' : 'Learning session committed.');
         this.close();
       } catch (error: unknown) {
