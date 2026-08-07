@@ -1,6 +1,9 @@
 import process from 'node:process';
 import type { ProjectionRecord } from './contracts/manifest-v2';
-import type { GatewayResultV1 } from './contracts/gateway-v1';
+import {
+  GatewayError, exitCodeOf, structuredError,
+  type GatewayResultV1,
+} from './contracts/gateway-v1';
 
 type LosCallback = (
   error: Error | null,
@@ -66,7 +69,17 @@ export class GatewayClient {
       this.plugin.runLos(
         args,
         (error: Error | null, stdout: string, stderr: string) => {
-        if (error) { reject(new Error(stderr || error.message || String(error))); return; }
+        if (error) {
+          // A refusal puts its reason on stdout and leaves stderr empty, so
+          // reading stderr first threw the sentence away and reported Node's
+          // "Command failed: python …" instead. The exit code travels with it
+          // because code 3 (projection conflict) is recoverable and the
+          // caller has to be able to tell.
+          const reason = structuredError(stdout) || stderr.trim()
+            || error.message || String(error);
+          reject(new GatewayError(reason, exitCodeOf(error)));
+          return;
+        }
         const raw = String(stdout ?? '').trim();
         if (!expectJson) { resolve({ ok: true, stdout: raw }); return; }
         if (!raw) {
@@ -80,7 +93,10 @@ export class GatewayClient {
           return;
         }
         if (!parsed || typeof parsed !== 'object' || parsed.ok === false) {
-          reject(new Error(parsed?.error || 'LearningOS refused the change; your draft was kept.'));
+          reject(new GatewayError(
+            parsed?.error || 'LearningOS refused the change; your draft was kept.',
+            exitCodeOf(error),
+          ));
           return;
         }
         resolve(parsed);
@@ -112,12 +128,6 @@ export class GatewayClient {
       { stdin: JSON.stringify(envelope) });
   }
 
-  /**
-   * The snapshot guard is what makes a write refusable, so a missing snapshot
-   * id must stop the write rather than travel to the CLI as the string
-   * "null" — which would be compared against a real snapshot and refused with
-   * a misleading message, or worse, matched by accident.
-   */
   /**
    * The snapshot guard is what makes a write refusable, so a missing snapshot
    * id must stop the write rather than travel to the CLI as the string

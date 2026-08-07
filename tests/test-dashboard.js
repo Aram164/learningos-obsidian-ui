@@ -846,6 +846,58 @@ async function main() {
     plugin.onunload();
   }
   {
+    /* Planning happens in Claude, so canonical files change between app
+     * sessions by design. The core then refuses the next write and says
+     * "reload before writing" — but reloading re-reads the same stale
+     * generated/manifest.json. Only a rebuild moves the projection forward,
+     * so the app has to do that itself or the advice on screen is a dead end. */
+    const { app, plugin } = await build();
+    await app.workspace._ready();
+    const order = [];
+    let refuse = true;
+    plugin.runLos = (args, callback, stdin) => {
+      const name = stdin ? JSON.parse(stdin).capability : args[0];
+      order.push(name);
+      if (name === 'generate') { callback(null, 'rebuilt', ''); return; }
+      if (name === 'capture.create' && refuse) {
+        refuse = false;
+        callback(
+          Object.assign(new Error('Command failed'), { code: 3 }),
+          JSON.stringify({ ok: false, error: 'los: projection conflict — authored files changed since the app loaded' }),
+          '',
+        );
+        return;
+      }
+      callback(null, JSON.stringify({ ok: true }), '');
+    };
+    await plugin.mutate(() => plugin.gateway.captureText('written after Claude edited the tree'));
+    check('a stale projection is rebuilt rather than reported as a dead end',
+      order.join('|') === 'capture.create|generate|capture.create');
+    check('the retried write settles the queue',
+      plugin.gateway.pending === 0);
+
+    /* One retry, not a loop: a conflict that survives a rebuild is a real
+     * refusal and must reach the learner. */
+    const seen = [];
+    plugin.runLos = (args, callback, stdin) => {
+      const name = stdin ? JSON.parse(stdin).capability : args[0];
+      seen.push(name);
+      if (name === 'generate') { callback(null, 'rebuilt', ''); return; }
+      callback(
+        Object.assign(new Error('Command failed'), { code: 3 }),
+        JSON.stringify({ ok: false, error: 'los: projection conflict — authored files changed since the app loaded' }),
+        '',
+      );
+    };
+    let surfaced = null;
+    await plugin.mutate(() => plugin.gateway.captureText('still conflicting'))
+      .catch((error) => { surfaced = error; });
+    check('a conflict that survives the rebuild is surfaced, not retried forever',
+      seen.join('|') === 'capture.create|generate|capture.create'
+      && /projection conflict/.test(String(surfaced && surfaced.message)));
+    plugin.onunload();
+  }
+  {
     /* A projected URL is untrusted input to a viewer. */
     const { app, plugin } = await boot();
     Notice.log.length = 0;

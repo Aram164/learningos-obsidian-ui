@@ -10,6 +10,7 @@ const FIXTURE_MANIFEST = path.join(ROOT, 'fixture-vault', 'generated', 'manifest
 const load = createSourceModuleLoader(ROOT);
 const { ManifestStore } = load('src/manifest-store.ts');
 const { GatewayClient } = load('src/gateway-client.ts');
+const { isProjectionConflict, GatewayError } = load('src/contracts/gateway-v1.ts');
 const { ApplicationRouter } = load('src/app/router.ts');
 const constants = load('src/constants.ts');
 
@@ -139,6 +140,50 @@ function routerPlugin(settings = {}) {
     assert.deepEqual(envelope.payload,
       { unit_id: 'unit-a', stage_id: 'stage-a', text: 'text', replace: true });
     assert.ok(envelope.request_id, 'every write is identifiable');
+  });
+
+  /*
+   * The core answers a refusal on stdout and leaves stderr empty. Preferring
+   * stderr meant the learner saw Node's "Command failed: python …" instead of
+   * the sentence explaining what was refused and why.
+   */
+  await test('a refusal surfaces the reason the core gave, not the process failure', async () => {
+    const refusal = JSON.stringify({
+      ok: false,
+      error: 'los: projection conflict — authored files changed since the app loaded',
+    });
+    const failure = Object.assign(new Error('Command failed: python tools/los.py capability'), { code: 3 });
+    const plugin = {
+      runLos: (_args, callback) => callback(failure, refusal, ''),
+      store: { snapshotId: 'snapshot-test' },
+    };
+    const gateway = new GatewayClient(plugin);
+    await assert.rejects(
+      gateway.progress('u', 's', 'complete'),
+      (error) => {
+        assert.match(error.message, /projection conflict/,
+          'the core’s reason must reach the learner');
+        assert.doesNotMatch(error.message, /Command failed/);
+        assert.equal(error.exitCode, 3, 'the exit code decides whether this is recoverable');
+        assert.equal(isProjectionConflict(error), true);
+        return true;
+      },
+    );
+  });
+
+  await test('an ordinary failure with a real stderr still reports it', async () => {
+    const failure = Object.assign(new Error('spawn ENOENT'), { code: 2 });
+    const plugin = {
+      runLos: (_args, callback) => callback(failure, '', 'python: no such interpreter'),
+      store: { snapshotId: 'snapshot-test' },
+    };
+    const gateway = new GatewayClient(plugin);
+    await assert.rejects(gateway.progress('u', 's', 'complete'), (error) => {
+      assert.match(error.message, /no such interpreter/);
+      assert.equal(isProjectionConflict(error), false,
+        'only exit 3 may trigger an automatic rebuild');
+      return true;
+    });
   });
 
   await test('every porcelain method sends one declared capability envelope', async () => {

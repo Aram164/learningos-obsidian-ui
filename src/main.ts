@@ -13,7 +13,7 @@ import { GlobalSearchModal } from './app/global-search';
 import { ApplicationRouter } from './app/router';
 import { UnitNoteModal } from './app/unit-note-modal';
 import { button, safeWebUrl } from './components';
-import { asSessionReview } from './contracts/gateway-v1';
+import { asSessionReview, isProjectionConflict } from './contracts/gateway-v1';
 import { asLibraryCollection, asProjectDetailTab } from './contracts/route-v1';
 import {
   DEFAULT_SETTINGS, LEARN_AREAS, LEGACY_VIEW_TYPES, VIEW_ATLAS, VIEW_BOUNDARY,
@@ -510,13 +510,46 @@ export class LearningOSUI extends Plugin {
    */
   async mutate<T>(
     action: () => T | PromiseLike<T>,
-    { reload = true }: { reload?: boolean } = {},
+    { reload = true, healStaleProjection = true }:
+      { reload?: boolean; healStaleProjection?: boolean } = {},
   ): Promise<T> {
     return this.gateway.enqueue(async () => {
-      const result = await action();
-      if (reload) await this.reloadStore();
-      return result;
+      try {
+        const result = await action();
+        if (reload) await this.reloadStore();
+        return result;
+      } catch (error: unknown) {
+        if (!healStaleProjection || !isProjectionConflict(error)) throw error;
+        return this.rebuildAndRetry(action, reload);
+      }
     });
+  }
+
+  /**
+   * The core refuses a write whose snapshot is behind the authored tree and
+   * says "reload before writing" — but the app's reload re-reads
+   * `generated/manifest.json`, which is exactly as stale as the snapshot that
+   * was just refused. Only rebuilding the projection moves it forward.
+   *
+   * This is the normal case, not an edge one: planning happens in Claude, so
+   * canonical files change between app sessions by design. Without this the
+   * first write after any authoring session fails, and the advice on screen
+   * does not fix it.
+   *
+   * Retrying is safe because a conflict is refused whole — partial application
+   * of a validated transaction is a forbidden operation in the core's
+   * capability contract, so nothing was written to repeat.
+   */
+  private async rebuildAndRetry<T>(
+    action: () => T | PromiseLike<T>,
+    reload: boolean,
+  ): Promise<T> {
+    new Notice('Canonical files changed since this view loaded — rebuilding the projection, then retrying.');
+    await this.gateway.call(['generate'], { expectJson: false });
+    await this.reloadStore();
+    const result = await action();   // re-read snapshot: `capability()` takes it at call time
+    if (reload) await this.reloadStore();
+    return result;
   }
 
   async generate() {
