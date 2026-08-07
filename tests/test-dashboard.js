@@ -8,6 +8,8 @@ const { makeApp, Notice, stub } = require('./harness');
 const ROOT = path.resolve(__dirname, '..');
 const FIXTURE = path.join(ROOT, 'fixture-vault');
 const LearningOSUI = require(path.join(ROOT, 'plugin', 'main.js'));
+const FIXTURE_GROUP_COUNT = JSON.parse(fs.readFileSync(
+  path.join(FIXTURE, 'generated', 'manifest.json'), 'utf8')).thematic_groups.length;
 const VIEW = {
   home: 'learningos-home', nav: 'learningos-nav', program: 'learningos-program',
   module: 'learningos-module', project: 'learningos-project', unit: 'learningos-unit', library: 'learningos-library',
@@ -361,7 +363,7 @@ async function main() {
     let text = view.contentEl.allText();
     check('Library opens on Learning Sources thematic groups only',
       view.screen === 'home' && view.collection === 'sources'
-      && view.contentEl.find('los-group-card').length === 5
+      && view.contentEl.find('los-group-card').length === FIXTURE_GROUP_COUNT
       && view.contentEl.find('los-route-row').length === 0
       && view.contentEl.find('los-library-detail').length === 0);
     check('Learning Sources and Topic Packs are distinct top-level collections',
@@ -399,7 +401,7 @@ async function main() {
     await plugin.openLibraryHome('topic-packs');
     view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
     check('Topic Packs starts at thematic groups rather than source types',
-      view.collection === 'topic-packs' && view.contentEl.find('los-group-card').length === 5
+      view.collection === 'topic-packs' && view.contentEl.find('los-group-card').length === FIXTURE_GROUP_COUNT
       && view.contentEl.find('los-route-row').length === 0);
     view.contentEl.findText('los-group-card', 'Machine Learning').fire('click'); await tick();
     view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
@@ -449,7 +451,7 @@ async function main() {
     let view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
     let text = view.contentEl.allText();
     check('Modules opens on explicit thematic groups only',
-      view.screen === 'groups' && view.contentEl.find('los-group-card').length === 5
+      view.screen === 'groups' && view.contentEl.find('los-group-card').length === FIXTURE_GROUP_COUNT
       && view.contentEl.find('los-unit-card').length === 0);
     view.contentEl.findText('los-group-card', 'Mathematics').fire('click'); await tick();
     view = app.workspace.getLeavesOfType(VIEW.module)[0].view;

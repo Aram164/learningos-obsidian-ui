@@ -318,7 +318,7 @@
     "unit-fixture-python-oop"
    ],
    "thematic_group_ids": [
-    "thematic-group-programming-languages"
+    "thematic-group-software"
    ]
   }
  ],
@@ -504,11 +504,11 @@
      "concepts": [],
      "useful_sections": [
       {
-       "section": "Chapter 3 \u00a7\u00a73.1\u20133.3",
+       "section": "Chapter 3 §§3.1–3.3",
        "note": "the whole regression argument"
       },
       {
-       "section": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2",
+       "section": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2",
        "note": "exact selections, nothing around them"
       }
      ]
@@ -633,7 +633,7 @@
     {
      "group": "tier-1-now",
      "source": "source-fixture-book",
-     "why": "The spine \u2014 read this before anything else on the shelf."
+     "why": "The spine — read this before anything else on the shelf."
     },
     {
      "group": "tier-2-optional",
@@ -675,7 +675,7 @@
    "type": "collection",
    "collection_kind": "catalogue",
    "thematic_group_ids": [
-    "thematic-group-programming-languages"
+    "thematic-group-software"
    ],
    "purpose": null
   },
@@ -927,8 +927,8 @@
    "resources": [
     {
      "kind": "read",
-     "label": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3",
-     "locator": "Chapter 3 \u00a7\u00a73.1\u20133.3",
+     "label": "ISLP Chapter 3 §§3.1–3.3",
+     "locator": "Chapter 3 §§3.1–3.3",
      "source_id": "source-fixture-islp"
     }
    ],
@@ -953,7 +953,7 @@
     {
      "kind": "read",
      "label": "ISLP selected sections",
-     "locator": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2",
+     "locator": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2",
      "source_id": "source-fixture-islp"
     }
    ],
@@ -1136,8 +1136,8 @@
      "resources": [
       {
        "kind": "read",
-       "label": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3",
-       "locator": "Chapter 3 \u00a7\u00a73.1\u20133.3",
+       "label": "ISLP Chapter 3 §§3.1–3.3",
+       "locator": "Chapter 3 §§3.1–3.3",
        "source_id": "source-fixture-islp"
       }
      ],
@@ -1173,7 +1173,7 @@
       {
        "kind": "read",
        "label": "ISLP selected sections",
-       "locator": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2",
+       "locator": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2",
        "source_id": "source-fixture-islp"
       }
      ],
@@ -1277,7 +1277,7 @@
    "order": 2,
    "scope": "Synthetic Lecture 02 scope.",
    "status": "ready",
-   "title": "SaD Lecture 02 \u2014 Descriptive statistics",
+   "title": "SaD Lecture 02 — Descriptive statistics",
    "type": "unit",
    "notes_text": "",
    "note_sections": [],
@@ -1296,7 +1296,7 @@
    "order": 4,
    "scope": "Synthetic Lecture 04 scope.",
    "status": "active",
-   "title": "SaD Lecture 04 \u2014 Probability & Bayes",
+   "title": "SaD Lecture 04 — Probability & Bayes",
    "type": "unit",
    "notes_text": "<!-- learningos:unit-note {\"attachments\":[],\"recorded_at\":\"2099-03-01T18:00:00+00:00\",\"stage_ids\":[\"stage-fixture-foundations\"],\"title\":\"Foundations session\"} -->\n## Foundations session\n\nI connected the counting rule to the probability model.\n",
    "note_sections": [
@@ -1338,9 +1338,9 @@
    "kind": "lecture",
    "module_id": "module-fixture-aml",
    "order": 3,
-   "scope": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3.",
+   "scope": "ISLP Chapter 3 §§3.1–3.3.",
    "status": "ready",
-   "title": "AML Lecture 03 \u2014 Linear regression",
+   "title": "AML Lecture 03 — Linear regression",
    "type": "unit",
    "notes_text": "",
    "note_sections": [],
@@ -1354,9 +1354,9 @@
    "kind": "lecture",
    "module_id": "module-fixture-aml",
    "order": 4,
-   "scope": "ISLP \u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2.",
+   "scope": "ISLP §3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2.",
    "status": "ready",
-   "title": "AML Lecture 04 \u2014 Classification",
+   "title": "AML Lecture 04 — Classification",
    "type": "unit",
    "notes_text": "",
    "note_sections": [],
@@ -1466,34 +1466,52 @@
  },
  "thematic_groups": [
   {
-   "id": "thematic-group-machine-learning",
-   "title": "Machine Learning",
-   "description": "Models and ML systems.",
-   "order": 10
-  },
-  {
+   "description": "Probability and statistics, analysis and calculus, linear algebra, discrete mathematics and proof craft.",
    "id": "thematic-group-mathematics",
-   "title": "Mathematics",
-   "description": "Probability, statistics and analysis.",
-   "order": 20
+   "order": 10,
+   "title": "Mathematics"
   },
   {
-   "id": "thematic-group-cs-theory",
-   "title": "CS Theory",
-   "description": "Algorithms and formal reasoning.",
-   "order": 30
+   "description": "Convex, numerical and combinatorial optimization; statistical learning theory and kernel methods — the bridge between mathematics and learning.",
+   "id": "thematic-group-optimization",
+   "order": 20,
+   "title": "Optimization & Learning Theory"
   },
   {
-   "id": "thematic-group-programming-languages",
-   "title": "Programming Languages",
-   "description": "Python and language mechanics.",
-   "order": 40
+   "description": "Statistical and classical ML, deep learning, reinforcement learning, vision, and intuition-building explainers.",
+   "id": "thematic-group-machine-learning",
+   "order": 30,
+   "title": "Machine Learning"
   },
   {
+   "description": "Training and serving at scale, ML compilation, performance and parallelism, and data management for ML.",
+   "id": "thematic-group-ml-systems",
+   "order": 40,
+   "title": "ML Systems"
+  },
+  {
+   "description": "Databases, distributed systems, provenance and lineage, reliability and benchmarking.",
    "id": "thematic-group-data-systems",
-   "title": "Data Systems",
-   "description": "Databases, provenance and pipelines.",
-   "order": 50
+   "order": 50,
+   "title": "Data Systems"
+  },
+  {
+   "description": "Algorithms and data structures, complexity and computability, parameterized and approximation algorithms, experimental algorithmics.",
+   "id": "thematic-group-algorithms",
+   "order": 60,
+   "title": "Algorithms & Computation"
+  },
+  {
+   "description": "Python craft and idiom, CPython internals, software engineering practice, languages and compilers, tooling and environment.",
+   "id": "thematic-group-software",
+   "order": 70,
+   "title": "Software & Languages"
+  },
+  {
+   "description": "Research method, degree regulations, and dataset catalogues — small, but everything needs a home or it becomes invisible.",
+   "id": "thematic-group-method-admin",
+   "order": 80,
+   "title": "Method & Administration"
   }
  ],
  "topic_packs": [
