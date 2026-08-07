@@ -13,6 +13,7 @@
     "test": "npm run build && npm run typecheck && npm run typecheck:contracts && npm run contract:check && npm run test:modules && npm run test:ui",
     "check": "npm run test && node scripts/check-host-surface.mjs && node scripts/check-build.mjs",
     "build:info": "node scripts/print-build-info.mjs",
+    "install:status": "node scripts/check-install-current.mjs",
     "typecheck:contracts": "tsc -p tsconfig.contract.json --noEmit",
     "test:modules": "node tests/test-runtime-modules.js"
   },

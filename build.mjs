@@ -167,6 +167,28 @@ const sourceMaterial = [
   fs.readFileSync(path.join(root, 'contracts', 'manifest-v2.lock.json'), 'utf8'),
   ...sources.flatMap(({ relative, source }) => [relative, source]),
 ].join('\0');
+/*
+ * `source_revision` alone is a claim with no honesty in it: it records what
+ * HEAD pointed at when the build ran, so a build from an edited working tree
+ * reports its parent commit and looks like a clean build of it. The core
+ * solved the same problem with `_generated.source_dirty`; this is its
+ * counterpart, so Diagnostics can say which of the two it is looking at.
+ *
+ * Both values must be deterministic — check-build.mjs requires two consecutive
+ * builds to produce byte-identical build-info — so the date is the commit's,
+ * never the clock's.
+ */
+const gitOrNull = (args) => {
+  try {
+    return execFileSync('git', args, { cwd: root, encoding: 'utf8' }).trim();
+  } catch (_) {
+    return null;
+  }
+};
+const dirtyPaths = gitOrNull(['status', '--porcelain', '--', 'src', 'build.mjs', 'package.json', 'tsconfig.json', 'contracts']);
+const sourceDirty = dirtyPaths === null ? null : dirtyPaths.length > 0;
+const sourceCommittedAt = gitOrNull(['show', '-s', '--format=%cI', 'HEAD']);
+
 const buildInfo = {
   schema_version: 2,
   bundler: buildResult.bundler,
@@ -174,6 +196,8 @@ const buildInfo = {
   ui_version: pluginManifest.version,
   manifest_contract_version: contract.contract_version,
   source_revision: sourceRevision,
+  source_dirty: sourceDirty,
+  source_committed_at: sourceCommittedAt,
   source_fingerprint: sha256(sourceMaterial),
   bundle_sha256: sha256(output),
   node_version: process.version,

@@ -3,6 +3,7 @@ import {
   type WorkspaceLeaf,
 } from 'obsidian';
 import {
+  badge,
   button,
   chip,
   disclosure,
@@ -93,10 +94,28 @@ interface UsefulSectionView {
   readonly note: string | null;
 }
 
+/**
+ * One contextual evaluation, in the registry's own vocabulary.
+ *
+ * The previous shape read `verdict`, `scope` and `reading_plan`. None of the
+ * three is in `sources.schema.json`, which is a closed schema — so `scope` and
+ * `reading_plan` never existed, and `verdict` could only ever arrive null. The
+ * card therefore rendered `useful_sections` and nothing else, while the roles,
+ * strengths, weaknesses and level actually recorded against the source stayed
+ * invisible.
+ *
+ * There is deliberately no summary line and no ordering here: the schema says
+ * "no universal scalar ratings", so a source is described by what it is good
+ * for, not ranked.
+ */
 interface EvaluationView {
-  readonly verdict: string | null;
-  readonly scope: string | null;
-  readonly readingPlan: string[];
+  readonly roles: string[];
+  readonly level: string | null;
+  readonly audience: string[];
+  readonly prerequisites: string[];
+  readonly strengths: string[];
+  readonly weaknesses: string[];
+  readonly concepts: string[];
   readonly usefulSections: UsefulSectionView[];
 }
 
@@ -471,14 +490,13 @@ function readEvaluation(
     return null;
   }
 
-  const verdict =
-    projectedText(value.verdict);
-
-  const scope =
-    projectedText(value.scope);
-
-  const readingPlan =
-    projectedStrings(value.reading_plan);
+  const roles = projectedStrings(value.roles);
+  const level = projectedText(value.level);
+  const audience = projectedStrings(value.audience);
+  const prerequisites = projectedStrings(value.prerequisites);
+  const strengths = projectedStrings(value.strengths);
+  const weaknesses = projectedStrings(value.weaknesses);
+  const concepts = projectedStrings(value.concepts);
 
   const usefulSections = Array.isArray(
     value.useful_sections,
@@ -494,18 +512,25 @@ function readEvaluation(
     : [];
 
   if (
-    !verdict
-    && !scope
-    && !readingPlan.length
+    !roles.length
+    && !level
+    && !audience.length
+    && !prerequisites.length
+    && !strengths.length
+    && !weaknesses.length
     && !usefulSections.length
   ) {
     return null;
   }
 
   return {
-    verdict,
-    scope,
-    readingPlan,
+    roles,
+    level,
+    audience,
+    prerequisites,
+    strengths,
+    weaknesses,
+    concepts,
     usefulSections,
   };
 }
@@ -2213,7 +2238,7 @@ export class LibraryView extends ItemView {
     if (record.evaluations.length) {
       const evidence = section(
         detail,
-        'Existing evaluation evidence',
+        'What this source is good for',
       );
 
       for (
@@ -2225,24 +2250,25 @@ export class LibraryView extends ItemView {
             cls: 'los-evidence-card',
           });
 
-        if (evaluation.verdict) {
-          card.createEl(
-            'p',
-            {
-              text:
-                evaluation.verdict,
-            },
-          );
+        /* Purpose first: the roles are the reason to open this source at all.
+         * Level sits beside them because "good for first learning" means
+         * something different at introductory and at advanced. */
+        if (evaluation.roles.length || evaluation.level) {
+          const purpose = card.createDiv({ cls: 'los-chip-row' });
+          for (const role of evaluation.roles) badge(purpose, role, 'role');
+          if (evaluation.level) badge(purpose, evaluation.level, 'level');
         }
 
-        for (
-          const selection
-          of evaluation.readingPlan
-        ) {
-          card.createDiv({
-            cls: 'los-row',
-            text: selection,
-          });
+        for (const [label, values] of [
+          ['Strengths', evaluation.strengths],
+          ['Weaknesses', evaluation.weaknesses],
+          ['Assumes', evaluation.prerequisites],
+          ['Written for', evaluation.audience],
+        ] as const) {
+          if (!values.length) continue;
+          const block = card.createDiv({ cls: 'los-row' });
+          block.createEl('strong', { text: `${label}: ` });
+          block.createSpan({ text: values.join(' · ') });
         }
 
         for (

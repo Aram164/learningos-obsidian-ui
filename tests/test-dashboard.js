@@ -680,6 +680,18 @@ async function main() {
       view.screen === 'source-detail' && view.contentEl.find('los-route-row').length === 0);
     check('ISLP detail preserves exact reading selections', view.contentEl.allText().includes('Chapter 3 §§3.1–3.3')
       && view.contentEl.allText().includes('§7.1 only'));
+    /* The registry's own vocabulary. The card used to read `verdict`, `scope`
+     * and `reading_plan` — none of which sources.schema.json allows — so every
+     * recorded role, level, strength and weakness stayed inside the
+     * repository while the screen showed only the section list. */
+    check('an evaluation shows what the source is good for, in the schema’s vocabulary',
+      view.contentEl.allText().includes('review')
+      && view.contentEl.allText().includes('intermediate')
+      && view.contentEl.allText().includes('Selected sections carry the whole argument')
+      && view.contentEl.allText().includes('Whole-book reading wastes time'));
+    check('an evaluation states what it assumes rather than ranking the source',
+      view.contentEl.allText().includes('Assumes')
+      && view.contentEl.allText().includes('linear algebra'));
     check('source use routes back to several distinct units', view.contentEl.allText().includes('AML Lecture 03')
       && view.contentEl.allText().includes('AML Lecture 04'));
     await plugin.openLibraryGroup('sources', 'thematic-group-mathematics', 'Wahrscheinlichkeitsbuch');

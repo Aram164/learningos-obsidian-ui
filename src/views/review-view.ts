@@ -12,6 +12,9 @@ interface BuildInfo {
   ui_version: string;
   manifest_contract_version: number;
   source_revision: string;
+  /** null when the build could not ask Git — "unknown", not "clean". */
+  source_dirty: boolean | null;
+  source_committed_at: string;
   source_fingerprint: string;
   bundle_sha256: string;
   node_version: string;
@@ -187,6 +190,8 @@ export class DiagnosticsView extends ItemView {
       ui_version: this.plugin.uiVersion(),
       manifest_contract_version: CONTRACT_VERSION,
       source_revision: 'unavailable',
+      source_dirty: null,
+      source_committed_at: 'unavailable',
       source_fingerprint: 'unavailable',
       bundle_sha256: 'unavailable',
       node_version: 'unavailable',
@@ -234,6 +239,17 @@ export class DiagnosticsView extends ItemView {
           typeof parsed.source_revision === 'string'
             ? parsed.source_revision
             : fallback.source_revision,
+        // A missing flag stays null: an older build-info predates the field,
+        // and reading that absence as "clean" is the exact false reassurance
+        // this row exists to remove.
+        source_dirty:
+          typeof parsed.source_dirty === 'boolean'
+            ? parsed.source_dirty
+            : fallback.source_dirty,
+        source_committed_at:
+          typeof parsed.source_committed_at === 'string'
+            ? parsed.source_committed_at
+            : fallback.source_committed_at,
         source_fingerprint:
           typeof parsed.source_fingerprint === 'string'
             ? parsed.source_fingerprint
@@ -284,6 +300,14 @@ export class DiagnosticsView extends ItemView {
       ['UI expects contract', CONTRACT_VERSION],
       ['UI version', this.plugin.uiVersion()],
       ['UI source revision', build.source_revision],
+      // The projection states its own staleness; before this the interface
+      // stated nothing about its own, and a vault quietly ran a build 32
+      // commits behind its source for a day.
+      ['UI built from', build.source_dirty === null
+        ? `${build.source_committed_at} (working tree unknown)`
+        : build.source_dirty
+          ? `${build.source_committed_at} + uncommitted sources`
+          : build.source_committed_at],
       ['UI source fingerprint', build.source_fingerprint],
       ['UI bundle fingerprint', build.bundle_sha256],
       ['Build Node', build.node_version],

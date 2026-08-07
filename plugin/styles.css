@@ -625,6 +625,9 @@
 .los-badge--active { color: var(--color-green); }
 .los-badge--needs-map { color: var(--color-orange); }
 .los-badge--role { color: var(--text-accent); }
+/* Level is a property of the evaluation, not a rank of the source — it reads
+   as a neutral fact beside the roles, never as a score. */
+.los-badge--level { color: var(--text-muted); border-color: var(--background-modifier-border); }
 
 /* Compact application navigator */
 .los-app-nav { padding: var(--los-2); }
