@@ -465,7 +465,41 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
   }
 };
 
+// src/contracts/route-v1.ts
+var LIBRARY_COLLECTIONS = [
+  "sources",
+  "topic-packs"
+];
+var PROJECT_DETAIL_TABS = [
+  "overview",
+  "structure",
+  "linked-materials",
+  "files",
+  "decisions"
+];
+function isLibraryCollection(value) {
+  return LIBRARY_COLLECTIONS.includes(value);
+}
+function isProjectDetailTab(value) {
+  return PROJECT_DETAIL_TABS.includes(value);
+}
+function asLibraryCollection(value) {
+  return isLibraryCollection(value) ? value : "sources";
+}
+function asProjectDetailTab(value) {
+  return isProjectDetailTab(value) ? value : "overview";
+}
+
 // src/app/router.ts
+function asLegacyState(value) {
+  return value && typeof value === "object" ? value : {};
+}
+function asText(value, fallback = "") {
+  return typeof value === "string" && value ? value : fallback;
+}
+function asNullableText(value) {
+  return typeof value === "string" && value ? value : null;
+}
 var ApplicationRouter = class {
   plugin;
   navigation;
@@ -477,22 +511,28 @@ var ApplicationRouter = class {
     this.overlay = null;
   }
   fromLegacy(legacy) {
-    const type = legacy?.type;
-    const state = legacy?.state || {};
+    const input = legacy && typeof legacy === "object" ? legacy : {};
+    const type = asText(input.type);
+    const state = asLegacyState(input.state);
     if (type === VIEW_PROGRAM) {
-      return state.programId === "inbox" ? { name: "capture" } : { name: "learn", programId: state.programId || LEARN_AREAS[0][0] };
+      return state.programId === "inbox" ? { name: "capture" } : { name: "learn", programId: asText(state.programId, LEARN_AREAS[0][0]) };
     }
     if (type === VIEW_MODULE) {
       if (state.screen === "groups") return { name: "module-groups" };
-      if (state.screen === "list") return { name: "module-list", groupId: state.groupId, query: state.query || "" };
-      return { name: "module-detail", moduleId: state.moduleId, componentId: state.componentId || null, tab: state.tab || null };
+      if (state.screen === "list") return { name: "module-list", groupId: asText(state.groupId), query: asText(state.query) };
+      return {
+        name: "module-detail",
+        moduleId: asText(state.moduleId),
+        componentId: asNullableText(state.componentId),
+        tab: asNullableText(state.tab)
+      };
     }
-    if (type === VIEW_UNIT) return { name: "unit", unitId: state.unitId, stageId: state.stageId || null };
-    if (type === VIEW_PROJECT) return state.projectId ? { name: "project-detail", projectId: state.projectId, tab: state.tab || "overview" } : { name: "project-list", query: state.query || "" };
+    if (type === VIEW_UNIT) return { name: "unit", unitId: asText(state.unitId), stageId: asNullableText(state.stageId) };
+    if (type === VIEW_PROJECT) return state.projectId ? { name: "project-detail", projectId: asText(state.projectId), tab: asProjectDetailTab(state.tab) } : { name: "project-list", query: asText(state.query) };
     if (type === VIEW_LIBRARY) return this.libraryRouteFromState(state);
-    if (type === VIEW_ATLAS) return { name: "atlas", domain: state.domain || null };
-    if (type === VIEW_SHELVING) return { name: "shelving", unitId: state.unitId || null };
-    if (type === VIEW_BOUNDARY) return { name: "boundary", boundaryId: state.boundaryId };
+    if (type === VIEW_ATLAS) return { name: "atlas", domain: asNullableText(state.domain) };
+    if (type === VIEW_SHELVING) return { name: "shelving", unitId: asNullableText(state.unitId) };
+    if (type === VIEW_BOUNDARY) return { name: "boundary", boundaryId: asText(state.boundaryId) };
     if (type === VIEW_REVIEW) return { name: "review" };
     if (type === VIEW_GARDEN) return { name: "garden" };
     if (type === VIEW_DIAGNOSTICS) return { name: "diagnostics" };
@@ -501,45 +541,47 @@ var ApplicationRouter = class {
   libraryRouteFromState(state = {}) {
     if (state.screen === "group") return {
       name: "library-group",
-      collection: state.collection || "sources",
-      groupId: state.groupId,
-      query: state.query || "",
-      facet: state.facet || "all"
+      collection: asLibraryCollection(state.collection),
+      groupId: asText(state.groupId),
+      query: asText(state.query),
+      facet: asText(state.facet, "all")
     };
     if (state.screen === "source-detail") return {
       name: "source-detail",
-      resourceId: state.resourceId,
-      fromGroupId: state.fromGroupId || null,
-      query: state.query || "",
-      facet: state.facet || "all"
+      resourceId: asText(state.resourceId),
+      fromGroupId: asNullableText(state.fromGroupId),
+      query: asText(state.query),
+      facet: asText(state.facet, "all")
     };
     if (state.screen === "topic-pack-detail") return {
       name: "topic-pack-detail",
-      topicPackId: state.topicPackId,
-      fromGroupId: state.fromGroupId || null,
-      query: state.query || ""
+      topicPackId: asText(state.topicPackId),
+      fromGroupId: asNullableText(state.fromGroupId),
+      query: asText(state.query)
     };
-    if (state.screen === "catalogue-detail") return { name: "catalogue-detail", catalogueId: state.catalogueId };
+    if (state.screen === "catalogue-detail") return { name: "catalogue-detail", catalogueId: asText(state.catalogueId) };
+    const recordType = asText(state.recordType);
     if (state.screen === "legacy-list") return {
       name: "legacy-library-list",
-      recordType: state.recordType || "note",
-      query: state.query || "",
-      domain: state.domain || ""
+      recordType: recordType || "note",
+      query: asText(state.query),
+      domain: asText(state.domain)
     };
-    if (state.recordId) {
-      const record = this.plugin.store?.get?.(state.recordId);
-      if (record?.type === "source" || state.recordType === "source") {
-        return { name: "source-detail", resourceId: state.recordId };
+    const recordId = asText(state.recordId);
+    if (recordId) {
+      const record = this.plugin.store?.get?.(recordId);
+      if (record?.type === "source" || recordType === "source") {
+        return { name: "source-detail", resourceId: recordId };
       }
-      if (record?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: state.recordId };
-      if (record?.type === "collection" || state.recordType === "collection") {
-        return { name: "catalogue-detail", catalogueId: state.recordId };
+      if (record?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: recordId };
+      if (record?.type === "collection" || recordType === "collection") {
+        return { name: "catalogue-detail", catalogueId: recordId };
       }
     }
-    if (state.recordType && !["source", "topic-pack"].includes(state.recordType)) {
-      return { name: "legacy-library-list", recordType: state.recordType, query: state.query || "", domain: state.domain || "" };
+    if (recordType && !["source", "topic-pack"].includes(recordType)) {
+      return { name: "legacy-library-list", recordType, query: asText(state.query), domain: asText(state.domain) };
     }
-    return { name: "library-home", collection: state.recordType === "topic-pack" ? "topic-packs" : "sources" };
+    return { name: "library-home", collection: recordType === "topic-pack" ? "topic-packs" : "sources" };
   }
   descriptor(route) {
     switch (route?.name) {
@@ -577,7 +619,7 @@ var ApplicationRouter = class {
             screen: "detail",
             moduleId: route.moduleId,
             componentId: route.componentId || null,
-            tab: route.tab || null
+            tab: "tab" in route ? route.tab || null : null
           },
           nav: "modules"
         };
@@ -672,7 +714,7 @@ var ApplicationRouter = class {
   async openLeaf(type, state = {}, side = "main") {
     let leaf = this.plugin.app.workspace.getLeavesOfType(type)[0];
     if (!leaf) {
-      leaf = side === "left" ? this.plugin.app.workspace.getLeftLeaf(false) : this.plugin.app.workspace.getLeaf(true);
+      leaf = side === "left" ? this.plugin.app.workspace.getLeftLeaf?.(false) ?? this.plugin.app.workspace.getLeaf(true) : this.plugin.app.workspace.getLeaf(true);
     }
     await leaf.setViewState({ type, active: true, state });
     this.plugin.app.workspace.revealLeaf(leaf);
@@ -2706,7 +2748,7 @@ var SOURCE_FACETS = [
   ["online", "Online"],
   ["in-unit", "Used in a unit"]
 ];
-var LIBRARY_COLLECTIONS = [
+var LIBRARY_COLLECTIONS2 = [
   ["sources", "Learning Sources"],
   ["topic-packs", "Topic Packs"]
 ];
@@ -2748,7 +2790,7 @@ function projectedStrings2(value) {
 function isLibraryScreen(value) {
   return value === "home" || value === "group" || value === "source-detail" || value === "topic-pack-detail" || value === "catalogue-detail" || value === "legacy-list";
 }
-function isLibraryCollection(value) {
+function isLibraryCollection2(value) {
   return value === "sources" || value === "topic-packs";
 }
 function isSourceFacet(value) {
@@ -2775,7 +2817,7 @@ function readLibraryViewState(value, currentCollection, currentRecordType) {
   const screen = isLibraryScreen(
     value.screen
   ) ? value.screen : recordId ? "legacy-list" : "home";
-  const collection = isLibraryCollection(
+  const collection = isLibraryCollection2(
     value.collection
   ) ? value.collection : currentCollection;
   const groupId = projectedString3(value.groupId) ?? projectedString3(value.fromGroupId);
@@ -3202,7 +3244,7 @@ var LibraryView = class extends import_obsidian10.ItemView {
     for (const [
       id,
       label
-    ] of LIBRARY_COLLECTIONS) {
+    ] of LIBRARY_COLLECTIONS2) {
       const control = button(
         switcher,
         label,
@@ -8013,7 +8055,10 @@ ${row.text.trim()}`).join("\n\n");
   openProject(projectId, tab = "overview") {
     const current = this.router.snapshot().current;
     const changingTab = current?.name === "project-detail" && current.projectId === projectId;
-    return this.router.navigate({ name: "project-detail", projectId, tab }, { pushHistory: !changingTab });
+    return this.router.navigate(
+      { name: "project-detail", projectId, tab: asProjectDetailTab(tab) },
+      { pushHistory: !changingTab }
+    );
   }
   openModuleGroup(groupId, query = "") {
     return this.router.navigate({ name: "module-list", groupId, query });
@@ -8041,10 +8086,16 @@ ${row.text.trim()}`).join("\n\n");
     return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record?.type || "note", query: "" });
   }
   openLibraryHome(collection = "sources") {
-    return this.router.navigate({ name: "library-home", collection });
+    return this.router.navigate({ name: "library-home", collection: asLibraryCollection(collection) });
   }
   openLibraryGroup(collection, groupId, query = "", facet = "all") {
-    return this.router.navigate({ name: "library-group", collection, groupId, query, facet });
+    return this.router.navigate({
+      name: "library-group",
+      collection: asLibraryCollection(collection),
+      groupId,
+      query,
+      facet
+    });
   }
   openSourceDetail(resourceId, fromGroupId = null, query = "", facet = "all") {
     return this.router.navigate({ name: "source-detail", resourceId, fromGroupId, query, facet });

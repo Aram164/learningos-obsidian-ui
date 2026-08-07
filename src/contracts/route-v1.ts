@@ -1,6 +1,13 @@
 /** Persisted application navigation contract, independent of Obsidian leaves. */
 export type LibraryCollectionV1 = "sources" | "topic-packs";
 
+export type ProjectDetailTabV1 =
+  | "overview"
+  | "structure"
+  | "linked-materials"
+  | "files"
+  | "decisions";
+
 export type ApplicationRouteV1 =
   | { name: "home" }
   | { name: "learn"; programId: string }
@@ -11,7 +18,7 @@ export type ApplicationRouteV1 =
   | { name: "program"; programId: string }
   | { name: "module-groups" }
   | { name: "project-list"; query?: string }
-  | { name: "project-detail"; projectId: string; tab?: "overview" | "structure" | "linked-materials" | "files" | "decisions" }
+  | { name: "project-detail"; projectId: string; tab?: ProjectDetailTabV1 }
   | { name: "module-list"; groupId: string; query?: string }
   | { name: "module-detail"; moduleId: string; componentId?: string | null; tab?: string | null }
   | { name: "module"; moduleId: string; componentId?: string | null }
@@ -52,4 +59,44 @@ export interface NavigationStateV1 {
   version: 1;
   current: ApplicationRouteV1;
   history: NavigationEntryV1[];
+}
+
+/*
+ * Narrowing boundary.
+ *
+ * Persisted Obsidian state and product call sites hand over loose values
+ * (`unknown`, plain `string`). Routes are strict. These functions are the only
+ * sanctioned crossing: loose in, contract-valid out, never a cast at the call
+ * site.
+ */
+
+const LIBRARY_COLLECTIONS: readonly LibraryCollectionV1[] = [
+  "sources",
+  "topic-packs",
+];
+
+const PROJECT_DETAIL_TABS: readonly ProjectDetailTabV1[] = [
+  "overview",
+  "structure",
+  "linked-materials",
+  "files",
+  "decisions",
+];
+
+export function isLibraryCollection(value: unknown): value is LibraryCollectionV1 {
+  return LIBRARY_COLLECTIONS.includes(value as LibraryCollectionV1);
+}
+
+export function isProjectDetailTab(value: unknown): value is ProjectDetailTabV1 {
+  return PROJECT_DETAIL_TABS.includes(value as ProjectDetailTabV1);
+}
+
+/** Coerce a loose collection value; anything unrecognised falls back to sources. */
+export function asLibraryCollection(value: unknown): LibraryCollectionV1 {
+  return isLibraryCollection(value) ? value : "sources";
+}
+
+/** Coerce a loose project tab value; anything unrecognised falls back to overview. */
+export function asProjectDetailTab(value: unknown): ProjectDetailTabV1 {
+  return isProjectDetailTab(value) ? value : "overview";
 }

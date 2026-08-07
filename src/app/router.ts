@@ -3,16 +3,117 @@ import {
   VIEW_HOME, VIEW_LIBRARY, VIEW_MODULE, VIEW_NAV, VIEW_PROGRAM, VIEW_PROJECT,
   VIEW_REVIEW, VIEW_SHELVING, VIEW_UNIT,
 } from '../constants';
+import type {
+  ApplicationRouteV1,
+  NavigationStateV1,
+  OverlayStateV1,
+} from '../contracts/route-v1';
+import { asLibraryCollection, asProjectDetailTab } from '../contracts/route-v1';
+
+/*
+ * Legacy migration input.
+ *
+ * Persisted Obsidian view state predates the route contract, so it arrives
+ * loosely shaped. It stays loose up to `fromLegacy`/`libraryRouteFromState`,
+ * which are the only places allowed to turn it into a strict
+ * `ApplicationRouteV1`. Everything downstream of them is contract-typed.
+ */
+type LegacyRouteState = Record<string, unknown>;
+
+interface LegacyViewState {
+  type?: unknown;
+  state?: unknown;
+}
+
+function asLegacyState(value: unknown): LegacyRouteState {
+  return value && typeof value === 'object' ? value as LegacyRouteState : {};
+}
+
+/** Loose value → required route string. */
+function asText(value: unknown, fallback = ''): string {
+  return typeof value === 'string' && value ? value : fallback;
+}
+
+/** Loose value → nullable route string. */
+function asNullableText(value: unknown): string | null {
+  return typeof value === 'string' && value ? value : null;
+}
+
+interface RouteDescriptor {
+  type: string;
+  state: Record<string, unknown>;
+  nav: string;
+  pin?: boolean;
+}
+
+interface NavigationOptions {
+  preserveOverlay?: boolean;
+  remember?: boolean;
+  pushHistory?: boolean;
+  scrollTop?: number;
+  selectedElementId?: string;
+  restoreScrollTop?: number;
+  restoreSelectedElementId?: string;
+}
+
+/**
+ * The only parts of a leaf's view the router reads or restores.
+ * `selectedElementId` is an application-owned property on Learning OS views,
+ * not part of the host API — the router treats it as optional for that reason.
+ */
+interface RouterViewSurface {
+  contentEl?: {
+    scrollTop: number;
+  };
+  selectedElementId?: string | null;
+}
+
+interface RouterLeaf {
+  setViewState(state: {
+    type: string;
+    active: boolean;
+    state?: Record<string, unknown>;
+  }): void | Promise<void>;
+  setPinned?(value: boolean): void;
+  view?: RouterViewSurface;
+}
+
+interface RouterHost {
+  app: {
+    workspace: {
+      getLeavesOfType(type: string): RouterLeaf[];
+      getLeaf(newLeaf?: boolean | string): RouterLeaf;
+      getLeftLeaf?(split?: boolean): RouterLeaf | null;
+      revealLeaf(leaf: RouterLeaf): void;
+      setActiveLeaf?(leaf: RouterLeaf, options?: { focus?: boolean }): void;
+      active?: {
+        view?: RouterViewSurface;
+      };
+    };
+  };
+  settings: {
+    navigation?: NavigationStateV1;
+    lastView?: unknown;
+    pinHome?: boolean;
+  };
+  store?: {
+    get?(id: string): {
+      type?: string;
+    } | null;
+  };
+  saveData<T>(data: T): Promise<void>;
+  setActiveNav(nav: string): void;
+}
 
 /**
  * Explicit application router introduced as a compatibility layer.
  * Product features navigate with route records; only this adapter knows leaves.
  */
 export class ApplicationRouter {
-  private readonly plugin: any;
-  navigation: any;
-  overlay: any;
-  constructor(plugin: any) {
+  private readonly plugin: RouterHost;
+  navigation: NavigationStateV1;
+  overlay: OverlayStateV1;
+  constructor(plugin: RouterHost) {
     this.plugin = plugin;
     const saved = plugin.settings.navigation;
     this.navigation = saved?.version === 1 && saved.current
@@ -21,68 +122,76 @@ export class ApplicationRouter {
     this.overlay = null;
   }
 
-  fromLegacy(legacy: any): any {
-    const type = legacy?.type;
-    const state = legacy?.state || {};
+  fromLegacy(legacy: unknown): ApplicationRouteV1 {
+    const input: LegacyViewState = legacy && typeof legacy === 'object' ? legacy as LegacyViewState : {};
+    const type = asText(input.type);
+    const state = asLegacyState(input.state);
     if (type === VIEW_PROGRAM) {
       return state.programId === 'inbox'
         ? { name: 'capture' }
-        : { name: 'learn', programId: state.programId || LEARN_AREAS[0][0] };
+        : { name: 'learn', programId: asText(state.programId, LEARN_AREAS[0][0]) };
     }
     if (type === VIEW_MODULE) {
       if (state.screen === 'groups') return { name: 'module-groups' };
-      if (state.screen === 'list') return { name: 'module-list', groupId: state.groupId, query: state.query || '' };
-      return { name: 'module-detail', moduleId: state.moduleId, componentId: state.componentId || null, tab: state.tab || null };
+      if (state.screen === 'list') return { name: 'module-list', groupId: asText(state.groupId), query: asText(state.query) };
+      return {
+        name: 'module-detail',
+        moduleId: asText(state.moduleId),
+        componentId: asNullableText(state.componentId),
+        tab: asNullableText(state.tab),
+      };
     }
-    if (type === VIEW_UNIT) return { name: 'unit', unitId: state.unitId, stageId: state.stageId || null };
+    if (type === VIEW_UNIT) return { name: 'unit', unitId: asText(state.unitId), stageId: asNullableText(state.stageId) };
     if (type === VIEW_PROJECT) return state.projectId
-      ? { name: 'project-detail', projectId: state.projectId, tab: state.tab || 'overview' }
-      : { name: 'project-list', query: state.query || '' };
+      ? { name: 'project-detail', projectId: asText(state.projectId), tab: asProjectDetailTab(state.tab) }
+      : { name: 'project-list', query: asText(state.query) };
     if (type === VIEW_LIBRARY) return this.libraryRouteFromState(state);
-    if (type === VIEW_ATLAS) return { name: 'atlas', domain: state.domain || null };
-    if (type === VIEW_SHELVING) return { name: 'shelving', unitId: state.unitId || null };
-    if (type === VIEW_BOUNDARY) return { name: 'boundary', boundaryId: state.boundaryId };
+    if (type === VIEW_ATLAS) return { name: 'atlas', domain: asNullableText(state.domain) };
+    if (type === VIEW_SHELVING) return { name: 'shelving', unitId: asNullableText(state.unitId) };
+    if (type === VIEW_BOUNDARY) return { name: 'boundary', boundaryId: asText(state.boundaryId) };
     if (type === VIEW_REVIEW) return { name: 'review' };
     if (type === VIEW_GARDEN) return { name: 'garden' };
     if (type === VIEW_DIAGNOSTICS) return { name: 'diagnostics' };
     return { name: 'home' };
   }
 
-  libraryRouteFromState(state: any = {}) {
+  libraryRouteFromState(state: LegacyRouteState = {}): ApplicationRouteV1 {
     if (state.screen === 'group') return {
-      name: 'library-group', collection: state.collection || 'sources', groupId: state.groupId,
-      query: state.query || '', facet: state.facet || 'all',
+      name: 'library-group', collection: asLibraryCollection(state.collection), groupId: asText(state.groupId),
+      query: asText(state.query), facet: asText(state.facet, 'all'),
     };
     if (state.screen === 'source-detail') return {
-      name: 'source-detail', resourceId: state.resourceId, fromGroupId: state.fromGroupId || null,
-      query: state.query || '', facet: state.facet || 'all',
+      name: 'source-detail', resourceId: asText(state.resourceId), fromGroupId: asNullableText(state.fromGroupId),
+      query: asText(state.query), facet: asText(state.facet, 'all'),
     };
     if (state.screen === 'topic-pack-detail') return {
-      name: 'topic-pack-detail', topicPackId: state.topicPackId,
-      fromGroupId: state.fromGroupId || null, query: state.query || '',
+      name: 'topic-pack-detail', topicPackId: asText(state.topicPackId),
+      fromGroupId: asNullableText(state.fromGroupId), query: asText(state.query),
     };
-    if (state.screen === 'catalogue-detail') return { name: 'catalogue-detail', catalogueId: state.catalogueId };
+    if (state.screen === 'catalogue-detail') return { name: 'catalogue-detail', catalogueId: asText(state.catalogueId) };
+    const recordType = asText(state.recordType);
     if (state.screen === 'legacy-list') return {
-      name: 'legacy-library-list', recordType: state.recordType || 'note',
-      query: state.query || '', domain: state.domain || '',
+      name: 'legacy-library-list', recordType: recordType || 'note',
+      query: asText(state.query), domain: asText(state.domain),
     };
-    if (state.recordId) {
-      const record = this.plugin.store?.get?.(state.recordId);
-      if (record?.type === 'source' || state.recordType === 'source') {
-        return { name: 'source-detail', resourceId: state.recordId };
+    const recordId = asText(state.recordId);
+    if (recordId) {
+      const record = this.plugin.store?.get?.(recordId);
+      if (record?.type === 'source' || recordType === 'source') {
+        return { name: 'source-detail', resourceId: recordId };
       }
-      if (record?.type === 'topic-pack') return { name: 'topic-pack-detail', topicPackId: state.recordId };
-      if (record?.type === 'collection' || state.recordType === 'collection') {
-        return { name: 'catalogue-detail', catalogueId: state.recordId };
+      if (record?.type === 'topic-pack') return { name: 'topic-pack-detail', topicPackId: recordId };
+      if (record?.type === 'collection' || recordType === 'collection') {
+        return { name: 'catalogue-detail', catalogueId: recordId };
       }
     }
-    if (state.recordType && !['source', 'topic-pack'].includes(state.recordType)) {
-      return { name: 'legacy-library-list', recordType: state.recordType, query: state.query || '', domain: state.domain || '' };
+    if (recordType && !['source', 'topic-pack'].includes(recordType)) {
+      return { name: 'legacy-library-list', recordType, query: asText(state.query), domain: asText(state.domain) };
     }
-    return { name: 'library-home', collection: state.recordType === 'topic-pack' ? 'topic-packs' : 'sources' };
+    return { name: 'library-home', collection: recordType === 'topic-pack' ? 'topic-packs' : 'sources' };
   }
 
-  descriptor(route: any): any {
+  descriptor(route: ApplicationRouteV1): RouteDescriptor {
     switch (route?.name) {
       case 'home': return { type: VIEW_HOME, state: {}, nav: 'home', pin: true };
       case 'learn': return { type: VIEW_PROGRAM, state: { programId: route.programId }, nav: 'learn' };
@@ -105,7 +214,8 @@ export class ApplicationRouter {
         type: VIEW_MODULE,
         state: {
           screen: 'detail', moduleId: route.moduleId,
-          componentId: route.componentId || null, tab: route.tab || null,
+          componentId: route.componentId || null,
+          tab: 'tab' in route ? route.tab || null : null,
         },
         nav: 'modules',
       };
@@ -173,13 +283,13 @@ export class ApplicationRouter {
 
   async openLeaf(
     type: string,
-    state: Record<string, any> = {},
+    state: Record<string, unknown> = {},
     side: 'main' | 'left' = 'main',
-  ): Promise<any> {
+  ): Promise<RouterLeaf> {
     let leaf = this.plugin.app.workspace.getLeavesOfType(type)[0];
     if (!leaf) {
       leaf = side === 'left'
-        ? this.plugin.app.workspace.getLeftLeaf(false)
+        ? this.plugin.app.workspace.getLeftLeaf?.(false) ?? this.plugin.app.workspace.getLeaf(true)
         : this.plugin.app.workspace.getLeaf(true);
     }
     await leaf.setViewState({ type, active: true, state });
@@ -196,11 +306,11 @@ export class ApplicationRouter {
     await this.plugin.saveData(this.plugin.settings);
   }
 
-  openOverlay(overlay: Record<string, any>) {
+  openOverlay(overlay: Exclude<OverlayStateV1, null>) {
     this.overlay = { ...overlay };
     return this.overlay;
   }
-  updateOverlay(patch: Record<string, any>) {
+  updateOverlay(patch: Partial<Record<string, unknown>>) {
     if (!this.overlay) return null;
     this.overlay = { ...this.overlay, ...patch };
     return this.overlay;
@@ -208,13 +318,13 @@ export class ApplicationRouter {
   clearOverlay() { this.overlay = null; }
 
   /** Replace restorable route state without opening a leaf or adding history. */
-  async remember(route: any) {
+  async remember(route: ApplicationRouteV1): Promise<ApplicationRouteV1> {
     this.navigation.current = route;
     await this.persist();
     return route;
   }
 
-  async navigate(route: any, options: any = {}) {
+  async navigate(route: ApplicationRouteV1, options: NavigationOptions = {}) {
     if (!options.preserveOverlay) this.clearOverlay();
     const descriptor = this.descriptor(route);
     const remember = options.remember !== false;

@@ -13,6 +13,7 @@ import { GlobalSearchModal } from './app/global-search';
 import { ApplicationRouter } from './app/router';
 import { UnitNoteModal } from './app/unit-note-modal';
 import { button, safeWebUrl } from './components';
+import { asLibraryCollection, asProjectDetailTab } from './contracts/route-v1';
 import {
   DEFAULT_SETTINGS, LEARN_AREAS, LEGACY_VIEW_TYPES, VIEW_ATLAS, VIEW_BOUNDARY,
   VIEW_DIAGNOSTICS, VIEW_GARDEN, VIEW_HOME, VIEW_LIBRARY, VIEW_MODULE, VIEW_NAV,
@@ -379,7 +380,10 @@ export class LearningOSUI extends Plugin {
   openProject(projectId: string, tab = 'overview') {
     const current = this.router.snapshot().current;
     const changingTab = current?.name === 'project-detail' && current.projectId === projectId;
-    return this.router.navigate({ name: 'project-detail', projectId, tab }, { pushHistory: !changingTab });
+    return this.router.navigate(
+      { name: 'project-detail', projectId, tab: asProjectDetailTab(tab) },
+      { pushHistory: !changingTab },
+    );
   }
   openModuleGroup(groupId: string, query = '') {
     return this.router.navigate({ name: 'module-list', groupId, query });
@@ -414,7 +418,7 @@ export class LearningOSUI extends Plugin {
     return this.router.navigate({ name: 'legacy-library-list', recordType: recordType || record?.type || 'note', query: '' });
   }
   openLibraryHome(collection = 'sources') {
-    return this.router.navigate({ name: 'library-home', collection });
+    return this.router.navigate({ name: 'library-home', collection: asLibraryCollection(collection) });
   }
   openLibraryGroup(
     collection: string,
@@ -422,7 +426,9 @@ export class LearningOSUI extends Plugin {
     query = '',
     facet = 'all',
   ) {
-    return this.router.navigate({ name: 'library-group', collection, groupId, query, facet });
+    return this.router.navigate({
+      name: 'library-group', collection: asLibraryCollection(collection), groupId, query, facet,
+    });
   }
   openSourceDetail(
     resourceId: string,

@@ -47,6 +47,9 @@ declare module 'obsidian' {
   export interface WorkspaceView {
     readonly file?: TAbstractFile;
 
+    /* Every leaf view is a View, which owns a scrollable content element. */
+    readonly contentEl?: HTMLElement;
+
     render?(): unknown;
   }
 
