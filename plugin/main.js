@@ -3177,14 +3177,40 @@ var NavView = class extends import_obsidian12.ItemView {
 
 // src/views/program-view.ts
 var import_obsidian13 = require("obsidian");
+var COORDINATION_HEADINGS = [
+  "Priorities",
+  "Commitments",
+  "Dependencies",
+  "Deferrals"
+];
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function readProgramSemesters(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const semesters = [];
+  for (const candidate of value) {
+    if (!isRecord3(candidate) || typeof candidate.title !== "string" || typeof candidate.status !== "string") {
+      continue;
+    }
+    semesters.push({
+      title: candidate.title,
+      status: candidate.status
+    });
+  }
+  return semesters;
+}
 function errorMessage5(error) {
   return error instanceof Error ? error.message : String(error);
 }
 var ProgramView = class extends import_obsidian13.ItemView {
+  plugin;
+  programId = null;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
-    this.programId = null;
   }
   getViewType() {
     return VIEW_PROGRAM;
@@ -3193,14 +3219,21 @@ var ProgramView = class extends import_obsidian13.ItemView {
     return "LearningOS \xB7 Area";
   }
   async setState(state = {}) {
-    this.programId = state?.programId || this.programId;
+    if (typeof state.programId === "string") {
+      this.programId = state.programId;
+    }
     this.render();
   }
   getState() {
-    return { programId: this.programId };
+    return {
+      programId: this.programId
+    };
   }
   async onOpen() {
-    this.programId = this.leaf.state?.programId || this.programId;
+    const programId = this.leaf.state?.programId;
+    if (typeof programId === "string") {
+      this.programId = programId;
+    }
     this.render();
   }
   render() {
@@ -3208,7 +3241,11 @@ var ProgramView = class extends import_obsidian13.ItemView {
     root.empty();
     root.addClass("los-root", "los-program-view");
     if (!this.plugin.store.ready) {
-      pageHeader(root, "LearningOS", "Projection unavailable");
+      pageHeader(
+        root,
+        "LearningOS",
+        "Projection unavailable"
+      );
       empty(
         root,
         "The interface contract could not be loaded",
@@ -3218,31 +3255,79 @@ var ProgramView = class extends import_obsidian13.ItemView {
       );
       return;
     }
-    if (this.programId === "queue-needs-map") return this.renderNeedsMap(root);
-    if (this.programId === "inbox") return this.renderInbox(root);
-    const program = this.plugin.store.get(this.programId);
+    if (this.programId === "queue-needs-map") {
+      this.renderNeedsMap(root);
+      return;
+    }
+    if (this.programId === "inbox") {
+      this.renderInbox(root);
+      return;
+    }
+    const program = this.programId ? this.plugin.store.get(this.programId) : null;
     if (!program) {
-      empty(root, "Area unavailable", "Return Home and choose another area.");
+      empty(
+        root,
+        "Area unavailable",
+        "Return Home and choose another area."
+      );
       return;
     }
     pageHeader(root, "", "Learn");
-    const tabs = root.createDiv({ cls: "los-tabs", attr: { role: "tablist" } });
+    const tabs = root.createDiv({
+      cls: "los-tabs",
+      attr: {
+        role: "tablist"
+      }
+    });
     for (const [areaId, title] of LEARN_AREAS) {
       const active = areaId === program.id;
-      const tab = button(tabs, title, () => this.plugin.openLearn(areaId), active ? "cta" : "quiet");
-      tab.setAttrs({ role: "tab", "aria-selected": String(active) });
+      const tab = button(
+        tabs,
+        title,
+        () => this.plugin.openLearn(areaId),
+        active ? "cta" : "quiet"
+      );
+      tab.setAttrs({
+        role: "tab",
+        "aria-selected": String(active)
+      });
     }
-    if (program.description) root.createEl("p", { cls: "los-muted", text: program.description });
+    if (typeof program.description === "string" && program.description) {
+      root.createEl("p", {
+        cls: "los-muted",
+        text: program.description
+      });
+    }
     const modules = this.plugin.store.modulesFor(program.id);
-    const list = root.createDiv({ cls: "los-learning-list" });
-    if (!modules.length) empty(root, "No modules in this area yet", "Nothing is hidden.");
-    for (const module2 of modules) progressRow(list, this.plugin, module2);
-    if (program.semester_bound) {
+    const list = root.createDiv({
+      cls: "los-learning-list"
+    });
+    if (!modules.length) {
+      empty(
+        root,
+        "No modules in this area yet",
+        "Nothing is hidden."
+      );
+    }
+    for (const module2 of modules) {
+      progressRow(list, this.plugin, module2);
+    }
+    if (Boolean(program.semester_bound)) {
       const semesters = disclosure(root, "Semesters");
-      for (const semester of program.semesters || []) {
-        const row = semesters.createDiv({ cls: "los-row" });
-        row.createEl("strong", { text: semester.title });
-        badge(row, semester.status, semester.status);
+      for (const semester of readProgramSemesters(
+        program.semesters
+      )) {
+        const row = semesters.createDiv({
+          cls: "los-row"
+        });
+        row.createEl("strong", {
+          text: semester.title
+        });
+        badge(
+          row,
+          semester.status,
+          semester.status
+        );
       }
     }
     this.renderCoordination(root);
@@ -3254,98 +3339,218 @@ var ProgramView = class extends import_obsidian13.ItemView {
    */
   renderCoordination(root) {
     const coordination = this.plugin.store.get("coordination");
-    const rows = ["Priorities", "Commitments", "Dependencies", "Deferrals"].map((heading) => [heading, projectedExcerpt(coordination?.sections?.[heading], 1600)]).filter(([, body]) => body);
-    if (!rows.length) return;
-    const panel = disclosure(root, "Semester coordination", "los-coordination-details");
+    const sections = isRecord3(coordination?.sections) ? coordination.sections : {};
+    const rows = COORDINATION_HEADINGS.map(
+      (heading) => [
+        heading,
+        projectedExcerpt(
+          sections[heading],
+          1600
+        )
+      ]
+    ).filter((row) => Boolean(row[1]));
+    if (!rows.length) {
+      return;
+    }
+    const panel = disclosure(
+      root,
+      "Semester coordination",
+      "los-coordination-details"
+    );
     for (const [heading, body] of rows) {
-      const row = panel.createDiv({ cls: "los-coordination-row" });
-      row.createEl("strong", { text: heading });
-      row.createEl("p", { text: body });
+      const row = panel.createDiv({
+        cls: "los-coordination-row"
+      });
+      row.createEl("strong", {
+        text: heading
+      });
+      row.createEl("p", {
+        text: body
+      });
     }
   }
   renderNeedsMap(root) {
-    pageHeader(root, "Review", "Units needing a study map");
-    const grid = root.createDiv({ cls: "los-card-grid" });
-    for (const unit of this.plugin.store.units().filter(
+    pageHeader(
+      root,
+      "Review",
+      "Units needing a study map"
+    );
+    const grid = root.createDiv({
+      cls: "los-card-grid"
+    });
+    const units = this.plugin.store.units().filter(
       (row) => !this.plugin.store.mapForUnit(row.id)
-    )) {
+    );
+    for (const unit of units) {
       unitCard(grid, this.plugin, unit);
     }
   }
   renderInbox(root) {
-    pageHeader(root, "", "Capture", "You capture; the operator files.");
+    pageHeader(
+      root,
+      "",
+      "Capture",
+      "You capture; the operator files."
+    );
     const count = this.plugin.store.data?.counts?.inbox_items || 0;
-    const wrap = section(root, `${count} item${count === 1 ? "" : "s"} awaiting routing`);
-    const form = wrap.createDiv({ cls: "los-capture-grid" });
-    const textPanel = form.createDiv({ cls: "los-capture-panel" });
-    textPanel.createEl("h3", { text: "Quick text" });
+    const wrap = section(
+      root,
+      `${count} item${count === 1 ? "" : "s"} awaiting routing`
+    );
+    const form = wrap.createDiv({
+      cls: "los-capture-grid"
+    });
+    const textPanel = form.createDiv({
+      cls: "los-capture-panel"
+    });
+    textPanel.createEl("h3", {
+      text: "Quick text"
+    });
     const title = textPanel.createEl("input", {
       cls: "los-search los-capture-title",
-      attr: { type: "text", placeholder: "Optional title", "aria-label": "Capture title" }
+      attr: {
+        type: "text",
+        placeholder: "Optional title",
+        "aria-label": "Capture title"
+      }
     });
     const editor = textPanel.createEl("textarea", {
       cls: "los-note-editor los-capture-editor",
-      attr: { placeholder: "Paste a link, thought, question, or fragment\u2026", "aria-label": "Capture text" }
+      attr: {
+        placeholder: "Paste a link, thought, question, or fragment\u2026",
+        "aria-label": "Capture text"
+      }
     });
     const draft = this.plugin.getInboxDraft();
     title.value = draft.title || "";
     editor.value = draft.text || "";
-    const status = textPanel.createDiv({ cls: "los-draft-status", attr: { "aria-live": "polite" } });
-    const captureButton = button(textPanel, "Capture text", () => {
-      const text = editor.value.trim();
-      if (!text) {
-        new import_obsidian13.Notice("Enter some text before capturing.");
-        editor.focus();
-        return;
+    const status = textPanel.createDiv({
+      cls: "los-draft-status",
+      attr: {
+        "aria-live": "polite"
       }
-      this.capture(
-        () => this.plugin.gateway.captureText(text, title.value.trim()),
-        () => {
-          this.plugin.clearInboxDraft();
-          editor.value = "";
-          title.value = "";
+    });
+    const captureButton = button(
+      textPanel,
+      "Capture text",
+      () => {
+        const text = editor.value.trim();
+        if (!text) {
+          new import_obsidian13.Notice(
+            "Enter some text before capturing."
+          );
+          editor.focus();
+          return;
         }
-      );
-    }, "cta");
+        this.capture(
+          () => this.plugin.gateway.captureText(
+            text,
+            title.value.trim()
+          ),
+          () => {
+            this.plugin.clearInboxDraft();
+            editor.value = "";
+            title.value = "";
+          }
+        );
+      },
+      "cta"
+    );
     const syncDraft = () => {
-      const hasDraft = Boolean(title.value || editor.value);
-      this.plugin.setInboxDraft(title.value, editor.value);
+      const hasDraft = Boolean(
+        title.value || editor.value
+      );
+      this.plugin.setInboxDraft(
+        title.value,
+        editor.value
+      );
       captureButton.disabled = !editor.value.trim();
-      status.setText(hasDraft ? "Draft kept locally until capture." : "Nothing entered yet.");
-      status.toggleClass("is-dirty", hasDraft);
+      status.setText(
+        hasDraft ? "Draft kept locally until capture." : "Nothing entered yet."
+      );
+      status.toggleClass(
+        "is-dirty",
+        hasDraft
+      );
     };
-    title.addEventListener("input", syncDraft);
-    editor.addEventListener("input", syncDraft);
+    title.addEventListener(
+      "input",
+      syncDraft
+    );
+    editor.addEventListener(
+      "input",
+      syncDraft
+    );
     captureButton.disabled = !editor.value.trim();
-    status.setText(title.value || editor.value ? "Draft kept locally until capture." : "Nothing entered yet.");
-    status.toggleClass("is-dirty", Boolean(title.value || editor.value));
-    const filePanel = form.createDiv({ cls: "los-capture-panel" });
-    filePanel.createEl("h3", { text: "File or handwriting" });
-    filePanel.createEl("p", { cls: "los-muted", text: "The original is copied into the inbox; it is not moved or renamed." });
+    status.setText(
+      title.value || editor.value ? "Draft kept locally until capture." : "Nothing entered yet."
+    );
+    status.toggleClass(
+      "is-dirty",
+      Boolean(title.value || editor.value)
+    );
+    const filePanel = form.createDiv({
+      cls: "los-capture-panel"
+    });
+    filePanel.createEl("h3", {
+      text: "File or handwriting"
+    });
+    filePanel.createEl("p", {
+      cls: "los-muted",
+      text: "The original is copied into the inbox; it is not moved or renamed."
+    });
     const picker = filePanel.createEl("input", {
       cls: "los-file-input los-capture-file",
-      attr: { type: "file", "aria-label": "Choose inbox capture file" }
-    });
-    button(filePanel, "Capture selected file", () => {
-      const localPath = localFilePath(picker.files?.[0]);
-      if (!localPath) {
-        new import_obsidian13.Notice("Choose a local file first.");
-        return;
+      attr: {
+        type: "file",
+        "aria-label": "Choose inbox capture file"
       }
-      this.capture(() => this.plugin.gateway.captureFile(localPath), () => {
-        picker.value = "";
-      });
-    }, "quiet");
+    });
+    button(
+      filePanel,
+      "Capture selected file",
+      () => {
+        const localPath = localFilePath(picker.files?.[0]);
+        if (!localPath) {
+          new import_obsidian13.Notice(
+            "Choose a local file first."
+          );
+          return;
+        }
+        this.capture(
+          () => this.plugin.gateway.captureFile(
+            localPath
+          ),
+          () => {
+            picker.value = "";
+          }
+        );
+      },
+      "quiet"
+    );
   }
   async capture(action, clear = null) {
-    if (this.plugin.gateway.isBusy) new import_obsidian13.Notice("Queued behind the running LearningOS write.");
+    if (this.plugin.gateway.isBusy) {
+      new import_obsidian13.Notice(
+        "Queued behind the running LearningOS write."
+      );
+    }
     try {
-      await this.plugin.mutate(async () => {
-        await action();
-        await this.plugin.gateway.call(["generate"], { expectJson: false });
-      });
+      await this.plugin.mutate(
+        async () => {
+          await action();
+          await this.plugin.gateway.call(
+            ["generate"],
+            {
+              expectJson: false
+            }
+          );
+        }
+      );
       clear?.();
-      new import_obsidian13.Notice("Captured to the LearningOS inbox.");
+      new import_obsidian13.Notice(
+        "Captured to the LearningOS inbox."
+      );
       this.render();
     } catch (error) {
       new import_obsidian13.Notice(errorMessage5(error));
@@ -3595,7 +3800,7 @@ var ProjectView = class extends import_obsidian14.ItemView {
 var import_obsidian15 = require("obsidian");
 var fs = __toESM(require("node:fs"));
 var nodePath = __toESM(require("node:path"));
-function isRecord3(value) {
+function isRecord4(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function errorMessage6(error) {
@@ -3738,7 +3943,7 @@ var DiagnosticsView = class extends import_obsidian15.ItemView {
       const parsed = JSON.parse(
         fs.readFileSync(target, "utf8")
       );
-      if (!isRecord3(parsed)) {
+      if (!isRecord4(parsed)) {
         return fallback;
       }
       return {
@@ -3823,19 +4028,19 @@ var import_obsidian16 = require("obsidian");
 function errorMessage7(error) {
   return error instanceof Error ? error.message : String(error);
 }
-function isRecord4(value) {
+function isRecord5(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function optionalString(value) {
   return typeof value === "string" ? value : void 0;
 }
 function readShelvingProposal(value) {
-  if (!isRecord4(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
+  if (!isRecord5(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
     return null;
   }
   const items = [];
   for (const candidate of value.items) {
-    if (!isRecord4(candidate) || typeof candidate.id !== "string" || typeof candidate.title !== "string") {
+    if (!isRecord5(candidate) || typeof candidate.id !== "string" || typeof candidate.title !== "string") {
       continue;
     }
     const item = {
