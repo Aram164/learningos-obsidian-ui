@@ -2168,7 +2168,57 @@ var GardenView = class extends import_obsidian8.ItemView {
 
 // src/views/home-view.ts
 var import_obsidian9 = require("obsidian");
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function projectedString2(value) {
+  return typeof value === "string" && value ? value : null;
+}
+function projectedText(value) {
+  if (typeof value === "string" || typeof value === "number") {
+    const text = String(value);
+    return text ? text : null;
+  }
+  return null;
+}
+function projectedLabel2(record) {
+  return projectedString2(record.title) ?? projectedString2(record.label) ?? projectedString2(record.id) ?? "Untitled";
+}
+function projectedRecords(value) {
+  return Array.isArray(value) ? value.filter(
+    (candidate) => isRecord3(candidate)
+  ) : [];
+}
+function projectedStrings(value) {
+  return Array.isArray(value) ? value.filter(
+    (candidate) => typeof candidate === "string"
+  ) : [];
+}
+function projectedCount(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+function readResumePointer(value) {
+  if (!isRecord3(value)) {
+    return {};
+  }
+  return {
+    unit_id: projectedString2(value.unit_id) ?? void 0,
+    study_map_id: projectedString2(value.study_map_id) ?? void 0,
+    stage_id: projectedString2(value.stage_id) ?? void 0,
+    module_id: projectedString2(value.module_id) ?? void 0
+  };
+}
+function firstProjectedModuleId(value) {
+  for (const candidate of projectedRecords(value)) {
+    const moduleId = projectedString2(candidate.module_id);
+    if (moduleId) {
+      return moduleId;
+    }
+  }
+  return null;
+}
 var HomeView = class extends import_obsidian9.ItemView {
+  plugin;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -2187,16 +2237,27 @@ var HomeView = class extends import_obsidian9.ItemView {
   }
   greeting() {
     const hour = (/* @__PURE__ */ new Date()).getHours();
-    if (hour < 12) return "Good morning";
-    if (hour < 18) return "Good afternoon";
+    if (hour < 12) {
+      return "Good morning";
+    }
+    if (hour < 18) {
+      return "Good afternoon";
+    }
     return "Good evening";
   }
   render() {
     const root = this.contentEl;
     root.empty();
-    root.addClass("los-root", "los-home");
+    root.addClass(
+      "los-root",
+      "los-home"
+    );
     if (!this.plugin.store.ready) {
-      pageHeader(root, "LearningOS", "Projection unavailable");
+      pageHeader(
+        root,
+        "LearningOS",
+        "Projection unavailable"
+      );
       empty(
         root,
         "The interface contract could not be loaded",
@@ -2213,22 +2274,45 @@ var HomeView = class extends import_obsidian9.ItemView {
       "Resume what matters without rebuilding the context first."
     );
     header.addClass("los-home-header");
-    const actions = header.createDiv({ cls: "los-actions los-home-header-actions" });
-    button(actions, "Capture", () => this.plugin.openCapture(), "quiet");
-    const search = button(actions, "Search", () => this.plugin.openGlobalSearch(), "quiet");
-    search.setAttribute("aria-label", "Search LearningOS");
+    const actions = header.createDiv({
+      cls: "los-actions los-home-header-actions"
+    });
+    button(
+      actions,
+      "Capture",
+      () => this.plugin.openCapture(),
+      "quiet"
+    );
+    const search = button(
+      actions,
+      "Search",
+      () => this.plugin.openGlobalSearch(),
+      "quiet"
+    );
+    search.setAttribute(
+      "aria-label",
+      "Search LearningOS"
+    );
     this.renderContinue(root);
     this.renderToday(root);
     this.renderElsewhere(root);
   }
   /** The one filled action on Home. */
   renderContinue(root) {
-    const pointer = this.plugin.store.data.resume_pointer || {};
-    const unit = this.plugin.store.get(pointer.unit_id);
-    const map = this.plugin.store.get(pointer.study_map_id);
-    const stage = this.plugin.store.stage(pointer.stage_id);
-    const wrap = root.createDiv({ cls: "los-continue" });
-    if (!unit || !stage) {
+    const pointer = readResumePointer(
+      this.plugin.store.data?.resume_pointer
+    );
+    const unit = pointer.unit_id ? this.plugin.store.get(pointer.unit_id) : null;
+    const map = pointer.study_map_id ? this.plugin.store.get(
+      pointer.study_map_id
+    ) : null;
+    const stage = pointer.stage_id ? this.plugin.store.stage(
+      pointer.stage_id
+    ) : null;
+    const wrap = root.createDiv({
+      cls: "los-continue"
+    });
+    if (!unit || !stage || !pointer.unit_id || !pointer.stage_id) {
       empty(
         wrap,
         "Nothing to resume yet",
@@ -2238,30 +2322,61 @@ var HomeView = class extends import_obsidian9.ItemView {
       );
       return;
     }
-    wrap.createDiv({ cls: "los-kicker", text: "Continue learning" });
-    const body = wrap.createDiv({ cls: "los-continue-body" });
-    const copy = body.createDiv({ cls: "los-continue-copy" });
-    const module2 = this.plugin.store.get(unit.module_id);
+    wrap.createDiv({
+      cls: "los-kicker",
+      text: "Continue learning"
+    });
+    const body = wrap.createDiv({
+      cls: "los-continue-body"
+    });
+    const copy = body.createDiv({
+      cls: "los-continue-copy"
+    });
+    const unitModuleId = projectedString2(unit.module_id);
+    const module2 = unitModuleId ? this.plugin.store.get(unitModuleId) : null;
     copy.createDiv({
       cls: "los-continue-module",
-      text: `${module2?.title || unit.module_id} \xB7 ${unit.title}`
+      text: `${module2 ? projectedLabel2(module2) : unitModuleId ?? "Unknown module"} \xB7 ${projectedLabel2(unit)}`
     });
-    copy.createEl("h2", { text: stage.title });
-    const stages = Array.isArray(map?.stages) ? map.stages.filter(
-      (row) => Boolean(row) && typeof row === "object"
-    ) : [];
+    copy.createEl("h2", {
+      text: projectedLabel2(stage)
+    });
+    const stages = projectedRecords(map?.stages);
     const position = stages.findIndex(
-      (row) => row.id === stage.id
+      (row) => projectedString2(row.id) === pointer.stage_id
     );
-    const meta = copy.createDiv({ cls: "los-continue-meta" });
-    if (stages.length) meta.createSpan({ text: `Stage ${position >= 0 ? position + 1 : 1} of ${stages.length}` });
-    if (stage.estimate_minutes) meta.createSpan({ text: `${stage.estimate_minutes} min planned` });
+    const meta = copy.createDiv({
+      cls: "los-continue-meta"
+    });
+    if (stages.length) {
+      meta.createSpan({
+        text: `Stage ${position >= 0 ? position + 1 : 1} of ${stages.length}`
+      });
+    }
+    const estimate = projectedText(
+      stage.estimate_minutes
+    );
+    if (estimate) {
+      meta.createSpan({
+        text: `${estimate} min planned`
+      });
+    }
     copy.createDiv({
       cls: "los-continue-context",
       text: "Your selected stage, exact resources, and open working state are kept together."
     });
-    const actions = body.createDiv({ cls: "los-actions" });
-    button(actions, "Continue session", () => this.plugin.openUnit(unit.id, stage.id), "cta");
+    const actions = body.createDiv({
+      cls: "los-actions"
+    });
+    button(
+      actions,
+      "Continue session",
+      () => this.plugin.openUnit(
+        pointer.unit_id,
+        pointer.stage_id
+      ),
+      "cta"
+    );
   }
   renderToday(root) {
     const sectionEl = section(
@@ -2272,37 +2387,85 @@ var HomeView = class extends import_obsidian9.ItemView {
     const items = [];
     const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
     const upcoming = this.plugin.store.rows("academic_deadlines").filter(
-      (row) => (row.end_date || row.start_date || "") >= today
+      (row) => {
+        const boundary = projectedString2(row.end_date) ?? projectedString2(
+          row.start_date
+        ) ?? "";
+        return boundary >= today;
+      }
     ).sort(
-      (left, right) => String(left.start_date || left.end_date).localeCompare(String(right.start_date || right.end_date))
+      (left, right) => {
+        const leftDate = projectedString2(
+          left.start_date
+        ) ?? projectedString2(
+          left.end_date
+        ) ?? "";
+        const rightDate = projectedString2(
+          right.start_date
+        ) ?? projectedString2(
+          right.end_date
+        ) ?? "";
+        return leftDate.localeCompare(
+          rightDate
+        );
+      }
     );
     for (const deadline of upcoming.slice(0, 2)) {
-      const moduleId = deadline.module_id || deadline.modules?.[0]?.module_id;
-      const title = deadline.kind === "registration-window" ? deadline.label : deadline.title || deadline.label;
-      const date = deadline.end_date && deadline.end_date !== deadline.start_date ? `${deadline.start_date} \u2192 ${deadline.end_date}` : deadline.start_date || deadline.end_date || "Date pending";
+      const moduleId = projectedString2(deadline.module_id) ?? firstProjectedModuleId(
+        deadline.modules
+      );
+      const kind = projectedString2(deadline.kind);
+      const label = projectedString2(deadline.label);
+      const title = kind === "registration-window" ? label ?? projectedLabel2(deadline) : projectedString2(deadline.title) ?? label ?? projectedLabel2(deadline);
+      const startDate = projectedString2(deadline.start_date);
+      const endDate = projectedString2(deadline.end_date);
+      const date = endDate && startDate && endDate !== startDate ? `${startDate} \u2192 ${endDate}` : startDate ?? endDate ?? "Date pending";
+      const registrationState = projectedString2(
+        deadline.registration_state
+      );
+      const registrationDetail = registrationState && registrationState !== "registered" ? ` \xB7 ${registrationState}` : "";
       items.push({
         title,
-        detail: `${date}${deadline.registration_state && deadline.registration_state !== "registered" ? ` \xB7 ${deadline.registration_state}` : ""}`,
+        detail: `${date}${registrationDetail}`,
         actionLabel: moduleId ? "Open module" : "",
-        action: moduleId ? () => this.plugin.openModule(moduleId) : null
+        action: moduleId ? () => this.plugin.openModule(
+          moduleId
+        ) : null
       });
     }
-    const inbox = this.plugin.store.data.counts?.inbox_items || 0;
+    const inbox = projectedCount(
+      this.plugin.store.data?.counts?.inbox_items
+    );
     const shelving = this.plugin.store.units().filter(
-      (row) => row.status === "ready-to-shelve"
+      (row) => projectedString2(row.status) === "ready-to-shelve"
     ).length;
     const needsMap = this.plugin.store.units().filter(
-      (row) => !this.plugin.store.mapForUnit(row.id)
+      (row) => {
+        const unitId = projectedString2(row.id);
+        return Boolean(unitId) && !this.plugin.store.mapForUnit(
+          unitId
+        );
+      }
     ).length;
     const reviewCount = inbox + shelving + needsMap;
     if (reviewCount) {
+      const details = [];
+      if (inbox) {
+        details.push(`${inbox} inbox`);
+      }
+      if (shelving) {
+        details.push(
+          `${shelving} ready to shelve`
+        );
+      }
+      if (needsMap) {
+        details.push(
+          `${needsMap} without a map`
+        );
+      }
       items.push({
         title: `${reviewCount} decision${reviewCount === 1 ? "" : "s"} waiting`,
-        detail: [
-          inbox && `${inbox} inbox`,
-          shelving && `${shelving} ready to shelve`,
-          needsMap && `${needsMap} without a map`
-        ].filter(Boolean).join(" \xB7 "),
+        detail: details.join(" \xB7 "),
         actionLabel: "Open review",
         action: () => this.plugin.openReview()
       });
@@ -2310,18 +2473,29 @@ var HomeView = class extends import_obsidian9.ItemView {
     const garden = this.plugin.store.gardenEntries()[0];
     if (garden) {
       items.push({
-        title: garden.title,
+        title: projectedLabel2(garden),
         detail: "Recent Garden capture",
         actionLabel: "Open Garden",
         action: () => this.plugin.openGarden()
       });
     }
     if (!items.length) {
-      empty(sectionEl, "Nothing time-sensitive", "Continue the active learning session when you are ready.");
+      empty(
+        sectionEl,
+        "Nothing time-sensitive",
+        "Continue the active learning session when you are ready."
+      );
       return;
     }
-    const list = sectionEl.createDiv({ cls: "los-home-list" });
-    for (const item of items.slice(0, 4)) this.renderHomeRow(list, item);
+    const list = sectionEl.createDiv({
+      cls: "los-home-list"
+    });
+    for (const item of items.slice(0, 4)) {
+      this.renderHomeRow(
+        list,
+        item
+      );
+    }
   }
   renderElsewhere(root) {
     const sectionEl = section(
@@ -2329,75 +2503,187 @@ var HomeView = class extends import_obsidian9.ItemView {
       "Continue elsewhere",
       "Other active modules and projects, kept secondary to the current session."
     );
-    const pointer = this.plugin.store.data.resume_pointer || {};
-    const rows = [
-      ...this.plugin.store.modules().filter(
-        (module2) => module2.id !== pointer.module_id
-      ).filter(
-        (module2) => !["complete", "archived"].includes(module2.status)
-      ).map((record) => ({
+    const pointer = readResumePointer(
+      this.plugin.store.data?.resume_pointer
+    );
+    const rows = [];
+    for (const record of this.plugin.store.modules()) {
+      const recordId = projectedString2(record.id);
+      if (!recordId || recordId === pointer.module_id) {
+        continue;
+      }
+      const status = projectedString2(record.status);
+      if (status && ["complete", "archived"].includes(status)) {
+        continue;
+      }
+      rows.push({
         record,
-        type: record.kind === "skill" ? "Skill" : "Module",
-        open: () => this.plugin.openModule(record.id)
-      })),
-      ...this.plugin.store.projects().filter(
-        (project) => !["completed", "archived"].includes(project.status)
-      ).map((record) => ({
+        type: projectedString2(record.kind) === "skill" ? "Skill" : "Module",
+        open: () => this.plugin.openModule(
+          recordId
+        )
+      });
+    }
+    for (const record of this.plugin.store.projects()) {
+      const recordId = projectedString2(record.id);
+      if (!recordId) {
+        continue;
+      }
+      const status = projectedString2(record.status);
+      if (status && ["completed", "archived"].includes(status)) {
+        continue;
+      }
+      rows.push({
         record,
         type: "Project",
-        open: () => this.plugin.openProject(record.id)
-      }))
-    ].slice(0, 5);
-    if (!rows.length) {
-      empty(sectionEl, "No other active work", "New modules and projects will appear here when projected.");
+        open: () => this.plugin.openProject(
+          recordId
+        )
+      });
+    }
+    const visibleRows = rows.slice(0, 5);
+    if (!visibleRows.length) {
+      empty(
+        sectionEl,
+        "No other active work",
+        "New modules and projects will appear here when projected."
+      );
       return;
     }
-    const list = sectionEl.createDiv({ cls: "los-home-list" });
-    for (const row of rows) {
-      this.renderHomeRow(list, {
-        title: row.record.title,
-        detail: `${row.type}${row.type === "Project" ? "" : this.moduleNextAction(row.record) ? ` \xB7 ${this.moduleNextAction(row.record)}` : ""}`,
-        actionLabel: "Open",
-        action: row.open
-      });
+    const list = sectionEl.createDiv({
+      cls: "los-home-list"
+    });
+    for (const row of visibleRows) {
+      const nextAction = row.type === "Project" ? "" : this.moduleNextAction(
+        row.record
+      );
+      this.renderHomeRow(
+        list,
+        {
+          title: projectedLabel2(
+            row.record
+          ),
+          detail: `${row.type}${nextAction ? ` \xB7 ${nextAction}` : ""}`,
+          actionLabel: "Open",
+          action: row.open
+        }
+      );
     }
   }
   renderHomeRow(parent, item) {
-    const row = parent.createDiv({ cls: "los-home-row" });
-    const copy = row.createDiv({ cls: "los-home-row-copy" });
-    copy.createEl("strong", { text: item.title });
-    if (item.detail) copy.createDiv({ cls: "los-micro", text: item.detail });
-    if (item.actionLabel && item.action) button(row, item.actionLabel, item.action, "tertiary");
+    const row = parent.createDiv({
+      cls: "los-home-row"
+    });
+    const copy = row.createDiv({
+      cls: "los-home-row-copy"
+    });
+    copy.createEl("strong", {
+      text: item.title
+    });
+    if (item.detail) {
+      copy.createDiv({
+        cls: "los-micro",
+        text: item.detail
+      });
+    }
+    if (item.actionLabel && item.action) {
+      button(
+        row,
+        item.actionLabel,
+        item.action,
+        "tertiary"
+      );
+    }
     return row;
   }
   nextWorkspaceDate(workspace) {
-    if (workspace.deadline) return String(workspace.deadline);
+    const directDeadline = projectedString2(workspace.deadline);
+    if (directDeadline) {
+      return directDeadline;
+    }
     const moduleIds = new Set(
-      (Array.isArray(workspace.module_ids) ? workspace.module_ids : []).filter(
-        (id) => typeof id === "string"
+      projectedStrings(
+        workspace.module_ids
       )
     );
     const dates = [];
-    for (const row of this.plugin.store.rows("academic_deadlines")) {
-      if (row.kind === "exam" && moduleIds.has(row.module_id)) dates.push(row.start_date);
-      if (row.kind === "registration-window" && (row.modules || []).some(
-        (module2) => moduleIds.has(module2.module_id)
-      )) dates.push(row.start_date);
+    for (const row of this.plugin.store.rows(
+      "academic_deadlines"
+    )) {
+      const kind = projectedString2(row.kind);
+      const moduleId = projectedString2(row.module_id);
+      const startDate = projectedString2(row.start_date);
+      if (kind === "exam" && moduleId && startDate && moduleIds.has(moduleId)) {
+        dates.push(startDate);
+      }
+      if (kind === "registration-window" && startDate && projectedRecords(
+        row.modules
+      ).some(
+        (module2) => {
+          const nestedModuleId = projectedString2(
+            module2.module_id
+          );
+          return Boolean(nestedModuleId) && moduleIds.has(
+            nestedModuleId
+          );
+        }
+      )) {
+        dates.push(startDate);
+      }
     }
-    return dates.filter(Boolean).sort()[0] || "9999";
+    return dates.sort()[0] ?? "9999";
   }
   moduleNextAction(module2) {
+    const moduleId = projectedString2(module2.id);
+    if (!moduleId) {
+      return "";
+    }
     const workspace = this.plugin.store.of("workspace").filter(
-      (row) => !row.archived && row.status !== "complete" && (row.module_ids || []).includes(module2.id)
+      (row) => {
+        const status = projectedString2(row.status);
+        return row.archived !== true && status !== "complete" && projectedStrings(
+          row.module_ids
+        ).includes(moduleId);
+      }
     ).sort(
-      (a, b) => this.nextWorkspaceDate(a).localeCompare(this.nextWorkspaceDate(b))
+      (left, right) => this.nextWorkspaceDate(left).localeCompare(
+        this.nextWorkspaceDate(
+          right
+        )
+      )
     )[0];
-    if (workspace?.next_action) return projectedExcerpt(workspace.next_action, 100);
-    for (const unit of this.plugin.store.unitsFor(module2.id)) {
-      const map = this.plugin.store.mapForUnit(unit.id);
-      if (!map) continue;
-      const stage = (map.stages || []).find((row) => row.id === map.current_stage) || (map.stages || []).find((row) => row.status === "active") || (map.stages || []).find((row) => row.status !== "complete");
-      if (stage?.title) return stage.title;
+    if (workspace?.next_action) {
+      return projectedExcerpt(
+        workspace.next_action,
+        100
+      );
+    }
+    for (const unit of this.plugin.store.unitsFor(moduleId)) {
+      const unitId = projectedString2(unit.id);
+      if (!unitId) {
+        continue;
+      }
+      const map = this.plugin.store.mapForUnit(
+        unitId
+      );
+      if (!map) {
+        continue;
+      }
+      const stages = projectedRecords(map.stages);
+      const currentStageId = projectedString2(
+        map.current_stage
+      );
+      const stage = (currentStageId ? stages.find(
+        (row) => projectedString2(row.id) === currentStageId
+      ) : void 0) ?? stages.find(
+        (row) => projectedString2(row.status) === "active"
+      ) ?? stages.find(
+        (row) => projectedString2(row.status) !== "complete"
+      );
+      const stageTitle = stage ? projectedString2(stage.title) : null;
+      if (stageTitle) {
+        return stageTitle;
+      }
     }
     return "";
   }
@@ -3426,7 +3712,7 @@ var COORDINATION_HEADINGS = [
   "Dependencies",
   "Deferrals"
 ];
-function isRecord3(value) {
+function isRecord4(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function readProgramSemesters(value) {
@@ -3435,7 +3721,7 @@ function readProgramSemesters(value) {
   }
   const semesters = [];
   for (const candidate of value) {
-    if (!isRecord3(candidate) || typeof candidate.title !== "string" || typeof candidate.status !== "string") {
+    if (!isRecord4(candidate) || typeof candidate.title !== "string" || typeof candidate.status !== "string") {
       continue;
     }
     semesters.push({
@@ -3582,7 +3868,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
    */
   renderCoordination(root) {
     const coordination = this.plugin.store.get("coordination");
-    const sections = isRecord3(coordination?.sections) ? coordination.sections : {};
+    const sections = isRecord4(coordination?.sections) ? coordination.sections : {};
     const rows = COORDINATION_HEADINGS.map(
       (heading) => [
         heading,
@@ -4043,7 +4329,7 @@ var ProjectView = class extends import_obsidian14.ItemView {
 var import_obsidian15 = require("obsidian");
 var fs = __toESM(require("node:fs"));
 var nodePath = __toESM(require("node:path"));
-function isRecord4(value) {
+function isRecord5(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function errorMessage6(error) {
@@ -4186,7 +4472,7 @@ var DiagnosticsView = class extends import_obsidian15.ItemView {
       const parsed = JSON.parse(
         fs.readFileSync(target, "utf8")
       );
-      if (!isRecord4(parsed)) {
+      if (!isRecord5(parsed)) {
         return fallback;
       }
       return {
@@ -4271,19 +4557,19 @@ var import_obsidian16 = require("obsidian");
 function errorMessage7(error) {
   return error instanceof Error ? error.message : String(error);
 }
-function isRecord5(value) {
+function isRecord6(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function optionalString(value) {
   return typeof value === "string" ? value : void 0;
 }
 function readShelvingProposal(value) {
-  if (!isRecord5(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
+  if (!isRecord6(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
     return null;
   }
   const items = [];
   for (const candidate of value.items) {
-    if (!isRecord5(candidate) || typeof candidate.id !== "string" || typeof candidate.title !== "string") {
+    if (!isRecord6(candidate) || typeof candidate.id !== "string" || typeof candidate.title !== "string") {
       continue;
     }
     const item = {
