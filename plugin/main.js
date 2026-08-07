@@ -4089,6 +4089,103 @@ var ProgramView = class extends import_obsidian13.ItemView {
 
 // src/views/project-view.ts
 var import_obsidian14 = require("obsidian");
+var PROJECT_TABS = [
+  ["overview", "Overview"],
+  ["structure", "Structure"],
+  ["linked-materials", "Linked Materials"],
+  ["files", "Files"],
+  ["decisions", "Decisions"]
+];
+function isRecord5(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function projectedString3(value) {
+  return typeof value === "string" && value ? value : null;
+}
+function projectedText2(value) {
+  if (typeof value !== "string" && typeof value !== "number") {
+    return null;
+  }
+  const text = String(value);
+  return text ? text : null;
+}
+function projectedLabel3(record) {
+  return projectedString3(record.title) ?? projectedString3(record.label) ?? projectedString3(record.id) ?? "Untitled";
+}
+function projectedRecords2(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(
+    (candidate) => isRecord5(candidate)
+  );
+}
+function projectedStrings2(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.filter(
+    (candidate) => typeof candidate === "string"
+  );
+}
+function projectedListLength2(value) {
+  return Array.isArray(value) ? value.length : 0;
+}
+function isProjectTab(value) {
+  return PROJECT_TABS.some(
+    ([tab]) => tab === value
+  );
+}
+function readProjectViewState(value) {
+  if (!isRecord5(value)) {
+    return {};
+  }
+  const screen = value.screen === "detail" ? "detail" : value.screen === "list" ? "list" : void 0;
+  const projectId = value.projectId === null ? null : projectedString3(value.projectId) ?? void 0;
+  const tab = isProjectTab(value.tab) ? value.tab : void 0;
+  const query = typeof value.query === "string" ? value.query : void 0;
+  return {
+    screen,
+    projectId,
+    tab,
+    query
+  };
+}
+function readProjectBoundaries(value) {
+  const boundaries = isRecord5(value) ? value : {};
+  return {
+    confidentiality: projectedString3(
+      boundaries.confidentiality
+    ) ?? "unspecified",
+    externalCodeAccess: projectedString3(
+      boundaries.external_code_access
+    ) ?? "unspecified",
+    notes: projectedString3(boundaries.notes)
+  };
+}
+function readProjectStructure(value) {
+  const structure = isRecord5(value) ? value : {};
+  return {
+    kind: projectedString3(structure.kind) ?? "none",
+    nodes: projectedRecords2(structure.nodes)
+  };
+}
+function readProjectRelationship(value) {
+  const id = projectedString3(value.id);
+  const toId = projectedString3(value.to_id);
+  if (!id || !toId) {
+    return null;
+  }
+  return {
+    id,
+    toId,
+    toType: projectedString3(value.to_type) ?? "record",
+    relationType: projectedString3(value.relation_type) ?? "linked",
+    reason: projectedString3(value.reason) ?? "No rationale was projected.",
+    contribution: projectedString3(value.contribution) ?? "No contribution was projected.",
+    path: projectedString3(value.path)
+  };
+}
 var ProjectLinkReasonModal = class extends import_obsidian14.Modal {
   plugin;
   relationship;
@@ -4100,26 +4197,76 @@ var ProjectLinkReasonModal = class extends import_obsidian14.Modal {
   onOpen() {
     const root = this.contentEl;
     root.empty();
-    root.addClass("los-root", "los-linked-reason-modal");
-    this.plugin.router.openOverlay({ kind: "linked-material-reason", relationshipId: this.relationship.id });
-    pageHeader(root, "Linked material", "Why this is linked");
-    const target = this.plugin.store.get(this.relationship.to_id);
-    const relation = section(root, "Relationship");
-    relation.createEl("p", { text: `${this.relationship.to_type || "record"} \xB7 ${this.relationship.relation_type || "linked"}` });
-    const rationale = section(root, "Rationale");
-    rationale.createEl("p", { text: this.relationship.reason || "No rationale was projected." });
-    const contribution = section(root, "Contribution");
-    contribution.createEl("p", { text: this.relationship.contribution || "No contribution was projected." });
-    const actions = root.createDiv({ cls: "los-actions" });
-    if (target) button(actions, "Open target", () => {
-      this.close();
-      this.plugin.openRecord(target);
-    }, "tertiary");
-    else if (this.relationship.path) button(actions, "Open target", () => {
-      this.close();
-      this.plugin.openAuthoredPath(this.relationship.path);
-    }, "tertiary");
-    button(actions, "Close", () => this.close(), "quiet");
+    root.addClass(
+      "los-root",
+      "los-linked-reason-modal"
+    );
+    this.plugin.router.openOverlay({
+      kind: "linked-material-reason",
+      relationshipId: this.relationship.id
+    });
+    pageHeader(
+      root,
+      "Linked material",
+      "Why this is linked"
+    );
+    const target = this.plugin.store.get(
+      this.relationship.toId
+    );
+    const relation = section(
+      root,
+      "Relationship"
+    );
+    relation.createEl("p", {
+      text: `${this.relationship.toType} \xB7 ${this.relationship.relationType}`
+    });
+    const rationale = section(
+      root,
+      "Rationale"
+    );
+    rationale.createEl("p", {
+      text: this.relationship.reason
+    });
+    const contribution = section(
+      root,
+      "Contribution"
+    );
+    contribution.createEl("p", {
+      text: this.relationship.contribution
+    });
+    const actions = root.createDiv({
+      cls: "los-actions"
+    });
+    if (target) {
+      button(
+        actions,
+        "Open target",
+        () => {
+          this.close();
+          return this.plugin.openRecord(target);
+        },
+        "tertiary"
+      );
+    } else if (this.relationship.path) {
+      const path = this.relationship.path;
+      button(
+        actions,
+        "Open target",
+        () => {
+          this.close();
+          return this.plugin.openAuthoredPath(
+            path
+          );
+        },
+        "tertiary"
+      );
+    }
+    button(
+      actions,
+      "Close",
+      () => this.close(),
+      "quiet"
+    );
   }
   onClose() {
     this.plugin.router.clearOverlay();
@@ -4127,14 +4274,15 @@ var ProjectLinkReasonModal = class extends import_obsidian14.Modal {
   }
 };
 var ProjectView = class extends import_obsidian14.ItemView {
+  plugin;
+  screen = "list";
+  projectId = null;
+  tab = "overview";
+  query = "";
+  selectedElementId = null;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
-    this.screen = "list";
-    this.projectId = null;
-    this.tab = "overview";
-    this.query = "";
-    this.selectedElementId = null;
   }
   getViewType() {
     return VIEW_PROJECT;
@@ -4143,184 +4291,573 @@ var ProjectView = class extends import_obsidian14.ItemView {
     return "LearningOS \xB7 Projects";
   }
   async setState(state = {}) {
-    this.screen = state.screen || (state.projectId ? "detail" : "list");
-    this.projectId = state.projectId || null;
-    this.tab = state.tab || "overview";
-    this.query = state.query || "";
+    const projectId = typeof state.projectId === "string" ? state.projectId : null;
+    this.screen = state.screen ?? (projectId ? "detail" : "list");
+    this.projectId = projectId;
+    this.tab = state.tab ?? "overview";
+    this.query = state.query ?? "";
     this.render();
   }
   getState() {
-    return { screen: this.screen, projectId: this.projectId, tab: this.tab, query: this.query };
+    return {
+      screen: this.screen,
+      projectId: this.projectId,
+      tab: this.tab,
+      query: this.query
+    };
   }
   async onOpen() {
-    await this.setState(this.leaf.state || {});
+    await this.setState(
+      readProjectViewState(
+        this.leaf.state
+      )
+    );
   }
   render() {
     const root = this.contentEl;
     root.empty();
-    root.addClass("los-root", "los-project-view");
-    if (!this.plugin.store.ready) return empty(root, "Projects unavailable", this.plugin.store.error);
-    if (this.screen === "detail") return this.renderDetail(root);
-    return this.renderList(root);
+    root.addClass(
+      "los-root",
+      "los-project-view"
+    );
+    if (!this.plugin.store.ready) {
+      empty(
+        root,
+        "Projects unavailable",
+        this.plugin.store.error
+      );
+      return;
+    }
+    if (this.screen === "detail") {
+      this.renderDetail(root);
+      return;
+    }
+    this.renderList(root);
   }
   renderList(root) {
-    pageHeader(root, "Projects", "Projects", "Long-running work with its own structure, materials, files, and decisions.");
-    const input = root.createEl("input", {
-      cls: "los-search los-project-search",
-      attr: { type: "search", placeholder: "Search projects", "aria-label": "Search projects" }
-    });
+    pageHeader(
+      root,
+      "Projects",
+      "Projects",
+      "Long-running work with its own structure, materials, files, and decisions."
+    );
+    const input = root.createEl(
+      "input",
+      {
+        cls: "los-search los-project-search",
+        attr: {
+          type: "search",
+          placeholder: "Search projects",
+          "aria-label": "Search projects"
+        }
+      }
+    );
     input.value = this.query;
-    const results = root.createDiv({ cls: "los-project-list" });
+    const results = root.createDiv({
+      cls: "los-project-list"
+    });
     const draw = () => {
       results.empty();
-      const words = String(input.value || "").toLocaleLowerCase().split(/\s+/).filter(Boolean);
+      const words = input.value.toLocaleLowerCase().split(/\s+/).filter(Boolean);
       const rows = this.plugin.store.projects().filter(
         (project) => {
-          const hay = [project.id, project.title, project.objective, project.project_type].filter(Boolean).join(" ").toLocaleLowerCase();
+          const id = projectedString3(project.id);
+          if (!id) {
+            return false;
+          }
+          const hay = [
+            id,
+            projectedString3(project.title),
+            projectedString3(project.objective),
+            projectedString3(
+              project.project_type
+            )
+          ].filter(
+            (value) => Boolean(value)
+          ).join(" ").toLocaleLowerCase();
           return words.every(
             (word) => hay.includes(word)
           );
         }
       );
-      if (!rows.length) return empty(results, "No projects found", "No first-class project matches this query.", "Clear search", () => {
-        input.value = "";
-        input.dispatchEvent(new Event("input"));
-      });
+      if (!rows.length) {
+        empty(
+          results,
+          "No projects found",
+          "No first-class project matches this query.",
+          "Clear search",
+          () => {
+            input.value = "";
+            input.dispatchEvent(
+              new Event("input")
+            );
+          }
+        );
+        return;
+      }
       for (const project of rows) {
-        const row = results.createEl("button", {
-          cls: "los-card los-project-row is-clickable",
-          attr: { type: "button", "aria-label": `Open project: ${project.title}` }
+        const projectId = projectedString3(project.id);
+        if (!projectId) {
+          continue;
+        }
+        const title = projectedLabel3(project);
+        const status = projectedString3(project.status) ?? "planned";
+        const projectType = projectedString3(
+          project.project_type
+        ) ?? "project";
+        const row = results.createEl(
+          "button",
+          {
+            cls: "los-card los-project-row is-clickable",
+            attr: {
+              type: "button",
+              "aria-label": `Open project: ${title}`
+            }
+          }
+        );
+        row.setAttr(
+          "data-record-id",
+          projectId
+        );
+        const top = row.createDiv({
+          cls: "los-card-top"
         });
-        row.setAttr("data-record-id", project.id);
-        const top = row.createDiv({ cls: "los-card-top" });
-        top.createEl("h2", { text: project.title });
-        badge(top, project.status || "planned", project.status || "planned");
-        row.createEl("p", { text: projectedExcerpt(project.objective, 280) });
-        row.createDiv({ cls: "los-micro", text: `${project.project_type || "project"} \xB7 ${(project.linked_module_ids || []).length} linked modules` });
-        row.addEventListener("click", () => {
-          this.selectedElementId = project.id;
-          this.plugin.openProject(project.id, "overview");
+        top.createEl("h2", {
+          text: title
         });
+        badge(
+          top,
+          status,
+          status
+        );
+        row.createEl("p", {
+          text: projectedExcerpt(
+            project.objective,
+            280
+          )
+        });
+        row.createDiv({
+          cls: "los-micro",
+          text: `${projectType} \xB7 ${projectedListLength2(
+            project.linked_module_ids
+          )} linked modules`
+        });
+        row.addEventListener(
+          "click",
+          () => {
+            this.selectedElementId = projectId;
+            void this.plugin.openProject(
+              projectId,
+              "overview"
+            );
+          }
+        );
       }
     };
-    input.addEventListener("input", () => {
-      this.query = input.value;
-      this.plugin.router.remember({ name: "project-list", query: this.query });
-      draw();
-    });
+    input.addEventListener(
+      "input",
+      () => {
+        this.query = input.value;
+        this.plugin.router.remember({
+          name: "project-list",
+          query: this.query
+        });
+        draw();
+      }
+    );
     draw();
   }
   renderDetail(root) {
-    const project = this.plugin.store.get(this.projectId);
-    if (!project || project.type !== "project") {
-      pageHeader(root, "Projects", "Project not found");
-      return empty(root, "This project is unavailable", "The current projection does not contain this project.", "Back to projects", () => this.plugin.openProjects());
+    const project = this.projectId ? this.plugin.store.get(
+      this.projectId
+    ) : null;
+    const projectId = project ? projectedString3(project.id) : null;
+    if (!project || projectedString3(project.type) !== "project" || !projectId) {
+      pageHeader(
+        root,
+        "Projects",
+        "Project not found"
+      );
+      empty(
+        root,
+        "This project is unavailable",
+        "The current projection does not contain this project.",
+        "Back to projects",
+        () => this.plugin.openProjects()
+      );
+      return;
     }
-    const head = pageHeader(root, "Project", project.title, project.objective || "");
-    const headActions = head.createDiv({ cls: "los-actions" });
-    button(headActions, "Back", () => this.plugin.back(), "quiet");
-    badge(headActions, project.status || "planned", project.status || "planned");
-    const tabs = root.createDiv({ cls: "los-project-tabs", attr: { role: "tablist", "aria-label": "Project sections" } });
-    for (const [id, label] of [
-      ["overview", "Overview"],
-      ["structure", "Structure"],
-      ["linked-materials", "Linked Materials"],
-      ["files", "Files"],
-      ["decisions", "Decisions"]
-    ]) {
-      const tab = button(tabs, label, () => this.plugin.openProject(project.id, id), "tertiary");
-      tab.toggleClass("is-active", this.tab === id);
-      tab.setAttrs({ role: "tab", "aria-selected": String(this.tab === id) });
+    const title = projectedLabel3(project);
+    const status = projectedString3(project.status) ?? "planned";
+    const head = pageHeader(
+      root,
+      "Project",
+      title,
+      projectedString3(project.objective) ?? ""
+    );
+    const headActions = head.createDiv({
+      cls: "los-actions"
+    });
+    button(
+      headActions,
+      "Back",
+      () => this.plugin.back(),
+      "quiet"
+    );
+    badge(
+      headActions,
+      status,
+      status
+    );
+    const tabs = root.createDiv({
+      cls: "los-project-tabs",
+      attr: {
+        role: "tablist",
+        "aria-label": "Project sections"
+      }
+    });
+    for (const [tabId, label] of PROJECT_TABS) {
+      const tab = button(
+        tabs,
+        label,
+        () => this.plugin.openProject(
+          projectId,
+          tabId
+        ),
+        "tertiary"
+      );
+      const active = this.tab === tabId;
+      tab.toggleClass(
+        "is-active",
+        active
+      );
+      tab.setAttrs({
+        role: "tab",
+        "aria-selected": String(active)
+      });
     }
-    const body = root.createDiv({ cls: "los-project-body" });
-    if (this.tab === "structure") return this.renderStructure(body, project);
-    if (this.tab === "linked-materials") return this.renderLinked(body, project);
-    if (this.tab === "files") return this.renderFiles(body, project);
-    if (this.tab === "decisions") return this.renderDecisions(body, project);
-    return this.renderOverview(body, project);
+    const body = root.createDiv({
+      cls: "los-project-body"
+    });
+    switch (this.tab) {
+      case "structure":
+        this.renderStructure(
+          body,
+          project
+        );
+        break;
+      case "linked-materials":
+        this.renderLinked(
+          body,
+          project
+        );
+        break;
+      case "files":
+        this.renderFiles(
+          body,
+          project
+        );
+        break;
+      case "decisions":
+        this.renderDecisions(
+          body,
+          project
+        );
+        break;
+      default:
+        this.renderOverview(
+          body,
+          project
+        );
+    }
   }
   renderOverview(root, project) {
-    const overview = section(root, "Overview");
-    const meta = overview.createDiv({ cls: "los-project-meta-grid" });
-    for (const [label, value] of [
-      ["Type", project.project_type || "Project"],
-      ["Status", project.status || "planned"],
-      ["Confidentiality", project.boundaries?.confidentiality || "unspecified"],
-      ["External code access", project.boundaries?.external_code_access || "unspecified"]
-    ]) {
-      const row = meta.createDiv({ cls: "los-project-meta" });
-      row.createDiv({ cls: "los-kicker", text: label });
-      row.createEl("strong", { text: value });
+    const overview = section(
+      root,
+      "Overview"
+    );
+    const meta = overview.createDiv({
+      cls: "los-project-meta-grid"
+    });
+    const boundaries = readProjectBoundaries(
+      project.boundaries
+    );
+    const metadata = [
+      [
+        "Type",
+        projectedString3(
+          project.project_type
+        ) ?? "Project"
+      ],
+      [
+        "Status",
+        projectedString3(project.status) ?? "planned"
+      ],
+      [
+        "Confidentiality",
+        boundaries.confidentiality
+      ],
+      [
+        "External code access",
+        boundaries.externalCodeAccess
+      ]
+    ];
+    for (const [label, value] of metadata) {
+      const row = meta.createDiv({
+        cls: "los-project-meta"
+      });
+      row.createDiv({
+        cls: "los-kicker",
+        text: label
+      });
+      row.createEl("strong", {
+        text: value
+      });
     }
-    if (project.boundaries?.notes) overview.createEl("p", { cls: "los-muted", text: project.boundaries.notes });
-    const units = section(root, "Project units", "Existing learning units remain reachable without turning the project into a module.");
-    const unitRows = (Array.isArray(project.unit_ids) ? project.unit_ids : []).filter(
-      (id) => typeof id === "string"
-    ).map((id) => this.plugin.store.get(id)).filter(
+    if (boundaries.notes) {
+      overview.createEl("p", {
+        cls: "los-muted",
+        text: boundaries.notes
+      });
+    }
+    const units = section(
+      root,
+      "Project units",
+      "Existing learning units remain reachable without turning the project into a module."
+    );
+    const unitRows = projectedStrings2(project.unit_ids).map(
+      (id) => this.plugin.store.get(id)
+    ).filter(
       (row) => row !== null
     );
-    if (!unitRows.length) empty(units, "No units linked", "This project can exist without a linear learning map.");
-    for (const unit of unitRows) button(units, unit.title || unit.id, () => this.plugin.openUnit(unit.id), "row");
+    if (!unitRows.length) {
+      empty(
+        units,
+        "No units linked",
+        "This project can exist without a linear learning map."
+      );
+    }
+    for (const unit of unitRows) {
+      const unitId = projectedString3(unit.id);
+      if (!unitId) {
+        continue;
+      }
+      button(
+        units,
+        projectedLabel3(unit),
+        () => this.plugin.openUnit(unitId),
+        "row"
+      );
+    }
   }
   renderStructure(root, project) {
-    const structure = project.structure || { kind: "none", nodes: [] };
-    const wrap = section(root, "Structure", `Structure mode: ${structure.kind || "none"}.`);
-    if (!Array.isArray(structure.nodes) || !structure.nodes.length) return empty(wrap, "No fixed structure", "This project currently has no linear or nested step map.");
-    const tree = wrap.createDiv({ cls: "los-project-structure" });
-    const node = (parent, row, depth = 0) => {
-      const item = parent.createDiv({ cls: `los-project-node los-project-node-depth-${Math.min(depth, 4)}` });
-      const top = item.createDiv({ cls: "los-card-top" });
-      top.createEl("h3", { text: row.title || row.id });
-      if (row.status) badge(top, row.status, row.status);
-      item.createDiv({ cls: "los-micro", text: row.kind || "step" });
-      if (row.summary) item.createEl("p", { text: row.summary });
-      const children = Array.isArray(row.children) ? row.children : [];
+    const structure = readProjectStructure(
+      project.structure
+    );
+    const wrap = section(
+      root,
+      "Structure",
+      `Structure mode: ${structure.kind}.`
+    );
+    if (!structure.nodes.length) {
+      empty(
+        wrap,
+        "No fixed structure",
+        "This project currently has no linear or nested step map."
+      );
+      return;
+    }
+    const tree = wrap.createDiv({
+      cls: "los-project-structure"
+    });
+    const renderNode = (parent, row, depth = 0) => {
+      const item = parent.createDiv({
+        cls: `los-project-node los-project-node-depth-${Math.min(depth, 4)}`
+      });
+      const top = item.createDiv({
+        cls: "los-card-top"
+      });
+      top.createEl("h3", {
+        text: projectedLabel3(row)
+      });
+      const status = projectedString3(row.status);
+      if (status) {
+        badge(
+          top,
+          status,
+          status
+        );
+      }
+      item.createDiv({
+        cls: "los-micro",
+        text: projectedString3(row.kind) ?? "step"
+      });
+      const summary = projectedString3(row.summary);
+      if (summary) {
+        item.createEl("p", {
+          text: summary
+        });
+      }
+      const children = projectedRecords2(row.children);
       if (children.length) {
-        const nested = item.createDiv({ cls: "los-project-node-children" });
-        for (const child of children) node(nested, child, depth + 1);
+        const nested = item.createDiv({
+          cls: "los-project-node-children"
+        });
+        for (const child of children) {
+          renderNode(
+            nested,
+            child,
+            depth + 1
+          );
+        }
       }
     };
-    for (const row of structure.nodes) node(tree, row);
+    for (const row of structure.nodes) {
+      renderNode(
+        tree,
+        row
+      );
+    }
   }
   renderLinked(root, project) {
-    const wrap = section(root, "Linked Materials", "Links retain a core-authored reason rather than implying ownership.");
-    const relationships = this.plugin.store.projectRelationships(project.id);
-    if (!relationships.length) return empty(wrap, "No linked materials", "Links appear here when the project relationship projection contains them.");
+    const wrap = section(
+      root,
+      "Linked Materials",
+      "Links retain a core-authored reason rather than implying ownership."
+    );
+    const projectId = projectedString3(project.id);
+    const relationships = projectId ? this.plugin.store.projectRelationships(projectId).map(readProjectRelationship).filter(
+      (relationship) => relationship !== null
+    ) : [];
+    if (!relationships.length) {
+      empty(
+        wrap,
+        "No linked materials",
+        "Links appear here when the project relationship projection contains them."
+      );
+      return;
+    }
     for (const relationship of relationships) {
-      const target = this.plugin.store.get(relationship.to_id);
-      const row = wrap.createDiv({ cls: "los-card los-project-link" });
-      const copy = row.createDiv({ cls: "los-project-link-copy" });
-      copy.createEl("h3", { text: target?.title || relationship.to_id });
-      copy.createDiv({ cls: "los-micro", text: `${relationship.to_type || "record"} \xB7 ${relationship.relation_type || "linked"}` });
-      const actions = row.createDiv({ cls: "los-actions" });
-      if (target) button(actions, "Open", () => this.plugin.openRecord(target), "tertiary");
-      button(actions, "Why linked", () => new ProjectLinkReasonModal(this.app, this.plugin, relationship).open(), "quiet");
+      const target = this.plugin.store.get(
+        relationship.toId
+      );
+      const row = wrap.createDiv({
+        cls: "los-card los-project-link"
+      });
+      const copy = row.createDiv({
+        cls: "los-project-link-copy"
+      });
+      copy.createEl("h3", {
+        text: target ? projectedLabel3(target) : relationship.toId
+      });
+      copy.createDiv({
+        cls: "los-micro",
+        text: `${relationship.toType} \xB7 ${relationship.relationType}`
+      });
+      const actions = row.createDiv({
+        cls: "los-actions"
+      });
+      if (target) {
+        button(
+          actions,
+          "Open",
+          () => this.plugin.openRecord(target),
+          "tertiary"
+        );
+      }
+      button(
+        actions,
+        "Why linked",
+        () => {
+          const modal = new ProjectLinkReasonModal(
+            this.app,
+            this.plugin,
+            relationship
+          );
+          modal.open();
+        },
+        "quiet"
+      );
     }
   }
   renderFiles(root, project) {
-    const wrap = section(root, "Files", "Project-owned references; canonical content remains in plain files.");
-    const files = Array.isArray(project.files) ? project.files : [];
-    if (!files.length) return empty(wrap, "No files linked", "Project files can be added through a declared core capability.");
+    const wrap = section(
+      root,
+      "Files",
+      "Project-owned references; canonical content remains in plain files."
+    );
+    const files = projectedRecords2(project.files);
+    if (!files.length) {
+      empty(
+        wrap,
+        "No files linked",
+        "Project files can be added through a declared core capability."
+      );
+      return;
+    }
     for (const file of files) {
-      const row = wrap.createDiv({ cls: "los-card los-project-file" });
-      const copy = row.createDiv({ cls: "los-project-link-copy" });
-      copy.createEl("h3", { text: file.label || file.path });
-      copy.createDiv({ cls: "los-micro", text: `${file.kind || "file"} \xB7 ${file.path}` });
-      if (file.path) button(row, "Open", () => this.plugin.openAuthoredPath(file.path), "tertiary");
+      const path = projectedString3(file.path);
+      const label = projectedString3(file.label) ?? path ?? projectedString3(file.id) ?? "Untitled file";
+      const kind = projectedString3(file.kind) ?? "file";
+      const row = wrap.createDiv({
+        cls: "los-card los-project-file"
+      });
+      const copy = row.createDiv({
+        cls: "los-project-link-copy"
+      });
+      copy.createEl("h3", {
+        text: label
+      });
+      copy.createDiv({
+        cls: "los-micro",
+        text: path ? `${kind} \xB7 ${path}` : kind
+      });
+      if (path) {
+        button(
+          row,
+          "Open",
+          () => this.plugin.openAuthoredPath(
+            path
+          ),
+          "tertiary"
+        );
+      }
     }
   }
   renderDecisions(root, project) {
-    const wrap = section(root, "Decisions", "Open questions and durable decisions, without manufacturing a completion score.");
-    const decisions = Array.isArray(
-      project.decisions
-    ) ? project.decisions : [];
-    if (!decisions.length) return empty(wrap, "No decisions recorded", "Decisions appear here when the project records them.");
+    const wrap = section(
+      root,
+      "Decisions",
+      "Open questions and durable decisions, without manufacturing a completion score."
+    );
+    const decisions = projectedRecords2(project.decisions);
+    if (!decisions.length) {
+      empty(
+        wrap,
+        "No decisions recorded",
+        "Decisions appear here when the project records them."
+      );
+      return;
+    }
     for (const decision of decisions) {
-      const row = wrap.createDiv({ cls: "los-card los-project-decision" });
-      const top = row.createDiv({ cls: "los-card-top" });
-      top.createEl("h3", { text: decision.title });
-      badge(top, decision.status || "open", decision.status || "open");
-      row.createEl("p", { text: decision.summary || "" });
+      const status = projectedString3(decision.status) ?? "open";
+      const row = wrap.createDiv({
+        cls: "los-card los-project-decision"
+      });
+      const top = row.createDiv({
+        cls: "los-card-top"
+      });
+      top.createEl("h3", {
+        text: projectedLabel3(decision)
+      });
+      badge(
+        top,
+        status,
+        status
+      );
+      row.createEl("p", {
+        text: projectedText2(decision.summary) ?? ""
+      });
     }
   }
 };
@@ -4329,7 +4866,7 @@ var ProjectView = class extends import_obsidian14.ItemView {
 var import_obsidian15 = require("obsidian");
 var fs = __toESM(require("node:fs"));
 var nodePath = __toESM(require("node:path"));
-function isRecord5(value) {
+function isRecord6(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function errorMessage6(error) {
@@ -4472,7 +5009,7 @@ var DiagnosticsView = class extends import_obsidian15.ItemView {
       const parsed = JSON.parse(
         fs.readFileSync(target, "utf8")
       );
-      if (!isRecord5(parsed)) {
+      if (!isRecord6(parsed)) {
         return fallback;
       }
       return {
@@ -4557,19 +5094,19 @@ var import_obsidian16 = require("obsidian");
 function errorMessage7(error) {
   return error instanceof Error ? error.message : String(error);
 }
-function isRecord6(value) {
+function isRecord7(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function optionalString(value) {
   return typeof value === "string" ? value : void 0;
 }
 function readShelvingProposal(value) {
-  if (!isRecord6(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
+  if (!isRecord7(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
     return null;
   }
   const items = [];
   for (const candidate of value.items) {
-    if (!isRecord6(candidate) || typeof candidate.id !== "string" || typeof candidate.title !== "string") {
+    if (!isRecord7(candidate) || typeof candidate.id !== "string" || typeof candidate.title !== "string") {
       continue;
     }
     const item = {
