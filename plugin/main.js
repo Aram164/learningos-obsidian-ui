@@ -3595,6 +3595,9 @@ var ProjectView = class extends import_obsidian14.ItemView {
 var import_obsidian15 = require("obsidian");
 var fs = __toESM(require("node:fs"));
 var nodePath = __toESM(require("node:path"));
+function isRecord3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 function errorMessage6(error) {
   return error instanceof Error ? error.message : String(error);
 }
@@ -3688,10 +3691,11 @@ var ReviewView = class extends import_obsidian15.ItemView {
   }
 };
 var DiagnosticsView = class extends import_obsidian15.ItemView {
+  plugin;
+  report = "";
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
-    this.report = "";
   }
   getViewType() {
     return VIEW_DIAGNOSTICS;
@@ -3715,13 +3719,36 @@ var DiagnosticsView = class extends import_obsidian15.ItemView {
       node_version: "unavailable"
     };
     try {
-      const base = this.plugin.app.vault.adapter.getBasePath();
-      const pluginInfo = this.plugin.manifest || {};
-      const directory = pluginInfo.dir || nodePath.join(".obsidian", "plugins", pluginInfo.id || "learningos-ui");
-      const target = nodePath.join(base, directory, "build-info.json");
-      if (!fs.existsSync(target)) return fallback;
-      const parsed = JSON.parse(fs.readFileSync(target, "utf8"));
-      return { ...fallback, ...parsed };
+      const app = this.app;
+      const base = app.vault.adapter.getBasePath();
+      const pluginInfo = this.plugin.manifest ?? {};
+      const directory = pluginInfo.dir || nodePath.join(
+        ".obsidian",
+        "plugins",
+        pluginInfo.id || "learningos-ui"
+      );
+      const target = nodePath.join(
+        base,
+        directory,
+        "build-info.json"
+      );
+      if (!fs.existsSync(target)) {
+        return fallback;
+      }
+      const parsed = JSON.parse(
+        fs.readFileSync(target, "utf8")
+      );
+      if (!isRecord3(parsed)) {
+        return fallback;
+      }
+      return {
+        ui_version: typeof parsed.ui_version === "string" ? parsed.ui_version : fallback.ui_version,
+        manifest_contract_version: typeof parsed.manifest_contract_version === "number" ? parsed.manifest_contract_version : fallback.manifest_contract_version,
+        source_revision: typeof parsed.source_revision === "string" ? parsed.source_revision : fallback.source_revision,
+        source_fingerprint: typeof parsed.source_fingerprint === "string" ? parsed.source_fingerprint : fallback.source_fingerprint,
+        bundle_sha256: typeof parsed.bundle_sha256 === "string" ? parsed.bundle_sha256 : fallback.bundle_sha256,
+        node_version: typeof parsed.node_version === "string" ? parsed.node_version : fallback.node_version
+      };
     } catch (_) {
       return fallback;
     }
@@ -3744,11 +3771,11 @@ var DiagnosticsView = class extends import_obsidian15.ItemView {
     const copy = status.createDiv();
     copy.createEl("strong", { text: title });
     copy.createDiv({ cls: "los-micro", text: detail });
-    const generated = this.plugin.store.data?._generated || {};
+    const generated = this.plugin.store.data?._generated ?? {};
     const build = this.buildInfo();
     const facts = section(root, "Contract and versions");
     const table = facts.createDiv({ cls: "los-fact-list" });
-    for (const [label, value] of [
+    const factRows = [
       ["Manifest contract", generated.contract_version ?? "unknown"],
       ["UI expects contract", CONTRACT_VERSION],
       ["UI version", this.plugin.uiVersion()],
@@ -3762,7 +3789,8 @@ var DiagnosticsView = class extends import_obsidian15.ItemView {
       ["Source revision", generated.source_revision || "unknown"],
       ["Python interpreter", this.plugin.resolvePython().path],
       ["Interpreter source", this.plugin.resolvePython().origin]
-    ]) {
+    ];
+    for (const [label, value] of factRows) {
       const row = table.createDiv({ cls: "los-fact-row" });
       row.createSpan({ cls: "los-fact-label", text: label });
       row.createSpan({ cls: "los-fact-value", text: String(value) });

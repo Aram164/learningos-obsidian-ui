@@ -8,13 +8,57 @@ import type { LearningOSUI } from '../main';
 
 type ReviewAction = [string, () => unknown];
 
-interface BuildInfo extends Record<string, any> {
+interface BuildInfo {
   ui_version: string;
   manifest_contract_version: number;
   source_revision: string;
   source_fingerprint: string;
   bundle_sha256: string;
   node_version: string;
+}
+
+interface DiagnosticsApp {
+  readonly vault: {
+    readonly adapter: {
+      getBasePath(): string;
+    };
+  };
+}
+
+interface DiagnosticsManifest {
+  readonly id?: string;
+  readonly dir?: string;
+}
+
+interface DiagnosticsGenerated {
+  readonly contract_version?: string | number;
+  readonly generator?: string;
+  readonly generated_at?: string;
+  readonly snapshot_id?: string;
+  readonly source_revision?: string;
+  readonly source_dirty?: boolean;
+}
+
+type DiagnosticsPlugin = Pick<
+  LearningOSUI,
+  | 'copyText'
+  | 'gateway'
+  | 'generate'
+  | 'resolvePython'
+  | 'store'
+  | 'uiVersion'
+> & {
+  readonly manifest?: DiagnosticsManifest;
+};
+
+function isRecord(
+  value: unknown,
+): value is Record<string, unknown> {
+  return (
+    typeof value === 'object'
+    && value !== null
+    && !Array.isArray(value)
+  );
 }
 
 function errorMessage(error: unknown): string {
@@ -50,7 +94,9 @@ export class ReviewView extends ItemView {
   getViewType() { return VIEW_REVIEW; }
   getDisplayText() { return 'LearningOS · Review'; }
   getIcon() { return 'check-check'; }
-  async onOpen() { this.render(); }
+  async onOpen(): Promise<void> {
+    this.render();
+  }
 
   render() {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-review-view');
@@ -117,19 +163,25 @@ export class ReviewView extends ItemView {
  * can be stale, warning, erroring, or talking to no core at all.
  */
 export class DiagnosticsView extends ItemView {
-  [key: string]: any;
-  constructor(leaf: any, plugin: any) {
+  private readonly plugin: DiagnosticsPlugin;
+  private report = '';
+
+  constructor(
+    leaf: WorkspaceLeaf,
+    plugin: DiagnosticsPlugin,
+  ) {
     super(leaf);
     this.plugin = plugin;
-    this.report = '';
   }
   getViewType() { return VIEW_DIAGNOSTICS; }
   getDisplayText() { return 'LearningOS · Diagnostics'; }
   getIcon() { return 'activity'; }
-  async onOpen() { this.render(); }
+  async onOpen(): Promise<void> {
+    this.render();
+  }
 
   buildInfo(): BuildInfo {
-    const fallback = {
+    const fallback: BuildInfo = {
       ui_version: this.plugin.uiVersion(),
       manifest_contract_version: CONTRACT_VERSION,
       source_revision: 'unavailable',
@@ -137,15 +189,62 @@ export class DiagnosticsView extends ItemView {
       bundle_sha256: 'unavailable',
       node_version: 'unavailable',
     };
+
     try {
-      const base = this.plugin.app.vault.adapter.getBasePath();
-      const pluginInfo = this.plugin.manifest || {};
+      const app = this.app as DiagnosticsApp;
+      const base = app.vault.adapter.getBasePath();
+      const pluginInfo: DiagnosticsManifest =
+        this.plugin.manifest ?? {};
       const directory = pluginInfo.dir
-        || nodePath.join('.obsidian', 'plugins', pluginInfo.id || 'learningos-ui');
-      const target = nodePath.join(base, directory, 'build-info.json');
-      if (!fs.existsSync(target)) return fallback;
-      const parsed = JSON.parse(fs.readFileSync(target, 'utf8'));
-      return { ...fallback, ...parsed };
+        || nodePath.join(
+          '.obsidian',
+          'plugins',
+          pluginInfo.id || 'learningos-ui',
+        );
+      const target = nodePath.join(
+        base,
+        directory,
+        'build-info.json',
+      );
+
+      if (!fs.existsSync(target)) {
+        return fallback;
+      }
+
+      const parsed: unknown = JSON.parse(
+        fs.readFileSync(target, 'utf8'),
+      );
+
+      if (!isRecord(parsed)) {
+        return fallback;
+      }
+
+      return {
+        ui_version:
+          typeof parsed.ui_version === 'string'
+            ? parsed.ui_version
+            : fallback.ui_version,
+        manifest_contract_version:
+          typeof parsed.manifest_contract_version === 'number'
+            ? parsed.manifest_contract_version
+            : fallback.manifest_contract_version,
+        source_revision:
+          typeof parsed.source_revision === 'string'
+            ? parsed.source_revision
+            : fallback.source_revision,
+        source_fingerprint:
+          typeof parsed.source_fingerprint === 'string'
+            ? parsed.source_fingerprint
+            : fallback.source_fingerprint,
+        bundle_sha256:
+          typeof parsed.bundle_sha256 === 'string'
+            ? parsed.bundle_sha256
+            : fallback.bundle_sha256,
+        node_version:
+          typeof parsed.node_version === 'string'
+            ? parsed.node_version
+            : fallback.node_version,
+      };
     } catch (_) {
       return fallback;
     }
@@ -159,8 +258,10 @@ export class DiagnosticsView extends ItemView {
     return ['✓', 'Valid and current', 'The projection matches the canonical tree as of its last rebuild.'];
   }
 
-  render() {
-    const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-diagnostics-view');
+  render(): void {
+    const root = this.contentEl;
+    root.empty();
+    root.addClass('los-root', 'los-diagnostics-view');
     pageHeader(root, 'More', 'Diagnostics');
     const [glyph, title, detail] = this.state();
     const status = root.createDiv({ cls: 'los-diagnostic-status' });
@@ -169,11 +270,14 @@ export class DiagnosticsView extends ItemView {
     copy.createEl('strong', { text: title });
     copy.createDiv({ cls: 'los-micro', text: detail });
 
-    const generated = this.plugin.store.data?._generated || {};
+    const generated: DiagnosticsGenerated =
+      this.plugin.store.data?._generated ?? {};
     const build = this.buildInfo();
     const facts = section(root, 'Contract and versions');
     const table = facts.createDiv({ cls: 'los-fact-list' });
-    for (const [label, value] of [
+    const factRows: ReadonlyArray<
+      readonly [string, unknown]
+    > = [
       ['Manifest contract', generated.contract_version ?? 'unknown'],
       ['UI expects contract', CONTRACT_VERSION],
       ['UI version', this.plugin.uiVersion()],
@@ -187,7 +291,9 @@ export class DiagnosticsView extends ItemView {
       ['Source revision', generated.source_revision || 'unknown'],
       ['Python interpreter', this.plugin.resolvePython().path],
       ['Interpreter source', this.plugin.resolvePython().origin],
-    ]) {
+    ];
+
+    for (const [label, value] of factRows) {
       const row = table.createDiv({ cls: 'los-fact-row' });
       row.createSpan({ cls: 'los-fact-label', text: label });
       row.createSpan({ cls: 'los-fact-value', text: String(value) });
@@ -203,10 +309,10 @@ export class DiagnosticsView extends ItemView {
     policy.createEl('p', { text: OWNERSHIP_STATEMENT });
   }
 
-  async testInterpreter() {
+  async testInterpreter(): Promise<void> {
     const resolved = this.plugin.resolvePython();
     try {
-      const result = await this.plugin.gateway.call(['status', '--json']);
+      const result: unknown = await this.plugin.gateway.call(['status', '--json']);
       this.report = `${resolved.path} (${resolved.origin})\nCore answered: ${JSON.stringify(result).slice(0, 400)}`;
     } catch (error: unknown) {
       this.report = `${resolved.path} (${resolved.origin})\nFailed: ${errorMessage(error)}\nTried: ${resolved.attempted.join(', ')}`;
