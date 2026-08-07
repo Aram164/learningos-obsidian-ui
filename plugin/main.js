@@ -3013,21 +3013,29 @@ function readEvaluation(value) {
   if (!isRecord4(value)) {
     return null;
   }
-  const verdict = projectedText2(value.verdict);
-  const scope = projectedText2(value.scope);
-  const readingPlan = projectedStrings2(value.reading_plan);
+  const roles = projectedStrings2(value.roles);
+  const level = projectedText2(value.level);
+  const audience = projectedStrings2(value.audience);
+  const prerequisites = projectedStrings2(value.prerequisites);
+  const strengths = projectedStrings2(value.strengths);
+  const weaknesses = projectedStrings2(value.weaknesses);
+  const concepts = projectedStrings2(value.concepts);
   const usefulSections = Array.isArray(
     value.useful_sections
   ) ? value.useful_sections.map(readUsefulSection).filter(
     (section3) => section3 !== null
   ) : [];
-  if (!verdict && !scope && !readingPlan.length && !usefulSections.length) {
+  if (!roles.length && !level && !audience.length && !prerequisites.length && !strengths.length && !weaknesses.length && !usefulSections.length) {
     return null;
   }
   return {
-    verdict,
-    scope,
-    readingPlan,
+    roles,
+    level,
+    audience,
+    prerequisites,
+    strengths,
+    weaknesses,
+    concepts,
     usefulSections
   };
 }
@@ -4194,25 +4202,27 @@ var LibraryView = class extends import_obsidian10.ItemView {
     if (record.evaluations.length) {
       const evidence = section(
         detail,
-        "Existing evaluation evidence"
+        "What this source is good for"
       );
       for (const evaluation of record.evaluations) {
         const card = evidence.createDiv({
           cls: "los-evidence-card"
         });
-        if (evaluation.verdict) {
-          card.createEl(
-            "p",
-            {
-              text: evaluation.verdict
-            }
-          );
+        if (evaluation.roles.length || evaluation.level) {
+          const purpose = card.createDiv({ cls: "los-chip-row" });
+          for (const role of evaluation.roles) badge(purpose, role, "role");
+          if (evaluation.level) badge(purpose, evaluation.level, "level");
         }
-        for (const selection of evaluation.readingPlan) {
-          card.createDiv({
-            cls: "los-row",
-            text: selection
-          });
+        for (const [label, values] of [
+          ["Strengths", evaluation.strengths],
+          ["Weaknesses", evaluation.weaknesses],
+          ["Assumes", evaluation.prerequisites],
+          ["Written for", evaluation.audience]
+        ]) {
+          if (!values.length) continue;
+          const block = card.createDiv({ cls: "los-row" });
+          block.createEl("strong", { text: `${label}: ` });
+          block.createSpan({ text: values.join(" \xB7 ") });
         }
         for (const selection of evaluation.usefulSections) {
           card.createDiv({
@@ -6632,6 +6642,8 @@ var DiagnosticsView = class extends import_obsidian15.ItemView {
       ui_version: this.plugin.uiVersion(),
       manifest_contract_version: CONTRACT_VERSION,
       source_revision: "unavailable",
+      source_dirty: null,
+      source_committed_at: "unavailable",
       source_fingerprint: "unavailable",
       bundle_sha256: "unavailable",
       node_version: "unavailable"
@@ -6663,6 +6675,11 @@ var DiagnosticsView = class extends import_obsidian15.ItemView {
         ui_version: typeof parsed.ui_version === "string" ? parsed.ui_version : fallback.ui_version,
         manifest_contract_version: typeof parsed.manifest_contract_version === "number" ? parsed.manifest_contract_version : fallback.manifest_contract_version,
         source_revision: typeof parsed.source_revision === "string" ? parsed.source_revision : fallback.source_revision,
+        // A missing flag stays null: an older build-info predates the field,
+        // and reading that absence as "clean" is the exact false reassurance
+        // this row exists to remove.
+        source_dirty: typeof parsed.source_dirty === "boolean" ? parsed.source_dirty : fallback.source_dirty,
+        source_committed_at: typeof parsed.source_committed_at === "string" ? parsed.source_committed_at : fallback.source_committed_at,
         source_fingerprint: typeof parsed.source_fingerprint === "string" ? parsed.source_fingerprint : fallback.source_fingerprint,
         bundle_sha256: typeof parsed.bundle_sha256 === "string" ? parsed.bundle_sha256 : fallback.bundle_sha256,
         node_version: typeof parsed.node_version === "string" ? parsed.node_version : fallback.node_version
@@ -6698,6 +6715,10 @@ var DiagnosticsView = class extends import_obsidian15.ItemView {
       ["UI expects contract", CONTRACT_VERSION],
       ["UI version", this.plugin.uiVersion()],
       ["UI source revision", build.source_revision],
+      // The projection states its own staleness; before this the interface
+      // stated nothing about its own, and a vault quietly ran a build 32
+      // commits behind its source for a day.
+      ["UI built from", build.source_dirty === null ? `${build.source_committed_at} (working tree unknown)` : build.source_dirty ? `${build.source_committed_at} + uncommitted sources` : build.source_committed_at],
       ["UI source fingerprint", build.source_fingerprint],
       ["UI bundle fingerprint", build.bundle_sha256],
       ["Build Node", build.node_version],
