@@ -119,14 +119,61 @@ function routerPlugin(settings = {}) {
 
   await test('GatewayClient accepts one confirmed JSON result and carries the snapshot guard', async () => {
     let received = null;
+    let sent = null;
     const plugin = {
-      runLos: (args, callback) => { received = args; callback(null, '{"ok":true,"transaction_id":"tx-1"}', ''); },
+      runLos: (args, callback, stdin) => {
+        received = args; sent = stdin;
+        callback(null, '{"ok":true,"transaction_id":"tx-1"}', '');
+      },
       store: { snapshotId: 'snapshot-test' },
     };
     const gateway = new GatewayClient(plugin);
     const result = await gateway.saveNote('unit-a', 'stage-a', 'text');
     assert.equal(result.transaction_id, 'tx-1');
-    assert.deepEqual(received.slice(-2), ['--expected-snapshot', 'snapshot-test']);
+    // One write shape: a declared capability, its payload on stdin.
+    assert.deepEqual(received, ['capability', 'stage.note.write', '--payload-file', '-']);
+    const envelope = JSON.parse(sent);
+    assert.equal(envelope.capability, 'stage.note.write');
+    assert.equal(envelope.expected_snapshot, 'snapshot-test',
+      'the snapshot guard must travel with the write');
+    assert.deepEqual(envelope.payload,
+      { unit_id: 'unit-a', stage_id: 'stage-a', text: 'text', replace: true });
+    assert.ok(envelope.request_id, 'every write is identifiable');
+  });
+
+  await test('every porcelain method sends one declared capability envelope', async () => {
+    const calls = [];
+    const plugin = {
+      runLos: (args, callback, stdin) => {
+        calls.push({ args, envelope: JSON.parse(stdin) });
+        callback(null, '{"ok":true}', '');
+      },
+      store: { snapshotId: 'snapshot-test' },
+    };
+    const gateway = new GatewayClient(plugin);
+    await gateway.progress('u', 's', 'complete');
+    await gateway.feedback('u', 's', 'src', 'helpful');
+    await gateway.detour('u', 's', 'a gap');
+    await gateway.resolveDetour('u', 'd', 'done');
+    await gateway.attach('u', 's', '/tmp/f.pdf');
+    await gateway.captureText('note text', 'a title');
+    await gateway.captureFile('/tmp/f.pdf');
+    await gateway.prepareShelving('u');
+    await gateway.applyShelving('u', ['p1']);
+    await gateway.saveUnitNote('u', { text: 'body', stageIds: ['s'] });
+
+    assert.deepEqual(calls.map((c) => c.envelope.capability), [
+      'stage.progress.update', 'source.feedback.record', 'detour.create',
+      'detour.resolve', 'stage.attachment.add', 'capture.create',
+      'capture.create', 'review.prepare', 'review.apply', 'unit.note.append',
+    ]);
+    for (const call of calls) {
+      assert.equal(call.args[0], 'capability', 'one call shape for every write');
+      assert.deepEqual(call.args.slice(2), ['--payload-file', '-']);
+      assert.equal(call.envelope.expected_snapshot, 'snapshot-test');
+      assert.ok(!('expected_snapshot' in call.envelope.payload),
+        'the payload must not restate what the envelope owns');
+    }
   });
 
   await test('GatewayClient serializes writes and recovers after rejection', async () => {

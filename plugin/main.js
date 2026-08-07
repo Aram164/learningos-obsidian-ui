@@ -958,6 +958,11 @@ function asSessionReview(result) {
 }
 
 // src/gateway-client.ts
+var requestCounter = 0;
+function nextRequestId(capability) {
+  requestCounter += 1;
+  return `req-${capability.replace(/\./g, "-")}-${Date.now()}-${requestCounter}`;
+}
 var GatewayClient = class {
   plugin;
   chain;
@@ -990,7 +995,7 @@ var GatewayClient = class {
    * learner's text behind a success notice. `expectJson: false` is only for
    * the text-reporting commands (`validate`, `generate`).
    */
-  call(args, { expectJson = true } = {}) {
+  call(args, { expectJson = true, stdin } = {}) {
     return new Promise((resolve2, reject) => {
       this.plugin.runLos(
         args,
@@ -1020,9 +1025,30 @@ var GatewayClient = class {
             return;
           }
           resolve2(parsed);
-        }
+        },
+        stdin
       );
     });
+  }
+  /**
+   * The one write shape.
+   *
+   * Every canonical mutation is a declared capability sent as an envelope, so
+   * there is a single call shape, a single response shape and a single error
+   * path — instead of one positional signature per command, each with its own
+   * flag order to get wrong. The named methods below are porcelain over this.
+   */
+  capability(name, payload) {
+    const envelope = {
+      request_id: nextRequestId(name),
+      capability: name,
+      expected_snapshot: this.snapshotId(),
+      payload
+    };
+    return this.call(
+      ["capability", name, "--payload-file", "-"],
+      { stdin: JSON.stringify(envelope) }
+    );
   }
   /**
    * The snapshot guard is what makes a write refusable, so a missing snapshot
@@ -1030,15 +1056,29 @@ var GatewayClient = class {
    * "null" — which would be compared against a real snapshot and refused with
    * a misleading message, or worse, matched by accident.
    */
-  guard() {
+  /**
+   * The snapshot guard is what makes a write refusable, so a missing snapshot
+   * id must stop the write rather than travel to the CLI as the string
+   * "null" — which would be compared against a real snapshot and refused with
+   * a misleading message, or worse, matched by accident.
+   */
+  snapshotId() {
     const snapshotId = this.plugin.store.snapshotId;
     if (!snapshotId) {
       throw new Error("LearningOS has no loaded snapshot to guard this change against; nothing was written.");
     }
-    return ["--expected-snapshot", snapshotId];
+    return snapshotId;
   }
+  /** Positional-flag form, kept for the commands that are not capabilities. */
+  guard() {
+    return ["--expected-snapshot", this.snapshotId()];
+  }
+  // ---- porcelain: each is one declared capability, nothing more ----------
   saveNote(unitId, stageId, text) {
-    return this.call(["stage-note", unitId, stageId, "--replace", "--text", text, ...this.guard()]);
+    return this.capability(
+      "stage.note.write",
+      { unit_id: unitId, stage_id: stageId, text, replace: true }
+    );
   }
   saveUnitNote(unitId, {
     title = "",
@@ -1046,53 +1086,56 @@ var GatewayClient = class {
     stageIds = [],
     filePaths = []
   }) {
-    const args = ["unit-note", unitId, "--text", text];
-    if (String(title).trim()) args.push("--title", String(title).trim());
-    for (const stageId of stageIds || []) args.push("--stage-id", stageId);
-    for (const filePath of filePaths || []) args.push("--attachment", filePath);
-    return this.call([...args, ...this.guard()]);
+    const payload = { unit_id: unitId, text };
+    if (String(title).trim()) payload.title = String(title).trim();
+    if (stageIds.length) payload.stage_id = [...stageIds];
+    if (filePaths.length) payload.attachment = [...filePaths];
+    return this.capability("unit.note.append", payload);
   }
   progress(unitId, stageId, status) {
-    return this.call(["stage-progress", unitId, stageId, status, ...this.guard()]);
+    return this.capability(
+      "stage.progress.update",
+      { unit_id: unitId, stage_id: stageId, status }
+    );
   }
   feedback(unitId, stageId, sourceId, feedback) {
-    return this.call(["source-feedback", unitId, stageId, sourceId, feedback, ...this.guard()]);
+    return this.capability(
+      "source.feedback.record",
+      { unit_id: unitId, stage_id: stageId, source_id: sourceId, feedback }
+    );
   }
   detour(unitId, stageId, title, classification = "required-now") {
-    return this.call([
-      "detour-create",
-      unitId,
-      stageId,
-      "--title",
-      title,
-      "--classification",
-      classification,
-      ...this.guard()
-    ]);
+    return this.capability(
+      "detour.create",
+      { unit_id: unitId, stage_id: stageId, title, classification }
+    );
   }
   resolveDetour(unitId, detourId, resolution = "") {
-    const args = ["detour-resolve", unitId, detourId];
-    if (resolution) args.push("--resolution", resolution);
-    return this.call([...args, ...this.guard()]);
+    const payload = { unit_id: unitId, detour_id: detourId };
+    if (resolution) payload.resolution = resolution;
+    return this.capability("detour.resolve", payload);
   }
   attach(unitId, stageId, filePath, label = "") {
-    const args = ["stage-attach", unitId, stageId, "--file", filePath];
-    if (label) args.push("--label", label);
-    return this.call([...args, ...this.guard()]);
+    const payload = { unit_id: unitId, stage_id: stageId, file: filePath };
+    if (label) payload.label = label;
+    return this.capability("stage.attachment.add", payload);
   }
   captureText(text, title = "") {
-    const args = ["capture", "--json", "--text", text];
-    if (title) args.push("--title", title);
-    return this.call(args);
+    const payload = { text };
+    if (title) payload.title = title;
+    return this.capability("capture.create", payload);
   }
   captureFile(filePath) {
-    return this.call(["capture", "--json", "--file", filePath]);
+    return this.capability("capture.create", { file: filePath });
   }
   prepareShelving(unitId) {
-    return this.call(["shelving-prepare", unitId, ...this.guard()]);
+    return this.capability("review.prepare", { unit_id: unitId });
   }
   applyShelving(unitId, selected) {
-    return this.call(["shelving-apply", unitId, "--approve", "--selected", ...selected, ...this.guard()]);
+    return this.capability(
+      "review.apply",
+      { unit_id: unitId, selected: [...selected], approve: true }
+    );
   }
   endSession(commitMessage = null, push = false) {
     const args = ["session-end"];
@@ -8021,11 +8064,26 @@ ${row.text.trim()}`).join("\n\n");
     const fallback = import_node_process.default?.platform === "win32" ? "python" : "python3";
     return { path: fallback, origin: "PATH fallback", attempted: [...attempted, fallback] };
   }
-  runLos(args, callback) {
+  /**
+   * Run the CLI. `stdin` carries a capability envelope when there is one.
+   *
+   * Envelopes go down stdin rather than a `--payload-file` temp file: a temp
+   * file would put canonical intent on disk on every write, including the
+   * ones that fail, leaving cleanup as a thing that can be forgotten.
+   */
+  runLos(args, callback, stdin) {
     const base = this.app.vault.adapter.getBasePath();
     const python = this.resolvePython().path;
     const script = nodePath2.join(base, "tools", "los.py");
-    (0, import_node_child_process.execFile)(python, [script, ...args], { cwd: base, timeout: 18e4, maxBuffer: 8 * 1024 * 1024 }, callback);
+    const child = (0, import_node_child_process.execFile)(
+      python,
+      [script, ...args],
+      { cwd: base, timeout: 18e4, maxBuffer: 8 * 1024 * 1024 },
+      callback
+    );
+    if (stdin !== void 0) {
+      child.stdin?.end(stdin);
+    }
   }
   async reloadStore() {
     const ok = await this.store.load();

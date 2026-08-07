@@ -334,11 +334,25 @@ export class LearningOSUI extends Plugin {
     return { path: fallback, origin: 'PATH fallback', attempted: [...attempted, fallback] };
   }
 
-  runLos(args: string[], callback: LosCallback): void {
+  /**
+   * Run the CLI. `stdin` carries a capability envelope when there is one.
+   *
+   * Envelopes go down stdin rather than a `--payload-file` temp file: a temp
+   * file would put canonical intent on disk on every write, including the
+   * ones that fail, leaving cleanup as a thing that can be forgotten.
+   */
+  runLos(args: string[], callback: LosCallback, stdin?: string): void {
     const base = this.app.vault.adapter.getBasePath();
     const python = this.resolvePython().path;
     const script = nodePath.join(base, 'tools', 'los.py');
-    execFile(python, [script, ...args], { cwd: base, timeout: 180000, maxBuffer: 8 * 1024 * 1024 }, callback);
+    const child = execFile(
+      python, [script, ...args],
+      { cwd: base, timeout: 180000, maxBuffer: 8 * 1024 * 1024 },
+      callback,
+    );
+    if (stdin !== undefined) {
+      child.stdin?.end(stdin);
+    }
   }
 
   async reloadStore() {

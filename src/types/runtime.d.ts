@@ -319,7 +319,14 @@ declare module 'node:child_process' {
     maxBuffer?: number;
   }
 
-  export interface ChildProcess {}
+  /** Node closes a writable stream with `end`; `stdin` is null if not piped. */
+  export interface WritableChildStream {
+    end(chunk: string): void;
+  }
+
+  export interface ChildProcess {
+    readonly stdin?: WritableChildStream | null;
+  }
 
   export type ExecFileCallback = (
     error: Error | null,

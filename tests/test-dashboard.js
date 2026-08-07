@@ -28,12 +28,20 @@ function heading(title) { group = title; console.log(`\n${title}`); }
 async function build(options = {}) {
   const app = makeApp(FIXTURE);
   const calls = [];
+  /* Canonical writes are capability envelopes now: the args are always
+   * `capability <name> --payload-file -` and the content is on stdin, so the
+   * harness must read the envelope to assert anything about a write. */
+  const envelopes = [];
+  calls.envelope = (capability) => envelopes.find((e) => e.capability === capability);
+  calls.envelopes = envelopes;
   const plugin = new LearningOSUI(app, { id: 'learningos-ui', version: 'test' });
   plugin._data = options.settings || {};
-  plugin.runLos = (args, callback) => {
+  plugin.runLos = (args, callback, stdin) => {
     calls.push(args);
+    const envelope = stdin ? JSON.parse(stdin) : null;
+    if (envelope) envelopes.push(envelope);
     if (options.offline) return callback(new Error('CLI down'), '', 'offline');
-    if (args[0] === 'shelving-prepare') return callback(null, JSON.stringify({
+    if (envelope?.capability === 'review.prepare') return callback(null, JSON.stringify({
       state: 'proposed', summary: 'Prepared fixture.', items: [{ id: 'proposal-prepared', title: 'Prepared note', destination: 'knowledge/notes/fixture.md', selected: true }],
     }), '');
     return callback(null, JSON.stringify({ ok: true }), '');
@@ -419,17 +427,18 @@ async function main() {
     element.find('los-capture-title')[0].value = 'Fixture thought';
     element.find('los-capture-editor')[0].value = 'A half-formed synthetic idea.';
     element.findText('los-btn', 'Capture text').fire('click'); await tick(); await tick();
-    const textCall = calls.find((args) => args[0] === 'capture' && args.includes('--text'));
+    const textCapture = calls.envelope('capture.create')?.payload;
     check('text capture delegates exact wording and optional title to los.py',
-      textCall?.includes('A half-formed synthetic idea.') && textCall?.includes('Fixture thought'));
+      textCapture?.text === 'A half-formed synthetic idea.' && textCapture?.title === 'Fixture thought');
     check('capture refreshes the atomic projection after the write',
       calls.some((args) => args.length === 1 && args[0] === 'generate'));
 
     element = view.contentEl;
     element.find('los-capture-file')[0].files = [{ name: 'handwriting.png', __path: '/tmp/handwriting.png' }];
     element.findText('los-btn', 'Capture selected file').fire('click'); await tick(); await tick();
-    check('file capture resolves the Electron File through webUtils', calls.some((args) =>
-      args.join('|') === 'capture|--json|--file|/tmp/handwriting.png'));
+    check('file capture resolves the Electron File through webUtils',
+      calls.envelopes.some((e) => e.capability === 'capture.create'
+        && e.payload.file === '/tmp/handwriting.png'));
     plugin.onunload();
   }
 
@@ -597,21 +606,27 @@ async function main() {
     noteModal.fileInput.fire('change');
     noteModal.contentEl.findText('los-btn', 'Save note').fire('click'); await tick(); await tick();
     const noteCall = calls.find((args) => args[0] === 'unit-note');
+    const noteEnvelope = calls.envelope('unit.note.append');
     check('session note save uses the unit-level action-specific gateway',
-      noteCall?.slice(0, 4).join('|') === 'unit-note|unit-fixture-sad-l04|--text|Updated fixture session synthesis.');
+      noteEnvelope?.payload.unit_id === 'unit-fixture-sad-l04'
+      && noteEnvelope?.payload.text === 'Updated fixture session synthesis.');
     check('unit note attachments use Electron webUtils instead of the removed File.path',
-      noteCall?.includes('--attachment') && noteCall?.includes('/tmp/notes.png'));
-    check('mutation carries optimistic snapshot token', noteCall?.includes('--expected-snapshot')
-      && noteCall?.includes('sha256:fixture-v2-snapshot'));
+      (noteEnvelope?.payload.attachment || []).includes('/tmp/notes.png'));
+    check('mutation carries optimistic snapshot token',
+      noteEnvelope?.expected_snapshot === 'sha256:fixture-v2-snapshot');
 
     element = view.contentEl;
     element.findText('los-btn', 'Helpful').fire('click'); await tick();
-    check('source feedback is unit/stage/source-specific', calls.some((args) => args.join('|').startsWith(
-      'source-feedback|unit-fixture-sad-l04|stage-fixture-conditioning|source-fixture-islp|helpful')));
+    const feedback = calls.envelope('source.feedback.record')?.payload;
+    check('source feedback is unit/stage/source-specific',
+      feedback?.unit_id === 'unit-fixture-sad-l04'
+      && feedback?.stage_id === 'stage-fixture-conditioning'
+      && feedback?.source_id === 'source-fixture-islp' && feedback?.feedback === 'helpful');
     element = view.contentEl;
     element.findText('los-btn', 'Report prerequisite gap').fire('click'); await tick();
-    check('gap action creates a scoped detour', calls.some((args) => args[0] === 'detour-create'
-      && args.includes('stage-fixture-conditioning') && args.includes('required-now')));
+    const detour = calls.envelope('detour.create')?.payload;
+    check('gap action creates a scoped detour',
+      detour?.stage_id === 'stage-fixture-conditioning' && detour?.classification === 'required-now');
     await plugin.reviewSessionEnd();
     check('session closure first requests an exact change review', calls.some((args) => args.length === 1 && args[0] === 'session-end'));
     plugin.onunload();
@@ -646,9 +661,13 @@ async function main() {
     check('proposal destinations and rationale are reviewable', view.contentEl.find('los-proposal-row').length === 2
       && view.contentEl.allText().includes('note-fixture-synthesis.md'));
     view.contentEl.findText('los-btn', 'Approve selected changes').fire('click'); await tick();
-    const apply = calls.find((args) => args[0] === 'shelving-apply');
-    check('approval invokes guarded core apply', apply?.includes('--approve') && apply?.includes('--selected'));
-    check('only selected proposal IDs are applied', apply?.includes('proposal-note') && !apply?.includes('proposal-garden'));
+    const apply = calls.envelope('review.apply');
+    check('approval invokes guarded core apply',
+      apply?.payload.approve === true && Array.isArray(apply?.payload.selected)
+      && Boolean(apply?.expected_snapshot));
+    check('only selected proposal IDs are applied',
+      apply?.payload.selected.includes('proposal-note')
+      && !apply?.payload.selected.includes('proposal-garden'));
     plugin.onunload();
   }
 
@@ -791,26 +810,27 @@ async function main() {
     const { app, plugin, calls } = await boot();
     await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
-    const before = calls.filter((args) => args[0] === 'stage-progress').length;
+    const writes = () => calls.envelopes.filter((e) => e.capability === 'stage.progress.update').length;
+    const before = writes();
     const complete = view.contentEl.findText('los-btn', 'Mark complete');
     complete.fire('click'); complete.fire('click');
     await tick(); await tick();
-    check('two fast clicks produce exactly one guarded write',
-      calls.filter((args) => args[0] === 'stage-progress').length === before + 1);
+    check('two fast clicks produce exactly one guarded write', writes() === before + 1);
     plugin.onunload();
   }
   {
     /* The lock lives in the gateway, not in a view: a stage write and an inbox
      * capture started from different leaves must still not overlap, because
-     * each carries an --expected-snapshot the other invalidates. */
+     * each carries an expected_snapshot the other invalidates. */
     const { app, plugin } = await build();
     await app.workspace._ready();
     const order = [];
     let settle = null;
-    plugin.runLos = (args, callback) => {
-      order.push(`start:${args[0]}`);
-      const finish = () => { order.push(`end:${args[0]}`); callback(null, JSON.stringify({ ok: true }), ''); };
-      if (args[0] === 'unit-note') settle = finish; else finish();
+    plugin.runLos = (args, callback, stdin) => {
+      const name = stdin ? JSON.parse(stdin).capability : args[0];
+      order.push(`start:${name}`);
+      const finish = () => { order.push(`end:${name}`); callback(null, JSON.stringify({ ok: true }), ''); };
+      if (name === 'unit.note.append') settle = finish; else finish();
     };
     const first = plugin.mutate(() => plugin.gateway.saveUnitNote('unit-fixture-sad-l04', { text: 'x' }));
     const second = plugin.mutate(() => plugin.gateway.captureText('a second thought'));
@@ -820,7 +840,7 @@ async function main() {
     settle?.();
     await first; await second; await tick();
     check('the queued write runs after the first transaction completes',
-      order.join('|') === 'start:unit-note|end:unit-note|start:capture|end:capture');
+      order.join('|') === 'start:unit.note.append|end:unit.note.append|start:capture.create|end:capture.create');
     check('a rejected transaction does not poison the queue',
       plugin.gateway.pending === 0);
     plugin.onunload();
@@ -1062,8 +1082,12 @@ async function main() {
       && !source.includes('workspace._leaves'));
     check('local file paths use Electron webUtils', source.includes('webUtils.getPathForFile(file)')
       && !/function localFilePath\([\s\S]*?return file\??\.path/.test(source));
-    check('bundle exposes action-specific writes', ['unit-note', 'stage-note', 'stage-progress', 'source-feedback',
-      'stage-attach', 'detour-create', 'detour-resolve', 'shelving-prepare', 'shelving-apply',
+    /* Writes are declared capabilities now, so the bundle must name them —
+     * an "ask the AI to do something" style generic write would show up here
+     * as the absence of these exact identifiers. */
+    check('bundle exposes action-specific writes', ['unit.note.append', 'stage.note.write',
+      'stage.progress.update', 'source.feedback.record', 'stage.attachment.add',
+      'detour.create', 'detour.resolve', 'review.prepare', 'review.apply',
       'session-end'].every((command) => source.includes(command)));
     const buildSource = fs.readFileSync(path.join(ROOT, 'build.mjs'), 'utf8');
     const mainSource = fs.readFileSync(path.join(ROOT, 'src', 'main.ts'), 'utf8');

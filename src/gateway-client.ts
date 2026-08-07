@@ -10,10 +10,18 @@ type LosCallback = (
 
 /** Everything the gateway needs from its host: one process runner, one snapshot id. */
 interface GatewayHost {
-  runLos(args: string[], callback: LosCallback): void;
+  runLos(args: string[], callback: LosCallback, stdin?: string): void;
   store: {
     snapshotId: string | null;
   };
+}
+
+let requestCounter = 0;
+
+/** A per-write id, so a response can be matched to the request that caused it. */
+function nextRequestId(capability: string): string {
+  requestCounter += 1;
+  return `req-${capability.replace(/\./g, '-')}-${Date.now()}-${requestCounter}`;
 }
 
 export class GatewayClient {
@@ -52,7 +60,7 @@ export class GatewayClient {
    */
   call(
     args: string[],
-    { expectJson = true }: { expectJson?: boolean } = {},
+    { expectJson = true, stdin }: { expectJson?: boolean; stdin?: string } = {},
   ): Promise<GatewayResultV1> {
     return new Promise((resolve, reject) => {
       this.plugin.runLos(
@@ -77,8 +85,31 @@ export class GatewayClient {
         }
         resolve(parsed);
         },
+        stdin,
       );
     });
+  }
+
+  /**
+   * The one write shape.
+   *
+   * Every canonical mutation is a declared capability sent as an envelope, so
+   * there is a single call shape, a single response shape and a single error
+   * path — instead of one positional signature per command, each with its own
+   * flag order to get wrong. The named methods below are porcelain over this.
+   */
+  capability(
+    name: string,
+    payload: Record<string, unknown>,
+  ): Promise<GatewayResultV1> {
+    const envelope = {
+      request_id: nextRequestId(name),
+      capability: name,
+      expected_snapshot: this.snapshotId(),
+      payload,
+    };
+    return this.call(['capability', name, '--payload-file', '-'],
+      { stdin: JSON.stringify(envelope) });
   }
 
   /**
@@ -87,15 +118,29 @@ export class GatewayClient {
    * "null" — which would be compared against a real snapshot and refused with
    * a misleading message, or worse, matched by accident.
    */
-  guard(): string[] {
+  /**
+   * The snapshot guard is what makes a write refusable, so a missing snapshot
+   * id must stop the write rather than travel to the CLI as the string
+   * "null" — which would be compared against a real snapshot and refused with
+   * a misleading message, or worse, matched by accident.
+   */
+  snapshotId(): string {
     const snapshotId = this.plugin.store.snapshotId;
     if (!snapshotId) {
       throw new Error('LearningOS has no loaded snapshot to guard this change against; nothing was written.');
     }
-    return ['--expected-snapshot', snapshotId];
+    return snapshotId;
   }
+
+  /** Positional-flag form, kept for the commands that are not capabilities. */
+  guard(): string[] {
+    return ['--expected-snapshot', this.snapshotId()];
+  }
+
+  // ---- porcelain: each is one declared capability, nothing more ----------
   saveNote(unitId: string, stageId: string, text: string) {
-    return this.call(['stage-note', unitId, stageId, '--replace', '--text', text, ...this.guard()]);
+    return this.capability('stage.note.write',
+      { unit_id: unitId, stage_id: stageId, text, replace: true });
   }
   saveUnitNote(
     unitId: string,
@@ -111,14 +156,15 @@ export class GatewayClient {
       filePaths?: readonly string[];
     },
   ) {
-    const args = ['unit-note', unitId, '--text', text];
-    if (String(title).trim()) args.push('--title', String(title).trim());
-    for (const stageId of stageIds || []) args.push('--stage-id', stageId);
-    for (const filePath of filePaths || []) args.push('--attachment', filePath);
-    return this.call([...args, ...this.guard()]);
+    const payload: Record<string, unknown> = { unit_id: unitId, text };
+    if (String(title).trim()) payload.title = String(title).trim();
+    if (stageIds.length) payload.stage_id = [...stageIds];
+    if (filePaths.length) payload.attachment = [...filePaths];
+    return this.capability('unit.note.append', payload);
   }
   progress(unitId: string, stageId: string, status: string) {
-    return this.call(['stage-progress', unitId, stageId, status, ...this.guard()]);
+    return this.capability('stage.progress.update',
+      { unit_id: unitId, stage_id: stageId, status });
   }
   feedback(
     unitId: string,
@@ -126,7 +172,8 @@ export class GatewayClient {
     sourceId: string,
     feedback: string,
   ) {
-    return this.call(['source-feedback', unitId, stageId, sourceId, feedback, ...this.guard()]);
+    return this.capability('source.feedback.record',
+      { unit_id: unitId, stage_id: stageId, source_id: sourceId, feedback });
   }
   detour(
     unitId: string,
@@ -134,17 +181,17 @@ export class GatewayClient {
     title: string,
     classification = 'required-now',
   ) {
-    return this.call(['detour-create', unitId, stageId, '--title', title,
-      '--classification', classification, ...this.guard()]);
+    return this.capability('detour.create',
+      { unit_id: unitId, stage_id: stageId, title, classification });
   }
   resolveDetour(
     unitId: string,
     detourId: string,
     resolution = '',
   ) {
-    const args = ['detour-resolve', unitId, detourId];
-    if (resolution) args.push('--resolution', resolution);
-    return this.call([...args, ...this.guard()]);
+    const payload: Record<string, unknown> = { unit_id: unitId, detour_id: detourId };
+    if (resolution) payload.resolution = resolution;
+    return this.capability('detour.resolve', payload);
   }
   attach(
     unitId: string,
@@ -152,25 +199,24 @@ export class GatewayClient {
     filePath: string,
     label = '',
   ) {
-    const args = ['stage-attach', unitId, stageId, '--file', filePath];
-    if (label) args.push('--label', label);
-    return this.call([...args, ...this.guard()]);
+    const payload: Record<string, unknown> = { unit_id: unitId, stage_id: stageId, file: filePath };
+    if (label) payload.label = label;
+    return this.capability('stage.attachment.add', payload);
   }
   captureText(text: string, title = '') {
-    // `--json` so an inbox capture is confirmed structurally; the plain-text
-    // form stays the human default in a terminal.
-    const args = ['capture', '--json', '--text', text];
-    if (title) args.push('--title', title);
-    return this.call(args);
+    const payload: Record<string, unknown> = { text };
+    if (title) payload.title = title;
+    return this.capability('capture.create', payload);
   }
   captureFile(filePath: string) {
-    return this.call(['capture', '--json', '--file', filePath]);
+    return this.capability('capture.create', { file: filePath });
   }
   prepareShelving(unitId: string) {
-    return this.call(['shelving-prepare', unitId, ...this.guard()]);
+    return this.capability('review.prepare', { unit_id: unitId });
   }
   applyShelving(unitId: string, selected: readonly string[]) {
-    return this.call(['shelving-apply', unitId, '--approve', '--selected', ...selected, ...this.guard()]);
+    return this.capability('review.apply',
+      { unit_id: unitId, selected: [...selected], approve: true });
   }
   endSession(commitMessage: string | null = null, push = false) {
     const args = ['session-end'];
