@@ -1,4 +1,8 @@
-import { Plugin, Notice } from 'obsidian';
+import {
+  Plugin,
+  Notice,
+  type WorkspaceLeaf,
+} from 'obsidian';
 import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
@@ -87,8 +91,6 @@ type LearningOSSettings = typeof DEFAULT_SETTINGS & {
 };
 
 export class LearningOSUI extends Plugin {
-  [key: string]: any;
-
   declare store: ManifestStore;
   declare router: ApplicationRouter;
   declare gateway: GatewayClient;
@@ -96,8 +98,31 @@ export class LearningOSUI extends Plugin {
   declare settings: LearningOSSettings;
   declare activeNav: string;
 
-  async onload() {
-    this.settings = { ...DEFAULT_SETTINGS, ...(await this.loadData()) };
+  private draftSaveTimer:
+    ReturnType<typeof setTimeout> | null = null;
+
+  lastAiPrompt = '';
+
+  async onload(): Promise<void> {
+    const loadedSettings = await this.loadData<
+      Partial<LearningOSSettings> | null
+    >();
+    const savedSettings = loadedSettings ?? {};
+
+    this.settings = {
+      ...DEFAULT_SETTINGS,
+      ...savedSettings,
+      uiDrafts: savedSettings.uiDrafts ?? {
+        stages: {},
+        unitNotes: {},
+        selectedStages: {},
+        inbox: {
+          title: '',
+          text: '',
+        },
+        doneWhen: {},
+      },
+    };
     this.settings.uiDrafts ||= { stages: {}, unitNotes: {}, selectedStages: {}, inbox: { title: '', text: '' }, doneWhen: {} };
     this.settings.uiDrafts.stages ||= {};
     this.settings.uiDrafts.unitNotes ||= {};
@@ -111,19 +136,19 @@ export class LearningOSUI extends Plugin {
     this.aiActions = new AIActionClient(this);
     this.router = new ApplicationRouter(this);
     await this.store.load();
-    this.registerView(VIEW_HOME, (leaf: any) => new HomeView(leaf, this));
-    this.registerView(VIEW_NAV, (leaf: any) => new NavView(leaf, this));
-    this.registerView(VIEW_PROGRAM, (leaf: any) => new ProgramView(leaf, this));
-    this.registerView(VIEW_MODULE, (leaf: any) => new ModuleView(leaf, this));
-    this.registerView(VIEW_PROJECT, (leaf: any) => new ProjectView(leaf, this));
-    this.registerView(VIEW_UNIT, (leaf: any) => new UnitView(leaf, this));
-    this.registerView(VIEW_LIBRARY, (leaf: any) => new LibraryView(leaf, this));
-    this.registerView(VIEW_ATLAS, (leaf: any) => new AtlasView(leaf, this));
-    this.registerView(VIEW_SHELVING, (leaf: any) => new ShelvingView(leaf, this));
-    this.registerView(VIEW_BOUNDARY, (leaf: any) => new BoundaryView(leaf, this));
-    this.registerView(VIEW_REVIEW, (leaf: any) => new ReviewView(leaf, this));
-    this.registerView(VIEW_GARDEN, (leaf: any) => new GardenView(leaf, this));
-    this.registerView(VIEW_DIAGNOSTICS, (leaf: any) => new DiagnosticsView(leaf, this));
+    this.registerView(VIEW_HOME, (leaf: WorkspaceLeaf) => new HomeView(leaf, this));
+    this.registerView(VIEW_NAV, (leaf: WorkspaceLeaf) => new NavView(leaf, this));
+    this.registerView(VIEW_PROGRAM, (leaf: WorkspaceLeaf) => new ProgramView(leaf, this));
+    this.registerView(VIEW_MODULE, (leaf: WorkspaceLeaf) => new ModuleView(leaf, this));
+    this.registerView(VIEW_PROJECT, (leaf: WorkspaceLeaf) => new ProjectView(leaf, this));
+    this.registerView(VIEW_UNIT, (leaf: WorkspaceLeaf) => new UnitView(leaf, this));
+    this.registerView(VIEW_LIBRARY, (leaf: WorkspaceLeaf) => new LibraryView(leaf, this));
+    this.registerView(VIEW_ATLAS, (leaf: WorkspaceLeaf) => new AtlasView(leaf, this));
+    this.registerView(VIEW_SHELVING, (leaf: WorkspaceLeaf) => new ShelvingView(leaf, this));
+    this.registerView(VIEW_BOUNDARY, (leaf: WorkspaceLeaf) => new BoundaryView(leaf, this));
+    this.registerView(VIEW_REVIEW, (leaf: WorkspaceLeaf) => new ReviewView(leaf, this));
+    this.registerView(VIEW_GARDEN, (leaf: WorkspaceLeaf) => new GardenView(leaf, this));
+    this.registerView(VIEW_DIAGNOSTICS, (leaf: WorkspaceLeaf) => new DiagnosticsView(leaf, this));
     this.addSettingTab(new LearningOSSettingsTab(this.app, this));
     this.addRibbonIcon('route', 'Open LearningOS', () => this.openHome());
     this.addCommand({ id: 'open-home', name: 'Open Home', callback: () => this.openHome() });
@@ -144,7 +169,7 @@ export class LearningOSUI extends Plugin {
     });
   }
 
-  onunload() {
+  onunload(): void {
     if (this.draftSaveTimer) clearTimeout(this.draftSaveTimer);
     void this.saveData(this.settings);
     for (const type of [VIEW_HOME, VIEW_NAV, VIEW_PROGRAM, VIEW_MODULE, VIEW_PROJECT, VIEW_UNIT,
@@ -152,7 +177,7 @@ export class LearningOSUI extends Plugin {
       VIEW_GARDEN, VIEW_DIAGNOSTICS]) this.app.workspace.detachLeavesOfType(type);
   }
 
-  scheduleDraftSave() {
+  scheduleDraftSave(): void {
     if (this.draftSaveTimer) clearTimeout(this.draftSaveTimer);
     this.draftSaveTimer = setTimeout(() => {
       this.draftSaveTimer = null;
@@ -272,7 +297,7 @@ export class LearningOSUI extends Plugin {
     this.settings.uiDrafts.inbox = { title, text };
     this.scheduleDraftSave();
   }
-  clearInboxDraft() {
+  clearInboxDraft(): void {
     this.settings.uiDrafts.inbox = { title: '', text: '' };
     this.scheduleDraftSave();
   }
@@ -317,7 +342,7 @@ export class LearningOSUI extends Plugin {
     const ok = await this.store.load();
     if (!ok) throw new Error(this.store.error);
     this.app.workspace.iterateAllLeaves(
-      (leaf: any) => leaf.view?.render?.(),
+      (leaf: WorkspaceLeaf) => leaf.view?.render?.(),
     );
   }
 
@@ -515,8 +540,8 @@ export class LearningOSUI extends Plugin {
     if (this.refuseQuarantined(path)) return;
     const file = this.app.vault.getAbstractFileByPath(path);
     if (!file) { new Notice(`File unavailable: ${path}`); return; }
-    let existing: any = null;
-    this.app.workspace.iterateAllLeaves((leaf: any) => {
+    let existing: WorkspaceLeaf | null = null;
+    this.app.workspace.iterateAllLeaves((leaf: WorkspaceLeaf) => {
       if (!existing && leaf.view?.file?.path === path) existing = leaf;
     });
     if (existing) {

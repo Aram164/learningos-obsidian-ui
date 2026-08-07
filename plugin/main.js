@@ -7744,8 +7744,25 @@ function errorMessage9(error) {
   return error instanceof Error ? error.message : String(error);
 }
 var LearningOSUI = class extends import_obsidian18.Plugin {
+  draftSaveTimer = null;
+  lastAiPrompt = "";
   async onload() {
-    this.settings = { ...DEFAULT_SETTINGS, ...await this.loadData() };
+    const loadedSettings = await this.loadData();
+    const savedSettings = loadedSettings ?? {};
+    this.settings = {
+      ...DEFAULT_SETTINGS,
+      ...savedSettings,
+      uiDrafts: savedSettings.uiDrafts ?? {
+        stages: {},
+        unitNotes: {},
+        selectedStages: {},
+        inbox: {
+          title: "",
+          text: ""
+        },
+        doneWhen: {}
+      }
+    };
     this.settings.uiDrafts ||= { stages: {}, unitNotes: {}, selectedStages: {}, inbox: { title: "", text: "" }, doneWhen: {} };
     this.settings.uiDrafts.stages ||= {};
     this.settings.uiDrafts.unitNotes ||= {};

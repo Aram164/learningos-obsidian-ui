@@ -36,12 +36,150 @@ interface HTMLElement {
 }
 
 declare module 'obsidian' {
-  export interface App {}
+  export interface TAbstractFile {
+    readonly path: string;
+  }
+
+  export interface PluginManifest {
+    readonly version?: string;
+  }
+
+  export interface WorkspaceView {
+    readonly file?: TAbstractFile;
+
+    render?(): unknown;
+  }
+
+  export interface WorkspaceSplit {
+    collapse(): void;
+  }
+
+  export interface Workspace {
+    readonly rightSplit?: WorkspaceSplit;
+
+    detachLeavesOfType(
+      viewType: string,
+    ): void;
+
+    onLayoutReady(
+      callback: () => unknown,
+    ): void;
+
+    iterateAllLeaves(
+      callback: (
+        leaf: WorkspaceLeaf,
+      ) => unknown,
+    ): void;
+
+    getLeavesOfType(
+      viewType: string,
+    ): WorkspaceLeaf[];
+
+    getLeaf(
+      newLeaf?: boolean | string,
+    ): WorkspaceLeaf;
+
+    getLeftLeaf?(
+      split?: boolean,
+    ): WorkspaceLeaf | null;
+
+    getRightLeaf?(
+      split?: boolean,
+    ): WorkspaceLeaf | null;
+
+    revealLeaf(
+      leaf: WorkspaceLeaf,
+    ): void;
+
+    setActiveLeaf?(
+      leaf: WorkspaceLeaf,
+      options?: {
+        focus?: boolean;
+      },
+    ): void;
+
+    getActiveFile?():
+      TAbstractFile | null;
+  }
+
+  export interface VaultAdapter {
+    getBasePath(): string;
+  }
+
+  export interface Vault {
+    readonly adapter: VaultAdapter;
+
+    getAbstractFileByPath(
+      path: string,
+    ): TAbstractFile | null;
+  }
+
+  export interface CommandManager {
+    executeCommandById?(
+      commandId: string,
+    ): boolean | void;
+  }
+
+  export interface ChatAgent {
+    sendToChat?(
+      prompt: string,
+    ): Promise<unknown> | unknown;
+  }
+
+  export interface PluginRegistry {
+    readonly plugins?:
+      Record<
+        string,
+        ChatAgent | undefined
+      >;
+  }
+
+  export interface App {
+    readonly workspace: Workspace;
+    readonly vault: Vault;
+    readonly commands?: CommandManager;
+    readonly plugins?: PluginRegistry;
+  }
+
+  export interface Command {
+    readonly id: string;
+    readonly name: string;
+    readonly callback: () => unknown;
+  }
 
   export class Plugin {
-    [key: string]: any;
+    readonly app: App;
+    readonly manifest?: PluginManifest;
 
-    saveData(data: unknown): Promise<void>;
+    constructor(app: App);
+
+    registerView(
+      viewType: string,
+      viewCreator: (
+        leaf: WorkspaceLeaf,
+      ) => ItemView,
+    ): void;
+
+    addSettingTab(
+      tab: PluginSettingTab,
+    ): void;
+
+    addRibbonIcon(
+      icon: string,
+      title: string,
+      callback: () => unknown,
+    ): HTMLElement;
+
+    addCommand(
+      command: Command,
+    ): void;
+
+    loadData<T = unknown>():
+      Promise<T>;
+
+    saveData<T>(
+      data: T,
+    ): Promise<void>;
   }
 
   export interface ToggleComponent {
@@ -80,13 +218,23 @@ declare module 'obsidian' {
   }
 
   export interface WorkspaceLeaf {
+    readonly app: App;
     readonly state?: Record<string, unknown>;
+    readonly view?: WorkspaceView;
 
     setViewState(viewState: {
       type: string;
       active?: boolean;
       state?: Record<string, unknown>;
     }): Promise<void> | void;
+
+    setPinned?(
+      pinned: boolean,
+    ): void;
+
+    openFile(
+      file: TAbstractFile,
+    ): Promise<void> | void;
   }
 
   export class ItemView {
