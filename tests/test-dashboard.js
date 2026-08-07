@@ -1074,7 +1074,13 @@ async function main() {
       && mainSource.includes("from './views/unit-view'")
       && !buildSource.includes('const files = ['));
     const css = fs.readFileSync(path.join(ROOT, 'plugin', 'styles.css'), 'utf8');
-    check('theme variables only', (css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length === 0);
+    /* Any literal colour, not just hex. A palette written in rgb()/hsl() is
+     * exactly as theme-breaking as one written in #rrggbb, and grepping only
+     * for hex let a 13-colour hardcoded palette through unnoticed. */
+    check('theme variables only',
+      (css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length === 0
+      && (css.match(/\b(rgba?|hsla?)\(/g) || []).length === 0
+      && !/color-scheme:/.test(css));
     check('narrow-screen workspace is responsive', css.includes('.los-unit-layout') && css.includes('@media (max-width: 720px)'));
     check('button-like components are insulated from Obsidian theme distortion',
       css.includes('appearance: none') && css.includes('min-width: 0')
@@ -1089,8 +1095,11 @@ async function main() {
       /\.los-btn--cta\s*\{[^}]*background: var\(--interactive-accent\)/.test(css));
     check('the active navigation destination is visually obvious',
       /\.los-app-nav-item\.is-active\s*\{[^}]*inset 3px 0 0 var\(--interactive-accent\)/.test(css));
+    /* The flag is optional: once the rule is scoped under .los-root it
+     * outranks the base button rule on its own, so requiring !important here
+     * would pin an implementation detail rather than the intent. */
     check('ordinary navigation rows carry no border',
-      /\.los-app-nav-item\s*\{[^}]*border: 0 !important/.test(css));
+      /\.los-app-nav-item\s*\{[^}]*border: 0\s*(!important)?\s*;/.test(css));
     check('compact type and control scale is explicit',
       css.includes('font-size: 14px') && css.includes('clamp(24px, 2.2vw, 28px)')
       && css.includes('min-height: 28px'));
