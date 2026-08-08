@@ -7,8 +7,21 @@ The interface carries usability while the core carries meaning.
 1. **Module-first, not focus-exclusive.** A resume card is useful, but every
    current module and unit remains reachable. Independent stage state is never
    flattened into one global path.
-2. **No raw colour.** All colour resolves through Obsidian theme variables.
-   Light/dark mode therefore preserves meaning without a second palette.
+2. **No raw colour *in components*; one palette at the root.** Revised
+   2026-08-08. This principle used to read "all colour resolves through Obsidian
+   theme variables", which meant LearningOS had no visual identity of its own —
+   it looked like whichever theme happened to be installed. It now has one:
+   **warm paper (beige) with a single brick-red accent**, defined once in
+   `plugin/styles.css` as `--los-*` tokens, with a real dark palette rather than
+   an inversion.
+
+   The constraint the old rule was protecting is unchanged and still binding:
+   **no component may name a colour.** Every rule refers to a token, colour is
+   defined in exactly two blocks (light, and `.theme-dark`), and both were
+   contrast-checked — body text 12.6:1 light / 13.8:1 dark, secondary 5.4/6.2,
+   accent 5.7/5.5, all state hues ≥ 3.5:1. Accent means emphasis, never meaning
+   on its own: every state that uses colour also carries a text label, so
+   nothing is lost to colour-blindness.
 3. **No orphan links or dumps.** Typed chips, cards and exact source actions
    show why a record matters in the current module/unit/stage.
 4. **One stage workspace at a time.** Stage rail, exact work, and scratch are

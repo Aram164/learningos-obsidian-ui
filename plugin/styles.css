@@ -1,4 +1,21 @@
-/* LearningOS compact command centre: quiet, module-first, theme-variable driven. */
+/* LearningOS compact command centre: quiet, module-first.
+ *
+ * ── PALETTE ────────────────────────────────────────────────────────────────
+ * Warm paper (beige) with a single brick-red accent. Everything you would want
+ * to change lives in the two blocks below; the rest of this file only ever
+ * refers to --los-* tokens, never to raw colour.
+ *
+ * This replaces the previous "no palette at all" behaviour, where every colour
+ * resolved straight to an Obsidian theme variable and the plugin looked like
+ * whatever theme was installed. The REASON for that old rule was sound —
+ * light/dark had to keep working without maintaining a second palette — so the
+ * rule is kept in spirit: colours are still semantic tokens, still defined once
+ * per mode, and dark mode is a real palette rather than an inversion. See
+ * DESIGN.md principle 2.
+ *
+ * Accent is used for emphasis, never as the only signal: state is carried by
+ * text and shape too, so a red/green deficiency loses nothing.
+ */
 .los-root {
   --los-1: 4px;
   --los-2: 8px;
@@ -10,24 +27,71 @@
   --los-r-md: 8px;
   --los-r-lg: 10px;
   --los-r-pill: 999px;
-  --los-surface: var(--background-secondary);
-  --los-surface-raised: var(--background-primary-alt);
-  --los-line: var(--background-modifier-border);
-  --los-line-strong: var(--background-modifier-border-hover);
+
+  /* ── Light: warm paper ── */
+  --los-paper:        #f6f1e7;  /* page */
+  --los-paper-2:      #efe8da;  /* cards, raised surfaces */
+  --los-paper-3:      #e7dece;  /* hover, inset wells */
+  --los-ink:          #2f2a24;  /* primary text */
+  --los-ink-soft:     #6b6155;  /* secondary text */
+  --los-rule:         #d9cdb8;  /* borders */
+  --los-rule-strong:  #c3b298;
+  --los-accent:       #a63a2e;  /* brick red */
+  --los-accent-soft:  #c8604f;
+  --los-accent-wash:  #f0dcd6;  /* tinted background behind accents */
+
+  /* State hues, warmed to sit on paper. These carry MEANING, so they stay
+     distinguishable from the brand accent and from each other — and every
+     place they are used also carries a text label, never colour alone. */
+  --los-st-active:   #4f7a4a;
+  --los-st-ready:    #46688a;
+  --los-st-attention:#b4711f;
+  --los-st-paused:   #8a7529;
+  --los-st-done:     #6b5a86;
+  --los-st-shelve:   #3f7a78;
+
+  --los-surface: var(--los-paper-2);
+  --los-surface-raised: var(--los-paper);
+  --los-line: var(--los-rule);
+  --los-line-strong: var(--los-rule-strong);
+
   min-height: 100%;
   padding: var(--los-4);
   overflow-x: hidden;
   overflow-y: auto;
-  background: var(--background-primary);
-  color: var(--text-normal);
+  background: var(--los-paper);
+  color: var(--los-ink);
   font-size: 14px;
   line-height: 1.42;
+}
+
+/* ── Dark: the same paper, dimmed — not an inversion ──
+ * Obsidian sets .theme-dark on body. Beige at low luminance reads as warm
+ * brown-black; the accent lifts because a 4.5:1 brick red on dark paper needs
+ * more light than it does on pale paper. */
+.theme-dark .los-root {
+  --los-paper:        #1c1917;
+  --los-paper-2:      #24201d;
+  --los-paper-3:      #2e2823;
+  --los-ink:          #ece3d6;
+  --los-ink-soft:     #a4988a;
+  --los-rule:         #3a332c;
+  --los-rule-strong:  #4e453b;
+  --los-accent:       #e0705e;
+  --los-accent-soft:  #b8503f;
+  --los-accent-wash:  #33231f;
+  --los-st-active:   #86b47f;
+  --los-st-ready:    #7fa6cc;
+  --los-st-attention:#d79a4e;
+  --los-st-paused:   #c2ab5c;
+  --los-st-done:     #a996c4;
+  --los-st-shelve:   #6fb3b0;
 }
 
 .los-root *, .los-root *::before, .los-root *::after { box-sizing: border-box; }
 .los-root .is-clickable { cursor: pointer; }
 .los-root h1, .los-root h2, .los-root h3 {
-  color: var(--text-normal);
+  color: var(--los-ink);
   overflow-wrap: break-word;
   word-break: normal;
 }
@@ -40,7 +104,7 @@
 .los-root h2 { margin: 0 0 var(--los-2); font-size: 17px !important; line-height: 1.28; }
 .los-root h3 { margin: 0 0 var(--los-1); font-size: 15px !important; line-height: 1.32; }
 .los-root p { max-width: 74ch; overflow-wrap: break-word; word-break: normal; }
-.los-muted, .los-micro, .los-progress-copy, .los-detail-id { color: var(--text-muted); }
+.los-muted, .los-micro, .los-progress-copy, .los-detail-id { color: var(--los-ink-soft); }
 .los-micro, .los-detail-id { font-size: 12px; }
 .los-sr-only {
   position: absolute;
@@ -80,20 +144,20 @@
   overflow-wrap: break-word;
   word-break: normal;
 }
-.los-root button:hover { border-color: var(--los-line-strong); background: var(--background-modifier-hover); }
+.los-root button:hover { border-color: var(--los-line-strong); background: var(--los-paper-3); }
 .los-root button:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
 .los-root button:focus-visible,
 .los-root input:focus-visible,
 .los-root textarea:focus-visible,
 .los-root summary:focus-visible {
-  outline: 2px solid var(--interactive-accent);
+  outline: 2px solid var(--los-accent);
   outline-offset: 2px;
 }
 
 .los-page-header { max-width: 1180px; margin: 0 auto var(--los-5); }
-.los-page-header > p { margin: var(--los-1) 0 0; color: var(--text-muted); font-size: 14px; }
+.los-page-header > p { margin: var(--los-1) 0 0; color: var(--los-ink-soft); font-size: 14px; }
 .los-kicker, .los-nav-label {
-  color: var(--text-faint);
+  color: var(--los-ink-soft);
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.075em;
@@ -104,7 +168,7 @@
   flex-wrap: wrap;
   gap: var(--los-1) var(--los-4);
   margin-top: var(--los-3);
-  color: var(--text-muted);
+  color: var(--los-ink-soft);
   font-size: 13px;
 }
 
@@ -134,17 +198,17 @@
   inset: 0 auto 0 0;
   width: 2px;
   border-radius: var(--los-r-md) 0 0 var(--los-r-md);
-  background: var(--text-faint);
+  background: var(--los-ink-soft);
 }
 .los-card:hover { border-color: var(--los-line-strong); transform: translateY(-1px); }
 .los-card-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: var(--los-2); }
-.los-card p { margin: var(--los-2) 0; color: var(--text-muted); }
-.los-s-active::before { background: var(--color-green); }
-.los-s-ready::before { background: var(--color-blue); }
-.los-s-needs-map::before { background: var(--color-orange); }
-.los-s-paused::before { background: var(--color-yellow); }
-.los-s-complete::before { background: var(--color-purple); }
-.los-s-ready-to-shelve::before { background: var(--color-cyan); }
+.los-card p { margin: var(--los-2) 0; color: var(--los-ink-soft); }
+.los-s-active::before { background: var(--los-st-active); }
+.los-s-ready::before { background: var(--los-st-ready); }
+.los-s-needs-map::before { background: var(--los-st-attention); }
+.los-s-paused::before { background: var(--los-st-paused); }
+.los-s-complete::before { background: var(--los-st-done); }
+.los-s-ready-to-shelve::before { background: var(--los-st-shelve); }
 
 /* Home: Continue, Upcoming, My learning, Attention — and nothing else.
  * Level 3 (raised) is spent on the Continue card, because it is the one thing
@@ -152,7 +216,7 @@
 .los-continue {
   margin-bottom: var(--los-5);
   padding: var(--los-3) var(--los-4);
-  border: 1px solid var(--interactive-accent);
+  border: 1px solid var(--los-accent);
   border-radius: var(--los-r-lg);
   background: var(--los-surface-raised);
 }
@@ -164,8 +228,8 @@
 }
 .los-continue-copy { min-width: 0; }
 .los-root .los-continue-copy h2 { margin: 2px 0 var(--los-1); font-size: 20px; }
-.los-continue-module { color: var(--text-muted); font-size: 12px; }
-.los-continue-meta { display: flex; flex-wrap: wrap; gap: var(--los-1) var(--los-3); color: var(--text-muted); font-size: 13px; }
+.los-continue-module { color: var(--los-ink-soft); font-size: 12px; }
+.los-continue-meta { display: flex; flex-wrap: wrap; gap: var(--los-1) var(--los-3); color: var(--los-ink-soft); font-size: 13px; }
 .los-priority-line {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
@@ -174,10 +238,10 @@
   margin-top: var(--los-3);
   padding-top: var(--los-2);
   border-top: 1px solid var(--los-line);
-  color: var(--text-muted);
+  color: var(--los-ink-soft);
   font-size: 13px;
 }
-.los-priority-icon { color: var(--text-accent); }
+.los-priority-icon { color: var(--los-accent); }
 
 .los-home-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--los-5); }
 .los-home-column { display: flex; min-width: 0; flex-direction: column; gap: var(--los-2); }
@@ -196,7 +260,7 @@
   border-bottom: 1px solid var(--los-line);
 }
 .los-learning-copy { min-width: 0; }
-.los-learning-next { color: var(--text-muted); font-size: 12px; overflow-wrap: break-word; word-break: normal; }
+.los-learning-next { color: var(--los-ink-soft); font-size: 12px; overflow-wrap: break-word; word-break: normal; }
 .los-learning-meta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--los-1) var(--los-2); }
 .los-root .los-btn.los-learning-title {
   display: inline;
@@ -204,10 +268,10 @@
   padding: 0;
   border-color: transparent;
   background: transparent;
-  color: var(--text-normal);
+  color: var(--los-ink);
   font-weight: 650;
 }
-.los-root .los-btn.los-learning-title:hover { background: transparent; color: var(--text-accent); }
+.los-root .los-btn.los-learning-title:hover { background: transparent; color: var(--los-accent); }
 
 /* Two columns, always: a bounded date and flexible content. Actions live
  * inside the content column so they can never squeeze the prose. */
@@ -220,13 +284,13 @@
   padding: var(--los-2);
   border-bottom: 1px solid var(--los-line);
 }
-.los-deadline-registration-window { box-shadow: inset 2px 0 0 var(--color-orange); }
+.los-deadline-registration-window { box-shadow: inset 2px 0 0 var(--los-st-attention); }
 .los-date-when { min-width: 0; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
 .los-date-copy { min-width: 0; overflow-wrap: break-word; word-break: normal; }
-.los-date-copy > div:not(.los-actions) { color: var(--text-muted); font-size: 12px; }
-.los-date-copy p { margin: var(--los-1) 0; color: var(--text-muted); font-size: 12px; }
+.los-date-copy > div:not(.los-actions) { color: var(--los-ink-soft); font-size: 12px; }
+.los-date-copy p { margin: var(--los-1) 0; color: var(--los-ink-soft); font-size: 12px; }
 .los-date-copy .los-actions { margin-top: var(--los-1); }
-.los-deadline-history { margin-top: var(--los-2); color: var(--text-muted); }
+.los-deadline-history { margin-top: var(--los-2); color: var(--los-ink-soft); }
 
 /* One compact row instead of three queue cards competing with current work. */
 .los-attention {
@@ -237,12 +301,12 @@
   margin-top: var(--los-5);
   padding-top: var(--los-2);
   border-top: 1px solid var(--los-line);
-  color: var(--text-muted);
+  color: var(--los-ink-soft);
   font-size: 13px;
 }
-.los-attention-icon { color: var(--color-orange); }
-.los-root .los-deadline-action-row .los-btn--row { min-height: 24px; padding: 0; border-color: transparent; color: var(--text-accent); font-weight: 650; }
-.los-deadline-action-row span { color: var(--text-muted); font-size: 12px; }
+.los-attention-icon { color: var(--los-st-attention); }
+.los-root .los-deadline-action-row .los-btn--row { min-height: 24px; padding: 0; border-color: transparent; color: var(--los-accent); font-weight: 650; }
+.los-deadline-action-row span { color: var(--los-ink-soft); font-size: 12px; }
 
 .los-queue-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--los-2); }
 .los-root .los-queue-card {
@@ -267,22 +331,22 @@
   border-style: dashed;
 }
 .los-boundary-card h3 { margin: 0; }
-.los-boundary-card p { grid-column: 2; margin: 0; color: var(--text-muted); font-size: 12px; }
+.los-boundary-card p { grid-column: 2; margin: 0; color: var(--los-ink-soft); font-size: 12px; }
 
 /* Shared rows, actions, and module/unit surfaces */
 .los-tabs, .los-actions, .los-stack-actions { display: flex; flex-wrap: wrap; gap: var(--los-2); }
 .los-tabs { max-width: 1180px; margin: calc(-1 * var(--los-2)) auto var(--los-4); }
 .los-stack-actions { flex-direction: column; margin-top: var(--los-3); }
-.los-root .los-group-title { margin: var(--los-4) 0 var(--los-2); color: var(--text-muted); text-transform: capitalize; }
+.los-root .los-group-title { margin: var(--los-4) 0 var(--los-2); color: var(--los-ink-soft); text-transform: capitalize; }
 .los-source-role { margin-top: var(--los-3); padding-top: var(--los-3); border-top: 1px solid var(--los-line); }
 .los-row { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: var(--los-2); padding: var(--los-1) 0; }
-.los-row p { flex: 1 1 280px; margin: 0; color: var(--text-muted); }
+.los-row p { flex: 1 1 280px; margin: 0; color: var(--los-ink-soft); }
 .los-workspace-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: var(--los-2); }
 .los-workspace-card { display: flex; flex-direction: column; }
 .los-workspace-card > .los-actions { margin-top: auto; padding-top: var(--los-2); }
 .los-workspace-objective { font-size: 12px; }
-.los-next-action { margin: var(--los-2) 0; padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--background-primary); }
-.los-next-action p { margin: var(--los-1) 0; color: var(--text-normal); }
+.los-next-action { margin: var(--los-2) 0; padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--los-paper); }
+.los-next-action p { margin: var(--los-1) 0; color: var(--los-ink); }
 
 /* Focused learning workspace: stage rail | current work.
  * One Add note action follows the ordered stages; note capture opens as a
@@ -305,7 +369,7 @@
 .los-stage-rail { min-width: 0; padding: var(--los-2); }
 .los-stage-rail h2 { padding: var(--los-1) var(--los-2); }
 .los-add-unit-note { width: 100%; justify-content: flex-start; margin-top: var(--los-2); }
-.los-unit-note-draft { padding: var(--los-1) var(--los-2); color: var(--text-accent); }
+.los-unit-note-draft { padding: var(--los-1) var(--los-2); color: var(--los-accent); }
 .los-root .los-stage-row {
   display: flex;
   width: 100%;
@@ -314,10 +378,10 @@
   padding: var(--los-2);
   border: 0;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--los-ink-soft);
 }
-.los-root .los-stage-row:hover, .los-root .los-stage-row.is-selected { background: var(--background-modifier-hover); color: var(--text-normal); }
-.los-stage-index { color: var(--text-faint); font-variant-numeric: tabular-nums; }
+.los-root .los-stage-row:hover, .los-root .los-stage-row.is-selected { background: var(--los-paper-3); color: var(--los-ink); }
+.los-stage-index { color: var(--los-ink-soft); font-variant-numeric: tabular-nums; }
 .los-stage-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; }
 .los-stage-copy > span { overflow-wrap: break-word; word-break: normal; }
 .los-stage-heading { margin-bottom: var(--los-4); }
@@ -338,12 +402,12 @@
 .los-stage-goal { margin-bottom: var(--los-3); }
 .los-stage-goal p { margin: var(--los-1) 0 0; }
 .los-unit-note-modal { width: min(92vw, 640px); }
-.los-unit-note-context, .los-unit-note-attachments { margin: var(--los-3) 0; padding: var(--los-3); border: 1px solid var(--los-line); border-radius: var(--los-r-sm); background: var(--background-primary); }
+.los-unit-note-context, .los-unit-note-attachments { margin: var(--los-3) 0; padding: var(--los-3); border: 1px solid var(--los-line); border-radius: var(--los-r-sm); background: var(--los-paper); }
 .los-unit-note-title { width: 100%; margin-bottom: var(--los-2); }
 .los-unit-note-editor { min-height: 260px; }
 .los-unit-note-actions { justify-content: flex-end; margin-top: var(--los-3); }
 .los-attachments, .los-detour-row { margin-top: var(--los-3); padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
-.los-detour-row p { margin: var(--los-1) 0; color: var(--text-muted); font-size: 12px; }
+.los-detour-row p { margin: var(--los-1) 0; color: var(--los-ink-soft); font-size: 12px; }
 
 /* Done-when as working checkboxes. UI-owned state: the core still learns only
  * "complete", from stage-progress. */
@@ -357,7 +421,7 @@
   padding: var(--los-1) 0;
   cursor: pointer;
 }
-.los-donewhen-row.is-checked { color: var(--text-faint); text-decoration: line-through; }
+.los-donewhen-row.is-checked { color: var(--los-ink-soft); text-decoration: line-through; }
 
 /* Two actions and one menu — the only action surface on the screen. */
 .los-unit-actionbar {
@@ -379,8 +443,8 @@
   padding: var(--los-2);
   resize: vertical;
   border: 1px solid var(--los-line);
-  background: var(--background-primary);
-  color: var(--text-normal);
+  background: var(--los-paper);
+  color: var(--los-ink);
 }
 .los-capture-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--los-3); }
 .los-capture-panel { padding: var(--los-3); border: 1px solid var(--los-line); border-radius: var(--los-r-md); background: var(--los-surface); }
@@ -388,13 +452,13 @@
 .los-capture-editor { min-height: 160px; }
 .los-file-input { width: 100%; min-width: 0; }
 .los-capture-file { display: block; max-width: 100%; margin: var(--los-3) 0; }
-.los-draft-status { margin: calc(-1 * var(--los-1)) 0 var(--los-2); color: var(--text-muted); font-size: 12px; }
-.los-draft-status.is-dirty { color: var(--color-orange); }
+.los-draft-status { margin: calc(-1 * var(--los-1)) 0 var(--los-2); color: var(--los-ink-soft); font-size: 12px; }
+.los-draft-status.is-dirty { color: var(--los-st-attention); }
 
 /* Library: three panes, and only the middle one is dense. The five modes used
  * to be pills above a facet bar above a filter chip above the list — four
  * stacked control strips before any content appeared. */
-.los-search { width: 100%; min-width: 0; min-height: 30px; padding: var(--los-1) var(--los-2); border: 1px solid var(--los-line); background: var(--background-primary); }
+.los-search { width: 100%; min-width: 0; min-height: 30px; padding: var(--los-1) var(--los-2); border: 1px solid var(--los-line); background: var(--los-paper); }
 .los-library-layout {
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr) minmax(280px, 34%);
@@ -415,14 +479,14 @@
   border: 0;
   border-radius: var(--los-r-sm);
   background: transparent;
-  color: var(--text-muted);
+  color: var(--los-ink-soft);
   text-align: left;
 }
-.los-root .los-library-mode:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.los-root .los-library-mode:hover { background: var(--los-paper-3); color: var(--los-ink); }
 .los-root .los-library-mode.is-active {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
-  box-shadow: inset 2px 0 0 var(--interactive-accent);
+  background: var(--los-paper-3);
+  color: var(--los-ink);
+  box-shadow: inset 2px 0 0 var(--los-accent);
 }
 .los-library-filters { margin-top: var(--los-3); }
 .los-library-filters .los-disclosure-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--los-1); }
@@ -435,7 +499,7 @@
 .los-related-chips { display: flex; flex-wrap: wrap; gap: var(--los-1); }
 .los-technical-details { margin-top: var(--los-4); padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
 .los-root .los-item { display: flex; width: 100%; min-height: 36px; gap: var(--los-2); align-items: center; padding: var(--los-2); border: 0; background: transparent; }
-.los-root .los-item:hover, .los-root .los-item.is-selected { background: var(--background-modifier-hover); }
+.los-root .los-item:hover, .los-root .los-item.is-selected { background: var(--los-paper-3); }
 .los-item-copy { display: flex; min-width: 0; flex-direction: column; overflow-wrap: break-word; }
 /* Library modes, facets and shelves */
 .los-library-tabs, .los-library-facets, .los-library-filter {
@@ -446,14 +510,14 @@
   align-items: center;
   flex-wrap: wrap;
 }
-.los-library-facets .los-kicker, .los-library-filter { color: var(--text-muted); }
+.los-library-facets .los-kicker, .los-library-filter { color: var(--los-ink-soft); }
 .los-list-group {
   position: sticky;
   top: 0;
   z-index: 1;
   padding: var(--los-2) var(--los-2) var(--los-1);
   background: var(--los-surface);
-  color: var(--text-faint);
+  color: var(--los-ink-soft);
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -468,12 +532,12 @@
   padding: 0;
   border: 0;
   background: transparent;
-  color: var(--text-normal);
+  color: var(--los-ink);
   font-weight: 600;
   text-align: left;
 }
-.los-root .los-shelf-entry-title:hover { color: var(--text-accent); }
-.los-shelf-why { margin-top: var(--los-1); color: var(--text-muted); }
+.los-root .los-shelf-entry-title:hover { color: var(--los-accent); }
+.los-shelf-why { margin-top: var(--los-1); color: var(--los-ink-soft); }
 
 /* Domain atlas */
 .los-atlas-glance {
@@ -495,29 +559,29 @@
   background: var(--los-surface);
   text-align: left;
 }
-.los-root .los-atlas-tile:hover { background: var(--background-modifier-hover); }
-.los-root .los-atlas-tile.is-selected { border-color: var(--interactive-accent); }
+.los-root .los-atlas-tile:hover { background: var(--los-paper-3); }
+.los-root .los-atlas-tile.is-selected { border-color: var(--los-accent); }
 .los-atlas-tile-name { font-weight: 650; }
 .los-atlas-body { max-width: 1180px; margin: 0 auto; }
 .los-atlas-domain-head { display: flex; gap: var(--los-3); align-items: baseline; flex-wrap: wrap; }
 .los-atlas-domain-head h2 { margin: 0; text-transform: capitalize; }
 .los-atlas-group { margin: var(--los-1) 0; }
-.los-atlas-group > summary { padding: var(--los-1) 0; color: var(--text-muted); cursor: pointer; }
+.los-atlas-group > summary { padding: var(--los-1) 0; color: var(--los-ink-soft); cursor: pointer; }
 .los-boundary-row { margin: var(--los-2) 0; padding-left: var(--los-2); border-left: 2px solid var(--los-line-strong); }
 
 .los-proposal-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--los-2); margin: var(--los-2) 0; padding: var(--los-3); border: 1px solid var(--los-line); border-radius: var(--los-r-md); background: var(--los-surface); }
-.los-proposal-diff { overflow-x: auto; padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--background-primary); color: var(--text-muted); white-space: pre-wrap; }
-.los-validation-preview { max-width: 1180px; margin: var(--los-4) auto; padding: var(--los-3); border-left: 2px solid var(--interactive-accent); background: var(--los-surface); }
-.los-empty { padding: var(--los-4); border: 1px dashed var(--los-line-strong); border-radius: var(--los-r-md); color: var(--text-muted); }
-.los-empty h3 { color: var(--text-normal); }
+.los-proposal-diff { overflow-x: auto; padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--los-paper); color: var(--los-ink-soft); white-space: pre-wrap; }
+.los-validation-preview { max-width: 1180px; margin: var(--los-4) auto; padding: var(--los-3); border-left: 2px solid var(--los-accent); background: var(--los-surface); }
+.los-empty { padding: var(--los-4); border: 1px dashed var(--los-line-strong); border-radius: var(--los-r-md); color: var(--los-ink-soft); }
+.los-empty h3 { color: var(--los-ink); }
 .los-empty p { margin: var(--los-1) 0 var(--los-2); }
 
 /* Progressive disclosure. Native details, so it works with the keyboard and
  * with no script at all. */
-.los-disclosure > summary { min-height: 28px; padding: var(--los-1) 0; color: var(--text-accent); cursor: pointer; font-size: 13px; }
+.los-disclosure > summary { min-height: 28px; padding: var(--los-1) 0; color: var(--los-accent); cursor: pointer; font-size: 13px; }
 .los-disclosure-body { padding: var(--los-2) 0; }
 .los-coordination-row { display: grid; grid-template-columns: minmax(90px, auto) minmax(0, 1fr); gap: var(--los-3); padding-top: var(--los-2); }
-.los-coordination-row p { margin: 0; color: var(--text-muted); }
+.los-coordination-row p { margin: 0; color: var(--los-ink-soft); }
 
 /* The ••• overflow. One place for every secondary operation. */
 .los-overflow { position: relative; display: inline-block; }
@@ -530,13 +594,13 @@
   padding: 0 var(--los-2);
   border: 1px solid var(--los-line);
   border-radius: var(--los-r-sm);
-  color: var(--text-muted);
+  color: var(--los-ink-soft);
   cursor: pointer;
   letter-spacing: 0.08em;
   list-style: none;
 }
 .los-overflow-trigger::-webkit-details-marker { display: none; }
-.los-overflow-trigger:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.los-overflow-trigger:hover { background: var(--los-paper-3); color: var(--los-ink); }
 .los-overflow-body {
   position: absolute;
   z-index: 20;
@@ -555,22 +619,22 @@
   justify-content: flex-start;
   border-color: transparent;
   background: transparent;
-  color: var(--text-normal);
+  color: var(--los-ink);
   text-align: left;
 }
-.los-root .los-btn--menu:hover { background: var(--background-modifier-hover); }
+.los-root .los-btn--menu:hover { background: var(--los-paper-3); }
 
 /* Fact lists: Logistics and Diagnostics, never a learner-facing screen. */
 .los-fact-list { display: grid; gap: 0; border-top: 1px solid var(--los-line); }
 .los-fact-row { display: grid; grid-template-columns: minmax(120px, 30%) minmax(0, 1fr); gap: var(--los-3); padding: var(--los-1) 0; border-bottom: 1px solid var(--los-line); }
-.los-fact-label { color: var(--text-muted); font-size: 12px; }
+.los-fact-label { color: var(--los-ink-soft); font-size: 12px; }
 .los-fact-value { min-width: 0; overflow-wrap: break-word; word-break: normal; }
 
 /* Module header: one line of facts, not six labelled rows. */
-.los-module-facts { color: var(--text-muted); font-size: 13px; }
+.los-module-facts { color: var(--los-ink-soft); font-size: 13px; }
 .los-subtabs { display: flex; flex-wrap: wrap; gap: var(--los-1); margin-bottom: var(--los-3); }
 .los-overview { display: flex; flex-direction: column; gap: var(--los-3); align-items: flex-start; }
-.los-overview-progress { color: var(--text-muted); }
+.los-overview-progress { color: var(--los-ink-soft); }
 
 /* Review: the decision queues, one row each. */
 .los-review-list { display: grid; gap: 0; border-top: 1px solid var(--los-line-strong); }
@@ -584,8 +648,8 @@
 }
 .los-review-copy { min-width: 0; }
 .los-review-heading { display: flex; gap: var(--los-2); align-items: baseline; }
-.los-review-count { color: var(--text-accent); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
-.los-review-clear { color: var(--text-faint); }
+.los-review-count { color: var(--los-accent); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.los-review-clear { color: var(--los-ink-soft); }
 
 /* Diagnostics: states, not a green dot. */
 .los-diagnostic-status {
@@ -600,7 +664,7 @@
   background: var(--los-surface);
 }
 .los-diagnostic-glyph { font-size: 20px; }
-.los-diagnostic-report { overflow-x: auto; margin-top: var(--los-3); padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--background-primary); color: var(--text-muted); font-size: 12px; white-space: pre-wrap; }
+.los-diagnostic-report { overflow-x: auto; margin-top: var(--los-3); padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--los-paper); color: var(--los-ink-soft); font-size: 12px; white-space: pre-wrap; }
 
 .los-root .los-btn, .los-root .los-chip {
   display: inline-flex;
@@ -613,26 +677,26 @@
 .los-root .los-actions > .los-btn { text-align: left; }
 /* Filled, not outlined. An outlined "primary" beside outlined secondaries is
  * not a hierarchy — only one filled action may appear in one visible context. */
-.los-root .los-btn--cta { border-color: var(--interactive-accent); background: var(--interactive-accent); color: var(--text-on-accent); font-weight: 650; }
-.los-root .los-btn--cta:hover { background: var(--interactive-accent-hover); color: var(--text-on-accent); }
-.los-root .los-btn--quiet { background: transparent; color: var(--text-muted); }
-.los-root .los-btn--quiet:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
-.los-root .los-btn--tertiary { min-height: 24px; padding: 1px var(--los-2); border-color: transparent; color: var(--text-muted); font-size: 12px; }
-.los-root .los-btn--tertiary:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
-.los-root .los-chip { min-height: 26px; padding: 2px var(--los-2); border-radius: var(--los-r-pill); background: var(--background-primary); text-align: left; }
+.los-root .los-btn--cta { border-color: var(--los-accent); background: var(--los-accent); color: var(--los-paper); font-weight: 650; }
+.los-root .los-btn--cta:hover { background: var(--los-accent-soft); color: var(--los-paper); }
+.los-root .los-btn--quiet { background: transparent; color: var(--los-ink-soft); }
+.los-root .los-btn--quiet:hover { background: var(--los-paper-3); color: var(--los-ink); }
+.los-root .los-btn--tertiary { min-height: 24px; padding: 1px var(--los-2); border-color: transparent; color: var(--los-ink-soft); font-size: 12px; }
+.los-root .los-btn--tertiary:hover { background: var(--los-paper-3); color: var(--los-ink); }
+.los-root .los-chip { min-height: 26px; padding: 2px var(--los-2); border-radius: var(--los-r-pill); background: var(--los-paper); text-align: left; }
 .los-root .los-chip > span:last-child { min-width: 0; overflow-wrap: break-word; word-break: normal; }
-.los-badge { display: inline-flex; max-width: 100%; padding: 1px var(--los-2); border-radius: var(--los-r-pill); background: var(--background-modifier-border); color: var(--text-muted); font-size: 11px; line-height: 1.5; white-space: normal; }
-.los-badge--active { color: var(--color-green); }
-.los-badge--needs-map { color: var(--color-orange); }
-.los-badge--role { color: var(--text-accent); }
+.los-badge { display: inline-flex; max-width: 100%; padding: 1px var(--los-2); border-radius: var(--los-r-pill); background: var(--los-rule); color: var(--los-ink-soft); font-size: 11px; line-height: 1.5; white-space: normal; }
+.los-badge--active { color: var(--los-st-active); }
+.los-badge--needs-map { color: var(--los-st-attention); }
+.los-badge--role { color: var(--los-accent); }
 /* Level is a property of the evaluation, not a rank of the source — it reads
    as a neutral fact beside the roles, never as a score. */
-.los-badge--level { color: var(--text-muted); border-color: var(--background-modifier-border); }
+.los-badge--level { color: var(--los-ink-soft); border-color: var(--los-rule); }
 
 /* Compact application navigator */
 .los-app-nav { padding: var(--los-2); }
 .los-nav-brand { display: flex; align-items: center; gap: var(--los-2); padding: var(--los-2); margin-bottom: var(--los-2); }
-.los-brand-mark { display: grid; width: 28px; height: 28px; place-items: center; border-radius: var(--los-r-sm); background: var(--interactive-accent); color: var(--text-on-accent); }
+.los-brand-mark { display: grid; width: 28px; height: 28px; place-items: center; border-radius: var(--los-r-sm); background: var(--los-accent); color: var(--los-paper); }
 .los-nav-label { margin: var(--los-4) var(--los-2) var(--los-1); }
 .los-nav-primary { display: flex; flex-direction: column; }
 /* No border on an ordinary navigation row; the active destination is the only
@@ -648,17 +712,17 @@
   border: 0;
   border-radius: var(--los-r-sm);
   background: transparent;
-  color: var(--text-muted);
+  color: var(--los-ink-soft);
 }
-.los-root .los-app-nav-item:hover { background: var(--background-modifier-hover); color: var(--text-normal); }
+.los-root .los-app-nav-item:hover { background: var(--los-paper-3); color: var(--los-ink); }
 .los-root .los-app-nav-item.is-active {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
-  box-shadow: inset 3px 0 0 var(--interactive-accent);
+  background: var(--los-paper-3);
+  color: var(--los-ink);
+  box-shadow: inset 3px 0 0 var(--los-accent);
   font-weight: 650;
 }
 .los-nav-more { margin-top: var(--los-4); padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
-.los-nav-more-trigger { min-height: 28px; padding: var(--los-1) var(--los-2); color: var(--text-faint); cursor: pointer; font-size: 12px; }
+.los-nav-more-trigger { min-height: 28px; padding: var(--los-1) var(--los-2); color: var(--los-ink-soft); cursor: pointer; font-size: 12px; }
 .los-nav-secondary { display: flex; flex-direction: column; margin-top: var(--los-1); }
 
 @media (max-width: 1020px) {
@@ -732,15 +796,15 @@
   max-width: 180px;
   padding: var(--los-1) var(--los-2);
   border: 1px solid var(--los-line);
-  background: var(--background-primary);
-  color: var(--text-normal);
+  background: var(--los-paper);
+  color: var(--los-ink);
 }
 .los-ai-consent {
   display: inline-flex;
   max-width: 360px;
   gap: var(--los-2);
   align-items: center;
-  color: var(--text-muted);
+  color: var(--los-ink-soft);
   font-size: 12px;
 }
 .los-ai-consent input { flex: 0 0 auto; }
@@ -750,7 +814,7 @@
   padding: var(--los-2);
   border: 1px solid var(--los-line);
   border-radius: var(--los-r-sm);
-  background: var(--background-primary);
+  background: var(--los-paper);
 }
 .los-root .los-ai-action-button { white-space: nowrap; }
 
@@ -764,7 +828,7 @@
  * Continue elsewhere list. Home is not a module catalogue or queue dashboard. */
 .los-home-header { position: relative; padding-right: 180px; }
 .los-home-header-actions { position: absolute; top: 4px; right: 0; }
-.los-continue-context { margin-top: var(--los-2); color: var(--text-muted); font-size: 12px; }
+.los-continue-context { margin-top: var(--los-2); color: var(--los-ink-soft); font-size: 12px; }
 .los-home-list { display: grid; border-top: 1px solid var(--los-line-strong); }
 .los-home-row {
   display: grid;
@@ -791,7 +855,7 @@
   place-items: center;
   border-color: var(--los-line);
   border-radius: var(--los-r-md);
-  color: var(--text-muted);
+  color: var(--los-ink-soft);
 }
 
 /* Global structural search. It is an overlay over the current product route,
@@ -821,9 +885,9 @@
   border-bottom: 1px solid var(--los-line);
 }
 .los-root .los-search-tab.is-active {
-  border-color: var(--interactive-accent);
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
+  border-color: var(--los-accent);
+  background: var(--los-paper-3);
+  color: var(--los-ink);
   font-weight: 650;
 }
 .los-search-results { max-height: min(520px, 58vh); overflow-y: auto; }
@@ -833,7 +897,7 @@
   gap: var(--los-3);
   align-items: baseline;
   padding: 0 0 var(--los-2);
-  color: var(--text-muted);
+  color: var(--los-ink-soft);
   font-size: 12px;
 }
 .los-search-result-list { display: grid; }
@@ -851,10 +915,10 @@
   background: transparent;
   text-align: left;
 }
-.los-root .los-search-result:hover, .los-root .los-search-result:focus-visible { background: var(--background-modifier-hover); }
+.los-root .los-search-result:hover, .los-root .los-search-result:focus-visible { background: var(--los-paper-3); }
 .los-search-result-copy { min-width: 0; }
 .los-search-result-copy strong { display: block; overflow-wrap: break-word; }
-.los-search-open { color: var(--text-accent); font-size: 12px; font-weight: 650; white-space: nowrap; }
+.los-search-open { color: var(--los-accent); font-size: 12px; font-weight: 650; white-space: nowrap; }
 
 @media (max-width: 720px) {
   .los-home-header { padding-right: 0; }
@@ -874,7 +938,7 @@
   display: inline-flex;
   width: auto;
   margin: 0 auto var(--los-3);
-  color: var(--text-muted);
+  color: var(--los-ink-soft);
 }
 .los-group-grid {
   display: grid;
@@ -898,19 +962,19 @@
   gap: var(--los-3);
 }
 .los-root .los-group-card-header h2 { margin: 0; }
-.los-group-card p { margin: var(--los-3) 0 var(--los-5); color: var(--text-muted); }
+.los-group-card p { margin: var(--los-3) 0 var(--los-5); color: var(--los-ink-soft); }
 .los-group-count {
   flex: 0 0 auto;
   padding: 3px 9px;
   border-radius: var(--los-r-pill);
-  background: var(--background-modifier-hover);
-  color: var(--text-muted);
+  background: var(--los-paper-3);
+  color: var(--los-ink-soft);
   font-size: 12px;
 }
 .los-route-open {
   align-self: end;
   justify-self: end;
-  color: var(--text-accent);
+  color: var(--los-accent);
   font-size: 12px;
   font-weight: 650;
   white-space: nowrap;
@@ -935,7 +999,7 @@
 }
 .los-route-row-copy { min-width: 0; }
 .los-route-row-copy strong { display: block; overflow-wrap: break-word; }
-.los-route-meta { margin-top: 3px; color: var(--text-muted); font-size: 12px; overflow-wrap: break-word; }
+.los-route-meta { margin-top: 3px; color: var(--los-ink-soft); font-size: 12px; overflow-wrap: break-word; }
 .los-collection-switch {
   display: flex;
   gap: var(--los-2);
@@ -952,7 +1016,7 @@
 .los-pack-purpose {
   margin: 0;
   padding: var(--los-4);
-  border-left: 3px solid var(--interactive-accent);
+  border-left: 3px solid var(--los-accent);
   border-radius: 0 var(--los-r-md) var(--los-r-md) 0;
   background: var(--los-surface);
 }
@@ -969,8 +1033,8 @@
   width: 28px;
   height: 28px;
   border-radius: var(--los-r-pill);
-  background: var(--background-modifier-hover);
-  color: var(--text-muted);
+  background: var(--los-paper-3);
+  color: var(--los-ink-soft);
   font-size: 12px;
   font-weight: 700;
 }
@@ -986,9 +1050,9 @@
 .los-project-list { display: grid; gap: var(--size-4-3); margin-top: var(--size-4-4); }
 .los-project-row { width: 100%; text-align: left; appearance: none; min-width: 0; }
 .los-project-tabs { display: flex; flex-wrap: wrap; gap: var(--size-2-2); margin: var(--size-4-4) 0; }
-.los-project-tabs .is-active { background: var(--background-modifier-hover); box-shadow: inset 0 -2px 0 var(--interactive-accent); }
+.los-project-tabs .is-active { background: var(--los-paper-3); box-shadow: inset 0 -2px 0 var(--los-accent); }
 .los-project-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--size-4-3); }
-.los-project-meta, .los-project-node { border: 1px solid var(--background-modifier-border); border-radius: var(--radius-m); padding: var(--size-4-3); }
+.los-project-meta, .los-project-node { border: 1px solid var(--los-rule); border-radius: var(--radius-m); padding: var(--size-4-3); }
 .los-project-structure, .los-project-node-children { display: grid; gap: var(--size-4-3); }
 .los-project-node-children { margin-top: var(--size-4-3); margin-left: var(--size-4-4); }
 .los-project-link { display: flex; align-items: center; justify-content: space-between; gap: var(--size-4-3); }
