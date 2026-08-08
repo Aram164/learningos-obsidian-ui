@@ -5,7 +5,7 @@
  * feature code must depend on this contract layer instead of raw JSON shapes.
  *
  * The contract is now DECLARED BY THE PRODUCER, in the core repository's
- * `system/contracts/manifest-contract.yaml`. `contracts/manifest-v3.lock.json`
+ * `system/contracts/manifest-contract.yaml`. `contracts/manifest-v4.lock.json`
  * beside this file is a mirror of that declaration, not the original — core
  * enforces the shape on every build, so a projection change fails there instead
  * of arriving here as a red CI run. (That is what happened on 2026-08-08: core
@@ -16,7 +16,7 @@
  * (remediation item 12), which must not precede the behavioral fixes. The
  * version that matters is the constant below.
  */
-export const MANIFEST_CONTRACT_VERSION = 3 as const;
+export const MANIFEST_CONTRACT_VERSION = 4 as const;
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -116,6 +116,7 @@ export interface ManifestV2 extends JsonRecord {
   backlinks: ProjectionRecord;
   counts: ProjectionRecord;
   garden_entries: readonly ProjectionRecord[];
+  review_items: readonly ProjectionRecord[];
   indexes: ProjectionRecord;
   module_source_maps: readonly ProjectionRecord[];
   modules: readonly ProjectionRecord[];
@@ -162,6 +163,7 @@ export function assertManifestV2(value: unknown): asserts value is ManifestV2 {
   for (const key of [
     "academic_deadlines",
     "garden_entries",
+    "review_items",
     "module_source_maps",
     "modules",
     "programs",

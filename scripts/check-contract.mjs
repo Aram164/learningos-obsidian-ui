@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const readJson = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), 'utf8'));
-const lock = readJson('contracts/manifest-v3.lock.json');
+const lock = readJson('contracts/manifest-v4.lock.json');
 const fixture = readJson('fixture-vault/generated/manifest.json');
 
 function sameKeys(actualObject, expectedKeys, label) {

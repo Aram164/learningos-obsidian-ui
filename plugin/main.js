@@ -50,7 +50,7 @@ var import_obsidian = require("obsidian");
 var import_electron = require("electron");
 
 // src/constants.ts
-var CONTRACT_VERSION = 3;
+var CONTRACT_VERSION = 4;
 var VIEW_HOME = "learningos-home";
 var VIEW_NAV = "learningos-nav";
 var VIEW_PROGRAM = "learningos-program";
@@ -1159,6 +1159,14 @@ var GatewayClient = class {
   captureFile(filePath) {
     return this.capability("capture.create", { file: filePath });
   }
+  createGardenSeed(text, title = "") {
+    const payload = { text };
+    if (title.trim()) payload.title = title.trim();
+    return this.capability(
+      "garden.seed.create",
+      payload
+    );
+  }
   prepareShelving(unitId) {
     return this.capability("review.prepare", { unit_id: unitId });
   }
@@ -1240,7 +1248,7 @@ var AIActionClient = class {
 };
 
 // src/contracts/manifest-v2.ts
-var MANIFEST_CONTRACT_VERSION = 3;
+var MANIFEST_CONTRACT_VERSION = 4;
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -1261,6 +1269,7 @@ function assertManifestV2(value) {
   for (const key of [
     "academic_deadlines",
     "garden_entries",
+    "review_items",
     "module_source_maps",
     "modules",
     "programs",
@@ -1431,6 +1440,9 @@ var ManifestStore = class {
   gardenEntries() {
     return this.rows("garden_entries");
   }
+  reviewItems() {
+    return this.rows("review_items");
+  }
   /** The ADR-009 topic vocabulary: {id, title, domain}. `domain` groups topics
    *  for display only — it never constrains which sources may carry one. */
   topics() {
@@ -1480,6 +1492,15 @@ var ManifestStore = class {
     ) : [];
     return ids.map((id) => this.get(id)).filter(
       (row) => row !== null
+    );
+  }
+  useModules(sourceId) {
+    const rawIds = this.data?.indexes?.source_to_modules?.[sourceId];
+    const ids = Array.isArray(rawIds) ? rawIds.filter(
+      (id) => typeof id === "string"
+    ) : [];
+    return ids.map((id) => this.get(id)).filter(
+      (row) => row !== null && row.type === "module"
     );
   }
   useUnits(sourceId) {

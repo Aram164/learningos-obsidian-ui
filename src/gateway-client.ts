@@ -231,6 +231,17 @@ export class GatewayClient {
   captureFile(filePath: string) {
     return this.capability('capture.create', { file: filePath });
   }
+  createGardenSeed(
+    text: string,
+    title = '',
+  ) {
+    const payload: Record<string, unknown> = { text };
+    if (title.trim()) payload.title = title.trim();
+    return this.capability(
+      'garden.seed.create',
+      payload,
+    );
+  }
   prepareShelving(unitId: string) {
     return this.capability('review.prepare', { unit_id: unitId });
   }

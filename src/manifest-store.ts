@@ -157,6 +157,7 @@ export class ManifestStore {
   }
   studyMaps() { return this.rows('study_maps'); }
   gardenEntries() { return this.rows('garden_entries'); }
+  reviewItems() { return this.rows('review_items'); }
   /** The ADR-009 topic vocabulary: {id, title, domain}. `domain` groups topics
    *  for display only — it never constrains which sources may carry one. */
   topics() { return this.rows('topics'); }
@@ -215,6 +216,27 @@ export class ManifestStore {
           row !== null,
       );
   }
+  useModules(sourceId: string): ProjectionRecord[] {
+    const rawIds =
+      this.data?.indexes?.source_to_modules?.[sourceId];
+    const ids: string[] = Array.isArray(rawIds)
+      ? rawIds.filter(
+        (id: unknown): id is string =>
+          typeof id === 'string',
+      )
+      : [];
+
+    return ids
+      .map((id: string) => this.get(id))
+      .filter(
+        (
+          row: ProjectionRecord | null,
+        ): row is ProjectionRecord =>
+          row !== null
+          && row.type === 'module',
+      );
+  }
+
   useUnits(sourceId: string): ProjectionRecord[] {
     const rawIds = this.data?.indexes?.source_to_units?.[sourceId];
     const ids: string[] = Array.isArray(rawIds)

@@ -1,8 +1,8 @@
 {
   "_generated": {
-    "contract_version": 3,
+    "contract_version": 4,
     "generated_at": "2099-04-01",
-    "generator": "synthetic-fixture-v3",
+    "generator": "synthetic-fixture-v4",
     "snapshot_id": "sha256:fixture-v2-snapshot",
     "source_dirty": false,
     "source_fingerprint": "fixture-v2-snapshot",
@@ -241,7 +241,8 @@
         "module-fixture-m2"
       ],
       "source-fixture-islp": [
-        "module-fixture-aml"
+        "module-fixture-aml",
+        "module-fixture-m2"
       ]
     },
     "source_to_units": {
@@ -1714,6 +1715,21 @@
       "status": "ready-to-shelve",
       "title": "Thesis landscape",
       "type": "unit"
+    }
+  ],
+  "review_items": [
+    {
+      "id": "review-planning-unit-fixture-analysis",
+      "category": "planning",
+      "title": "Plan Analysis exam prep",
+      "context": "",
+      "reason": "This unit needs a study map before structured study can continue.",
+      "target": {
+        "kind": "unit",
+        "id": "unit-fixture-analysis",
+        "module_id": "module-fixture-m2",
+        "revision": 0
+      }
     }
   ]
 }

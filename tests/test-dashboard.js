@@ -80,7 +80,7 @@ async function main() {
   heading('versioned atomic contract');
   {
     const { plugin } = await build();
-    check('manifest contract v3 loads', plugin.store.ready && plugin.store.contractVersion === 3, plugin.store.error);
+    check('manifest contract v4 loads', plugin.store.ready && plugin.store.contractVersion === 4, plugin.store.error);
     check('snapshot guard is loaded', plugin.store.snapshotId === 'sha256:fixture-v2-snapshot');
     check('program/module/unit/map collections load atomically', plugin.store.programs().length === 5
       && plugin.store.modules().length === 3 && plugin.store.projects().length === 1 && plugin.store.units().length === 7
@@ -126,11 +126,58 @@ async function main() {
     const originalRead = app.vault.adapter.read;
     app.vault.adapter.read = async (file) => {
       const text = await originalRead(file);
-      return file === 'generated/manifest.json' ? text.replace('"contract_version": 3', '"contract_version": 1') : text;
+      return file === 'generated/manifest.json' ? text.replace('"contract_version": 4', '"contract_version": 1') : text;
     };
     const plugin = new LearningOSUI(app, { id: 'learningos-ui' }); app._plugin = plugin;
     await plugin.onload();
-    check('contract v1 fails closed with recovery text', !plugin.store.ready && plugin.store.error.includes('requires contract 3'));
+    check('contract v1 fails closed with recovery text', !plugin.store.ready && plugin.store.error.includes('requires contract 4'));
+    plugin.onunload();
+  }
+
+  heading('manifest v4 interaction plumbing');
+  {
+    const { plugin, calls } = await build();
+
+    const review = plugin.store.reviewItems();
+    check(
+      'Core review decisions load as concrete records',
+      review.length === 1
+        && review[0].id === 'review-planning-unit-fixture-analysis'
+        && review[0].category === 'planning'
+        && review[0].target?.id === 'unit-fixture-analysis',
+    );
+
+    const currentUse = plugin.store.useModules(
+      'source-fixture-islp',
+    );
+    check(
+      'Current use resolves authoritative source_to_modules directly',
+      currentUse.some(
+        (row) => row.id === 'module-fixture-m2',
+      ),
+    );
+
+    await plugin.mutate(
+      () => plugin.gateway.createGardenSeed(
+        'A raw unfinished thought. #python',
+        'Fixture Garden seed',
+      ),
+    );
+
+    const seed = calls.envelope(
+      'garden.seed.create',
+    );
+
+    check(
+      'Garden creation uses the deterministic public capability',
+      seed?.payload.text
+        === 'A raw unfinished thought. #python'
+        && seed?.payload.title
+          === 'Fixture Garden seed'
+        && seed?.expected_snapshot
+          === 'sha256:fixture-v2-snapshot',
+    );
+
     plugin.onunload();
   }
 
