@@ -682,14 +682,18 @@ export class HomeView extends ItemView {
         continue;
       }
 
-      const status =
-        projectedString(record.status);
-
-      if (
-        status
-        && ['complete', 'archived']
-          .includes(status)
-      ) {
+      /*
+       * `module.status` answers an administrative question — what the
+       * university thinks — so reading it here listed dropped Algo 2 and
+       * grade-pending PPDS as current work. It was also comparing against
+       * 'complete' while module records use 'completed', so the filter had
+       * never excluded anything at all.
+       *
+       * Core now derives operational state from the units and projects
+       * `is_actionable`. Consuming it keeps the semantics where they belong
+       * (engineering audit 2026-08-08, finding 4).
+       */
+      if (record.is_actionable !== true) {
         continue;
       }
 

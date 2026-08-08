@@ -29,6 +29,19 @@ function heading(title) { group = title; console.log(`\n${title}`); }
 
 async function build(options = {}) {
   const app = makeApp(FIXTURE);
+  /* Let a test vary one projected field without forking the whole fixture:
+   * the fixture stays the single description of a healthy repository, and the
+   * test states exactly the one thing it is varying. */
+  if (options.patchManifest) {
+    const originalRead = app.vault.adapter.read;
+    app.vault.adapter.read = async (file) => {
+      const text = await originalRead(file);
+      if (file !== 'generated/manifest.json') return text;
+      const parsed = JSON.parse(text);
+      options.patchManifest(parsed);
+      return JSON.stringify(parsed);
+    };
+  }
   const calls = [];
   /* Canonical writes are capability envelopes now: the args are always
    * `capability <name> --payload-file -` and the content is on stdin, so the
@@ -153,6 +166,23 @@ async function main() {
       !text.includes("Master's Planning") && !text.includes('Rebuild projection'));
     check('the repeated ownership footer is gone from every screen',
       !text.includes('buttons are conveniences, never duties'));
+    plugin.onunload();
+  }
+
+  /* Home used to read `module.status`, which answers an administrative
+   * question, so a dropped module and a module awaiting a grade both counted as
+   * current work. Core now decides; Home obeys. */
+  {
+    const { plugin, home } = await boot({
+      patchManifest: (manifest) => {
+        for (const row of [...(manifest.modules || []), ...(manifest.records || [])]) {
+          if (row && row.id === 'module-fixture-aml') row.is_actionable = false;
+        }
+      },
+    });
+    const text = home.view.contentEl.allText();
+    check('a module the core marks non-actionable leaves Continue elsewhere',
+      !text.includes('Fixture Advanced ML') && text.includes('Python'));
     plugin.onunload();
   }
 

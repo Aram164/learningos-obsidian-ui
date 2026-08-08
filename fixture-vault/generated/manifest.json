@@ -312,6 +312,7 @@
   ],
   "modules": [
     {
+      "administrative_status": "enrolled",
       "area_id": "program-bachelors",
       "code": "M2F",
       "components": [
@@ -354,7 +355,9 @@
       },
       "id": "module-fixture-m2",
       "institution": "Fixture University",
+      "is_actionable": true,
       "kind": "academic",
+      "operational_state": "active",
       "semester": "sose-2099",
       "status": "enrolled",
       "thematic_group_ids": [
@@ -369,11 +372,14 @@
       ]
     },
     {
+      "administrative_status": "enrolled",
       "area_id": "program-bachelors",
       "code": "AMLF",
       "id": "module-fixture-aml",
       "institution": "Fixture University",
+      "is_actionable": true,
       "kind": "academic",
+      "operational_state": "active",
       "semester": "sose-2099",
       "status": "enrolled",
       "thematic_group_ids": [
@@ -388,9 +394,12 @@
       ]
     },
     {
+      "administrative_status": null,
       "area_id": "program-skills",
       "id": "module-fixture-python",
+      "is_actionable": true,
       "kind": "skill",
+      "operational_state": "active",
       "status": "active",
       "thematic_group_ids": [
         "thematic-group-software"

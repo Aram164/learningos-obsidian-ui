@@ -2668,8 +2668,7 @@ var HomeView = class extends import_obsidian9.ItemView {
       if (!recordId || recordId === pointer.module_id) {
         continue;
       }
-      const status = projectedString2(record.status);
-      if (status && ["complete", "archived"].includes(status)) {
+      if (record.is_actionable !== true) {
         continue;
       }
       rows.push({
