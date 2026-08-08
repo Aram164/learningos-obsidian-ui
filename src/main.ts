@@ -14,7 +14,11 @@ import { ApplicationRouter } from './app/router';
 import { UnitNoteModal } from './app/unit-note-modal';
 import { button, safeWebUrl } from './components';
 import { asSessionReview, isProjectionConflict } from './contracts/gateway-v1';
-import { asLibraryCollection, asProjectDetailTab } from './contracts/route-v1';
+import {
+  asLibraryCollection,
+  asProjectDetailTab,
+  type LibrarySourceFiltersV1,
+} from './contracts/route-v1';
 import {
   DEFAULT_SETTINGS, LEARN_AREAS, LEGACY_VIEW_TYPES, VIEW_ATLAS, VIEW_BOUNDARY,
   VIEW_DIAGNOSTICS, VIEW_GARDEN, VIEW_HOME, VIEW_LIBRARY, VIEW_MODULE, VIEW_NAV,
@@ -433,17 +437,32 @@ export class LearningOSUI extends Plugin {
     if (record?.type === 'collection' || recordType === 'collection') return this.openCatalogueDetail(recordId);
     return this.router.navigate({ name: 'legacy-library-list', recordType: recordType || record?.type || 'note', query: '' });
   }
-  openLibraryHome(collection = 'sources') {
-    return this.router.navigate({ name: 'library-home', collection: asLibraryCollection(collection) });
+  openLibraryHome(
+    collection = 'sources',
+    query = '',
+    filters?: LibrarySourceFiltersV1,
+  ) {
+    return this.router.navigate({
+      name: 'library-home',
+      collection: asLibraryCollection(collection),
+      query,
+      ...(filters ? { filters } : {}),
+    });
   }
   openLibraryGroup(
     collection: string,
     groupId: string,
     query = '',
     facet = 'all',
+    filters?: LibrarySourceFiltersV1,
   ) {
     return this.router.navigate({
-      name: 'library-group', collection: asLibraryCollection(collection), groupId, query, facet,
+      name: 'library-group',
+      collection: asLibraryCollection(collection),
+      groupId,
+      query,
+      facet,
+      ...(filters ? { filters } : {}),
     });
   }
   openSourceDetail(
@@ -451,8 +470,16 @@ export class LearningOSUI extends Plugin {
     fromGroupId: string | null = null,
     query = '',
     facet = 'all',
+    filters?: LibrarySourceFiltersV1,
   ) {
-    return this.router.navigate({ name: 'source-detail', resourceId, fromGroupId, query, facet });
+    return this.router.navigate({
+      name: 'source-detail',
+      resourceId,
+      fromGroupId,
+      query,
+      facet,
+      ...(filters ? { filters } : {}),
+    });
   }
   openTopicPackDetail(
     topicPackId: string,

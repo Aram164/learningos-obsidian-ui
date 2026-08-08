@@ -16,8 +16,10 @@ import type {
   JsonRecord,
   ProjectionRecord,
 } from '../contracts/manifest-v2';
-import type {
-  LibraryCollectionV1,
+import {
+  asLibrarySourceFilters,
+  type LibraryCollectionV1,
+  type LibrarySourceFiltersV1,
 } from '../contracts/route-v1';
 import type { LearningOSUI } from '../main';
 
@@ -49,6 +51,17 @@ export const VALUED_FACETS = new Set([
   'form',
   'use',
 ]);
+
+const SOURCE_FILTER_DIMENSIONS = [
+  ['domain', 'Domain'],
+  ['topic', 'Topic'],
+  ['purpose', 'Purpose'],
+  ['form', 'Form'],
+  ['use', 'Current use'],
+] as const;
+
+type SourceFilterDimension =
+  (typeof SOURCE_FILTER_DIMENSIONS)[number][0];
 
 const LIBRARY_COLLECTIONS = [
   ['sources', 'Learning Sources'],
@@ -84,6 +97,7 @@ interface LibraryViewState {
   readonly groupId: string | null;
   readonly query: string;
   readonly facet: SourceFacet;
+  readonly filters: LibrarySourceFiltersV1;
   readonly resourceId: string | null;
   readonly topicPackId: string | null;
   readonly catalogueId: string | null;
@@ -312,6 +326,7 @@ function readLibraryViewState(
       groupId: null,
       query: '',
       facet: 'all',
+      filters: asLibrarySourceFilters(null),
       resourceId: null,
       topicPackId: null,
       catalogueId: null,
@@ -341,6 +356,24 @@ function readLibraryViewState(
     projectedString(value.groupId)
     ?? projectedString(value.fromGroupId);
 
+  let filters =
+    asLibrarySourceFilters(value.filters);
+
+  // `library-group` remains a compatibility/deep-link route for sources.
+  // Its group identity becomes the Domain peer filter; the browser itself is
+  // always the same global faceted surface.
+  if (
+    collection === 'sources'
+    && screen === 'group'
+    && groupId
+    && !filters.domain
+  ) {
+    filters = {
+      ...filters,
+      domain: groupId,
+    };
+  }
+
   return {
     screen,
     collection,
@@ -351,6 +384,7 @@ function readLibraryViewState(
     facet: isSourceFacet(value.facet)
       ? value.facet
       : 'all',
+    filters,
     resourceId:
       projectedString(value.resourceId),
     topicPackId:
@@ -697,6 +731,8 @@ export class LibraryView extends ItemView {
   groupId: string | null = null;
   query = '';
   facet: SourceFacet = 'all';
+  filters: LibrarySourceFiltersV1 =
+    asLibrarySourceFilters(null);
   /** Selected value within a valued facet (a topic id, a role, a type, a
    *  module id). Null means "show the values to pick from". */
   facetValue: string | null = null;
@@ -743,6 +779,7 @@ export class LibraryView extends ItemView {
     this.groupId = parsed.groupId;
     this.query = parsed.query;
     this.facet = parsed.facet;
+    this.filters = parsed.filters;
     this.resourceId = parsed.resourceId;
     this.topicPackId = parsed.topicPackId;
     this.catalogueId = parsed.catalogueId;
@@ -764,6 +801,7 @@ export class LibraryView extends ItemView {
       groupId: this.groupId,
       query: this.query,
       facet: this.facet,
+      filters: { ...this.filters },
       resourceId: this.resourceId,
       topicPackId: this.topicPackId,
       catalogueId: this.catalogueId,
@@ -906,26 +944,18 @@ export class LibraryView extends ItemView {
       return [...roles];
     }
     if (this.facet === 'use') {
-      const modules = new Set<string>();
-      for (
-        const unitRecord of this.plugin.store
-          .useUnits(source.id)
-      ) {
-        // useUnits() yields projected unit RECORDS, not ids.
-        const unit =
-          typeof unitRecord === 'string'
-            ? this.plugin.store.get(unitRecord)
-            : unitRecord;
-        const moduleId = unit
-          ? projectedString(
-            unit.module_id,
-          )
-          : null;
-        if (moduleId) {
-          modules.add(moduleId);
-        }
-      }
-      return [...modules];
+      // Compatibility for old persisted single-facet routes. Current use is a
+      // Core-owned source→module relation; never reconstruct it through units.
+      return this.plugin.store
+        .useModules(source.id)
+        .map(
+          (module) =>
+            projectedString(module.id),
+        )
+        .filter(
+          (id): id is string =>
+            id !== null,
+        );
     }
     return [];
   }
@@ -1002,7 +1032,11 @@ export class LibraryView extends ItemView {
     }
 
     if (this.screen === 'group') {
-      this.renderGroup(root);
+      if (this.collection === 'sources') {
+        this.renderSourceBrowser(root);
+      } else {
+        this.renderGroup(root);
+      }
       return;
     }
 
@@ -1029,9 +1063,540 @@ export class LibraryView extends ItemView {
     this.renderHome(root);
   }
 
+  sourceFilterValuesFor(
+    source: LibraryRecordView,
+    dimension: SourceFilterDimension,
+  ): string[] {
+    if (dimension === 'domain') {
+      return projectedStrings(
+        source.record.thematic_group_ids,
+      );
+    }
+
+    if (dimension === 'topic') {
+      return projectedStrings(
+        source.record.topics,
+      );
+    }
+
+    if (dimension === 'purpose') {
+      const values = new Set<string>();
+
+      for (const evaluation of source.evaluations) {
+        for (const role of evaluation.roles) {
+          values.add(role);
+        }
+      }
+
+      return [...values];
+    }
+
+    if (dimension === 'form') {
+      return source.sourceType
+        ? [source.sourceType]
+        : [];
+    }
+
+    return this.plugin.store
+      .useModules(source.id)
+      .map((module) =>
+        projectedString(module.id),
+      )
+      .filter(
+        (id): id is string =>
+          id !== null,
+      );
+  }
+
+  sourceMatchesFilters(
+    source: LibraryRecordView,
+    omit: SourceFilterDimension | null = null,
+  ): boolean {
+    for (const [dimension] of SOURCE_FILTER_DIMENSIONS) {
+      if (dimension === omit) {
+        continue;
+      }
+
+      const selected =
+        this.filters[dimension];
+
+      if (
+        selected
+        && !this.sourceFilterValuesFor(
+          source,
+          dimension,
+        ).includes(selected)
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  sourceFilterTally(
+    sources: LibraryRecordView[],
+    dimension: SourceFilterDimension,
+  ): Map<string, number> {
+    const tally = new Map<string, number>();
+
+    for (const source of sources) {
+      // Each facet's choices are tallied after every OTHER active filter.
+      // This keeps simultaneous filtering intelligible without collapsing the
+      // currently selected dimension onto itself.
+      if (!this.sourceMatchesFilters(source, dimension)) {
+        continue;
+      }
+
+      for (
+        const value of this.sourceFilterValuesFor(
+          source,
+          dimension,
+        )
+      ) {
+        tally.set(
+          value,
+          (tally.get(value) ?? 0) + 1,
+        );
+      }
+    }
+
+    return tally;
+  }
+
+  sourceFilterLabel(
+    dimension: SourceFilterDimension,
+    value: string,
+  ): string {
+    if (dimension === 'domain') {
+      const group =
+        this.plugin.store.get(value);
+
+      return group
+        ? projectedString(group.title) ?? value
+        : value;
+    }
+
+    if (dimension === 'topic') {
+      const topic =
+        this.plugin.store.topics()
+          .find(
+            (row) =>
+              projectedString(row.id)
+              === value,
+          );
+
+      return topic
+        ? projectedString(topic.title) ?? value
+        : value;
+    }
+
+    if (dimension === 'use') {
+      const module =
+        this.plugin.store.get(value);
+
+      return module
+        ? projectedString(module.title) ?? value
+        : value;
+    }
+
+    return value
+      .replace(/[-_]+/g, ' ')
+      .replace(
+        /\b\w/g,
+        (letter) =>
+          letter.toLocaleUpperCase(),
+      );
+  }
+
+  async rememberSourceBrowser(): Promise<unknown> {
+    return this.plugin.router.remember({
+      name: 'library-home',
+      collection: 'sources',
+      query: this.query,
+      filters: { ...this.filters },
+    });
+  }
+
+  async setSourceFilter(
+    dimension: SourceFilterDimension,
+    value: string,
+  ): Promise<void> {
+    this.filters = {
+      ...this.filters,
+      [dimension]: value,
+    };
+
+    // A source-group deep link is only an entry point. Once the learner
+    // changes any facet, navigation becomes the canonical global browser.
+    this.screen = 'home';
+    this.groupId = null;
+
+    await this.rememberSourceBrowser();
+    this.render();
+  }
+
+  async clearSourceFilters(): Promise<void> {
+    this.filters =
+      asLibrarySourceFilters(null);
+
+    this.screen = 'home';
+    this.groupId = null;
+
+    await this.rememberSourceBrowser();
+    this.render();
+  }
+
+  renderSourceBrowser(
+    root: HTMLElement,
+  ): void {
+    pageHeader(
+      root,
+      'Library',
+      'Learning Sources',
+      'Browse one source library through five independent facets. '
+        + 'A source can belong to several values at once; filtering never '
+        + 'changes its identity.',
+    );
+
+    this.renderCollectionSwitch(root);
+
+    const all = readLibraryRecords(
+      this.plugin.store.sources(),
+    );
+
+    const browser = root.createDiv({
+      cls: 'los-library-browser',
+    });
+
+    const toolbar = browser.createDiv({
+      cls: 'los-library-browser-toolbar',
+    });
+
+    const input = toolbar.createEl(
+      'input',
+      {
+        cls:
+          'los-search '
+          + 'los-route-search '
+          + 'los-library-global-search',
+        attr: {
+          type: 'search',
+          placeholder:
+            'Search learning sources…',
+          'aria-label':
+            'Search learning sources',
+        },
+      },
+    ) as HTMLInputElement;
+
+    input.value = this.query;
+
+    input.addEventListener(
+      'input',
+      async () => {
+        this.query = input.value;
+
+        this.screen = 'home';
+        this.groupId = null;
+
+        await this.rememberSourceBrowser();
+        this.render();
+      },
+    );
+
+    button(
+      toolbar,
+      'Full-text / OCR search',
+      () =>
+        this.plugin.openFullTextSearch(
+          this.query,
+        ),
+      'quiet',
+    );
+
+    const facets = browser.createDiv({
+      cls: 'los-library-peer-facets',
+      attr: {
+        'aria-label':
+          'Learning Source facets',
+      },
+    });
+
+    for (
+      const [
+        dimension,
+        label,
+      ] of SOURCE_FILTER_DIMENSIONS
+    ) {
+      const control = facets.createDiv({
+        cls: 'los-library-peer-facet',
+      });
+
+      control.createEl(
+        'label',
+        {
+          cls: 'los-library-facet-label',
+          text: label,
+        },
+      );
+
+      const select = control.createEl(
+        'select',
+        {
+          cls: 'los-library-facet-select',
+          attr: {
+            'data-facet': dimension,
+            'aria-label':
+              `Filter by ${label}`,
+          },
+        },
+      ) as HTMLSelectElement;
+
+      const tally =
+        this.sourceFilterTally(
+          all,
+          dimension,
+        );
+
+      select.createEl(
+        'option',
+        {
+          text: `All ${label.toLocaleLowerCase()}`,
+          attr: {
+            value: '',
+          },
+        },
+      );
+
+      const ordered =
+        [...tally.entries()]
+          .sort(
+            (left, right) => {
+              const leftLabel =
+                this.sourceFilterLabel(
+                  dimension,
+                  left[0],
+                );
+
+              const rightLabel =
+                this.sourceFilterLabel(
+                  dimension,
+                  right[0],
+                );
+
+              return (
+                leftLabel.localeCompare(
+                  rightLabel,
+                )
+              );
+            },
+          );
+
+      for (
+        const [
+          value,
+          count,
+        ] of ordered
+      ) {
+        select.createEl(
+          'option',
+          {
+            text:
+              `${this.sourceFilterLabel(
+                dimension,
+                value,
+              )} (${count})`,
+            attr: {
+              value,
+            },
+          },
+        );
+      }
+
+      select.value =
+        this.filters[dimension];
+
+      select.addEventListener(
+        'change',
+        () => {
+          void this.setSourceFilter(
+            dimension,
+            select.value,
+          );
+        },
+      );
+    }
+
+    const active =
+      SOURCE_FILTER_DIMENSIONS
+        .filter(
+          ([dimension]) =>
+            Boolean(
+              this.filters[dimension],
+            ),
+        );
+
+    if (active.length) {
+      const activeWrap =
+        browser.createDiv({
+          cls: 'los-library-active-filters',
+          attr: {
+            'aria-label':
+              'Active Library filters',
+          },
+        });
+
+      for (
+        const [
+          dimension,
+          label,
+        ] of active
+      ) {
+        const value =
+          this.filters[dimension];
+
+        const control = button(
+          activeWrap,
+          `${label}: ${this.sourceFilterLabel(
+            dimension,
+            value,
+          )} ×`,
+          () =>
+            void this.setSourceFilter(
+              dimension,
+              '',
+            ),
+          'quiet',
+        );
+
+        control.addClass(
+          'los-library-filter-chip',
+        );
+      }
+
+      button(
+        activeWrap,
+        'Clear filters',
+        () =>
+          void this.clearSourceFilters(),
+        'quiet',
+      );
+    }
+
+    const topicless = all.filter(
+      (source) =>
+        !this.sourceFilterValuesFor(
+          source,
+          'topic',
+        ).length,
+    ).length;
+
+    if (topicless) {
+      browser.createDiv({
+        cls: 'los-micro los-library-classification-note',
+        text:
+          `${topicless} source${topicless === 1 ? '' : 's'} `
+          + 'have no Topic classification yet. They remain visible unless '
+          + 'a Topic filter is selected.',
+      });
+    }
+
+    const words =
+      this.query
+        .trim()
+        .toLocaleLowerCase()
+        .split(/\s+/)
+        .filter(Boolean);
+
+    const rows = all
+      .filter(
+        (source) =>
+          this.sourceMatchesFilters(source),
+      )
+      .filter(
+        (source) => {
+          if (!words.length) {
+            return true;
+          }
+
+          const hay = [
+            source.id,
+            source.title,
+            source.summary,
+            source.purpose,
+            source.organization,
+            source.sourceType,
+            ...source.aliases,
+            ...source.authors,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLocaleLowerCase();
+
+          return words.every(
+            (word) =>
+              hay.includes(word),
+          );
+        },
+      )
+      .sort(
+        (left, right) =>
+          left.title.localeCompare(
+            right.title,
+          ),
+      );
+
+    browser.createDiv({
+      cls: 'los-library-result-summary',
+      text:
+        `${rows.length} of ${all.length} `
+        + `source${all.length === 1 ? '' : 's'}`,
+    });
+
+    if (!all.length) {
+      empty(
+        browser,
+        'No Learning Sources',
+        'The Core projection currently contains no source records.',
+      );
+      return;
+    }
+
+    if (!rows.length) {
+      empty(
+        browser,
+        'No matching sources',
+        'No source matches the current search and facet combination.',
+        'Clear filters',
+        () =>
+          void this.clearSourceFilters(),
+      );
+      return;
+    }
+
+    const list = browser.createDiv({
+      cls:
+        'los-route-list '
+        + 'los-library-route-list',
+    });
+
+    for (const source of rows) {
+      this.renderRecordRow(
+        list,
+        source,
+        false,
+      );
+    }
+  }
+
   renderHome(
     root: HTMLElement,
   ): void {
+    if (this.collection === 'sources') {
+      this.renderSourceBrowser(root);
+      return;
+    }
     pageHeader(
       root,
       'Library',
@@ -1616,6 +2181,7 @@ export class LibraryView extends ItemView {
           this.groupId,
           this.query,
           this.facet,
+          { ...this.filters },
         );
       },
     );

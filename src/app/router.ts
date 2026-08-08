@@ -8,7 +8,11 @@ import type {
   NavigationStateV1,
   OverlayStateV1,
 } from '../contracts/route-v1';
-import { asLibraryCollection, asProjectDetailTab } from '../contracts/route-v1';
+import {
+  asLibraryCollection,
+  asLibrarySourceFilters,
+  asProjectDetailTab,
+} from '../contracts/route-v1';
 
 /*
  * Legacy migration input.
@@ -157,12 +161,20 @@ export class ApplicationRouter {
 
   libraryRouteFromState(state: LegacyRouteState = {}): ApplicationRouteV1 {
     if (state.screen === 'group') return {
-      name: 'library-group', collection: asLibraryCollection(state.collection), groupId: asText(state.groupId),
-      query: asText(state.query), facet: asText(state.facet, 'all'),
+      name: 'library-group',
+      collection: asLibraryCollection(state.collection),
+      groupId: asText(state.groupId),
+      query: asText(state.query),
+      facet: asText(state.facet, 'all'),
+      filters: asLibrarySourceFilters(state.filters),
     };
     if (state.screen === 'source-detail') return {
-      name: 'source-detail', resourceId: asText(state.resourceId), fromGroupId: asNullableText(state.fromGroupId),
-      query: asText(state.query), facet: asText(state.facet, 'all'),
+      name: 'source-detail',
+      resourceId: asText(state.resourceId),
+      fromGroupId: asNullableText(state.fromGroupId),
+      query: asText(state.query),
+      facet: asText(state.facet, 'all'),
+      filters: asLibrarySourceFilters(state.filters),
     };
     if (state.screen === 'topic-pack-detail') return {
       name: 'topic-pack-detail', topicPackId: asText(state.topicPackId),
@@ -188,7 +200,14 @@ export class ApplicationRouter {
     if (recordType && !['source', 'topic-pack'].includes(recordType)) {
       return { name: 'legacy-library-list', recordType, query: asText(state.query), domain: asText(state.domain) };
     }
-    return { name: 'library-home', collection: recordType === 'topic-pack' ? 'topic-packs' : 'sources' };
+    return {
+      name: 'library-home',
+      collection: recordType === 'topic-pack'
+        ? 'topic-packs'
+        : 'sources',
+      query: asText(state.query),
+      filters: asLibrarySourceFilters(state.filters),
+    };
   }
 
   descriptor(route: ApplicationRouteV1): RouteDescriptor {
@@ -229,21 +248,36 @@ export class ApplicationRouter {
         nav: 'learn',
       };
       case 'library-home': return {
-        type: VIEW_LIBRARY, state: { screen: 'home', collection: route.collection || 'sources' }, nav: 'library',
+        type: VIEW_LIBRARY,
+        state: {
+          screen: 'home',
+          collection: route.collection || 'sources',
+          query: route.query || '',
+          filters: route.filters || asLibrarySourceFilters(null),
+        },
+        nav: 'library',
       };
       case 'library-group': return {
         type: VIEW_LIBRARY,
         state: {
-          screen: 'group', collection: route.collection || 'sources', groupId: route.groupId,
-          query: route.query || '', facet: route.facet || 'all',
+          screen: 'group',
+          collection: route.collection || 'sources',
+          groupId: route.groupId,
+          query: route.query || '',
+          facet: route.facet || 'all',
+          filters: route.filters || asLibrarySourceFilters(null),
         },
         nav: 'library',
       };
       case 'source-detail': return {
         type: VIEW_LIBRARY,
         state: {
-          screen: 'source-detail', resourceId: route.resourceId,
-          fromGroupId: route.fromGroupId || null, query: route.query || '', facet: route.facet || 'all',
+          screen: 'source-detail',
+          resourceId: route.resourceId,
+          fromGroupId: route.fromGroupId || null,
+          query: route.query || '',
+          facet: route.facet || 'all',
+          filters: route.filters || asLibrarySourceFilters(null),
         },
         nav: 'library',
       };

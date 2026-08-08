@@ -484,6 +484,17 @@ function isLibraryCollection(value) {
 function isProjectDetailTab(value) {
   return PROJECT_DETAIL_TABS.includes(value);
 }
+function asLibrarySourceFilters(value) {
+  const record = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+  const read = (key) => typeof record[key] === "string" ? record[key] : "";
+  return {
+    domain: read("domain"),
+    topic: read("topic"),
+    purpose: read("purpose"),
+    form: read("form"),
+    use: read("use")
+  };
+}
 function asLibraryCollection(value) {
   return isLibraryCollection(value) ? value : "sources";
 }
@@ -545,14 +556,16 @@ var ApplicationRouter = class {
       collection: asLibraryCollection(state.collection),
       groupId: asText(state.groupId),
       query: asText(state.query),
-      facet: asText(state.facet, "all")
+      facet: asText(state.facet, "all"),
+      filters: asLibrarySourceFilters(state.filters)
     };
     if (state.screen === "source-detail") return {
       name: "source-detail",
       resourceId: asText(state.resourceId),
       fromGroupId: asNullableText(state.fromGroupId),
       query: asText(state.query),
-      facet: asText(state.facet, "all")
+      facet: asText(state.facet, "all"),
+      filters: asLibrarySourceFilters(state.filters)
     };
     if (state.screen === "topic-pack-detail") return {
       name: "topic-pack-detail",
@@ -582,7 +595,12 @@ var ApplicationRouter = class {
     if (recordType && !["source", "topic-pack"].includes(recordType)) {
       return { name: "legacy-library-list", recordType, query: asText(state.query), domain: asText(state.domain) };
     }
-    return { name: "library-home", collection: recordType === "topic-pack" ? "topic-packs" : "sources" };
+    return {
+      name: "library-home",
+      collection: recordType === "topic-pack" ? "topic-packs" : "sources",
+      query: asText(state.query),
+      filters: asLibrarySourceFilters(state.filters)
+    };
   }
   descriptor(route) {
     switch (route?.name) {
@@ -641,7 +659,12 @@ var ApplicationRouter = class {
       case "library-home":
         return {
           type: VIEW_LIBRARY,
-          state: { screen: "home", collection: route.collection || "sources" },
+          state: {
+            screen: "home",
+            collection: route.collection || "sources",
+            query: route.query || "",
+            filters: route.filters || asLibrarySourceFilters(null)
+          },
           nav: "library"
         };
       case "library-group":
@@ -652,7 +675,8 @@ var ApplicationRouter = class {
             collection: route.collection || "sources",
             groupId: route.groupId,
             query: route.query || "",
-            facet: route.facet || "all"
+            facet: route.facet || "all",
+            filters: route.filters || asLibrarySourceFilters(null)
           },
           nav: "library"
         };
@@ -664,7 +688,8 @@ var ApplicationRouter = class {
             resourceId: route.resourceId,
             fromGroupId: route.fromGroupId || null,
             query: route.query || "",
-            facet: route.facet || "all"
+            facet: route.facet || "all",
+            filters: route.filters || asLibrarySourceFilters(null)
           },
           nav: "library"
         };
@@ -2883,6 +2908,13 @@ var VALUED_FACETS = /* @__PURE__ */ new Set([
   "form",
   "use"
 ]);
+var SOURCE_FILTER_DIMENSIONS = [
+  ["domain", "Domain"],
+  ["topic", "Topic"],
+  ["purpose", "Purpose"],
+  ["form", "Form"],
+  ["use", "Current use"]
+];
 var LIBRARY_COLLECTIONS2 = [
   ["sources", "Learning Sources"],
   ["topic-packs", "Topic Packs"]
@@ -2941,6 +2973,7 @@ function readLibraryViewState(value, currentCollection, currentRecordType) {
       groupId: null,
       query: "",
       facet: "all",
+      filters: asLibrarySourceFilters(null),
       resourceId: null,
       topicPackId: null,
       catalogueId: null,
@@ -2956,12 +2989,20 @@ function readLibraryViewState(value, currentCollection, currentRecordType) {
     value.collection
   ) ? value.collection : currentCollection;
   const groupId = projectedString3(value.groupId) ?? projectedString3(value.fromGroupId);
+  let filters = asLibrarySourceFilters(value.filters);
+  if (collection === "sources" && screen === "group" && groupId && !filters.domain) {
+    filters = {
+      ...filters,
+      domain: groupId
+    };
+  }
   return {
     screen,
     collection,
     groupId,
     query: projectedString3(value.query) ?? "",
     facet: isSourceFacet(value.facet) ? value.facet : "all",
+    filters,
     resourceId: projectedString3(value.resourceId),
     topicPackId: projectedString3(value.topicPackId),
     catalogueId: projectedString3(value.catalogueId),
@@ -3149,6 +3190,7 @@ var LibraryView = class extends import_obsidian10.ItemView {
   groupId = null;
   query = "";
   facet = "all";
+  filters = asLibrarySourceFilters(null);
   /** Selected value within a valued facet (a topic id, a role, a type, a
    *  module id). Null means "show the values to pick from". */
   facetValue = null;
@@ -3181,6 +3223,7 @@ var LibraryView = class extends import_obsidian10.ItemView {
     this.groupId = parsed.groupId;
     this.query = parsed.query;
     this.facet = parsed.facet;
+    this.filters = parsed.filters;
     this.resourceId = parsed.resourceId;
     this.topicPackId = parsed.topicPackId;
     this.catalogueId = parsed.catalogueId;
@@ -3198,6 +3241,7 @@ var LibraryView = class extends import_obsidian10.ItemView {
       groupId: this.groupId,
       query: this.query,
       facet: this.facet,
+      filters: { ...this.filters },
       resourceId: this.resourceId,
       topicPackId: this.topicPackId,
       catalogueId: this.catalogueId,
@@ -3296,17 +3340,11 @@ var LibraryView = class extends import_obsidian10.ItemView {
       return [...roles];
     }
     if (this.facet === "use") {
-      const modules = /* @__PURE__ */ new Set();
-      for (const unitRecord of this.plugin.store.useUnits(source.id)) {
-        const unit = typeof unitRecord === "string" ? this.plugin.store.get(unitRecord) : unitRecord;
-        const moduleId = unit ? projectedString3(
-          unit.module_id
-        ) : null;
-        if (moduleId) {
-          modules.add(moduleId);
-        }
-      }
-      return [...modules];
+      return this.plugin.store.useModules(source.id).map(
+        (module2) => projectedString3(module2.id)
+      ).filter(
+        (id) => id !== null
+      );
     }
     return [];
   }
@@ -3361,7 +3399,11 @@ var LibraryView = class extends import_obsidian10.ItemView {
       return;
     }
     if (this.screen === "group") {
-      this.renderGroup(root);
+      if (this.collection === "sources") {
+        this.renderSourceBrowser(root);
+      } else {
+        this.renderGroup(root);
+      }
       return;
     }
     if (this.screen === "source-detail") {
@@ -3382,7 +3424,363 @@ var LibraryView = class extends import_obsidian10.ItemView {
     }
     this.renderHome(root);
   }
+  sourceFilterValuesFor(source, dimension) {
+    if (dimension === "domain") {
+      return projectedStrings2(
+        source.record.thematic_group_ids
+      );
+    }
+    if (dimension === "topic") {
+      return projectedStrings2(
+        source.record.topics
+      );
+    }
+    if (dimension === "purpose") {
+      const values = /* @__PURE__ */ new Set();
+      for (const evaluation of source.evaluations) {
+        for (const role of evaluation.roles) {
+          values.add(role);
+        }
+      }
+      return [...values];
+    }
+    if (dimension === "form") {
+      return source.sourceType ? [source.sourceType] : [];
+    }
+    return this.plugin.store.useModules(source.id).map(
+      (module2) => projectedString3(module2.id)
+    ).filter(
+      (id) => id !== null
+    );
+  }
+  sourceMatchesFilters(source, omit = null) {
+    for (const [dimension] of SOURCE_FILTER_DIMENSIONS) {
+      if (dimension === omit) {
+        continue;
+      }
+      const selected = this.filters[dimension];
+      if (selected && !this.sourceFilterValuesFor(
+        source,
+        dimension
+      ).includes(selected)) {
+        return false;
+      }
+    }
+    return true;
+  }
+  sourceFilterTally(sources, dimension) {
+    const tally = /* @__PURE__ */ new Map();
+    for (const source of sources) {
+      if (!this.sourceMatchesFilters(source, dimension)) {
+        continue;
+      }
+      for (const value of this.sourceFilterValuesFor(
+        source,
+        dimension
+      )) {
+        tally.set(
+          value,
+          (tally.get(value) ?? 0) + 1
+        );
+      }
+    }
+    return tally;
+  }
+  sourceFilterLabel(dimension, value) {
+    if (dimension === "domain") {
+      const group = this.plugin.store.get(value);
+      return group ? projectedString3(group.title) ?? value : value;
+    }
+    if (dimension === "topic") {
+      const topic = this.plugin.store.topics().find(
+        (row) => projectedString3(row.id) === value
+      );
+      return topic ? projectedString3(topic.title) ?? value : value;
+    }
+    if (dimension === "use") {
+      const module2 = this.plugin.store.get(value);
+      return module2 ? projectedString3(module2.title) ?? value : value;
+    }
+    return value.replace(/[-_]+/g, " ").replace(
+      /\b\w/g,
+      (letter) => letter.toLocaleUpperCase()
+    );
+  }
+  async rememberSourceBrowser() {
+    return this.plugin.router.remember({
+      name: "library-home",
+      collection: "sources",
+      query: this.query,
+      filters: { ...this.filters }
+    });
+  }
+  async setSourceFilter(dimension, value) {
+    this.filters = {
+      ...this.filters,
+      [dimension]: value
+    };
+    this.screen = "home";
+    this.groupId = null;
+    await this.rememberSourceBrowser();
+    this.render();
+  }
+  async clearSourceFilters() {
+    this.filters = asLibrarySourceFilters(null);
+    this.screen = "home";
+    this.groupId = null;
+    await this.rememberSourceBrowser();
+    this.render();
+  }
+  renderSourceBrowser(root) {
+    pageHeader(
+      root,
+      "Library",
+      "Learning Sources",
+      "Browse one source library through five independent facets. A source can belong to several values at once; filtering never changes its identity."
+    );
+    this.renderCollectionSwitch(root);
+    const all = readLibraryRecords(
+      this.plugin.store.sources()
+    );
+    const browser = root.createDiv({
+      cls: "los-library-browser"
+    });
+    const toolbar = browser.createDiv({
+      cls: "los-library-browser-toolbar"
+    });
+    const input = toolbar.createEl(
+      "input",
+      {
+        cls: "los-search los-route-search los-library-global-search",
+        attr: {
+          type: "search",
+          placeholder: "Search learning sources\u2026",
+          "aria-label": "Search learning sources"
+        }
+      }
+    );
+    input.value = this.query;
+    input.addEventListener(
+      "input",
+      async () => {
+        this.query = input.value;
+        this.screen = "home";
+        this.groupId = null;
+        await this.rememberSourceBrowser();
+        this.render();
+      }
+    );
+    button(
+      toolbar,
+      "Full-text / OCR search",
+      () => this.plugin.openFullTextSearch(
+        this.query
+      ),
+      "quiet"
+    );
+    const facets = browser.createDiv({
+      cls: "los-library-peer-facets",
+      attr: {
+        "aria-label": "Learning Source facets"
+      }
+    });
+    for (const [
+      dimension,
+      label
+    ] of SOURCE_FILTER_DIMENSIONS) {
+      const control = facets.createDiv({
+        cls: "los-library-peer-facet"
+      });
+      control.createEl(
+        "label",
+        {
+          cls: "los-library-facet-label",
+          text: label
+        }
+      );
+      const select = control.createEl(
+        "select",
+        {
+          cls: "los-library-facet-select",
+          attr: {
+            "data-facet": dimension,
+            "aria-label": `Filter by ${label}`
+          }
+        }
+      );
+      const tally = this.sourceFilterTally(
+        all,
+        dimension
+      );
+      select.createEl(
+        "option",
+        {
+          text: `All ${label.toLocaleLowerCase()}`,
+          attr: {
+            value: ""
+          }
+        }
+      );
+      const ordered = [...tally.entries()].sort(
+        (left, right) => {
+          const leftLabel = this.sourceFilterLabel(
+            dimension,
+            left[0]
+          );
+          const rightLabel = this.sourceFilterLabel(
+            dimension,
+            right[0]
+          );
+          return leftLabel.localeCompare(
+            rightLabel
+          );
+        }
+      );
+      for (const [
+        value,
+        count
+      ] of ordered) {
+        select.createEl(
+          "option",
+          {
+            text: `${this.sourceFilterLabel(
+              dimension,
+              value
+            )} (${count})`,
+            attr: {
+              value
+            }
+          }
+        );
+      }
+      select.value = this.filters[dimension];
+      select.addEventListener(
+        "change",
+        () => {
+          void this.setSourceFilter(
+            dimension,
+            select.value
+          );
+        }
+      );
+    }
+    const active = SOURCE_FILTER_DIMENSIONS.filter(
+      ([dimension]) => Boolean(
+        this.filters[dimension]
+      )
+    );
+    if (active.length) {
+      const activeWrap = browser.createDiv({
+        cls: "los-library-active-filters",
+        attr: {
+          "aria-label": "Active Library filters"
+        }
+      });
+      for (const [
+        dimension,
+        label
+      ] of active) {
+        const value = this.filters[dimension];
+        const control = button(
+          activeWrap,
+          `${label}: ${this.sourceFilterLabel(
+            dimension,
+            value
+          )} \xD7`,
+          () => void this.setSourceFilter(
+            dimension,
+            ""
+          ),
+          "quiet"
+        );
+        control.addClass(
+          "los-library-filter-chip"
+        );
+      }
+      button(
+        activeWrap,
+        "Clear filters",
+        () => void this.clearSourceFilters(),
+        "quiet"
+      );
+    }
+    const topicless = all.filter(
+      (source) => !this.sourceFilterValuesFor(
+        source,
+        "topic"
+      ).length
+    ).length;
+    if (topicless) {
+      browser.createDiv({
+        cls: "los-micro los-library-classification-note",
+        text: `${topicless} source${topicless === 1 ? "" : "s"} have no Topic classification yet. They remain visible unless a Topic filter is selected.`
+      });
+    }
+    const words = this.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const rows = all.filter(
+      (source) => this.sourceMatchesFilters(source)
+    ).filter(
+      (source) => {
+        if (!words.length) {
+          return true;
+        }
+        const hay = [
+          source.id,
+          source.title,
+          source.summary,
+          source.purpose,
+          source.organization,
+          source.sourceType,
+          ...source.aliases,
+          ...source.authors
+        ].filter(Boolean).join(" ").toLocaleLowerCase();
+        return words.every(
+          (word) => hay.includes(word)
+        );
+      }
+    ).sort(
+      (left, right) => left.title.localeCompare(
+        right.title
+      )
+    );
+    browser.createDiv({
+      cls: "los-library-result-summary",
+      text: `${rows.length} of ${all.length} source${all.length === 1 ? "" : "s"}`
+    });
+    if (!all.length) {
+      empty(
+        browser,
+        "No Learning Sources",
+        "The Core projection currently contains no source records."
+      );
+      return;
+    }
+    if (!rows.length) {
+      empty(
+        browser,
+        "No matching sources",
+        "No source matches the current search and facet combination.",
+        "Clear filters",
+        () => void this.clearSourceFilters()
+      );
+      return;
+    }
+    const list = browser.createDiv({
+      cls: "los-route-list los-library-route-list"
+    });
+    for (const source of rows) {
+      this.renderRecordRow(
+        list,
+        source,
+        false
+      );
+    }
+  }
   renderHome(root) {
+    if (this.collection === "sources") {
+      this.renderSourceBrowser(root);
+      return;
+    }
     pageHeader(
       root,
       "Library",
@@ -3774,7 +4172,8 @@ var LibraryView = class extends import_obsidian10.ItemView {
           record.id,
           this.groupId,
           this.query,
-          this.facet
+          this.facet,
+          { ...this.filters }
         );
       }
     );
@@ -8421,20 +8820,33 @@ ${row.text.trim()}`).join("\n\n");
     if (record?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
     return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record?.type || "note", query: "" });
   }
-  openLibraryHome(collection = "sources") {
-    return this.router.navigate({ name: "library-home", collection: asLibraryCollection(collection) });
+  openLibraryHome(collection = "sources", query = "", filters) {
+    return this.router.navigate({
+      name: "library-home",
+      collection: asLibraryCollection(collection),
+      query,
+      ...filters ? { filters } : {}
+    });
   }
-  openLibraryGroup(collection, groupId, query = "", facet = "all") {
+  openLibraryGroup(collection, groupId, query = "", facet = "all", filters) {
     return this.router.navigate({
       name: "library-group",
       collection: asLibraryCollection(collection),
       groupId,
       query,
-      facet
+      facet,
+      ...filters ? { filters } : {}
     });
   }
-  openSourceDetail(resourceId, fromGroupId = null, query = "", facet = "all") {
-    return this.router.navigate({ name: "source-detail", resourceId, fromGroupId, query, facet });
+  openSourceDetail(resourceId, fromGroupId = null, query = "", facet = "all", filters) {
+    return this.router.navigate({
+      name: "source-detail",
+      resourceId,
+      fromGroupId,
+      query,
+      facet,
+      ...filters ? { filters } : {}
+    });
   }
   openTopicPackDetail(topicPackId, fromGroupId = null, query = "") {
     return this.router.navigate({ name: "topic-pack-detail", topicPackId, fromGroupId, query });

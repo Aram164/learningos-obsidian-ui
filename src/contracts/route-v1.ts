@@ -1,6 +1,14 @@
 /** Persisted application navigation contract, independent of Obsidian leaves. */
 export type LibraryCollectionV1 = "sources" | "topic-packs";
 
+export interface LibrarySourceFiltersV1 {
+  domain: string;
+  topic: string;
+  purpose: string;
+  form: string;
+  use: string;
+}
+
 export type ProjectDetailTabV1 =
   | "overview"
   | "structure"
@@ -23,9 +31,28 @@ export type ApplicationRouteV1 =
   | { name: "module-detail"; moduleId: string; componentId?: string | null; tab?: string | null }
   | { name: "module"; moduleId: string; componentId?: string | null }
   | { name: "unit"; unitId: string; stageId?: string | null }
-  | { name: "library-home"; collection: LibraryCollectionV1 }
-  | { name: "library-group"; collection: LibraryCollectionV1; groupId: string; query?: string; facet?: string }
-  | { name: "source-detail"; resourceId: string; fromGroupId?: string | null; query?: string; facet?: string }
+  | {
+      name: "library-home";
+      collection: LibraryCollectionV1;
+      query?: string;
+      filters?: LibrarySourceFiltersV1;
+    }
+  | {
+      name: "library-group";
+      collection: LibraryCollectionV1;
+      groupId: string;
+      query?: string;
+      facet?: string;
+      filters?: LibrarySourceFiltersV1;
+    }
+  | {
+      name: "source-detail";
+      resourceId: string;
+      fromGroupId?: string | null;
+      query?: string;
+      facet?: string;
+      filters?: LibrarySourceFiltersV1;
+    }
   | { name: "topic-pack-detail"; topicPackId: string; fromGroupId?: string | null; query?: string }
   | { name: "catalogue-detail"; catalogueId: string }
   | { name: "legacy-library-list"; recordType: string; query?: string; domain?: string }
@@ -89,6 +116,30 @@ export function isLibraryCollection(value: unknown): value is LibraryCollectionV
 
 export function isProjectDetailTab(value: unknown): value is ProjectDetailTabV1 {
   return PROJECT_DETAIL_TABS.includes(value as ProjectDetailTabV1);
+}
+
+export function asLibrarySourceFilters(
+  value: unknown,
+): LibrarySourceFiltersV1 {
+  const record: Record<string, unknown> =
+    typeof value === "object"
+      && value !== null
+      && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : {};
+
+  const read = (key: keyof LibrarySourceFiltersV1): string =>
+    typeof record[key] === "string"
+      ? record[key] as string
+      : "";
+
+  return {
+    domain: read("domain"),
+    topic: read("topic"),
+    purpose: read("purpose"),
+    form: read("form"),
+    use: read("use"),
+  };
 }
 
 /** Coerce a loose collection value; anything unrecognised falls back to sources. */

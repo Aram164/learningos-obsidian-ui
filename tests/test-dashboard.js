@@ -435,100 +435,475 @@ async function main() {
   heading('library navigability');
   {
     const { app, plugin } = await boot();
+
     await plugin.openLibrary();
-    let view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    let text = view.contentEl.allText();
-    check('Library opens on Learning Sources thematic groups only',
-      view.screen === 'home' && view.collection === 'sources'
-      && view.contentEl.find('los-group-card').length === FIXTURE_GROUP_COUNT
-      && view.contentEl.find('los-route-row').length === 0
-      && view.contentEl.find('los-library-detail').length === 0);
-    check('Learning Sources and Topic Packs are distinct top-level collections',
-      view.contentEl.find('los-collection-switch').length === 1
-      && ['Learning Sources', 'Topic Packs'].every((label) => text.includes(label)));
 
-    view.contentEl.findText('los-group-card', 'Mathematics').fire('click'); await tick();
-    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    text = view.contentEl.allText();
-    check('selecting a source group replaces the route with one full-page list',
-      view.screen === 'group' && view.groupId === 'thematic-group-mathematics'
-      && view.contentEl.find('los-route-row').length === 3
-      && view.contentEl.find('los-library-layout').length === 0
-      && view.contentEl.find('los-library-detail').length === 0);
-    check('no source record is automatically selected',
-      view.resourceId === null && !text.includes('Technical details'));
-    check('source filters and full-text fallback remain available',
-      ['All', 'Local copy', 'Online', 'Used in a unit'].every((label) => text.includes(label))
-      && text.includes('Full-text / OCR search'));
+    let view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
 
-    /* ADR-009 integration. The four original facets answer "can I open this?",
-     * not "what is it about?" — which is why a domain heading reading 73 still
-     * felt like a sea. These four answer the second question, and their counts
-     * are allowed to overlap because a source really does belong to several
-     * topics and purposes at once. */
-    check('the faceted dimensions are offered alongside availability filters',
-      ['By topic', 'By purpose', 'By form', 'By current use']
-        .every((label) => text.includes(label)));
-    view.contentEl.findText('los-btn', 'By topic').fire('click'); await tick();
-    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    text = view.contentEl.allText();
-    check('choosing a facet reveals its values with counts, read from the projection',
-      view.facet === 'topic' && view.facetValue === null
-      && view.contentEl.find('los-library-facet-values').length === 1
-      && text.includes('Probability'));
-    check('unclassified sources are reported, not hidden',
-      text.includes('not yet') && text.includes('classified by topic'));
-    const beforeTopic = view.contentEl.find('los-route-row').length;
-    view.contentEl.findText('los-btn', 'Probability (2)').fire('click'); await tick();
-    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    check('selecting a topic narrows the list without collapsing the tally',
-      view.facetValue === 'topic-probability'
-      && view.contentEl.find('los-route-row').length === 2
-      && view.contentEl.find('los-route-row').length < beforeTopic
-      && view.contentEl.allText().includes('Probability (2)'));
-    view.contentEl.findText('los-btn', 'All').fire('click'); await tick();
-    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    view.contentEl.findText('los-btn', 'Local copy').fire('click'); await tick();
-    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    check('switching facet clears the previous facet value',
-      view.facet === 'local' && view.facetValue === null);
-    view.contentEl.findText('los-btn', 'All').fire('click'); await tick();
-    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    view.contentEl.findText('los-btn', 'Local copy').fire('click'); await tick();
-    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    check('a source facet narrows the full-page list', view.contentEl.find('los-route-row').length === 1);
-    view.contentEl.find('los-route-row')[0].fire('click'); await tick();
-    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    text = view.contentEl.allText();
-    check('source detail is a full page and preserves collection rationale',
-      view.screen === 'source-detail' && view.contentEl.find('los-detail-page').length === 1
-      && text.includes('Fixture math bookshelf')
-      && text.includes('The spine — read this before anything else on the shelf.'));
-    const technical = view.contentEl.find('los-technical-details')[0];
-    check('record ID and Copy ID stay under Technical details',
-      Boolean(technical) && technical.allText().includes('Copy ID')
-      && technical.find('los-detail-id')[0]?.text === 'source-fixture-book');
+    let text =
+      view.contentEl.allText();
 
-    await plugin.openLibraryHome('topic-packs');
-    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    check('Topic Packs starts at thematic groups rather than source types',
-      view.collection === 'topic-packs' && view.contentEl.find('los-group-card').length === FIXTURE_GROUP_COUNT
-      && view.contentEl.find('los-route-row').length === 0);
-    view.contentEl.findText('los-group-card', 'Machine Learning').fire('click'); await tick();
-    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    check('a Topic Pack group opens a full-page pack list',
-      view.screen === 'group' && view.collection === 'topic-packs'
-      && view.contentEl.find('los-route-row').length === 1
-      && view.contentEl.allText().includes('Fixture ML evaluation pack'));
-    view.contentEl.find('los-route-row')[0].fire('click'); await tick();
-    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    text = view.contentEl.allText();
-    check('Topic Pack detail states one explicit purpose and preserves manual order',
-      view.screen === 'topic-pack-detail'
-      && text.includes('Compare one bounded set of model-evaluation choices.')
-      && view.contentEl.find('los-pack-entry').length === 2
-      && view.contentEl.find('los-pack-order').map((el) => el.text).join(',') === '1,2');
+    check(
+      'Learning Sources opens as one global faceted browser',
+      view.screen === 'home'
+        && view.collection === 'sources'
+        && view.contentEl.find(
+          'los-group-card',
+        ).length === 0
+        && view.contentEl.find(
+          'los-route-row',
+        ).length > 0
+        && view.contentEl.find(
+          'los-library-peer-facets',
+        ).length === 1,
+    );
+
+    check(
+      'the five semantic facets are peers',
+      ['Domain', 'Topic', 'Purpose', 'Form', 'Current use']
+        .every(
+          (label) =>
+            text.includes(label),
+        )
+        && view.contentEl.find(
+          'los-library-facet-select',
+        ).length === 5,
+    );
+
+    check(
+      'Learning Sources and Topic Packs remain separate collections',
+      view.contentEl.find(
+        'los-collection-switch',
+      ).length === 1
+        && text.includes('Learning Sources')
+        && text.includes('Topic Packs'),
+    );
+
+    const select = (dimension) =>
+      view.contentEl.find(
+        'los-library-facet-select',
+      ).find(
+        (candidate) =>
+          candidate.getAttribute(
+            'data-facet',
+          ) === dimension,
+      );
+
+    const domain = select('domain');
+    domain.value =
+      'thematic-group-mathematics';
+    domain.fire('change');
+
+    await tick();
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    const expectedMathSources =
+      plugin.store.sources().filter(
+        (source) =>
+          Array.isArray(
+            source.thematic_group_ids,
+          )
+          && source.thematic_group_ids.includes(
+            'thematic-group-mathematics',
+          ),
+      ).length;
+
+    check(
+      'Domain is a filter rather than a required first navigation level',
+      view.filters.domain
+        === 'thematic-group-mathematics'
+        && plugin.router.snapshot().current.name
+          === 'library-home'
+        && plugin.router.snapshot().current.filters?.domain
+          === 'thematic-group-mathematics'
+        && view.contentEl.find(
+          'los-route-row',
+        ).length === expectedMathSources
+        && view.contentEl.find(
+          'los-library-filter-chip',
+        ).length === 1,
+    );
+
+    const topic =
+      view.contentEl.find(
+        'los-library-facet-select',
+      ).find(
+        (candidate) =>
+          candidate.getAttribute(
+            'data-facet',
+          ) === 'topic',
+      );
+
+    topic.value =
+      'topic-probability';
+    topic.fire('change');
+
+    await tick();
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    check(
+      'peer facets combine conjunctively without replacing one another',
+      view.filters.domain
+        === 'thematic-group-mathematics'
+        && view.filters.topic
+          === 'topic-probability'
+        && view.contentEl.find(
+          'los-route-row',
+        ).length === 2
+        && view.contentEl.find(
+          'los-library-filter-chip',
+        ).length === 2,
+    );
+
+    const route =
+      plugin.router.snapshot().current;
+
+    check(
+      'the complete facet combination is persisted on the product route',
+      route.name === 'library-home'
+        && route.filters?.domain
+          === 'thematic-group-mathematics'
+        && route.filters?.topic
+          === 'topic-probability'
+        && route.filters?.purpose === ''
+        && route.filters?.form === ''
+        && route.filters?.use === '',
+    );
+
+    view.contentEl
+      .findText(
+        'los-btn',
+        'Clear filters',
+      )
+      .fire('click');
+
+    await tick();
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    check(
+      'clearing facet state does not change source identity or collection',
+      Object.values(
+        view.filters,
+      ).every(
+        (value) => value === '',
+      )
+        && view.collection === 'sources',
+    );
+
+    const math =
+      view.contentEl.find(
+        'los-library-facet-select',
+      ).find(
+        (candidate) =>
+          candidate.getAttribute(
+            'data-facet',
+          ) === 'domain',
+      );
+
+    math.value =
+      'thematic-group-mathematics';
+    math.fire('change');
+
+    await tick();
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    const book =
+      view.contentEl.find(
+        'los-route-row',
+      ).find(
+        (row) =>
+          row.getAttribute(
+            'data-record-id',
+          ) === 'source-fixture-book',
+      );
+
+    check(
+      'no source is automatically selected',
+      view.resourceId === null
+        && Boolean(book),
+    );
+
+    book.fire('click');
+
+    await tick();
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    text =
+      view.contentEl.allText();
+
+    check(
+      'source detail stays a full page and preserves shelf rationale',
+      view.screen === 'source-detail'
+        && view.contentEl.find(
+          'los-detail-page',
+        ).length === 1
+        && text.includes(
+          'Fixture math bookshelf',
+        )
+        && text.includes(
+          'The spine — read this before anything else on the shelf.',
+        ),
+    );
+
+    const technical =
+      view.contentEl.find(
+        'los-technical-details',
+      )[0];
+
+    check(
+      'record ID and Copy ID stay under Technical details',
+      Boolean(technical)
+        && technical.allText()
+          .includes('Copy ID')
+        && technical.find(
+          'los-detail-id',
+        )[0]?.text
+          === 'source-fixture-book',
+    );
+
+    await plugin.back();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    check(
+      'Back restores the exact global facet state',
+      plugin.router.snapshot().current.name
+        === 'library-home'
+        && view.filters.domain
+          === 'thematic-group-mathematics'
+        && view.filters.topic === ''
+        && view.contentEl.find(
+          'los-library-filter-chip',
+        ).length === 1,
+    );
+
+    await plugin.openLibraryHome(
+      'topic-packs',
+    );
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    check(
+      'Topic Packs intentionally retain thematic-group navigation',
+      view.collection === 'topic-packs'
+        && view.contentEl.find(
+          'los-group-card',
+        ).length
+          === FIXTURE_GROUP_COUNT
+        && view.contentEl.find(
+          'los-route-row',
+        ).length === 0,
+    );
+
+    view.contentEl
+      .findText(
+        'los-group-card',
+        'Machine Learning',
+      )
+      .fire('click');
+
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    check(
+      'a Topic Pack group still opens its ordered pack list',
+      view.screen === 'group'
+        && view.collection
+          === 'topic-packs'
+        && view.contentEl.find(
+          'los-route-row',
+        ).length === 1
+        && view.contentEl.allText()
+          .includes(
+            'Fixture ML evaluation pack',
+          ),
+    );
+
+    view.contentEl.find(
+      'los-route-row',
+    )[0].fire('click');
+
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    text =
+      view.contentEl.allText();
+
+    check(
+      'Topic Pack detail keeps one explicit purpose and canonical order',
+      view.screen
+        === 'topic-pack-detail'
+        && text.includes(
+          'Compare one bounded set of model-evaluation choices.',
+        )
+        && view.contentEl.find(
+          'los-pack-entry',
+        ).length === 2
+        && view.contentEl.find(
+          'los-pack-order',
+        ).map(
+          (el) => el.text,
+        ).join(',') === '1,2',
+    );
+
     plugin.onunload();
+  }
+
+  {
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        // If the UI accidentally reconstructs Current use through units,
+        // this test goes empty. source_to_modules is the authority.
+        manifest.indexes.source_to_units = {};
+        manifest.indexes.source_to_modules[
+          'source-fixture-islp'
+        ] = [
+          'module-fixture-m2',
+        ];
+      },
+    });
+
+    await plugin.openLibrary();
+
+    let view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    const use =
+      view.contentEl.find(
+        'los-library-facet-select',
+      ).find(
+        (candidate) =>
+          candidate.getAttribute(
+            'data-facet',
+          ) === 'use',
+      );
+
+    use.value = 'module-fixture-m2';
+    use.fire('change');
+
+    await tick();
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    const ids =
+      view.contentEl.find(
+        'los-route-row',
+      ).map(
+        (row) =>
+          row.getAttribute(
+            'data-record-id',
+          ),
+      );
+
+    check(
+      'Current use reads authoritative source_to_modules even with source_to_units empty',
+      view.filters.use
+        === 'module-fixture-m2'
+        && ids.includes(
+          'source-fixture-islp',
+        ),
+    );
+
+    plugin.onunload();
+  }
+
+  {
+    const first = await boot();
+
+    await first.plugin.openLibraryHome(
+      'sources',
+      'probability',
+      {
+        domain:
+          'thematic-group-mathematics',
+        topic:
+          'topic-probability',
+        purpose: '',
+        form: '',
+        use: '',
+      },
+    );
+
+    const persisted = {
+      ...first.plugin._data,
+    };
+
+    first.plugin.onunload();
+
+    const second = await build({
+      settings: persisted,
+    });
+
+    await second.app.workspace._ready();
+
+    const leaf =
+      second.app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0];
+
+    check(
+      'reload restores query and all five source-facet fields exactly',
+      leaf?.view?.screen === 'home'
+        && leaf.view.query
+          === 'probability'
+        && leaf.view.filters.domain
+          === 'thematic-group-mathematics'
+        && leaf.view.filters.topic
+          === 'topic-probability'
+        && leaf.view.filters.purpose === ''
+        && leaf.view.filters.form === ''
+        && leaf.view.filters.use === '',
+    );
+
+    second.plugin.onunload();
   }
 
   heading('zero-friction inbox capture');
