@@ -104,6 +104,7 @@ export class ShelvingView extends ItemView {
   private unitId: string | null = null;
   private proposal: ShelvingProposal | null = null;
   private readonly selected = new Set<string>();
+  private selectionScope: string | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -150,6 +151,65 @@ export class ShelvingView extends ItemView {
     this.proposal = readShelvingProposal(map?.shelving);
   }
 
+  selectionKey(
+    unitId: string,
+    map: ProjectionRecord | null,
+    proposal: ShelvingProposal | null,
+  ): string {
+    const mapId =
+      typeof map?.id === 'string'
+        ? map.id
+        : '';
+
+    const revision =
+      map?.revision == null
+        ? ''
+        : String(map.revision);
+
+    const proposalIds =
+      proposal?.items
+        .map((item) => item.id)
+        .join('\u001f')
+      ?? '';
+
+    return JSON.stringify([
+      unitId,
+      mapId,
+      revision,
+      proposalIds,
+    ]);
+  }
+
+  syncSelection(
+    unitId: string,
+    map: ProjectionRecord | null,
+    proposal: ShelvingProposal | null,
+  ): void {
+    const scope =
+      this.selectionKey(
+        unitId,
+        map,
+        proposal,
+      );
+
+    if (scope === this.selectionScope) {
+      return;
+    }
+
+    this.selectionScope = scope;
+    this.selected.clear();
+
+    if (!proposal) {
+      return;
+    }
+
+    for (const item of proposal.items) {
+      if (item.selected !== false) {
+        this.selected.add(item.id);
+      }
+    }
+  }
+
   render(): void {
     const root = this.contentEl;
     root.empty();
@@ -165,6 +225,12 @@ export class ShelvingView extends ItemView {
     const proposal = this.proposal
       ?? readShelvingProposal(map?.shelving);
     if (!proposal?.items?.length) {
+      this.syncSelection(
+        unit.id,
+        map,
+        null,
+      );
+
       const wrap = section(root, 'No proposal yet');
       empty(wrap, 'Prepare a deterministic proposal',
         'The gateway derives candidates from this unit. AI may explain them, but cannot apply canonical changes.',
@@ -174,9 +240,12 @@ export class ShelvingView extends ItemView {
         { moduleId: unit.module_id, unitId: unit.id }), 'quiet');
       return;
     }
-    if (!this.selected.size) {
-      for (const item of proposal.items) if (item.selected !== false) this.selected.add(item.id);
-    }
+    this.syncSelection(
+      unit.id,
+      map,
+      proposal,
+    );
+
     const summary = section(root, 'Proposed changes', proposal.summary || 'Select only changes you want to apply.');
     for (const item of proposal.items) {
       const row = summary.createDiv({ cls: 'los-proposal-row' });
@@ -251,6 +320,7 @@ export class ShelvingView extends ItemView {
       );
       this.proposal = null;
       this.selected.clear();
+      this.selectionScope = null;
       this.render();
     } catch (error: unknown) {
       new Notice(errorMessage(error));

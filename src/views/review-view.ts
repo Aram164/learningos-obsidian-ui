@@ -1,7 +1,7 @@
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
-import { badge, button, disclosure, empty, OWNERSHIP_STATEMENT, pageHeader, section, unitCard } from '../components';
+import { badge, button, empty, OWNERSHIP_STATEMENT, pageHeader, section } from '../components';
 import { CONTRACT_VERSION, VIEW_DIAGNOSTICS, VIEW_REVIEW } from '../constants';
 import type { ProjectionRecord } from '../contracts/manifest-v2';
 import type { LearningOSUI } from '../main';
@@ -71,20 +71,19 @@ function errorMessage(error: unknown): string {
 type ReviewPlugin = Pick<
   LearningOSUI,
   | 'generate'
-  | 'openCapture'
   | 'openGarden'
-  | 'openModule'
-  | 'openProgram'
   | 'openShelving'
   | 'openUnit'
+  | 'openVaultPath'
   | 'store'
 >;
 
 /**
- * Review — the decision queues in one place. Shelving proposals, units without
- * a map, inbox items awaiting routing and the Garden's harvest pressure are all
- * the same question ("what needs a decision from me?"), so they stop occupying
- * four separate permanent destinations.
+ * Review renders decisions already identified by Core.
+ *
+ * It never reconstructs a queue from counts, unit status, Garden age, or file
+ * layout. Membership, reason, target, and stable identity all come from
+ * `review_items`.
  */
 export class ReviewView extends ItemView {
   private readonly plugin: ReviewPlugin;
@@ -96,69 +95,237 @@ export class ReviewView extends ItemView {
     super(leaf);
     this.plugin = plugin;
   }
-  getViewType() { return VIEW_REVIEW; }
-  getDisplayText() { return 'LearningOS · Review'; }
-  getIcon() { return 'check-check'; }
+
+  getViewType() {
+    return VIEW_REVIEW;
+  }
+
+  getDisplayText() {
+    return 'LearningOS · Review';
+  }
+
+  getIcon() {
+    return 'check-check';
+  }
+
   async onOpen(): Promise<void> {
     this.render();
   }
 
-  render() {
-    const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-review-view');
+  render(): void {
+    const root = this.contentEl;
+
+    root.empty();
+    root.addClass(
+      'los-root',
+      'los-review-view',
+    );
+
     if (!this.plugin.store.ready) {
-      pageHeader(root, 'LearningOS', 'Projection unavailable');
-      empty(root, 'The interface contract could not be loaded', this.plugin.store.error,
-        'Rebuild views', () => this.plugin.generate());
+      pageHeader(
+        root,
+        'LearningOS',
+        'Projection unavailable',
+      );
+
+      empty(
+        root,
+        'The interface contract could not be loaded',
+        this.plugin.store.error,
+        'Rebuild views',
+        () => this.plugin.generate(),
+      );
+
       return;
     }
-    pageHeader(root, '', 'Review', 'Everything waiting on a decision from you.');
-    const shelving = this.plugin.store.units().filter(
-      (row: ProjectionRecord) => row.status === 'ready-to-shelve',
-    );
-    const needsMap = this.plugin.store.units().filter(
-      (row: ProjectionRecord) =>
-        !this.plugin.store.mapForUnit(row.id),
-    );
-    const inbox = this.plugin.store.data?.counts?.inbox_items || 0;
-    const garden = this.plugin.store.gardenEntries();
 
-    const list = root.createDiv({ cls: 'los-review-list' });
-    this.queue(list, 'Ready to shelve', shelving.length,
-      'Units whose working notes are ready to become durable knowledge.',
-      shelving.length ? ['Review proposals', () => this.plugin.openShelving(shelving[0]?.id)] : null);
-    this.queue(list, 'Inbox', inbox,
-      'Captured items the operator has not routed yet.',
-      ['Open capture', () => this.plugin.openCapture()]);
-    this.queue(list, 'Needs a study map', needsMap.length,
-      'Units with no current study script.',
-      needsMap.length ? ['Open the queue', () => this.plugin.openProgram('queue-needs-map')] : null);
-    this.queue(list, 'Garden', garden.length,
-      'Half-formed ideas gestating outside the canon; approved AI actions may help prepare them for shelving.',
-      ['Open the Garden', () => this.plugin.openGarden()]);
+    pageHeader(
+      root,
+      '',
+      'Review',
+      'Concrete decisions the Core has identified as waiting for you.',
+    );
 
-    if (needsMap.length) {
-      const detail = disclosure(root, `Units needing a map (${needsMap.length})`);
-      const grid = detail.createDiv({ cls: 'los-card-grid' });
-      for (const unit of needsMap) unitCard(grid, this.plugin, unit);
+    const items =
+      this.plugin.store.reviewItems();
+
+    const list = root.createDiv({
+      cls: 'los-review-list',
+    });
+
+    if (!items.length) {
+      empty(
+        list,
+        'Nothing waiting',
+        'Core has not projected any current Review decisions.',
+      );
+    } else {
+      for (const item of items) {
+        this.decision(list, item);
+      }
     }
+
+    const garden = section(
+      root,
+      'Garden',
+      'Garden is a separate holding ground for unfinished ideas. '
+        + 'A seed does not become a Review decision merely because it exists '
+        + 'or has been sitting for a while.',
+    );
+
+    button(
+      garden,
+      'Open the Garden',
+      () => this.plugin.openGarden(),
+      'quiet',
+    );
   }
 
-  queue(
+  decision(
     parent: HTMLElement,
-    label: string,
-    count: number | null,
-    detail: string,
-    action: ReviewAction | null,
+    item: ProjectionRecord,
   ): HTMLElement {
-    const row = parent.createDiv({ cls: 'los-review-row' });
-    const copy = row.createDiv({ cls: 'los-review-copy' });
-    const heading = copy.createDiv({ cls: 'los-review-heading' });
-    heading.createEl('strong', { text: label });
-    if (count != null) heading.createSpan({ cls: 'los-review-count', text: String(count) });
-    copy.createDiv({ cls: 'los-micro', text: detail });
-    if (action) button(row, action[0], action[1], count ? 'cta' : 'quiet');
-    else row.createSpan({ cls: 'los-micro los-review-clear', text: 'Nothing waiting' });
+    const id =
+      typeof item.id === 'string'
+        ? item.id
+        : 'review-item';
+
+    const category =
+      typeof item.category === 'string'
+        ? item.category
+        : 'review';
+
+    const title =
+      typeof item.title === 'string'
+        ? item.title
+        : id;
+
+    const context =
+      typeof item.context === 'string'
+        ? item.context
+        : '';
+
+    const reason =
+      typeof item.reason === 'string'
+        ? item.reason
+        : '';
+
+    const row = parent.createDiv({
+      cls: 'los-review-decision-row',
+      attr: {
+        'data-review-id': id,
+      },
+    });
+
+    const copy = row.createDiv({
+      cls: 'los-review-decision-copy',
+    });
+
+    const top = copy.createDiv({
+      cls: 'los-review-decision-top',
+    });
+
+    badge(
+      top,
+      category.replace(/-/g, ' '),
+      'role',
+    );
+
+    top.createEl('h2', {
+      text: title,
+    });
+
+    if (context) {
+      copy.createDiv({
+        cls: 'los-micro los-review-context',
+        text: context,
+      });
+    }
+
+    if (reason) {
+      copy.createEl('p', {
+        cls: 'los-review-reason',
+        text: reason,
+      });
+    }
+
+    const action =
+      this.actionFor(item);
+
+    if (action) {
+      button(
+        row,
+        action[0],
+        action[1],
+        'quiet',
+      );
+    } else {
+      row.createSpan({
+        cls: 'los-micro los-review-clear',
+        text: 'No supported action',
+      });
+    }
+
     return row;
+  }
+
+  actionFor(
+    item: ProjectionRecord,
+  ): ReviewAction | null {
+    const target =
+      isRecord(item.target)
+        ? item.target
+        : null;
+
+    if (!target) {
+      return null;
+    }
+
+    const kind =
+      typeof target.kind === 'string'
+        ? target.kind
+        : '';
+
+    if (
+      kind === 'study-map'
+      && typeof target.unit_id === 'string'
+    ) {
+      return [
+        'Review shelving',
+        () =>
+          this.plugin.openShelving(
+            target.unit_id as string,
+          ),
+      ];
+    }
+
+    if (
+      kind === 'inbox-item'
+      && typeof target.path === 'string'
+    ) {
+      return [
+        'Open capture',
+        () =>
+          this.plugin.openVaultPath(
+            target.path as string,
+          ),
+      ];
+    }
+
+    if (
+      kind === 'unit'
+      && typeof target.id === 'string'
+    ) {
+      return [
+        'Open unit',
+        () =>
+          this.plugin.openUnit(
+            target.id as string,
+          ),
+      ];
+    }
+
+    return null;
   }
 }
 

@@ -358,9 +358,13 @@ async function main() {
       nav.findText('los-app-nav-item', 'Learn')?.classes.has('is-active')
       && nav.findText('los-app-nav-item', 'Learn')?.getAttribute('aria-current') === 'page');
     await plugin.openReview();
-    const review = app.workspace.getLeavesOfType(VIEW.review)[0].view.contentEl.allText();
-    check('Review gathers every decision queue in one place',
-      ['Ready to shelve', 'Inbox', 'Needs a study map', 'Garden'].every((label) => review.includes(label)));
+    const reviewRoot = app.workspace.getLeavesOfType(VIEW.review)[0].view.contentEl;
+    const review = reviewRoot.allText();
+    check('Review renders Core-owned decision records rather than reconstructing queues',
+      reviewRoot.find('los-review-decision-row').length === plugin.store.reviewItems().length
+      && review.includes('Plan Analysis exam prep')
+      && review.includes('This unit needs a study map')
+      && reviewRoot.find('los-review-count').length === 0);
     await plugin.openDiagnostics();
     const diagnostics = app.workspace.getLeavesOfType(VIEW.diagnostics)[0].view.contentEl.allText();
     check('Diagnostics reports contract, freshness and interpreter',
@@ -393,6 +397,310 @@ async function main() {
     atlas.contentEl.findText('los-btn', 'Open the generated atlas file').fire('click'); await tick();
     check('the generated atlas file stays reachable from the view',
       app.workspace.opened.includes('generated/domain-atlas.md'));
+    plugin.onunload();
+  }
+
+  heading('Core-owned Review decisions and deterministic Garden capture');
+  {
+    const opened = [];
+
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        manifest.review_items = [
+          {
+            id: 'review-inbox-fixture',
+            category: 'inbox',
+            title: 'Route captured question',
+            context: 'work/inbox/question.md',
+            reason: 'This capture still needs a human placement decision.',
+            target: {
+              kind: 'inbox-item',
+              path: 'work/inbox/question.md',
+              revision: 'sha256:fixture-inbox',
+            },
+          },
+          {
+            id: 'review-shelving-fixture',
+            category: 'shelving',
+            title: 'Shelve Thesis landscape',
+            context: 'Two proposed durable changes.',
+            reason: 'A shelving proposal is ready for explicit approval.',
+            target: {
+              kind: 'study-map',
+              id: 'study-map-fixture-thesis',
+              unit_id: 'unit-fixture-thesis-landscape',
+              module_id: 'module-fixture-thesis',
+              revision: 7,
+              proposal_ids: [
+                'proposal-note',
+                'proposal-garden',
+              ],
+            },
+          },
+          {
+            id: 'review-planning-fixture',
+            category: 'planning',
+            title: 'Plan Analysis exam prep',
+            context: '',
+            reason: 'This unit needs a study map before structured study can continue.',
+            target: {
+              kind: 'unit',
+              id: 'unit-fixture-analysis',
+              module_id: 'module-fixture-m2',
+              revision: 2,
+            },
+          },
+        ];
+      },
+    });
+
+    plugin.openVaultPath = (path) => {
+      opened.push(`path:${path}`);
+    };
+
+    plugin.openShelving = (unitId) => {
+      opened.push(`shelving:${unitId}`);
+    };
+
+    plugin.openUnit = (unitId) => {
+      opened.push(`unit:${unitId}`);
+    };
+
+    await plugin.openReview();
+
+    const review =
+      app.workspace.getLeavesOfType(
+        VIEW.review,
+      )[0].view.contentEl;
+
+    const reviewText = review.allText();
+
+    check(
+      'Review renders one stable row per Core review_items record',
+      review.find('los-review-decision-row').length === 3
+        && [
+          'review-inbox-fixture',
+          'review-shelving-fixture',
+          'review-planning-fixture',
+        ].every(
+          (id) =>
+            review.find('los-review-decision-row')
+              .some(
+                (row) =>
+                  row.getAttribute('data-review-id') === id,
+              ),
+        ),
+    );
+
+    check(
+      'Core-authored reasons are rendered rather than UI heuristics',
+      reviewText.includes(
+        'This capture still needs a human placement decision.',
+      )
+        && reviewText.includes(
+          'A shelving proposal is ready for explicit approval.',
+        )
+        && reviewText.includes(
+          'This unit needs a study map before structured study can continue.',
+        )
+        && review.find('los-review-count').length === 0,
+    );
+
+    review.findText(
+      'los-btn',
+      'Open capture',
+    ).fire('click');
+
+    review.findText(
+      'los-btn',
+      'Review shelving',
+    ).fire('click');
+
+    review.findText(
+      'los-btn',
+      'Open unit',
+    ).fire('click');
+
+    check(
+      'Review actions follow each Core-projected target exactly',
+      opened.includes(
+        'path:work/inbox/question.md',
+      )
+        && opened.includes(
+          'shelving:unit-fixture-thesis-landscape',
+        )
+        && opened.includes(
+          'unit:unit-fixture-analysis',
+        ),
+    );
+
+    check(
+      'Garden remains reachable but is not synthesized into the Review queue',
+      Boolean(
+        review.findText(
+          'los-btn',
+          'Open the Garden',
+        ),
+      )
+        && review.find('los-review-decision-row').length === 3,
+    );
+
+    plugin.onunload();
+  }
+
+  {
+    const {
+      app,
+      plugin,
+      calls,
+    } = await boot();
+
+    await plugin.openGarden();
+
+    let garden =
+      app.workspace.getLeavesOfType(
+        'learningos-garden',
+      )[0].view.contentEl;
+
+    check(
+      'Garden exposes a first-class no-AI seed composer',
+      garden.find('los-garden-seed-composer').length === 1
+        && garden.find('los-garden-seed-title').length === 1
+        && garden.find('los-garden-seed-editor').length === 1
+        && Boolean(
+          garden.findText(
+            'los-btn',
+            'Add seed',
+          ),
+        )
+        && garden.allText().includes(
+          'No automatic classification',
+        ),
+    );
+
+    const title =
+      garden.find(
+        'los-garden-seed-title',
+      )[0];
+
+    const editor =
+      garden.find(
+        'los-garden-seed-editor',
+      )[0];
+
+    title.value =
+      'Decorator registration thought';
+    title.fire('input');
+
+    editor.value =
+      'Decorators execute when the module is imported. #python';
+    editor.fire('input');
+
+    garden.findText(
+      'los-btn',
+      'Add seed',
+    ).fire('click');
+
+    await tick();
+    await tick();
+    await tick();
+
+    const seed =
+      calls.envelopes.find(
+        (envelope) =>
+          envelope.capability
+            === 'garden.seed.create',
+      );
+
+    check(
+      'Add seed delegates exact human text to garden.seed.create',
+      seed?.payload.title
+        === 'Decorator registration thought'
+        && seed?.payload.text
+          === 'Decorators execute when the module is imported. #python'
+        && seed?.expected_snapshot
+          === 'sha256:fixture-v2-snapshot',
+    );
+
+    check(
+      'ordinary Garden capture invokes no AI action',
+      !calls.some(
+        (args) =>
+          args[0] === 'ai-action-prepare',
+      ),
+    );
+
+    garden =
+      app.workspace.getLeavesOfType(
+        'learningos-garden',
+      )[0].view.contentEl;
+
+    check(
+      'a confirmed Garden seed clears the composer',
+      garden.find(
+        'los-garden-seed-title',
+      )[0].value === ''
+        && garden.find(
+          'los-garden-seed-editor',
+        )[0].value === '',
+    );
+
+    plugin.onunload();
+  }
+
+  {
+    const {
+      app,
+      plugin,
+    } = await boot();
+
+    await plugin.openGarden();
+
+    let garden =
+      app.workspace.getLeavesOfType(
+        'learningos-garden',
+      )[0].view.contentEl;
+
+    const thought =
+      'This seed must survive an unconfirmed gateway response.';
+
+    const editor =
+      garden.find(
+        'los-garden-seed-editor',
+      )[0];
+
+    editor.value = thought;
+    editor.fire('input');
+
+    plugin.runLos = (
+      _args,
+      callback,
+    ) => callback(
+      null,
+      '',
+      '',
+    );
+
+    garden.findText(
+      'los-btn',
+      'Add seed',
+    ).fire('click');
+
+    await tick();
+    await tick();
+
+    garden =
+      app.workspace.getLeavesOfType(
+        'learningos-garden',
+      )[0].view.contentEl;
+
+    check(
+      'an unconfirmed Garden write preserves the unsaved seed text',
+      garden.find(
+        'los-garden-seed-editor',
+      )[0].value === thought,
+    );
+
     plugin.onunload();
   }
 
@@ -1161,19 +1469,126 @@ async function main() {
 
   heading('selected-only shelving');
   {
-    const { app, plugin, calls } = await boot();
-    await plugin.openShelving('unit-fixture-thesis-landscape');
-    const view = app.workspace.getLeavesOfType(VIEW.shelving)[0].view;
-    check('proposal destinations and rationale are reviewable', view.contentEl.find('los-proposal-row').length === 2
-      && view.contentEl.allText().includes('note-fixture-synthesis.md'));
-    view.contentEl.findText('los-btn', 'Approve selected changes').fire('click'); await tick();
-    const apply = calls.envelope('review.apply');
-    check('approval invokes guarded core apply',
-      apply?.payload.approve === true && Array.isArray(apply?.payload.selected)
-      && Boolean(apply?.expected_snapshot));
-    check('only selected proposal IDs are applied',
-      apply?.payload.selected.includes('proposal-note')
-      && !apply?.payload.selected.includes('proposal-garden'));
+    const {
+      app,
+      plugin,
+      calls,
+    } = await boot();
+
+    await plugin.openShelving(
+      'unit-fixture-thesis-landscape',
+    );
+
+    const view =
+      app.workspace.getLeavesOfType(
+        VIEW.shelving,
+      )[0].view;
+
+    check(
+      'proposal destinations and rationale are reviewable',
+      view.contentEl.find(
+        'los-proposal-row',
+      ).length === 2
+        && view.contentEl.allText().includes(
+          'note-fixture-synthesis.md',
+        ),
+    );
+
+    const originalToggles =
+      view.contentEl.find(
+        'los-proposal-row',
+      ).map(
+        (row) => row.children[0],
+      );
+
+    check(
+      'Core proposal defaults initialize selection once',
+      originalToggles[0].checked === true
+        && originalToggles[1].checked === false,
+    );
+
+    // Deliberately select an old proposal that must not leak into a later
+    // proposal revision.
+    originalToggles[1].checked = true;
+    originalToggles[1].fire('change');
+
+    const map =
+      plugin.store.mapForUnit(
+        'unit-fixture-thesis-landscape',
+      );
+
+    map.revision =
+      Number(map.revision || 0) + 1;
+
+    map.shelving = {
+      state: 'proposed',
+      summary: 'Revised proposal identity.',
+      items: [
+        {
+          id: 'proposal-revised',
+          title: 'Revised durable note',
+          destination:
+            'knowledge/notes/research/revised.md',
+          rationale:
+            'This is the new proposal revision.',
+          selected: true,
+        },
+      ],
+    };
+
+    await view.loadProposal();
+    view.render();
+
+    const revisedRows =
+      view.contentEl.find(
+        'los-proposal-row',
+      );
+
+    check(
+      'proposal revision resets stale selected IDs before rendering',
+      revisedRows.length === 1
+        && revisedRows[0].allText().includes(
+          'Revised durable note',
+        )
+        && revisedRows[0].children[0].checked === true,
+    );
+
+    view.contentEl.findText(
+      'los-btn',
+      'Approve selected changes',
+    ).fire('click');
+
+    await tick();
+    await tick();
+
+    const applies =
+      calls.envelopes.filter(
+        (envelope) =>
+          envelope.capability
+            === 'review.apply',
+      );
+
+    const apply =
+      applies[applies.length - 1];
+
+    check(
+      'approval invokes guarded core apply',
+      apply?.payload.approve === true
+        && Array.isArray(
+          apply?.payload.selected,
+        )
+        && Boolean(
+          apply?.expected_snapshot,
+        ),
+    );
+
+    check(
+      'only IDs from the current proposal revision can be applied',
+      JSON.stringify(
+        apply?.payload.selected,
+      ) === '["proposal-revised"]',
+    );
+
     plugin.onunload();
   }
 

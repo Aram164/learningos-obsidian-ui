@@ -1221,3 +1221,89 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Interaction redesign: Garden capture + concrete Review ── */
+.los-garden-seed-composer {
+  max-width: 760px;
+  margin: 0 auto var(--los-5);
+  padding: var(--los-4);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+}
+
+.los-garden-seed-composer > h2 {
+  margin-bottom: var(--los-1);
+}
+
+.los-garden-seed-composer > .los-muted {
+  margin: 0 0 var(--los-3);
+}
+
+.los-garden-seed-title,
+.los-garden-seed-editor {
+  display: block;
+  width: 100%;
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-line);
+  background: var(--los-paper);
+  color: var(--los-ink);
+}
+
+.los-garden-seed-title {
+  margin-bottom: var(--los-2) !important;
+}
+
+.los-garden-seed-editor {
+  min-height: 112px;
+  resize: vertical;
+}
+
+.los-garden-seed-composer > .los-actions {
+  margin-top: var(--los-2);
+}
+
+.los-review-list {
+  max-width: 960px;
+  margin: 0 auto var(--los-5);
+}
+
+.los-review-decision-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--los-4);
+  padding: var(--los-3) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+
+.los-review-decision-copy {
+  min-width: 0;
+}
+
+.los-review-decision-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--los-2);
+}
+
+.los-review-decision-top > h2 {
+  margin: 0;
+}
+
+.los-review-context {
+  margin-top: var(--los-1);
+}
+
+.los-review-reason {
+  margin: var(--los-1) 0 0;
+  color: var(--los-ink-soft);
+}
+
+@media (max-width: 620px) {
+  .los-review-decision-row {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+}

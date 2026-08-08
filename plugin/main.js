@@ -2279,6 +2279,9 @@ function errorMessage4(error) {
 }
 var GardenView = class extends import_obsidian8.ItemView {
   plugin;
+  seedTitle = "";
+  seedText = "";
+  planting = false;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -2298,9 +2301,16 @@ var GardenView = class extends import_obsidian8.ItemView {
   render() {
     const root = this.contentEl;
     root.empty();
-    root.addClass("los-root", "los-garden-view");
+    root.addClass(
+      "los-root",
+      "los-garden-view"
+    );
     if (!this.plugin.store.ready) {
-      pageHeader(root, "Review", "Garden unavailable");
+      pageHeader(
+        root,
+        "Garden",
+        "Garden unavailable"
+      );
       empty(
         root,
         "The interface contract could not be loaded",
@@ -2312,58 +2322,260 @@ var GardenView = class extends import_obsidian8.ItemView {
     }
     pageHeader(
       root,
-      "Review",
+      "",
       "Garden",
-      "Seeds remain human-owned. \u201CShelve with AI\u201D prepares a bounded request bundle; nothing changes until an approved delivery is applied."
+      "Capture an unfinished idea without deciding where it belongs. Classification, routing, and AI are separate later decisions."
     );
-    const toolbar = root.createDiv({ cls: "los-actions" });
-    button(toolbar, "Open Garden base", () => this.plugin.openVaultPath("bases/garden.base"), "quiet");
-    button(toolbar, "Refresh projection", () => this.plugin.generate(), "quiet");
+    const toolbar = root.createDiv({
+      cls: "los-actions"
+    });
+    button(
+      toolbar,
+      "Open Garden base",
+      () => this.plugin.openVaultPath(
+        "bases/garden.base"
+      ),
+      "quiet"
+    );
+    button(
+      toolbar,
+      "Refresh projection",
+      () => this.plugin.generate(),
+      "quiet"
+    );
+    this.renderComposer(root);
     const entries = this.plugin.store.gardenEntries();
     if (!entries.length) {
-      empty(root, "No Garden seeds", "Create a Markdown seed under knowledge/garden/.");
+      empty(
+        root,
+        "No Garden seeds yet",
+        "Add one above. A seed does not need a module, topic, or destination."
+      );
       return;
     }
-    const list = root.createDiv({ cls: "los-garden-list" });
-    for (const target of entries) this.card(list, target);
+    const list = root.createDiv({
+      cls: "los-garden-list"
+    });
+    for (const target of entries) {
+      this.card(list, target);
+    }
+  }
+  renderComposer(root) {
+    const composer = root.createDiv({
+      cls: "los-garden-seed-composer"
+    });
+    composer.createEl("h2", {
+      text: "Add seed"
+    });
+    composer.createEl("p", {
+      cls: "los-muted",
+      text: "Write it as it occurs to you. The text is stored as-is; title is optional."
+    });
+    const title = composer.createEl(
+      "input",
+      {
+        cls: "los-garden-seed-title",
+        attr: {
+          type: "text",
+          placeholder: "Optional title",
+          "aria-label": "Optional Garden seed title"
+        }
+      }
+    );
+    title.value = this.seedTitle;
+    title.addEventListener(
+      "input",
+      () => {
+        this.seedTitle = title.value;
+      }
+    );
+    const editor = composer.createEl(
+      "textarea",
+      {
+        cls: "los-garden-seed-editor",
+        attr: {
+          rows: "5",
+          placeholder: "A thought, question, connection, fragment\u2026",
+          "aria-label": "Garden seed text"
+        }
+      }
+    );
+    editor.value = this.seedText;
+    editor.addEventListener(
+      "input",
+      () => {
+        this.seedText = editor.value;
+      }
+    );
+    const actions = composer.createDiv({
+      cls: "los-actions"
+    });
+    const add = button(
+      actions,
+      this.planting ? "Adding\u2026" : "Add seed",
+      () => {
+        void this.plantSeed();
+      },
+      "cta"
+    );
+    add.disabled = this.planting;
+    composer.createDiv({
+      cls: "los-micro",
+      text: "No automatic classification \xB7 no routing \xB7 no AI"
+    });
+  }
+  async plantSeed() {
+    if (this.planting) {
+      return;
+    }
+    const text = this.seedText;
+    const title = this.seedTitle.trim();
+    if (!text.trim()) {
+      new import_obsidian8.Notice(
+        "Write something before adding the seed."
+      );
+      return;
+    }
+    this.planting = true;
+    this.render();
+    try {
+      await this.plugin.mutate(
+        () => this.plugin.gateway.createGardenSeed(
+          text,
+          title
+        )
+      );
+      this.seedTitle = "";
+      this.seedText = "";
+      new import_obsidian8.Notice("Garden seed added.");
+    } catch (error) {
+      new import_obsidian8.Notice(errorMessage4(error));
+    } finally {
+      this.planting = false;
+      this.render();
+    }
   }
   card(parent, target) {
-    const card = parent.createDiv({ cls: `los-card los-garden-card los-garden-${target.state || "seed"}` });
-    const top = card.createDiv({ cls: "los-card-top" });
-    top.createEl("h2", { text: target.title || target.id });
-    badge(top, target.state || "seed", target.state || "seed");
-    card.createDiv({ cls: "los-micro", text: target.path });
+    const card = parent.createDiv({
+      cls: `los-card los-garden-card los-garden-${target.state || "seed"}`
+    });
+    const top = card.createDiv({
+      cls: "los-card-top"
+    });
+    top.createEl("h2", {
+      text: target.title || target.id
+    });
+    badge(
+      top,
+      target.state || "seed",
+      target.state || "seed"
+    );
+    card.createDiv({
+      cls: "los-micro",
+      text: target.path
+    });
     if (target.tags?.length) {
-      const tags = card.createDiv({ cls: "los-garden-tags" });
-      for (const tag of target.tags) badge(tags, `#${tag}`, "role");
-    }
-    const latest = this.plugin.store.latestAiRequest(target.id);
-    if (latest) {
-      const status = card.createDiv({ cls: "los-ai-request-status" });
-      status.createEl("strong", { text: `AI request \xB7 ${latest.status}` });
-      status.createDiv({ cls: "los-micro", text: `${latest.provider || "manual-bundle"} \xB7 ${latest.id}` });
-      if (latest.bundle_path) status.createDiv({ cls: "los-micro", text: latest.bundle_path });
-      const statusActions = status.createDiv({ cls: "los-actions" });
-      if (latest.bundle_path) button(statusActions, "Copy bundle path", () => this.plugin.copyText(latest.bundle_path), "quiet");
-      if (latest.delivery_id && latest.status !== "applied") {
-        button(statusActions, "Apply approved delivery", async () => {
-          try {
-            await this.plugin.aiActions.applyApprovedDelivery(latest.delivery_id);
-            new import_obsidian8.Notice("Approved AI delivery applied and projection refreshed.");
-            this.render();
-          } catch (error) {
-            new import_obsidian8.Notice(errorMessage4(error));
-          }
-        }, "cta");
+      const tags = card.createDiv({
+        cls: "los-garden-tags"
+      });
+      for (const tag of target.tags) {
+        badge(
+          tags,
+          `#${tag}`,
+          "role"
+        );
       }
-      if (latest.receipt_id) badge(status, `receipt ${latest.receipt_id}`, "complete");
     }
-    const actions = card.createDiv({ cls: "los-garden-actions" });
-    button(actions, "Open original", () => this.plugin.openVaultPath(target.path), "quiet");
+    const latest = this.plugin.store.latestAiRequest(
+      target.id
+    );
+    if (latest) {
+      const status = card.createDiv({
+        cls: "los-ai-request-status"
+      });
+      status.createEl("strong", {
+        text: `AI request \xB7 ${latest.status}`
+      });
+      status.createDiv({
+        cls: "los-micro",
+        text: `${latest.provider || "manual-bundle"} \xB7 ${latest.id}`
+      });
+      if (latest.bundle_path) {
+        status.createDiv({
+          cls: "los-micro",
+          text: latest.bundle_path
+        });
+      }
+      const statusActions = status.createDiv({
+        cls: "los-actions"
+      });
+      if (latest.bundle_path) {
+        button(
+          statusActions,
+          "Copy bundle path",
+          () => this.plugin.copyText(
+            latest.bundle_path
+          ),
+          "quiet"
+        );
+      }
+      if (latest.delivery_id && latest.status !== "applied") {
+        button(
+          statusActions,
+          "Apply approved delivery",
+          async () => {
+            try {
+              await this.plugin.aiActions.applyApprovedDelivery(
+                latest.delivery_id
+              );
+              new import_obsidian8.Notice(
+                "Approved AI delivery applied and projection refreshed."
+              );
+              this.render();
+            } catch (error) {
+              new import_obsidian8.Notice(
+                errorMessage4(error)
+              );
+            }
+          },
+          "cta"
+        );
+      }
+      if (latest.receipt_id) {
+        badge(
+          status,
+          `receipt ${latest.receipt_id}`,
+          "complete"
+        );
+      }
+    }
+    const actions = card.createDiv({
+      cls: "los-garden-actions"
+    });
+    button(
+      actions,
+      "Open original",
+      () => this.plugin.openVaultPath(
+        target.path
+      ),
+      "quiet"
+    );
     if (target.transcription_path) {
-      button(actions, "Open AI transcription", () => this.plugin.openVaultPath(target.transcription_path), "quiet");
+      button(
+        actions,
+        "Open AI transcription",
+        () => this.plugin.openVaultPath(
+          target.transcription_path
+        ),
+        "quiet"
+      );
     }
-    renderGardenShelveAction(actions, this.plugin, target, () => this.render());
+    renderGardenShelveAction(
+      actions,
+      this.plugin,
+      target,
+      () => this.render()
+    );
     return card;
   }
 };
@@ -7136,9 +7348,16 @@ var ReviewView = class extends import_obsidian15.ItemView {
   render() {
     const root = this.contentEl;
     root.empty();
-    root.addClass("los-root", "los-review-view");
+    root.addClass(
+      "los-root",
+      "los-review-view"
+    );
     if (!this.plugin.store.ready) {
-      pageHeader(root, "LearningOS", "Projection unavailable");
+      pageHeader(
+        root,
+        "LearningOS",
+        "Projection unavailable"
+      );
       empty(
         root,
         "The interface contract could not be loaded",
@@ -7148,60 +7367,124 @@ var ReviewView = class extends import_obsidian15.ItemView {
       );
       return;
     }
-    pageHeader(root, "", "Review", "Everything waiting on a decision from you.");
-    const shelving = this.plugin.store.units().filter(
-      (row) => row.status === "ready-to-shelve"
+    pageHeader(
+      root,
+      "",
+      "Review",
+      "Concrete decisions the Core has identified as waiting for you."
     );
-    const needsMap = this.plugin.store.units().filter(
-      (row) => !this.plugin.store.mapForUnit(row.id)
-    );
-    const inbox = this.plugin.store.data?.counts?.inbox_items || 0;
-    const garden = this.plugin.store.gardenEntries();
-    const list = root.createDiv({ cls: "los-review-list" });
-    this.queue(
-      list,
-      "Ready to shelve",
-      shelving.length,
-      "Units whose working notes are ready to become durable knowledge.",
-      shelving.length ? ["Review proposals", () => this.plugin.openShelving(shelving[0]?.id)] : null
-    );
-    this.queue(
-      list,
-      "Inbox",
-      inbox,
-      "Captured items the operator has not routed yet.",
-      ["Open capture", () => this.plugin.openCapture()]
-    );
-    this.queue(
-      list,
-      "Needs a study map",
-      needsMap.length,
-      "Units with no current study script.",
-      needsMap.length ? ["Open the queue", () => this.plugin.openProgram("queue-needs-map")] : null
-    );
-    this.queue(
-      list,
-      "Garden",
-      garden.length,
-      "Half-formed ideas gestating outside the canon; approved AI actions may help prepare them for shelving.",
-      ["Open the Garden", () => this.plugin.openGarden()]
-    );
-    if (needsMap.length) {
-      const detail = disclosure(root, `Units needing a map (${needsMap.length})`);
-      const grid = detail.createDiv({ cls: "los-card-grid" });
-      for (const unit of needsMap) unitCard(grid, this.plugin, unit);
+    const items = this.plugin.store.reviewItems();
+    const list = root.createDiv({
+      cls: "los-review-list"
+    });
+    if (!items.length) {
+      empty(
+        list,
+        "Nothing waiting",
+        "Core has not projected any current Review decisions."
+      );
+    } else {
+      for (const item of items) {
+        this.decision(list, item);
+      }
     }
+    const garden = section(
+      root,
+      "Garden",
+      "Garden is a separate holding ground for unfinished ideas. A seed does not become a Review decision merely because it exists or has been sitting for a while."
+    );
+    button(
+      garden,
+      "Open the Garden",
+      () => this.plugin.openGarden(),
+      "quiet"
+    );
   }
-  queue(parent, label, count, detail, action) {
-    const row = parent.createDiv({ cls: "los-review-row" });
-    const copy = row.createDiv({ cls: "los-review-copy" });
-    const heading = copy.createDiv({ cls: "los-review-heading" });
-    heading.createEl("strong", { text: label });
-    if (count != null) heading.createSpan({ cls: "los-review-count", text: String(count) });
-    copy.createDiv({ cls: "los-micro", text: detail });
-    if (action) button(row, action[0], action[1], count ? "cta" : "quiet");
-    else row.createSpan({ cls: "los-micro los-review-clear", text: "Nothing waiting" });
+  decision(parent, item) {
+    const id = typeof item.id === "string" ? item.id : "review-item";
+    const category = typeof item.category === "string" ? item.category : "review";
+    const title = typeof item.title === "string" ? item.title : id;
+    const context = typeof item.context === "string" ? item.context : "";
+    const reason = typeof item.reason === "string" ? item.reason : "";
+    const row = parent.createDiv({
+      cls: "los-review-decision-row",
+      attr: {
+        "data-review-id": id
+      }
+    });
+    const copy = row.createDiv({
+      cls: "los-review-decision-copy"
+    });
+    const top = copy.createDiv({
+      cls: "los-review-decision-top"
+    });
+    badge(
+      top,
+      category.replace(/-/g, " "),
+      "role"
+    );
+    top.createEl("h2", {
+      text: title
+    });
+    if (context) {
+      copy.createDiv({
+        cls: "los-micro los-review-context",
+        text: context
+      });
+    }
+    if (reason) {
+      copy.createEl("p", {
+        cls: "los-review-reason",
+        text: reason
+      });
+    }
+    const action = this.actionFor(item);
+    if (action) {
+      button(
+        row,
+        action[0],
+        action[1],
+        "quiet"
+      );
+    } else {
+      row.createSpan({
+        cls: "los-micro los-review-clear",
+        text: "No supported action"
+      });
+    }
     return row;
+  }
+  actionFor(item) {
+    const target = isRecord8(item.target) ? item.target : null;
+    if (!target) {
+      return null;
+    }
+    const kind = typeof target.kind === "string" ? target.kind : "";
+    if (kind === "study-map" && typeof target.unit_id === "string") {
+      return [
+        "Review shelving",
+        () => this.plugin.openShelving(
+          target.unit_id
+        )
+      ];
+    }
+    if (kind === "inbox-item" && typeof target.path === "string") {
+      return [
+        "Open capture",
+        () => this.plugin.openVaultPath(
+          target.path
+        )
+      ];
+    }
+    if (kind === "unit" && typeof target.id === "string") {
+      return [
+        "Open unit",
+        () => this.plugin.openUnit(
+          target.id
+        )
+      ];
+    }
+    return null;
   }
 };
 var DiagnosticsView = class extends import_obsidian15.ItemView {
@@ -7384,6 +7667,7 @@ var ShelvingView = class extends import_obsidian16.ItemView {
   unitId = null;
   proposal = null;
   selected = /* @__PURE__ */ new Set();
+  selectionScope = null;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -7420,6 +7704,37 @@ var ShelvingView = class extends import_obsidian16.ItemView {
     const map = this.plugin.store.mapForUnit(this.unitId);
     this.proposal = readShelvingProposal(map?.shelving);
   }
+  selectionKey(unitId, map, proposal) {
+    const mapId = typeof map?.id === "string" ? map.id : "";
+    const revision = map?.revision == null ? "" : String(map.revision);
+    const proposalIds = proposal?.items.map((item) => item.id).join("") ?? "";
+    return JSON.stringify([
+      unitId,
+      mapId,
+      revision,
+      proposalIds
+    ]);
+  }
+  syncSelection(unitId, map, proposal) {
+    const scope = this.selectionKey(
+      unitId,
+      map,
+      proposal
+    );
+    if (scope === this.selectionScope) {
+      return;
+    }
+    this.selectionScope = scope;
+    this.selected.clear();
+    if (!proposal) {
+      return;
+    }
+    for (const item of proposal.items) {
+      if (item.selected !== false) {
+        this.selected.add(item.id);
+      }
+    }
+  }
   render() {
     const root = this.contentEl;
     root.empty();
@@ -7438,6 +7753,11 @@ var ShelvingView = class extends import_obsidian16.ItemView {
     const map = this.plugin.store.mapForUnit(unit.id);
     const proposal = this.proposal ?? readShelvingProposal(map?.shelving);
     if (!proposal?.items?.length) {
+      this.syncSelection(
+        unit.id,
+        map,
+        null
+      );
       const wrap = section(root, "No proposal yet");
       empty(
         wrap,
@@ -7452,9 +7772,11 @@ var ShelvingView = class extends import_obsidian16.ItemView {
       ), "quiet");
       return;
     }
-    if (!this.selected.size) {
-      for (const item of proposal.items) if (item.selected !== false) this.selected.add(item.id);
-    }
+    this.syncSelection(
+      unit.id,
+      map,
+      proposal
+    );
     const summary = section(root, "Proposed changes", proposal.summary || "Select only changes you want to apply.");
     for (const item of proposal.items) {
       const row = summary.createDiv({ cls: "los-proposal-row" });
@@ -7523,6 +7845,7 @@ var ShelvingView = class extends import_obsidian16.ItemView {
       );
       this.proposal = null;
       this.selected.clear();
+      this.selectionScope = null;
       this.render();
     } catch (error) {
       new import_obsidian16.Notice(errorMessage7(error));
