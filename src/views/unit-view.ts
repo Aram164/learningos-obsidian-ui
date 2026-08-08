@@ -69,10 +69,12 @@ interface StageRecordView {
 
 interface ResourceRecordView {
   readonly record: ProjectionRecord;
+  readonly id: string | null;
   readonly kind: string;
   readonly label: string;
   readonly locator: string | null;
   readonly sourceId: string | null;
+  readonly scopeTriage: string | null;
   readonly canOpen: boolean;
 }
 
@@ -292,6 +294,8 @@ function readResource(
 
   return {
     record,
+    id:
+      projectedString(record.id),
     kind:
       projectedString(record.kind)
       ?? 'read',
@@ -300,6 +304,8 @@ function readResource(
       projectedText(record.locator),
     sourceId:
       projectedString(record.source_id),
+    scopeTriage:
+      projectedString(record.scope_triage),
     canOpen: Boolean(
       projectedString(record.material_path)
       ?? projectedString(record.url)
@@ -996,11 +1002,62 @@ export class UnitView extends ItemView {
       );
     }
 
+    // ADR-008 gave every resource its own triage rank, precisely so a required
+    // stage stops presenting the deck, the fallback video, the depth paper and
+    // the preserved bibliography at one weight. Rendering them in rank order,
+    // under headings, is what turns that stored rank into less reading.
+    // Unranked resources (every pre-v2 record) sort with the primaries rather
+    // than below them: absent means "not yet ranked", never "deprioritised".
+    const TRIAGE_ORDER = [
+      'required-now',
+      'helpful-now',
+      'deferred',
+      'reference-only',
+    ];
+    const TRIAGE_HEADING: Record<string, string> = {
+      'required-now': 'Do this',
+      'helpful-now': 'If you get stuck',
+      deferred: 'Depth — not now',
+      'reference-only': 'Reference — preserved, not reading for this stage',
+    };
+    const rankOf = (
+      value: string | null,
+    ) => {
+      const index = value
+        ? TRIAGE_ORDER.indexOf(value)
+        : -1;
+      return index < 0 ? 0 : index;
+    };
+    const ordered = [...stage.resources]
+      .sort(
+        (a, b) =>
+          rankOf(a.scopeTriage)
+          - rankOf(b.scopeTriage),
+      );
+    const anyRanked = ordered.some(
+      (item) => Boolean(item.scopeTriage),
+    );
+    let renderedHeading: string | null = null;
+
     for (
-      const resource of stage.resources
+      const resource of ordered
     ) {
+      if (anyRanked) {
+        const heading: string = resource.scopeTriage
+          ? TRIAGE_HEADING[resource.scopeTriage]
+            ?? resource.scopeTriage
+          : TRIAGE_HEADING['required-now'] ?? 'Do this';
+        if (heading !== renderedHeading) {
+          resources.createDiv({
+            cls: 'los-kicker los-resource-tier',
+            text: heading,
+          });
+          renderedHeading = heading;
+        }
+      }
+
       const row = resources.createDiv({
-        cls: 'los-resource-row',
+        cls: `los-resource-row los-triage-${resource.scopeTriage ?? 'unranked'}`,
       });
 
       const iconName =
@@ -1075,52 +1132,40 @@ export class UnitView extends ItemView {
       if (resource.sourceId) {
         const sourceId =
           resource.sourceId;
+        // ADR-009. When this resource has its own id, the verdict lands on the
+        // resource; otherwise it lands on the source, exactly as before. This
+        // is why "SystemML was excellent" and "SPORES was too advanced" can now
+        // be two records instead of one indistinguishable pair on the course.
+        const resourceId =
+          resource.id;
+
+        const rate = (
+          verdict: string,
+        ) => this.mutate(
+          () =>
+            this.plugin.gateway.feedback(
+              unit.id,
+              stage.id,
+              sourceId,
+              verdict,
+              resourceId,
+            ),
+        );
 
         const menuItems: Array<
           [string, () => unknown]
         > = [
-          [
-            'Helpful',
-            () => this.mutate(
-              () =>
-                this.plugin.gateway.feedback(
-                  unit.id,
-                  stage.id,
-                  sourceId,
-                  'helpful',
-                ),
-            ),
-          ],
-          [
-            'Too advanced',
-            () => this.mutate(
-              () =>
-                this.plugin.gateway.feedback(
-                  unit.id,
-                  stage.id,
-                  sourceId,
-                  'too-advanced',
-                ),
-            ),
-          ],
-          [
-            'Useful for review',
-            () => this.mutate(
-              () =>
-                this.plugin.gateway.feedback(
-                  unit.id,
-                  stage.id,
-                  sourceId,
-                  'useful-for-review',
-                ),
-            ),
-          ],
+          ['Helpful', () => rate('helpful')],
+          ['Too advanced', () => rate('too-advanced')],
+          ['Useful for review', () => rate('useful-for-review')],
         ];
 
         overflowMenu(
           actions,
           menuItems,
-          `Rate ${resource.label}`,
+          resourceId
+            ? `Rate ${resource.label}`
+            : `Rate ${resource.label} (whole source)`,
         );
       }
     }

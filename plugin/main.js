@@ -1126,11 +1126,14 @@ var GatewayClient = class {
       { unit_id: unitId, stage_id: stageId, status }
     );
   }
-  feedback(unitId, stageId, sourceId, feedback) {
-    return this.capability(
-      "source.feedback.record",
-      { unit_id: unitId, stage_id: stageId, source_id: sourceId, feedback }
-    );
+  feedback(unitId, stageId, sourceId, feedback, resourceId) {
+    return this.capability("source.feedback.record", {
+      unit_id: unitId,
+      stage_id: stageId,
+      source_id: sourceId,
+      feedback,
+      ...resourceId ? { resource_id: resourceId } : {}
+    });
   }
   detour(unitId, stageId, title, classification = "required-now") {
     return this.capability(
@@ -1426,6 +1429,11 @@ var ManifestStore = class {
   }
   gardenEntries() {
     return this.rows("garden_entries");
+  }
+  /** The ADR-009 topic vocabulary: {id, title, domain}. `domain` groups topics
+   *  for display only — it never constrains which sources may carry one. */
+  topics() {
+    return this.rows("topics");
   }
   aiAction(actionId) {
     const available = this.data?.ai_actions?.available;
@@ -2842,8 +2850,18 @@ var SOURCE_FACETS = [
   ["all", "All"],
   ["local", "Local copy"],
   ["online", "Online"],
-  ["in-unit", "Used in a unit"]
+  ["in-unit", "Used in a unit"],
+  ["topic", "By topic"],
+  ["purpose", "By purpose"],
+  ["form", "By form"],
+  ["use", "By current use"]
 ];
+var VALUED_FACETS = /* @__PURE__ */ new Set([
+  "topic",
+  "purpose",
+  "form",
+  "use"
+]);
 var LIBRARY_COLLECTIONS2 = [
   ["sources", "Learning Sources"],
   ["topic-packs", "Topic Packs"]
@@ -3110,6 +3128,9 @@ var LibraryView = class extends import_obsidian10.ItemView {
   groupId = null;
   query = "";
   facet = "all";
+  /** Selected value within a valued facet (a topic id, a role, a type, a
+   *  module id). Null means "show the values to pick from". */
+  facetValue = null;
   resourceId = null;
   topicPackId = null;
   catalogueId = null;
@@ -3219,7 +3240,82 @@ var LibraryView = class extends import_obsidian10.ItemView {
     if (this.facet === "in-unit") {
       return this.plugin.store.useUnits(source.id).length > 0;
     }
+    if (VALUED_FACETS.has(this.facet)) {
+      if (!this.facetValue) {
+        return true;
+      }
+      return this.facetValuesFor(source).includes(this.facetValue);
+    }
     return true;
+  }
+  /** Which values of the ACTIVE facet this source participates in.
+   *
+   *  Deliberately returns a list, not a value: a source belongs to several
+   *  topics, serves several purposes and is used by several modules at once.
+   *  Collapsing that to one would rebuild the single-placement tree ADR-009
+   *  exists to remove. Every field here is read from the projection — the UI
+   *  never parses generated/library.md, which is the human view of the same
+   *  facts. */
+  facetValuesFor(source) {
+    if (this.facet === "topic") {
+      return projectedStrings2(
+        source.record.topics
+      );
+    }
+    if (this.facet === "form") {
+      return source.sourceType ? [source.sourceType] : [];
+    }
+    if (this.facet === "purpose") {
+      const roles = /* @__PURE__ */ new Set();
+      for (const evaluation of source.evaluations) {
+        for (const role of evaluation.roles) {
+          roles.add(role);
+        }
+      }
+      return [...roles];
+    }
+    if (this.facet === "use") {
+      const modules = /* @__PURE__ */ new Set();
+      for (const unitRecord of this.plugin.store.useUnits(source.id)) {
+        const unit = typeof unitRecord === "string" ? this.plugin.store.get(unitRecord) : unitRecord;
+        const moduleId = unit ? projectedString3(
+          unit.module_id
+        ) : null;
+        if (moduleId) {
+          modules.add(moduleId);
+        }
+      }
+      return [...modules];
+    }
+    return [];
+  }
+  /** Value → source count for the active facet, with overlap preserved. */
+  facetTally(sources) {
+    const tally = /* @__PURE__ */ new Map();
+    for (const source of sources) {
+      for (const value of this.facetValuesFor(source)) {
+        tally.set(
+          value,
+          (tally.get(value) ?? 0) + 1
+        );
+      }
+    }
+    return tally;
+  }
+  /** Human label for a facet value. Topics carry titles in the projection;
+   *  everything else is already readable. */
+  facetValueLabel(value) {
+    if (this.facet === "topic") {
+      const topic = this.plugin.store.topics().find(
+        (row) => projectedString3(row.id) === value
+      );
+      return topic ? projectedString3(topic.title) ?? value : value;
+    }
+    if (this.facet === "use") {
+      const module2 = this.plugin.store.get(value);
+      return module2 ? projectedString3(module2.title) ?? value : value;
+    }
+    return value;
   }
   render() {
     const root = this.contentEl;
@@ -3429,6 +3525,9 @@ var LibraryView = class extends import_obsidian10.ItemView {
     }
     const rawRecords = isPacks ? this.plugin.store.topicPacksForGroup(group.id) : this.plugin.store.sourcesForGroup(group.id);
     const all = readLibraryRecords(rawRecords);
+    if (!isPacks) {
+      this.renderFacetValues(toolbar, all);
+    }
     const needle = this.query.trim().toLocaleLowerCase();
     const words = needle.split(/\s+/).filter(Boolean);
     const rows = all.filter((record) => {
@@ -3519,6 +3618,7 @@ var LibraryView = class extends import_obsidian10.ItemView {
         label,
         async () => {
           this.facet = id;
+          this.facetValue = null;
           await this.rememberGroup();
           this.render();
         },
@@ -3528,6 +3628,72 @@ var LibraryView = class extends import_obsidian10.ItemView {
         "aria-pressed",
         String(this.facet === id)
       );
+    }
+  }
+  /** The values of the active valued facet, with counts.
+   *
+   *  This is the part that answers "the Library is a sea of ML". A domain
+   *  heading says 73; this says Deep Learning 22 · ML Compilation 4 · … and
+   *  lets those add to more than 73, because a source really does belong to
+   *  several at once. */
+  renderFacetValues(parent, sources) {
+    if (!VALUED_FACETS.has(this.facet)) {
+      return;
+    }
+    const tally = this.facetTally(sources);
+    const wrap = parent.createDiv({
+      cls: "los-library-facet-values"
+    });
+    if (!tally.size) {
+      wrap.createDiv({
+        cls: "los-muted",
+        text: this.facet === "topic" ? "No source in this view carries a topic yet. Topics are added when a source is actually used, never in a bulk pass." : "Nothing to filter by here yet."
+      });
+      return;
+    }
+    const clear = button(
+      wrap,
+      `All (${sources.length})`,
+      () => {
+        this.facetValue = null;
+        this.render();
+      },
+      this.facetValue ? "quiet" : "row"
+    );
+    clear.setAttribute(
+      "aria-pressed",
+      String(!this.facetValue)
+    );
+    const ordered = [...tally.entries()].sort(
+      (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
+    );
+    for (const [value, count] of ordered) {
+      const control = button(
+        wrap,
+        `${this.facetValueLabel(value)} (${count})`,
+        () => {
+          this.facetValue = this.facetValue === value ? null : value;
+          this.render();
+        },
+        this.facetValue === value ? "row" : "quiet"
+      );
+      control.setAttribute(
+        "aria-pressed",
+        String(this.facetValue === value)
+      );
+    }
+    if (this.facet === "topic") {
+      const untopiced = sources.filter(
+        (source) => !projectedStrings2(
+          source.record.topics
+        ).length
+      ).length;
+      if (untopiced) {
+        wrap.createDiv({
+          cls: "los-micro",
+          text: `${untopiced} of ${sources.length} not yet classified by topic \u2014 expected, not a backlog.`
+        });
+      }
     }
   }
   renderRecordRow(list, record, isPack = false) {
@@ -7039,10 +7205,12 @@ function readResource(record) {
   const label = projectedString6(record.label) ?? projectedString6(record.title) ?? projectedString6(record.source_id) ?? "Resource";
   return {
     record,
+    id: projectedString6(record.id),
     kind: projectedString6(record.kind) ?? "read",
     label,
     locator: projectedText5(record.locator),
     sourceId: projectedString6(record.source_id),
+    scopeTriage: projectedString6(record.scope_triage),
     canOpen: Boolean(
       projectedString6(record.material_path) ?? projectedString6(record.url) ?? projectedString6(record.vault_path)
     )
@@ -7471,9 +7639,42 @@ var UnitView = class extends import_obsidian17.ItemView {
         "Use the unit scope and ask AI for a proposal."
       );
     }
-    for (const resource of stage.resources) {
+    const TRIAGE_ORDER = [
+      "required-now",
+      "helpful-now",
+      "deferred",
+      "reference-only"
+    ];
+    const TRIAGE_HEADING = {
+      "required-now": "Do this",
+      "helpful-now": "If you get stuck",
+      deferred: "Depth \u2014 not now",
+      "reference-only": "Reference \u2014 preserved, not reading for this stage"
+    };
+    const rankOf = (value) => {
+      const index = value ? TRIAGE_ORDER.indexOf(value) : -1;
+      return index < 0 ? 0 : index;
+    };
+    const ordered = [...stage.resources].sort(
+      (a, b) => rankOf(a.scopeTriage) - rankOf(b.scopeTriage)
+    );
+    const anyRanked = ordered.some(
+      (item) => Boolean(item.scopeTriage)
+    );
+    let renderedHeading = null;
+    for (const resource of ordered) {
+      if (anyRanked) {
+        const heading = resource.scopeTriage ? TRIAGE_HEADING[resource.scopeTriage] ?? resource.scopeTriage : TRIAGE_HEADING["required-now"] ?? "Do this";
+        if (heading !== renderedHeading) {
+          resources.createDiv({
+            cls: "los-kicker los-resource-tier",
+            text: heading
+          });
+          renderedHeading = heading;
+        }
+      }
       const row = resources.createDiv({
-        cls: "los-resource-row"
+        cls: `los-resource-row los-triage-${resource.scopeTriage ?? "unranked"}`
       });
       const iconName = resource.kind === "watch" ? "play" : resource.kind === "practise" ? "pencil-line" : "book-open";
       icon(
@@ -7524,45 +7725,25 @@ var UnitView = class extends import_obsidian17.ItemView {
       }
       if (resource.sourceId) {
         const sourceId = resource.sourceId;
+        const resourceId = resource.id;
+        const rate = (verdict) => this.mutate(
+          () => this.plugin.gateway.feedback(
+            unit.id,
+            stage.id,
+            sourceId,
+            verdict,
+            resourceId
+          )
+        );
         const menuItems = [
-          [
-            "Helpful",
-            () => this.mutate(
-              () => this.plugin.gateway.feedback(
-                unit.id,
-                stage.id,
-                sourceId,
-                "helpful"
-              )
-            )
-          ],
-          [
-            "Too advanced",
-            () => this.mutate(
-              () => this.plugin.gateway.feedback(
-                unit.id,
-                stage.id,
-                sourceId,
-                "too-advanced"
-              )
-            )
-          ],
-          [
-            "Useful for review",
-            () => this.mutate(
-              () => this.plugin.gateway.feedback(
-                unit.id,
-                stage.id,
-                sourceId,
-                "useful-for-review"
-              )
-            )
-          ]
+          ["Helpful", () => rate("helpful")],
+          ["Too advanced", () => rate("too-advanced")],
+          ["Useful for review", () => rate("useful-for-review")]
         ];
         overflowMenu(
           actions,
           menuItems,
-          `Rate ${resource.label}`
+          resourceId ? `Rate ${resource.label}` : `Rate ${resource.label} (whole source)`
         );
       }
     }

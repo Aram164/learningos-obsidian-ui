@@ -383,6 +383,40 @@ async function main() {
     check('source filters and full-text fallback remain available',
       ['All', 'Local copy', 'Online', 'Used in a unit'].every((label) => text.includes(label))
       && text.includes('Full-text / OCR search'));
+
+    /* ADR-009 integration. The four original facets answer "can I open this?",
+     * not "what is it about?" — which is why a domain heading reading 73 still
+     * felt like a sea. These four answer the second question, and their counts
+     * are allowed to overlap because a source really does belong to several
+     * topics and purposes at once. */
+    check('the faceted dimensions are offered alongside availability filters',
+      ['By topic', 'By purpose', 'By form', 'By current use']
+        .every((label) => text.includes(label)));
+    view.contentEl.findText('los-btn', 'By topic').fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    text = view.contentEl.allText();
+    check('choosing a facet reveals its values with counts, read from the projection',
+      view.facet === 'topic' && view.facetValue === null
+      && view.contentEl.find('los-library-facet-values').length === 1
+      && text.includes('Probability'));
+    check('unclassified sources are reported, not hidden',
+      text.includes('not yet') && text.includes('classified by topic'));
+    const beforeTopic = view.contentEl.find('los-route-row').length;
+    view.contentEl.findText('los-btn', 'Probability (2)').fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check('selecting a topic narrows the list without collapsing the tally',
+      view.facetValue === 'topic-probability'
+      && view.contentEl.find('los-route-row').length === 2
+      && view.contentEl.find('los-route-row').length < beforeTopic
+      && view.contentEl.allText().includes('Probability (2)'));
+    view.contentEl.findText('los-btn', 'All').fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    view.contentEl.findText('los-btn', 'Local copy').fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check('switching facet clears the previous facet value',
+      view.facet === 'local' && view.facetValue === null);
+    view.contentEl.findText('los-btn', 'All').fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
     view.contentEl.findText('los-btn', 'Local copy').fire('click'); await tick();
     view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
     check('a source facet narrows the full-page list', view.contentEl.find('los-route-row').length === 1);
@@ -568,7 +602,10 @@ async function main() {
     let text = element.allText();
     check('ordered stages and one current workspace render', element.find('los-stage-row').length === 3
       && text.includes('medical-test fixture'));
-    check('stage has exact resources and done-when criteria', element.find('los-resource-row').length === 2
+    /* Three, not two: the fixture gained an unranked, id-less resource when
+     * ADR-008/009 landed, so that the triage renderer is exercised against the
+     * pre-v2 shape as well as the ranked one. */
+    check('stage has exact resources and done-when criteria', element.find('los-resource-row').length === 3
       && text.includes('Explain the medical-test result cold'));
     check('no permanent stage note editor remains', element.find('los-note-editor').length === 0);
     check('Add note follows the final stage in the rail', element.find('los-stage-rail')[0].findText('los-btn', 'Add note'));
@@ -590,6 +627,21 @@ async function main() {
       element.find('los-resource-row').some((row) => row.find('los-overflow').length === 1)
       && element.find('los-resource-actions').every((row) =>
         row.children.filter((child) => child.classes.has('los-btn')).length <= 1));
+
+    /* ADR-008/009 integration. The Core has carried resource rank and resource
+     * identity since contract v2/v3; until the UI read them, a required stage
+     * still showed the deck, the depth paper and the preserved bibliography at
+     * one weight, and every verdict still landed on the whole source. */
+    check('resource triage tiers are visible, not just stored',
+      text.includes('Do this') && text.includes('Depth — not now')
+      && element.find('los-triage-required-now').length >= 1
+      && element.find('los-triage-deferred').length >= 1);
+    check('an unranked resource sorts with the primaries, never below them',
+      element.find('los-triage-unranked').length === 1
+      && element.find('los-resource-row')
+        .findIndex((row) => row.classes.has('los-triage-unranked'))
+      < element.find('los-resource-row')
+        .findIndex((row) => row.classes.has('los-triage-deferred')));
     check('done-when criteria are interactive checkboxes',
       element.find('los-donewhen-row').length >= 1
       && element.find('los-donewhen-row')[0].children[0].getAttribute('type') === 'checkbox');
@@ -1167,10 +1219,35 @@ async function main() {
     /* Any literal colour, not just hex. A palette written in rgb()/hsl() is
      * exactly as theme-breaking as one written in #rrggbb, and grepping only
      * for hex let a 13-colour hardcoded palette through unnoticed. */
-    check('theme variables only',
-      (css.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length === 0
-      && (css.match(/\b(rgba?|hsla?)\(/g) || []).length === 0
+    /* Was 'theme variables only': zero hex anywhere, because the plugin had no
+     * palette and inherited Obsidian's. It has one now (DESIGN.md principle 2,
+     * revised 2026-08-08), so that assertion tested a rule that no longer
+     * exists. The constraint it was really protecting — no component may name a
+     * colour, and light/dark must not drift apart — is stronger here: raw colour
+     * is legal ONLY inside the two token blocks, and both must define the same
+     * token names. */
+    const tokenBlocks = css.match(
+      /(?:^|\n)(?:\.theme-dark )?\.los-root \{[\s\S]*?\n\}/g) || [];
+    const cssOutsideTokens = tokenBlocks.reduce(
+      (rest, block) => rest.replace(block, ''), css);
+    const tokenNames = tokenBlocks.map((block) =>
+      (block.match(/--los-[a-z0-9-]+(?=\s*:)/g) || [])
+        .filter((name) => /^--los-(paper|ink|rule|accent|st)/.test(name))
+        .sort()
+        .join(','));
+
+    check('raw colour appears only in the palette token blocks',
+      (cssOutsideTokens.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length === 0
+      && (cssOutsideTokens.match(/\b(rgba?|hsla?)\(/g) || []).length === 0
       && !/color-scheme:/.test(css));
+    check('every component colour resolves through a --los-* token',
+      (cssOutsideTokens.match(
+        /var\(--(?:color|text|background|interactive)[a-z0-9-]*\)/g) || [])
+        .length === 0);
+    check('light and dark define the same palette tokens',
+      tokenBlocks.length === 2
+      && tokenNames[0].length > 0
+      && tokenNames[0] === tokenNames[1]);
     check('narrow-screen workspace is responsive', css.includes('.los-unit-layout') && css.includes('@media (max-width: 720px)'));
     check('button-like components are insulated from Obsidian theme distortion',
       css.includes('appearance: none') && css.includes('min-width: 0')
@@ -1181,10 +1258,14 @@ async function main() {
     check('the unit workspace is two columns and notes are a temporary modal',
       /\.los-unit-layout\s*\{[\s\S]*?grid-template-columns:\s*232px\s+minmax\(0, 1fr\)/.test(css)
       && css.includes('.los-unit-note-modal') && !css.includes('.los-note-panel'));
+    /* Both of these assert INTENT — a filled primary, an unmistakable active
+     * destination. The accent token was renamed --interactive-accent →
+     * --los-accent when the palette landed; the intent did not change, so the
+     * assertions track the token rather than being deleted. */
     check('the primary button is filled, not an outline',
-      /\.los-btn--cta\s*\{[^}]*background: var\(--interactive-accent\)/.test(css));
+      /\.los-btn--cta\s*\{[^}]*background: var\(--los-accent\)/.test(css));
     check('the active navigation destination is visually obvious',
-      /\.los-app-nav-item\.is-active\s*\{[^}]*inset 3px 0 0 var\(--interactive-accent\)/.test(css));
+      /\.los-app-nav-item\.is-active\s*\{[^}]*inset 3px 0 0 var\(--los-accent\)/.test(css));
     /* The flag is optional: once the rule is scoped under .los-root it
      * outranks the base button rule on its own, so requiring !important here
      * would pin an implementation detail rather than the intent. */

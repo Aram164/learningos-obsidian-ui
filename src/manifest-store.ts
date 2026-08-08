@@ -157,6 +157,9 @@ export class ManifestStore {
   }
   studyMaps() { return this.rows('study_maps'); }
   gardenEntries() { return this.rows('garden_entries'); }
+  /** The ADR-009 topic vocabulary: {id, title, domain}. `domain` groups topics
+   *  for display only — it never constrains which sources may carry one. */
+  topics() { return this.rows('topics'); }
   aiAction(actionId: string): ProjectionRecord | null {
     const available = this.data?.ai_actions?.available;
     return this.rows('ai_actions_available').find((row) => row.id === actionId)

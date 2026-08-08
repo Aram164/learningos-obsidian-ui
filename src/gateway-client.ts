@@ -181,9 +181,19 @@ export class GatewayClient {
     stageId: string,
     sourceId: string,
     feedback: string,
+    // ADR-009: when the rated resource has its own identity, narrow the
+    // judgment to it. source_id stays required so provenance survives —
+    // course → paper → verdict, never a paper severed from its bundle.
+    // Omitted (undefined) means source-level feedback, the pre-v3 shape.
+    resourceId?: string | null,
   ) {
-    return this.capability('source.feedback.record',
-      { unit_id: unitId, stage_id: stageId, source_id: sourceId, feedback });
+    return this.capability('source.feedback.record', {
+      unit_id: unitId,
+      stage_id: stageId,
+      source_id: sourceId,
+      feedback,
+      ...(resourceId ? { resource_id: resourceId } : {}),
+    });
   }
   detour(
     unitId: string,

@@ -21,12 +21,34 @@ import type {
 } from '../contracts/route-v1';
 import type { LearningOSUI } from '../main';
 
+// ADR-009. The first four are availability facets — where a source physically
+// is. They answer "can I open this now?", not "what is it about?", which is why
+// the Library still felt like a sea of ML: you could filter 239 sources by
+// whether they were downloaded, but not by subject, purpose or current use.
+//
+// The dimensions that answer the real question already existed in the Core
+// (domain, topic, purpose = evaluation roles, form = source type, current use =
+// module routes); they were simply never projected into the picker. These are
+// facet MODES: choosing one reveals its values, and a source may appear under
+// several of them at once. Overlapping counts are correct, not a bug.
 export const SOURCE_FACETS = [
   ['all', 'All'],
   ['local', 'Local copy'],
   ['online', 'Online'],
   ['in-unit', 'Used in a unit'],
+  ['topic', 'By topic'],
+  ['purpose', 'By purpose'],
+  ['form', 'By form'],
+  ['use', 'By current use'],
 ] as const;
+
+/** Facets whose value is chosen from a list rather than being a yes/no test. */
+export const VALUED_FACETS = new Set([
+  'topic',
+  'purpose',
+  'form',
+  'use',
+]);
 
 const LIBRARY_COLLECTIONS = [
   ['sources', 'Learning Sources'],
@@ -675,6 +697,9 @@ export class LibraryView extends ItemView {
   groupId: string | null = null;
   query = '';
   facet: SourceFacet = 'all';
+  /** Selected value within a valued facet (a topic id, a role, a type, a
+   *  module id). Null means "show the values to pick from". */
+  facetValue: string | null = null;
   resourceId: string | null = null;
   topicPackId: string | null = null;
   catalogueId: string | null = null;
@@ -833,7 +858,120 @@ export class LibraryView extends ItemView {
       );
     }
 
+    // Valued facets. With no value chosen the picker is showing its options, so
+    // everything passes and the counts stay honest.
+    if (VALUED_FACETS.has(this.facet)) {
+      if (!this.facetValue) {
+        return true;
+      }
+      return this.facetValuesFor(source)
+        .includes(this.facetValue);
+    }
+
     return true;
+  }
+
+  /** Which values of the ACTIVE facet this source participates in.
+   *
+   *  Deliberately returns a list, not a value: a source belongs to several
+   *  topics, serves several purposes and is used by several modules at once.
+   *  Collapsing that to one would rebuild the single-placement tree ADR-009
+   *  exists to remove. Every field here is read from the projection — the UI
+   *  never parses generated/library.md, which is the human view of the same
+   *  facts. */
+  facetValuesFor(
+    source: LibraryRecordView,
+  ): string[] {
+    if (this.facet === 'topic') {
+      return projectedStrings(
+        source.record.topics,
+      );
+    }
+    if (this.facet === 'form') {
+      return source.sourceType
+        ? [source.sourceType]
+        : [];
+    }
+    if (this.facet === 'purpose') {
+      const roles = new Set<string>();
+      for (
+        const evaluation of source.evaluations
+      ) {
+        for (
+          const role of evaluation.roles
+        ) {
+          roles.add(role);
+        }
+      }
+      return [...roles];
+    }
+    if (this.facet === 'use') {
+      const modules = new Set<string>();
+      for (
+        const unitRecord of this.plugin.store
+          .useUnits(source.id)
+      ) {
+        // useUnits() yields projected unit RECORDS, not ids.
+        const unit =
+          typeof unitRecord === 'string'
+            ? this.plugin.store.get(unitRecord)
+            : unitRecord;
+        const moduleId = unit
+          ? projectedString(
+            unit.module_id,
+          )
+          : null;
+        if (moduleId) {
+          modules.add(moduleId);
+        }
+      }
+      return [...modules];
+    }
+    return [];
+  }
+
+  /** Value → source count for the active facet, with overlap preserved. */
+  facetTally(
+    sources: LibraryRecordView[],
+  ): Map<string, number> {
+    const tally = new Map<string, number>();
+    for (const source of sources) {
+      for (
+        const value of this.facetValuesFor(source)
+      ) {
+        tally.set(
+          value,
+          (tally.get(value) ?? 0) + 1,
+        );
+      }
+    }
+    return tally;
+  }
+
+  /** Human label for a facet value. Topics carry titles in the projection;
+   *  everything else is already readable. */
+  facetValueLabel(
+    value: string,
+  ): string {
+    if (this.facet === 'topic') {
+      const topic = this.plugin.store
+        .topics()
+        .find(
+          (row) =>
+            projectedString(row.id) === value,
+        );
+      return topic
+        ? projectedString(topic.title) ?? value
+        : value;
+    }
+    if (this.facet === 'use') {
+      const module =
+        this.plugin.store.get(value);
+      return module
+        ? projectedString(module.title) ?? value
+        : value;
+    }
+    return value;
   }
 
   render(): void {
@@ -1146,6 +1284,12 @@ export class LibraryView extends ItemView {
     const all =
       readLibraryRecords(rawRecords);
 
+    // Facet values are tallied over the whole group, before the value filter,
+    // so the counts do not collapse to 1 as soon as you pick one.
+    if (!isPacks) {
+      this.renderFacetValues(toolbar, all);
+    }
+
     const needle =
       this.query
         .trim()
@@ -1276,6 +1420,9 @@ export class LibraryView extends ItemView {
         label,
         async () => {
           this.facet = id;
+          // Switching facet always clears the value: a topic selection is
+          // meaningless once you are filtering by form.
+          this.facetValue = null;
           await this.rememberGroup();
           this.render();
         },
@@ -1288,6 +1435,98 @@ export class LibraryView extends ItemView {
         'aria-pressed',
         String(this.facet === id),
       );
+    }
+  }
+
+  /** The values of the active valued facet, with counts.
+   *
+   *  This is the part that answers "the Library is a sea of ML". A domain
+   *  heading says 73; this says Deep Learning 22 · ML Compilation 4 · … and
+   *  lets those add to more than 73, because a source really does belong to
+   *  several at once. */
+  renderFacetValues(
+    parent: HTMLElement,
+    sources: LibraryRecordView[],
+  ): void {
+    if (!VALUED_FACETS.has(this.facet)) {
+      return;
+    }
+
+    const tally = this.facetTally(sources);
+    const wrap = parent.createDiv({
+      cls: 'los-library-facet-values',
+    });
+
+    if (!tally.size) {
+      wrap.createDiv({
+        cls: 'los-muted',
+        text:
+          this.facet === 'topic'
+            ? 'No source in this view carries a topic yet. '
+              + 'Topics are added when a source is actually used, '
+              + 'never in a bulk pass.'
+            : 'Nothing to filter by here yet.',
+      });
+      return;
+    }
+
+    const clear = button(
+      wrap,
+      `All (${sources.length})`,
+      () => {
+        this.facetValue = null;
+        this.render();
+      },
+      this.facetValue ? 'quiet' : 'row',
+    );
+    clear.setAttribute(
+      'aria-pressed',
+      String(!this.facetValue),
+    );
+
+    const ordered = [...tally.entries()]
+      .sort(
+        (a, b) =>
+          b[1] - a[1]
+          || a[0].localeCompare(b[0]),
+      );
+
+    for (const [value, count] of ordered) {
+      const control = button(
+        wrap,
+        `${this.facetValueLabel(value)} (${count})`,
+        () => {
+          this.facetValue =
+            this.facetValue === value
+              ? null
+              : value;
+          this.render();
+        },
+        this.facetValue === value
+          ? 'row'
+          : 'quiet',
+      );
+      control.setAttribute(
+        'aria-pressed',
+        String(this.facetValue === value),
+      );
+    }
+
+    if (this.facet === 'topic') {
+      const untopiced = sources.filter(
+        (source) =>
+          !projectedStrings(
+            source.record.topics,
+          ).length,
+      ).length;
+      if (untopiced) {
+        wrap.createDiv({
+          cls: 'los-micro',
+          text:
+            `${untopiced} of ${sources.length} not yet `
+            + 'classified by topic — expected, not a backlog.',
+        });
+      }
     }
   }
 
