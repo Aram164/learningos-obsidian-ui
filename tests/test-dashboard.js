@@ -67,7 +67,7 @@ async function main() {
   heading('versioned atomic contract');
   {
     const { plugin } = await build();
-    check('manifest contract v2 loads', plugin.store.ready && plugin.store.contractVersion === 2, plugin.store.error);
+    check('manifest contract v3 loads', plugin.store.ready && plugin.store.contractVersion === 3, plugin.store.error);
     check('snapshot guard is loaded', plugin.store.snapshotId === 'sha256:fixture-v2-snapshot');
     check('program/module/unit/map collections load atomically', plugin.store.programs().length === 5
       && plugin.store.modules().length === 3 && plugin.store.projects().length === 1 && plugin.store.units().length === 7
@@ -113,11 +113,11 @@ async function main() {
     const originalRead = app.vault.adapter.read;
     app.vault.adapter.read = async (file) => {
       const text = await originalRead(file);
-      return file === 'generated/manifest.json' ? text.replace('"contract_version": 2', '"contract_version": 1') : text;
+      return file === 'generated/manifest.json' ? text.replace('"contract_version": 3', '"contract_version": 1') : text;
     };
     const plugin = new LearningOSUI(app, { id: 'learningos-ui' }); app._plugin = plugin;
     await plugin.onload();
-    check('contract v1 fails closed with recovery text', !plugin.store.ready && plugin.store.error.includes('requires contract 2'));
+    check('contract v1 fails closed with recovery text', !plugin.store.ready && plugin.store.error.includes('requires contract 3'));
     plugin.onunload();
   }
 

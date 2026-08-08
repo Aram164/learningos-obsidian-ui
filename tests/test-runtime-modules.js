@@ -72,21 +72,21 @@ function routerPlugin(settings = {}) {
 (async () => {
   console.log('\nDirect TypeScript module tests');
 
-  await test('ManifestStore loads a contract-valid v2 fixture', async () => {
+  await test('ManifestStore loads a contract-valid v3 fixture', async () => {
     const store = new ManifestStore(manifestApp());
     assert.equal(await store.load(), true);
     assert.equal(store.ready, true);
-    assert.equal(store.contractVersion, 2);
+    assert.equal(store.contractVersion, 3);
     assert.ok(store.records.length > 0);
   });
 
   await test('ManifestStore rejects an old contract before exposing data', async () => {
     const store = new ManifestStore(manifestApp((text) =>
-      text.replace('"contract_version": 2', '"contract_version": 1')));
+      text.replace('"contract_version": 3', '"contract_version": 1')));
     assert.equal(await store.load(), false);
     assert.equal(store.ready, false);
     assert.equal(store.data, null);
-    assert.match(store.error, /requires contract 2/);
+    assert.match(store.error, /requires contract 3/);
   });
 
   await test('ManifestStore assertion rejects a missing required array', async () => {

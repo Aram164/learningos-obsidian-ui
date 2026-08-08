@@ -1,8 +1,8 @@
 {
   "_generated": {
-    "contract_version": 2,
+    "contract_version": 3,
     "generated_at": "2099-04-01",
-    "generator": "synthetic-fixture-v2",
+    "generator": "synthetic-fixture-v3",
     "snapshot_id": "sha256:fixture-v2-snapshot",
     "source_dirty": false,
     "source_fingerprint": "fixture-v2-snapshot",
@@ -262,6 +262,16 @@
       "unit-fixture-sad-l02": "study-map-fixture-sad-l02",
       "unit-fixture-sad-l04": "study-map-fixture-sad-l04",
       "unit-fixture-thesis-landscape": "study-map-fixture-thesis"
+    },
+    "workspace_to_modules": {
+      "workspace-fixture-m2": [
+        "module-fixture-m2"
+      ]
+    },
+    "workspace_to_units": {
+      "workspace-fixture-m2": [
+        "unit-fixture-sad-l04"
+      ]
     }
   },
   "module_source_maps": [

@@ -3,8 +3,20 @@
  *
  * Legacy views still consume the manifest through ManifestStore. New router and
  * feature code must depend on this contract layer instead of raw JSON shapes.
+ *
+ * The contract is now DECLARED BY THE PRODUCER, in the core repository's
+ * `system/contracts/manifest-contract.yaml`. `contracts/manifest-v3.lock.json`
+ * beside this file is a mirror of that declaration, not the original — core
+ * enforces the shape on every build, so a projection change fails there instead
+ * of arriving here as a red CI run. (That is what happened on 2026-08-08: core
+ * published a top-level `topics` collection while still announcing v2.)
+ *
+ * The `-v2` in this module's filename and in `ManifestV2` lags the version on
+ * purpose: renaming ~20 import sites belongs to the typed-projection extraction
+ * (remediation item 12), which must not precede the behavioral fixes. The
+ * version that matters is the constant below.
  */
-export const MANIFEST_CONTRACT_VERSION = 2 as const;
+export const MANIFEST_CONTRACT_VERSION = 3 as const;
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -25,6 +37,17 @@ export interface ThematicGroupV2 extends JsonRecord {
   title: string;
   description: string;
   order: number;
+}
+
+/**
+ * ADR-009 topic facet. `domain` is a display grouping only — it never
+ * constrains which sources may carry the topic, so an interface may group by it
+ * but must not filter membership with it.
+ */
+export interface TopicV2 extends JsonRecord {
+  id: string;
+  title: string;
+  domain: string | null;
 }
 
 export interface TopicPackV2 extends JsonRecord {
@@ -111,6 +134,7 @@ export interface ManifestV2 extends JsonRecord {
   study_maps: readonly ProjectionRecord[];
   thematic_groups: readonly ThematicGroupV2[];
   topic_packs: readonly TopicPackV2[];
+  topics: readonly TopicV2[];
   units: readonly UnitV2[];
 }
 
@@ -151,6 +175,7 @@ export function assertManifestV2(value: unknown): asserts value is ManifestV2 {
     "study_maps",
     "thematic_groups",
     "topic_packs",
+    "topics",
     "units",
   ] as const) {
     requireArray(value, key);

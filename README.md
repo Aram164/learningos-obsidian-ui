@@ -33,8 +33,13 @@ boundary views; quarantined content is not in the manifest or default search.
 - `npm run typecheck` checks all runtime source files. The versioned manifest
   contract remains independently strict-checked before projected data reaches
   the legacy view layer.
-- The app reads only atomic `generated/manifest.json` contract v2. It never
+- The app reads only atomic `generated/manifest.json` contract v3. It never
   parses canonical Markdown/YAML and remains useful when Python is offline.
+  The contract is declared by the producer — core's
+  `system/contracts/manifest-contract.yaml` — and `contracts/manifest-v3.lock.json`
+  here is a mirror of it. `npm run contract:check` verifies the mirror whenever
+  core is checked out beside this repo, so a projection change cannot reach the
+  UI as a surprise. Bump both together; they release together.
 - Mutations use `tools/los.py` action-specific commands: `unit-note`, legacy `stage-note`,
   `stage-progress`, `stage-attach`, `source-feedback`, detour commands,
   selected-only shelving, validation/generation, and `session-end`.

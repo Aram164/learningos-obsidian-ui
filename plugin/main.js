@@ -50,7 +50,7 @@ var import_obsidian = require("obsidian");
 var import_electron = require("electron");
 
 // src/constants.ts
-var CONTRACT_VERSION = 2;
+var CONTRACT_VERSION = 3;
 var VIEW_HOME = "learningos-home";
 var VIEW_NAV = "learningos-nav";
 var VIEW_PROGRAM = "learningos-program";
@@ -1240,7 +1240,7 @@ var AIActionClient = class {
 };
 
 // src/contracts/manifest-v2.ts
-var MANIFEST_CONTRACT_VERSION = 2;
+var MANIFEST_CONTRACT_VERSION = 3;
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -1274,6 +1274,7 @@ function assertManifestV2(value) {
     "study_maps",
     "thematic_groups",
     "topic_packs",
+    "topics",
     "units"
   ]) {
     requireArray(value, key);
