@@ -1,0 +1,107 @@
+/* ── Daily-loop coherence ────────────────────────────────────────────────
+ * Detail screens use the same calm record-row grammar as the Figma system.
+ * Cards remain reserved for a current workspace, composer, or boundary — a
+ * border now means focus or a genuinely raised surface. */
+.los-root .los-tabs .los-btn--cta,
+.los-root .los-tabs .los-btn--row,
+.los-root .los-subtabs .los-btn--row,
+.los-root .los-project-tabs .is-active {
+  border-color: transparent;
+  border-radius: var(--los-r-pill);
+  background: var(--los-accent-wash);
+  box-shadow: none;
+  color: var(--los-accent);
+  font-weight: 650;
+}
+
+.los-section-heading {
+  display: flex;
+  width: min(900px, 100%);
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--los-4);
+  margin: 22px 0 4px;
+  padding-bottom: 4px;
+}
+
+.los-section-heading h2 { margin: 0; }
+.los-section-heading > span { color: var(--los-ink-soft); font-size: 12px; }
+
+.los-record-list {
+  display: grid;
+  width: min(900px, 100%);
+  gap: 0;
+}
+
+.los-root .los-record-row {
+  display: grid;
+  width: 100%;
+  min-height: 62px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--los-4);
+  align-items: center;
+  padding: 12px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--los-line);
+  border-radius: 0;
+  background: transparent;
+  color: var(--los-ink);
+  text-align: left;
+}
+
+.los-root button.los-record-row:hover,
+.los-root button.los-record-row:focus-visible {
+  background: var(--los-paper-2);
+}
+
+.los-record-copy { min-width: 0; }
+.los-record-copy > strong { display: block; line-height: 22px; }
+.los-record-meta,
+.los-record-summary {
+  margin-top: 3px;
+  color: var(--los-ink-soft);
+  font-size: 12px;
+  line-height: 18px;
+  overflow-wrap: break-word;
+}
+.los-record-summary { font-size: 13px; line-height: 20px; }
+.los-record-action { color: var(--los-accent); font-size: 13px; font-weight: 650; white-space: nowrap; }
+
+/* Learn renders the projected horizon without becoming another module index. */
+.los-program-view > .los-muted,
+.los-program-view > .los-learning-context,
+.los-program-view > .los-learning-list,
+.los-program-view > .los-disclosure,
+.los-program-view > .los-empty {
+  width: min(900px, 100%);
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-learning-context {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--los-4);
+  margin-top: 20px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--los-line-strong);
+}
+.los-learning-context h2 { margin: 0; }
+.los-learning-context span { color: var(--los-ink-soft); font-size: 12px; }
+.los-program-view > .los-learning-list { margin-bottom: 18px; }
+
+/* Module detail: one header, one tab strip, one 900px decision column. */
+.los-module-view > .los-subtabs,
+.los-module-view > .los-module-units-heading,
+.los-module-view > .los-module-unit-list,
+.los-module-view > .los-overview,
+.los-module-view > .los-fact-list {
+  width: min(900px, 100%);
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-module-view > .los-subtabs { margin-bottom: 4px; }
+.los-module-unit-list { margin-bottom: 28px; }
+

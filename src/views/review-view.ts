@@ -3,8 +3,9 @@ import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
 import { badge, button, empty, OWNERSHIP_STATEMENT, pageHeader, section } from '../components';
 import { CONTRACT_VERSION, VIEW_DIAGNOSTICS, VIEW_REVIEW } from '../constants';
-import type { ProjectionRecord } from '../contracts/manifest-v2';
+import type { ProjectionRecord } from '../contracts/manifest-v4';
 import type { LearningOSUI } from '../main';
+import { errorMessage, isRecord } from '../projection/readers';
 
 type ReviewAction = [string, () => unknown];
 
@@ -28,11 +29,6 @@ interface DiagnosticsApp {
   };
 }
 
-interface DiagnosticsManifest {
-  readonly id?: string;
-  readonly dir?: string;
-}
-
 interface DiagnosticsGenerated {
   readonly contract_version?: string | number;
   readonly generator?: string;
@@ -47,26 +43,11 @@ type DiagnosticsPlugin = Pick<
   | 'copyText'
   | 'gateway'
   | 'generate'
+  | 'manifest'
   | 'resolvePython'
   | 'store'
   | 'uiVersion'
-> & {
-  readonly manifest?: DiagnosticsManifest;
-};
-
-function isRecord(
-  value: unknown,
-): value is Record<string, unknown> {
-  return (
-    typeof value === 'object'
-    && value !== null
-    && !Array.isArray(value)
-  );
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+>;
 
 type ReviewPlugin = Pick<
   LearningOSUI,
@@ -78,6 +59,23 @@ type ReviewPlugin = Pick<
   | 'store'
 >;
 
+type ReviewFilter =
+  | 'all'
+  | 'inbox'
+  | 'shelving'
+  | 'planning'
+  | 'garden';
+
+const REVIEW_FILTERS: ReadonlyArray<
+  readonly [ReviewFilter, string]
+> = [
+  ['all', 'All'],
+  ['inbox', 'Inbox'],
+  ['shelving', 'Shelving'],
+  ['planning', 'Planning'],
+  ['garden', 'Garden'],
+];
+
 /**
  * Review renders decisions already identified by Core.
  *
@@ -87,6 +85,7 @@ type ReviewPlugin = Pick<
  */
 export class ReviewView extends ItemView {
   private readonly plugin: ReviewPlugin;
+  private filter: ReviewFilter = 'all';
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -139,46 +138,92 @@ export class ReviewView extends ItemView {
       return;
     }
 
-    pageHeader(
-      root,
-      '',
-      'Review',
-      'Concrete decisions the Core has identified as waiting for you.',
-    );
-
     const items =
       this.plugin.store.reviewItems();
+
+    const header = pageHeader(
+      root,
+      'Review · Decisions',
+      'Review',
+      'Everything here is waiting on a decision from you.',
+    );
+
+    badge(
+      header,
+      `${items.length} decision${items.length === 1 ? '' : 's'} waiting`,
+      'role',
+    ).addClass('los-review-count-badge');
+
+    const filters = root.createDiv({
+      cls: 'los-review-filters',
+      attr: {
+        role: 'tablist',
+        'aria-label': 'Review categories',
+      },
+    });
+
+    for (const [value, label] of REVIEW_FILTERS) {
+      const count = value === 'all'
+        ? items.length
+        : items.filter(
+          (item) => item.category === value,
+        ).length;
+
+      const control = button(
+        filters,
+        `${label}${count ? ` ${count}` : ''}`,
+        () => {
+          this.filter = value;
+          this.render();
+        },
+        'quiet',
+      );
+
+      control.addClass('los-filter-tab');
+      control.toggleClass(
+        'is-active',
+        this.filter === value,
+      );
+      control.setAttrs({
+        role: 'tab',
+        'aria-selected': String(
+          this.filter === value,
+        ),
+      });
+    }
+
+    root.createDiv({
+      cls: 'los-micro los-review-queue-note',
+      text:
+        'Only items that require a decision appear here. '
+        + 'Garden stays quiet until Core marks a seed review-due.',
+    });
+
+    const visible = this.filter === 'all'
+      ? items
+      : items.filter(
+        (item) => item.category === this.filter,
+      );
 
     const list = root.createDiv({
       cls: 'los-review-list',
     });
 
-    if (!items.length) {
+    if (!visible.length) {
       empty(
         list,
-        'Nothing waiting',
-        'Core has not projected any current Review decisions.',
+        items.length
+          ? 'Nothing in this category'
+          : 'Nothing waiting',
+        items.length
+          ? 'Choose another Review filter.'
+          : 'Core has not projected any current Review decisions.',
       );
     } else {
-      for (const item of items) {
+      for (const item of visible) {
         this.decision(list, item);
       }
     }
-
-    const garden = section(
-      root,
-      'Garden',
-      'Garden is a separate holding ground for unfinished ideas. '
-        + 'A seed does not become a Review decision merely because it exists '
-        + 'or has been sitting for a while.',
-    );
-
-    button(
-      garden,
-      'Open the Garden',
-      () => this.plugin.openGarden(),
-      'quiet',
-    );
   }
 
   decision(
@@ -291,7 +336,7 @@ export class ReviewView extends ItemView {
       && typeof target.unit_id === 'string'
     ) {
       return [
-        'Review shelving',
+        'Review proposal',
         () =>
           this.plugin.openShelving(
             target.unit_id as string,
@@ -304,7 +349,7 @@ export class ReviewView extends ItemView {
       && typeof target.path === 'string'
     ) {
       return [
-        'Open capture',
+        'Route',
         () =>
           this.plugin.openVaultPath(
             target.path as string,
@@ -322,6 +367,16 @@ export class ReviewView extends ItemView {
           this.plugin.openUnit(
             target.id as string,
           ),
+      ];
+    }
+
+    if (
+      kind === 'garden-note'
+      || kind === 'garden-seed'
+    ) {
+      return [
+        'Review seed',
+        () => this.plugin.openGarden(),
       ];
     }
 
@@ -367,13 +422,15 @@ export class DiagnosticsView extends ItemView {
     try {
       const app = this.app as DiagnosticsApp;
       const base = app.vault.adapter.getBasePath();
-      const pluginInfo: DiagnosticsManifest =
-        this.plugin.manifest ?? {};
-      const directory = pluginInfo.dir
+      const pluginInfo = this.plugin.manifest as unknown as {
+        readonly dir?: string;
+        readonly id?: string;
+      } | undefined;
+      const directory = pluginInfo?.dir
         || nodePath.join(
           '.obsidian',
           'plugins',
-          pluginInfo.id || 'learningos-ui',
+          pluginInfo?.id || 'learningos-ui',
         );
       const target = nodePath.join(
         base,

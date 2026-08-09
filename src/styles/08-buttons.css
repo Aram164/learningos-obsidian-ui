@@ -1,0 +1,18 @@
+/* Filled, not outlined. An outlined "primary" beside outlined secondaries is
+ * not a hierarchy — only one filled action may appear in one visible context. */
+.los-root .los-btn--cta { border-color: var(--los-accent); background: var(--los-accent); color: var(--los-paper); font-weight: 650; }
+.los-root .los-btn--cta:hover { background: var(--los-accent-soft); color: var(--los-paper); }
+.los-root .los-btn--quiet { background: transparent; color: var(--los-ink-soft); }
+.los-root .los-btn--quiet:hover { background: var(--los-paper-3); color: var(--los-ink); }
+.los-root .los-btn--tertiary { min-height: 24px; padding: 1px var(--los-2); border-color: transparent; color: var(--los-ink-soft); font-size: 12px; }
+.los-root .los-btn--tertiary:hover { background: var(--los-paper-3); color: var(--los-ink); }
+.los-root .los-chip { min-height: 26px; padding: 2px var(--los-2); border-radius: var(--los-r-pill); background: var(--los-paper); text-align: left; }
+.los-root .los-chip > span:last-child { min-width: 0; overflow-wrap: break-word; word-break: normal; }
+.los-badge { display: inline-flex; max-width: 100%; padding: 1px var(--los-2); border-radius: var(--los-r-pill); background: var(--los-rule); color: var(--los-ink-soft); font-size: 11px; line-height: 1.5; white-space: normal; }
+.los-badge--active { color: var(--los-st-active); }
+.los-badge--needs-map { color: var(--los-st-attention); }
+.los-badge--role { color: var(--los-accent); }
+/* Level is a property of the evaluation, not a rank of the source — it reads
+   as a neutral fact beside the roles, never as a score. */
+.los-badge--level { color: var(--los-ink-soft); border-color: var(--los-rule); }
+

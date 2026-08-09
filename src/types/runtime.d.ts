@@ -55,9 +55,11 @@ declare module 'obsidian' {
 
   export interface WorkspaceSplit {
     collapse(): void;
+    setSize?(pixels: number): void;
   }
 
   export interface Workspace {
+    readonly leftSplit?: WorkspaceSplit;
     readonly rightSplit?: WorkspaceSplit;
 
     detachLeavesOfType(

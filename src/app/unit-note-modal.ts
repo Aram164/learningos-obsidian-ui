@@ -1,11 +1,8 @@
 import { Modal, Notice, type App } from 'obsidian';
 import { button, empty, localFilePath, pageHeader, section } from '../components';
-import type { ProjectionRecord } from '../contracts/manifest-v2';
+import type { ProjectionRecord } from '../contracts/manifest-v4';
 import type { LearningOSUI } from '../main';
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+import { asRecords, errorMessage } from '../projection/readers';
 
 type UnitNotePlugin = Pick<
   LearningOSUI,
@@ -52,10 +49,13 @@ export class UnitNoteModal extends Modal {
     const root = this.contentEl;
     root.empty();
     root.addClass('los-root', 'los-unit-note-modal');
-    const stages: ProjectionRecord[] = Array.isArray(
-      this.studyMap?.stages,
-    ) ? this.studyMap.stages : [];
-    const draft = this.plugin.getUnitNoteDraft(this.unit.id, stages);
+    const unitId = this.unit.id;
+    if (!unitId) {
+      empty(root, 'Unit unavailable', 'The projection returned a unit without an identity.');
+      return;
+    }
+    const stages = asRecords(this.studyMap?.stages);
+    const draft = this.plugin.getUnitNoteDraft(unitId, stages);
     const recoveredStageIds: string[] = Array.isArray(
       draft.recoveredStageIds,
     )
@@ -115,7 +115,7 @@ export class UnitNoteModal extends Modal {
 
     const status = root.createDiv({ cls: 'los-draft-status', attr: { 'aria-live': 'polite' } });
     const persist = () => {
-      this.plugin.setUnitNoteDraft(this.unit.id, this.titleInput.value, this.editor.value);
+      this.plugin.setUnitNoteDraft(unitId, this.titleInput.value, this.editor.value);
       status.setText(this.editor.value.trim() ? 'Draft kept locally until the core confirms the save.' : 'Write a note to enable saving.');
       status.toggleClass('is-dirty', Boolean(this.editor.value.trim()));
     };
@@ -133,7 +133,7 @@ export class UnitNoteModal extends Modal {
     stages: ProjectionRecord[],
   ): string[] {
     const already = new Set<string>(
-      (this.unit.note_sections || []).flatMap(
+      asRecords(this.unit.note_sections).flatMap(
         (section: ProjectionRecord) => Array.isArray(section.stage_ids)
           ? section.stage_ids.filter(
             (id: unknown): id is string => typeof id === 'string',
@@ -155,6 +155,8 @@ export class UnitNoteModal extends Modal {
     const text = String(this.editor?.value || '');
     if (!text.trim()) { new Notice('Write a note before saving.'); this.editor?.focus(); return; }
     if (this.plugin.gateway.isBusy) { new Notice('A LearningOS write is already running.'); return; }
+    const unitId = this.unit.id;
+    if (!unitId) { new Notice('The unit identity is unavailable. Reload LearningOS and try again.'); return; }
     const filePaths: string[] = this.files
       .map((file: File) => localFilePath(file))
       .filter((value: string) => Boolean(value));
@@ -163,10 +165,10 @@ export class UnitNoteModal extends Modal {
       return;
     }
     try {
-      await this.plugin.mutate(() => this.plugin.gateway.saveUnitNote(this.unit.id, {
+      await this.plugin.mutate(() => this.plugin.gateway.saveUnitNote(unitId, {
         title: this.titleInput?.value || '', text, stageIds: this.referencedStageIds, filePaths,
       }));
-      this.plugin.clearUnitNoteDraft(this.unit.id, this.recoveredStageIds);
+      this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds);
       new Notice('Learning-session note saved.');
       this.close();
     } catch (error: unknown) {

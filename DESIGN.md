@@ -12,8 +12,9 @@ The interface carries usability while the core carries meaning.
    theme variables", which meant LearningOS had no visual identity of its own —
    it looked like whichever theme happened to be installed. It now has one:
    **warm paper (beige) with a single brick-red accent**, defined once in
-   `plugin/styles.css` as `--los-*` tokens, with a real dark palette rather than
-   an inversion.
+   `src/styles/00-tokens.css` as `--los-*` tokens, with a real dark palette
+   rather than an inversion. (`plugin/styles.css` is the composed artifact —
+   the cascade is declared in `build-styles.mjs`.)
 
    The constraint the old rule was protecting is unchanged and still binding:
    **no component may name a colour.** Every rule refers to a token, colour is

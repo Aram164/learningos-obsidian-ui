@@ -11,28 +11,120 @@
  * of arriving here as a red CI run. (That is what happened on 2026-08-08: core
  * published a top-level `topics` collection while still announcing v2.)
  *
- * The `-v2` in this module's filename and in `ManifestV2` lags the version on
- * purpose: renaming ~20 import sites belongs to the typed-projection extraction
- * (remediation item 12), which must not precede the behavioral fixes. The
- * version that matters is the constant below.
+ * This module follows the producer's current v4 contract name. Contract bumps
+ * are mirrored deliberately so stale names cannot obscure an actual schema
+ * change during maintenance.
  */
 export const MANIFEST_CONTRACT_VERSION = 4 as const;
 
 export type JsonRecord = Record<string, unknown>;
 
-/** Dynamic UI projection until each manifest family has a dedicated interface. */
-export type ProjectionRecord = Record<string, any>;
+/**
+ * Shared fields across projected records. Feature code decodes richer domain
+ * shapes at its boundary; unknown extension fields remain available without
+ * turning the entire projection into `any`.
+ */
+export interface ProjectionRecord extends JsonRecord {
+  id?: string;
+  type?: string;
+  title?: string;
+  label?: string;
+  name?: string;
+  status?: string;
+  kind?: string;
+  role?: string;
+  path?: string;
+  domain?: string;
+  summary?: string;
+  description?: string;
+  objective?: string;
+  scope?: string;
+  purpose?: string;
+  url?: string;
+  material_path?: string;
+  vault_path?: string;
+  module_id?: string;
+  unit_id?: string;
+  stage_id?: string;
+  study_map_id?: string;
+  project_id?: string;
+  component_id?: string;
+  area_id?: string;
+  current_stage?: string;
+  current_study_map?: string;
+  organization?: string;
+  semester?: string;
+  code?: string;
+  project_type?: string;
+  state?: string;
+  provider?: string;
+  bundle_path?: string;
+  delivery_id?: string;
+  receipt_id?: string;
+  transcription_path?: string;
+  source_id?: string;
+  material_uri?: string;
+  next_action?: string;
+  deadline?: string;
+  standing?: boolean;
+  available?: boolean;
+  job_derived?: boolean;
+  aliases?: readonly string[];
+  authors?: readonly string[];
+  concepts?: readonly string[];
+  sources?: readonly string[];
+  contexts?: readonly string[];
+  notes?: readonly string[];
+  tags?: readonly string[];
+  program_ids?: readonly string[];
+  module_ids?: readonly string[];
+  unit_ids?: readonly string[];
+  unit_order?: readonly string[];
+  related_module_ids?: readonly string[];
+  thematic_group_ids?: readonly string[];
+  workspace_ids?: readonly string[];
+  project_ids?: readonly string[];
+  entries?: readonly ProjectionRecord[];
+  stages?: readonly ProjectionRecord[];
+  resources?: readonly ProjectionRecord[];
+  note_sections?: readonly ProjectionRecord[];
+  request?: ProjectionRecord;
+}
 
-export interface UnitNoteAttachmentV2 { path: string; label: string; }
-export interface UnitNoteSectionV2 {
+export interface ModuleProgressV4 extends JsonRecord {
+  stages_complete: number;
+  stages_total: number;
+  units_total: number;
+  units_needing_map: number;
+}
+
+export interface ManifestIndexesV4 extends JsonRecord {
+  unit_to_study_map: Record<string, string>;
+  source_to_modules: Record<string, string[]>;
+  source_to_units: Record<string, string[]>;
+}
+
+export interface ManifestBacklinksV4 extends JsonRecord {
+  module_to_workspaces: Record<string, string[]>;
+}
+
+export interface ResumePointerV4 extends JsonRecord {
+  unit_id: string;
+  study_map_id: string;
+  stage_id: string;
+  module_id: string;
+}
+
+export interface UnitNoteAttachmentV4 { path: string; label: string; }
+export interface UnitNoteSectionV4 extends JsonRecord {
   recorded_at: string | null;
   title: string;
   stage_ids: readonly string[];
-  attachments: readonly UnitNoteAttachmentV2[];
+  attachments: readonly UnitNoteAttachmentV4[];
   text: string;
   summary: string;
 }
-export interface ThematicGroupV2 extends JsonRecord {
+export interface ThematicGroupV4 extends JsonRecord {
   id: string;
   title: string;
   description: string;
@@ -44,13 +136,13 @@ export interface ThematicGroupV2 extends JsonRecord {
  * constrains which sources may carry the topic, so an interface may group by it
  * but must not filter membership with it.
  */
-export interface TopicV2 extends JsonRecord {
+export interface TopicV4 extends JsonRecord {
   id: string;
   title: string;
   domain: string | null;
 }
 
-export interface TopicPackV2 extends JsonRecord {
+export interface TopicPackV4 extends JsonRecord {
   id: string;
   type: "topic-pack";
   title: string;
@@ -60,7 +152,7 @@ export interface TopicPackV2 extends JsonRecord {
 }
 
 
-export interface ProjectRelationshipV2 extends JsonRecord {
+export interface ProjectRelationshipV4 extends JsonRecord {
   id: string;
   type: "project-relationship";
   from_project_id: string;
@@ -71,7 +163,7 @@ export interface ProjectRelationshipV2 extends JsonRecord {
   contribution: string;
   path?: string;
 }
-export interface ProjectV2 extends JsonRecord {
+export interface ProjectV4 extends JsonRecord {
   id: string;
   type: "project";
   title: string;
@@ -86,19 +178,19 @@ export interface ProjectV2 extends JsonRecord {
   decisions?: readonly JsonRecord[];
 }
 
-export interface UnitV2 extends JsonRecord {
+export interface UnitV4 extends JsonRecord {
   id: string;
   type: "unit";
   project_ids?: readonly string[];
   module_id: string;
   title: string;
   notes_text: string;
-  note_sections: readonly UnitNoteSectionV2[];
+  note_sections: readonly UnitNoteSectionV4[];
   notes_updated: string | null;
   working_note?: string;
 }
 
-export interface GeneratedMetadataV2 extends JsonRecord {
+export interface GeneratedMetadataV4 extends JsonRecord {
   contract_version: typeof MANIFEST_CONTRACT_VERSION;
   generated_at: string;
   generator: string;
@@ -109,50 +201,50 @@ export interface GeneratedMetadataV2 extends JsonRecord {
   warning: string;
 }
 
-export interface ManifestV2 extends JsonRecord {
-  _generated: GeneratedMetadataV2;
+export interface ManifestV4 extends JsonRecord {
+  _generated: GeneratedMetadataV4;
   academic_deadlines: readonly ProjectionRecord[];
   ai_actions: ProjectionRecord;
-  backlinks: ProjectionRecord;
+  backlinks: ManifestBacklinksV4;
   counts: ProjectionRecord;
   garden_entries: readonly ProjectionRecord[];
   review_items: readonly ProjectionRecord[];
-  indexes: ProjectionRecord;
+  indexes: ManifestIndexesV4;
   module_source_maps: readonly ProjectionRecord[];
   modules: readonly ProjectionRecord[];
   programs: readonly ProjectionRecord[];
-  progress: ProjectionRecord;
+  progress: Record<string, ModuleProgressV4>;
   artifact_revisions: ProjectionRecord;
-  project_aliases: ProjectionRecord;
-  project_relationships: readonly ProjectRelationshipV2[];
-  projects: readonly ProjectV2[];
+  project_aliases: Record<string, string>;
+  project_relationships: readonly ProjectRelationshipV4[];
+  projects: readonly ProjectV4[];
   quarantine_boundaries: readonly ProjectionRecord[];
   records: readonly ProjectionRecord[];
   relations: readonly ProjectionRecord[];
-  resume_pointer: ProjectionRecord | null;
+  resume_pointer: ResumePointerV4 | null;
   semesters: readonly ProjectionRecord[];
   stages: readonly ProjectionRecord[];
   study_maps: readonly ProjectionRecord[];
-  thematic_groups: readonly ThematicGroupV2[];
-  topic_packs: readonly TopicPackV2[];
-  topics: readonly TopicV2[];
-  units: readonly UnitV2[];
+  thematic_groups: readonly ThematicGroupV4[];
+  topic_packs: readonly TopicPackV4[];
+  topics: readonly TopicV4[];
+  units: readonly UnitV4[];
 }
 
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function requireArray(record: JsonRecord, key: keyof ManifestV2): void {
+function requireArray(record: JsonRecord, key: keyof ManifestV4): void {
   if (!Array.isArray(record[key])) {
-    throw new TypeError(`Manifest v2 field ${String(key)} must be an array.`);
+    throw new TypeError(`Manifest v4 field ${String(key)} must be an array.`);
   }
 }
 
 /** Fail closed before an untyped projection reaches feature code. */
-export function assertManifestV2(value: unknown): asserts value is ManifestV2 {
+export function assertManifestV4(value: unknown): asserts value is ManifestV4 {
   if (!isRecord(value) || !isRecord(value._generated)) {
-    throw new TypeError("Manifest v2 requires an _generated object.");
+    throw new TypeError("Manifest v4 requires an _generated object.");
   }
   if (value._generated.contract_version !== MANIFEST_CONTRACT_VERSION) {
     throw new TypeError(
@@ -186,13 +278,13 @@ export function assertManifestV2(value: unknown): asserts value is ManifestV2 {
   for (const unit of value.units as unknown[]) {
     if (!isRecord(unit) || typeof unit.id !== "string" || typeof unit.notes_text !== "string"
       || !Array.isArray(unit.note_sections)) {
-      throw new TypeError("Manifest v2 unit rows require projected unit note fields.");
+      throw new TypeError("Manifest v4 unit rows require projected unit note fields.");
     }
   }
 
   for (const key of ["ai_actions", "artifact_revisions", "backlinks", "counts", "indexes", "progress", "project_aliases"] as const) {
     if (!isRecord(value[key])) {
-      throw new TypeError(`Manifest v2 field ${key} must be an object.`);
+      throw new TypeError(`Manifest v4 field ${key} must be an object.`);
     }
   }
 }

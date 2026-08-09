@@ -6,14 +6,14 @@ import {
   empty,
   localFilePath,
   pageHeader,
-  progressRow,
   projectedExcerpt,
   section,
   unitCard,
 } from '../components';
 import { LEARN_AREAS, VIEW_PROGRAM } from '../constants';
-import type { ProjectionRecord } from '../contracts/manifest-v2';
+import type { ProjectionRecord } from '../contracts/manifest-v4';
 import type { LearningOSUI } from '../main';
+import { errorMessage, isRecord } from '../projection/readers';
 
 interface ProgramViewState {
   programId?: string | null;
@@ -33,6 +33,7 @@ type ProgramPlugin = Pick<
   | 'mutate'
   | 'openLearn'
   | 'openModule'
+  | 'openProjects'
   | 'openUnit'
   | 'setInboxDraft'
   | 'store'
@@ -44,16 +45,6 @@ const COORDINATION_HEADINGS = [
   'Dependencies',
   'Deferrals',
 ] as const;
-
-function isRecord(
-  value: unknown,
-): value is Record<string, unknown> {
-  return (
-    typeof value === 'object'
-    && value !== null
-    && !Array.isArray(value)
-  );
-}
 
 function readProgramSemesters(
   value: unknown,
@@ -80,10 +71,6 @@ function readProgramSemesters(
   }
 
   return semesters;
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 export class ProgramView extends ItemView {
@@ -178,12 +165,17 @@ export class ProgramView extends ItemView {
       return;
     }
 
-    pageHeader(root, '', 'Learn');
+    pageHeader(
+      root,
+      'Learn',
+      'Learning horizon',
+      'Current commitments, long-running skills, and the degree structure they belong to.',
+    );
 
     // The areas are sub-areas of one destination now, so the switcher lives in
     // the page rather than eating three permanent sidebar slots.
     const tabs = root.createDiv({
-      cls: 'los-tabs',
+      cls: 'los-tabs los-program-tabs',
       attr: {
         role: 'tablist',
       },
@@ -214,30 +206,120 @@ export class ProgramView extends ItemView {
       });
     }
 
-    const modules = this.plugin.store.modulesFor(program.id);
+    const semesters = readProgramSemesters(
+      program.semesters,
+    );
+
+    const currentSemester = semesters.find(
+      (semester) => semester.status === 'current',
+    );
+
+    const modules = program.id
+      ? this.plugin.store.modulesFor(program.id)
+      : [];
+
+    const context = root.createDiv({
+      cls: 'los-learning-context',
+    });
+
+    context.createEl('h2', {
+      text:
+        currentSemester?.title
+        ?? (
+          program.id === 'program-skills'
+            ? 'Long-running tracks'
+            : projectedExcerpt(
+              program.title,
+              80,
+            ) || 'Learning'
+        ),
+    });
+
+    context.createSpan({
+      text:
+        `${modules.length} commitment${
+          modules.length === 1 ? '' : 's'
+        } · ${
+          currentSemester?.status
+          ?? projectedExcerpt(program.status, 40)
+        }`,
+    });
+
     const list = root.createDiv({
       cls: 'los-learning-list',
     });
 
     if (!modules.length) {
-      empty(
-        root,
-        'No modules in this area yet',
-        'Nothing is hidden.',
-      );
+      if (program.id === 'program-thesis-projects') {
+        empty(
+          root,
+          'Projects have their own operating space',
+          'The horizon keeps the commitment visible; project structure, decisions, and files stay together in Projects.',
+          'Open Projects',
+          () => this.plugin.openProjects(),
+        );
+      } else {
+        empty(
+          root,
+          'No commitments in this area yet',
+          'Nothing is hidden.',
+        );
+      }
     }
 
     for (const module of modules) {
-      progressRow(list, this.plugin, module);
+      const row = list.createDiv({
+        cls: 'los-learning-row',
+      });
+
+      const copy = row.createDiv({
+        cls: 'los-learning-copy',
+      });
+
+      const title = button(
+        copy,
+        projectedExcerpt(
+          module.title,
+          180,
+        ) || projectedExcerpt(module.id, 180),
+        () => this.plugin.openModule(
+          projectedExcerpt(module.id, 180),
+        ),
+        'row',
+      );
+
+      title.addClass('los-learning-title');
+
+      const examination = isRecord(
+        module.examination,
+      )
+        ? projectedExcerpt(
+          module.examination.type,
+          80,
+        )
+        : '';
+
+      const meta = [
+        projectedExcerpt(module.status, 60),
+        module.credits
+          ? `${projectedExcerpt(module.credits, 20)} LP`
+          : '',
+        examination,
+      ]
+        .filter(Boolean)
+        .join(' · ');
+
+      row.createDiv({
+        cls: 'los-learning-meta los-micro',
+        text: meta,
+      });
     }
 
     if (Boolean(program.semester_bound)) {
       const semesters = disclosure(root, 'Semesters');
 
       for (
-        const semester of readProgramSemesters(
-          program.semesters,
-        )
+        const semester of readProgramSemesters(program.semesters)
       ) {
         const row = semesters.createDiv({
           cls: 'los-row',
@@ -326,7 +408,7 @@ export class ProgramView extends ItemView {
 
     const units = this.plugin.store.units().filter(
       (row: ProjectionRecord) =>
-        !this.plugin.store.mapForUnit(row.id),
+        !row.id || !this.plugin.store.mapForUnit(row.id),
     );
 
     for (const unit of units) {

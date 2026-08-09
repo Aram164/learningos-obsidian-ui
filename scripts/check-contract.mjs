@@ -47,7 +47,7 @@ if (declared !== lock.contract_version) {
   throw new Error(`src/constants.ts expects contract ${declared}; lock expects ${lock.contract_version}.`);
 }
 
-const typed = fs.readFileSync(path.join(root, 'src/contracts/manifest-v2.ts'), 'utf8');
+const typed = fs.readFileSync(path.join(root, 'src/contracts/manifest-v4.ts'), 'utf8');
 const typedDeclared = Number(typed.match(/MANIFEST_CONTRACT_VERSION\s*=\s*(\d+)/)?.[1]);
 if (typedDeclared !== lock.contract_version) {
   throw new Error(`Typed contract expects ${typedDeclared}; lock expects ${lock.contract_version}.`);

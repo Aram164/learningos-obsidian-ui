@@ -1,0 +1,18 @@
+/* First-class Projects */
+.los-project-list { display: grid; gap: var(--size-4-3); margin-top: var(--size-4-4); }
+.los-project-row { width: 100%; text-align: left; appearance: none; min-width: 0; }
+.los-project-tabs { display: flex; flex-wrap: wrap; gap: var(--size-2-2); margin: var(--size-4-4) 0; }
+.los-project-tabs .is-active { background: var(--los-paper-3); box-shadow: inset 0 -2px 0 var(--los-accent); }
+.los-project-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--size-4-3); }
+.los-project-meta, .los-project-node { border: 1px solid var(--los-rule); border-radius: var(--radius-m); padding: var(--size-4-3); }
+.los-project-structure, .los-project-node-children { display: grid; gap: var(--size-4-3); }
+.los-project-node-children { margin-top: var(--size-4-3); margin-left: var(--size-4-4); }
+.los-project-link { display: flex; align-items: center; justify-content: space-between; gap: var(--size-4-3); }
+.los-project-link-copy { min-width: 0; }
+@media (max-width: 720px) {
+  .los-project-link { align-items: stretch; flex-direction: column; }
+  .los-project-node-children { margin-left: var(--size-4-2); }
+}
+
+
+

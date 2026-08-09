@@ -200,10 +200,10 @@ async function main() {
       && !element.findText('los-btn', 'Search').classes.has('los-btn--cta'));
     check('Today contains time-sensitive work and a review entry',
       text.includes('Fixture registration') && text.includes('decision')
-      && text.includes('Recent Garden capture'));
+      && !text.includes('Recent Garden capture'));
     check('Continue elsewhere is a short resume list, not the complete catalogue',
       element.find('los-home-row').length <= 8
-      && text.includes('Fixture Advanced ML') && text.includes('Python') && text.includes('Bachelor thesis'));
+      && text.includes('Fixture Advanced ML') && !text.includes('Python') && text.includes('Bachelor thesis'));
     check('Home no longer renders module progress rows or a queue dashboard',
       element.find('los-learning-row').length === 0
       && element.find('los-queue-card').length === 0
@@ -229,7 +229,8 @@ async function main() {
     });
     const text = home.view.contentEl.allText();
     check('a module the core marks non-actionable leaves Continue elsewhere',
-      !text.includes('Fixture Advanced ML') && text.includes('Python'));
+      !text.includes('Fixture Advanced ML') && !text.includes('Python')
+      && text.includes('Bachelor thesis'));
     plugin.onunload();
   }
 
@@ -346,6 +347,11 @@ async function main() {
     check('seven permanent destinations, no more',
       nav.find('los-nav-primary')[0].find('los-app-nav-item').length === 7
       && ['Home', 'Modules', 'Learn', 'Projects', 'Library', 'Garden', 'Review'].every((label) => text.includes(label)));
+    check('the application navigator opens at the compact design width',
+      fs.readFileSync(path.join(ROOT, 'src', 'app', 'registration.ts'), 'utf8')
+        .includes('leftSplit?.setSize?.(280)'));
+    check('Review is available as a first-class Obsidian command',
+      Boolean(plugin.commands.find((row) => row.id === 'open-review')));
     check('maintenance and boundaries are not study destinations',
       nav.find('los-nav-more').length === 1
       && nav.find('los-nav-secondary')[0].allText().includes('Rebuild projection')
@@ -364,7 +370,8 @@ async function main() {
       reviewRoot.find('los-review-decision-row').length === plugin.store.reviewItems().length
       && review.includes('Plan Analysis exam prep')
       && review.includes('This unit needs a study map')
-      && reviewRoot.find('los-review-count').length === 0);
+      && reviewRoot.find('los-review-count-badge').length === 1
+      && reviewRoot.find('los-review-filters').length === 1);
     await plugin.openDiagnostics();
     const diagnostics = app.workspace.getLeavesOfType(VIEW.diagnostics)[0].view.contentEl.allText();
     check('Diagnostics reports contract, freshness and interpreter',
@@ -382,11 +389,10 @@ async function main() {
     await plugin.openBoundary('program-masters-planning');
     const masters = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl.allText();
     check('Master surface exposes quarantine only', masters.includes('quarantined') && !masters.includes('prospective module menu'));
-    await plugin.openReview();
-    app.workspace.getLeavesOfType(VIEW.review)[0].view.contentEl
-      .findText('los-btn', 'Open the Garden').fire('click'); await tick();
-    check('the Garden stays reachable from Review as a review surface',
-      Boolean(app.workspace.getLeavesOfType('learningos-garden')[0]));
+    await plugin.openGarden();
+    check('Garden marks Garden, not Review, as the active destination',
+      nav.findText('los-app-nav-item', 'Garden')?.classes.has('is-active')
+      && !nav.findText('los-app-nav-item', 'Review')?.classes.has('is-active'));
     nav.findText('los-app-nav-item', 'Domain atlas').fire('click'); await tick();
     /* The atlas is a decision surface, not a document: opening it must give a
      * navigable view. The Markdown file stays reachable from inside it, because
@@ -503,17 +509,18 @@ async function main() {
         && reviewText.includes(
           'This unit needs a study map before structured study can continue.',
         )
-        && review.find('los-review-count').length === 0,
+        && review.find('los-review-count-badge').length === 1
+        && review.find('los-review-filters').length === 1,
     );
 
     review.findText(
       'los-btn',
-      'Open capture',
+      'Route',
     ).fire('click');
 
     review.findText(
       'los-btn',
-      'Review shelving',
+      'Review proposal',
     ).fire('click');
 
     review.findText(
@@ -535,13 +542,8 @@ async function main() {
     );
 
     check(
-      'Garden remains reachable but is not synthesized into the Review queue',
-      Boolean(
-        review.findText(
-          'los-btn',
-          'Open the Garden',
-        ),
-      )
+      'Garden is not synthesized into the Review queue',
+      review.allText().includes('Garden stays quiet')
         && review.find('los-review-decision-row').length === 3,
     );
 
@@ -573,9 +575,8 @@ async function main() {
             'Add seed',
           ),
         )
-        && garden.allText().includes(
-          'No automatic classification',
-        ),
+        && garden.allText().includes('No filing required')
+        && garden.find('los-garden-filters').length === 1,
     );
 
     const title =
@@ -782,12 +783,12 @@ async function main() {
     );
 
     check(
-      'Learning Sources and Topic Packs remain separate collections',
+      'Sources and Curated packs remain separate collections',
       view.contentEl.find(
         'los-collection-switch',
       ).length === 1
-        && text.includes('Learning Sources')
-        && text.includes('Topic Packs'),
+        && text.includes('Sources')
+        && text.includes('Curated packs'),
     );
 
     const select = (dimension) =>
@@ -1244,23 +1245,16 @@ async function main() {
     await plugin.openModules();
     let view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
     let text = view.contentEl.allText();
-    check('Modules opens on explicit thematic groups only',
-      view.screen === 'groups' && view.contentEl.find('los-group-card').length === FIXTURE_GROUP_COUNT
-      && view.contentEl.find('los-unit-card').length === 0);
-    view.contentEl.findText('los-group-card', 'Mathematics').fire('click'); await tick();
-    view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
-    check('selecting a group replaces the route with a full-page module list',
-      view.screen === 'list' && view.groupId === 'thematic-group-mathematics'
-      && view.contentEl.find('los-route-row').length === 2
-      && view.contentEl.find('los-unit-card').length === 0);
-    const search = view.contentEl.find('los-route-search')[0];
-    search.value = 'M2F'; search.fire('input'); await tick();
-    view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
-    check('module query is persisted on the product route',
-      plugin.router.snapshot().current.name === 'module-list'
-      && plugin.router.snapshot().current.query === 'M2F'
-      && view.contentEl.find('los-route-row').length === 1);
-    view.contentEl.find('los-route-row')[0].fire('click'); await tick();
+    check('Modules contains only the current semester',
+      view.screen === 'groups'
+      && view.contentEl.find('los-semester-module-row').length === 2
+      && text.includes('SoSe 2099')
+      && text.includes('Fixture Statistics & Analysis')
+      && text.includes('Fixture Advanced ML')
+      && !text.includes('Python')
+      && view.contentEl.find('los-group-card').length === 0);
+    view.contentEl.findText('los-semester-module-row', 'Fixture Statistics & Analysis')
+      .fire('click'); await tick();
     view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
     text = view.contentEl.allText();
     check('a module opens as a full-page detail route',
@@ -1268,7 +1262,8 @@ async function main() {
     /* Units is the default: a learner opens a module to study, not to read a
      * credit count. Administration is one tab away, never in the header. */
     check('the module opens on Units, not on administration',
-      view.contentEl.find('los-unit-card').length > 0);
+      view.contentEl.find('los-module-unit-list').length === 1
+      && view.contentEl.find('los-record-row').length > 0);
     check('the header carries one line of facts, not six labelled rows',
       view.contentEl.find('los-module-facts').length === 1
       && !text.includes('Institution') && !text.includes('Credits'));
@@ -1278,7 +1273,7 @@ async function main() {
     check('needs-map is explicit', text.includes('needs map') || text.includes('needs-map'));
     view.contentEl.findText('los-btn', 'Analysis').fire('click'); await tick();
     view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
-    const unitText = view.contentEl.find('los-unit-card').map((card) => card.allText()).join(' ');
+    const unitText = view.contentEl.find('los-module-unit-list')[0].allText();
     check('component selection filters units without merging state', unitText.includes('Analysis exam prep') && !unitText.includes('Lecture 04'));
     view.contentEl.findText('los-btn', 'Logistics').fire('click'); await tick();
     view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
@@ -1286,15 +1281,16 @@ async function main() {
     check('academic facts stay on the academic module, under Logistics',
       text.includes('Fixture University') && text.includes('klausur') && text.includes('10'));
     check('logistics does not block unit browsing',
-      view.contentEl.find('los-unit-card').length === 0);
+      view.contentEl.find('los-module-unit-list').length === 0);
     view.contentEl.findText('los-btn', 'Overview').fire('click'); await tick();
     text = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl.allText();
     check('related workspaces render their next action instead of a raw CONTEXT link',
       text.includes('Next action') && text.includes('Work the Conditional probability and Bayes stage'));
     await plugin.back();
     view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
-    check('Back restores the module group query and full-page list',
-      view.screen === 'list' && view.query === 'M2F' && view.contentEl.find('los-route-row').length === 1);
+    check('Back restores the current-semester module list',
+      view.screen === 'groups'
+      && view.contentEl.find('los-semester-module-row').length === 2);
     plugin.onunload();
   }
 
@@ -1315,12 +1311,12 @@ async function main() {
     const detail = app.workspace.getLeavesOfType(VIEW.project)[0].view;
     check('opening a project replaces the route rather than splitting the screen',
       plugin.router.snapshot().current.name === 'project-detail'
-      && detail.contentEl.allText().includes('Overview')
+      && detail.contentEl.allText().includes('Structure')
       && detail.contentEl.find('los-project-list').length === 0);
     check('project detail exposes the approved five tabs',
-      ['Overview', 'Structure', 'Linked Materials', 'Files', 'Decisions']
+      ['Structure', 'Decisions', 'Materials', 'Files', 'Logistics']
         .every((label) => detail.contentEl.allText().includes(label)));
-    detail.contentEl.findText('los-btn', 'Thesis landscape').fire('click'); await tick();
+    detail.contentEl.findText('los-chip', 'Thesis landscape').fire('click'); await tick();
     const projectUnit = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
     check('project-owned units retain first-class project context',
       projectUnit.contentEl.allText().includes('Bachelor thesis')
@@ -2075,14 +2071,30 @@ async function main() {
       'detour.create', 'detour.resolve', 'review.prepare', 'review.apply',
       'session-end'].every((command) => source.includes(command)));
     const buildSource = fs.readFileSync(path.join(ROOT, 'build.mjs'), 'utf8');
-    const mainSource = fs.readFileSync(path.join(ROOT, 'src', 'main.ts'), 'utf8');
+    const registrationSource = fs.readFileSync(
+      path.join(ROOT, 'src', 'app', 'registration.ts'), 'utf8');
     check('bundle is generated from an explicit module graph',
       fs.readdirSync(path.join(ROOT, 'src', 'views')).length >= 8
       && buildSource.includes("entryPoints: ['src/main.ts']")
       && buildSource.includes('bundle: true')
-      && mainSource.includes("from './views/unit-view'")
+      && registrationSource.includes("from '../views/unit-view'")
       && !buildSource.includes('const files = ['));
     const css = fs.readFileSync(path.join(ROOT, 'plugin', 'styles.css'), 'utf8');
+    /* The same rule the bundle already lives under, applied to the cascade: a
+     * stylesheet assembled from whatever happens to be in a directory has no
+     * declared order, and cascade order is the one thing a stylesheet cannot
+     * leave implicit. Every module present must be named in the cascade, and
+     * the shipped file must announce that it is an artifact. */
+    const stylesSource = fs.readFileSync(path.join(ROOT, 'build-styles.mjs'), 'utf8');
+    const declaredStyleModules = (stylesSource.match(/'\d\d-[a-z0-9-]+\.css'/g) || [])
+      .map((quoted) => quoted.slice(1, -1));
+    const presentStyleModules = fs.readdirSync(path.join(ROOT, 'src', 'styles'))
+      .filter((name) => name.endsWith('.css'));
+    check('the stylesheet is composed from an explicit cascade',
+      presentStyleModules.length >= 10
+      && presentStyleModules.every((name) => declaredStyleModules.includes(name))
+      && buildSource.includes('writeStylesheet(')
+      && css.startsWith('/* GENERATED by build-styles.mjs'));
     /* Any literal colour, not just hex. A palette written in rgb()/hsl() is
      * exactly as theme-breaking as one written in #rrggbb, and grepping only
      * for hex let a 13-colour hardcoded palette through unnoticed. */

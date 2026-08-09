@@ -216,7 +216,7 @@ export class ApplicationRouter {
       case 'learn': return { type: VIEW_PROGRAM, state: { programId: route.programId }, nav: 'learn' };
       case 'capture': return { type: VIEW_PROGRAM, state: { programId: 'inbox' }, nav: 'capture' };
       case 'review': return { type: VIEW_REVIEW, state: {}, nav: 'review' };
-      case 'garden': return { type: VIEW_GARDEN, state: {}, nav: 'review' };
+      case 'garden': return { type: VIEW_GARDEN, state: {}, nav: 'garden' };
       case 'diagnostics': return { type: VIEW_DIAGNOSTICS, state: {}, nav: 'diagnostics' };
       case 'program': return {
         type: VIEW_PROGRAM, state: { programId: route.programId },
@@ -240,7 +240,7 @@ export class ApplicationRouter {
       };
       case 'project-list': return { type: VIEW_PROJECT, state: { screen: 'list', query: route.query || '' }, nav: 'projects' };
       case 'project-detail': return {
-        type: VIEW_PROJECT, state: { screen: 'detail', projectId: route.projectId, tab: route.tab || 'overview' }, nav: 'projects',
+        type: VIEW_PROJECT, state: { screen: 'detail', projectId: route.projectId, tab: route.tab || 'structure' }, nav: 'projects',
       };
       case 'unit': return {
         type: VIEW_UNIT,

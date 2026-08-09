@@ -17,10 +17,15 @@ import {
 } from '../constants';
 import type {
   ProjectionRecord,
-} from '../contracts/manifest-v2';
+} from '../contracts/manifest-v4';
 import type {
   LearningOSUI,
 } from '../main';
+import {
+  asLabel as projectedLabel,
+  asListLength as projectedListLength,
+  asString as projectedString,
+} from '../projection/readers';
 
 interface AtlasViewState {
   domain?: string | null;
@@ -49,32 +54,6 @@ export const ATLAS_ROLE_ORDER: readonly string[] = [
   'exercise-bank',
   'mock-exam',
 ];
-
-function projectedString(
-  value: unknown,
-): string | null {
-  return typeof value === 'string' && value
-    ? value
-    : null;
-}
-
-function projectedLabel(
-  record: ProjectionRecord,
-): string {
-  return (
-    projectedString(record.title)
-    ?? projectedString(record.id)
-    ?? 'Untitled'
-  );
-}
-
-function projectedListLength(
-  value: unknown,
-): number {
-  return Array.isArray(value)
-    ? value.length
-    : 0;
-}
 
 function projectedMetadata(
   values: readonly unknown[],

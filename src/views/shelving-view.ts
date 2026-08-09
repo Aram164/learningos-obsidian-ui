@@ -1,12 +1,9 @@
 import { ItemView, Notice, type WorkspaceLeaf } from 'obsidian';
 import { button, empty, pageHeader, section, unitCard } from '../components';
 import { VIEW_SHELVING } from '../constants';
-import type { ProjectionRecord } from '../contracts/manifest-v2';
+import type { ProjectionRecord } from '../contracts/manifest-v4';
 import type { LearningOSUI } from '../main';
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
+import { errorMessage, isRecord, optionalString } from '../projection/readers';
 
 interface ShelvingViewState {
   unitId?: string | null;
@@ -36,24 +33,6 @@ type ShelvingPlugin = Pick<
   | 'openUnit'
   | 'store'
 >;
-
-function isRecord(
-  value: unknown,
-): value is Record<string, unknown> {
-  return (
-    typeof value === 'object'
-    && value !== null
-    && !Array.isArray(value)
-  );
-}
-
-function optionalString(
-  value: unknown,
-): string | undefined {
-  return typeof value === 'string'
-    ? value
-    : undefined;
-}
 
 function readShelvingProposal(
   value: unknown,
@@ -221,6 +200,7 @@ export class ShelvingView extends ItemView {
     pageHeader(root, 'Approval gate', 'Shelving',
       unit ? `${unit.title}: review durable changes before the gateway applies them.` : 'Choose a unit that is ready to shelve.');
     if (!unit) { this.renderQueue(root); return; }
+    if (!unit.id) { empty(root, 'Unit unavailable', 'The projection returned a unit without an identity.'); return; }
     const map = this.plugin.store.mapForUnit(unit.id);
     const proposal = this.proposal
       ?? readShelvingProposal(map?.shelving);

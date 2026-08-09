@@ -1,0 +1,386 @@
+import { Notice } from 'obsidian';
+import type { UnitView } from '../../views/unit-view';
+import {
+  badge,
+  button,
+  chip,
+  disclosure,
+  empty,
+  icon,
+  overflowMenu,
+  pageHeader,
+  section,
+} from '../../components';
+import type { ProjectionRecord } from '../../contracts/manifest-v4';
+import {
+  asLabel as projectedLabel,
+  asRecords as projectedRecords,
+  asString as projectedString,
+  asStrings as projectedStrings,
+  asText as projectedText,
+  isRecord,
+} from '../../projection/readers';
+import {
+  type UnitRecordView,
+  type StageRecordView,
+  type ResourceRecordView,
+  type StudyMapView,
+  readUnitRecord,
+  readStage,
+  readStudyMap,
+  readArtifacts,
+  artifactLabel,
+  fallbackRecord,
+  errorMessage,
+} from './model';
+
+export function render(
+  view: UnitView,
+): void {
+    const root = view.contentEl;
+
+    root.empty();
+    root.addClass(
+      'los-root',
+      'los-unit-view',
+    );
+
+    const routeUnitId =
+      view.unitId;
+
+    const projectedUnit =
+      routeUnitId
+        ? view.plugin.store.get(
+          routeUnitId,
+        )
+        : null;
+
+    const unit = readUnitRecord(
+      projectedUnit,
+      routeUnitId,
+    );
+
+    if (!unit) {
+      empty(
+        root,
+        'Unit unavailable',
+        'Return to its module.',
+      );
+
+      return;
+    }
+
+    const module =
+      view.plugin.store.get(
+        unit.moduleId,
+      );
+
+    const project =
+      view.plugin.store.projectForUnit(
+        unit.record,
+      );
+
+    const ownerLabel =
+      projectedLabel(
+        project,
+        projectedLabel(
+          module,
+          unit.moduleId,
+        ),
+      );
+
+    const header = pageHeader(
+      root,
+      `${ownerLabel} · ${unit.kind}`,
+      unit.title,
+      unit.scope,
+    );
+
+    const headerActions =
+      header.createDiv({
+        cls: 'los-actions',
+      });
+
+    if (project) {
+      button(
+        headerActions,
+        'Back to project',
+        () => view.plugin.back(),
+        'quiet',
+      );
+    } else {
+      button(
+        headerActions,
+        'Back to module',
+        () => view.plugin.openModule(
+          unit.moduleId,
+        ),
+        'quiet',
+      );
+    }
+
+    const projectedStudyMap =
+      view.plugin.store.mapForUnit(
+        unit.id,
+      );
+
+    if (!projectedStudyMap) {
+      const missing = section(
+        root,
+        'Study map needed',
+      );
+
+      const projectId =
+        projectedString(project?.id)
+        ?? undefined;
+
+      const componentId =
+        unit.componentId
+        ?? undefined;
+
+      empty(
+        missing,
+        'This unit has no current study script',
+        'AI may propose a scoped map; the core imports it only after review.',
+        'Create map with AI',
+        () => view.plugin.askAiScoped(
+          'Propose one study-map JSON document for this unit. Do not write files; include exact source actions and done-when criteria.',
+          {
+            moduleId: unit.moduleId,
+            projectId,
+            unitId: unit.id,
+            componentId,
+          },
+        ),
+      );
+
+      view.renderArtifacts(
+        root,
+        unit,
+      );
+
+      return;
+    }
+
+    const studyMap =
+      readStudyMap(
+        projectedStudyMap,
+      );
+
+    /* Deriving the first stage here rather than testing `.length` is what lets
+     * the compiler carry "this map has stages" through the rest of the render;
+     * the two conditions are equivalent. */
+    const firstStage = studyMap.stages[0];
+
+    if (!firstStage) {
+      const bare = section(
+        root,
+        'Study map needs stages',
+      );
+
+      empty(
+        bare,
+        'This study map has no stages yet',
+        'Stage authoring belongs to the core — import a map or add stages there, then rebuild views.',
+      );
+
+      view.renderArtifacts(
+        root,
+        unit,
+      );
+
+      return;
+    }
+
+    const stageIds = new Set(
+      studyMap.stages.map(
+        (stage) => stage.id,
+      ),
+    );
+
+    if (
+      !view.stageId
+      || !stageIds.has(view.stageId)
+    ) {
+      view.stageId =
+        (
+          studyMap.currentStageId
+          && stageIds.has(
+            studyMap.currentStageId,
+          )
+        )
+          ? studyMap.currentStageId
+          : firstStage.id;
+
+      view.plugin.setSelectedStage(
+        unit.id,
+        view.stageId,
+      );
+    }
+
+    const stage =
+      studyMap.stages.find(
+        (candidate) =>
+          candidate.id
+          === view.stageId,
+      )
+      ?? firstStage;
+
+    const layout = root.createDiv({
+      cls: 'los-unit-layout',
+    });
+
+    view.renderRail(
+      layout,
+      unit,
+      studyMap,
+      stage,
+    );
+
+    view.renderStage(
+      layout,
+      unit,
+      studyMap,
+      stage,
+    );
+
+    const more = disclosure(
+      root,
+      'Unit artifacts and evidence',
+      'los-unit-extras',
+    );
+
+    view.renderArtifacts(
+      more,
+      unit,
+    );
+  }
+
+export function renderRail(
+  view: UnitView,
+
+    layout: HTMLElement,
+    unit: UnitRecordView,
+    studyMap: StudyMapView,
+    current: StageRecordView,
+  ): void {
+    const rail = layout.createDiv({
+      cls: 'los-stage-rail',
+    });
+
+    rail.createEl('h2', {
+      text: 'Stages',
+    });
+
+    const currentIndex = studyMap.stages.findIndex(
+      (stage) => stage.id === current.id,
+    );
+
+    for (
+      const [index, stage]
+      of studyMap.stages.entries()
+    ) {
+      const selected =
+        stage.id === current.id;
+
+      const row = rail.createEl(
+        'button',
+        {
+          cls:
+            `los-stage-row los-s-${stage.status} ${
+              selected
+                ? 'is-selected'
+                : index > currentIndex
+                  ? 'is-upcoming'
+                  : 'is-before'
+            } is-clickable`,
+          attr: {
+            type: 'button',
+            'aria-current':
+              selected
+                ? 'step'
+                : 'false',
+          },
+        },
+      );
+
+      row.createSpan({
+        cls: 'los-stage-index',
+        text:
+          String(index + 1)
+            .padStart(2, '0'),
+      });
+
+      const copy = row.createSpan({
+        cls: 'los-stage-copy',
+      });
+
+      copy.createSpan({
+        text: stage.title,
+      });
+
+      const marker =
+        stage.status === 'complete'
+          ? 'Complete'
+          : stage.status === 'skipped'
+            ? 'Skipped'
+            : index === currentIndex
+              ? `Done when · ${stage.doneWhen.length} criteria`
+              : index > currentIndex
+                ? 'Not started'
+                : '';
+
+      if (marker) {
+        copy.createSpan({
+          cls: 'los-micro',
+          text: marker,
+        });
+      }
+
+      row.addEventListener(
+        'click',
+        () => {
+          void view.selectStage(
+            stage.id,
+          );
+        },
+      );
+    }
+
+    const stageRecords =
+      studyMap.stages.map(
+        (stage) => stage.record,
+      );
+
+    const add = button(
+      rail,
+      'Add note',
+      () => view.plugin.openUnitNote(
+        unit.record,
+        studyMap.record,
+      ),
+      'quiet',
+    );
+
+    add.addClass(
+      'los-add-unit-note',
+    );
+
+    const draft =
+      view.plugin.getUnitNoteDraft(
+        unit.id,
+        stageRecords,
+      );
+
+    if (
+      typeof draft.text === 'string'
+      && draft.text.trim()
+    ) {
+      rail.createDiv({
+        cls:
+          'los-micro los-unit-note-draft',
+        text:
+          'Unsaved unit-note draft kept locally.',
+      });
+    }
+  }

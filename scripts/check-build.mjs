@@ -3,9 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { STYLESHEET_MODULES, composeStylesheet } from '../build-styles.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const bundlePath = path.join(root, 'plugin', 'main.js');
+const stylesPath = path.join(root, 'plugin', 'styles.css');
 const infoPath = path.join(root, 'plugin', 'build-info.json');
 const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 
@@ -14,13 +16,14 @@ function buildOnce() {
   if (result.status !== 0) throw new Error(result.stderr || result.stdout || 'build failed');
   return {
     bundle: fs.readFileSync(bundlePath),
+    styles: fs.readFileSync(stylesPath, 'utf8'),
     info: fs.readFileSync(infoPath, 'utf8'),
   };
 }
 
 const first = buildOnce();
 const second = buildOnce();
-if (!first.bundle.equals(second.bundle) || first.info !== second.info) {
+if (!first.bundle.equals(second.bundle) || first.styles !== second.styles || first.info !== second.info) {
   throw new Error('Build is not deterministic: two consecutive builds differ.');
 }
 
@@ -41,4 +44,20 @@ if (!Array.isArray(info.modules) || !info.modules.includes('src/main.ts')
 if (second.bundle.includes(Buffer.from('/* ---- src/'))) {
   throw new Error('Legacy concatenation section markers remain in the bundle.');
 }
+/* The stylesheet is an artifact now, so it gets the artifact's guarantees: it
+ * is exactly the declared cascade, and build-info's fingerprint describes the
+ * file that actually ships. Hand-editing plugin/styles.css fails here rather
+ * than surviving until the next build silently discards it. */
+if (second.styles !== composeStylesheet()) {
+  throw new Error('plugin/styles.css is not the composition of src/styles — was it edited by hand?');
+}
+if (info.stylesheet_sha256 !== `sha256:${hash(second.styles)}`) {
+  throw new Error('build-info.json stylesheet fingerprint does not match plugin/styles.css.');
+}
+if (!Array.isArray(info.stylesheet_modules)
+    || info.stylesheet_modules.length !== STYLESHEET_MODULES.length
+    || !info.stylesheet_modules.includes('src/styles/00-tokens.css')) {
+  throw new Error('The stylesheet cascade did not report the expected source inputs.');
+}
 console.log(`build: deterministic ${info.bundler} ${info.modules.length}-module bundle ${info.bundle_sha256}`);
+console.log(`build: deterministic ${info.stylesheet_modules.length}-module stylesheet ${info.stylesheet_sha256}`);

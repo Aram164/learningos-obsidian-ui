@@ -1,10 +1,13 @@
 import { CONTRACT_VERSION } from './constants';
-import { assertManifestV2 } from './contracts/manifest-v2';
+import { assertManifestV4 } from './contracts/manifest-v4';
 import type {
-  ManifestV2,
+  ManifestV4,
+  ModuleProgressV4,
+  ProjectRelationshipV4,
   ProjectionRecord,
-  UnitNoteSectionV2,
-} from './contracts/manifest-v2';
+  UnitNoteSectionV4,
+} from './contracts/manifest-v4';
+import { asStrings } from './projection/readers';
 
 function isRecord(
   value: unknown,
@@ -27,7 +30,7 @@ export class ManifestStore {
   private readonly app: ManifestStoreHost;
   ready: boolean;
   error: string;
-  data: ManifestV2 | null;
+  data: ManifestV4 | null;
   records: ProjectionRecord[];
   byId: Map<string, ProjectionRecord>;
   contractVersion: number | null = null;
@@ -63,13 +66,15 @@ export class ManifestStore {
           `Unsupported manifest contract ${String(version ?? 'unknown')}; LearningOS UI requires contract ${CONTRACT_VERSION}.`,
         );
       }
-      assertManifestV2(parsed);
-      const manifest: ManifestV2 = parsed;
+      assertManifestV4(parsed);
+      const manifest: ManifestV4 = parsed;
       this.data = manifest;
       this.contractVersion = version;
       this.snapshotId = manifest._generated.snapshot_id;
       this.records = (manifest.records || []).filter((row) => row && typeof row === 'object');
-      this.byId = new Map(this.records.filter((row) => row?.id).map((row) => [row.id, row]));
+      this.byId = new Map(
+        this.records.flatMap((row) => typeof row.id === 'string' ? [[row.id, row] as const] : []),
+      );
       // `stages` is the core's flat by-id index (each stage carries its
       // study_map_id/unit_id/module_id). `study_maps[].stages` stays the
       // ordering authority for rails and progress counts — index plus ordered
@@ -118,11 +123,44 @@ export class ManifestStore {
   }
   programs() { return this.rows('programs'); }
   modules() { return this.rows('modules'); }
+  currentSemester(): ProjectionRecord | null {
+    return this.rows('semesters')
+      .filter((row) => row.status === 'current')
+      .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))[0]
+      || null;
+  }
+  /**
+   * Modules is a semester surface, not a second subject catalogue.
+   *
+   * Semester records use ids such as `semester-sose-2026`, while authored
+   * modules retain the shorter `sose-2026` value. Both spellings are accepted
+   * at this read boundary; the UI does not infer membership from thematic
+   * groups or from source usage.
+   */
+  currentSemesterModules(): ProjectionRecord[] {
+    const semester = this.currentSemester();
+    const semesterIds = new Set<string>();
+
+    if (typeof semester?.id === 'string') {
+      semesterIds.add(semester.id);
+      semesterIds.add(semester.id.replace(/^semester-/, ''));
+    }
+
+    return this.modules()
+      .filter((row) => {
+        if (row.kind !== 'academic') return false;
+        if (['completed', 'archived', 'dropped'].includes(String(row.status || ''))) return false;
+        if (!semesterIds.size) return row.status === 'enrolled';
+        return semesterIds.has(String(row.semester || ''));
+      })
+      .sort((a, b) => String(a.title || a.id || '')
+        .localeCompare(String(b.title || b.id || '')));
+  }
   projects() { return this.rows('projects'); }
   projectRelationships(
     projectId: string | null = null,
-  ): ProjectionRecord[] {
-    const rows = this.rows('project_relationships');
+  ): ProjectRelationshipV4[] {
+    const rows = [...(this.data?.project_relationships || [])];
     return projectId ? rows.filter((row) => row.from_project_id === projectId) : rows;
   }
   resolveProjectAlias(id: string): string { return this.data?.project_aliases?.[id] || id; }
@@ -151,9 +189,8 @@ export class ManifestStore {
     return this.topicPacks().filter((row) => (row.thematic_group_ids || []).includes(groupId));
   }
   units() { return this.rows('units'); }
-  unitNoteSections(unitId: string): UnitNoteSectionV2[] {
-    const sections = this.get(unitId)?.note_sections;
-    return Array.isArray(sections) ? sections : [];
+  unitNoteSections(unitId: string): UnitNoteSectionV4[] {
+    return [...(this.data?.units.find((unit) => unit.id === unitId)?.note_sections || [])];
   }
   studyMaps() { return this.rows('study_maps'); }
   gardenEntries() { return this.rows('garden_entries'); }
@@ -198,8 +235,13 @@ export class ManifestStore {
   sourceMap(moduleId: string): ProjectionRecord | null {
     return this.rows('module_source_maps').find((row) => row.module_id === moduleId) || null;
   }
-  progress(moduleId: string): ProjectionRecord {
-    return this.data?.progress?.[moduleId] || {};
+  progress(moduleId: string): ModuleProgressV4 {
+    return this.data?.progress?.[moduleId] || {
+      stages_complete: 0,
+      stages_total: 0,
+      units_total: 0,
+      units_needing_map: 0,
+    };
   }
   workspacesForModule(moduleId: string): ProjectionRecord[] {
     const rawIds =
@@ -258,7 +300,7 @@ export class ManifestStore {
   ): ProjectionRecord[] {
     const words = String(query || '').toLocaleLowerCase().split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
-    const rows = this.records.filter((row) => row && (!allowed || allowed.has(row.type)));
+    const rows = this.records.filter((row) => !allowed || (typeof row.type === 'string' && allowed.has(row.type)));
     if (!words.length) return rows;
     const strict = rows.filter((row) => {
       const hay = [row.id, row.title, ...(row.aliases || []), ...(row.authors || []),
@@ -282,11 +324,14 @@ export class ManifestStore {
     const ids = new Set<string>();
     for (const key of ['concepts', 'sources', 'contexts', 'notes', 'program_ids',
       'module_ids', 'unit_ids', 'unit_order', 'related_module_ids']) {
-      for (const value of record[key] || []) ids.add(value);
+      for (const value of asStrings(record[key])) ids.add(value);
     }
     for (const table of Object.values(this.data?.backlinks || {})) {
-      if (table && typeof table === 'object' && Array.isArray(table[id])) {
-        for (const value of table[id]) ids.add(typeof value === 'string' ? value : value.from);
+      if (isRecord(table) && Array.isArray(table[id])) {
+        for (const value of table[id]) {
+          if (typeof value === 'string') ids.add(value);
+          else if (isRecord(value) && typeof value.from === 'string') ids.add(value.from);
+        }
       }
     }
     for (const relationship of this.projectRelationships()) {

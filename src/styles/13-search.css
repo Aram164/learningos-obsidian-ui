@@ -1,0 +1,90 @@
+/* Persistent structural search launcher in the application navigator. */
+.los-nav-brand > strong { min-width: 0; flex: 1; }
+.los-root .los-nav-search {
+  display: grid;
+  width: 30px;
+  min-width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  place-items: center;
+  border-color: var(--los-line);
+  border-radius: var(--los-r-md);
+  color: var(--los-ink-soft);
+}
+
+/* Global structural search. It is an overlay over the current product route,
+ * never a replacement source of truth and never a file index. */
+.los-global-search {
+  width: min(860px, 82vw);
+  min-height: 0;
+  max-height: min(760px, 82vh);
+  padding: var(--los-4);
+  overflow: hidden;
+}
+.los-search-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--los-4);
+  margin-bottom: var(--los-3);
+}
+.los-root .los-search-header h2 { margin: 2px 0 0; font-size: 20px; }
+.los-root .los-global-search-input { min-height: 42px; padding: var(--los-2) var(--los-3); }
+.los-search-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-1);
+  margin: var(--los-3) 0;
+  padding-bottom: var(--los-2);
+  border-bottom: 1px solid var(--los-line);
+}
+.los-root .los-search-tab.is-active {
+  border-color: var(--los-accent);
+  background: var(--los-paper-3);
+  color: var(--los-ink);
+  font-weight: 650;
+}
+.los-search-results { max-height: min(520px, 58vh); overflow-y: auto; }
+.los-search-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--los-3);
+  align-items: baseline;
+  padding: 0 0 var(--los-2);
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-search-result-list { display: grid; }
+.los-root .los-search-result {
+  display: grid;
+  width: 100%;
+  min-height: 58px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--los-3);
+  align-items: center;
+  padding: var(--los-2) var(--los-3);
+  border: 0;
+  border-bottom: 1px solid var(--los-line);
+  border-radius: 0;
+  background: transparent;
+  text-align: left;
+}
+.los-root .los-search-result:hover, .los-root .los-search-result:focus-visible { background: var(--los-paper-3); }
+.los-search-result-copy { min-width: 0; }
+.los-search-result-copy strong { display: block; overflow-wrap: break-word; }
+.los-search-open { color: var(--los-accent); font-size: 12px; font-weight: 650; white-space: nowrap; }
+
+@media (max-width: 720px) {
+  .los-home-header { padding-right: 0; }
+  .los-home-header-actions { position: static; margin-top: var(--los-3); }
+  .los-global-search { width: min(94vw, 860px); max-height: 88vh; padding: var(--los-3); }
+}
+
+@media (max-width: 480px) {
+  .los-home-row, .los-search-result { grid-template-columns: minmax(0, 1fr); }
+  .los-search-open { justify-self: start; }
+  .los-search-header { align-items: center; }
+  .los-root .los-search-header h2 { font-size: 17px; }
+}
+

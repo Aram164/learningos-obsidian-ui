@@ -1,0 +1,51 @@
+/* Fact lists: Logistics and Diagnostics, never a learner-facing screen. */
+.los-fact-list { display: grid; gap: 0; border-top: 1px solid var(--los-line); }
+.los-fact-row { display: grid; grid-template-columns: minmax(120px, 30%) minmax(0, 1fr); gap: var(--los-3); padding: var(--los-1) 0; border-bottom: 1px solid var(--los-line); }
+.los-fact-label { color: var(--los-ink-soft); font-size: 12px; }
+.los-fact-value { min-width: 0; overflow-wrap: break-word; word-break: normal; }
+
+/* Module header: one line of facts, not six labelled rows. */
+.los-module-facts { color: var(--los-ink-soft); font-size: 13px; }
+.los-subtabs { display: flex; flex-wrap: wrap; gap: var(--los-1); margin-bottom: var(--los-3); }
+.los-overview { display: flex; flex-direction: column; gap: var(--los-3); align-items: flex-start; }
+.los-overview-progress { color: var(--los-ink-soft); }
+
+/* Review: the decision queues, one row each. */
+.los-review-list { display: grid; gap: 0; border-top: 1px solid var(--los-line-strong); }
+.los-review-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--los-3);
+  align-items: center;
+  padding: var(--los-3) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-review-copy { min-width: 0; }
+.los-review-heading { display: flex; gap: var(--los-2); align-items: baseline; }
+.los-review-count { color: var(--los-accent); font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.los-review-clear { color: var(--los-ink-soft); }
+
+/* Diagnostics: states, not a green dot. */
+.los-diagnostic-status {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--los-3);
+  align-items: center;
+  margin-bottom: var(--los-4);
+  padding: var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+.los-diagnostic-glyph { font-size: 20px; }
+.los-diagnostic-report { overflow-x: auto; margin-top: var(--los-3); padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--los-paper); color: var(--los-ink-soft); font-size: 12px; white-space: pre-wrap; }
+
+.los-root .los-btn, .los-root .los-chip {
+  display: inline-flex;
+  max-width: 100%;
+  align-items: center;
+  justify-content: center;
+  gap: var(--los-2);
+}
+.los-root .los-btn { min-height: 28px; padding: var(--los-1) var(--los-3); }
+.los-root .los-actions > .los-btn { text-align: left; }

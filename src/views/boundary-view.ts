@@ -1,8 +1,9 @@
 import { ItemView, Notice, type WorkspaceLeaf } from 'obsidian';
 import { boundaryPolicy, button, empty, pageHeader, section } from '../components';
 import { VIEW_BOUNDARY } from '../constants';
-import type { ProjectionRecord } from '../contracts/manifest-v2';
+import type { ProjectionRecord } from '../contracts/manifest-v4';
 import type { LearningOSUI } from '../main';
+import { asLabel } from '../projection/readers';
 
 type BoundaryPlugin = Pick<
   LearningOSUI,
@@ -57,7 +58,7 @@ export class BoundaryView extends ItemView {
         (row: ProjectionRecord) => row.id === this.boundaryId,
       );
     if (!boundary) { empty(root, 'Boundary unavailable', 'No quarantined content was loaded.'); return; }
-    pageHeader(root, 'Deliberate boundary', boundary.title, boundaryPolicy(boundary.description));
+    pageHeader(root, 'Deliberate boundary', asLabel(boundary, 'Boundary'), boundaryPolicy(boundary.description));
     const guard = section(root, 'What this means');
     if (boundary.id === 'program-job-boundary') {
       guard.createEl('p', { text: 'Job content is not indexed, searched, read, or mixed into LearningOS. Access requires a separate, explicit request.' });

@@ -1,0 +1,94 @@
+/* The unit is the operating surface: contract first, exact work second. */
+.los-unit-view {
+  padding: 28px 40px 36px !important;
+}
+
+.los-unit-view > .los-page-header {
+  width: min(1104px, 100%) !important;
+  margin-bottom: 16px !important;
+}
+
+.los-unit-view > .los-page-header h1 {
+  font-size: 20px !important;
+  line-height: 27px;
+  letter-spacing: 0;
+}
+
+.los-unit-view > .los-page-header > p { display: none; }
+
+.los-unit-layout {
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 18px;
+  width: min(1104px, 100%);
+  max-width: none;
+  min-height: 640px;
+  margin: 0 0 16px;
+  align-items: stretch;
+}
+
+.los-stage-rail,
+.los-stage-workspace {
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-lg);
+  background: var(--los-surface-raised);
+}
+
+.los-stage-rail { padding: 16px 10px; }
+.los-stage-rail h2 {
+  margin-bottom: 6px;
+  color: var(--los-ink-soft);
+  font-size: 11px !important;
+  letter-spacing: .075em;
+  text-transform: uppercase;
+}
+
+.los-root .los-stage-row {
+  min-height: 54px;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--los-r-md);
+}
+.los-root .los-stage-row.is-selected {
+  background: var(--los-accent-wash);
+  color: var(--los-accent);
+}
+.los-root .los-stage-row.is-upcoming { opacity: .68; }
+.los-stage-copy > span:first-child { font-weight: 600; }
+.los-stage-copy .los-micro { margin-top: 2px; font-weight: 400; }
+
+.los-stage-workspace {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  padding: 26px 28px;
+  box-shadow: 0 2px 8px var(--los-shadow-soft);
+}
+
+.los-stage-workspace > .los-section {
+  width: 100%;
+  max-width: none;
+  margin: 0 0 18px;
+}
+
+.los-stage-heading { margin-bottom: 16px; }
+.los-root .los-stage-heading h2 { font-size: 20px !important; line-height: 27px; }
+.los-stage-goal { margin-bottom: 18px; }
+.los-donewhen-list { gap: 2px; }
+.los-donewhen-row { min-height: 34px; }
+
+.los-resource-row {
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  padding: 11px 0;
+}
+.los-resource-row > .los-actions { grid-column: 3; }
+.los-resource-actions { justify-content: flex-end; }
+
+.los-stage-workspace > .los-unit-actionbar {
+  width: 100%;
+  max-width: none;
+  justify-content: flex-start;
+  margin: auto 0 0;
+  padding-top: 16px;
+}
+

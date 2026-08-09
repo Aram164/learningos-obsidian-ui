@@ -6,6 +6,7 @@ import {
 import {
   badge,
   button,
+  disclosure,
   empty,
   pageHeader,
 } from '../components';
@@ -15,14 +16,9 @@ import {
 } from '../features/ai-actions/action-button';
 import type {
   ProjectionRecord,
-} from '../contracts/manifest-v2';
+} from '../contracts/manifest-v4';
 import type { LearningOSUI } from '../main';
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error
-    ? error.message
-    : String(error);
-}
+import { asLabel, asString, errorMessage } from '../projection/readers';
 
 type GardenPlugin = Pick<
   LearningOSUI,
@@ -36,6 +32,21 @@ type GardenPlugin = Pick<
   | 'settings'
   | 'store'
 >;
+
+type GardenFilter =
+  | 'all'
+  | 'seed'
+  | 'review-due'
+  | 'harvest-candidate';
+
+const GARDEN_FILTERS: ReadonlyArray<
+  readonly [GardenFilter, string]
+> = [
+  ['all', 'All'],
+  ['seed', 'Growing'],
+  ['review-due', 'Review due'],
+  ['harvest-candidate', 'Candidates'],
+];
 
 /**
  * Garden is a durable holding ground for unfinished ideas.
@@ -51,6 +62,7 @@ export class GardenView extends ItemView {
   private seedTitle = '';
   private seedText = '';
   private planting = false;
+  private filter: GardenFilter = 'all';
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -105,18 +117,103 @@ export class GardenView extends ItemView {
 
     pageHeader(
       root,
-      '',
+      'Garden · Incubation',
       'Garden',
-      'Capture an unfinished idea without deciding where it belongs. '
-        + 'Classification, routing, and AI are separate later decisions.',
+      'Ideas can stay messy here until you know what they want to become.',
     );
 
-    const toolbar = root.createDiv({
-      cls: 'los-actions',
+    this.renderComposer(root);
+
+    const entries =
+      this.plugin.store.gardenEntries();
+
+    const filters = root.createDiv({
+      cls: 'los-garden-filters',
+      attr: {
+        role: 'tablist',
+        'aria-label': 'Garden filters',
+      },
     });
 
+    for (const [value, label] of GARDEN_FILTERS) {
+      const count = value === 'all'
+        ? entries.length
+        : entries.filter(
+          (entry) =>
+            String(entry.state || 'seed') === value,
+        ).length;
+
+      const control = button(
+        filters,
+        `${label}${count ? ` ${count}` : ''}`,
+        () => {
+          this.filter = value;
+          this.render();
+        },
+        'quiet',
+      );
+
+      control.addClass('los-filter-tab');
+      control.toggleClass(
+        'is-active',
+        this.filter === value,
+      );
+      control.setAttrs({
+        role: 'tab',
+        'aria-selected': String(
+          this.filter === value,
+        ),
+      });
+    }
+
+    const listHeader = root.createDiv({
+      cls: 'los-garden-list-header',
+    });
+
+    listHeader.createEl('h2', {
+      text: 'Growing ideas',
+    });
+
+    listHeader.createSpan({
+      cls: 'los-micro',
+      text: 'Review eligibility is projected by Core',
+    });
+
+    const visible = this.filter === 'all'
+      ? entries
+      : entries.filter(
+        (entry) =>
+          String(entry.state || 'seed') === this.filter,
+      );
+
+    if (!visible.length) {
+      empty(
+        root,
+        entries.length
+          ? 'Nothing in this view'
+          : 'No Garden seeds yet',
+        entries.length
+          ? 'Choose another Garden filter.'
+          : 'Plant one above. A seed needs no module, topic, destination, or AI.',
+      );
+    } else {
+      const list = root.createDiv({
+        cls: 'los-garden-list',
+      });
+
+      for (const target of visible) {
+        this.card(list, target);
+      }
+    }
+
+    const tools = disclosure(
+      root,
+      'Garden tools',
+      'los-utility-disclosure',
+    );
+
     button(
-      toolbar,
+      tools,
       'Open Garden base',
       () =>
         this.plugin.openVaultPath(
@@ -126,34 +223,11 @@ export class GardenView extends ItemView {
     );
 
     button(
-      toolbar,
+      tools,
       'Refresh projection',
       () => this.plugin.generate(),
       'quiet',
     );
-
-    this.renderComposer(root);
-
-    const entries =
-      this.plugin.store.gardenEntries();
-
-    if (!entries.length) {
-      empty(
-        root,
-        'No Garden seeds yet',
-        'Add one above. A seed does not need a module, topic, or destination.',
-      );
-
-      return;
-    }
-
-    const list = root.createDiv({
-      cls: 'los-garden-list',
-    });
-
-    for (const target of entries) {
-      this.card(list, target);
-    }
   }
 
   renderComposer(
@@ -164,45 +238,24 @@ export class GardenView extends ItemView {
     });
 
     composer.createEl('h2', {
-      text: 'Add seed',
+      text: 'Plant something…',
     });
 
     composer.createEl('p', {
       cls: 'los-muted',
       text:
-        'Write it as it occurs to you. '
-        + 'The text is stored as-is; title is optional.',
+        'A thought, question, fragment, or connection. '
+        + 'No filing required. No AI required.',
     });
-
-    const title = composer.createEl(
-      'input',
-      {
-        cls: 'los-garden-seed-title',
-        attr: {
-          type: 'text',
-          placeholder: 'Optional title',
-          'aria-label': 'Optional Garden seed title',
-        },
-      },
-    ) as HTMLInputElement;
-
-    title.value = this.seedTitle;
-
-    title.addEventListener(
-      'input',
-      () => {
-        this.seedTitle = title.value;
-      },
-    );
 
     const editor = composer.createEl(
       'textarea',
       {
         cls: 'los-garden-seed-editor',
         attr: {
-          rows: '5',
+          rows: '2',
           placeholder:
-            'A thought, question, connection, fragment…',
+            'What keeps returning to your mind?',
           'aria-label': 'Garden seed text',
         },
       },
@@ -218,8 +271,31 @@ export class GardenView extends ItemView {
     );
 
     const actions = composer.createDiv({
-      cls: 'los-actions',
+      cls:
+        'los-actions '
+        + 'los-garden-composer-actions',
     });
+
+    const title = actions.createEl(
+      'input',
+      {
+        cls: 'los-garden-seed-title',
+        attr: {
+          type: 'text',
+          placeholder: 'Title optional',
+          'aria-label': 'Optional Garden seed title',
+        },
+      },
+    ) as HTMLInputElement;
+
+    title.value = this.seedTitle;
+
+    title.addEventListener(
+      'input',
+      () => {
+        this.seedTitle = title.value;
+      },
+    );
 
     const add = button(
       actions,
@@ -233,12 +309,6 @@ export class GardenView extends ItemView {
     );
 
     add.disabled = this.planting;
-
-    composer.createDiv({
-      cls: 'los-micro',
-      text:
-        'No automatic classification · no routing · no AI',
-    });
   }
 
   async plantSeed(): Promise<void> {
@@ -284,10 +354,13 @@ export class GardenView extends ItemView {
     parent: HTMLElement,
     target: ProjectionRecord,
   ): HTMLElement {
+    const targetId = asString(target.id);
+    const targetState = asString(target.state) || 'seed';
+    const targetPath = asString(target.path);
     const card = parent.createDiv({
       cls:
         `los-card los-garden-card `
-        + `los-garden-${target.state || 'seed'}`,
+        + `los-garden-${targetState}`,
     });
 
     const top = card.createDiv({
@@ -295,18 +368,18 @@ export class GardenView extends ItemView {
     });
 
     top.createEl('h2', {
-      text: target.title || target.id,
+      text: asLabel(target, 'Garden seed'),
     });
 
     badge(
       top,
-      target.state || 'seed',
-      target.state || 'seed',
+      targetState,
+      targetState,
     );
 
     card.createDiv({
       cls: 'los-micro',
-      text: target.path,
+      text: targetPath || 'Path unavailable',
     });
 
     if (target.tags?.length) {
@@ -323,12 +396,12 @@ export class GardenView extends ItemView {
       }
     }
 
-    const latest =
-      this.plugin.store.latestAiRequest(
-        target.id,
-      );
+    const latest = targetId
+      ? this.plugin.store.latestAiRequest(targetId)
+      : null;
 
     if (latest) {
+      const bundlePath = asString(latest.bundle_path);
       const status = card.createDiv({
         cls: 'los-ai-request-status',
       });
@@ -344,10 +417,10 @@ export class GardenView extends ItemView {
           `${latest.provider || 'manual-bundle'} · ${latest.id}`,
       });
 
-      if (latest.bundle_path) {
+      if (bundlePath) {
         status.createDiv({
           cls: 'los-micro',
-          text: latest.bundle_path,
+          text: bundlePath,
         });
       }
 
@@ -356,13 +429,13 @@ export class GardenView extends ItemView {
           cls: 'los-actions',
         });
 
-      if (latest.bundle_path) {
+      if (bundlePath) {
         button(
           statusActions,
           'Copy bundle path',
           () =>
             this.plugin.copyText(
-              latest.bundle_path,
+              bundlePath,
             ),
           'quiet',
         );
@@ -372,6 +445,7 @@ export class GardenView extends ItemView {
         latest.delivery_id
         && latest.status !== 'applied'
       ) {
+        const deliveryId = latest.delivery_id;
         button(
           statusActions,
           'Apply approved delivery',
@@ -379,7 +453,7 @@ export class GardenView extends ItemView {
             try {
               await this.plugin.aiActions
                 .applyApprovedDelivery(
-                  latest.delivery_id,
+                  deliveryId,
                 );
 
               new Notice(
@@ -410,34 +484,26 @@ export class GardenView extends ItemView {
       cls: 'los-garden-actions',
     });
 
-    button(
-      actions,
-      'Open original',
-      () =>
-        this.plugin.openVaultPath(
-          target.path,
-        ),
-      'quiet',
-    );
+    if (targetPath) {
+      button(actions, 'Open original', () => this.plugin.openVaultPath(targetPath), 'quiet');
+    }
 
     if (target.transcription_path) {
+      const transcriptionPath = target.transcription_path;
       button(
         actions,
         'Open AI transcription',
         () =>
           this.plugin.openVaultPath(
-            target.transcription_path,
+            transcriptionPath,
           ),
         'quiet',
       );
     }
 
-    renderGardenShelveAction(
-      actions,
-      this.plugin,
-      target,
-      () => this.render(),
-    );
+    if (targetId) {
+      renderGardenShelveAction(actions, this.plugin, target, () => this.render());
+    }
 
     return card;
   }

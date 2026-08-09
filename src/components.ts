@@ -1,8 +1,10 @@
 import { setIcon } from 'obsidian';
 import { webUtils } from 'electron';
-import { ICONS, SAFE_URL_PROTOCOLS } from './constants';
-import type { ProjectionRecord } from './contracts/manifest-v2';
+import { ICONS } from './constants';
+import type { ProjectionRecord } from './contracts/manifest-v4';
 import type { LearningOSUI } from './main';
+import { asLabel, asRecords, asString } from './projection/readers';
+export { safeWebUrl } from './security/safe-url';
 
 /**
  * The card components read the projection and navigate. That is the whole
@@ -152,12 +154,16 @@ export function progressRow(
   module: ProjectionRecord,
   nextUp = '',
 ): UiNode {
+  const moduleId = asString(module.id);
+  const moduleTitle = asLabel(module);
   const row = parent.createDiv({ cls: 'los-learning-row' });
   const copy = row.createDiv({ cls: 'los-learning-copy' });
-  const title = button(copy, module.title, () => plugin.openModule(module.id), 'row');
+  const title = button(copy, moduleTitle, moduleId ? () => plugin.openModule(moduleId) : null, 'row');
   title.addClass('los-learning-title');
   if (nextUp) copy.createDiv({ cls: 'los-learning-next', text: nextUp });
-  const progress = plugin.store.progress(module.id);
+  const progress = moduleId ? plugin.store.progress(moduleId) : {
+    stages_complete: 0, stages_total: 0, units_total: 0, units_needing_map: 0,
+  };
   const meta = row.createDiv({ cls: 'los-learning-meta' });
   meta.createSpan({
     cls: 'los-micro',
@@ -172,13 +178,6 @@ export function progressRow(
  * arbitrary scheme to Electron. Anything outside the allowlist is refused
  * before it can reach a viewer.
  */
-export function safeWebUrl(value: unknown): URL | null {
-  try {
-    const url = new URL(String(value || ''));
-    return SAFE_URL_PROTOCOLS.includes(url.protocol) ? url : null;
-  } catch (_) { return null; }
-}
-
 export function empty(
   parent: UiNode,
   title: string,
@@ -205,7 +204,7 @@ export function projectedExcerpt(
 ): string {
   const [paragraph = ''] = String(value || '').split(/\n\s*\n/);
   const first = paragraph
-    .replace(/\*\*/g, '').replace(/`/g, '')
+    .replace(/\*{1,2}/g, '').replace(/`/g, '')
     .replace(/(^|\n)\s*-\s*/g, '$1').replace(/\s+/g, ' ').trim();
   if (first.length <= limit) return first;
   // Slice by code point: a plain .slice() could cut an emoji in half and leak a
@@ -230,10 +229,12 @@ export function workspaceCard(
   workspace: ProjectionRecord,
   moduleContext: string | null = null,
 ): UiNode {
-  const card = parent.createDiv({ cls: `los-card los-workspace-card los-s-${workspace.status}` });
+  const workspaceTitle = asLabel(workspace);
+  const workspaceStatus = asString(workspace.status) || 'active';
+  const card = parent.createDiv({ cls: `los-card los-workspace-card los-s-${workspaceStatus}` });
   const top = card.createDiv({ cls: 'los-card-top' });
-  top.createEl('h3', { text: workspace.title });
-  badge(top, workspace.standing ? `${workspace.status} · standing` : workspace.status, workspace.status);
+  top.createEl('h3', { text: workspaceTitle });
+  badge(top, workspace.standing ? `${workspaceStatus} · standing` : workspaceStatus, workspaceStatus);
   if (workspace.objective) card.createEl('p', { cls: 'los-workspace-objective', text: workspace.objective });
   const next = card.createDiv({ cls: 'los-next-action' });
   next.createDiv({ cls: 'los-kicker', text: 'Next action' });
@@ -259,24 +260,28 @@ export function unitCard(
   plugin: CardHost,
   unit: ProjectionRecord,
 ): UiNode {
+  const unitId = asString(unit.id);
+  const unitTitle = asLabel(unit);
+  const unitStatus = asString(unit.status) || 'ready';
   const card = parent.createEl('button', {
-    cls: `los-card los-unit-card los-s-${unit.status} is-clickable`,
-    attr: { type: 'button', 'aria-label': `Open unit: ${unit.title}` },
+    cls: `los-card los-unit-card los-s-${unitStatus} is-clickable`,
+    attr: { type: 'button', 'aria-label': `Open unit: ${unitTitle}` },
   });
   const top = card.createDiv({ cls: 'los-card-top' });
-  top.createEl('h3', { text: unit.title });
-  badge(top, unit.status, unit.status);
-  card.createEl('p', { text: unit.scope });
-  const map = plugin.store.mapForUnit(unit.id);
+  top.createEl('h3', { text: unitTitle });
+  badge(top, unitStatus, unitStatus);
+  card.createEl('p', { text: asString(unit.scope) || 'No scope projected.' });
+  const map = unitId ? plugin.store.mapForUnit(unitId) : null;
   if (map) {
-    const done = (map.stages || []).filter(
+    const stages = asRecords(map.stages);
+    const done = stages.filter(
       (row: ProjectionRecord) => row.status === 'complete',
     ).length;
-    card.createDiv({ cls: 'los-progress-copy', text: `${done} of ${(map.stages || []).length} stages complete` });
+    card.createDiv({ cls: 'los-progress-copy', text: `${done} of ${stages.length} stages complete` });
   } else {
     card.createDiv({ cls: 'los-progress-copy', text: 'No study map yet' });
   }
-  card.addEventListener('click', () => plugin.openUnit(unit.id));
+  if (unitId) card.addEventListener('click', () => plugin.openUnit(unitId));
   return card;
 }
 
@@ -285,17 +290,22 @@ export function moduleCard(
   plugin: CardHost,
   module: ProjectionRecord,
 ): UiNode {
+  const moduleId = asString(module.id);
+  const moduleTitle = asLabel(module);
+  const moduleStatus = asString(module.status) || 'ready';
   const card = parent.createEl('button', {
-    cls: `los-card los-module-card los-s-${module.status} is-clickable`,
-    attr: { type: 'button', 'aria-label': `Open module: ${module.title}` },
+    cls: `los-card los-module-card los-s-${moduleStatus} is-clickable`,
+    attr: { type: 'button', 'aria-label': `Open module: ${moduleTitle}` },
   });
   const top = card.createDiv({ cls: 'los-card-top' });
-  top.createEl('h3', { text: module.title });
-  badge(top, module.kind, 'role');
-  const progress = plugin.store.progress(module.id);
+  top.createEl('h3', { text: moduleTitle });
+  badge(top, asString(module.kind) || 'module', 'role');
+  const progress = moduleId ? plugin.store.progress(moduleId) : {
+    stages_complete: 0, stages_total: 0, units_total: 0, units_needing_map: 0,
+  };
   card.createEl('p', { text: `${progress.units_total || 0} units · ${progress.stages_complete || 0}/${progress.stages_total || 0} stages complete` });
   if (progress.units_needing_map) badge(card, `${progress.units_needing_map} need a map`, 'needs-map');
-  card.addEventListener('click', () => plugin.openModule(module.id));
+  if (moduleId) card.addEventListener('click', () => plugin.openModule(moduleId));
   return card;
 }
 

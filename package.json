@@ -7,6 +7,7 @@
   },
   "scripts": {
     "build": "node build.mjs",
+    "build:styles": "node build-styles.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "contract:check": "node scripts/check-contract.mjs",
     "test:ui": "node tests/test-dashboard.js && node tests/test-ai-actions.js",

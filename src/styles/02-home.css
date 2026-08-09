@@ -1,0 +1,123 @@
+/* Home: Continue, Upcoming, My learning, Attention — and nothing else.
+ * Level 3 (raised) is spent on the Continue card, because it is the one thing
+ * on this screen the learner is meant to act on. */
+.los-continue {
+  margin-bottom: var(--los-5);
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-accent);
+  border-radius: var(--los-r-lg);
+  background: var(--los-surface-raised);
+}
+.los-continue-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--los-4);
+  align-items: center;
+}
+.los-continue-copy { min-width: 0; }
+.los-root .los-continue-copy h2 { margin: 2px 0 var(--los-1); font-size: 20px; }
+.los-continue-module { color: var(--los-ink-soft); font-size: 12px; }
+.los-continue-meta { display: flex; flex-wrap: wrap; gap: var(--los-1) var(--los-3); color: var(--los-ink-soft); font-size: 13px; }
+.los-priority-line {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--los-2);
+  align-items: baseline;
+  margin-top: var(--los-3);
+  padding-top: var(--los-2);
+  border-top: 1px solid var(--los-line);
+  color: var(--los-ink-soft);
+  font-size: 13px;
+}
+.los-priority-icon { color: var(--los-accent); }
+
+.los-home-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--los-5); }
+.los-home-column { display: flex; min-width: 0; flex-direction: column; gap: var(--los-2); }
+.los-home-column > h2 { margin: 0 0 var(--los-1); }
+
+/* Learning rows: what it is, where you are, one way in. No status column —
+ * a badge is only worth the space when the state needs an action. */
+.los-learning-list { display: grid; gap: 0; }
+.los-learning-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--los-3);
+  align-items: baseline;
+  min-width: 0;
+  padding: var(--los-2) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-learning-copy { min-width: 0; }
+.los-learning-next { color: var(--los-ink-soft); font-size: 12px; overflow-wrap: break-word; word-break: normal; }
+.los-learning-meta { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--los-1) var(--los-2); }
+.los-root .los-btn.los-learning-title {
+  display: inline;
+  min-height: 24px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--los-ink);
+  font-weight: 650;
+}
+.los-root .los-btn.los-learning-title:hover { background: transparent; color: var(--los-accent); }
+
+/* Two columns, always: a bounded date and flexible content. Actions live
+ * inside the content column so they can never squeeze the prose. */
+.los-date-list { display: grid; gap: 0; border-top: 1px solid var(--los-line-strong); }
+.los-date-row {
+  display: grid;
+  grid-template-columns: minmax(126px, 148px) minmax(0, 1fr);
+  gap: var(--los-3);
+  min-width: 0;
+  padding: var(--los-2);
+  border-bottom: 1px solid var(--los-line);
+}
+.los-deadline-registration-window { box-shadow: inset 2px 0 0 var(--los-st-attention); }
+.los-date-when { min-width: 0; font-weight: 650; font-variant-numeric: tabular-nums; overflow-wrap: break-word; }
+.los-date-copy { min-width: 0; overflow-wrap: break-word; word-break: normal; }
+.los-date-copy > div:not(.los-actions) { color: var(--los-ink-soft); font-size: 12px; }
+.los-date-copy p { margin: var(--los-1) 0; color: var(--los-ink-soft); font-size: 12px; }
+.los-date-copy .los-actions { margin-top: var(--los-1); }
+.los-deadline-history { margin-top: var(--los-2); color: var(--los-ink-soft); }
+
+/* One compact row instead of three queue cards competing with current work. */
+.los-attention {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-2);
+  align-items: center;
+  margin-top: var(--los-5);
+  padding-top: var(--los-2);
+  border-top: 1px solid var(--los-line);
+  color: var(--los-ink-soft);
+  font-size: 13px;
+}
+.los-attention-icon { color: var(--los-st-attention); }
+.los-root .los-deadline-action-row .los-btn--row { min-height: 24px; padding: 0; border-color: transparent; color: var(--los-accent); font-weight: 650; }
+.los-deadline-action-row span { color: var(--los-ink-soft); font-size: 12px; }
+
+.los-queue-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--los-2); }
+.los-root .los-queue-card {
+  display: flex;
+  width: 100%;
+  min-height: 36px;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--los-3);
+  padding: var(--los-2) var(--los-3);
+  background: var(--los-surface);
+}
+.los-queue-count { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.los-boundary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr)); gap: var(--los-2); }
+.los-root .los-boundary-card {
+  display: grid;
+  width: 100%;
+  min-height: 0;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--los-2) var(--los-3);
+  padding: var(--los-3);
+  border-style: dashed;
+}
+.los-boundary-card h3 { margin: 0; }
+.los-boundary-card p { grid-column: 2; margin: 0; color: var(--los-ink-soft); font-size: 12px; }
+

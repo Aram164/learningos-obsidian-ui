@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { STYLESHEET_MODULES, stylesheetSources, writeStylesheet } from './build-styles.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const pluginDir = path.join(root, 'plugin');
@@ -145,10 +146,17 @@ async function esbuildBundle(build) {
 const esbuild = await loadEsbuild();
 const buildResult = esbuild ? await esbuildBundle(esbuild) : await fallbackBundle();
 const output = fs.readFileSync(outfile);
-const sources = buildResult.modules.map((relative) => ({
-  relative,
-  source: fs.readFileSync(path.join(root, relative), 'utf8'),
-}));
+/* The stylesheet is built the same way and for the same reason as the bundle:
+ * it has source modules and one composed artifact, and the artifact is
+ * fingerprinted so a stale plugin/styles.css cannot masquerade as current. */
+const stylesheet = writeStylesheet(path.join(pluginDir, 'styles.css'));
+const sources = [
+  ...buildResult.modules.map((relative) => ({
+    relative,
+    source: fs.readFileSync(path.join(root, relative), 'utf8'),
+  })),
+  ...stylesheetSources(),
+];
 const sha256 = (value) => `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 const pluginManifest = JSON.parse(fs.readFileSync(path.join(pluginDir, 'manifest.json'), 'utf8'));
 const contract = JSON.parse(fs.readFileSync(path.join(root, 'contracts', 'manifest-v4.lock.json'), 'utf8'));
@@ -162,6 +170,7 @@ if (!sourceRevision) {
 }
 const sourceMaterial = [
   fs.readFileSync(path.join(root, 'build.mjs'), 'utf8'),
+  fs.readFileSync(path.join(root, 'build-styles.mjs'), 'utf8'),
   fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
   fs.readFileSync(path.join(root, 'tsconfig.json'), 'utf8'),
   fs.readFileSync(path.join(root, 'contracts', 'manifest-v4.lock.json'), 'utf8'),
@@ -185,12 +194,14 @@ const gitOrNull = (args) => {
     return null;
   }
 };
-const dirtyPaths = gitOrNull(['status', '--porcelain', '--', 'src', 'build.mjs', 'package.json', 'tsconfig.json', 'contracts']);
+const dirtyPaths = gitOrNull(['status', '--porcelain', '--', 'src', 'build.mjs', 'build-styles.mjs', 'package.json', 'tsconfig.json', 'contracts']);
 const sourceDirty = dirtyPaths === null ? null : dirtyPaths.length > 0;
 const sourceCommittedAt = gitOrNull(['show', '-s', '--format=%cI', 'HEAD']);
 
 const buildInfo = {
-  schema_version: 2,
+  /* 3: the stylesheet stopped being a hand-edited file and became a composed
+   * artifact, so build-info describes its modules and fingerprint too. */
+  schema_version: 3,
   bundler: buildResult.bundler,
   entry_point: 'src/main.ts',
   ui_version: pluginManifest.version,
@@ -200,8 +211,11 @@ const buildInfo = {
   source_committed_at: sourceCommittedAt,
   source_fingerprint: sha256(sourceMaterial),
   bundle_sha256: sha256(output),
+  stylesheet_sha256: sha256(stylesheet),
   node_version: process.version,
   modules: buildResult.modules,
+  stylesheet_modules: STYLESHEET_MODULES.map((name) => `src/styles/${name}`),
 };
 fs.writeFileSync(path.join(pluginDir, 'build-info.json'), `${JSON.stringify(buildInfo, null, 2)}\n`, 'utf8');
 console.log(`build: ${buildResult.bundler} bundled ${buildResult.modules.length} modules -> plugin/main.js (${output.byteLength} bytes, ${buildInfo.bundle_sha256})`);
+console.log(`build: composed ${STYLESHEET_MODULES.length} style modules -> plugin/styles.css (${Buffer.byteLength(stylesheet)} bytes, ${buildInfo.stylesheet_sha256})`);

@@ -252,10 +252,14 @@ function routerPlugin(settings = {}) {
     const router = new ApplicationRouter(routerPlugin({}));
     assert.deepEqual(router.descriptor({ name: 'project-detail', projectId: 'project-a' }), {
       type: constants.VIEW_PROJECT,
-      state: { screen: 'detail', projectId: 'project-a', tab: 'overview' },
+      state: { screen: 'detail', projectId: 'project-a', tab: 'structure' },
       nav: 'projects',
     });
-    assert.equal(router.descriptor({ name: 'garden' }).type, constants.VIEW_GARDEN);
+    assert.deepEqual(router.descriptor({ name: 'garden' }), {
+      type: constants.VIEW_GARDEN,
+      state: {},
+      nav: 'garden',
+    });
     assert.equal(router.descriptor({ name: 'unknown' }).type, constants.VIEW_HOME);
   });
 

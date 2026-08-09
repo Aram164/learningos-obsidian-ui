@@ -1,0 +1,92 @@
+/* Obsidian themes must not resize or reshape app controls. */
+.los-root button,
+.los-root input,
+.los-root textarea,
+.los-root select {
+  min-width: 0;
+  margin: 0;
+  border-radius: var(--los-r-sm);
+  font: inherit;
+  line-height: 1.25;
+}
+.los-root button {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 28px;
+  height: auto;
+  padding: var(--los-1) var(--los-3);
+  border: 1px solid var(--los-line);
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+  text-align: left;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.los-root button:hover { border-color: var(--los-line-strong); background: var(--los-paper-3); }
+.los-root button:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
+.los-root button:focus-visible,
+.los-root input:focus-visible,
+.los-root textarea:focus-visible,
+.los-root summary:focus-visible {
+  outline: 2px solid var(--los-accent);
+  outline-offset: 2px;
+}
+
+.los-page-header { max-width: 1180px; margin: 0 auto var(--los-5); }
+.los-page-header > p { margin: var(--los-1) 0 0; color: var(--los-ink-soft); font-size: 14px; }
+.los-kicker, .los-nav-label {
+  color: var(--los-ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.075em;
+  text-transform: uppercase;
+}
+.los-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-1) var(--los-4);
+  margin-top: var(--los-3);
+  color: var(--los-ink-soft);
+  font-size: 13px;
+}
+
+.los-section { min-width: 0; max-width: 1180px; margin: 0 auto var(--los-6); }
+.los-section > .los-muted { margin: calc(-1 * var(--los-1)) 0 var(--los-3); }
+.los-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: var(--los-2); }
+.los-card, .los-artifact-card, .los-evidence-card {
+  position: relative;
+  min-width: 0;
+  padding: var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+  transition: border-color 100ms ease, transform 100ms ease;
+}
+.los-card:is(button) {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  padding: var(--los-3);
+  color: inherit;
+  text-align: left;
+}
+.los-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 2px;
+  border-radius: var(--los-r-md) 0 0 var(--los-r-md);
+  background: var(--los-ink-soft);
+}
+.los-card:hover { border-color: var(--los-line-strong); transform: translateY(-1px); }
+.los-card-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: var(--los-2); }
+.los-card p { margin: var(--los-2) 0; color: var(--los-ink-soft); }
+.los-s-active::before { background: var(--los-st-active); }
+.los-s-ready::before { background: var(--los-st-ready); }
+.los-s-needs-map::before { background: var(--los-st-attention); }
+.los-s-paused::before { background: var(--los-st-paused); }
+.los-s-complete::before { background: var(--los-st-done); }
+.los-s-ready-to-shelve::before { background: var(--los-st-shelve); }
+

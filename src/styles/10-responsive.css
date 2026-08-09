@@ -1,0 +1,45 @@
+@media (max-width: 1020px) {
+  .los-home-columns { grid-template-columns: minmax(0, 1fr) minmax(280px, 0.8fr); gap: var(--los-4); }
+  .los-unit-layout { grid-template-columns: 200px minmax(0, 1fr); }
+  .los-library-layout { grid-template-columns: 160px minmax(0, 1fr); }
+  .los-library-detail { grid-column: 1 / -1; }
+}
+
+@media (max-width: 720px) {
+  .los-root { padding: var(--los-3); }
+  .los-page-header { margin-bottom: var(--los-4); }
+  .los-section { margin-bottom: var(--los-5); }
+  .los-continue-body, .los-unit-layout, .los-library-layout, .los-capture-grid,
+  .los-home-columns { grid-template-columns: minmax(0, 1fr); }
+  .los-home-column { gap: var(--los-2); }
+  .los-card-grid, .los-workspace-grid { grid-template-columns: minmax(0, 1fr); }
+  .los-resource-row > .los-actions { grid-column: 1 / -1; }
+  .los-continue-body > .los-actions { justify-content: flex-start; }
+  .los-library-rail { flex-direction: row; flex-wrap: wrap; }
+  .los-library-mode { width: auto; }
+  .los-unit-actionbar { justify-content: space-between; }
+}
+
+@media (max-width: 480px) {
+  .los-root { padding: var(--los-3); font-size: 14px; }
+  .los-root h1 { font-size: 24px !important; }
+  .los-continue { padding: var(--los-3); }
+  .los-priority-line { grid-template-columns: minmax(0, 1fr); }
+  .los-coordination-row { grid-template-columns: minmax(0, 1fr); gap: var(--los-1); }
+  .los-date-row { grid-template-columns: minmax(0, 1fr); gap: var(--los-1); }
+  .los-learning-row, .los-review-row { grid-template-columns: minmax(0, 1fr); gap: var(--los-1); }
+  .los-learning-meta { justify-content: flex-start; }
+  .los-fact-row { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .los-library-detail, .los-card, .los-stage-workspace { padding: var(--los-3); }
+  .los-overflow-body { right: auto; left: 0; min-width: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .los-root *, .los-root *::before, .los-root *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+

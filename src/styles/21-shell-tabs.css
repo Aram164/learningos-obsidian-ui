@@ -1,0 +1,153 @@
+/* Shared tabs for Garden and Review. */
+.los-garden-filters,
+.los-review-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: min(900px, 100%);
+  margin: 0 0 18px;
+}
+
+.los-root .los-filter-tab {
+  min-height: 32px;
+  padding: 4px 12px;
+  border-color: transparent;
+  border-radius: var(--los-r-pill);
+}
+
+/* Garden is an incubation list, not an AI configuration panel. */
+.los-garden-seed-composer,
+.los-garden-list-header,
+.los-garden-list,
+.los-garden-view > .los-empty,
+.los-garden-view > .los-utility-disclosure {
+  width: min(900px, 100%);
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-garden-seed-composer {
+  margin-bottom: 14px;
+  padding: 16px 18px;
+  background: var(--los-surface-raised);
+}
+
+.los-garden-seed-editor {
+  min-height: 48px;
+  resize: vertical;
+}
+
+.los-garden-composer-actions {
+  align-items: center;
+  margin-top: 10px;
+}
+
+.los-garden-composer-actions .los-garden-seed-title {
+  flex: 0 1 260px;
+  min-height: 32px;
+  margin: 0 !important;
+}
+
+.los-garden-composer-actions .los-btn {
+  margin-left: auto;
+}
+
+.los-garden-list-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--los-4);
+  margin-bottom: 8px;
+}
+
+.los-garden-list-header h2 {
+  margin: 0;
+}
+
+.los-garden-list {
+  gap: 0;
+  margin-bottom: 20px;
+}
+
+.los-garden-card {
+  padding: 12px 6px;
+  border: 0;
+  border-bottom: 1px solid var(--los-line);
+  border-radius: 0;
+  background: var(--los-surface-raised);
+}
+
+.los-garden-card::before {
+  display: none;
+}
+
+.los-garden-card:hover {
+  transform: none;
+  background: var(--los-paper-2);
+}
+
+.los-garden-actions {
+  padding-top: 8px;
+  border-top: 0;
+}
+
+.los-ai-action-row {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+}
+
+.los-utility-disclosure {
+  margin-top: 18px;
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+
+.los-utility-disclosure > summary {
+  cursor: pointer;
+}
+
+.los-utility-disclosure > .los-disclosure-body {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Review is a filtered decision queue with an explicit Core-owned count. */
+.los-review-view > .los-page-header {
+  position: relative;
+}
+
+.los-review-count-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.los-review-queue-note,
+.los-review-list {
+  width: min(900px, 100%);
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-review-queue-note {
+  margin-bottom: 14px;
+}
+
+.los-review-list {
+  border-top: 0;
+}
+
+.los-review-decision-row {
+  min-height: 96px;
+  padding: 12px 6px;
+  background: var(--los-surface-raised);
+}
+
+.los-review-decision-row:hover {
+  background: var(--los-paper-2);
+}
+

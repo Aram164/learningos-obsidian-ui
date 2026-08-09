@@ -1,0 +1,48 @@
+/* Progressive disclosure. Native details, so it works with the keyboard and
+ * with no script at all. */
+.los-disclosure > summary { min-height: 28px; padding: var(--los-1) 0; color: var(--los-accent); cursor: pointer; font-size: 13px; }
+.los-disclosure-body { padding: var(--los-2) 0; }
+.los-coordination-row { display: grid; grid-template-columns: minmax(90px, auto) minmax(0, 1fr); gap: var(--los-3); padding-top: var(--los-2); }
+.los-coordination-row p { margin: 0; color: var(--los-ink-soft); }
+
+/* The ••• overflow. One place for every secondary operation. */
+.los-overflow { position: relative; display: inline-block; }
+.los-overflow-trigger {
+  display: inline-flex;
+  min-width: 32px;
+  min-height: 28px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--los-2);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-sm);
+  color: var(--los-ink-soft);
+  cursor: pointer;
+  letter-spacing: 0.08em;
+  list-style: none;
+}
+.los-overflow-trigger::-webkit-details-marker { display: none; }
+.los-overflow-trigger:hover { background: var(--los-paper-3); color: var(--los-ink); }
+.los-overflow-body {
+  position: absolute;
+  z-index: 20;
+  right: 0;
+  display: flex;
+  min-width: 200px;
+  flex-direction: column;
+  padding: var(--los-1);
+  border: 1px solid var(--los-line-strong);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+  box-shadow: var(--shadow-s);
+}
+.los-root .los-btn--menu {
+  min-height: 30px;
+  justify-content: flex-start;
+  border-color: transparent;
+  background: transparent;
+  color: var(--los-ink);
+  text-align: left;
+}
+.los-root .los-btn--menu:hover { background: var(--los-paper-3); }
+

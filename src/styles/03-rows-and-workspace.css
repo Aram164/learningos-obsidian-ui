@@ -1,0 +1,122 @@
+/* Shared rows, actions, and module/unit surfaces */
+.los-tabs, .los-actions, .los-stack-actions { display: flex; flex-wrap: wrap; gap: var(--los-2); }
+.los-tabs { max-width: 1180px; margin: calc(-1 * var(--los-2)) auto var(--los-4); }
+.los-stack-actions { flex-direction: column; margin-top: var(--los-3); }
+.los-root .los-group-title { margin: var(--los-4) 0 var(--los-2); color: var(--los-ink-soft); text-transform: capitalize; }
+.los-source-role { margin-top: var(--los-3); padding-top: var(--los-3); border-top: 1px solid var(--los-line); }
+.los-row { display: flex; min-width: 0; align-items: center; flex-wrap: wrap; gap: var(--los-2); padding: var(--los-1) 0; }
+.los-row p { flex: 1 1 280px; margin: 0; color: var(--los-ink-soft); }
+.los-workspace-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: var(--los-2); }
+.los-workspace-card { display: flex; flex-direction: column; }
+.los-workspace-card > .los-actions { margin-top: auto; padding-top: var(--los-2); }
+.los-workspace-objective { font-size: 12px; }
+.los-next-action { margin: var(--los-2) 0; padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--los-paper); }
+.los-next-action p { margin: var(--los-1) 0; color: var(--los-ink); }
+
+/* Focused learning workspace: stage rail | current work.
+ * One Add note action follows the ordered stages; note capture opens as a
+ * temporary modal instead of consuming a permanent third column. */
+.los-unit-layout {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  gap: var(--los-3);
+  max-width: 1240px;
+  margin: 0 auto var(--los-3);
+  align-items: start;
+}
+.los-stage-workspace {
+  min-width: 0;
+  padding: var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+.los-stage-rail { min-width: 0; padding: var(--los-2); }
+.los-stage-rail h2 { padding: var(--los-1) var(--los-2); }
+.los-add-unit-note { width: 100%; justify-content: flex-start; margin-top: var(--los-2); }
+.los-unit-note-draft { padding: var(--los-1) var(--los-2); color: var(--los-accent); }
+.los-root .los-stage-row {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  gap: var(--los-2);
+  padding: var(--los-2);
+  border: 0;
+  background: transparent;
+  color: var(--los-ink-soft);
+}
+.los-root .los-stage-row:hover, .los-root .los-stage-row.is-selected { background: var(--los-paper-3); color: var(--los-ink); }
+.los-stage-index { color: var(--los-ink-soft); font-variant-numeric: tabular-nums; }
+.los-stage-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; }
+.los-stage-copy > span { overflow-wrap: break-word; word-break: normal; }
+.los-stage-heading { margin-bottom: var(--los-4); }
+.los-root .los-stage-heading h2 { margin-top: var(--los-1); font-size: 18px; }
+.los-stage-heading p { margin: var(--los-2) 0; }
+.los-resource-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--los-2);
+  align-items: start;
+  padding: var(--los-2) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-resource-row > .los-actions { grid-column: 2; }
+.los-resource-copy { min-width: 0; }
+.los-resource-copy > * { display: block; margin-bottom: var(--los-1); }
+.los-resource-actions { gap: var(--los-1); align-items: center; }
+.los-stage-goal { margin-bottom: var(--los-3); }
+.los-stage-goal p { margin: var(--los-1) 0 0; }
+.los-unit-note-modal { width: min(92vw, 640px); }
+.los-unit-note-context, .los-unit-note-attachments { margin: var(--los-3) 0; padding: var(--los-3); border: 1px solid var(--los-line); border-radius: var(--los-r-sm); background: var(--los-paper); }
+.los-unit-note-title { width: 100%; margin-bottom: var(--los-2); }
+.los-unit-note-editor { min-height: 260px; }
+.los-unit-note-actions { justify-content: flex-end; margin-top: var(--los-3); }
+.los-attachments, .los-detour-row { margin-top: var(--los-3); padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
+.los-detour-row p { margin: var(--los-1) 0; color: var(--los-ink-soft); font-size: 12px; }
+
+/* Done-when as working checkboxes. UI-owned state: the core still learns only
+ * "complete", from stage-progress. */
+.los-donewhen-list { display: grid; gap: var(--los-1); }
+.los-donewhen-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--los-2);
+  align-items: baseline;
+  min-height: 28px;
+  padding: var(--los-1) 0;
+  cursor: pointer;
+}
+.los-donewhen-row.is-checked { color: var(--los-ink-soft); text-decoration: line-through; }
+
+/* Two actions and one menu — the only action surface on the screen. */
+.los-unit-actionbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-2);
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 1440px;
+  margin: 0 auto var(--los-4);
+  padding-top: var(--los-2);
+  border-top: 1px solid var(--los-line);
+}
+.los-unit-extras { max-width: 1440px; margin: 0 auto var(--los-5); }
+.los-note-editor {
+  width: 100%;
+  min-height: 220px;
+  margin: var(--los-2) 0;
+  padding: var(--los-2);
+  resize: vertical;
+  border: 1px solid var(--los-line);
+  background: var(--los-paper);
+  color: var(--los-ink);
+}
+.los-capture-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--los-3); }
+.los-capture-panel { padding: var(--los-3); border: 1px solid var(--los-line); border-radius: var(--los-r-md); background: var(--los-surface); }
+.los-capture-title { width: 100%; min-width: 0; }
+.los-capture-editor { min-height: 160px; }
+.los-file-input { width: 100%; min-width: 0; }
+.los-capture-file { display: block; max-width: 100%; margin: var(--los-3) 0; }
+.los-draft-status { margin: calc(-1 * var(--los-1)) 0 var(--los-2); color: var(--los-ink-soft); font-size: 12px; }
+.los-draft-status.is-dirty { color: var(--los-st-attention); }
+

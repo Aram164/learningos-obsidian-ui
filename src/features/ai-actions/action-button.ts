@@ -1,7 +1,8 @@
 import { Notice } from 'obsidian';
 import { button } from '../../components';
-import type { ProjectionRecord } from '../../contracts/manifest-v2';
+import type { ProjectionRecord } from '../../contracts/manifest-v4';
 import type { LearningOSUI } from '../../main';
+import { errorMessage } from '../../projection/readers';
 
 /**
  * The launcher needs the AI-action client, the remembered provider preference,
@@ -14,10 +15,6 @@ type AiActionHost = Pick<
   | 'scheduleDraftSave'
   | 'settings'
 >;
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
 
 /** Compact, action-specific launcher. There is deliberately no generic
  * "Ask AI" entry point: the action ID, target and provider are visible before
@@ -40,24 +37,13 @@ export function renderGardenShelveAction(
     ? plugin.settings.preferredAiProvider : (available[0]?.id || 'manual-bundle');
   let jobConfirmed = !target.job_derived;
 
-  const select = wrap.createEl('select', {
-    cls: 'los-ai-provider',
-    attr: { 'aria-label': `AI provider for ${target.title}` },
-  });
-  for (const row of providers) {
-    const option = select.createEl('option', {
-      text: row.available ? row.id : `${row.id} (unavailable)`,
-      attr: { value: row.id },
-    });
-    option.value = row.id;
-    if (!row.available) option.setAttr('disabled', 'disabled');
-  }
-  select.value = provider;
-  select.addEventListener('change', () => {
-    provider = select.value;
+  // Provider choice belongs in Settings. Repeating a technical adapter picker
+  // on every seed made Garden look like an operator console and displaced the
+  // human decision the row is actually for.
+  if (provider !== plugin.settings.preferredAiProvider) {
     plugin.settings.preferredAiProvider = provider;
     plugin.scheduleDraftSave();
-  });
+  }
 
   if (target.job_derived) {
     const consent = wrap.createEl('label', { cls: 'los-ai-consent' });
@@ -66,7 +52,12 @@ export function renderGardenShelveAction(
     checkbox.addEventListener('change', () => { jobConfirmed = Boolean(checkbox.checked); });
   }
 
-  const launch = button(wrap, 'Shelve with AI', async () => {
+  const targetId = target.id;
+  const launch = button(wrap, 'Refine with AI', async () => {
+    if (!targetId) {
+      new Notice('This Garden item has no projected identity. Refresh LearningOS and try again.');
+      return;
+    }
     if (target.job_derived && !jobConfirmed) {
       new Notice('Explicit export confirmation is required for job-derived material.');
       return;
@@ -76,7 +67,7 @@ export function renderGardenShelveAction(
     try {
       const result: ProjectionRecord =
         await plugin.aiActions.prepareGardenShelving(
-          target.id,
+          targetId,
           provider,
           jobConfirmed,
         );
@@ -86,7 +77,7 @@ export function renderGardenShelveAction(
     } catch (error: unknown) {
       new Notice(errorMessage(error));
       launch.removeAttribute?.('disabled');
-      launch.setText('Shelve with AI');
+      launch.setText('Refine with AI');
     }
   }, 'quiet');
   launch.addClass('los-ai-action-button');

@@ -39,13 +39,13 @@ async function main() {
   const text = root.allText();
 
   check('Garden is a first-class review view', text.includes('Attention looks like soft k-NN'));
-  check('launcher is action-specific rather than generic', text.includes('Shelve with AI') && !text.includes('Ask AI'));
-  check('provider availability is explicit', text.includes('manual-bundle')
-    && text.includes('claude (unavailable)') && text.includes('chatgpt (unavailable)'));
+  check('launcher is action-specific rather than generic', text.includes('Refine with AI') && !text.includes('Ask AI'));
+  check('provider configuration stays out of the incubation row', !text.includes('claude (unavailable)')
+    && !text.includes('chatgpt (unavailable)'));
   check('the original and AI-derived state remain distinct', text.includes('Open original')
     && text.includes('AI request · delivery-ready'));
 
-  root.findText('los-btn', 'Shelve with AI').fire('click');
+  root.findText('los-btn', 'Refine with AI').fire('click');
   await tick(); await tick();
   const prepare = calls.find((args) => args[0] === 'ai-action-prepare');
   check('launcher invokes the exact garden.shelve capability', prepare?.includes('garden.shelve')

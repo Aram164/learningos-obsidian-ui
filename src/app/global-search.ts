@@ -1,6 +1,6 @@
 import { Modal, type App } from 'obsidian';
 import { button, empty } from '../components';
-import type { ProjectionRecord } from '../contracts/manifest-v2';
+import type { ProjectionRecord } from '../contracts/manifest-v4';
 import type { ManifestStore } from '../manifest-store';
 import type { ApplicationRouter } from './router';
 
@@ -156,8 +156,8 @@ export class GlobalSearchModal extends Modal {
       rows.push({
         id: record.id,
         title: record.title,
-        aliases: record.aliases || [],
-        authors: record.authors || [],
+        aliases: [...(record.aliases || [])],
+        authors: [...(record.authors || [])],
         kind,
         subtitle,
         open,
@@ -165,29 +165,37 @@ export class GlobalSearchModal extends Modal {
     };
 
     for (const module of this.plugin.store.modules()) {
-      const area = this.plugin.store.get(module.area_id)?.title || module.code || 'Module';
-      add(module, 'learning', `Module · ${area}`, () => this.plugin.openModule(module.id));
+      if (!module.id) continue;
+      const area = module.area_id
+        ? this.plugin.store.get(module.area_id)?.title || module.code || 'Module'
+        : module.code || 'Module';
+      add(module, 'learning', `Module · ${area}`, () => this.plugin.openModule(module.id!));
     }
     for (const project of this.plugin.store.projects()) {
+      if (!project.id) continue;
       add(project, 'projects', `Project · ${project.project_type || project.status || 'active'}`,
-        () => this.plugin.openProject(project.id));
+        () => this.plugin.openProject(project.id!));
     }
     for (const unit of this.plugin.store.units()) {
+      if (!unit.id || !unit.module_id) continue;
       const module = this.plugin.store.get(unit.module_id);
-      add(unit, 'learning', `Unit · ${module?.title || unit.module_id}`, () => this.plugin.openUnit(unit.id));
+      add(unit, 'learning', `Unit · ${module?.title || unit.module_id}`, () => this.plugin.openUnit(unit.id!));
     }
     for (const source of this.plugin.store.sources()) {
+      if (!source.id) continue;
       const byline = (source.authors || []).join(', ') || source.organization || source.kind || 'Learning source';
-      add(source, 'sources', `Learning source · ${byline}`, () => this.plugin.openLibrary(source.id, 'source'));
+      add(source, 'sources', `Learning source · ${byline}`, () => this.plugin.openLibrary(source.id!, 'source'));
     }
     for (const pack of this.plugin.store.topicPacks()) {
+      if (!pack.id) continue;
       add(pack, 'sources', `Topic Pack · ${(pack.entries || []).length} items`,
-        () => this.plugin.openTopicPackDetail(pack.id));
+        () => this.plugin.openTopicPackDetail(pack.id!));
     }
     for (const workspace of this.plugin.store.of('workspace')) {
       const linkedProject = workspace.project_id ? this.plugin.store.get(workspace.project_id) : null;
       if (!linkedProject) continue;
-      add(workspace, 'projects', `Project workspace · ${linkedProject.title}`, () => this.plugin.openProject(linkedProject.id));
+      if (!linkedProject.id) continue;
+      add(workspace, 'projects', `Project workspace · ${linkedProject.title || linkedProject.id}`, () => this.plugin.openProject(linkedProject.id!));
     }
     return rows;
   }

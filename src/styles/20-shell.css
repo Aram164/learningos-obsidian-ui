@@ -1,0 +1,148 @@
+/* ── Philosophy-locked application shell ────────────────────────────────
+ * Figma's content frame is 1200px with a 48px inset, a 1104px header and a
+ * 900px reading/decision column. Keeping those proportions at wider Obsidian
+ * leaf sizes prevents every screen from turning into a wall-to-wall admin
+ * dashboard. The layout still collapses naturally in narrow leaves. */
+.los-root:not(.los-app-nav) {
+  padding: 30px 48px 56px;
+}
+
+.los-root:not(.los-app-nav) > .los-page-header {
+  width: min(1104px, 100%);
+  max-width: none;
+  margin: 0 0 20px;
+}
+
+.los-root:not(.los-app-nav) > .los-section,
+.los-root:not(.los-app-nav) > .los-tabs,
+.los-root:not(.los-app-nav) > .los-actions,
+.los-root:not(.los-app-nav) > .los-empty {
+  width: min(900px, 100%);
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-root:not(.los-app-nav) > .los-actions {
+  margin-bottom: var(--los-4);
+}
+
+/* Home stays a single quiet reading column. */
+.los-home > .los-page-header,
+.los-home > .los-continue,
+.los-home > .los-section {
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-home > .los-page-header { width: min(1104px, 100%); }
+.los-home > .los-continue,
+.los-home > .los-section { width: min(900px, 100%); }
+
+.los-home > .los-continue {
+  margin-bottom: 30px;
+  padding: 18px 20px;
+}
+
+.los-home > .los-section {
+  margin-bottom: 28px;
+}
+
+.los-home-row {
+  min-height: 68px;
+  padding: 12px 0;
+}
+
+/* Modules is the current semester, not another subject browser. */
+.los-semester-summary,
+.los-semester-module-list {
+  width: min(900px, 100%);
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-semester-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--los-4);
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--los-line-strong);
+}
+
+.los-semester-summary span {
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+
+.los-semester-module-list {
+  gap: 0;
+}
+
+.los-root .los-semester-module-row,
+.los-root .los-library-route-list .los-route-row {
+  min-height: 72px;
+  padding: 12px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--los-line);
+  border-radius: 0;
+  background: transparent;
+}
+
+.los-root .los-semester-module-row:hover,
+.los-root .los-library-route-list .los-route-row:hover {
+  background: var(--los-paper-2);
+}
+
+/* Library is the global collection. Its five facets remain peers. */
+.los-collection-switch,
+.los-library-browser,
+.los-library-toolbar,
+.los-detail-page,
+.los-library-group-grid {
+  width: min(900px, 100%);
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-collection-switch {
+  margin-bottom: 16px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.los-collection-switch .los-btn--cta,
+.los-filter-tab.is-active {
+  border-color: transparent;
+  background: var(--los-accent-wash);
+  color: var(--los-accent);
+  font-weight: 650;
+}
+
+.los-library-browser-toolbar {
+  margin-bottom: 16px;
+}
+
+.los-library-browser-toolbar .los-route-search {
+  min-height: 38px;
+  margin-bottom: 0;
+}
+
+.los-library-peer-facets {
+  gap: 5px;
+  margin-bottom: 18px;
+}
+
+.los-library-facet-select {
+  min-height: 38px;
+  background: var(--los-surface-raised);
+}
+
+.los-library-route-list {
+  gap: 0;
+}
+

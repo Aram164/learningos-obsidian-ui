@@ -1,5 +1,5 @@
 import process from 'node:process';
-import type { ProjectionRecord } from './contracts/manifest-v2';
+import type { JsonRecord, ProjectionRecord } from './contracts/manifest-v4';
 import {
   GatewayError, exitCodeOf, structuredError,
   type GatewayResultV1,
@@ -278,11 +278,11 @@ interface AiContextHost {
 export function explicitAiContext(
   plugin: AiContextHost,
   context: Record<string, string | undefined> = {},
-): ProjectionRecord {
+): JsonRecord {
   const unit = context.unitId ? plugin.store.get(context.unitId) : null;
   const module = context.moduleId ? plugin.store.get(context.moduleId) :
-    (unit ? plugin.store.get(unit.module_id) : null);
-  const studyMap = unit ? plugin.store.mapForUnit(unit.id) : null;
+    (unit?.module_id ? plugin.store.get(unit.module_id) : null);
+  const studyMap = unit?.id ? plugin.store.mapForUnit(unit.id) : null;
   const stage = context.stageId ? plugin.store.stage(context.stageId) : null;
   const resources: ProjectionRecord[] = Array.isArray(stage?.resources)
     ? stage.resources
@@ -293,13 +293,14 @@ export function explicitAiContext(
     component_id: context.componentId || unit?.component_id || null,
     unit_id: unit?.id || context.unitId || null,
     stage_id: stage?.id || context.stageId || null,
-    selected_source_ids: [...new Set(resources.map((row) => row.source_id).filter(Boolean))],
+    selected_source_ids: [...new Set(resources.map((row) => row.source_id)
+      .filter((value): value is string => typeof value === 'string' && value.length > 0))],
     selected_materials: resources
       .map((row) => row.material_uri
         || row.vault_path
         || row.url
         || row.material_path)
-      .filter(Boolean),
+      .filter((value): value is string => typeof value === 'string' && value.length > 0),
     manifest_snapshot: plugin.store.snapshotId,
     active_file_supplement: plugin.app.workspace.getActiveFile?.()?.path || null,
   };

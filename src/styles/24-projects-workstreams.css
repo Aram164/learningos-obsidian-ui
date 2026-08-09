@@ -1,0 +1,78 @@
+/* Projects are parallel work, rendered as workstreams and decisions rather
+ * than a second module dashboard. */
+.los-project-view > .los-project-list,
+.los-project-view > .los-project-tabs,
+.los-project-view > .los-project-chips,
+.los-project-view > .los-project-body {
+  width: min(900px, 100%);
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-project-list { gap: 0; margin-top: 0; }
+.los-project-tabs { margin: -8px 0 12px; }
+.los-project-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 22px; }
+.los-project-body > .los-section { width: 100%; max-width: none; margin-left: 0; margin-right: 0; }
+.los-project-structure { width: 100%; }
+.los-project-structure-row.los-project-node-depth-1 { padding-left: 18px; }
+.los-project-structure-row.los-project-node-depth-2 { padding-left: 36px; }
+.los-project-structure-row.los-project-node-depth-3 { padding-left: 54px; }
+.los-project-structure-row.los-project-node-depth-4 { padding-left: 72px; }
+.los-project-meta-grid { gap: 0; border-top: 1px solid var(--los-line); }
+.los-project-meta { padding: 12px 2px; border: 0; border-bottom: 1px solid var(--los-line); border-radius: 0; }
+.los-project-link > .los-actions { justify-content: flex-end; }
+.los-project-boundary {
+  width: 100%;
+  margin-top: -8px;
+  padding: 13px 16px;
+  border-left: 2px solid var(--los-st-ready);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+  color: var(--los-ink-soft);
+}
+.los-project-boundary p { margin: 5px 0 0; font-size: 13px; }
+
+.los-capture-file::file-selector-button {
+  margin-right: 8px;
+  padding: 6px 10px;
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-sm);
+  background: var(--los-surface-raised);
+  color: var(--los-ink);
+  font: inherit;
+}
+
+@media (max-width: 720px) {
+  .los-root:not(.los-app-nav) {
+    padding: 22px 18px 40px;
+  }
+
+  .los-home-header {
+    padding-right: 0;
+  }
+
+  .los-root .los-home-search-launcher {
+    width: min(100%, 330px);
+  }
+
+  .los-review-count-badge {
+    position: static;
+    margin-top: 10px;
+  }
+
+  .los-garden-list-header,
+  .los-semester-summary,
+  .los-learning-context,
+  .los-section-heading {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .los-unit-layout { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .los-stage-workspace { padding: 20px 18px; }
+  .los-resource-row { grid-template-columns: 18px minmax(0, 1fr); }
+  .los-resource-row > .los-actions { grid-column: 2; justify-content: flex-start; }
+  .los-record-row { grid-template-columns: minmax(0, 1fr); }
+  .los-record-action { justify-self: start; }
+}

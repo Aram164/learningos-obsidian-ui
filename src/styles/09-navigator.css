@@ -1,0 +1,32 @@
+/* Compact application navigator */
+.los-app-nav { padding: var(--los-2); }
+.los-nav-brand { display: flex; align-items: center; gap: var(--los-2); padding: var(--los-2); margin-bottom: var(--los-2); }
+.los-brand-mark { display: grid; width: 28px; height: 28px; place-items: center; border-radius: var(--los-r-sm); background: var(--los-accent); color: var(--los-paper); }
+.los-nav-label { margin: var(--los-4) var(--los-2) var(--los-1); }
+.los-nav-primary { display: flex; flex-direction: column; }
+/* No border on an ordinary navigation row; the active destination is the only
+ * thing here that needs a surface. */
+.los-root .los-app-nav-item {
+  display: flex;
+  width: 100%;
+  min-height: 34px;
+  gap: var(--los-2);
+  align-items: center;
+  margin-bottom: 2px;
+  padding: var(--los-1) var(--los-2);
+  border: 0;
+  border-radius: var(--los-r-sm);
+  background: transparent;
+  color: var(--los-ink-soft);
+}
+.los-root .los-app-nav-item:hover { background: var(--los-paper-3); color: var(--los-ink); }
+.los-root .los-app-nav-item.is-active {
+  background: var(--los-paper-3);
+  color: var(--los-ink);
+  box-shadow: inset 3px 0 0 var(--los-accent);
+  font-weight: 650;
+}
+.los-nav-more { margin-top: var(--los-4); padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
+.los-nav-more-trigger { min-height: 28px; padding: var(--los-1) var(--los-2); color: var(--los-ink-soft); cursor: pointer; font-size: 12px; }
+.los-nav-secondary { display: flex; flex-direction: column; margin-top: var(--los-1); }
+
