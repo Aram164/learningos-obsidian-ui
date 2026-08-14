@@ -228,59 +228,59 @@
 }
 
 .los-job-session.is-done .los-job-session-body h3 {
-  color: var(--text-muted);
+  color: var(--los-ink-soft);
 }
 
 .los-job-session-actions {
   display: flex;
-  gap: var(--size-4-2);
+  gap: var(--los-2);
   align-items: center;
-  margin-top: var(--size-4-2);
+  margin-top: var(--los-2);
 }
 
 /* Now — the drift queue reads as a queue, not fifteen scattered badges. */
 .los-job-drift {
   display: flex;
-  gap: var(--size-4-3);
+  gap: var(--los-3);
   align-items: center;
-  padding: var(--size-4-2) var(--size-4-3);
-  border-radius: var(--radius-m);
-  background: var(--background-secondary);
-  border-left: 2px solid var(--background-modifier-border);
+  padding: var(--los-2) var(--los-3);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+  border-left: 2px solid var(--los-rule);
 }
 
-.los-job-drift--drifting { border-left-color: var(--color-yellow); }
-.los-job-drift--stale { border-left-color: var(--color-red); }
+.los-job-drift--drifting { border-left-color: var(--los-st-attention); }
+.los-job-drift--stale { border-left-color: var(--los-st-attention); }
 .los-job-drift > div:first-child { flex: 1; }
 
 /* System — one block per pipeline layer, empty ones included. */
 .los-job-layer {
-  padding: var(--size-4-3) 0;
-  border-top: 1px solid var(--background-modifier-border);
+  padding: var(--los-3) 0;
+  border-top: 1px solid var(--los-rule);
 }
 
 .los-job-layer:first-of-type { border-top: none; }
 
 /* Library — horizon is the axis; type is only a kicker. */
-.los-job-horizon { margin-block: var(--size-4-4); }
+.los-job-horizon { margin-block: var(--los-4); }
 
 .los-job-material {
-  padding: var(--size-4-3);
-  border-radius: var(--radius-m);
-  background: var(--background-secondary);
-  margin-block: var(--size-4-2);
+  padding: var(--los-3);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+  margin-block: var(--los-2);
 }
 
 .los-job-canon-note {
-  margin-top: var(--size-4-2);
-  font-size: var(--font-ui-smaller);
-  color: var(--text-accent);
+  margin-top: var(--los-2);
+  font-size: 12px;
+  color: var(--los-accent);
 }
 
 /* Session log modal — the core refuses an empty entry, so we ask first. */
 .los-job-session-editor {
   width: 100%;
-  margin-block: var(--size-4-3);
-  font-family: var(--font-text);
+  margin-block: var(--los-3);
+  font-family: inherit;
   resize: vertical;
 }

@@ -18,6 +18,57 @@ const VIEW = {
 };
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 
+const JOB_DASHBOARD_FIXTURE = {
+  ok: true,
+  contract: 'job-dashboard-v1',
+  access: {
+    scope: 'job-dashboard', read_only: true, ephemeral: true,
+    excluded_from_manifest: true, excluded_from_search: true, excluded_from_ai: true,
+  },
+  dashboard: {
+    id: 'job-fixture', title: 'BIFOLD / DEEM', subtitle: 'Fixture confidential workspace.',
+    counts: { notes: 3, skrub_notes: 2, system_notes: 1, learning_sessions: 2, papers: 1, canonical_sources: 1 },
+    workspace: {
+      id: 'workspace-job-deem', title: 'Fixture Stratum job', status: 'active', standing: true,
+      objective: 'Build and understand the system.',
+      current_scope: [
+        { label: 'required-now', text: 'Current Stratum ticket.' },
+        { label: 'helpful-now', text: 'Read one Python chapter.' },
+      ],
+      next_action: 'Read the Skrub graph note.', open_questions: ['Which idea should become transferable?'],
+      path: 'workspace-job-deem/CONTEXT.md',
+    },
+    notes: {
+      health: { current: 0, drifting: 1, stale: 0, unverified: 0 },
+      skrub: [
+        { id: 'job-skrub-dag', title: 'Skrub DataOp DAG', kind: 'skrub', family: '', summary: 'How the lazy graph is built.', path: 'notes/note-skrub-dag.md', component: '', layer: 'capture', verified_against: '', declared_status: 'evolving', freshness: 'evolving' },
+        { id: 'job-skrub-eval', title: 'Skrub evaluation engine', kind: 'skrub', family: '', summary: 'How the graph becomes values.', path: 'notes/note-skrub-eval.md', component: '', layer: 'capture', verified_against: '', declared_status: 'evolving', freshness: 'evolving' },
+      ],
+      stratum: [
+        { id: 'note-stratum-extract-dataframe-op', title: 'Stratum dispatch map', kind: 'stratum', family: '', summary: 'How calls become logical operators.', path: 'notes/stratum/note-dispatch.md', component: 'stratum/optimizer/ir/_dataframe_ops.py', layer: 'logical', verified_against: 'abc123 (2026-01-01)', declared_status: 'current', freshness: 'drifting' },
+      ],
+      layers: [
+        { id: 'capture', title: 'Capture / frontend', summary: 'building the DAG from user code', note_ids: ['job-skrub-dag', 'job-skrub-eval'] },
+        { id: 'logical', title: 'Logical IR', summary: 'the operator tree', note_ids: ['note-stratum-extract-dataframe-op'] },
+        { id: 'rewrites', title: 'Rewrites', summary: 'logical and cost-based optimization', note_ids: [] },
+        { id: 'physical', title: 'Physical', summary: 'lowering to executable ops', note_ids: [] },
+        { id: 'runtime', title: 'Runtime', summary: 'execution', note_ids: [] },
+        { id: 'cross-cutting', title: 'Cross-cutting', summary: '', note_ids: [] },
+      ],
+    },
+    learning_tracks: [{
+      id: 'polars', title: 'Polars — job-grounded through Stratum', status: 'ready', cadence: 'One session per week.', horizon: 'now',
+      outcome: 'Implement a Polars backend from scratch.', path: 'workspace-job-deem/inputs/Polars-Learning-Plan.md',
+      sessions: [
+        { number: 1, title: 'Expressions', concept: 'Expression contexts.', source: 'Polars guide.', anchor: 'Compare both backends.', practice: 'Rebuild an expression.' },
+        { number: 2, title: 'Lazy optimization', concept: 'LazyFrame plans.', source: 'Lazy API.', anchor: 'Compare explain output.', practice: 'Annotate a plan.' },
+      ],
+    }],
+    papers: [{ id: 'paper', title: 'Fixture systems paper', authors: ['A. Author'], year: 2026, pages: 8, horizon: 'now', angle: 'The architecture behind the job.', path: 'papers/paper.pdf', available: true }],
+    canonical_shelf: [{ source_id: 'source-fixture-islp', title: 'Reusable software book', authors: ['B. Author'], horizon: 'later', why: 'Keep it until a concrete design problem calls for it.' }],
+  },
+};
+
 let failures = 0;
 let group = '';
 function check(name, condition, detail = '') {
@@ -56,6 +107,9 @@ async function build(options = {}) {
     const envelope = stdin ? JSON.parse(stdin) : null;
     if (envelope) envelopes.push(envelope);
     if (options.offline) return callback(new Error('CLI down'), '', 'offline');
+    if (args[0] === 'job-dashboard') {
+      return callback(null, JSON.stringify(JOB_DASHBOARD_FIXTURE), '');
+    }
     if (envelope?.capability === 'review.prepare') return callback(null, JSON.stringify({
       state: 'proposed', summary: 'Prepared fixture.', items: [{ id: 'proposal-prepared', title: 'Prepared note', destination: 'knowledge/notes/fixture.md', selected: true }],
     }), '');
@@ -80,7 +134,7 @@ async function main() {
   heading('versioned atomic contract');
   {
     const { plugin } = await build();
-    check('manifest contract v4 loads', plugin.store.ready && plugin.store.contractVersion === 4, plugin.store.error);
+    check('manifest contract v5 loads', plugin.store.ready && plugin.store.contractVersion === 5, plugin.store.error);
     check('snapshot guard is loaded', plugin.store.snapshotId === 'sha256:fixture-v2-snapshot');
     check('program/module/unit/map collections load atomically', plugin.store.programs().length === 5
       && plugin.store.modules().length === 3 && plugin.store.projects().length === 1 && plugin.store.units().length === 7
@@ -126,15 +180,15 @@ async function main() {
     const originalRead = app.vault.adapter.read;
     app.vault.adapter.read = async (file) => {
       const text = await originalRead(file);
-      return file === 'generated/manifest.json' ? text.replace('"contract_version": 4', '"contract_version": 1') : text;
+      return file === 'generated/manifest.json' ? text.replace('"contract_version": 5', '"contract_version": 1') : text;
     };
     const plugin = new LearningOSUI(app, { id: 'learningos-ui' }); app._plugin = plugin;
     await plugin.onload();
-    check('contract v1 fails closed with recovery text', !plugin.store.ready && plugin.store.error.includes('requires contract 4'));
+    check('contract v1 fails closed with recovery text', !plugin.store.ready && plugin.store.error.includes('requires contract 5'));
     plugin.onunload();
   }
 
-  heading('manifest v4 interaction plumbing');
+  heading('manifest v5 interaction plumbing');
   {
     const { plugin, calls } = await build();
 
@@ -259,7 +313,7 @@ async function main() {
 
   heading('explicit application router');
   {
-    const { app, plugin } = await boot();
+    const { app, plugin, calls } = await boot();
     await plugin.openLibraryGroup('sources', 'thematic-group-mathematics', 'probability', 'local');
     const libraryBefore = app.workspace.getLeavesOfType(VIEW.library)[0];
     libraryBefore.view.contentEl.scrollTop = 144;
@@ -295,6 +349,12 @@ async function main() {
       routeBeforeSearch.name === 'library-home' && overlay.current.name === 'library-home');
     check('the router records search as transient overlay state',
       overlay.overlay?.kind === 'global-search' && overlay.overlay.query === 'Advanced ML');
+    check('search is an explicitly named modal with button-group filters',
+      modal.contentEl.getAttribute('role') === 'dialog'
+      && modal.contentEl.getAttribute('aria-modal') === 'true'
+      && modal.contentEl.find('los-search-tabs')[0].getAttribute('role') === 'group'
+      && modal.contentEl.find('los-search-tab')
+        .every((tab) => tab.getAttribute('aria-pressed') !== null));
     check('search returns projected module identities',
       modal.contentEl.allText().includes('Fixture Advanced ML')
       && modal.contentEl.find('los-search-result').length >= 1);
@@ -335,12 +395,14 @@ async function main() {
     check('the navigator exposes a persistent accessible search launcher',
       nav.find('los-nav-search').length === 1
       && nav.find('los-nav-search')[0].getAttribute('aria-label') === 'Search LearningOS');
+    check('decorative navigation icons are hidden from assistive technology',
+      nav.find('los-nav-search')[0].children[0].getAttribute('aria-hidden') === 'true');
     plugin.onunload();
   }
 
   heading('navigation and boundaries');
   {
-    const { app, plugin } = await boot();
+    const { app, plugin, calls } = await boot();
     const nav = app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
     const text = nav.allText();
     /* Seven permanent destinations from the approved application IA. */
@@ -355,7 +417,7 @@ async function main() {
     check('maintenance and boundaries are not study destinations',
       nav.find('los-nav-more').length === 1
       && nav.find('los-nav-secondary')[0].allText().includes('Rebuild projection')
-      && nav.find('los-nav-secondary')[0].allText().includes('Job boundary'));
+      && nav.find('los-nav-secondary')[0].allText().includes('Job'));
     check('legacy global path and entity taxonomy are absent', !text.includes('Learning path') && !text.includes('Collections'));
     nav.findText('los-app-nav-item', 'Learn').fire('click'); await tick();
     check('Learn opens one destination carrying every area',
@@ -384,8 +446,47 @@ async function main() {
     check('the ownership statement is stated once, in Diagnostics/About',
       diagnostics.includes('buttons are conveniences, never duties'));
     await plugin.openBoundary('program-job-boundary');
-    const job = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl.allText();
-    check('Job surface reveals policy only', job.includes('not indexed, searched, read, or mixed') && !job.includes('Job client'));
+    await tick(); await tick();
+    const jobRoot = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl;
+    const job = jobRoot.allText();
+    check('Job opens an explicit bounded confidential dashboard',
+      job.includes('BIFOLD / DEEM') && job.includes('Confidential, on-demand view')
+      && calls.some((args) => args.join(' ') === 'job-dashboard --confirm-job-access'));
+    /* Now answers one question. It leads with the workspace's own required-now
+     * scope and the first session not yet recorded as done — not a restatement
+     * of what the other destinations already hold. */
+    check('Now leads with required-now scope and the next unfinished session',
+      job.includes('Current Stratum ticket.')
+      && job.includes('Expressions') && job.includes('Rebuild an expression.')
+      && job.includes('0/2 done')
+      && !plugin.store.search('Skrub DataOp DAG').length);
+    /* Drift is a queue, not a badge hunt across every note card. */
+    check('Now surfaces drifted notes as a queue',
+      job.includes('Needs re-verifying')
+      && job.includes('note-stratum-extract-dataframe-op'));
+    check('Job local navigation is accessible pressed-button state',
+      jobRoot.find('los-job-tab').length === 3
+      && jobRoot.find('los-job-tab').every((tab) => tab.getAttribute('aria-pressed') !== null));
+    jobRoot.findText('los-job-tab', 'System').fire('click');
+    /* The map is the pipeline. An undocumented layer is the finding, so it is
+     * stated rather than omitted — a flat list could never show it. */
+    check('System places notes on the Stratum pipeline and names the empty layers',
+      jobRoot.allText().includes('Capture / frontend')
+      && jobRoot.allText().includes('Logical IR')
+      && jobRoot.allText().includes('Skrub DataOp DAG')
+      && jobRoot.allText().includes('Stratum dispatch map')
+      && jobRoot.allText().includes('1 drifting')
+      && jobRoot.allText().includes('No note describes this layer yet.'));
+    jobRoot.findText('los-job-tab', 'Library').fire('click');
+    /* Horizon is the axis; track, paper and book are only tags. */
+    check('Library orders every kind of material by horizon',
+      jobRoot.allText().includes('Use now')
+      && jobRoot.allText().includes('Keep for later')
+      && jobRoot.allText().includes('Polars — job-grounded through Stratum')
+      && jobRoot.allText().includes('Fixture systems paper')
+      && jobRoot.allText().includes('Reusable software book'));
+    check('Library marks canon-owned material as a one-way reference',
+      jobRoot.allText().includes('Job points at it, never the reverse'));
     await plugin.openBoundary('program-masters-planning');
     const masters = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl.allText();
     check('Master surface exposes quarantine only', masters.includes('quarantined') && !masters.includes('prospective module menu'));
@@ -410,7 +511,7 @@ async function main() {
   {
     const opened = [];
 
-    const { app, plugin } = await boot({
+    const { app, plugin, calls } = await boot({
       patchManifest: (manifest) => {
         manifest.review_items = [
           {
@@ -579,6 +680,14 @@ async function main() {
         && garden.find('los-garden-filters').length === 1,
     );
 
+    check(
+      'Garden uses ordinary pressed buttons and blocks an empty seed',
+      garden.find('los-garden-filters')[0].getAttribute('role') === 'group'
+        && garden.find('los-garden-filters')[0].find('los-filter-tab')
+          .every((control) => control.getAttribute('aria-pressed') !== null)
+        && garden.findText('los-btn', 'Add seed').disabled === true,
+    );
+
     const title =
       garden.find(
         'los-garden-seed-title',
@@ -596,6 +705,11 @@ async function main() {
     editor.value =
       'Decorators execute when the module is imported. #python';
     editor.fire('input');
+
+    check(
+      'Garden enables Add seed as soon as the required text is present',
+      garden.findText('los-btn', 'Add seed').disabled === false,
+    );
 
     garden.findText(
       'los-btn',
@@ -1215,14 +1329,68 @@ async function main() {
     second.plugin.onunload();
   }
 
+  {
+    const { app, plugin } = await boot();
+
+    await plugin.openLibraryHome(
+      'sources',
+      'definitely-unfindable-library-source',
+    );
+
+    let view = app.workspace.getLeavesOfType(
+      VIEW.library,
+    )[0].view;
+
+    check(
+      'a text-only Library zero result offers a search-specific recovery',
+      view.query === 'definitely-unfindable-library-source'
+        && Boolean(
+          view.contentEl.findText(
+            'los-btn',
+            'Clear search',
+          ),
+        ),
+    );
+
+    view.contentEl.findText(
+      'los-btn',
+      'Clear search',
+    ).fire('click');
+
+    await tick();
+    await tick();
+
+    view = app.workspace.getLeavesOfType(
+      VIEW.library,
+    )[0].view;
+
+    check(
+      'Library recovery clears the persisted query and restores sources',
+      view.query === ''
+        && plugin.router.snapshot().current.query === ''
+        && view.contentEl.find('los-route-row').length > 0,
+    );
+
+    plugin.onunload();
+  }
+
   heading('zero-friction inbox capture');
   {
     const { app, plugin, calls } = await boot();
     await plugin.openProgram('inbox');
     const view = app.workspace.getLeavesOfType(VIEW.program)[0].view;
     let element = view.contentEl;
+    check('Capture identifies itself in the Obsidian tab',
+      view.getDisplayText() === 'LearningOS · Capture');
+    check('empty Capture actions are disabled consistently',
+      element.findText('los-btn', 'Capture text').disabled === true
+      && element.findText('los-btn', 'Capture selected file').disabled === true);
     element.find('los-capture-title')[0].value = 'Fixture thought';
+    element.find('los-capture-title')[0].fire('input');
     element.find('los-capture-editor')[0].value = 'A half-formed synthetic idea.';
+    element.find('los-capture-editor')[0].fire('input');
+    check('Capture text enables only after required content is present',
+      element.findText('los-btn', 'Capture text').disabled === false);
     element.findText('los-btn', 'Capture text').fire('click'); await tick(); await tick();
     const textCapture = calls.envelope('capture.create')?.payload;
     check('text capture delegates exact wording and optional title to los.py',
@@ -1232,6 +1400,9 @@ async function main() {
 
     element = view.contentEl;
     element.find('los-capture-file')[0].files = [{ name: 'handwriting.png', __path: '/tmp/handwriting.png' }];
+    element.find('los-capture-file')[0].fire('change');
+    check('file capture enables only after a local file is selected',
+      element.findText('los-btn', 'Capture selected file').disabled === false);
     element.findText('los-btn', 'Capture selected file').fire('click'); await tick(); await tick();
     check('file capture resolves the Electron File through webUtils',
       calls.envelopes.some((e) => e.capability === 'capture.create'
@@ -1278,8 +1449,13 @@ async function main() {
     view.contentEl.findText('los-btn', 'Logistics').fire('click'); await tick();
     view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
     text = view.contentEl.allText();
-    check('academic facts stay on the academic module, under Logistics',
-      text.includes('Fixture University') && text.includes('klausur') && text.includes('10'));
+    check('academic facts stay on the academic module with human labels',
+      text.includes('Fixture University')
+      && text.includes('Written exam')
+      && text.includes('Summer semester 2099')
+      && !text.includes('klausur')
+      && !text.includes('sose-2099')
+      && text.includes('10'));
     check('logistics does not block unit browsing',
       view.contentEl.find('los-module-unit-list').length === 0);
     view.contentEl.findText('los-btn', 'Overview').fire('click'); await tick();
@@ -1410,8 +1586,14 @@ async function main() {
     const noteModal = plugin.openUnitNote(plugin.store.get('unit-fixture-sad-l04'), plugin.store.mapForUnit('unit-fixture-sad-l04'));
     check('the note modal references completed stages not already recorded',
       noteModal.referencedStageIds.length === 0 && noteModal.contentEl.allText().includes('unit-level observation'));
+    check('the note modal is a named dialog and blocks an empty save',
+      noteModal.contentEl.getAttribute('role') === 'dialog'
+      && noteModal.contentEl.getAttribute('aria-modal') === 'true'
+      && noteModal.contentEl.findText('los-btn', 'Save note').disabled === true);
     noteModal.editor.value = 'Updated fixture session synthesis.';
     noteModal.editor.fire('input');
+    check('the note save enables when required text is present',
+      noteModal.contentEl.findText('los-btn', 'Save note').disabled === false);
     noteModal.fileInput.files = [{ name: 'notes.png', __path: '/tmp/notes.png' }];
     noteModal.fileInput.fire('change');
     noteModal.contentEl.findText('los-btn', 'Save note').fire('click'); await tick(); await tick();
@@ -1439,6 +1621,109 @@ async function main() {
       detour?.stage_id === 'stage-fixture-conditioning' && detour?.classification === 'required-now');
     await plugin.reviewSessionEnd();
     check('session closure first requests an exact change review', calls.some((args) => args.length === 1 && args[0] === 'session-end'));
+    plugin.onunload();
+  }
+
+  heading('lecture knowledge map and material choice');
+  {
+    const { app, plugin, calls } = await boot({
+      patchManifest: (manifest) => {
+        const unit = manifest.units.find((row) => row.id === 'unit-fixture-analysis');
+        unit.knowledge_map = {
+          summary: 'Two connected ideas define this lecture.',
+          nodes: [
+            {
+              id: 'knowledge-fixture-formulation',
+              title: 'Problem formulation',
+              summary: 'State the inputs, target, and learning objective.',
+            },
+            {
+              id: 'knowledge-fixture-generalization',
+              title: 'Generalization',
+              summary: 'Separate fitting the sample from performing on new data.',
+              builds_on: ['knowledge-fixture-formulation'],
+            },
+          ],
+        };
+        unit.source_selections = [{
+          source_id: 'source-fixture-islp',
+          locator: 'Episode 4',
+          purpose: 'Use the visual train-versus-test explanation.',
+        }];
+        const sourceMap = manifest.module_source_maps.find((row) => row.module_id === 'module-fixture-m2');
+        sourceMap.sources[0].unit_routes.push({
+          unit_id: 'unit-fixture-analysis',
+          title: 'Fixture book — derivation angle',
+          format: 'book',
+          angle: 'Builds the generalization argument from a worked mathematical example.',
+          covers: ['knowledge-fixture-formulation', 'knowledge-fixture-generalization'],
+          depth: 'derivation',
+          scope: 'current',
+          locator: 'Chapter 2 §§2.1–2.3',
+          source_id: 'source-fixture-book',
+          material_path: '.flat/source-fixture-book/chapter-2.pdf',
+        });
+        sourceMap.sources.push({
+          source_id: 'source-fixture-islp',
+          role: 'intuition',
+          why: 'Alternate visual explanation.',
+          priority: 2,
+          unit_routes: [{
+            unit_id: 'unit-fixture-analysis',
+            title: 'Fixture video — intuition angle',
+            format: 'video',
+            angle: 'Uses a visual train-versus-test story without the derivation.',
+            covers: ['knowledge-fixture-generalization'],
+            depth: 'intuition',
+            scope: 'complementary',
+            locator: 'Episode 4',
+            source_id: 'source-fixture-islp',
+            url: 'https://example.org/generalization',
+          }],
+        });
+      },
+    });
+    await plugin.openUnit('unit-fixture-analysis');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const text = view.contentEl.allText();
+    check('knowledge nodes render as a dependency-aware lecture overview',
+      view.contentEl.find('los-knowledge-node').length === 2
+      && text.includes('Lecture knowledge map')
+      && text.includes('Builds on: Problem formulation'));
+    check('all material options are grouped by format instead of sequenced',
+      view.contentEl.find('los-material-option').length === 2
+      && text.includes('Choose your learning material')
+      && text.includes('Books') && text.includes('Videos'));
+    check('material cards preserve the source angle, locator, coverage, depth, and scope',
+      text.includes('Builds the generalization argument from a worked mathematical example.')
+      && text.includes('Chapter 2 §§2.1–2.3')
+      && text.includes('derivation') && text.includes('current')
+      && text.includes('Generalization'));
+    check('the complete material menu survives without forcing a study map',
+      text.includes('Personal study path (optional)')
+      && text.includes('No personal path selected')
+      && text.includes('Build optional path with AI'));
+    check('openable material choices expose a direct action',
+      view.contentEl.findText('los-btn', 'Open') !== null);
+    const choose = view.contentEl.findText('los-btn', 'Choose');
+    check('material choice is an explicit pressed-state control',
+      choose !== null && choose.getAttribute('aria-pressed') === 'false'
+      && view.contentEl.findText('los-btn', 'Remove choice')?.getAttribute('aria-pressed') === 'true');
+    choose.fire('click'); await tick(); await tick();
+    const selection = calls.envelope('unit.source-selection.set');
+    check('choosing a material persists the exact lecture option through the guarded gateway',
+      selection?.payload.unit_id === 'unit-fixture-analysis'
+      && selection?.payload.source_id === 'source-fixture-book'
+      && selection?.payload.locator === 'Chapter 2 §§2.1–2.3'
+      && selection?.payload.action === 'select'
+      && selection?.payload.purpose === 'Builds the generalization argument from a worked mathematical example.');
+    await plugin.askAiScoped('Build a path from my choices.', {
+      moduleId: 'module-fixture-m2',
+      unitId: 'unit-fixture-analysis',
+    });
+    check('optional-path AI context uses unit choices when no stage exists',
+      plugin.lastAiPrompt.includes('source-fixture-islp')
+      && plugin.lastAiPrompt.includes('Episode 4'));
     plugin.onunload();
   }
 
@@ -1669,7 +1954,7 @@ async function main() {
     plugin.openAuthoredPath('Job/notes/offer.md');
     plugin.openAuthoredPath('Job/scan.png');
     await plugin.openResource({ vault_path: 'Job/secret-plan.md' });
-    check('every open path refuses Job/',
+    check('every ordinary open path refuses Job/',
       !app.workspace.opened.some((entry) => String(entry).startsWith('Job/')));
     check('the quarantine refusal is visible to the learner',
       Notice.log.some((line) => line.includes('quarantined')));
@@ -2137,6 +2422,33 @@ async function main() {
     check('the unit workspace is two columns and notes are a temporary modal',
       /\.los-unit-layout\s*\{[\s\S]*?grid-template-columns:\s*232px\s+minmax\(0, 1fr\)/.test(css)
       && css.includes('.los-unit-note-modal') && !css.includes('.los-note-panel'));
+    check('LearningOS modals size their host and never overflow their content box',
+      css.includes('.modal.los-modal--unit-note')
+      && css.includes('.modal.los-modal--global-search')
+      && /\.los-unit-note-modal\s*\{[^}]*width:\s*100%/.test(css)
+      && /\.los-global-search\s*\{[^}]*width:\s*100%/.test(css)
+      && css.includes('max-width: calc(100vw - 32px)')
+      && css.includes('overflow-x: hidden'));
+    const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+    check('the UI documentation names the active manifest contract',
+      readme.includes('manifest.json` contract v5')
+      && readme.includes('contracts/manifest-v5.lock.json')
+      && !readme.includes('contracts/manifest-v3.lock.json'));
+    const runtimeSources = [
+      'src/app/global-search.ts',
+      'src/views/review-view.ts',
+      'src/views/garden-view.ts',
+      'src/views/program-view.ts',
+      'src/features/library/home.ts',
+      'src/features/project/detail.ts',
+      'src/features/module/detail.ts',
+    ].map((file) => fs.readFileSync(path.join(ROOT, file), 'utf8')).join('\n');
+    check('button filters do not claim incomplete ARIA tab semantics',
+      !runtimeSources.includes("role: 'tablist'")
+      && !runtimeSources.includes("role: 'tab'")
+      && !runtimeSources.includes('aria-selected')
+      && runtimeSources.includes("role: 'group'")
+      && runtimeSources.includes('aria-pressed'));
     /* Both of these assert INTENT — a filled primary, an unmistakable active
      * destination. The accent token was renamed --interactive-accent →
      * --los-accent when the palette landed; the intent did not change, so the
