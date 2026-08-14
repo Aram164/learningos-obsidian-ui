@@ -1,0 +1,286 @@
+/* Confidential Job workspace: on-demand operational knowledge, deliberately
+ * distinct from the academic surfaces without inventing a second palette. */
+.los-job-view {
+  padding: 28px 40px 40px !important;
+}
+
+.los-job-view > * {
+  width: min(1120px, 100%);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.los-job-privacy {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--los-line-strong);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+}
+
+.los-job-privacy-icon { padding-top: 2px; color: var(--los-st-ready); }
+.los-job-privacy p { margin: 3px 0 0; color: var(--los-ink-soft); }
+
+.los-job-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--los-line);
+}
+
+.los-root .los-job-tab {
+  min-height: 34px;
+  border-color: transparent;
+}
+
+.los-root .los-job-tab[aria-pressed="true"] {
+  border-color: var(--los-line-strong);
+  background: var(--los-accent-wash);
+  color: var(--los-accent);
+}
+
+.los-job-now {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(270px, .8fr);
+  gap: 18px 24px;
+  padding: 22px;
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-lg);
+  background: var(--los-surface-raised);
+  box-shadow: 0 2px 8px var(--los-shadow-soft);
+}
+
+.los-job-now > .los-card-top { grid-column: 1 / -1; }
+.los-job-now h2 { margin: 3px 0 0 !important; }
+.los-job-objective { margin: 0; font-size: 15px; }
+
+.los-job-next {
+  padding: 14px;
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+}
+
+.los-job-next p { margin: 5px 0 12px; }
+
+.los-job-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px auto 24px;
+}
+
+.los-job-metric {
+  padding: 14px;
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+}
+
+.los-job-metric-value {
+  margin-bottom: 2px;
+  font-size: 24px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+.los-root .los-job-metric .los-btn--row {
+  justify-content: flex-start;
+  width: 100%;
+  min-height: 28px;
+  padding: 0;
+  color: var(--los-ink-soft);
+  font-weight: 500;
+}
+
+.los-job-scope-grid,
+.los-job-card-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.los-job-scope {
+  padding: 14px;
+  border-left: 3px solid var(--los-line-strong);
+  border-radius: 0 var(--los-r-md) var(--los-r-md) 0;
+  background: var(--los-paper-2);
+}
+
+.los-job-scope--required-now { border-left-color: var(--los-st-active); }
+.los-job-scope--helpful-now { border-left-color: var(--los-st-ready); }
+.los-job-scope--defer { border-left-color: var(--los-st-paused); }
+.los-job-scope--reference-only { border-left-color: var(--los-st-done); }
+.los-job-scope h3 { text-transform: capitalize; }
+.los-job-scope p { margin: 5px 0 0; }
+.los-job-question-list { margin: 8px 0 0; padding-left: 20px; }
+
+.los-job-note,
+.los-job-paper {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+}
+
+.los-job-note-title { min-width: 0; }
+.los-job-note p,
+.los-job-paper p { margin: 8px 0 12px; color: var(--los-ink-soft); }
+
+.los-job-note-footer,
+.los-job-track-meta,
+.los-job-health {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.los-job-note-footer { justify-content: space-between; }
+.los-job-note-group { margin-top: 18px; }
+.los-job-note-list { display: grid; gap: 8px; }
+.los-job-note-list .los-job-note { padding: 12px 14px; }
+
+.los-job-track-meta {
+  margin: 10px 0 18px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--los-line);
+}
+
+.los-job-track-meta .los-muted { flex: 1 1 320px; }
+.los-job-timeline { position: relative; display: grid; gap: 8px; }
+
+.los-job-session {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 12px;
+  padding: 15px;
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+}
+
+.los-job-session-number {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: var(--los-r-pill);
+  background: var(--los-accent-wash);
+  color: var(--los-accent);
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.los-job-session-body h3 { margin-top: 5px; }
+.los-job-session-concept { margin: 5px 0 10px; color: var(--los-ink); }
+.los-job-session-field {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 10px;
+  padding: 5px 0;
+  border-top: 1px solid var(--los-line);
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-job-session-field strong { color: var(--los-ink); }
+
+.los-job-paper .los-btn { margin-top: 2px; }
+.los-job-shelf-group + .los-job-shelf-group { margin-top: 20px; }
+.los-job-shelf-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 16px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-job-shelf-row p { margin: 4px 0 0; color: var(--los-ink-soft); }
+
+@media (max-width: 820px) {
+  .los-job-view { padding: 20px 18px 32px !important; }
+  .los-job-now { grid-template-columns: 1fr; }
+  .los-job-now > .los-card-top { grid-column: auto; }
+  .los-job-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .los-job-scope-grid,
+  .los-job-card-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 520px) {
+  .los-job-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .los-job-metrics { grid-template-columns: 1fr; }
+  .los-job-session { grid-template-columns: 34px minmax(0, 1fr); padding: 12px; }
+  .los-job-session-field { grid-template-columns: 1fr; gap: 2px; }
+  .los-job-shelf-row { grid-template-columns: 1fr; }
+}
+
+/* Track session state (ADR-010). A completed session recedes rather than
+   disappears: the plan is still the plan, the row is just no longer the ask. */
+.los-job-session.is-done .los-job-session-number {
+  opacity: 0.45;
+}
+
+.los-job-session.is-done .los-job-session-body h3 {
+  color: var(--text-muted);
+}
+
+.los-job-session-actions {
+  display: flex;
+  gap: var(--size-4-2);
+  align-items: center;
+  margin-top: var(--size-4-2);
+}
+
+/* Now — the drift queue reads as a queue, not fifteen scattered badges. */
+.los-job-drift {
+  display: flex;
+  gap: var(--size-4-3);
+  align-items: center;
+  padding: var(--size-4-2) var(--size-4-3);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+  border-left: 2px solid var(--background-modifier-border);
+}
+
+.los-job-drift--drifting { border-left-color: var(--color-yellow); }
+.los-job-drift--stale { border-left-color: var(--color-red); }
+.los-job-drift > div:first-child { flex: 1; }
+
+/* System — one block per pipeline layer, empty ones included. */
+.los-job-layer {
+  padding: var(--size-4-3) 0;
+  border-top: 1px solid var(--background-modifier-border);
+}
+
+.los-job-layer:first-of-type { border-top: none; }
+
+/* Library — horizon is the axis; type is only a kicker. */
+.los-job-horizon { margin-block: var(--size-4-4); }
+
+.los-job-material {
+  padding: var(--size-4-3);
+  border-radius: var(--radius-m);
+  background: var(--background-secondary);
+  margin-block: var(--size-4-2);
+}
+
+.los-job-canon-note {
+  margin-top: var(--size-4-2);
+  font-size: var(--font-ui-smaller);
+  color: var(--text-accent);
+}
+
+/* Session log modal — the core refuses an empty entry, so we ask first. */
+.los-job-session-editor {
+  width: 100%;
+  margin-block: var(--size-4-3);
+  font-family: var(--font-text);
+  resize: vertical;
+}

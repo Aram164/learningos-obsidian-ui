@@ -1,5 +1,5 @@
 import process from 'node:process';
-import type { JsonRecord, ProjectionRecord } from './contracts/manifest-v4';
+import type { JsonRecord, ProjectionRecord } from './contracts/manifest-v5';
 import {
   GatewayError, exitCodeOf, structuredError,
   type GatewayResultV1,
@@ -176,6 +176,24 @@ export class GatewayClient {
     return this.capability('stage.progress.update',
       { unit_id: unitId, stage_id: stageId, status });
   }
+  sourceSelection(
+    unitId: string,
+    sourceId: string,
+    locator: string,
+    purpose: string,
+    selected: boolean,
+  ) {
+    return this.capability(
+      'unit.source-selection.set',
+      {
+        unit_id: unitId,
+        source_id: sourceId,
+        locator,
+        action: selected ? 'select' : 'remove',
+        ...(selected ? { purpose } : {}),
+      },
+    );
+  }
   feedback(
     unitId: string,
     stageId: string,
@@ -255,6 +273,42 @@ export class GatewayClient {
     if (push) args.push('--push');
     return this.call(args);
   }
+
+  /**
+   * The Job dashboard is the sole read outside the normal projection. The
+   * confirmation flag is the learner's deliberate navigation gesture; the
+   * core still owns path bounding and returns no durable cache.
+   */
+  jobDashboard() {
+    return this.call(['job-dashboard', '--confirm-job-access']);
+  }
+
+  /**
+   * Bounded Job writes (ADR-010). Each carries the same deliberate-gesture flag
+   * as the read, and each is a declared capability rooted at Job/ — the view
+   * never writes a Job file itself, exactly as it never writes a canonical one.
+   */
+  logJobSession(text: string, options: {
+    track?: string; session?: number; minutes?: number;
+  } = {}) {
+    const payload: Record<string, unknown> = { text, confirm_job_access: true };
+    if (options.track) payload.track = options.track;
+    if (options.session !== undefined) payload.session = options.session;
+    if (options.minutes !== undefined) payload.minutes = options.minutes;
+    return this.capability('job.session.log', payload);
+  }
+
+  stampJobNote(noteId: string, commit: string, status = 'current') {
+    return this.capability('job.note.stamp', {
+      note: noteId, commit, status, confirm_job_access: true,
+    });
+  }
+
+  recordJobTrackSession(trackId: string, session: number) {
+    return this.capability('job.track.progress', {
+      track: trackId, session, confirm_job_access: true,
+    });
+  }
 }
 
 /**
@@ -284,9 +338,20 @@ export function explicitAiContext(
     (unit?.module_id ? plugin.store.get(unit.module_id) : null);
   const studyMap = unit?.id ? plugin.store.mapForUnit(unit.id) : null;
   const stage = context.stageId ? plugin.store.stage(context.stageId) : null;
-  const resources: ProjectionRecord[] = Array.isArray(stage?.resources)
+  const stageResources: ProjectionRecord[] = Array.isArray(stage?.resources)
     ? stage.resources
     : [];
+  const unitSelections: ProjectionRecord[] = Array.isArray(unit?.source_selections)
+    ? unit.source_selections.filter(
+      (row): row is ProjectionRecord =>
+        typeof row === 'object'
+        && row !== null
+        && !Array.isArray(row),
+    )
+    : [];
+  const resources = stageResources.length
+    ? stageResources
+    : unitSelections;
   return {
     area_program_id: context.programId || module?.area_id || null,
     module_id: module?.id || context.moduleId || null,
@@ -299,7 +364,8 @@ export function explicitAiContext(
       .map((row) => row.material_uri
         || row.vault_path
         || row.url
-        || row.material_path)
+        || row.material_path
+        || row.locator)
       .filter((value): value is string => typeof value === 'string' && value.length > 0),
     manifest_snapshot: plugin.store.snapshotId,
     active_file_supplement: plugin.app.workspace.getActiveFile?.()?.path || null,
