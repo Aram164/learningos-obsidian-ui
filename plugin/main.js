@@ -35,7 +35,7 @@ __export(main_exports, {
   default: () => main_default
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian19 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 
 // src/app/global-search.ts
 var import_obsidian2 = require("obsidian");
@@ -45,7 +45,7 @@ var import_obsidian = require("obsidian");
 var import_electron = require("electron");
 
 // src/constants.ts
-var CONTRACT_VERSION = 4;
+var CONTRACT_VERSION = 5;
 var VIEW_HOME = "learningos-home";
 var VIEW_NAV = "learningos-nav";
 var VIEW_PROGRAM = "learningos-program";
@@ -143,9 +143,32 @@ function optionalString(value) {
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
-function asLabel(record, fallback = "Untitled") {
-  if (!record) return fallback;
-  return asString(record.title) ?? asString(record.label) ?? asString(record.name) ?? asString(record.id) ?? fallback;
+function asLabel(record2, fallback = "Untitled") {
+  if (!record2) return fallback;
+  return asString(record2.title) ?? asString(record2.label) ?? asString(record2.name) ?? asString(record2.id) ?? fallback;
+}
+
+// src/accessibility/button-group.ts
+function enableButtonGroupKeyboardNavigation(group, orientation = "horizontal") {
+  group.addEventListener("keydown", (event) => {
+    const horizontal = orientation === "horizontal" || orientation === "both";
+    const vertical = orientation === "vertical" || orientation === "both";
+    const backward = event.key === "Home" || horizontal && event.key === "ArrowLeft" || vertical && event.key === "ArrowUp";
+    const forward = event.key === "End" || horizontal && event.key === "ArrowRight" || vertical && event.key === "ArrowDown";
+    if (!backward && !forward) return;
+    const controls = typeof group.querySelectorAll === "function" ? Array.from(group.querySelectorAll("button")).filter(
+      (control) => !control.disabled && control.getAttribute("aria-hidden") !== "true"
+    ) : [];
+    if (!controls.length) return;
+    const current = controls.indexOf(event.target);
+    if (current < 0) return;
+    event.preventDefault();
+    let target = current;
+    if (event.key === "Home") target = 0;
+    else if (event.key === "End") target = controls.length - 1;
+    else target = (current + (forward ? 1 : -1) + controls.length) % controls.length;
+    controls[target]?.focus();
+  });
 }
 
 // src/security/safe-url.ts
@@ -160,6 +183,10 @@ function safeWebUrl(value) {
 
 // src/components.ts
 function icon(el, name) {
+  el.setAttrs({
+    "aria-hidden": "true",
+    focusable: "false"
+  });
   (0, import_obsidian.setIcon)(el, name || "circle");
   return el;
 }
@@ -178,21 +205,22 @@ function button(parent, label, onClick, variant = "") {
 function badge(parent, text, variant = "") {
   return parent.createSpan({ cls: `los-badge ${variant ? `los-badge--${variant}` : ""}`, text });
 }
-function chip(parent, record, onClick) {
+function chip(parent, record2, onClick) {
   const el = parent.createEl("button", {
-    cls: `los-chip los-t-${record?.type || "record"} is-clickable`,
+    cls: `los-chip los-t-${record2?.type || "record"} is-clickable`,
     attr: { type: "button" }
   });
-  const iconName = ICONS[String(record?.type || "")] || "circle";
+  const iconName = ICONS[String(record2?.type || "")] || "circle";
   icon(el.createSpan({ cls: "los-chip-icon" }), iconName);
-  el.createSpan({ text: record?.title || record?.id || "Unknown" });
-  if (onClick) el.addEventListener("click", () => onClick(record));
+  el.createSpan({ text: record2?.title || record2?.id || "Unknown" });
+  if (onClick) el.addEventListener("click", () => onClick(record2));
   return el;
 }
-function pageHeader(parent, kicker, title, description = "") {
+function pageHeader(parent, kicker, title, description = "", headingId = "") {
   const header = parent.createDiv({ cls: "los-page-header" });
   if (kicker) header.createDiv({ cls: "los-kicker", text: kicker });
-  header.createEl("h1", { text: title });
+  const heading = header.createEl("h1", { text: title });
+  if (headingId) heading.setAttribute("id", headingId);
   if (description) header.createEl("p", { text: description });
   return header;
 }
@@ -202,19 +230,37 @@ function section(parent, title, description = "") {
   if (description) wrap.createEl("p", { cls: "los-muted", text: description });
   return wrap;
 }
+function filterTabs(parent, ariaLabel, tabs, active, choose, countOf = null) {
+  const row = parent.createDiv({ cls: "los-filter-tabs" });
+  row.setAttrs({ role: "group", "aria-label": ariaLabel });
+  enableButtonGroupKeyboardNavigation(row);
+  for (const [value, label] of tabs) {
+    const count = countOf ? countOf(value) : 0;
+    const control = button(
+      row,
+      count ? `${label} ${count}` : label,
+      () => choose(value),
+      "quiet"
+    );
+    control.addClass("los-filter-tab");
+    control.toggleClass("is-active", value === active);
+    control.setAttrs({ "aria-pressed": String(value === active) });
+  }
+  return row;
+}
 function disclosure(parent, summaryText, cls = "") {
   const details = parent.createEl("details", { cls: `los-disclosure ${cls}`.trim() });
   details.createEl("summary", { text: summaryText });
   return details.createDiv({ cls: "los-disclosure-body" });
 }
 function overflowMenu(parent, items, label = "More actions") {
-  const rows = items.filter(Boolean);
-  if (!rows.length) return null;
+  const rows2 = items.filter(Boolean);
+  if (!rows2.length) return null;
   const details = parent.createEl("details", { cls: "los-overflow" });
   const summary = details.createEl("summary", { cls: "los-overflow-trigger", text: "\u2022\u2022\u2022" });
   summary.setAttrs({ "aria-label": label, role: "button" });
   const body = details.createDiv({ cls: "los-overflow-body" });
-  for (const [itemLabel, action] of rows) {
+  for (const [itemLabel, action] of rows2) {
     button(body, itemLabel, () => {
       details.removeAttribute?.("open");
       action();
@@ -300,6 +346,115 @@ function unitCard(parent, plugin, unit) {
 }
 var OWNERSHIP_STATEMENT = "Presentation only \xB7 facts live in the LearningOS core \xB7 buttons are conveniences, never duties.";
 
+// src/accessibility/modal.ts
+var FOCUSABLE = [
+  "a[href]",
+  "button:not([disabled])",
+  "input:not([disabled])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  '[tabindex]:not([tabindex="-1"])'
+].join(",");
+function makeModalAccessible(content, options) {
+  const document2 = content.ownerDocument ?? globalThis.document;
+  const previousFocus = document2?.activeElement;
+  const host = typeof content.closest === "function" ? content.closest(".modal") : null;
+  const dialog = host ?? content;
+  const focusRoot = dialog;
+  dialog.setAttribute("role", "dialog");
+  dialog.setAttribute("aria-modal", "true");
+  dialog.setAttribute("aria-labelledby", options.labelledBy);
+  dialog.setAttribute("tabindex", "-1");
+  host?.classList.add(options.hostClass);
+  const workspaces = document2 && typeof document2.querySelectorAll === "function" ? Array.from(
+    document2.querySelectorAll(".workspace")
+  ) : [];
+  const backgrounds = workspaces.filter(
+    (element) => typeof element.contains !== "function" || !element.contains(dialog)
+  ).map((element) => ({
+    element,
+    ariaHidden: element.getAttribute("aria-hidden"),
+    inert: element.inert
+  }));
+  for (const background of backgrounds) {
+    background.element.inert = true;
+    background.element.setAttribute("aria-hidden", "true");
+  }
+  let cancelInitialFocus = null;
+  if (options.initialFocus) {
+    const view = document2?.defaultView ?? globalThis.window;
+    const focus = () => options.initialFocus?.()?.focus?.();
+    if (typeof view?.requestAnimationFrame === "function") {
+      const frame = view.requestAnimationFrame(focus);
+      cancelInitialFocus = () => view.cancelAnimationFrame?.(frame);
+    } else {
+      const timer = view.setTimeout(focus, 0);
+      cancelInitialFocus = () => view.clearTimeout(timer);
+    }
+  }
+  const focusable = () => {
+    if (typeof focusRoot.querySelectorAll !== "function") {
+      return [];
+    }
+    return Array.from(
+      focusRoot.querySelectorAll(FOCUSABLE)
+    ).filter(
+      (element) => element.getAttribute("aria-hidden") !== "true" && !element.disabled
+    );
+  };
+  const onKeyDown = (event) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      options.close();
+      return;
+    }
+    if (event.key !== "Tab") {
+      return;
+    }
+    const controls = focusable();
+    if (!controls.length) {
+      event.preventDefault();
+      dialog.focus();
+      return;
+    }
+    const first = controls[0];
+    const last = controls.at(-1);
+    const active = document2?.activeElement;
+    if (event.shiftKey && (active === first || !focusRoot.contains(active))) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && (active === last || !focusRoot.contains(active))) {
+      event.preventDefault();
+      first.focus();
+    }
+  };
+  focusRoot.addEventListener("keydown", onKeyDown);
+  let cleaned = false;
+  return () => {
+    if (cleaned) {
+      return;
+    }
+    cleaned = true;
+    cancelInitialFocus?.();
+    cancelInitialFocus = null;
+    focusRoot.removeEventListener?.("keydown", onKeyDown);
+    host?.classList.remove(options.hostClass);
+    for (const background of backgrounds) {
+      background.element.inert = background.inert;
+      if (background.ariaHidden === null) {
+        background.element.removeAttribute("aria-hidden");
+      } else {
+        background.element.setAttribute(
+          "aria-hidden",
+          background.ariaHidden
+        );
+      }
+    }
+    previousFocus?.focus?.();
+  };
+}
+
 // src/app/global-search.ts
 var GlobalSearchModal = class extends import_obsidian2.Modal {
   plugin;
@@ -309,6 +464,7 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
   tabButtons = [];
   tabs;
   results;
+  restoreAccessibility = null;
   constructor(app, plugin, initialQuery = "") {
     super(app);
     this.plugin = plugin;
@@ -323,7 +479,16 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
     const header = root.createDiv({ cls: "los-search-header" });
     const copy = header.createDiv();
     copy.createDiv({ cls: "los-kicker", text: "Search LearningOS" });
-    copy.createEl("h2", { text: "Find a module, unit, source, or project" });
+    copy.createEl("h2", {
+      text: "Find a module, unit, source, or project",
+      attr: { id: "los-global-search-heading" }
+    });
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--global-search",
+      initialFocus: () => this.input ?? null,
+      labelledBy: "los-global-search-heading"
+    });
     button(header, "Close", () => this.close(), "quiet").setAttribute("aria-label", "Close global search");
     this.input = root.createEl("input", {
       cls: "los-search los-global-search-input",
@@ -340,7 +505,8 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
       this.plugin.router.updateOverlay({ query: this.query });
       this.renderResults();
     });
-    const tabs = root.createDiv({ cls: "los-search-tabs", attr: { role: "tablist", "aria-label": "Search result type" } });
+    const tabs = root.createDiv({ cls: "los-search-tabs", attr: { role: "group", "aria-label": "Search result type" } });
+    enableButtonGroupKeyboardNavigation(tabs);
     this.tabButtons = [];
     for (const [id, label] of [
       ["all", "All"],
@@ -355,35 +521,36 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
         this.renderResults();
       }, "tertiary");
       tab.addClass("los-search-tab");
-      tab.setAttrs({ role: "tab", "data-filter": id, "aria-selected": String(this.filter === id) });
+      tab.setAttrs({ "data-filter": id, "aria-pressed": String(this.filter === id) });
       this.tabButtons.push(tab);
     }
     this.tabs = tabs;
     this.results = root.createDiv({ cls: "los-search-results", attr: { "aria-live": "polite" } });
     this.renderTabs();
     this.renderResults();
-    this.input.focus();
   }
   onClose() {
     this.plugin.router.clearOverlay();
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
     this.contentEl.empty();
   }
   renderTabs() {
     for (const tab of this.tabButtons || []) {
       const active = tab.getAttribute("data-filter") === this.filter;
       tab.toggleClass("is-active", active);
-      tab.setAttribute("aria-selected", String(active));
+      tab.setAttribute("aria-pressed", String(active));
     }
   }
   candidates() {
-    const rows = [];
-    const add = (record, kind, subtitle, open) => {
-      if (!record?.id || !record?.title) return;
-      rows.push({
-        id: record.id,
-        title: record.title,
-        aliases: [...record.aliases || []],
-        authors: [...record.authors || []],
+    const rows2 = [];
+    const add = (record2, kind, subtitle, open) => {
+      if (!record2?.id || !record2?.title) return;
+      rows2.push({
+        id: record2.id,
+        title: record2.title,
+        aliases: [...record2.aliases || []],
+        authors: [...record2.authors || []],
         kind,
         subtitle,
         open
@@ -428,11 +595,11 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
       if (!linkedProject.id) continue;
       add(workspace, "projects", `Project workspace \xB7 ${linkedProject.title || linkedProject.id}`, () => this.plugin.openProject(linkedProject.id));
     }
-    return rows;
+    return rows2;
   }
   matches(candidate) {
-    const words = this.query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
-    if (!words.length) return true;
+    const words2 = this.query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
+    if (!words2.length) return true;
     const haystack = [
       candidate.id,
       candidate.title,
@@ -440,7 +607,7 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
       ...candidate.aliases,
       ...candidate.authors
     ].filter(Boolean).join(" ").toLocaleLowerCase();
-    return words.every(
+    return words2.every(
       (word) => haystack.includes(word)
     );
   }
@@ -457,11 +624,11 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
   renderResults() {
     if (!this.results) return;
     this.results.empty();
-    const rows = this.rankedCandidates();
+    const rows2 = this.rankedCandidates();
     const summary = this.results.createDiv({ cls: "los-search-summary" });
-    summary.createSpan({ text: this.query.trim() ? `${rows.length} result${rows.length === 1 ? "" : "s"}` : "Quick access" });
+    summary.createSpan({ text: this.query.trim() ? `${rows2.length} result${rows2.length === 1 ? "" : "s"}` : "Quick access" });
     summary.createSpan({ cls: "los-micro", text: "Manifest identities only" });
-    if (!rows.length) {
+    if (!rows2.length) {
       empty(
         this.results,
         "No structural results",
@@ -478,7 +645,7 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
       return;
     }
     const list = this.results.createDiv({ cls: "los-search-result-list" });
-    for (const row of rows.slice(0, 24)) {
+    for (const row of rows2.slice(0, 24)) {
       const result = list.createEl("button", {
         cls: "los-search-result is-clickable",
         attr: { type: "button", "aria-label": `Open ${row.title}` }
@@ -492,8 +659,8 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
         row.open();
       });
     }
-    if (rows.length > 24) {
-      this.results.createDiv({ cls: "los-micro", text: `${rows.length - 24} more results. Refine the query to narrow the list.` });
+    if (rows2.length > 24) {
+      this.results.createDiv({ cls: "los-micro", text: `${rows2.length - 24} more results. Refine the query to narrow the list.` });
     }
   }
 };
@@ -588,6 +755,7 @@ var LearningOSSettingsTab = class extends import_obsidian3.PluginSettingTab {
 var SessionEndModal = class extends import_obsidian3.Modal {
   plugin;
   review;
+  restoreAccessibility = null;
   constructor(app, plugin, review) {
     super(app);
     this.plugin = plugin;
@@ -601,8 +769,14 @@ var SessionEndModal = class extends import_obsidian3.Modal {
       root,
       "Explicit Git closure",
       "End learning session",
-      "Only files recorded by guarded learning actions can be staged. Unrelated changes remain untouched."
+      "Only files recorded by guarded learning actions can be staged. Unrelated changes remain untouched.",
+      "los-session-end-heading"
     );
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--session-end",
+      labelledBy: "los-session-end-heading"
+    });
     const owned = section(root, "Session-owned changes");
     if (!(this.review.owned_changes || []).length) empty(owned, "No owned changes", "There is nothing to commit from this session.");
     for (const file of this.review.owned_changes || []) owned.createEl("code", { text: file });
@@ -633,8 +807,11 @@ var SessionEndModal = class extends import_obsidian3.Modal {
       }
     }, "cta");
     button(actions, "Close without committing", () => this.close(), "quiet");
+    message.focus();
   }
   onClose() {
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
     this.contentEl.empty();
   }
 };
@@ -652,6 +829,38 @@ function projectedMetadata(values) {
   return values.filter(
     (value) => typeof value === "string" || typeof value === "number"
   ).map(String).filter(Boolean).join(" \xB7 ");
+}
+function plural(count, noun, pluralNoun = `${noun}s`) {
+  return `${count} ${count === 1 ? noun : pluralNoun}`;
+}
+function humanLabel(value) {
+  const text = String(value || "cross-domain").replace(/^thematic-group-/, "").replace(/[-_]+/g, " ").trim();
+  return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : "Cross-domain";
+}
+function canonicalLabel(value) {
+  return String(value || "").replace(/^thematic-group-/, "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+}
+function uniqueRecords(records) {
+  const seen = /* @__PURE__ */ new Set();
+  return records.filter((record2) => {
+    const key = asString(record2.id) || `${record2.type || "record"}:${asLabel(record2)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+function recordIds(records) {
+  return new Set(
+    records.map((record2) => asString(record2.id)).filter((id) => Boolean(id))
+  );
+}
+function intersectionSize(left, right) {
+  let count = 0;
+  for (const value of left) if (right.has(value)) count += 1;
+  return count;
+}
+function roleLabel(role) {
+  return humanLabel(role);
 }
 var AtlasView = class extends import_obsidian4.ItemView {
   plugin;
@@ -698,7 +907,10 @@ var AtlasView = class extends import_obsidian4.ItemView {
       const created = {
         name: key,
         notes: [],
-        shelves: []
+        shelves: [],
+        modules: [],
+        concepts: [],
+        sources: []
       };
       domains.set(
         key,
@@ -706,11 +918,57 @@ var AtlasView = class extends import_obsidian4.ItemView {
       );
       return created;
     };
-    for (const note of this.plugin.store.of("note")) {
-      bucket(note.domain).notes.push(note);
+    for (const note2 of this.plugin.store.of("note")) {
+      bucket(note2.domain).notes.push(note2);
     }
-    for (const shelf of this.plugin.store.of("collection")) {
+    const shelves = uniqueRecords([
+      ...this.plugin.store.of("collection"),
+      ...this.plugin.store.topicPacks()
+    ]);
+    for (const shelf of shelves) {
       bucket(shelf.domain).shelves.push(shelf);
+    }
+    for (const domain of domains.values()) {
+      const sourceIds = /* @__PURE__ */ new Set();
+      const conceptIds = /* @__PURE__ */ new Set();
+      const groupIds = /* @__PURE__ */ new Set();
+      for (const note2 of domain.notes) {
+        asStrings(note2.sources).forEach((id) => sourceIds.add(id));
+        asStrings(note2.concepts).forEach((id) => conceptIds.add(id));
+      }
+      for (const shelf of domain.shelves) {
+        asStrings(shelf.sources).forEach((id) => sourceIds.add(id));
+        asStrings(shelf.thematic_group_ids).forEach((id) => groupIds.add(id));
+        for (const entry of asRecords(shelf.entries)) {
+          const sourceId = asString(entry.source);
+          if (sourceId) sourceIds.add(sourceId);
+        }
+      }
+      for (const group of this.plugin.store.thematicGroups()) {
+        if (canonicalLabel(group.id) === canonicalLabel(domain.name) || canonicalLabel(group.title) === canonicalLabel(domain.name)) {
+          const groupId = asString(group.id);
+          if (groupId) groupIds.add(groupId);
+        }
+      }
+      for (const source of this.plugin.store.sources()) {
+        const sourceId = asString(source.id);
+        const sourceGroups = asStrings(source.thematic_group_ids);
+        if (sourceGroups.some((id) => groupIds.has(id)) && sourceId) {
+          sourceIds.add(sourceId);
+        }
+      }
+      const resolvedSources = [...sourceIds].map((id) => this.plugin.store.get(id)).filter((record2) => record2?.type === "source");
+      domain.sources.push(...uniqueRecords(resolvedSources));
+      const resolvedConcepts = [...conceptIds].map((id) => this.plugin.store.get(id)).filter((record2) => record2?.type === "concept");
+      domain.concepts.push(...uniqueRecords(resolvedConcepts));
+      const relatedModules = [
+        ...domain.sources.flatMap((source) => {
+          const sourceId = asString(source.id);
+          return sourceId ? this.plugin.store.useModules(sourceId) : [];
+        }),
+        ...this.plugin.store.modules().filter((module2) => asStrings(module2.thematic_group_ids).some((id) => groupIds.has(id)))
+      ];
+      domain.modules.push(...uniqueRecords(relatedModules));
     }
     return [...domains.values()].sort(
       (left, right) => right.notes.length - left.notes.length || left.name.localeCompare(right.name)
@@ -742,7 +1000,7 @@ var AtlasView = class extends import_obsidian4.ItemView {
       root,
       "Reach",
       "Domain atlas",
-      "Every domain\u2019s notes, wiring hubs and shelves \u2014 so a question standing in one module can be answered by another domain\u2019s shelf."
+      "See where your learning lives, what connects across subjects, and which source or module to open next."
     );
     const domains = this.atlas();
     if (!domains.length) {
@@ -761,16 +1019,12 @@ var AtlasView = class extends import_obsidian4.ItemView {
     const glance = root.createDiv({
       cls: "los-atlas-glance"
     });
+    glance.setAttrs({
+      role: "group",
+      "aria-label": "Choose a knowledge domain"
+    });
+    enableButtonGroupKeyboardNavigation(glance, "both");
     for (const domain of domains) {
-      const entries = domain.shelves.reduce(
-        (total, shelf) => total + asListLength(
-          shelf.entries
-        ),
-        0
-      );
-      const crosswalks = domain.notes.filter(
-        (note) => note.role === "crosswalk"
-      ).length;
       const selected = domain.name === this.domain;
       const tile = glance.createEl(
         "button",
@@ -784,28 +1038,14 @@ var AtlasView = class extends import_obsidian4.ItemView {
       );
       tile.createSpan({
         cls: "los-atlas-tile-name",
-        text: domain.name
+        text: humanLabel(domain.name)
       });
-      const plural = (count, noun) => `${count} ${noun}${count === 1 ? "" : "s"}`;
       const summaryParts = [
-        plural(
-          domain.notes.length,
-          "note"
-        ),
-        crosswalks ? plural(
-          crosswalks,
-          "crosswalk"
-        ) : "",
-        `${plural(
-          domain.shelves.length,
-          "shelf"
-        ).replace(
-          "shelfs",
-          "shelves"
-        )} (${entries})`
-      ].filter(
-        (part) => Boolean(part)
-      );
+        domain.modules.length ? plural(domain.modules.length, "module") : "",
+        domain.concepts.length ? plural(domain.concepts.length, "concept") : "",
+        domain.sources.length ? plural(domain.sources.length, "source") : "",
+        !domain.modules.length && !domain.concepts.length && !domain.sources.length ? plural(domain.shelves.length, "shelf", "shelves") : ""
+      ].filter((part) => Boolean(part));
       tile.createSpan({
         cls: "los-micro",
         text: summaryParts.join(" \xB7 ")
@@ -824,13 +1064,10 @@ var AtlasView = class extends import_obsidian4.ItemView {
     const body = root.createDiv({
       cls: "los-atlas-body"
     });
-    this.renderDomain(
-      body,
-      current
-    );
-    this.renderBoundaries(root);
+    this.renderDomain(body, current, domains);
+    this.renderBoundaries(body);
   }
-  noteRow(parent, note) {
+  noteRow(parent, note2) {
     const row = parent.createEl(
       "button",
       {
@@ -848,12 +1085,11 @@ var AtlasView = class extends import_obsidian4.ItemView {
       cls: "los-item-copy"
     });
     copy.createSpan({
-      text: asLabel(note)
+      text: asLabel(note2)
     });
     const metadata = projectedMetadata([
-      note.role,
-      note.state,
-      note.id
+      note2.role ? roleLabel(String(note2.role)) : "",
+      note2.state ? humanLabel(note2.state) : ""
     ]);
     if (metadata) {
       copy.createSpan({
@@ -861,7 +1097,14 @@ var AtlasView = class extends import_obsidian4.ItemView {
         text: metadata
       });
     }
-    const path = asString(note.path);
+    const summary = asString(note2.summary);
+    if (summary) {
+      copy.createSpan({
+        cls: "los-atlas-note-summary",
+        text: projectedExcerpt(summary, 150)
+      });
+    }
+    const path = asString(note2.path);
     row.addEventListener(
       "click",
       () => {
@@ -874,184 +1117,221 @@ var AtlasView = class extends import_obsidian4.ItemView {
     );
     return row;
   }
-  renderDomain(parent, domain) {
-    if (!domain) {
+  renderCoveragePanel(parent, title, iconName, records, kind) {
+    const panel = parent.createDiv({ cls: "los-atlas-map-panel" });
+    const heading = panel.createDiv({ cls: "los-atlas-map-panel-head" });
+    icon(heading.createSpan(), iconName);
+    heading.createEl("h3", { text: title });
+    heading.createSpan({ cls: "los-atlas-count", text: String(records.length) });
+    if (!records.length) {
+      panel.createDiv({
+        cls: "los-atlas-panel-empty",
+        text: kind === "concept" ? "No named concepts are linked yet." : `No ${kind}s are linked yet.`
+      });
       return;
     }
-    const header = parent.createDiv({
-      cls: "los-atlas-domain-head"
-    });
-    header.createEl("h2", {
-      text: domain.name
-    });
-    const actions = header.createDiv({
-      cls: "los-actions"
-    });
-    button(
-      actions,
-      "Browse these notes in the Library",
-      () => this.plugin.openLibraryFiltered(
-        "note",
-        domain.name
-      ),
-      "quiet"
-    );
+    const rows2 = records.slice().sort((left, right) => asLabel(left).localeCompare(asLabel(right))).slice(0, 5);
+    for (const record2 of rows2) {
+      if (kind === "concept") {
+        const concept = panel.createDiv({ cls: "los-atlas-concept" });
+        icon(concept.createSpan(), ICONS.concept);
+        concept.createSpan({ text: asLabel(record2) });
+        continue;
+      }
+      const recordId = asString(record2.id);
+      const row = panel.createEl("button", {
+        cls: "los-atlas-map-link is-clickable",
+        attr: { type: "button" }
+      });
+      icon(row.createSpan(), kind === "module" ? ICONS.module : ICONS.source);
+      const copy = row.createSpan({ cls: "los-item-copy" });
+      copy.createSpan({ text: asLabel(record2) });
+      const context = kind === "module" ? projectedMetadata([record2.code, record2.kind ? humanLabel(record2.kind) : ""]) : humanLabel(record2.source_type || "source");
+      if (context) copy.createSpan({ cls: "los-micro", text: context });
+      row.addEventListener("click", () => {
+        if (!recordId) return;
+        if (kind === "module") void this.plugin.openModule(recordId);
+        else void this.plugin.openSourceDetail(recordId);
+      });
+    }
+    if (records.length > rows2.length) {
+      panel.createDiv({
+        cls: "los-atlas-more",
+        text: `+${records.length - rows2.length} more`
+      });
+    }
+  }
+  renderConnections(parent, domain, domains) {
     const crosswalks = domain.notes.filter(
-      (note) => note.role === "crosswalk"
+      (note2) => note2.role === "crosswalk"
     );
-    if (crosswalks.length) {
-      const wrap = section(
-        parent,
-        `Wiring hubs (${crosswalks.length})`,
-        "Crosswalks carry the narrative that joins this domain\u2019s sources and concepts \u2014 read one before opening a shelf."
-      );
-      for (const note of crosswalks) {
-        this.noteRow(
-          wrap,
-          note
-        );
-      }
-    }
-    const byRole = /* @__PURE__ */ new Map();
-    for (const note of domain.notes) {
-      const role = String(
-        note.role || "synthesis"
-      );
-      const existingRows = byRole.get(role);
-      if (existingRows) {
-        existingRows.push(note);
-      } else {
-        byRole.set(
-          role,
-          [note]
-        );
-      }
-    }
-    const roles = [
-      ...byRole.keys()
-    ].sort(
-      (left, right) => {
-        const rank = (role) => ATLAS_ROLE_ORDER.indexOf(role) + 1 || 99;
-        return rank(left) - rank(right) || left.localeCompare(right);
-      }
-    );
-    if (domain.notes.length) {
-      const notesWrap = section(
-        parent,
-        `Notes (${domain.notes.length})`,
-        "Grouped by role. Opening a row opens the note itself."
-      );
-      for (const role of roles) {
-        const roleRows = byRole.get(role) ?? [];
-        const rows = roleRows.slice().sort(
-          (left, right) => asLabel(left).localeCompare(
-            asLabel(right)
-          )
-        );
-        const group = notesWrap.createEl(
-          "details",
-          {
-            cls: "los-atlas-group"
-          }
-        );
-        if (role !== "crosswalk" && rows.length <= 12) {
-          group.setAttr(
-            "open",
-            "open"
-          );
-        }
-        group.createEl(
-          "summary",
-          {
-            text: `${role} (${rows.length})`
-          }
-        );
-        for (const note of rows) {
-          this.noteRow(
-            group,
-            note
-          );
-        }
-      }
-    } else {
-      empty(
-        parent,
-        "No notes in this domain yet",
-        "Sources here surface only through concept links and shelves."
-      );
-    }
-    const shelvesWrap = section(
+    const currentSourceIds = recordIds(domain.sources);
+    const currentConceptIds = recordIds(domain.concepts);
+    const currentModuleIds = recordIds(domain.modules);
+    const peers = domains.filter((candidate) => candidate.name !== domain.name).map((candidate) => {
+      const sources = intersectionSize(currentSourceIds, recordIds(candidate.sources));
+      const concepts = intersectionSize(currentConceptIds, recordIds(candidate.concepts));
+      const modules = intersectionSize(currentModuleIds, recordIds(candidate.modules));
+      return { candidate, sources, concepts, modules, score: sources + concepts + modules };
+    }).filter((peer) => peer.score > 0).sort((left, right) => right.score - left.score || left.candidate.name.localeCompare(right.candidate.name));
+    if (!crosswalks.length && !peers.length) return;
+    const wrap = section(
       parent,
-      `Shelves (${domain.shelves.length})`,
-      "Curated reading lists. The blurb is the shelf\u2019s own rule for using it."
+      "Connections",
+      "Use a narrative bridge or jump to a neighbouring domain that shares learning material."
     );
-    if (!domain.shelves.length) {
-      empty(
-        shelvesWrap,
-        "No shelves yet",
-        "Nothing curated for this domain \u2014 the registry still holds its sources."
-      );
+    const grid = wrap.createDiv({ cls: "los-atlas-connection-grid" });
+    if (crosswalks.length) {
+      const card = grid.createDiv({ cls: "los-atlas-connection-card" });
+      card.createEl("h3", { text: "Narrative bridges" });
+      card.createDiv({
+        cls: "los-muted",
+        text: "These notes explain how the pieces fit together."
+      });
+      for (const note2 of crosswalks) this.noteRow(card, note2);
     }
-    const shelves = domain.shelves.slice().sort(
-      (left, right) => asLabel(left).localeCompare(
-        asLabel(right)
-      )
-    );
-    for (const shelf of shelves) {
-      const card = shelvesWrap.createDiv({
-        cls: "los-shelf-entry"
+    if (peers.length) {
+      const card = grid.createDiv({ cls: "los-atlas-connection-card" });
+      card.createEl("h3", { text: "Connected domains" });
+      card.createDiv({
+        cls: "los-muted",
+        text: "Shared sources, concepts, or modules create these links."
       });
-      const head = card.createEl(
-        "button",
-        {
-          cls: "los-shelf-entry-title is-clickable",
-          attr: {
-            type: "button"
-          }
-        }
-      );
-      icon(
-        head.createSpan(),
-        "library"
-      );
-      head.createSpan({
-        text: `${asLabel(shelf)} (${asListLength(
-          shelf.entries
-        )})`
-      });
-      const shelfId = asString(shelf.id);
-      head.addEventListener(
-        "click",
-        () => {
-          if (shelfId) {
-            void this.plugin.openLibrary(
-              shelfId,
-              "collection"
-            );
-          }
-        }
-      );
-      const summary = asString(shelf.summary);
-      if (summary) {
-        card.createDiv({
-          cls: "los-shelf-why",
-          text: projectedExcerpt(
-            summary,
-            320
-          )
+      for (const peer of peers.slice(0, 6)) {
+        const row = card.createEl("button", {
+          cls: "los-atlas-domain-link is-clickable",
+          attr: { type: "button" }
+        });
+        const copy = row.createSpan({ cls: "los-item-copy" });
+        copy.createSpan({ text: humanLabel(peer.candidate.name) });
+        const shared = [
+          peer.modules ? plural(peer.modules, "module") : "",
+          peer.concepts ? plural(peer.concepts, "concept") : "",
+          peer.sources ? plural(peer.sources, "source") : ""
+        ].filter(Boolean).join(" \xB7 ");
+        copy.createSpan({ cls: "los-micro", text: `Shared: ${shared}` });
+        row.createSpan({ cls: "los-atlas-arrow", text: "\u2192" });
+        row.addEventListener("click", () => {
+          this.domain = peer.candidate.name;
+          this.render();
         });
       }
     }
+  }
+  renderShelves(parent, domain) {
+    const wrap = section(
+      parent,
+      `Curated shelves (${domain.shelves.length})`,
+      "Purpose-built reading routes, kept ahead of the full note inventory."
+    );
+    if (!domain.shelves.length) {
+      empty(
+        wrap,
+        "No curated shelf yet",
+        "Sources are mapped above, but this domain does not have a reading route yet."
+      );
+      return;
+    }
+    const grid = wrap.createDiv({ cls: "los-atlas-shelf-grid" });
+    const shelves = domain.shelves.slice().sort((left, right) => asLabel(left).localeCompare(asLabel(right)));
+    for (const shelf of shelves) {
+      const card = grid.createDiv({ cls: "los-shelf-entry" });
+      const head = card.createEl("button", {
+        cls: "los-shelf-entry-title is-clickable",
+        attr: { type: "button" }
+      });
+      icon(head.createSpan(), shelf.type === "topic-pack" ? ICONS["topic-pack"] : ICONS.collection);
+      const copy = head.createSpan({ cls: "los-item-copy" });
+      copy.createSpan({ text: asLabel(shelf) });
+      copy.createSpan({
+        cls: "los-micro",
+        text: plural(asListLength(shelf.entries), "source")
+      });
+      const shelfId = asString(shelf.id);
+      head.addEventListener("click", () => {
+        if (shelfId) void this.plugin.openLibrary(shelfId, String(shelf.type || "collection"));
+      });
+      const summary = asString(shelf.summary) || asString(shelf.purpose);
+      if (summary) {
+        card.createDiv({
+          cls: "los-shelf-why",
+          text: projectedExcerpt(summary, 220)
+        });
+      }
+    }
+  }
+  renderNoteInventory(parent, domain) {
+    const notes = domain.notes.filter((note2) => note2.role !== "crosswalk");
+    if (!notes.length) return;
+    const wrap = section(
+      parent,
+      "Reference notes",
+      "The complete inventory stays available without taking over the map."
+    );
+    const inventory = wrap.createEl("details", { cls: "los-atlas-inventory" });
+    inventory.createEl("summary", { text: `Open all ${plural(notes.length, "note")}` });
+    const body = inventory.createDiv({ cls: "los-atlas-inventory-body" });
+    const byRole = /* @__PURE__ */ new Map();
+    for (const note2 of notes) {
+      const role = String(note2.role || "synthesis");
+      const rows2 = byRole.get(role) ?? [];
+      rows2.push(note2);
+      byRole.set(role, rows2);
+    }
+    const roles = [...byRole.keys()].sort((left, right) => {
+      const rank = (role) => ATLAS_ROLE_ORDER.indexOf(role) + 1 || 99;
+      return rank(left) - rank(right) || left.localeCompare(right);
+    });
+    for (const role of roles) {
+      const rows2 = (byRole.get(role) ?? []).slice().sort((left, right) => asLabel(left).localeCompare(asLabel(right)));
+      const group = body.createEl("details", { cls: "los-atlas-group" });
+      group.createEl("summary", { text: `${roleLabel(role)} (${rows2.length})` });
+      for (const note2 of rows2) this.noteRow(group, note2);
+    }
+  }
+  renderDomain(parent, domain, domains) {
+    if (!domain) return;
+    const header = parent.createDiv({ cls: "los-atlas-domain-head" });
+    const copy = header.createDiv({ cls: "los-atlas-domain-copy" });
+    copy.createEl("h2", { text: `${humanLabel(domain.name)} map` });
+    copy.createEl("p", {
+      text: [
+        plural(domain.modules.length, "module"),
+        plural(domain.concepts.length, "concept"),
+        plural(domain.sources.length, "source"),
+        plural(domain.shelves.length, "curated shelf", "curated shelves")
+      ].join(" \xB7 ")
+    });
+    const actions = header.createDiv({ cls: "los-actions" });
+    button(
+      actions,
+      "Browse domain in Library",
+      () => this.plugin.openLibraryFiltered("note", domain.name),
+      "quiet"
+    );
+    const coverage = parent.createDiv({ cls: "los-atlas-map-grid" });
+    this.renderCoveragePanel(coverage, "Modules", ICONS.module, domain.modules, "module");
+    this.renderCoveragePanel(coverage, "Concepts", ICONS.concept, domain.concepts, "concept");
+    this.renderCoveragePanel(coverage, "Sources", ICONS.source, domain.sources, "source");
+    this.renderConnections(parent, domain, domains);
+    this.renderShelves(parent, domain);
+    this.renderNoteInventory(parent, domain);
   }
   renderBoundaries(root) {
     const boundaries = this.plugin.store.rows(
       "quarantine_boundaries"
     );
-    const wrap = section(
-      root,
-      "Outside this map by policy",
-      "Named so their absence is visible; their content is never loaded, indexed, or searched."
-    );
+    const details = root.createEl("details", {
+      cls: "los-atlas-boundaries"
+    });
+    details.createEl("summary", {
+      text: `Policy boundaries (${boundaries.length})`
+    });
+    const wrap = details.createDiv({ cls: "los-atlas-boundaries-body" });
+    wrap.createEl("p", {
+      cls: "los-muted",
+      text: "Named only so their absence is visible. Their content is not part of the Atlas."
+    });
     if (!boundaries.length) {
       empty(
         wrap,
@@ -1080,7 +1360,7 @@ var AtlasView = class extends import_obsidian4.ItemView {
     }
     button(
       wrap,
-      "Open the generated atlas file",
+      "Open generated map file",
       () => this.plugin.openVaultPath(
         "generated/domain-atlas.md"
       ),
@@ -1090,10 +1370,1182 @@ var AtlasView = class extends import_obsidian4.ItemView {
 };
 
 // src/views/boundary-view.ts
+var import_obsidian7 = require("obsidian");
+
+// src/features/job/cards.ts
+function cardTop(card, title, sub = "") {
+  const top = card.createDiv({ cls: "los-card-top" });
+  const copy = top.createDiv({ cls: "los-card-copy" });
+  copy.createEl("h3", { text: title });
+  if (sub) copy.createDiv({ cls: "los-micro", text: sub });
+  return top;
+}
+function factList(parent, facts) {
+  const present = facts.filter(([, value]) => value);
+  if (!present.length) return;
+  const list = parent.createDiv({ cls: "los-fact-list" });
+  for (const [label, value] of present) {
+    const row = list.createDiv({ cls: "los-fact-row" });
+    row.createDiv({ cls: "los-fact-label", text: label });
+    row.createDiv({ cls: "los-fact-value", text: value });
+  }
+}
+function noteCard(parent, host, note2) {
+  const card = parent.createDiv({ cls: "los-card" });
+  const top = cardTop(card, note2.title, note2.component);
+  badge(top, note2.freshness, note2.freshness);
+  if (note2.summary) card.createEl("p", { text: note2.summary });
+  const actions = card.createDiv({ cls: "los-actions" });
+  if (note2.verified_against) {
+    actions.createSpan({ cls: "los-micro", text: `Verified ${note2.verified_against}` });
+  }
+  if (host.editNote) button(actions, "Edit note", () => host.editNote?.(note2), "quiet");
+  button(actions, "Open note", () => host.openJobPath(note2.path), "quiet");
+  return card;
+}
+function materialCard(parent, kicker, title, sub = "") {
+  const card = parent.createDiv({ cls: "los-card" });
+  card.createDiv({ cls: "los-kicker", text: kicker });
+  return { card, top: cardTop(card, title, sub) };
+}
+
+// src/features/job/library.ts
+var HORIZONS = ["now", "next", "later"];
+var HORIZON_LABEL = {
+  now: "Use now",
+  next: "Use next",
+  later: "Keep for later"
+};
+function entriesFor(horizon2, host, dashboard) {
+  const tracks = dashboard.learning_tracks.filter((item) => item.horizon === horizon2).map((track2) => ({
+    kicker: "Track",
+    title: track2.title,
+    sub: track2.cadence,
+    note: [
+      `${track2.completedSessions.length}/${track2.stages.length}`,
+      track2.status
+    ],
+    body: track2.outcome,
+    action: [
+      "Open plan",
+      host.openJobPlan ? () => host.openJobPlan?.(track2.id) : null
+    ]
+  }));
+  const papers = dashboard.papers.filter((item) => item.horizon === horizon2).map((paper2) => ({
+    kicker: "Paper",
+    title: paper2.title,
+    sub: paper2.authors.join(", "),
+    note: (() => {
+      const meta = [paper2.year, paper2.pages ? `${paper2.pages} pages` : ""].filter(Boolean).join(" \xB7 ");
+      return meta ? [meta, horizon2] : null;
+    })(),
+    body: paper2.angle,
+    action: paper2.available ? ["Open PDF", () => host.openJobPath(paper2.path)] : ["PDF unavailable", null]
+  }));
+  const books = dashboard.canonical_shelf.filter((item) => item.horizon === horizon2).map((source) => ({
+    kicker: "Book",
+    title: source.title,
+    sub: source.authors.join(", "),
+    note: null,
+    body: source.why,
+    action: ["Open in Library", () => host.openSourceDetail(source.source_id)]
+  }));
+  return [...tracks, ...papers, ...books];
+}
+function renderLibrary(root, host, dashboard) {
+  const library = section(root, "Library", "Ordered by when you need it.");
+  for (const horizon2 of HORIZONS) {
+    const entries = entriesFor(horizon2, host, dashboard);
+    if (!entries.length) continue;
+    const group = library.createDiv({ cls: "los-job-horizon" });
+    const head = group.createDiv({ cls: "los-card-top" });
+    head.createEl("h3", { text: HORIZON_LABEL[horizon2] });
+    badge(head, String(entries.length), horizon2);
+    for (const entry of entries) {
+      const { card, top } = materialCard(group, entry.kicker, entry.title, entry.sub);
+      if (entry.note) badge(top, entry.note[0], entry.note[1]);
+      if (entry.body) card.createEl("p", { text: entry.body });
+      const [label, onClick] = entry.action;
+      button(card.createDiv({ cls: "los-actions" }), label, onClick, "quiet");
+    }
+  }
+}
+
+// src/features/job/now.ts
+function nextStage(dashboard) {
+  for (const track2 of dashboard.learning_tracks) {
+    const stage = track2.stages.find((item) => !item.done);
+    if (stage) return { track: track2, stage };
+  }
+  return null;
+}
+function renderScope(root, host, dashboard) {
+  const { workspace } = dashboard;
+  const required = workspace.current_scope.find((item) => item.label === "required-now");
+  const scope = section(root, "Required now");
+  scope.createEl("p", {
+    text: required ? required.text : workspace.next_action || "No required-now scope is recorded."
+  });
+  button(scope, "Open workspace context", () => host.openJobPath(workspace.path), "quiet");
+}
+function renderNextStage(root, host, dashboard) {
+  const upcoming = nextStage(dashboard);
+  if (!upcoming) return;
+  const { track: track2, stage } = upcoming;
+  const wrap = section(root, "Next stage");
+  const card = wrap.createDiv({ cls: "los-card" });
+  const top = cardTop(
+    card,
+    stage.title,
+    `${track2.title} \xB7 stage ${String(stage.number).padStart(2, "0")}`
+  );
+  badge(top, `${track2.completedSessions.length}/${track2.stages.length} done`, track2.status);
+  if (stage.objective) card.createEl("p", { text: stage.objective });
+  factList(card, [
+    ["Learn from", stage.resources.slice(0, 3).map((item) => item.label).join(" \xB7 ")],
+    ["Read-only anchor", stage.jobContext.readOnlyAnchor],
+    ["Done when", stage.doneWhen[0] || "Stage evidence is recorded."]
+  ]);
+  const actions = card.createDiv({ cls: "los-actions" });
+  if (host.logJobSession) {
+    button(actions, "Log this stage", () => host.logJobSession?.(track2.id, stage.number), "cta");
+  }
+  if (host.setJobSessionState) {
+    button(
+      actions,
+      "Mark done",
+      () => host.setJobSessionState?.(track2.id, stage.number, "done", track2.revision),
+      "quiet"
+    );
+  }
+  if (host.openJobPlan) {
+    button(
+      actions,
+      "Open this stage",
+      () => host.openJobPlan?.(track2.id, stage.number),
+      "quiet"
+    );
+  }
+}
+function renderTaskPreview(root, host, dashboard) {
+  const tasks = dashboard.tasks.filter((task2) => task2.status === "open").sort((left, right) => ["now", "next", "later"].indexOf(left.horizon) - ["now", "next", "later"].indexOf(right.horizon)).slice(0, 4);
+  const wrap = section(root, "To do", tasks.length ? `${tasks.length} next action${tasks.length === 1 ? "" : "s"}` : "Nothing is waiting on you.");
+  const actions = wrap.createDiv({ cls: "los-job-section-actions" });
+  if (host.editTask) button(actions, "Add task", () => host.editTask?.(), "quiet");
+  for (const task2 of tasks) {
+    const row = wrap.createDiv({ cls: "los-job-task-row los-job-task-row--compact" });
+    const toggle = row.createEl("input", {
+      attr: { type: "checkbox", "aria-label": `Complete ${task2.title}` }
+    });
+    toggle.addEventListener("change", () => host.setTaskState?.(task2, "done"));
+    const copy = row.createDiv({ cls: "los-job-task-copy" });
+    copy.createEl("strong", { text: task2.title });
+    copy.createDiv({ cls: "los-micro", text: task2.horizon });
+  }
+}
+function planRunwayRow(parent, host, plan) {
+  const total = plan.stages.length;
+  const completed = plan.completedSessions.length;
+  const row = parent.createDiv({ cls: "los-job-runway-row" });
+  const copy = row.createDiv({ cls: "los-job-runway-copy" });
+  copy.createEl("strong", { text: plan.title });
+  copy.createDiv({ cls: "los-micro", text: plan.outcome || plan.cadence });
+  badge(row, `${completed}/${total}`, plan.horizon);
+  const progress = row.createDiv({ cls: "los-job-plan-progress" });
+  progress.setAttrs({
+    role: "progressbar",
+    "aria-valuemin": "0",
+    "aria-valuemax": String(total),
+    "aria-valuenow": String(completed),
+    "aria-label": `${plan.title}: ${completed} of ${total} stages complete`
+  });
+  const fill = progress.createDiv({ cls: "los-job-plan-progress-fill" });
+  fill.style.width = `${total ? Math.round(completed / total * 100) : 0}%`;
+  if (host.openJobPlan) {
+    const next = plan.stages.find((stage) => !stage.done) || plan.stages[0];
+    button(
+      row,
+      "Open plan",
+      () => host.openJobPlan?.(plan.id, next?.number),
+      "tertiary"
+    );
+  }
+}
+function renderPlanRunway(root, host, dashboard) {
+  if (!dashboard.learning_tracks.length) return;
+  const wrap = section(
+    root,
+    "Plan runway",
+    "Long-term plans stay visible without competing with the next stage."
+  );
+  const runway = wrap.createDiv({ cls: "los-job-runway" });
+  for (const plan of dashboard.learning_tracks.slice(0, 3)) planRunwayRow(runway, host, plan);
+}
+function renderNotePreview(root, host, dashboard) {
+  const wrap = section(root, "Learning notes");
+  const actions = wrap.createDiv({ cls: "los-job-section-actions" });
+  if (host.editNote) button(actions, "New note", () => host.editNote?.(), "quiet");
+  const note2 = dashboard.notes.learning[0];
+  if (note2) noteCard(wrap, host, note2);
+  else wrap.createEl("p", { cls: "los-muted", text: "Capture the first note from a study session." });
+}
+function renderDrift(root, host, dashboard) {
+  const drifted = dashboard.notes.stratum.filter((note2) => note2.freshness !== "current");
+  if (!drifted.length) return;
+  const queue = section(
+    root,
+    "Needs re-verifying",
+    "These notes describe code that has changed since they were last verified."
+  );
+  const list = queue.createDiv({ cls: "los-job-notes" });
+  for (const note2 of drifted) noteCard(list, host, note2);
+}
+function renderQuestions(root, dashboard) {
+  const { open_questions: questions } = dashboard.workspace;
+  if (!questions.length) return;
+  const wrap = section(root, "Open questions");
+  const list = wrap.createEl("ul", { cls: "los-job-questions" });
+  for (const question of questions) list.createEl("li", { text: question });
+}
+function renderNow(root, host, dashboard) {
+  const grid = root.createDiv({ cls: "los-job-today-grid" });
+  const focus = grid.createDiv({ cls: "los-job-today-focus" });
+  const side = grid.createDiv({ cls: "los-job-today-side" });
+  renderNextStage(focus, host, dashboard);
+  renderPlanRunway(focus, host, dashboard);
+  renderTaskPreview(side, host, dashboard);
+  renderNotePreview(side, host, dashboard);
+  renderDrift(side, host, dashboard);
+  renderScope(root, host, dashboard);
+  renderQuestions(root, dashboard);
+}
+
+// src/features/job/system.ts
+var HEALTH_ORDER = ["current", "drifting", "stale", "unverified"];
+function renderHealth(parent, health) {
+  const row = parent.createDiv({ cls: "los-job-health" });
+  for (const status of HEALTH_ORDER) {
+    const value = health[status] || 0;
+    if (value) badge(row, `${value} ${status}`, status);
+  }
+}
+function renderLayer(parent, host, layer2, byId) {
+  const group = parent.createDiv({ cls: "los-job-layer" });
+  const head = group.createDiv({ cls: "los-card-top" });
+  const copy = head.createDiv({ cls: "los-card-copy" });
+  copy.createEl("h3", { text: layer2.title });
+  if (layer2.summary) copy.createDiv({ cls: "los-micro", text: layer2.summary });
+  if (!layer2.noteIds.length) {
+    group.createEl("p", { cls: "los-muted", text: "No note describes this layer yet." });
+    return;
+  }
+  badge(head, `${layer2.noteIds.length} documented`, "current");
+  const list = group.createDiv({ cls: "los-job-notes" });
+  for (const id of layer2.noteIds) {
+    const note2 = byId.get(id);
+    if (note2) noteCard(list, host, note2);
+  }
+}
+function renderSystem(root, host, dashboard) {
+  const map = section(root, "Stratum pipeline");
+  renderHealth(map, dashboard.notes.health);
+  const byId = /* @__PURE__ */ new Map();
+  for (const note2 of [...dashboard.notes.skrub, ...dashboard.notes.stratum]) {
+    byId.set(note2.id, note2);
+  }
+  for (const layer2 of dashboard.notes.layers) renderLayer(map, host, layer2, byId);
+}
+
+// src/features/job/notes.ts
+function renderNotes(root, host, dashboard) {
+  const learning = section(
+    root,
+    "Learning notes",
+    "Capture in your own words, update when your understanding changes, and keep source verification separate."
+  );
+  const actions = learning.createDiv({ cls: "los-job-section-actions" });
+  if (host.editNote) button(actions, "New note", () => host.editNote?.(), "cta");
+  if (!dashboard.notes.learning.length) {
+    empty(learning, "No learning notes yet", "Create the first note from a study session.");
+  } else {
+    const list = learning.createDiv({ cls: "los-job-note-grid" });
+    for (const note2 of dashboard.notes.learning) noteCard(list, host, note2);
+  }
+  renderSystem(root, host, dashboard);
+}
+
+// src/features/stage-resources.ts
+var TRIAGE_ORDER = [
+  "required-now",
+  "helpful-now",
+  "deferred",
+  "reference-only"
+];
+var TRIAGE_HEADING = {
+  "required-now": "Do this",
+  "helpful-now": "If you get stuck",
+  deferred: "Depth \u2014 not now",
+  "reference-only": "Reference \u2014 preserved, not reading for this stage"
+};
+function rankOf(value) {
+  const index = value ? TRIAGE_ORDER.indexOf(value) : -1;
+  return index < 0 ? 0 : index;
+}
+function hasOpenTarget(record2) {
+  return [record2.material_path, record2.url, record2.vault_path].some(
+    (value) => typeof value === "string" && value.trim().length > 0
+  );
+}
+function renderStageResources(parent, resourcesValue, renderer) {
+  const resources = section(parent, "Exact work");
+  if (!resourcesValue.length) {
+    empty(
+      resources,
+      renderer.emptyTitle || "No source action selected",
+      renderer.emptyDetail || "Add a focused source or practice action to this stage."
+    );
+    return resources;
+  }
+  const ordered = [...resourcesValue].sort(
+    (left, right) => rankOf(left.scopeTriage) - rankOf(right.scopeTriage)
+  );
+  const anyRanked = ordered.some((item) => Boolean(item.scopeTriage));
+  let renderedHeading = null;
+  for (const resource of ordered) {
+    if (anyRanked) {
+      const heading = resource.scopeTriage ? TRIAGE_HEADING[resource.scopeTriage] || resource.scopeTriage : TRIAGE_HEADING["required-now"] || "Do this";
+      if (heading !== renderedHeading) {
+        resources.createDiv({ cls: "los-kicker los-resource-tier", text: heading });
+        renderedHeading = heading;
+      }
+    }
+    const row = resources.createDiv({
+      cls: `los-resource-row los-triage-${resource.scopeTriage || "unranked"}`
+    });
+    const iconName = resource.kind === "watch" ? "play" : resource.kind === "practise" ? "pencil-line" : "book-open";
+    icon(row.createSpan(), iconName);
+    const copy = row.createDiv({ cls: "los-resource-copy" });
+    copy.createEl("strong", { text: resource.label });
+    if (resource.locator) copy.createDiv({ cls: "los-micro", text: resource.locator });
+    const source = resource.sourceId && renderer.sourceRecord ? renderer.sourceRecord(resource.sourceId) : null;
+    if (source) chip(copy, source, renderer.openSource);
+    const actions = row.createDiv({ cls: "los-actions los-resource-actions" });
+    if (resource.canOpen && renderer.openResource) {
+      button(actions, "Open", () => renderer.openResource?.(resource), "quiet");
+    } else if (source && hasOpenTarget(source) && renderer.openSourceResource) {
+      button(
+        actions,
+        "Open source",
+        () => renderer.openSourceResource?.(source),
+        "quiet"
+      );
+    }
+    if (resource.sourceId && renderer.rateResource) {
+      const sourceId = resource.sourceId;
+      const resourceId = resource.id;
+      const rate = (verdict) => renderer.rateResource?.(
+        sourceId,
+        resourceId,
+        verdict
+      );
+      overflowMenu(actions, [
+        ["Helpful", () => rate("helpful")],
+        ["Too advanced", () => rate("too-advanced")],
+        ["Useful for review", () => rate("useful-for-review")]
+      ], resourceId ? `Rate ${resource.label}` : `Rate ${resource.label} (whole source)`);
+    }
+  }
+  return resources;
+}
+
+// src/features/job/plans.ts
+function planProgress(parent, plan) {
+  const total = plan.stages.length;
+  const completed = plan.completedSessions.length;
+  const progress = parent.createDiv({ cls: "los-job-plan-progress" });
+  progress.setAttrs({
+    role: "progressbar",
+    "aria-valuemin": "0",
+    "aria-valuemax": String(total),
+    "aria-valuenow": String(completed),
+    "aria-label": `${plan.title}: ${completed} of ${total} stages complete`
+  });
+  const fill = progress.createDiv({ cls: "los-job-plan-progress-fill" });
+  fill.style.width = `${total ? Math.round(completed / total * 100) : 0}%`;
+}
+function planCard(parent, host, plan) {
+  const total = plan.stages.length;
+  const completed = plan.completedSessions.length;
+  const card = parent.createDiv({ cls: "los-card los-job-plan-card" });
+  const top = cardTop(card, plan.title, `${total} stage${total === 1 ? "" : "s"}`);
+  badge(top, plan.horizon, plan.horizon);
+  if (plan.outcome) card.createEl("p", { text: plan.outcome });
+  planProgress(card, plan);
+  card.createDiv({ cls: "los-micro", text: `${completed} of ${total} stages complete` });
+  const next = plan.stages.find((stage) => !stage.done) || plan.stages[0];
+  if (next) {
+    const preview = card.createDiv({ cls: "los-job-plan-next" });
+    preview.createDiv({ cls: "los-kicker", text: next.done ? "Review" : "Next stage" });
+    preview.createEl("strong", {
+      text: `${String(next.number).padStart(2, "0")} \xB7 ${next.title}`
+    });
+  }
+  const actions = card.createDiv({ cls: "los-actions" });
+  if (host.openJobPlan) {
+    button(actions, "Open plan", () => host.openJobPlan?.(plan.id, next?.number), "cta");
+  }
+  if (host.editPlan) {
+    button(
+      actions,
+      plan.sourceKind === "structured" ? "Edit plan" : "Make editable",
+      () => host.editPlan?.(plan),
+      "quiet"
+    );
+  }
+}
+function renderMentalModels(parent, stage) {
+  if (!stage.jobContext.mentalModels.length) return;
+  const block = parent.createDiv({ cls: "los-job-stage-block" });
+  const mirrored = stage.jobContext.mentalModels.some(
+    (model) => model.label === "Pandas baseline" || model.label === "Polars mirror"
+  );
+  block.createEl("h3", { text: mirrored ? "Concept mirror" : "Mental model" });
+  const grid = block.createDiv({ cls: "los-job-concept-grid" });
+  for (const model of stage.jobContext.mentalModels) {
+    const item = grid.createEl("article", { cls: "los-job-concept-part" });
+    item.createDiv({ cls: "los-kicker", text: model.label });
+    item.createEl("p", { text: model.text });
+  }
+}
+function renderStage(parent, host, dashboard, plan, stage) {
+  const workspace = parent.createEl("article", { cls: "los-job-stage-reader" });
+  const heading = workspace.createDiv({ cls: "los-job-stage-heading" });
+  const copy = heading.createDiv({ cls: "los-job-stage-heading-copy" });
+  copy.createDiv({
+    cls: "los-kicker",
+    text: `Stage ${String(stage.number).padStart(2, "0")} of ${plan.stages.length}`
+  });
+  copy.createEl("h2", { text: stage.title });
+  badge(heading, stage.done ? "Done" : "Open", stage.done ? "complete" : "ready");
+  if (stage.estimateMinutes) badge(heading, `${stage.estimateMinutes} min`, "role");
+  if (stage.objective) {
+    const goal = workspace.createDiv({ cls: "los-stage-goal" });
+    goal.createDiv({ cls: "los-kicker", text: "Goal" });
+    goal.createEl("p", { text: stage.objective });
+  }
+  renderMentalModels(workspace, stage);
+  renderStageResources(workspace, stage.resources, {
+    sourceRecord: (sourceId) => {
+      const source = dashboard.canonical_shelf.find((item) => item.source_id === sourceId);
+      return source ? { id: source.source_id, type: "source", title: source.title } : null;
+    },
+    openSource: (source) => host.openSourceDetail(String(source.id || "")),
+    openResource: (resource) => {
+      const jobResource = stage.resources.find((item) => item.id === resource.id && item.label === resource.label);
+      if (jobResource?.url) return host.openJobUrl?.(jobResource.url);
+      if (jobResource?.vaultPath) return host.openJobLearningPath?.(jobResource.vaultPath);
+      return void 0;
+    }
+  });
+  if (stage.jobContext.readOnlyAnchor) {
+    const anchor = workspace.createDiv({ cls: "los-job-stage-block los-job-stratum-reference" });
+    anchor.createEl("h3", { text: "Stratum read-only reference" });
+    anchor.createEl("p", { text: stage.jobContext.readOnlyAnchor });
+  }
+  if (stage.doneWhen.length) {
+    const done = section(workspace, "Done when");
+    const list = done.createEl("ul", { cls: "los-donewhen-list" });
+    for (const criterion of stage.doneWhen) {
+      list.createEl("li", { cls: "los-donewhen-row", text: criterion });
+    }
+  }
+  const actions = workspace.createDiv({ cls: "los-actions los-job-stage-actions" });
+  if (host.logJobSession) {
+    button(actions, "Log this stage", () => host.logJobSession?.(plan.id, stage.number), "cta");
+  }
+  if (host.setJobSessionState) {
+    button(
+      actions,
+      stage.done ? "Reopen stage" : "Mark stage done",
+      () => host.setJobSessionState?.(
+        plan.id,
+        stage.number,
+        stage.done ? "open" : "done",
+        plan.revision
+      ),
+      "quiet"
+    );
+  }
+}
+function renderPlanDetail(root, host, dashboard, plan) {
+  const page = root.createDiv({ cls: "los-section los-job-plan-page" });
+  if (host.closeJobPlan) button(page, "\u2190 All plans", () => host.closeJobPlan?.(), "tertiary");
+  const header = page.createDiv({ cls: "los-job-plan-detail-header" });
+  const top = header.createDiv({ cls: "los-card-top" });
+  const copy = top.createDiv({ cls: "los-card-copy" });
+  copy.createDiv({ cls: "los-kicker", text: "Study plan" });
+  copy.createEl("h1", { text: plan.title });
+  badge(top, plan.horizon, plan.horizon);
+  if (plan.outcome) header.createEl("p", { cls: "los-job-plan-outcome", text: plan.outcome });
+  const completed = plan.completedSessions.length;
+  header.createDiv({
+    cls: "los-micro",
+    text: `${completed} of ${plan.stages.length} stages complete`
+  });
+  planProgress(header, plan);
+  if (plan.cadence) {
+    const cadence = header.createDiv({ cls: "los-job-plan-cadence" });
+    cadence.createDiv({ cls: "los-kicker", text: "Cadence" });
+    cadence.createEl("p", { text: plan.cadence });
+  }
+  if (host.editPlan) {
+    button(
+      header.createDiv({ cls: "los-actions" }),
+      plan.sourceKind === "structured" ? "Edit plan" : "Make editable",
+      () => host.editPlan?.(plan),
+      "quiet"
+    );
+  }
+  if (!plan.stages.length) {
+    empty(page, "No stages yet", "Edit this plan to add its first learning stage.");
+    return;
+  }
+  const selected = plan.stages.find(
+    (stage) => stage.number === host.selectedPlanSession
+  ) || plan.stages.find((stage) => !stage.done) || plan.stages[0];
+  if (!selected) {
+    empty(page, "No stage selected", "Return to the plan and choose a stage.");
+    return;
+  }
+  const layout = page.createDiv({ cls: "los-job-plan-layout" });
+  const rail = layout.createEl("nav", { cls: "los-job-stage-rail" });
+  rail.setAttrs({ "aria-label": `${plan.title} stages` });
+  rail.createEl("h2", { text: "Stages" });
+  for (const stage of plan.stages) {
+    const control = button(
+      rail,
+      "",
+      () => host.openJobPlan?.(plan.id, stage.number),
+      "row"
+    );
+    control.addClass("los-job-stage-row");
+    control.toggleClass("is-selected", stage.number === selected.number);
+    control.toggleClass("is-done", stage.done);
+    control.setAttrs({
+      "aria-label": `Open stage ${stage.number}: ${stage.title}`,
+      "aria-pressed": String(stage.number === selected.number)
+    });
+    control.createSpan({
+      cls: "los-job-stage-number",
+      text: String(stage.number).padStart(2, "0")
+    });
+    const stageCopy = control.createSpan({ cls: "los-job-stage-copy" });
+    stageCopy.createSpan({ text: stage.title });
+    stageCopy.createSpan({ cls: "los-micro", text: stage.done ? "Done" : "Open" });
+  }
+  renderStage(layout, host, dashboard, plan, selected);
+}
+function renderPlans(root, host, dashboard) {
+  const selected = host.selectedPlanId ? dashboard.learning_tracks.find((plan) => plan.id === host.selectedPlanId) : null;
+  if (selected) {
+    renderPlanDetail(root, host, dashboard, selected);
+    return;
+  }
+  const wrap = section(
+    root,
+    "Study plans",
+    "Open a plan, then work through one focused stage at a time."
+  );
+  const top = wrap.createDiv({ cls: "los-job-section-actions" });
+  if (host.editPlan) button(top, "New plan", () => host.editPlan?.(), "cta");
+  if (!dashboard.learning_tracks.length) {
+    empty(wrap, "No study plans yet", "Create a path from a job requirement to proof you can show.");
+    return;
+  }
+  const grid = wrap.createDiv({ cls: "los-job-plan-grid" });
+  for (const plan of dashboard.learning_tracks) planCard(grid, host, plan);
+}
+
+// src/features/job/tasks.ts
+var HORIZONS2 = [
+  ["now", "Today / now"],
+  ["next", "Next"],
+  ["later", "Later"]
+];
+function taskRow(parent, host, task2) {
+  const row = parent.createDiv({ cls: "los-job-task-row" });
+  const toggle = row.createEl("input", {
+    attr: { type: "checkbox", "aria-label": `Complete ${task2.title}` }
+  });
+  toggle.checked = task2.status === "done";
+  toggle.addEventListener("change", () => {
+    host.setTaskState?.(task2, toggle.checked ? "done" : "open");
+  });
+  const copy = row.createDiv({ cls: "los-job-task-copy" });
+  copy.createEl("strong", { text: task2.title });
+  if (task2.details) copy.createDiv({ cls: "los-micro", text: task2.details });
+  if (task2.trackId) badge(copy, task2.trackId, "role");
+  button(row, "Edit", () => host.editTask?.(task2), "tertiary");
+  row.toggleClass("is-done", task2.status === "done");
+}
+function renderTasks(root, host, dashboard) {
+  const wrap = section(root, "Tasks", "A small Job-only action list, separate from the academic work graph.");
+  const top = wrap.createDiv({ cls: "los-job-section-actions" });
+  if (host.editTask) button(top, "Add task", () => host.editTask?.(), "cta");
+  if (!dashboard.tasks.length) {
+    empty(wrap, "No Job tasks yet", "Add the first concrete action for this workspace.");
+    return;
+  }
+  for (const [horizon2, label] of HORIZONS2) {
+    const tasks = dashboard.tasks.filter((task2) => task2.horizon === horizon2);
+    if (!tasks.length) continue;
+    const group = wrap.createDiv({ cls: "los-job-task-group" });
+    const head = group.createDiv({ cls: "los-card-top" });
+    head.createEl("h3", { text: label });
+    badge(head, String(tasks.length), horizon2);
+    for (const task2 of tasks) taskRow(group, host, task2);
+  }
+}
+
+// src/features/job/shell.ts
+var TABS = [
+  ["now", "Today"],
+  ["tasks", "Tasks"],
+  ["plans", "Plans"],
+  ["notes", "Notes"],
+  ["library", "Library"]
+];
+var DESTINATIONS = {
+  now: renderNow,
+  tasks: renderTasks,
+  plans: renderPlans,
+  notes: renderNotes,
+  library: renderLibrary
+};
+function renderJobDashboard(root, host, dashboard, active, choose) {
+  const header = pageHeader(root, "Job workspace", dashboard.title, dashboard.subtitle);
+  const actions = header.createDiv({ cls: "los-actions los-job-header-actions" });
+  if (host.editTask) button(actions, "Add task", () => host.editTask?.(), "quiet");
+  if (host.editNote) button(actions, "New note", () => host.editNote?.(), "cta");
+  filterTabs(root, "Job workspace sections", TABS, active, choose);
+  (DESTINATIONS[active] || renderNow)(root, host, dashboard);
+}
+
+// src/features/job/session-modal.ts
 var import_obsidian5 = require("obsidian");
-var BoundaryView = class extends import_obsidian5.ItemView {
+var JobSessionModal = class extends import_obsidian5.Modal {
+  trackTitle;
+  sessionNumber;
+  submit;
+  editor;
+  restoreAccessibility = null;
+  constructor(app, options) {
+    super(app);
+    this.trackTitle = options.trackTitle;
+    this.sessionNumber = options.sessionNumber;
+    this.submit = options.submit;
+  }
+  onOpen() {
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-job-session-modal");
+    const heading = root.createEl("h2", { text: "Log a job session" });
+    heading.id = "los-job-session-heading";
+    root.createDiv({
+      cls: "los-muted",
+      text: this.sessionNumber > 0 ? `${this.trackTitle} \xB7 session ${String(this.sessionNumber).padStart(2, "0")}` : this.trackTitle
+    });
+    this.editor = root.createEl("textarea", { cls: "los-job-session-editor" });
+    this.editor.rows = 10;
+    this.editor.placeholder = "What did you actually do, and what did it teach you?";
+    const status = root.createDiv({ cls: "los-micro", attr: { "aria-live": "polite" } });
+    const actions = root.createDiv({ cls: "los-job-session-actions" });
+    const save = button(actions, "Save to Job scratch", async () => {
+      const text = this.editor.value.trim();
+      if (!text) {
+        status.setText("An empty entry records nothing \u2014 write a line first.");
+        this.editor.focus();
+        return;
+      }
+      save.setAttribute("disabled", "true");
+      status.setText("Saving\u2026");
+      try {
+        await this.submit(text);
+        this.close();
+      } catch (error) {
+        save.removeAttribute("disabled");
+        status.setText(error instanceof Error ? error.message : String(error));
+      }
+    }, "cta");
+    button(actions, "Cancel", () => this.close(), "quiet");
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--job-session",
+      labelledBy: "los-job-session-heading"
+    });
+    this.editor.focus();
+  }
+  onClose() {
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+  }
+};
+
+// src/features/job/editor-modals.ts
+var import_obsidian6 = require("obsidian");
+function labelledInput(parent, label, value = "") {
+  const field = parent.createDiv({ cls: "los-job-field" });
+  field.createEl("label", { text: label });
+  const input = field.createEl("input", { attr: { type: "text" } });
+  input.value = value;
+  return input;
+}
+function labelledTextarea(parent, label, value = "", rows2 = 7) {
+  const field = parent.createDiv({ cls: "los-job-field" });
+  field.createEl("label", { text: label });
+  const editor = field.createEl("textarea");
+  editor.rows = rows2;
+  editor.value = value;
+  return editor;
+}
+function labelledSelect(parent, label, value, options) {
+  const field = parent.createDiv({ cls: "los-job-field" });
+  field.createEl("label", { text: label });
+  const select = field.createEl("select");
+  for (const [optionValue, optionLabel] of options) {
+    const option = select.createEl("option", { text: optionLabel });
+    option.value = optionValue;
+  }
+  select.value = value;
+  return select;
+}
+var JobEditorModal = class extends import_obsidian6.Modal {
+  restoreAccessibility = null;
+  begin(title, detail) {
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-job-editor-modal");
+    const heading = root.createEl("h2", { text: title });
+    heading.id = "los-job-editor-heading";
+    root.createEl("p", { cls: "los-muted", text: detail });
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--job-editor",
+      labelledBy: heading.id
+    });
+    return root;
+  }
+  actions(root, label, save) {
+    const status = root.createDiv({ cls: "los-draft-status", attr: { "aria-live": "polite" } });
+    const actions = root.createDiv({ cls: "los-actions los-job-editor-actions" });
+    const submit = button(actions, label, async () => {
+      submit.disabled = true;
+      status.setText("Saving\u2026");
+      try {
+        await save();
+        this.close();
+      } catch (error) {
+        submit.disabled = false;
+        status.setText(error instanceof Error ? error.message : String(error));
+      }
+    }, "cta");
+    button(actions, "Cancel", () => this.close(), "quiet");
+  }
+  onClose() {
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+  }
+};
+var JobTaskModal = class extends JobEditorModal {
+  constructor(app, options) {
+    super(app);
+    this.options = options;
+  }
+  onOpen() {
+    const { task: task2 } = this.options;
+    const root = this.begin(
+      task2 ? "Update task" : "Add task",
+      "Keep the action concrete. Horizon decides where it appears; it does not create a deadline."
+    );
+    const title = labelledInput(root, "Task", task2?.title || "");
+    const details = labelledTextarea(root, "Details", task2?.details || "", 5);
+    const horizon2 = labelledSelect(root, "Horizon", task2?.horizon || "now", [
+      ["now", "Today / now"],
+      ["next", "Next"],
+      ["later", "Later"]
+    ]);
+    const track2 = labelledSelect(root, "Linked plan", task2?.trackId || "", [
+      ["", "No linked plan"],
+      ...this.options.tracks.map((item) => [item.id, item.title])
+    ]);
+    this.actions(root, task2 ? "Save update" : "Save task", async () => {
+      const value = title.value.trim();
+      if (!value) throw new Error("Write a task title first.");
+      await this.options.submit({
+        ...task2 ? { id: task2.id } : {},
+        title: value,
+        details: details.value.trim(),
+        horizon: horizon2.value,
+        status: task2?.status || "open",
+        track_id: track2.value
+      }, task2?.revision);
+    });
+    title.focus();
+  }
+};
+var JobPlanModal = class extends JobEditorModal {
+  constructor(app, options) {
+    super(app);
+    this.options = options;
+  }
+  onOpen() {
+    const { plan } = this.options;
+    const root = this.begin(
+      plan ? "Update study plan" : "Create study plan",
+      "Define the long-term outcome, then make each stage small enough to finish and prove."
+    );
+    const title = labelledInput(root, "Plan name", plan?.title || "");
+    const horizon2 = labelledSelect(root, "Horizon", plan?.horizon || "now", [
+      ["now", "Use now"],
+      ["next", "Use next"],
+      ["later", "Keep for later"]
+    ]);
+    const cadence = labelledInput(root, "Cadence", plan?.cadence || "One stage per week");
+    const outcome = labelledTextarea(root, "Outcome", plan?.outcome || "", 4);
+    const stages = plan ? null : labelledTextarea(
+      root,
+      "Stages \u2014 one per line: title | objective | done when | resource link | read-only anchor",
+      "",
+      10
+    );
+    if (plan) {
+      root.createEl("p", {
+        cls: "los-muted",
+        text: `${plan.stages.length} structured stages are preserved. Open a stage to review its goal, resources, mental models, and proof.`
+      });
+    }
+    this.actions(root, plan ? "Save update" : "Save plan", async () => {
+      const planTitle = title.value.trim();
+      if (!planTitle) throw new Error("Give the plan a name first.");
+      const rows2 = stages?.value.split("\n").map((line) => line.trim()).filter(Boolean) || [];
+      if (!plan && !rows2.length) throw new Error("Add at least one stage.");
+      await this.options.submit({
+        ...plan ? { id: plan.id } : {},
+        title: planTitle,
+        horizon: horizon2.value,
+        cadence: cadence.value.trim(),
+        outcome: outcome.value.trim(),
+        status: plan?.status || "ready",
+        stages: plan ? plan.stages.map((stage) => ({
+          id: stage.id,
+          number: stage.number,
+          title: stage.title,
+          status: stage.status,
+          objective: stage.objective,
+          done_when: [...stage.doneWhen],
+          ...stage.estimateMinutes ? { estimate_minutes: stage.estimateMinutes } : {},
+          exam_critical: stage.examCritical,
+          concepts: [...stage.concepts],
+          scope_triage: stage.scopeTriage,
+          resources: stage.resources.map((resource) => ({
+            ...resource.id ? { id: resource.id } : {},
+            kind: resource.kind,
+            label: resource.label,
+            ...resource.sourceId ? { source_id: resource.sourceId } : {},
+            ...resource.locator ? { locator: resource.locator } : {},
+            ...resource.url ? { url: resource.url } : {},
+            ...resource.vaultPath ? { vault_path: resource.vaultPath } : {},
+            ...resource.scopeTriage ? { scope_triage: resource.scopeTriage } : {}
+          })),
+          attachments: [],
+          source_feedback: [],
+          job_context: {
+            mental_models: stage.jobContext.mentalModels.map((model) => ({ ...model })),
+            read_only_anchor: stage.jobContext.readOnlyAnchor
+          }
+        })) : rows2.map((line, index) => {
+          const [stageTitle = "", objective = "", proof = "", link = "", anchor = ""] = line.split("|").map((part) => part.trim());
+          const linkedResource = link ? {
+            kind: "read",
+            label: `Learning material for ${stageTitle || `stage ${index + 1}`}`,
+            ...link.startsWith("http") ? { url: link } : { vault_path: link },
+            scope_triage: "required-now"
+          } : null;
+          return {
+            id: `stage-${planTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}-${index + 1}`,
+            number: index + 1,
+            title: stageTitle,
+            status: "pending",
+            objective: objective || `Build working fluency in ${stageTitle}.`,
+            done_when: [proof || `Explain and apply ${stageTitle} without notes.`],
+            estimate_minutes: 90,
+            exam_critical: false,
+            concepts: [],
+            scope_triage: "required-now",
+            resources: linkedResource ? [linkedResource] : [],
+            attachments: [],
+            source_feedback: [],
+            job_context: { mental_models: [], read_only_anchor: anchor }
+          };
+        })
+      }, plan?.revision);
+    });
+    title.focus();
+  }
+};
+var JobNoteModal = class extends JobEditorModal {
+  constructor(app, options) {
+    super(app);
+    this.options = options;
+  }
+  onOpen() {
+    const { note: note2 } = this.options;
+    const root = this.begin(
+      note2 ? "Update note" : "New learning note",
+      "Capture what you learned in your own words. Source stamps remain a separate verification action."
+    );
+    const title = labelledInput(root, "Note title", note2?.title || "");
+    const body = labelledTextarea(root, "Working note", note2?.body || "", 16);
+    this.actions(root, note2 ? "Save update" : "Create note", async () => {
+      const noteTitle = title.value.trim();
+      const noteBody = body.value.trim();
+      if (!noteTitle || !noteBody) throw new Error("A note needs both a title and some text.");
+      await this.options.submit(note2?.id || "", noteTitle, noteBody, note2?.revision);
+    });
+    title.focus();
+  }
+};
+
+// src/features/job/model.ts
+function record(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
+}
+function string(value) {
+  return typeof value === "string" ? value.trim() : "";
+}
+function strings(value) {
+  return Array.isArray(value) ? value.map(string).filter(Boolean) : [];
+}
+function number(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+function numbers(value) {
+  return Array.isArray(value) ? value.filter((item) => typeof item === "number" && Number.isFinite(item)) : [];
+}
+function rows(value) {
+  return Array.isArray(value) ? value.map(record).filter((row) => Object.keys(row).length > 0) : [];
+}
+function horizon(value) {
+  return value === "now" || value === "next" ? value : "later";
+}
+function relativeJobPath(value) {
+  const path = string(value).replace(/\\/g, "/").replace(/^\.\//, "");
+  if (!path || path.startsWith("/") || path.split("/").includes("..")) return "";
+  return path;
+}
+function counts(value) {
+  const source = record(value);
+  return Object.fromEntries(
+    Object.entries(source).filter(([, entry]) => typeof entry === "number" && Number.isFinite(entry)).map(([key, entry]) => [key, entry])
+  );
+}
+function note(value) {
+  const row = record(value);
+  const id = string(row.id);
+  const title = string(row.title);
+  const path = relativeJobPath(row.path);
+  if (!id || !title || !path) return null;
+  return {
+    id,
+    title,
+    kind: row.kind === "stratum" ? "stratum" : row.kind === "learning" ? "learning" : "skrub",
+    family: string(row.family),
+    summary: string(row.summary),
+    body: string(row.body),
+    path,
+    component: string(row.component),
+    layer: string(row.layer),
+    verified_against: string(row.verified_against),
+    declared_status: string(row.declared_status),
+    freshness: string(row.freshness) || "unverified",
+    revision: number(row.revision)
+  };
+}
+function track(value) {
+  const row = record(value);
+  const id = string(row.id);
+  const title = string(row.title);
+  const path = relativeJobPath(row.path);
+  if (!id || !title || !path) return null;
+  return {
+    id,
+    title,
+    path,
+    status: string(row.status) || "ready",
+    cadence: string(row.cadence),
+    horizon: horizon(row.horizon),
+    outcome: string(row.outcome),
+    stages: rows(row.stages).map((stage) => {
+      const context = record(stage.job_context);
+      const resources = rows(stage.resources).map((resource) => {
+        const url = string(resource.url) || null;
+        const vaultPath = relativeJobPath(resource.vault_path) || null;
+        const resourceRecord = { ...resource };
+        if (url) resourceRecord.url = url;
+        if (vaultPath) resourceRecord.vault_path = vaultPath;
+        return {
+          record: resourceRecord,
+          id: string(resource.id) || null,
+          kind: string(resource.kind) || "read",
+          label: string(resource.label) || "Resource",
+          locator: string(resource.locator) || null,
+          sourceId: string(resource.source_id) || null,
+          scopeTriage: string(resource.scope_triage) || null,
+          canOpen: Boolean(url || vaultPath),
+          url,
+          vaultPath
+        };
+      });
+      return {
+        id: string(stage.id),
+        number: number(stage.number),
+        title: string(stage.title),
+        status: string(stage.status) || "pending",
+        objective: string(stage.objective),
+        doneWhen: strings(stage.done_when),
+        estimateMinutes: number(stage.estimate_minutes) || null,
+        examCritical: stage.exam_critical === true,
+        concepts: strings(stage.concepts),
+        scopeTriage: string(stage.scope_triage) || "required-now",
+        resources,
+        jobContext: {
+          mentalModels: rows(context.mental_models).map((model) => ({
+            label: string(model.label),
+            text: string(model.text)
+          })).filter((model) => model.label && model.text),
+          readOnlyAnchor: string(context.read_only_anchor)
+        },
+        done: stage.done === true
+      };
+    }).filter((stage) => stage.id && stage.number > 0 && stage.title),
+    completedSessions: numbers(row.completed_sessions),
+    lastSessionAt: string(row.last_session_at),
+    sourceKind: row.source_kind === "structured" ? "structured" : "legacy-markdown",
+    revision: number(row.revision)
+  };
+}
+function task(value) {
+  const row = record(value);
+  const id = string(row.id);
+  const title = string(row.title);
+  if (!id || !title) return null;
+  return {
+    id,
+    title,
+    details: string(row.details),
+    horizon: horizon(row.horizon),
+    status: row.status === "done" ? "done" : "open",
+    trackId: string(row.track_id),
+    createdAt: string(row.created_at),
+    updatedAt: string(row.updated_at),
+    revision: number(row.revision)
+  };
+}
+function layer(value) {
+  const row = record(value);
+  const id = string(row.id);
+  if (!id) return null;
+  return {
+    id,
+    title: string(row.title) || id,
+    summary: string(row.summary),
+    noteIds: Array.isArray(row.note_ids) ? row.note_ids.filter((item) => typeof item === "string") : []
+  };
+}
+function paper(value) {
+  const row = record(value);
+  const id = string(row.id);
+  const title = string(row.title);
+  const path = relativeJobPath(row.path);
+  if (!id || !title || !path) return null;
+  return {
+    id,
+    title,
+    path,
+    authors: strings(row.authors),
+    year: row.year == null ? "" : String(row.year),
+    pages: number(row.pages),
+    horizon: horizon(row.horizon),
+    angle: string(row.angle),
+    available: row.available === true
+  };
+}
+function shelfSource(value) {
+  const row = record(value);
+  const sourceId = string(row.source_id);
+  const title = string(row.title);
+  if (!sourceId || !title) return null;
+  return {
+    source_id: sourceId,
+    title,
+    authors: strings(row.authors),
+    horizon: horizon(row.horizon),
+    why: string(row.why)
+  };
+}
+function asJobDashboard(result) {
+  if (result.ok !== true || result.contract !== "job-dashboard-v2") return null;
+  const raw = record(result.dashboard);
+  const workspaceRaw = record(raw.workspace);
+  const workspacePath = relativeJobPath(workspaceRaw.path);
+  const title = string(raw.title);
+  if (!title || !workspacePath) return null;
+  const noteRaw = record(raw.notes);
+  return {
+    id: string(raw.id) || "job-dashboard",
+    title,
+    subtitle: string(raw.subtitle),
+    workspace: {
+      id: string(workspaceRaw.id) || "workspace-job-deem",
+      title: string(workspaceRaw.title) || title,
+      status: string(workspaceRaw.status) || "active",
+      standing: workspaceRaw.standing === true,
+      objective: string(workspaceRaw.objective),
+      current_scope: rows(workspaceRaw.current_scope).map((scope) => ({
+        label: string(scope.label),
+        text: string(scope.text)
+      })).filter((scope) => scope.label && scope.text),
+      next_action: string(workspaceRaw.next_action),
+      open_questions: strings(workspaceRaw.open_questions),
+      path: workspacePath
+    },
+    notes: {
+      learning: rows(noteRaw.learning).map(note).filter((item) => item !== null),
+      skrub: rows(noteRaw.skrub).map(note).filter((item) => item !== null),
+      stratum: rows(noteRaw.stratum).map(note).filter((item) => item !== null),
+      health: counts(noteRaw.health),
+      layers: rows(noteRaw.layers).map(layer).filter((item) => item !== null)
+    },
+    learning_tracks: rows(raw.learning_tracks).map(track).filter((item) => item !== null),
+    tasks: rows(raw.tasks).map(task).filter((item) => item !== null),
+    papers: rows(raw.papers).map(paper).filter((item) => item !== null),
+    canonical_shelf: rows(raw.canonical_shelf).map(shelfSource).filter((item) => item !== null),
+    counts: counts(raw.counts)
+  };
+}
+
+// src/views/boundary-view.ts
+var BoundaryView = class extends import_obsidian7.ItemView {
   plugin;
   boundaryId = null;
+  tab = "now";
+  planId = null;
+  planSession = null;
+  dashboard = null;
+  loading = false;
+  error = "";
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -1106,23 +2558,156 @@ var BoundaryView = class extends import_obsidian5.ItemView {
   }
   async setState(state = {}) {
     if (typeof state.boundaryId === "string") {
+      if (state.boundaryId !== this.boundaryId) {
+        this.dashboard = null;
+        this.error = "";
+      }
       this.boundaryId = state.boundaryId;
     }
+    if (state.tab === "system") {
+      this.tab = "notes";
+    } else if (["now", "tasks", "plans", "notes", "library"].includes(String(state.tab))) {
+      this.tab = state.tab;
+    }
+    if ("planId" in state) {
+      this.planId = typeof state.planId === "string" && state.planId.trim() ? state.planId.trim() : null;
+    }
+    if ("planSession" in state) {
+      this.planSession = typeof state.planSession === "number" && Number.isInteger(state.planSession) && state.planSession > 0 ? state.planSession : null;
+    }
     this.render();
+    if (this.boundaryId === "program-job-boundary") void this.loadJobDashboard();
   }
   getState() {
-    return { boundaryId: this.boundaryId };
+    return {
+      boundaryId: this.boundaryId,
+      tab: this.tab,
+      planId: this.planId,
+      planSession: this.planSession
+    };
   }
   async onOpen() {
     const boundaryId = this.leaf.state?.boundaryId;
     if (typeof boundaryId === "string") {
       this.boundaryId = boundaryId;
     }
+    const planId = this.leaf.state?.planId;
+    const planSession = this.leaf.state?.planSession;
+    if (typeof planId === "string" && planId.trim()) this.planId = planId.trim();
+    if (typeof planSession === "number" && Number.isInteger(planSession) && planSession > 0) {
+      this.planSession = planSession;
+    }
     this.render();
+    if (this.boundaryId === "program-job-boundary") void this.loadJobDashboard();
+  }
+  async loadJobDashboard() {
+    if (this.loading || this.dashboard || this.boundaryId !== "program-job-boundary") return;
+    this.loading = true;
+    this.error = "";
+    this.render();
+    try {
+      const result = await this.plugin.gateway.jobDashboard();
+      const dashboard = asJobDashboard(result);
+      if (!dashboard || !this.plugin.resources.grantJobAccess(result.access)) {
+        throw new Error("LearningOS refused an invalid Job dashboard response.");
+      }
+      this.dashboard = dashboard;
+    } catch (error) {
+      this.error = error instanceof Error ? error.message : String(error);
+    } finally {
+      this.loading = false;
+      this.render();
+    }
+  }
+  chooseTab(tab) {
+    this.tab = tab;
+    this.render();
+  }
+  openJobPlan(trackId, session) {
+    const plan = this.dashboard?.learning_tracks.find((item) => item.id === trackId);
+    if (!plan) {
+      new import_obsidian7.Notice("That study plan is no longer available.");
+      return;
+    }
+    const requested = typeof session === "number" ? plan.stages.find((item) => item.number === session) : null;
+    const selected = requested || plan.stages.find((item) => !item.done) || plan.stages[0];
+    this.planId = plan.id;
+    this.planSession = selected?.number || null;
+    this.tab = "plans";
+    this.render();
+  }
+  closeJobPlan() {
+    this.planId = null;
+    this.planSession = null;
+    this.render();
+  }
+  /** The core refuses an empty entry, so the text is collected before writing. */
+  openSessionLog(track2, session) {
+    const title = this.dashboard?.learning_tracks.find((item) => item.id === track2)?.title || track2;
+    new JobSessionModal(this.app, {
+      trackTitle: title,
+      sessionNumber: session,
+      submit: async (text) => {
+        await this.commitJobWrite(() => this.plugin.gateway.logJobSession(text, { track: track2, session }));
+      }
+    }).open();
+  }
+  openTaskEditor(task2) {
+    new JobTaskModal(this.app, {
+      ...task2 ? { task: task2 } : {},
+      tracks: this.dashboard?.learning_tracks || [],
+      submit: (value, revision) => this.commitJobWrite(
+        () => this.plugin.gateway.saveJobTask(value, revision)
+      )
+    }).open();
+  }
+  openPlanEditor(plan) {
+    new JobPlanModal(this.app, {
+      ...plan ? { plan } : {},
+      submit: (value, revision) => this.commitJobWrite(
+        () => this.plugin.gateway.saveJobPlan(value, revision)
+      )
+    }).open();
+  }
+  openNoteEditor(note2) {
+    new JobNoteModal(this.app, {
+      ...note2 ? { note: note2 } : {},
+      submit: (noteId, title, body, revision) => this.commitJobWrite(
+        () => this.plugin.gateway.saveJobNote(noteId, title, body, revision)
+      )
+    }).open();
+  }
+  async commitJobWrite(write) {
+    try {
+      await this.plugin.gateway.enqueue(write);
+    } catch (error) {
+      if (isProjectionConflict(error)) {
+        this.dashboard = null;
+        await this.loadJobDashboard();
+      }
+      throw error;
+    }
+    this.dashboard = null;
+    await this.loadJobDashboard();
+  }
+  /**
+   * Run one bounded Job write, then reload the dashboard so the view reflects
+   * what the core actually recorded rather than an optimistic local guess —
+   * the response is ephemeral and the core owns the merge (ADR-010).
+   */
+  async runJobWrite(write) {
+    try {
+      await this.commitJobWrite(write);
+    } catch (error) {
+      new import_obsidian7.Notice(error instanceof Error ? error.message : String(error));
+      this.error = "";
+      this.render();
+    }
   }
   render() {
     const root = this.contentEl;
     root.empty();
+    root.removeClass("los-job-view");
     root.addClass("los-root", "los-boundary-view");
     const boundary = (this.plugin.store.data?.quarantine_boundaries || []).find(
       (row) => row.id === this.boundaryId
@@ -1131,23 +2716,71 @@ var BoundaryView = class extends import_obsidian5.ItemView {
       empty(root, "Boundary unavailable", "No quarantined content was loaded.");
       return;
     }
+    if (boundary.id === "program-job-boundary") {
+      root.addClass("los-job-view");
+      if (this.dashboard) {
+        renderJobDashboard(
+          root,
+          {
+            openJobPath: (path) => this.plugin.resources.openJobPath(path),
+            openSourceDetail: (sourceId) => this.plugin.openSourceDetail(sourceId),
+            openJobPlan: (trackId, session) => this.openJobPlan(trackId, session),
+            closeJobPlan: () => this.closeJobPlan(),
+            selectedPlanId: this.planId,
+            selectedPlanSession: this.planSession,
+            openJobUrl: (url) => this.plugin.resources.openJobUrl(url),
+            openJobLearningPath: (path) => this.plugin.resources.openJobLearningPath(path),
+            logJobSession: (track2, session) => this.openSessionLog(track2, session),
+            setJobSessionState: (track2, session, state, revision) => this.runJobWrite(
+              () => this.plugin.gateway.recordJobTrackSession(track2, session, state, revision)
+            ),
+            editTask: (task2) => this.openTaskEditor(task2),
+            setTaskState: (task2, state) => this.runJobWrite(
+              () => this.plugin.gateway.saveJobTask({
+                id: task2.id,
+                title: task2.title,
+                details: task2.details,
+                horizon: task2.horizon,
+                status: state,
+                track_id: task2.trackId
+              }, task2.revision)
+            ),
+            editPlan: (plan) => this.openPlanEditor(plan),
+            editNote: (note2) => this.openNoteEditor(note2)
+          },
+          this.dashboard,
+          this.tab,
+          (tab) => this.chooseTab(tab)
+        );
+        return;
+      }
+      pageHeader(
+        root,
+        "Job \xB7 confidential workspace",
+        asLabel(boundary, "Job"),
+        boundaryPolicy(boundary.description)
+      );
+      if (this.loading) {
+        empty(root, "Opening the confidential workspace", "Reading only the bounded Job dashboard. Nothing is being added to LearningOS search or the manifest.");
+      } else if (this.error) {
+        empty(root, "Job workspace unavailable", this.error, "Try again", () => void this.loadJobDashboard());
+      } else {
+        empty(root, "Job workspace is sealed", "Opening this destination creates an ephemeral Job session. Notes, plans, tasks, and progress can then be saved only through the guarded gateway.", "Open confidential workspace", () => void this.loadJobDashboard());
+      }
+      return;
+    }
     pageHeader(root, "Deliberate boundary", asLabel(boundary, "Boundary"), boundaryPolicy(boundary.description));
     const guard = section(root, "What this means");
-    if (boundary.id === "program-job-boundary") {
-      guard.createEl("p", { text: "Job content is not indexed, searched, read, or mixed into LearningOS. Access requires a separate, explicit request." });
-      button(guard, "Request explicit Job access", () => new import_obsidian5.Notice("Job access remains outside LearningOS. Ask Codex explicitly when needed."), "quiet");
-    } else {
-      guard.createEl("p", { text: "Master\u2019s planning is quarantined from current Bachelor\u2019s work and all default search. This surface exposes only the boundary record." });
-      button(guard, "Open Master\u2019s Planning boundary", () => new import_obsidian5.Notice("Open the quarantined folder manually only for a deliberate planning session."), "quiet");
-    }
+    guard.createEl("p", { text: "Master\u2019s planning is quarantined from current Bachelor\u2019s work and all default search. This surface exposes only the boundary record." });
+    button(guard, "Open Master\u2019s Planning boundary", () => new import_obsidian7.Notice("Open the quarantined folder manually only for a deliberate planning session."), "warm");
   }
 };
 
 // src/views/garden-view.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian9 = require("obsidian");
 
 // src/features/ai-actions/action-button.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const wrap = parent.createDiv({ cls: "los-ai-action-row" });
   const providers = plugin.aiActions.providers();
@@ -1173,11 +2806,11 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const targetId = target.id;
   const launch = button(wrap, "Refine with AI", async () => {
     if (!targetId) {
-      new import_obsidian6.Notice("This Garden item has no projected identity. Refresh LearningOS and try again.");
+      new import_obsidian8.Notice("This Garden item has no projected identity. Refresh LearningOS and try again.");
       return;
     }
     if (target.job_derived && !jobConfirmed) {
-      new import_obsidian6.Notice("Explicit export confirmation is required for job-derived material.");
+      new import_obsidian8.Notice("Explicit export confirmation is required for job-derived material.");
       return;
     }
     launch.setAttr("disabled", "disabled");
@@ -1189,14 +2822,14 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
         jobConfirmed
       );
       const bundlePath = result.bundle_path || result.request?.bundle_path;
-      new import_obsidian6.Notice(bundlePath ? `AI request prepared: ${bundlePath}` : "AI request prepared.");
+      new import_obsidian8.Notice(bundlePath ? `AI request prepared: ${bundlePath}` : "AI request prepared.");
       onChanged?.(result);
     } catch (error) {
-      new import_obsidian6.Notice(errorMessage(error));
+      new import_obsidian8.Notice(errorMessage(error));
       launch.removeAttribute?.("disabled");
       launch.setText("Refine with AI");
     }
-  }, "quiet");
+  }, "warm");
   launch.addClass("los-ai-action-button");
   if (!available.length) launch.setAttr("disabled", "disabled");
   return wrap;
@@ -1209,7 +2842,7 @@ var GARDEN_FILTERS = [
   ["review-due", "Review due"],
   ["harvest-candidate", "Candidates"]
 ];
-var GardenView = class extends import_obsidian7.ItemView {
+var GardenView = class extends import_obsidian9.ItemView {
   plugin;
   seedTitle = "";
   seedText = "";
@@ -1261,38 +2894,19 @@ var GardenView = class extends import_obsidian7.ItemView {
     );
     this.renderComposer(root);
     const entries = this.plugin.store.gardenEntries();
-    const filters = root.createDiv({
-      cls: "los-garden-filters",
-      attr: {
-        role: "tablist",
-        "aria-label": "Garden filters"
-      }
-    });
-    for (const [value, label] of GARDEN_FILTERS) {
-      const count = value === "all" ? entries.length : entries.filter(
+    filterTabs(
+      root,
+      "Garden filters",
+      GARDEN_FILTERS,
+      this.filter,
+      (value) => {
+        this.filter = value;
+        this.render();
+      },
+      (value) => value === "all" ? entries.length : entries.filter(
         (entry) => String(entry.state || "seed") === value
-      ).length;
-      const control = button(
-        filters,
-        `${label}${count ? ` ${count}` : ""}`,
-        () => {
-          this.filter = value;
-          this.render();
-        },
-        "quiet"
-      );
-      control.addClass("los-filter-tab");
-      control.toggleClass(
-        "is-active",
-        this.filter === value
-      );
-      control.setAttrs({
-        role: "tab",
-        "aria-selected": String(
-          this.filter === value
-        )
-      });
-    }
+      ).length
+    );
     const listHeader = root.createDiv({
       cls: "los-garden-list-header"
     });
@@ -1331,7 +2945,7 @@ var GardenView = class extends import_obsidian7.ItemView {
       () => this.plugin.openVaultPath(
         "bases/garden.base"
       ),
-      "quiet"
+      "info"
     );
     button(
       tools,
@@ -1367,6 +2981,7 @@ var GardenView = class extends import_obsidian7.ItemView {
       "input",
       () => {
         this.seedText = editor.value;
+        syncAddState();
       }
     );
     const actions = composer.createDiv({
@@ -1388,6 +3003,7 @@ var GardenView = class extends import_obsidian7.ItemView {
       "input",
       () => {
         this.seedTitle = title.value;
+        syncAddState();
       }
     );
     const add = button(
@@ -1398,7 +3014,14 @@ var GardenView = class extends import_obsidian7.ItemView {
       },
       "cta"
     );
-    add.disabled = this.planting;
+    const syncAddState = () => {
+      add.disabled = this.planting || !this.seedText.trim();
+      add.setAttribute(
+        "aria-disabled",
+        String(add.disabled)
+      );
+    };
+    syncAddState();
   }
   async plantSeed() {
     if (this.planting) {
@@ -1407,7 +3030,7 @@ var GardenView = class extends import_obsidian7.ItemView {
     const text = this.seedText;
     const title = this.seedTitle.trim();
     if (!text.trim()) {
-      new import_obsidian7.Notice(
+      new import_obsidian9.Notice(
         "Write something before adding the seed."
       );
       return;
@@ -1423,9 +3046,9 @@ var GardenView = class extends import_obsidian7.ItemView {
       );
       this.seedTitle = "";
       this.seedText = "";
-      new import_obsidian7.Notice("Garden seed added.");
+      new import_obsidian9.Notice("Garden seed added.");
     } catch (error) {
-      new import_obsidian7.Notice(errorMessage(error));
+      new import_obsidian9.Notice(errorMessage(error));
     } finally {
       this.planting = false;
       this.render();
@@ -1507,17 +3130,17 @@ var GardenView = class extends import_obsidian7.ItemView {
               await this.plugin.aiActions.applyApprovedDelivery(
                 deliveryId
               );
-              new import_obsidian7.Notice(
+              new import_obsidian9.Notice(
                 "Approved AI delivery applied and projection refreshed."
               );
               this.render();
             } catch (error) {
-              new import_obsidian7.Notice(
+              new import_obsidian9.Notice(
                 errorMessage(error)
               );
             }
           },
-          "cta"
+          "success"
         );
       }
       if (latest.receipt_id) {
@@ -1532,7 +3155,7 @@ var GardenView = class extends import_obsidian7.ItemView {
       cls: "los-garden-actions"
     });
     if (targetPath) {
-      button(actions, "Open original", () => this.plugin.openVaultPath(targetPath), "quiet");
+      button(actions, "Open original", () => this.plugin.openVaultPath(targetPath), "info");
     }
     if (target.transcription_path) {
       const transcriptionPath = target.transcription_path;
@@ -1542,7 +3165,7 @@ var GardenView = class extends import_obsidian7.ItemView {
         () => this.plugin.openVaultPath(
           transcriptionPath
         ),
-        "quiet"
+        "info"
       );
     }
     if (targetId) {
@@ -1584,41 +3207,41 @@ function renderElsewhere(view, root) {
   const pointer = readResumePointer(
     view.plugin.store.data?.resume_pointer
   );
-  const rows = [];
-  for (const record of view.plugin.store.currentSemesterModules()) {
-    const recordId = asString(record.id);
+  const rows2 = [];
+  for (const record2 of view.plugin.store.currentSemesterModules()) {
+    const recordId = asString(record2.id);
     if (!recordId || recordId === pointer.module_id) {
       continue;
     }
-    if (record.is_actionable !== true) {
+    if (record2.is_actionable !== true) {
       continue;
     }
-    rows.push({
-      record,
-      type: asString(record.kind) === "skill" ? "Skill" : "Module",
+    rows2.push({
+      record: record2,
+      type: asString(record2.kind) === "skill" ? "Skill" : "Module",
       open: () => view.plugin.openModule(
         recordId
       )
     });
   }
-  for (const record of view.plugin.store.projects()) {
-    const recordId = asString(record.id);
+  for (const record2 of view.plugin.store.projects()) {
+    const recordId = asString(record2.id);
     if (!recordId) {
       continue;
     }
-    const status = asString(record.status);
+    const status = asString(record2.status);
     if (status && ["completed", "archived"].includes(status)) {
       continue;
     }
-    rows.push({
-      record,
+    rows2.push({
+      record: record2,
       type: "Project",
       open: () => view.plugin.openProject(
         recordId
       )
     });
   }
-  const visibleRows = rows.slice(0, 5);
+  const visibleRows = rows2.slice(0, 5);
   if (!visibleRows.length) {
     empty(
       sectionEl,
@@ -1942,8 +3565,8 @@ function renderToday(view, root) {
 }
 
 // src/views/home-view.ts
-var import_obsidian8 = require("obsidian");
-var HomeView = class extends import_obsidian8.ItemView {
+var import_obsidian10 = require("obsidian");
+var HomeView = class extends import_obsidian10.ItemView {
   plugin;
   constructor(leaf, plugin) {
     super(leaf);
@@ -2027,7 +3650,7 @@ var HomeView = class extends import_obsidian8.ItemView {
       actions,
       "Capture",
       () => this.plugin.openCapture(),
-      "quiet"
+      "warm"
     );
     this.renderContinue(root);
     this.renderToday(root);
@@ -2073,8 +3696,8 @@ function isProjectDetailTab(value) {
   return PROJECT_DETAIL_TABS.includes(value);
 }
 function asLibrarySourceFilters(value) {
-  const record = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
-  const read = (key) => typeof record[key] === "string" ? record[key] : "";
+  const record2 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+  const read = (key) => typeof record2[key] === "string" ? record2[key] : "";
   return {
     domain: read("domain"),
     topic: read("topic"),
@@ -2339,7 +3962,7 @@ function readLibraryRecords(value) {
     return [];
   }
   return value.map(readLibraryRecord).filter(
-    (record) => record !== null
+    (record2) => record2 !== null
   );
 }
 function readRelatedRecords(value) {
@@ -2351,53 +3974,53 @@ function readRelatedRecords(value) {
     if (!isRecord(candidate)) {
       continue;
     }
-    const record = readLibraryRecord(candidate.rec);
-    if (record) {
-      records.push(record);
+    const record2 = readLibraryRecord(candidate.rec);
+    if (record2) {
+      records.push(record2);
     }
   }
   return records;
 }
 
 // src/features/library/detail.ts
-function renderRecordActions(view, detail, record) {
+function renderRecordActions(view, detail, record2) {
   const actions = detail.createDiv({
     cls: "los-actions"
   });
-  if (record.url) {
-    const url = record.url;
+  if (record2.url) {
+    const url = record2.url;
     button(
       actions,
       "Open online",
       () => view.plugin.openResource({
         url
       }),
-      "cta"
+      "info"
     );
   }
-  if (record.materialPath) {
+  if (record2.materialPath) {
     button(
       actions,
       "Open local copy",
       () => view.plugin.openMaterialPath(
-        record.materialPath
+        record2.materialPath
       ),
-      "quiet"
+      "info"
     );
   }
-  if (record.path) {
+  if (record2.path) {
     button(
       actions,
       "Open authored file",
       () => view.plugin.openAuthoredPath(
-        record.path
+        record2.path
       ),
-      "quiet"
+      "info"
     );
   }
 }
-function renderAttachments(view, detail, record) {
-  if (!record.attachments.length) {
+function renderAttachments(view, detail, record2) {
+  if (!record2.attachments.length) {
     return;
   }
   const attachments = section(
@@ -2405,21 +4028,21 @@ function renderAttachments(view, detail, record) {
     "Attachments",
     "Open the original handwriting, image, or PDF."
   );
-  for (const attachment of record.attachments) {
+  for (const attachment of record2.attachments) {
     button(
       attachments,
       `Open ${attachment.label}`,
       () => view.plugin.openAuthoredPath(
         attachment.path
       ),
-      "quiet"
+      "info"
     );
   }
 }
-function renderRelated(view, detail, record) {
+function renderRelated(view, detail, record2) {
   const related = readRelatedRecords(
     view.plugin.store.related(
-      record.id
+      record2.id
     )
   );
   const groups = /* @__PURE__ */ new Map();
@@ -2448,19 +4071,19 @@ function renderRelated(view, detail, record) {
   );
   for (const [
     type,
-    rows
+    rows2
   ] of orderedGroups) {
     const group = wrap.createDiv({
       cls: "los-related-group"
     });
     group.createDiv({
       cls: "los-group-title",
-      text: `${RELATED_LABELS[type] ?? type} \xB7 ${rows.length}`
+      text: `${RELATED_LABELS[type] ?? type} \xB7 ${rows2.length}`
     });
     const shown = group.createDiv({
       cls: "los-related-chips"
     });
-    for (const relatedRecord of rows.slice(0, 5)) {
+    for (const relatedRecord of rows2.slice(0, 5)) {
       chip(
         shown,
         relatedRecord.record,
@@ -2469,15 +4092,15 @@ function renderRelated(view, detail, record) {
         )
       );
     }
-    if (rows.length > 5) {
+    if (rows2.length > 5) {
       const rest = disclosure(
         group,
-        `View all ${rows.length}`
+        `View all ${rows2.length}`
       );
       const restChips = rest.createDiv({
         cls: "los-related-chips"
       });
-      for (const relatedRecord of rows.slice(5)) {
+      for (const relatedRecord of rows2.slice(5)) {
         chip(
           restChips,
           relatedRecord.record,
@@ -2489,7 +4112,7 @@ function renderRelated(view, detail, record) {
     }
   }
 }
-function renderSourceDetail(view, detail, record) {
+function renderSourceDetail(view, detail, record2) {
   const facts = section(
     detail,
     "Source facts"
@@ -2497,19 +4120,19 @@ function renderSourceDetail(view, detail, record) {
   const factRows = [
     [
       "Authors",
-      record.authors.join(", ")
+      record2.authors.join(", ")
     ],
     [
       "Organization",
-      record.organization
+      record2.organization
     ],
     [
       "Year",
-      record.year
+      record2.year
     ],
     [
       "Type",
-      record.sourceType
+      record2.sourceType
     ]
   ];
   for (const [
@@ -2532,7 +4155,7 @@ function renderSourceDetail(view, detail, record) {
     });
   }
   const memberships = view.shelfIndex().get(
-    record.id
+    record2.id
   ) ?? [];
   const placed = section(
     detail,
@@ -2594,7 +4217,7 @@ function renderSourceDetail(view, detail, record) {
   );
   const units = readLibraryRecords(
     view.plugin.store.useUnits(
-      record.id
+      record2.id
     )
   );
   if (!units.length) {
@@ -2613,12 +4236,12 @@ function renderSourceDetail(view, detail, record) {
       )
     );
   }
-  if (record.evaluations.length) {
+  if (record2.evaluations.length) {
     const evidence = section(
       detail,
       "What this source is good for"
     );
-    for (const evaluation of record.evaluations) {
+    for (const evaluation of record2.evaluations) {
       const card = evidence.createDiv({
         cls: "los-evidence-card"
       });
@@ -2647,7 +4270,7 @@ function renderSourceDetail(view, detail, record) {
     }
   }
 }
-function renderTechnical(view, detail, record) {
+function renderTechnical(view, detail, record2) {
   const technical = disclosure(
     detail,
     "Technical details",
@@ -2662,17 +4285,17 @@ function renderTechnical(view, detail, record) {
   });
   idRow.createSpan({
     cls: "los-fact-value los-detail-id",
-    text: record.id
+    text: record2.id
   });
   button(
     technical,
     "Copy ID",
     () => view.plugin.copyText(
-      record.id
+      record2.id
     ),
     "quiet"
   );
-  if (record.path) {
+  if (record2.path) {
     const pathRow = technical.createDiv({
       cls: "los-fact-row"
     });
@@ -2682,21 +4305,21 @@ function renderTechnical(view, detail, record) {
     });
     pathRow.createSpan({
       cls: "los-fact-value",
-      text: record.path
+      text: record2.path
     });
   }
 }
 
 // src/features/library/collections.ts
-function renderRecordRow(view, list, record, isPack = false) {
+function renderRecordRow(view, list, record2, isPack = false) {
   const row = list.createEl(
     "button",
     {
       cls: "los-route-row is-clickable",
       attr: {
         type: "button",
-        "aria-label": `Open ${record.title}`,
-        "data-record-id": record.id
+        "aria-label": `Open ${record2.title}`,
+        "data-record-id": record2.id
       }
     }
   );
@@ -2706,18 +4329,18 @@ function renderRecordRow(view, list, record, isPack = false) {
   copy.createEl(
     "strong",
     {
-      text: record.title
+      text: record2.title
     }
   );
   const meta = isPack ? [
-    record.purpose,
-    `${record.entries.length} items`
+    record2.purpose,
+    `${record2.entries.length} items`
   ].filter(Boolean).join(" \xB7 ") : [
-    record.sourceType,
-    record.year,
-    record.organization,
-    record.materialExists || record.materialPath ? "local" : null,
-    record.url ? "online" : null
+    record2.sourceType,
+    record2.year,
+    record2.organization,
+    record2.materialExists || record2.materialPath ? "local" : null,
+    record2.url ? "online" : null
   ].filter(Boolean).join(" \xB7 ");
   if (meta) {
     copy.createDiv({
@@ -2732,17 +4355,17 @@ function renderRecordRow(view, list, record, isPack = false) {
   row.addEventListener(
     "click",
     () => {
-      view.selectedElementId = record.id;
+      view.selectedElementId = record2.id;
       if (isPack) {
         view.plugin.openTopicPackDetail(
-          record.id,
+          record2.id,
           view.groupId,
           view.query
         );
         return;
       }
       view.plugin.openSourceDetail(
-        record.id,
+        record2.id,
         view.groupId,
         view.query,
         view.facet,
@@ -2752,7 +4375,7 @@ function renderRecordRow(view, list, record, isPack = false) {
   );
 }
 function renderSourcePage(view, root) {
-  const record = readLibraryRecord(
+  const record2 = readLibraryRecord(
     view.resourceId ? view.plugin.store.get(
       view.resourceId
     ) : null
@@ -2764,7 +4387,7 @@ function renderSourcePage(view, root) {
     "quiet"
   );
   back.addClass("los-route-back");
-  if (!record || record.type !== "source") {
+  if (!record2 || record2.type !== "source") {
     empty(
       root,
       "Learning source unavailable",
@@ -2780,28 +4403,28 @@ function renderSourcePage(view, root) {
   pageHeader(
     detail,
     "Learning Source",
-    record.title,
-    record.summary
+    record2.title,
+    record2.summary
   );
   view.renderRecordActions(
     detail,
-    record
+    record2
   );
   view.renderAttachments(
     detail,
-    record
+    record2
   );
   view.renderSourceDetail(
     detail,
-    record
+    record2
   );
   view.renderRelated(
     detail,
-    record
+    record2
   );
   view.renderTechnical(
     detail,
-    record
+    record2
   );
 }
 function renderTopicPackPage(view, root) {
@@ -3030,23 +4653,23 @@ function renderLegacyList(view, root) {
       view.render();
     }
   );
-  let rows = readLibraryRecords(
+  let rows2 = readLibraryRecords(
     view.plugin.store.search(
       view.query,
       [view.recordType]
     )
   );
   if (view.domain) {
-    rows = rows.filter(
-      (record) => record.domain === view.domain
+    rows2 = rows2.filter(
+      (record2) => record2.domain === view.domain
     );
   }
-  rows.sort(
+  rows2.sort(
     (left, right) => left.title.localeCompare(
       right.title
     )
   );
-  if (!rows.length) {
+  if (!rows2.length) {
     empty(
       root,
       view.query ? "No matching records" : "No records",
@@ -3057,14 +4680,14 @@ function renderLegacyList(view, root) {
   const list = root.createDiv({
     cls: "los-route-list"
   });
-  for (const record of rows) {
+  for (const record2 of rows2) {
     const row = list.createEl(
       "button",
       {
         cls: "los-route-row is-clickable",
         attr: {
           type: "button",
-          "data-record-id": record.id
+          "data-record-id": record2.id
         }
       }
     );
@@ -3074,33 +4697,33 @@ function renderLegacyList(view, root) {
     copy.createEl(
       "strong",
       {
-        text: record.title
+        text: record2.title
       }
     );
     copy.createDiv({
       cls: "los-route-meta",
       text: [
-        record.role,
-        record.domain,
-        record.state
+        record2.role,
+        record2.domain,
+        record2.state
       ].filter(Boolean).join(" \xB7 ")
     });
     row.createSpan({
       cls: "los-route-open",
-      text: record.path ? "Open file \u2192" : "Open \u2192"
+      text: record2.path ? "Open file \u2192" : "Open \u2192"
     });
     row.addEventListener(
       "click",
       () => {
-        view.selectedElementId = record.id;
-        if (record.path) {
+        view.selectedElementId = record2.id;
+        if (record2.path) {
           view.plugin.openAuthoredPath(
-            record.path
+            record2.path
           );
           return;
         }
         view.plugin.openRecord(
-          record.record
+          record2.record
         );
       }
     );
@@ -3188,10 +4811,11 @@ function renderCollectionSwitch(view, root) {
   const switcher = root.createDiv({
     cls: "los-collection-switch",
     attr: {
-      role: "tablist",
+      role: "group",
       "aria-label": "Library collection"
     }
   });
+  enableButtonGroupKeyboardNavigation(switcher);
   for (const [
     id,
     label
@@ -3203,8 +4827,7 @@ function renderCollectionSwitch(view, root) {
       view.collection === id ? "cta" : "quiet"
     );
     control.setAttrs({
-      role: "tab",
-      "aria-selected": String(
+      "aria-pressed": String(
         view.collection === id
       )
     });
@@ -3280,26 +4903,26 @@ function renderGroup(view, root) {
     view.renderFacetValues(toolbar, all);
   }
   const needle = view.query.trim().toLocaleLowerCase();
-  const words = needle.split(/\s+/).filter(Boolean);
-  const rows = all.filter((record) => {
+  const words2 = needle.split(/\s+/).filter(Boolean);
+  const rows2 = all.filter((record2) => {
     if (!isPacks && !view.matchesSourceFacet(
-      record.record
+      record2.record
     )) {
       return false;
     }
-    if (!words.length) {
+    if (!words2.length) {
       return true;
     }
     const hay = [
-      record.id,
-      record.title,
-      record.purpose,
-      record.summary,
-      ...record.aliases,
-      ...record.authors,
-      record.organization
+      record2.id,
+      record2.title,
+      record2.purpose,
+      record2.summary,
+      ...record2.aliases,
+      ...record2.authors,
+      record2.organization
     ].filter(Boolean).join(" ").toLocaleLowerCase();
-    return words.every(
+    return words2.every(
       (word) => hay.includes(word)
     );
   }).sort(
@@ -3315,7 +4938,7 @@ function renderGroup(view, root) {
     );
     return;
   }
-  if (!rows.length) {
+  if (!rows2.length) {
     empty(
       root,
       "No matching results",
@@ -3333,10 +4956,10 @@ function renderGroup(view, root) {
   const list = root.createDiv({
     cls: "los-route-list los-library-route-list"
   });
-  for (const record of rows) {
+  for (const record2 of rows2) {
     view.renderRecordRow(
       list,
-      record,
+      record2,
       isPacks
     );
   }
@@ -3609,12 +5232,12 @@ function renderSourceBrowser(view, root) {
       "quiet"
     );
   }
-  const words = view.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-  const rows = all.filter(
+  const words2 = view.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  const rows2 = all.filter(
     (source) => view.sourceMatchesFilters(source)
   ).filter(
     (source) => {
-      if (!words.length) {
+      if (!words2.length) {
         return true;
       }
       const hay = [
@@ -3627,7 +5250,7 @@ function renderSourceBrowser(view, root) {
         ...source.aliases,
         ...source.authors
       ].filter(Boolean).join(" ").toLocaleLowerCase();
-      return words.every(
+      return words2.every(
         (word) => hay.includes(word)
       );
     }
@@ -3638,7 +5261,7 @@ function renderSourceBrowser(view, root) {
   );
   browser.createDiv({
     cls: "los-library-result-summary",
-    text: `${rows.length} of ${all.length} source${all.length === 1 ? "" : "s"}`
+    text: `${rows2.length} of ${all.length} source${all.length === 1 ? "" : "s"}`
   });
   if (!all.length) {
     empty(
@@ -3648,20 +5271,34 @@ function renderSourceBrowser(view, root) {
     );
     return;
   }
-  if (!rows.length) {
+  if (!rows2.length) {
+    const hasQuery = Boolean(
+      view.query.trim()
+    );
+    const hasFilters = SOURCE_FILTER_DIMENSIONS.some(
+      ([dimension]) => Boolean(view.filters[dimension])
+    );
+    const resetLabel = hasQuery ? hasFilters ? "Clear search and filters" : "Clear search" : "Clear filters";
+    const reset = () => {
+      if (hasQuery) {
+        void view.clearSourceSearchAndFilters();
+      } else {
+        void view.clearSourceFilters();
+      }
+    };
     empty(
       browser,
       "No matching sources",
       "No source matches the current search and facet combination.",
-      "Clear filters",
-      () => void view.clearSourceFilters()
+      resetLabel,
+      reset
     );
     return;
   }
   const list = browser.createDiv({
     cls: "los-route-list los-library-route-list"
   });
-  for (const source of rows) {
+  for (const source of rows2) {
     view.renderRecordRow(
       list,
       source,
@@ -3759,8 +5396,8 @@ function renderFacetValues(view, parent, sources) {
 }
 
 // src/views/library-view.ts
-var import_obsidian9 = require("obsidian");
-var LibraryView = class extends import_obsidian9.ItemView {
+var import_obsidian11 = require("obsidian");
+var LibraryView = class extends import_obsidian11.ItemView {
   plugin;
   screen = "home";
   collection = "sources";
@@ -3863,8 +5500,8 @@ var LibraryView = class extends import_obsidian9.ItemView {
     this._shelfSnapshot = this.plugin.store.snapshotId;
     return index;
   }
-  matchesSourceFacet(record) {
-    const source = readLibraryRecord(record);
+  matchesSourceFacet(record2) {
+    const source = readLibraryRecord(record2);
     if (!source) {
       return false;
     }
@@ -4038,6 +5675,18 @@ var LibraryView = class extends import_obsidian9.ItemView {
     await this.rememberSourceBrowser();
     this.render();
   }
+  async clearSourceSearchAndFilters() {
+    this.query = "";
+    this.filters = asLibrarySourceFilters(null);
+    this.screen = "home";
+    this.groupId = null;
+    await this.rememberSourceBrowser();
+    this.render();
+    const search = typeof this.contentEl.querySelector === "function" ? this.contentEl.querySelector(
+      ".los-library-global-search"
+    ) : null;
+    search?.focus();
+  }
   renderSourceBrowser(root) {
     renderSourceBrowser(this, root);
   }
@@ -4074,8 +5723,8 @@ var LibraryView = class extends import_obsidian9.ItemView {
   renderFacetValues(parent, sources) {
     renderFacetValues(this, parent, sources);
   }
-  renderRecordRow(list, record, isPack = false) {
-    renderRecordRow(this, list, record, isPack);
+  renderRecordRow(list, record2, isPack = false) {
+    renderRecordRow(this, list, record2, isPack);
   }
   renderSourcePage(root) {
     renderSourcePage(this, root);
@@ -4092,20 +5741,20 @@ var LibraryView = class extends import_obsidian9.ItemView {
   renderLegacyList(root) {
     renderLegacyList(this, root);
   }
-  renderRecordActions(detail, record) {
-    renderRecordActions(this, detail, record);
+  renderRecordActions(detail, record2) {
+    renderRecordActions(this, detail, record2);
   }
-  renderAttachments(detail, record) {
-    renderAttachments(this, detail, record);
+  renderAttachments(detail, record2) {
+    renderAttachments(this, detail, record2);
   }
-  renderRelated(detail, record) {
-    renderRelated(this, detail, record);
+  renderRelated(detail, record2) {
+    renderRelated(this, detail, record2);
   }
-  renderSourceDetail(detail, record) {
-    renderSourceDetail(this, detail, record);
+  renderSourceDetail(detail, record2) {
+    renderSourceDetail(this, detail, record2);
   }
-  renderTechnical(detail, record) {
-    renderTechnical(this, detail, record);
+  renderTechnical(detail, record2) {
+    renderTechnical(this, detail, record2);
   }
 };
 
@@ -4165,29 +5814,29 @@ function readModuleViewState(value) {
     hasTab
   };
 }
-function readThematicGroup6(record) {
-  if (!record) {
+function readThematicGroup6(record2) {
+  if (!record2) {
     return null;
   }
-  const id = asString(record.id);
+  const id = asString(record2.id);
   if (!id) {
     return null;
   }
   return {
     id,
-    title: asString(record.title) ?? asString(record.label) ?? id,
-    description: asText(record.description) ?? ""
+    title: asString(record2.title) ?? asString(record2.label) ?? id,
+    description: asText(record2.description) ?? ""
   };
 }
 function readComponents(value) {
-  return asRecords(value).map((record) => {
-    const id = asString(record.id);
+  return asRecords(value).map((record2) => {
+    const id = asString(record2.id);
     if (!id) {
       return null;
     }
     return {
       id,
-      title: asString(record.short_title) ?? asString(record.title) ?? id
+      title: asString(record2.short_title) ?? asString(record2.title) ?? id
     };
   }).filter(nonNull);
 }
@@ -4198,41 +5847,41 @@ function readExamination(value) {
     notes: asText(examination.notes)
   };
 }
-function readModuleRecord(record, fallbackId = null) {
-  if (!record) {
+function readModuleRecord(record2, fallbackId = null) {
+  if (!record2) {
     return null;
   }
-  const id = asString(record.id) ?? fallbackId;
+  const id = asString(record2.id) ?? fallbackId;
   if (!id) {
     return null;
   }
   return {
-    record,
+    record: record2,
     id,
-    title: asString(record.title) ?? id,
-    kind: asString(record.kind) ?? "Module",
-    code: asText(record.code) ?? "",
-    semester: asText(record.semester) ?? "",
-    status: asString(record.status) ?? "unspecified",
-    institution: asText(record.institution) ?? "",
-    credits: asText(record.credits),
-    examination: readExamination(record.examination),
-    components: readComponents(record.components)
+    title: asString(record2.title) ?? id,
+    kind: asString(record2.kind) ?? "Module",
+    code: asText(record2.code) ?? "",
+    semester: asText(record2.semester) ?? "",
+    status: asString(record2.status) ?? "unspecified",
+    institution: asText(record2.institution) ?? "",
+    credits: asText(record2.credits),
+    examination: readExamination(record2.examination),
+    components: readComponents(record2.components)
   };
 }
-function normalizeUnitRecord(record) {
-  const id = asString(record.id);
+function normalizeUnitRecord(record2) {
+  const id = asString(record2.id);
   if (!id) {
     return null;
   }
-  const title = asString(record.title) ?? id;
-  const status = asString(record.status) ?? "unspecified";
+  const title = asString(record2.title) ?? id;
+  const status = asString(record2.status) ?? "unspecified";
   const normalized = {
-    ...record,
+    ...record2,
     id,
     title,
     status,
-    scope: asText(record.scope) ?? ""
+    scope: asText(record2.scope) ?? ""
   };
   return {
     record: normalized,
@@ -4241,18 +5890,18 @@ function normalizeUnitRecord(record) {
     status
   };
 }
-function normalizeWorkspaceRecord(record) {
+function normalizeWorkspaceRecord(record2) {
   return {
-    ...record,
-    id: asString(record.id) ?? "",
-    title: asString(record.title) ?? asString(record.id) ?? "Workspace",
-    status: asString(record.status) ?? "unspecified",
-    objective: asText(record.objective) ?? "",
-    next_action: asText(record.next_action) ?? "",
-    deadline: asText(record.deadline) ?? "",
-    standing: record.standing === true,
-    module_ids: asStrings(record.module_ids),
-    unit_ids: asStrings(record.unit_ids)
+    ...record2,
+    id: asString(record2.id) ?? "",
+    title: asString(record2.title) ?? asString(record2.id) ?? "Workspace",
+    status: asString(record2.status) ?? "unspecified",
+    objective: asText(record2.objective) ?? "",
+    next_action: asText(record2.next_action) ?? "",
+    deadline: asText(record2.deadline) ?? "",
+    standing: record2.standing === true,
+    module_ids: asStrings(record2.module_ids),
+    unit_ids: asStrings(record2.unit_ids)
   };
 }
 function readProgress(value) {
@@ -4270,42 +5919,42 @@ function readProgress(value) {
   };
 }
 function readDeadlineModules(value) {
-  return asRecords(value).map((record) => {
-    const moduleId = asString(record.module_id);
+  return asRecords(value).map((record2) => {
+    const moduleId = asString(record2.module_id);
     if (!moduleId) {
       return null;
     }
     return {
       moduleId,
-      action: asText(record.action)
+      action: asText(record2.action)
     };
   }).filter(nonNull);
 }
-function readAcademicDeadline(record) {
-  const startDate = asString(record.start_date) ?? "";
-  const endDate = asString(record.end_date) ?? "";
+function readAcademicDeadline(record2) {
+  const startDate = asString(record2.start_date) ?? "";
+  const endDate = asString(record2.end_date) ?? "";
   return {
-    record,
-    kind: asString(record.kind) ?? "academic-date",
-    label: asString(record.label) ?? asString(record.title) ?? "Academic date",
-    title: asString(record.title) ?? "",
+    record: record2,
+    kind: asString(record2.kind) ?? "academic-date",
+    label: asString(record2.label) ?? asString(record2.title) ?? "Academic date",
+    title: asString(record2.title) ?? "",
     startDate,
     endDate,
-    time: asText(record.time),
+    time: asText(record2.time),
     registrationState: asString(
-      record.registration_state
+      record2.registration_state
     ) ?? "unregistered",
-    directModuleId: asString(record.module_id),
-    modules: readDeadlineModules(record.modules)
+    directModuleId: asString(record2.module_id),
+    modules: readDeadlineModules(record2.modules)
   };
 }
 function readSourceEntries(value) {
-  return asRecords(value).map((record) => ({
-    record,
-    role: asString(record.role) ?? "unassigned",
-    sourceId: asString(record.source_id),
-    why: asText(record.why) ?? "",
-    unitRouteCount: Array.isArray(record.unit_routes) ? record.unit_routes.length : 0
+  return asRecords(value).map((record2) => ({
+    record: record2,
+    role: asString(record2.role) ?? "unassigned",
+    sourceId: asString(record2.source_id),
+    why: asText(record2.why) ?? "",
+    unitRouteCount: Array.isArray(record2.unit_routes) ? record2.unit_routes.length : 0
   }));
 }
 
@@ -4405,9 +6054,9 @@ function renderSources(view, root, module2) {
         chip(
           row,
           source,
-          (record) => {
+          (record2) => {
             const id = asString(
-              record.id
+              record2.id
             );
             if (!id) {
               return;
@@ -4430,19 +6079,49 @@ function renderSources(view, root, module2) {
 }
 
 // src/features/module/logistics.ts
+var EXAMINATION_LABELS = {
+  klausur: "Written exam",
+  muendlich: "Oral exam",
+  portfolio: "Portfolio",
+  project: "Project assessment"
+};
+function words(value) {
+  const normalized = value.replaceAll("_", " ").replaceAll("-", " ").trim();
+  return normalized ? normalized[0].toLocaleUpperCase() + normalized.slice(1) : "";
+}
+function semesterLabel(value) {
+  const summer = /^sose-(\d{4})$/i.exec(value);
+  if (summer) {
+    return `Summer semester ${summer[1]}`;
+  }
+  const winter = /^wise-(\d{4})(?:-(\d{2,4}))?$/i.exec(value);
+  if (winter) {
+    const end = winter[2] ? `/${winter[2].length === 4 ? winter[2].slice(2) : winter[2]}` : "";
+    return `Winter semester ${winter[1]}${end}`;
+  }
+  return words(value);
+}
+function examinationLabel(value) {
+  return EXAMINATION_LABELS[value.toLocaleLowerCase()] ?? words(value);
+}
+function statusLabel(value) {
+  return words(value);
+}
 function renderLogistics(view, root, module2) {
   const facts = root.createDiv({
     cls: "los-fact-list"
   });
   const factRows = [
-    ["Status", module2.status],
+    ["Status", statusLabel(module2.status)],
     ["Institution", module2.institution],
     ["Code", module2.code],
-    ["Semester", module2.semester],
+    ["Semester", semesterLabel(module2.semester)],
     ["Credits", module2.credits],
     [
       "Examination",
-      module2.examination.type
+      module2.examination.type ? examinationLabel(
+        module2.examination.type
+      ) : null
     ]
   ];
   for (const [label, value] of factRows) {
@@ -4474,7 +6153,7 @@ function renderLogistics(view, root, module2) {
 }
 function deadlinesFor(view, module2) {
   return view.plugin.store.rows("academic_deadlines").map(
-    (record) => readAcademicDeadline(record)
+    (record2) => readAcademicDeadline(record2)
   ).filter(
     (row) => row.directModuleId === module2.id || row.modules.some(
       (entry) => entry.moduleId === module2.id
@@ -4486,8 +6165,8 @@ function deadlinesFor(view, module2) {
   );
 }
 function renderAcademicDates(view, root, module2) {
-  const rows = view.deadlinesFor(module2);
-  if (!rows.length) {
+  const rows2 = view.deadlinesFor(module2);
+  if (!rows2.length) {
     return;
   }
   const wrap = section(
@@ -4496,10 +6175,10 @@ function renderAcademicDates(view, root, module2) {
     "Registration windows and exam sittings for this module."
   );
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-  const ahead = rows.filter(
+  const ahead = rows2.filter(
     (row) => (row.endDate || row.startDate) >= today
   );
-  const past = rows.filter(
+  const past = rows2.filter(
     (row) => (row.endDate || row.startDate) < today
   );
   if (ahead.length) {
@@ -4528,11 +6207,11 @@ function renderAcademicDates(view, root, module2) {
     );
   }
 }
-function renderDeadlineRows(view, wrap, module2, rows) {
+function renderDeadlineRows(view, wrap, module2, rows2) {
   const list = wrap.createDiv({
     cls: "los-date-list"
   });
-  for (const row of rows) {
+  for (const row of rows2) {
     const card = list.createDiv({
       cls: `los-date-row los-deadline-${row.kind}`
     });
@@ -4617,9 +6296,11 @@ function renderModuleDetail(view, root) {
   const tabs = root.createDiv({
     cls: "los-tabs",
     attr: {
-      role: "tablist"
+      role: "group",
+      "aria-label": "Module sections"
     }
   });
+  enableButtonGroupKeyboardNavigation(tabs);
   for (const [key, label] of MODULE_TABS) {
     const control = button(
       tabs,
@@ -4628,8 +6309,7 @@ function renderModuleDetail(view, root) {
       key === tab ? "cta" : "quiet"
     );
     control.setAttrs({
-      role: "tab",
-      "aria-selected": String(key === tab)
+      "aria-pressed": String(key === tab)
     });
   }
   if (tab === "overview") {
@@ -4660,9 +6340,11 @@ function headline(view, module2) {
     (row) => (row.endDate || row.startDate) >= today
   ).map((row) => row.startDate)[0];
   return [
-    module2.semester,
+    semesterLabel(module2.semester),
     module2.credits ? `${module2.credits} LP` : "",
-    module2.examination.type ? `${module2.examination.type}${nextDate ? ` ${nextDate}` : ""}` : ""
+    module2.examination.type ? `${examinationLabel(
+      module2.examination.type
+    )}${nextDate ? ` ${nextDate}` : ""}` : ""
   ].filter(Boolean).join(" \xB7 ");
 }
 function renderOverview(view, root, module2) {
@@ -4679,7 +6361,7 @@ function renderOverview(view, root, module2) {
     text: `${progress.stagesComplete} of ${progress.stagesTotal} stages complete across ${progress.unitsTotal} unit${progress.unitsTotal === 1 ? "" : "s"}`
   });
   const workspaces = view.plugin.store.workspacesForModule(module2.id).map(
-    (record) => normalizeWorkspaceRecord(record)
+    (record2) => normalizeWorkspaceRecord(record2)
   );
   for (const workspace of workspaces) {
     workspaceCard(
@@ -4697,7 +6379,7 @@ function renderOverview(view, root, module2) {
     );
   }
   const units = view.plugin.store.unitsFor(module2.id).map(
-    (record) => normalizeUnitRecord(record)
+    (record2) => normalizeUnitRecord(record2)
   ).filter(nonNull);
   const next = units.find(
     (unit) => unit.status === "active"
@@ -4727,9 +6409,11 @@ function renderUnits(view, root, module2) {
     const tabs = root.createDiv({
       cls: "los-subtabs",
       attr: {
-        role: "tablist"
+        role: "group",
+        "aria-label": "Module components"
       }
     });
+    enableButtonGroupKeyboardNavigation(tabs);
     const allTab = button(
       tabs,
       "All components",
@@ -4737,8 +6421,7 @@ function renderUnits(view, root, module2) {
       view.componentId ? "quiet" : "row"
     );
     allTab.setAttrs({
-      role: "tab",
-      "aria-selected": String(!view.componentId)
+      "aria-pressed": String(!view.componentId)
     });
     for (const component of module2.components) {
       const control = button(
@@ -4750,8 +6433,7 @@ function renderUnits(view, root, module2) {
         view.componentId === component.id ? "row" : "quiet"
       );
       control.setAttrs({
-        role: "tab",
-        "aria-selected": String(
+        "aria-pressed": String(
           view.componentId === component.id
         )
       });
@@ -4761,7 +6443,7 @@ function renderUnits(view, root, module2) {
     module2.id,
     view.componentId
   ).map(
-    (record) => normalizeUnitRecord(record)
+    (record2) => normalizeUnitRecord(record2)
   ).filter(nonNull);
   if (!units.length) {
     empty(
@@ -4852,7 +6534,7 @@ function renderUnits(view, root, module2) {
 function renderGroups(view, root) {
   const semester = view.plugin.store.currentSemester();
   const modules = view.plugin.store.currentSemesterModules().map(
-    (record) => readModuleRecord(record)
+    (record2) => readModuleRecord(record2)
   ).filter(nonNull);
   pageHeader(
     root,
@@ -4975,10 +6657,10 @@ function renderGroupList(view, root) {
     }
   );
   const all = view.plugin.store.modulesForGroup(group.id).map(
-    (record) => readModuleRecord(record)
+    (record2) => readModuleRecord(record2)
   ).filter(nonNull);
   const needle = view.query.trim().toLocaleLowerCase();
-  const rows = all.filter(
+  const rows2 = all.filter(
     (module2) => {
       if (!needle) {
         return true;
@@ -4999,7 +6681,7 @@ function renderGroupList(view, root) {
     );
     return;
   }
-  if (!rows.length) {
+  if (!rows2.length) {
     empty(
       root,
       "No matching modules",
@@ -5020,7 +6702,7 @@ function renderGroupList(view, root) {
   const list = root.createDiv({
     cls: "los-route-list"
   });
-  for (const module2 of rows) {
+  for (const module2 of rows2) {
     const row = list.createEl(
       "button",
       {
@@ -5065,8 +6747,8 @@ function renderGroupList(view, root) {
 }
 
 // src/views/module-view.ts
-var import_obsidian10 = require("obsidian");
-var ModuleView = class extends import_obsidian10.ItemView {
+var import_obsidian12 = require("obsidian");
+var ModuleView = class extends import_obsidian12.ItemView {
   plugin;
   screen;
   groupId;
@@ -5175,8 +6857,8 @@ var ModuleView = class extends import_obsidian10.ItemView {
   renderAcademicDates(root, module2) {
     renderAcademicDates(this, root, module2);
   }
-  renderDeadlineRows(wrap, module2, rows) {
-    renderDeadlineRows(this, wrap, module2, rows);
+  renderDeadlineRows(wrap, module2, rows2) {
+    renderDeadlineRows(this, wrap, module2, rows2);
   }
   async selectTab(tab) {
     await selectTab(this, tab);
@@ -5190,8 +6872,8 @@ var ModuleView = class extends import_obsidian10.ItemView {
 };
 
 // src/views/nav-view.ts
-var import_obsidian11 = require("obsidian");
-var NavView = class extends import_obsidian11.ItemView {
+var import_obsidian13 = require("obsidian");
+var NavView = class extends import_obsidian13.ItemView {
   plugin;
   constructor(leaf, plugin) {
     super(leaf);
@@ -5234,6 +6916,7 @@ var NavView = class extends import_obsidian11.ItemView {
     icon(search.createSpan(), "search");
     search.addEventListener("click", () => this.plugin.openGlobalSearch());
     const primary = root.createDiv({ cls: "los-nav-primary" });
+    enableButtonGroupKeyboardNavigation(primary, "vertical");
     this.nav(primary, "home", "Home", "home", () => this.plugin.openHome());
     this.nav(primary, "layout-grid", "Modules", "modules", () => this.plugin.openModules());
     this.nav(primary, "graduation-cap", "Learn", "learn", () => this.plugin.openLearn());
@@ -5249,6 +6932,7 @@ var NavView = class extends import_obsidian11.ItemView {
       this.plugin.scheduleDraftSave();
     });
     const secondary = more.createDiv({ cls: "los-nav-secondary" });
+    enableButtonGroupKeyboardNavigation(secondary, "vertical");
     this.nav(secondary, "plus", "Capture", "capture", () => this.plugin.openCapture());
     this.nav(secondary, "map", "Domain atlas", "atlas", () => this.plugin.openAtlas());
     this.nav(
@@ -5260,8 +6944,8 @@ var NavView = class extends import_obsidian11.ItemView {
     );
     this.nav(
       secondary,
-      "shield-alert",
-      "Job boundary",
+      "briefcase-business",
+      "Job",
       "job",
       () => this.plugin.openBoundary("program-job-boundary")
     );
@@ -5271,7 +6955,7 @@ var NavView = class extends import_obsidian11.ItemView {
 };
 
 // src/views/program-view.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 var COORDINATION_HEADINGS = [
   "Priorities",
   "Commitments",
@@ -5294,7 +6978,7 @@ function readProgramSemesters(value) {
   }
   return semesters;
 }
-var ProgramView = class extends import_obsidian12.ItemView {
+var ProgramView = class extends import_obsidian14.ItemView {
   plugin;
   programId = null;
   constructor(leaf, plugin) {
@@ -5305,13 +6989,22 @@ var ProgramView = class extends import_obsidian12.ItemView {
     return VIEW_PROGRAM;
   }
   getDisplayText() {
-    return "LearningOS \xB7 Area";
+    if (this.programId === "inbox") {
+      return "LearningOS \xB7 Capture";
+    }
+    if (this.programId === "queue-needs-map") {
+      return "LearningOS \xB7 Planning";
+    }
+    const program = this.programId ? this.plugin.store.get(this.programId) : null;
+    const title = typeof program?.title === "string" ? program.title : "Learn";
+    return `LearningOS \xB7 ${title}`;
   }
   async setState(state = {}) {
     if (typeof state.programId === "string") {
       this.programId = state.programId;
     }
     this.render();
+    this.leaf.updateHeader?.();
   }
   getState() {
     return {
@@ -5324,6 +7017,7 @@ var ProgramView = class extends import_obsidian12.ItemView {
       this.programId = programId;
     }
     this.render();
+    this.leaf.updateHeader?.();
   }
   render() {
     const root = this.contentEl;
@@ -5370,9 +7064,11 @@ var ProgramView = class extends import_obsidian12.ItemView {
     const tabs = root.createDiv({
       cls: "los-tabs los-program-tabs",
       attr: {
-        role: "tablist"
+        role: "group",
+        "aria-label": "Learning areas"
       }
     });
+    enableButtonGroupKeyboardNavigation(tabs);
     for (const [areaId, title] of LEARN_AREAS) {
       const active = areaId === program.id;
       const tab = button(
@@ -5382,8 +7078,7 @@ var ProgramView = class extends import_obsidian12.ItemView {
         active ? "cta" : "quiet"
       );
       tab.setAttrs({
-        role: "tab",
-        "aria-selected": String(active)
+        "aria-pressed": String(active)
       });
     }
     if (typeof program.description === "string" && program.description) {
@@ -5492,7 +7187,7 @@ var ProgramView = class extends import_obsidian12.ItemView {
   renderCoordination(root) {
     const coordination = this.plugin.store.get("coordination");
     const sections = isRecord(coordination?.sections) ? coordination.sections : {};
-    const rows = COORDINATION_HEADINGS.map(
+    const rows2 = COORDINATION_HEADINGS.map(
       (heading) => [
         heading,
         projectedExcerpt(
@@ -5501,7 +7196,7 @@ var ProgramView = class extends import_obsidian12.ItemView {
         )
       ]
     ).filter((row) => Boolean(row[1]));
-    if (!rows.length) {
+    if (!rows2.length) {
       return;
     }
     const panel = disclosure(
@@ -5509,7 +7204,7 @@ var ProgramView = class extends import_obsidian12.ItemView {
       "Semester coordination",
       "los-coordination-details"
     );
-    for (const [heading, body] of rows) {
+    for (const [heading, body] of rows2) {
       const row = panel.createDiv({
         cls: "los-coordination-row"
       });
@@ -5588,7 +7283,7 @@ var ProgramView = class extends import_obsidian12.ItemView {
       () => {
         const text = editor.value.trim();
         if (!text) {
-          new import_obsidian12.Notice(
+          new import_obsidian14.Notice(
             "Enter some text before capturing."
           );
           editor.focus();
@@ -5658,13 +7353,13 @@ var ProgramView = class extends import_obsidian12.ItemView {
         "aria-label": "Choose inbox capture file"
       }
     });
-    button(
+    const fileCaptureButton = button(
       filePanel,
       "Capture selected file",
       () => {
         const localPath = localFilePath(picker.files?.[0]);
         if (!localPath) {
-          new import_obsidian12.Notice(
+          new import_obsidian14.Notice(
             "Choose a local file first."
           );
           return;
@@ -5680,10 +7375,22 @@ var ProgramView = class extends import_obsidian12.ItemView {
       },
       "quiet"
     );
+    const syncFileCapture = () => {
+      fileCaptureButton.disabled = !picker.files?.length;
+      fileCaptureButton.setAttribute(
+        "aria-disabled",
+        String(fileCaptureButton.disabled)
+      );
+    };
+    picker.addEventListener(
+      "change",
+      syncFileCapture
+    );
+    syncFileCapture();
   }
   async capture(action, clear = null) {
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian12.Notice(
+      new import_obsidian14.Notice(
         "Queued behind the running LearningOS write."
       );
     }
@@ -5700,12 +7407,12 @@ var ProgramView = class extends import_obsidian12.ItemView {
         }
       );
       clear?.();
-      new import_obsidian12.Notice(
+      new import_obsidian14.Notice(
         "Captured to the LearningOS inbox."
       );
       this.render();
     } catch (error) {
-      new import_obsidian12.Notice(errorMessage(error));
+      new import_obsidian14.Notice(errorMessage(error));
     }
   }
 };
@@ -5983,10 +7690,11 @@ function renderDetail(view, root) {
   const tabs = root.createDiv({
     cls: "los-project-tabs",
     attr: {
-      role: "tablist",
+      role: "group",
       "aria-label": "Project sections"
     }
   });
+  enableButtonGroupKeyboardNavigation(tabs);
   for (const [tabId, label] of PROJECT_TABS) {
     const tab = button(
       tabs,
@@ -6003,8 +7711,7 @@ function renderDetail(view, root) {
       active
     );
     tab.setAttrs({
-      role: "tab",
-      "aria-selected": String(active)
+      "aria-pressed": String(active)
     });
   }
   const links = root.createDiv({
@@ -6015,11 +7722,11 @@ function renderDetail(view, root) {
     ...asStrings(project.unit_ids)
   ];
   for (const id of linkedIds) {
-    const record = view.plugin.store.get(id);
-    if (!record) continue;
+    const record2 = view.plugin.store.get(id);
+    if (!record2) continue;
     chip(
       links,
-      record,
+      record2,
       (target) => view.plugin.openRecord(target)
     );
   }
@@ -6171,8 +7878,8 @@ function renderList(view, root) {
   });
   const draw = () => {
     results.empty();
-    const words = input.value.toLocaleLowerCase().split(/\s+/).filter(Boolean);
-    const rows = view.plugin.store.projects().filter(
+    const words2 = input.value.toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const rows2 = view.plugin.store.projects().filter(
       (project) => {
         const id = asString(project.id);
         if (!id) {
@@ -6188,12 +7895,12 @@ function renderList(view, root) {
         ].filter(
           (value) => Boolean(value)
         ).join(" ").toLocaleLowerCase();
-        return words.every(
+        return words2.every(
           (word) => hay.includes(word)
         );
       }
     );
-    if (!rows.length) {
+    if (!rows2.length) {
       empty(
         results,
         "No projects found",
@@ -6208,7 +7915,7 @@ function renderList(view, root) {
       );
       return;
     }
-    for (const project of rows) {
+    for (const project of rows2) {
       const projectId = asString(project.id);
       if (!projectId) {
         continue;
@@ -6279,10 +7986,11 @@ function renderList(view, root) {
 }
 
 // src/views/project-view.ts
-var import_obsidian13 = require("obsidian");
-var ProjectLinkReasonModal = class extends import_obsidian13.Modal {
+var import_obsidian15 = require("obsidian");
+var ProjectLinkReasonModal = class extends import_obsidian15.Modal {
   plugin;
   relationship;
+  restoreAccessibility = null;
   constructor(app, plugin, relationship) {
     super(app);
     this.plugin = plugin;
@@ -6302,7 +8010,9 @@ var ProjectLinkReasonModal = class extends import_obsidian13.Modal {
     pageHeader(
       root,
       "Linked material",
-      "Why this is linked"
+      "Why this is linked",
+      "",
+      "los-linked-reason-heading"
     );
     const target = this.plugin.store.get(
       this.relationship.toId
@@ -6355,19 +8065,27 @@ var ProjectLinkReasonModal = class extends import_obsidian13.Modal {
         "tertiary"
       );
     }
-    button(
+    const close = button(
       actions,
       "Close",
       () => this.close(),
       "quiet"
     );
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--linked-reason",
+      labelledBy: "los-linked-reason-heading"
+    });
+    close.focus();
   }
   onClose() {
     this.plugin.router.clearOverlay();
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
     this.contentEl.empty();
   }
 };
-var ProjectView = class extends import_obsidian13.ItemView {
+var ProjectView = class extends import_obsidian15.ItemView {
   plugin;
   screen = "list";
   projectId = null;
@@ -6513,7 +8231,7 @@ var ProjectView = class extends import_obsidian13.ItemView {
 };
 
 // src/views/review-view.ts
-var import_obsidian14 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 var fs = __toESM(require("node:fs"));
 var nodePath = __toESM(require("node:path"));
 var REVIEW_FILTERS = [
@@ -6523,7 +8241,7 @@ var REVIEW_FILTERS = [
   ["planning", "Planning"],
   ["garden", "Garden"]
 ];
-var ReviewView = class extends import_obsidian14.ItemView {
+var ReviewView = class extends import_obsidian16.ItemView {
   plugin;
   filter = "all";
   constructor(leaf, plugin) {
@@ -6576,38 +8294,19 @@ var ReviewView = class extends import_obsidian14.ItemView {
       `${items.length} decision${items.length === 1 ? "" : "s"} waiting`,
       "role"
     ).addClass("los-review-count-badge");
-    const filters = root.createDiv({
-      cls: "los-review-filters",
-      attr: {
-        role: "tablist",
-        "aria-label": "Review categories"
-      }
-    });
-    for (const [value, label] of REVIEW_FILTERS) {
-      const count = value === "all" ? items.length : items.filter(
+    filterTabs(
+      root,
+      "Review categories",
+      REVIEW_FILTERS,
+      this.filter,
+      (value) => {
+        this.filter = value;
+        this.render();
+      },
+      (value) => value === "all" ? items.length : items.filter(
         (item) => item.category === value
-      ).length;
-      const control = button(
-        filters,
-        `${label}${count ? ` ${count}` : ""}`,
-        () => {
-          this.filter = value;
-          this.render();
-        },
-        "quiet"
-      );
-      control.addClass("los-filter-tab");
-      control.toggleClass(
-        "is-active",
-        this.filter === value
-      );
-      control.setAttrs({
-        role: "tab",
-        "aria-selected": String(
-          this.filter === value
-        )
-      });
-    }
+      ).length
+    );
     root.createDiv({
       cls: "los-micro los-review-queue-note",
       text: "Only items that require a decision appear here. Garden stays quiet until Core marks a seed review-due."
@@ -6723,7 +8422,7 @@ var ReviewView = class extends import_obsidian14.ItemView {
     return null;
   }
 };
-var DiagnosticsView = class extends import_obsidian14.ItemView {
+var DiagnosticsView = class extends import_obsidian16.ItemView {
   plugin;
   report = "";
   constructor(leaf, plugin) {
@@ -6840,8 +8539,8 @@ var DiagnosticsView = class extends import_obsidian14.ItemView {
       row.createSpan({ cls: "los-fact-value", text: String(value) });
     }
     const actions = root.createDiv({ cls: "los-actions" });
-    button(actions, "Validate and rebuild", () => this.plugin.generate(), "cta");
-    button(actions, "Test the interpreter", () => this.testInterpreter(), "quiet");
+    button(actions, "Validate and rebuild", () => this.plugin.generate(), "success");
+    button(actions, "Test the interpreter", () => this.testInterpreter(), "info");
     button(actions, "Copy build identity", () => this.plugin.copyText(JSON.stringify(build, null, 2)), "quiet");
     if (this.report) root.createEl("pre", { cls: "los-diagnostic-report", text: this.report });
     const policy = section(root, "About LearningOS");
@@ -6863,7 +8562,7 @@ Tried: ${resolved.attempted.join(", ")}`;
 };
 
 // src/views/shelving-view.ts
-var import_obsidian15 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 function readShelvingProposal(value) {
   if (!isRecord(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
     return null;
@@ -6889,7 +8588,7 @@ function readShelvingProposal(value) {
     items
   };
 }
-var ShelvingView = class extends import_obsidian15.ItemView {
+var ShelvingView = class extends import_obsidian17.ItemView {
   plugin;
   unitId = null;
   proposal = null;
@@ -7027,24 +8726,24 @@ var ShelvingView = class extends import_obsidian15.ItemView {
     guard.createEl("strong", { text: "Apply is explicit and selected-only." });
     guard.createEl("p", { text: "The core validates and regenerates atomically; broad AI writes are never accepted." });
     const actions = root.createDiv({ cls: "los-actions" });
-    button(actions, "Approve selected changes", () => this.apply(), "cta");
+    button(actions, "Approve selected changes", () => this.apply(), "success");
     button(actions, "Ask AI to review proposal", () => this.plugin.askAiScoped(
       `Review these shelving proposal IDs: ${[...this.selected].join(", ")}. Do not apply changes.`,
       { moduleId: unit.module_id, unitId: unit.id }
-    ), "quiet");
+    ), "warm");
   }
   renderQueue(root) {
     const wrap = section(root, "Ready to shelve");
-    const rows = this.plugin.store.units().filter(
+    const rows2 = this.plugin.store.units().filter(
       (row) => row.status === "ready-to-shelve"
     );
-    if (!rows.length) empty(wrap, "No unit is waiting", "Keep working from any active unit.");
-    for (const unit of rows) unitCard(wrap, this.plugin, unit);
+    if (!rows2.length) empty(wrap, "No unit is waiting", "Keep working from any active unit.");
+    for (const unit of rows2) unitCard(wrap, this.plugin, unit);
   }
   async prepare() {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian15.Notice("Choose a unit before preparing shelving.");
+      new import_obsidian17.Notice("Choose a unit before preparing shelving.");
       return;
     }
     try {
@@ -7054,17 +8753,17 @@ var ShelvingView = class extends import_obsidian15.ItemView {
       await this.loadProposal();
       this.render();
     } catch (error) {
-      new import_obsidian15.Notice(errorMessage(error));
+      new import_obsidian17.Notice(errorMessage(error));
     }
   }
   async apply() {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian15.Notice("Choose a unit before applying shelving.");
+      new import_obsidian17.Notice("Choose a unit before applying shelving.");
       return;
     }
     if (!this.selected.size) {
-      new import_obsidian15.Notice("Select at least one proposal.");
+      new import_obsidian17.Notice("Select at least one proposal.");
       return;
     }
     try {
@@ -7079,7 +8778,7 @@ var ShelvingView = class extends import_obsidian15.ItemView {
       this.selectionScope = null;
       this.render();
     } catch (error) {
-      new import_obsidian15.Notice(errorMessage(error));
+      new import_obsidian17.Notice(errorMessage(error));
     }
   }
 };
@@ -7120,37 +8819,114 @@ function readUnitViewState(value) {
     hasStageId
   };
 }
-function readUnitRecord(record, fallbackId) {
-  if (!record) {
+function readUnitRecord(record2, fallbackId) {
+  if (!record2) {
     return null;
   }
-  const id = asString(record.id) ?? fallbackId;
-  const moduleId = asString(record.module_id);
+  const id = asString(record2.id) ?? fallbackId;
+  const moduleId = asString(record2.module_id);
   if (!id || !moduleId) {
     return null;
   }
+  const knowledgeMap = isRecord(
+    record2.knowledge_map
+  ) ? record2.knowledge_map : null;
+  const knowledgeNodes = asRecords(
+    knowledgeMap?.nodes
+  ).map((node) => {
+    const nodeId = asString(node.id);
+    const title = asString(node.title);
+    const summary = asText(node.summary);
+    if (!nodeId || !title || !summary) {
+      return null;
+    }
+    return {
+      id: nodeId,
+      title,
+      summary,
+      buildsOn: asStrings(
+        node.builds_on
+      )
+    };
+  }).filter(
+    (node) => node !== null
+  );
   return {
-    record,
+    record: record2,
     id,
     moduleId,
-    componentId: asString(record.component_id),
-    kind: asString(record.kind) ?? "unit",
-    title: asString(record.title) ?? id,
-    scope: asText(record.scope) ?? ""
+    componentId: asString(record2.component_id),
+    kind: asString(record2.kind) ?? "unit",
+    title: asString(record2.title) ?? id,
+    scope: asText(record2.scope) ?? "",
+    knowledgeSummary: asText(
+      knowledgeMap?.summary
+    ) ?? "",
+    knowledgeNodes
   };
 }
-function readResource(record) {
-  const label = asString(record.label) ?? asString(record.title) ?? asString(record.source_id) ?? "Resource";
+function readMaterialOptions(value, unitId, selectionsValue) {
+  const options = [];
+  const selectionKeys = new Set(
+    asRecords(selectionsValue).flatMap((selection) => {
+      const sourceId = asString(selection.source_id);
+      const locator = asText(selection.locator);
+      return sourceId && locator ? [`${sourceId}\0${locator}`] : [];
+    })
+  );
+  for (const entry of asRecords(value)) {
+    for (const route of asRecords(entry.unit_routes)) {
+      if (asString(route.unit_id) !== unitId) {
+        continue;
+      }
+      const title = asString(route.title);
+      const format = asString(route.format);
+      const angle = asText(route.angle);
+      if (!title || !format || !angle) {
+        continue;
+      }
+      const sourceId = asString(route.source_id) ?? asString(entry.source_id);
+      const locator = asText(route.locator);
+      options.push({
+        record: route,
+        title,
+        format,
+        angle,
+        covers: asStrings(route.covers),
+        depth: asString(route.depth) ?? "course-aligned",
+        scope: asString(route.scope) ?? "complementary",
+        locator,
+        sourceId,
+        canOpen: Boolean(
+          asString(
+            route.material_path
+          ) ?? asString(route.url) ?? asString(
+            route.vault_path
+          )
+        ),
+        canChoose: Boolean(sourceId && locator),
+        selected: Boolean(
+          sourceId && locator && selectionKeys.has(
+            `${sourceId}\0${locator}`
+          )
+        )
+      });
+    }
+  }
+  return options;
+}
+function readResource(record2) {
+  const label = asString(record2.label) ?? asString(record2.title) ?? asString(record2.source_id) ?? "Resource";
   return {
-    record,
-    id: asString(record.id),
-    kind: asString(record.kind) ?? "read",
+    record: record2,
+    id: asString(record2.id),
+    kind: asString(record2.kind) ?? "read",
     label,
-    locator: asText(record.locator),
-    sourceId: asString(record.source_id),
-    scopeTriage: asString(record.scope_triage),
+    locator: asText(record2.locator),
+    sourceId: asString(record2.source_id),
+    scopeTriage: asString(record2.scope_triage),
     canOpen: Boolean(
-      asString(record.material_path) ?? asString(record.url) ?? asString(record.vault_path)
+      asString(record2.material_path) ?? asString(record2.url) ?? asString(record2.vault_path)
     )
   };
 }
@@ -7176,52 +8952,52 @@ function readStageAttachment(value) {
     label: asString(value.label) ?? path
   };
 }
-function readStage(record) {
-  const id = asString(record.id);
+function readStage(record2) {
+  const id = asString(record2.id);
   if (!id) {
     return null;
   }
   const attachments = Array.isArray(
-    record.attachments
-  ) ? record.attachments.map(readStageAttachment).filter(
+    record2.attachments
+  ) ? record2.attachments.map(readStageAttachment).filter(
     (attachment) => attachment !== null
   ) : [];
   return {
-    record,
+    record: record2,
     id,
-    title: asString(record.title) ?? id,
-    status: asString(record.status) ?? "active",
-    scopeTriage: asText(record.scope_triage) ?? "",
-    objective: asText(record.objective),
-    estimateMinutes: asText(record.estimate_minutes),
-    examCritical: record.exam_critical === true,
+    title: asString(record2.title) ?? id,
+    status: asString(record2.status) ?? "active",
+    scopeTriage: asText(record2.scope_triage) ?? "",
+    objective: asText(record2.objective),
+    estimateMinutes: asText(record2.estimate_minutes),
+    examCritical: record2.exam_critical === true,
     resources: asRecords(
-      record.resources
+      record2.resources
     ).map(readResource),
     doneWhen: asStrings(
-      record.done_when
+      record2.done_when
     ).filter(
       (criterion) => Boolean(criterion.trim())
     ),
     attachments,
     sourceFeedback: asRecords(
-      record.source_feedback
+      record2.source_feedback
     )
   };
 }
-function readStudyMap(record) {
+function readStudyMap(record2) {
   const stages = asRecords(
-    record.stages
+    record2.stages
   ).map(readStage).filter(
     (stage) => stage !== null
   );
   return {
-    record,
+    record: record2,
     currentStageId: asString(
-      record.current_stage
+      record2.current_stage
     ),
     stages,
-    detours: asRecords(record.detours)
+    detours: asRecords(record2.detours)
   };
 }
 function readArtifacts(value) {
@@ -7346,10 +9122,10 @@ function renderArtifacts(view, root, unit) {
     card.createEl("h3", {
       text: artifactLabel(key)
     });
-    const record = view.plugin.store.get(id) ?? fallbackRecord(id);
+    const record2 = view.plugin.store.get(id) ?? fallbackRecord(id);
     chip(
       card,
-      record,
+      record2,
       (selected) => view.plugin.openRecord(
         selected
       )
@@ -7357,10 +9133,10 @@ function renderArtifacts(view, root, unit) {
   }
   for (const id of artifacts.other) {
     count += 1;
-    const record = view.plugin.store.get(id) ?? fallbackRecord(id);
+    const record2 = view.plugin.store.get(id) ?? fallbackRecord(id);
     chip(
       wrap,
-      record,
+      record2,
       (selected) => view.plugin.openRecord(
         selected
       )
@@ -7376,7 +9152,7 @@ function renderArtifacts(view, root, unit) {
 }
 
 // src/features/unit/stage.ts
-function renderStage(view, layout, unit, studyMap, stage) {
+function renderStage2(view, layout, unit, studyMap, stage) {
   const center = layout.createDiv({
     cls: "los-stage-workspace"
   });
@@ -7470,125 +9246,27 @@ function renderStage(view, layout, unit, studyMap, stage) {
       });
     }
   }
-  const resources = section(
-    center,
-    "Exact work"
-  );
-  if (!stage.resources.length) {
-    empty(
-      resources,
-      "No source action selected",
-      "Use the unit scope and ask AI for a proposal."
-    );
-  }
-  const TRIAGE_ORDER = [
-    "required-now",
-    "helpful-now",
-    "deferred",
-    "reference-only"
-  ];
-  const TRIAGE_HEADING = {
-    "required-now": "Do this",
-    "helpful-now": "If you get stuck",
-    deferred: "Depth \u2014 not now",
-    "reference-only": "Reference \u2014 preserved, not reading for this stage"
-  };
-  const rankOf = (value) => {
-    const index = value ? TRIAGE_ORDER.indexOf(value) : -1;
-    return index < 0 ? 0 : index;
-  };
-  const ordered = [...stage.resources].sort(
-    (a, b) => rankOf(a.scopeTriage) - rankOf(b.scopeTriage)
-  );
-  const anyRanked = ordered.some(
-    (item) => Boolean(item.scopeTriage)
-  );
-  let renderedHeading = null;
-  for (const resource of ordered) {
-    if (anyRanked) {
-      const heading = resource.scopeTriage ? TRIAGE_HEADING[resource.scopeTriage] ?? resource.scopeTriage : TRIAGE_HEADING["required-now"] ?? "Do this";
-      if (heading !== renderedHeading) {
-        resources.createDiv({
-          cls: "los-kicker los-resource-tier",
-          text: heading
-        });
-        renderedHeading = heading;
-      }
-    }
-    const row = resources.createDiv({
-      cls: `los-resource-row los-triage-${resource.scopeTriage ?? "unranked"}`
-    });
-    const iconName = resource.kind === "watch" ? "play" : resource.kind === "practise" ? "pencil-line" : "book-open";
-    icon(
-      row.createSpan(),
-      iconName
-    );
-    const copy = row.createDiv({
-      cls: "los-resource-copy"
-    });
-    copy.createEl("strong", {
-      text: resource.label
-    });
-    if (resource.locator) {
-      copy.createDiv({
-        cls: "los-micro",
-        text: resource.locator
-      });
-    }
-    if (resource.sourceId) {
-      const source = view.plugin.store.get(
-        resource.sourceId
-      );
-      if (source) {
-        chip(
-          copy,
-          source,
-          (record) => {
-            const recordId = asString(record.id);
-            return recordId ? view.plugin.openLibrary(
-              recordId
-            ) : void 0;
-          }
-        );
-      }
-    }
-    const actions = row.createDiv({
-      cls: "los-actions los-resource-actions"
-    });
-    if (resource.canOpen) {
-      button(
-        actions,
-        "Open",
-        () => view.plugin.openResource(
-          resource.record
-        ),
-        "quiet"
-      );
-    }
-    if (resource.sourceId) {
-      const sourceId = resource.sourceId;
-      const resourceId = resource.id;
-      const rate = (verdict) => view.mutate(
-        () => view.plugin.gateway.feedback(
-          unit.id,
-          stage.id,
-          sourceId,
-          verdict,
-          resourceId
-        )
-      );
-      const menuItems = [
-        ["Helpful", () => rate("helpful")],
-        ["Too advanced", () => rate("too-advanced")],
-        ["Useful for review", () => rate("useful-for-review")]
-      ];
-      overflowMenu(
-        actions,
-        menuItems,
-        resourceId ? `Rate ${resource.label}` : `Rate ${resource.label} (whole source)`
-      );
-    }
-  }
+  renderStageResources(center, stage.resources, {
+    emptyDetail: "Use the unit scope and ask AI for a proposal.",
+    sourceRecord: (sourceId) => view.plugin.store.get(sourceId),
+    openSource: (source) => {
+      const sourceId = asString(source.id);
+      return sourceId ? view.plugin.openLibrary(sourceId) : void 0;
+    },
+    openSourceResource: (source) => view.plugin.openResource(source),
+    openResource: (resource) => view.plugin.openResource(resource.record),
+    // ADR-009: when an id exists, feedback lands on the exact resource;
+    // otherwise it deliberately describes the whole source.
+    rateResource: (sourceId, resourceId, verdict) => view.mutate(
+      () => view.plugin.gateway.feedback(
+        unit.id,
+        stage.id,
+        sourceId,
+        verdict,
+        resourceId
+      )
+    )
+  });
   view.renderStageContext(
     center,
     unit,
@@ -7619,7 +9297,7 @@ function renderActionBar(view, root, unit, stage) {
         stage.id
       )
     ),
-    "cta"
+    "success"
   );
   const menuItems = [
     stage.status !== "active" && [
@@ -7699,6 +9377,218 @@ function renderActionBar(view, root, unit, stage) {
   );
 }
 
+// src/features/unit/materials.ts
+var import_obsidian18 = require("obsidian");
+var FORMAT_ORDER = [
+  "course-material",
+  "exercise",
+  "book",
+  "video",
+  "course",
+  "website",
+  "documentation",
+  "code",
+  "paper"
+];
+var FORMAT_LABELS = {
+  "course-material": "Course material",
+  exercise: "Exercises and practice",
+  book: "Books",
+  video: "Videos",
+  course: "Courses",
+  website: "Websites",
+  documentation: "Documentation",
+  code: "Code and notebooks",
+  paper: "Papers"
+};
+function optionIcon(format) {
+  if (format === "video") return "play";
+  if (format === "exercise") return "pencil-line";
+  if (format === "code") return "code-2";
+  if (format === "website" || format === "course" || format === "documentation") return "globe-2";
+  return "book-open";
+}
+function renderMaterialOverview(view, root, unit, options) {
+  const map = section(
+    root,
+    "Lecture knowledge map",
+    unit.knowledgeSummary
+  );
+  const titleById = new Map(
+    unit.knowledgeNodes.map(
+      (node) => [node.id, node.title]
+    )
+  );
+  const nodes = map.createDiv({
+    cls: "los-knowledge-grid"
+  });
+  for (const node of unit.knowledgeNodes) {
+    const card = nodes.createDiv({
+      cls: "los-knowledge-node"
+    });
+    card.createEl("h3", {
+      text: node.title
+    });
+    card.createEl("p", {
+      text: node.summary
+    });
+    const dependencies = node.buildsOn.map((id) => titleById.get(id)).filter(
+      (title) => Boolean(title)
+    );
+    if (dependencies.length) {
+      card.createDiv({
+        cls: "los-micro",
+        text: `Builds on: ${dependencies.join(", ")}`
+      });
+    }
+  }
+  const materials = section(
+    root,
+    "Choose your learning material",
+    "This is a complete menu, not a sequence. Pick the explanation angle and depth that fit your current need."
+  );
+  const grouped = /* @__PURE__ */ new Map();
+  for (const option of options) {
+    const group = grouped.get(option.format);
+    if (group) group.push(option);
+    else grouped.set(option.format, [option]);
+  }
+  const formats = [
+    ...FORMAT_ORDER.filter(
+      (format) => grouped.has(format)
+    ),
+    ...[...grouped.keys()].filter(
+      (format) => !FORMAT_ORDER.includes(
+        format
+      )
+    )
+  ];
+  for (const format of formats) {
+    const group = materials.createDiv({
+      cls: "los-material-group"
+    });
+    const entries = grouped.get(format) ?? [];
+    const heading = group.createDiv({
+      cls: "los-material-group-heading"
+    });
+    heading.createEl("h3", {
+      text: FORMAT_LABELS[format] ?? format.replaceAll("-", " ")
+    });
+    heading.createSpan({
+      cls: "los-micro",
+      text: `${entries.length} option${entries.length === 1 ? "" : "s"}`
+    });
+    for (const option of entries) {
+      const row = group.createDiv({
+        cls: "los-material-option"
+      });
+      icon(
+        row.createSpan({
+          cls: "los-material-icon"
+        }),
+        optionIcon(option.format)
+      );
+      const copy = row.createDiv({
+        cls: "los-material-copy"
+      });
+      copy.createEl("h4", {
+        text: option.title
+      });
+      copy.createEl("p", {
+        text: option.angle
+      });
+      if (option.locator) {
+        copy.createDiv({
+          cls: "los-micro",
+          text: option.locator
+        });
+      }
+      const metadata = copy.createDiv({
+        cls: "los-material-metadata"
+      });
+      badge(
+        metadata,
+        option.depth.replaceAll("-", " "),
+        "role"
+      );
+      badge(
+        metadata,
+        option.scope.replaceAll("-", " "),
+        option.scope === "current" ? "status" : "role"
+      );
+      for (const knowledgeId of option.covers) {
+        const label = titleById.get(knowledgeId);
+        if (label) {
+          metadata.createSpan({
+            cls: "los-knowledge-chip",
+            text: label
+          });
+        }
+      }
+      if (option.sourceId) {
+        const source = view.plugin.store.get(
+          option.sourceId
+        );
+        if (source) {
+          chip(
+            copy,
+            source,
+            (record2) => {
+              const id = asString(record2.id);
+              return id ? view.plugin.openLibrary(id) : void 0;
+            }
+          );
+        }
+      }
+      if (option.canOpen || option.canChoose) {
+        const actions = row.createDiv({
+          cls: "los-actions los-material-actions"
+        });
+        if (option.canChoose && option.sourceId && option.locator) {
+          const choice = button(
+            actions,
+            option.selected ? "Remove choice" : "Choose",
+            () => {
+              void view.plugin.mutate(
+                () => view.plugin.gateway.sourceSelection(
+                  unit.id,
+                  option.sourceId ?? "",
+                  option.locator ?? "",
+                  option.angle,
+                  !option.selected
+                )
+              ).then(
+                () => new import_obsidian18.Notice(
+                  option.selected ? "Material choice removed." : "Material chosen for this lecture."
+                )
+              ).catch(
+                (error) => new import_obsidian18.Notice(
+                  error instanceof Error ? error.message : String(error)
+                )
+              );
+            },
+            "choice"
+          );
+          choice.setAttr(
+            "aria-pressed",
+            option.selected ? "true" : "false"
+          );
+        }
+        if (option.canOpen) {
+          button(
+            actions,
+            "Open",
+            () => view.plugin.openResource(
+              option.record
+            ),
+            "info"
+          );
+        }
+      }
+    }
+  }
+}
+
 // src/features/unit/shell.ts
 function render(view) {
   const root = view.contentEl;
@@ -7762,23 +9652,40 @@ function render(view) {
       "quiet"
     );
   }
+  const sourceMap = view.plugin.store.sourceMap(
+    unit.moduleId
+  );
+  const materialOptions = readMaterialOptions(
+    sourceMap?.sources,
+    unit.id,
+    unit.record.source_selections
+  );
+  const hasMaterialOverview = unit.knowledgeNodes.length > 0 && materialOptions.length > 0;
+  if (hasMaterialOverview) {
+    renderMaterialOverview(
+      view,
+      root,
+      unit,
+      materialOptions
+    );
+  }
   const projectedStudyMap = view.plugin.store.mapForUnit(
     unit.id
   );
   if (!projectedStudyMap) {
     const missing = section(
       root,
-      "Study map needed"
+      hasMaterialOverview ? "Personal study path (optional)" : "Study map needed"
     );
     const projectId = asString(project?.id) ?? void 0;
     const componentId = unit.componentId ?? void 0;
     empty(
       missing,
-      "This unit has no current study script",
-      "AI may propose a scoped map; the core imports it only after review.",
-      "Create map with AI",
+      hasMaterialOverview ? "No personal path selected" : "This unit has no current study script",
+      hasMaterialOverview ? "The material menu above is complete. Create a path only when you want progress tracking for choices you make." : "AI may propose a scoped map; the core imports it only after review.",
+      hasMaterialOverview ? "Build optional path with AI" : "Create map with AI",
       () => view.plugin.askAiScoped(
-        "Propose one study-map JSON document for this unit. Do not write files; include exact source actions and done-when criteria.",
+        hasMaterialOverview ? "Propose an optional personal study-map JSON document using only materials I choose from this unit material overview. Do not replace or summarize the overview, and do not write files; include exact source actions and done-when criteria." : "Propose one study-map JSON document for this unit. Do not write files; include exact source actions and done-when criteria.",
         {
           moduleId: unit.moduleId,
           projectId,
@@ -7931,8 +9838,8 @@ function renderRail(view, layout, unit, studyMap, current) {
 }
 
 // src/views/unit-view.ts
-var import_obsidian16 = require("obsidian");
-var UnitView = class extends import_obsidian16.ItemView {
+var import_obsidian19 = require("obsidian");
+var UnitView = class extends import_obsidian19.ItemView {
   plugin;
   unitId;
   stageId;
@@ -7986,7 +9893,7 @@ var UnitView = class extends import_obsidian16.ItemView {
     renderRail(this, layout, unit, studyMap, current);
   }
   renderStage(layout, unit, studyMap, stage) {
-    renderStage(this, layout, unit, studyMap, stage);
+    renderStage2(this, layout, unit, studyMap, stage);
   }
   /**
    * One primary action and one menu. The primary is filled; nothing else on
@@ -8007,7 +9914,7 @@ var UnitView = class extends import_obsidian16.ItemView {
    */
   async mutate(action, onConfirmed = null) {
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian16.Notice(
+      new import_obsidian19.Notice(
         "A LearningOS write is already running."
       );
       return;
@@ -8019,7 +9926,7 @@ var UnitView = class extends import_obsidian16.ItemView {
       onConfirmed?.();
       this.render();
     } catch (error) {
-      new import_obsidian16.Notice(
+      new import_obsidian19.Notice(
         errorMessage3(error)
       );
     }
@@ -8027,7 +9934,7 @@ var UnitView = class extends import_obsidian16.ItemView {
   async selectStage(stageId) {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian16.Notice(
+      new import_obsidian19.Notice(
         "This unit is no longer available."
       );
       return;
@@ -8188,12 +10095,12 @@ var ApplicationRouter = class {
     };
     const recordId = asText2(state.recordId);
     if (recordId) {
-      const record = this.plugin.store?.get?.(recordId);
-      if (record?.type === "source" || recordType === "source") {
+      const record2 = this.plugin.store?.get?.(recordId);
+      if (record2?.type === "source" || recordType === "source") {
         return { name: "source-detail", resourceId: recordId };
       }
-      if (record?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: recordId };
-      if (record?.type === "collection" || recordType === "collection") {
+      if (record2?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: recordId };
+      if (record2?.type === "collection" || recordType === "collection") {
         return { name: "catalogue-detail", catalogueId: recordId };
       }
     }
@@ -8433,8 +10340,8 @@ var ApplicationRouter = class {
 };
 
 // src/app/unit-note-modal.ts
-var import_obsidian17 = require("obsidian");
-var UnitNoteModal = class extends import_obsidian17.Modal {
+var import_obsidian20 = require("obsidian");
+var UnitNoteModal = class extends import_obsidian20.Modal {
   plugin;
   unit;
   studyMap;
@@ -8445,6 +10352,7 @@ var UnitNoteModal = class extends import_obsidian17.Modal {
   editor;
   fileInput;
   fileSummary;
+  restoreAccessibility = null;
   constructor(app, plugin, unit, studyMap) {
     super(app);
     this.plugin = plugin;
@@ -8479,8 +10387,15 @@ var UnitNoteModal = class extends import_obsidian17.Modal {
       root,
       "Learning session",
       "Add note",
-      "Attach one note after the stages you worked through. It belongs to the unit, not to one selected stage."
+      "Attach one note after the stages you worked through. It belongs to the unit, not to one selected stage.",
+      "los-unit-note-heading"
     );
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--unit-note",
+      initialFocus: () => this.editor ?? null,
+      labelledBy: "los-unit-note-heading"
+    });
     const context = root.createDiv({ cls: "los-unit-note-context" });
     context.createDiv({ cls: "los-kicker", text: "Stages covered" });
     if (this.referencedStageIds.length) {
@@ -8515,18 +10430,20 @@ var UnitNoteModal = class extends import_obsidian17.Modal {
       this.fileSummary.setText(this.files.length ? `${this.files.length} attachment${this.files.length === 1 ? "" : "s"} selected for this save.` : "Optional: handwriting, image, or PDF.");
     });
     const status = root.createDiv({ cls: "los-draft-status", attr: { "aria-live": "polite" } });
+    const actions = root.createDiv({ cls: "los-actions los-unit-note-actions" });
+    button(actions, "Cancel", () => this.close(), "quiet");
+    const saveButton = button(actions, "Save note", () => this.save(), "cta");
     const persist = () => {
       this.plugin.setUnitNoteDraft(unitId, this.titleInput.value, this.editor.value);
-      status.setText(this.editor.value.trim() ? "Draft kept locally until the core confirms the save." : "Write a note to enable saving.");
-      status.toggleClass("is-dirty", Boolean(this.editor.value.trim()));
+      const hasNote = Boolean(this.editor.value.trim());
+      status.setText(hasNote ? "Draft kept locally until the core confirms the save." : "Write a note to enable saving.");
+      status.toggleClass("is-dirty", hasNote);
+      saveButton.disabled = !hasNote;
+      saveButton.setAttribute("aria-disabled", String(!hasNote));
     };
     this.titleInput.addEventListener("input", persist);
     this.editor.addEventListener("input", persist);
     persist();
-    const actions = root.createDiv({ cls: "los-actions los-unit-note-actions" });
-    button(actions, "Cancel", () => this.close(), "quiet");
-    button(actions, "Save note", () => this.save(), "cta");
-    this.editor.focus();
   }
   unrecordedCompletedStages(stages) {
     const already = new Set(
@@ -8543,22 +10460,22 @@ var UnitNoteModal = class extends import_obsidian17.Modal {
   async save() {
     const text = String(this.editor?.value || "");
     if (!text.trim()) {
-      new import_obsidian17.Notice("Write a note before saving.");
+      new import_obsidian20.Notice("Write a note before saving.");
       this.editor?.focus();
       return;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian17.Notice("A LearningOS write is already running.");
+      new import_obsidian20.Notice("A LearningOS write is already running.");
       return;
     }
     const unitId = this.unit.id;
     if (!unitId) {
-      new import_obsidian17.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
+      new import_obsidian20.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
       return;
     }
     const filePaths = this.files.map((file) => localFilePath(file)).filter((value) => Boolean(value));
     if (filePaths.length !== this.files.length) {
-      new import_obsidian17.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
+      new import_obsidian20.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
       return;
     }
     try {
@@ -8569,13 +10486,15 @@ var UnitNoteModal = class extends import_obsidian17.Modal {
         filePaths
       }));
       this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds);
-      new import_obsidian17.Notice("Learning-session note saved.");
+      new import_obsidian20.Notice("Learning-session note saved.");
       this.close();
     } catch (error) {
-      new import_obsidian17.Notice(errorMessage(error));
+      new import_obsidian20.Notice(errorMessage(error));
     }
   }
   onClose() {
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
     this.contentEl.empty();
   }
 };
@@ -8709,6 +10628,7 @@ function nextRequestId(capability) {
 var GatewayClient = class {
   plugin;
   chain;
+  jobSnapshotId = null;
   pending;
   constructor(plugin) {
     this.plugin = plugin;
@@ -8720,9 +10640,9 @@ var GatewayClient = class {
    * the chain: the next task runs regardless of how the previous one settled,
    * but never alongside it.
    */
-  enqueue(task) {
+  enqueue(task2) {
     this.pending += 1;
-    const run = this.chain.then(task, task);
+    const run = this.chain.then(task2, task2);
     this.chain = run.then(() => void 0, () => void 0).then(() => {
       this.pending -= 1;
     });
@@ -8785,11 +10705,12 @@ var GatewayClient = class {
    * path — instead of one positional signature per command, each with its own
    * flag order to get wrong. The named methods below are porcelain over this.
    */
-  capability(name, payload) {
+  capability(name, payload, options = {}) {
     const envelope = {
       request_id: nextRequestId(name),
       capability: name,
-      expected_snapshot: this.snapshotId(),
+      expected_snapshot: options.expectedSnapshot || this.snapshotId(),
+      ...options.expectedRevisions && Object.keys(options.expectedRevisions).length ? { expected_revisions: options.expectedRevisions } : {},
       payload
     };
     return this.call(
@@ -8837,6 +10758,18 @@ var GatewayClient = class {
     return this.capability(
       "stage.progress.update",
       { unit_id: unitId, stage_id: stageId, status }
+    );
+  }
+  sourceSelection(unitId, sourceId, locator, purpose, selected) {
+    return this.capability(
+      "unit.source-selection.set",
+      {
+        unit_id: unitId,
+        source_id: sourceId,
+        locator,
+        action: selected ? "select" : "remove",
+        ...selected ? { purpose } : {}
+      }
     );
   }
   feedback(unitId, stageId, sourceId, feedback, resourceId) {
@@ -8895,13 +10828,90 @@ var GatewayClient = class {
     if (push) args.push("--push");
     return this.call(args);
   }
+  /**
+   * The Job dashboard is the sole read outside the normal projection. The
+   * confirmation flag is the learner's deliberate navigation gesture; the
+   * core still owns path bounding and returns no durable cache.
+   */
+  async jobDashboard() {
+    const result = await this.call(["job-dashboard", "--confirm-job-access"]);
+    const access = result.access && typeof result.access === "object" ? result.access : {};
+    this.jobSnapshotId = typeof access.snapshot_id === "string" && access.snapshot_id.startsWith("sha256:") ? access.snapshot_id : null;
+    return result;
+  }
+  jobCapability(name, payload, expectedRevisions = {}) {
+    if (!this.jobSnapshotId) {
+      throw new Error("Reload the confidential Job workspace before saving; nothing was written.");
+    }
+    return this.capability(name, payload, {
+      expectedSnapshot: this.jobSnapshotId,
+      expectedRevisions
+    });
+  }
+  /**
+   * Bounded Job writes (ADR-010). Each carries the same deliberate-gesture flag
+   * as the read, and each is a declared capability rooted at Job/ — the view
+   * never writes a Job file itself, exactly as it never writes a canonical one.
+   */
+  logJobSession(text, options = {}) {
+    const payload = { text, confirm_job_access: true };
+    if (options.track) payload.track = options.track;
+    if (options.session !== void 0) payload.session = options.session;
+    if (options.minutes !== void 0) payload.minutes = options.minutes;
+    return this.jobCapability("job.session.log", payload);
+  }
+  stampJobNote(noteId, commit, status = "current") {
+    return this.jobCapability("job.note.stamp", {
+      note: noteId,
+      commit,
+      status,
+      confirm_job_access: true
+    });
+  }
+  saveJobNote(noteId, title, body, revision) {
+    return this.jobCapability("job.note.save", {
+      note: noteId || title,
+      title,
+      body,
+      folder: "learning",
+      approve: true,
+      confirm_job_access: true
+    }, noteId && revision !== void 0 ? { [`job-note:${noteId}`]: revision } : {});
+  }
+  saveJobPlan(plan, revision) {
+    const id = typeof plan.id === "string" ? plan.id : "";
+    return this.jobCapability("job.plan.save", {
+      plan,
+      approve: true,
+      confirm_job_access: true
+    }, id && revision !== void 0 ? { [`job-plan:${id}`]: revision } : {});
+  }
+  saveJobTask(task2, revision) {
+    const id = typeof task2.id === "string" ? task2.id : "";
+    return this.jobCapability("job.task.save", {
+      task: task2,
+      confirm_job_access: true
+    }, id && revision !== void 0 ? { [`job-task:${id}`]: revision } : {});
+  }
+  recordJobTrackSession(trackId, session, state, revision) {
+    return this.jobCapability("job.track.progress", {
+      track: trackId,
+      session,
+      state,
+      confirm_job_access: true
+    }, { [`job-track:${trackId}`]: revision });
+  }
 };
 function explicitAiContext(plugin, context = {}) {
   const unit = context.unitId ? plugin.store.get(context.unitId) : null;
   const module2 = context.moduleId ? plugin.store.get(context.moduleId) : unit?.module_id ? plugin.store.get(unit.module_id) : null;
   const studyMap = unit?.id ? plugin.store.mapForUnit(unit.id) : null;
   const stage = context.stageId ? plugin.store.stage(context.stageId) : null;
-  const resources = Array.isArray(stage?.resources) ? stage.resources : [];
+  const stageResources = Array.isArray(stage?.resources) ? stage.resources : [];
+  const unitSelections = Array.isArray(unit?.source_selections) ? unit.source_selections.filter(
+    (row) => typeof row === "object" && row !== null && !Array.isArray(row)
+  ) : [];
+  const resources = stageResources.length ? stageResources : unitSelections;
   return {
     area_program_id: context.programId || module2?.area_id || null,
     module_id: module2?.id || context.moduleId || null,
@@ -8909,7 +10919,7 @@ function explicitAiContext(plugin, context = {}) {
     unit_id: unit?.id || context.unitId || null,
     stage_id: stage?.id || context.stageId || null,
     selected_source_ids: [...new Set(resources.map((row) => row.source_id).filter((value) => typeof value === "string" && value.length > 0))],
-    selected_materials: resources.map((row) => row.material_uri || row.vault_path || row.url || row.material_path).filter((value) => typeof value === "string" && value.length > 0),
+    selected_materials: resources.map((row) => row.material_uri || row.vault_path || row.url || row.material_path || row.locator).filter((value) => typeof value === "string" && value.length > 0),
     manifest_snapshot: plugin.store.snapshotId,
     active_file_supplement: plugin.app.workspace.getActiveFile?.()?.path || null
   };
@@ -9003,10 +11013,84 @@ var LosRuntime = class {
 var import_electron2 = require("electron");
 var fs3 = __toESM(require("node:fs"));
 var nodePath3 = __toESM(require("node:path"));
-var import_obsidian18 = require("obsidian");
+var import_obsidian21 = require("obsidian");
+var CODE_EXTENSIONS = /* @__PURE__ */ new Set([
+  ".c",
+  ".cc",
+  ".cpp",
+  ".cs",
+  ".css",
+  ".go",
+  ".h",
+  ".hpp",
+  ".ini",
+  ".ipynb",
+  ".java",
+  ".js",
+  ".jsx",
+  ".json",
+  ".jsonl",
+  ".kt",
+  ".less",
+  ".lua",
+  ".md",
+  ".mjs",
+  ".php",
+  ".properties",
+  ".py",
+  ".r",
+  ".rb",
+  ".rs",
+  ".sass",
+  ".scss",
+  ".sh",
+  ".sql",
+  ".swift",
+  ".tex",
+  ".toml",
+  ".ts",
+  ".tsx",
+  ".txt",
+  ".xml",
+  ".yaml",
+  ".yml",
+  ".zsh"
+]);
+function visualStudioCodeUrl(path) {
+  const url = new URL("vscode://file");
+  const portable = String(path || "").replace(/\\/g, "/");
+  url.pathname = portable.startsWith("/") ? portable : `/${portable}`;
+  return url.href;
+}
+function normalizedVaultPath(value) {
+  let path = String(value || "").trim();
+  const wiki = path.match(/^\[\[([^\]|]+)(?:\|[^\]]*)?\]\]$/);
+  if (wiki?.[1]) path = wiki[1];
+  const markdown = path.match(/^\[[^\]]*\]\((.+)\)$/);
+  if (markdown?.[1]) path = markdown[1];
+  path = path.replace(/\\/g, "/").replace(/^\.\//, "");
+  const subpath = path.search(/[?#]/);
+  if (subpath >= 0) path = path.slice(0, subpath);
+  try {
+    path = decodeURIComponent(path);
+  } catch (_) {
+  }
+  return path;
+}
 var ResourceOpener = class {
   constructor(app) {
     this.app = app;
+  }
+  jobAccessGranted = false;
+  jobAllowedRoots = /* @__PURE__ */ new Set();
+  grantJobAccess(value) {
+    const access = value && typeof value === "object" ? value : {};
+    const allowedRoots = Array.isArray(access.allowed_roots) ? access.allowed_roots.filter(
+      (root) => typeof root === "string" && /^[a-z0-9][a-z0-9-]*$/.test(root) && root !== "stratum"
+    ) : [];
+    this.jobAccessGranted = access.scope === "job-dashboard" && access.read_only === true && access.ephemeral === true && access.excluded_from_manifest === true && access.excluded_from_search === true && access.excluded_from_ai === true && access.writes_through_gateway === true && typeof access.snapshot_id === "string" && access.snapshot_id.startsWith("sha256:") && allowedRoots.length > 0;
+    this.jobAllowedRoots = this.jobAccessGranted ? new Set(allowedRoots) : /* @__PURE__ */ new Set();
+    return this.jobAccessGranted;
   }
   isQuarantinedPath(path) {
     const posix = String(path || "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/^\/+/, "");
@@ -9014,19 +11098,24 @@ var ResourceOpener = class {
   }
   refuseQuarantined(path) {
     if (!this.isQuarantinedPath(path)) return false;
-    new import_obsidian18.Notice("Job/ is quarantined \u2014 LearningOS never opens or displays it.");
+    new import_obsidian21.Notice("Job/ is quarantined \u2014 LearningOS never opens or displays it.");
     return true;
   }
   async openVaultPath(path) {
     if (this.refuseQuarantined(path)) return void 0;
-    const file = this.app.vault.getAbstractFileByPath(path);
+    const target = normalizedVaultPath(path);
+    if (!target || target.startsWith("/") || target.split("/").includes("..")) {
+      new import_obsidian21.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      return void 0;
+    }
+    const file = this.app.vault.getAbstractFileByPath(target);
     if (!file) {
-      new import_obsidian18.Notice(`File unavailable: ${path}`);
+      new import_obsidian21.Notice(`File unavailable: ${target}`);
       return void 0;
     }
     let existing = null;
     this.app.workspace.iterateAllLeaves((leaf2) => {
-      if (!existing && leaf2.view?.file?.path === path) existing = leaf2;
+      if (!existing && leaf2.view?.file?.path === target) existing = leaf2;
     });
     if (existing) {
       this.app.workspace.revealLeaf(existing);
@@ -9037,19 +11126,114 @@ var ResourceOpener = class {
     await leaf.openFile(file);
     return leaf;
   }
+  isCodePath(path) {
+    if (!fs3.existsSync(path)) return false;
+    const extension = nodePath3.extname(path).toLocaleLowerCase();
+    return !extension || CODE_EXTENSIONS.has(extension);
+  }
+  async openSystemPath(path, successMessage) {
+    const error = await import_electron2.shell.openPath(path);
+    if (error) {
+      new import_obsidian21.Notice(`Could not open file: ${error}`);
+      return false;
+    }
+    new import_obsidian21.Notice(successMessage);
+    return true;
+  }
+  async openCodePath(path) {
+    try {
+      await import_electron2.shell.openExternal(visualStudioCodeUrl(path));
+      new import_obsidian21.Notice("Opened in Visual Studio Code.");
+      return true;
+    } catch (_) {
+      new import_obsidian21.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
+      return this.openSystemPath(path, "Opened in the system app.");
+    }
+  }
+  openPreferredLocalPath(path, systemMessage) {
+    return this.isCodePath(path) ? this.openCodePath(path) : this.openSystemPath(path, systemMessage);
+  }
   async openExternalPath(path, successMessage = "Opened in the default app.") {
     if (this.refuseQuarantined(path)) return false;
     if (!path || !fs3.existsSync(path)) {
-      new import_obsidian18.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian21.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
-    const error = await import_electron2.shell.openPath(path);
-    if (error) {
-      new import_obsidian18.Notice(`Could not open file: ${error}`);
+    return this.openSystemPath(path, successMessage);
+  }
+  /**
+   * Deliberate Job-session exception. Ordinary open helpers still refuse every
+   * Job path; only a validated, in-memory dashboard grant can reach this one.
+   */
+  async openJobPath(relativePath) {
+    if (!this.jobAccessGranted) {
+      new import_obsidian21.Notice("Open the confidential Job workspace before opening Job files.");
       return false;
     }
-    new import_obsidian18.Notice(successMessage);
-    return true;
+    const relative2 = String(relativePath || "").replace(/\\/g, "/").replace(/^\.\//, "");
+    const top = relative2.split("/")[0] || "";
+    if (!relative2 || relative2.startsWith("/") || relative2.split("/").includes("..") || !this.jobAllowedRoots.has(top)) {
+      new import_obsidian21.Notice("The Job dashboard refused a path outside its read-only allowlist.");
+      return false;
+    }
+    const vault = this.app.vault.adapter.getBasePath();
+    const semesterRoot = nodePath3.dirname(nodePath3.dirname(vault));
+    const jobRoot = nodePath3.resolve(semesterRoot, "Job");
+    const fullPath = nodePath3.resolve(jobRoot, relative2);
+    const escaped = nodePath3.relative(jobRoot, fullPath);
+    if (!escaped || escaped.startsWith("..") || nodePath3.isAbsolute(escaped) || !fs3.existsSync(nodePath3.join(jobRoot, "README.md")) || !fs3.existsSync(fullPath)) {
+      new import_obsidian21.Notice(`Job file unavailable: ${relative2 || "unknown path"}`);
+      return false;
+    }
+    return this.openPreferredLocalPath(
+      fullPath,
+      "Opened from the confidential Job workspace."
+    );
+  }
+  /** Web references shown inside the ephemeral Job reader stay protocol-safe. */
+  async openJobUrl(value) {
+    if (!this.jobAccessGranted) {
+      new import_obsidian21.Notice("Open the confidential Job workspace before opening its links.");
+      return false;
+    }
+    const url = safeWebUrl(value);
+    if (!url) {
+      new import_obsidian21.Notice(`Refused an unsupported Job link: ${String(value || "").slice(0, 80)}`);
+      return false;
+    }
+    try {
+      await import_electron2.shell.openExternal(url.href);
+      return true;
+    } catch (_) {
+      new import_obsidian21.Notice("Could not open the Job link in your browser.");
+      return false;
+    }
+  }
+  /**
+   * Job may cite LearningOS one-way. This deliberately accepts only an
+   * explicit `LearningOS/…` path and can never resolve back into Job/.
+   */
+  async openJobLearningPath(value) {
+    if (!this.jobAccessGranted) {
+      new import_obsidian21.Notice("Open the confidential Job workspace before opening its learning material.");
+      return false;
+    }
+    const portable = normalizedVaultPath(value);
+    const prefix = "LearningOS/";
+    if (!portable.startsWith(prefix) || portable.split("/").includes("..")) {
+      new import_obsidian21.Notice("The Job dashboard refused a learning path outside LearningOS.");
+      return false;
+    }
+    const relative2 = portable.slice(prefix.length);
+    const vault = this.app.vault.adapter.getBasePath();
+    const learningRoot = nodePath3.dirname(vault);
+    const fullPath = nodePath3.resolve(learningRoot, relative2);
+    const escaped = nodePath3.relative(learningRoot, fullPath);
+    if (!relative2 || escaped.startsWith("..") || nodePath3.isAbsolute(escaped) || !fs3.existsSync(fullPath)) {
+      new import_obsidian21.Notice(`Learning material unavailable: ${portable || "unknown path"}`);
+      return false;
+    }
+    return this.openPreferredLocalPath(fullPath, "Opened the LearningOS material.");
   }
   openMaterialPath(path) {
     const vault = this.app.vault.adapter.getBasePath();
@@ -9058,7 +11242,7 @@ var ResourceOpener = class {
     const fullPath = nodePath3.resolve(learningRoot, path || "");
     const relative2 = nodePath3.relative(materialsRoot, fullPath);
     if (!path || relative2.startsWith("..") || nodePath3.isAbsolute(relative2)) {
-      new import_obsidian18.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
+      new import_obsidian21.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openExternalPath(fullPath, "Opened the local material in its default app.");
@@ -9071,10 +11255,17 @@ var ResourceOpener = class {
     const fullPath = nodePath3.resolve(base, path || "");
     const relative2 = nodePath3.relative(base, fullPath);
     if (!path || relative2.startsWith("..") || nodePath3.isAbsolute(relative2)) {
-      new import_obsidian18.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian21.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return false;
     }
-    return this.openExternalPath(fullPath, "Opened the authored file in its default app.");
+    if (!fs3.existsSync(fullPath)) {
+      new import_obsidian21.Notice(`File unavailable: ${path || "unknown path"}`);
+      return false;
+    }
+    return this.openPreferredLocalPath(
+      fullPath,
+      "Opened the authored file in its default app."
+    );
   }
   openResource(resource, ports = this) {
     const materialPath = typeof resource.material_path === "string" ? resource.material_path : "";
@@ -9082,7 +11273,7 @@ var ResourceOpener = class {
     const vaultPath = typeof resource.vault_path === "string" ? resource.vault_path : "";
     if (vaultPath.trim()) {
       if (vaultPath.trim().toLowerCase().startsWith("material://")) {
-        new import_obsidian18.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
+        new import_obsidian21.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
         return false;
       }
       return ports.openVaultPath(vaultPath);
@@ -9090,37 +11281,39 @@ var ResourceOpener = class {
     if (resource.url) {
       const url = safeWebUrl(resource.url);
       if (!url) {
-        new import_obsidian18.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
+        new import_obsidian21.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
         return false;
       }
-      const leaf = this.app.workspace.getLeaf(true);
-      return leaf.setViewState({ type: "webviewer", active: true, state: { url: url.href } });
+      return Promise.resolve(import_electron2.shell.openExternal(url.href)).catch(() => {
+        new import_obsidian21.Notice("Could not open the link in your browser.");
+        return false;
+      });
     }
     return false;
   }
   copyText(value) {
     try {
       void navigator.clipboard.writeText(value);
-      new import_obsidian18.Notice(`Copied ${value}`);
+      new import_obsidian21.Notice(`Copied ${value}`);
     } catch (_) {
-      new import_obsidian18.Notice(value);
+      new import_obsidian21.Notice(value);
     }
   }
 };
 
-// src/contracts/manifest-v4.ts
-var MANIFEST_CONTRACT_VERSION = 4;
+// src/contracts/manifest-v5.ts
+var MANIFEST_CONTRACT_VERSION = 5;
 function isRecord16(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
-function requireArray(record, key) {
-  if (!Array.isArray(record[key])) {
-    throw new TypeError(`Manifest v4 field ${String(key)} must be an array.`);
+function requireArray(record2, key) {
+  if (!Array.isArray(record2[key])) {
+    throw new TypeError(`Manifest v5 field ${String(key)} must be an array.`);
   }
 }
-function assertManifestV4(value) {
+function assertManifestV5(value) {
   if (!isRecord16(value) || !isRecord16(value._generated)) {
-    throw new TypeError("Manifest v4 requires an _generated object.");
+    throw new TypeError("Manifest v5 requires an _generated object.");
   }
   if (value._generated.contract_version !== MANIFEST_CONTRACT_VERSION) {
     throw new TypeError(
@@ -9151,12 +11344,12 @@ function assertManifestV4(value) {
   }
   for (const unit of value.units) {
     if (!isRecord16(unit) || typeof unit.id !== "string" || typeof unit.notes_text !== "string" || !Array.isArray(unit.note_sections)) {
-      throw new TypeError("Manifest v4 unit rows require projected unit note fields.");
+      throw new TypeError("Manifest v5 unit rows require projected unit note fields.");
     }
   }
   for (const key of ["ai_actions", "artifact_revisions", "backlinks", "counts", "indexes", "progress", "project_aliases"]) {
     if (!isRecord16(value[key])) {
-      throw new TypeError(`Manifest v4 field ${key} must be an object.`);
+      throw new TypeError(`Manifest v5 field ${key} must be an object.`);
     }
   }
 }
@@ -9199,7 +11392,7 @@ var ManifestStore = class {
           `Unsupported manifest contract ${String(version ?? "unknown")}; LearningOS UI requires contract ${CONTRACT_VERSION}.`
         );
       }
-      assertManifestV4(parsed);
+      assertManifestV5(parsed);
       const manifest = parsed;
       this.data = manifest;
       this.contractVersion = version;
@@ -9284,8 +11477,8 @@ var ManifestStore = class {
     return this.rows("projects");
   }
   projectRelationships(projectId = null) {
-    const rows = [...this.data?.project_relationships || []];
-    return projectId ? rows.filter((row) => row.from_project_id === projectId) : rows;
+    const rows2 = [...this.data?.project_relationships || []];
+    return projectId ? rows2.filter((row) => row.from_project_id === projectId) : rows2;
   }
   resolveProjectAlias(id) {
     return this.data?.project_aliases?.[id] || id;
@@ -9340,12 +11533,12 @@ var ManifestStore = class {
     return this.rows("ai_actions_available").find((row) => row.id === actionId) || (Array.isArray(available) ? available : []).find((row) => row?.id === actionId) || null;
   }
   aiProviders() {
-    const rows = this.data?.ai_actions?.provider_adapters;
-    return Array.isArray(rows) ? rows.filter((row) => row && typeof row === "object") : [];
+    const rows2 = this.data?.ai_actions?.provider_adapters;
+    return Array.isArray(rows2) ? rows2.filter((row) => row && typeof row === "object") : [];
   }
   aiRequestsForTarget(targetId) {
-    const rows = this.data?.ai_actions?.requests;
-    return (Array.isArray(rows) ? rows : []).filter((row) => row?.target?.id === targetId);
+    const rows2 = this.data?.ai_actions?.requests;
+    return (Array.isArray(rows2) ? rows2 : []).filter((row) => row?.target?.id === targetId);
   }
   latestAiRequest(targetId) {
     return this.aiRequestsForTarget(targetId).slice().sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")))[0] || null;
@@ -9354,8 +11547,8 @@ var ManifestStore = class {
     return this.modules().filter((row) => row.area_id === programId);
   }
   unitsFor(moduleId, componentId = null) {
-    const rows = this.units().filter((row) => row.module_id === moduleId);
-    return componentId ? rows.filter((row) => row.component_id === componentId) : rows;
+    const rows2 = this.units().filter((row) => row.module_id === moduleId);
+    return componentId ? rows2.filter((row) => row.component_id === componentId) : rows2;
   }
   mapForUnit(unitId) {
     const mapId = this.data?.indexes?.unit_to_study_map?.[unitId];
@@ -9405,11 +11598,11 @@ var ManifestStore = class {
     );
   }
   search(query, types = null) {
-    const words = String(query || "").toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const words2 = String(query || "").toLocaleLowerCase().split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
-    const rows = this.records.filter((row) => !allowed || typeof row.type === "string" && allowed.has(row.type));
-    if (!words.length) return rows;
-    const strict = rows.filter((row) => {
+    const rows2 = this.records.filter((row) => !allowed || typeof row.type === "string" && allowed.has(row.type));
+    if (!words2.length) return rows2;
+    const strict = rows2.filter((row) => {
       const hay = [
         row.id,
         row.title,
@@ -9418,11 +11611,11 @@ var ManifestStore = class {
         row.organization,
         row.domain
       ].filter(Boolean).join(" ").toLocaleLowerCase();
-      return words.every((word) => hay.includes(word));
+      return words2.every((word) => hay.includes(word));
     });
     if (strict.length) return strict;
-    const needle = words.join("");
-    return rows.filter((row) => {
+    const needle = words2.join("");
+    return rows2.filter((row) => {
       const hay = [row.id, row.title, ...row.aliases || []].filter(Boolean).join(" ").toLocaleLowerCase().replace(/\s+/g, "");
       let at = 0;
       for (const char of hay) if (char === needle[at]) at += 1;
@@ -9430,8 +11623,8 @@ var ManifestStore = class {
     });
   }
   related(id) {
-    const record = this.get(id);
-    if (!record) return [];
+    const record2 = this.get(id);
+    if (!record2) return [];
     const ids = /* @__PURE__ */ new Set();
     for (const key of [
       "concepts",
@@ -9444,7 +11637,7 @@ var ManifestStore = class {
       "unit_order",
       "related_module_ids"
     ]) {
-      for (const value of asStrings(record[key])) ids.add(value);
+      for (const value of asStrings(record2[key])) ids.add(value);
     }
     for (const table of Object.values(this.data?.backlinks || {})) {
       if (isRecord17(table) && Array.isArray(table[id])) {
@@ -9466,7 +11659,7 @@ var ManifestStore = class {
 function errorMessage6(error) {
   return error instanceof Error ? error.message : String(error);
 }
-var LearningOSUI = class extends import_obsidian19.Plugin {
+var LearningOSUI = class extends import_obsidian22.Plugin {
   lastAiPrompt = "";
   async onload() {
     const loadedSettings = await this.loadData();
@@ -9651,11 +11844,11 @@ var LearningOSUI = class extends import_obsidian19.Plugin {
     if (recordId === void 0 || recordId === null) {
       return this.openLibraryHome(recordType === "topic-pack" ? "topic-packs" : "sources");
     }
-    const record = this.store.get(recordId);
-    if (record?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
-    if (record?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
-    if (record?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
-    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record?.type || "note", query: "" });
+    const record2 = this.store.get(recordId);
+    if (record2?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
+    if (record2?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
+    if (record2?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
+    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record2?.type || "note", query: "" });
   }
   openLibraryHome(collection = "sources", query = "", filters) {
     return this.router.navigate({
@@ -9713,7 +11906,7 @@ var LearningOSUI = class extends import_obsidian19.Plugin {
   }
   openFullTextSearch(query = "") {
     const ok = this.app.commands?.executeCommandById?.("omnisearch:show-modal");
-    if (!ok) new import_obsidian19.Notice("Omnisearch is unavailable; structural Library search still works.");
+    if (!ok) new import_obsidian22.Notice("Omnisearch is unavailable; structural Library search still works.");
     else if (query.trim()) {
       let attempts = 0;
       const transfer = () => {
@@ -9768,7 +11961,7 @@ var LearningOSUI = class extends import_obsidian19.Plugin {
    * capability contract, so nothing was written to repeat.
    */
   async rebuildAndRetry(action, reload) {
-    new import_obsidian19.Notice("Canonical files changed since this view loaded \u2014 rebuilding the projection, then retrying.");
+    new import_obsidian22.Notice("Canonical files changed since this view loaded \u2014 rebuilding the projection, then retrying.");
     await this.gateway.call(["generate"], { expectJson: false });
     await this.reloadStore();
     const result = await action();
@@ -9781,9 +11974,9 @@ var LearningOSUI = class extends import_obsidian19.Plugin {
         await this.gateway.call(["validate"], { expectJson: false });
         await this.gateway.call(["generate"], { expectJson: false });
       });
-      new import_obsidian19.Notice("LearningOS projection rebuilt.");
+      new import_obsidian22.Notice("LearningOS projection rebuilt.");
     } catch (error) {
-      new import_obsidian19.Notice(errorMessage6(error));
+      new import_obsidian22.Notice(errorMessage6(error));
     }
   }
   async reviewSessionEnd() {
@@ -9792,7 +11985,7 @@ var LearningOSUI = class extends import_obsidian19.Plugin {
       new SessionEndModal(this.app, this, review).open();
       return review;
     } catch (error) {
-      new import_obsidian19.Notice(errorMessage6(error));
+      new import_obsidian22.Notice(errorMessage6(error));
       return null;
     }
   }
@@ -9820,28 +12013,31 @@ var LearningOSUI = class extends import_obsidian19.Plugin {
   openAuthoredPath(path) {
     return this.resources.openAuthoredPath(path);
   }
-  openRecord(record) {
-    if (!record) return;
-    const recordId = asString(record.id);
-    if (record.type === "unit" && recordId) return this.openUnit(recordId);
-    if (record.type === "module" && recordId) return this.openModule(recordId);
-    if (record.type === "project" && recordId) return this.openProject(recordId);
-    if (record.type === "program" && recordId) return this.openProgram(recordId);
-    if (record.type === "source" && recordId) return this.openSourceDetail(recordId);
-    if (record.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
-    if (record.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
-    if (record.type === "note" || record.type === "concept") {
-      if (record.path) return this.openAuthoredPath(record.path);
-      return this.openLibraryFiltered(record.type);
+  openJobPath(path) {
+    return this.resources.openJobPath(path);
+  }
+  openRecord(record2) {
+    if (!record2) return;
+    const recordId = asString(record2.id);
+    if (record2.type === "unit" && recordId) return this.openUnit(recordId);
+    if (record2.type === "module" && recordId) return this.openModule(recordId);
+    if (record2.type === "project" && recordId) return this.openProject(recordId);
+    if (record2.type === "program" && recordId) return this.openProgram(recordId);
+    if (record2.type === "source" && recordId) return this.openSourceDetail(recordId);
+    if (record2.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
+    if (record2.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
+    if (record2.type === "note" || record2.type === "concept") {
+      if (record2.path) return this.openAuthoredPath(record2.path);
+      return this.openLibraryFiltered(record2.type);
     }
-    if (record.type === "workspace") {
-      if (record.project_id) return this.openProject(record.project_id);
-      const unit = (record.unit_ids || []).map((id) => this.store.get(id)).find(Boolean);
+    if (record2.type === "workspace") {
+      if (record2.project_id) return this.openProject(record2.project_id);
+      const unit = (record2.unit_ids || []).map((id) => this.store.get(id)).find(Boolean);
       if (unit?.id) return this.openUnit(unit.id);
-      const module2 = (record.module_ids || []).map((id) => this.store.get(id)).find(Boolean);
+      const module2 = (record2.module_ids || []).map((id) => this.store.get(id)).find(Boolean);
       return module2?.id ? this.openModule(module2.id) : this.openHome();
     }
-    if (record.path) return this.openAuthoredPath(record.path);
+    if (record2.path) return this.openAuthoredPath(record2.path);
   }
   openResource(resource) {
     return this.resources.openResource(resource, this);
@@ -9862,7 +12058,7 @@ The active file is supplementary context only. Use only action-specific Learning
     if (agent?.sendToChat) await agent.sendToChat(prompt);
     else {
       this.copyText(prompt);
-      new import_obsidian19.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
+      new import_obsidian22.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
     }
     return prompt;
   }

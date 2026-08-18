@@ -8,7 +8,7 @@ import {
   pageHeader,
   section,
 } from '../../components';
-import type { ProjectionRecord } from '../../contracts/manifest-v4';
+import type { ProjectionRecord } from '../../contracts/manifest-v5';
 import {
   asLibrarySourceFilters,
   type LibraryCollectionV1,
@@ -504,13 +504,33 @@ export function renderSourceBrowser(
     }
 
     if (!rows.length) {
+      const hasQuery = Boolean(
+        view.query.trim(),
+      );
+      const hasFilters = SOURCE_FILTER_DIMENSIONS
+        .some(
+          ([dimension]) =>
+            Boolean(view.filters[dimension]),
+        );
+      const resetLabel = hasQuery
+        ? hasFilters
+          ? 'Clear search and filters'
+          : 'Clear search'
+        : 'Clear filters';
+      const reset = (): void => {
+        if (hasQuery) {
+          void view.clearSourceSearchAndFilters();
+        } else {
+          void view.clearSourceFilters();
+        }
+      };
+
       empty(
         browser,
         'No matching sources',
         'No source matches the current search and facet combination.',
-        'Clear filters',
-        () =>
-          void view.clearSourceFilters(),
+        resetLabel,
+        reset,
       );
       return;
     }

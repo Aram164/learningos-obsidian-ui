@@ -8,7 +8,7 @@ import {
   projectedExcerpt,
   section,
 } from '../../components';
-import type { ProjectionRecord } from '../../contracts/manifest-v4';
+import type { ProjectionRecord } from '../../contracts/manifest-v5';
 import {
   asLabel as projectedLabel,
   asListLength as projectedListLength,
@@ -28,6 +28,7 @@ import {
   readProjectStructure,
   readProjectRelationship,
 } from './model';
+import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 
 export function renderDetail(
   view: ProjectView,
@@ -102,10 +103,11 @@ export function renderDetail(
     const tabs = root.createDiv({
       cls: 'los-project-tabs',
       attr: {
-        role: 'tablist',
+        role: 'group',
         'aria-label': 'Project sections',
       },
     });
+    enableButtonGroupKeyboardNavigation(tabs);
 
     for (
       const [tabId, label]
@@ -131,8 +133,7 @@ export function renderDetail(
       );
 
       tab.setAttrs({
-        role: 'tab',
-        'aria-selected':
+        'aria-pressed':
           String(active),
       });
     }

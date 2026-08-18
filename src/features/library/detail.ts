@@ -8,7 +8,7 @@ import {
   pageHeader,
   section,
 } from '../../components';
-import type { ProjectionRecord } from '../../contracts/manifest-v4';
+import type { ProjectionRecord } from '../../contracts/manifest-v5';
 import {
   asLibrarySourceFilters,
   type LibraryCollectionV1,
@@ -57,7 +57,7 @@ export function renderRecordActions(
           view.plugin.openResource({
             url,
           }),
-        'cta',
+        'info',
       );
     }
 
@@ -69,7 +69,7 @@ export function renderRecordActions(
           view.plugin.openMaterialPath(
             record.materialPath as string,
           ),
-        'quiet',
+        'info',
       );
     }
 
@@ -81,7 +81,7 @@ export function renderRecordActions(
           view.plugin.openAuthoredPath(
             record.path as string,
           ),
-        'quiet',
+        'info',
       );
     }
   }
@@ -113,7 +113,7 @@ export function renderAttachments(
           view.plugin.openAuthoredPath(
             attachment.path,
           ),
-        'quiet',
+        'info',
       );
     }
   }

@@ -13,6 +13,7 @@ import { button, empty, OWNERSHIP_STATEMENT, pageHeader, section } from './compo
 import { asSessionReview } from './contracts/gateway-v1';
 import type { SessionReviewV1 } from './contracts/gateway-v1';
 import type { LearningOSUI } from './main';
+import { makeModalAccessible } from './accessibility/modal';
 
 type ToggleSettingKey =
   | 'openHomeOnStartup'
@@ -107,6 +108,7 @@ export class LearningOSSettingsTab extends PluginSettingTab {
 export class SessionEndModal extends Modal {
   private readonly plugin: SessionEndPlugin;
   private readonly review: SessionReview;
+  private restoreAccessibility: (() => void) | null = null;
 
   constructor(
     app: App,
@@ -120,7 +122,13 @@ export class SessionEndModal extends Modal {
   onOpen(): void {
     const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-session-modal');
     pageHeader(root, 'Explicit Git closure', 'End learning session',
-      'Only files recorded by guarded learning actions can be staged. Unrelated changes remain untouched.');
+      'Only files recorded by guarded learning actions can be staged. Unrelated changes remain untouched.',
+      'los-session-end-heading');
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: 'los-modal--session-end',
+      labelledBy: 'los-session-end-heading',
+    });
     const owned = section(root, 'Session-owned changes');
     if (!(this.review.owned_changes || []).length) empty(owned, 'No owned changes', 'There is nothing to commit from this session.');
     for (const file of this.review.owned_changes || []) owned.createEl('code', { text: file });
@@ -147,6 +155,11 @@ export class SessionEndModal extends Modal {
       }
     }, 'cta');
     button(actions, 'Close without committing', () => this.close(), 'quiet');
+    message.focus();
   }
-  onClose(): void { this.contentEl.empty(); }
+  onClose(): void {
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+  }
 }

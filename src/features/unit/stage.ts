@@ -3,15 +3,11 @@ import type { UnitView } from '../../views/unit-view';
 import {
   badge,
   button,
-  chip,
   disclosure,
-  empty,
-  icon,
   overflowMenu,
   pageHeader,
   section,
 } from '../../components';
-import type { ProjectionRecord } from '../../contracts/manifest-v4';
 import {
   asLabel as projectedLabel,
   asRecords as projectedRecords,
@@ -33,6 +29,7 @@ import {
   fallbackRecord,
   errorMessage,
 } from './model';
+import { renderStageResources } from '../stage-resources';
 
 export function renderStage(
   view: UnitView,
@@ -165,186 +162,27 @@ export function renderStage(
       }
     }
 
-    const resources = section(
-      center,
-      'Exact work',
-    );
-
-    if (!stage.resources.length) {
-      empty(
-        resources,
-        'No source action selected',
-        'Use the unit scope and ask AI for a proposal.',
-      );
-    }
-
-    // ADR-008 gave every resource its own triage rank, precisely so a required
-    // stage stops presenting the deck, the fallback video, the depth paper and
-    // the preserved bibliography at one weight. Rendering them in rank order,
-    // under headings, is what turns that stored rank into less reading.
-    // Unranked resources (every pre-v2 record) sort with the primaries rather
-    // than below them: absent means "not yet ranked", never "deprioritised".
-    const TRIAGE_ORDER = [
-      'required-now',
-      'helpful-now',
-      'deferred',
-      'reference-only',
-    ];
-    const TRIAGE_HEADING: Record<string, string> = {
-      'required-now': 'Do this',
-      'helpful-now': 'If you get stuck',
-      deferred: 'Depth — not now',
-      'reference-only': 'Reference — preserved, not reading for this stage',
-    };
-    const rankOf = (
-      value: string | null,
-    ) => {
-      const index = value
-        ? TRIAGE_ORDER.indexOf(value)
-        : -1;
-      return index < 0 ? 0 : index;
-    };
-    const ordered = [...stage.resources]
-      .sort(
-        (a, b) =>
-          rankOf(a.scopeTriage)
-          - rankOf(b.scopeTriage),
-      );
-    const anyRanked = ordered.some(
-      (item) => Boolean(item.scopeTriage),
-    );
-    let renderedHeading: string | null = null;
-
-    for (
-      const resource of ordered
-    ) {
-      if (anyRanked) {
-        const heading: string = resource.scopeTriage
-          ? TRIAGE_HEADING[resource.scopeTriage]
-            ?? resource.scopeTriage
-          : TRIAGE_HEADING['required-now'] ?? 'Do this';
-        if (heading !== renderedHeading) {
-          resources.createDiv({
-            cls: 'los-kicker los-resource-tier',
-            text: heading,
-          });
-          renderedHeading = heading;
-        }
-      }
-
-      const row = resources.createDiv({
-        cls: `los-resource-row los-triage-${resource.scopeTriage ?? 'unranked'}`,
-      });
-
-      const iconName =
-        resource.kind === 'watch'
-          ? 'play'
-          : resource.kind === 'practise'
-            ? 'pencil-line'
-            : 'book-open';
-
-      icon(
-        row.createSpan(),
-        iconName,
-      );
-
-      const copy = row.createDiv({
-        cls: 'los-resource-copy',
-      });
-
-      copy.createEl('strong', {
-        text: resource.label,
-      });
-
-      if (resource.locator) {
-        copy.createDiv({
-          cls: 'los-micro',
-          text: resource.locator,
-        });
-      }
-
-      if (resource.sourceId) {
-        const source =
-          view.plugin.store.get(
-            resource.sourceId,
-          );
-
-        if (source) {
-          chip(
-            copy,
-            source,
-            (
-              record: ProjectionRecord,
-            ) => {
-              const recordId =
-                projectedString(record.id);
-
-              return recordId
-                ? view.plugin.openLibrary(
-                  recordId,
-                )
-                : undefined;
-            },
-          );
-        }
-      }
-
-      const actions = row.createDiv({
-        cls:
-          'los-actions los-resource-actions',
-      });
-
-      if (resource.canOpen) {
-        button(
-          actions,
-          'Open',
-          () => view.plugin.openResource(
-            resource.record,
-          ),
-          'quiet',
-        );
-      }
-
-      if (resource.sourceId) {
-        const sourceId =
-          resource.sourceId;
-        // ADR-009. When this resource has its own id, the verdict lands on the
-        // resource; otherwise it lands on the source, exactly as before. This
-        // is why "SystemML was excellent" and "SPORES was too advanced" can now
-        // be two records instead of one indistinguishable pair on the course.
-        const resourceId =
-          resource.id;
-
-        const rate = (
-          verdict: string,
-        ) => view.mutate(
-          () =>
-            view.plugin.gateway.feedback(
-              unit.id,
-              stage.id,
-              sourceId,
-              verdict,
-              resourceId,
-            ),
-        );
-
-        const menuItems: Array<
-          [string, () => unknown]
-        > = [
-          ['Helpful', () => rate('helpful')],
-          ['Too advanced', () => rate('too-advanced')],
-          ['Useful for review', () => rate('useful-for-review')],
-        ];
-
-        overflowMenu(
-          actions,
-          menuItems,
-          resourceId
-            ? `Rate ${resource.label}`
-            : `Rate ${resource.label} (whole source)`,
-        );
-      }
-    }
+    renderStageResources(center, stage.resources, {
+      emptyDetail: 'Use the unit scope and ask AI for a proposal.',
+      sourceRecord: (sourceId) => view.plugin.store.get(sourceId),
+      openSource: (source) => {
+        const sourceId = projectedString(source.id);
+        return sourceId ? view.plugin.openLibrary(sourceId) : undefined;
+      },
+      openSourceResource: (source) => view.plugin.openResource(source),
+      openResource: (resource) => view.plugin.openResource(resource.record),
+      // ADR-009: when an id exists, feedback lands on the exact resource;
+      // otherwise it deliberately describes the whole source.
+      rateResource: (sourceId, resourceId, verdict) => view.mutate(
+        () => view.plugin.gateway.feedback(
+          unit.id,
+          stage.id,
+          sourceId,
+          verdict,
+          resourceId,
+        ),
+      ),
+    });
 
     view.renderStageContext(
       center,
@@ -387,7 +225,7 @@ export function renderActionBar(
             stage.id,
           ),
       ),
-      'cta',
+      'success',
     );
 
     const menuItems: Array<

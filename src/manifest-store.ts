@@ -1,12 +1,12 @@
 import { CONTRACT_VERSION } from './constants';
-import { assertManifestV4 } from './contracts/manifest-v4';
+import { assertManifestV5 } from './contracts/manifest-v5';
 import type {
-  ManifestV4,
-  ModuleProgressV4,
-  ProjectRelationshipV4,
+  ManifestV5,
+  ModuleProgressV5,
+  ProjectRelationshipV5,
   ProjectionRecord,
-  UnitNoteSectionV4,
-} from './contracts/manifest-v4';
+  UnitNoteSectionV5,
+} from './contracts/manifest-v5';
 import { asStrings } from './projection/readers';
 
 function isRecord(
@@ -30,7 +30,7 @@ export class ManifestStore {
   private readonly app: ManifestStoreHost;
   ready: boolean;
   error: string;
-  data: ManifestV4 | null;
+  data: ManifestV5 | null;
   records: ProjectionRecord[];
   byId: Map<string, ProjectionRecord>;
   contractVersion: number | null = null;
@@ -66,8 +66,8 @@ export class ManifestStore {
           `Unsupported manifest contract ${String(version ?? 'unknown')}; LearningOS UI requires contract ${CONTRACT_VERSION}.`,
         );
       }
-      assertManifestV4(parsed);
-      const manifest: ManifestV4 = parsed;
+      assertManifestV5(parsed);
+      const manifest: ManifestV5 = parsed;
       this.data = manifest;
       this.contractVersion = version;
       this.snapshotId = manifest._generated.snapshot_id;
@@ -159,7 +159,7 @@ export class ManifestStore {
   projects() { return this.rows('projects'); }
   projectRelationships(
     projectId: string | null = null,
-  ): ProjectRelationshipV4[] {
+  ): ProjectRelationshipV5[] {
     const rows = [...(this.data?.project_relationships || [])];
     return projectId ? rows.filter((row) => row.from_project_id === projectId) : rows;
   }
@@ -189,7 +189,7 @@ export class ManifestStore {
     return this.topicPacks().filter((row) => (row.thematic_group_ids || []).includes(groupId));
   }
   units() { return this.rows('units'); }
-  unitNoteSections(unitId: string): UnitNoteSectionV4[] {
+  unitNoteSections(unitId: string): UnitNoteSectionV5[] {
     return [...(this.data?.units.find((unit) => unit.id === unitId)?.note_sections || [])];
   }
   studyMaps() { return this.rows('study_maps'); }
@@ -235,7 +235,7 @@ export class ManifestStore {
   sourceMap(moduleId: string): ProjectionRecord | null {
     return this.rows('module_source_maps').find((row) => row.module_id === moduleId) || null;
   }
-  progress(moduleId: string): ModuleProgressV4 {
+  progress(moduleId: string): ModuleProgressV5 {
     return this.data?.progress?.[moduleId] || {
       stages_complete: 0,
       stages_total: 0,

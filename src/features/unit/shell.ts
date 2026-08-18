@@ -11,7 +11,7 @@ import {
   pageHeader,
   section,
 } from '../../components';
-import type { ProjectionRecord } from '../../contracts/manifest-v4';
+import type { ProjectionRecord } from '../../contracts/manifest-v5';
 import {
   asLabel as projectedLabel,
   asRecords as projectedRecords,
@@ -28,11 +28,13 @@ import {
   readUnitRecord,
   readStage,
   readStudyMap,
+  readMaterialOptions,
   readArtifacts,
   artifactLabel,
   fallbackRecord,
   errorMessage,
 } from './model';
+import { renderMaterialOverview } from './materials';
 
 export function render(
   view: UnitView,
@@ -119,6 +121,31 @@ export function render(
       );
     }
 
+    const sourceMap =
+      view.plugin.store.sourceMap(
+        unit.moduleId,
+      );
+
+    const materialOptions =
+      readMaterialOptions(
+        sourceMap?.sources,
+        unit.id,
+        unit.record.source_selections,
+      );
+
+    const hasMaterialOverview =
+      unit.knowledgeNodes.length > 0
+      && materialOptions.length > 0;
+
+    if (hasMaterialOverview) {
+      renderMaterialOverview(
+        view,
+        root,
+        unit,
+        materialOptions,
+      );
+    }
+
     const projectedStudyMap =
       view.plugin.store.mapForUnit(
         unit.id,
@@ -127,7 +154,9 @@ export function render(
     if (!projectedStudyMap) {
       const missing = section(
         root,
-        'Study map needed',
+        hasMaterialOverview
+          ? 'Personal study path (optional)'
+          : 'Study map needed',
       );
 
       const projectId =
@@ -140,11 +169,19 @@ export function render(
 
       empty(
         missing,
-        'This unit has no current study script',
-        'AI may propose a scoped map; the core imports it only after review.',
-        'Create map with AI',
+        hasMaterialOverview
+          ? 'No personal path selected'
+          : 'This unit has no current study script',
+        hasMaterialOverview
+          ? 'The material menu above is complete. Create a path only when you want progress tracking for choices you make.'
+          : 'AI may propose a scoped map; the core imports it only after review.',
+        hasMaterialOverview
+          ? 'Build optional path with AI'
+          : 'Create map with AI',
         () => view.plugin.askAiScoped(
-          'Propose one study-map JSON document for this unit. Do not write files; include exact source actions and done-when criteria.',
+          hasMaterialOverview
+            ? 'Propose an optional personal study-map JSON document using only materials I choose from this unit material overview. Do not replace or summarize the overview, and do not write files; include exact source actions and done-when criteria.'
+            : 'Propose one study-map JSON document for this unit. Do not write files; include exact source actions and done-when criteria.',
           {
             moduleId: unit.moduleId,
             projectId,

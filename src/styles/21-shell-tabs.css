@@ -1,6 +1,5 @@
-/* Shared tabs for Garden and Review. */
-.los-garden-filters,
-.los-review-filters {
+/* One tab row, used by Garden, Review and Job (components.ts `filterTabs`). */
+.los-filter-tabs {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;

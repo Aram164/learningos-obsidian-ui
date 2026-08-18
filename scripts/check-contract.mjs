@@ -18,7 +18,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const readJson = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), 'utf8'));
-const lock = readJson('contracts/manifest-v4.lock.json');
+const lock = readJson('contracts/manifest-v5.lock.json');
 const fixture = readJson('fixture-vault/generated/manifest.json');
 
 function sameKeys(actualObject, expectedKeys, label) {
@@ -47,7 +47,7 @@ if (declared !== lock.contract_version) {
   throw new Error(`src/constants.ts expects contract ${declared}; lock expects ${lock.contract_version}.`);
 }
 
-const typed = fs.readFileSync(path.join(root, 'src/contracts/manifest-v4.ts'), 'utf8');
+const typed = fs.readFileSync(path.join(root, 'src/contracts/manifest-v5.ts'), 'utf8');
 const typedDeclared = Number(typed.match(/MANIFEST_CONTRACT_VERSION\s*=\s*(\d+)/)?.[1]);
 if (typedDeclared !== lock.contract_version) {
   throw new Error(`Typed contract expects ${typedDeclared}; lock expects ${lock.contract_version}.`);

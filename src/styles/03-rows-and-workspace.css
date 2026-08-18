@@ -66,7 +66,19 @@
 .los-resource-actions { gap: var(--los-1); align-items: center; }
 .los-stage-goal { margin-bottom: var(--los-3); }
 .los-stage-goal p { margin: var(--los-1) 0 0; }
-.los-unit-note-modal { width: min(92vw, 640px); }
+.modal.los-modal--unit-note,
+.modal:has(.los-unit-note-modal) {
+  box-sizing: border-box;
+  width: min(640px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+}
+.los-unit-note-modal {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
 .los-unit-note-context, .los-unit-note-attachments { margin: var(--los-3) 0; padding: var(--los-3); border: 1px solid var(--los-line); border-radius: var(--los-r-sm); background: var(--los-paper); }
 .los-unit-note-title { width: 100%; margin-bottom: var(--los-2); }
 .los-unit-note-editor { min-height: 260px; }
@@ -119,4 +131,3 @@
 .los-capture-file { display: block; max-width: 100%; margin: var(--los-3) 0; }
 .los-draft-status { margin: calc(-1 * var(--los-1)) 0 var(--los-2); color: var(--los-ink-soft); font-size: 12px; }
 .los-draft-status.is-dirty { color: var(--los-st-attention); }
-

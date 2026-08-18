@@ -8,7 +8,7 @@ import {
   pageHeader,
   section,
 } from '../../components';
-import type { ProjectionRecord } from '../../contracts/manifest-v4';
+import type { ProjectionRecord } from '../../contracts/manifest-v5';
 import {
   asLibrarySourceFilters,
   type LibraryCollectionV1,
@@ -38,6 +38,7 @@ import {
   readLibraryRecords,
   readRelatedRecords,
 } from './model';
+import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 
 export function renderHome(
   view: LibraryView,
@@ -166,11 +167,12 @@ export function renderCollectionSwitch(
     const switcher = root.createDiv({
       cls: 'los-collection-switch',
       attr: {
-        role: 'tablist',
+        role: 'group',
         'aria-label':
           'Library collection',
       },
     });
+    enableButtonGroupKeyboardNavigation(switcher);
 
     for (
       const [
@@ -189,8 +191,7 @@ export function renderCollectionSwitch(
       );
 
       control.setAttrs({
-        role: 'tab',
-        'aria-selected': String(
+        'aria-pressed': String(
           view.collection === id,
         ),
       });

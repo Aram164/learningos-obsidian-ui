@@ -1,17 +1,18 @@
 /* LearningOS compact command centre: quiet, module-first.
  *
  * ── PALETTE ────────────────────────────────────────────────────────────────
- * Warm paper (beige) with a single brick-red accent. Everything you would want
- * to change lives in the two blocks below; the rest of this file only ever
- * refers to --los-* tokens, never to raw colour.
+ * Warm daylight paper with a berry-wine identity and a restrained semantic
+ * supporting palette. Everything you would want to change lives in the two
+ * blocks below; the rest of this file only ever refers to --los-* tokens,
+ * never to raw colour.
  *
  * This replaces the previous "no palette at all" behaviour, where every colour
  * resolved straight to an Obsidian theme variable and the plugin looked like
  * whatever theme was installed. The REASON for that old rule was sound —
- * light/dark had to keep working without maintaining a second palette — so the
- * rule is kept in spirit: colours are still semantic tokens, still defined once
- * per mode, and dark mode is a real palette rather than an inversion. See
- * DESIGN.md principle 2.
+ * host themes had to remain legible without component-level overrides — so the
+ * rule is kept in spirit: colours are semantic tokens and LearningOS keeps its
+ * calm, daylight identity even when the surrounding Obsidian chrome is dark.
+ * See DESIGN.md principle 2.
  *
  * Accent is used for emphasis, never as the only signal: state is carried by
  * text and shape too, so a red/green deficiency loses nothing.
@@ -28,31 +29,45 @@
   --los-r-lg: 10px;
   --los-r-pill: 999px;
 
-  /* ── Light: warm paper ── */
-  --los-paper:        #f6f1e7;  /* page */
-  --los-paper-2:      #efe8da;  /* cards, raised surfaces */
-  --los-paper-3:      #e7dece;  /* hover, inset wells */
-  --los-ink:          #2f2a24;  /* primary text */
-  --los-ink-soft:     #6b6155;  /* secondary text */
-  --los-rule:         #d9cdb8;  /* borders */
-  --los-rule-strong:  #c3b298;
-  --los-accent:       #a63a2e;  /* brick red */
-  --los-accent-soft:  #c8604f;
-  --los-accent-wash:  #f0dcd6;  /* tinted background behind accents */
-  --los-shadow-soft:  rgba(18, 14, 10, .05);
+  /* ── Light: the Figma foundation palette ── */
+  --los-paper:          #f5f1ea;  /* canvas */
+  --los-sidebar:        #ede7dc;
+  --los-paper-2:        #fffdf9;  /* surface */
+  --los-paper-3:        #faf8f4;  /* subtle hover/inset */
+  --los-ink:            #16130f;
+  --los-ink-soft:       #6e665a;
+  --los-ink-faint:      #756d63;  /* strengthened from Figma muted for 4.5:1 */
+  --los-rule:           #e0d8c9;
+  --los-rule-strong:    #ada598;
+  --los-accent:         #7a2540;  /* brand / decisive action */
+  --los-accent-strong:  #6e2038;
+  --los-accent-soft:    #9a3657;
+  --los-accent-wash:    #f2dfe6;
+  --los-selected:       #faf0f3;
+  --los-on-accent:      #ffffff;
+  --los-success:        #3b5741;
+  --los-success-strong: #304936;
+  --los-success-wash:   #e3ede4;
+  --los-info:           #45566b;
+  --los-info-strong:    #37475a;
+  --los-info-wash:      #e2e8ef;
+  --los-warning:        #6f4e15;
+  --los-warning-strong: #5d4112;
+  --los-warning-wash:   #f5e9d2;
+  --los-shadow-soft:    rgba(54, 38, 27, .08);
 
   /* State hues, warmed to sit on paper. These carry MEANING, so they stay
      distinguishable from the brand accent and from each other — and every
      place they are used also carries a text label, never colour alone. */
-  --los-st-active:   #4f7a4a;
-  --los-st-ready:    #46688a;
-  --los-st-attention:#b4711f;
-  --los-st-paused:   #8a7529;
-  --los-st-done:     #6b5a86;
-  --los-st-shelve:   #3f7a78;
+  --los-st-active:    var(--los-success);
+  --los-st-ready:     var(--los-accent);
+  --los-st-attention: var(--los-warning);
+  --los-st-paused:    #80652b;
+  --los-st-done:      var(--los-success);
+  --los-st-shelve:    var(--los-info);
 
   --los-surface: var(--los-paper-2);
-  --los-surface-raised: var(--los-paper);
+  --los-surface-raised: #ffffff;
   --los-line: var(--los-rule);
   --los-line-strong: var(--los-rule-strong);
 
@@ -66,28 +81,46 @@
   line-height: 1.42;
 }
 
-/* ── Dark: the same paper, dimmed — not an inversion ──
- * Obsidian sets .theme-dark on body. Beige at low luminance reads as warm
- * brown-black; the accent lifts because a 4.5:1 brick red on dark paper needs
- * more light than it does on pale paper. */
+/* LearningOS remains a daylight work surface inside dark Obsidian chrome.
+ * The host still frames the app, but the learning space itself should feel
+ * open and energising rather than like another dark developer panel. */
 .theme-dark .los-root {
-  --los-paper:        #1c1917;
-  --los-paper-2:      #24201d;
-  --los-paper-3:      #2e2823;
-  --los-ink:          #ece3d6;
-  --los-ink-soft:     #a4988a;
-  --los-rule:         #3a332c;
-  --los-rule-strong:  #4e453b;
-  --los-accent:       #e0705e;
-  --los-accent-soft:  #b8503f;
-  --los-accent-wash:  #33231f;
-  --los-shadow-soft:  rgba(0, 0, 0, .18);
-  --los-st-active:   #86b47f;
-  --los-st-ready:    #7fa6cc;
-  --los-st-attention:#d79a4e;
-  --los-st-paused:   #c2ab5c;
-  --los-st-done:     #a996c4;
-  --los-st-shelve:   #6fb3b0;
+  --los-paper:          #f5f1ea;
+  --los-sidebar:        #ede7dc;
+  --los-paper-2:        #fffdf9;
+  --los-paper-3:        #faf8f4;
+  --los-ink:            #16130f;
+  --los-ink-soft:       #6e665a;
+  --los-ink-faint:      #756d63;
+  --los-rule:           #e0d8c9;
+  --los-rule-strong:    #ada598;
+  --los-accent:         #7a2540;
+  --los-accent-strong:  #6e2038;
+  --los-accent-soft:    #9a3657;
+  --los-accent-wash:    #f2dfe6;
+  --los-selected:       #faf0f3;
+  --los-on-accent:      #ffffff;
+  --los-success:        #3b5741;
+  --los-success-strong: #304936;
+  --los-success-wash:   #e3ede4;
+  --los-info:           #45566b;
+  --los-info-strong:    #37475a;
+  --los-info-wash:      #e2e8ef;
+  --los-warning:        #6f4e15;
+  --los-warning-strong: #5d4112;
+  --los-warning-wash:   #f5e9d2;
+  --los-shadow-soft:    rgba(54, 38, 27, .08);
+  --los-st-active:      var(--los-success);
+  --los-st-ready:       var(--los-accent);
+  --los-st-attention:   var(--los-warning);
+  --los-st-paused:      #80652b;
+  --los-st-done:        var(--los-success);
+  --los-st-shelve:      var(--los-info);
+
+  /* The host's dark view rule has the same cascade weight as `.los-root`, so
+     restate the intended daylight application surface explicitly. */
+  background: var(--los-paper) !important;
+  color: var(--los-ink) !important;
 }
 
 .los-root *, .los-root *::before, .los-root *::after { box-sizing: border-box; }
@@ -119,4 +152,3 @@
   white-space: nowrap;
   border: 0;
 }
-

@@ -20,7 +20,7 @@ import {
 import { VIEW_UNIT } from '../constants';
 import type {
   ProjectionRecord,
-} from '../contracts/manifest-v4';
+} from '../contracts/manifest-v5';
 import type { LearningOSUI } from '../main';
 import {
   asLabel as projectedLabel,
@@ -35,6 +35,8 @@ import {
   ARTIFACT_LABELS,
   ParsedUnitViewState,
   UnitRecordView,
+  KnowledgeNodeView,
+  MaterialOptionView,
   StageRecordView,
   ResourceRecordView,
   StudyMapView,
@@ -48,6 +50,7 @@ import {
   readStageAttachment,
   readStage,
   readStudyMap,
+  readMaterialOptions,
   readArtifacts,
   artifactLabel,
   fallbackRecord,

@@ -24,6 +24,16 @@
   overflow-wrap: break-word;
   word-break: normal;
 }
+.los-root input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.los-root textarea,
+.los-root select {
+  border: 1px solid var(--los-line);
+  background: var(--los-paper);
+  color: var(--los-ink);
+  box-shadow: none;
+}
+.los-root input::placeholder,
+.los-root textarea::placeholder { color: var(--los-ink-soft); opacity: .78; }
 .los-root button:hover { border-color: var(--los-line-strong); background: var(--los-paper-3); }
 .los-root button:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
 .los-root button:focus-visible,
@@ -82,6 +92,8 @@
 }
 .los-card:hover { border-color: var(--los-line-strong); transform: translateY(-1px); }
 .los-card-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: var(--los-2); }
+/* Title and sub-line together, so a long title wraps instead of shoving the badge off the row. */
+.los-card-copy { min-width: 0; }
 .los-card p { margin: var(--los-2) 0; color: var(--los-ink-soft); }
 .los-s-active::before { background: var(--los-st-active); }
 .los-s-ready::before { background: var(--los-st-ready); }
@@ -89,4 +101,3 @@
 .los-s-paused::before { background: var(--los-st-paused); }
 .los-s-complete::before { background: var(--los-st-done); }
 .los-s-ready-to-shelve::before { background: var(--los-st-shelve); }
-

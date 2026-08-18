@@ -1,4 +1,4 @@
-import type { ProjectionRecord } from '../contracts/manifest-v4';
+import type { ProjectionRecord } from '../contracts/manifest-v5';
 
 /** Runtime boundary for values arriving through the generated projection. */
 export function isRecord(value: unknown): value is ProjectionRecord {

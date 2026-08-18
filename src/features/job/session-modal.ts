@@ -50,7 +50,7 @@ export class JobSessionModal extends Modal {
     this.editor.rows = 10;
     this.editor.placeholder = 'What did you actually do, and what did it teach you?';
 
-    const status = root.createDiv({ cls: 'los-micro' });
+    const status = root.createDiv({ cls: 'los-micro', attr: { 'aria-live': 'polite' } });
     const actions = root.createDiv({ cls: 'los-job-session-actions' });
 
     const save = button(actions, 'Save to Job scratch', async () => {

@@ -1,11 +1,79 @@
-/* Filled, not outlined. An outlined "primary" beside outlined secondaries is
- * not a hierarchy — only one filled action may appear in one visible context. */
-.los-root .los-btn--cta { border-color: var(--los-accent); background: var(--los-accent); color: var(--los-paper); font-weight: 650; }
-.los-root .los-btn--cta:hover { background: var(--los-accent-soft); color: var(--los-paper); }
-.los-root .los-btn--quiet { background: transparent; color: var(--los-ink-soft); }
-.los-root .los-btn--quiet:hover { background: var(--los-paper-3); color: var(--los-ink); }
-.los-root .los-btn--tertiary { min-height: 24px; padding: 1px var(--los-2); border-color: transparent; color: var(--los-ink-soft); font-size: 12px; }
-.los-root .los-btn--tertiary:hover { background: var(--los-paper-3); color: var(--los-ink); }
+/* Button colour is semantic, never decorative. Wine is the brand action; sage
+ * commits/applies; slate opens information; amber asks for attention; blush is
+ * a reversible selection. Saturated fills remain rare so the hierarchy stays
+ * calm even when several action types share a screen. */
+.los-root .los-btn--cta {
+  border-color: var(--los-accent);
+  background: var(--los-accent);
+  color: var(--los-on-accent);
+  font-weight: 650;
+}
+.los-root .los-btn--cta:hover {
+  border-color: var(--los-accent-strong);
+  background: var(--los-accent-strong);
+  color: var(--los-on-accent);
+}
+.los-root .los-btn--success {
+  border-color: var(--los-success);
+  background: var(--los-success);
+  color: var(--los-on-accent);
+  font-weight: 650;
+}
+.los-root .los-btn--success:hover {
+  border-color: var(--los-success-strong);
+  background: var(--los-success-strong);
+  color: var(--los-on-accent);
+}
+.los-root .los-btn--info {
+  border-color: var(--los-rule);
+  background: var(--los-info-wash);
+  color: var(--los-info);
+  font-weight: 600;
+}
+.los-root .los-btn--info:hover {
+  border-color: var(--los-info);
+  background: var(--los-info-wash);
+  color: var(--los-info-strong);
+}
+.los-root .los-btn--warm {
+  border-color: var(--los-rule);
+  background: var(--los-warning-wash);
+  color: var(--los-warning);
+  font-weight: 600;
+}
+.los-root .los-btn--warm:hover {
+  border-color: var(--los-warning);
+  background: var(--los-warning-wash);
+  color: var(--los-warning-strong);
+}
+.los-root .los-btn--choice {
+  border-color: var(--los-rule);
+  background: var(--los-accent-wash);
+  color: var(--los-accent-strong);
+  font-weight: 600;
+}
+.los-root .los-btn--choice:hover {
+  border-color: var(--los-accent);
+  background: var(--los-selected);
+  color: var(--los-accent-strong);
+}
+.los-root .los-btn--choice[aria-pressed="true"] {
+  border-color: var(--los-accent);
+  background: var(--los-accent);
+  color: var(--los-on-accent);
+}
+.los-root .los-btn--quiet {
+  border-color: var(--los-line);
+  background: var(--los-surface-raised);
+  color: var(--los-ink-soft);
+}
+.los-root .los-btn--quiet:hover {
+  border-color: var(--los-line-strong);
+  background: var(--los-paper-3);
+  color: var(--los-ink);
+}
+.los-root .los-btn--tertiary { min-height: 24px; padding: 1px var(--los-2); border-color: transparent; color: var(--los-info); font-size: 12px; }
+.los-root .los-btn--tertiary:hover { background: var(--los-info-wash); color: var(--los-info-strong); }
 .los-root .los-chip { min-height: 26px; padding: 2px var(--los-2); border-radius: var(--los-r-pill); background: var(--los-paper); text-align: left; }
 .los-root .los-chip > span:last-child { min-width: 0; overflow-wrap: break-word; word-break: normal; }
 .los-badge { display: inline-flex; max-width: 100%; padding: 1px var(--los-2); border-radius: var(--los-r-pill); background: var(--los-rule); color: var(--los-ink-soft); font-size: 11px; line-height: 1.5; white-space: normal; }
@@ -15,4 +83,3 @@
 /* Level is a property of the evaluation, not a rank of the source — it reads
    as a neutral fact beside the roles, never as a score. */
 .los-badge--level { color: var(--los-ink-soft); border-color: var(--los-rule); }
-

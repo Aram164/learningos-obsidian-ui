@@ -18,7 +18,7 @@ import {
 import { VIEW_LIBRARY } from '../constants';
 import type {
   ProjectionRecord,
-} from '../contracts/manifest-v4';
+} from '../contracts/manifest-v5';
 import {
   asLibrarySourceFilters,
   type LibraryCollectionV1,
@@ -479,6 +479,25 @@ export class LibraryView extends ItemView {
 
     await this.rememberSourceBrowser();
     this.render();
+  }
+
+  async clearSourceSearchAndFilters(): Promise<void> {
+    this.query = '';
+    this.filters =
+      asLibrarySourceFilters(null);
+
+    this.screen = 'home';
+    this.groupId = null;
+
+    await this.rememberSourceBrowser();
+    this.render();
+
+    const search = typeof this.contentEl.querySelector === 'function'
+      ? this.contentEl.querySelector<HTMLInputElement>(
+        '.los-library-global-search',
+      )
+      : null;
+    search?.focus();
   }
 
     renderSourceBrowser(

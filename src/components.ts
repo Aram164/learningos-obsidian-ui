@@ -1,9 +1,10 @@
 import { setIcon } from 'obsidian';
 import { webUtils } from 'electron';
 import { ICONS } from './constants';
-import type { ProjectionRecord } from './contracts/manifest-v4';
+import type { ProjectionRecord } from './contracts/manifest-v5';
 import type { LearningOSUI } from './main';
 import { asLabel, asRecords, asString } from './projection/readers';
+import { enableButtonGroupKeyboardNavigation } from './accessibility/button-group';
 export { safeWebUrl } from './security/safe-url';
 
 /**
@@ -29,10 +30,25 @@ type CardHost = Pick<
 type UiNode = HTMLElement;
 type ClickHandler =
   ((event: MouseEvent) => unknown) | null | undefined;
+export type ButtonVariant =
+  | ''
+  | 'cta'
+  | 'success'
+  | 'info'
+  | 'warm'
+  | 'choice'
+  | 'quiet'
+  | 'tertiary'
+  | 'row'
+  | 'menu';
 type OverflowItem =
   [string, () => unknown] | null | undefined | false;
 
 export function icon(el: UiNode, name: string): UiNode {
+  el.setAttrs({
+    'aria-hidden': 'true',
+    focusable: 'false',
+  });
   setIcon(el, name || 'circle');
   return el;
 }
@@ -41,7 +57,7 @@ export function button(
   parent: UiNode,
   label: string,
   onClick: ClickHandler,
-  variant = '',
+  variant: ButtonVariant = '',
 ): HTMLButtonElement {
   const el = parent.createEl('button', {
     cls: `los-btn is-clickable ${variant ? `los-btn--${variant}` : ''}`,
@@ -86,10 +102,12 @@ export function pageHeader(
   kicker: string,
   title: string,
   description = '',
+  headingId = '',
 ): UiNode {
   const header = parent.createDiv({ cls: 'los-page-header' });
   if (kicker) header.createDiv({ cls: 'los-kicker', text: kicker });
-  header.createEl('h1', { text: title });
+  const heading = header.createEl('h1', { text: title });
+  if (headingId) heading.setAttribute('id', headingId);
   if (description) header.createEl('p', { text: description });
   return header;
 }
@@ -103,6 +121,45 @@ export function section(
   wrap.createEl('h2', { text: title });
   if (description) wrap.createEl('p', { cls: 'los-muted', text: description });
   return wrap;
+}
+
+/**
+ * One row of mutually exclusive tabs.
+ *
+ * Garden, Review and Job each grew their own copy of this loop, and the third
+ * copy drifted — it styled itself differently and skipped `is-active`, so the
+ * same control looked like two different things depending on which surface you
+ * were standing on. The definition lives here now; a caller supplies the values
+ * and, optionally, a count per tab.
+ *
+ * `aria-pressed` and `is-active` are both set: the first is what a screen
+ * reader announces, the second is what the stylesheet selects on. Neither is
+ * redundant, because CSS cannot key off the accessible state alone here.
+ */
+export function filterTabs<T extends string>(
+  parent: UiNode,
+  ariaLabel: string,
+  tabs: ReadonlyArray<readonly [T, string]>,
+  active: T,
+  choose: (value: T) => unknown,
+  countOf: ((value: T) => number) | null = null,
+): UiNode {
+  const row = parent.createDiv({ cls: 'los-filter-tabs' });
+  row.setAttrs({ role: 'group', 'aria-label': ariaLabel });
+  enableButtonGroupKeyboardNavigation(row);
+  for (const [value, label] of tabs) {
+    const count = countOf ? countOf(value) : 0;
+    const control = button(
+      row,
+      count ? `${label} ${count}` : label,
+      () => choose(value),
+      'quiet',
+    );
+    control.addClass('los-filter-tab');
+    control.toggleClass('is-active', value === active);
+    control.setAttrs({ 'aria-pressed': String(value === active) });
+  }
+  return row;
 }
 
 /**

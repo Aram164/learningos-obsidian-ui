@@ -20,7 +20,7 @@ import {
 import { VIEW_PROJECT } from '../constants';
 import type {
   ProjectionRecord,
-} from '../contracts/manifest-v4';
+} from '../contracts/manifest-v5';
 import type { LearningOSUI } from '../main';
 import {
   asLabel as projectedLabel,
@@ -48,10 +48,12 @@ import {
   readProjectStructure,
   readProjectRelationship,
 } from '../features/project/model';
+import { makeModalAccessible } from '../accessibility/modal';
 
 class ProjectLinkReasonModal extends Modal {
   private readonly plugin: ProjectLinkPlugin;
   private readonly relationship: ProjectRelationship;
+  private restoreAccessibility: (() => void) | null = null;
 
   constructor(
     app: App,
@@ -83,6 +85,8 @@ class ProjectLinkReasonModal extends Modal {
       root,
       'Linked material',
       'Why this is linked',
+      '',
+      'los-linked-reason-heading',
     );
 
     const target =
@@ -151,16 +155,24 @@ class ProjectLinkReasonModal extends Modal {
       );
     }
 
-    button(
+    const close = button(
       actions,
       'Close',
       () => this.close(),
       'quiet',
     );
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: 'los-modal--linked-reason',
+      labelledBy: 'los-linked-reason-heading',
+    });
+    close.focus();
   }
 
   onClose(): void {
     this.plugin.router.clearOverlay();
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
     this.contentEl.empty();
   }
 }

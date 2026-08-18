@@ -1,8 +1,9 @@
 import { Modal, Notice, type App } from 'obsidian';
 import { button, empty, localFilePath, pageHeader, section } from '../components';
-import type { ProjectionRecord } from '../contracts/manifest-v4';
+import type { ProjectionRecord } from '../contracts/manifest-v5';
 import type { LearningOSUI } from '../main';
 import { asRecords, errorMessage } from '../projection/readers';
+import { makeModalAccessible } from '../accessibility/modal';
 
 type UnitNotePlugin = Pick<
   LearningOSUI,
@@ -31,6 +32,7 @@ export class UnitNoteModal extends Modal {
   private editor!: HTMLTextAreaElement;
   private fileInput!: HTMLInputElement;
   private fileSummary!: HTMLDivElement;
+  private restoreAccessibility: (() => void) | null = null;
 
   constructor(
     app: App,
@@ -72,7 +74,14 @@ export class UnitNoteModal extends Modal {
     ];
 
     pageHeader(root, 'Learning session', 'Add note',
-      'Attach one note after the stages you worked through. It belongs to the unit, not to one selected stage.');
+      'Attach one note after the stages you worked through. It belongs to the unit, not to one selected stage.',
+      'los-unit-note-heading');
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: 'los-modal--unit-note',
+      initialFocus: () => this.editor ?? null,
+      labelledBy: 'los-unit-note-heading',
+    });
 
     const context = root.createDiv({ cls: 'los-unit-note-context' });
     context.createDiv({ cls: 'los-kicker', text: 'Stages covered' });
@@ -114,19 +123,20 @@ export class UnitNoteModal extends Modal {
     });
 
     const status = root.createDiv({ cls: 'los-draft-status', attr: { 'aria-live': 'polite' } });
+    const actions = root.createDiv({ cls: 'los-actions los-unit-note-actions' });
+    button(actions, 'Cancel', () => this.close(), 'quiet');
+    const saveButton = button(actions, 'Save note', () => this.save(), 'cta');
     const persist = () => {
       this.plugin.setUnitNoteDraft(unitId, this.titleInput.value, this.editor.value);
-      status.setText(this.editor.value.trim() ? 'Draft kept locally until the core confirms the save.' : 'Write a note to enable saving.');
-      status.toggleClass('is-dirty', Boolean(this.editor.value.trim()));
+      const hasNote = Boolean(this.editor.value.trim());
+      status.setText(hasNote ? 'Draft kept locally until the core confirms the save.' : 'Write a note to enable saving.');
+      status.toggleClass('is-dirty', hasNote);
+      saveButton.disabled = !hasNote;
+      saveButton.setAttribute('aria-disabled', String(!hasNote));
     };
     this.titleInput.addEventListener('input', persist);
     this.editor.addEventListener('input', persist);
     persist();
-
-    const actions = root.createDiv({ cls: 'los-actions los-unit-note-actions' });
-    button(actions, 'Cancel', () => this.close(), 'quiet');
-    button(actions, 'Save note', () => this.save(), 'cta');
-    this.editor.focus();
   }
 
   unrecordedCompletedStages(
@@ -176,5 +186,9 @@ export class UnitNoteModal extends Modal {
     }
   }
 
-  onClose() { this.contentEl.empty(); }
+  onClose() {
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+  }
 }

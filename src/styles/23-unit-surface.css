@@ -84,6 +84,83 @@
 .los-resource-row > .los-actions { grid-column: 3; }
 .los-resource-actions { justify-content: flex-end; }
 
+.los-knowledge-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 10px;
+}
+
+.los-knowledge-node {
+  padding: 14px;
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-sm);
+  background: var(--los-paper);
+}
+
+.los-knowledge-node h3,
+.los-knowledge-node p,
+.los-material-option h4,
+.los-material-option p {
+  margin: 0;
+}
+
+.los-knowledge-node p,
+.los-material-option p {
+  margin-top: 6px;
+}
+
+.los-material-group + .los-material-group {
+  margin-top: 24px;
+}
+
+.los-material-group-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--los-line);
+}
+
+.los-material-group-heading h3 {
+  margin: 0;
+}
+
+.los-material-option {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--los-line);
+}
+
+.los-material-copy { min-width: 0; }
+.los-material-icon { padding-top: 2px; color: var(--los-ink-soft); }
+.los-material-actions { justify-content: flex-end; }
+.los-material-actions .los-btn[aria-pressed="true"] {
+  background: var(--los-accent-wash);
+  color: var(--los-accent);
+}
+.los-material-metadata {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 9px 0;
+}
+
+.los-knowledge-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--los-paper-3);
+  color: var(--los-ink-soft);
+  font-size: 11px;
+  line-height: 16px;
+}
+
 .los-stage-workspace > .los-unit-actionbar {
   width: 100%;
   max-width: none;
@@ -91,4 +168,3 @@
   margin: auto 0 0;
   padding-top: 16px;
 }
-

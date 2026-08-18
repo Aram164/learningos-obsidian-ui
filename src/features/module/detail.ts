@@ -10,7 +10,7 @@ import {
   workspaceCard,
 } from '../../components';
 import { STATUS_ORDER } from '../../constants';
-import type { ProjectionRecord } from '../../contracts/manifest-v4';
+import type { ProjectionRecord } from '../../contracts/manifest-v5';
 import {
   asCount as projectedCount,
   asRecords as projectedRecords,
@@ -37,6 +37,11 @@ import {
   readAcademicDeadline,
   readSourceEntries,
 } from './model';
+import {
+  examinationLabel,
+  semesterLabel,
+} from './logistics';
+import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 
 export function renderModuleDetail(
   view: ModuleView,
@@ -91,9 +96,11 @@ export function renderModuleDetail(
     const tabs = root.createDiv({
       cls: 'los-tabs',
       attr: {
-        role: 'tablist',
+        role: 'group',
+        'aria-label': 'Module sections',
       },
     });
+    enableButtonGroupKeyboardNavigation(tabs);
 
     for (const [key, label] of MODULE_TABS) {
       const control = button(
@@ -106,8 +113,7 @@ export function renderModuleDetail(
       );
 
       control.setAttrs({
-        role: 'tab',
-        'aria-selected':
+        'aria-pressed':
           String(key === tab),
       });
     }
@@ -156,13 +162,15 @@ export function headline(
       .map((row) => row.startDate)[0];
 
     return [
-      module.semester,
+      semesterLabel(module.semester),
       module.credits
         ? `${module.credits} LP`
         : '',
       module.examination.type
         ? `${
-          module.examination.type
+          examinationLabel(
+            module.examination.type,
+          )
         }${
           nextDate
             ? ` ${nextDate}`
@@ -284,9 +292,11 @@ export function renderUnits(
       const tabs = root.createDiv({
         cls: 'los-subtabs',
         attr: {
-          role: 'tablist',
+          role: 'group',
+          'aria-label': 'Module components',
         },
       });
+      enableButtonGroupKeyboardNavigation(tabs);
 
       const allTab = button(
         tabs,
@@ -298,8 +308,7 @@ export function renderUnits(
       );
 
       allTab.setAttrs({
-        role: 'tab',
-        'aria-selected':
+        'aria-pressed':
           String(!view.componentId),
       });
 
@@ -321,8 +330,7 @@ export function renderUnits(
         );
 
         control.setAttrs({
-          role: 'tab',
-          'aria-selected':
+          'aria-pressed':
             String(
               view.componentId
               === component.id,

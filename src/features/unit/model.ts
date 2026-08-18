@@ -1,5 +1,6 @@
-import type { ProjectionRecord } from '../../contracts/manifest-v4';
+import type { ProjectionRecord } from '../../contracts/manifest-v5';
 import type { LearningOSUI } from '../../main';
+import type { StageResourceView } from '../stage-resources';
 import {
   asCount as projectedCount,
   asLabel as projectedLabel,
@@ -40,6 +41,30 @@ export interface UnitRecordView {
   readonly kind: string;
   readonly title: string;
   readonly scope: string;
+  readonly knowledgeSummary: string;
+  readonly knowledgeNodes: KnowledgeNodeView[];
+}
+
+export interface KnowledgeNodeView {
+  readonly id: string;
+  readonly title: string;
+  readonly summary: string;
+  readonly buildsOn: string[];
+}
+
+export interface MaterialOptionView {
+  readonly record: ProjectionRecord;
+  readonly title: string;
+  readonly format: string;
+  readonly angle: string;
+  readonly covers: string[];
+  readonly depth: string;
+  readonly scope: string;
+  readonly locator: string | null;
+  readonly sourceId: string | null;
+  readonly canOpen: boolean;
+  readonly canChoose: boolean;
+  readonly selected: boolean;
 }
 
 export interface StageRecordView {
@@ -57,16 +82,7 @@ export interface StageRecordView {
   readonly sourceFeedback: ProjectionRecord[];
 }
 
-export interface ResourceRecordView {
-  readonly record: ProjectionRecord;
-  readonly id: string | null;
-  readonly kind: string;
-  readonly label: string;
-  readonly locator: string | null;
-  readonly sourceId: string | null;
-  readonly scopeTriage: string | null;
-  readonly canOpen: boolean;
-}
+export type ResourceRecordView = StageResourceView;
 
 export interface StudyMapView {
   readonly record: ProjectionRecord;
@@ -170,6 +186,40 @@ export function readUnitRecord(
     return null;
   }
 
+  const knowledgeMap = isRecord(
+    record.knowledge_map,
+  )
+    ? record.knowledge_map
+    : null;
+
+  const knowledgeNodes = projectedRecords(
+    knowledgeMap?.nodes,
+  )
+    .map((node): KnowledgeNodeView | null => {
+      const nodeId = projectedString(node.id);
+      const title = projectedString(node.title);
+      const summary = projectedText(node.summary);
+
+      if (!nodeId || !title || !summary) {
+        return null;
+      }
+
+      return {
+        id: nodeId,
+        title,
+        summary,
+        buildsOn: projectedStrings(
+          node.builds_on,
+        ),
+      };
+    })
+    .filter(
+      (
+        node,
+      ): node is KnowledgeNodeView =>
+        node !== null,
+    );
+
   return {
     record,
     id,
@@ -185,7 +235,95 @@ export function readUnitRecord(
     scope:
       projectedText(record.scope)
       ?? '',
+    knowledgeSummary:
+      projectedText(
+        knowledgeMap?.summary,
+      )
+      ?? '',
+    knowledgeNodes,
   };
+}
+
+export function readMaterialOptions(
+  value: unknown,
+  unitId: string,
+  selectionsValue: unknown,
+): MaterialOptionView[] {
+  const options: MaterialOptionView[] = [];
+  const selectionKeys = new Set(
+    projectedRecords(selectionsValue)
+      .flatMap((selection) => {
+        const sourceId = projectedString(selection.source_id);
+        const locator = projectedText(selection.locator);
+        return sourceId && locator
+          ? [`${sourceId}\u0000${locator}`]
+          : [];
+      }),
+  );
+
+  for (const entry of projectedRecords(value)) {
+    for (
+      const route
+      of projectedRecords(entry.unit_routes)
+    ) {
+      if (
+        projectedString(route.unit_id)
+        !== unitId
+      ) {
+        continue;
+      }
+
+      const title = projectedString(route.title);
+      const format = projectedString(route.format);
+      const angle = projectedText(route.angle);
+
+      if (!title || !format || !angle) {
+        continue;
+      }
+
+      const sourceId =
+        projectedString(route.source_id)
+        ?? projectedString(entry.source_id);
+      const locator =
+        projectedText(route.locator);
+
+      options.push({
+        record: route,
+        title,
+        format,
+        angle,
+        covers:
+          projectedStrings(route.covers),
+        depth:
+          projectedString(route.depth)
+          ?? 'course-aligned',
+        scope:
+          projectedString(route.scope)
+          ?? 'complementary',
+        locator,
+        sourceId,
+        canOpen: Boolean(
+          projectedString(
+            route.material_path,
+          )
+          ?? projectedString(route.url)
+          ?? projectedString(
+            route.vault_path,
+          ),
+        ),
+        canChoose: Boolean(sourceId && locator),
+        selected: Boolean(
+          sourceId
+          && locator
+          && selectionKeys.has(
+            `${sourceId}\u0000${locator}`,
+          ),
+        ),
+      });
+    }
+  }
+
+  return options;
 }
 
 export function readResource(
@@ -394,4 +532,3 @@ export function fallbackRecord(
     title: id,
   };
 }
-

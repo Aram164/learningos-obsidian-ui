@@ -1,9 +1,9 @@
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
-import { badge, button, empty, OWNERSHIP_STATEMENT, pageHeader, section } from '../components';
+import { badge, button, empty, filterTabs, OWNERSHIP_STATEMENT, pageHeader, section } from '../components';
 import { CONTRACT_VERSION, VIEW_DIAGNOSTICS, VIEW_REVIEW } from '../constants';
-import type { ProjectionRecord } from '../contracts/manifest-v4';
+import type { ProjectionRecord } from '../contracts/manifest-v5';
 import type { LearningOSUI } from '../main';
 import { errorMessage, isRecord } from '../projection/readers';
 
@@ -154,43 +154,23 @@ export class ReviewView extends ItemView {
       'role',
     ).addClass('los-review-count-badge');
 
-    const filters = root.createDiv({
-      cls: 'los-review-filters',
-      attr: {
-        role: 'tablist',
-        'aria-label': 'Review categories',
+    filterTabs(
+      root,
+      'Review categories',
+      REVIEW_FILTERS,
+      this.filter,
+      (value) => {
+        this.filter = value;
+        this.render();
       },
-    });
-
-    for (const [value, label] of REVIEW_FILTERS) {
-      const count = value === 'all'
-        ? items.length
-        : items.filter(
-          (item) => item.category === value,
-        ).length;
-
-      const control = button(
-        filters,
-        `${label}${count ? ` ${count}` : ''}`,
-        () => {
-          this.filter = value;
-          this.render();
-        },
-        'quiet',
-      );
-
-      control.addClass('los-filter-tab');
-      control.toggleClass(
-        'is-active',
-        this.filter === value,
-      );
-      control.setAttrs({
-        role: 'tab',
-        'aria-selected': String(
-          this.filter === value,
-        ),
-      });
-    }
+      (value) => (
+        value === 'all'
+          ? items.length
+          : items.filter(
+            (item) => item.category === value,
+          ).length
+      ),
+    );
 
     root.createDiv({
       cls: 'los-micro los-review-queue-note',
@@ -550,8 +530,8 @@ export class DiagnosticsView extends ItemView {
     }
 
     const actions = root.createDiv({ cls: 'los-actions' });
-    button(actions, 'Validate and rebuild', () => this.plugin.generate(), 'cta');
-    button(actions, 'Test the interpreter', () => this.testInterpreter(), 'quiet');
+    button(actions, 'Validate and rebuild', () => this.plugin.generate(), 'success');
+    button(actions, 'Test the interpreter', () => this.testInterpreter(), 'info');
     button(actions, 'Copy build identity', () => this.plugin.copyText(JSON.stringify(build, null, 2)), 'quiet');
     if (this.report) root.createEl('pre', { cls: 'los-diagnostic-report', text: this.report });
 

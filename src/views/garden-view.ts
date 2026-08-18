@@ -8,6 +8,7 @@ import {
   button,
   disclosure,
   empty,
+  filterTabs,
   pageHeader,
 } from '../components';
 import { VIEW_GARDEN } from '../constants';
@@ -16,7 +17,7 @@ import {
 } from '../features/ai-actions/action-button';
 import type {
   ProjectionRecord,
-} from '../contracts/manifest-v4';
+} from '../contracts/manifest-v5';
 import type { LearningOSUI } from '../main';
 import { asLabel, asString, errorMessage } from '../projection/readers';
 
@@ -127,44 +128,24 @@ export class GardenView extends ItemView {
     const entries =
       this.plugin.store.gardenEntries();
 
-    const filters = root.createDiv({
-      cls: 'los-garden-filters',
-      attr: {
-        role: 'tablist',
-        'aria-label': 'Garden filters',
+    filterTabs(
+      root,
+      'Garden filters',
+      GARDEN_FILTERS,
+      this.filter,
+      (value) => {
+        this.filter = value;
+        this.render();
       },
-    });
-
-    for (const [value, label] of GARDEN_FILTERS) {
-      const count = value === 'all'
-        ? entries.length
-        : entries.filter(
-          (entry) =>
-            String(entry.state || 'seed') === value,
-        ).length;
-
-      const control = button(
-        filters,
-        `${label}${count ? ` ${count}` : ''}`,
-        () => {
-          this.filter = value;
-          this.render();
-        },
-        'quiet',
-      );
-
-      control.addClass('los-filter-tab');
-      control.toggleClass(
-        'is-active',
-        this.filter === value,
-      );
-      control.setAttrs({
-        role: 'tab',
-        'aria-selected': String(
-          this.filter === value,
-        ),
-      });
-    }
+      (value) => (
+        value === 'all'
+          ? entries.length
+          : entries.filter(
+            (entry) =>
+              String(entry.state || 'seed') === value,
+          ).length
+      ),
+    );
 
     const listHeader = root.createDiv({
       cls: 'los-garden-list-header',
@@ -219,7 +200,7 @@ export class GardenView extends ItemView {
         this.plugin.openVaultPath(
           'bases/garden.base',
         ),
-      'quiet',
+      'info',
     );
 
     button(
@@ -267,6 +248,7 @@ export class GardenView extends ItemView {
       'input',
       () => {
         this.seedText = editor.value;
+        syncAddState();
       },
     );
 
@@ -294,6 +276,7 @@ export class GardenView extends ItemView {
       'input',
       () => {
         this.seedTitle = title.value;
+        syncAddState();
       },
     );
 
@@ -308,7 +291,17 @@ export class GardenView extends ItemView {
       'cta',
     );
 
-    add.disabled = this.planting;
+    const syncAddState = (): void => {
+      add.disabled =
+        this.planting
+        || !this.seedText.trim();
+      add.setAttribute(
+        'aria-disabled',
+        String(add.disabled),
+      );
+    };
+
+    syncAddState();
   }
 
   async plantSeed(): Promise<void> {
@@ -467,7 +460,7 @@ export class GardenView extends ItemView {
               );
             }
           },
-          'cta',
+          'success',
         );
       }
 
@@ -485,7 +478,7 @@ export class GardenView extends ItemView {
     });
 
     if (targetPath) {
-      button(actions, 'Open original', () => this.plugin.openVaultPath(targetPath), 'quiet');
+      button(actions, 'Open original', () => this.plugin.openVaultPath(targetPath), 'info');
     }
 
     if (target.transcription_path) {
@@ -497,7 +490,7 @@ export class GardenView extends ItemView {
           this.plugin.openVaultPath(
             transcriptionPath,
           ),
-        'quiet',
+        'info',
       );
     }
 

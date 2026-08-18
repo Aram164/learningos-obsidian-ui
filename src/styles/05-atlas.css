@@ -2,31 +2,150 @@
 .los-atlas-glance {
   display: grid;
   max-width: 1180px;
-  margin: 0 auto var(--los-4);
+  margin: 0 auto var(--los-5);
   gap: var(--los-2);
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
 }
 .los-root .los-atlas-tile {
+  position: relative;
   display: flex;
-  min-height: 56px;
+  min-height: 68px;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
-  padding: var(--los-2) var(--los-3);
+  justify-content: center;
+  gap: var(--los-1);
+  padding: var(--los-3);
   border: 1px solid var(--los-line);
   border-radius: var(--los-r-md);
   background: var(--los-surface);
   text-align: left;
 }
 .los-root .los-atlas-tile:hover { background: var(--los-paper-3); }
-.los-root .los-atlas-tile.is-selected { border-color: var(--los-accent); }
+.los-root .los-atlas-tile.is-selected {
+  border-color: var(--los-accent);
+  background: var(--los-accent-wash);
+  box-shadow: inset 3px 0 0 var(--los-accent);
+}
 .los-atlas-tile-name { font-weight: 650; }
 .los-atlas-body { max-width: 1180px; margin: 0 auto; }
-.los-atlas-domain-head { display: flex; gap: var(--los-3); align-items: baseline; flex-wrap: wrap; }
-.los-atlas-domain-head h2 { margin: 0; text-transform: capitalize; }
+.los-atlas-domain-head {
+  display: flex;
+  margin-bottom: var(--los-3);
+  gap: var(--los-3);
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.los-atlas-domain-head h2 { margin: 0; }
+.los-atlas-domain-copy p { margin: var(--los-1) 0 0; color: var(--los-ink-soft); }
+.los-atlas-map-grid {
+  display: grid;
+  margin: 0 0 var(--los-6);
+  gap: var(--los-2);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.los-atlas-map-panel,
+.los-atlas-connection-card,
+.los-atlas-view .los-shelf-entry {
+  min-width: 0;
+  padding: var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+.los-atlas-map-panel-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: var(--los-2);
+  align-items: center;
+  margin-bottom: var(--los-2);
+}
+.los-atlas-map-panel-head h3 { margin: 0; }
+.los-atlas-count {
+  min-width: 24px;
+  padding: 1px var(--los-2);
+  border-radius: var(--los-r-pill);
+  background: var(--los-paper-3);
+  color: var(--los-ink-soft);
+  font-size: 11px;
+  text-align: center;
+}
+.los-root .los-atlas-map-link,
+.los-root .los-atlas-domain-link {
+  display: flex;
+  width: 100%;
+  min-height: 40px;
+  gap: var(--los-2);
+  align-items: center;
+  padding: var(--los-2);
+  border: 0;
+  border-radius: var(--los-r-sm);
+  background: transparent;
+}
+.los-root .los-atlas-map-link:hover,
+.los-root .los-atlas-domain-link:hover { background: var(--los-paper-3); }
+.los-atlas-concept {
+  display: flex;
+  min-height: 34px;
+  gap: var(--los-2);
+  align-items: center;
+  padding: var(--los-1) var(--los-2);
+  color: var(--los-ink);
+}
+.los-atlas-panel-empty,
+.los-atlas-more {
+  padding: var(--los-2);
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-atlas-connection-grid {
+  display: grid;
+  gap: var(--los-2);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.los-atlas-connection-card > .los-muted { margin: 0 0 var(--los-2); }
+.los-atlas-arrow { margin-left: auto; color: var(--los-accent); }
+.los-atlas-shelf-grid {
+  display: grid;
+  gap: var(--los-2);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.los-atlas-view .los-shelf-entry { margin: 0; }
+.los-atlas-view .los-shelf-entry:first-of-type { border-top: 1px solid var(--los-line); }
+.los-atlas-view .los-shelf-why { margin-top: var(--los-2); }
+.los-atlas-note-summary { color: var(--los-ink-soft); font-size: 12px; }
+.los-atlas-inventory {
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+.los-atlas-inventory > summary,
+.los-atlas-boundaries > summary {
+  padding: var(--los-3);
+  color: var(--los-ink);
+  cursor: pointer;
+  font-weight: 650;
+}
+.los-atlas-inventory-body { padding: 0 var(--los-3) var(--los-3); }
 .los-atlas-group { margin: var(--los-1) 0; }
-.los-atlas-group > summary { padding: var(--los-1) 0; color: var(--los-ink-soft); cursor: pointer; }
+.los-atlas-group > summary {
+  padding: var(--los-2);
+  color: var(--los-ink-soft);
+  cursor: pointer;
+}
+.los-atlas-boundaries {
+  max-width: 1180px;
+  margin: 0 auto var(--los-4);
+  border-top: 1px solid var(--los-line);
+}
+.los-atlas-boundaries-body { padding: 0 var(--los-3) var(--los-3); }
 .los-boundary-row { margin: var(--los-2) 0; padding-left: var(--los-2); border-left: 2px solid var(--los-line-strong); }
+
+@media (max-width: 820px) {
+  .los-atlas-map-grid { grid-template-columns: minmax(0, 1fr); }
+  .los-atlas-connection-grid,
+  .los-atlas-shelf-grid { grid-template-columns: minmax(0, 1fr); }
+}
 
 .los-proposal-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--los-2); margin: var(--los-2) 0; padding: var(--los-3); border: 1px solid var(--los-line); border-radius: var(--los-r-md); background: var(--los-surface); }
 .los-proposal-diff { overflow-x: auto; padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--los-paper); color: var(--los-ink-soft); white-space: pre-wrap; }
@@ -34,4 +153,3 @@
 .los-empty { padding: var(--los-4); border: 1px dashed var(--los-line-strong); border-radius: var(--los-r-md); color: var(--los-ink-soft); }
 .los-empty h3 { color: var(--los-ink); }
 .los-empty p { margin: var(--los-1) 0 var(--los-2); }
-

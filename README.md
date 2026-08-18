@@ -11,8 +11,11 @@ second source of truth.
 2. Open **Modules**, choose a projected thematic group, then a full-page module
    detail; or use **Learn** to resume active curriculum work. Choose an optional
    component and lecture/topic/milestone unit.
-3. Work through the unit's one current study map. Exact resources, done-when
-   criteria, resources, feedback and detours stay stage-scoped; one session note is added at unit level after the relevant stages.
+3. Read the lecture knowledge map, compare the complete material menu by
+   format and explanatory angle, and choose what fits the current gap. A
+   personal study map is optional; when one exists, its exact resources,
+   done-when criteria, feedback and detours stay stage-scoped. One session note
+   is added at unit level after the relevant stages.
 4. Review Ultimate Reference, Exercise Bank, Mock Exam and other durable
    artifacts through stable unit references.
 5. Prepare shelving, review destinations/rationale/diffs, and apply only
@@ -20,8 +23,7 @@ second source of truth.
 6. End the learning session deliberately: review the exact gateway ledger,
    then optionally commit and push only those files.
 
-The current navigation is **Home · Modules · Learn · Library · Capture · Review**, with structural Search available from the navigator and command palette. Modules and Library now use explicit full-page application routes; Library separates Learning Sources from purpose-built Topic Packs. Master's and Job are policy-only
-boundary views; quarantined content is not in the manifest or default search.
+The current primary navigation is **Home · Modules · Learn · Projects · Library · Garden · Review**, with structural Search available from the navigator and command palette. Modules and Library use explicit full-page application routes; Library separates Learning Sources from purpose-built Topic Packs. Master's is a policy-only boundary. Job is a deliberate confidential workspace: opening it loads a bounded read-only dashboard on demand, while its content remains absent from the manifest, global search, academic recommendations, and AI context.
 
 ## Engineering boundary
 
@@ -33,10 +35,10 @@ boundary views; quarantined content is not in the manifest or default search.
 - `npm run typecheck` checks all runtime source files. The versioned manifest
   contract remains independently strict-checked before projected data reaches
   the legacy view layer.
-- The app reads only atomic `generated/manifest.json` contract v3. It never
+- The app reads only atomic `generated/manifest.json` contract v5. It never
   parses canonical Markdown/YAML and remains useful when Python is offline.
   The contract is declared by the producer — core's
-  `system/contracts/manifest-contract.yaml` — and `contracts/manifest-v3.lock.json`
+  `system/contracts/manifest-contract.yaml` — and `contracts/manifest-v5.lock.json`
   here is a mirror of it. `npm run contract:check` verifies the mirror whenever
   core is checked out beside this repo, so a projection change cannot reach the
   UI as a surprise. Bump both together; they release together.

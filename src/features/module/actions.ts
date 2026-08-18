@@ -10,7 +10,7 @@ import {
   workspaceCard,
 } from '../../components';
 import { STATUS_ORDER, VIEW_MODULE } from '../../constants';
-import type { ProjectionRecord } from '../../contracts/manifest-v4';
+import type { ProjectionRecord } from '../../contracts/manifest-v5';
 import {
   asCount as projectedCount,
   asRecords as projectedRecords,

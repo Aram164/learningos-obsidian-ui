@@ -1,7 +1,7 @@
 import { ItemView, Notice, type WorkspaceLeaf } from 'obsidian';
 import { button, empty, pageHeader, section, unitCard } from '../components';
 import { VIEW_SHELVING } from '../constants';
-import type { ProjectionRecord } from '../contracts/manifest-v4';
+import type { ProjectionRecord } from '../contracts/manifest-v5';
 import type { LearningOSUI } from '../main';
 import { errorMessage, isRecord, optionalString } from '../projection/readers';
 
@@ -244,10 +244,10 @@ export class ShelvingView extends ItemView {
     guard.createEl('strong', { text: 'Apply is explicit and selected-only.' });
     guard.createEl('p', { text: 'The core validates and regenerates atomically; broad AI writes are never accepted.' });
     const actions = root.createDiv({ cls: 'los-actions' });
-    button(actions, 'Approve selected changes', () => this.apply(), 'cta');
+    button(actions, 'Approve selected changes', () => this.apply(), 'success');
     button(actions, 'Ask AI to review proposal', () => this.plugin.askAiScoped(
       `Review these shelving proposal IDs: ${[...this.selected].join(', ')}. Do not apply changes.`,
-      { moduleId: unit.module_id, unitId: unit.id }), 'quiet');
+      { moduleId: unit.module_id, unitId: unit.id }), 'warm');
   }
 
   renderQueue(root: HTMLElement): void {

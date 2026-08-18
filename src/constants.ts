@@ -1,4 +1,4 @@
-export const CONTRACT_VERSION = 4;
+export const CONTRACT_VERSION = 5;
 export const VIEW_HOME = 'learningos-home';
 export const VIEW_NAV = 'learningos-nav';
 export const VIEW_PROGRAM = 'learningos-program';

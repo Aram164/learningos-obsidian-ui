@@ -1,6 +1,6 @@
 import type {
   ProjectionRecord,
-} from '../contracts/manifest-v4';
+} from '../contracts/manifest-v5';
 import type { LearningOSUI } from '../main';
 
 type AIActionPlugin = Pick<

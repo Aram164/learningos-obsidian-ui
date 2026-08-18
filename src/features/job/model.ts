@@ -1,7 +1,9 @@
 import type { GatewayResultV1 } from '../../contracts/gateway-v1';
+import type { ProjectionRecord } from '../../contracts/manifest-v5';
+import type { StageResourceView } from '../stage-resources';
 
 export type JobHorizon = 'now' | 'next' | 'later';
-export type JobTab = 'now' | 'system' | 'library';
+export type JobTab = 'now' | 'tasks' | 'plans' | 'notes' | 'library';
 
 export interface JobWorkspaceScope {
   readonly label: string;
@@ -23,9 +25,10 @@ export interface JobWorkspace {
 export interface JobNote {
   readonly id: string;
   readonly title: string;
-  readonly kind: 'skrub' | 'stratum';
+  readonly kind: 'learning' | 'skrub' | 'stratum';
   readonly family: string;
   readonly summary: string;
+  readonly body: string;
   readonly path: string;
   readonly component: string;
   /** Stratum pipeline layer, derived by the core from the component path. */
@@ -33,6 +36,7 @@ export interface JobNote {
   readonly verified_against: string;
   readonly declared_status: string;
   readonly freshness: string;
+  readonly revision: number;
 }
 
 /** One stage of Stratum's pipeline. Published even when it holds no notes — an
@@ -44,13 +48,32 @@ export interface JobLayer {
   readonly noteIds: readonly string[];
 }
 
-export interface JobLearningSession {
+export interface JobLearningResource extends StageResourceView {
+  readonly url: string | null;
+  readonly vaultPath: string | null;
+}
+
+export interface JobMentalModel {
+  readonly label: string;
+  readonly text: string;
+}
+
+export interface JobLearningStage {
+  readonly id: string;
   readonly number: number;
   readonly title: string;
-  readonly concept: string;
-  readonly source: string;
-  readonly anchor: string;
-  readonly practice: string;
+  readonly status: string;
+  readonly objective: string;
+  readonly doneWhen: readonly string[];
+  readonly estimateMinutes: number | null;
+  readonly examCritical: boolean;
+  readonly concepts: readonly string[];
+  readonly scopeTriage: string;
+  readonly resources: readonly JobLearningResource[];
+  readonly jobContext: {
+    readonly mentalModels: readonly JobMentalModel[];
+    readonly readOnlyAnchor: string;
+  };
   /** Recorded by job.track.progress; the core merges it at read time. */
   readonly done: boolean;
 }
@@ -62,10 +85,24 @@ export interface JobLearningTrack {
   readonly cadence: string;
   readonly horizon: JobHorizon;
   readonly outcome: string;
-  readonly sessions: readonly JobLearningSession[];
+  readonly stages: readonly JobLearningStage[];
   readonly completedSessions: readonly number[];
   readonly lastSessionAt: string;
   readonly path: string;
+  readonly sourceKind: 'structured' | 'legacy-markdown';
+  readonly revision: number;
+}
+
+export interface JobTask {
+  readonly id: string;
+  readonly title: string;
+  readonly details: string;
+  readonly horizon: JobHorizon;
+  readonly status: 'open' | 'done';
+  readonly trackId: string;
+  readonly createdAt: string;
+  readonly updatedAt: string;
+  readonly revision: number;
 }
 
 export interface JobPaper {
@@ -94,12 +131,14 @@ export interface JobDashboard {
   readonly subtitle: string;
   readonly workspace: JobWorkspace;
   readonly notes: {
+    readonly learning: readonly JobNote[];
     readonly skrub: readonly JobNote[];
     readonly stratum: readonly JobNote[];
     readonly health: Readonly<Record<string, number>>;
     readonly layers: readonly JobLayer[];
   };
   readonly learning_tracks: readonly JobLearningTrack[];
+  readonly tasks: readonly JobTask[];
   readonly papers: readonly JobPaper[];
   readonly canonical_shelf: readonly JobShelfSource[];
   readonly counts: Readonly<Record<string, number>>;
@@ -143,10 +182,7 @@ function horizon(value: unknown): JobHorizon {
 function relativeJobPath(value: unknown): string {
   const path = string(value).replace(/\\/g, '/').replace(/^\.\//, '');
   if (!path || path.startsWith('/') || path.split('/').includes('..')) return '';
-  const top = path.split('/')[0] || '';
-  return ['notes', 'workspace-job-deem', 'papers', 'legacy-plans'].includes(top)
-    ? path
-    : '';
+  return path;
 }
 
 function counts(value: unknown): Record<string, number> {
@@ -167,15 +203,19 @@ function note(value: unknown): JobNote | null {
   return {
     id,
     title,
-    kind: row.kind === 'stratum' ? 'stratum' : 'skrub',
+    kind: row.kind === 'stratum'
+      ? 'stratum'
+      : row.kind === 'learning' ? 'learning' : 'skrub',
     family: string(row.family),
     summary: string(row.summary),
+    body: string(row.body),
     path,
     component: string(row.component),
     layer: string(row.layer),
     verified_against: string(row.verified_against),
     declared_status: string(row.declared_status),
     freshness: string(row.freshness) || 'unverified',
+    revision: number(row.revision),
   };
 }
 
@@ -193,17 +233,71 @@ function track(value: unknown): JobLearningTrack | null {
     cadence: string(row.cadence),
     horizon: horizon(row.horizon),
     outcome: string(row.outcome),
-    sessions: rows(row.sessions).map((session) => ({
-      number: number(session.number),
-      title: string(session.title),
-      concept: string(session.concept),
-      source: string(session.source),
-      anchor: string(session.anchor),
-      practice: string(session.practice),
-      done: session.done === true,
-    })).filter((session) => session.number > 0 && session.title),
+    stages: rows(row.stages).map((stage) => {
+      const context = record(stage.job_context);
+      const resources = rows(stage.resources).map((resource): JobLearningResource => {
+        const url = string(resource.url) || null;
+        const vaultPath = relativeJobPath(resource.vault_path) || null;
+        const resourceRecord: ProjectionRecord = { ...resource };
+        if (url) resourceRecord.url = url;
+        if (vaultPath) resourceRecord.vault_path = vaultPath;
+        return {
+          record: resourceRecord,
+          id: string(resource.id) || null,
+          kind: string(resource.kind) || 'read',
+          label: string(resource.label) || 'Resource',
+          locator: string(resource.locator) || null,
+          sourceId: string(resource.source_id) || null,
+          scopeTriage: string(resource.scope_triage) || null,
+          canOpen: Boolean(url || vaultPath),
+          url,
+          vaultPath,
+        };
+      });
+      return {
+        id: string(stage.id),
+        number: number(stage.number),
+        title: string(stage.title),
+        status: string(stage.status) || 'pending',
+        objective: string(stage.objective),
+        doneWhen: strings(stage.done_when),
+        estimateMinutes: number(stage.estimate_minutes) || null,
+        examCritical: stage.exam_critical === true,
+        concepts: strings(stage.concepts),
+        scopeTriage: string(stage.scope_triage) || 'required-now',
+        resources,
+        jobContext: {
+          mentalModels: rows(context.mental_models).map((model) => ({
+            label: string(model.label),
+            text: string(model.text),
+          })).filter((model) => model.label && model.text),
+          readOnlyAnchor: string(context.read_only_anchor),
+        },
+        done: stage.done === true,
+      };
+    }).filter((stage) => stage.id && stage.number > 0 && stage.title),
     completedSessions: numbers(row.completed_sessions),
     lastSessionAt: string(row.last_session_at),
+    sourceKind: row.source_kind === 'structured' ? 'structured' : 'legacy-markdown',
+    revision: number(row.revision),
+  };
+}
+
+function task(value: unknown): JobTask | null {
+  const row = record(value);
+  const id = string(row.id);
+  const title = string(row.title);
+  if (!id || !title) return null;
+  return {
+    id,
+    title,
+    details: string(row.details),
+    horizon: horizon(row.horizon),
+    status: row.status === 'done' ? 'done' : 'open',
+    trackId: string(row.track_id),
+    createdAt: string(row.created_at),
+    updatedAt: string(row.updated_at),
+    revision: number(row.revision),
   };
 }
 
@@ -255,7 +349,7 @@ function shelfSource(value: unknown): JobShelfSource | null {
 }
 
 export function asJobDashboard(result: GatewayResultV1): JobDashboard | null {
-  if (result.ok !== true || result.contract !== 'job-dashboard-v1') return null;
+  if (result.ok !== true || result.contract !== 'job-dashboard-v2') return null;
   const raw = record(result.dashboard);
   const workspaceRaw = record(raw.workspace);
   const workspacePath = relativeJobPath(workspaceRaw.path);
@@ -281,6 +375,7 @@ export function asJobDashboard(result: GatewayResultV1): JobDashboard | null {
       path: workspacePath,
     },
     notes: {
+      learning: rows(noteRaw.learning).map(note).filter((item): item is JobNote => item !== null),
       skrub: rows(noteRaw.skrub).map(note).filter((item): item is JobNote => item !== null),
       stratum: rows(noteRaw.stratum).map(note).filter((item): item is JobNote => item !== null),
       health: counts(noteRaw.health),
@@ -288,6 +383,7 @@ export function asJobDashboard(result: GatewayResultV1): JobDashboard | null {
     },
     learning_tracks: rows(raw.learning_tracks)
       .map(track).filter((item): item is JobLearningTrack => item !== null),
+    tasks: rows(raw.tasks).map(task).filter((item): item is JobTask => item !== null),
     papers: rows(raw.papers).map(paper).filter((item): item is JobPaper => item !== null),
     canonical_shelf: rows(raw.canonical_shelf)
       .map(shelfSource).filter((item): item is JobShelfSource => item !== null),

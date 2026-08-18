@@ -12,19 +12,24 @@ import {
   section,
 } from '../components';
 import {
+  enableButtonGroupKeyboardNavigation,
+} from '../accessibility/button-group';
+import {
   ICONS,
   VIEW_ATLAS,
 } from '../constants';
 import type {
   ProjectionRecord,
-} from '../contracts/manifest-v4';
+} from '../contracts/manifest-v5';
 import type {
   LearningOSUI,
 } from '../main';
 import {
   asLabel as projectedLabel,
   asListLength as projectedListLength,
+  asRecords as projectedRecords,
   asString as projectedString,
+  asStrings as projectedStrings,
 } from '../projection/readers';
 
 interface AtlasViewState {
@@ -35,6 +40,9 @@ interface AtlasDomain {
   readonly name: string;
   readonly notes: ProjectionRecord[];
   readonly shelves: ProjectionRecord[];
+  readonly modules: ProjectionRecord[];
+  readonly concepts: ProjectionRecord[];
+  readonly sources: ProjectionRecord[];
 }
 
 type AtlasPlugin = Pick<
@@ -43,6 +51,8 @@ type AtlasPlugin = Pick<
   | 'openAuthoredPath'
   | 'openLibrary'
   | 'openLibraryFiltered'
+  | 'openModule'
+  | 'openSourceDetail'
   | 'openVaultPath'
   | 'store'
 >;
@@ -69,6 +79,68 @@ function projectedMetadata(
     .map(String)
     .filter(Boolean)
     .join(' · ');
+}
+
+function plural(
+  count: number,
+  noun: string,
+  pluralNoun = `${noun}s`,
+): string {
+  return `${count} ${count === 1 ? noun : pluralNoun}`;
+}
+
+function humanLabel(value: unknown): string {
+  const text = String(value || 'cross-domain')
+    .replace(/^thematic-group-/, '')
+    .replace(/[-_]+/g, ' ')
+    .trim();
+  return text
+    ? `${text.charAt(0).toUpperCase()}${text.slice(1)}`
+    : 'Cross-domain';
+}
+
+function canonicalLabel(value: unknown): string {
+  return String(value || '')
+    .replace(/^thematic-group-/, '')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-');
+}
+
+function uniqueRecords(
+  records: readonly ProjectionRecord[],
+): ProjectionRecord[] {
+  const seen = new Set<string>();
+  return records.filter((record: ProjectionRecord) => {
+    const key = projectedString(record.id)
+      || `${record.type || 'record'}:${projectedLabel(record)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function recordIds(
+  records: readonly ProjectionRecord[],
+): Set<string> {
+  return new Set(
+    records
+      .map((record: ProjectionRecord) => projectedString(record.id))
+      .filter((id): id is string => Boolean(id)),
+  );
+}
+
+function intersectionSize(
+  left: Set<string>,
+  right: Set<string>,
+): number {
+  let count = 0;
+  for (const value of left) if (right.has(value)) count += 1;
+  return count;
+}
+
+function roleLabel(role: string): string {
+  return humanLabel(role);
 }
 
 /**
@@ -157,6 +229,9 @@ export class AtlasView extends ItemView {
         name: key,
         notes: [],
         shelves: [],
+        modules: [],
+        concepts: [],
+        sources: [],
       };
 
       domains.set(
@@ -174,11 +249,72 @@ export class AtlasView extends ItemView {
       bucket(note.domain).notes.push(note);
     }
 
-    for (
-      const shelf of
-      this.plugin.store.of('collection')
-    ) {
+    const shelves = uniqueRecords([
+      ...this.plugin.store.of('collection'),
+      ...this.plugin.store.topicPacks(),
+    ]);
+
+    for (const shelf of shelves) {
       bucket(shelf.domain).shelves.push(shelf);
+    }
+
+    for (const domain of domains.values()) {
+      const sourceIds = new Set<string>();
+      const conceptIds = new Set<string>();
+      const groupIds = new Set<string>();
+
+      for (const note of domain.notes) {
+        projectedStrings(note.sources).forEach((id: string) => sourceIds.add(id));
+        projectedStrings(note.concepts).forEach((id: string) => conceptIds.add(id));
+      }
+
+      for (const shelf of domain.shelves) {
+        projectedStrings(shelf.sources).forEach((id: string) => sourceIds.add(id));
+        projectedStrings(shelf.thematic_group_ids).forEach((id: string) => groupIds.add(id));
+        for (const entry of projectedRecords(shelf.entries)) {
+          const sourceId = projectedString(entry.source);
+          if (sourceId) sourceIds.add(sourceId);
+        }
+      }
+
+      for (const group of this.plugin.store.thematicGroups()) {
+        if (
+          canonicalLabel(group.id) === canonicalLabel(domain.name)
+          || canonicalLabel(group.title) === canonicalLabel(domain.name)
+        ) {
+          const groupId = projectedString(group.id);
+          if (groupId) groupIds.add(groupId);
+        }
+      }
+
+      for (const source of this.plugin.store.sources()) {
+        const sourceId = projectedString(source.id);
+        const sourceGroups = projectedStrings(source.thematic_group_ids);
+        if (sourceGroups.some((id: string) => groupIds.has(id)) && sourceId) {
+          sourceIds.add(sourceId);
+        }
+      }
+
+      const resolvedSources = [...sourceIds]
+        .map((id: string) => this.plugin.store.get(id))
+        .filter((record): record is ProjectionRecord => record?.type === 'source');
+      domain.sources.push(...uniqueRecords(resolvedSources));
+
+      const resolvedConcepts = [...conceptIds]
+        .map((id: string) => this.plugin.store.get(id))
+        .filter((record): record is ProjectionRecord => record?.type === 'concept');
+      domain.concepts.push(...uniqueRecords(resolvedConcepts));
+
+      const relatedModules = [
+        ...domain.sources.flatMap((source: ProjectionRecord) => {
+          const sourceId = projectedString(source.id);
+          return sourceId ? this.plugin.store.useModules(sourceId) : [];
+        }),
+        ...this.plugin.store.modules().filter((module: ProjectionRecord) =>
+          projectedStrings(module.thematic_group_ids)
+            .some((id: string) => groupIds.has(id))),
+      ];
+      domain.modules.push(...uniqueRecords(relatedModules));
     }
 
     return [...domains.values()].sort(
@@ -219,7 +355,7 @@ export class AtlasView extends ItemView {
       root,
       'Reach',
       'Domain atlas',
-      'Every domain’s notes, wiring hubs and shelves — so a question standing in one module can be answered by another domain’s shelf.',
+      'See where your learning lives, what connects across subjects, and which source or module to open next.',
     );
 
     const domains = this.atlas();
@@ -247,26 +383,13 @@ export class AtlasView extends ItemView {
     const glance = root.createDiv({
       cls: 'los-atlas-glance',
     });
+    glance.setAttrs({
+      role: 'group',
+      'aria-label': 'Choose a knowledge domain',
+    });
+    enableButtonGroupKeyboardNavigation(glance, 'both');
 
     for (const domain of domains) {
-      const entries = domain.shelves.reduce(
-        (
-          total: number,
-          shelf: ProjectionRecord,
-        ) =>
-          total
-          + projectedListLength(
-            shelf.entries,
-          ),
-        0,
-      );
-
-      const crosswalks =
-        domain.notes.filter(
-          (note: ProjectionRecord) =>
-            note.role === 'crosswalk',
-        ).length;
-
       const selected =
         domain.name === this.domain;
 
@@ -289,45 +412,17 @@ export class AtlasView extends ItemView {
 
       tile.createSpan({
         cls: 'los-atlas-tile-name',
-        text: domain.name,
+        text: humanLabel(domain.name),
       });
 
-      const plural = (
-        count: number,
-        noun: string,
-      ): string =>
-        `${count} ${noun}${
-          count === 1
-            ? ''
-            : 's'
-        }`;
-
       const summaryParts = [
-        plural(
-          domain.notes.length,
-          'note',
-        ),
-        crosswalks
-          ? plural(
-            crosswalks,
-            'crosswalk',
-          )
+        domain.modules.length ? plural(domain.modules.length, 'module') : '',
+        domain.concepts.length ? plural(domain.concepts.length, 'concept') : '',
+        domain.sources.length ? plural(domain.sources.length, 'source') : '',
+        !domain.modules.length && !domain.concepts.length && !domain.sources.length
+          ? plural(domain.shelves.length, 'shelf', 'shelves')
           : '',
-        `${
-          plural(
-            domain.shelves.length,
-            'shelf',
-          ).replace(
-            'shelfs',
-            'shelves',
-          )
-        } (${entries})`,
-      ].filter(
-        (
-          part,
-        ): part is string =>
-          Boolean(part),
-      );
+      ].filter((part): part is string => Boolean(part));
 
       tile.createSpan({
         cls: 'los-micro',
@@ -352,12 +447,9 @@ export class AtlasView extends ItemView {
       cls: 'los-atlas-body',
     });
 
-    this.renderDomain(
-      body,
-      current,
-    );
+    this.renderDomain(body, current, domains);
 
-    this.renderBoundaries(root);
+    this.renderBoundaries(body);
   }
 
   noteRow(
@@ -388,15 +480,22 @@ export class AtlasView extends ItemView {
     });
 
     const metadata = projectedMetadata([
-      note.role,
-      note.state,
-      note.id,
+      note.role ? roleLabel(String(note.role)) : '',
+      note.state ? humanLabel(note.state) : '',
     ]);
 
     if (metadata) {
       copy.createSpan({
         cls: 'los-micro',
         text: metadata,
+      });
+    }
+
+    const summary = projectedString(note.summary);
+    if (summary) {
+      copy.createSpan({
+        cls: 'los-atlas-note-summary',
+        text: projectedExcerpt(summary, 150),
       });
     }
 
@@ -417,247 +516,265 @@ export class AtlasView extends ItemView {
     return row;
   }
 
-  renderDomain(
+  renderCoveragePanel(
     parent: HTMLElement,
-    domain: AtlasDomain | undefined,
+    title: string,
+    iconName: string,
+    records: readonly ProjectionRecord[],
+    kind: 'module' | 'concept' | 'source',
   ): void {
-    if (!domain) {
+    const panel = parent.createDiv({ cls: 'los-atlas-map-panel' });
+    const heading = panel.createDiv({ cls: 'los-atlas-map-panel-head' });
+    icon(heading.createSpan(), iconName);
+    heading.createEl('h3', { text: title });
+    heading.createSpan({ cls: 'los-atlas-count', text: String(records.length) });
+
+    if (!records.length) {
+      panel.createDiv({
+        cls: 'los-atlas-panel-empty',
+        text: kind === 'concept'
+          ? 'No named concepts are linked yet.'
+          : `No ${kind}s are linked yet.`,
+      });
       return;
     }
 
-    const header = parent.createDiv({
-      cls: 'los-atlas-domain-head',
-    });
+    const rows = records
+      .slice()
+      .sort((left, right) => projectedLabel(left).localeCompare(projectedLabel(right)))
+      .slice(0, 5);
 
-    header.createEl('h2', {
-      text: domain.name,
-    });
+    for (const record of rows) {
+      if (kind === 'concept') {
+        const concept = panel.createDiv({ cls: 'los-atlas-concept' });
+        icon(concept.createSpan(), ICONS.concept);
+        concept.createSpan({ text: projectedLabel(record) });
+        continue;
+      }
 
-    const actions = header.createDiv({
-      cls: 'los-actions',
-    });
+      const recordId = projectedString(record.id);
+      const row = panel.createEl('button', {
+        cls: 'los-atlas-map-link is-clickable',
+        attr: { type: 'button' },
+      });
+      icon(row.createSpan(), kind === 'module' ? ICONS.module : ICONS.source);
+      const copy = row.createSpan({ cls: 'los-item-copy' });
+      copy.createSpan({ text: projectedLabel(record) });
+      const context = kind === 'module'
+        ? projectedMetadata([record.code, record.kind ? humanLabel(record.kind) : ''])
+        : humanLabel(record.source_type || 'source');
+      if (context) copy.createSpan({ cls: 'los-micro', text: context });
+      row.addEventListener('click', () => {
+        if (!recordId) return;
+        if (kind === 'module') void this.plugin.openModule(recordId);
+        else void this.plugin.openSourceDetail(recordId);
+      });
+    }
 
-    button(
-      actions,
-      'Browse these notes in the Library',
-      () =>
-        this.plugin.openLibraryFiltered(
-          'note',
-          domain.name,
-        ),
-      'quiet',
+    if (records.length > rows.length) {
+      panel.createDiv({
+        cls: 'los-atlas-more',
+        text: `+${records.length - rows.length} more`,
+      });
+    }
+  }
+
+  renderConnections(
+    parent: HTMLElement,
+    domain: AtlasDomain,
+    domains: readonly AtlasDomain[],
+  ): void {
+    const crosswalks = domain.notes.filter(
+      (note: ProjectionRecord) => note.role === 'crosswalk',
     );
+    const currentSourceIds = recordIds(domain.sources);
+    const currentConceptIds = recordIds(domain.concepts);
+    const currentModuleIds = recordIds(domain.modules);
+    const peers = domains
+      .filter((candidate: AtlasDomain) => candidate.name !== domain.name)
+      .map((candidate: AtlasDomain) => {
+        const sources = intersectionSize(currentSourceIds, recordIds(candidate.sources));
+        const concepts = intersectionSize(currentConceptIds, recordIds(candidate.concepts));
+        const modules = intersectionSize(currentModuleIds, recordIds(candidate.modules));
+        return { candidate, sources, concepts, modules, score: sources + concepts + modules };
+      })
+      .filter((peer) => peer.score > 0)
+      .sort((left, right) => right.score - left.score || left.candidate.name.localeCompare(right.candidate.name));
 
-    const crosswalks =
-      domain.notes.filter(
-        (note: ProjectionRecord) =>
-          note.role === 'crosswalk',
-      );
+    if (!crosswalks.length && !peers.length) return;
+
+    const wrap = section(
+      parent,
+      'Connections',
+      'Use a narrative bridge or jump to a neighbouring domain that shares learning material.',
+    );
+    const grid = wrap.createDiv({ cls: 'los-atlas-connection-grid' });
 
     if (crosswalks.length) {
-      const wrap = section(
-        parent,
-        `Wiring hubs (${crosswalks.length})`,
-        'Crosswalks carry the narrative that joins this domain’s sources and concepts — read one before opening a shelf.',
-      );
-
-      for (const note of crosswalks) {
-        this.noteRow(
-          wrap,
-          note,
-        );
-      }
+      const card = grid.createDiv({ cls: 'los-atlas-connection-card' });
+      card.createEl('h3', { text: 'Narrative bridges' });
+      card.createDiv({
+        cls: 'los-muted',
+        text: 'These notes explain how the pieces fit together.',
+      });
+      for (const note of crosswalks) this.noteRow(card, note);
     }
 
-    const byRole =
-      new Map<
-        string,
-        ProjectionRecord[]
-      >();
-
-    for (const note of domain.notes) {
-      const role = String(
-        note.role || 'synthesis',
-      );
-
-      const existingRows =
-        byRole.get(role);
-
-      if (existingRows) {
-        existingRows.push(note);
-      } else {
-        byRole.set(
-          role,
-          [note],
-        );
+    if (peers.length) {
+      const card = grid.createDiv({ cls: 'los-atlas-connection-card' });
+      card.createEl('h3', { text: 'Connected domains' });
+      card.createDiv({
+        cls: 'los-muted',
+        text: 'Shared sources, concepts, or modules create these links.',
+      });
+      for (const peer of peers.slice(0, 6)) {
+        const row = card.createEl('button', {
+          cls: 'los-atlas-domain-link is-clickable',
+          attr: { type: 'button' },
+        });
+        const copy = row.createSpan({ cls: 'los-item-copy' });
+        copy.createSpan({ text: humanLabel(peer.candidate.name) });
+        const shared = [
+          peer.modules ? plural(peer.modules, 'module') : '',
+          peer.concepts ? plural(peer.concepts, 'concept') : '',
+          peer.sources ? plural(peer.sources, 'source') : '',
+        ].filter(Boolean).join(' · ');
+        copy.createSpan({ cls: 'los-micro', text: `Shared: ${shared}` });
+        row.createSpan({ cls: 'los-atlas-arrow', text: '→' });
+        row.addEventListener('click', () => {
+          this.domain = peer.candidate.name;
+          this.render();
+        });
       }
     }
+  }
 
-    const roles = [
-      ...byRole.keys(),
-    ].sort(
-      (left, right) => {
-        const rank = (
-          role: string,
-        ): number =>
-          (
-            ATLAS_ROLE_ORDER.indexOf(role)
-            + 1
-            || 99
-          );
-
-        return (
-          rank(left) - rank(right)
-          || left.localeCompare(right)
-        );
-      },
-    );
-
-    if (domain.notes.length) {
-      const notesWrap = section(
-        parent,
-        `Notes (${domain.notes.length})`,
-        'Grouped by role. Opening a row opens the note itself.',
-      );
-
-      for (const role of roles) {
-        const roleRows =
-          byRole.get(role) ?? [];
-
-        const rows = roleRows
-          .slice()
-          .sort(
-            (left, right) =>
-              projectedLabel(left)
-                .localeCompare(
-                  projectedLabel(right),
-                ),
-          );
-
-        const group =
-          notesWrap.createEl(
-            'details',
-            {
-              cls: 'los-atlas-group',
-            },
-          );
-
-        if (
-          role !== 'crosswalk'
-          && rows.length <= 12
-        ) {
-          group.setAttr(
-            'open',
-            'open',
-          );
-        }
-
-        group.createEl(
-          'summary',
-          {
-            text:
-              `${role} (${rows.length})`,
-          },
-        );
-
-        for (const note of rows) {
-          this.noteRow(
-            group,
-            note,
-          );
-        }
-      }
-    } else {
-      empty(
-        parent,
-        'No notes in this domain yet',
-        'Sources here surface only through concept links and shelves.',
-      );
-    }
-
-    const shelvesWrap = section(
+  renderShelves(
+    parent: HTMLElement,
+    domain: AtlasDomain,
+  ): void {
+    const wrap = section(
       parent,
-      `Shelves (${domain.shelves.length})`,
-      'Curated reading lists. The blurb is the shelf’s own rule for using it.',
+      `Curated shelves (${domain.shelves.length})`,
+      'Purpose-built reading routes, kept ahead of the full note inventory.',
     );
 
     if (!domain.shelves.length) {
       empty(
-        shelvesWrap,
-        'No shelves yet',
-        'Nothing curated for this domain — the registry still holds its sources.',
+        wrap,
+        'No curated shelf yet',
+        'Sources are mapped above, but this domain does not have a reading route yet.',
       );
+      return;
     }
 
+    const grid = wrap.createDiv({ cls: 'los-atlas-shelf-grid' });
     const shelves = domain.shelves
       .slice()
-      .sort(
-        (left, right) =>
-          projectedLabel(left)
-            .localeCompare(
-              projectedLabel(right),
-            ),
-      );
+      .sort((left, right) => projectedLabel(left).localeCompare(projectedLabel(right)));
 
     for (const shelf of shelves) {
-      const card =
-        shelvesWrap.createDiv({
-          cls: 'los-shelf-entry',
-        });
-
-      const head = card.createEl(
-        'button',
-        {
-          cls:
-            'los-shelf-entry-title is-clickable',
-          attr: {
-            type: 'button',
-          },
-        },
-      );
-
-      icon(
-        head.createSpan(),
-        'library',
-      );
-
-      head.createSpan({
-        text:
-          `${projectedLabel(shelf)} (${
-            projectedListLength(
-              shelf.entries,
-            )
-          })`,
+      const card = grid.createDiv({ cls: 'los-shelf-entry' });
+      const head = card.createEl('button', {
+        cls: 'los-shelf-entry-title is-clickable',
+        attr: { type: 'button' },
+      });
+      icon(head.createSpan(), shelf.type === 'topic-pack' ? ICONS['topic-pack'] : ICONS.collection);
+      const copy = head.createSpan({ cls: 'los-item-copy' });
+      copy.createSpan({ text: projectedLabel(shelf) });
+      copy.createSpan({
+        cls: 'los-micro',
+        text: plural(projectedListLength(shelf.entries), 'source'),
       });
 
-      const shelfId =
-        projectedString(shelf.id);
+      const shelfId = projectedString(shelf.id);
+      head.addEventListener('click', () => {
+        if (shelfId) void this.plugin.openLibrary(shelfId, String(shelf.type || 'collection'));
+      });
 
-      head.addEventListener(
-        'click',
-        () => {
-          if (shelfId) {
-            void this.plugin.openLibrary(
-              shelfId,
-              'collection',
-            );
-          }
-        },
-      );
-
-      const summary =
-        projectedString(shelf.summary);
-
+      const summary = projectedString(shelf.summary) || projectedString(shelf.purpose);
       if (summary) {
         card.createDiv({
           cls: 'los-shelf-why',
-          text: projectedExcerpt(
-            summary,
-            320,
-          ),
+          text: projectedExcerpt(summary, 220),
         });
       }
     }
+  }
+
+  renderNoteInventory(
+    parent: HTMLElement,
+    domain: AtlasDomain,
+  ): void {
+    const notes = domain.notes.filter((note: ProjectionRecord) => note.role !== 'crosswalk');
+    if (!notes.length) return;
+
+    const wrap = section(
+      parent,
+      'Reference notes',
+      'The complete inventory stays available without taking over the map.',
+    );
+    const inventory = wrap.createEl('details', { cls: 'los-atlas-inventory' });
+    inventory.createEl('summary', { text: `Open all ${plural(notes.length, 'note')}` });
+    const body = inventory.createDiv({ cls: 'los-atlas-inventory-body' });
+    const byRole = new Map<string, ProjectionRecord[]>();
+
+    for (const note of notes) {
+      const role = String(note.role || 'synthesis');
+      const rows = byRole.get(role) ?? [];
+      rows.push(note);
+      byRole.set(role, rows);
+    }
+
+    const roles = [...byRole.keys()].sort((left, right) => {
+      const rank = (role: string): number => ATLAS_ROLE_ORDER.indexOf(role) + 1 || 99;
+      return rank(left) - rank(right) || left.localeCompare(right);
+    });
+
+    for (const role of roles) {
+      const rows = (byRole.get(role) ?? [])
+        .slice()
+        .sort((left, right) => projectedLabel(left).localeCompare(projectedLabel(right)));
+      const group = body.createEl('details', { cls: 'los-atlas-group' });
+      group.createEl('summary', { text: `${roleLabel(role)} (${rows.length})` });
+      for (const note of rows) this.noteRow(group, note);
+    }
+  }
+
+  renderDomain(
+    parent: HTMLElement,
+    domain: AtlasDomain | undefined,
+    domains: readonly AtlasDomain[],
+  ): void {
+    if (!domain) return;
+
+    const header = parent.createDiv({ cls: 'los-atlas-domain-head' });
+    const copy = header.createDiv({ cls: 'los-atlas-domain-copy' });
+    copy.createEl('h2', { text: `${humanLabel(domain.name)} map` });
+    copy.createEl('p', {
+      text: [
+        plural(domain.modules.length, 'module'),
+        plural(domain.concepts.length, 'concept'),
+        plural(domain.sources.length, 'source'),
+        plural(domain.shelves.length, 'curated shelf', 'curated shelves'),
+      ].join(' · '),
+    });
+    const actions = header.createDiv({ cls: 'los-actions' });
+    button(
+      actions,
+      'Browse domain in Library',
+      () => this.plugin.openLibraryFiltered('note', domain.name),
+      'quiet',
+    );
+
+    const coverage = parent.createDiv({ cls: 'los-atlas-map-grid' });
+    this.renderCoveragePanel(coverage, 'Modules', ICONS.module, domain.modules, 'module');
+    this.renderCoveragePanel(coverage, 'Concepts', ICONS.concept, domain.concepts, 'concept');
+    this.renderCoveragePanel(coverage, 'Sources', ICONS.source, domain.sources, 'source');
+
+    this.renderConnections(parent, domain, domains);
+    this.renderShelves(parent, domain);
+    this.renderNoteInventory(parent, domain);
   }
 
   renderBoundaries(
@@ -668,11 +785,17 @@ export class AtlasView extends ItemView {
         'quarantine_boundaries',
       );
 
-    const wrap = section(
-      root,
-      'Outside this map by policy',
-      'Named so their absence is visible; their content is never loaded, indexed, or searched.',
-    );
+    const details = root.createEl('details', {
+      cls: 'los-atlas-boundaries',
+    });
+    details.createEl('summary', {
+      text: `Policy boundaries (${boundaries.length})`,
+    });
+    const wrap = details.createDiv({ cls: 'los-atlas-boundaries-body' });
+    wrap.createEl('p', {
+      cls: 'los-muted',
+      text: 'Named only so their absence is visible. Their content is not part of the Atlas.',
+    });
 
     if (!boundaries.length) {
       empty(
@@ -710,7 +833,7 @@ export class AtlasView extends ItemView {
 
     button(
       wrap,
-      'Open the generated atlas file',
+      'Open generated map file',
       () =>
         this.plugin.openVaultPath(
           'generated/domain-atlas.md',

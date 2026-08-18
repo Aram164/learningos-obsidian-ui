@@ -17,17 +17,21 @@ const VIEW = {
   review: 'learningos-review', diagnostics: 'learningos-diagnostics',
 };
 const tick = () => new Promise((resolve) => setImmediate(resolve));
+const frame = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 const JOB_DASHBOARD_FIXTURE = {
   ok: true,
-  contract: 'job-dashboard-v1',
+  contract: 'job-dashboard-v2',
   access: {
     scope: 'job-dashboard', read_only: true, ephemeral: true,
     excluded_from_manifest: true, excluded_from_search: true, excluded_from_ai: true,
+    writes_through_gateway: true,
+    allowed_roots: ['legacy-plans', 'notes', 'papers', 'plans', 'workspace-job-deem'],
+    snapshot_id: 'sha256:job-fixture-snapshot',
   },
   dashboard: {
     id: 'job-fixture', title: 'BIFOLD / DEEM', subtitle: 'Fixture confidential workspace.',
-    counts: { notes: 3, skrub_notes: 2, system_notes: 1, learning_sessions: 2, papers: 1, canonical_sources: 1 },
+    counts: { notes: 4, learning_notes: 1, skrub_notes: 2, system_notes: 1, learning_tracks: 1, learning_stages: 2, open_tasks: 1, completed_tasks: 0, papers: 1, canonical_sources: 1 },
     workspace: {
       id: 'workspace-job-deem', title: 'Fixture Stratum job', status: 'active', standing: true,
       objective: 'Build and understand the system.',
@@ -40,6 +44,9 @@ const JOB_DASHBOARD_FIXTURE = {
     },
     notes: {
       health: { current: 0, drifting: 1, stale: 0, unverified: 0 },
+      learning: [
+        { id: 'job-note-joins', title: 'Join ordering', kind: 'learning', family: '', summary: 'My working model of join order.', body: 'A join order chooses the next relation.', path: 'notes/learning/job-note-joins.md', component: '', layer: '', verified_against: '', declared_status: 'draft', freshness: 'draft', revision: 1 },
+      ],
       skrub: [
         { id: 'job-skrub-dag', title: 'Skrub DataOp DAG', kind: 'skrub', family: '', summary: 'How the lazy graph is built.', path: 'notes/note-skrub-dag.md', component: '', layer: 'capture', verified_against: '', declared_status: 'evolving', freshness: 'evolving' },
         { id: 'job-skrub-eval', title: 'Skrub evaluation engine', kind: 'skrub', family: '', summary: 'How the graph becomes values.', path: 'notes/note-skrub-eval.md', component: '', layer: 'capture', verified_against: '', declared_status: 'evolving', freshness: 'evolving' },
@@ -59,11 +66,65 @@ const JOB_DASHBOARD_FIXTURE = {
     learning_tracks: [{
       id: 'polars', title: 'Polars — job-grounded through Stratum', status: 'ready', cadence: 'One session per week.', horizon: 'now',
       outcome: 'Implement a Polars backend from scratch.', path: 'workspace-job-deem/inputs/Polars-Learning-Plan.md',
-      sessions: [
-        { number: 1, title: 'Expressions', concept: 'Expression contexts.', source: 'Polars guide.', anchor: 'Compare both backends.', practice: 'Rebuild an expression.' },
-        { number: 2, title: 'Lazy optimization', concept: 'LazyFrame plans.', source: 'Lazy API.', anchor: 'Compare explain output.', practice: 'Annotate a plan.' },
+      completed_sessions: [], last_session_at: '', source_kind: 'structured', revision: 2,
+      stages: [
+        {
+          id: 'stage-polars-expressions',
+          number: 1,
+          title: 'Expressions',
+          status: 'pending',
+          objective: 'Translate Series operations into expression contexts while preserving behavior.',
+          done_when: ['Paired solutions cover expressions and null behavior.'],
+          estimate_minutes: 90,
+          exam_critical: false,
+          concepts: ['concept-python'],
+          scope_triage: 'required-now',
+          resources: [
+            { kind: 'read', label: 'Polars definitive guide — expressions', vault_path: 'LearningOS/python-polars-the-definitive-guide.pdf', scope_triage: 'required-now' },
+            { kind: 'practise', label: 'Rebuild an expression in both backends', scope_triage: 'required-now' },
+            { kind: 'reference', label: 'Polars expressions reference', url: 'https://docs.pola.rs/user-guide/expressions/', scope_triage: 'reference-only' },
+          ],
+          attachments: [], source_feedback: [],
+          job_context: {
+            mental_models: [
+              { label: 'Pandas baseline', text: 'Series operations.' },
+              { label: 'Polars mirror', text: 'Expression contexts.' },
+              { label: 'Backend lesson', text: 'Preserve behavior, not method names.' },
+            ],
+            read_only_anchor: 'Read-only: stratum/optimizer/ir/_column_expr.py. Compare both backends.',
+          },
+          done: false,
+        },
+        {
+          id: 'stage-polars-lazy-optimization',
+          number: 2,
+          title: 'Lazy optimization',
+          status: 'pending',
+          objective: 'Inspect and explain a lazy query plan before execution.',
+          done_when: ['One annotated explain output identifies the optimizer changes.'],
+          estimate_minutes: 90,
+          exam_critical: false,
+          concepts: ['concept-python'],
+          scope_triage: 'required-now',
+          resources: [
+            { kind: 'read', label: 'Polars lazy API', url: 'https://docs.pola.rs/user-guide/lazy/', scope_triage: 'required-now' },
+            { kind: 'practise', label: 'Annotate one explain output', scope_triage: 'required-now' },
+          ],
+          attachments: [], source_feedback: [],
+          job_context: {
+            mental_models: [
+              { label: 'Core model', text: 'Plans are ordinary objects.' },
+              { label: 'Working practice', text: 'Inspect before execution.' },
+              { label: 'Job relevance', text: 'The optimizer transforms plans.' },
+              { label: 'Failure mode', text: 'Do not confuse a plan with its execution.' },
+            ],
+            read_only_anchor: 'Read-only: stratum/optimizer/physical/_lowering.py.',
+          },
+          done: false,
+        },
       ],
     }],
+    tasks: [{ id: 'job-task-trace-join', title: 'Trace the join planner', details: 'Write down one surprise.', horizon: 'now', status: 'open', track_id: 'polars', created_at: '2026-08-15T10:00:00+02:00', updated_at: '2026-08-15T10:00:00+02:00', revision: 1 }],
     papers: [{ id: 'paper', title: 'Fixture systems paper', authors: ['A. Author'], year: 2026, pages: 8, horizon: 'now', angle: 'The architecture behind the job.', path: 'papers/paper.pdf', available: true }],
     canonical_shelf: [{ source_id: 'source-fixture-islp', title: 'Reusable software book', authors: ['B. Author'], horizon: 'later', why: 'Keep it until a concrete design problem calls for it.' }],
   },
@@ -251,6 +312,7 @@ async function main() {
       /Stage \d+ of \d+/.test(text));
     check('Home exposes Capture and structural Search without making them primary',
       element.findText('los-btn', 'Capture') && element.findText('los-btn', 'Search')
+      && element.findText('los-btn', 'Capture').classes.has('los-btn--warm')
       && !element.findText('los-btn', 'Search').classes.has('los-btn--cta'));
     check('Today contains time-sensitive work and a review entry',
       text.includes('Fixture registration') && text.includes('decision')
@@ -344,6 +406,7 @@ async function main() {
     await plugin.openLibraryHome('sources');
     const routeBeforeSearch = plugin.router.snapshot().current;
     const modal = plugin.openGlobalSearch('Advanced ML');
+    await frame();
     const overlay = plugin.router.snapshot();
     check('opening search preserves the current application route',
       routeBeforeSearch.name === 'library-home' && overlay.current.name === 'library-home');
@@ -355,6 +418,8 @@ async function main() {
       && modal.contentEl.find('los-search-tabs')[0].getAttribute('role') === 'group'
       && modal.contentEl.find('los-search-tab')
         .every((tab) => tab.getAttribute('aria-pressed') !== null));
+    check('keyboard-launched search is ready for the first query keystroke',
+      global.document.activeElement === modal.input);
     check('search returns projected module identities',
       modal.contentEl.allText().includes('Fixture Advanced ML')
       && modal.contentEl.find('los-search-result').length >= 1);
@@ -433,7 +498,7 @@ async function main() {
       && review.includes('Plan Analysis exam prep')
       && review.includes('This unit needs a study map')
       && reviewRoot.find('los-review-count-badge').length === 1
-      && reviewRoot.find('los-review-filters').length === 1);
+      && reviewRoot.find('los-filter-tabs').length === 1);
     await plugin.openDiagnostics();
     const diagnostics = app.workspace.getLeavesOfType(VIEW.diagnostics)[0].view.contentEl.allText();
     check('Diagnostics reports contract, freshness and interpreter',
@@ -450,34 +515,94 @@ async function main() {
     const jobRoot = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl;
     const job = jobRoot.allText();
     check('Job opens an explicit bounded confidential dashboard',
-      job.includes('BIFOLD / DEEM') && job.includes('Confidential, on-demand view')
-      && calls.some((args) => args.join(' ') === 'job-dashboard --confirm-job-access'));
+      job.includes('BIFOLD / DEEM') && job.includes('Job workspace')
+      && calls.some((args) => args.join(' ') === 'job-dashboard --confirm-job-access'), job);
+    /* The confidentiality contract is the gate you pass through to get here, so
+     * it is stated at that gate and not repeated as a banner over every
+     * destination — the same rule the ownership statement follows. */
+    check('the confidentiality notice is not repeated inside the workspace',
+      !job.includes('Confidential, on-demand view'));
     /* Now answers one question. It leads with the workspace's own required-now
-     * scope and the first session not yet recorded as done — not a restatement
+     * scope and the first stage not yet recorded as done — not a restatement
      * of what the other destinations already hold. */
-    check('Now leads with required-now scope and the next unfinished session',
+    check('Now leads with required-now scope and the next unfinished stage',
       job.includes('Current Stratum ticket.')
-      && job.includes('Expressions') && job.includes('Rebuild an expression.')
+      && job.includes('Expressions') && job.includes('Rebuild an expression in both backends')
       && job.includes('0/2 done')
+      && Boolean(jobRoot.findText('los-btn', 'Open this stage'))
+      && job.includes('Trace the join planner') && job.includes('Plan runway')
       && !plugin.store.search('Skrub DataOp DAG').length);
-    /* Drift is a queue, not a badge hunt across every note card. */
+    /* Drift is a queue, not a badge hunt across every note card. The row names
+     * the note and the component it describes — the same card the System map
+     * uses, so a note does not change shape depending on where you meet it. */
     check('Now surfaces drifted notes as a queue',
       job.includes('Needs re-verifying')
-      && job.includes('note-stratum-extract-dataframe-op'));
-    check('Job local navigation is accessible pressed-button state',
-      jobRoot.find('los-job-tab').length === 3
-      && jobRoot.find('los-job-tab').every((tab) => tab.getAttribute('aria-pressed') !== null));
-    jobRoot.findText('los-job-tab', 'System').fire('click');
+      && job.includes('Stratum dispatch map')
+      && job.includes('stratum/optimizer/ir/_dataframe_ops.py')
+      && job.includes('drifting'));
+    /* Job uses the system's tab row, the same one Garden and Review use, rather
+     * than a private copy that drifted into looking like a different control. */
+    check('Job local navigation is the shared tab row with pressed state',
+      jobRoot.find('los-filter-tab').length === 5
+      && jobRoot.find('los-filter-tab').every((tab) => tab.getAttribute('aria-pressed') !== null)
+      && jobRoot.find('los-job-tab').length === 0);
+    jobRoot.findText('los-filter-tab', 'Tasks').fire('click');
+    check('Tasks is a durable Job-only action list with add and edit controls',
+      jobRoot.allText().includes('Trace the join planner')
+      && Boolean(jobRoot.findText('los-btn', 'Add task'))
+      && Boolean(jobRoot.findText('los-btn', 'Edit')));
+    jobRoot.findText('los-filter-tab', 'Plans').fire('click');
+    check('Plans exposes progress and an in-app learning runway',
+      jobRoot.allText().includes('Study plans')
+      && jobRoot.allText().includes('0 of 2 stages complete')
+      && Boolean(jobRoot.findText('los-btn', 'Open plan'))
+      && Boolean(jobRoot.findText('los-btn', 'Edit plan'))
+      && !jobRoot.allText().includes('Open source'));
+    jobRoot.findText('los-btn', 'Open plan').fire('click');
+    check('Open plan renders the plan instead of opening its YAML source',
+      jobRoot.allText().includes('Study plan')
+      && jobRoot.allText().includes('Concept mirror')
+      && jobRoot.allText().includes('Pandas baseline')
+      && jobRoot.allText().includes('Polars mirror')
+      && jobRoot.allText().includes('Done when')
+      && jobRoot.allText().includes('Paired solutions')
+      && jobRoot.find('los-job-stage-row').length === 2
+      && jobRoot.find('los-job-stage-row').filter(
+        (stage) => stage.getAttribute('aria-pressed') === 'true',
+      ).length === 1
+      && !jobRoot.allText().includes('Open source'));
+    check('Job stages use the same structured resource renderer as module stages',
+      jobRoot.find('los-resource-row').length === 3
+      && jobRoot.allText().includes('Polars definitive guide — expressions')
+      && jobRoot.allText().includes('Polars expressions reference')
+      && jobRoot.allText().includes('Do this')
+      && jobRoot.allText().includes('Reference — preserved, not reading for this stage')
+      && jobRoot.findText('los-btn', 'Open'));
+    jobRoot.findText('los-job-stage-row', 'Lazy optimization').fire('click');
+    check('Each plan stage opens independently and persists its location',
+      jobRoot.allText().includes('Stage 02 of 2')
+      && jobRoot.allText().includes('Mental model')
+      && jobRoot.allText().includes('Working practice')
+      && jobRoot.allText().includes('Job relevance')
+      && jobRoot.allText().includes('One annotated explain output')
+      && app.workspace.getLeavesOfType(VIEW.boundary)[0].view.getState().planSession === 2);
+    jobRoot.findText('los-btn', '← All plans').fire('click');
+    check('The plan reader returns to the plan overview without a file round-trip',
+      jobRoot.allText().includes('Study plans')
+      && !jobRoot.allText().includes('Concept mirror'));
+    jobRoot.findText('los-filter-tab', 'Notes').fire('click');
     /* The map is the pipeline. An undocumented layer is the finding, so it is
      * stated rather than omitted — a flat list could never show it. */
-    check('System places notes on the Stratum pipeline and names the empty layers',
-      jobRoot.allText().includes('Capture / frontend')
+    check('Notes combines learner notes with the Stratum verification pipeline',
+      jobRoot.allText().includes('Learning notes')
+      && jobRoot.allText().includes('Join ordering')
+      && jobRoot.allText().includes('Capture / frontend')
       && jobRoot.allText().includes('Logical IR')
       && jobRoot.allText().includes('Skrub DataOp DAG')
       && jobRoot.allText().includes('Stratum dispatch map')
       && jobRoot.allText().includes('1 drifting')
       && jobRoot.allText().includes('No note describes this layer yet.'));
-    jobRoot.findText('los-job-tab', 'Library').fire('click');
+    jobRoot.findText('los-filter-tab', 'Library').fire('click');
     /* Horizon is the axis; track, paper and book are only tags. */
     check('Library orders every kind of material by horizon',
       jobRoot.allText().includes('Use now')
@@ -485,8 +610,16 @@ async function main() {
       && jobRoot.allText().includes('Polars — job-grounded through Stratum')
       && jobRoot.allText().includes('Fixture systems paper')
       && jobRoot.allText().includes('Reusable software book'));
-    check('Library marks canon-owned material as a one-way reference',
-      jobRoot.allText().includes('Job points at it, never the reverse'));
+    /* The one-way reference used to be asserted as a sentence printed under
+     * every book. It is a property of the routing, so it is checked as routing:
+     * a canon book offers the Library and never a Job path. */
+    check('Library routes canon-owned material back to the canon',
+      Boolean(jobRoot.findText('los-btn', 'Open in Library')));
+    jobRoot.findText('los-btn', 'Open plan').fire('click');
+    check('Library opens a track in the same in-app plan reader',
+      jobRoot.allText().includes('Study plan')
+      && jobRoot.allText().includes('Stage 01 of 2')
+      && !jobRoot.allText().includes('Open source'));
     await plugin.openBoundary('program-masters-planning');
     const masters = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl.allText();
     check('Master surface exposes quarantine only', masters.includes('quarantined') && !masters.includes('prospective module menu'));
@@ -501,7 +634,7 @@ async function main() {
     const atlas = app.workspace.getLeavesOfType(VIEW.atlas)[0]?.view;
     check('Domain atlas navigation opens the atlas view, not a Markdown wall',
       Boolean(atlas) && !app.workspace.opened.includes('generated/domain-atlas.md'));
-    atlas.contentEl.findText('los-btn', 'Open the generated atlas file').fire('click'); await tick();
+    atlas.contentEl.findText('los-btn', 'Open generated map file').fire('click'); await tick();
     check('the generated atlas file stays reachable from the view',
       app.workspace.opened.includes('generated/domain-atlas.md'));
     plugin.onunload();
@@ -611,7 +744,7 @@ async function main() {
           'This unit needs a study map before structured study can continue.',
         )
         && review.find('los-review-count-badge').length === 1
-        && review.find('los-review-filters').length === 1,
+        && review.find('los-filter-tabs').length === 1,
     );
 
     review.findText(
@@ -677,13 +810,13 @@ async function main() {
           ),
         )
         && garden.allText().includes('No filing required')
-        && garden.find('los-garden-filters').length === 1,
+        && garden.find('los-filter-tabs').length === 1,
     );
 
     check(
       'Garden uses ordinary pressed buttons and blocks an empty seed',
-      garden.find('los-garden-filters')[0].getAttribute('role') === 'group'
-        && garden.find('los-garden-filters')[0].find('los-filter-tab')
+      garden.find('los-filter-tabs')[0].getAttribute('role') === 'group'
+        && garden.find('los-filter-tabs')[0].find('los-filter-tab')
           .every((control) => control.getAttribute('aria-pressed') !== null)
         && garden.findText('los-btn', 'Add seed').disabled === true,
     );
@@ -826,15 +959,21 @@ async function main() {
     const view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
     let text = view.contentEl.allText();
     /* ADR-005: the atlas exists so a session does not collapse into the active
-     * workspace's domain. Counting the territory is not mapping it — every
-     * domain must list its actual notes and shelves. */
+     * workspace's domain. The first layer is relationships and ways in; the
+     * complete note registry remains available under progressive disclosure. */
     check('every domain with content appears, not just the active one',
-      text.includes('mathematics') && text.includes('programming'));
-    check('notes are enumerated and identified, not merely counted',
-      text.includes('Fixture probability reference') && text.includes('note-fixture-probability'));
-    check('wiring hubs are called out for the domain that has one',
-      view.contentEl.find('los-atlas-tile').length === 2 && text.includes('1 crosswalk')
-      && text.includes('1 note ·') && text.includes('1 shelf ('));
+      text.includes('Mathematics') && text.includes('Programming'));
+    check('the selected domain leads with modules, concepts, and sources',
+      text.includes('Mathematics map') && text.includes('Modules')
+      && text.includes('Concepts') && text.includes('Sources')
+      && text.includes('Fixture Statistics & Analysis')
+      && text.includes('Conditional probability')
+      && text.includes('Fixture probability book'));
+    check('raw record IDs are removed from the learning surface',
+      text.includes('Fixture probability reference') && !text.includes('note-fixture-probability'));
+    check('the full note inventory is present but collapsed by default',
+      view.contentEl.find('los-atlas-inventory').length === 1
+      && !view.contentEl.find('los-atlas-inventory')[0].hasAttribute('open'));
     check('shelves carry their own rule for use',
       text.includes('Fixture math bookshelf') && text.includes('one spine, one supplement'));
     check('quarantined strata are named but not opened',
@@ -842,13 +981,13 @@ async function main() {
     view.contentEl.findText('los-item', 'Fixture probability reference').fire('click'); await tick();
     check('an atlas row opens the note it names',
       app.workspace.opened.includes('knowledge/notes/mathematics/note-fixture-probability.md'));
-    view.contentEl.findText('los-shelf-entry-title', 'Fixture math bookshelf (2)').fire('click'); await tick();
+    view.contentEl.findText('los-shelf-entry-title', 'Fixture math bookshelf').fire('click'); await tick();
     const library = app.workspace.getLeavesOfType(VIEW.library)[0].view;
     check('an atlas shelf opens that shelf in the Library',
       library.contentEl.allText().includes('The spine — read this before anything else on the shelf.'));
     await plugin.openAtlas();
     app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl
-      .findText('los-btn', 'Browse these notes in the Library').fire('click'); await tick();
+      .findText('los-btn', 'Browse domain in Library').fire('click'); await tick();
     text = app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.allText();
     check('the atlas can hand a whole domain to the Library',
       text.includes('Domain: mathematics') && !text.includes('Fixture Python wiring crosswalk'));
@@ -1512,6 +1651,8 @@ async function main() {
       stub.Modal.last?.contentEl?.allText().includes('Advanced ML supplies the evaluation vocabulary')
       && stub.Modal.last?.contentEl?.allText().includes('Provides evaluation vocabulary and systems methods')
       && stub.Modal.last?.contentEl?.findText('los-btn', 'Open target')
+      && stub.Modal.last?.contentEl?.getAttribute('role') === 'dialog'
+      && stub.Modal.last?.contentEl?.getAttribute('aria-modal') === 'true'
       && plugin.router.snapshot().overlay?.kind === 'linked-material-reason');
     stub.Modal.last.close();
     check('closing Why linked restores the project route and clears transient state',
@@ -1549,9 +1690,9 @@ async function main() {
     check('the action bar carries one primary button and one overflow',
       bar.children.filter((child) => child.classes.has('los-btn')).length === 1
       && bar.find('los-overflow').length === 1);
-    check('only one action on the screen is a filled primary',
-      element.find('los-btn--cta').length === 1
-      && bar.findText('los-btn', 'Mark complete').classes.has('los-btn--cta'));
+    check('only one action on the screen is a filled completion action',
+      element.find('los-btn--success').length === 1
+      && bar.findText('los-btn', 'Mark complete').classes.has('los-btn--success'));
     check('secondary operations are discoverable in one menu',
       ['Pause unit', 'Skip stage', 'Report prerequisite gap', 'Prepare shelving', 'End learning session']
         .every((label) => bar.find('los-overflow')[0].allText().includes(label)));
@@ -1584,12 +1725,15 @@ async function main() {
       && !calls.some((args) => args[0] === 'stage-progress'));
 
     const noteModal = plugin.openUnitNote(plugin.store.get('unit-fixture-sad-l04'), plugin.store.mapForUnit('unit-fixture-sad-l04'));
+    await frame();
     check('the note modal references completed stages not already recorded',
       noteModal.referencedStageIds.length === 0 && noteModal.contentEl.allText().includes('unit-level observation'));
     check('the note modal is a named dialog and blocks an empty save',
       noteModal.contentEl.getAttribute('role') === 'dialog'
       && noteModal.contentEl.getAttribute('aria-modal') === 'true'
       && noteModal.contentEl.findText('los-btn', 'Save note').disabled === true);
+    check('the learning-session note opens ready for writing',
+      global.document.activeElement === noteModal.editor);
     noteModal.editor.value = 'Updated fixture session synthesis.';
     noteModal.editor.fire('input');
     check('the note save enables when required text is present',
@@ -1620,7 +1764,10 @@ async function main() {
     check('gap action creates a scoped detour',
       detour?.stage_id === 'stage-fixture-conditioning' && detour?.classification === 'required-now');
     await plugin.reviewSessionEnd();
-    check('session closure first requests an exact change review', calls.some((args) => args.length === 1 && args[0] === 'session-end'));
+    check('session closure first requests an exact change review',
+      calls.some((args) => args.length === 1 && args[0] === 'session-end')
+      && stub.Modal.last?.contentEl?.getAttribute('role') === 'dialog'
+      && stub.Modal.last?.contentEl?.getAttribute('aria-labelledby') === 'los-session-end-heading');
     plugin.onunload();
   }
 
@@ -1708,6 +1855,8 @@ async function main() {
     const choose = view.contentEl.findText('los-btn', 'Choose');
     check('material choice is an explicit pressed-state control',
       choose !== null && choose.getAttribute('aria-pressed') === 'false'
+      && choose.classes.has('los-btn--choice')
+      && view.contentEl.findText('los-btn', 'Open')?.classes.has('los-btn--info')
       && view.contentEl.findText('los-btn', 'Remove choice')?.getAttribute('aria-pressed') === 'true');
     choose.fire('click'); await tick(); await tick();
     const selection = calls.envelope('unit.source-selection.set');
@@ -1834,10 +1983,17 @@ async function main() {
         && revisedRows[0].children[0].checked === true,
     );
 
-    view.contentEl.findText(
+    const approveButton = view.contentEl.findText(
       'los-btn',
       'Approve selected changes',
-    ).fire('click');
+    );
+
+    check(
+      'approval uses the guarded completion treatment',
+      approveButton.classes.has('los-btn--success'),
+    );
+
+    approveButton.fire('click');
 
     await tick();
     await tick();
@@ -2186,10 +2342,9 @@ async function main() {
     const unsafeJavascript = plugin.openResource({ url: 'javascript:alert(1)' });
     const unsafeFile = plugin.openResource({ url: 'file:///etc/passwd' });
 
-    check('safe HTTPS resources retain the existing webviewer behavior',
-      safe === webState
-      && webState?.type === 'webviewer'
-      && webState?.state?.url === 'https://example.org/material.pdf');
+    check('safe HTTPS resources open in the real browser, not an embedded view',
+      safe instanceof Promise
+      && webState === null);
     check('unsafe URL schemes remain refused by the material consumer patch',
       unsafeJavascript === false && unsafeFile === false
       && Notice.log.filter((line) => line.includes('Refused an unsupported link')).length === 2);
@@ -2212,6 +2367,26 @@ async function main() {
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
     check('a resource containing only material_path receives an Open button',
       Boolean(view.contentEl.findText('los-btn', 'Open')));
+
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    const opened = [];
+    plugin.openResource = (record) => {
+      opened.push(record.id);
+      return true;
+    };
+
+    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const fallback = view.contentEl.findText('los-btn', 'Open source');
+    check('a locator-only resource can fall back to its openable source',
+      Boolean(fallback));
+    fallback?.fire('click');
+    check('the source fallback uses the same safe resource opener',
+      opened.includes('source-fixture-islp'),
+      `opened=${JSON.stringify(opened)}`);
 
     plugin.onunload();
   }
@@ -2339,7 +2514,7 @@ async function main() {
       && /this\.settings\.pythonPath/.test(source)
       && /["']python3["']/.test(source));
     check('every mutation is serialized through one queue',
-      source.includes('enqueue(task)') && !/this\.busy\s*=\s*true/.test(source));
+      /enqueue\(task\d*\)/.test(source) && !/this\.busy\s*=\s*true/.test(source));
     check('external links pass a protocol allowlist',
       source.includes('SAFE_URL_PROTOCOLS') && source.includes('safeWebUrl'));
     check('the repeated ownership footer no longer exists as a component',
@@ -2425,6 +2600,7 @@ async function main() {
     check('LearningOS modals size their host and never overflow their content box',
       css.includes('.modal.los-modal--unit-note')
       && css.includes('.modal.los-modal--global-search')
+      && css.includes('.modal.los-modal--job-editor')
       && /\.los-unit-note-modal\s*\{[^}]*width:\s*100%/.test(css)
       && /\.los-global-search\s*\{[^}]*width:\s*100%/.test(css)
       && css.includes('max-width: calc(100vw - 32px)')
@@ -2455,6 +2631,11 @@ async function main() {
      * assertions track the token rather than being deleted. */
     check('the primary button is filled, not an outline',
       /\.los-btn--cta\s*\{[^}]*background: var\(--los-accent\)/.test(css));
+    check('semantic button colours remain token-driven and purpose-specific',
+      /\.los-btn--success\s*\{[^}]*background: var\(--los-success\)/.test(css)
+      && /\.los-btn--info\s*\{[^}]*background: var\(--los-info-wash\)/.test(css)
+      && /\.los-btn--warm\s*\{[^}]*background: var\(--los-warning-wash\)/.test(css)
+      && /\.los-btn--choice\s*\{[^}]*background: var\(--los-accent-wash\)/.test(css));
     check('the active navigation destination is visually obvious',
       /\.los-app-nav-item\.is-active\s*\{[^}]*inset 3px 0 0 var\(--los-accent\)/.test(css));
     /* The flag is optional: once the rule is scoped under .los-root it

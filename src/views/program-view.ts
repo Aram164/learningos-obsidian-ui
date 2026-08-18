@@ -11,9 +11,10 @@ import {
   unitCard,
 } from '../components';
 import { LEARN_AREAS, VIEW_PROGRAM } from '../constants';
-import type { ProjectionRecord } from '../contracts/manifest-v4';
+import type { ProjectionRecord } from '../contracts/manifest-v5';
 import type { LearningOSUI } from '../main';
 import { errorMessage, isRecord } from '../projection/readers';
+import { enableButtonGroupKeyboardNavigation } from '../accessibility/button-group';
 
 interface ProgramViewState {
   programId?: string | null;
@@ -90,7 +91,22 @@ export class ProgramView extends ItemView {
   }
 
   getDisplayText() {
-    return 'LearningOS · Area';
+    if (this.programId === 'inbox') {
+      return 'LearningOS · Capture';
+    }
+
+    if (this.programId === 'queue-needs-map') {
+      return 'LearningOS · Planning';
+    }
+
+    const program = this.programId
+      ? this.plugin.store.get(this.programId)
+      : null;
+    const title = typeof program?.title === 'string'
+      ? program.title
+      : 'Learn';
+
+    return `LearningOS · ${title}`;
   }
 
   async setState(
@@ -101,6 +117,7 @@ export class ProgramView extends ItemView {
     }
 
     this.render();
+    this.leaf.updateHeader?.();
   }
 
   getState(): ProgramViewState {
@@ -117,6 +134,7 @@ export class ProgramView extends ItemView {
     }
 
     this.render();
+    this.leaf.updateHeader?.();
   }
 
   render(): void {
@@ -177,9 +195,11 @@ export class ProgramView extends ItemView {
     const tabs = root.createDiv({
       cls: 'los-tabs los-program-tabs',
       attr: {
-        role: 'tablist',
+        role: 'group',
+        'aria-label': 'Learning areas',
       },
     });
+    enableButtonGroupKeyboardNavigation(tabs);
 
     for (const [areaId, title] of LEARN_AREAS) {
       const active = areaId === program.id;
@@ -191,8 +211,7 @@ export class ProgramView extends ItemView {
       );
 
       tab.setAttrs({
-        role: 'tab',
-        'aria-selected': String(active),
+        'aria-pressed': String(active),
       });
     }
 
@@ -578,7 +597,7 @@ export class ProgramView extends ItemView {
       },
     });
 
-    button(
+    const fileCaptureButton = button(
       filePanel,
       'Capture selected file',
       () => {
@@ -604,6 +623,21 @@ export class ProgramView extends ItemView {
       },
       'quiet',
     );
+
+    const syncFileCapture = (): void => {
+      fileCaptureButton.disabled =
+        !picker.files?.length;
+      fileCaptureButton.setAttribute(
+        'aria-disabled',
+        String(fileCaptureButton.disabled),
+      );
+    };
+
+    picker.addEventListener(
+      'change',
+      syncFileCapture,
+    );
+    syncFileCapture();
   }
 
   async capture(

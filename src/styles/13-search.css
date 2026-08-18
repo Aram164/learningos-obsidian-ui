@@ -15,12 +15,21 @@
 
 /* Global structural search. It is an overlay over the current product route,
  * never a replacement source of truth and never a file index. */
+.modal.los-modal--global-search,
+.modal:has(.los-global-search) {
+  box-sizing: border-box;
+  width: min(860px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+}
 .los-global-search {
-  width: min(860px, 82vw);
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   min-height: 0;
   max-height: min(760px, 82vh);
   padding: var(--los-4);
-  overflow: hidden;
+  overflow-x: hidden;
 }
 .los-search-header {
   display: flex;
@@ -45,7 +54,7 @@
   color: var(--los-ink);
   font-weight: 650;
 }
-.los-search-results { max-height: min(520px, 58vh); overflow-y: auto; }
+.los-search-results { min-width: 0; max-height: min(520px, 58vh); overflow-y: auto; }
 .los-search-summary {
   display: flex;
   justify-content: space-between;
@@ -78,7 +87,7 @@
 @media (max-width: 720px) {
   .los-home-header { padding-right: 0; }
   .los-home-header-actions { position: static; margin-top: var(--los-3); }
-  .los-global-search { width: min(94vw, 860px); max-height: 88vh; padding: var(--los-3); }
+  .los-global-search { max-height: 88vh; padding: var(--los-3); }
 }
 
 @media (max-width: 480px) {
@@ -87,4 +96,3 @@
   .los-search-header { align-items: center; }
   .los-root .los-search-header h2 { font-size: 17px; }
 }
-

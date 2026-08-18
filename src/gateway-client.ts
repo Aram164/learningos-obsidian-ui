@@ -30,6 +30,7 @@ function nextRequestId(capability: string): string {
 export class GatewayClient {
   private readonly plugin: GatewayHost;
   private chain: Promise<void>;
+  private jobSnapshotId: string | null = null;
   pending: number;
   constructor(plugin: GatewayHost) {
     this.plugin = plugin;
@@ -117,11 +118,18 @@ export class GatewayClient {
   capability(
     name: string,
     payload: Record<string, unknown>,
+    options: {
+      expectedSnapshot?: string;
+      expectedRevisions?: Readonly<Record<string, number>>;
+    } = {},
   ): Promise<GatewayResultV1> {
     const envelope = {
       request_id: nextRequestId(name),
       capability: name,
-      expected_snapshot: this.snapshotId(),
+      expected_snapshot: options.expectedSnapshot || this.snapshotId(),
+      ...(options.expectedRevisions && Object.keys(options.expectedRevisions).length
+        ? { expected_revisions: options.expectedRevisions }
+        : {}),
       payload,
     };
     return this.call(['capability', name, '--payload-file', '-'],
@@ -279,8 +287,30 @@ export class GatewayClient {
    * confirmation flag is the learner's deliberate navigation gesture; the
    * core still owns path bounding and returns no durable cache.
    */
-  jobDashboard() {
-    return this.call(['job-dashboard', '--confirm-job-access']);
+  async jobDashboard() {
+    const result = await this.call(['job-dashboard', '--confirm-job-access']);
+    const access = result.access && typeof result.access === 'object'
+      ? result.access as Record<string, unknown>
+      : {};
+    this.jobSnapshotId = typeof access.snapshot_id === 'string'
+      && access.snapshot_id.startsWith('sha256:')
+      ? access.snapshot_id
+      : null;
+    return result;
+  }
+
+  private jobCapability(
+    name: string,
+    payload: Record<string, unknown>,
+    expectedRevisions: Readonly<Record<string, number>> = {},
+  ) {
+    if (!this.jobSnapshotId) {
+      throw new Error('Reload the confidential Job workspace before saving; nothing was written.');
+    }
+    return this.capability(name, payload, {
+      expectedSnapshot: this.jobSnapshotId,
+      expectedRevisions,
+    });
   }
 
   /**
@@ -295,19 +325,52 @@ export class GatewayClient {
     if (options.track) payload.track = options.track;
     if (options.session !== undefined) payload.session = options.session;
     if (options.minutes !== undefined) payload.minutes = options.minutes;
-    return this.capability('job.session.log', payload);
+    return this.jobCapability('job.session.log', payload);
   }
 
   stampJobNote(noteId: string, commit: string, status = 'current') {
-    return this.capability('job.note.stamp', {
+    return this.jobCapability('job.note.stamp', {
       note: noteId, commit, status, confirm_job_access: true,
     });
   }
 
-  recordJobTrackSession(trackId: string, session: number) {
-    return this.capability('job.track.progress', {
-      track: trackId, session, confirm_job_access: true,
-    });
+  saveJobNote(noteId: string, title: string, body: string, revision?: number) {
+    return this.jobCapability('job.note.save', {
+      note: noteId || title,
+      title,
+      body,
+      folder: 'learning',
+      approve: true,
+      confirm_job_access: true,
+    }, noteId && revision !== undefined ? { [`job-note:${noteId}`]: revision } : {});
+  }
+
+  saveJobPlan(plan: Record<string, unknown>, revision?: number) {
+    const id = typeof plan.id === 'string' ? plan.id : '';
+    return this.jobCapability('job.plan.save', {
+      plan,
+      approve: true,
+      confirm_job_access: true,
+    }, id && revision !== undefined ? { [`job-plan:${id}`]: revision } : {});
+  }
+
+  saveJobTask(task: Record<string, unknown>, revision?: number) {
+    const id = typeof task.id === 'string' ? task.id : '';
+    return this.jobCapability('job.task.save', {
+      task,
+      confirm_job_access: true,
+    }, id && revision !== undefined ? { [`job-task:${id}`]: revision } : {});
+  }
+
+  recordJobTrackSession(
+    trackId: string,
+    session: number,
+    state: 'done' | 'open',
+    revision: number,
+  ) {
+    return this.jobCapability('job.track.progress', {
+      track: trackId, session, state, confirm_job_access: true,
+    }, { [`job-track:${trackId}`]: revision });
   }
 }
 

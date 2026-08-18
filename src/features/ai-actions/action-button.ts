@@ -1,6 +1,6 @@
 import { Notice } from 'obsidian';
 import { button } from '../../components';
-import type { ProjectionRecord } from '../../contracts/manifest-v4';
+import type { ProjectionRecord } from '../../contracts/manifest-v5';
 import type { LearningOSUI } from '../../main';
 import { errorMessage } from '../../projection/readers';
 
@@ -79,7 +79,7 @@ export function renderGardenShelveAction(
       launch.removeAttribute?.('disabled');
       launch.setText('Refine with AI');
     }
-  }, 'quiet');
+  }, 'warm');
   launch.addClass('los-ai-action-button');
   if (!available.length) launch.setAttr('disabled', 'disabled');
   return wrap;

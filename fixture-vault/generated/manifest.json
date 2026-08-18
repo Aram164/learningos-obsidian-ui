@@ -1,6 +1,6 @@
 {
   "_generated": {
-    "contract_version": 4,
+    "contract_version": 5,
     "generated_at": "2099-04-01",
     "generator": "synthetic-fixture-v4",
     "snapshot_id": "sha256:fixture-v2-snapshot",
@@ -615,8 +615,8 @@
   ],
   "quarantine_boundaries": [
     {
-      "boundary_action": "Request explicit Job access",
-      "description": "Hard confidentiality boundary. Job content never enters LearningOS.",
+      "boundary_action": "Open confidential Job workspace",
+      "description": "Hard confidentiality boundary. Job content stays outside the normal manifest, search, academic recommendations, and AI context; the deliberate Job view may load its bounded read-only dashboard on demand.",
       "id": "program-job-boundary",
       "kind": "boundary",
       "status": "boundary-only",

@@ -1,7 +1,7 @@
 /* Compact application navigator */
-.los-app-nav { padding: var(--los-2); }
+.los-app-nav { padding: var(--los-2); background: var(--los-sidebar) !important; }
 .los-nav-brand { display: flex; align-items: center; gap: var(--los-2); padding: var(--los-2); margin-bottom: var(--los-2); }
-.los-brand-mark { display: grid; width: 28px; height: 28px; place-items: center; border-radius: var(--los-r-sm); background: var(--los-accent); color: var(--los-paper); }
+.los-brand-mark { display: grid; width: 28px; height: 28px; place-items: center; border-radius: var(--los-r-sm); background: var(--los-accent); color: var(--los-on-accent); }
 .los-nav-label { margin: var(--los-4) var(--los-2) var(--los-1); }
 .los-nav-primary { display: flex; flex-direction: column; }
 /* No border on an ordinary navigation row; the active destination is the only
@@ -29,4 +29,3 @@
 .los-nav-more { margin-top: var(--los-4); padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
 .los-nav-more-trigger { min-height: 28px; padding: var(--los-1) var(--los-2); color: var(--los-ink-soft); cursor: pointer; font-size: 12px; }
 .los-nav-secondary { display: flex; flex-direction: column; margin-top: var(--los-1); }
-

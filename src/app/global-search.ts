@@ -1,8 +1,10 @@
 import { Modal, type App } from 'obsidian';
 import { button, empty } from '../components';
-import type { ProjectionRecord } from '../contracts/manifest-v4';
+import type { ProjectionRecord } from '../contracts/manifest-v5';
 import type { ManifestStore } from '../manifest-store';
 import type { ApplicationRouter } from './router';
+import { makeModalAccessible } from '../accessibility/modal';
+import { enableButtonGroupKeyboardNavigation } from '../accessibility/button-group';
 
 interface SearchCandidate {
   id: string;
@@ -65,6 +67,7 @@ export class GlobalSearchModal extends Modal {
   private tabButtons: HTMLElement[] = [];
   private tabs!: HTMLDivElement;
   private results!: HTMLDivElement;
+  private restoreAccessibility: (() => void) | null = null;
 
   constructor(
     app: App,
@@ -86,7 +89,16 @@ export class GlobalSearchModal extends Modal {
     const header = root.createDiv({ cls: 'los-search-header' });
     const copy = header.createDiv();
     copy.createDiv({ cls: 'los-kicker', text: 'Search LearningOS' });
-    copy.createEl('h2', { text: 'Find a module, unit, source, or project' });
+    copy.createEl('h2', {
+      text: 'Find a module, unit, source, or project',
+      attr: { id: 'los-global-search-heading' },
+    });
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: 'los-modal--global-search',
+      initialFocus: () => this.input ?? null,
+      labelledBy: 'los-global-search-heading',
+    });
     button(header, 'Close', () => this.close(), 'quiet').setAttribute('aria-label', 'Close global search');
 
     this.input = root.createEl('input', {
@@ -105,7 +117,8 @@ export class GlobalSearchModal extends Modal {
       this.renderResults();
     });
 
-    const tabs = root.createDiv({ cls: 'los-search-tabs', attr: { role: 'tablist', 'aria-label': 'Search result type' } });
+    const tabs = root.createDiv({ cls: 'los-search-tabs', attr: { role: 'group', 'aria-label': 'Search result type' } });
+    enableButtonGroupKeyboardNavigation(tabs);
     this.tabButtons = [];
     for (const [id, label] of [
       ['all', 'All'],
@@ -120,7 +133,7 @@ export class GlobalSearchModal extends Modal {
         this.renderResults();
       }, 'tertiary');
       tab.addClass('los-search-tab');
-      tab.setAttrs({ role: 'tab', 'data-filter': id, 'aria-selected': String(this.filter === id) });
+      tab.setAttrs({ 'data-filter': id, 'aria-pressed': String(this.filter === id) });
       this.tabButtons.push(tab);
     }
 
@@ -128,11 +141,12 @@ export class GlobalSearchModal extends Modal {
     this.results = root.createDiv({ cls: 'los-search-results', attr: { 'aria-live': 'polite' } });
     this.renderTabs();
     this.renderResults();
-    this.input.focus();
   }
 
   onClose() {
     this.plugin.router.clearOverlay();
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
     this.contentEl.empty();
   }
 
@@ -140,7 +154,7 @@ export class GlobalSearchModal extends Modal {
     for (const tab of this.tabButtons || []) {
       const active = tab.getAttribute('data-filter') === this.filter;
       tab.toggleClass('is-active', active);
-      tab.setAttribute('aria-selected', String(active));
+      tab.setAttribute('aria-pressed', String(active));
     }
   }
 

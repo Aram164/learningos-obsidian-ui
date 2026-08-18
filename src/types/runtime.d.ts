@@ -245,6 +245,8 @@ declare module 'obsidian' {
       pinned: boolean,
     ): void;
 
+    updateHeader?(): void;
+
     openFile(
       file: TAbstractFile,
     ): Promise<void> | void;

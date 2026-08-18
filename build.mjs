@@ -159,7 +159,7 @@ const sources = [
 ];
 const sha256 = (value) => `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 const pluginManifest = JSON.parse(fs.readFileSync(path.join(pluginDir, 'manifest.json'), 'utf8'));
-const contract = JSON.parse(fs.readFileSync(path.join(root, 'contracts', 'manifest-v4.lock.json'), 'utf8'));
+const contract = JSON.parse(fs.readFileSync(path.join(root, 'contracts', 'manifest-v5.lock.json'), 'utf8'));
 let sourceRevision = process.env.LEARNINGOS_UI_SOURCE_REVISION || process.env.GITHUB_SHA || '';
 if (!sourceRevision) {
   try {
@@ -173,7 +173,7 @@ const sourceMaterial = [
   fs.readFileSync(path.join(root, 'build-styles.mjs'), 'utf8'),
   fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
   fs.readFileSync(path.join(root, 'tsconfig.json'), 'utf8'),
-  fs.readFileSync(path.join(root, 'contracts', 'manifest-v4.lock.json'), 'utf8'),
+  fs.readFileSync(path.join(root, 'contracts', 'manifest-v5.lock.json'), 'utf8'),
   ...sources.flatMap(({ relative, source }) => [relative, source]),
 ].join('\0');
 /*

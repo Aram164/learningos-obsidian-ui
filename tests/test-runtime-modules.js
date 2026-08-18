@@ -12,7 +12,12 @@ const { ManifestStore } = load('src/manifest-store.ts');
 const { GatewayClient } = load('src/gateway-client.ts');
 const { isProjectionConflict, GatewayError } = load('src/contracts/gateway-v1.ts');
 const { ApplicationRouter } = load('src/app/router.ts');
+const { asJobDashboard } = load('src/features/job/model.ts');
+const { enableButtonGroupKeyboardNavigation } = load('src/accessibility/button-group.ts');
 const constants = load('src/constants.ts');
+
+const noticeLog = [];
+const externalLog = [];
 
 /*
  * Host mocks for the modules that import 'obsidian' / 'electron'.
@@ -27,12 +32,23 @@ const constants = load('src/constants.ts');
 const hostMocks = {
   obsidian: {
     Modal: class Modal { constructor(app) { this.app = app; } },
+    Notice: class Notice { constructor(message) { noticeLog.push(String(message)); } },
     setIcon: () => undefined,
   },
-  electron: { webUtils: { getPathForFile: () => '' } },
+  electron: {
+    shell: {
+      openExternal: async (url) => { externalLog.push(String(url)); },
+      openPath: async () => '',
+    },
+    webUtils: { getPathForFile: () => '' },
+  },
 };
 const loadWithHost = createSourceModuleLoader(ROOT, hostMocks);
 const { GlobalSearchModal } = loadWithHost('src/app/global-search.ts');
+const {
+  ResourceOpener,
+  visualStudioCodeUrl,
+} = loadWithHost('src/infrastructure/resource-opener.ts');
 
 let failures = 0;
 let checks = 0;
@@ -72,21 +88,21 @@ function routerPlugin(settings = {}) {
 (async () => {
   console.log('\nDirect TypeScript module tests');
 
-  await test('ManifestStore loads a contract-valid v4 fixture', async () => {
+  await test('ManifestStore loads a contract-valid v5 fixture', async () => {
     const store = new ManifestStore(manifestApp());
     assert.equal(await store.load(), true);
     assert.equal(store.ready, true);
-    assert.equal(store.contractVersion, 4);
+    assert.equal(store.contractVersion, 5);
     assert.ok(store.records.length > 0);
   });
 
   await test('ManifestStore rejects an old contract before exposing data', async () => {
     const store = new ManifestStore(manifestApp((text) =>
-      text.replace('"contract_version": 4', '"contract_version": 1')));
+      text.replace('"contract_version": 5', '"contract_version": 1')));
     assert.equal(await store.load(), false);
     assert.equal(store.ready, false);
     assert.equal(store.data, null);
-    assert.match(store.error, /requires contract 4/);
+    assert.match(store.error, /requires contract 5/);
   });
 
   await test('ManifestStore assertion rejects a missing required array', async () => {
@@ -105,6 +121,33 @@ function routerPlugin(settings = {}) {
     assert.deepEqual(store.modules(), []);
     assert.deepEqual(store.projects(), []);
     assert.equal(store.get('missing'), null);
+  });
+
+  await test('button groups gain arrow, Home, and End navigation without changing selection', async () => {
+    let listener = null;
+    const controls = [0, 1, 2].map((index) => ({
+      disabled: index === 1,
+      focused: false,
+      getAttribute: () => null,
+      focus() { this.focused = true; },
+    }));
+    const group = {
+      addEventListener: (name, callback) => { if (name === 'keydown') listener = callback; },
+      querySelectorAll: () => controls,
+    };
+    enableButtonGroupKeyboardNavigation(group, 'horizontal');
+    let prevented = false;
+    listener({
+      key: 'ArrowRight', target: controls[0],
+      preventDefault: () => { prevented = true; },
+    });
+    assert.equal(prevented, true);
+    assert.equal(controls[2].focused, true, 'disabled controls are skipped');
+    controls.forEach((control) => { control.focused = false; });
+    listener({ key: 'End', target: controls[0], preventDefault() {} });
+    assert.equal(controls[2].focused, true);
+    assert.ok(controls.every((control) => !('pressed' in control)),
+      'focus movement must not invent selection state');
   });
 
   await test('GatewayClient refuses empty and unreadable write confirmations', async () => {
@@ -140,6 +183,113 @@ function routerPlugin(settings = {}) {
     assert.deepEqual(envelope.payload,
       { unit_id: 'unit-a', stage_id: 'stage-a', text: 'text', replace: true });
     assert.ok(envelope.request_id, 'every write is identifiable');
+  });
+
+  await test('Job dashboard read uses the explicit access gesture without a snapshot write guard', async () => {
+    let received = null;
+    const gateway = new GatewayClient({
+      runLos: (args, callback) => {
+        received = args;
+        callback(null, JSON.stringify({
+          ok: true,
+          contract: 'job-dashboard-v2',
+          access: { snapshot_id: 'sha256:job-snapshot' },
+        }), '');
+      },
+      store: { snapshotId: null },
+    });
+    await gateway.jobDashboard();
+    assert.deepEqual(received, ['job-dashboard', '--confirm-job-access']);
+  });
+
+  await test('Job dashboard parser accepts bounded relative paths and rejects traversal', async () => {
+    const base = {
+      ok: true,
+      contract: 'job-dashboard-v2',
+      dashboard: {
+        title: 'Job', subtitle: 'Bounded', counts: {},
+        workspace: {
+          id: 'workspace-job-deem', title: 'Job', status: 'active', standing: true,
+          objective: 'Objective', current_scope: [], next_action: 'Next', open_questions: [],
+          path: 'workspace-job-deem/CONTEXT.md',
+        },
+        notes: { learning: [], skrub: [], stratum: [], health: {}, layers: [] },
+        learning_tracks: [], tasks: [], papers: [], canonical_shelf: [],
+      },
+    };
+    assert.equal(asJobDashboard(base)?.workspace.path, 'workspace-job-deem/CONTEXT.md');
+    const hostile = JSON.parse(JSON.stringify(base));
+    hostile.dashboard.workspace.path = '../Job/secret.md';
+    assert.equal(asJobDashboard(hostile), null);
+  });
+
+  await test('Job files require a valid ephemeral grant and ordinary openers stay quarantined', async () => {
+    noticeLog.length = 0;
+    const opener = new ResourceOpener({});
+    assert.equal(await opener.openJobPath('notes/stratum/dispatch.md'), false);
+    assert.match(noticeLog.at(-1), /Open the confidential Job workspace/);
+
+    assert.equal(opener.grantJobAccess({ scope: 'job-dashboard' }), false,
+      'a partial access envelope must not unlock files');
+    assert.equal(opener.grantJobAccess({
+      scope: 'job-dashboard',
+      read_only: true,
+      ephemeral: true,
+      excluded_from_manifest: true,
+      excluded_from_search: true,
+      excluded_from_ai: true,
+      writes_through_gateway: true,
+      allowed_roots: ['notes', 'plans', 'workspace-job-deem'],
+      snapshot_id: 'sha256:job-snapshot',
+    }), true);
+    assert.equal(await opener.openJobPath('../repository/secret.md'), false);
+    assert.match(noticeLog.at(-1), /outside its read-only allowlist/);
+
+    assert.equal(await opener.openExternalPath('/tmp/Job/secret.md'), false,
+      'the ordinary external opener must remain closed after the special grant');
+    assert.match(noticeLog.at(-1), /quarantined/);
+
+    assert.equal(await opener.openJobUrl('javascript:alert(1)'), false);
+    assert.match(noticeLog.at(-1), /unsupported Job link/);
+    assert.equal(await opener.openJobUrl('https://docs.pola.rs/user-guide/'), true);
+    assert.equal(externalLog.at(-1), 'https://docs.pola.rs/user-guide/');
+    assert.equal(await opener.openJobLearningPath('Job/secret.pdf'), false);
+    assert.match(noticeLog.at(-1), /outside LearningOS/);
+  });
+
+  await test('VS Code file links preserve the exact local target', async () => {
+    assert.equal(
+      visualStudioCodeUrl('/Users/Aram A/notes/topic #1.md'),
+      'vscode://file/Users/Aram%20A/notes/topic%20%231.md',
+    );
+  });
+
+  await test('Job writes carry the Job snapshot and artifact revision, never the canon snapshot', async () => {
+    const calls = [];
+    const gateway = new GatewayClient({
+      runLos: (args, callback, stdin) => {
+        calls.push({ args, stdin });
+        if (args[0] === 'job-dashboard') {
+          callback(null, JSON.stringify({
+            ok: true,
+            contract: 'job-dashboard-v2',
+            access: { snapshot_id: 'sha256:job-snapshot' },
+          }), '');
+          return;
+        }
+        callback(null, '{"ok":true}', '');
+      },
+      store: { snapshotId: 'sha256:canon-snapshot' },
+    });
+    await gateway.jobDashboard();
+    await gateway.saveJobTask({
+      id: 'job-task-trace', title: 'Trace planner', horizon: 'now', status: 'done',
+    }, 4);
+    const envelope = JSON.parse(calls[1].stdin);
+    assert.equal(envelope.capability, 'job.task.save');
+    assert.equal(envelope.expected_snapshot, 'sha256:job-snapshot');
+    assert.deepEqual(envelope.expected_revisions, { 'job-task:job-task-trace': 4 });
+    assert.notEqual(envelope.expected_snapshot, 'sha256:canon-snapshot');
   });
 
   /*
@@ -197,6 +347,7 @@ function routerPlugin(settings = {}) {
     };
     const gateway = new GatewayClient(plugin);
     await gateway.progress('u', 's', 'complete');
+    await gateway.sourceSelection('u', 'src', 'Chapter 2', 'Worked derivation', true);
     await gateway.feedback('u', 's', 'src', 'helpful');
     await gateway.detour('u', 's', 'a gap');
     await gateway.resolveDetour('u', 'd', 'done');
@@ -208,7 +359,7 @@ function routerPlugin(settings = {}) {
     await gateway.saveUnitNote('u', { text: 'body', stageIds: ['s'] });
 
     assert.deepEqual(calls.map((c) => c.envelope.capability), [
-      'stage.progress.update', 'source.feedback.record', 'detour.create',
+      'stage.progress.update', 'unit.source-selection.set', 'source.feedback.record', 'detour.create',
       'detour.resolve', 'stage.attachment.add', 'capture.create',
       'capture.create', 'review.prepare', 'review.apply', 'unit.note.append',
     ]);

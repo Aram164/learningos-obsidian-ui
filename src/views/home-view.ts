@@ -15,7 +15,7 @@ import {
 import { VIEW_HOME } from '../constants';
 import type {
   ProjectionRecord,
-} from '../contracts/manifest-v4';
+} from '../contracts/manifest-v5';
 import type {
   LearningOSUI,
 } from '../main';
@@ -153,7 +153,7 @@ export class HomeView extends ItemView {
       actions,
       'Capture',
       () => this.plugin.openCapture(),
-      'quiet',
+      'warm',
     );
 
     this.renderContinue(root);

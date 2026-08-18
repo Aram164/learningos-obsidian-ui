@@ -2,6 +2,7 @@ import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import { button, empty, icon } from '../components';
 import { VIEW_NAV } from '../constants';
 import type { LearningOSUI } from '../main';
+import { enableButtonGroupKeyboardNavigation } from '../accessibility/button-group';
 
 interface NavSettings {
   navMoreOpen: boolean;
@@ -81,6 +82,7 @@ export class NavView extends ItemView {
     search.addEventListener('click', () => this.plugin.openGlobalSearch());
 
     const primary = root.createDiv({ cls: 'los-nav-primary' });
+    enableButtonGroupKeyboardNavigation(primary, 'vertical');
     this.nav(primary, 'home', 'Home', 'home', () => this.plugin.openHome());
     this.nav(primary, 'layout-grid', 'Modules', 'modules', () => this.plugin.openModules());
     this.nav(primary, 'graduation-cap', 'Learn', 'learn', () => this.plugin.openLearn());
@@ -97,11 +99,12 @@ export class NavView extends ItemView {
       this.plugin.scheduleDraftSave();
     });
     const secondary = more.createDiv({ cls: 'los-nav-secondary' });
+    enableButtonGroupKeyboardNavigation(secondary, 'vertical');
     this.nav(secondary, 'plus', 'Capture', 'capture', () => this.plugin.openCapture());
     this.nav(secondary, 'map', 'Domain atlas', 'atlas', () => this.plugin.openAtlas());
     this.nav(secondary, 'shield', 'Master’s boundary', 'masters',
       () => this.plugin.openBoundary('program-masters-planning'));
-    this.nav(secondary, 'shield-alert', 'Job boundary', 'job',
+    this.nav(secondary, 'briefcase-business', 'Job', 'job',
       () => this.plugin.openBoundary('program-job-boundary'));
     this.nav(secondary, 'activity', 'Diagnostics', 'diagnostics', () => this.plugin.openDiagnostics());
     this.nav(secondary, 'refresh-cw', 'Rebuild projection', 'rebuild', () => this.plugin.generate());

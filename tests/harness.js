@@ -63,7 +63,10 @@ class El {
     return true;
   }
   remove() { return this; }
-  focus() { return this; }
+  focus() {
+    if (global.document) global.document.activeElement = this;
+    return this;
+  }
   addEventListener(ev, fn) { (this.listeners[ev] ||= []).push(fn); }
   fire(ev, extra) {
     const e = Object.assign({ preventDefault() {}, stopPropagation() {} }, extra);
@@ -189,6 +192,10 @@ const stub = {
   Plugin, PluginSettingTab, ItemView, Modal, SuggestModal, Notice, Setting, setIcon,
 };
 const electronStub = {
+  shell: {
+    openExternal: async () => undefined,
+    openPath: async () => '',
+  },
   webUtils: { getPathForFile(file) { return file?.__path || ''; } },
 };
 
@@ -204,6 +211,8 @@ Module._load = function patched(request, ...rest) {
 global.window = {
   setTimeout: (...a) => setTimeout(...a),
   clearTimeout: (...a) => clearTimeout(...a),
+  requestAnimationFrame: (callback) => setTimeout(callback, 0),
+  cancelAnimationFrame: (handle) => clearTimeout(handle),
   setInterval: (...a) => setInterval(...a),
   clearInterval: (...a) => clearInterval(...a),
   moment: null,

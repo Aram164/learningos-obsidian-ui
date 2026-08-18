@@ -10,7 +10,7 @@ import {
   workspaceCard,
 } from '../../components';
 import { STATUS_ORDER } from '../../constants';
-import type { ProjectionRecord } from '../../contracts/manifest-v4';
+import type { ProjectionRecord } from '../../contracts/manifest-v5';
 import {
   asCount as projectedCount,
   asRecords as projectedRecords,
@@ -38,6 +38,51 @@ import {
   readSourceEntries,
 } from './model';
 
+const EXAMINATION_LABELS: Readonly<Record<string, string>> = {
+  klausur: 'Written exam',
+  muendlich: 'Oral exam',
+  portfolio: 'Portfolio',
+  project: 'Project assessment',
+};
+
+function words(value: string): string {
+  const normalized = value
+    .replaceAll('_', ' ')
+    .replaceAll('-', ' ')
+    .trim();
+
+  return normalized
+    ? normalized[0]!.toLocaleUpperCase()
+      + normalized.slice(1)
+    : '';
+}
+
+export function semesterLabel(value: string): string {
+  const summer = /^sose-(\d{4})$/i.exec(value);
+  if (summer) {
+    return `Summer semester ${summer[1]}`;
+  }
+
+  const winter = /^wise-(\d{4})(?:-(\d{2,4}))?$/i.exec(value);
+  if (winter) {
+    const end = winter[2]
+      ? `/${winter[2].length === 4 ? winter[2].slice(2) : winter[2]}`
+      : '';
+    return `Winter semester ${winter[1]}${end}`;
+  }
+
+  return words(value);
+}
+
+export function examinationLabel(value: string): string {
+  return EXAMINATION_LABELS[value.toLocaleLowerCase()]
+    ?? words(value);
+}
+
+export function statusLabel(value: string): string {
+  return words(value);
+}
+
 export function renderLogistics(
   view: ModuleView,
 
@@ -51,14 +96,18 @@ export function renderLogistics(
     const factRows: ReadonlyArray<
       readonly [string, string | null]
     > = [
-      ['Status', module.status],
+      ['Status', statusLabel(module.status)],
       ['Institution', module.institution],
       ['Code', module.code],
-      ['Semester', module.semester],
+      ['Semester', semesterLabel(module.semester)],
       ['Credits', module.credits],
       [
         'Examination',
-        module.examination.type,
+        module.examination.type
+          ? examinationLabel(
+            module.examination.type,
+          )
+          : null,
       ],
     ];
 

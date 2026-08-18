@@ -8,7 +8,7 @@ import {
   pageHeader,
   section,
 } from '../../components';
-import type { ProjectionRecord } from '../../contracts/manifest-v4';
+import type { ProjectionRecord } from '../../contracts/manifest-v5';
 import {
   asLibrarySourceFilters,
   type LibraryCollectionV1,

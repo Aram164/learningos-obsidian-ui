@@ -1,4 +1,4 @@
-import type { ProjectionRecord } from '../contracts/manifest-v4';
+import type { ProjectionRecord } from '../contracts/manifest-v5';
 import { asLabel, asString } from '../projection/readers';
 
 export interface RecoveredStageDraft {

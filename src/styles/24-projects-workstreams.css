@@ -73,6 +73,8 @@
   .los-stage-workspace { padding: 20px 18px; }
   .los-resource-row { grid-template-columns: 18px minmax(0, 1fr); }
   .los-resource-row > .los-actions { grid-column: 2; justify-content: flex-start; }
+  .los-material-option { grid-template-columns: 18px minmax(0, 1fr); }
+  .los-material-actions { grid-column: 2; justify-content: flex-start; }
   .los-record-row { grid-template-columns: minmax(0, 1fr); }
   .los-record-action { justify-self: start; }
 }

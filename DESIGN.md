@@ -8,21 +8,26 @@ The interface carries usability while the core carries meaning.
    current module and unit remains reachable. Independent stage state is never
    flattened into one global path.
 2. **No raw colour *in components*; one palette at the root.** Revised
-   2026-08-08. This principle used to read "all colour resolves through Obsidian
+   2026-08-15. This principle used to read "all colour resolves through Obsidian
    theme variables", which meant LearningOS had no visual identity of its own —
    it looked like whichever theme happened to be installed. It now has one:
-   **warm paper (beige) with a single brick-red accent**, defined once in
-   `src/styles/00-tokens.css` as `--los-*` tokens, with a real dark palette
-   rather than an inversion. (`plugin/styles.css` is the composed artifact —
-   the cascade is declared in `build-styles.mjs`.)
+   **warm daylight paper with a berry-wine identity**, defined once in
+   `src/styles/00-tokens.css` as `--los-*` tokens and grounded in the Figma
+   foundations. LearningOS keeps this daylight work surface inside either
+   Obsidian host mode; dark chrome may frame it, but the learning canvas does
+   not become another near-black developer panel.
+   (`plugin/styles.css` is the composed artifact — the cascade is declared in
+   `build-styles.mjs`.)
 
    The constraint the old rule was protecting is unchanged and still binding:
    **no component may name a colour.** Every rule refers to a token, colour is
-   defined in exactly two blocks (light, and `.theme-dark`), and both were
-   contrast-checked — body text 12.6:1 light / 13.8:1 dark, secondary 5.4/6.2,
-   accent 5.7/5.5, all state hues ≥ 3.5:1. Accent means emphasis, never meaning
-   on its own: every state that uses colour also carries a text label, so
-   nothing is lost to colour-blindness.
+   defined in exactly two blocks (light, and `.theme-dark`), and both are
+   contrast-checked — body text 16.5:1, secondary text 5.0:1, muted text 4.5:1,
+   brand fill 9.7:1, completion fill 8.0:1, information 6.1:1, attention 6.3:1,
+   and reversible choice 8.6:1. Wine remains the brand action; sage is reserved
+   for commit/apply, slate for opening information, amber for attention, and
+   blush for reversible selection. Colour never carries meaning alone: every
+   state and action also has a text label.
 3. **No orphan links or dumps.** Typed chips, cards and exact source actions
    show why a record matters in the current module/unit/stage.
 4. **One stage workspace at a time.** Stage rail, exact work, and scratch are
