@@ -33,10 +33,22 @@ jobs:
       #
       # The path must be a sibling of obsidian-ui inside the workspace, which is
       # why the UI is no longer checked out at the workspace root.
+      #
+      # `ref` pins the core branch this UI branch pairs with, because that
+      # pairing is currently not on either default branch: core's `main` still
+      # predates system/contracts/ entirely, and the v5 contract lives on the
+      # interaction-redesign branch on both sides. Naming the ref is the honest
+      # form of "released together" while that is true — the alternative is a
+      # green run that compared against a core nobody ships.
+      #
+      # Drop this `ref:` the moment both redesign branches land on their mains.
+      # Leaving it pinned after that is worse than not having it: CI would keep
+      # verifying against a stale branch while main drifted underneath.
       - name: Check out the producer of the manifest contract
         uses: actions/checkout@v4
         with:
           repository: Aram164/LearningOS
+          ref: feature/interaction-redesign-core-v1
           path: repository
 
       - uses: actions/setup-node@v4
