@@ -10142,7 +10142,6 @@ var ApplicationRouter = class {
           state: { screen: "list", groupId: route.groupId, query: route.query || "" },
           nav: "modules"
         };
-      case "module":
       case "module-detail":
         return {
           type: VIEW_MODULE,
@@ -10150,7 +10149,7 @@ var ApplicationRouter = class {
             screen: "detail",
             moduleId: route.moduleId,
             componentId: route.componentId || null,
-            tab: "tab" in route ? route.tab || null : null
+            tab: route.tab || null
           },
           nav: "modules"
         };
