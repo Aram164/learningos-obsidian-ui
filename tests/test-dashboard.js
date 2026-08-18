@@ -2606,10 +2606,27 @@ async function main() {
       && css.includes('max-width: calc(100vw - 32px)')
       && css.includes('overflow-x: hidden'));
     const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+    /*
+     * One lock on disk, one lock named in the README, and the two agree.
+     *
+     * This used to hardcode v5 and separately assert the README did not mention
+     * v3 — which made it the only thing in the repository that still referred to
+     * v3 at all, while manifest-v3.lock.json and manifest-v4.lock.json sat in
+     * contracts/ unreferenced by anything. A retired lock left behind is a
+     * second answer to "which contract is current". Deriving the version from
+     * the single lock file also means this assertion survives the next bump
+     * instead of becoming one more thing to remember to edit.
+     */
+    const locks = fs.readdirSync(path.join(ROOT, 'contracts'))
+      .filter((name) => /^manifest-v\d+\.lock\.json$/.test(name));
+    const currentContract = locks.length === 1 ? locks[0].match(/v(\d+)/)[1] : null;
+    const namedContracts = [...readme.matchAll(/contracts\/manifest-v(\d+)\.lock\.json/g)]
+      .map((match) => match[1]);
     check('the UI documentation names the active manifest contract',
-      readme.includes('manifest.json` contract v5')
-      && readme.includes('contracts/manifest-v5.lock.json')
-      && !readme.includes('contracts/manifest-v3.lock.json'));
+      currentContract !== null
+      && namedContracts.length > 0
+      && namedContracts.every((version) => version === currentContract)
+      && readme.includes(`manifest.json\` contract v${currentContract}`));
     const runtimeSources = [
       'src/app/global-search.ts',
       'src/views/review-view.ts',

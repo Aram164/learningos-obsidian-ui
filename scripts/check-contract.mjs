@@ -9,8 +9,16 @@
  * out beside this repo, verify the mirror still matches. Finding 1 of the
  * engineering audit was precisely this gap — core added a top-level `topics`
  * collection while still announcing contract_version 2, and nothing compared
- * the two declarations until UI CI went red. The cross-repo check is skipped,
- * loudly, when core is not present, so this repository still builds alone.
+ * the two declarations until UI CI went red.
+ *
+ * Enforcement (added 2026-08-18): skipping the outward check used to be
+ * unconditional, and CI checked out only this repository — so the branch that
+ * skipped was the only branch CI ever took. "Producer owns the contract" was
+ * therefore a local-development guarantee enforced by remembering to run
+ * `npm run check` in the right working directory, while every other contract in
+ * the system is enforced by code. It now refuses in CI. A developer working
+ * without core checked out still gets the loud skip, and
+ * LEARNINGOS_ALLOW_MISSING_CORE=1 is the deliberate escape hatch.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -73,8 +81,31 @@ function yamlStringList(text, key) {
 }
 
 const producerPath = path.resolve(root, lock.mirrors ?? '../repository/system/contracts/manifest-contract.yaml');
+const producerRoot = path.resolve(path.dirname(producerPath), '..', '..');
 if (!fs.existsSync(producerPath)) {
-  console.log(`contract: core not checked out beside this repo (${producerPath}) — cross-repo mirror NOT verified`);
+  /*
+   * Two different absences, and conflating them wastes the first red run.
+   * "No core here" is a checkout problem. "Core is here but declares no
+   * manifest contract" means the checked-out commit predates the declaration —
+   * which is what a UI released against an unpushed core looks like from CI,
+   * and is exactly the drift this check exists to surface.
+   */
+  const skip = fs.existsSync(producerRoot)
+    ? `core is checked out at ${producerRoot} but declares no manifest contract `
+      + `(${producerPath} is missing) — cross-repo mirror NOT verified`
+    : `core not checked out beside this repo (${producerPath}) `
+      + '— cross-repo mirror NOT verified';
+  const mustVerify = process.env.LEARNINGOS_ALLOW_MISSING_CORE !== '1'
+    && Boolean(process.env.CI || process.env.LEARNINGOS_REQUIRE_CORE_MIRROR);
+  if (mustVerify) {
+    throw new Error(
+      `${skip}. Check out the producer (Aram164/LearningOS) at that path and make `
+      + 'sure the commit CI sees is the one that declares this contract — an '
+      + 'unpushed core is the usual cause. LEARNINGOS_ALLOW_MISSING_CORE=1 '
+      + 'accepts an unverified lock deliberately.',
+    );
+  }
+  console.log(`contract: ${skip}`);
 } else {
   const producer = fs.readFileSync(producerPath, 'utf8');
   const producerVersion = Number(producer.match(/^contract_version:\s*(\d+)/m)?.[1]);

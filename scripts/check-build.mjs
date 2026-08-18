@@ -37,6 +37,19 @@ if (process.env.CI && process.env.LEARNINGOS_ALLOW_FALLBACK !== '1' && info.bund
 if (info.bundle_sha256 !== `sha256:${hash(second.bundle)}`) {
   throw new Error('build-info.json bundle fingerprint does not match plugin/main.js.');
 }
+/* Core and the UI release together. A release build must therefore be able to
+ * name the core it was verified against — "which pair is this?" should be
+ * answerable from the artifact, not only by re-running the check. In CI, where
+ * core is checked out and check-contract.mjs refuses an unverified mirror, a
+ * null core_revision means the pairing went unrecorded and the artifact cannot
+ * substantiate the release-together claim. */
+if (process.env.CI && process.env.LEARNINGOS_ALLOW_MISSING_CORE !== '1'
+    && !/^[0-9a-f]{40}$/.test(String(info.core_revision ?? ''))) {
+  throw new Error(
+    `A release build must record the core commit it was verified against; `
+    + `build-info.json says core_revision: ${JSON.stringify(info.core_revision ?? null)}.`,
+  );
+}
 if (!Array.isArray(info.modules) || !info.modules.includes('src/main.ts')
     || !info.modules.includes('src/manifest-store.ts')) {
   throw new Error('The module graph did not report the expected source inputs.');

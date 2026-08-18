@@ -29,7 +29,6 @@ export type ApplicationRouteV1 =
   | { name: "project-detail"; projectId: string; tab?: ProjectDetailTabV1 }
   | { name: "module-list"; groupId: string; query?: string }
   | { name: "module-detail"; moduleId: string; componentId?: string | null; tab?: string | null }
-  | { name: "module"; moduleId: string; componentId?: string | null }
   | { name: "unit"; unitId: string; stageId?: string | null }
   | {
       name: "library-home";

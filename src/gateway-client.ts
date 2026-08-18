@@ -1,4 +1,3 @@
-import process from 'node:process';
 import type { JsonRecord, ProjectionRecord } from './contracts/manifest-v5';
 import {
   GatewayError, exitCodeOf, structuredError,

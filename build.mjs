@@ -198,14 +198,41 @@ const dirtyPaths = gitOrNull(['status', '--porcelain', '--', 'src', 'build.mjs',
 const sourceDirty = dirtyPaths === null ? null : dirtyPaths.length > 0;
 const sourceCommittedAt = gitOrNull(['show', '-s', '--format=%cI', 'HEAD']);
 
+/*
+ * Which core this bundle was built beside.
+ *
+ * "Core and UI are released together" is the rule the manifest contract states
+ * and the reason contracts/manifest-v<N>.lock.json exists. Nothing recorded the
+ * pairing: after the fact there was no artifact anywhere that could answer
+ * "which core commit was this plugin checked against?" — not the bundle, not
+ * build-info, not a lockfile. So a mismatched pair could only ever be diagnosed
+ * by re-running the check, never by inspecting what shipped.
+ *
+ * `scripts/check-contract.mjs` compares this build's lock against that core's
+ * declaration in the same `npm run check` run and fails it on disagreement, so
+ * a green run plus this SHA is the pairing, recorded.
+ *
+ * null means core was not checked out for this build — a weaker claim than a
+ * SHA, and deliberately distinguishable from one. CI checks core out.
+ * Deterministic across two consecutive builds, as check-build.mjs requires.
+ */
+const producerContract = path.resolve(root, contract.mirrors ?? '../repository/system/contracts/manifest-contract.yaml');
+const coreRoot = path.resolve(path.dirname(producerContract), '..', '..');
+const coreRevision = fs.existsSync(producerContract)
+  ? (gitOrNull(['-C', coreRoot, 'rev-parse', 'HEAD']) ?? 'unknown')
+  : null;
+
 const buildInfo = {
   /* 3: the stylesheet stopped being a hand-edited file and became a composed
-   * artifact, so build-info describes its modules and fingerprint too. */
-  schema_version: 3,
+   *    artifact, so build-info describes its modules and fingerprint too.
+   * 4: `core_revision` — the plugin now states which core it was verified
+   *    against, so the release-together rule leaves evidence. */
+  schema_version: 4,
   bundler: buildResult.bundler,
   entry_point: 'src/main.ts',
   ui_version: pluginManifest.version,
   manifest_contract_version: contract.contract_version,
+  core_revision: coreRevision,
   source_revision: sourceRevision,
   source_dirty: sourceDirty,
   source_committed_at: sourceCommittedAt,

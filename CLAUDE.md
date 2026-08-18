@@ -47,9 +47,15 @@ here.
    core-side first (schema/gateway/projection), then consumed here.
 10. Job/ quarantine applies unchanged (core CLAUDE.md §13): never read, index,
     or surface `Job/` content in any view.
-11. This repository is **local-only** (Aram, 2026-08-03): its own git history,
-    no GitHub remote, not folded into the core repo. Commit freely here; never
-    add a remote or push without asking.
+11. This repository is **separate from the core repo** (Aram, 2026-08-03): its
+    own git history, never folded in. It has a GitHub remote
+    (`Aram164/learningos-obsidian-ui`); until 2026-08-18 this rule claimed it
+    did not, which in a system whose thesis is that written contracts are
+    authoritative made the governance layer itself untrustworthy. Commit freely
+    here; ask before adding another remote or changing where this one points.
+    Core and the UI release together — a contract bump that lands on one side
+    alone is the failure `contracts/manifest-v<N>.lock.json` exists to prevent,
+    and CI now checks core out to enforce it.
 12. Every app-like behaviour (startup view, pinning, sidebars, chrome) must be
     a setting with a sane default. The interface may be opinionated; it may
     not be unescapable.
