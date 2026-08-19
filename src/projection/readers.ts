@@ -1,4 +1,4 @@
-import type { ProjectionRecord } from '../contracts/manifest-v5';
+import type { ProjectionRecord } from '../contracts/manifest';
 
 /** Runtime boundary for values arriving through the generated projection. */
 export function isRecord(value: unknown): value is ProjectionRecord {
@@ -7,8 +7,20 @@ export function isRecord(value: unknown): value is ProjectionRecord {
     && !Array.isArray(value);
 }
 
+export function asRecord(value: unknown): ProjectionRecord | null {
+  return isRecord(value) ? value : null;
+}
+
+export function asRecordOrEmpty(value: unknown): ProjectionRecord {
+  return asRecord(value) ?? {};
+}
+
 export function asString(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
+}
+
+export function asTrimmedString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
 }
 
 export function asText(value: unknown): string | null {
@@ -31,10 +43,40 @@ export function asStrings(value: unknown): string[] {
     : [];
 }
 
+export function asTrimmedStrings(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.map(asTrimmedString).filter(Boolean)
+    : [];
+}
+
 export function asCount(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value)
     ? Math.max(0, Math.trunc(value))
     : 0;
+}
+
+export function asFiniteNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+export function asNumber(value: unknown): number {
+  return asFiniteNumber(value) ?? 0;
+}
+
+export function asNumbers(value: unknown): number[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is number => asFiniteNumber(item) !== null)
+    : [];
+}
+
+export function asNumberRecord(value: unknown): Record<string, number> {
+  const result: Record<string, number> = {};
+  if (!isRecord(value)) return result;
+  for (const [key, entry] of Object.entries(value)) {
+    const number = asFiniteNumber(entry);
+    if (number !== null) result[key] = number;
+  }
+  return result;
 }
 
 export function asListLength(value: unknown): number {

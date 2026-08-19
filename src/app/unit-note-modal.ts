@@ -1,6 +1,6 @@
 import { Modal, Notice, type App } from 'obsidian';
 import { button, empty, localFilePath, pageHeader, section } from '../components';
-import type { ProjectionRecord } from '../contracts/manifest-v5';
+import type { ProjectionRecord } from '../contracts/manifest';
 import type { LearningOSUI } from '../main';
 import { asRecords, errorMessage } from '../projection/readers';
 import { makeModalAccessible } from '../accessibility/modal';

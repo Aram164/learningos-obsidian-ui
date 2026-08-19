@@ -2,7 +2,7 @@ import { shell } from 'electron';
 import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
 import { Notice, type App, type WorkspaceLeaf } from 'obsidian';
-import type { ProjectionRecord } from '../contracts/manifest-v5';
+import type { ProjectionRecord } from '../contracts/manifest';
 import { safeWebUrl } from '../security/safe-url';
 
 export interface ResourceOpenPorts {

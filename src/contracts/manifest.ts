@@ -5,15 +5,14 @@
  * feature code must depend on this contract layer instead of raw JSON shapes.
  *
  * The contract is now DECLARED BY THE PRODUCER, in the core repository's
- * `system/contracts/manifest-contract.yaml`. `contracts/manifest-v5.lock.json`
- * beside this file is a mirror of that declaration, not the original — core
+ * `system/contracts/manifest-contract.yaml`. The single versioned lock under
+ * `contracts/` is a mirror of that declaration, not the original — core
  * enforces the shape on every build, so a projection change fails there instead
  * of arriving here as a red CI run. (That is what happened on 2026-08-08: core
  * published a top-level `topics` collection while still announcing v2.)
  *
- * This module follows the producer's current v5 contract name. Contract bumps
- * are mirrored deliberately so stale names cannot obscure an actual schema
- * change during maintenance.
+ * The module and type names are deliberately stable. Contract version is data:
+ * a bump changes this constant and the mirrored lock, not every import path.
  */
 export const MANIFEST_CONTRACT_VERSION = 5 as const;
 
@@ -91,40 +90,40 @@ export interface ProjectionRecord extends JsonRecord {
   request?: ProjectionRecord;
 }
 
-export interface ModuleProgressV5 extends JsonRecord {
+export interface ModuleProgress extends JsonRecord {
   stages_complete: number;
   stages_total: number;
   units_total: number;
   units_needing_map: number;
 }
 
-export interface ManifestIndexesV5 extends JsonRecord {
+export interface ManifestIndexes extends JsonRecord {
   unit_to_study_map: Record<string, string>;
   source_to_modules: Record<string, string[]>;
   source_to_units: Record<string, string[]>;
 }
 
-export interface ManifestBacklinksV5 extends JsonRecord {
+export interface ManifestBacklinks extends JsonRecord {
   module_to_workspaces: Record<string, string[]>;
 }
 
-export interface ResumePointerV5 extends JsonRecord {
+export interface ResumePointer extends JsonRecord {
   unit_id: string;
   study_map_id: string;
   stage_id: string;
   module_id: string;
 }
 
-export interface UnitNoteAttachmentV5 { path: string; label: string; }
-export interface UnitNoteSectionV5 extends JsonRecord {
+export interface UnitNoteAttachment { path: string; label: string; }
+export interface UnitNoteSection extends JsonRecord {
   recorded_at: string | null;
   title: string;
   stage_ids: readonly string[];
-  attachments: readonly UnitNoteAttachmentV5[];
+  attachments: readonly UnitNoteAttachment[];
   text: string;
   summary: string;
 }
-export interface ThematicGroupV5 extends JsonRecord {
+export interface ThematicGroup extends JsonRecord {
   id: string;
   title: string;
   description: string;
@@ -136,13 +135,13 @@ export interface ThematicGroupV5 extends JsonRecord {
  * constrains which sources may carry the topic, so an interface may group by it
  * but must not filter membership with it.
  */
-export interface TopicV5 extends JsonRecord {
+export interface Topic extends JsonRecord {
   id: string;
   title: string;
   domain: string | null;
 }
 
-export interface TopicPackV5 extends JsonRecord {
+export interface TopicPack extends JsonRecord {
   id: string;
   type: "topic-pack";
   title: string;
@@ -152,7 +151,7 @@ export interface TopicPackV5 extends JsonRecord {
 }
 
 
-export interface ProjectRelationshipV5 extends JsonRecord {
+export interface ProjectRelationship extends JsonRecord {
   id: string;
   type: "project-relationship";
   from_project_id: string;
@@ -163,7 +162,7 @@ export interface ProjectRelationshipV5 extends JsonRecord {
   contribution: string;
   path?: string;
 }
-export interface ProjectV5 extends JsonRecord {
+export interface Project extends JsonRecord {
   id: string;
   type: "project";
   title: string;
@@ -178,19 +177,19 @@ export interface ProjectV5 extends JsonRecord {
   decisions?: readonly JsonRecord[];
 }
 
-export interface UnitV5 extends JsonRecord {
+export interface Unit extends JsonRecord {
   id: string;
   type: "unit";
   project_ids?: readonly string[];
   module_id: string;
   title: string;
   notes_text: string;
-  note_sections: readonly UnitNoteSectionV5[];
+  note_sections: readonly UnitNoteSection[];
   notes_updated: string | null;
   working_note?: string;
 }
 
-export interface GeneratedMetadataV5 extends JsonRecord {
+export interface GeneratedMetadata extends JsonRecord {
   contract_version: typeof MANIFEST_CONTRACT_VERSION;
   generated_at: string;
   generator: string;
@@ -201,50 +200,50 @@ export interface GeneratedMetadataV5 extends JsonRecord {
   warning: string;
 }
 
-export interface ManifestV5 extends JsonRecord {
-  _generated: GeneratedMetadataV5;
+export interface Manifest extends JsonRecord {
+  _generated: GeneratedMetadata;
   academic_deadlines: readonly ProjectionRecord[];
   ai_actions: ProjectionRecord;
-  backlinks: ManifestBacklinksV5;
+  backlinks: ManifestBacklinks;
   counts: ProjectionRecord;
   garden_entries: readonly ProjectionRecord[];
   review_items: readonly ProjectionRecord[];
-  indexes: ManifestIndexesV5;
+  indexes: ManifestIndexes;
   module_source_maps: readonly ProjectionRecord[];
   modules: readonly ProjectionRecord[];
   programs: readonly ProjectionRecord[];
-  progress: Record<string, ModuleProgressV5>;
+  progress: Record<string, ModuleProgress>;
   artifact_revisions: ProjectionRecord;
   project_aliases: Record<string, string>;
-  project_relationships: readonly ProjectRelationshipV5[];
-  projects: readonly ProjectV5[];
+  project_relationships: readonly ProjectRelationship[];
+  projects: readonly Project[];
   quarantine_boundaries: readonly ProjectionRecord[];
   records: readonly ProjectionRecord[];
   relations: readonly ProjectionRecord[];
-  resume_pointer: ResumePointerV5 | null;
+  resume_pointer: ResumePointer | null;
   semesters: readonly ProjectionRecord[];
   stages: readonly ProjectionRecord[];
   study_maps: readonly ProjectionRecord[];
-  thematic_groups: readonly ThematicGroupV5[];
-  topic_packs: readonly TopicPackV5[];
-  topics: readonly TopicV5[];
-  units: readonly UnitV5[];
+  thematic_groups: readonly ThematicGroup[];
+  topic_packs: readonly TopicPack[];
+  topics: readonly Topic[];
+  units: readonly Unit[];
 }
 
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function requireArray(record: JsonRecord, key: keyof ManifestV5): void {
+function requireArray(record: JsonRecord, key: keyof Manifest): void {
   if (!Array.isArray(record[key])) {
-    throw new TypeError(`Manifest v5 field ${String(key)} must be an array.`);
+    throw new TypeError(`Manifest field ${String(key)} must be an array.`);
   }
 }
 
 /** Fail closed before an untyped projection reaches feature code. */
-export function assertManifestV5(value: unknown): asserts value is ManifestV5 {
+export function assertManifest(value: unknown): asserts value is Manifest {
   if (!isRecord(value) || !isRecord(value._generated)) {
-    throw new TypeError("Manifest v5 requires an _generated object.");
+    throw new TypeError("Manifest requires an _generated object.");
   }
   if (value._generated.contract_version !== MANIFEST_CONTRACT_VERSION) {
     throw new TypeError(
@@ -278,13 +277,13 @@ export function assertManifestV5(value: unknown): asserts value is ManifestV5 {
   for (const unit of value.units as unknown[]) {
     if (!isRecord(unit) || typeof unit.id !== "string" || typeof unit.notes_text !== "string"
       || !Array.isArray(unit.note_sections)) {
-      throw new TypeError("Manifest v5 unit rows require projected unit note fields.");
+      throw new TypeError("Manifest unit rows require projected unit note fields.");
     }
   }
 
   for (const key of ["ai_actions", "artifact_revisions", "backlinks", "counts", "indexes", "progress", "project_aliases"] as const) {
     if (!isRecord(value[key])) {
-      throw new TypeError(`Manifest v5 field ${key} must be an object.`);
+      throw new TypeError(`Manifest field ${key} must be an object.`);
     }
   }
 }

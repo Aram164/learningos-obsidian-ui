@@ -7,7 +7,7 @@ import {
   icon,
   section,
 } from '../../components';
-import type { ProjectionRecord } from '../../contracts/manifest-v5';
+import type { ProjectionRecord } from '../../contracts/manifest';
 import {
   asString as projectedString,
 } from '../../projection/readers';

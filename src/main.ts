@@ -34,7 +34,7 @@ import {
 import { ResourceOpener } from './infrastructure/resource-opener';
 import { ManifestStore } from './manifest-store';
 import { SessionEndModal } from './settings';
-import type { ProjectionRecord } from './contracts/manifest-v5';
+import type { ProjectionRecord } from './contracts/manifest';
 import { asString } from './projection/readers';
 
 function errorMessage(error: unknown): string {

@@ -1,7 +1,7 @@
 import { setIcon } from 'obsidian';
 import { webUtils } from 'electron';
 import { ICONS } from './constants';
-import type { ProjectionRecord } from './contracts/manifest-v5';
+import type { ProjectionRecord } from './contracts/manifest';
 import type { LearningOSUI } from './main';
 import { asLabel, asRecords, asString } from './projection/readers';
 import { enableButtonGroupKeyboardNavigation } from './accessibility/button-group';

@@ -227,9 +227,10 @@ async function main() {
     const bundle = fs.readFileSync(path.join(ROOT, 'plugin', 'main.js'), 'utf8');
     const read = [...bundle.matchAll(/(?:store\.data|this\.data|manifest)\??\.([a-z_]+)/g)]
       .map((match) => match[1])
-      /* `json` comes from the "generated/manifest.json" literal; the rest are
+      /* `json` comes from the "generated/manifest.json" literal and `ts` from
+       * the stable "contracts/manifest.ts" source path; the rest are
        * Array/Map members reached through a projected collection. */
-      .filter((key) => !['json', 'length', 'find', 'filter', 'map'].includes(key));
+      .filter((key) => !['json', 'ts', 'length', 'find', 'filter', 'map'].includes(key));
     const missing = [...new Set(read)].filter((key) => !(key in manifest));
     check('fixture declares every top-level key the app reads', !missing.length,
       `missing from fixture-vault: ${missing.join(', ')}`);
@@ -2624,8 +2625,8 @@ async function main() {
       .map((match) => match[1]);
     check('the UI documentation names the active manifest contract',
       currentContract !== null
-      && namedContracts.length > 0
-      && namedContracts.every((version) => version === currentContract)
+      && namedContracts.length === 0
+      && readme.includes('contracts/manifest-v<N>.lock.json')
       && readme.includes(`manifest.json\` contract v${currentContract}`));
     const runtimeSources = [
       'src/app/global-search.ts',

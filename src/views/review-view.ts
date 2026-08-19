@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
 import { badge, button, empty, filterTabs, OWNERSHIP_STATEMENT, pageHeader, section } from '../components';
 import { CONTRACT_VERSION, VIEW_DIAGNOSTICS, VIEW_REVIEW } from '../constants';
-import type { ProjectionRecord } from '../contracts/manifest-v5';
+import type { ProjectionRecord } from '../contracts/manifest';
 import type { LearningOSUI } from '../main';
 import { errorMessage, isRecord } from '../projection/readers';
 

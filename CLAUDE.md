@@ -45,8 +45,11 @@ here.
    vault requires explicit authorization.
 9. The app never writes the core directly. Cross-layer changes are made
    core-side first (schema/gateway/projection), then consumed here.
-10. Job/ quarantine applies unchanged (core CLAUDE.md §13): never read, index,
-    or surface `Job/` content in any view.
+10. Job/ quarantine applies to every general interface path (core CLAUDE.md
+    §13): never project, index, search, or send `Job/` content to AI. The sole
+    exception is the explicit confidential Job destination, which reads the
+    bounded `job-dashboard-v2` query after a user gesture and keeps its access
+    grant ephemeral.
 11. This repository is **separate from the core repo** (Aram, 2026-08-03): its
     own git history, never folded in. It has a GitHub remote
     (`Aram164/learningos-obsidian-ui`); until 2026-08-18 this rule claimed it
@@ -67,6 +70,18 @@ here.
     shortcut. The current stage owns its resources; a single session note is attached to the unit after the relevant stages; record references
     are typed actions or chips. Follow `DESIGN.md`; extend it rather than
     inventing CSS.
+
+## Module boundaries
+
+- `src/contracts/` owns stable wire types and contract identities. Contract
+  versions are constants and lock data, never source filenames.
+- `src/projection/` owns shared structural readers for untrusted JSON values.
+- `src/features/` owns domain decoding, presentation models, and interactions;
+  it must reuse the shared readers rather than grow a per-feature parsing kit.
+- `src/views/` owns Obsidian leaf shells and delegates product behaviour to
+  features. New domain logic does not enter view shells.
+- `src/infrastructure/` owns host and process adapters. No feature bypasses the
+  gateway to read or mutate Core files.
 
 ## Anti-goals (from core ADR-006 and the 2026-07-16 external review)
 

@@ -38,8 +38,11 @@ The current primary navigation is **Home · Modules · Learn · Projects · Libr
 - The app reads only atomic `generated/manifest.json` contract v5. It never
   parses canonical Markdown/YAML and remains useful when Python is offline.
   The contract is declared by the producer — core's
-  `system/contracts/manifest-contract.yaml` — and `contracts/manifest-v5.lock.json`
-  here is a mirror of it. `npm run contract:check` verifies the mirror whenever
+  `system/contracts/manifest-contract.yaml` — and the single
+  `contracts/manifest-v<N>.lock.json` here is a mirror of it. The Job dashboard
+  follows the same rule through Core's JSON Schema and
+  `contracts/job-dashboard-v2.lock.json`. `npm run contract:check` verifies both
+  mirrors whenever
   core is checked out beside this repo, so a projection change cannot reach the
   UI as a surprise. Bump both together; they release together.
 - Mutations use `tools/los.py` action-specific commands: `unit-note`, legacy `stage-note`,
@@ -105,5 +108,5 @@ It finds Node itself — PATH first, then `/opt/homebrew/bin`, `/usr/local/bin`,
 bare shell often has none of these on PATH, which is not a reason to refuse the
 install. Override with `--node /absolute/path/to/node`.
 
-This repository is local-only and has no remote. Core and UI remain separate
-ownership layers; the core remains portable plain files and Git.
+This repository has its own history and GitHub remote. Core and UI remain
+separate ownership layers; the core remains portable plain files and Git.

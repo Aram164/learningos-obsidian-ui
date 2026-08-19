@@ -44,8 +44,60 @@ var import_obsidian2 = require("obsidian");
 var import_obsidian = require("obsidian");
 var import_electron = require("electron");
 
+// src/contracts/manifest.ts
+var MANIFEST_CONTRACT_VERSION = 5;
+function isRecord(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function requireArray(record, key) {
+  if (!Array.isArray(record[key])) {
+    throw new TypeError(`Manifest field ${String(key)} must be an array.`);
+  }
+}
+function assertManifest(value) {
+  if (!isRecord(value) || !isRecord(value._generated)) {
+    throw new TypeError("Manifest requires an _generated object.");
+  }
+  if (value._generated.contract_version !== MANIFEST_CONTRACT_VERSION) {
+    throw new TypeError(
+      `Unsupported manifest contract ${String(value._generated.contract_version)}; expected ${MANIFEST_CONTRACT_VERSION}.`
+    );
+  }
+  for (const key of [
+    "academic_deadlines",
+    "garden_entries",
+    "review_items",
+    "module_source_maps",
+    "modules",
+    "programs",
+    "project_relationships",
+    "projects",
+    "quarantine_boundaries",
+    "records",
+    "relations",
+    "semesters",
+    "stages",
+    "study_maps",
+    "thematic_groups",
+    "topic_packs",
+    "topics",
+    "units"
+  ]) {
+    requireArray(value, key);
+  }
+  for (const unit of value.units) {
+    if (!isRecord(unit) || typeof unit.id !== "string" || typeof unit.notes_text !== "string" || !Array.isArray(unit.note_sections)) {
+      throw new TypeError("Manifest unit rows require projected unit note fields.");
+    }
+  }
+  for (const key of ["ai_actions", "artifact_revisions", "backlinks", "counts", "indexes", "progress", "project_aliases"]) {
+    if (!isRecord(value[key])) {
+      throw new TypeError(`Manifest field ${key} must be an object.`);
+    }
+  }
+}
+
 // src/constants.ts
-var CONTRACT_VERSION = 5;
 var VIEW_HOME = "learningos-home";
 var VIEW_NAV = "learningos-nav";
 var VIEW_PROGRAM = "learningos-program";
@@ -111,11 +163,20 @@ var ICONS = {
 };
 
 // src/projection/readers.ts
-function isRecord(value) {
+function isRecord2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+function asRecord(value) {
+  return isRecord2(value) ? value : null;
+}
+function asRecordOrEmpty(value) {
+  return asRecord(value) ?? {};
 }
 function asString(value) {
   return typeof value === "string" && value.length > 0 ? value : null;
+}
+function asTrimmedString(value) {
+  return typeof value === "string" ? value.trim() : "";
 }
 function asText(value) {
   if (typeof value !== "string" && typeof value !== "number") return null;
@@ -126,13 +187,34 @@ function asBoolean(value) {
   return value === true || value === 1 || value === "true";
 }
 function asRecords(value) {
-  return Array.isArray(value) ? value.filter(isRecord) : [];
+  return Array.isArray(value) ? value.filter(isRecord2) : [];
 }
 function asStrings(value) {
   return Array.isArray(value) ? value.filter((item) => typeof item === "string" && item.length > 0) : [];
 }
+function asTrimmedStrings(value) {
+  return Array.isArray(value) ? value.map(asTrimmedString).filter(Boolean) : [];
+}
 function asCount(value) {
   return typeof value === "number" && Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
+}
+function asFiniteNumber(value) {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+function asNumber(value) {
+  return asFiniteNumber(value) ?? 0;
+}
+function asNumbers(value) {
+  return Array.isArray(value) ? value.filter((item) => asFiniteNumber(item) !== null) : [];
+}
+function asNumberRecord(value) {
+  const result = {};
+  if (!isRecord2(value)) return result;
+  for (const [key, entry] of Object.entries(value)) {
+    const number = asFiniteNumber(entry);
+    if (number !== null) result[key] = number;
+  }
+  return result;
 }
 function asListLength(value) {
   return Array.isArray(value) ? value.length : 0;
@@ -143,9 +225,9 @@ function optionalString(value) {
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
-function asLabel(record2, fallback = "Untitled") {
-  if (!record2) return fallback;
-  return asString(record2.title) ?? asString(record2.label) ?? asString(record2.name) ?? asString(record2.id) ?? fallback;
+function asLabel(record, fallback = "Untitled") {
+  if (!record) return fallback;
+  return asString(record.title) ?? asString(record.label) ?? asString(record.name) ?? asString(record.id) ?? fallback;
 }
 
 // src/accessibility/button-group.ts
@@ -205,15 +287,15 @@ function button(parent, label, onClick, variant = "") {
 function badge(parent, text, variant = "") {
   return parent.createSpan({ cls: `los-badge ${variant ? `los-badge--${variant}` : ""}`, text });
 }
-function chip(parent, record2, onClick) {
+function chip(parent, record, onClick) {
   const el = parent.createEl("button", {
-    cls: `los-chip los-t-${record2?.type || "record"} is-clickable`,
+    cls: `los-chip los-t-${record?.type || "record"} is-clickable`,
     attr: { type: "button" }
   });
-  const iconName = ICONS[String(record2?.type || "")] || "circle";
+  const iconName = ICONS[String(record?.type || "")] || "circle";
   icon(el.createSpan({ cls: "los-chip-icon" }), iconName);
-  el.createSpan({ text: record2?.title || record2?.id || "Unknown" });
-  if (onClick) el.addEventListener("click", () => onClick(record2));
+  el.createSpan({ text: record?.title || record?.id || "Unknown" });
+  if (onClick) el.addEventListener("click", () => onClick(record));
   return el;
 }
 function pageHeader(parent, kicker, title, description = "", headingId = "") {
@@ -254,13 +336,13 @@ function disclosure(parent, summaryText, cls = "") {
   return details.createDiv({ cls: "los-disclosure-body" });
 }
 function overflowMenu(parent, items, label = "More actions") {
-  const rows2 = items.filter(Boolean);
-  if (!rows2.length) return null;
+  const rows = items.filter(Boolean);
+  if (!rows.length) return null;
   const details = parent.createEl("details", { cls: "los-overflow" });
   const summary = details.createEl("summary", { cls: "los-overflow-trigger", text: "\u2022\u2022\u2022" });
   summary.setAttrs({ "aria-label": label, role: "button" });
   const body = details.createDiv({ cls: "los-overflow-body" });
-  for (const [itemLabel, action] of rows2) {
+  for (const [itemLabel, action] of rows) {
     button(body, itemLabel, () => {
       details.removeAttribute?.("open");
       action();
@@ -543,14 +625,14 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
     }
   }
   candidates() {
-    const rows2 = [];
-    const add = (record2, kind, subtitle, open) => {
-      if (!record2?.id || !record2?.title) return;
-      rows2.push({
-        id: record2.id,
-        title: record2.title,
-        aliases: [...record2.aliases || []],
-        authors: [...record2.authors || []],
+    const rows = [];
+    const add = (record, kind, subtitle, open) => {
+      if (!record?.id || !record?.title) return;
+      rows.push({
+        id: record.id,
+        title: record.title,
+        aliases: [...record.aliases || []],
+        authors: [...record.authors || []],
         kind,
         subtitle,
         open
@@ -595,7 +677,7 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
       if (!linkedProject.id) continue;
       add(workspace, "projects", `Project workspace \xB7 ${linkedProject.title || linkedProject.id}`, () => this.plugin.openProject(linkedProject.id));
     }
-    return rows2;
+    return rows;
   }
   matches(candidate) {
     const words2 = this.query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
@@ -624,11 +706,11 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
   renderResults() {
     if (!this.results) return;
     this.results.empty();
-    const rows2 = this.rankedCandidates();
+    const rows = this.rankedCandidates();
     const summary = this.results.createDiv({ cls: "los-search-summary" });
-    summary.createSpan({ text: this.query.trim() ? `${rows2.length} result${rows2.length === 1 ? "" : "s"}` : "Quick access" });
+    summary.createSpan({ text: this.query.trim() ? `${rows.length} result${rows.length === 1 ? "" : "s"}` : "Quick access" });
     summary.createSpan({ cls: "los-micro", text: "Manifest identities only" });
-    if (!rows2.length) {
+    if (!rows.length) {
       empty(
         this.results,
         "No structural results",
@@ -645,7 +727,7 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
       return;
     }
     const list = this.results.createDiv({ cls: "los-search-result-list" });
-    for (const row of rows2.slice(0, 24)) {
+    for (const row of rows.slice(0, 24)) {
       const result = list.createEl("button", {
         cls: "los-search-result is-clickable",
         attr: { type: "button", "aria-label": `Open ${row.title}` }
@@ -659,8 +741,8 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
         row.open();
       });
     }
-    if (rows2.length > 24) {
-      this.results.createDiv({ cls: "los-micro", text: `${rows2.length - 24} more results. Refine the query to narrow the list.` });
+    if (rows.length > 24) {
+      this.results.createDiv({ cls: "los-micro", text: `${rows.length - 24} more results. Refine the query to narrow the list.` });
     }
   }
 };
@@ -842,8 +924,8 @@ function canonicalLabel(value) {
 }
 function uniqueRecords(records) {
   const seen = /* @__PURE__ */ new Set();
-  return records.filter((record2) => {
-    const key = asString(record2.id) || `${record2.type || "record"}:${asLabel(record2)}`;
+  return records.filter((record) => {
+    const key = asString(record.id) || `${record.type || "record"}:${asLabel(record)}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -851,7 +933,7 @@ function uniqueRecords(records) {
 }
 function recordIds(records) {
   return new Set(
-    records.map((record2) => asString(record2.id)).filter((id) => Boolean(id))
+    records.map((record) => asString(record.id)).filter((id) => Boolean(id))
   );
 }
 function intersectionSize(left, right) {
@@ -957,9 +1039,9 @@ var AtlasView = class extends import_obsidian4.ItemView {
           sourceIds.add(sourceId);
         }
       }
-      const resolvedSources = [...sourceIds].map((id) => this.plugin.store.get(id)).filter((record2) => record2?.type === "source");
+      const resolvedSources = [...sourceIds].map((id) => this.plugin.store.get(id)).filter((record) => record?.type === "source");
       domain.sources.push(...uniqueRecords(resolvedSources));
-      const resolvedConcepts = [...conceptIds].map((id) => this.plugin.store.get(id)).filter((record2) => record2?.type === "concept");
+      const resolvedConcepts = [...conceptIds].map((id) => this.plugin.store.get(id)).filter((record) => record?.type === "concept");
       domain.concepts.push(...uniqueRecords(resolvedConcepts));
       const relatedModules = [
         ...domain.sources.flatMap((source) => {
@@ -1130,23 +1212,23 @@ var AtlasView = class extends import_obsidian4.ItemView {
       });
       return;
     }
-    const rows2 = records.slice().sort((left, right) => asLabel(left).localeCompare(asLabel(right))).slice(0, 5);
-    for (const record2 of rows2) {
+    const rows = records.slice().sort((left, right) => asLabel(left).localeCompare(asLabel(right))).slice(0, 5);
+    for (const record of rows) {
       if (kind === "concept") {
         const concept = panel.createDiv({ cls: "los-atlas-concept" });
         icon(concept.createSpan(), ICONS.concept);
-        concept.createSpan({ text: asLabel(record2) });
+        concept.createSpan({ text: asLabel(record) });
         continue;
       }
-      const recordId = asString(record2.id);
+      const recordId = asString(record.id);
       const row = panel.createEl("button", {
         cls: "los-atlas-map-link is-clickable",
         attr: { type: "button" }
       });
       icon(row.createSpan(), kind === "module" ? ICONS.module : ICONS.source);
       const copy = row.createSpan({ cls: "los-item-copy" });
-      copy.createSpan({ text: asLabel(record2) });
-      const context = kind === "module" ? projectedMetadata([record2.code, record2.kind ? humanLabel(record2.kind) : ""]) : humanLabel(record2.source_type || "source");
+      copy.createSpan({ text: asLabel(record) });
+      const context = kind === "module" ? projectedMetadata([record.code, record.kind ? humanLabel(record.kind) : ""]) : humanLabel(record.source_type || "source");
       if (context) copy.createSpan({ cls: "los-micro", text: context });
       row.addEventListener("click", () => {
         if (!recordId) return;
@@ -1154,10 +1236,10 @@ var AtlasView = class extends import_obsidian4.ItemView {
         else void this.plugin.openSourceDetail(recordId);
       });
     }
-    if (records.length > rows2.length) {
+    if (records.length > rows.length) {
       panel.createDiv({
         cls: "los-atlas-more",
-        text: `+${records.length - rows2.length} more`
+        text: `+${records.length - rows.length} more`
       });
     }
   }
@@ -1274,19 +1356,19 @@ var AtlasView = class extends import_obsidian4.ItemView {
     const byRole = /* @__PURE__ */ new Map();
     for (const note2 of notes) {
       const role = String(note2.role || "synthesis");
-      const rows2 = byRole.get(role) ?? [];
-      rows2.push(note2);
-      byRole.set(role, rows2);
+      const rows = byRole.get(role) ?? [];
+      rows.push(note2);
+      byRole.set(role, rows);
     }
     const roles = [...byRole.keys()].sort((left, right) => {
       const rank = (role) => ATLAS_ROLE_ORDER.indexOf(role) + 1 || 99;
       return rank(left) - rank(right) || left.localeCompare(right);
     });
     for (const role of roles) {
-      const rows2 = (byRole.get(role) ?? []).slice().sort((left, right) => asLabel(left).localeCompare(asLabel(right)));
+      const rows = (byRole.get(role) ?? []).slice().sort((left, right) => asLabel(left).localeCompare(asLabel(right)));
       const group = body.createEl("details", { cls: "los-atlas-group" });
-      group.createEl("summary", { text: `${roleLabel(role)} (${rows2.length})` });
-      for (const note2 of rows2) this.noteRow(group, note2);
+      group.createEl("summary", { text: `${roleLabel(role)} (${rows.length})` });
+      for (const note2 of rows) this.noteRow(group, note2);
     }
   }
   renderDomain(parent, domain, domains) {
@@ -1691,8 +1773,8 @@ function rankOf(value) {
   const index = value ? TRIAGE_ORDER.indexOf(value) : -1;
   return index < 0 ? 0 : index;
 }
-function hasOpenTarget(record2) {
-  return [record2.material_path, record2.url, record2.vault_path].some(
+function hasOpenTarget(record) {
+  return [record.material_path, record.url, record.vault_path].some(
     (value) => typeof value === "string" && value.trim().length > 0
   );
 }
@@ -2101,11 +2183,11 @@ function labelledInput(parent, label, value = "") {
   input.value = value;
   return input;
 }
-function labelledTextarea(parent, label, value = "", rows2 = 7) {
+function labelledTextarea(parent, label, value = "", rows = 7) {
   const field = parent.createDiv({ cls: "los-job-field" });
   field.createEl("label", { text: label });
   const editor = field.createEl("textarea");
-  editor.rows = rows2;
+  editor.rows = rows;
   editor.value = value;
   return editor;
 }
@@ -2229,8 +2311,8 @@ var JobPlanModal = class extends JobEditorModal {
     this.actions(root, plan ? "Save update" : "Save plan", async () => {
       const planTitle = title.value.trim();
       if (!planTitle) throw new Error("Give the plan a name first.");
-      const rows2 = stages?.value.split("\n").map((line) => line.trim()).filter(Boolean) || [];
-      if (!plan && !rows2.length) throw new Error("Add at least one stage.");
+      const rows = stages?.value.split("\n").map((line) => line.trim()).filter(Boolean) || [];
+      if (!plan && !rows.length) throw new Error("Add at least one stage.");
       await this.options.submit({
         ...plan ? { id: plan.id } : {},
         title: planTitle,
@@ -2265,7 +2347,7 @@ var JobPlanModal = class extends JobEditorModal {
             mental_models: stage.jobContext.mentalModels.map((model) => ({ ...model })),
             read_only_anchor: stage.jobContext.readOnlyAnchor
           }
-        })) : rows2.map((line, index) => {
+        })) : rows.map((line, index) => {
           const [stageTitle = "", objective = "", proof = "", link = "", anchor = ""] = line.split("|").map((part) => part.trim());
           const linkedResource = link ? {
             kind: "read",
@@ -2318,221 +2400,201 @@ var JobNoteModal = class extends JobEditorModal {
   }
 };
 
+// src/contracts/job-dashboard.ts
+var JOB_DASHBOARD_CONTRACT = "job-dashboard-v2";
+
 // src/features/job/model.ts
-function record(value) {
-  return value && typeof value === "object" && !Array.isArray(value) ? value : {};
-}
-function string(value) {
-  return typeof value === "string" ? value.trim() : "";
-}
-function strings(value) {
-  return Array.isArray(value) ? value.map(string).filter(Boolean) : [];
-}
-function number(value) {
-  return typeof value === "number" && Number.isFinite(value) ? value : 0;
-}
-function numbers(value) {
-  return Array.isArray(value) ? value.filter((item) => typeof item === "number" && Number.isFinite(item)) : [];
-}
-function rows(value) {
-  return Array.isArray(value) ? value.map(record).filter((row) => Object.keys(row).length > 0) : [];
-}
 function horizon(value) {
   return value === "now" || value === "next" ? value : "later";
 }
 function relativeJobPath(value) {
-  const path = string(value).replace(/\\/g, "/").replace(/^\.\//, "");
+  const path = asTrimmedString(value).replace(/\\/g, "/").replace(/^\.\//, "");
   if (!path || path.startsWith("/") || path.split("/").includes("..")) return "";
   return path;
 }
-function counts(value) {
-  const source = record(value);
-  return Object.fromEntries(
-    Object.entries(source).filter(([, entry]) => typeof entry === "number" && Number.isFinite(entry)).map(([key, entry]) => [key, entry])
-  );
-}
 function note(value) {
-  const row = record(value);
-  const id = string(row.id);
-  const title = string(row.title);
+  const row = asRecordOrEmpty(value);
+  const id = asTrimmedString(row.id);
+  const title = asTrimmedString(row.title);
   const path = relativeJobPath(row.path);
   if (!id || !title || !path) return null;
   return {
     id,
     title,
     kind: row.kind === "stratum" ? "stratum" : row.kind === "learning" ? "learning" : "skrub",
-    family: string(row.family),
-    summary: string(row.summary),
-    body: string(row.body),
+    family: asTrimmedString(row.family),
+    summary: asTrimmedString(row.summary),
+    body: asTrimmedString(row.body),
     path,
-    component: string(row.component),
-    layer: string(row.layer),
-    verified_against: string(row.verified_against),
-    declared_status: string(row.declared_status),
-    freshness: string(row.freshness) || "unverified",
-    revision: number(row.revision)
+    component: asTrimmedString(row.component),
+    layer: asTrimmedString(row.layer),
+    verified_against: asTrimmedString(row.verified_against),
+    declared_status: asTrimmedString(row.declared_status),
+    freshness: asTrimmedString(row.freshness) || "unverified",
+    revision: asNumber(row.revision)
   };
 }
 function track(value) {
-  const row = record(value);
-  const id = string(row.id);
-  const title = string(row.title);
+  const row = asRecordOrEmpty(value);
+  const id = asTrimmedString(row.id);
+  const title = asTrimmedString(row.title);
   const path = relativeJobPath(row.path);
   if (!id || !title || !path) return null;
   return {
     id,
     title,
     path,
-    status: string(row.status) || "ready",
-    cadence: string(row.cadence),
+    status: asTrimmedString(row.status) || "ready",
+    cadence: asTrimmedString(row.cadence),
     horizon: horizon(row.horizon),
-    outcome: string(row.outcome),
-    stages: rows(row.stages).map((stage) => {
-      const context = record(stage.job_context);
-      const resources = rows(stage.resources).map((resource) => {
-        const url = string(resource.url) || null;
+    outcome: asTrimmedString(row.outcome),
+    stages: asRecords(row.stages).map((stage) => {
+      const context = asRecordOrEmpty(stage.job_context);
+      const resources = asRecords(stage.resources).map((resource) => {
+        const url = asTrimmedString(resource.url) || null;
         const vaultPath = relativeJobPath(resource.vault_path) || null;
         const resourceRecord = { ...resource };
         if (url) resourceRecord.url = url;
         if (vaultPath) resourceRecord.vault_path = vaultPath;
         return {
           record: resourceRecord,
-          id: string(resource.id) || null,
-          kind: string(resource.kind) || "read",
-          label: string(resource.label) || "Resource",
-          locator: string(resource.locator) || null,
-          sourceId: string(resource.source_id) || null,
-          scopeTriage: string(resource.scope_triage) || null,
+          id: asTrimmedString(resource.id) || null,
+          kind: asTrimmedString(resource.kind) || "read",
+          label: asTrimmedString(resource.label) || "Resource",
+          locator: asTrimmedString(resource.locator) || null,
+          sourceId: asTrimmedString(resource.source_id) || null,
+          scopeTriage: asTrimmedString(resource.scope_triage) || null,
           canOpen: Boolean(url || vaultPath),
           url,
           vaultPath
         };
       });
       return {
-        id: string(stage.id),
-        number: number(stage.number),
-        title: string(stage.title),
-        status: string(stage.status) || "pending",
-        objective: string(stage.objective),
-        doneWhen: strings(stage.done_when),
-        estimateMinutes: number(stage.estimate_minutes) || null,
+        id: asTrimmedString(stage.id),
+        number: asNumber(stage.number),
+        title: asTrimmedString(stage.title),
+        status: asTrimmedString(stage.status) || "pending",
+        objective: asTrimmedString(stage.objective),
+        doneWhen: asTrimmedStrings(stage.done_when),
+        estimateMinutes: asNumber(stage.estimate_minutes) || null,
         examCritical: stage.exam_critical === true,
-        concepts: strings(stage.concepts),
-        scopeTriage: string(stage.scope_triage) || "required-now",
+        concepts: asTrimmedStrings(stage.concepts),
+        scopeTriage: asTrimmedString(stage.scope_triage) || "required-now",
         resources,
         jobContext: {
-          mentalModels: rows(context.mental_models).map((model) => ({
-            label: string(model.label),
-            text: string(model.text)
+          mentalModels: asRecords(context.mental_models).map((model) => ({
+            label: asTrimmedString(model.label),
+            text: asTrimmedString(model.text)
           })).filter((model) => model.label && model.text),
-          readOnlyAnchor: string(context.read_only_anchor)
+          readOnlyAnchor: asTrimmedString(context.read_only_anchor)
         },
         done: stage.done === true
       };
     }).filter((stage) => stage.id && stage.number > 0 && stage.title),
-    completedSessions: numbers(row.completed_sessions),
-    lastSessionAt: string(row.last_session_at),
+    completedSessions: asNumbers(row.completed_sessions),
+    lastSessionAt: asTrimmedString(row.last_session_at),
     sourceKind: row.source_kind === "structured" ? "structured" : "legacy-markdown",
-    revision: number(row.revision)
+    revision: asNumber(row.revision)
   };
 }
 function task(value) {
-  const row = record(value);
-  const id = string(row.id);
-  const title = string(row.title);
+  const row = asRecordOrEmpty(value);
+  const id = asTrimmedString(row.id);
+  const title = asTrimmedString(row.title);
   if (!id || !title) return null;
   return {
     id,
     title,
-    details: string(row.details),
+    details: asTrimmedString(row.details),
     horizon: horizon(row.horizon),
     status: row.status === "done" ? "done" : "open",
-    trackId: string(row.track_id),
-    createdAt: string(row.created_at),
-    updatedAt: string(row.updated_at),
-    revision: number(row.revision)
+    trackId: asTrimmedString(row.track_id),
+    createdAt: asTrimmedString(row.created_at),
+    updatedAt: asTrimmedString(row.updated_at),
+    revision: asNumber(row.revision)
   };
 }
 function layer(value) {
-  const row = record(value);
-  const id = string(row.id);
+  const row = asRecordOrEmpty(value);
+  const id = asTrimmedString(row.id);
   if (!id) return null;
   return {
     id,
-    title: string(row.title) || id,
-    summary: string(row.summary),
+    title: asTrimmedString(row.title) || id,
+    summary: asTrimmedString(row.summary),
     noteIds: Array.isArray(row.note_ids) ? row.note_ids.filter((item) => typeof item === "string") : []
   };
 }
 function paper(value) {
-  const row = record(value);
-  const id = string(row.id);
-  const title = string(row.title);
+  const row = asRecordOrEmpty(value);
+  const id = asTrimmedString(row.id);
+  const title = asTrimmedString(row.title);
   const path = relativeJobPath(row.path);
   if (!id || !title || !path) return null;
   return {
     id,
     title,
     path,
-    authors: strings(row.authors),
+    authors: asTrimmedStrings(row.authors),
     year: row.year == null ? "" : String(row.year),
-    pages: number(row.pages),
+    pages: asNumber(row.pages),
     horizon: horizon(row.horizon),
-    angle: string(row.angle),
+    angle: asTrimmedString(row.angle),
     available: row.available === true
   };
 }
 function shelfSource(value) {
-  const row = record(value);
-  const sourceId = string(row.source_id);
-  const title = string(row.title);
+  const row = asRecordOrEmpty(value);
+  const sourceId = asTrimmedString(row.source_id);
+  const title = asTrimmedString(row.title);
   if (!sourceId || !title) return null;
   return {
     source_id: sourceId,
     title,
-    authors: strings(row.authors),
+    type: asTrimmedString(row.type) || "source",
+    authors: asTrimmedStrings(row.authors),
     horizon: horizon(row.horizon),
-    why: string(row.why)
+    why: asTrimmedString(row.why)
   };
 }
 function asJobDashboard(result) {
-  if (result.ok !== true || result.contract !== "job-dashboard-v2") return null;
-  const raw = record(result.dashboard);
-  const workspaceRaw = record(raw.workspace);
+  if (result.ok !== true || result.contract !== JOB_DASHBOARD_CONTRACT) return null;
+  const raw = asRecordOrEmpty(result.dashboard);
+  const workspaceRaw = asRecordOrEmpty(raw.workspace);
   const workspacePath = relativeJobPath(workspaceRaw.path);
-  const title = string(raw.title);
+  const title = asTrimmedString(raw.title);
   if (!title || !workspacePath) return null;
-  const noteRaw = record(raw.notes);
+  const noteRaw = asRecordOrEmpty(raw.notes);
   return {
-    id: string(raw.id) || "job-dashboard",
+    id: asTrimmedString(raw.id) || "job-dashboard",
     title,
-    subtitle: string(raw.subtitle),
+    subtitle: asTrimmedString(raw.subtitle),
     workspace: {
-      id: string(workspaceRaw.id) || "workspace-job-deem",
-      title: string(workspaceRaw.title) || title,
-      status: string(workspaceRaw.status) || "active",
+      id: asTrimmedString(workspaceRaw.id) || "workspace-job-deem",
+      title: asTrimmedString(workspaceRaw.title) || title,
+      status: asTrimmedString(workspaceRaw.status) || "active",
       standing: workspaceRaw.standing === true,
-      objective: string(workspaceRaw.objective),
-      current_scope: rows(workspaceRaw.current_scope).map((scope) => ({
-        label: string(scope.label),
-        text: string(scope.text)
+      objective: asTrimmedString(workspaceRaw.objective),
+      current_scope: asRecords(workspaceRaw.current_scope).map((scope) => ({
+        label: asTrimmedString(scope.label),
+        text: asTrimmedString(scope.text)
       })).filter((scope) => scope.label && scope.text),
-      next_action: string(workspaceRaw.next_action),
-      open_questions: strings(workspaceRaw.open_questions),
+      next_action: asTrimmedString(workspaceRaw.next_action),
+      open_questions: asTrimmedStrings(workspaceRaw.open_questions),
       path: workspacePath
     },
     notes: {
-      learning: rows(noteRaw.learning).map(note).filter((item) => item !== null),
-      skrub: rows(noteRaw.skrub).map(note).filter((item) => item !== null),
-      stratum: rows(noteRaw.stratum).map(note).filter((item) => item !== null),
-      health: counts(noteRaw.health),
-      layers: rows(noteRaw.layers).map(layer).filter((item) => item !== null)
+      learning: asRecords(noteRaw.learning).map(note).filter((item) => item !== null),
+      skrub: asRecords(noteRaw.skrub).map(note).filter((item) => item !== null),
+      stratum: asRecords(noteRaw.stratum).map(note).filter((item) => item !== null),
+      health: asNumberRecord(noteRaw.health),
+      layers: asRecords(noteRaw.layers).map(layer).filter((item) => item !== null)
     },
-    learning_tracks: rows(raw.learning_tracks).map(track).filter((item) => item !== null),
-    tasks: rows(raw.tasks).map(task).filter((item) => item !== null),
-    papers: rows(raw.papers).map(paper).filter((item) => item !== null),
-    canonical_shelf: rows(raw.canonical_shelf).map(shelfSource).filter((item) => item !== null),
-    counts: counts(raw.counts)
+    learning_tracks: asRecords(raw.learning_tracks).map(track).filter((item) => item !== null),
+    tasks: asRecords(raw.tasks).map(task).filter((item) => item !== null),
+    papers: asRecords(raw.papers).map(paper).filter((item) => item !== null),
+    canonical_shelf: asRecords(raw.canonical_shelf).map(shelfSource).filter((item) => item !== null),
+    counts: asNumberRecord(raw.counts)
   };
 }
 
@@ -3177,7 +3239,7 @@ var GardenView = class extends import_obsidian9.ItemView {
 
 // src/features/home/model.ts
 function readResumePointer(value) {
-  if (!isRecord(value)) {
+  if (!isRecord2(value)) {
     return {};
   }
   return {
@@ -3207,41 +3269,41 @@ function renderElsewhere(view, root) {
   const pointer = readResumePointer(
     view.plugin.store.data?.resume_pointer
   );
-  const rows2 = [];
-  for (const record2 of view.plugin.store.currentSemesterModules()) {
-    const recordId = asString(record2.id);
+  const rows = [];
+  for (const record of view.plugin.store.currentSemesterModules()) {
+    const recordId = asString(record.id);
     if (!recordId || recordId === pointer.module_id) {
       continue;
     }
-    if (record2.is_actionable !== true) {
+    if (record.is_actionable !== true) {
       continue;
     }
-    rows2.push({
-      record: record2,
-      type: asString(record2.kind) === "skill" ? "Skill" : "Module",
+    rows.push({
+      record,
+      type: asString(record.kind) === "skill" ? "Skill" : "Module",
       open: () => view.plugin.openModule(
         recordId
       )
     });
   }
-  for (const record2 of view.plugin.store.projects()) {
-    const recordId = asString(record2.id);
+  for (const record of view.plugin.store.projects()) {
+    const recordId = asString(record.id);
     if (!recordId) {
       continue;
     }
-    const status = asString(record2.status);
+    const status = asString(record.status);
     if (status && ["completed", "archived"].includes(status)) {
       continue;
     }
-    rows2.push({
-      record: record2,
+    rows.push({
+      record,
       type: "Project",
       open: () => view.plugin.openProject(
         recordId
       )
     });
   }
-  const visibleRows = rows2.slice(0, 5);
+  const visibleRows = rows.slice(0, 5);
   if (!visibleRows.length) {
     empty(
       sectionEl,
@@ -3696,8 +3758,8 @@ function isProjectDetailTab(value) {
   return PROJECT_DETAIL_TABS.includes(value);
 }
 function asLibrarySourceFilters(value) {
-  const record2 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
-  const read = (key) => typeof record2[key] === "string" ? record2[key] : "";
+  const record = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+  const read = (key) => typeof record[key] === "string" ? record[key] : "";
   return {
     domain: read("domain"),
     topic: read("topic"),
@@ -3764,7 +3826,7 @@ function isSourceFacet(value) {
   );
 }
 function readLibraryViewState(value, currentCollection, currentRecordType) {
-  if (!isRecord(value)) {
+  if (!isRecord2(value)) {
     return {
       screen: "home",
       collection: currentCollection,
@@ -3809,7 +3871,7 @@ function readLibraryViewState(value, currentCollection, currentRecordType) {
   };
 }
 function readThematicGroup(value) {
-  if (!isRecord(value)) {
+  if (!isRecord2(value)) {
     return null;
   }
   const id = asString(value.id);
@@ -3823,7 +3885,7 @@ function readThematicGroup(value) {
   };
 }
 function readCollectionEntry(value) {
-  if (!isRecord(value)) {
+  if (!isRecord2(value)) {
     return null;
   }
   const sourceId = asString(value.source);
@@ -3854,7 +3916,7 @@ function readAttachment(value) {
       label: value.split("/").pop() || value
     };
   }
-  if (!isRecord(value)) {
+  if (!isRecord2(value)) {
     return null;
   }
   const path = asString(value.path) ?? asString(value.vault_path);
@@ -3875,7 +3937,7 @@ function readAttachments(value) {
   );
 }
 function readUsefulSection(value) {
-  if (!isRecord(value)) {
+  if (!isRecord2(value)) {
     return null;
   }
   const section11 = asText(value.section);
@@ -3888,7 +3950,7 @@ function readUsefulSection(value) {
   };
 }
 function readEvaluation(value) {
-  if (!isRecord(value)) {
+  if (!isRecord2(value)) {
     return null;
   }
   const roles = asStrings(value.roles);
@@ -3926,7 +3988,7 @@ function readEvaluations(value) {
   );
 }
 function readLibraryRecord(value) {
-  if (!isRecord(value)) {
+  if (!isRecord2(value)) {
     return null;
   }
   const id = asString(value.id);
@@ -3962,7 +4024,7 @@ function readLibraryRecords(value) {
     return [];
   }
   return value.map(readLibraryRecord).filter(
-    (record2) => record2 !== null
+    (record) => record !== null
   );
 }
 function readRelatedRecords(value) {
@@ -3971,24 +4033,24 @@ function readRelatedRecords(value) {
   }
   const records = [];
   for (const candidate of value) {
-    if (!isRecord(candidate)) {
+    if (!isRecord2(candidate)) {
       continue;
     }
-    const record2 = readLibraryRecord(candidate.rec);
-    if (record2) {
-      records.push(record2);
+    const record = readLibraryRecord(candidate.rec);
+    if (record) {
+      records.push(record);
     }
   }
   return records;
 }
 
 // src/features/library/detail.ts
-function renderRecordActions(view, detail, record2) {
+function renderRecordActions(view, detail, record) {
   const actions = detail.createDiv({
     cls: "los-actions"
   });
-  if (record2.url) {
-    const url = record2.url;
+  if (record.url) {
+    const url = record.url;
     button(
       actions,
       "Open online",
@@ -3998,29 +4060,29 @@ function renderRecordActions(view, detail, record2) {
       "info"
     );
   }
-  if (record2.materialPath) {
+  if (record.materialPath) {
     button(
       actions,
       "Open local copy",
       () => view.plugin.openMaterialPath(
-        record2.materialPath
+        record.materialPath
       ),
       "info"
     );
   }
-  if (record2.path) {
+  if (record.path) {
     button(
       actions,
       "Open authored file",
       () => view.plugin.openAuthoredPath(
-        record2.path
+        record.path
       ),
       "info"
     );
   }
 }
-function renderAttachments(view, detail, record2) {
-  if (!record2.attachments.length) {
+function renderAttachments(view, detail, record) {
+  if (!record.attachments.length) {
     return;
   }
   const attachments = section(
@@ -4028,7 +4090,7 @@ function renderAttachments(view, detail, record2) {
     "Attachments",
     "Open the original handwriting, image, or PDF."
   );
-  for (const attachment of record2.attachments) {
+  for (const attachment of record.attachments) {
     button(
       attachments,
       `Open ${attachment.label}`,
@@ -4039,10 +4101,10 @@ function renderAttachments(view, detail, record2) {
     );
   }
 }
-function renderRelated(view, detail, record2) {
+function renderRelated(view, detail, record) {
   const related = readRelatedRecords(
     view.plugin.store.related(
-      record2.id
+      record.id
     )
   );
   const groups = /* @__PURE__ */ new Map();
@@ -4071,19 +4133,19 @@ function renderRelated(view, detail, record2) {
   );
   for (const [
     type,
-    rows2
+    rows
   ] of orderedGroups) {
     const group = wrap.createDiv({
       cls: "los-related-group"
     });
     group.createDiv({
       cls: "los-group-title",
-      text: `${RELATED_LABELS[type] ?? type} \xB7 ${rows2.length}`
+      text: `${RELATED_LABELS[type] ?? type} \xB7 ${rows.length}`
     });
     const shown = group.createDiv({
       cls: "los-related-chips"
     });
-    for (const relatedRecord of rows2.slice(0, 5)) {
+    for (const relatedRecord of rows.slice(0, 5)) {
       chip(
         shown,
         relatedRecord.record,
@@ -4092,15 +4154,15 @@ function renderRelated(view, detail, record2) {
         )
       );
     }
-    if (rows2.length > 5) {
+    if (rows.length > 5) {
       const rest = disclosure(
         group,
-        `View all ${rows2.length}`
+        `View all ${rows.length}`
       );
       const restChips = rest.createDiv({
         cls: "los-related-chips"
       });
-      for (const relatedRecord of rows2.slice(5)) {
+      for (const relatedRecord of rows.slice(5)) {
         chip(
           restChips,
           relatedRecord.record,
@@ -4112,7 +4174,7 @@ function renderRelated(view, detail, record2) {
     }
   }
 }
-function renderSourceDetail(view, detail, record2) {
+function renderSourceDetail(view, detail, record) {
   const facts = section(
     detail,
     "Source facts"
@@ -4120,19 +4182,19 @@ function renderSourceDetail(view, detail, record2) {
   const factRows = [
     [
       "Authors",
-      record2.authors.join(", ")
+      record.authors.join(", ")
     ],
     [
       "Organization",
-      record2.organization
+      record.organization
     ],
     [
       "Year",
-      record2.year
+      record.year
     ],
     [
       "Type",
-      record2.sourceType
+      record.sourceType
     ]
   ];
   for (const [
@@ -4155,7 +4217,7 @@ function renderSourceDetail(view, detail, record2) {
     });
   }
   const memberships = view.shelfIndex().get(
-    record2.id
+    record.id
   ) ?? [];
   const placed = section(
     detail,
@@ -4217,7 +4279,7 @@ function renderSourceDetail(view, detail, record2) {
   );
   const units = readLibraryRecords(
     view.plugin.store.useUnits(
-      record2.id
+      record.id
     )
   );
   if (!units.length) {
@@ -4236,12 +4298,12 @@ function renderSourceDetail(view, detail, record2) {
       )
     );
   }
-  if (record2.evaluations.length) {
+  if (record.evaluations.length) {
     const evidence = section(
       detail,
       "What this source is good for"
     );
-    for (const evaluation of record2.evaluations) {
+    for (const evaluation of record.evaluations) {
       const card = evidence.createDiv({
         cls: "los-evidence-card"
       });
@@ -4270,7 +4332,7 @@ function renderSourceDetail(view, detail, record2) {
     }
   }
 }
-function renderTechnical(view, detail, record2) {
+function renderTechnical(view, detail, record) {
   const technical = disclosure(
     detail,
     "Technical details",
@@ -4285,17 +4347,17 @@ function renderTechnical(view, detail, record2) {
   });
   idRow.createSpan({
     cls: "los-fact-value los-detail-id",
-    text: record2.id
+    text: record.id
   });
   button(
     technical,
     "Copy ID",
     () => view.plugin.copyText(
-      record2.id
+      record.id
     ),
     "quiet"
   );
-  if (record2.path) {
+  if (record.path) {
     const pathRow = technical.createDiv({
       cls: "los-fact-row"
     });
@@ -4305,21 +4367,21 @@ function renderTechnical(view, detail, record2) {
     });
     pathRow.createSpan({
       cls: "los-fact-value",
-      text: record2.path
+      text: record.path
     });
   }
 }
 
 // src/features/library/collections.ts
-function renderRecordRow(view, list, record2, isPack = false) {
+function renderRecordRow(view, list, record, isPack = false) {
   const row = list.createEl(
     "button",
     {
       cls: "los-route-row is-clickable",
       attr: {
         type: "button",
-        "aria-label": `Open ${record2.title}`,
-        "data-record-id": record2.id
+        "aria-label": `Open ${record.title}`,
+        "data-record-id": record.id
       }
     }
   );
@@ -4329,18 +4391,18 @@ function renderRecordRow(view, list, record2, isPack = false) {
   copy.createEl(
     "strong",
     {
-      text: record2.title
+      text: record.title
     }
   );
   const meta = isPack ? [
-    record2.purpose,
-    `${record2.entries.length} items`
+    record.purpose,
+    `${record.entries.length} items`
   ].filter(Boolean).join(" \xB7 ") : [
-    record2.sourceType,
-    record2.year,
-    record2.organization,
-    record2.materialExists || record2.materialPath ? "local" : null,
-    record2.url ? "online" : null
+    record.sourceType,
+    record.year,
+    record.organization,
+    record.materialExists || record.materialPath ? "local" : null,
+    record.url ? "online" : null
   ].filter(Boolean).join(" \xB7 ");
   if (meta) {
     copy.createDiv({
@@ -4355,17 +4417,17 @@ function renderRecordRow(view, list, record2, isPack = false) {
   row.addEventListener(
     "click",
     () => {
-      view.selectedElementId = record2.id;
+      view.selectedElementId = record.id;
       if (isPack) {
         view.plugin.openTopicPackDetail(
-          record2.id,
+          record.id,
           view.groupId,
           view.query
         );
         return;
       }
       view.plugin.openSourceDetail(
-        record2.id,
+        record.id,
         view.groupId,
         view.query,
         view.facet,
@@ -4375,7 +4437,7 @@ function renderRecordRow(view, list, record2, isPack = false) {
   );
 }
 function renderSourcePage(view, root) {
-  const record2 = readLibraryRecord(
+  const record = readLibraryRecord(
     view.resourceId ? view.plugin.store.get(
       view.resourceId
     ) : null
@@ -4387,7 +4449,7 @@ function renderSourcePage(view, root) {
     "quiet"
   );
   back.addClass("los-route-back");
-  if (!record2 || record2.type !== "source") {
+  if (!record || record.type !== "source") {
     empty(
       root,
       "Learning source unavailable",
@@ -4403,28 +4465,28 @@ function renderSourcePage(view, root) {
   pageHeader(
     detail,
     "Learning Source",
-    record2.title,
-    record2.summary
+    record.title,
+    record.summary
   );
   view.renderRecordActions(
     detail,
-    record2
+    record
   );
   view.renderAttachments(
     detail,
-    record2
+    record
   );
   view.renderSourceDetail(
     detail,
-    record2
+    record
   );
   view.renderRelated(
     detail,
-    record2
+    record
   );
   view.renderTechnical(
     detail,
-    record2
+    record
   );
 }
 function renderTopicPackPage(view, root) {
@@ -4653,23 +4715,23 @@ function renderLegacyList(view, root) {
       view.render();
     }
   );
-  let rows2 = readLibraryRecords(
+  let rows = readLibraryRecords(
     view.plugin.store.search(
       view.query,
       [view.recordType]
     )
   );
   if (view.domain) {
-    rows2 = rows2.filter(
-      (record2) => record2.domain === view.domain
+    rows = rows.filter(
+      (record) => record.domain === view.domain
     );
   }
-  rows2.sort(
+  rows.sort(
     (left, right) => left.title.localeCompare(
       right.title
     )
   );
-  if (!rows2.length) {
+  if (!rows.length) {
     empty(
       root,
       view.query ? "No matching records" : "No records",
@@ -4680,14 +4742,14 @@ function renderLegacyList(view, root) {
   const list = root.createDiv({
     cls: "los-route-list"
   });
-  for (const record2 of rows2) {
+  for (const record of rows) {
     const row = list.createEl(
       "button",
       {
         cls: "los-route-row is-clickable",
         attr: {
           type: "button",
-          "data-record-id": record2.id
+          "data-record-id": record.id
         }
       }
     );
@@ -4697,33 +4759,33 @@ function renderLegacyList(view, root) {
     copy.createEl(
       "strong",
       {
-        text: record2.title
+        text: record.title
       }
     );
     copy.createDiv({
       cls: "los-route-meta",
       text: [
-        record2.role,
-        record2.domain,
-        record2.state
+        record.role,
+        record.domain,
+        record.state
       ].filter(Boolean).join(" \xB7 ")
     });
     row.createSpan({
       cls: "los-route-open",
-      text: record2.path ? "Open file \u2192" : "Open \u2192"
+      text: record.path ? "Open file \u2192" : "Open \u2192"
     });
     row.addEventListener(
       "click",
       () => {
-        view.selectedElementId = record2.id;
-        if (record2.path) {
+        view.selectedElementId = record.id;
+        if (record.path) {
           view.plugin.openAuthoredPath(
-            record2.path
+            record.path
           );
           return;
         }
         view.plugin.openRecord(
-          record2.record
+          record.record
         );
       }
     );
@@ -4904,9 +4966,9 @@ function renderGroup(view, root) {
   }
   const needle = view.query.trim().toLocaleLowerCase();
   const words2 = needle.split(/\s+/).filter(Boolean);
-  const rows2 = all.filter((record2) => {
+  const rows = all.filter((record) => {
     if (!isPacks && !view.matchesSourceFacet(
-      record2.record
+      record.record
     )) {
       return false;
     }
@@ -4914,13 +4976,13 @@ function renderGroup(view, root) {
       return true;
     }
     const hay = [
-      record2.id,
-      record2.title,
-      record2.purpose,
-      record2.summary,
-      ...record2.aliases,
-      ...record2.authors,
-      record2.organization
+      record.id,
+      record.title,
+      record.purpose,
+      record.summary,
+      ...record.aliases,
+      ...record.authors,
+      record.organization
     ].filter(Boolean).join(" ").toLocaleLowerCase();
     return words2.every(
       (word) => hay.includes(word)
@@ -4938,7 +5000,7 @@ function renderGroup(view, root) {
     );
     return;
   }
-  if (!rows2.length) {
+  if (!rows.length) {
     empty(
       root,
       "No matching results",
@@ -4956,10 +5018,10 @@ function renderGroup(view, root) {
   const list = root.createDiv({
     cls: "los-route-list los-library-route-list"
   });
-  for (const record2 of rows2) {
+  for (const record of rows) {
     view.renderRecordRow(
       list,
-      record2,
+      record,
       isPacks
     );
   }
@@ -5233,7 +5295,7 @@ function renderSourceBrowser(view, root) {
     );
   }
   const words2 = view.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
-  const rows2 = all.filter(
+  const rows = all.filter(
     (source) => view.sourceMatchesFilters(source)
   ).filter(
     (source) => {
@@ -5261,7 +5323,7 @@ function renderSourceBrowser(view, root) {
   );
   browser.createDiv({
     cls: "los-library-result-summary",
-    text: `${rows2.length} of ${all.length} source${all.length === 1 ? "" : "s"}`
+    text: `${rows.length} of ${all.length} source${all.length === 1 ? "" : "s"}`
   });
   if (!all.length) {
     empty(
@@ -5271,7 +5333,7 @@ function renderSourceBrowser(view, root) {
     );
     return;
   }
-  if (!rows2.length) {
+  if (!rows.length) {
     const hasQuery = Boolean(
       view.query.trim()
     );
@@ -5298,7 +5360,7 @@ function renderSourceBrowser(view, root) {
   const list = browser.createDiv({
     cls: "los-route-list los-library-route-list"
   });
-  for (const source of rows2) {
+  for (const source of rows) {
     view.renderRecordRow(
       list,
       source,
@@ -5500,8 +5562,8 @@ var LibraryView = class extends import_obsidian11.ItemView {
     this._shelfSnapshot = this.plugin.store.snapshotId;
     return index;
   }
-  matchesSourceFacet(record2) {
-    const source = readLibraryRecord(record2);
+  matchesSourceFacet(record) {
+    const source = readLibraryRecord(record);
     if (!source) {
       return false;
     }
@@ -5723,8 +5785,8 @@ var LibraryView = class extends import_obsidian11.ItemView {
   renderFacetValues(parent, sources) {
     renderFacetValues(this, parent, sources);
   }
-  renderRecordRow(list, record2, isPack = false) {
-    renderRecordRow(this, list, record2, isPack);
+  renderRecordRow(list, record, isPack = false) {
+    renderRecordRow(this, list, record, isPack);
   }
   renderSourcePage(root) {
     renderSourcePage(this, root);
@@ -5741,20 +5803,20 @@ var LibraryView = class extends import_obsidian11.ItemView {
   renderLegacyList(root) {
     renderLegacyList(this, root);
   }
-  renderRecordActions(detail, record2) {
-    renderRecordActions(this, detail, record2);
+  renderRecordActions(detail, record) {
+    renderRecordActions(this, detail, record);
   }
-  renderAttachments(detail, record2) {
-    renderAttachments(this, detail, record2);
+  renderAttachments(detail, record) {
+    renderAttachments(this, detail, record);
   }
-  renderRelated(detail, record2) {
-    renderRelated(this, detail, record2);
+  renderRelated(detail, record) {
+    renderRelated(this, detail, record);
   }
-  renderSourceDetail(detail, record2) {
-    renderSourceDetail(this, detail, record2);
+  renderSourceDetail(detail, record) {
+    renderSourceDetail(this, detail, record);
   }
-  renderTechnical(detail, record2) {
-    renderTechnical(this, detail, record2);
+  renderTechnical(detail, record) {
+    renderTechnical(this, detail, record);
   }
 };
 
@@ -5777,7 +5839,7 @@ function isModuleTab(value) {
   );
 }
 function readModuleViewState(value) {
-  if (!isRecord(value)) {
+  if (!isRecord2(value)) {
     return {
       screen: "groups",
       groupId: null,
@@ -5814,74 +5876,74 @@ function readModuleViewState(value) {
     hasTab
   };
 }
-function readThematicGroup6(record2) {
-  if (!record2) {
+function readThematicGroup6(record) {
+  if (!record) {
     return null;
   }
-  const id = asString(record2.id);
+  const id = asString(record.id);
   if (!id) {
     return null;
   }
   return {
     id,
-    title: asString(record2.title) ?? asString(record2.label) ?? id,
-    description: asText(record2.description) ?? ""
+    title: asString(record.title) ?? asString(record.label) ?? id,
+    description: asText(record.description) ?? ""
   };
 }
 function readComponents(value) {
-  return asRecords(value).map((record2) => {
-    const id = asString(record2.id);
+  return asRecords(value).map((record) => {
+    const id = asString(record.id);
     if (!id) {
       return null;
     }
     return {
       id,
-      title: asString(record2.short_title) ?? asString(record2.title) ?? id
+      title: asString(record.short_title) ?? asString(record.title) ?? id
     };
   }).filter(nonNull);
 }
 function readExamination(value) {
-  const examination = isRecord(value) ? value : {};
+  const examination = isRecord2(value) ? value : {};
   return {
     type: asString(examination.type),
     notes: asText(examination.notes)
   };
 }
-function readModuleRecord(record2, fallbackId = null) {
-  if (!record2) {
+function readModuleRecord(record, fallbackId = null) {
+  if (!record) {
     return null;
   }
-  const id = asString(record2.id) ?? fallbackId;
+  const id = asString(record.id) ?? fallbackId;
   if (!id) {
     return null;
   }
   return {
-    record: record2,
+    record,
     id,
-    title: asString(record2.title) ?? id,
-    kind: asString(record2.kind) ?? "Module",
-    code: asText(record2.code) ?? "",
-    semester: asText(record2.semester) ?? "",
-    status: asString(record2.status) ?? "unspecified",
-    institution: asText(record2.institution) ?? "",
-    credits: asText(record2.credits),
-    examination: readExamination(record2.examination),
-    components: readComponents(record2.components)
+    title: asString(record.title) ?? id,
+    kind: asString(record.kind) ?? "Module",
+    code: asText(record.code) ?? "",
+    semester: asText(record.semester) ?? "",
+    status: asString(record.status) ?? "unspecified",
+    institution: asText(record.institution) ?? "",
+    credits: asText(record.credits),
+    examination: readExamination(record.examination),
+    components: readComponents(record.components)
   };
 }
-function normalizeUnitRecord(record2) {
-  const id = asString(record2.id);
+function normalizeUnitRecord(record) {
+  const id = asString(record.id);
   if (!id) {
     return null;
   }
-  const title = asString(record2.title) ?? id;
-  const status = asString(record2.status) ?? "unspecified";
+  const title = asString(record.title) ?? id;
+  const status = asString(record.status) ?? "unspecified";
   const normalized = {
-    ...record2,
+    ...record,
     id,
     title,
     status,
-    scope: asText(record2.scope) ?? ""
+    scope: asText(record.scope) ?? ""
   };
   return {
     record: normalized,
@@ -5890,22 +5952,22 @@ function normalizeUnitRecord(record2) {
     status
   };
 }
-function normalizeWorkspaceRecord(record2) {
+function normalizeWorkspaceRecord(record) {
   return {
-    ...record2,
-    id: asString(record2.id) ?? "",
-    title: asString(record2.title) ?? asString(record2.id) ?? "Workspace",
-    status: asString(record2.status) ?? "unspecified",
-    objective: asText(record2.objective) ?? "",
-    next_action: asText(record2.next_action) ?? "",
-    deadline: asText(record2.deadline) ?? "",
-    standing: record2.standing === true,
-    module_ids: asStrings(record2.module_ids),
-    unit_ids: asStrings(record2.unit_ids)
+    ...record,
+    id: asString(record.id) ?? "",
+    title: asString(record.title) ?? asString(record.id) ?? "Workspace",
+    status: asString(record.status) ?? "unspecified",
+    objective: asText(record.objective) ?? "",
+    next_action: asText(record.next_action) ?? "",
+    deadline: asText(record.deadline) ?? "",
+    standing: record.standing === true,
+    module_ids: asStrings(record.module_ids),
+    unit_ids: asStrings(record.unit_ids)
   };
 }
 function readProgress(value) {
-  const progress = isRecord(value) ? value : {};
+  const progress = isRecord2(value) ? value : {};
   return {
     stagesComplete: asCount(
       progress.stages_complete
@@ -5919,42 +5981,42 @@ function readProgress(value) {
   };
 }
 function readDeadlineModules(value) {
-  return asRecords(value).map((record2) => {
-    const moduleId = asString(record2.module_id);
+  return asRecords(value).map((record) => {
+    const moduleId = asString(record.module_id);
     if (!moduleId) {
       return null;
     }
     return {
       moduleId,
-      action: asText(record2.action)
+      action: asText(record.action)
     };
   }).filter(nonNull);
 }
-function readAcademicDeadline(record2) {
-  const startDate = asString(record2.start_date) ?? "";
-  const endDate = asString(record2.end_date) ?? "";
+function readAcademicDeadline(record) {
+  const startDate = asString(record.start_date) ?? "";
+  const endDate = asString(record.end_date) ?? "";
   return {
-    record: record2,
-    kind: asString(record2.kind) ?? "academic-date",
-    label: asString(record2.label) ?? asString(record2.title) ?? "Academic date",
-    title: asString(record2.title) ?? "",
+    record,
+    kind: asString(record.kind) ?? "academic-date",
+    label: asString(record.label) ?? asString(record.title) ?? "Academic date",
+    title: asString(record.title) ?? "",
     startDate,
     endDate,
-    time: asText(record2.time),
+    time: asText(record.time),
     registrationState: asString(
-      record2.registration_state
+      record.registration_state
     ) ?? "unregistered",
-    directModuleId: asString(record2.module_id),
-    modules: readDeadlineModules(record2.modules)
+    directModuleId: asString(record.module_id),
+    modules: readDeadlineModules(record.modules)
   };
 }
 function readSourceEntries(value) {
-  return asRecords(value).map((record2) => ({
-    record: record2,
-    role: asString(record2.role) ?? "unassigned",
-    sourceId: asString(record2.source_id),
-    why: asText(record2.why) ?? "",
-    unitRouteCount: Array.isArray(record2.unit_routes) ? record2.unit_routes.length : 0
+  return asRecords(value).map((record) => ({
+    record,
+    role: asString(record.role) ?? "unassigned",
+    sourceId: asString(record.source_id),
+    why: asText(record.why) ?? "",
+    unitRouteCount: Array.isArray(record.unit_routes) ? record.unit_routes.length : 0
   }));
 }
 
@@ -6054,9 +6116,9 @@ function renderSources(view, root, module2) {
         chip(
           row,
           source,
-          (record2) => {
+          (record) => {
             const id = asString(
-              record2.id
+              record.id
             );
             if (!id) {
               return;
@@ -6153,7 +6215,7 @@ function renderLogistics(view, root, module2) {
 }
 function deadlinesFor(view, module2) {
   return view.plugin.store.rows("academic_deadlines").map(
-    (record2) => readAcademicDeadline(record2)
+    (record) => readAcademicDeadline(record)
   ).filter(
     (row) => row.directModuleId === module2.id || row.modules.some(
       (entry) => entry.moduleId === module2.id
@@ -6165,8 +6227,8 @@ function deadlinesFor(view, module2) {
   );
 }
 function renderAcademicDates(view, root, module2) {
-  const rows2 = view.deadlinesFor(module2);
-  if (!rows2.length) {
+  const rows = view.deadlinesFor(module2);
+  if (!rows.length) {
     return;
   }
   const wrap = section(
@@ -6175,10 +6237,10 @@ function renderAcademicDates(view, root, module2) {
     "Registration windows and exam sittings for this module."
   );
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-  const ahead = rows2.filter(
+  const ahead = rows.filter(
     (row) => (row.endDate || row.startDate) >= today
   );
-  const past = rows2.filter(
+  const past = rows.filter(
     (row) => (row.endDate || row.startDate) < today
   );
   if (ahead.length) {
@@ -6207,11 +6269,11 @@ function renderAcademicDates(view, root, module2) {
     );
   }
 }
-function renderDeadlineRows(view, wrap, module2, rows2) {
+function renderDeadlineRows(view, wrap, module2, rows) {
   const list = wrap.createDiv({
     cls: "los-date-list"
   });
-  for (const row of rows2) {
+  for (const row of rows) {
     const card = list.createDiv({
       cls: `los-date-row los-deadline-${row.kind}`
     });
@@ -6361,7 +6423,7 @@ function renderOverview(view, root, module2) {
     text: `${progress.stagesComplete} of ${progress.stagesTotal} stages complete across ${progress.unitsTotal} unit${progress.unitsTotal === 1 ? "" : "s"}`
   });
   const workspaces = view.plugin.store.workspacesForModule(module2.id).map(
-    (record2) => normalizeWorkspaceRecord(record2)
+    (record) => normalizeWorkspaceRecord(record)
   );
   for (const workspace of workspaces) {
     workspaceCard(
@@ -6379,7 +6441,7 @@ function renderOverview(view, root, module2) {
     );
   }
   const units = view.plugin.store.unitsFor(module2.id).map(
-    (record2) => normalizeUnitRecord(record2)
+    (record) => normalizeUnitRecord(record)
   ).filter(nonNull);
   const next = units.find(
     (unit) => unit.status === "active"
@@ -6443,7 +6505,7 @@ function renderUnits(view, root, module2) {
     module2.id,
     view.componentId
   ).map(
-    (record2) => normalizeUnitRecord(record2)
+    (record) => normalizeUnitRecord(record)
   ).filter(nonNull);
   if (!units.length) {
     empty(
@@ -6534,7 +6596,7 @@ function renderUnits(view, root, module2) {
 function renderGroups(view, root) {
   const semester = view.plugin.store.currentSemester();
   const modules = view.plugin.store.currentSemesterModules().map(
-    (record2) => readModuleRecord(record2)
+    (record) => readModuleRecord(record)
   ).filter(nonNull);
   pageHeader(
     root,
@@ -6657,10 +6719,10 @@ function renderGroupList(view, root) {
     }
   );
   const all = view.plugin.store.modulesForGroup(group.id).map(
-    (record2) => readModuleRecord(record2)
+    (record) => readModuleRecord(record)
   ).filter(nonNull);
   const needle = view.query.trim().toLocaleLowerCase();
-  const rows2 = all.filter(
+  const rows = all.filter(
     (module2) => {
       if (!needle) {
         return true;
@@ -6681,7 +6743,7 @@ function renderGroupList(view, root) {
     );
     return;
   }
-  if (!rows2.length) {
+  if (!rows.length) {
     empty(
       root,
       "No matching modules",
@@ -6702,7 +6764,7 @@ function renderGroupList(view, root) {
   const list = root.createDiv({
     cls: "los-route-list"
   });
-  for (const module2 of rows2) {
+  for (const module2 of rows) {
     const row = list.createEl(
       "button",
       {
@@ -6857,8 +6919,8 @@ var ModuleView = class extends import_obsidian12.ItemView {
   renderAcademicDates(root, module2) {
     renderAcademicDates(this, root, module2);
   }
-  renderDeadlineRows(wrap, module2, rows2) {
-    renderDeadlineRows(this, wrap, module2, rows2);
+  renderDeadlineRows(wrap, module2, rows) {
+    renderDeadlineRows(this, wrap, module2, rows);
   }
   async selectTab(tab) {
     await selectTab(this, tab);
@@ -6968,7 +7030,7 @@ function readProgramSemesters(value) {
   }
   const semesters = [];
   for (const candidate of value) {
-    if (!isRecord(candidate) || typeof candidate.title !== "string" || typeof candidate.status !== "string") {
+    if (!isRecord2(candidate) || typeof candidate.title !== "string" || typeof candidate.status !== "string") {
       continue;
     }
     semesters.push({
@@ -7145,7 +7207,7 @@ var ProgramView = class extends import_obsidian14.ItemView {
         "row"
       );
       title.addClass("los-learning-title");
-      const examination = isRecord(
+      const examination = isRecord2(
         module2.examination
       ) ? projectedExcerpt(
         module2.examination.type,
@@ -7186,8 +7248,8 @@ var ProgramView = class extends import_obsidian14.ItemView {
    */
   renderCoordination(root) {
     const coordination = this.plugin.store.get("coordination");
-    const sections = isRecord(coordination?.sections) ? coordination.sections : {};
-    const rows2 = COORDINATION_HEADINGS.map(
+    const sections = isRecord2(coordination?.sections) ? coordination.sections : {};
+    const rows = COORDINATION_HEADINGS.map(
       (heading) => [
         heading,
         projectedExcerpt(
@@ -7196,7 +7258,7 @@ var ProgramView = class extends import_obsidian14.ItemView {
         )
       ]
     ).filter((row) => Boolean(row[1]));
-    if (!rows2.length) {
+    if (!rows.length) {
       return;
     }
     const panel = disclosure(
@@ -7204,7 +7266,7 @@ var ProgramView = class extends import_obsidian14.ItemView {
       "Semester coordination",
       "los-coordination-details"
     );
-    for (const [heading, body] of rows2) {
+    for (const [heading, body] of rows) {
       const row = panel.createDiv({
         cls: "los-coordination-row"
       });
@@ -7514,7 +7576,7 @@ function isProjectTab(value) {
   );
 }
 function readProjectViewState(value) {
-  if (!isRecord(value)) {
+  if (!isRecord2(value)) {
     return {};
   }
   const screen = value.screen === "detail" ? "detail" : value.screen === "list" ? "list" : void 0;
@@ -7529,7 +7591,7 @@ function readProjectViewState(value) {
   };
 }
 function readProjectBoundaries(value) {
-  const boundaries = isRecord(value) ? value : {};
+  const boundaries = isRecord2(value) ? value : {};
   return {
     confidentiality: asString(
       boundaries.confidentiality
@@ -7541,7 +7603,7 @@ function readProjectBoundaries(value) {
   };
 }
 function readProjectStructure(value) {
-  const structure = isRecord(value) ? value : {};
+  const structure = isRecord2(value) ? value : {};
   return {
     kind: asString(structure.kind) ?? "none",
     nodes: asRecords(structure.nodes)
@@ -7722,11 +7784,11 @@ function renderDetail(view, root) {
     ...asStrings(project.unit_ids)
   ];
   for (const id of linkedIds) {
-    const record2 = view.plugin.store.get(id);
-    if (!record2) continue;
+    const record = view.plugin.store.get(id);
+    if (!record) continue;
     chip(
       links,
-      record2,
+      record,
       (target) => view.plugin.openRecord(target)
     );
   }
@@ -7879,7 +7941,7 @@ function renderList(view, root) {
   const draw = () => {
     results.empty();
     const words2 = input.value.toLocaleLowerCase().split(/\s+/).filter(Boolean);
-    const rows2 = view.plugin.store.projects().filter(
+    const rows = view.plugin.store.projects().filter(
       (project) => {
         const id = asString(project.id);
         if (!id) {
@@ -7900,7 +7962,7 @@ function renderList(view, root) {
         );
       }
     );
-    if (!rows2.length) {
+    if (!rows.length) {
       empty(
         results,
         "No projects found",
@@ -7915,7 +7977,7 @@ function renderList(view, root) {
       );
       return;
     }
-    for (const project of rows2) {
+    for (const project of rows) {
       const projectId = asString(project.id);
       if (!projectId) {
         continue;
@@ -8384,7 +8446,7 @@ var ReviewView = class extends import_obsidian16.ItemView {
     return row;
   }
   actionFor(item) {
-    const target = isRecord(item.target) ? item.target : null;
+    const target = isRecord2(item.target) ? item.target : null;
     if (!target) {
       return null;
     }
@@ -8444,7 +8506,7 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
   buildInfo() {
     const fallback = {
       ui_version: this.plugin.uiVersion(),
-      manifest_contract_version: CONTRACT_VERSION,
+      manifest_contract_version: MANIFEST_CONTRACT_VERSION,
       source_revision: "unavailable",
       source_dirty: null,
       source_committed_at: "unavailable",
@@ -8472,7 +8534,7 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
       const parsed = JSON.parse(
         fs.readFileSync(target, "utf8")
       );
-      if (!isRecord(parsed)) {
+      if (!isRecord2(parsed)) {
         return fallback;
       }
       return {
@@ -8516,7 +8578,7 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
     const table = facts.createDiv({ cls: "los-fact-list" });
     const factRows = [
       ["Manifest contract", generated.contract_version ?? "unknown"],
-      ["UI expects contract", CONTRACT_VERSION],
+      ["UI expects contract", MANIFEST_CONTRACT_VERSION],
       ["UI version", this.plugin.uiVersion()],
       ["UI source revision", build.source_revision],
       // The projection states its own staleness; before this the interface
@@ -8564,12 +8626,12 @@ Tried: ${resolved.attempted.join(", ")}`;
 // src/views/shelving-view.ts
 var import_obsidian17 = require("obsidian");
 function readShelvingProposal(value) {
-  if (!isRecord(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
+  if (!isRecord2(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
     return null;
   }
   const items = [];
   for (const candidate of value.items) {
-    if (!isRecord(candidate) || typeof candidate.id !== "string" || typeof candidate.title !== "string") {
+    if (!isRecord2(candidate) || typeof candidate.id !== "string" || typeof candidate.title !== "string") {
       continue;
     }
     const item = {
@@ -8734,11 +8796,11 @@ var ShelvingView = class extends import_obsidian17.ItemView {
   }
   renderQueue(root) {
     const wrap = section(root, "Ready to shelve");
-    const rows2 = this.plugin.store.units().filter(
+    const rows = this.plugin.store.units().filter(
       (row) => row.status === "ready-to-shelve"
     );
-    if (!rows2.length) empty(wrap, "No unit is waiting", "Keep working from any active unit.");
-    for (const unit of rows2) unitCard(wrap, this.plugin, unit);
+    if (!rows.length) empty(wrap, "No unit is waiting", "Keep working from any active unit.");
+    for (const unit of rows) unitCard(wrap, this.plugin, unit);
   }
   async prepare() {
     const unitId = this.unitId;
@@ -8802,7 +8864,7 @@ function errorMessage3(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function readUnitViewState(value) {
-  if (!isRecord(value)) {
+  if (!isRecord2(value)) {
     return {
       hasStageId: false
     };
@@ -8819,18 +8881,18 @@ function readUnitViewState(value) {
     hasStageId
   };
 }
-function readUnitRecord(record2, fallbackId) {
-  if (!record2) {
+function readUnitRecord(record, fallbackId) {
+  if (!record) {
     return null;
   }
-  const id = asString(record2.id) ?? fallbackId;
-  const moduleId = asString(record2.module_id);
+  const id = asString(record.id) ?? fallbackId;
+  const moduleId = asString(record.module_id);
   if (!id || !moduleId) {
     return null;
   }
-  const knowledgeMap = isRecord(
-    record2.knowledge_map
-  ) ? record2.knowledge_map : null;
+  const knowledgeMap = isRecord2(
+    record.knowledge_map
+  ) ? record.knowledge_map : null;
   const knowledgeNodes = asRecords(
     knowledgeMap?.nodes
   ).map((node) => {
@@ -8852,13 +8914,13 @@ function readUnitRecord(record2, fallbackId) {
     (node) => node !== null
   );
   return {
-    record: record2,
+    record,
     id,
     moduleId,
-    componentId: asString(record2.component_id),
-    kind: asString(record2.kind) ?? "unit",
-    title: asString(record2.title) ?? id,
-    scope: asText(record2.scope) ?? "",
+    componentId: asString(record.component_id),
+    kind: asString(record.kind) ?? "unit",
+    title: asString(record.title) ?? id,
+    scope: asText(record.scope) ?? "",
     knowledgeSummary: asText(
       knowledgeMap?.summary
     ) ?? "",
@@ -8915,18 +8977,18 @@ function readMaterialOptions(value, unitId, selectionsValue) {
   }
   return options;
 }
-function readResource(record2) {
-  const label = asString(record2.label) ?? asString(record2.title) ?? asString(record2.source_id) ?? "Resource";
+function readResource(record) {
+  const label = asString(record.label) ?? asString(record.title) ?? asString(record.source_id) ?? "Resource";
   return {
-    record: record2,
-    id: asString(record2.id),
-    kind: asString(record2.kind) ?? "read",
+    record,
+    id: asString(record.id),
+    kind: asString(record.kind) ?? "read",
     label,
-    locator: asText(record2.locator),
-    sourceId: asString(record2.source_id),
-    scopeTriage: asString(record2.scope_triage),
+    locator: asText(record.locator),
+    sourceId: asString(record.source_id),
+    scopeTriage: asString(record.scope_triage),
     canOpen: Boolean(
-      asString(record2.material_path) ?? asString(record2.url) ?? asString(record2.vault_path)
+      asString(record.material_path) ?? asString(record.url) ?? asString(record.vault_path)
     )
   };
 }
@@ -8940,7 +9002,7 @@ function readStageAttachment(value) {
       label: value.split("/").pop() || value
     };
   }
-  if (!isRecord(value)) {
+  if (!isRecord2(value)) {
     return null;
   }
   const path = asString(value.path) ?? asString(value.vault_path);
@@ -8952,56 +9014,56 @@ function readStageAttachment(value) {
     label: asString(value.label) ?? path
   };
 }
-function readStage(record2) {
-  const id = asString(record2.id);
+function readStage(record) {
+  const id = asString(record.id);
   if (!id) {
     return null;
   }
   const attachments = Array.isArray(
-    record2.attachments
-  ) ? record2.attachments.map(readStageAttachment).filter(
+    record.attachments
+  ) ? record.attachments.map(readStageAttachment).filter(
     (attachment) => attachment !== null
   ) : [];
   return {
-    record: record2,
+    record,
     id,
-    title: asString(record2.title) ?? id,
-    status: asString(record2.status) ?? "active",
-    scopeTriage: asText(record2.scope_triage) ?? "",
-    objective: asText(record2.objective),
-    estimateMinutes: asText(record2.estimate_minutes),
-    examCritical: record2.exam_critical === true,
+    title: asString(record.title) ?? id,
+    status: asString(record.status) ?? "active",
+    scopeTriage: asText(record.scope_triage) ?? "",
+    objective: asText(record.objective),
+    estimateMinutes: asText(record.estimate_minutes),
+    examCritical: record.exam_critical === true,
     resources: asRecords(
-      record2.resources
+      record.resources
     ).map(readResource),
     doneWhen: asStrings(
-      record2.done_when
+      record.done_when
     ).filter(
       (criterion) => Boolean(criterion.trim())
     ),
     attachments,
     sourceFeedback: asRecords(
-      record2.source_feedback
+      record.source_feedback
     )
   };
 }
-function readStudyMap(record2) {
+function readStudyMap(record) {
   const stages = asRecords(
-    record2.stages
+    record.stages
   ).map(readStage).filter(
     (stage) => stage !== null
   );
   return {
-    record: record2,
+    record,
     currentStageId: asString(
-      record2.current_stage
+      record.current_stage
     ),
     stages,
-    detours: asRecords(record2.detours)
+    detours: asRecords(record.detours)
   };
 }
 function readArtifacts(value) {
-  if (!isRecord(value)) {
+  if (!isRecord2(value)) {
     return {
       named: [],
       other: []
@@ -9122,10 +9184,10 @@ function renderArtifacts(view, root, unit) {
     card.createEl("h3", {
       text: artifactLabel(key)
     });
-    const record2 = view.plugin.store.get(id) ?? fallbackRecord(id);
+    const record = view.plugin.store.get(id) ?? fallbackRecord(id);
     chip(
       card,
-      record2,
+      record,
       (selected) => view.plugin.openRecord(
         selected
       )
@@ -9133,10 +9195,10 @@ function renderArtifacts(view, root, unit) {
   }
   for (const id of artifacts.other) {
     count += 1;
-    const record2 = view.plugin.store.get(id) ?? fallbackRecord(id);
+    const record = view.plugin.store.get(id) ?? fallbackRecord(id);
     chip(
       wrap,
-      record2,
+      record,
       (selected) => view.plugin.openRecord(
         selected
       )
@@ -9533,8 +9595,8 @@ function renderMaterialOverview(view, root, unit, options) {
           chip(
             copy,
             source,
-            (record2) => {
-              const id = asString(record2.id);
+            (record) => {
+              const id = asString(record.id);
               return id ? view.plugin.openLibrary(id) : void 0;
             }
           );
@@ -10095,12 +10157,12 @@ var ApplicationRouter = class {
     };
     const recordId = asText2(state.recordId);
     if (recordId) {
-      const record2 = this.plugin.store?.get?.(recordId);
-      if (record2?.type === "source" || recordType === "source") {
+      const record = this.plugin.store?.get?.(recordId);
+      if (record?.type === "source" || recordType === "source") {
         return { name: "source-detail", resourceId: recordId };
       }
-      if (record2?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: recordId };
-      if (record2?.type === "collection" || recordType === "collection") {
+      if (record?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: recordId };
+      if (record?.type === "collection" || recordType === "collection") {
         return { name: "catalogue-detail", catalogueId: recordId };
       }
     }
@@ -11300,59 +11362,6 @@ var ResourceOpener = class {
   }
 };
 
-// src/contracts/manifest-v5.ts
-var MANIFEST_CONTRACT_VERSION = 5;
-function isRecord16(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function requireArray(record2, key) {
-  if (!Array.isArray(record2[key])) {
-    throw new TypeError(`Manifest v5 field ${String(key)} must be an array.`);
-  }
-}
-function assertManifestV5(value) {
-  if (!isRecord16(value) || !isRecord16(value._generated)) {
-    throw new TypeError("Manifest v5 requires an _generated object.");
-  }
-  if (value._generated.contract_version !== MANIFEST_CONTRACT_VERSION) {
-    throw new TypeError(
-      `Unsupported manifest contract ${String(value._generated.contract_version)}; expected ${MANIFEST_CONTRACT_VERSION}.`
-    );
-  }
-  for (const key of [
-    "academic_deadlines",
-    "garden_entries",
-    "review_items",
-    "module_source_maps",
-    "modules",
-    "programs",
-    "project_relationships",
-    "projects",
-    "quarantine_boundaries",
-    "records",
-    "relations",
-    "semesters",
-    "stages",
-    "study_maps",
-    "thematic_groups",
-    "topic_packs",
-    "topics",
-    "units"
-  ]) {
-    requireArray(value, key);
-  }
-  for (const unit of value.units) {
-    if (!isRecord16(unit) || typeof unit.id !== "string" || typeof unit.notes_text !== "string" || !Array.isArray(unit.note_sections)) {
-      throw new TypeError("Manifest v5 unit rows require projected unit note fields.");
-    }
-  }
-  for (const key of ["ai_actions", "artifact_revisions", "backlinks", "counts", "indexes", "progress", "project_aliases"]) {
-    if (!isRecord16(value[key])) {
-      throw new TypeError(`Manifest v5 field ${key} must be an object.`);
-    }
-  }
-}
-
 // src/manifest-store.ts
 function isRecord17(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -11386,12 +11395,12 @@ var ManifestStore = class {
       );
       const generated = isRecord17(parsed) && isRecord17(parsed._generated) ? parsed._generated : null;
       const version = generated?.contract_version;
-      if (version !== CONTRACT_VERSION) {
+      if (version !== MANIFEST_CONTRACT_VERSION) {
         throw new Error(
-          `Unsupported manifest contract ${String(version ?? "unknown")}; LearningOS UI requires contract ${CONTRACT_VERSION}.`
+          `Unsupported manifest contract ${String(version ?? "unknown")}; LearningOS UI requires contract ${MANIFEST_CONTRACT_VERSION}.`
         );
       }
-      assertManifestV5(parsed);
+      assertManifest(parsed);
       const manifest = parsed;
       this.data = manifest;
       this.contractVersion = version;
@@ -11476,8 +11485,8 @@ var ManifestStore = class {
     return this.rows("projects");
   }
   projectRelationships(projectId = null) {
-    const rows2 = [...this.data?.project_relationships || []];
-    return projectId ? rows2.filter((row) => row.from_project_id === projectId) : rows2;
+    const rows = [...this.data?.project_relationships || []];
+    return projectId ? rows.filter((row) => row.from_project_id === projectId) : rows;
   }
   resolveProjectAlias(id) {
     return this.data?.project_aliases?.[id] || id;
@@ -11532,12 +11541,12 @@ var ManifestStore = class {
     return this.rows("ai_actions_available").find((row) => row.id === actionId) || (Array.isArray(available) ? available : []).find((row) => row?.id === actionId) || null;
   }
   aiProviders() {
-    const rows2 = this.data?.ai_actions?.provider_adapters;
-    return Array.isArray(rows2) ? rows2.filter((row) => row && typeof row === "object") : [];
+    const rows = this.data?.ai_actions?.provider_adapters;
+    return Array.isArray(rows) ? rows.filter((row) => row && typeof row === "object") : [];
   }
   aiRequestsForTarget(targetId) {
-    const rows2 = this.data?.ai_actions?.requests;
-    return (Array.isArray(rows2) ? rows2 : []).filter((row) => row?.target?.id === targetId);
+    const rows = this.data?.ai_actions?.requests;
+    return (Array.isArray(rows) ? rows : []).filter((row) => row?.target?.id === targetId);
   }
   latestAiRequest(targetId) {
     return this.aiRequestsForTarget(targetId).slice().sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")))[0] || null;
@@ -11546,8 +11555,8 @@ var ManifestStore = class {
     return this.modules().filter((row) => row.area_id === programId);
   }
   unitsFor(moduleId, componentId = null) {
-    const rows2 = this.units().filter((row) => row.module_id === moduleId);
-    return componentId ? rows2.filter((row) => row.component_id === componentId) : rows2;
+    const rows = this.units().filter((row) => row.module_id === moduleId);
+    return componentId ? rows.filter((row) => row.component_id === componentId) : rows;
   }
   mapForUnit(unitId) {
     const mapId = this.data?.indexes?.unit_to_study_map?.[unitId];
@@ -11599,9 +11608,9 @@ var ManifestStore = class {
   search(query, types = null) {
     const words2 = String(query || "").toLocaleLowerCase().split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
-    const rows2 = this.records.filter((row) => !allowed || typeof row.type === "string" && allowed.has(row.type));
-    if (!words2.length) return rows2;
-    const strict = rows2.filter((row) => {
+    const rows = this.records.filter((row) => !allowed || typeof row.type === "string" && allowed.has(row.type));
+    if (!words2.length) return rows;
+    const strict = rows.filter((row) => {
       const hay = [
         row.id,
         row.title,
@@ -11614,7 +11623,7 @@ var ManifestStore = class {
     });
     if (strict.length) return strict;
     const needle = words2.join("");
-    return rows2.filter((row) => {
+    return rows.filter((row) => {
       const hay = [row.id, row.title, ...row.aliases || []].filter(Boolean).join(" ").toLocaleLowerCase().replace(/\s+/g, "");
       let at = 0;
       for (const char of hay) if (char === needle[at]) at += 1;
@@ -11622,8 +11631,8 @@ var ManifestStore = class {
     });
   }
   related(id) {
-    const record2 = this.get(id);
-    if (!record2) return [];
+    const record = this.get(id);
+    if (!record) return [];
     const ids = /* @__PURE__ */ new Set();
     for (const key of [
       "concepts",
@@ -11636,7 +11645,7 @@ var ManifestStore = class {
       "unit_order",
       "related_module_ids"
     ]) {
-      for (const value of asStrings(record2[key])) ids.add(value);
+      for (const value of asStrings(record[key])) ids.add(value);
     }
     for (const table of Object.values(this.data?.backlinks || {})) {
       if (isRecord17(table) && Array.isArray(table[id])) {
@@ -11843,11 +11852,11 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
     if (recordId === void 0 || recordId === null) {
       return this.openLibraryHome(recordType === "topic-pack" ? "topic-packs" : "sources");
     }
-    const record2 = this.store.get(recordId);
-    if (record2?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
-    if (record2?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
-    if (record2?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
-    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record2?.type || "note", query: "" });
+    const record = this.store.get(recordId);
+    if (record?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
+    if (record?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
+    if (record?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
+    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record?.type || "note", query: "" });
   }
   openLibraryHome(collection = "sources", query = "", filters) {
     return this.router.navigate({
@@ -12015,28 +12024,28 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
   openJobPath(path) {
     return this.resources.openJobPath(path);
   }
-  openRecord(record2) {
-    if (!record2) return;
-    const recordId = asString(record2.id);
-    if (record2.type === "unit" && recordId) return this.openUnit(recordId);
-    if (record2.type === "module" && recordId) return this.openModule(recordId);
-    if (record2.type === "project" && recordId) return this.openProject(recordId);
-    if (record2.type === "program" && recordId) return this.openProgram(recordId);
-    if (record2.type === "source" && recordId) return this.openSourceDetail(recordId);
-    if (record2.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
-    if (record2.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
-    if (record2.type === "note" || record2.type === "concept") {
-      if (record2.path) return this.openAuthoredPath(record2.path);
-      return this.openLibraryFiltered(record2.type);
+  openRecord(record) {
+    if (!record) return;
+    const recordId = asString(record.id);
+    if (record.type === "unit" && recordId) return this.openUnit(recordId);
+    if (record.type === "module" && recordId) return this.openModule(recordId);
+    if (record.type === "project" && recordId) return this.openProject(recordId);
+    if (record.type === "program" && recordId) return this.openProgram(recordId);
+    if (record.type === "source" && recordId) return this.openSourceDetail(recordId);
+    if (record.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
+    if (record.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
+    if (record.type === "note" || record.type === "concept") {
+      if (record.path) return this.openAuthoredPath(record.path);
+      return this.openLibraryFiltered(record.type);
     }
-    if (record2.type === "workspace") {
-      if (record2.project_id) return this.openProject(record2.project_id);
-      const unit = (record2.unit_ids || []).map((id) => this.store.get(id)).find(Boolean);
+    if (record.type === "workspace") {
+      if (record.project_id) return this.openProject(record.project_id);
+      const unit = (record.unit_ids || []).map((id) => this.store.get(id)).find(Boolean);
       if (unit?.id) return this.openUnit(unit.id);
-      const module2 = (record2.module_ids || []).map((id) => this.store.get(id)).find(Boolean);
+      const module2 = (record.module_ids || []).map((id) => this.store.get(id)).find(Boolean);
       return module2?.id ? this.openModule(module2.id) : this.openHome();
     }
-    if (record2.path) return this.openAuthoredPath(record2.path);
+    if (record.path) return this.openAuthoredPath(record.path);
   }
   openResource(resource) {
     return this.resources.openResource(resource, this);

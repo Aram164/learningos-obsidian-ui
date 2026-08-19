@@ -1,6 +1,6 @@
 import { Notice } from 'obsidian';
 import { button } from '../../components';
-import type { ProjectionRecord } from '../../contracts/manifest-v5';
+import type { ProjectionRecord } from '../../contracts/manifest';
 import type { LearningOSUI } from '../../main';
 import { errorMessage } from '../../projection/readers';
 

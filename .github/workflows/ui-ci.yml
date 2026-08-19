@@ -36,8 +36,8 @@ jobs:
       #
       # `ref` pins the core branch this UI branch pairs with, because that
       # pairing is currently not on either default branch: core's `main` still
-      # predates system/contracts/ entirely, and the v5 contract lives on the
-      # interaction-redesign branch on both sides. Naming the ref is the honest
+      # predates system/contracts/ entirely, and the current contract release
+      # lives on the engineering-review branch on both sides. Naming the ref is the honest
       # form of "released together" while that is true — the alternative is a
       # green run that compared against a core nobody ships.
       #
@@ -48,7 +48,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Aram164/LearningOS
-          ref: feature/interaction-redesign-core-v1
+          ref: engineering-review-tier1
           path: repository
 
       - uses: actions/setup-node@v4

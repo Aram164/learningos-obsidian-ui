@@ -1,6 +1,6 @@
 import { Modal, type App } from 'obsidian';
 import { button, empty } from '../components';
-import type { ProjectionRecord } from '../contracts/manifest-v5';
+import type { ProjectionRecord } from '../contracts/manifest';
 import type { ManifestStore } from '../manifest-store';
 import type { ApplicationRouter } from './router';
 import { makeModalAccessible } from '../accessibility/modal';

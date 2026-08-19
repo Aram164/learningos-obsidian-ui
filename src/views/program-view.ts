@@ -11,7 +11,7 @@ import {
   unitCard,
 } from '../components';
 import { LEARN_AREAS, VIEW_PROGRAM } from '../constants';
-import type { ProjectionRecord } from '../contracts/manifest-v5';
+import type { ProjectionRecord } from '../contracts/manifest';
 import type { LearningOSUI } from '../main';
 import { errorMessage, isRecord } from '../projection/readers';
 import { enableButtonGroupKeyboardNavigation } from '../accessibility/button-group';

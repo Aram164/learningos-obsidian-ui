@@ -23,10 +23,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { canonicalJson, manifestLock, namedLock } from './contract-locks.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const readJson = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), 'utf8'));
-const lock = readJson('contracts/manifest-v5.lock.json');
+const manifestContract = manifestLock(root);
+const lock = manifestContract.value;
+const jobDashboardContract = namedLock(root, 'job-dashboard-v2.lock.json');
 const fixture = readJson('fixture-vault/generated/manifest.json');
 
 function sameKeys(actualObject, expectedKeys, label) {
@@ -50,12 +53,11 @@ for (const key of lock.forbidden_top_level_keys || []) {
 }
 
 const constants = fs.readFileSync(path.join(root, 'src/constants.ts'), 'utf8');
-const declared = Number(constants.match(/CONTRACT_VERSION\s*=\s*(\d+)/)?.[1]);
-if (declared !== lock.contract_version) {
-  throw new Error(`src/constants.ts expects contract ${declared}; lock expects ${lock.contract_version}.`);
+if (!/MANIFEST_CONTRACT_VERSION\s+as\s+CONTRACT_VERSION/.test(constants)) {
+  throw new Error('src/constants.ts must re-export the typed manifest version instead of duplicating it.');
 }
 
-const typed = fs.readFileSync(path.join(root, 'src/contracts/manifest-v5.ts'), 'utf8');
+const typed = fs.readFileSync(path.join(root, 'src/contracts/manifest.ts'), 'utf8');
 const typedDeclared = Number(typed.match(/MANIFEST_CONTRACT_VERSION\s*=\s*(\d+)/)?.[1]);
 if (typedDeclared !== lock.contract_version) {
   throw new Error(`Typed contract expects ${typedDeclared}; lock expects ${lock.contract_version}.`);
@@ -121,7 +123,40 @@ if (!fs.existsSync(producerPath)) {
     sameKeys(Object.fromEntries(producerKeys.map((k) => [k, true])), lock[key] || [],
       `Core/UI ${key} mirror`);
   }
+  const jobProducerPath = path.join(producerRoot, 'system', 'schema', 'job-dashboard.schema.json');
+  if (!fs.existsSync(jobProducerPath)) {
+    throw new Error(`Core is missing the Job dashboard producer schema: ${jobProducerPath}`);
+  }
+  const producerJob = JSON.parse(fs.readFileSync(jobProducerPath, 'utf8'));
+  if (JSON.stringify(canonicalJson(producerJob))
+      !== JSON.stringify(canonicalJson(jobDashboardContract.value))) {
+    throw new Error(
+      'Core/UI Job dashboard contract drifted. Mirror system/schema/job-dashboard.schema.json '
+      + 'to contracts/job-dashboard-v2.lock.json in the same release.',
+    );
+  }
   console.log(`contract: mirror of core v${producerVersion} verified`);
 }
 
+const jobTyped = fs.readFileSync(path.join(root, 'src/contracts/job-dashboard.ts'), 'utf8');
+const jobDeclared = jobTyped.match(/JOB_DASHBOARD_CONTRACT\s*=\s*['"]([^'"]+)['"]/)?.[1];
+const jobSchemaId = String(jobDashboardContract.value.$id || '').split('/').pop();
+if (jobDeclared !== jobSchemaId) {
+  throw new Error(`Typed Job contract ${jobDeclared ?? 'unknown'} does not match lock ${jobSchemaId}.`);
+}
+
+const jobModel = fs.readFileSync(path.join(root, 'src/features/job/model.ts'), 'utf8');
+if (!jobModel.includes("from '../../contracts/job-dashboard'")) {
+  throw new Error('Job feature model must consume the stable typed Job contract.');
+}
+if (!jobModel.includes("from '../../projection/readers'")) {
+  throw new Error('Job feature model must use the shared projection boundary readers.');
+}
+for (const duplicatedHelper of ['record', 'rows', 'string', 'strings', 'numberRecord']) {
+  if (new RegExp(`function\\s+${duplicatedHelper}\\s*\\(`).test(jobModel)) {
+    throw new Error(`Job feature model redeclared shared reader ${duplicatedHelper}().`);
+  }
+}
+
 console.log(`contract: manifest v${lock.contract_version} lock verified (${lock.top_level_keys.length} top-level keys)`);
+console.log(`contract: ${jobDeclared} schema lock verified`);

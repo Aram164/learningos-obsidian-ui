@@ -17,7 +17,7 @@ import {
 } from '../features/ai-actions/action-button';
 import type {
   ProjectionRecord,
-} from '../contracts/manifest-v5';
+} from '../contracts/manifest';
 import type { LearningOSUI } from '../main';
 import { asLabel, asString, errorMessage } from '../projection/readers';
 

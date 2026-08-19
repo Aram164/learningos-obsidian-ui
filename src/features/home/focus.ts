@@ -7,7 +7,7 @@ import {
   projectedExcerpt,
   section,
 } from '../../components';
-import type { ProjectionRecord } from '../../contracts/manifest-v5';
+import type { ProjectionRecord } from '../../contracts/manifest';
 import {
   asLabel as projectedLabel,
   asRecords as projectedRecords,

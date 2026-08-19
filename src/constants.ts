@@ -1,4 +1,4 @@
-export const CONTRACT_VERSION = 5;
+export { MANIFEST_CONTRACT_VERSION as CONTRACT_VERSION } from './contracts/manifest';
 export const VIEW_HOME = 'learningos-home';
 export const VIEW_NAV = 'learningos-nav';
 export const VIEW_PROGRAM = 'learningos-program';

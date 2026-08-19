@@ -1,4 +1,4 @@
-import type { JsonRecord, ProjectionRecord } from './contracts/manifest-v5';
+import type { JsonRecord, ProjectionRecord } from './contracts/manifest';
 import {
   GatewayError, exitCodeOf, structuredError,
   type GatewayResultV1,

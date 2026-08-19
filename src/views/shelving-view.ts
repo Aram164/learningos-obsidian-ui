@@ -1,7 +1,7 @@
 import { ItemView, Notice, type WorkspaceLeaf } from 'obsidian';
 import { button, empty, pageHeader, section, unitCard } from '../components';
 import { VIEW_SHELVING } from '../constants';
-import type { ProjectionRecord } from '../contracts/manifest-v5';
+import type { ProjectionRecord } from '../contracts/manifest';
 import type { LearningOSUI } from '../main';
 import { errorMessage, isRecord, optionalString } from '../projection/readers';
 

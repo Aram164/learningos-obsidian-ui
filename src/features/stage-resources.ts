@@ -1,5 +1,5 @@
 import { button, chip, empty, icon, overflowMenu, section } from '../components';
-import type { ProjectionRecord } from '../contracts/manifest-v5';
+import type { ProjectionRecord } from '../contracts/manifest';
 
 /** Shared study-map resource shape. Job plans use this exact view contract. */
 export interface StageResourceView {

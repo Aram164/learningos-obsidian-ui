@@ -18,7 +18,7 @@ import {
 import { VIEW_LIBRARY } from '../constants';
 import type {
   ProjectionRecord,
-} from '../contracts/manifest-v5';
+} from '../contracts/manifest';
 import {
   asLibrarySourceFilters,
   type LibraryCollectionV1,

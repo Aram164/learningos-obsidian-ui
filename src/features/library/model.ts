@@ -1,4 +1,4 @@
-import type { ProjectionRecord } from '../../contracts/manifest-v5';
+import type { ProjectionRecord } from '../../contracts/manifest';
 import {
   asLibrarySourceFilters,
   type LibraryCollectionV1,

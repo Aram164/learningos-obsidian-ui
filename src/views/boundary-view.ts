@@ -1,7 +1,7 @@
 import { ItemView, Notice, type WorkspaceLeaf } from 'obsidian';
 import { boundaryPolicy, button, empty, pageHeader, section } from '../components';
 import { VIEW_BOUNDARY } from '../constants';
-import type { ProjectionRecord } from '../contracts/manifest-v5';
+import type { ProjectionRecord } from '../contracts/manifest';
 import { isProjectionConflict } from '../contracts/gateway-v1';
 import { renderJobDashboard } from '../features/job/shell';
 import { JobSessionModal } from '../features/job/session-modal';

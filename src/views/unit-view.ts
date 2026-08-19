@@ -20,7 +20,7 @@ import {
 import { VIEW_UNIT } from '../constants';
 import type {
   ProjectionRecord,
-} from '../contracts/manifest-v5';
+} from '../contracts/manifest';
 import type { LearningOSUI } from '../main';
 import {
   asLabel as projectedLabel,
