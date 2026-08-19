@@ -900,6 +900,8 @@ var SessionEndModal = class extends import_obsidian3.Modal {
 
 // src/views/atlas-view.ts
 var import_obsidian4 = require("obsidian");
+
+// src/features/atlas/model.ts
 var ATLAS_ROLE_ORDER = [
   "crosswalk",
   "reference",
@@ -907,14 +909,6 @@ var ATLAS_ROLE_ORDER = [
   "exercise-bank",
   "mock-exam"
 ];
-function projectedMetadata(values) {
-  return values.filter(
-    (value) => typeof value === "string" || typeof value === "number"
-  ).map(String).filter(Boolean).join(" \xB7 ");
-}
-function plural(count, noun, pluralNoun = `${noun}s`) {
-  return `${count} ${count === 1 ? noun : pluralNoun}`;
-}
 function humanLabel(value) {
   const text = String(value || "cross-domain").replace(/^thematic-group-/, "").replace(/[-_]+/g, " ").trim();
   return text ? `${text.charAt(0).toUpperCase()}${text.slice(1)}` : "Cross-domain";
@@ -924,25 +918,167 @@ function canonicalLabel(value) {
 }
 function uniqueRecords(records) {
   const seen = /* @__PURE__ */ new Set();
-  return records.filter((record) => {
-    const key = asString(record.id) || `${record.type || "record"}:${asLabel(record)}`;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  return records.filter(
+    (record) => {
+      const key = asString(record.id) || `${record.type || "record"}:${asLabel(record)}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    }
+  );
 }
 function recordIds(records) {
   return new Set(
-    records.map((record) => asString(record.id)).filter((id) => Boolean(id))
+    records.map(
+      (record) => asString(record.id)
+    ).filter(
+      (id) => Boolean(id)
+    )
   );
 }
 function intersectionSize(left, right) {
   let count = 0;
-  for (const value of left) if (right.has(value)) count += 1;
+  for (const value of left) {
+    if (right.has(value)) {
+      count += 1;
+    }
+  }
   return count;
 }
 function roleLabel(role) {
   return humanLabel(role);
+}
+function buildAtlasDomains(store) {
+  const domains = /* @__PURE__ */ new Map();
+  const bucket = (name) => {
+    const key = String(
+      name || "cross-domain"
+    );
+    const existing = domains.get(key);
+    if (existing) {
+      return existing;
+    }
+    const created = {
+      name: key,
+      notes: [],
+      shelves: [],
+      modules: [],
+      concepts: [],
+      sources: []
+    };
+    domains.set(
+      key,
+      created
+    );
+    return created;
+  };
+  for (const note2 of store.of("note")) {
+    bucket(note2.domain).notes.push(note2);
+  }
+  const shelves = uniqueRecords([
+    ...store.of("collection"),
+    ...store.topicPacks()
+  ]);
+  for (const shelf of shelves) {
+    bucket(shelf.domain).shelves.push(shelf);
+  }
+  for (const domain of domains.values()) {
+    const sourceIds = /* @__PURE__ */ new Set();
+    const conceptIds = /* @__PURE__ */ new Set();
+    const groupIds = /* @__PURE__ */ new Set();
+    for (const note2 of domain.notes) {
+      asStrings(note2.sources).forEach(
+        (id) => sourceIds.add(id)
+      );
+      asStrings(note2.concepts).forEach(
+        (id) => conceptIds.add(id)
+      );
+    }
+    for (const shelf of domain.shelves) {
+      asStrings(shelf.sources).forEach(
+        (id) => sourceIds.add(id)
+      );
+      asStrings(shelf.thematic_group_ids).forEach(
+        (id) => groupIds.add(id)
+      );
+      for (const entry of asRecords(shelf.entries)) {
+        const sourceId = asString(entry.source);
+        if (sourceId) {
+          sourceIds.add(sourceId);
+        }
+      }
+    }
+    for (const group of store.thematicGroups()) {
+      if (canonicalLabel(group.id) === canonicalLabel(domain.name) || canonicalLabel(group.title) === canonicalLabel(domain.name)) {
+        const groupId = asString(group.id);
+        if (groupId) {
+          groupIds.add(groupId);
+        }
+      }
+    }
+    for (const source of store.sources()) {
+      const sourceId = asString(source.id);
+      const sourceGroups = asStrings(
+        source.thematic_group_ids
+      );
+      if (sourceGroups.some(
+        (id) => groupIds.has(id)
+      ) && sourceId) {
+        sourceIds.add(sourceId);
+      }
+    }
+    const resolvedSources = [...sourceIds].map(
+      (id) => store.get(id)
+    ).filter(
+      (record) => record?.type === "source"
+    );
+    domain.sources.push(
+      ...uniqueRecords(resolvedSources)
+    );
+    const resolvedConcepts = [...conceptIds].map(
+      (id) => store.get(id)
+    ).filter(
+      (record) => record?.type === "concept"
+    );
+    domain.concepts.push(
+      ...uniqueRecords(resolvedConcepts)
+    );
+    const relatedModules = [
+      ...domain.sources.flatMap(
+        (source) => {
+          const sourceId = asString(source.id);
+          return sourceId ? store.useModules(sourceId) : [];
+        }
+      ),
+      ...store.modules().filter(
+        (module2) => asStrings(
+          module2.thematic_group_ids
+        ).some(
+          (id) => groupIds.has(id)
+        )
+      )
+    ];
+    domain.modules.push(
+      ...uniqueRecords(relatedModules)
+    );
+  }
+  return [...domains.values()].sort(
+    (left, right) => right.notes.length - left.notes.length || left.name.localeCompare(
+      right.name
+    )
+  );
+}
+
+// src/views/atlas-view.ts
+function projectedMetadata(values) {
+  return values.filter(
+    (value) => typeof value === "string" || typeof value === "number"
+  ).map(String).filter(Boolean).join(" \xB7 ");
+}
+function plural(count, noun, pluralNoun = `${noun}s`) {
+  return `${count} ${count === 1 ? noun : pluralNoun}`;
 }
 var AtlasView = class extends import_obsidian4.ItemView {
   plugin;
@@ -977,83 +1113,8 @@ var AtlasView = class extends import_obsidian4.ItemView {
     this.render();
   }
   atlas() {
-    const domains = /* @__PURE__ */ new Map();
-    const bucket = (name) => {
-      const key = String(
-        name || "cross-domain"
-      );
-      const existing = domains.get(key);
-      if (existing) {
-        return existing;
-      }
-      const created = {
-        name: key,
-        notes: [],
-        shelves: [],
-        modules: [],
-        concepts: [],
-        sources: []
-      };
-      domains.set(
-        key,
-        created
-      );
-      return created;
-    };
-    for (const note2 of this.plugin.store.of("note")) {
-      bucket(note2.domain).notes.push(note2);
-    }
-    const shelves = uniqueRecords([
-      ...this.plugin.store.of("collection"),
-      ...this.plugin.store.topicPacks()
-    ]);
-    for (const shelf of shelves) {
-      bucket(shelf.domain).shelves.push(shelf);
-    }
-    for (const domain of domains.values()) {
-      const sourceIds = /* @__PURE__ */ new Set();
-      const conceptIds = /* @__PURE__ */ new Set();
-      const groupIds = /* @__PURE__ */ new Set();
-      for (const note2 of domain.notes) {
-        asStrings(note2.sources).forEach((id) => sourceIds.add(id));
-        asStrings(note2.concepts).forEach((id) => conceptIds.add(id));
-      }
-      for (const shelf of domain.shelves) {
-        asStrings(shelf.sources).forEach((id) => sourceIds.add(id));
-        asStrings(shelf.thematic_group_ids).forEach((id) => groupIds.add(id));
-        for (const entry of asRecords(shelf.entries)) {
-          const sourceId = asString(entry.source);
-          if (sourceId) sourceIds.add(sourceId);
-        }
-      }
-      for (const group of this.plugin.store.thematicGroups()) {
-        if (canonicalLabel(group.id) === canonicalLabel(domain.name) || canonicalLabel(group.title) === canonicalLabel(domain.name)) {
-          const groupId = asString(group.id);
-          if (groupId) groupIds.add(groupId);
-        }
-      }
-      for (const source of this.plugin.store.sources()) {
-        const sourceId = asString(source.id);
-        const sourceGroups = asStrings(source.thematic_group_ids);
-        if (sourceGroups.some((id) => groupIds.has(id)) && sourceId) {
-          sourceIds.add(sourceId);
-        }
-      }
-      const resolvedSources = [...sourceIds].map((id) => this.plugin.store.get(id)).filter((record) => record?.type === "source");
-      domain.sources.push(...uniqueRecords(resolvedSources));
-      const resolvedConcepts = [...conceptIds].map((id) => this.plugin.store.get(id)).filter((record) => record?.type === "concept");
-      domain.concepts.push(...uniqueRecords(resolvedConcepts));
-      const relatedModules = [
-        ...domain.sources.flatMap((source) => {
-          const sourceId = asString(source.id);
-          return sourceId ? this.plugin.store.useModules(sourceId) : [];
-        }),
-        ...this.plugin.store.modules().filter((module2) => asStrings(module2.thematic_group_ids).some((id) => groupIds.has(id)))
-      ];
-      domain.modules.push(...uniqueRecords(relatedModules));
-    }
-    return [...domains.values()].sort(
-      (left, right) => right.notes.length - left.notes.length || left.name.localeCompare(right.name)
+    return buildAtlasDomains(
+      this.plugin.store
     );
   }
   render() {
