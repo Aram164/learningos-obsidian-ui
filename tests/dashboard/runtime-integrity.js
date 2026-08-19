@@ -1,0 +1,406 @@
+'use strict';
+
+const {
+  path,
+  fs,
+  makeApp,
+  Notice,
+  stub,
+  ROOT,
+  FIXTURE,
+  LearningOSUI,
+  FIXTURE_GROUP_COUNT,
+  VIEW,
+  tick,
+  frame,
+  check,
+  heading,
+  build,
+  boot,
+} = require('./support');
+
+module.exports = async function run() {
+  heading('material consumer contract (red gate)');
+  {
+    const { plugin } = await boot();
+    const materialCalls = [];
+    const vaultCalls = [];
+    plugin.openMaterialPath = (value) => {
+      materialCalls.push(value);
+      return 'material-opened';
+    };
+    plugin.openVaultPath = async (value) => {
+      vaultCalls.push(value);
+      return 'vault-opened';
+    };
+
+    const projected = {
+      material_uri: 'material://source-fixture/paper.pdf',
+      material_path: 'materials/source-fixture/paper.pdf',
+      vault_path: 'material://source-fixture/paper.pdf',
+    };
+    const projectedResult = await Promise.resolve(plugin.openResource(projected));
+    check('material_path takes precedence over a material URI in vault_path',
+      projectedResult === 'material-opened'
+      && materialCalls.join('|') === 'materials/source-fixture/paper.pdf');
+    check('material opening never delegates a material URI to openVaultPath',
+      vaultCalls.length === 0,
+      `openVaultPath calls: ${JSON.stringify(vaultCalls)}`);
+
+    const callsBeforeLoneUri = vaultCalls.length;
+    const loneUriResult = await Promise.resolve(plugin.openResource({
+      vault_path: 'material://source-fixture/lone.pdf',
+    }));
+    check('a lone material URI without material_path is refused',
+      loneUriResult === false && vaultCalls.length === callsBeforeLoneUri,
+      `result=${String(loneUriResult)} calls=${JSON.stringify(vaultCalls)}`);
+
+    const ordinaryResult = await Promise.resolve(plugin.openResource({
+      vault_path: 'knowledge/notes/supplementary.md',
+    }));
+    check('ordinary vault paths still delegate to openVaultPath',
+      ordinaryResult === 'vault-opened'
+      && vaultCalls.at(-1) === 'knowledge/notes/supplementary.md');
+
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    const originalGetLeaf = app.workspace.getLeaf;
+    let webState = null;
+    app.workspace.getLeaf = () => ({
+      setViewState(state) {
+        webState = state;
+        return state;
+      },
+    });
+    Notice.log.length = 0;
+
+    const safe = plugin.openResource({ url: 'https://example.org/material.pdf' });
+    const unsafeJavascript = plugin.openResource({ url: 'javascript:alert(1)' });
+    const unsafeFile = plugin.openResource({ url: 'file:///etc/passwd' });
+
+    check('safe HTTPS resources open in the real browser, not an embedded view',
+      safe instanceof Promise
+      && webState === null);
+    check('unsafe URL schemes remain refused by the material consumer patch',
+      unsafeJavascript === false && unsafeFile === false
+      && Notice.log.filter((line) => line.includes('Refused an unsupported link')).length === 2);
+
+    app.workspace.getLeaf = originalGetLeaf;
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    const map = plugin.store.get('study-map-fixture-sad-l04');
+    const stage = map.stages.find((row) => row.id === 'stage-fixture-conditioning');
+    stage.resources = [{
+      kind: 'read',
+      label: 'Projected local material',
+      material_uri: 'material://source-fixture/projected.pdf',
+      material_path: 'materials/source-fixture/projected.pdf',
+    }];
+
+    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    check('a resource containing only material_path receives an Open button',
+      Boolean(view.contentEl.findText('los-btn', 'Open')));
+
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    const opened = [];
+    plugin.openResource = (record) => {
+      opened.push(record.id);
+      return true;
+    };
+
+    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const fallback = view.contentEl.findText('los-btn', 'Open source');
+    check('a locator-only resource can fall back to its openable source',
+      Boolean(fallback));
+    fallback?.fire('click');
+    check('the source fallback uses the same safe resource opener',
+      opened.includes('source-fixture-islp'),
+      `opened=${JSON.stringify(opened)}`);
+
+    plugin.onunload();
+  }
+  {
+    const { plugin } = await boot();
+    const stage = plugin.store.stage('stage-fixture-conditioning');
+    stage.resources = [
+      {
+        label: 'All identities',
+        material_uri: 'material://source-fixture/semantic.pdf',
+        vault_path: 'material://source-fixture/wrong-precedence.pdf',
+        url: 'https://example.org/wrong-precedence.pdf',
+        material_path: 'materials/source-fixture/wrong-precedence.pdf',
+      },
+      {
+        label: 'Vault fallback',
+        vault_path: 'knowledge/notes/supplementary.md',
+        url: 'https://example.org/wrong-vault-fallback.pdf',
+        material_path: 'materials/source-fixture/wrong-vault-fallback.pdf',
+      },
+      {
+        label: 'URL fallback',
+        url: 'https://example.org/url-fallback.pdf',
+        material_path: 'materials/source-fixture/wrong-url-fallback.pdf',
+      },
+      {
+        label: 'Physical fallback',
+        material_path: 'materials/source-fixture/physical-fallback.pdf',
+      },
+      {
+        label: 'No identity',
+        material_uri: '',
+        vault_path: '',
+        url: '',
+        material_path: '',
+      },
+    ];
+
+    plugin.copyText = () => {};
+    await plugin.askAiScoped('Probe selected material identity.', {
+      moduleId: 'module-fixture-sad',
+      unitId: 'unit-fixture-sad-l04',
+      stageId: 'stage-fixture-conditioning',
+    });
+
+    const match = plugin.lastAiPrompt.match(
+      /LearningOS explicit context \(authoritative\):\n([\s\S]*?)\n\nThe active file/,
+    );
+    let envelope = null;
+    try {
+      envelope = match ? JSON.parse(match[1]) : null;
+    } catch (_) {
+      envelope = null;
+    }
+    const selected = Array.isArray(envelope?.selected_materials)
+      ? envelope.selected_materials
+      : [];
+    const expected = [
+      'material://source-fixture/semantic.pdf',
+      'knowledge/notes/supplementary.md',
+      'https://example.org/url-fallback.pdf',
+      'materials/source-fixture/physical-fallback.pdf',
+    ];
+
+    check('AI selected_materials prefers material_uri',
+      selected[0] === expected[0],
+      `selected=${JSON.stringify(selected)}`);
+    check('AI selected_materials falls back to vault_path',
+      selected[1] === expected[1],
+      `selected=${JSON.stringify(selected)}`);
+    check('AI selected_materials falls back to URL',
+      selected[2] === expected[2],
+      `selected=${JSON.stringify(selected)}`);
+    check('AI selected_materials finally falls back to material_path',
+      selected[3] === expected[3],
+      `selected=${JSON.stringify(selected)}`);
+    check('AI selected_materials excludes rows without an identity',
+      selected.every((value) => typeof value === 'string' && Boolean(value)));
+    check('AI selected_materials preserves the frozen identity precedence',
+      JSON.stringify(selected) === JSON.stringify(expected),
+      `expected=${JSON.stringify(expected)} actual=${JSON.stringify(selected)}`);
+
+    plugin.onunload();
+  }
+
+  {
+    /* Diagnostics has to be able to say which interpreter was tried. */
+    const { plugin } = await boot({ settings: { pythonPath: '/nonexistent/python3.99' } });
+    const resolved = plugin.resolvePython();
+    check('a configured interpreter that does not exist falls through, and is reported',
+      resolved.origin === 'PATH fallback'
+      && resolved.attempted.includes('/nonexistent/python3.99')
+      && resolved.attempted.some((entry) => entry.includes('.venv')));
+    check('the Windows virtual-environment layout is attempted too',
+      resolved.attempted.some((entry) => entry.includes('Scripts')));
+    plugin.onunload();
+  }
+  {
+    const { plugin, home } = await boot();
+    const workspace = plugin.store.of('workspace')[0];
+    // An emoji sits exactly on the 120-code-point cut used by the module row,
+    // which is where a plain .slice() left a lone high surrogate.
+    workspace.module_ids = [...new Set([...(workspace.module_ids || []), 'module-fixture-aml'])];
+    workspace.next_action = `${'a'.repeat(98)}😀 ${'b'.repeat(1500)}😀 tail`;
+    home.view.render();
+    const text = home.view.contentEl.allText();
+    check('excerpt truncation never leaves half an emoji in the DOM',
+      text.includes('😀') && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(text));
+    plugin.onunload();
+  }
+  {
+    const source = fs.readFileSync(path.join(ROOT, 'plugin', 'main.js'), 'utf8');
+    for (const [label, pattern] of [
+      ['vault.modify', /vault\.modify\s*\(/], ['vault.delete', /vault\.delete\s*\(/],
+      ['vault.rename/copy', /vault\.(rename|copy)\s*\(/], ['frontmatter writes', /processFrontMatter/],
+      ['filesystem writes', /fs\.(writeFile|appendFile|unlink|rename|mkdir)/],
+      ['direct canonical parsing', /cachedRead|records\/modules\.yaml|work\/active\/.*paths/],
+      ['legacy global-path commands', /path-note|path-progress|openLearningPath\(/],
+    ]) check(`bundle has no ${label}`, !pattern.test(source));
+    check('bundle uses only the atomic manifest projection', /generated\/manifest\.json/.test(source)
+      && !/generated\/backlinks\.json/.test(source));
+    check('python resolution covers configured, POSIX venv, Windows venv and PATH',
+      /\.join\(\s*base\s*,\s*["']\.venv["']\s*,\s*["']bin["']\s*,\s*["']python["']\s*\)/.test(source)
+      && /\.join\(\s*base\s*,\s*["']\.venv["']\s*,\s*["']Scripts["']\s*,\s*["']python\.exe["']\s*\)/.test(source)
+      && /this\.settings\.pythonPath/.test(source)
+      && /["']python3["']/.test(source));
+    check('every mutation is serialized through one queue',
+      /enqueue\(task\d*\)/.test(source) && !/this\.busy\s*=\s*true/.test(source));
+    check('external links pass a protocol allowlist',
+      source.includes('SAFE_URL_PROTOCOLS') && source.includes('safeWebUrl'));
+    check('the repeated ownership footer no longer exists as a component',
+      !source.includes('function viewFooter'));
+    check('view refresh uses Obsidian public leaf iteration', source.includes('iterateAllLeaves')
+      && !source.includes('workspace._leaves'));
+    check('local file paths use Electron webUtils', source.includes('webUtils.getPathForFile(file)')
+      && !/function localFilePath\([\s\S]*?return file\??\.path/.test(source));
+    /* Writes are declared capabilities now, so the bundle must name them —
+     * an "ask the AI to do something" style generic write would show up here
+     * as the absence of these exact identifiers. */
+    check('bundle exposes action-specific writes', ['unit.note.append', 'stage.note.write',
+      'stage.progress.update', 'source.feedback.record', 'stage.attachment.add',
+      'detour.create', 'detour.resolve', 'review.prepare', 'review.apply',
+      'session-end'].every((command) => source.includes(command)));
+    const buildSource = fs.readFileSync(path.join(ROOT, 'build.mjs'), 'utf8');
+    const registrationSource = fs.readFileSync(
+      path.join(ROOT, 'src', 'app', 'registration.ts'), 'utf8');
+    check('bundle is generated from an explicit module graph',
+      fs.readdirSync(path.join(ROOT, 'src', 'views')).length >= 8
+      && buildSource.includes("entryPoints: ['src/main.ts']")
+      && buildSource.includes('bundle: true')
+      && registrationSource.includes("from '../views/unit-view'")
+      && !buildSource.includes('const files = ['));
+    const css = fs.readFileSync(path.join(ROOT, 'plugin', 'styles.css'), 'utf8');
+    /* The same rule the bundle already lives under, applied to the cascade: a
+     * stylesheet assembled from whatever happens to be in a directory has no
+     * declared order, and cascade order is the one thing a stylesheet cannot
+     * leave implicit. Every module present must be named in the cascade, and
+     * the shipped file must announce that it is an artifact. */
+    const stylesSource = fs.readFileSync(path.join(ROOT, 'build-styles.mjs'), 'utf8');
+    const declaredStyleModules = (stylesSource.match(/'\d\d-[a-z0-9-]+\.css'/g) || [])
+      .map((quoted) => quoted.slice(1, -1));
+    const presentStyleModules = fs.readdirSync(path.join(ROOT, 'src', 'styles'))
+      .filter((name) => name.endsWith('.css'));
+    check('the stylesheet is composed from an explicit cascade',
+      presentStyleModules.length >= 10
+      && presentStyleModules.every((name) => declaredStyleModules.includes(name))
+      && buildSource.includes('writeStylesheet(')
+      && css.startsWith('/* GENERATED by build-styles.mjs'));
+    /* Any literal colour, not just hex. A palette written in rgb()/hsl() is
+     * exactly as theme-breaking as one written in #rrggbb, and grepping only
+     * for hex let a 13-colour hardcoded palette through unnoticed. */
+    /* Was 'theme variables only': zero hex anywhere, because the plugin had no
+     * palette and inherited Obsidian's. It has one now (DESIGN.md principle 2,
+     * revised 2026-08-08), so that assertion tested a rule that no longer
+     * exists. The constraint it was really protecting — no component may name a
+     * colour, and light/dark must not drift apart — is stronger here: raw colour
+     * is legal ONLY inside the two token blocks, and both must define the same
+     * token names. */
+    const tokenBlocks = css.match(
+      /(?:^|\n)(?:\.theme-dark )?\.los-root \{[\s\S]*?\n\}/g) || [];
+    const cssOutsideTokens = tokenBlocks.reduce(
+      (rest, block) => rest.replace(block, ''), css);
+    const tokenNames = tokenBlocks.map((block) =>
+      (block.match(/--los-[a-z0-9-]+(?=\s*:)/g) || [])
+        .filter((name) => /^--los-(paper|ink|rule|accent|st)/.test(name))
+        .sort()
+        .join(','));
+
+    check('raw colour appears only in the palette token blocks',
+      (cssOutsideTokens.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length === 0
+      && (cssOutsideTokens.match(/\b(rgba?|hsla?)\(/g) || []).length === 0
+      && !/color-scheme:/.test(css));
+    check('every component colour resolves through a --los-* token',
+      (cssOutsideTokens.match(
+        /var\(--(?:color|text|background|interactive)[a-z0-9-]*\)/g) || [])
+        .length === 0);
+    check('light and dark define the same palette tokens',
+      tokenBlocks.length === 2
+      && tokenNames[0].length > 0
+      && tokenNames[0] === tokenNames[1]);
+    check('narrow-screen workspace is responsive', css.includes('.los-unit-layout') && css.includes('@media (max-width: 720px)'));
+    check('button-like components are insulated from Obsidian theme distortion',
+      css.includes('appearance: none') && css.includes('min-width: 0')
+      && css.includes('overflow-wrap: break-word') && css.includes('word-break: normal'));
+    check('deadline layout cannot allocate a third action column',
+      /\.los-date-row\s*\{[^}]*grid-template-columns:\s*minmax\(126px, 148px\)\s+minmax\(0, 1fr\)/.test(css)
+      && !/\.los-date-row\s*\{[^}]*grid-template-columns:[^;]*\sauto\s*;/.test(css));
+    check('the unit workspace is two columns and notes are a temporary modal',
+      /\.los-unit-layout\s*\{[\s\S]*?grid-template-columns:\s*232px\s+minmax\(0, 1fr\)/.test(css)
+      && css.includes('.los-unit-note-modal') && !css.includes('.los-note-panel'));
+    check('LearningOS modals size their host and never overflow their content box',
+      css.includes('.modal.los-modal--unit-note')
+      && css.includes('.modal.los-modal--global-search')
+      && css.includes('.modal.los-modal--job-editor')
+      && /\.los-unit-note-modal\s*\{[^}]*width:\s*100%/.test(css)
+      && /\.los-global-search\s*\{[^}]*width:\s*100%/.test(css)
+      && css.includes('max-width: calc(100vw - 32px)')
+      && css.includes('overflow-x: hidden'));
+    const readme = fs.readFileSync(path.join(ROOT, 'README.md'), 'utf8');
+    /*
+     * One lock on disk, one lock named in the README, and the two agree.
+     *
+     * This used to hardcode v5 and separately assert the README did not mention
+     * v3 — which made it the only thing in the repository that still referred to
+     * v3 at all, while manifest-v3.lock.json and manifest-v4.lock.json sat in
+     * contracts/ unreferenced by anything. A retired lock left behind is a
+     * second answer to "which contract is current". Deriving the version from
+     * the single lock file also means this assertion survives the next bump
+     * instead of becoming one more thing to remember to edit.
+     */
+    const locks = fs.readdirSync(path.join(ROOT, 'contracts'))
+      .filter((name) => /^manifest-v\d+\.lock\.json$/.test(name));
+    const currentContract = locks.length === 1 ? locks[0].match(/v(\d+)/)[1] : null;
+    const namedContracts = [...readme.matchAll(/contracts\/manifest-v(\d+)\.lock\.json/g)]
+      .map((match) => match[1]);
+    check('the UI documentation names the active manifest contract',
+      currentContract !== null
+      && namedContracts.length === 0
+      && readme.includes('contracts/manifest-v<N>.lock.json')
+      && readme.includes(`manifest.json\` contract v${currentContract}`));
+    const runtimeSources = [
+      'src/app/global-search.ts',
+      'src/views/review-view.ts',
+      'src/views/garden-view.ts',
+      'src/views/program-view.ts',
+      'src/features/library/home.ts',
+      'src/features/project/detail.ts',
+      'src/features/module/detail.ts',
+    ].map((file) => fs.readFileSync(path.join(ROOT, file), 'utf8')).join('\n');
+    check('button filters do not claim incomplete ARIA tab semantics',
+      !runtimeSources.includes("role: 'tablist'")
+      && !runtimeSources.includes("role: 'tab'")
+      && !runtimeSources.includes('aria-selected')
+      && runtimeSources.includes("role: 'group'")
+      && runtimeSources.includes('aria-pressed'));
+    /* Both of these assert INTENT — a filled primary, an unmistakable active
+     * destination. The accent token was renamed --interactive-accent →
+     * --los-accent when the palette landed; the intent did not change, so the
+     * assertions track the token rather than being deleted. */
+    check('the primary button is filled, not an outline',
+      /\.los-btn--cta\s*\{[^}]*background: var\(--los-accent\)/.test(css));
+    check('semantic button colours remain token-driven and purpose-specific',
+      /\.los-btn--success\s*\{[^}]*background: var\(--los-success\)/.test(css)
+      && /\.los-btn--info\s*\{[^}]*background: var\(--los-info-wash\)/.test(css)
+      && /\.los-btn--warm\s*\{[^}]*background: var\(--los-warning-wash\)/.test(css)
+      && /\.los-btn--choice\s*\{[^}]*background: var\(--los-accent-wash\)/.test(css));
+    check('the active navigation destination is visually obvious',
+      /\.los-app-nav-item\.is-active\s*\{[^}]*inset 3px 0 0 var\(--los-accent\)/.test(css));
+    /* The flag is optional: once the rule is scoped under .los-root it
+     * outranks the base button rule on its own, so requiring !important here
+     * would pin an implementation detail rather than the intent. */
+    check('ordinary navigation rows carry no border',
+      /\.los-app-nav-item\s*\{[^}]*border: 0\s*(!important)?\s*;/.test(css));
+    check('compact type and control scale is explicit',
+      css.includes('font-size: 14px') && css.includes('clamp(24px, 2.2vw, 28px)')
+      && css.includes('min-height: 28px'));
+    check('reduced motion is respected', css.includes('prefers-reduced-motion'));
+  }
+};

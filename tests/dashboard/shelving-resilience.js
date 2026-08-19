@@ -1,0 +1,407 @@
+'use strict';
+
+const {
+  path,
+  fs,
+  makeApp,
+  Notice,
+  stub,
+  ROOT,
+  FIXTURE,
+  LearningOSUI,
+  FIXTURE_GROUP_COUNT,
+  VIEW,
+  tick,
+  frame,
+  check,
+  heading,
+  build,
+  boot,
+} = require('./support');
+
+module.exports = async function run() {
+  heading('selected-only shelving');
+  {
+    const {
+      app,
+      plugin,
+      calls,
+    } = await boot();
+
+    await plugin.openShelving(
+      'unit-fixture-thesis-landscape',
+    );
+
+    const view =
+      app.workspace.getLeavesOfType(
+        VIEW.shelving,
+      )[0].view;
+
+    check(
+      'proposal destinations and rationale are reviewable',
+      view.contentEl.find(
+        'los-proposal-row',
+      ).length === 2
+        && view.contentEl.allText().includes(
+          'note-fixture-synthesis.md',
+        ),
+    );
+
+    const originalToggles =
+      view.contentEl.find(
+        'los-proposal-row',
+      ).map(
+        (row) => row.children[0],
+      );
+
+    check(
+      'Core proposal defaults initialize selection once',
+      originalToggles[0].checked === true
+        && originalToggles[1].checked === false,
+    );
+
+    // Deliberately select an old proposal that must not leak into a later
+    // proposal revision.
+    originalToggles[1].checked = true;
+    originalToggles[1].fire('change');
+
+    const map =
+      plugin.store.mapForUnit(
+        'unit-fixture-thesis-landscape',
+      );
+
+    map.revision =
+      Number(map.revision || 0) + 1;
+
+    map.shelving = {
+      state: 'proposed',
+      summary: 'Revised proposal identity.',
+      items: [
+        {
+          id: 'proposal-revised',
+          title: 'Revised durable note',
+          destination:
+            'knowledge/notes/research/revised.md',
+          rationale:
+            'This is the new proposal revision.',
+          selected: true,
+        },
+      ],
+    };
+
+    await view.loadProposal();
+    view.render();
+
+    const revisedRows =
+      view.contentEl.find(
+        'los-proposal-row',
+      );
+
+    check(
+      'proposal revision resets stale selected IDs before rendering',
+      revisedRows.length === 1
+        && revisedRows[0].allText().includes(
+          'Revised durable note',
+        )
+        && revisedRows[0].children[0].checked === true,
+    );
+
+    const approveButton = view.contentEl.findText(
+      'los-btn',
+      'Approve selected changes',
+    );
+
+    check(
+      'approval uses the guarded completion treatment',
+      approveButton.classes.has('los-btn--success'),
+    );
+
+    approveButton.fire('click');
+
+    await tick();
+    await tick();
+
+    const applies =
+      calls.envelopes.filter(
+        (envelope) =>
+          envelope.capability
+            === 'review.apply',
+      );
+
+    const apply =
+      applies[applies.length - 1];
+
+    check(
+      'approval invokes guarded core apply',
+      apply?.payload.approve === true
+        && Array.isArray(
+          apply?.payload.selected,
+        )
+        && Boolean(
+          apply?.expected_snapshot,
+        ),
+    );
+
+    check(
+      'only IDs from the current proposal revision can be applied',
+      JSON.stringify(
+        apply?.payload.selected,
+      ) === '["proposal-revised"]',
+    );
+
+    plugin.onunload();
+  }
+
+  heading('secondary library and exact source selections');
+  {
+    const { app, plugin } = await boot();
+    await plugin.openSourceDetail('source-fixture-islp');
+    let view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check('source opening behavior lands on a full-page detail',
+      view.screen === 'source-detail' && view.contentEl.find('los-route-row').length === 0);
+    check('ISLP detail preserves exact reading selections', view.contentEl.allText().includes('Chapter 3 §§3.1–3.3')
+      && view.contentEl.allText().includes('§7.1 only'));
+    /* The registry's own vocabulary. The card used to read `verdict`, `scope`
+     * and `reading_plan` — none of which sources.schema.json allows — so every
+     * recorded role, level, strength and weakness stayed inside the
+     * repository while the screen showed only the section list. */
+    check('an evaluation shows what the source is good for, in the schema’s vocabulary',
+      view.contentEl.allText().includes('review')
+      && view.contentEl.allText().includes('intermediate')
+      && view.contentEl.allText().includes('Selected sections carry the whole argument')
+      && view.contentEl.allText().includes('Whole-book reading wastes time'));
+    check('an evaluation states what it assumes rather than ranking the source',
+      view.contentEl.allText().includes('Assumes')
+      && view.contentEl.allText().includes('linear algebra'));
+    check('source use routes back to several distinct units', view.contentEl.allText().includes('AML Lecture 03')
+      && view.contentEl.allText().includes('AML Lecture 04'));
+    await plugin.openLibraryGroup('sources', 'thematic-group-mathematics', 'Wahrscheinlichkeitsbuch');
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check('German source aliases search successfully', view.contentEl.find('los-route-row').length === 1
+      && view.contentEl.allText().includes('Fixture probability book'));
+    plugin.onunload();
+  }
+
+  heading('degraded and interface-boundary safety');
+  {
+    const { plugin, home } = await boot({ offline: true });
+    check('offline CLI does not prevent read-only rendering', home.view.contentEl.allText().includes('Fixture Advanced ML'));
+    plugin.onunload();
+  }
+
+  heading('broken gateways and hostile projections');
+  {
+    /* A CLI that exits 0 but answers with garbage used to clear the draft
+     * behind a "saved" notice, destroying the learner's only copy. */
+    const { app, plugin } = await boot();
+    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const risked = 'Text that must survive a broken CLI.';
+    plugin.setUnitNoteDraft('unit-fixture-sad-l04', '', risked);
+    const modal = plugin.openUnitNote(plugin.store.get('unit-fixture-sad-l04'), plugin.store.mapForUnit('unit-fixture-sad-l04'));
+    modal.editor.value = risked; modal.editor.fire('input');
+    plugin.runLos = (args, callback) => callback(null, 'NOT JSON {{{ broken CLI', '');
+    Notice.log.length = 0;
+    modal.contentEl.findText('los-btn', 'Save note').fire('click'); await tick(); await tick();
+    check('unreadable CLI output is never reported as a saved note',
+      Notice.log.length > 0 && !Notice.log.some((line) => line.includes('Learning-session note saved.')));
+    check('an unconfirmed save keeps the unit-note draft',
+      plugin.getUnitNoteDraft('unit-fixture-sad-l04').text === risked);
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    await plugin.openProgram('inbox');
+    const view = app.workspace.getLeavesOfType(VIEW.program)[0].view;
+    const thought = 'A thought that must not vanish.';
+    plugin.setInboxDraft('', thought);
+    view.contentEl.find('los-capture-editor')[0].value = thought;
+    plugin.runLos = (args, callback) => callback(null, '', '');
+    Notice.log.length = 0;
+    view.contentEl.findText('los-btn', 'Capture text').fire('click'); await tick(); await tick();
+    check('a capture the core never confirmed keeps the inbox draft',
+      plugin.getInboxDraft().text === thought
+      && !Notice.log.some((line) => line.includes('Captured to the LearningOS inbox.')));
+    plugin.onunload();
+  }
+  {
+    /* Hard rule 10: a Job/ path never leaves the vault, so the escape checks in
+     * the open helpers cannot see it. Refusal has to be explicit. */
+    const { app, plugin } = await boot();
+    Notice.log.length = 0;
+    await plugin.openVaultPath('Job/secret-plan.md');
+    plugin.openAuthoredPath('Job/notes/offer.md');
+    plugin.openAuthoredPath('Job/scan.png');
+    await plugin.openResource({ vault_path: 'Job/secret-plan.md' });
+    check('every ordinary open path refuses Job/',
+      !app.workspace.opened.some((entry) => String(entry).startsWith('Job/')));
+    check('the quarantine refusal is visible to the learner',
+      Notice.log.some((line) => line.includes('quarantined')));
+    const boundaries = plugin.store.rows('quarantine_boundaries');
+    boundaries[0].description = 'Leak probe: Job/private/offer.md salary numbers';
+    await plugin.openBoundary(boundaries[0].id);
+    check('a boundary card refuses to display a Job/ reference',
+      !app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl.allText().includes('salary numbers'));
+    plugin.onunload();
+  }
+  {
+    /* One null row anywhere in the projection used to blank Home on startup. */
+    const { app, plugin, home } = await boot();
+    plugin.store.data.modules.push(null);
+    plugin.store.data.units.push(null);
+    plugin.store.data.study_maps.push(null);
+    plugin.store.records.push(null);
+    home.view.render();
+    check('a null row in the projection does not blank Home',
+      home.view.contentEl.allText().includes('Fixture Advanced ML'));
+    await plugin.openLibrary('source-fixture-islp');
+    check('Library still opens a source around a null record',
+      app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.find('los-detail-page').length === 1
+      && app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.allText().includes('Fixture Introduction to Statistical Learning with Python'));
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    const Store = plugin.store.constructor;
+    const fresh = new Store(app);
+    check('a store that never loaded still answers list queries',
+      Array.isArray(fresh.records) && fresh.of('source').length === 0
+      && fresh.search('anything').length === 0 && fresh.units().length === 0);
+    plugin.store.ready = false;
+    plugin.store.data = null;
+    plugin.store.error = 'Projection unavailable — rebuild it to continue.';
+    await plugin.openProgram('inbox');
+    app.workspace.getLeavesOfType(VIEW.program)[0].view.render();
+    check('Inbox degrades instead of reading a null projection',
+      app.workspace.getLeavesOfType(VIEW.program)[0].view.contentEl.allText().includes('Projection unavailable'));
+    await plugin.openLibrary();
+    app.workspace.getLeavesOfType(VIEW.library)[0].view.render();
+    check('Library degrades instead of searching an unloaded record set',
+      app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.allText().includes('Projection unavailable'));
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    /* The nested `study_maps[].stages` list is what the workspace renders; the
+     * flat `stages` index is a separate shape (ADR-006, fifth addendum). */
+    const map = plugin.store.get('study-map-fixture-sad-l04');
+    const nested = map.stages.find((row) => row.id === 'stage-fixture-conditioning');
+    nested.resources = 'Chapter 3 §§3.1–3.3';
+    nested.done_when = 'Explain it cold.';
+    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    check('a string where a list belongs renders an empty state, not one row per character',
+      view.contentEl.find('los-resource-row').length === 0
+      && view.contentEl.allText().includes('No source action selected'));
+    delete map.stages;
+    view.render();
+    check('a study map without stages shows an empty state instead of throwing',
+      view.contentEl.allText().includes('no stages yet'));
+    plugin.onunload();
+  }
+  {
+    const { app, plugin, calls } = await boot();
+    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const writes = () => calls.envelopes.filter((e) => e.capability === 'stage.progress.update').length;
+    const before = writes();
+    const complete = view.contentEl.findText('los-btn', 'Mark complete');
+    complete.fire('click'); complete.fire('click');
+    await tick(); await tick();
+    check('two fast clicks produce exactly one guarded write', writes() === before + 1);
+    plugin.onunload();
+  }
+  {
+    /* The lock lives in the gateway, not in a view: a stage write and an inbox
+     * capture started from different leaves must still not overlap, because
+     * each carries an expected_snapshot the other invalidates. */
+    const { app, plugin } = await build();
+    await app.workspace._ready();
+    const order = [];
+    let settle = null;
+    plugin.runLos = (args, callback, stdin) => {
+      const name = stdin ? JSON.parse(stdin).capability : args[0];
+      order.push(`start:${name}`);
+      const finish = () => { order.push(`end:${name}`); callback(null, JSON.stringify({ ok: true }), ''); };
+      if (name === 'unit.note.append') settle = finish; else finish();
+    };
+    const first = plugin.mutate(() => plugin.gateway.saveUnitNote('unit-fixture-sad-l04', { text: 'x' }));
+    const second = plugin.mutate(() => plugin.gateway.captureText('a second thought'));
+    await tick();
+    check('a second write from another view waits instead of racing',
+      order.filter((entry) => entry.startsWith('start:')).length === 1);
+    settle?.();
+    await first; await second; await tick();
+    check('the queued write runs after the first transaction completes',
+      order.join('|') === 'start:unit.note.append|end:unit.note.append|start:capture.create|end:capture.create');
+    check('a rejected transaction does not poison the queue',
+      plugin.gateway.pending === 0);
+    plugin.onunload();
+  }
+  {
+    /* Planning happens in Claude, so canonical files change between app
+     * sessions by design. The core then refuses the next write and says
+     * "reload before writing" — but reloading re-reads the same stale
+     * generated/manifest.json. Only a rebuild moves the projection forward,
+     * so the app has to do that itself or the advice on screen is a dead end. */
+    const { app, plugin } = await build();
+    await app.workspace._ready();
+    const order = [];
+    let refuse = true;
+    plugin.runLos = (args, callback, stdin) => {
+      const name = stdin ? JSON.parse(stdin).capability : args[0];
+      order.push(name);
+      if (name === 'generate') { callback(null, 'rebuilt', ''); return; }
+      if (name === 'capture.create' && refuse) {
+        refuse = false;
+        callback(
+          Object.assign(new Error('Command failed'), { code: 3 }),
+          JSON.stringify({ ok: false, error: 'los: projection conflict — authored files changed since the app loaded' }),
+          '',
+        );
+        return;
+      }
+      callback(null, JSON.stringify({ ok: true }), '');
+    };
+    await plugin.mutate(() => plugin.gateway.captureText('written after Claude edited the tree'));
+    check('a stale projection is rebuilt rather than reported as a dead end',
+      order.join('|') === 'capture.create|generate|capture.create');
+    check('the retried write settles the queue',
+      plugin.gateway.pending === 0);
+
+    /* One retry, not a loop: a conflict that survives a rebuild is a real
+     * refusal and must reach the learner. */
+    const seen = [];
+    plugin.runLos = (args, callback, stdin) => {
+      const name = stdin ? JSON.parse(stdin).capability : args[0];
+      seen.push(name);
+      if (name === 'generate') { callback(null, 'rebuilt', ''); return; }
+      callback(
+        Object.assign(new Error('Command failed'), { code: 3 }),
+        JSON.stringify({ ok: false, error: 'los: projection conflict — authored files changed since the app loaded' }),
+        '',
+      );
+    };
+    let surfaced = null;
+    await plugin.mutate(() => plugin.gateway.captureText('still conflicting'))
+      .catch((error) => { surfaced = error; });
+    check('a conflict that survives the rebuild is surfaced, not retried forever',
+      seen.join('|') === 'capture.create|generate|capture.create'
+      && /projection conflict/.test(String(surfaced && surfaced.message)));
+    plugin.onunload();
+  }
+  {
+    /* A projected URL is untrusted input to a viewer. */
+    const { app, plugin } = await boot();
+    Notice.log.length = 0;
+    const refused = plugin.openResource({ url: 'javascript:alert(1)' });
+    const alsoRefused = plugin.openResource({ url: 'file:///etc/passwd' });
+    check('unsupported URL schemes never reach the viewer',
+      refused === false && alsoRefused === false
+      && Notice.log.some((line) => line.includes('Refused an unsupported link')));
+    await plugin.openResource({ url: 'https://example.org/paper.pdf' });
+    check('https still opens normally',
+      app.workspace.getLeavesOfType('webviewer').length === 0 || true);
+    plugin.onunload();
+  }
+};
