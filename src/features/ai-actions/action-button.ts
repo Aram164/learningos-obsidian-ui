@@ -1,7 +1,7 @@
 import { Notice } from 'obsidian';
 import { button } from '../../components';
 import type { ProjectionRecord } from '../../contracts/manifest';
-import type { LearningOSUI } from '../../main';
+import type { AppSurface } from '../../app/surface';
 import { errorMessage } from '../../projection/readers';
 
 /**
@@ -10,7 +10,7 @@ import { errorMessage } from '../../projection/readers';
  * reaches the gateway or the store directly.
  */
 type AiActionHost = Pick<
-  LearningOSUI,
+  AppSurface,
   | 'aiActions'
   | 'scheduleDraftSave'
   | 'settings'

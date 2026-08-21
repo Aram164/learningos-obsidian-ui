@@ -1,10 +1,10 @@
 import type {
   ProjectionRecord,
 } from '../contracts/manifest';
-import type { LearningOSUI } from '../main';
+import type { AppSurface } from '../app/surface';
 
 type AIActionPlugin = Pick<
-  LearningOSUI,
+  AppSurface,
   | 'gateway'
   | 'mutate'
   | 'store'

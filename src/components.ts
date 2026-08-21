@@ -2,7 +2,8 @@ import { setIcon } from 'obsidian';
 import { webUtils } from 'electron';
 import { ICONS } from './constants';
 import type { ProjectionRecord } from './contracts/manifest';
-import type { LearningOSUI } from './main';
+import type { AppSurface } from './app/surface';
+import type { AppNavigator } from './app/navigator';
 import { asLabel, asRecords, asString } from './projection/readers';
 import { enableButtonGroupKeyboardNavigation } from './accessibility/button-group';
 export { safeWebUrl } from './security/safe-url';
@@ -12,11 +13,15 @@ export { safeWebUrl } from './security/safe-url';
  * surface they need — they must not reach further into the plugin.
  */
 type CardHost = Pick<
-  LearningOSUI,
-  | 'openModule'
-  | 'openUnit'
+  AppSurface,
   | 'store'
->;
+> & {
+  readonly nav: Pick<
+    AppNavigator,
+    | 'openModule'
+    | 'openUnit'
+  >;
+};
 
 /*
  * The DOM node type every component takes and returns.
@@ -215,7 +220,7 @@ export function progressRow(
   const moduleTitle = asLabel(module);
   const row = parent.createDiv({ cls: 'los-learning-row' });
   const copy = row.createDiv({ cls: 'los-learning-copy' });
-  const title = button(copy, moduleTitle, moduleId ? () => plugin.openModule(moduleId) : null, 'row');
+  const title = button(copy, moduleTitle, moduleId ? () => plugin.nav.openModule(moduleId) : null, 'row');
   title.addClass('los-learning-title');
   if (nextUp) copy.createDiv({ cls: 'los-learning-next', text: nextUp });
   const progress = moduleId ? plugin.store.progress(moduleId) : {
@@ -303,11 +308,11 @@ export function workspaceCard(
   );
   for (const id of moduleIds.slice(0, 3)) {
     const module = plugin.store.get(id);
-    if (module) button(actions, `Open ${module.title}`, () => plugin.openModule(id), 'quiet');
+    if (module) button(actions, `Open ${module.title}`, () => plugin.nav.openModule(id), 'quiet');
   }
   for (const id of (workspace.unit_ids || []).slice(0, 3)) {
     const unit = plugin.store.get(id);
-    if (unit) button(actions, `Open ${unit.title}`, () => plugin.openUnit(id), 'quiet');
+    if (unit) button(actions, `Open ${unit.title}`, () => plugin.nav.openUnit(id), 'quiet');
   }
   return card;
 }
@@ -338,7 +343,7 @@ export function unitCard(
   } else {
     card.createDiv({ cls: 'los-progress-copy', text: 'No study map yet' });
   }
-  if (unitId) card.addEventListener('click', () => plugin.openUnit(unitId));
+  if (unitId) card.addEventListener('click', () => plugin.nav.openUnit(unitId));
   return card;
 }
 
@@ -362,7 +367,7 @@ export function moduleCard(
   };
   card.createEl('p', { text: `${progress.units_total || 0} units · ${progress.stages_complete || 0}/${progress.stages_total || 0} stages complete` });
   if (progress.units_needing_map) badge(card, `${progress.units_needing_map} need a map`, 'needs-map');
-  if (moduleId) card.addEventListener('click', () => plugin.openModule(moduleId));
+  if (moduleId) card.addEventListener('click', () => plugin.nav.openModule(moduleId));
   return card;
 }
 

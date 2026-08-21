@@ -2,7 +2,8 @@ import { ItemView, Notice, type WorkspaceLeaf } from 'obsidian';
 import { button, empty, pageHeader, section, unitCard } from '../components';
 import { VIEW_SHELVING } from '../constants';
 import type { ProjectionRecord } from '../contracts/manifest';
-import type { LearningOSUI } from '../main';
+import type { AppSurface } from '../app/surface';
+import type { AppNavigator } from '../app/navigator';
 import { errorMessage, isRecord, optionalString } from '../projection/readers';
 
 interface ShelvingViewState {
@@ -25,14 +26,18 @@ interface ShelvingProposal {
 }
 
 type ShelvingPlugin = Pick<
-  LearningOSUI,
+  AppSurface,
   | 'askAiScoped'
   | 'gateway'
   | 'mutate'
-  | 'openModule'
-  | 'openUnit'
   | 'store'
->;
+> & {
+  readonly nav: Pick<
+    AppNavigator,
+    | 'openModule'
+    | 'openUnit'
+  >;
+};
 
 function readShelvingProposal(
   value: unknown,

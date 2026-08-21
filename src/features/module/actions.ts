@@ -169,7 +169,7 @@ export function renderSources(
               }
 
               return view.plugin
-                .openLibrary(id);
+                .nav.openLibrary(id);
             },
           );
         }

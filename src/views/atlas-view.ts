@@ -21,9 +21,8 @@ import {
 import type {
   ProjectionRecord,
 } from '../contracts/manifest';
-import type {
-  LearningOSUI,
-} from '../main';
+import type { AppSurface } from '../app/surface';
+import type { AppNavigator } from '../app/navigator';
 import {
   asLabel as projectedLabel,
   asListLength as projectedListLength,
@@ -44,16 +43,20 @@ interface AtlasViewState {
 }
 
 type AtlasPlugin = Pick<
-  LearningOSUI,
+  AppSurface,
   | 'generate'
   | 'openAuthoredPath'
-  | 'openLibrary'
-  | 'openLibraryFiltered'
-  | 'openModule'
-  | 'openSourceDetail'
   | 'openVaultPath'
   | 'store'
->;
+> & {
+  readonly nav: Pick<
+    AppNavigator,
+    | 'openLibrary'
+    | 'openLibraryFiltered'
+    | 'openModule'
+    | 'openSourceDetail'
+  >;
+};
 
 function projectedMetadata(
   values: readonly unknown[],
@@ -391,8 +394,8 @@ export class AtlasView extends ItemView {
       if (context) copy.createSpan({ cls: 'los-micro', text: context });
       row.addEventListener('click', () => {
         if (!recordId) return;
-        if (kind === 'module') void this.plugin.openModule(recordId);
-        else void this.plugin.openSourceDetail(recordId);
+        if (kind === 'module') void this.plugin.nav.openModule(recordId);
+        else void this.plugin.nav.openSourceDetail(recordId);
       });
     }
 
@@ -514,7 +517,7 @@ export class AtlasView extends ItemView {
 
       const shelfId = projectedString(shelf.id);
       head.addEventListener('click', () => {
-        if (shelfId) void this.plugin.openLibrary(shelfId, String(shelf.type || 'collection'));
+        if (shelfId) void this.plugin.nav.openLibrary(shelfId, String(shelf.type || 'collection'));
       });
 
       const summary = projectedString(shelf.summary) || projectedString(shelf.purpose);
@@ -588,7 +591,7 @@ export class AtlasView extends ItemView {
     button(
       actions,
       'Browse domain in Library',
-      () => this.plugin.openLibraryFiltered('note', domain.name),
+      () => this.plugin.nav.openLibraryFiltered('note', domain.name),
       'quiet',
     );
 

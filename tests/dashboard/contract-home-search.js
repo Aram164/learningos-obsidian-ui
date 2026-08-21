@@ -182,7 +182,7 @@ module.exports = async function run() {
   heading('reload state');
   {
     const first = await boot();
-    await first.plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    await first.plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const persisted = { ...first.plugin._data };
     first.plugin.onunload();
     const second = await build({ settings: persisted });
@@ -205,16 +205,16 @@ module.exports = async function run() {
   heading('explicit application router');
   {
     const { app, plugin, calls } = await boot();
-    await plugin.openLibraryGroup('sources', 'thematic-group-mathematics', 'probability', 'local');
+    await plugin.nav.openLibraryGroup('sources', 'thematic-group-mathematics', 'probability', 'local');
     const libraryBefore = app.workspace.getLeavesOfType(VIEW.library)[0];
     libraryBefore.view.contentEl.scrollTop = 144;
     libraryBefore.view.selectedElementId = 'source-fixture-book';
-    await plugin.openModule('module-fixture-m2');
+    await plugin.nav.openModule('module-fixture-m2');
     const beforeBack = plugin.router.snapshot();
     check('feature navigation persists a product route rather than an Obsidian view type',
       beforeBack.current.name === 'module-detail' && beforeBack.current.moduleId === 'module-fixture-m2'
       && !('type' in beforeBack.current));
-    await plugin.back();
+    await plugin.nav.back();
     const restored = plugin.router.snapshot();
     const library = app.workspace.getLeavesOfType(VIEW.library)[0];
     check('Back restores the prior route, filters, selection, and scroll position',
@@ -232,9 +232,9 @@ module.exports = async function run() {
   heading('global structural search');
   {
     const { app, plugin } = await boot();
-    await plugin.openLibraryHome('sources');
+    await plugin.nav.openLibraryHome('sources');
     const routeBeforeSearch = plugin.router.snapshot().current;
-    const modal = plugin.openGlobalSearch('Advanced ML');
+    const modal = plugin.nav.openGlobalSearch('Advanced ML');
     await frame();
     const overlay = plugin.router.snapshot();
     check('opening search preserves the current application route',
@@ -261,7 +261,7 @@ module.exports = async function run() {
       opened.overlay === null && opened.current.name === 'module-detail'
       && opened.current.moduleId === 'module-fixture-aml');
 
-    const projectSearch = plugin.openGlobalSearch('Bachelor thesis');
+    const projectSearch = plugin.nav.openGlobalSearch('Bachelor thesis');
     const projectResult = projectSearch.contentEl.find('los-search-result')
       .find((row) => row.allText().includes('Bachelor thesis'));
     check('global search returns first-class projects', Boolean(projectResult));
@@ -270,7 +270,7 @@ module.exports = async function run() {
       plugin.router.snapshot().current.name === 'project-detail'
       && plugin.router.snapshot().current.projectId === 'project-fixture-thesis');
 
-    const emptySearch = plugin.openGlobalSearch('definitely-unfindable-fixture');
+    const emptySearch = plugin.nav.openGlobalSearch('definitely-unfindable-fixture');
     check('no-results is explicit and offers a clear action',
       emptySearch.contentEl.allText().includes('No structural results')
       && Boolean(emptySearch.contentEl.findText('los-btn', 'Clear search')));

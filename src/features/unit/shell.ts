@@ -91,14 +91,14 @@ export function render(
       button(
         headerActions,
         'Back to project',
-        () => view.plugin.back(),
+        () => view.plugin.nav.back(),
         'quiet',
       );
     } else {
       button(
         headerActions,
         'Back to module',
-        () => view.plugin.openModule(
+        () => view.plugin.nav.openModule(
           unit.moduleId,
         ),
         'quiet',

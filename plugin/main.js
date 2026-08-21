@@ -35,14 +35,7 @@ __export(main_exports, {
   default: () => main_default
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian22 = require("obsidian");
-
-// src/app/global-search.ts
-var import_obsidian2 = require("obsidian");
-
-// src/components.ts
-var import_obsidian = require("obsidian");
-var import_electron = require("electron");
+var import_obsidian23 = require("obsidian");
 
 // src/contracts/manifest.ts
 var MANIFEST_CONTRACT_VERSION = 5;
@@ -161,6 +154,13 @@ var ICONS = {
   "topic-pack": "notebook-tabs",
   atlas: "map"
 };
+
+// src/settings.ts
+var import_obsidian2 = require("obsidian");
+
+// src/components.ts
+var import_obsidian = require("obsidian");
+var import_electron = require("electron");
 
 // src/projection/readers.ts
 function isRecord2(value) {
@@ -393,11 +393,11 @@ function workspaceCard(parent, plugin, workspace, moduleContext = null) {
   );
   for (const id of moduleIds.slice(0, 3)) {
     const module2 = plugin.store.get(id);
-    if (module2) button(actions, `Open ${module2.title}`, () => plugin.openModule(id), "quiet");
+    if (module2) button(actions, `Open ${module2.title}`, () => plugin.nav.openModule(id), "quiet");
   }
   for (const id of (workspace.unit_ids || []).slice(0, 3)) {
     const unit = plugin.store.get(id);
-    if (unit) button(actions, `Open ${unit.title}`, () => plugin.openUnit(id), "quiet");
+    if (unit) button(actions, `Open ${unit.title}`, () => plugin.nav.openUnit(id), "quiet");
   }
   return card;
 }
@@ -423,10 +423,52 @@ function unitCard(parent, plugin, unit) {
   } else {
     card.createDiv({ cls: "los-progress-copy", text: "No study map yet" });
   }
-  if (unitId) card.addEventListener("click", () => plugin.openUnit(unitId));
+  if (unitId) card.addEventListener("click", () => plugin.nav.openUnit(unitId));
   return card;
 }
 var OWNERSHIP_STATEMENT = "Presentation only \xB7 facts live in the LearningOS core \xB7 buttons are conveniences, never duties.";
+
+// src/contracts/gateway-v1.ts
+var EXIT_PROJECTION_CONFLICT = 3;
+var GatewayError = class extends Error {
+  exitCode;
+  constructor(message, exitCode = null) {
+    super(message);
+    this.name = "GatewayError";
+    this.exitCode = exitCode;
+  }
+  get isProjectionConflict() {
+    return this.exitCode === EXIT_PROJECTION_CONFLICT;
+  }
+};
+function isProjectionConflict(error) {
+  return error instanceof GatewayError && error.isProjectionConflict;
+}
+function exitCodeOf(error) {
+  const code = error?.code;
+  return typeof code === "number" ? code : null;
+}
+function structuredError(stdout) {
+  const raw = String(stdout ?? "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = JSON.parse(raw);
+    const message = parsed?.error;
+    return typeof message === "string" ? message.trim() : "";
+  } catch (_) {
+    return "";
+  }
+}
+function asStringList(value) {
+  return Array.isArray(value) ? value.filter((entry) => typeof entry === "string") : [];
+}
+function asSessionReview(result) {
+  return {
+    owned_changes: asStringList(result.owned_changes),
+    unrelated_changes: asStringList(result.unrelated_changes),
+    pushed: result.pushed === true
+  };
+}
 
 // src/accessibility/modal.ts
 var FOCUSABLE = [
@@ -537,264 +579,11 @@ function makeModalAccessible(content, options) {
   };
 }
 
-// src/app/global-search.ts
-var GlobalSearchModal = class extends import_obsidian2.Modal {
-  plugin;
-  query;
-  filter;
-  input;
-  tabButtons = [];
-  results;
-  restoreAccessibility = null;
-  constructor(app, plugin, initialQuery = "") {
-    super(app);
-    this.plugin = plugin;
-    this.query = String(initialQuery || "");
-    this.filter = "all";
-  }
-  onOpen() {
-    const root = this.contentEl;
-    root.empty();
-    root.addClass("los-root", "los-global-search");
-    this.plugin.router.openOverlay({ kind: "global-search", query: this.query, filter: this.filter });
-    const header = root.createDiv({ cls: "los-search-header" });
-    const copy = header.createDiv();
-    copy.createDiv({ cls: "los-kicker", text: "Search LearningOS" });
-    copy.createEl("h2", {
-      text: "Find a module, unit, source, or project",
-      attr: { id: "los-global-search-heading" }
-    });
-    this.restoreAccessibility = makeModalAccessible(root, {
-      close: () => this.close(),
-      hostClass: "los-modal--global-search",
-      initialFocus: () => this.input ?? null,
-      labelledBy: "los-global-search-heading"
-    });
-    button(header, "Close", () => this.close(), "quiet").setAttribute("aria-label", "Close global search");
-    this.input = root.createEl("input", {
-      cls: "los-search los-global-search-input",
-      attr: {
-        type: "search",
-        placeholder: "Search titles, aliases, authors, and IDs",
-        "aria-label": "Search LearningOS",
-        autocomplete: "off"
-      }
-    });
-    this.input.value = this.query;
-    this.input.addEventListener("input", () => {
-      this.query = this.input.value;
-      this.plugin.router.updateOverlay({ query: this.query });
-      this.renderResults();
-    });
-    const tabs = root.createDiv({ cls: "los-search-tabs", attr: { role: "group", "aria-label": "Search result type" } });
-    enableButtonGroupKeyboardNavigation(tabs);
-    this.tabButtons = [];
-    for (const [id, label] of [
-      ["all", "All"],
-      ["learning", "Modules & units"],
-      ["sources", "Learning sources"],
-      ["projects", "Projects"]
-    ]) {
-      const tab = button(tabs, label, () => {
-        this.filter = id;
-        this.plugin.router.updateOverlay({ filter: id });
-        this.renderTabs();
-        this.renderResults();
-      }, "tertiary");
-      tab.addClass("los-search-tab");
-      tab.setAttrs({ "data-filter": id, "aria-pressed": String(this.filter === id) });
-      this.tabButtons.push(tab);
-    }
-    this.results = root.createDiv({ cls: "los-search-results", attr: { "aria-live": "polite" } });
-    this.renderTabs();
-    this.renderResults();
-  }
-  onClose() {
-    this.plugin.router.clearOverlay();
-    this.restoreAccessibility?.();
-    this.restoreAccessibility = null;
-    this.contentEl.empty();
-  }
-  renderTabs() {
-    for (const tab of this.tabButtons || []) {
-      const active = tab.getAttribute("data-filter") === this.filter;
-      tab.toggleClass("is-active", active);
-      tab.setAttribute("aria-pressed", String(active));
-    }
-  }
-  candidates() {
-    const rows = [];
-    const add = (record, kind, subtitle, open) => {
-      if (!record?.id || !record?.title) return;
-      rows.push({
-        id: record.id,
-        title: record.title,
-        aliases: [...record.aliases || []],
-        authors: [...record.authors || []],
-        kind,
-        subtitle,
-        open
-      });
-    };
-    for (const module2 of this.plugin.store.modules()) {
-      if (!module2.id) continue;
-      const area = module2.area_id ? this.plugin.store.get(module2.area_id)?.title || module2.code || "Module" : module2.code || "Module";
-      add(module2, "learning", `Module \xB7 ${area}`, () => this.plugin.openModule(module2.id));
-    }
-    for (const project of this.plugin.store.projects()) {
-      if (!project.id) continue;
-      add(
-        project,
-        "projects",
-        `Project \xB7 ${project.project_type || project.status || "active"}`,
-        () => this.plugin.openProject(project.id)
-      );
-    }
-    for (const unit of this.plugin.store.units()) {
-      if (!unit.id || !unit.module_id) continue;
-      const module2 = this.plugin.store.get(unit.module_id);
-      add(unit, "learning", `Unit \xB7 ${module2?.title || unit.module_id}`, () => this.plugin.openUnit(unit.id));
-    }
-    for (const source of this.plugin.store.sources()) {
-      if (!source.id) continue;
-      const byline = (source.authors || []).join(", ") || source.organization || source.kind || "Learning source";
-      add(source, "sources", `Learning source \xB7 ${byline}`, () => this.plugin.openLibrary(source.id, "source"));
-    }
-    for (const pack of this.plugin.store.topicPacks()) {
-      if (!pack.id) continue;
-      add(
-        pack,
-        "sources",
-        `Topic Pack \xB7 ${(pack.entries || []).length} items`,
-        () => this.plugin.openTopicPackDetail(pack.id)
-      );
-    }
-    for (const workspace of this.plugin.store.of("workspace")) {
-      const linkedProject = workspace.project_id ? this.plugin.store.get(workspace.project_id) : null;
-      if (!linkedProject) continue;
-      if (!linkedProject.id) continue;
-      add(workspace, "projects", `Project workspace \xB7 ${linkedProject.title || linkedProject.id}`, () => this.plugin.openProject(linkedProject.id));
-    }
-    return rows;
-  }
-  matches(candidate) {
-    const words2 = this.query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
-    if (!words2.length) return true;
-    const haystack = [
-      candidate.id,
-      candidate.title,
-      candidate.subtitle,
-      ...candidate.aliases,
-      ...candidate.authors
-    ].filter(Boolean).join(" ").toLocaleLowerCase();
-    return words2.every(
-      (word) => haystack.includes(word)
-    );
-  }
-  rankedCandidates() {
-    const needle = this.query.toLocaleLowerCase().trim();
-    return this.candidates().filter((candidate) => this.filter === "all" || candidate.kind === this.filter).filter((candidate) => this.matches(candidate)).sort((left, right) => {
-      const leftTitle = left.title.toLocaleLowerCase();
-      const rightTitle = right.title.toLocaleLowerCase();
-      const leftRank = !needle ? 2 : leftTitle === needle ? 0 : leftTitle.startsWith(needle) ? 1 : 2;
-      const rightRank = !needle ? 2 : rightTitle === needle ? 0 : rightTitle.startsWith(needle) ? 1 : 2;
-      return leftRank - rightRank || left.title.localeCompare(right.title);
-    });
-  }
-  renderResults() {
-    if (!this.results) return;
-    this.results.empty();
-    const rows = this.rankedCandidates();
-    const summary = this.results.createDiv({ cls: "los-search-summary" });
-    summary.createSpan({ text: this.query.trim() ? `${rows.length} result${rows.length === 1 ? "" : "s"}` : "Quick access" });
-    summary.createSpan({ cls: "los-micro", text: "Manifest identities only" });
-    if (!rows.length) {
-      empty(
-        this.results,
-        "No structural results",
-        `Nothing in the current LearningOS projection matches \u201C${this.query.trim()}\u201D.`,
-        "Clear search",
-        () => {
-          this.query = "";
-          this.input.value = "";
-          this.plugin.router.updateOverlay({ query: "" });
-          this.renderResults();
-          this.input.focus();
-        }
-      );
-      return;
-    }
-    const list = this.results.createDiv({ cls: "los-search-result-list" });
-    for (const row of rows.slice(0, 24)) {
-      const result = list.createEl("button", {
-        cls: "los-search-result is-clickable",
-        attr: { type: "button", "aria-label": `Open ${row.title}` }
-      });
-      const copy = result.createDiv({ cls: "los-search-result-copy" });
-      copy.createEl("strong", { text: row.title });
-      copy.createDiv({ cls: "los-micro", text: row.subtitle });
-      result.createSpan({ cls: "los-search-open", text: "Open \u2192" });
-      result.addEventListener("click", () => {
-        this.close();
-        row.open();
-      });
-    }
-    if (rows.length > 24) {
-      this.results.createDiv({ cls: "los-micro", text: `${rows.length - 24} more results. Refine the query to narrow the list.` });
-    }
-  }
-};
-
-// src/settings.ts
-var import_obsidian3 = require("obsidian");
-
-// src/contracts/gateway-v1.ts
-var EXIT_PROJECTION_CONFLICT = 3;
-var GatewayError = class extends Error {
-  exitCode;
-  constructor(message, exitCode = null) {
-    super(message);
-    this.name = "GatewayError";
-    this.exitCode = exitCode;
-  }
-  get isProjectionConflict() {
-    return this.exitCode === EXIT_PROJECTION_CONFLICT;
-  }
-};
-function isProjectionConflict(error) {
-  return error instanceof GatewayError && error.isProjectionConflict;
-}
-function exitCodeOf(error) {
-  const code = error?.code;
-  return typeof code === "number" ? code : null;
-}
-function structuredError(stdout) {
-  const raw = String(stdout ?? "").trim();
-  if (!raw) return "";
-  try {
-    const parsed = JSON.parse(raw);
-    const message = parsed?.error;
-    return typeof message === "string" ? message.trim() : "";
-  } catch (_) {
-    return "";
-  }
-}
-function asStringList(value) {
-  return Array.isArray(value) ? value.filter((entry) => typeof entry === "string") : [];
-}
-function asSessionReview(result) {
-  return {
-    owned_changes: asStringList(result.owned_changes),
-    unrelated_changes: asStringList(result.unrelated_changes),
-    pushed: result.pushed === true
-  };
-}
-
 // src/settings.ts
 function errorMessage2(error) {
   return error instanceof Error ? error.message : String(error);
 }
-var LearningOSSettingsTab = class extends import_obsidian3.PluginSettingTab {
+var LearningOSSettingsTab = class extends import_obsidian2.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
   }
@@ -809,7 +598,7 @@ var LearningOSSettingsTab = class extends import_obsidian3.PluginSettingTab {
       ["showAiRecommendation", "Show scoped AI action", "Display AI buttons that always include explicit curriculum context."]
     ];
     for (const [key, name, description] of toggles) {
-      new import_obsidian3.Setting(root).setName(name).setDesc(description).addToggle(
+      new import_obsidian2.Setting(root).setName(name).setDesc(description).addToggle(
         (toggle) => toggle.setValue(this.plugin.settings[key]).onChange(
           async (value) => {
             this.plugin.settings[key] = value;
@@ -818,21 +607,21 @@ var LearningOSSettingsTab = class extends import_obsidian3.PluginSettingTab {
         )
       );
     }
-    new import_obsidian3.Setting(root).setName("Python interpreter").setDesc("Leave blank to auto-detect: the project virtual environment, then the system Python.").addText((text) => text.setValue(this.plugin.settings.pythonPath || "").onChange(async (value) => {
+    new import_obsidian2.Setting(root).setName("Python interpreter").setDesc("Leave blank to auto-detect: the project virtual environment, then the system Python.").addText((text) => text.setValue(this.plugin.settings.pythonPath || "").onChange(async (value) => {
       this.plugin.settings.pythonPath = value.trim();
       await this.plugin.saveData(this.plugin.settings);
     }));
-    new import_obsidian3.Setting(root).setName("Validate and rebuild").setDesc("Run the canonical core projection pipeline.").addButton(
+    new import_obsidian2.Setting(root).setName("Validate and rebuild").setDesc("Run the canonical core projection pipeline.").addButton(
       (control) => control.setButtonText("Rebuild").setCta().onClick(() => this.plugin.generate())
     );
-    new import_obsidian3.Setting(root).setName("Diagnostics").setDesc("Contract versions, projection freshness, interpreter.").addButton(
-      (control) => control.setButtonText("Open").onClick(() => this.plugin.openDiagnostics())
+    new import_obsidian2.Setting(root).setName("Diagnostics").setDesc("Contract versions, projection freshness, interpreter.").addButton(
+      (control) => control.setButtonText("Open").onClick(() => this.plugin.nav.openDiagnostics())
     );
     root.createEl("h3", { text: "About LearningOS" });
     root.createEl("p", { cls: "los-muted", text: OWNERSHIP_STATEMENT });
   }
 };
-var SessionEndModal = class extends import_obsidian3.Modal {
+var SessionEndModal = class extends import_obsidian2.Modal {
   plugin;
   review;
   restoreAccessibility = null;
@@ -873,17 +662,17 @@ var SessionEndModal = class extends import_obsidian3.Modal {
     const actions = root.createDiv({ cls: "los-actions" });
     button(actions, "Commit session-owned files", async () => {
       if (!message.value.trim()) {
-        new import_obsidian3.Notice("Enter a commit message first.");
+        new import_obsidian2.Notice("Enter a commit message first.");
         return;
       }
       try {
         const result = asSessionReview(
           await this.plugin.gateway.endSession(message.value.trim(), Boolean(push.checked))
         );
-        new import_obsidian3.Notice(result.pushed ? "Learning session committed and pushed." : "Learning session committed.");
+        new import_obsidian2.Notice(result.pushed ? "Learning session committed and pushed." : "Learning session committed.");
         this.close();
       } catch (error) {
-        new import_obsidian3.Notice(errorMessage2(error));
+        new import_obsidian2.Notice(errorMessage2(error));
       }
     }, "cta");
     button(actions, "Close without committing", () => this.close(), "quiet");
@@ -897,7 +686,7 @@ var SessionEndModal = class extends import_obsidian3.Modal {
 };
 
 // src/views/atlas-view.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian3 = require("obsidian");
 
 // src/features/atlas/model.ts
 var ATLAS_ROLE_ORDER = [
@@ -1078,7 +867,7 @@ function projectedMetadata(values) {
 function plural(count, noun, pluralNoun = `${noun}s`) {
   return `${count} ${count === 1 ? noun : pluralNoun}`;
 }
-var AtlasView = class extends import_obsidian4.ItemView {
+var AtlasView = class extends import_obsidian3.ItemView {
   plugin;
   domain = null;
   constructor(leaf, plugin) {
@@ -1291,8 +1080,8 @@ var AtlasView = class extends import_obsidian4.ItemView {
       if (context) copy.createSpan({ cls: "los-micro", text: context });
       row.addEventListener("click", () => {
         if (!recordId) return;
-        if (kind === "module") void this.plugin.openModule(recordId);
-        else void this.plugin.openSourceDetail(recordId);
+        if (kind === "module") void this.plugin.nav.openModule(recordId);
+        else void this.plugin.nav.openSourceDetail(recordId);
       });
     }
     if (records.length > rows.length) {
@@ -1390,7 +1179,7 @@ var AtlasView = class extends import_obsidian4.ItemView {
       });
       const shelfId = asString(shelf.id);
       head.addEventListener("click", () => {
-        if (shelfId) void this.plugin.openLibrary(shelfId, String(shelf.type || "collection"));
+        if (shelfId) void this.plugin.nav.openLibrary(shelfId, String(shelf.type || "collection"));
       });
       const summary = asString(shelf.summary) || asString(shelf.purpose);
       if (summary) {
@@ -1447,7 +1236,7 @@ var AtlasView = class extends import_obsidian4.ItemView {
     button(
       actions,
       "Browse domain in Library",
-      () => this.plugin.openLibraryFiltered("note", domain.name),
+      () => this.plugin.nav.openLibraryFiltered("note", domain.name),
       "quiet"
     );
     const coverage = parent.createDiv({ cls: "los-atlas-map-grid" });
@@ -1511,7 +1300,7 @@ var AtlasView = class extends import_obsidian4.ItemView {
 };
 
 // src/views/boundary-view.ts
-var import_obsidian7 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/features/job/cards.ts
 function cardTop(card, title, sub = "") {
@@ -2173,8 +1962,8 @@ function renderJobDashboard(root, host, dashboard, active, choose) {
 }
 
 // src/features/job/session-modal.ts
-var import_obsidian5 = require("obsidian");
-var JobSessionModal = class extends import_obsidian5.Modal {
+var import_obsidian4 = require("obsidian");
+var JobSessionModal = class extends import_obsidian4.Modal {
   trackTitle;
   sessionNumber;
   submit;
@@ -2234,7 +2023,7 @@ var JobSessionModal = class extends import_obsidian5.Modal {
 };
 
 // src/features/job/editor-modals.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 function labelledInput(parent, label, value = "") {
   const field = parent.createDiv({ cls: "los-job-field" });
   field.createEl("label", { text: label });
@@ -2261,7 +2050,7 @@ function labelledSelect(parent, label, value, options) {
   select.value = value;
   return select;
 }
-var JobEditorModal = class extends import_obsidian6.Modal {
+var JobEditorModal = class extends import_obsidian5.Modal {
   restoreAccessibility = null;
   begin(title, detail) {
     const root = this.contentEl;
@@ -2658,7 +2447,7 @@ function asJobDashboard(result) {
 }
 
 // src/views/boundary-view.ts
-var BoundaryView = class extends import_obsidian7.ItemView {
+var BoundaryView = class extends import_obsidian6.ItemView {
   plugin;
   boundaryId = null;
   tab = "now";
@@ -2747,7 +2536,7 @@ var BoundaryView = class extends import_obsidian7.ItemView {
   openJobPlan(trackId, session) {
     const plan = this.dashboard?.learning_tracks.find((item) => item.id === trackId);
     if (!plan) {
-      new import_obsidian7.Notice("That study plan is no longer available.");
+      new import_obsidian6.Notice("That study plan is no longer available.");
       return;
     }
     const requested = typeof session === "number" ? plan.stages.find((item) => item.number === session) : null;
@@ -2820,7 +2609,7 @@ var BoundaryView = class extends import_obsidian7.ItemView {
     try {
       await this.commitJobWrite(write);
     } catch (error) {
-      new import_obsidian7.Notice(error instanceof Error ? error.message : String(error));
+      new import_obsidian6.Notice(error instanceof Error ? error.message : String(error));
       this.error = "";
       this.render();
     }
@@ -2844,7 +2633,7 @@ var BoundaryView = class extends import_obsidian7.ItemView {
           root,
           {
             openJobPath: (path) => this.plugin.resources.openJobPath(path),
-            openSourceDetail: (sourceId) => this.plugin.openSourceDetail(sourceId),
+            openSourceDetail: (sourceId) => this.plugin.nav.openSourceDetail(sourceId),
             openJobPlan: (trackId, session) => this.openJobPlan(trackId, session),
             closeJobPlan: () => this.closeJobPlan(),
             selectedPlanId: this.planId,
@@ -2893,15 +2682,15 @@ var BoundaryView = class extends import_obsidian7.ItemView {
     pageHeader(root, "Deliberate boundary", asLabel(boundary, "Boundary"), boundaryPolicy(boundary.description));
     const guard = section(root, "What this means");
     guard.createEl("p", { text: "Master\u2019s planning is quarantined from current Bachelor\u2019s work and all default search. This surface exposes only the boundary record." });
-    button(guard, "Open Master\u2019s Planning boundary", () => new import_obsidian7.Notice("Open the quarantined folder manually only for a deliberate planning session."), "warm");
+    button(guard, "Open Master\u2019s Planning boundary", () => new import_obsidian6.Notice("Open the quarantined folder manually only for a deliberate planning session."), "warm");
   }
 };
 
 // src/views/garden-view.ts
-var import_obsidian9 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/features/ai-actions/action-button.ts
-var import_obsidian8 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const wrap = parent.createDiv({ cls: "los-ai-action-row" });
   const providers = plugin.aiActions.providers();
@@ -2927,11 +2716,11 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const targetId = target.id;
   const launch = button(wrap, "Refine with AI", async () => {
     if (!targetId) {
-      new import_obsidian8.Notice("This Garden item has no projected identity. Refresh LearningOS and try again.");
+      new import_obsidian7.Notice("This Garden item has no projected identity. Refresh LearningOS and try again.");
       return;
     }
     if (target.job_derived && !jobConfirmed) {
-      new import_obsidian8.Notice("Explicit export confirmation is required for job-derived material.");
+      new import_obsidian7.Notice("Explicit export confirmation is required for job-derived material.");
       return;
     }
     launch.setAttr("disabled", "disabled");
@@ -2943,10 +2732,10 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
         jobConfirmed
       );
       const bundlePath = result.bundle_path || result.request?.bundle_path;
-      new import_obsidian8.Notice(bundlePath ? `AI request prepared: ${bundlePath}` : "AI request prepared.");
+      new import_obsidian7.Notice(bundlePath ? `AI request prepared: ${bundlePath}` : "AI request prepared.");
       onChanged?.(result);
     } catch (error) {
-      new import_obsidian8.Notice(errorMessage(error));
+      new import_obsidian7.Notice(errorMessage(error));
       launch.removeAttribute?.("disabled");
       launch.setText("Refine with AI");
     }
@@ -2963,7 +2752,7 @@ var GARDEN_FILTERS = [
   ["review-due", "Review due"],
   ["harvest-candidate", "Candidates"]
 ];
-var GardenView = class extends import_obsidian9.ItemView {
+var GardenView = class extends import_obsidian8.ItemView {
   plugin;
   seedTitle = "";
   seedText = "";
@@ -3151,7 +2940,7 @@ var GardenView = class extends import_obsidian9.ItemView {
     const text = this.seedText;
     const title = this.seedTitle.trim();
     if (!text.trim()) {
-      new import_obsidian9.Notice(
+      new import_obsidian8.Notice(
         "Write something before adding the seed."
       );
       return;
@@ -3167,9 +2956,9 @@ var GardenView = class extends import_obsidian9.ItemView {
       );
       this.seedTitle = "";
       this.seedText = "";
-      new import_obsidian9.Notice("Garden seed added.");
+      new import_obsidian8.Notice("Garden seed added.");
     } catch (error) {
-      new import_obsidian9.Notice(errorMessage(error));
+      new import_obsidian8.Notice(errorMessage(error));
     } finally {
       this.planting = false;
       this.render();
@@ -3251,12 +3040,12 @@ var GardenView = class extends import_obsidian9.ItemView {
               await this.plugin.aiActions.applyApprovedDelivery(
                 deliveryId
               );
-              new import_obsidian9.Notice(
+              new import_obsidian8.Notice(
                 "Approved AI delivery applied and projection refreshed."
               );
               this.render();
             } catch (error) {
-              new import_obsidian9.Notice(
+              new import_obsidian8.Notice(
                 errorMessage(error)
               );
             }
@@ -3340,7 +3129,7 @@ function renderElsewhere(view, root) {
     rows.push({
       record,
       type: asString(record.kind) === "skill" ? "Skill" : "Module",
-      open: () => view.plugin.openModule(
+      open: () => view.plugin.nav.openModule(
         recordId
       )
     });
@@ -3357,7 +3146,7 @@ function renderElsewhere(view, root) {
     rows.push({
       record,
       type: "Project",
-      open: () => view.plugin.openProject(
+      open: () => view.plugin.nav.openProject(
         recordId
       )
     });
@@ -3530,7 +3319,7 @@ function renderContinue(view, root) {
       "Nothing to resume yet",
       "Open Learn and choose a module or project.",
       "Open Learn",
-      () => view.plugin.openLearn()
+      () => view.plugin.nav.openLearn()
     );
     return;
   }
@@ -3583,7 +3372,7 @@ function renderContinue(view, root) {
   button(
     actions,
     "Continue session",
-    () => view.plugin.openUnit(
+    () => view.plugin.nav.openUnit(
       pointer.unit_id,
       pointer.stage_id
     ),
@@ -3640,7 +3429,7 @@ function renderToday(view, root) {
       title,
       detail: `${date}${registrationDetail}`,
       actionLabel: moduleId ? "Open module" : "",
-      action: moduleId ? () => view.plugin.openModule(
+      action: moduleId ? () => view.plugin.nav.openModule(
         moduleId
       ) : null
     });
@@ -3663,7 +3452,7 @@ function renderToday(view, root) {
       title: `${reviewCount} decision${reviewCount === 1 ? "" : "s"} waiting`,
       detail: details.join(" \xB7 "),
       actionLabel: "Open review",
-      action: () => view.plugin.openReview()
+      action: () => view.plugin.nav.openReview()
     });
   }
   if (!items.length) {
@@ -3686,8 +3475,8 @@ function renderToday(view, root) {
 }
 
 // src/views/home-view.ts
-var import_obsidian10 = require("obsidian");
-var HomeView = class extends import_obsidian10.ItemView {
+var import_obsidian9 = require("obsidian");
+var HomeView = class extends import_obsidian9.ItemView {
   plugin;
   constructor(leaf, plugin) {
     super(leaf);
@@ -3750,7 +3539,7 @@ var HomeView = class extends import_obsidian10.ItemView {
     const search = button(
       actions,
       "Search modules, units, sources, notes\u2026",
-      () => this.plugin.openGlobalSearch(),
+      () => this.plugin.nav.openGlobalSearch(),
       "quiet"
     );
     search.addClass("los-home-search-launcher");
@@ -3770,7 +3559,7 @@ var HomeView = class extends import_obsidian10.ItemView {
     button(
       actions,
       "Capture",
-      () => this.plugin.openCapture(),
+      () => this.plugin.nav.openCapture(),
       "warm"
     );
     this.renderContinue(root);
@@ -4208,7 +3997,7 @@ function renderRelated(view, detail, record) {
       chip(
         shown,
         relatedRecord.record,
-        () => view.plugin.openRecord(
+        () => view.plugin.nav.openRecord(
           relatedRecord.record
         )
       );
@@ -4225,7 +4014,7 @@ function renderRelated(view, detail, record) {
         chip(
           restChips,
           relatedRecord.record,
-          () => view.plugin.openRecord(
+          () => view.plugin.nav.openRecord(
             relatedRecord.record
           )
         );
@@ -4308,12 +4097,12 @@ function renderSourceDetail(view, detail, record) {
       "click",
       () => {
         if (membership.shelf.type === "topic-pack") {
-          view.plugin.openTopicPackDetail(
+          view.plugin.nav.openTopicPackDetail(
             membership.shelf.id
           );
           return;
         }
-        view.plugin.openCatalogueDetail(
+        view.plugin.nav.openCatalogueDetail(
           membership.shelf.id
         );
       }
@@ -4352,7 +4141,7 @@ function renderSourceDetail(view, detail, record) {
     chip(
       used,
       unit.record,
-      () => view.plugin.openUnit(
+      () => view.plugin.nav.openUnit(
         unit.id
       )
     );
@@ -4478,14 +4267,14 @@ function renderRecordRow(view, list, record, isPack = false) {
     () => {
       view.selectedElementId = record.id;
       if (isPack) {
-        view.plugin.openTopicPackDetail(
+        view.plugin.nav.openTopicPackDetail(
           record.id,
           view.groupId,
           view.query
         );
         return;
       }
-      view.plugin.openSourceDetail(
+      view.plugin.nav.openSourceDetail(
         record.id,
         view.groupId,
         view.query,
@@ -4504,7 +4293,7 @@ function renderSourcePage(view, root) {
   const back = button(
     root,
     "\u2039 Learning Sources",
-    () => view.plugin.back(),
+    () => view.plugin.nav.back(),
     "quiet"
   );
   back.addClass("los-route-back");
@@ -4514,7 +4303,7 @@ function renderSourcePage(view, root) {
       "Learning source unavailable",
       "The projected source could not be found.",
       "Back",
-      () => view.plugin.back()
+      () => view.plugin.nav.back()
     );
     return;
   }
@@ -4557,7 +4346,7 @@ function renderTopicPackPage(view, root) {
   const back = button(
     root,
     "\u2039 Topic Packs",
-    () => view.plugin.back(),
+    () => view.plugin.nav.back(),
     "quiet"
   );
   back.addClass("los-route-back");
@@ -4567,7 +4356,7 @@ function renderTopicPackPage(view, root) {
       "Topic Pack unavailable",
       "The projected Topic Pack could not be found.",
       "Back",
-      () => view.plugin.back()
+      () => view.plugin.nav.back()
     );
     return;
   }
@@ -4614,7 +4403,7 @@ function renderCataloguePage(view, root) {
   const back = button(
     root,
     "\u2039 Library",
-    () => view.plugin.back(),
+    () => view.plugin.nav.back(),
     "quiet"
   );
   back.addClass("los-route-back");
@@ -4624,7 +4413,7 @@ function renderCataloguePage(view, root) {
       "Source catalogue unavailable",
       "The projected catalogue could not be found.",
       "Back",
-      () => view.plugin.back()
+      () => view.plugin.nav.back()
     );
     return;
   }
@@ -4707,7 +4496,7 @@ function renderOrderedCollection(view, detail, collection, title) {
           if (!source) {
             return;
           }
-          view.plugin.openSourceDetail(
+          view.plugin.nav.openSourceDetail(
             source.id,
             view.groupId
           );
@@ -4738,7 +4527,7 @@ function renderLegacyList(view, root) {
   const back = button(
     root,
     "\u2039 Library",
-    () => view.plugin.back(),
+    () => view.plugin.nav.back(),
     "quiet"
   );
   back.addClass("los-route-back");
@@ -4843,7 +4632,7 @@ function renderLegacyList(view, root) {
           );
           return;
         }
-        view.plugin.openRecord(
+        view.plugin.nav.openRecord(
           record.record
         );
       }
@@ -4920,7 +4709,7 @@ function renderHome(view, root) {
       "click",
       () => {
         view.selectedElementId = group.id;
-        view.plugin.openLibraryGroup(
+        view.plugin.nav.openLibraryGroup(
           view.collection,
           group.id
         );
@@ -4944,7 +4733,7 @@ function renderCollectionSwitch(view, root) {
     const control = button(
       switcher,
       label,
-      () => view.plugin.openLibraryHome(id),
+      () => view.plugin.nav.openLibraryHome(id),
       view.collection === id ? "cta" : "quiet"
     );
     control.setAttrs({
@@ -4963,7 +4752,7 @@ function renderGroup(view, root) {
   const back = button(
     root,
     "\u2039 Library",
-    () => view.plugin.back(),
+    () => view.plugin.nav.back(),
     "quiet"
   );
   back.addClass("los-route-back");
@@ -4973,7 +4762,7 @@ function renderGroup(view, root) {
       "Thematic group unavailable",
       "Return to Library and choose another group.",
       "Back",
-      () => view.plugin.back()
+      () => view.plugin.nav.back()
     );
     return;
   }
@@ -5012,7 +4801,7 @@ function renderGroup(view, root) {
     button(
       toolbar,
       "Full-text / OCR search",
-      () => view.plugin.openFullTextSearch(
+      () => view.plugin.nav.openFullTextSearch(
         view.query
       ),
       "quiet"
@@ -5211,7 +5000,7 @@ function renderSourceBrowser(view, root) {
   const fullTextSearch = button(
     toolbar,
     "Full text / OCR",
-    () => view.plugin.openFullTextSearch(
+    () => view.plugin.nav.openFullTextSearch(
       view.query
     ),
     "quiet"
@@ -5517,8 +5306,8 @@ function renderFacetValues(view, parent, sources) {
 }
 
 // src/views/library-view.ts
-var import_obsidian11 = require("obsidian");
-var LibraryView = class extends import_obsidian11.ItemView {
+var import_obsidian10 = require("obsidian");
+var LibraryView = class extends import_obsidian10.ItemView {
   plugin;
   screen = "home";
   collection = "sources";
@@ -6182,7 +5971,7 @@ function renderSources(view, root, module2) {
             if (!id) {
               return;
             }
-            return view.plugin.openLibrary(id);
+            return view.plugin.nav.openLibrary(id);
           }
         );
       }
@@ -6392,7 +6181,7 @@ function renderModuleDetail(view, root) {
   const back = button(
     root,
     "\u2039 Back",
-    () => view.plugin.back(),
+    () => view.plugin.nav.back(),
     "quiet"
   );
   back.addClass("los-route-back");
@@ -6509,7 +6298,7 @@ function renderOverview(view, root, module2) {
     button(
       wrap,
       `Continue ${next.title}`,
-      () => view.plugin.openUnit(next.id),
+      () => view.plugin.nav.openUnit(next.id),
       "cta"
     );
   }
@@ -6645,7 +6434,7 @@ function renderUnits(view, root, module2) {
       "click",
       () => {
         view.selectedElementId = unit.id;
-        return view.plugin.openUnit(unit.id);
+        return view.plugin.nav.openUnit(unit.id);
       }
     );
   }
@@ -6720,7 +6509,7 @@ function renderGroups(view, root) {
       "click",
       () => {
         view.selectedElementId = module2.id;
-        return view.plugin.openModuleDetail(module2.id);
+        return view.plugin.nav.openModuleDetail(module2.id);
       }
     );
   }
@@ -6733,7 +6522,7 @@ function renderGroupList(view, root) {
   const back = button(
     root,
     "\u2039 Modules",
-    () => view.plugin.back(),
+    () => view.plugin.nav.back(),
     "quiet"
   );
   back.addClass("los-route-back");
@@ -6743,7 +6532,7 @@ function renderGroupList(view, root) {
       "Thematic group unavailable",
       "Return to Modules and choose another group.",
       "Back",
-      () => view.plugin.back()
+      () => view.plugin.nav.back()
     );
     return;
   }
@@ -6861,15 +6650,15 @@ function renderGroupList(view, root) {
       "click",
       () => {
         view.selectedElementId = module2.id;
-        return view.plugin.openModuleDetail(module2.id);
+        return view.plugin.nav.openModuleDetail(module2.id);
       }
     );
   }
 }
 
 // src/views/module-view.ts
-var import_obsidian12 = require("obsidian");
-var ModuleView = class extends import_obsidian12.ItemView {
+var import_obsidian11 = require("obsidian");
+var ModuleView = class extends import_obsidian11.ItemView {
   plugin;
   screen;
   groupId;
@@ -6993,8 +6782,8 @@ var ModuleView = class extends import_obsidian12.ItemView {
 };
 
 // src/views/nav-view.ts
-var import_obsidian13 = require("obsidian");
-var NavView = class extends import_obsidian13.ItemView {
+var import_obsidian12 = require("obsidian");
+var NavView = class extends import_obsidian12.ItemView {
   plugin;
   constructor(leaf, plugin) {
     super(leaf);
@@ -7035,16 +6824,16 @@ var NavView = class extends import_obsidian13.ItemView {
       attr: { type: "button", "aria-label": "Search LearningOS", title: "Search LearningOS" }
     });
     icon(search.createSpan(), "search");
-    search.addEventListener("click", () => this.plugin.openGlobalSearch());
+    search.addEventListener("click", () => this.plugin.nav.openGlobalSearch());
     const primary = root.createDiv({ cls: "los-nav-primary" });
     enableButtonGroupKeyboardNavigation(primary, "vertical");
-    this.nav(primary, "home", "Home", "home", () => this.plugin.openHome());
-    this.nav(primary, "layout-grid", "Modules", "modules", () => this.plugin.openModules());
-    this.nav(primary, "graduation-cap", "Learn", "learn", () => this.plugin.openLearn());
-    this.nav(primary, "briefcase-business", "Projects", "projects", () => this.plugin.openProjects());
-    this.nav(primary, "library", "Library", "library", () => this.plugin.openLibrary());
-    this.nav(primary, "sprout", "Garden", "garden", () => this.plugin.openGarden());
-    this.nav(primary, "check-check", "Review", "review", () => this.plugin.openReview());
+    this.nav(primary, "home", "Home", "home", () => this.plugin.nav.openHome());
+    this.nav(primary, "layout-grid", "Modules", "modules", () => this.plugin.nav.openModules());
+    this.nav(primary, "graduation-cap", "Learn", "learn", () => this.plugin.nav.openLearn());
+    this.nav(primary, "briefcase-business", "Projects", "projects", () => this.plugin.nav.openProjects());
+    this.nav(primary, "library", "Library", "library", () => this.plugin.nav.openLibrary());
+    this.nav(primary, "sprout", "Garden", "garden", () => this.plugin.nav.openGarden());
+    this.nav(primary, "check-check", "Review", "review", () => this.plugin.nav.openReview());
     const more = root.createEl("details", { cls: "los-nav-more" });
     if (this.plugin.settings.navMoreOpen) more.setAttr("open", "open");
     more.createEl("summary", { cls: "los-nav-more-trigger", text: "More" });
@@ -7054,29 +6843,29 @@ var NavView = class extends import_obsidian13.ItemView {
     });
     const secondary = more.createDiv({ cls: "los-nav-secondary" });
     enableButtonGroupKeyboardNavigation(secondary, "vertical");
-    this.nav(secondary, "plus", "Capture", "capture", () => this.plugin.openCapture());
-    this.nav(secondary, "map", "Domain atlas", "atlas", () => this.plugin.openAtlas());
+    this.nav(secondary, "plus", "Capture", "capture", () => this.plugin.nav.openCapture());
+    this.nav(secondary, "map", "Domain atlas", "atlas", () => this.plugin.nav.openAtlas());
     this.nav(
       secondary,
       "shield",
       "Master\u2019s boundary",
       "masters",
-      () => this.plugin.openBoundary("program-masters-planning")
+      () => this.plugin.nav.openBoundary("program-masters-planning")
     );
     this.nav(
       secondary,
       "briefcase-business",
       "Job",
       "job",
-      () => this.plugin.openBoundary("program-job-boundary")
+      () => this.plugin.nav.openBoundary("program-job-boundary")
     );
-    this.nav(secondary, "activity", "Diagnostics", "diagnostics", () => this.plugin.openDiagnostics());
+    this.nav(secondary, "activity", "Diagnostics", "diagnostics", () => this.plugin.nav.openDiagnostics());
     this.nav(secondary, "refresh-cw", "Rebuild projection", "rebuild", () => this.plugin.generate());
   }
 };
 
 // src/views/program-view.ts
-var import_obsidian14 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 var COORDINATION_HEADINGS = [
   "Priorities",
   "Commitments",
@@ -7099,7 +6888,7 @@ function readProgramSemesters(value) {
   }
   return semesters;
 }
-var ProgramView = class extends import_obsidian14.ItemView {
+var ProgramView = class extends import_obsidian13.ItemView {
   plugin;
   programId = null;
   constructor(leaf, plugin) {
@@ -7195,7 +6984,7 @@ var ProgramView = class extends import_obsidian14.ItemView {
       const tab = button(
         tabs,
         title,
-        () => this.plugin.openLearn(areaId),
+        () => this.plugin.nav.openLearn(areaId),
         active ? "cta" : "quiet"
       );
       tab.setAttrs({
@@ -7237,7 +7026,7 @@ var ProgramView = class extends import_obsidian14.ItemView {
           "Projects have their own operating space",
           "The horizon keeps the commitment visible; project structure, decisions, and files stay together in Projects.",
           "Open Projects",
-          () => this.plugin.openProjects()
+          () => this.plugin.nav.openProjects()
         );
       } else {
         empty(
@@ -7260,7 +7049,7 @@ var ProgramView = class extends import_obsidian14.ItemView {
           module2.title,
           180
         ) || projectedExcerpt(module2.id, 180),
-        () => this.plugin.openModule(
+        () => this.plugin.nav.openModule(
           projectedExcerpt(module2.id, 180)
         ),
         "row"
@@ -7404,7 +7193,7 @@ var ProgramView = class extends import_obsidian14.ItemView {
       () => {
         const text = editor.value.trim();
         if (!text) {
-          new import_obsidian14.Notice(
+          new import_obsidian13.Notice(
             "Enter some text before capturing."
           );
           editor.focus();
@@ -7480,7 +7269,7 @@ var ProgramView = class extends import_obsidian14.ItemView {
       () => {
         const localPath = localFilePath(picker.files?.[0]);
         if (!localPath) {
-          new import_obsidian14.Notice(
+          new import_obsidian13.Notice(
             "Choose a local file first."
           );
           return;
@@ -7511,7 +7300,7 @@ var ProgramView = class extends import_obsidian14.ItemView {
   }
   async capture(action, clear = null) {
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian14.Notice(
+      new import_obsidian13.Notice(
         "Queued behind the running LearningOS write."
       );
     }
@@ -7528,12 +7317,12 @@ var ProgramView = class extends import_obsidian14.ItemView {
         }
       );
       clear?.();
-      new import_obsidian14.Notice(
+      new import_obsidian13.Notice(
         "Captured to the LearningOS inbox."
       );
       this.render();
     } catch (error) {
-      new import_obsidian14.Notice(errorMessage(error));
+      new import_obsidian13.Notice(errorMessage(error));
     }
   }
 };
@@ -7785,7 +7574,7 @@ function renderDetail(view, root) {
       "This project is unavailable",
       "The current projection does not contain this project.",
       "Back to projects",
-      () => view.plugin.openProjects()
+      () => view.plugin.nav.openProjects()
     );
     return;
   }
@@ -7795,7 +7584,7 @@ function renderDetail(view, root) {
   const back = button(
     root,
     "\u2039 Back",
-    () => view.plugin.back(),
+    () => view.plugin.nav.back(),
     "quiet"
   );
   back.addClass("los-route-back");
@@ -7820,7 +7609,7 @@ function renderDetail(view, root) {
     const tab = button(
       tabs,
       label,
-      () => view.plugin.openProject(
+      () => view.plugin.nav.openProject(
         projectId,
         tabId
       ),
@@ -7848,7 +7637,7 @@ function renderDetail(view, root) {
     chip(
       links,
       record,
-      (target) => view.plugin.openRecord(target)
+      (target) => view.plugin.nav.openRecord(target)
     );
   }
   const body = root.createDiv({
@@ -7968,7 +7757,7 @@ function renderOverview2(view, root, project) {
     button(
       units,
       asLabel(unit),
-      () => view.plugin.openUnit(unitId),
+      () => view.plugin.nav.openUnit(unitId),
       "row"
     );
   }
@@ -8084,7 +7873,7 @@ function renderList(view, root) {
         "click",
         () => {
           view.selectedElementId = projectId;
-          void view.plugin.openProject(
+          void view.plugin.nav.openProject(
             projectId,
             "structure"
           );
@@ -8107,8 +7896,8 @@ function renderList(view, root) {
 }
 
 // src/views/project-view.ts
-var import_obsidian15 = require("obsidian");
-var ProjectLinkReasonModal = class extends import_obsidian15.Modal {
+var import_obsidian14 = require("obsidian");
+var ProjectLinkReasonModal = class extends import_obsidian14.Modal {
   plugin;
   relationship;
   restoreAccessibility = null;
@@ -8168,7 +7957,7 @@ var ProjectLinkReasonModal = class extends import_obsidian15.Modal {
         "Open target",
         () => {
           this.close();
-          return this.plugin.openRecord(target);
+          return this.plugin.nav.openRecord(target);
         },
         "tertiary"
       );
@@ -8206,7 +7995,7 @@ var ProjectLinkReasonModal = class extends import_obsidian15.Modal {
     this.contentEl.empty();
   }
 };
-var ProjectView = class extends import_obsidian15.ItemView {
+var ProjectView = class extends import_obsidian14.ItemView {
   plugin;
   screen = "list";
   projectId = null;
@@ -8324,7 +8113,7 @@ var ProjectView = class extends import_obsidian15.ItemView {
         button(
           actions,
           "Open",
-          () => this.plugin.openRecord(target),
+          () => this.plugin.nav.openRecord(target),
           "tertiary"
         );
       }
@@ -8352,7 +8141,7 @@ var ProjectView = class extends import_obsidian15.ItemView {
 };
 
 // src/views/review-view.ts
-var import_obsidian16 = require("obsidian");
+var import_obsidian15 = require("obsidian");
 var fs = __toESM(require("node:fs"));
 var nodePath = __toESM(require("node:path"));
 var REVIEW_FILTERS = [
@@ -8362,7 +8151,7 @@ var REVIEW_FILTERS = [
   ["planning", "Planning"],
   ["garden", "Garden"]
 ];
-var ReviewView = class extends import_obsidian16.ItemView {
+var ReviewView = class extends import_obsidian15.ItemView {
   plugin;
   filter = "all";
   constructor(leaf, plugin) {
@@ -8513,7 +8302,7 @@ var ReviewView = class extends import_obsidian16.ItemView {
     if (kind === "study-map" && typeof target.unit_id === "string") {
       return [
         "Review proposal",
-        () => this.plugin.openShelving(
+        () => this.plugin.nav.openShelving(
           target.unit_id
         )
       ];
@@ -8529,7 +8318,7 @@ var ReviewView = class extends import_obsidian16.ItemView {
     if (kind === "unit" && typeof target.id === "string") {
       return [
         "Open unit",
-        () => this.plugin.openUnit(
+        () => this.plugin.nav.openUnit(
           target.id
         )
       ];
@@ -8537,13 +8326,13 @@ var ReviewView = class extends import_obsidian16.ItemView {
     if (kind === "garden-note" || kind === "garden-seed") {
       return [
         "Review seed",
-        () => this.plugin.openGarden()
+        () => this.plugin.nav.openGarden()
       ];
     }
     return null;
   }
 };
-var DiagnosticsView = class extends import_obsidian16.ItemView {
+var DiagnosticsView = class extends import_obsidian15.ItemView {
   plugin;
   report = "";
   constructor(leaf, plugin) {
@@ -8683,7 +8472,7 @@ Tried: ${resolved.attempted.join(", ")}`;
 };
 
 // src/views/shelving-view.ts
-var import_obsidian17 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 function readShelvingProposal(value) {
   if (!isRecord2(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
     return null;
@@ -8709,7 +8498,7 @@ function readShelvingProposal(value) {
     items
   };
 }
-var ShelvingView = class extends import_obsidian17.ItemView {
+var ShelvingView = class extends import_obsidian16.ItemView {
   plugin;
   unitId = null;
   proposal = null;
@@ -8864,7 +8653,7 @@ var ShelvingView = class extends import_obsidian17.ItemView {
   async prepare() {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian17.Notice("Choose a unit before preparing shelving.");
+      new import_obsidian16.Notice("Choose a unit before preparing shelving.");
       return;
     }
     try {
@@ -8874,17 +8663,17 @@ var ShelvingView = class extends import_obsidian17.ItemView {
       await this.loadProposal();
       this.render();
     } catch (error) {
-      new import_obsidian17.Notice(errorMessage(error));
+      new import_obsidian16.Notice(errorMessage(error));
     }
   }
   async apply() {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian17.Notice("Choose a unit before applying shelving.");
+      new import_obsidian16.Notice("Choose a unit before applying shelving.");
       return;
     }
     if (!this.selected.size) {
-      new import_obsidian17.Notice("Select at least one proposal.");
+      new import_obsidian16.Notice("Select at least one proposal.");
       return;
     }
     try {
@@ -8899,7 +8688,7 @@ var ShelvingView = class extends import_obsidian17.ItemView {
       this.selectionScope = null;
       this.render();
     } catch (error) {
-      new import_obsidian17.Notice(errorMessage(error));
+      new import_obsidian16.Notice(errorMessage(error));
     }
   }
 };
@@ -9247,7 +9036,7 @@ function renderArtifacts(view, root, unit) {
     chip(
       card,
       record,
-      (selected) => view.plugin.openRecord(
+      (selected) => view.plugin.nav.openRecord(
         selected
       )
     );
@@ -9258,7 +9047,7 @@ function renderArtifacts(view, root, unit) {
     chip(
       wrap,
       record,
-      (selected) => view.plugin.openRecord(
+      (selected) => view.plugin.nav.openRecord(
         selected
       )
     );
@@ -9372,7 +9161,7 @@ function renderStage2(view, layout, unit, studyMap, stage) {
     sourceRecord: (sourceId) => view.plugin.store.get(sourceId),
     openSource: (source) => {
       const sourceId = asString(source.id);
-      return sourceId ? view.plugin.openLibrary(sourceId) : void 0;
+      return sourceId ? view.plugin.nav.openLibrary(sourceId) : void 0;
     },
     openSourceResource: (source) => view.plugin.openResource(source),
     openResource: (resource) => view.plugin.openResource(resource.record),
@@ -9464,7 +9253,7 @@ function renderActionBar(view, root, unit, stage) {
     ],
     [
       "Prepare shelving",
-      () => view.plugin.openShelving(
+      () => view.plugin.nav.openShelving(
         unit.id
       )
     ],
@@ -9499,7 +9288,7 @@ function renderActionBar(view, root, unit, stage) {
 }
 
 // src/features/unit/materials.ts
-var import_obsidian18 = require("obsidian");
+var import_obsidian17 = require("obsidian");
 var FORMAT_ORDER = [
   "course-material",
   "exercise",
@@ -9656,7 +9445,7 @@ function renderMaterialOverview(view, root, unit, options) {
             source,
             (record) => {
               const id = asString(record.id);
-              return id ? view.plugin.openLibrary(id) : void 0;
+              return id ? view.plugin.nav.openLibrary(id) : void 0;
             }
           );
         }
@@ -9679,11 +9468,11 @@ function renderMaterialOverview(view, root, unit, options) {
                   !option.selected
                 )
               ).then(
-                () => new import_obsidian18.Notice(
+                () => new import_obsidian17.Notice(
                   option.selected ? "Material choice removed." : "Material chosen for this lecture."
                 )
               ).catch(
-                (error) => new import_obsidian18.Notice(
+                (error) => new import_obsidian17.Notice(
                   error instanceof Error ? error.message : String(error)
                 )
               );
@@ -9760,14 +9549,14 @@ function render(view) {
     button(
       headerActions,
       "Back to project",
-      () => view.plugin.back(),
+      () => view.plugin.nav.back(),
       "quiet"
     );
   } else {
     button(
       headerActions,
       "Back to module",
-      () => view.plugin.openModule(
+      () => view.plugin.nav.openModule(
         unit.moduleId
       ),
       "quiet"
@@ -9959,8 +9748,8 @@ function renderRail(view, layout, unit, studyMap, current) {
 }
 
 // src/views/unit-view.ts
-var import_obsidian19 = require("obsidian");
-var UnitView = class extends import_obsidian19.ItemView {
+var import_obsidian18 = require("obsidian");
+var UnitView = class extends import_obsidian18.ItemView {
   plugin;
   unitId;
   stageId;
@@ -10035,7 +9824,7 @@ var UnitView = class extends import_obsidian19.ItemView {
    */
   async mutate(action, onConfirmed = null) {
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian19.Notice(
+      new import_obsidian18.Notice(
         "A LearningOS write is already running."
       );
       return;
@@ -10047,7 +9836,7 @@ var UnitView = class extends import_obsidian19.ItemView {
       onConfirmed?.();
       this.render();
     } catch (error) {
-      new import_obsidian19.Notice(
+      new import_obsidian18.Notice(
         errorMessage3(error)
       );
     }
@@ -10055,7 +9844,7 @@ var UnitView = class extends import_obsidian19.ItemView {
   async selectStage(stageId) {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian19.Notice(
+      new import_obsidian18.Notice(
         "This unit is no longer available."
       );
       return;
@@ -10111,16 +9900,16 @@ function registerApplication(plugin) {
   plugin.registerView(VIEW_GARDEN, (leaf) => new GardenView(leaf, plugin));
   plugin.registerView(VIEW_DIAGNOSTICS, (leaf) => new DiagnosticsView(leaf, plugin));
   plugin.addSettingTab(new LearningOSSettingsTab(plugin.app, plugin));
-  plugin.addRibbonIcon("route", "Open LearningOS", () => plugin.openHome());
-  plugin.addCommand({ id: "open-home", name: "Open Home", callback: () => plugin.openHome() });
-  plugin.addCommand({ id: "open-current-stage", name: "Open current stage", callback: () => plugin.openResume() });
-  plugin.addCommand({ id: "open-modules", name: "Open Modules", callback: () => plugin.openModules() });
-  plugin.addCommand({ id: "open-projects", name: "Open Projects", callback: () => plugin.openProjects() });
-  plugin.addCommand({ id: "open-library", name: "Open Library", callback: () => plugin.openLibrary() });
-  plugin.addCommand({ id: "open-global-search", name: "Search LearningOS", callback: () => plugin.openGlobalSearch() });
-  plugin.addCommand({ id: "open-atlas", name: "Open Domain atlas", callback: () => plugin.openAtlas() });
-  plugin.addCommand({ id: "open-garden", name: "Open Garden", callback: () => plugin.openGarden() });
-  plugin.addCommand({ id: "open-review", name: "Open Review", callback: () => plugin.openReview() });
+  plugin.addRibbonIcon("route", "Open LearningOS", () => plugin.nav.openHome());
+  plugin.addCommand({ id: "open-home", name: "Open Home", callback: () => plugin.nav.openHome() });
+  plugin.addCommand({ id: "open-current-stage", name: "Open current stage", callback: () => plugin.nav.openResume() });
+  plugin.addCommand({ id: "open-modules", name: "Open Modules", callback: () => plugin.nav.openModules() });
+  plugin.addCommand({ id: "open-projects", name: "Open Projects", callback: () => plugin.nav.openProjects() });
+  plugin.addCommand({ id: "open-library", name: "Open Library", callback: () => plugin.nav.openLibrary() });
+  plugin.addCommand({ id: "open-global-search", name: "Search LearningOS", callback: () => plugin.nav.openGlobalSearch() });
+  plugin.addCommand({ id: "open-atlas", name: "Open Domain atlas", callback: () => plugin.nav.openAtlas() });
+  plugin.addCommand({ id: "open-garden", name: "Open Garden", callback: () => plugin.nav.openGarden() });
+  plugin.addCommand({ id: "open-review", name: "Open Review", callback: () => plugin.nav.openReview() });
   plugin.addCommand({ id: "rebuild-projection", name: "Validate and rebuild projection", callback: () => plugin.generate() });
   plugin.addCommand({ id: "end-learning-session", name: "End learning session safely", callback: () => plugin.reviewSessionEnd() });
   plugin.app.workspace.onLayoutReady(async () => {
@@ -10134,6 +9923,406 @@ function registerApplication(plugin) {
 function detachApplication(plugin) {
   for (const type of APPLICATION_VIEW_TYPES) plugin.app.workspace.detachLeavesOfType(type);
 }
+
+// src/app/navigator.ts
+var import_obsidian20 = require("obsidian");
+
+// src/app/global-search.ts
+var import_obsidian19 = require("obsidian");
+var GlobalSearchModal = class extends import_obsidian19.Modal {
+  plugin;
+  query;
+  filter;
+  input;
+  tabButtons = [];
+  results;
+  restoreAccessibility = null;
+  constructor(app, plugin, initialQuery = "") {
+    super(app);
+    this.plugin = plugin;
+    this.query = String(initialQuery || "");
+    this.filter = "all";
+  }
+  onOpen() {
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-global-search");
+    this.plugin.router.openOverlay({ kind: "global-search", query: this.query, filter: this.filter });
+    const header = root.createDiv({ cls: "los-search-header" });
+    const copy = header.createDiv();
+    copy.createDiv({ cls: "los-kicker", text: "Search LearningOS" });
+    copy.createEl("h2", {
+      text: "Find a module, unit, source, or project",
+      attr: { id: "los-global-search-heading" }
+    });
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--global-search",
+      initialFocus: () => this.input ?? null,
+      labelledBy: "los-global-search-heading"
+    });
+    button(header, "Close", () => this.close(), "quiet").setAttribute("aria-label", "Close global search");
+    this.input = root.createEl("input", {
+      cls: "los-search los-global-search-input",
+      attr: {
+        type: "search",
+        placeholder: "Search titles, aliases, authors, and IDs",
+        "aria-label": "Search LearningOS",
+        autocomplete: "off"
+      }
+    });
+    this.input.value = this.query;
+    this.input.addEventListener("input", () => {
+      this.query = this.input.value;
+      this.plugin.router.updateOverlay({ query: this.query });
+      this.renderResults();
+    });
+    const tabs = root.createDiv({ cls: "los-search-tabs", attr: { role: "group", "aria-label": "Search result type" } });
+    enableButtonGroupKeyboardNavigation(tabs);
+    this.tabButtons = [];
+    for (const [id, label] of [
+      ["all", "All"],
+      ["learning", "Modules & units"],
+      ["sources", "Learning sources"],
+      ["projects", "Projects"]
+    ]) {
+      const tab = button(tabs, label, () => {
+        this.filter = id;
+        this.plugin.router.updateOverlay({ filter: id });
+        this.renderTabs();
+        this.renderResults();
+      }, "tertiary");
+      tab.addClass("los-search-tab");
+      tab.setAttrs({ "data-filter": id, "aria-pressed": String(this.filter === id) });
+      this.tabButtons.push(tab);
+    }
+    this.results = root.createDiv({ cls: "los-search-results", attr: { "aria-live": "polite" } });
+    this.renderTabs();
+    this.renderResults();
+  }
+  onClose() {
+    this.plugin.router.clearOverlay();
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+  }
+  renderTabs() {
+    for (const tab of this.tabButtons || []) {
+      const active = tab.getAttribute("data-filter") === this.filter;
+      tab.toggleClass("is-active", active);
+      tab.setAttribute("aria-pressed", String(active));
+    }
+  }
+  candidates() {
+    const rows = [];
+    const add = (record, kind, subtitle, open) => {
+      if (!record?.id || !record?.title) return;
+      rows.push({
+        id: record.id,
+        title: record.title,
+        aliases: [...record.aliases || []],
+        authors: [...record.authors || []],
+        kind,
+        subtitle,
+        open
+      });
+    };
+    for (const module2 of this.plugin.store.modules()) {
+      if (!module2.id) continue;
+      const area = module2.area_id ? this.plugin.store.get(module2.area_id)?.title || module2.code || "Module" : module2.code || "Module";
+      add(module2, "learning", `Module \xB7 ${area}`, () => this.plugin.openModule(module2.id));
+    }
+    for (const project of this.plugin.store.projects()) {
+      if (!project.id) continue;
+      add(
+        project,
+        "projects",
+        `Project \xB7 ${project.project_type || project.status || "active"}`,
+        () => this.plugin.openProject(project.id)
+      );
+    }
+    for (const unit of this.plugin.store.units()) {
+      if (!unit.id || !unit.module_id) continue;
+      const module2 = this.plugin.store.get(unit.module_id);
+      add(unit, "learning", `Unit \xB7 ${module2?.title || unit.module_id}`, () => this.plugin.openUnit(unit.id));
+    }
+    for (const source of this.plugin.store.sources()) {
+      if (!source.id) continue;
+      const byline = (source.authors || []).join(", ") || source.organization || source.kind || "Learning source";
+      add(source, "sources", `Learning source \xB7 ${byline}`, () => this.plugin.openLibrary(source.id, "source"));
+    }
+    for (const pack of this.plugin.store.topicPacks()) {
+      if (!pack.id) continue;
+      add(
+        pack,
+        "sources",
+        `Topic Pack \xB7 ${(pack.entries || []).length} items`,
+        () => this.plugin.openTopicPackDetail(pack.id)
+      );
+    }
+    for (const workspace of this.plugin.store.of("workspace")) {
+      const linkedProject = workspace.project_id ? this.plugin.store.get(workspace.project_id) : null;
+      if (!linkedProject) continue;
+      if (!linkedProject.id) continue;
+      add(workspace, "projects", `Project workspace \xB7 ${linkedProject.title || linkedProject.id}`, () => this.plugin.openProject(linkedProject.id));
+    }
+    return rows;
+  }
+  matches(candidate) {
+    const words2 = this.query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
+    if (!words2.length) return true;
+    const haystack = [
+      candidate.id,
+      candidate.title,
+      candidate.subtitle,
+      ...candidate.aliases,
+      ...candidate.authors
+    ].filter(Boolean).join(" ").toLocaleLowerCase();
+    return words2.every(
+      (word) => haystack.includes(word)
+    );
+  }
+  rankedCandidates() {
+    const needle = this.query.toLocaleLowerCase().trim();
+    return this.candidates().filter((candidate) => this.filter === "all" || candidate.kind === this.filter).filter((candidate) => this.matches(candidate)).sort((left, right) => {
+      const leftTitle = left.title.toLocaleLowerCase();
+      const rightTitle = right.title.toLocaleLowerCase();
+      const leftRank = !needle ? 2 : leftTitle === needle ? 0 : leftTitle.startsWith(needle) ? 1 : 2;
+      const rightRank = !needle ? 2 : rightTitle === needle ? 0 : rightTitle.startsWith(needle) ? 1 : 2;
+      return leftRank - rightRank || left.title.localeCompare(right.title);
+    });
+  }
+  renderResults() {
+    if (!this.results) return;
+    this.results.empty();
+    const rows = this.rankedCandidates();
+    const summary = this.results.createDiv({ cls: "los-search-summary" });
+    summary.createSpan({ text: this.query.trim() ? `${rows.length} result${rows.length === 1 ? "" : "s"}` : "Quick access" });
+    summary.createSpan({ cls: "los-micro", text: "Manifest identities only" });
+    if (!rows.length) {
+      empty(
+        this.results,
+        "No structural results",
+        `Nothing in the current LearningOS projection matches \u201C${this.query.trim()}\u201D.`,
+        "Clear search",
+        () => {
+          this.query = "";
+          this.input.value = "";
+          this.plugin.router.updateOverlay({ query: "" });
+          this.renderResults();
+          this.input.focus();
+        }
+      );
+      return;
+    }
+    const list = this.results.createDiv({ cls: "los-search-result-list" });
+    for (const row of rows.slice(0, 24)) {
+      const result = list.createEl("button", {
+        cls: "los-search-result is-clickable",
+        attr: { type: "button", "aria-label": `Open ${row.title}` }
+      });
+      const copy = result.createDiv({ cls: "los-search-result-copy" });
+      copy.createEl("strong", { text: row.title });
+      copy.createDiv({ cls: "los-micro", text: row.subtitle });
+      result.createSpan({ cls: "los-search-open", text: "Open \u2192" });
+      result.addEventListener("click", () => {
+        this.close();
+        row.open();
+      });
+    }
+    if (rows.length > 24) {
+      this.results.createDiv({ cls: "los-micro", text: `${rows.length - 24} more results. Refine the query to narrow the list.` });
+    }
+  }
+};
+
+// src/app/navigator.ts
+var AppNavigator = class {
+  constructor(app, router, store, settings, drafts, resources) {
+    this.app = app;
+    this.router = router;
+    this.store = store;
+    this.settings = settings;
+    this.drafts = drafts;
+    this.resources = resources;
+  }
+  async openNavigator() {
+    return this.router.openNavigator();
+  }
+  async openHome() {
+    return this.router.navigate({ name: "home" });
+  }
+  /** Learn is one destination; the areas are sub-areas inside it. */
+  openLearn(programId = null) {
+    const area = programId || this.settings.learnArea || LEARN_AREAS[0][0];
+    this.settings.learnArea = area;
+    this.drafts.scheduleSave();
+    return this.router.navigate({ name: "learn", programId: area });
+  }
+  openCapture() {
+    return this.router.navigate({ name: "capture" });
+  }
+  openReview() {
+    return this.router.navigate({ name: "review" });
+  }
+  openGarden() {
+    return this.router.navigate({ name: "garden" });
+  }
+  openDiagnostics() {
+    return this.router.navigate({ name: "diagnostics" });
+  }
+  openGlobalSearch(query = "") {
+    const modal = new GlobalSearchModal(this.app, this, query);
+    modal.open();
+    return modal;
+  }
+  openProgram(programId) {
+    return this.router.navigate({ name: "program", programId });
+  }
+  openModules() {
+    return this.router.navigate({ name: "module-groups" });
+  }
+  openProjects(query = "") {
+    return this.router.navigate({ name: "project-list", query });
+  }
+  openProject(projectId, tab = "structure") {
+    const current = this.router.snapshot().current;
+    const changingTab = current?.name === "project-detail" && current.projectId === projectId;
+    return this.router.navigate(
+      { name: "project-detail", projectId, tab: asProjectDetailTab(tab) },
+      { pushHistory: !changingTab }
+    );
+  }
+  openModuleDetail(moduleId, componentId = null, tab = null) {
+    return this.router.navigate({ name: "module-detail", moduleId, componentId, tab });
+  }
+  /** Compatibility alias used by Learn, Home and existing deep links. */
+  openModule(moduleId, componentId = null) {
+    return this.openModuleDetail(moduleId, componentId);
+  }
+  openUnit(unitId, stageId = null) {
+    const selectedStage = stageId || this.drafts.getSelectedStage(unitId);
+    if (selectedStage) this.drafts.setSelectedStage(unitId, selectedStage);
+    return this.router.navigate({ name: "unit", unitId, stageId: selectedStage });
+  }
+  openLibrary(recordId = void 0, recordType = void 0) {
+    if (recordId === void 0 || recordId === null) {
+      return this.openLibraryHome(recordType === "topic-pack" ? "topic-packs" : "sources");
+    }
+    const record = this.store.get(recordId);
+    if (record?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
+    if (record?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
+    if (record?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
+    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record?.type || "note", query: "" });
+  }
+  openLibraryHome(collection = "sources", query = "", filters) {
+    return this.router.navigate({
+      name: "library-home",
+      collection: asLibraryCollection(collection),
+      query,
+      ...filters ? { filters } : {}
+    });
+  }
+  openLibraryGroup(collection, groupId, query = "", facet = "all", filters) {
+    return this.router.navigate({
+      name: "library-group",
+      collection: asLibraryCollection(collection),
+      groupId,
+      query,
+      facet,
+      ...filters ? { filters } : {}
+    });
+  }
+  openSourceDetail(resourceId, fromGroupId = null, query = "", facet = "all", filters) {
+    return this.router.navigate({
+      name: "source-detail",
+      resourceId,
+      fromGroupId,
+      query,
+      facet,
+      ...filters ? { filters } : {}
+    });
+  }
+  openTopicPackDetail(topicPackId, fromGroupId = null, query = "") {
+    return this.router.navigate({ name: "topic-pack-detail", topicPackId, fromGroupId, query });
+  }
+  openCatalogueDetail(catalogueId) {
+    return this.router.navigate({ name: "catalogue-detail", catalogueId });
+  }
+  /** Hidden compatibility surface used by Atlas and pre-migration deep links. */
+  openLibraryFiltered(recordType, domain = "") {
+    return this.router.navigate({ name: "legacy-library-list", recordType, domain, query: "" });
+  }
+  openAtlas(domain = null) {
+    return this.router.navigate({ name: "atlas", domain });
+  }
+  openShelving(unitId = null) {
+    return this.router.navigate({ name: "shelving", unitId });
+  }
+  openBoundary(boundaryId) {
+    return this.router.navigate({ name: "boundary", boundaryId });
+  }
+  back() {
+    return this.router.back();
+  }
+  openResume() {
+    const pointer = this.store.data?.resume_pointer;
+    return pointer ? this.openUnit(pointer.unit_id, pointer.stage_id) : this.openHome();
+  }
+  openRecord(record) {
+    if (!record) return;
+    const recordId = asString(record.id);
+    if (record.type === "unit" && recordId) return this.openUnit(recordId);
+    if (record.type === "module" && recordId) return this.openModule(recordId);
+    if (record.type === "project" && recordId) return this.openProject(recordId);
+    if (record.type === "program" && recordId) return this.openProgram(recordId);
+    if (record.type === "source" && recordId) return this.openSourceDetail(recordId);
+    if (record.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
+    if (record.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
+    if (record.type === "note" || record.type === "concept") {
+      if (record.path) return this.resources.openAuthoredPath(record.path);
+      return this.openLibraryFiltered(record.type);
+    }
+    if (record.type === "workspace") {
+      if (record.project_id) return this.openProject(record.project_id);
+      const unit = (record.unit_ids || []).map((id) => this.store.get(id)).find(Boolean);
+      if (unit?.id) return this.openUnit(unit.id);
+      const module2 = (record.module_ids || []).map((id) => this.store.get(id)).find(Boolean);
+      return module2?.id ? this.openModule(module2.id) : this.openHome();
+    }
+    if (record.path) return this.resources.openAuthoredPath(record.path);
+  }
+  /**
+   * Omnisearch's modal is another plugin's DOM, and this is the only place in
+   * the UI that reaches into one. It fires the command, then polls for a
+   * visible `.prompt-input` to seed. It will break silently on any Omnisearch
+   * DOM change and no test can catch that; it is acceptable only because it
+   * degrades to "modal opens, query not transferred".
+   */
+  openFullTextSearch(query = "") {
+    const ok = this.app.commands?.executeCommandById?.("omnisearch:show-modal");
+    if (!ok) new import_obsidian20.Notice("Omnisearch is unavailable; structural Library search still works.");
+    else if (query.trim()) {
+      let attempts = 0;
+      const transfer = () => {
+        const input = [...document.querySelectorAll(".prompt-input")].find((candidate) => candidate.offsetParent !== null);
+        if (!input && attempts++ < 20) {
+          setTimeout(transfer, 50);
+          return;
+        }
+        if (!input || input.value) return;
+        input.value = query;
+        input.dispatchEvent(new InputEvent("input", {
+          bubbles: true,
+          inputType: "insertText",
+          data: query
+        }));
+        input.focus();
+      };
+      setTimeout(transfer, 50);
+    }
+  }
+};
 
 // src/app/router.ts
 function asLegacyState(value) {
@@ -10460,8 +10649,8 @@ var ApplicationRouter = class {
 };
 
 // src/app/unit-note-modal.ts
-var import_obsidian20 = require("obsidian");
-var UnitNoteModal = class extends import_obsidian20.Modal {
+var import_obsidian21 = require("obsidian");
+var UnitNoteModal = class extends import_obsidian21.Modal {
   plugin;
   unit;
   studyMap;
@@ -10580,22 +10769,22 @@ var UnitNoteModal = class extends import_obsidian20.Modal {
   async save() {
     const text = String(this.editor?.value || "");
     if (!text.trim()) {
-      new import_obsidian20.Notice("Write a note before saving.");
+      new import_obsidian21.Notice("Write a note before saving.");
       this.editor?.focus();
       return;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian20.Notice("A LearningOS write is already running.");
+      new import_obsidian21.Notice("A LearningOS write is already running.");
       return;
     }
     const unitId = this.unit.id;
     if (!unitId) {
-      new import_obsidian20.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
+      new import_obsidian21.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
       return;
     }
     const filePaths = this.files.map((file) => localFilePath(file)).filter((value) => Boolean(value));
     if (filePaths.length !== this.files.length) {
-      new import_obsidian20.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
+      new import_obsidian21.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
       return;
     }
     try {
@@ -10606,10 +10795,10 @@ var UnitNoteModal = class extends import_obsidian20.Modal {
         filePaths
       }));
       this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds);
-      new import_obsidian20.Notice("Learning-session note saved.");
+      new import_obsidian21.Notice("Learning-session note saved.");
       this.close();
     } catch (error) {
-      new import_obsidian20.Notice(errorMessage(error));
+      new import_obsidian21.Notice(errorMessage(error));
     }
   }
   onClose() {
@@ -11132,7 +11321,7 @@ var LosRuntime = class {
 var import_electron2 = require("electron");
 var fs3 = __toESM(require("node:fs"));
 var nodePath3 = __toESM(require("node:path"));
-var import_obsidian21 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 var CODE_EXTENSIONS = /* @__PURE__ */ new Set([
   ".c",
   ".cc",
@@ -11217,19 +11406,19 @@ var ResourceOpener = class {
   }
   refuseQuarantined(path) {
     if (!this.isQuarantinedPath(path)) return false;
-    new import_obsidian21.Notice("Job/ is quarantined \u2014 LearningOS never opens or displays it.");
+    new import_obsidian22.Notice("Job/ is quarantined \u2014 LearningOS never opens or displays it.");
     return true;
   }
   async openVaultPath(path) {
     if (this.refuseQuarantined(path)) return void 0;
     const target = normalizedVaultPath(path);
     if (!target || target.startsWith("/") || target.split("/").includes("..")) {
-      new import_obsidian21.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return void 0;
     }
     const file = this.app.vault.getAbstractFileByPath(target);
     if (!file) {
-      new import_obsidian21.Notice(`File unavailable: ${target}`);
+      new import_obsidian22.Notice(`File unavailable: ${target}`);
       return void 0;
     }
     let existing = null;
@@ -11253,19 +11442,19 @@ var ResourceOpener = class {
   async openSystemPath(path, successMessage) {
     const error = await import_electron2.shell.openPath(path);
     if (error) {
-      new import_obsidian21.Notice(`Could not open file: ${error}`);
+      new import_obsidian22.Notice(`Could not open file: ${error}`);
       return false;
     }
-    new import_obsidian21.Notice(successMessage);
+    new import_obsidian22.Notice(successMessage);
     return true;
   }
   async openCodePath(path) {
     try {
       await import_electron2.shell.openExternal(visualStudioCodeUrl(path));
-      new import_obsidian21.Notice("Opened in Visual Studio Code.");
+      new import_obsidian22.Notice("Opened in Visual Studio Code.");
       return true;
     } catch (_) {
-      new import_obsidian21.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
+      new import_obsidian22.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
       return this.openSystemPath(path, "Opened in the system app.");
     }
   }
@@ -11275,7 +11464,7 @@ var ResourceOpener = class {
   async openExternalPath(path, successMessage = "Opened in the default app.") {
     if (this.refuseQuarantined(path)) return false;
     if (!path || !fs3.existsSync(path)) {
-      new import_obsidian21.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     return this.openSystemPath(path, successMessage);
@@ -11286,13 +11475,13 @@ var ResourceOpener = class {
    */
   async openJobPath(relativePath) {
     if (!this.jobAccessGranted) {
-      new import_obsidian21.Notice("Open the confidential Job workspace before opening Job files.");
+      new import_obsidian22.Notice("Open the confidential Job workspace before opening Job files.");
       return false;
     }
     const relative2 = String(relativePath || "").replace(/\\/g, "/").replace(/^\.\//, "");
     const top = relative2.split("/")[0] || "";
     if (!relative2 || relative2.startsWith("/") || relative2.split("/").includes("..") || !this.jobAllowedRoots.has(top)) {
-      new import_obsidian21.Notice("The Job dashboard refused a path outside its read-only allowlist.");
+      new import_obsidian22.Notice("The Job dashboard refused a path outside its read-only allowlist.");
       return false;
     }
     const vault = this.app.vault.adapter.getBasePath();
@@ -11301,7 +11490,7 @@ var ResourceOpener = class {
     const fullPath = nodePath3.resolve(jobRoot, relative2);
     const escaped = nodePath3.relative(jobRoot, fullPath);
     if (!escaped || escaped.startsWith("..") || nodePath3.isAbsolute(escaped) || !fs3.existsSync(nodePath3.join(jobRoot, "README.md")) || !fs3.existsSync(fullPath)) {
-      new import_obsidian21.Notice(`Job file unavailable: ${relative2 || "unknown path"}`);
+      new import_obsidian22.Notice(`Job file unavailable: ${relative2 || "unknown path"}`);
       return false;
     }
     return this.openPreferredLocalPath(
@@ -11312,19 +11501,19 @@ var ResourceOpener = class {
   /** Web references shown inside the ephemeral Job reader stay protocol-safe. */
   async openJobUrl(value) {
     if (!this.jobAccessGranted) {
-      new import_obsidian21.Notice("Open the confidential Job workspace before opening its links.");
+      new import_obsidian22.Notice("Open the confidential Job workspace before opening its links.");
       return false;
     }
     const url = safeWebUrl(value);
     if (!url) {
-      new import_obsidian21.Notice(`Refused an unsupported Job link: ${String(value || "").slice(0, 80)}`);
+      new import_obsidian22.Notice(`Refused an unsupported Job link: ${String(value || "").slice(0, 80)}`);
       return false;
     }
     try {
       await import_electron2.shell.openExternal(url.href);
       return true;
     } catch (_) {
-      new import_obsidian21.Notice("Could not open the Job link in your browser.");
+      new import_obsidian22.Notice("Could not open the Job link in your browser.");
       return false;
     }
   }
@@ -11334,13 +11523,13 @@ var ResourceOpener = class {
    */
   async openJobLearningPath(value) {
     if (!this.jobAccessGranted) {
-      new import_obsidian21.Notice("Open the confidential Job workspace before opening its learning material.");
+      new import_obsidian22.Notice("Open the confidential Job workspace before opening its learning material.");
       return false;
     }
     const portable = normalizedVaultPath(value);
     const prefix = "LearningOS/";
     if (!portable.startsWith(prefix) || portable.split("/").includes("..")) {
-      new import_obsidian21.Notice("The Job dashboard refused a learning path outside LearningOS.");
+      new import_obsidian22.Notice("The Job dashboard refused a learning path outside LearningOS.");
       return false;
     }
     const relative2 = portable.slice(prefix.length);
@@ -11349,7 +11538,7 @@ var ResourceOpener = class {
     const fullPath = nodePath3.resolve(learningRoot, relative2);
     const escaped = nodePath3.relative(learningRoot, fullPath);
     if (!relative2 || escaped.startsWith("..") || nodePath3.isAbsolute(escaped) || !fs3.existsSync(fullPath)) {
-      new import_obsidian21.Notice(`Learning material unavailable: ${portable || "unknown path"}`);
+      new import_obsidian22.Notice(`Learning material unavailable: ${portable || "unknown path"}`);
       return false;
     }
     return this.openPreferredLocalPath(fullPath, "Opened the LearningOS material.");
@@ -11361,7 +11550,7 @@ var ResourceOpener = class {
     const fullPath = nodePath3.resolve(learningRoot, path || "");
     const relative2 = nodePath3.relative(materialsRoot, fullPath);
     if (!path || relative2.startsWith("..") || nodePath3.isAbsolute(relative2)) {
-      new import_obsidian21.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openExternalPath(fullPath, "Opened the local material in its default app.");
@@ -11374,11 +11563,11 @@ var ResourceOpener = class {
     const fullPath = nodePath3.resolve(base, path || "");
     const relative2 = nodePath3.relative(base, fullPath);
     if (!path || relative2.startsWith("..") || nodePath3.isAbsolute(relative2)) {
-      new import_obsidian21.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return false;
     }
     if (!fs3.existsSync(fullPath)) {
-      new import_obsidian21.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     return this.openPreferredLocalPath(
@@ -11392,7 +11581,7 @@ var ResourceOpener = class {
     const vaultPath = typeof resource.vault_path === "string" ? resource.vault_path : "";
     if (vaultPath.trim()) {
       if (vaultPath.trim().toLowerCase().startsWith("material://")) {
-        new import_obsidian21.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
+        new import_obsidian22.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
         return false;
       }
       return ports.openVaultPath(vaultPath);
@@ -11400,11 +11589,11 @@ var ResourceOpener = class {
     if (resource.url) {
       const url = safeWebUrl(resource.url);
       if (!url) {
-        new import_obsidian21.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
+        new import_obsidian22.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
         return false;
       }
       return Promise.resolve(import_electron2.shell.openExternal(url.href)).catch(() => {
-        new import_obsidian21.Notice("Could not open the link in your browser.");
+        new import_obsidian22.Notice("Could not open the link in your browser.");
         return false;
       });
     }
@@ -11413,9 +11602,9 @@ var ResourceOpener = class {
   copyText(value) {
     try {
       void navigator.clipboard.writeText(value);
-      new import_obsidian21.Notice(`Copied ${value}`);
+      new import_obsidian22.Notice(`Copied ${value}`);
     } catch (_) {
-      new import_obsidian21.Notice(value);
+      new import_obsidian22.Notice(value);
     }
   }
 };
@@ -11725,7 +11914,7 @@ var ManifestStore = class {
 function errorMessage4(error) {
   return error instanceof Error ? error.message : String(error);
 }
-var LearningOSUI = class extends import_obsidian22.Plugin {
+var LearningOSUI = class extends import_obsidian23.Plugin {
   lastAiPrompt = "";
   async onload() {
     const loadedSettings = await this.loadData();
@@ -11742,6 +11931,14 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
     this.gateway = new GatewayClient(this);
     this.aiActions = new AIActionClient(this);
     this.router = new ApplicationRouter(this);
+    this.nav = new AppNavigator(
+      this.app,
+      this.router,
+      this.store,
+      this.settings,
+      this.drafts,
+      this.resources
+    );
     await this.store.load();
     registerApplication(this);
   }
@@ -11753,18 +11950,21 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
   scheduleDraftSave() {
     this.drafts.scheduleSave();
   }
-  stageDraftKey(unitId, stageId) {
-    return this.drafts.stageKey(unitId, stageId);
-  }
-  getStageDraft(unitId, stageId, savedText = "") {
-    return this.drafts.getStage(unitId, stageId, savedText);
-  }
-  setStageDraft(unitId, stageId, text, savedText = "") {
-    this.drafts.setStage(unitId, stageId, text, savedText);
-  }
-  clearStageDraft(unitId, stageId) {
-    this.drafts.clearStage(unitId, stageId);
-  }
+  /*
+   * `stageDraftKey`, `getStageDraft`, `setStageDraft` and `clearStageDraft`
+   * were four pass-throughs to DraftStore that nothing called — no view, no
+   * feature module, no test, and no entry in any host `Pick<>`. Removed
+   * 2026-08-21 (item 11).
+   *
+   * Worth knowing what their absence reveals rather than just deleting them:
+   * they were the only callers of `DraftStore.getStage/setStage/clearStage`,
+   * so nothing in the app writes a stage draft any more. `getUnitNote` still
+   * reads `uiDrafts.stages` to recover unsaved stage text into a unit note,
+   * which means that recovery path now reads a bag that is always empty. That
+   * is either a feature that was retired without removing its reader, or a
+   * regression from an earlier extraction. It is a behavioural question, not a
+   * mechanical one, so it is left for Aram rather than guessed at here.
+   */
   getUnitNoteDraft(unitId, stages = []) {
     return this.drafts.getUnitNote(unitId, stages);
   }
@@ -11844,155 +12044,14 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
     this.activeNav = key;
     for (const leaf of this.app.workspace.getLeavesOfType(VIEW_NAV)) leaf.view?.render?.();
   }
-  async openNav() {
-    return this.router.openNavigator();
-  }
-  async openHome() {
-    return this.router.navigate({ name: "home" });
-  }
-  /** Learn is one destination; the areas are sub-areas inside it. */
-  openLearn(programId = null) {
-    const area = programId || this.settings.learnArea || LEARN_AREAS[0][0];
-    this.settings.learnArea = area;
-    this.scheduleDraftSave();
-    return this.router.navigate({ name: "learn", programId: area });
-  }
-  openCapture() {
-    return this.router.navigate({ name: "capture" });
-  }
-  openReview() {
-    return this.router.navigate({ name: "review" });
-  }
-  openGarden() {
-    return this.router.navigate({ name: "garden" });
-  }
-  openDiagnostics() {
-    return this.router.navigate({ name: "diagnostics" });
-  }
-  openGlobalSearch(query = "") {
-    const modal = new GlobalSearchModal(this.app, this, query);
-    modal.open();
-    return modal;
-  }
-  openProgram(programId) {
-    return this.router.navigate({ name: "program", programId });
-  }
-  openModules() {
-    return this.router.navigate({ name: "module-groups" });
-  }
-  openProjects(query = "") {
-    return this.router.navigate({ name: "project-list", query });
-  }
-  openProject(projectId, tab = "structure") {
-    const current = this.router.snapshot().current;
-    const changingTab = current?.name === "project-detail" && current.projectId === projectId;
-    return this.router.navigate(
-      { name: "project-detail", projectId, tab: asProjectDetailTab(tab) },
-      { pushHistory: !changingTab }
-    );
-  }
-  openModuleGroup(groupId, query = "") {
-    return this.router.navigate({ name: "module-list", groupId, query });
-  }
-  openModuleDetail(moduleId, componentId = null, tab = null) {
-    return this.router.navigate({ name: "module-detail", moduleId, componentId, tab });
-  }
-  /** Compatibility alias used by Learn, Home and existing deep links. */
-  openModule(moduleId, componentId = null) {
-    return this.openModuleDetail(moduleId, componentId);
-  }
-  openUnit(unitId, stageId = null) {
-    const selectedStage = stageId || this.getSelectedStage(unitId);
-    if (selectedStage) this.setSelectedStage(unitId, selectedStage);
-    return this.router.navigate({ name: "unit", unitId, stageId: selectedStage });
-  }
-  openLibrary(recordId = void 0, recordType = void 0) {
-    if (recordId === void 0 || recordId === null) {
-      return this.openLibraryHome(recordType === "topic-pack" ? "topic-packs" : "sources");
-    }
-    const record = this.store.get(recordId);
-    if (record?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
-    if (record?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
-    if (record?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
-    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record?.type || "note", query: "" });
-  }
-  openLibraryHome(collection = "sources", query = "", filters) {
-    return this.router.navigate({
-      name: "library-home",
-      collection: asLibraryCollection(collection),
-      query,
-      ...filters ? { filters } : {}
-    });
-  }
-  openLibraryGroup(collection, groupId, query = "", facet = "all", filters) {
-    return this.router.navigate({
-      name: "library-group",
-      collection: asLibraryCollection(collection),
-      groupId,
-      query,
-      facet,
-      ...filters ? { filters } : {}
-    });
-  }
-  openSourceDetail(resourceId, fromGroupId = null, query = "", facet = "all", filters) {
-    return this.router.navigate({
-      name: "source-detail",
-      resourceId,
-      fromGroupId,
-      query,
-      facet,
-      ...filters ? { filters } : {}
-    });
-  }
-  openTopicPackDetail(topicPackId, fromGroupId = null, query = "") {
-    return this.router.navigate({ name: "topic-pack-detail", topicPackId, fromGroupId, query });
-  }
-  openCatalogueDetail(catalogueId) {
-    return this.router.navigate({ name: "catalogue-detail", catalogueId });
-  }
-  /** Hidden compatibility surface used by Atlas and pre-migration deep links. */
-  openLibraryFiltered(recordType, domain = "") {
-    return this.router.navigate({ name: "legacy-library-list", recordType, domain, query: "" });
-  }
-  openAtlas(domain = null) {
-    return this.router.navigate({ name: "atlas", domain });
-  }
-  openShelving(unitId = null) {
-    return this.router.navigate({ name: "shelving", unitId });
-  }
-  openBoundary(boundaryId) {
-    return this.router.navigate({ name: "boundary", boundaryId });
-  }
-  back() {
-    return this.router.back();
-  }
-  openResume() {
-    const pointer = this.store.data?.resume_pointer;
-    return pointer ? this.openUnit(pointer.unit_id, pointer.stage_id) : this.openHome();
-  }
-  openFullTextSearch(query = "") {
-    const ok = this.app.commands?.executeCommandById?.("omnisearch:show-modal");
-    if (!ok) new import_obsidian22.Notice("Omnisearch is unavailable; structural Library search still works.");
-    else if (query.trim()) {
-      let attempts = 0;
-      const transfer = () => {
-        const input = [...document.querySelectorAll(".prompt-input")].find((candidate) => candidate.offsetParent !== null);
-        if (!input && attempts++ < 20) {
-          setTimeout(transfer, 50);
-          return;
-        }
-        if (!input || input.value) return;
-        input.value = query;
-        input.dispatchEvent(new InputEvent("input", {
-          bubbles: true,
-          inputType: "insertText",
-          data: query
-        }));
-        input.focus();
-      };
-      setTimeout(transfer, 50);
-    }
-  }
+  /**
+   * Navigation moved to `AppNavigator` on 2026-08-21 (engineering review item
+   * 11). What stood here was twenty-eight methods, most of them one line into
+   * `this.router.navigate(...)`, and they were the reason every view held the
+   * whole plugin: a view that wanted one destination had to declare a
+   * dependency on the class that owned all of them. `this.nav` is that
+   * collaborator; views now take it (or a `Pick<>` of it) instead.
+   */
   /**
    * One transaction at a time, across every view. A per-view `busy` flag only
    * ever protected the view that owned it — a stage completion and an inbox
@@ -12027,7 +12086,7 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
    * capability contract, so nothing was written to repeat.
    */
   async rebuildAndRetry(action, reload) {
-    new import_obsidian22.Notice("Canonical files changed since this view loaded \u2014 rebuilding the projection, then retrying.");
+    new import_obsidian23.Notice("Canonical files changed since this view loaded \u2014 rebuilding the projection, then retrying.");
     await this.gateway.call(["generate"], { expectJson: false });
     await this.reloadStore();
     const result = await action();
@@ -12040,9 +12099,9 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
         await this.gateway.call(["validate"], { expectJson: false });
         await this.gateway.call(["generate"], { expectJson: false });
       });
-      new import_obsidian22.Notice("LearningOS projection rebuilt.");
+      new import_obsidian23.Notice("LearningOS projection rebuilt.");
     } catch (error) {
-      new import_obsidian22.Notice(errorMessage4(error));
+      new import_obsidian23.Notice(errorMessage4(error));
     }
   }
   async reviewSessionEnd() {
@@ -12051,7 +12110,7 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
       new SessionEndModal(this.app, this, review).open();
       return review;
     } catch (error) {
-      new import_obsidian22.Notice(errorMessage4(error));
+      new import_obsidian23.Notice(errorMessage4(error));
       return null;
     }
   }
@@ -12085,23 +12144,23 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
   openRecord(record) {
     if (!record) return;
     const recordId = asString(record.id);
-    if (record.type === "unit" && recordId) return this.openUnit(recordId);
-    if (record.type === "module" && recordId) return this.openModule(recordId);
-    if (record.type === "project" && recordId) return this.openProject(recordId);
-    if (record.type === "program" && recordId) return this.openProgram(recordId);
-    if (record.type === "source" && recordId) return this.openSourceDetail(recordId);
-    if (record.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
-    if (record.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
+    if (record.type === "unit" && recordId) return this.nav.openUnit(recordId);
+    if (record.type === "module" && recordId) return this.nav.openModule(recordId);
+    if (record.type === "project" && recordId) return this.nav.openProject(recordId);
+    if (record.type === "program" && recordId) return this.nav.openProgram(recordId);
+    if (record.type === "source" && recordId) return this.nav.openSourceDetail(recordId);
+    if (record.type === "topic-pack" && recordId) return this.nav.openTopicPackDetail(recordId);
+    if (record.type === "collection" && recordId) return this.nav.openCatalogueDetail(recordId);
     if (record.type === "note" || record.type === "concept") {
       if (record.path) return this.openAuthoredPath(record.path);
-      return this.openLibraryFiltered(record.type);
+      return this.nav.openLibraryFiltered(record.type);
     }
     if (record.type === "workspace") {
-      if (record.project_id) return this.openProject(record.project_id);
+      if (record.project_id) return this.nav.openProject(record.project_id);
       const unit = (record.unit_ids || []).map((id) => this.store.get(id)).find(Boolean);
-      if (unit?.id) return this.openUnit(unit.id);
+      if (unit?.id) return this.nav.openUnit(unit.id);
       const module2 = (record.module_ids || []).map((id) => this.store.get(id)).find(Boolean);
-      return module2?.id ? this.openModule(module2.id) : this.openHome();
+      return module2?.id ? this.nav.openModule(module2.id) : this.nav.openHome();
     }
     if (record.path) return this.openAuthoredPath(record.path);
   }
@@ -12124,7 +12183,7 @@ The active file is supplementary context only. Use only action-specific Learning
     if (agent?.sendToChat) await agent.sendToChat(prompt);
     else {
       this.copyText(prompt);
-      new import_obsidian22.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
+      new import_obsidian23.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
     }
     return prompt;
   }

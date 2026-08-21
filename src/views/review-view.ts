@@ -4,7 +4,8 @@ import * as nodePath from 'node:path';
 import { badge, button, empty, filterTabs, OWNERSHIP_STATEMENT, pageHeader, section } from '../components';
 import { CONTRACT_VERSION, VIEW_DIAGNOSTICS, VIEW_REVIEW } from '../constants';
 import type { ProjectionRecord } from '../contracts/manifest';
-import type { LearningOSUI } from '../main';
+import type { AppSurface } from '../app/surface';
+import type { AppNavigator } from '../app/navigator';
 import { errorMessage, isRecord } from '../projection/readers';
 
 type ReviewAction = [string, () => unknown];
@@ -39,7 +40,7 @@ interface DiagnosticsGenerated {
 }
 
 type DiagnosticsPlugin = Pick<
-  LearningOSUI,
+  AppSurface,
   | 'copyText'
   | 'gateway'
   | 'generate'
@@ -50,14 +51,18 @@ type DiagnosticsPlugin = Pick<
 >;
 
 type ReviewPlugin = Pick<
-  LearningOSUI,
+  AppSurface,
   | 'generate'
-  | 'openGarden'
-  | 'openShelving'
-  | 'openUnit'
   | 'openVaultPath'
   | 'store'
->;
+> & {
+  readonly nav: Pick<
+    AppNavigator,
+    | 'openGarden'
+    | 'openShelving'
+    | 'openUnit'
+  >;
+};
 
 type ReviewFilter =
   | 'all'
@@ -318,7 +323,7 @@ export class ReviewView extends ItemView {
       return [
         'Review proposal',
         () =>
-          this.plugin.openShelving(
+          this.plugin.nav.openShelving(
             target.unit_id as string,
           ),
       ];
@@ -344,7 +349,7 @@ export class ReviewView extends ItemView {
       return [
         'Open unit',
         () =>
-          this.plugin.openUnit(
+          this.plugin.nav.openUnit(
             target.id as string,
           ),
       ];
@@ -356,7 +361,7 @@ export class ReviewView extends ItemView {
     ) {
       return [
         'Review seed',
-        () => this.plugin.openGarden(),
+        () => this.plugin.nav.openGarden(),
       ];
     }
 

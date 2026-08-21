@@ -86,7 +86,7 @@ export function renderRecordRow(
           record.id;
 
         if (isPack) {
-          view.plugin.openTopicPackDetail(
+          view.plugin.nav.openTopicPackDetail(
             record.id,
             view.groupId,
             view.query,
@@ -94,7 +94,7 @@ export function renderRecordRow(
           return;
         }
 
-        view.plugin.openSourceDetail(
+        view.plugin.nav.openSourceDetail(
           record.id,
           view.groupId,
           view.query,
@@ -121,7 +121,7 @@ export function renderSourcePage(
     const back = button(
       root,
       '‹ Learning Sources',
-      () => view.plugin.back(),
+      () => view.plugin.nav.back(),
       'quiet',
     );
 
@@ -136,7 +136,7 @@ export function renderSourcePage(
         'Learning source unavailable',
         'The projected source could not be found.',
         'Back',
-        () => view.plugin.back(),
+        () => view.plugin.nav.back(),
       );
       return;
     }
@@ -194,7 +194,7 @@ export function renderTopicPackPage(
     const back = button(
       root,
       '‹ Topic Packs',
-      () => view.plugin.back(),
+      () => view.plugin.nav.back(),
       'quiet',
     );
 
@@ -209,7 +209,7 @@ export function renderTopicPackPage(
         'Topic Pack unavailable',
         'The projected Topic Pack could not be found.',
         'Back',
-        () => view.plugin.back(),
+        () => view.plugin.nav.back(),
       );
       return;
     }
@@ -275,7 +275,7 @@ export function renderCataloguePage(
     const back = button(
       root,
       '‹ Library',
-      () => view.plugin.back(),
+      () => view.plugin.nav.back(),
       'quiet',
     );
 
@@ -290,7 +290,7 @@ export function renderCataloguePage(
         'Source catalogue unavailable',
         'The projected catalogue could not be found.',
         'Back',
-        () => view.plugin.back(),
+        () => view.plugin.nav.back(),
       );
       return;
     }
@@ -413,7 +413,7 @@ export function renderOrderedCollection(
               return;
             }
 
-            view.plugin.openSourceDetail(
+            view.plugin.nav.openSourceDetail(
               source.id,
               view.groupId,
             );
@@ -459,7 +459,7 @@ export function renderLegacyList(
     const back = button(
       root,
       '‹ Library',
-      () => view.plugin.back(),
+      () => view.plugin.nav.back(),
       'quiet',
     );
 
@@ -609,7 +609,7 @@ export function renderLegacyList(
             return;
           }
 
-          view.plugin.openRecord(
+          view.plugin.nav.openRecord(
             record.record,
           );
         },

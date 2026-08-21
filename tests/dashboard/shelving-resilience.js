@@ -28,7 +28,7 @@ module.exports = async function run() {
       calls,
     } = await boot();
 
-    await plugin.openShelving(
+    await plugin.nav.openShelving(
       'unit-fixture-thesis-landscape',
     );
 
@@ -155,7 +155,7 @@ module.exports = async function run() {
   heading('secondary library and exact source selections');
   {
     const { app, plugin } = await boot();
-    await plugin.openSourceDetail('source-fixture-islp');
+    await plugin.nav.openSourceDetail('source-fixture-islp');
     let view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
     check('source opening behavior lands on a full-page detail',
       view.screen === 'source-detail' && view.contentEl.find('los-route-row').length === 0);
@@ -175,7 +175,7 @@ module.exports = async function run() {
       && view.contentEl.allText().includes('linear algebra'));
     check('source use routes back to several distinct units', view.contentEl.allText().includes('AML Lecture 03')
       && view.contentEl.allText().includes('AML Lecture 04'));
-    await plugin.openLibraryGroup('sources', 'thematic-group-mathematics', 'Wahrscheinlichkeitsbuch');
+    await plugin.nav.openLibraryGroup('sources', 'thematic-group-mathematics', 'Wahrscheinlichkeitsbuch');
     view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
     check('German source aliases search successfully', view.contentEl.find('los-route-row').length === 1
       && view.contentEl.allText().includes('Fixture probability book'));
@@ -194,7 +194,7 @@ module.exports = async function run() {
     /* A CLI that exits 0 but answers with garbage used to clear the draft
      * behind a "saved" notice, destroying the learner's only copy. */
     const { app, plugin } = await boot();
-    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
     const risked = 'Text that must survive a broken CLI.';
     plugin.setUnitNoteDraft('unit-fixture-sad-l04', '', risked);
@@ -211,7 +211,7 @@ module.exports = async function run() {
   }
   {
     const { app, plugin } = await boot();
-    await plugin.openProgram('inbox');
+    await plugin.nav.openProgram('inbox');
     const view = app.workspace.getLeavesOfType(VIEW.program)[0].view;
     const thought = 'A thought that must not vanish.';
     plugin.setInboxDraft('', thought);
@@ -239,7 +239,7 @@ module.exports = async function run() {
       Notice.log.some((line) => line.includes('quarantined')));
     const boundaries = plugin.store.rows('quarantine_boundaries');
     boundaries[0].description = 'Leak probe: Job/private/offer.md salary numbers';
-    await plugin.openBoundary(boundaries[0].id);
+    await plugin.nav.openBoundary(boundaries[0].id);
     check('a boundary card refuses to display a Job/ reference',
       !app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl.allText().includes('salary numbers'));
     plugin.onunload();
@@ -254,7 +254,7 @@ module.exports = async function run() {
     home.view.render();
     check('a null row in the projection does not blank Home',
       home.view.contentEl.allText().includes('Fixture Advanced ML'));
-    await plugin.openLibrary('source-fixture-islp');
+    await plugin.nav.openLibrary('source-fixture-islp');
     check('Library still opens a source around a null record',
       app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.find('los-detail-page').length === 1
       && app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.allText().includes('Fixture Introduction to Statistical Learning with Python'));
@@ -270,11 +270,11 @@ module.exports = async function run() {
     plugin.store.ready = false;
     plugin.store.data = null;
     plugin.store.error = 'Projection unavailable — rebuild it to continue.';
-    await plugin.openProgram('inbox');
+    await plugin.nav.openProgram('inbox');
     app.workspace.getLeavesOfType(VIEW.program)[0].view.render();
     check('Inbox degrades instead of reading a null projection',
       app.workspace.getLeavesOfType(VIEW.program)[0].view.contentEl.allText().includes('Projection unavailable'));
-    await plugin.openLibrary();
+    await plugin.nav.openLibrary();
     app.workspace.getLeavesOfType(VIEW.library)[0].view.render();
     check('Library degrades instead of searching an unloaded record set',
       app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.allText().includes('Projection unavailable'));
@@ -288,7 +288,7 @@ module.exports = async function run() {
     const nested = map.stages.find((row) => row.id === 'stage-fixture-conditioning');
     nested.resources = 'Chapter 3 §§3.1–3.3';
     nested.done_when = 'Explain it cold.';
-    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
     check('a string where a list belongs renders an empty state, not one row per character',
       view.contentEl.find('los-resource-row').length === 0
@@ -301,7 +301,7 @@ module.exports = async function run() {
   }
   {
     const { app, plugin, calls } = await boot();
-    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
     const writes = () => calls.envelopes.filter((e) => e.capability === 'stage.progress.update').length;
     const before = writes();

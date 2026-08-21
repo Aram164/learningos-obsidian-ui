@@ -4,7 +4,8 @@ import {
   type LibraryCollectionV1,
   type LibrarySourceFiltersV1,
 } from '../../contracts/route-v1';
-import type { LearningOSUI } from '../../main';
+import type { AppSurface } from '../../app/surface';
+import type { AppNavigator } from '../../app/navigator';
 import {
   asBoolean as projectedFlag,
   asString as projectedString,
@@ -176,24 +177,28 @@ export interface ShelfMembership {
 }
 
 export type LibraryPlugin = Pick<
-  LearningOSUI,
-  | 'back'
+  AppSurface,
   | 'copyText'
   | 'generate'
   | 'openAuthoredPath'
-  | 'openCatalogueDetail'
-  | 'openFullTextSearch'
-  | 'openLibraryGroup'
-  | 'openLibraryHome'
   | 'openMaterialPath'
-  | 'openRecord'
   | 'openResource'
-  | 'openSourceDetail'
-  | 'openTopicPackDetail'
-  | 'openUnit'
   | 'router'
   | 'store'
->;
+> & {
+  readonly nav: Pick<
+    AppNavigator,
+    | 'back'
+    | 'openCatalogueDetail'
+    | 'openFullTextSearch'
+    | 'openLibraryGroup'
+    | 'openLibraryHome'
+    | 'openRecord'
+    | 'openSourceDetail'
+    | 'openTopicPackDetail'
+    | 'openUnit'
+  >;
+};
 
 export function isLibraryScreen(
   value: unknown,

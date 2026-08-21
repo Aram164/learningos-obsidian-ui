@@ -18,13 +18,16 @@ import {
   type JobTab,
   type JobTask,
 } from '../features/job/model';
-import type { LearningOSUI } from '../main';
+import type { AppSurface } from '../app/surface';
+import type { AppNavigator } from '../app/navigator';
 import { asLabel } from '../projection/readers';
 
 type BoundaryPlugin = Pick<
-  LearningOSUI,
-  'store' | 'gateway' | 'resources' | 'openSourceDetail'
->;
+  AppSurface,
+  'store' | 'gateway' | 'resources'
+> & {
+  readonly nav: Pick<AppNavigator, 'openSourceDetail'>;
+};
 
 interface BoundaryViewState {
   boundaryId?: string | null;
@@ -243,7 +246,7 @@ export class BoundaryView extends ItemView {
           root,
           {
             openJobPath: (path: string) => this.plugin.resources.openJobPath(path),
-            openSourceDetail: (sourceId: string) => this.plugin.openSourceDetail(sourceId),
+            openSourceDetail: (sourceId: string) => this.plugin.nav.openSourceDetail(sourceId),
             openJobPlan: (trackId: string, session?: number) => this.openJobPlan(trackId, session),
             closeJobPlan: () => this.closeJobPlan(),
             selectedPlanId: this.planId,

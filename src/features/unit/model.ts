@@ -1,5 +1,6 @@
 import type { ProjectionRecord } from '../../contracts/manifest';
-import type { LearningOSUI } from '../../main';
+import type { AppSurface } from '../../app/surface';
+import type { AppNavigator } from '../../app/navigator';
 import type { StageResourceView } from '../stage-resources';
 import {
   asRecords as projectedRecords,
@@ -101,9 +102,8 @@ export interface ArtifactSet {
 }
 
 export type UnitPlugin = Pick<
-  LearningOSUI,
+  AppSurface,
   | 'askAiScoped'
-  | 'back'
   | 'clearDoneWhen'
   | 'gateway'
   | 'getDoneWhen'
@@ -111,18 +111,23 @@ export type UnitPlugin = Pick<
   | 'getUnitNoteDraft'
   | 'mutate'
   | 'openAuthoredPath'
-  | 'openLibrary'
-  | 'openModule'
-  | 'openRecord'
   | 'openResource'
-  | 'openShelving'
   | 'openUnitNote'
   | 'reviewSessionEnd'
   | 'setDoneWhen'
   | 'setSelectedStage'
   | 'settings'
   | 'store'
->;
+> & {
+  readonly nav: Pick<
+    AppNavigator,
+    | 'back'
+    | 'openLibrary'
+    | 'openModule'
+    | 'openRecord'
+    | 'openShelving'
+  >;
+};
 
 export function errorMessage(
   error: unknown,

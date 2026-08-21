@@ -187,7 +187,7 @@ export function renderArtifacts(
         (
           selected: ProjectionRecord,
         ) =>
-          view.plugin.openRecord(
+          view.plugin.nav.openRecord(
             selected,
           ),
       );
@@ -206,7 +206,7 @@ export function renderArtifacts(
         (
           selected: ProjectionRecord,
         ) =>
-          view.plugin.openRecord(
+          view.plugin.nav.openRecord(
             selected,
           ),
       );

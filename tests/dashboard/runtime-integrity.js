@@ -101,7 +101,7 @@ module.exports = async function run() {
       material_path: 'materials/source-fixture/projected.pdf',
     }];
 
-    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
     check('a resource containing only material_path receives an Open button',
       Boolean(view.contentEl.findText('los-btn', 'Open')));
@@ -116,7 +116,7 @@ module.exports = async function run() {
       return true;
     };
 
-    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
     const fallback = view.contentEl.findText('los-btn', 'Open source');
     check('a locator-only resource can fall back to its openable source',

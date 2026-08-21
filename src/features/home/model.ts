@@ -1,5 +1,6 @@
 import type { ProjectionRecord } from '../../contracts/manifest';
-import type { LearningOSUI } from '../../main';
+import type { AppSurface } from '../../app/surface';
+import type { AppNavigator } from '../../app/navigator';
 import {
   asRecords as projectedRecords,
   asString as projectedString,
@@ -27,17 +28,21 @@ export interface HomeResumePointer {
 }
 
 export type HomePlugin = Pick<
-  LearningOSUI,
+  AppSurface,
   | 'generate'
-  | 'openCapture'
-  | 'openGlobalSearch'
-  | 'openLearn'
-  | 'openModule'
-  | 'openProject'
-  | 'openReview'
-  | 'openUnit'
   | 'store'
->;
+> & {
+  readonly nav: Pick<
+    AppNavigator,
+    | 'openCapture'
+    | 'openGlobalSearch'
+    | 'openLearn'
+    | 'openModule'
+    | 'openProject'
+    | 'openReview'
+    | 'openUnit'
+  >;
+};
 
 export function readResumePointer(
   value: unknown,

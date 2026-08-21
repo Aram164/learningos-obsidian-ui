@@ -45,7 +45,7 @@ module.exports = async function run() {
     check('the active destination is visually and semantically marked',
       nav.findText('los-app-nav-item', 'Learn')?.classes.has('is-active')
       && nav.findText('los-app-nav-item', 'Learn')?.getAttribute('aria-current') === 'page');
-    await plugin.openReview();
+    await plugin.nav.openReview();
     const reviewRoot = app.workspace.getLeavesOfType(VIEW.review)[0].view.contentEl;
     const review = reviewRoot.allText();
     check('Review renders Core-owned decision records rather than reconstructing queues',
@@ -54,7 +54,7 @@ module.exports = async function run() {
       && review.includes('This unit needs a study map')
       && reviewRoot.find('los-review-count-badge').length === 1
       && reviewRoot.find('los-filter-tabs').length === 1);
-    await plugin.openDiagnostics();
+    await plugin.nav.openDiagnostics();
     const diagnostics = app.workspace.getLeavesOfType(VIEW.diagnostics)[0].view.contentEl.allText();
     check('Diagnostics reports contract, freshness and interpreter',
       diagnostics.includes('Manifest contract') && diagnostics.includes('Python interpreter')
@@ -65,7 +65,7 @@ module.exports = async function run() {
       && diagnostics.includes('Copy build identity'));
     check('the ownership statement is stated once, in Diagnostics/About',
       diagnostics.includes('buttons are conveniences, never duties'));
-    await plugin.openBoundary('program-job-boundary');
+    await plugin.nav.openBoundary('program-job-boundary');
     await tick(); await tick();
     const jobRoot = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl;
     const job = jobRoot.allText();
@@ -175,10 +175,10 @@ module.exports = async function run() {
       jobRoot.allText().includes('Study plan')
       && jobRoot.allText().includes('Stage 01 of 2')
       && !jobRoot.allText().includes('Open source'));
-    await plugin.openBoundary('program-masters-planning');
+    await plugin.nav.openBoundary('program-masters-planning');
     const masters = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl.allText();
     check('Master surface exposes quarantine only', masters.includes('quarantined') && !masters.includes('prospective module menu'));
-    await plugin.openGarden();
+    await plugin.nav.openGarden();
     check('Garden marks Garden, not Review, as the active destination',
       nav.findText('los-app-nav-item', 'Garden')?.classes.has('is-active')
       && !nav.findText('los-app-nav-item', 'Review')?.classes.has('is-active'));
@@ -253,15 +253,15 @@ module.exports = async function run() {
       opened.push(`path:${path}`);
     };
 
-    plugin.openShelving = (unitId) => {
+    plugin.nav.openShelving = (unitId) => {
       opened.push(`shelving:${unitId}`);
     };
 
-    plugin.openUnit = (unitId) => {
+    plugin.nav.openUnit = (unitId) => {
       opened.push(`unit:${unitId}`);
     };
 
-    await plugin.openReview();
+    await plugin.nav.openReview();
 
     const review =
       app.workspace.getLeavesOfType(
@@ -346,7 +346,7 @@ module.exports = async function run() {
       calls,
     } = await boot();
 
-    await plugin.openGarden();
+    await plugin.nav.openGarden();
 
     let garden =
       app.workspace.getLeavesOfType(
@@ -457,7 +457,7 @@ module.exports = async function run() {
       plugin,
     } = await boot();
 
-    await plugin.openGarden();
+    await plugin.nav.openGarden();
 
     let garden =
       app.workspace.getLeavesOfType(
@@ -510,7 +510,7 @@ module.exports = async function run() {
   heading('domain atlas reach');
   {
     const { app, plugin } = await boot();
-    await plugin.openAtlas();
+    await plugin.nav.openAtlas();
     const view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
     let text = view.contentEl.allText();
     /* ADR-005: the atlas exists so a session does not collapse into the active
@@ -540,7 +540,7 @@ module.exports = async function run() {
     const library = app.workspace.getLeavesOfType(VIEW.library)[0].view;
     check('an atlas shelf opens that shelf in the Library',
       library.contentEl.allText().includes('The spine — read this before anything else on the shelf.'));
-    await plugin.openAtlas();
+    await plugin.nav.openAtlas();
     app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl
       .findText('los-btn', 'Browse domain in Library').fire('click'); await tick();
     text = app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.allText();

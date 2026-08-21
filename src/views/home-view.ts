@@ -112,7 +112,7 @@ export class HomeView extends ItemView {
     const search = button(
       actions,
       'Search modules, units, sources, notes…',
-      () => this.plugin.openGlobalSearch(),
+      () => this.plugin.nav.openGlobalSearch(),
       'quiet',
     );
 
@@ -135,7 +135,7 @@ export class HomeView extends ItemView {
     button(
       actions,
       'Capture',
-      () => this.plugin.openCapture(),
+      () => this.plugin.nav.openCapture(),
       'warm',
     );
 

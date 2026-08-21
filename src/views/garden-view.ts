@@ -18,11 +18,11 @@ import {
 import type {
   ProjectionRecord,
 } from '../contracts/manifest';
-import type { LearningOSUI } from '../main';
+import type { AppSurface } from '../app/surface';
 import { asLabel, asString, errorMessage } from '../projection/readers';
 
 type GardenPlugin = Pick<
-  LearningOSUI,
+  AppSurface,
   | 'aiActions'
   | 'copyText'
   | 'gateway'

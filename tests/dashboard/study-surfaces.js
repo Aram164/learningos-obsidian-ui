@@ -23,7 +23,7 @@ module.exports = async function run() {
   heading('module and component ownership');
   {
     const { app, plugin } = await boot();
-    await plugin.openModules();
+    await plugin.nav.openModules();
     let view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
     let text = view.contentEl.allText();
     check('Modules contains only the current semester',
@@ -72,7 +72,7 @@ module.exports = async function run() {
     text = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl.allText();
     check('related workspaces render their next action instead of a raw CONTEXT link',
       text.includes('Next action') && text.includes('Work the Conditional probability and Bayes stage'));
-    await plugin.back();
+    await plugin.nav.back();
     view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
     check('Back restores the current-semester module list',
       view.screen === 'groups'
@@ -83,7 +83,7 @@ module.exports = async function run() {
   heading('first-class project navigation');
   {
     const { app, plugin } = await boot();
-    await plugin.openProjects();
+    await plugin.nav.openProjects();
     const listLeaf = app.workspace.getLeavesOfType(VIEW.project)[0];
     const listText = listLeaf.view.contentEl.allText();
     check('Projects opens as a full-page first-class list',
@@ -108,12 +108,12 @@ module.exports = async function run() {
       projectUnit.contentEl.allText().includes('Bachelor thesis')
       && projectUnit.contentEl.findText('los-btn', 'Back to project'));
     projectUnit.contentEl.findText('los-btn', 'Back to project').fire('click'); await tick();
-    await plugin.openProject('project-fixture-thesis', 'structure');
+    await plugin.nav.openProject('project-fixture-thesis', 'structure');
     const structure = app.workspace.getLeavesOfType(VIEW.project)[0].view.contentEl.allText();
     check('parallel and nested project structure renders without a percentage',
       structure.includes('Landscape and scope') && structure.includes('Confirm scope')
       && structure.includes('Experiments') && structure.includes('Baseline map') && !/\d+%/.test(structure));
-    await plugin.openProject('project-fixture-thesis', 'linked-materials');
+    await plugin.nav.openProject('project-fixture-thesis', 'linked-materials');
     const linked = app.workspace.getLeavesOfType(VIEW.project)[0].view.contentEl;
     check('linked modules and Topic Packs render from projected relationships',
       linked.allText().includes('Fixture Advanced ML') && linked.allText().includes('Fixture ML evaluation pack'));
@@ -128,7 +128,7 @@ module.exports = async function run() {
     stub.Modal.last.close();
     check('closing Why linked restores the project route and clears transient state',
       plugin.router.snapshot().current.name === 'project-detail' && plugin.router.snapshot().overlay === null);
-    await plugin.back();
+    await plugin.nav.back();
     const restored = app.workspace.getLeavesOfType(VIEW.project)[0];
     check('Back restores the project list selection and scroll position',
       plugin.router.snapshot().current.name === 'project-list'
@@ -140,7 +140,7 @@ module.exports = async function run() {
   heading('unit stage workspace and guarded actions');
   {
     const { app, plugin, calls } = await boot();
-    await plugin.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
     let element = view.contentEl;
     let text = element.allText();
@@ -301,7 +301,7 @@ module.exports = async function run() {
         });
       },
     });
-    await plugin.openUnit('unit-fixture-analysis');
+    await plugin.nav.openUnit('unit-fixture-analysis');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
     const text = view.contentEl.allText();
     check('knowledge nodes render as a dependency-aware lecture overview',
@@ -350,7 +350,7 @@ module.exports = async function run() {
   heading('missing map and explicit AI context');
   {
     const { app, plugin } = await boot();
-    await plugin.openUnit('unit-fixture-analysis');
+    await plugin.nav.openUnit('unit-fixture-analysis');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
     check('unit without a map renders an honest proposal flow', view.contentEl.allText().includes('Study map needed')
       && view.contentEl.allText().includes('Create map with AI'));

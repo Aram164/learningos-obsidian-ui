@@ -57,7 +57,7 @@ export function renderContinue(
         'Nothing to resume yet',
         'Open Learn and choose a module or project.',
         'Open Learn',
-        () => view.plugin.openLearn(),
+        () => view.plugin.nav.openLearn(),
       );
 
       return;
@@ -144,7 +144,7 @@ export function renderContinue(
       actions,
       'Continue session',
       () =>
-        view.plugin.openUnit(
+        view.plugin.nav.openUnit(
           pointer.unit_id as string,
           pointer.stage_id as string,
         ),
@@ -272,7 +272,7 @@ export function renderToday(
         action:
           moduleId
             ? () =>
-              view.plugin.openModule(
+              view.plugin.nav.openModule(
                 moduleId,
               )
             : null,
@@ -316,7 +316,7 @@ export function renderToday(
         detail: details.join(' · '),
         actionLabel: 'Open review',
         action:
-          () => view.plugin.openReview(),
+          () => view.plugin.nav.openReview(),
       });
     }
 

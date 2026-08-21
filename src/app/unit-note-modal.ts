@@ -1,12 +1,12 @@
 import { Modal, Notice, type App } from 'obsidian';
 import { button, empty, localFilePath, pageHeader } from '../components';
 import type { ProjectionRecord } from '../contracts/manifest';
-import type { LearningOSUI } from '../main';
+import type { AppSurface } from './surface';
 import { asRecords, errorMessage } from '../projection/readers';
 import { makeModalAccessible } from '../accessibility/modal';
 
 type UnitNotePlugin = Pick<
-  LearningOSUI,
+  AppSurface,
   | 'gateway'
   | 'getUnitNoteDraft'
   | 'setUnitNoteDraft'

@@ -68,16 +68,16 @@ export function registerApplication(plugin: LearningOSUI): void {
   plugin.registerView(VIEW_DIAGNOSTICS, (leaf: WorkspaceLeaf) => new DiagnosticsView(leaf, plugin));
 
   plugin.addSettingTab(new LearningOSSettingsTab(plugin.app, plugin));
-  plugin.addRibbonIcon('route', 'Open LearningOS', () => plugin.openHome());
-  plugin.addCommand({ id: 'open-home', name: 'Open Home', callback: () => plugin.openHome() });
-  plugin.addCommand({ id: 'open-current-stage', name: 'Open current stage', callback: () => plugin.openResume() });
-  plugin.addCommand({ id: 'open-modules', name: 'Open Modules', callback: () => plugin.openModules() });
-  plugin.addCommand({ id: 'open-projects', name: 'Open Projects', callback: () => plugin.openProjects() });
-  plugin.addCommand({ id: 'open-library', name: 'Open Library', callback: () => plugin.openLibrary() });
-  plugin.addCommand({ id: 'open-global-search', name: 'Search LearningOS', callback: () => plugin.openGlobalSearch() });
-  plugin.addCommand({ id: 'open-atlas', name: 'Open Domain atlas', callback: () => plugin.openAtlas() });
-  plugin.addCommand({ id: 'open-garden', name: 'Open Garden', callback: () => plugin.openGarden() });
-  plugin.addCommand({ id: 'open-review', name: 'Open Review', callback: () => plugin.openReview() });
+  plugin.addRibbonIcon('route', 'Open LearningOS', () => plugin.nav.openHome());
+  plugin.addCommand({ id: 'open-home', name: 'Open Home', callback: () => plugin.nav.openHome() });
+  plugin.addCommand({ id: 'open-current-stage', name: 'Open current stage', callback: () => plugin.nav.openResume() });
+  plugin.addCommand({ id: 'open-modules', name: 'Open Modules', callback: () => plugin.nav.openModules() });
+  plugin.addCommand({ id: 'open-projects', name: 'Open Projects', callback: () => plugin.nav.openProjects() });
+  plugin.addCommand({ id: 'open-library', name: 'Open Library', callback: () => plugin.nav.openLibrary() });
+  plugin.addCommand({ id: 'open-global-search', name: 'Search LearningOS', callback: () => plugin.nav.openGlobalSearch() });
+  plugin.addCommand({ id: 'open-atlas', name: 'Open Domain atlas', callback: () => plugin.nav.openAtlas() });
+  plugin.addCommand({ id: 'open-garden', name: 'Open Garden', callback: () => plugin.nav.openGarden() });
+  plugin.addCommand({ id: 'open-review', name: 'Open Review', callback: () => plugin.nav.openReview() });
   plugin.addCommand({ id: 'rebuild-projection', name: 'Validate and rebuild projection', callback: () => plugin.generate() });
   plugin.addCommand({ id: 'end-learning-session', name: 'End learning session safely', callback: () => plugin.reviewSessionEnd() });
 

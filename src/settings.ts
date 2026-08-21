@@ -12,7 +12,8 @@ import {
 import { button, empty, OWNERSHIP_STATEMENT, pageHeader, section } from './components';
 import { asSessionReview } from './contracts/gateway-v1';
 import type { SessionReviewV1 } from './contracts/gateway-v1';
-import type { LearningOSUI } from './main';
+import type { AppSurface } from './app/surface';
+import type { AppNavigator } from './app/navigator';
 import { makeModalAccessible } from './accessibility/modal';
 
 type ToggleSettingKey =
@@ -24,18 +25,22 @@ type ToggleSettingKey =
 type SettingsPlugin =
   Plugin
   & Pick<
-    LearningOSUI,
-    | 'generate'
+  AppSurface,
+  | 'generate'
+  | 'settings'
+> & {
+  readonly nav: Pick<
+    AppNavigator,
     | 'openDiagnostics'
-    | 'settings'
   >;
+};
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
 type SessionEndPlugin = Pick<
-  LearningOSUI,
+  AppSurface,
   'gateway'
 >;
 
@@ -96,7 +101,7 @@ export class LearningOSSettingsTab extends PluginSettingTab {
       .addButton(
         (control: ButtonComponent) => control
           .setButtonText('Open')
-          .onClick(() => this.plugin.openDiagnostics()),
+          .onClick(() => this.plugin.nav.openDiagnostics()),
       );
 
     // Stated once, here — not repeated under every screen (DESIGN.md).

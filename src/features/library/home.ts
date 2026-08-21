@@ -122,7 +122,7 @@ export function renderHome(
           view.selectedElementId =
             group.id;
 
-          view.plugin.openLibraryGroup(
+          view.plugin.nav.openLibraryGroup(
             view.collection,
             group.id,
           );
@@ -156,7 +156,7 @@ export function renderCollectionSwitch(
         switcher,
         label,
         () =>
-          view.plugin.openLibraryHome(id),
+          view.plugin.nav.openLibraryHome(id),
         view.collection === id
           ? 'cta'
           : 'quiet',
@@ -186,7 +186,7 @@ export function renderGroup(
     const back = button(
       root,
       '‹ Library',
-      () => view.plugin.back(),
+      () => view.plugin.nav.back(),
       'quiet',
     );
 
@@ -198,7 +198,7 @@ export function renderGroup(
         'Thematic group unavailable',
         'Return to Library and choose another group.',
         'Back',
-        () => view.plugin.back(),
+        () => view.plugin.nav.back(),
       );
       return;
     }
@@ -261,7 +261,7 @@ export function renderGroup(
         toolbar,
         'Full-text / OCR search',
         () =>
-          view.plugin.openFullTextSearch(
+          view.plugin.nav.openFullTextSearch(
             view.query,
           ),
         'quiet',

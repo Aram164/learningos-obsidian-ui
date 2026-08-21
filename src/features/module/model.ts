@@ -1,5 +1,6 @@
 import type { ProjectionRecord } from '../../contracts/manifest';
-import type { LearningOSUI } from '../../main';
+import type { AppSurface } from '../../app/surface';
+import type { AppNavigator } from '../../app/navigator';
 import {
   asCount as projectedCount,
   asRecords as projectedRecords,
@@ -114,16 +115,19 @@ export interface SourceEntryView {
 }
 
 export type ModulePlugin = Pick<
-  LearningOSUI,
-  | 'back'
-  | 'openLibrary'
-  | 'openModule'
-  | 'openModuleDetail'
-  | 'openModuleGroup'
-  | 'openUnit'
+  AppSurface,
   | 'router'
   | 'store'
->;
+> & {
+  readonly nav: Pick<
+    AppNavigator,
+    | 'back'
+    | 'openLibrary'
+    | 'openModule'
+    | 'openModuleDetail'
+    | 'openUnit'
+  >;
+};
 
 export function nonNull<T>(
   value: T | null,

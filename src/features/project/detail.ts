@@ -53,7 +53,7 @@ export function renderDetail(
         'This project is unavailable',
         'The current projection does not contain this project.',
         'Back to projects',
-        () => view.plugin.openProjects(),
+        () => view.plugin.nav.openProjects(),
       );
 
       return;
@@ -73,7 +73,7 @@ export function renderDetail(
     const back = button(
       root,
       '‹ Back',
-      () => view.plugin.back(),
+      () => view.plugin.nav.back(),
       'quiet',
     );
 
@@ -106,7 +106,7 @@ export function renderDetail(
         tabs,
         label,
         () =>
-          view.plugin.openProject(
+          view.plugin.nav.openProject(
             projectId,
             tabId,
           ),
@@ -142,7 +142,7 @@ export function renderDetail(
       chip(
         links,
         record,
-        (target) => view.plugin.openRecord(target),
+        (target) => view.plugin.nav.openRecord(target),
       );
     }
 
@@ -300,7 +300,7 @@ export function renderOverview(
         units,
         projectedLabel(unit),
         () =>
-          view.plugin.openUnit(unitId),
+          view.plugin.nav.openUnit(unitId),
         'row',
       );
     }

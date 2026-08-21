@@ -172,7 +172,7 @@ export function renderRelated(
           shown,
           relatedRecord.record,
           () =>
-            view.plugin.openRecord(
+            view.plugin.nav.openRecord(
               relatedRecord.record,
             ),
         );
@@ -197,7 +197,7 @@ export function renderRelated(
             restChips,
             relatedRecord.record,
             () =>
-              view.plugin.openRecord(
+              view.plugin.nav.openRecord(
                 relatedRecord.record,
               ),
           );
@@ -316,13 +316,13 @@ export function renderSourceDetail(
             membership.shelf.type
             === 'topic-pack'
           ) {
-            view.plugin.openTopicPackDetail(
+            view.plugin.nav.openTopicPackDetail(
               membership.shelf.id,
             );
             return;
           }
 
-          view.plugin.openCatalogueDetail(
+          view.plugin.nav.openCatalogueDetail(
             membership.shelf.id,
           );
         },
@@ -368,7 +368,7 @@ export function renderSourceDetail(
         used,
         unit.record,
         () =>
-          view.plugin.openUnit(
+          view.plugin.nav.openUnit(
             unit.id,
           ),
       );

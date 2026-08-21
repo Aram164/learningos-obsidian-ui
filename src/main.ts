@@ -4,24 +4,19 @@ import {
   type WorkspaceLeaf,
 } from 'obsidian';
 
-import { GlobalSearchModal } from './app/global-search';
 import { detachApplication, registerApplication } from './app/registration';
+import { AppNavigator } from './app/navigator';
 import { ApplicationRouter } from './app/router';
 import { UnitNoteModal } from './app/unit-note-modal';
 import {
   DraftStore,
   normalizeUiDrafts,
-  type LearningOSUiDrafts,
   type UnitNoteDraft,
 } from './application/draft-store';
+import type { AppSurface, LearningOSSettings } from './app/surface';
 import { asSessionReview, isProjectionConflict } from './contracts/gateway-v1';
 import {
-  asLibraryCollection,
-  asProjectDetailTab,
-  type LibrarySourceFiltersV1,
-} from './contracts/route-v1';
-import {
-  DEFAULT_SETTINGS, LEARN_AREAS, VIEW_NAV,
+  DEFAULT_SETTINGS, VIEW_NAV,
 } from './constants';
 import { GatewayClient, explicitAiContext } from './gateway-client';
 import { AIActionClient } from './infrastructure/ai-action-client';
@@ -40,12 +35,15 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-type LearningOSSettings = typeof DEFAULT_SETTINGS & {
-  uiDrafts: LearningOSUiDrafts;
-};
-
-export class LearningOSUI extends Plugin {
+/**
+ * `implements AppSurface` is load-bearing, not decoration. Views and feature
+ * modules now depend on that interface instead of on this class, so it is the
+ * declared contract between them; this clause is what fails the build if the
+ * two drift apart in either direction.
+ */
+export class LearningOSUI extends Plugin implements AppSurface {
   declare store: ManifestStore;
+  declare nav: AppNavigator;
   declare router: ApplicationRouter;
   declare gateway: GatewayClient;
   declare aiActions: AIActionClient;
@@ -75,6 +73,14 @@ export class LearningOSUI extends Plugin {
     this.gateway = new GatewayClient(this);
     this.aiActions = new AIActionClient(this);
     this.router = new ApplicationRouter(this);
+    this.nav = new AppNavigator(
+      this.app,
+      this.router,
+      this.store,
+      this.settings,
+      this.drafts,
+      this.resources,
+    );
     await this.store.load();
     registerApplication(this);
   }
@@ -89,25 +95,21 @@ export class LearningOSUI extends Plugin {
     this.drafts.scheduleSave();
   }
 
-  stageDraftKey(unitId: string, stageId: string): string { return this.drafts.stageKey(unitId, stageId); }
-  getStageDraft(
-    unitId: string,
-    stageId: string,
-    savedText = '',
-  ): { text: string; dirty: boolean } {
-    return this.drafts.getStage(unitId, stageId, savedText);
-  }
-  setStageDraft(
-    unitId: string,
-    stageId: string,
-    text: string,
-    savedText = '',
-  ): void {
-    this.drafts.setStage(unitId, stageId, text, savedText);
-  }
-  clearStageDraft(unitId: string, stageId: string): void {
-    this.drafts.clearStage(unitId, stageId);
-  }
+  /*
+   * `stageDraftKey`, `getStageDraft`, `setStageDraft` and `clearStageDraft`
+   * were four pass-throughs to DraftStore that nothing called — no view, no
+   * feature module, no test, and no entry in any host `Pick<>`. Removed
+   * 2026-08-21 (item 11).
+   *
+   * Worth knowing what their absence reveals rather than just deleting them:
+   * they were the only callers of `DraftStore.getStage/setStage/clearStage`,
+   * so nothing in the app writes a stage draft any more. `getUnitNote` still
+   * reads `uiDrafts.stages` to recover unsaved stage text into a unit note,
+   * which means that recovery path now reads a bag that is always empty. That
+   * is either a feature that was retired without removing its reader, or a
+   * regression from an earlier extraction. It is a behavioural question, not a
+   * mechanical one, so it is left for Aram rather than guessed at here.
+   */
   getUnitNoteDraft(
     unitId: string,
     stages: ProjectionRecord[] = [],
@@ -212,160 +214,14 @@ export class LearningOSUI extends Plugin {
     for (const leaf of this.app.workspace.getLeavesOfType(VIEW_NAV)) leaf.view?.render?.();
   }
 
-  async openNav() { return this.router.openNavigator(); }
-  async openHome() { return this.router.navigate({ name: 'home' }); }
-  /** Learn is one destination; the areas are sub-areas inside it. */
-  openLearn(programId: string | null = null) {
-    const area = programId || this.settings.learnArea || LEARN_AREAS[0][0];
-    this.settings.learnArea = area;
-    this.scheduleDraftSave();
-    return this.router.navigate({ name: 'learn', programId: area });
-  }
-  openCapture() { return this.router.navigate({ name: 'capture' }); }
-  openReview() { return this.router.navigate({ name: 'review' }); }
-  openGarden() { return this.router.navigate({ name: 'garden' }); }
-  openDiagnostics() { return this.router.navigate({ name: 'diagnostics' }); }
-  openGlobalSearch(query = '') {
-    const modal = new GlobalSearchModal(this.app, this, query);
-    modal.open();
-    return modal;
-  }
-  openProgram(programId: string) {
-    return this.router.navigate({ name: 'program', programId });
-  }
-  openModules() { return this.router.navigate({ name: 'module-groups' }); }
-  openProjects(query = '') { return this.router.navigate({ name: 'project-list', query }); }
-  openProject(projectId: string, tab = 'structure') {
-    const current = this.router.snapshot().current;
-    const changingTab = current?.name === 'project-detail' && current.projectId === projectId;
-    return this.router.navigate(
-      { name: 'project-detail', projectId, tab: asProjectDetailTab(tab) },
-      { pushHistory: !changingTab },
-    );
-  }
-  openModuleGroup(groupId: string, query = '') {
-    return this.router.navigate({ name: 'module-list', groupId, query });
-  }
-  openModuleDetail(
-    moduleId: string,
-    componentId: string | null = null,
-    tab: string | null = null,
-  ) {
-    return this.router.navigate({ name: 'module-detail', moduleId, componentId, tab });
-  }
-  /** Compatibility alias used by Learn, Home and existing deep links. */
-  openModule(moduleId: string, componentId: string | null = null) {
-    return this.openModuleDetail(moduleId, componentId);
-  }
-  openUnit(unitId: string, stageId: string | null = null) {
-    const selectedStage = stageId || this.getSelectedStage(unitId);
-    if (selectedStage) this.setSelectedStage(unitId, selectedStage);
-    return this.router.navigate({ name: 'unit', unitId, stageId: selectedStage });
-  }
-  openLibrary(
-    recordId: string | null | undefined = undefined,
-    recordType: string | undefined = undefined,
-  ) {
-    if (recordId === undefined || recordId === null) {
-      return this.openLibraryHome(recordType === 'topic-pack' ? 'topic-packs' : 'sources');
-    }
-    const record = this.store.get(recordId);
-    if (record?.type === 'source' || recordType === 'source') return this.openSourceDetail(recordId);
-    if (record?.type === 'topic-pack' || recordType === 'topic-pack') return this.openTopicPackDetail(recordId);
-    if (record?.type === 'collection' || recordType === 'collection') return this.openCatalogueDetail(recordId);
-    return this.router.navigate({ name: 'legacy-library-list', recordType: recordType || record?.type || 'note', query: '' });
-  }
-  openLibraryHome(
-    collection = 'sources',
-    query = '',
-    filters?: LibrarySourceFiltersV1,
-  ) {
-    return this.router.navigate({
-      name: 'library-home',
-      collection: asLibraryCollection(collection),
-      query,
-      ...(filters ? { filters } : {}),
-    });
-  }
-  openLibraryGroup(
-    collection: string,
-    groupId: string,
-    query = '',
-    facet = 'all',
-    filters?: LibrarySourceFiltersV1,
-  ) {
-    return this.router.navigate({
-      name: 'library-group',
-      collection: asLibraryCollection(collection),
-      groupId,
-      query,
-      facet,
-      ...(filters ? { filters } : {}),
-    });
-  }
-  openSourceDetail(
-    resourceId: string,
-    fromGroupId: string | null = null,
-    query = '',
-    facet = 'all',
-    filters?: LibrarySourceFiltersV1,
-  ) {
-    return this.router.navigate({
-      name: 'source-detail',
-      resourceId,
-      fromGroupId,
-      query,
-      facet,
-      ...(filters ? { filters } : {}),
-    });
-  }
-  openTopicPackDetail(
-    topicPackId: string,
-    fromGroupId: string | null = null,
-    query = '',
-  ) {
-    return this.router.navigate({ name: 'topic-pack-detail', topicPackId, fromGroupId, query });
-  }
-  openCatalogueDetail(catalogueId: string) {
-    return this.router.navigate({ name: 'catalogue-detail', catalogueId });
-  }
-  /** Hidden compatibility surface used by Atlas and pre-migration deep links. */
-  openLibraryFiltered(recordType: string, domain = '') {
-    return this.router.navigate({ name: 'legacy-library-list', recordType, domain, query: '' });
-  }
-  openAtlas(domain: string | null = null) {
-    return this.router.navigate({ name: 'atlas', domain });
-  }
-  openShelving(unitId: string | null = null) {
-    return this.router.navigate({ name: 'shelving', unitId });
-  }
-  openBoundary(boundaryId: string) {
-    return this.router.navigate({ name: 'boundary', boundaryId });
-  }
-  back() { return this.router.back(); }
-  openResume() {
-    const pointer = this.store.data?.resume_pointer;
-    return pointer ? this.openUnit(pointer.unit_id, pointer.stage_id) : this.openHome();
-  }
-  openFullTextSearch(query = ''): void {
-    const ok = this.app.commands?.executeCommandById?.('omnisearch:show-modal');
-    if (!ok) new Notice('Omnisearch is unavailable; structural Library search still works.');
-    else if (query.trim()) {
-      let attempts = 0;
-      const transfer = () => {
-        const input = [...document.querySelectorAll<HTMLInputElement>('.prompt-input')]
-          .find((candidate) => candidate.offsetParent !== null);
-        if (!input && attempts++ < 20) { setTimeout(transfer, 50); return; }
-        if (!input || input.value) return;
-        input.value = query;
-        input.dispatchEvent(new InputEvent('input', {
-          bubbles: true, inputType: 'insertText', data: query,
-        }));
-        input.focus();
-      };
-      setTimeout(transfer, 50);
-    }
-  }
+  /**
+   * Navigation moved to `AppNavigator` on 2026-08-21 (engineering review item
+   * 11). What stood here was twenty-eight methods, most of them one line into
+   * `this.router.navigate(...)`, and they were the reason every view held the
+   * whole plugin: a view that wanted one destination had to declare a
+   * dependency on the class that owned all of them. `this.nav` is that
+   * collaborator; views now take it (or a `Pick<>` of it) instead.
+   */
 
   /**
    * One transaction at a time, across every view. A per-view `busy` flag only
@@ -474,27 +330,27 @@ export class LearningOSUI extends Plugin {
   openRecord(record: ProjectionRecord | null | undefined) {
     if (!record) return;
     const recordId = asString(record.id);
-    if (record.type === 'unit' && recordId) return this.openUnit(recordId);
-    if (record.type === 'module' && recordId) return this.openModule(recordId);
-    if (record.type === 'project' && recordId) return this.openProject(recordId);
-    if (record.type === 'program' && recordId) return this.openProgram(recordId);
-    if (record.type === 'source' && recordId) return this.openSourceDetail(recordId);
-    if (record.type === 'topic-pack' && recordId) return this.openTopicPackDetail(recordId);
-    if (record.type === 'collection' && recordId) return this.openCatalogueDetail(recordId);
+    if (record.type === 'unit' && recordId) return this.nav.openUnit(recordId);
+    if (record.type === 'module' && recordId) return this.nav.openModule(recordId);
+    if (record.type === 'project' && recordId) return this.nav.openProject(recordId);
+    if (record.type === 'program' && recordId) return this.nav.openProgram(recordId);
+    if (record.type === 'source' && recordId) return this.nav.openSourceDetail(recordId);
+    if (record.type === 'topic-pack' && recordId) return this.nav.openTopicPackDetail(recordId);
+    if (record.type === 'collection' && recordId) return this.nav.openCatalogueDetail(recordId);
     if (record.type === 'note' || record.type === 'concept') {
       if (record.path) return this.openAuthoredPath(record.path);
-      return this.openLibraryFiltered(record.type);
+      return this.nav.openLibraryFiltered(record.type);
     }
     if (record.type === 'workspace') {
-      if (record.project_id) return this.openProject(record.project_id);
+      if (record.project_id) return this.nav.openProject(record.project_id);
       const unit = (record.unit_ids || [])
         .map((id: string) => this.store.get(id))
         .find(Boolean);
-      if (unit?.id) return this.openUnit(unit.id);
+      if (unit?.id) return this.nav.openUnit(unit.id);
       const module = (record.module_ids || [])
         .map((id: string) => this.store.get(id))
         .find(Boolean);
-      return module?.id ? this.openModule(module.id) : this.openHome();
+      return module?.id ? this.nav.openModule(module.id) : this.nav.openHome();
     }
     if (record.path) return this.openAuthoredPath(record.path);
   }

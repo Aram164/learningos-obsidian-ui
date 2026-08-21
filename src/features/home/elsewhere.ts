@@ -73,7 +73,7 @@ export function renderElsewhere(
             : 'Module',
         open:
           () =>
-            view.plugin.openModule(
+            view.plugin.nav.openModule(
               recordId,
             ),
       });
@@ -106,7 +106,7 @@ export function renderElsewhere(
         type: 'Project',
         open:
           () =>
-            view.plugin.openProject(
+            view.plugin.nav.openProject(
               recordId,
             ),
       });

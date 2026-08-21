@@ -46,7 +46,7 @@ export function renderModuleDetail(
     const back = button(
       root,
       '‹ Back',
-      () => view.plugin.back(),
+      () => view.plugin.nav.back(),
       'quiet',
     );
 
@@ -237,7 +237,7 @@ export function renderOverview(
         wrap,
         `Continue ${next.title}`,
         () =>
-          view.plugin.openUnit(next.id),
+          view.plugin.nav.openUnit(next.id),
         'cta',
       );
     }
@@ -456,7 +456,7 @@ export function renderUnits(
         'click',
         () => {
           view.selectedElementId = unit.id;
-          return view.plugin.openUnit(unit.id);
+          return view.plugin.nav.openUnit(unit.id);
         },
       );
     }

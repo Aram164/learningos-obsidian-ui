@@ -220,7 +220,7 @@ export function renderMaterialOverview(
             (record: ProjectionRecord) => {
               const id = projectedString(record.id);
               return id
-                ? view.plugin.openLibrary(id)
+                ? view.plugin.nav.openLibrary(id)
                 : undefined;
             },
           );

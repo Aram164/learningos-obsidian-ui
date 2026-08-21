@@ -33,7 +33,7 @@ async function main() {
   };
   app._plugin = plugin;
   await plugin.onload();
-  await plugin.openGarden();
+  await plugin.nav.openGarden();
   const leaf = app.workspace.getLeavesOfType('learningos-garden')[0];
   const root = leaf.view.contentEl;
   const text = root.allText();

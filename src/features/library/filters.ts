@@ -233,7 +233,7 @@ export function renderSourceBrowser(
       toolbar,
       'Full text / OCR',
       () =>
-        view.plugin.openFullTextSearch(
+        view.plugin.nav.openFullTextSearch(
           view.query,
         ),
       'quiet',

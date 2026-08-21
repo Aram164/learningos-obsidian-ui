@@ -151,7 +151,7 @@ export function renderStage(
       sourceRecord: (sourceId) => view.plugin.store.get(sourceId),
       openSource: (source) => {
         const sourceId = projectedString(source.id);
-        return sourceId ? view.plugin.openLibrary(sourceId) : undefined;
+        return sourceId ? view.plugin.nav.openLibrary(sourceId) : undefined;
       },
       openSourceResource: (source) => view.plugin.openResource(source),
       openResource: (resource) => view.plugin.openResource(resource.record),
@@ -264,7 +264,7 @@ export function renderActionBar(
       [
         'Prepare shelving',
         () =>
-          view.plugin.openShelving(
+          view.plugin.nav.openShelving(
             unit.id,
           ),
       ],

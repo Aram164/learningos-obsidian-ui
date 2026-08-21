@@ -24,7 +24,7 @@ module.exports = async function run() {
   {
     const { app, plugin } = await boot();
 
-    await plugin.openLibrary();
+    await plugin.nav.openLibrary();
 
     let view =
       app.workspace.getLeavesOfType(
@@ -277,7 +277,7 @@ module.exports = async function run() {
           === 'source-fixture-book',
     );
 
-    await plugin.back();
+    await plugin.nav.back();
 
     view =
       app.workspace.getLeavesOfType(
@@ -296,7 +296,7 @@ module.exports = async function run() {
         ).length === 1,
     );
 
-    await plugin.openLibraryHome(
+    await plugin.nav.openLibraryHome(
       'topic-packs',
     );
 
@@ -393,7 +393,7 @@ module.exports = async function run() {
       },
     });
 
-    await plugin.openLibrary();
+    await plugin.nav.openLibrary();
 
     let view =
       app.workspace.getLeavesOfType(
@@ -446,7 +446,7 @@ module.exports = async function run() {
   {
     const first = await boot();
 
-    await first.plugin.openLibraryHome(
+    await first.plugin.nav.openLibraryHome(
       'sources',
       'probability',
       {
@@ -497,7 +497,7 @@ module.exports = async function run() {
   {
     const { app, plugin } = await boot();
 
-    await plugin.openLibraryHome(
+    await plugin.nav.openLibraryHome(
       'sources',
       'definitely-unfindable-library-source',
     );
@@ -542,7 +542,7 @@ module.exports = async function run() {
   heading('zero-friction inbox capture');
   {
     const { app, plugin, calls } = await boot();
-    await plugin.openProgram('inbox');
+    await plugin.nav.openProgram('inbox');
     const view = app.workspace.getLeavesOfType(VIEW.program)[0].view;
     let element = view.contentEl;
     check('Capture identifies itself in the Obsidian tab',

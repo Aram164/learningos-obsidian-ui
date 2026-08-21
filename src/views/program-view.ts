@@ -12,7 +12,8 @@ import {
 } from '../components';
 import { LEARN_AREAS, VIEW_PROGRAM } from '../constants';
 import type { ProjectionRecord } from '../contracts/manifest';
-import type { LearningOSUI } from '../main';
+import type { AppSurface } from '../app/surface';
+import type { AppNavigator } from '../app/navigator';
 import { errorMessage, isRecord } from '../projection/readers';
 import { enableButtonGroupKeyboardNavigation } from '../accessibility/button-group';
 
@@ -26,19 +27,23 @@ interface ProgramSemester {
 }
 
 type ProgramPlugin = Pick<
-  LearningOSUI,
+  AppSurface,
   | 'clearInboxDraft'
   | 'gateway'
   | 'generate'
   | 'getInboxDraft'
   | 'mutate'
-  | 'openLearn'
-  | 'openModule'
-  | 'openProjects'
-  | 'openUnit'
   | 'setInboxDraft'
   | 'store'
->;
+> & {
+  readonly nav: Pick<
+    AppNavigator,
+    | 'openLearn'
+    | 'openModule'
+    | 'openProjects'
+    | 'openUnit'
+  >;
+};
 
 const COORDINATION_HEADINGS = [
   'Priorities',
@@ -206,7 +211,7 @@ export class ProgramView extends ItemView {
       const tab = button(
         tabs,
         title,
-        () => this.plugin.openLearn(areaId),
+        () => this.plugin.nav.openLearn(areaId),
         active ? 'cta' : 'quiet',
       );
 
@@ -275,7 +280,7 @@ export class ProgramView extends ItemView {
           'Projects have their own operating space',
           'The horizon keeps the commitment visible; project structure, decisions, and files stay together in Projects.',
           'Open Projects',
-          () => this.plugin.openProjects(),
+          () => this.plugin.nav.openProjects(),
         );
       } else {
         empty(
@@ -301,7 +306,7 @@ export class ProgramView extends ItemView {
           module.title,
           180,
         ) || projectedExcerpt(module.id, 180),
-        () => this.plugin.openModule(
+        () => this.plugin.nav.openModule(
           projectedExcerpt(module.id, 180),
         ),
         'row',

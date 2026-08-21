@@ -121,7 +121,7 @@ export function renderGroups(
             module.id;
 
           return view.plugin
-            .openModuleDetail(module.id);
+            .nav.openModuleDetail(module.id);
         },
       );
     }
@@ -145,7 +145,7 @@ export function renderGroupList(
     const back = button(
       root,
       '‹ Modules',
-      () => view.plugin.back(),
+      () => view.plugin.nav.back(),
       'quiet',
     );
 
@@ -157,7 +157,7 @@ export function renderGroupList(
         'Thematic group unavailable',
         'Return to Modules and choose another group.',
         'Back',
-        () => view.plugin.back(),
+        () => view.plugin.nav.back(),
       );
       return;
     }
@@ -321,7 +321,7 @@ export function renderGroupList(
             module.id;
 
           return view.plugin
-            .openModuleDetail(module.id);
+            .nav.openModuleDetail(module.id);
         },
       );
     }

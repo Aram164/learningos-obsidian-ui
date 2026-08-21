@@ -1,5 +1,6 @@
 import type { ProjectionRecord } from '../../contracts/manifest';
-import type { LearningOSUI } from '../../main';
+import type { AppSurface } from '../../app/surface';
+import type { AppNavigator } from '../../app/navigator';
 import {
   asRecords as projectedRecords,
   asString as projectedString,
@@ -50,24 +51,29 @@ export interface ProjectRelationship {
 }
 
 export type ProjectPlugin = Pick<
-  LearningOSUI,
-  | 'back'
+  AppSurface,
   | 'openAuthoredPath'
-  | 'openProject'
-  | 'openProjects'
-  | 'openRecord'
-  | 'openUnit'
   | 'router'
   | 'store'
->;
+> & {
+  readonly nav: Pick<
+    AppNavigator,
+    | 'back'
+    | 'openProject'
+    | 'openProjects'
+    | 'openRecord'
+    | 'openUnit'
+  >;
+};
 
 export type ProjectLinkPlugin = Pick<
   ProjectPlugin,
   | 'openAuthoredPath'
-  | 'openRecord'
   | 'router'
   | 'store'
->;
+> & {
+  readonly nav: Pick<AppNavigator, 'openRecord'>;
+};
 
 export function isProjectTab(
   value: unknown,

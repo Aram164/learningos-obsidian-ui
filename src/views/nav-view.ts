@@ -1,7 +1,8 @@
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import { icon } from '../components';
 import { VIEW_NAV } from '../constants';
-import type { LearningOSUI } from '../main';
+import type { AppSurface } from '../app/surface';
+import type { AppNavigator } from '../app/navigator';
 import { enableButtonGroupKeyboardNavigation } from '../accessibility/button-group';
 
 interface NavSettings {
@@ -9,22 +10,26 @@ interface NavSettings {
 }
 
 type NavPlugin = Pick<
-  LearningOSUI,
+  AppSurface,
   | 'generate'
-  | 'openAtlas'
-  | 'openBoundary'
-  | 'openCapture'
-  | 'openDiagnostics'
-  | 'openGarden'
-  | 'openGlobalSearch'
-  | 'openHome'
-  | 'openLearn'
-  | 'openLibrary'
-  | 'openModules'
-  | 'openProjects'
-  | 'openReview'
   | 'scheduleDraftSave'
 > & {
+  readonly nav: Pick<
+    AppNavigator,
+    | 'openAtlas'
+    | 'openBoundary'
+    | 'openCapture'
+    | 'openDiagnostics'
+    | 'openGarden'
+    | 'openGlobalSearch'
+    | 'openHome'
+    | 'openLearn'
+    | 'openLibrary'
+    | 'openModules'
+    | 'openProjects'
+    | 'openReview'
+  >;
+} & {
   readonly activeNav: string;
   readonly settings: NavSettings;
 };
@@ -79,17 +84,17 @@ export class NavView extends ItemView {
       attr: { type: 'button', 'aria-label': 'Search LearningOS', title: 'Search LearningOS' },
     });
     icon(search.createSpan(), 'search');
-    search.addEventListener('click', () => this.plugin.openGlobalSearch());
+    search.addEventListener('click', () => this.plugin.nav.openGlobalSearch());
 
     const primary = root.createDiv({ cls: 'los-nav-primary' });
     enableButtonGroupKeyboardNavigation(primary, 'vertical');
-    this.nav(primary, 'home', 'Home', 'home', () => this.plugin.openHome());
-    this.nav(primary, 'layout-grid', 'Modules', 'modules', () => this.plugin.openModules());
-    this.nav(primary, 'graduation-cap', 'Learn', 'learn', () => this.plugin.openLearn());
-    this.nav(primary, 'briefcase-business', 'Projects', 'projects', () => this.plugin.openProjects());
-    this.nav(primary, 'library', 'Library', 'library', () => this.plugin.openLibrary());
-    this.nav(primary, 'sprout', 'Garden', 'garden', () => this.plugin.openGarden());
-    this.nav(primary, 'check-check', 'Review', 'review', () => this.plugin.openReview());
+    this.nav(primary, 'home', 'Home', 'home', () => this.plugin.nav.openHome());
+    this.nav(primary, 'layout-grid', 'Modules', 'modules', () => this.plugin.nav.openModules());
+    this.nav(primary, 'graduation-cap', 'Learn', 'learn', () => this.plugin.nav.openLearn());
+    this.nav(primary, 'briefcase-business', 'Projects', 'projects', () => this.plugin.nav.openProjects());
+    this.nav(primary, 'library', 'Library', 'library', () => this.plugin.nav.openLibrary());
+    this.nav(primary, 'sprout', 'Garden', 'garden', () => this.plugin.nav.openGarden());
+    this.nav(primary, 'check-check', 'Review', 'review', () => this.plugin.nav.openReview());
 
     const more = root.createEl('details', { cls: 'los-nav-more' });
     if (this.plugin.settings.navMoreOpen) more.setAttr('open', 'open');
@@ -100,13 +105,13 @@ export class NavView extends ItemView {
     });
     const secondary = more.createDiv({ cls: 'los-nav-secondary' });
     enableButtonGroupKeyboardNavigation(secondary, 'vertical');
-    this.nav(secondary, 'plus', 'Capture', 'capture', () => this.plugin.openCapture());
-    this.nav(secondary, 'map', 'Domain atlas', 'atlas', () => this.plugin.openAtlas());
+    this.nav(secondary, 'plus', 'Capture', 'capture', () => this.plugin.nav.openCapture());
+    this.nav(secondary, 'map', 'Domain atlas', 'atlas', () => this.plugin.nav.openAtlas());
     this.nav(secondary, 'shield', 'Master’s boundary', 'masters',
-      () => this.plugin.openBoundary('program-masters-planning'));
+      () => this.plugin.nav.openBoundary('program-masters-planning'));
     this.nav(secondary, 'briefcase-business', 'Job', 'job',
-      () => this.plugin.openBoundary('program-job-boundary'));
-    this.nav(secondary, 'activity', 'Diagnostics', 'diagnostics', () => this.plugin.openDiagnostics());
+      () => this.plugin.nav.openBoundary('program-job-boundary'));
+    this.nav(secondary, 'activity', 'Diagnostics', 'diagnostics', () => this.plugin.nav.openDiagnostics());
     this.nav(secondary, 'refresh-cw', 'Rebuild projection', 'rebuild', () => this.plugin.generate());
   }
 }

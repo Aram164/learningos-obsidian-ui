@@ -119,7 +119,7 @@ class ProjectLinkReasonModal extends Modal {
         'Open target',
         () => {
           this.close();
-          return this.plugin.openRecord(target);
+          return this.plugin.nav.openRecord(target);
         },
         'tertiary',
       );
@@ -371,7 +371,7 @@ export class ProjectView extends ItemView {
           actions,
           'Open',
           () =>
-            this.plugin.openRecord(target),
+            this.plugin.nav.openRecord(target),
           'tertiary',
         );
       }

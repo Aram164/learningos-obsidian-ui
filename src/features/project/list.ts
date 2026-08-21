@@ -173,7 +173,7 @@ export function renderList(
             view.selectedElementId =
               projectId;
 
-            void view.plugin.openProject(
+            void view.plugin.nav.openProject(
               projectId,
               'structure',
             );
