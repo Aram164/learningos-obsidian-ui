@@ -34,21 +34,28 @@ jobs:
       # The path must be a sibling of obsidian-ui inside the workspace, which is
       # why the UI is no longer checked out at the workspace root.
       #
-      # `ref` pins the core branch this UI branch pairs with, because that
-      # pairing is currently not on either default branch: core's `main` still
-      # predates system/contracts/ entirely, and the current contract release
-      # lives on the engineering-review branch on both sides. Naming the ref is the honest
-      # form of "released together" while that is true — the alternative is a
-      # green run that compared against a core nobody ships.
+      # No `ref:` — core is checked out at its default branch, which is the
+      # branch this repository's default branch is released with.
       #
-      # Drop this `ref:` the moment both redesign branches land on their mains.
-      # Leaving it pinned after that is worse than not having it: CI would keep
-      # verifying against a stale branch while main drifted underneath.
+      # There was a pin here until 2026-08-21 (`ref: engineering-review-tier1`,
+      # and before that `feature/interaction-redesign-core-v1`), because the
+      # contract release genuinely lived on a branch on both sides while core's
+      # `main` still predated system/contracts/ entirely. Pinning was the honest
+      # form of "released together" while that was true. What made it worth
+      # removing was not that it stopped being honest — it was that both
+      # workflows had come to pin *each other* at the same branch name, so the
+      # pair verified against itself while both mains sat 60 and 68 commits
+      # behind and unexercised. That arrangement is correct exactly until
+      # someone renames or deletes a branch, at which point CI fails for a
+      # reason that has nothing to do with the contract.
+      #
+      # Both branches were fast-forwarded onto their mains, so the pairing this
+      # job verifies is now the pairing that ships. Do not reintroduce a `ref:`
+      # without also writing down what removes it again.
       - name: Check out the producer of the manifest contract
         uses: actions/checkout@v4
         with:
           repository: Aram164/LearningOS
-          ref: engineering-review-tier1
           path: repository
 
       - uses: actions/setup-node@v4
