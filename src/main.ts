@@ -14,7 +14,6 @@ import {
   type LearningOSUiDrafts,
   type UnitNoteDraft,
 } from './application/draft-store';
-import { button } from './components';
 import { asSessionReview, isProjectionConflict } from './contracts/gateway-v1';
 import {
   asLibraryCollection,

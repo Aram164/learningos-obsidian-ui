@@ -1,41 +1,14 @@
 import type { ModuleView } from '../../views/module-view';
 import {
   badge,
-  button,
-  chip,
   disclosure,
   empty,
-  pageHeader,
   section,
-  workspaceCard,
 } from '../../components';
-import { STATUS_ORDER } from '../../constants';
-import type { ProjectionRecord } from '../../contracts/manifest';
 import {
-  asCount as projectedCount,
-  asRecords as projectedRecords,
-  asString as projectedString,
-  asStrings as projectedStrings,
-  asText as projectedText,
-  isRecord,
-} from '../../projection/readers';
-import {
-  MODULE_TABS,
-  type ModuleTab,
-  type ThematicGroupView,
   type ModuleRecordView,
-  type UnitRecordView,
-  type ModuleProgressView,
   type AcademicDeadlineView,
-  type SourceEntryView,
-  nonNull,
-  readThematicGroup,
-  readModuleRecord,
-  normalizeUnitRecord,
-  normalizeWorkspaceRecord,
-  readProgress,
   readAcademicDeadline,
-  readSourceEntries,
 } from './model';
 
 const EXAMINATION_LABELS: Readonly<Record<string, string>> = {
@@ -243,8 +216,6 @@ export function renderAcademicDates(
   }
 
 export function renderDeadlineRows(
-  view: ModuleView,
-
     wrap: HTMLElement,
     module: ModuleRecordView,
     rows: readonly AcademicDeadlineView[],

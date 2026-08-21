@@ -7,62 +7,17 @@ import {
   type WorkspaceLeaf,
 } from 'obsidian';
 import {
-  badge,
-  button,
-  chip,
-  disclosure,
-  empty,
-  pageHeader,
-  section,
-  workspaceCard,
-} from '../components';
-import {
-  STATUS_ORDER,
   VIEW_MODULE,
 } from '../constants';
-import type {
-  ProjectionRecord,
-} from '../contracts/manifest';
-import type { LearningOSUI } from '../main';
-import {
-  asCount as projectedCount,
-  asRecords as projectedRecords,
-  asString as projectedString,
-  asStrings as projectedStrings,
-  asText as projectedText,
-  isRecord,
-} from '../projection/readers';
 
 import {
-  MODULE_TABS,
   ModuleScreen,
   ModuleTab,
   ModuleViewState,
-  ParsedModuleViewState,
-  ThematicGroupView,
-  ModuleComponentView,
-  ModuleExaminationView,
   ModuleRecordView,
-  UnitRecordView,
-  ModuleProgressView,
-  DeadlineModuleView,
   AcademicDeadlineView,
-  SourceEntryView,
   ModulePlugin,
-  nonNull,
-  isModuleScreen,
-  isModuleTab,
   readModuleViewState,
-  readThematicGroup,
-  readComponents,
-  readExamination,
-  readModuleRecord,
-  normalizeUnitRecord,
-  normalizeWorkspaceRecord,
-  readProgress,
-  readDeadlineModules,
-  readAcademicDeadline,
-  readSourceEntries,
 } from '../features/module/model';
 
 /**
@@ -254,7 +209,7 @@ export class ModuleView extends ItemView {
     module: ModuleRecordView,
     rows: readonly AcademicDeadlineView[],
   ): void {
-    renderDeadlineRows(this, wrap, module, rows);
+    renderDeadlineRows(wrap, module, rows);
   }
 
     async selectTab(

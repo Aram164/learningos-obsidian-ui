@@ -6,6 +6,14 @@
     "strict": true,
     "exactOptionalPropertyTypes": true,
     "noUncheckedIndexedAccess": true,
+    // Engineering review 2026-08-18, item 12. Turning these on found 372 dead
+    // bindings across 32 files — almost all import specifiers stranded when
+    // logic moved from views/ into features/, plus five functions still taking
+    // a `view` they never read. The review's point was that this class of
+    // finding was previously found by reading; these two flags find it on
+    // every build instead.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noEmit": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,

@@ -2,8 +2,6 @@ import type { HomeView } from '../../views/home-view';
 import {
   button,
   empty,
-  icon,
-  pageHeader,
   projectedExcerpt,
   section,
 } from '../../components';
@@ -13,14 +11,11 @@ import {
   asRecords as projectedRecords,
   asString as projectedString,
   asStrings as projectedStrings,
-  asText as projectedText,
-  isRecord,
 } from '../../projection/readers';
 import {
   type HomeItem,
   type ElsewhereRow,
   readResumePointer,
-  firstProjectedModuleId,
 } from './model';
 
 export function renderElsewhere(
@@ -161,8 +156,6 @@ export function renderElsewhere(
   }
 
 export function renderHomeRow(
-  view: HomeView,
-
     parent: HTMLElement,
     item: HomeItem,
   ): HTMLElement {

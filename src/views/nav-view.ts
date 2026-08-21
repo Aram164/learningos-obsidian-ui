@@ -1,5 +1,5 @@
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
-import { button, empty, icon } from '../components';
+import { icon } from '../components';
 import { VIEW_NAV } from '../constants';
 import type { LearningOSUI } from '../main';
 import { enableButtonGroupKeyboardNavigation } from '../accessibility/button-group';

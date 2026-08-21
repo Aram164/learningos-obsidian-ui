@@ -9,32 +9,15 @@ import {
   empty,
   icon,
   pageHeader,
-  projectedExcerpt,
-  section,
 } from '../components';
 import { VIEW_HOME } from '../constants';
 import type {
   ProjectionRecord,
 } from '../contracts/manifest';
-import type {
-  LearningOSUI,
-} from '../main';
-import {
-  asLabel as projectedLabel,
-  asRecords as projectedRecords,
-  asString as projectedString,
-  asStrings as projectedStrings,
-  asText as projectedText,
-  isRecord,
-} from '../projection/readers';
 
 import {
   HomeItem,
-  ElsewhereRow,
-  HomeResumePointer,
   HomePlugin,
-  readResumePointer,
-  firstProjectedModuleId,
 } from '../features/home/model';
 
 /**
@@ -184,7 +167,7 @@ export class HomeView extends ItemView {
     parent: HTMLElement,
     item: HomeItem,
   ): HTMLElement {
-    return renderHomeRow(this, parent, item);
+    return renderHomeRow(parent, item);
   }
 
     nextWorkspaceDate(

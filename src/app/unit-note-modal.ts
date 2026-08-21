@@ -1,5 +1,5 @@
 import { Modal, Notice, type App } from 'obsidian';
-import { button, empty, localFilePath, pageHeader, section } from '../components';
+import { button, empty, localFilePath, pageHeader } from '../components';
 import type { ProjectionRecord } from '../contracts/manifest';
 import type { LearningOSUI } from '../main';
 import { asRecords, errorMessage } from '../projection/readers';

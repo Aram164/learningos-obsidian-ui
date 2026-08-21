@@ -1,33 +1,15 @@
 import type { ProjectView } from '../../views/project-view';
 import {
-  badge,
-  button,
-  chip,
   empty,
   pageHeader,
   projectedExcerpt,
-  section,
 } from '../../components';
 import type { ProjectionRecord } from '../../contracts/manifest';
 import {
   asLabel as projectedLabel,
   asListLength as projectedListLength,
-  asRecords as projectedRecords,
   asString as projectedString,
-  asStrings as projectedStrings,
-  asText as projectedText,
-  isRecord,
 } from '../../projection/readers';
-import {
-  PROJECT_TABS,
-  type ProjectTab,
-  type ProjectBoundaries,
-  type ProjectStructure,
-  type ProjectRelationship,
-  readProjectBoundaries,
-  readProjectStructure,
-  readProjectRelationship,
-} from './model';
 
 export function renderList(
   view: ProjectView,

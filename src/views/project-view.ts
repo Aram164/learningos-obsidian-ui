@@ -9,43 +9,28 @@ import {
   type WorkspaceLeaf,
 } from 'obsidian';
 import {
-  badge,
   button,
-  chip,
   empty,
   pageHeader,
-  projectedExcerpt,
   section,
 } from '../components';
 import { VIEW_PROJECT } from '../constants';
 import type {
   ProjectionRecord,
 } from '../contracts/manifest';
-import type { LearningOSUI } from '../main';
 import {
   asLabel as projectedLabel,
-  asListLength as projectedListLength,
-  asRecords as projectedRecords,
   asString as projectedString,
-  asStrings as projectedStrings,
-  asText as projectedText,
-  isRecord,
 } from '../projection/readers';
 
 import {
-  PROJECT_TABS,
   ProjectScreen,
   ProjectTab,
   ProjectViewState,
-  ProjectBoundaries,
-  ProjectStructure,
   ProjectRelationship,
   ProjectPlugin,
   ProjectLinkPlugin,
-  isProjectTab,
   readProjectViewState,
-  readProjectBoundaries,
-  readProjectStructure,
   readProjectRelationship,
 } from '../features/project/model';
 import { makeModalAccessible } from '../accessibility/modal';
@@ -300,14 +285,14 @@ export class ProjectView extends ItemView {
     root: HTMLElement,
     project: ProjectionRecord,
   ): void {
-    renderBoundaryBanner(this, root, project);
+    renderBoundaryBanner(root, project);
   }
 
     renderStructure(
     root: HTMLElement,
     project: ProjectionRecord,
   ): void {
-    renderStructure(this, root, project);
+    renderStructure(root, project);
   }
 
   renderLinked(
@@ -420,6 +405,6 @@ export class ProjectView extends ItemView {
     root: HTMLElement,
     project: ProjectionRecord,
   ): void {
-    renderDecisions(this, root, project);
+    renderDecisions(root, project);
   }
 }

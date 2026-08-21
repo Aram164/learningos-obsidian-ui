@@ -398,7 +398,6 @@ export function explicitAiContext(
   const unit = context.unitId ? plugin.store.get(context.unitId) : null;
   const module = context.moduleId ? plugin.store.get(context.moduleId) :
     (unit?.module_id ? plugin.store.get(unit.module_id) : null);
-  const studyMap = unit?.id ? plugin.store.mapForUnit(unit.id) : null;
   const stage = context.stageId ? plugin.store.stage(context.stageId) : null;
   const stageResources: ProjectionRecord[] = Array.isArray(stage?.resources)
     ? stage.resources

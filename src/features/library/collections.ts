@@ -1,41 +1,14 @@
 import type { LibraryView } from '../../views/library-view';
 import {
-  badge,
   button,
-  chip,
-  disclosure,
   empty,
   pageHeader,
   section,
 } from '../../components';
-import type { ProjectionRecord } from '../../contracts/manifest';
 import {
-  asLibrarySourceFilters,
-  type LibraryCollectionV1,
-  type LibrarySourceFiltersV1,
-} from '../../contracts/route-v1';
-import {
-  asBoolean as projectedFlag,
-  asRecords as projectedRecords,
-  asString as projectedString,
-  asStrings as projectedStrings,
-  asText as projectedText,
-  isRecord,
-} from '../../projection/readers';
-import {
-  SOURCE_FACETS,
-  VALUED_FACETS,
-  SOURCE_FILTER_DIMENSIONS,
-  LIBRARY_COLLECTIONS,
-  RELATED_LABELS,
-  type SourceFilterDimension,
-  type SourceFacet,
   type LibraryRecordView,
-  type ShelfMembership,
-  readThematicGroup,
   readLibraryRecord,
   readLibraryRecords,
-  readRelatedRecords,
 } from './model';
 
 export function renderRecordRow(

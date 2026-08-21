@@ -1,13 +1,8 @@
 import type { ProjectionRecord } from '../../contracts/manifest';
 import type { LearningOSUI } from '../../main';
 import {
-  asCount as projectedCount,
-  asLabel as projectedLabel,
-  asListLength as projectedListLength,
   asRecords as projectedRecords,
   asString as projectedString,
-  asStrings as projectedStrings,
-  asText as projectedText,
   isRecord,
 } from '../../projection/readers';
 

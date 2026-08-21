@@ -7,7 +7,6 @@ import {
 import type { LearningOSUI } from '../../main';
 import {
   asBoolean as projectedFlag,
-  asRecords as projectedRecords,
   asString as projectedString,
   asStrings as projectedStrings,
   asText as projectedText,

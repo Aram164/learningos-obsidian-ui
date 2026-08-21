@@ -7,13 +7,8 @@ import {
   type WorkspaceLeaf,
 } from 'obsidian';
 import {
-  badge,
-  button,
-  chip,
-  disclosure,
   empty,
   pageHeader,
-  section,
 } from '../components';
 import { VIEW_LIBRARY } from '../constants';
 import type {
@@ -24,50 +19,23 @@ import {
   type LibraryCollectionV1,
   type LibrarySourceFiltersV1,
 } from '../contracts/route-v1';
-import type { LearningOSUI } from '../main';
 import {
-  asBoolean as projectedFlag,
-  asRecords as projectedRecords,
   asString as projectedString,
   asStrings as projectedStrings,
-  asText as projectedText,
-  isRecord,
 } from '../projection/readers';
 
 import {
-  SOURCE_FACETS,
   VALUED_FACETS,
-  SOURCE_FILTER_DIMENSIONS,
   SourceFilterDimension,
-  LIBRARY_COLLECTIONS,
-  RELATED_LABELS,
   SourceFacet,
   LibraryScreen,
   LibraryViewState,
-  ParsedLibraryViewState,
-  ThematicGroupView,
-  CollectionEntryView,
-  AttachmentView,
-  UsefulSectionView,
-  EvaluationView,
   LibraryRecordView,
   ShelfMembership,
   LibraryPlugin,
-  isLibraryScreen,
-  isLibraryCollection,
-  isSourceFacet,
   readLibraryViewState,
-  readThematicGroup,
-  readCollectionEntry,
-  readCollectionEntries,
-  readAttachment,
-  readAttachments,
-  readUsefulSection,
-  readEvaluation,
-  readEvaluations,
   readLibraryRecord,
   readLibraryRecords,
-  readRelatedRecords,
 } from '../features/library/model';
 
 /**

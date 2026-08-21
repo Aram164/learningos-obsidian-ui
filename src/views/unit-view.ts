@@ -6,54 +6,15 @@ import {
   Notice,
   type WorkspaceLeaf,
 } from 'obsidian';
-import {
-  badge,
-  button,
-  chip,
-  disclosure,
-  empty,
-  icon,
-  overflowMenu,
-  pageHeader,
-  section,
-} from '../components';
 import { VIEW_UNIT } from '../constants';
-import type {
-  ProjectionRecord,
-} from '../contracts/manifest';
-import type { LearningOSUI } from '../main';
-import {
-  asLabel as projectedLabel,
-  asRecords as projectedRecords,
-  asString as projectedString,
-  asStrings as projectedStrings,
-  asText as projectedText,
-  isRecord,
-} from '../projection/readers';
 
 import {
-  ARTIFACT_LABELS,
-  ParsedUnitViewState,
   UnitRecordView,
-  KnowledgeNodeView,
-  MaterialOptionView,
   StageRecordView,
-  ResourceRecordView,
   StudyMapView,
-  StageAttachmentView,
-  ArtifactSet,
   UnitPlugin,
   errorMessage,
   readUnitViewState,
-  readUnitRecord,
-  readResource,
-  readStageAttachment,
-  readStage,
-  readStudyMap,
-  readMaterialOptions,
-  readArtifacts,
-  artifactLabel,
-  fallbackRecord,
 } from '../features/unit/model';
 
 /**

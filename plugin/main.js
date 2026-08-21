@@ -544,7 +544,6 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
   filter;
   input;
   tabButtons = [];
-  tabs;
   results;
   restoreAccessibility = null;
   constructor(app, plugin, initialQuery = "") {
@@ -606,7 +605,6 @@ var GlobalSearchModal = class extends import_obsidian2.Modal {
       tab.setAttrs({ "data-filter": id, "aria-pressed": String(this.filter === id) });
       this.tabButtons.push(tab);
     }
-    this.tabs = tabs;
     this.results = root.createDiv({ cls: "los-search-results", attr: { "aria-live": "polite" } });
     this.renderTabs();
     this.renderResults();
@@ -3393,7 +3391,7 @@ function renderElsewhere(view, root) {
     );
   }
 }
-function renderHomeRow(view, parent, item) {
+function renderHomeRow(parent, item) {
   const row = parent.createDiv({
     cls: "los-home-row"
   });
@@ -3790,7 +3788,7 @@ var HomeView = class extends import_obsidian10.ItemView {
     renderElsewhere(this, root);
   }
   renderHomeRow(parent, item) {
-    return renderHomeRow(this, parent, item);
+    return renderHomeRow(parent, item);
   }
   nextWorkspaceDate(workspace) {
     return nextWorkspaceDate(this, workspace);
@@ -4001,12 +3999,12 @@ function readUsefulSection(value) {
   if (!isRecord2(value)) {
     return null;
   }
-  const section11 = asText(value.section);
-  if (!section11) {
+  const section2 = asText(value.section);
+  if (!section2) {
     return null;
   }
   return {
-    section: section11,
+    section: section2,
     note: asText(value.note)
   };
 }
@@ -4024,7 +4022,7 @@ function readEvaluation(value) {
   const usefulSections = Array.isArray(
     value.useful_sections
   ) ? value.useful_sections.map(readUsefulSection).filter(
-    (section11) => section11 !== null
+    (section2) => section2 !== null
   ) : [];
   if (!roles.length && !level && !audience.length && !prerequisites.length && !strengths.length && !weaknesses.length && !usefulSections.length) {
     return null;
@@ -5937,7 +5935,7 @@ function readModuleViewState(value) {
     hasTab
   };
 }
-function readThematicGroup6(record) {
+function readThematicGroup2(record) {
   if (!record) {
     return null;
   }
@@ -6330,7 +6328,7 @@ function renderAcademicDates(view, root, module2) {
     );
   }
 }
-function renderDeadlineRows(view, wrap, module2, rows) {
+function renderDeadlineRows(wrap, module2, rows) {
   const list = wrap.createDiv({
     cls: "los-date-list"
   });
@@ -6731,7 +6729,7 @@ function renderGroupList(view, root) {
   const groupRecord = view.groupId ? view.plugin.store.get(
     view.groupId
   ) : null;
-  const group = readThematicGroup6(groupRecord);
+  const group = readThematicGroup2(groupRecord);
   const back = button(
     root,
     "\u2039 Modules",
@@ -6981,7 +6979,7 @@ var ModuleView = class extends import_obsidian12.ItemView {
     renderAcademicDates(this, root, module2);
   }
   renderDeadlineRows(wrap, module2, rows) {
-    renderDeadlineRows(this, wrap, module2, rows);
+    renderDeadlineRows(wrap, module2, rows);
   }
   async selectTab(tab) {
     await selectTab(this, tab);
@@ -7585,7 +7583,7 @@ function renderFiles(view, root, project) {
     }
   }
 }
-function renderDecisions(view, root, project) {
+function renderDecisions(root, project) {
   const wrap = section(
     root,
     "Decisions",
@@ -7688,7 +7686,7 @@ function readProjectRelationship(value) {
 }
 
 // src/features/project/structure.ts
-function renderBoundaryBanner(view, root, project) {
+function renderBoundaryBanner(root, project) {
   const boundaries = readProjectBoundaries(
     project.boundaries
   );
@@ -7707,7 +7705,7 @@ function renderBoundaryBanner(view, root, project) {
     ].filter(Boolean).join(" \xB7 ")
   });
 }
-function renderStructure(view, root, project) {
+function renderStructure(root, project) {
   const structure = readProjectStructure(
     project.structure
   );
@@ -8279,10 +8277,10 @@ var ProjectView = class extends import_obsidian15.ItemView {
     renderOverview2(this, root, project);
   }
   renderBoundaryBanner(root, project) {
-    renderBoundaryBanner(this, root, project);
+    renderBoundaryBanner(root, project);
   }
   renderStructure(root, project) {
-    renderStructure(this, root, project);
+    renderStructure(root, project);
   }
   renderLinked(root, project) {
     const wrap = section(
@@ -8349,7 +8347,7 @@ var ProjectView = class extends import_obsidian15.ItemView {
     renderFiles(this, root, project);
   }
   renderDecisions(root, project) {
-    renderDecisions(this, root, project);
+    renderDecisions(root, project);
   }
 };
 
@@ -10570,7 +10568,7 @@ var UnitNoteModal = class extends import_obsidian20.Modal {
   unrecordedCompletedStages(stages) {
     const already = new Set(
       asRecords(this.unit.note_sections).flatMap(
-        (section11) => Array.isArray(section11.stage_ids) ? section11.stage_ids.filter(
+        (section2) => Array.isArray(section2.stage_ids) ? section2.stage_ids.filter(
           (id) => typeof id === "string"
         ) : []
       )
@@ -10632,13 +10630,13 @@ function emptyUiDrafts() {
   };
 }
 function normalizeUiDrafts(value) {
-  const empty3 = emptyUiDrafts();
+  const empty2 = emptyUiDrafts();
   return {
-    stages: value?.stages ?? empty3.stages,
-    unitNotes: value?.unitNotes ?? empty3.unitNotes,
-    selectedStages: value?.selectedStages ?? empty3.selectedStages,
-    inbox: value?.inbox ?? empty3.inbox,
-    doneWhen: value?.doneWhen ?? empty3.doneWhen
+    stages: value?.stages ?? empty2.stages,
+    unitNotes: value?.unitNotes ?? empty2.unitNotes,
+    selectedStages: value?.selectedStages ?? empty2.selectedStages,
+    inbox: value?.inbox ?? empty2.inbox,
+    doneWhen: value?.doneWhen ?? empty2.doneWhen
   };
 }
 var DraftStore = class {
@@ -11027,7 +11025,6 @@ var GatewayClient = class {
 function explicitAiContext(plugin, context = {}) {
   const unit = context.unitId ? plugin.store.get(context.unitId) : null;
   const module2 = context.moduleId ? plugin.store.get(context.moduleId) : unit?.module_id ? plugin.store.get(unit.module_id) : null;
-  const studyMap = unit?.id ? plugin.store.mapForUnit(unit.id) : null;
   const stage = context.stageId ? plugin.store.stage(context.stageId) : null;
   const stageResources = Array.isArray(stage?.resources) ? stage.resources : [];
   const unitSelections = Array.isArray(unit?.source_selections) ? unit.source_selections.filter(
@@ -11424,7 +11421,7 @@ var ResourceOpener = class {
 };
 
 // src/manifest-store.ts
-function isRecord17(value) {
+function isRecord3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 var ManifestStore = class {
@@ -11454,7 +11451,7 @@ var ManifestStore = class {
           "generated/manifest.json"
         )
       );
-      const generated = isRecord17(parsed) && isRecord17(parsed._generated) ? parsed._generated : null;
+      const generated = isRecord3(parsed) && isRecord3(parsed._generated) ? parsed._generated : null;
       const version = generated?.contract_version;
       if (version !== MANIFEST_CONTRACT_VERSION) {
         throw new Error(
@@ -11709,10 +11706,10 @@ var ManifestStore = class {
       for (const value of asStrings(record[key])) ids.add(value);
     }
     for (const table of Object.values(this.data?.backlinks || {})) {
-      if (isRecord17(table) && Array.isArray(table[id])) {
+      if (isRecord3(table) && Array.isArray(table[id])) {
         for (const value of table[id]) {
           if (typeof value === "string") ids.add(value);
-          else if (isRecord17(value) && typeof value.from === "string") ids.add(value.from);
+          else if (isRecord3(value) && typeof value.from === "string") ids.add(value.from);
         }
       }
     }
@@ -11725,7 +11722,7 @@ var ManifestStore = class {
 };
 
 // src/main.ts
-function errorMessage6(error) {
+function errorMessage4(error) {
   return error instanceof Error ? error.message : String(error);
 }
 var LearningOSUI = class extends import_obsidian22.Plugin {
@@ -12045,7 +12042,7 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
       });
       new import_obsidian22.Notice("LearningOS projection rebuilt.");
     } catch (error) {
-      new import_obsidian22.Notice(errorMessage6(error));
+      new import_obsidian22.Notice(errorMessage4(error));
     }
   }
   async reviewSessionEnd() {
@@ -12054,7 +12051,7 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
       new SessionEndModal(this.app, this, review).open();
       return review;
     } catch (error) {
-      new import_obsidian22.Notice(errorMessage6(error));
+      new import_obsidian22.Notice(errorMessage4(error));
       return null;
     }
   }

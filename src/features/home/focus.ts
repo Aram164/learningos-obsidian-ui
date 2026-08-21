@@ -2,9 +2,6 @@ import type { HomeView } from '../../views/home-view';
 import {
   button,
   empty,
-  icon,
-  pageHeader,
-  projectedExcerpt,
   section,
 } from '../../components';
 import type { ProjectionRecord } from '../../contracts/manifest';
@@ -12,13 +9,10 @@ import {
   asLabel as projectedLabel,
   asRecords as projectedRecords,
   asString as projectedString,
-  asStrings as projectedStrings,
   asText as projectedText,
-  isRecord,
 } from '../../projection/readers';
 import {
   type HomeItem,
-  type ElsewhereRow,
   readResumePointer,
   firstProjectedModuleId,
 } from './model';

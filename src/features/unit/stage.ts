@@ -1,33 +1,17 @@
-import { Notice } from 'obsidian';
 import type { UnitView } from '../../views/unit-view';
 import {
   badge,
   button,
-  disclosure,
   overflowMenu,
-  pageHeader,
   section,
 } from '../../components';
 import {
-  asLabel as projectedLabel,
-  asRecords as projectedRecords,
   asString as projectedString,
-  asStrings as projectedStrings,
-  asText as projectedText,
-  isRecord,
 } from '../../projection/readers';
 import {
   type UnitRecordView,
   type StageRecordView,
-  type ResourceRecordView,
   type StudyMapView,
-  readUnitRecord,
-  readStage,
-  readStudyMap,
-  readArtifacts,
-  artifactLabel,
-  fallbackRecord,
-  errorMessage,
 } from './model';
 import { renderStageResources } from '../stage-resources';
 

@@ -65,7 +65,6 @@ export class GlobalSearchModal extends Modal {
   private filter: SearchFilter;
   private input!: HTMLInputElement;
   private tabButtons: HTMLElement[] = [];
-  private tabs!: HTMLDivElement;
   private results!: HTMLDivElement;
   private restoreAccessibility: (() => void) | null = null;
 
@@ -137,7 +136,6 @@ export class GlobalSearchModal extends Modal {
       this.tabButtons.push(tab);
     }
 
-    this.tabs = tabs;
     this.results = root.createDiv({ cls: 'los-search-results', attr: { 'aria-live': 'polite' } });
     this.renderTabs();
     this.renderResults();
