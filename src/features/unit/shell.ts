@@ -139,11 +139,15 @@ export function render(
       );
 
     if (!projectedStudyMap) {
+      /* The producer decides whether this unit is owed a map; the interface
+       * only reports it. A complete material menu says what may be used, not
+       * in what order or against what proof, so it never discharges the
+       * obligation (OPERATOR.md rule 6). */
+      const owed = unit.needsStudyMap;
+
       const missing = section(
         root,
-        hasMaterialOverview
-          ? 'Personal study path (optional)'
-          : 'Study map needed',
+        owed ? 'Study map required' : 'Personal study path (optional)',
       );
 
       const projectId =
@@ -156,19 +160,19 @@ export function render(
 
       empty(
         missing,
-        hasMaterialOverview
-          ? 'No personal path selected'
-          : 'This unit has no current study script',
-        hasMaterialOverview
-          ? 'The material menu above is complete. Create a path only when you want progress tracking for choices you make.'
-          : 'AI may propose a scoped map; the core imports it only after review.',
-        hasMaterialOverview
-          ? 'Build optional path with AI'
-          : 'Create map with AI',
+        owed
+          ? 'This unit has no ordered study map'
+          : 'No personal path selected',
+        owed
+          ? (hasMaterialOverview
+            ? 'The material menu above says what may be used. A map says in what order and against what proof, and it is what makes progress trackable. AI may propose one; the core imports it only after review.'
+            : 'AI may propose a scoped map; the core imports it only after review.')
+          : 'This unit is complete, archived, or belongs to a module you are no longer studying. Create a path only if you want progress tracking anyway.',
+        owed ? 'Create map with AI' : 'Build optional path with AI',
         () => view.plugin.askAiScoped(
-          hasMaterialOverview
-            ? 'Propose an optional personal study-map JSON document using only materials I choose from this unit material overview. Do not replace or summarize the overview, and do not write files; include exact source actions and done-when criteria.'
-            : 'Propose one study-map JSON document for this unit. Do not write files; include exact source actions and done-when criteria.',
+          owed
+            ? 'Propose one study-map JSON document for this unit, ordered over the materials in its overview. Do not replace or summarize the overview, and do not write files; include exact source actions and done-when criteria.'
+            : 'Propose an optional personal study-map JSON document using only materials I choose from this unit material overview. Do not replace or summarize the overview, and do not write files; include exact source actions and done-when criteria.',
           {
             moduleId: unit.moduleId,
             projectId,

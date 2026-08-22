@@ -715,11 +715,11 @@
           "useful_sections": [
             {
               "note": "the whole regression argument",
-              "section": "Chapter 3 §§3.1–3.3"
+              "section": "Chapter 3 \u00a7\u00a73.1\u20133.3"
             },
             {
               "note": "exact selections, nothing around them",
-              "section": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2"
+              "section": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2"
             }
           ],
           "weaknesses": [
@@ -851,7 +851,7 @@
         {
           "group": "tier-1-now",
           "source": "source-fixture-book",
-          "why": "The spine — read this before anything else on the shelf."
+          "why": "The spine \u2014 read this before anything else on the shelf."
         },
         {
           "group": "tier-2-optional",
@@ -1144,8 +1144,8 @@
       "resources": [
         {
           "kind": "read",
-          "label": "ISLP Chapter 3 §§3.1–3.3",
-          "locator": "Chapter 3 §§3.1–3.3",
+          "label": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3",
+          "locator": "Chapter 3 \u00a7\u00a73.1\u20133.3",
           "source_id": "source-fixture-islp"
         }
       ],
@@ -1170,7 +1170,7 @@
         {
           "kind": "read",
           "label": "ISLP selected sections",
-          "locator": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2",
+          "locator": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2",
           "source_id": "source-fixture-islp"
         }
       ],
@@ -1362,8 +1362,8 @@
           "resources": [
             {
               "kind": "read",
-              "label": "ISLP Chapter 3 §§3.1–3.3",
-              "locator": "Chapter 3 §§3.1–3.3",
+              "label": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3",
+              "locator": "Chapter 3 \u00a7\u00a73.1\u20133.3",
               "source_id": "source-fixture-islp"
             }
           ],
@@ -1399,7 +1399,7 @@
             {
               "kind": "read",
               "label": "ISLP selected sections",
-              "locator": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2",
+              "locator": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2",
               "source_id": "source-fixture-islp"
             }
           ],
@@ -1500,7 +1500,7 @@
       "title": "Mathematics"
     },
     {
-      "description": "Convex, numerical and combinatorial optimization; statistical learning theory and kernel methods — the bridge between mathematics and learning.",
+      "description": "Convex, numerical and combinatorial optimization; statistical learning theory and kernel methods \u2014 the bridge between mathematics and learning.",
       "id": "thematic-group-optimization",
       "order": 20,
       "title": "Optimization & Learning Theory"
@@ -1536,7 +1536,7 @@
       "title": "Software & Languages"
     },
     {
-      "description": "Research method, degree regulations, and dataset catalogues — small, but everything needs a home or it becomes invisible.",
+      "description": "Research method, degree regulations, and dataset catalogues \u2014 small, but everything needs a home or it becomes invisible.",
       "id": "thematic-group-method-admin",
       "order": 80,
       "title": "Method & Administration"
@@ -1600,8 +1600,9 @@
       "project_ids": [],
       "scope": "Synthetic Lecture 02 scope.",
       "status": "ready",
-      "title": "SaD Lecture 02 — Descriptive statistics",
-      "type": "unit"
+      "title": "SaD Lecture 02 \u2014 Descriptive statistics",
+      "type": "unit",
+      "needs_study_map": false
     },
     {
       "artifacts": {
@@ -1630,9 +1631,10 @@
       "project_ids": [],
       "scope": "Synthetic Lecture 04 scope.",
       "status": "active",
-      "title": "SaD Lecture 04 — Probability & Bayes",
+      "title": "SaD Lecture 04 \u2014 Probability & Bayes",
       "type": "unit",
-      "working_note": "curriculum/modules/module-fixture-m2/units/unit-fixture-sad-l04/notes.md"
+      "working_note": "curriculum/modules/module-fixture-m2/units/unit-fixture-sad-l04/notes.md",
+      "needs_study_map": false
     },
     {
       "artifacts": {},
@@ -1648,7 +1650,8 @@
       "scope": "Needs a map from confirmed course scope.",
       "status": "needs-map",
       "title": "Analysis exam prep",
-      "type": "unit"
+      "type": "unit",
+      "needs_study_map": true
     },
     {
       "artifacts": {},
@@ -1661,10 +1664,11 @@
       "notes_updated": null,
       "order": 3,
       "project_ids": [],
-      "scope": "ISLP Chapter 3 §§3.1–3.3.",
+      "scope": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3.",
       "status": "ready",
-      "title": "AML Lecture 03 — Linear regression",
-      "type": "unit"
+      "title": "AML Lecture 03 \u2014 Linear regression",
+      "type": "unit",
+      "needs_study_map": false
     },
     {
       "artifacts": {},
@@ -1677,10 +1681,11 @@
       "notes_updated": null,
       "order": 4,
       "project_ids": [],
-      "scope": "ISLP §3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2.",
+      "scope": "ISLP \u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2.",
       "status": "ready",
-      "title": "AML Lecture 04 — Classification",
-      "type": "unit"
+      "title": "AML Lecture 04 \u2014 Classification",
+      "type": "unit",
+      "needs_study_map": false
     },
     {
       "artifacts": {},
@@ -1696,7 +1701,8 @@
       "scope": "Classes and object collaboration; no completion claim.",
       "status": "ready",
       "title": "Python OOP scope",
-      "type": "unit"
+      "type": "unit",
+      "needs_study_map": false
     },
     {
       "artifacts": {},
@@ -1714,7 +1720,8 @@
       "scope": "Build the verified evidence landscape.",
       "status": "ready-to-shelve",
       "title": "Thesis landscape",
-      "type": "unit"
+      "type": "unit",
+      "needs_study_map": false
     }
   ],
   "review_items": [

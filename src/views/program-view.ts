@@ -430,9 +430,10 @@ export class ProgramView extends ItemView {
       cls: 'los-card-grid',
     });
 
+    // The producer answers the obligation; re-deriving it here from "has no
+    // map" is what let this queue list units the count had never heard of.
     const units = this.plugin.store.units().filter(
-      (row: ProjectionRecord) =>
-        !row.id || !this.plugin.store.mapForUnit(row.id),
+      (row: ProjectionRecord) => row.needs_study_map === true,
     );
 
     for (const unit of units) {

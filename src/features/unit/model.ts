@@ -42,6 +42,13 @@ export interface UnitRecordView {
   readonly scope: string;
   readonly knowledgeSummary: string;
   readonly knowledgeNodes: KnowledgeNodeView[];
+  /**
+   * Whether the producer still owes this unit an ordered study map
+   * (OPERATOR.md rule 6). Derived core-side from module and unit status, never
+   * re-derived here — the interface reports the obligation, it does not decide
+   * it, so the badge, the count and the Review queue cannot drift apart.
+   */
+  readonly needsStudyMap: boolean;
 }
 
 export interface KnowledgeNodeView {
@@ -250,6 +257,8 @@ export function readUnitRecord(
       )
       ?? '',
     knowledgeNodes,
+    needsStudyMap:
+      record.needs_study_map === true,
   };
 }
 

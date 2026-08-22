@@ -7360,7 +7360,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
       cls: "los-card-grid"
     });
     const units = this.plugin.store.units().filter(
-      (row) => !row.id || !this.plugin.store.mapForUnit(row.id)
+      (row) => row.needs_study_map === true
     );
     for (const unit of units) {
       unitCard(grid, this.plugin, unit);
@@ -8991,7 +8991,8 @@ function readUnitRecord(record, fallbackId) {
     knowledgeSummary: asText(
       knowledgeMap?.summary
     ) ?? "",
-    knowledgeNodes
+    knowledgeNodes,
+    needsStudyMap: record.needs_study_map === true
   };
 }
 function readMaterialOptions(value, unitId, selectionsValue) {
@@ -9914,19 +9915,20 @@ function render(view) {
     unit.id
   );
   if (!projectedStudyMap) {
+    const owed = unit.needsStudyMap;
     const missing = section(
       root,
-      hasMaterialOverview ? "Personal study path (optional)" : "Study map needed"
+      owed ? "Study map required" : "Personal study path (optional)"
     );
     const projectId = asString(project?.id) ?? void 0;
     const componentId = unit.componentId ?? void 0;
     empty(
       missing,
-      hasMaterialOverview ? "No personal path selected" : "This unit has no current study script",
-      hasMaterialOverview ? "The material menu above is complete. Create a path only when you want progress tracking for choices you make." : "AI may propose a scoped map; the core imports it only after review.",
-      hasMaterialOverview ? "Build optional path with AI" : "Create map with AI",
+      owed ? "This unit has no ordered study map" : "No personal path selected",
+      owed ? hasMaterialOverview ? "The material menu above says what may be used. A map says in what order and against what proof, and it is what makes progress trackable. AI may propose one; the core imports it only after review." : "AI may propose a scoped map; the core imports it only after review." : "This unit is complete, archived, or belongs to a module you are no longer studying. Create a path only if you want progress tracking anyway.",
+      owed ? "Create map with AI" : "Build optional path with AI",
       () => view.plugin.askAiScoped(
-        hasMaterialOverview ? "Propose an optional personal study-map JSON document using only materials I choose from this unit material overview. Do not replace or summarize the overview, and do not write files; include exact source actions and done-when criteria." : "Propose one study-map JSON document for this unit. Do not write files; include exact source actions and done-when criteria.",
+        owed ? "Propose one study-map JSON document for this unit, ordered over the materials in its overview. Do not replace or summarize the overview, and do not write files; include exact source actions and done-when criteria." : "Propose an optional personal study-map JSON document using only materials I choose from this unit material overview. Do not replace or summarize the overview, and do not write files; include exact source actions and done-when criteria.",
         {
           moduleId: unit.moduleId,
           projectId,

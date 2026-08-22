@@ -321,10 +321,14 @@ module.exports = async function run() {
       && text.includes('Chapter 2 §§2.1–2.3')
       && text.includes('derivation') && text.includes('current')
       && text.includes('Generalization'));
-    check('the complete material menu survives without forcing a study map',
-      text.includes('Personal study path (optional)')
-      && text.includes('No personal path selected')
-      && text.includes('Build optional path with AI'));
+    check('the complete material menu renders alongside an unmet map obligation',
+      text.includes('Choose your learning material')
+      && text.includes('Study map required')
+      && text.includes('This unit has no ordered study map')
+      // The menu says what may be used; the map says in what order and against
+      // what proof. Rendering the first must never be read as discharging the
+      // second (OPERATOR.md rule 6).
+      && text.includes('A map says in what order and against what proof'));
     check('openable material choices expose a direct action',
       view.contentEl.findText('los-btn', 'Open') !== null);
     const choose = view.contentEl.findText('los-btn', 'Choose');
@@ -356,8 +360,10 @@ module.exports = async function run() {
     const { app, plugin } = await boot();
     await plugin.nav.openUnit('unit-fixture-analysis');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
-    check('unit without a map renders an honest proposal flow', view.contentEl.allText().includes('Study map needed')
-      && view.contentEl.allText().includes('Create map with AI'));
+    check('unit owed a map says so and offers both routes to one',
+      view.contentEl.allText().includes('Study map required')
+      && view.contentEl.allText().includes('Create map with AI')
+      && view.contentEl.findText('los-btn', 'Import reviewed map') !== null);
     await plugin.askAiScoped('Propose a scoped next action.', {
       moduleId: 'module-fixture-m2', componentId: 'component-fixture-sad',
       unitId: 'unit-fixture-sad-l04', stageId: 'stage-fixture-conditioning',
