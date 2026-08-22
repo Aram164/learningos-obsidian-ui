@@ -6,7 +6,6 @@ import {
   pageHeader,
   workspaceCard,
 } from '../../components';
-import { STATUS_ORDER } from '../../constants';
 import {
   asRecords as projectedRecords,
   asString as projectedString,
@@ -18,6 +17,7 @@ import {
   readModuleRecord,
   normalizeUnitRecord,
   normalizeWorkspaceRecord,
+  orderModuleUnits,
   readProgress,
 } from './model';
 import {
@@ -218,12 +218,15 @@ export function renderOverview(
       );
     }
 
-    const units = view.plugin.store
-      .unitsFor(module.id)
-      .map((record) =>
-        normalizeUnitRecord(record),
-      )
-      .filter(nonNull);
+    const units = orderModuleUnits(
+      module,
+      view.plugin.store
+        .unitsFor(module.id)
+        .map((record) =>
+          normalizeUnitRecord(record),
+        )
+        .filter(nonNull),
+    );
 
     const next =
       units.find(
@@ -341,20 +344,9 @@ export function renderUnits(
       return;
     }
 
-    const statusRank = (
-      status: string,
-    ): number => {
-      const index = STATUS_ORDER.indexOf(status);
-      return index < 0
-        ? STATUS_ORDER.length
-        : index;
-    };
-
-    const ordered = [...units].sort(
-      (a, b) =>
-        statusRank(a.status)
-        - statusRank(b.status)
-        || a.title.localeCompare(b.title),
+    const ordered = orderModuleUnits(
+      module,
+      units,
     );
 
     const heading = root.createDiv({

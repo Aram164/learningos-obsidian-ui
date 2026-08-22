@@ -115,8 +115,22 @@ function renderStage(
   });
   if (stage.jobContext.readOnlyAnchor) {
     const anchor = workspace.createDiv({ cls: 'los-job-stage-block los-job-stratum-reference' });
-    anchor.createEl('h3', { text: 'Stratum read-only reference' });
+    const heading = anchor.createEl('h3', { text: 'Stratum read-only reference' });
+    // The same badge the note cards use, for the same reason: a stage read in
+    // month fourteen should say out loud whether the code it describes has
+    // moved since anyone last checked.
+    if (stage.jobContext.freshness) {
+      badge(heading, stage.jobContext.freshness, stage.jobContext.freshness);
+    }
     anchor.createEl('p', { text: stage.jobContext.readOnlyAnchor });
+    if (stage.jobContext.component.length) {
+      anchor.createSpan({
+        cls: 'los-micro',
+        text: stage.jobContext.verifiedAgainst
+          ? `Verified ${stage.jobContext.verifiedAgainst} — ${stage.jobContext.component.join(', ')}`
+          : `Not yet stamped — ${stage.jobContext.component.join(', ')}`,
+      });
+    }
   }
   if (stage.doneWhen.length) {
     const done = section(workspace, 'Done when');

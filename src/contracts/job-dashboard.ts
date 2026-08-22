@@ -5,6 +5,8 @@ import type { ProjectionRecord } from './manifest';
 export const JOB_DASHBOARD_CONTRACT = 'job-dashboard-v2' as const;
 
 export type JobHorizon = 'now' | 'next' | 'later';
+/** Empty means the stage names no source file, so nothing could drift. */
+export type JobAnchorFreshness = '' | 'current' | 'drifting' | 'stale' | 'unverified';
 export type JobTab = 'now' | 'tasks' | 'plans' | 'notes' | 'library';
 
 export interface JobWorkspaceScope {
@@ -80,6 +82,16 @@ export interface JobLearningStage {
   readonly jobContext: {
     readonly mentalModels: readonly JobMentalModel[];
     readonly readOnlyAnchor: string;
+    /** Stratum files the anchor is about, repo-root-relative. Authored. */
+    readonly component: readonly string[];
+    /** `<sha> (YYYY-MM-DD)` the anchor prose was last read against. Authored. */
+    readonly verifiedAgainst: string;
+    /**
+     * Producer-computed, never authored and never sent back on save. Empty when
+     * the stage names no source file; `unverified` when it names one but the
+     * checkout could not be asked — which is not a synonym for `current`.
+     */
+    readonly freshness: JobAnchorFreshness;
   };
   readonly done: boolean;
 }

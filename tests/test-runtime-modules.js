@@ -123,6 +123,48 @@ function routerPlugin(settings = {}) {
     assert.equal(store.get('missing'), null);
   });
 
+  await test('archived modules and their learning records stay out of every UI lookup', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      const archivedModule = {
+        ...manifest.modules[0],
+        id: 'module-archived-fixture',
+        title: 'Archived fixture module',
+        status: 'archived',
+        unit_order: ['unit-archived-fixture'],
+      };
+      const archivedUnit = {
+        ...manifest.units[0],
+        id: 'unit-archived-fixture',
+        title: 'Archived fixture unit',
+        module_id: archivedModule.id,
+      };
+      manifest.modules.push(archivedModule);
+      manifest.units.push(archivedUnit);
+      manifest.records.push(archivedModule, archivedUnit);
+      return JSON.stringify(manifest);
+    }));
+
+    assert.equal(await store.load(), true);
+    assert.equal(store.get('module-archived-fixture'), null);
+    assert.equal(store.get('unit-archived-fixture'), null);
+    assert.equal(
+      store.modules().some((row) => row.id === 'module-archived-fixture'),
+      false,
+    );
+    assert.equal(
+      store.units().some((row) => row.id === 'unit-archived-fixture'),
+      false,
+    );
+    assert.equal(
+      store.search('archived fixture').some(
+        (row) => row.id === 'module-archived-fixture'
+          || row.id === 'unit-archived-fixture',
+      ),
+      false,
+    );
+  });
+
   await test('button groups gain arrow, Home, and End navigation without changing selection', async () => {
     let listener = null;
     const controls = [0, 1, 2].map((index) => ({

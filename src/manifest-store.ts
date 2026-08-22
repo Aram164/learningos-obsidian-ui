@@ -107,10 +107,17 @@ export class ManifestStore {
   }
 
   get(id: string): ProjectionRecord | null {
-    return this.byId.get(id) || null;
+    const record = this.byId.get(id) || null;
+    return record && !this.isArchivedCurriculumRecord(record)
+      ? record
+      : null;
   }
   of(type: string): ProjectionRecord[] {
-    return this.records.filter((row) => row?.type === type);
+    return this.records.filter(
+      (row) =>
+        row?.type === type
+        && !this.isArchivedCurriculumRecord(row),
+    );
   }
   /**
    * One null row anywhere in a projected array used to take Home down on
@@ -119,7 +126,43 @@ export class ManifestStore {
    */
   rows(group: string): ProjectionRecord[] {
     const value = this.data?.[group];
-    return Array.isArray(value) ? value.filter((row) => row && typeof row === 'object') : [];
+    return Array.isArray(value)
+      ? value.filter(
+        (row) =>
+          row
+          && typeof row === 'object'
+          && !this.isArchivedCurriculumRecord(row),
+      )
+      : [];
+  }
+
+  private isArchivedCurriculumRecord(
+    record: ProjectionRecord,
+  ): boolean {
+    if (
+      record.type === 'module'
+      && record.status === 'archived'
+    ) {
+      return true;
+    }
+
+    const moduleId =
+      typeof record.module_id === 'string'
+        ? record.module_id
+        : null;
+
+    if (!moduleId) {
+      return false;
+    }
+
+    const modules = this.data?.modules;
+
+    return Array.isArray(modules)
+      && modules.some(
+        (module) =>
+          module?.id === moduleId
+          && module.status === 'archived',
+      );
   }
   programs() { return this.rows('programs'); }
   modules() { return this.rows('modules'); }
@@ -300,7 +343,17 @@ export class ManifestStore {
   ): ProjectionRecord[] {
     const words = String(query || '').toLocaleLowerCase().split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
-    const rows = this.records.filter((row) => !allowed || (typeof row.type === 'string' && allowed.has(row.type)));
+    const rows = this.records.filter(
+      (row) =>
+        !this.isArchivedCurriculumRecord(row)
+        && (
+          !allowed
+          || (
+            typeof row.type === 'string'
+            && allowed.has(row.type)
+          )
+        ),
+    );
     if (!words.length) return rows;
     const strict = rows.filter((row) => {
       const hay = [row.id, row.title, ...(row.aliases || []), ...(row.authors || []),

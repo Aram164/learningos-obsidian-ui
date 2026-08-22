@@ -127,15 +127,6 @@ var DEFAULT_SETTINGS = {
   preferredAiProvider: "manual-bundle"
 };
 var SAFE_URL_PROTOCOLS = ["https:", "http:"];
-var STATUS_ORDER = [
-  "active",
-  "ready",
-  "not-started",
-  "needs-map",
-  "paused",
-  "ready-to-shelve",
-  "complete"
-];
 var ICONS = {
   program: "graduation-cap",
   module: "book-open",
@@ -1617,9 +1608,36 @@ var TRIAGE_HEADING = {
   deferred: "Depth \u2014 not now",
   "reference-only": "Reference \u2014 preserved, not reading for this stage"
 };
+var MATERIAL_TYPE_ORDER = [
+  "video",
+  "article",
+  "book",
+  "exercise"
+];
+var MATERIAL_TYPE_HEADING = {
+  video: "Videos",
+  article: "Articles",
+  book: "Books",
+  exercise: "Exercises"
+};
+var MATERIAL_TYPE_ICON = {
+  video: "play",
+  article: "file-text",
+  book: "book-open",
+  exercise: "pencil-line"
+};
 function rankOf(value) {
   const index = value ? TRIAGE_ORDER.indexOf(value) : -1;
   return index < 0 ? 0 : index;
+}
+function materialTypeOf(resource, source) {
+  if (resource.kind === "practise") return "exercise";
+  if (resource.kind === "watch") return "video";
+  const declared = (asText(resource.record.format) ?? asText(resource.record.material_type) ?? asText(source?.source_type) ?? asText(source?.format) ?? "").toLowerCase();
+  if (declared === "exercise" || declared === "practice" || declared === "practise" || declared === "problem-set" || declared === "homework" || declared === "quiz") return "exercise";
+  if (declared === "video") return "video";
+  if (declared === "book" || declared === "textbook") return "book";
+  return "article";
 }
 function hasOpenTarget(record) {
   return [record.material_path, record.url, record.vault_path].some(
@@ -1627,7 +1645,18 @@ function hasOpenTarget(record) {
   );
 }
 function renderStageResources(parent, resourcesValue, renderer) {
-  const resources = section(parent, "Exact work");
+  const resources = section(parent, "Material catalogue");
+  resources.addClass(
+    "los-stage-resources"
+  );
+  resources.createSpan({
+    cls: "los-micro los-stage-resource-count",
+    text: `${resourcesValue.length} ${resourcesValue.length === 1 ? "material" : "materials"}`
+  });
+  resources.createEl("p", {
+    cls: "los-stage-resource-summary",
+    text: "Every material stays visible, grouped by type. Priority changes the order inside each group; each angle explains what the material covers."
+  });
   if (!resourcesValue.length) {
     empty(
       resources,
@@ -1636,53 +1665,94 @@ function renderStageResources(parent, resourcesValue, renderer) {
     );
     return resources;
   }
-  const ordered = [...resourcesValue].sort(
-    (left, right) => rankOf(left.scopeTriage) - rankOf(right.scopeTriage)
-  );
-  const anyRanked = ordered.some((item) => Boolean(item.scopeTriage));
-  let renderedHeading = null;
-  for (const resource of ordered) {
-    if (anyRanked) {
-      const heading = resource.scopeTriage ? TRIAGE_HEADING[resource.scopeTriage] || resource.scopeTriage : TRIAGE_HEADING["required-now"] || "Do this";
-      if (heading !== renderedHeading) {
-        resources.createDiv({ cls: "los-kicker los-resource-tier", text: heading });
-        renderedHeading = heading;
-      }
-    }
-    const row = resources.createDiv({
-      cls: `los-resource-row los-triage-${resource.scopeTriage || "unranked"}`
-    });
-    const iconName = resource.kind === "watch" ? "play" : resource.kind === "practise" ? "pencil-line" : "book-open";
-    icon(row.createSpan(), iconName);
-    const copy = row.createDiv({ cls: "los-resource-copy" });
-    copy.createEl("strong", { text: resource.label });
-    if (resource.locator) copy.createDiv({ cls: "los-micro", text: resource.locator });
+  const grouped = /* @__PURE__ */ new Map();
+  for (const resource of resourcesValue) {
     const source = resource.sourceId && renderer.sourceRecord ? renderer.sourceRecord(resource.sourceId) : null;
-    if (source) chip(copy, source, renderer.openSource);
-    const actions = row.createDiv({ cls: "los-actions los-resource-actions" });
-    if (resource.canOpen && renderer.openResource) {
-      button(actions, "Open", () => renderer.openResource?.(resource), "quiet");
-    } else if (source && hasOpenTarget(source) && renderer.openSourceResource) {
-      button(
-        actions,
-        "Open source",
-        () => renderer.openSourceResource?.(source),
-        "quiet"
+    const materialType = materialTypeOf(resource, source);
+    const entries = grouped.get(materialType);
+    const entry = { resource, source };
+    if (entries) entries.push(entry);
+    else grouped.set(materialType, [entry]);
+  }
+  for (const materialType of MATERIAL_TYPE_ORDER) {
+    const entries = grouped.get(materialType);
+    if (!entries?.length) continue;
+    entries.sort(
+      (left, right) => rankOf(left.resource.scopeTriage) - rankOf(right.resource.scopeTriage)
+    );
+    const group = resources.createDiv({
+      cls: `los-resource-type-group los-resource-type-${materialType}`
+    });
+    group.setAttr("aria-label", MATERIAL_TYPE_HEADING[materialType]);
+    const groupHeading = group.createDiv({
+      cls: "los-resource-type-heading"
+    });
+    const headingCopy = groupHeading.createDiv({
+      cls: "los-resource-type-heading-copy"
+    });
+    icon(headingCopy.createSpan(), MATERIAL_TYPE_ICON[materialType]);
+    headingCopy.createEl("h3", {
+      text: MATERIAL_TYPE_HEADING[materialType]
+    });
+    groupHeading.createSpan({
+      cls: "los-micro",
+      text: `${entries.length} ${entries.length === 1 ? "material" : "materials"}`
+    });
+    for (const { resource, source } of entries) {
+      const row = group.createDiv({
+        cls: `los-resource-row los-triage-${resource.scopeTriage || "unranked"}`
+      });
+      icon(row.createSpan(), MATERIAL_TYPE_ICON[materialType]);
+      const copy = row.createDiv({ cls: "los-resource-copy" });
+      copy.createEl("strong", { text: resource.label });
+      const metadata = copy.createDiv({
+        cls: "los-resource-row-meta"
+      });
+      metadata.createSpan({
+        cls: `los-resource-priority los-resource-priority-${resource.scopeTriage || "unranked"}`,
+        text: resource.scopeTriage ? TRIAGE_HEADING[resource.scopeTriage] || resource.scopeTriage : "Primary \xB7 unranked"
+      });
+      if (resource.locator) {
+        metadata.createSpan({
+          cls: "los-micro los-resource-locator",
+          text: resource.locator
+        });
+      }
+      const angle = asText(
+        resource.record.angle
       );
-    }
-    if (resource.sourceId && renderer.rateResource) {
-      const sourceId = resource.sourceId;
-      const resourceId = resource.id;
-      const rate = (verdict) => renderer.rateResource?.(
-        sourceId,
-        resourceId,
-        verdict
-      );
-      overflowMenu(actions, [
-        ["Helpful", () => rate("helpful")],
-        ["Too advanced", () => rate("too-advanced")],
-        ["Useful for review", () => rate("useful-for-review")]
-      ], resourceId ? `Rate ${resource.label}` : `Rate ${resource.label} (whole source)`);
+      if (angle) {
+        copy.createDiv({
+          cls: "los-resource-angle",
+          text: angle
+        });
+      }
+      if (source) chip(copy, source, renderer.openSource);
+      const actions = row.createDiv({ cls: "los-actions los-resource-actions" });
+      if (resource.canOpen && renderer.openResource) {
+        button(actions, "Open", () => renderer.openResource?.(resource), "quiet");
+      } else if (source && hasOpenTarget(source) && renderer.openSourceResource) {
+        button(
+          actions,
+          "Open source",
+          () => renderer.openSourceResource?.(source),
+          "quiet"
+        );
+      }
+      if (resource.sourceId && renderer.rateResource) {
+        const sourceId = resource.sourceId;
+        const resourceId = resource.id;
+        const rate = (verdict) => renderer.rateResource?.(
+          sourceId,
+          resourceId,
+          verdict
+        );
+        overflowMenu(actions, [
+          ["Helpful", () => rate("helpful")],
+          ["Too advanced", () => rate("too-advanced")],
+          ["Useful for review", () => rate("useful-for-review")]
+        ], resourceId ? `Rate ${resource.label}` : `Rate ${resource.label} (whole source)`);
+      }
     }
   }
   return resources;
@@ -1779,8 +1849,17 @@ function renderStage(parent, host, dashboard, plan, stage) {
   });
   if (stage.jobContext.readOnlyAnchor) {
     const anchor = workspace.createDiv({ cls: "los-job-stage-block los-job-stratum-reference" });
-    anchor.createEl("h3", { text: "Stratum read-only reference" });
+    const heading2 = anchor.createEl("h3", { text: "Stratum read-only reference" });
+    if (stage.jobContext.freshness) {
+      badge(heading2, stage.jobContext.freshness, stage.jobContext.freshness);
+    }
     anchor.createEl("p", { text: stage.jobContext.readOnlyAnchor });
+    if (stage.jobContext.component.length) {
+      anchor.createSpan({
+        cls: "los-micro",
+        text: stage.jobContext.verifiedAgainst ? `Verified ${stage.jobContext.verifiedAgainst} \u2014 ${stage.jobContext.component.join(", ")}` : `Not yet stamped \u2014 ${stage.jobContext.component.join(", ")}`
+      });
+    }
   }
   if (stage.doneWhen.length) {
     const done = section(workspace, "Done when");
@@ -2193,7 +2272,13 @@ var JobPlanModal = class extends JobEditorModal {
           source_feedback: [],
           job_context: {
             mental_models: stage.jobContext.mentalModels.map((model) => ({ ...model })),
-            read_only_anchor: stage.jobContext.readOnlyAnchor
+            read_only_anchor: stage.jobContext.readOnlyAnchor,
+            // Round-tripped so an edit to any other field cannot silently drop
+            // the stamp drift detection reads. `freshness` is deliberately not
+            // sent back: the producer computes it, and echoing it would let a
+            // stale client assert a freshness the checkout never confirmed.
+            component: [...stage.jobContext.component],
+            verified_against: stage.jobContext.verifiedAgainst
           }
         })) : rows.map((line, index) => {
           const [stageTitle = "", objective = "", proof = "", link = "", anchor = ""] = line.split("|").map((part) => part.trim());
@@ -2217,7 +2302,12 @@ var JobPlanModal = class extends JobEditorModal {
             resources: linkedResource ? [linkedResource] : [],
             attachments: [],
             source_feedback: [],
-            job_context: { mental_models: [], read_only_anchor: anchor }
+            job_context: {
+              mental_models: [],
+              read_only_anchor: anchor,
+              component: [],
+              verified_against: ""
+            }
           };
         })
       }, plan?.revision);
@@ -2254,6 +2344,10 @@ var JOB_DASHBOARD_CONTRACT = "job-dashboard-v2";
 // src/features/job/model.ts
 function horizon(value) {
   return value === "now" || value === "next" ? value : "later";
+}
+function anchorFreshness(value) {
+  if (value === "") return "";
+  return value === "current" || value === "drifting" || value === "stale" ? value : "unverified";
 }
 function relativeJobPath(value) {
   const path = asTrimmedString(value).replace(/\\/g, "/").replace(/^\.\//, "");
@@ -2334,7 +2428,10 @@ function track(value) {
             label: asTrimmedString(model.label),
             text: asTrimmedString(model.text)
           })).filter((model) => model.label && model.text),
-          readOnlyAnchor: asTrimmedString(context.read_only_anchor)
+          readOnlyAnchor: asTrimmedString(context.read_only_anchor),
+          component: asTrimmedStrings(context.component),
+          verifiedAgainst: asTrimmedString(context.verified_against),
+          freshness: anchorFreshness(context.freshness)
         },
         done: stage.done === true
       };
@@ -5776,7 +5873,8 @@ function readModuleRecord(record, fallbackId = null) {
     institution: asText(record.institution) ?? "",
     credits: asText(record.credits),
     examination: readExamination(record.examination),
-    components: readComponents(record.components)
+    components: readComponents(record.components),
+    unitOrder: asStrings(record.unit_order)
   };
 }
 function normalizeUnitRecord(record) {
@@ -5786,6 +5884,7 @@ function normalizeUnitRecord(record) {
   }
   const title = asString(record.title) ?? id;
   const status = asString(record.status) ?? "unspecified";
+  const order = asCount(record.order);
   const normalized = {
     ...record,
     id,
@@ -5797,8 +5896,26 @@ function normalizeUnitRecord(record) {
     record: normalized,
     id,
     title,
-    status
+    status,
+    order
   };
+}
+function orderModuleUnits(module2, units) {
+  const authoredOrder = new Map(
+    module2.unitOrder.map(
+      (unitId, index) => [unitId, index]
+    )
+  );
+  return [...units].sort(
+    (left, right) => {
+      const leftRank = authoredOrder.get(left.id);
+      const rightRank = authoredOrder.get(right.id);
+      if (leftRank !== void 0 || rightRank !== void 0) {
+        return (leftRank ?? Number.MAX_SAFE_INTEGER) - (rightRank ?? Number.MAX_SAFE_INTEGER);
+      }
+      return left.order - right.order || left.title.localeCompare(right.title);
+    }
+  );
 }
 function normalizeWorkspaceRecord(record) {
   return {
@@ -6288,9 +6405,12 @@ function renderOverview(view, root, module2) {
       "The module/unit tree still owns study state."
     );
   }
-  const units = view.plugin.store.unitsFor(module2.id).map(
-    (record) => normalizeUnitRecord(record)
-  ).filter(nonNull);
+  const units = orderModuleUnits(
+    module2,
+    view.plugin.store.unitsFor(module2.id).map(
+      (record) => normalizeUnitRecord(record)
+    ).filter(nonNull)
+  );
   const next = units.find(
     (unit) => unit.status === "active"
   ) ?? units[0];
@@ -6363,12 +6483,9 @@ function renderUnits(view, root, module2) {
     );
     return;
   }
-  const statusRank = (status) => {
-    const index = STATUS_ORDER.indexOf(status);
-    return index < 0 ? STATUS_ORDER.length : index;
-  };
-  const ordered = [...units].sort(
-    (a, b) => statusRank(a.status) - statusRank(b.status) || a.title.localeCompare(b.title)
+  const ordered = orderModuleUnits(
+    module2,
+    units
   );
   const heading = root.createDiv({
     cls: "los-section-heading los-module-units-heading"
@@ -9069,13 +9186,36 @@ function renderStage2(view, layout, unit, studyMap, stage) {
   const top = center.createDiv({
     cls: "los-stage-heading"
   });
-  top.createDiv({
-    cls: "los-kicker",
-    text: stage.examCritical ? "Exam-critical stage" : stage.scopeTriage
+  const stageIndex = studyMap.stages.findIndex(
+    (candidate) => candidate.id === stage.id
+  );
+  const stagePosition = Math.max(stageIndex, 0) + 1;
+  const previousStage = stageIndex > 0 ? studyMap.stages[stageIndex - 1] : null;
+  const stageState = stage.status === "complete" ? "Complete" : stage.status === "skipped" ? "Skipped" : stage.id === studyMap.currentStageId ? "Current" : "Selected";
+  const headingRow = top.createDiv({
+    cls: "los-stage-heading-row"
   });
-  top.createEl("h2", {
+  const headingCopy = headingRow.createDiv({
+    cls: "los-stage-heading-copy"
+  });
+  headingCopy.createDiv({
+    cls: "los-kicker",
+    text: stage.examCritical ? `Exam-critical \xB7 Stage ${String(stagePosition).padStart(2, "0")} of ${studyMap.stages.length}` : `Stage ${String(stagePosition).padStart(2, "0")} of ${studyMap.stages.length}`
+  });
+  headingCopy.createEl("h2", {
     text: stage.title
   });
+  headingCopy.createDiv({
+    cls: "los-stage-order-context",
+    text: previousStage ? `${stageState} \xB7 ordered after ${previousStage.title}` : `${stageState} \xB7 first stage in the ordered route`
+  });
+  if (stage.estimateMinutes) {
+    badge(
+      headingRow,
+      `${stage.estimateMinutes} min`,
+      "role"
+    );
+  }
   if (stage.objective) {
     const goal = center.createDiv({
       cls: "los-stage-goal"
@@ -9088,22 +9228,28 @@ function renderStage2(view, layout, unit, studyMap, stage) {
       text: stage.objective
     });
   }
-  if (stage.estimateMinutes) {
-    badge(
-      top,
-      `${stage.estimateMinutes} min`,
-      "role"
-    );
-  }
   if (stage.doneWhen.length) {
-    const done = section(
-      center,
-      "Done when"
-    );
     const marks = view.plugin.getDoneWhen(
       unit.id,
       stage.id
     );
+    const checkedCount = stage.doneWhen.reduce(
+      (count, _criterion, index) => count + (marks[index] ? 1 : 0),
+      0
+    );
+    const done = center.createDiv({
+      cls: "los-section los-stage-section"
+    });
+    const doneHeading = done.createDiv({
+      cls: "los-stage-section-heading"
+    });
+    doneHeading.createEl("h2", {
+      text: "Done when"
+    });
+    doneHeading.createSpan({
+      cls: "los-micro",
+      text: `${checkedCount} of ${stage.doneWhen.length}`
+    });
     const list = done.createDiv({
       cls: "los-donewhen-list"
     });
@@ -9192,6 +9338,10 @@ function renderStage2(view, layout, unit, studyMap, stage) {
 function renderActionBar(view, root, unit, stage) {
   const bar = root.createDiv({
     cls: "los-unit-actionbar"
+  });
+  bar.createDiv({
+    cls: "los-unit-action-note",
+    text: "Progress saves locally until the stage is completed."
   });
   button(
     bar,
@@ -9289,33 +9439,28 @@ function renderActionBar(view, root, unit, stage) {
 
 // src/features/unit/materials.ts
 var import_obsidian17 = require("obsidian");
-var FORMAT_ORDER = [
-  "course-material",
-  "exercise",
-  "book",
+var MATERIAL_TYPE_ORDER2 = [
   "video",
-  "course",
-  "website",
-  "documentation",
-  "code",
-  "paper"
+  "article",
+  "book",
+  "exercise"
 ];
-var FORMAT_LABELS = {
-  "course-material": "Course material",
-  exercise: "Exercises and practice",
-  book: "Books",
+var MATERIAL_TYPE_LABELS = {
   video: "Videos",
-  course: "Courses",
-  website: "Websites",
-  documentation: "Documentation",
-  code: "Code and notebooks",
-  paper: "Papers"
+  article: "Articles",
+  book: "Books",
+  exercise: "Exercises"
 };
-function optionIcon(format) {
-  if (format === "video") return "play";
-  if (format === "exercise") return "pencil-line";
-  if (format === "code") return "code-2";
-  if (format === "website" || format === "course" || format === "documentation") return "globe-2";
+function materialTypeOf2(format) {
+  if (format === "video") return "video";
+  if (format === "exercise" || format === "code" || format === "notebook" || format === "quiz" || format === "homework" || format === "problem-set") return "exercise";
+  if (format === "book" || format === "textbook") return "book";
+  return "article";
+}
+function optionIcon(materialType) {
+  if (materialType === "video") return "play";
+  if (materialType === "exercise") return "pencil-line";
+  if (materialType === "article") return "file-text";
   return "book-open";
 }
 function renderMaterialOverview(view, root, unit, options) {
@@ -9359,30 +9504,24 @@ function renderMaterialOverview(view, root, unit, options) {
   );
   const grouped = /* @__PURE__ */ new Map();
   for (const option of options) {
-    const group = grouped.get(option.format);
+    const materialType = materialTypeOf2(
+      option.format
+    );
+    const group = grouped.get(materialType);
     if (group) group.push(option);
-    else grouped.set(option.format, [option]);
+    else grouped.set(materialType, [option]);
   }
-  const formats = [
-    ...FORMAT_ORDER.filter(
-      (format) => grouped.has(format)
-    ),
-    ...[...grouped.keys()].filter(
-      (format) => !FORMAT_ORDER.includes(
-        format
-      )
-    )
-  ];
-  for (const format of formats) {
+  for (const materialType of MATERIAL_TYPE_ORDER2) {
+    if (!grouped.has(materialType)) continue;
     const group = materials.createDiv({
-      cls: "los-material-group"
+      cls: `los-material-group los-material-group-${materialType}`
     });
-    const entries = grouped.get(format) ?? [];
+    const entries = grouped.get(materialType) ?? [];
     const heading = group.createDiv({
       cls: "los-material-group-heading"
     });
     heading.createEl("h3", {
-      text: FORMAT_LABELS[format] ?? format.replaceAll("-", " ")
+      text: MATERIAL_TYPE_LABELS[materialType]
     });
     heading.createSpan({
       cls: "los-micro",
@@ -9396,7 +9535,7 @@ function renderMaterialOverview(view, root, unit, options) {
         row.createSpan({
           cls: "los-material-icon"
         }),
-        optionIcon(option.format)
+        optionIcon(materialType)
       );
       const copy = row.createDiv({
         cls: "los-material-copy"
@@ -9416,6 +9555,11 @@ function renderMaterialOverview(view, root, unit, options) {
       const metadata = copy.createDiv({
         cls: "los-material-metadata"
       });
+      badge(
+        metadata,
+        option.format.replaceAll("-", " "),
+        "role"
+      );
       badge(
         metadata,
         option.depth.replaceAll("-", " "),
@@ -9647,6 +9791,13 @@ function render(view) {
   const stage = studyMap.stages.find(
     (candidate) => candidate.id === view.stageId
   ) ?? firstStage;
+  const completeStageCount = studyMap.stages.filter(
+    (candidate) => candidate.status === "complete"
+  ).length;
+  header.createDiv({
+    cls: "los-unit-route-summary",
+    text: `${studyMap.stages.length} ordered stages \xB7 ${completeStageCount} complete \xB7 Current focus: ${stage.title}`
+  });
   const layout = root.createDiv({
     cls: "los-unit-layout"
   });
@@ -9676,20 +9827,72 @@ function renderRail(view, layout, unit, studyMap, current) {
   const rail = layout.createDiv({
     cls: "los-stage-rail"
   });
-  rail.createEl("h2", {
-    text: "Stages"
+  rail.setAttr(
+    "aria-label",
+    "Ordered learning stages"
+  );
+  const completedCount = studyMap.stages.filter(
+    (stage) => stage.status === "complete"
+  ).length;
+  const progressPercent = Math.round(
+    completedCount / studyMap.stages.length * 100
+  );
+  const summary = rail.createDiv({
+    cls: "los-stage-rail-summary"
+  });
+  summary.createEl("h2", {
+    text: "Learning route"
+  });
+  const progressCopy = summary.createDiv({
+    cls: "los-stage-progress-copy"
+  });
+  progressCopy.createSpan({
+    text: `${completedCount} of ${studyMap.stages.length} complete`
+  });
+  progressCopy.createSpan({
+    cls: "los-micro",
+    text: `${progressPercent}%`
+  });
+  const progress = summary.createDiv({
+    cls: "los-stage-progress",
+    attr: {
+      role: "progressbar",
+      "aria-label": "Overall learning route progress",
+      "aria-valuemin": "0",
+      "aria-valuemax": "100",
+      "aria-valuenow": String(
+        progressPercent
+      )
+    }
+  });
+  const progressValue = progress.createDiv({
+    cls: "los-stage-progress-value"
+  });
+  progressValue.style.width = `${progressPercent}%`;
+  const stageList = rail.createDiv({
+    cls: "los-stage-list",
+    attr: {
+      role: "list"
+    }
   });
   const currentIndex = studyMap.stages.findIndex(
     (stage) => stage.id === current.id
   );
   for (const [index, stage] of studyMap.stages.entries()) {
     const selected = stage.id === current.id;
-    const row = rail.createEl(
+    const row = stageList.createEl(
       "button",
       {
         cls: `los-stage-row los-s-${stage.status} ${selected ? "is-selected" : index > currentIndex ? "is-upcoming" : "is-before"} is-clickable`,
         attr: {
           type: "button",
+          role: "listitem",
+          "aria-posinset": String(
+            index + 1
+          ),
+          "aria-setsize": String(
+            studyMap.stages.length
+          ),
           "aria-current": selected ? "step" : "false"
         }
       }
@@ -11683,10 +11886,13 @@ var ManifestStore = class {
     }
   }
   get(id) {
-    return this.byId.get(id) || null;
+    const record = this.byId.get(id) || null;
+    return record && !this.isArchivedCurriculumRecord(record) ? record : null;
   }
   of(type) {
-    return this.records.filter((row) => row?.type === type);
+    return this.records.filter(
+      (row) => row?.type === type && !this.isArchivedCurriculumRecord(row)
+    );
   }
   /**
    * One null row anywhere in a projected array used to take Home down on
@@ -11695,7 +11901,22 @@ var ManifestStore = class {
    */
   rows(group) {
     const value = this.data?.[group];
-    return Array.isArray(value) ? value.filter((row) => row && typeof row === "object") : [];
+    return Array.isArray(value) ? value.filter(
+      (row) => row && typeof row === "object" && !this.isArchivedCurriculumRecord(row)
+    ) : [];
+  }
+  isArchivedCurriculumRecord(record) {
+    if (record.type === "module" && record.status === "archived") {
+      return true;
+    }
+    const moduleId = typeof record.module_id === "string" ? record.module_id : null;
+    if (!moduleId) {
+      return false;
+    }
+    const modules = this.data?.modules;
+    return Array.isArray(modules) && modules.some(
+      (module2) => module2?.id === moduleId && module2.status === "archived"
+    );
   }
   programs() {
     return this.rows("programs");
@@ -11855,7 +12076,9 @@ var ManifestStore = class {
   search(query, types = null) {
     const words2 = String(query || "").toLocaleLowerCase().split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
-    const rows = this.records.filter((row) => !allowed || typeof row.type === "string" && allowed.has(row.type));
+    const rows = this.records.filter(
+      (row) => !this.isArchivedCurriculumRecord(row) && (!allowed || typeof row.type === "string" && allowed.has(row.type))
+    );
     if (!words2.length) return rows;
     const strict = rows.filter((row) => {
       const hay = [

@@ -73,6 +73,7 @@ export interface ModuleRecordView {
   readonly credits: string | null;
   readonly examination: ModuleExaminationView;
   readonly components: ModuleComponentView[];
+  readonly unitOrder: string[];
 }
 
 export interface UnitRecordView {
@@ -80,6 +81,7 @@ export interface UnitRecordView {
   readonly id: string;
   readonly title: string;
   readonly status: string;
+  readonly order: number;
 }
 
 export interface ModuleProgressView {
@@ -329,6 +331,8 @@ export function readModuleRecord(
       readExamination(record.examination),
     components:
       readComponents(record.components),
+    unitOrder:
+      projectedStrings(record.unit_order),
   };
 }
 
@@ -349,6 +353,9 @@ export function normalizeUnitRecord(
     projectedString(record.status)
     ?? 'unspecified';
 
+  const order =
+    projectedCount(record.order);
+
   const normalized: ProjectionRecord = {
     ...record,
     id,
@@ -364,7 +371,41 @@ export function normalizeUnitRecord(
     id,
     title,
     status,
+    order,
   };
+}
+
+export function orderModuleUnits(
+  module: ModuleRecordView,
+  units: readonly UnitRecordView[],
+): UnitRecordView[] {
+  const authoredOrder = new Map(
+    module.unitOrder.map(
+      (unitId, index) => [unitId, index],
+    ),
+  );
+
+  return [...units].sort(
+    (left, right) => {
+      const leftRank = authoredOrder.get(left.id);
+      const rightRank = authoredOrder.get(right.id);
+
+      if (
+        leftRank !== undefined
+        || rightRank !== undefined
+      ) {
+        return (
+          (leftRank ?? Number.MAX_SAFE_INTEGER)
+          - (rightRank ?? Number.MAX_SAFE_INTEGER)
+        );
+      }
+
+      return (
+        left.order - right.order
+        || left.title.localeCompare(right.title)
+      );
+    },
+  );
 }
 
 export function normalizeWorkspaceRecord(
@@ -503,4 +544,3 @@ export function readSourceEntries(
           : 0,
     }));
 }
-

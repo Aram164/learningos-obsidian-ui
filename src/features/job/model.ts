@@ -2,6 +2,7 @@ import type { GatewayResultV1 } from '../../contracts/gateway-v1';
 import type { ProjectionRecord } from '../../contracts/manifest';
 import {
   JOB_DASHBOARD_CONTRACT,
+  type JobAnchorFreshness,
   type JobDashboard,
   type JobHorizon,
   type JobLayer,
@@ -41,6 +42,18 @@ export type {
 
 function horizon(value: unknown): JobHorizon {
   return value === 'now' || value === 'next' ? value : 'later';
+}
+
+/**
+ * Narrow the producer's computed freshness label. An unrecognised value falls
+ * to `unverified` rather than to `current`: the whole point of the field is
+ * that an unanswered question must never read as a clean bill of health.
+ */
+function anchorFreshness(value: unknown): JobAnchorFreshness {
+  if (value === '') return '';
+  return value === 'current' || value === 'drifting' || value === 'stale'
+    ? value
+    : 'unverified';
 }
 
 function relativeJobPath(value: unknown): string {
@@ -127,6 +140,9 @@ function track(value: unknown): JobLearningTrack | null {
             text: asTrimmedString(model.text),
           })).filter((model) => model.label && model.text),
           readOnlyAnchor: asTrimmedString(context.read_only_anchor),
+          component: asTrimmedStrings(context.component),
+          verifiedAgainst: asTrimmedString(context.verified_against),
+          freshness: anchorFreshness(context.freshness),
         },
         done: stage.done === true,
       };

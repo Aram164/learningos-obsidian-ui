@@ -209,6 +209,12 @@ export class JobPlanModal extends JobEditorModal {
           job_context: {
             mental_models: stage.jobContext.mentalModels.map((model) => ({ ...model })),
             read_only_anchor: stage.jobContext.readOnlyAnchor,
+            // Round-tripped so an edit to any other field cannot silently drop
+            // the stamp drift detection reads. `freshness` is deliberately not
+            // sent back: the producer computes it, and echoing it would let a
+            // stale client assert a freshness the checkout never confirmed.
+            component: [...stage.jobContext.component],
+            verified_against: stage.jobContext.verifiedAgainst,
           },
         })) : rows.map((line, index) => {
           const [stageTitle = '', objective = '', proof = '', link = '', anchor = '']
@@ -235,7 +241,10 @@ export class JobPlanModal extends JobEditorModal {
             resources: linkedResource ? [linkedResource] : [],
             attachments: [],
             source_feedback: [],
-            job_context: { mental_models: [], read_only_anchor: anchor },
+            job_context: {
+              mental_models: [], read_only_anchor: anchor,
+              component: [], verified_against: '',
+            },
           };
         }),
       }, plan?.revision);

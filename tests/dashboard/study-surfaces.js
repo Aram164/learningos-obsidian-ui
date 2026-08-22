@@ -51,6 +51,10 @@ module.exports = async function run() {
     check('structured component controls render', text.includes('SaD') && text.includes('Analysis'));
     check('Lecture 02 and Lecture 04 retain distinct state', text.includes('Lecture 02') && text.includes('Lecture 04')
       && text.includes('ready') && text.includes('active'));
+    const orderedUnitText = view.contentEl.find('los-module-unit-list')[0].allText();
+    check('module units follow canonical unit_order instead of status or title',
+      orderedUnitText.indexOf('Lecture 02') < orderedUnitText.indexOf('Lecture 04')
+      && orderedUnitText.indexOf('Lecture 04') < orderedUnitText.indexOf('Analysis exam prep'));
     check('needs-map is explicit', text.includes('needs map') || text.includes('needs-map'));
     view.contentEl.findText('los-btn', 'Analysis').fire('click'); await tick();
     view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
@@ -308,7 +312,7 @@ module.exports = async function run() {
       view.contentEl.find('los-knowledge-node').length === 2
       && text.includes('Lecture knowledge map')
       && text.includes('Builds on: Problem formulation'));
-    check('all material options are grouped by format instead of sequenced',
+    check('all material options are grouped by material type instead of sequenced',
       view.contentEl.find('los-material-option').length === 2
       && text.includes('Choose your learning material')
       && text.includes('Books') && text.includes('Videos'));

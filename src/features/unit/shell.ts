@@ -247,6 +247,18 @@ export function render(
       )
       ?? firstStage;
 
+    const completeStageCount =
+      studyMap.stages.filter(
+        (candidate) =>
+          candidate.status === 'complete',
+      ).length;
+
+    header.createDiv({
+      cls: 'los-unit-route-summary',
+      text:
+        `${studyMap.stages.length} ordered stages · ${completeStageCount} complete · Current focus: ${stage.title}`,
+    });
+
     const layout = root.createDiv({
       cls: 'los-unit-layout',
     });
@@ -289,8 +301,72 @@ export function renderRail(
       cls: 'los-stage-rail',
     });
 
-    rail.createEl('h2', {
-      text: 'Stages',
+    rail.setAttr(
+      'aria-label',
+      'Ordered learning stages',
+    );
+
+    const completedCount =
+      studyMap.stages.filter(
+        (stage) =>
+          stage.status === 'complete',
+      ).length;
+
+    const progressPercent =
+      Math.round(
+        (
+          completedCount
+          / studyMap.stages.length
+        ) * 100,
+      );
+
+    const summary = rail.createDiv({
+      cls: 'los-stage-rail-summary',
+    });
+
+    summary.createEl('h2', {
+      text: 'Learning route',
+    });
+
+    const progressCopy = summary.createDiv({
+      cls: 'los-stage-progress-copy',
+    });
+
+    progressCopy.createSpan({
+      text:
+        `${completedCount} of ${studyMap.stages.length} complete`,
+    });
+
+    progressCopy.createSpan({
+      cls: 'los-micro',
+      text: `${progressPercent}%`,
+    });
+
+    const progress = summary.createDiv({
+      cls: 'los-stage-progress',
+      attr: {
+        role: 'progressbar',
+        'aria-label': 'Overall learning route progress',
+        'aria-valuemin': '0',
+        'aria-valuemax': '100',
+        'aria-valuenow': String(
+          progressPercent,
+        ),
+      },
+    });
+
+    const progressValue = progress.createDiv({
+      cls: 'los-stage-progress-value',
+    });
+
+    progressValue.style.width =
+      `${progressPercent}%`;
+
+    const stageList = rail.createDiv({
+      cls: 'los-stage-list',
+      attr: {
+        role: 'list',
+      },
     });
 
     const currentIndex = studyMap.stages.findIndex(
@@ -304,7 +380,7 @@ export function renderRail(
       const selected =
         stage.id === current.id;
 
-      const row = rail.createEl(
+      const row = stageList.createEl(
         'button',
         {
           cls:
@@ -317,6 +393,13 @@ export function renderRail(
             } is-clickable`,
           attr: {
             type: 'button',
+            role: 'listitem',
+            'aria-posinset': String(
+              index + 1,
+            ),
+            'aria-setsize': String(
+              studyMap.stages.length,
+            ),
             'aria-current':
               selected
                 ? 'step'

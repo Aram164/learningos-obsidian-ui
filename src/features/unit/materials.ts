@@ -16,41 +16,48 @@ import type {
   UnitRecordView,
 } from './model';
 
-const FORMAT_ORDER = [
-  'course-material',
-  'exercise',
-  'book',
+const MATERIAL_TYPE_ORDER = [
   'video',
-  'course',
-  'website',
-  'documentation',
-  'code',
-  'paper',
+  'article',
+  'book',
+  'exercise',
 ] as const;
 
-const FORMAT_LABELS: Record<string, string> = {
-  'course-material': 'Course material',
-  exercise: 'Exercises and practice',
-  book: 'Books',
+type MaterialType = typeof MATERIAL_TYPE_ORDER[number];
+
+const MATERIAL_TYPE_LABELS: Readonly<Record<MaterialType, string>> = {
   video: 'Videos',
-  course: 'Courses',
-  website: 'Websites',
-  documentation: 'Documentation',
-  code: 'Code and notebooks',
-  paper: 'Papers',
+  article: 'Articles',
+  book: 'Books',
+  exercise: 'Exercises',
 };
 
-function optionIcon(
+function materialTypeOf(
   format: string,
-): string {
-  if (format === 'video') return 'play';
-  if (format === 'exercise') return 'pencil-line';
-  if (format === 'code') return 'code-2';
+): MaterialType {
+  if (format === 'video') return 'video';
   if (
-    format === 'website'
-    || format === 'course'
-    || format === 'documentation'
-  ) return 'globe-2';
+    format === 'exercise'
+    || format === 'code'
+    || format === 'notebook'
+    || format === 'quiz'
+    || format === 'homework'
+    || format === 'problem-set'
+  ) return 'exercise';
+  if (format === 'book' || format === 'textbook') return 'book';
+
+  // Decks, course pages, papers, documentation, and other readable routes
+  // remain distinct in their row metadata while sharing one scan-friendly
+  // catalogue group.
+  return 'article';
+}
+
+function optionIcon(
+  materialType: MaterialType,
+): string {
+  if (materialType === 'video') return 'play';
+  if (materialType === 'exercise') return 'pencil-line';
+  if (materialType === 'article') return 'file-text';
   return 'book-open';
 }
 
@@ -111,41 +118,34 @@ export function renderMaterialOverview(
   );
 
   const grouped = new Map<
-    string,
+    MaterialType,
     MaterialOptionView[]
   >();
 
   for (const option of options) {
-    const group = grouped.get(option.format);
+    const materialType = materialTypeOf(
+      option.format,
+    );
+    const group = grouped.get(materialType);
     if (group) group.push(option);
-    else grouped.set(option.format, [option]);
+    else grouped.set(materialType, [option]);
   }
 
-  const formats = [
-    ...FORMAT_ORDER.filter(
-      (format) => grouped.has(format),
-    ),
-    ...[...grouped.keys()].filter(
-      (format) =>
-        !FORMAT_ORDER.includes(
-          format as typeof FORMAT_ORDER[number],
-        ),
-    ),
-  ];
+  for (const materialType of MATERIAL_TYPE_ORDER) {
+    if (!grouped.has(materialType)) continue;
 
-  for (const format of formats) {
     const group = materials.createDiv({
-      cls: 'los-material-group',
+      cls:
+        'los-material-group '
+        + `los-material-group-${materialType}`,
     });
-    const entries = grouped.get(format) ?? [];
+    const entries = grouped.get(materialType) ?? [];
 
     const heading = group.createDiv({
       cls: 'los-material-group-heading',
     });
     heading.createEl('h3', {
-      text:
-        FORMAT_LABELS[format]
-        ?? format.replaceAll('-', ' '),
+      text: MATERIAL_TYPE_LABELS[materialType],
     });
     heading.createSpan({
       cls: 'los-micro',
@@ -161,7 +161,7 @@ export function renderMaterialOverview(
         row.createSpan({
           cls: 'los-material-icon',
         }),
-        optionIcon(option.format),
+        optionIcon(materialType),
       );
 
       const copy = row.createDiv({
@@ -185,6 +185,11 @@ export function renderMaterialOverview(
       const metadata = copy.createDiv({
         cls: 'los-material-metadata',
       });
+      badge(
+        metadata,
+        option.format.replaceAll('-', ' '),
+        'role',
+      );
       badge(
         metadata,
         option.depth.replaceAll('-', ' '),

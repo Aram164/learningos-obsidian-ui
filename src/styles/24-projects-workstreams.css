@@ -70,9 +70,18 @@
   }
 
   .los-unit-layout { grid-template-columns: minmax(0, 1fr); min-height: 0; }
+  .los-unit-view > .los-page-header { padding-right: 0; }
+  .los-unit-view > .los-page-header > .los-actions {
+    position: static;
+    margin-top: 12px;
+  }
+  .los-stage-heading-row { flex-direction: column; }
   .los-stage-workspace { padding: 20px 18px; }
   .los-resource-row { grid-template-columns: 18px minmax(0, 1fr); }
   .los-resource-row > .los-actions { grid-column: 2; justify-content: flex-start; }
+  .los-resource-type-heading { align-items: center; }
+  .los-stage-workspace > .los-unit-actionbar { align-items: flex-start; }
+  .los-unit-action-note { width: 100%; margin-right: 0; }
   .los-material-option { grid-template-columns: 18px minmax(0, 1fr); }
   .los-material-actions { grid-column: 2; justify-content: flex-start; }
   .los-record-row { grid-template-columns: minmax(0, 1fr); }

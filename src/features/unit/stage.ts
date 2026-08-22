@@ -3,7 +3,6 @@ import {
   badge,
   button,
   overflowMenu,
-  section,
 } from '../../components';
 import {
   asString as projectedString,
@@ -31,17 +30,67 @@ export function renderStage(
       cls: 'los-stage-heading',
     });
 
-    top.createDiv({
+    const stageIndex =
+      studyMap.stages.findIndex(
+        (candidate) =>
+          candidate.id === stage.id,
+      );
+
+    const stagePosition =
+      Math.max(stageIndex, 0) + 1;
+
+    const previousStage =
+      stageIndex > 0
+        ? studyMap.stages[
+          stageIndex - 1
+        ]
+        : null;
+
+    const stageState =
+      stage.status === 'complete'
+        ? 'Complete'
+        : stage.status === 'skipped'
+          ? 'Skipped'
+          : stage.id
+              === studyMap.currentStageId
+            ? 'Current'
+            : 'Selected';
+
+    const headingRow = top.createDiv({
+      cls: 'los-stage-heading-row',
+    });
+
+    const headingCopy = headingRow.createDiv({
+      cls: 'los-stage-heading-copy',
+    });
+
+    headingCopy.createDiv({
       cls: 'los-kicker',
       text:
         stage.examCritical
-          ? 'Exam-critical stage'
-          : stage.scopeTriage,
+          ? `Exam-critical · Stage ${String(stagePosition).padStart(2, '0')} of ${studyMap.stages.length}`
+          : `Stage ${String(stagePosition).padStart(2, '0')} of ${studyMap.stages.length}`,
     });
 
-    top.createEl('h2', {
+    headingCopy.createEl('h2', {
       text: stage.title,
     });
+
+    headingCopy.createDiv({
+      cls: 'los-stage-order-context',
+      text:
+        previousStage
+          ? `${stageState} · ordered after ${previousStage.title}`
+          : `${stageState} · first stage in the ordered route`,
+    });
+
+    if (stage.estimateMinutes) {
+      badge(
+        headingRow,
+        `${stage.estimateMinutes} min`,
+        'role',
+      );
+    }
 
     if (stage.objective) {
       const goal = center.createDiv({
@@ -58,25 +107,47 @@ export function renderStage(
       });
     }
 
-    if (stage.estimateMinutes) {
-      badge(
-        top,
-        `${stage.estimateMinutes} min`,
-        'role',
-      );
-    }
-
     if (stage.doneWhen.length) {
-      const done = section(
-        center,
-        'Done when',
-      );
-
       const marks =
         view.plugin.getDoneWhen(
           unit.id,
           stage.id,
         );
+
+      const checkedCount =
+        stage.doneWhen.reduce(
+          (
+            count,
+            _criterion,
+            index,
+          ) =>
+            count
+            + (
+              marks[index]
+                ? 1
+                : 0
+            ),
+          0,
+        );
+
+      const done = center.createDiv({
+        cls:
+          'los-section los-stage-section',
+      });
+
+      const doneHeading = done.createDiv({
+        cls: 'los-stage-section-heading',
+      });
+
+      doneHeading.createEl('h2', {
+        text: 'Done when',
+      });
+
+      doneHeading.createSpan({
+        cls: 'los-micro',
+        text:
+          `${checkedCount} of ${stage.doneWhen.length}`,
+      });
 
       const list = done.createDiv({
         cls: 'los-donewhen-list',
@@ -191,6 +262,12 @@ export function renderActionBar(
   ): void {
     const bar = root.createDiv({
       cls: 'los-unit-actionbar',
+    });
+
+    bar.createDiv({
+      cls: 'los-unit-action-note',
+      text:
+        'Progress saves locally until the stage is completed.',
     });
 
     button(
