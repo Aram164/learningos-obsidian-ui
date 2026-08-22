@@ -34,28 +34,28 @@ jobs:
       # The path must be a sibling of obsidian-ui inside the workspace, which is
       # why the UI is no longer checked out at the workspace root.
       #
-      # No `ref:` — core is checked out at its default branch, which is the
-      # branch this repository's default branch is released with.
-      #
-      # There was a pin here until 2026-08-21 (`ref: engineering-review-tier1`,
-      # and before that `feature/interaction-redesign-core-v1`), because the
-      # contract release genuinely lived on a branch on both sides while core's
-      # `main` still predated system/contracts/ entirely. Pinning was the honest
-      # form of "released together" while that was true. What made it worth
-      # removing was not that it stopped being honest — it was that both
-      # workflows had come to pin *each other* at the same branch name, so the
-      # pair verified against itself while both mains sat 60 and 68 commits
-      # behind and unexercised. That arrangement is correct exactly until
-      # someone renames or deletes a branch, at which point CI fails for a
-      # reason that has nothing to do with the contract.
-      #
-      # Both branches were fast-forwarded onto their mains, so the pairing this
-      # job verifies is now the pairing that ships. Do not reintroduce a `ref:`
-      # without also writing down what removes it again.
+      # Prefer a same-named Core branch when one exists, otherwise use main.
+      # A cross-repository change can therefore verify the pair under review
+      # without a permanent branch pin; ordinary UI-only branches still test
+      # against the released Core line.
+      - name: Resolve the matching producer branch
+        id: producer-ref
+        env:
+          REQUESTED_REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          if git ls-remote --exit-code --heads \
+            https://github.com/Aram164/LearningOS.git \
+            "refs/heads/$REQUESTED_REF" >/dev/null 2>&1; then
+            echo "ref=$REQUESTED_REF" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=main" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Check out the producer of the manifest contract
         uses: actions/checkout@v4
         with:
           repository: Aram164/LearningOS
+          ref: ${{ steps.producer-ref.outputs.ref }}
           path: repository
 
       - uses: actions/setup-node@v4
@@ -63,7 +63,7 @@ jobs:
           node-version: 22
 
       - name: Install pinned development dependencies
-        run: npm install --ignore-scripts
+        run: npm ci --ignore-scripts
 
       # CI is set, so check-contract.mjs now refuses to pass on an unverified
       # mirror instead of skipping it.
