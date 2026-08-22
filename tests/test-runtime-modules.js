@@ -50,6 +50,7 @@ const {
   ResourceOpener,
   visualStudioCodeUrl,
 } = loadWithHost('src/infrastructure/resource-opener.ts');
+const { jobPlanStageDrafts } = loadWithHost('src/features/job/editor-modals.ts');
 
 let failures = 0;
 let checks = 0;
@@ -88,6 +89,21 @@ function routerPlugin(settings = {}) {
 
 (async () => {
   console.log('\nDirect TypeScript module tests');
+
+  await test('Job plan creation sends authored choices and leaves defaults to Core', async () => {
+    assert.deepEqual(
+      jobPlanStageDrafts(
+        'Trace a plan | Explain the IR | Rebuild it | https://example.test/ir | Read only',
+      ),
+      [{
+        title: 'Trace a plan',
+        objective: 'Explain the IR',
+        done_when: ['Rebuild it'],
+        resource_link: 'https://example.test/ir',
+        read_only_anchor: 'Read only',
+      }],
+    );
+  });
 
   await test('ManifestStore loads a contract-valid v5 fixture', async () => {
     const store = new ManifestStore(manifestApp());

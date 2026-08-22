@@ -51,6 +51,21 @@ function labelledSelect<T extends string>(
   return select;
 }
 
+/** Authored choices only; Core owns every canonical plan-stage default. */
+export function jobPlanStageDrafts(value: string): Record<string, unknown>[] {
+  return value.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => {
+    const [title = '', objective = '', proof = '', link = '', anchor = '']
+      = line.split('|').map((part) => part.trim());
+    return {
+      title,
+      objective,
+      done_when: proof ? [proof] : [],
+      resource_link: link,
+      read_only_anchor: anchor,
+    };
+  });
+}
+
 abstract class JobEditorModal extends Modal {
   private restoreAccessibility: (() => void) | null = null;
 
@@ -174,7 +189,7 @@ export class JobPlanModal extends JobEditorModal {
     this.actions(root, plan ? 'Save update' : 'Save plan', async () => {
       const planTitle = title.value.trim();
       if (!planTitle) throw new Error('Give the plan a name first.');
-      const rows = stages?.value.split('\n').map((line) => line.trim()).filter(Boolean) || [];
+      const rows = stages ? jobPlanStageDrafts(stages.value) : [];
       if (!plan && !rows.length) throw new Error('Add at least one stage.');
       await this.options.submit({
         ...(plan ? { id: plan.id } : {}),
@@ -216,37 +231,7 @@ export class JobPlanModal extends JobEditorModal {
             component: [...stage.jobContext.component],
             verified_against: stage.jobContext.verifiedAgainst,
           },
-        })) : rows.map((line, index) => {
-          const [stageTitle = '', objective = '', proof = '', link = '', anchor = '']
-            = line.split('|').map((part) => part.trim());
-          const linkedResource = link
-            ? {
-              kind: 'read',
-              label: `Learning material for ${stageTitle || `stage ${index + 1}`}`,
-              ...(link.startsWith('http') ? { url: link } : { vault_path: link }),
-              scope_triage: 'required-now',
-            }
-            : null;
-          return {
-            id: `stage-${planTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${index + 1}`,
-            number: index + 1,
-            title: stageTitle,
-            status: 'pending',
-            objective: objective || `Build working fluency in ${stageTitle}.`,
-            done_when: [proof || `Explain and apply ${stageTitle} without notes.`],
-            estimate_minutes: 90,
-            exam_critical: false,
-            concepts: [],
-            scope_triage: 'required-now',
-            resources: linkedResource ? [linkedResource] : [],
-            attachments: [],
-            source_feedback: [],
-            job_context: {
-              mental_models: [], read_only_anchor: anchor,
-              component: [], verified_against: '',
-            },
-          };
-        }),
+        })) : rows,
       }, plan?.revision);
     });
     title.focus();
