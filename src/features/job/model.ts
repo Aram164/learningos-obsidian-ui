@@ -2,7 +2,6 @@ import type { GatewayResultV1 } from '../../contracts/gateway-v1';
 import type { ProjectionRecord } from '../../contracts/manifest';
 import {
   JOB_DASHBOARD_CONTRACT,
-  PLAN_TEMPLATE_CONTRACT,
   type JobAnchorFreshness,
   type JobDashboard,
   type JobHorizon,
@@ -13,7 +12,6 @@ import {
   type JobPaper,
   type JobShelfSource,
   type JobTask,
-  type PlanTemplate,
 } from '../../contracts/job-dashboard';
 import {
   asFiniteNumber,
@@ -41,8 +39,6 @@ export type {
   JobTask,
   JobWorkspace,
   JobWorkspaceScope,
-  PlanProfile,
-  PlanTemplate,
 } from '../../contracts/job-dashboard';
 
 function horizon(value: unknown): JobHorizon {
@@ -226,35 +222,6 @@ function shelfSource(value: unknown): JobShelfSource | null {
     authors: asTrimmedStrings(row.authors),
     horizon: horizon(row.horizon),
     why: asTrimmedString(row.why),
-  };
-}
-
-/**
- * Narrow the `plan.template` answer at the same boundary every other producer
- * result crosses. A refusal, a wrong contract, or a record that does not carry
- * the template version is not a template — the caller is told so rather than
- * being handed a half-read object it would treat as authoritative.
- */
-export function asPlanTemplate(result: GatewayResultV1): PlanTemplate {
-  if (result.ok !== true || result.contract !== PLAN_TEMPLATE_CONTRACT) {
-    throw new Error('LearningOS did not answer the plan-template contract.');
-  }
-  const profile = result.profile === 'curriculum' || result.profile === 'job'
-    ? result.profile
-    : null;
-  const version = asFiniteNumber(result.plan_template_version);
-  const plan = asRecordOrEmpty(result.plan);
-  if (!profile || version === null || version < 1) {
-    throw new Error('The plan template answer named no profile or template version.');
-  }
-  return {
-    profile,
-    planTemplateVersion: version,
-    schema: asTrimmedString(result.schema),
-    title: asTrimmedString(plan.title),
-    cadence: asTrimmedString(plan.cadence),
-    outcome: asTrimmedString(plan.outcome),
-    horizon: horizon(plan.horizon),
   };
 }
 

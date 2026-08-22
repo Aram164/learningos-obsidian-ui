@@ -1,7 +1,7 @@
 import { Modal, type App } from 'obsidian';
 import { makeModalAccessible } from '../../accessibility/modal';
 import { button } from '../../components';
-import type { PlanTemplate } from '../../contracts/job-dashboard';
+import type { PlanTemplate } from '../../contracts/plan-template';
 import { errorMessage } from '../../projection/readers';
 import type {
   JobHorizon,

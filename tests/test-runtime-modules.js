@@ -13,7 +13,8 @@ const { ManifestStore } = load('src/manifest-store.ts');
 const { GatewayClient } = load('src/gateway-client.ts');
 const { isProjectionConflict, GatewayError } = load('src/contracts/gateway-v1.ts');
 const { ApplicationRouter } = load('src/app/router.ts');
-const { asJobDashboard, asPlanTemplate } = load('src/features/job/model.ts');
+const { asJobDashboard } = load('src/features/job/model.ts');
+const { asPlanTemplate } = load('src/features/plan-template.ts');
 const { enableButtonGroupKeyboardNavigation } = load('src/accessibility/button-group.ts');
 const constants = load('src/constants.ts');
 
@@ -539,6 +540,35 @@ function routerPlugin(settings = {}) {
       'plan-template', 'curriculum', '--title', 'Lecture 01', '--json',
       '--unit-id', 'unit-demo-l01', '--module-id', 'module-demo',
     ]);
+  });
+
+  await test('a reviewed study map is applied by path through one declared capability', async () => {
+    const calls = [];
+    const gateway = new GatewayClient({
+      runLos: (args, callback, stdin) => {
+        calls.push({ args, envelope: JSON.parse(stdin) });
+        callback(null, '{"ok":true}', '');
+      },
+      store: { snapshotId: 'snapshot-test' },
+    });
+
+    await gateway.importUnitMap('unit-amls-l01', '~/audited/study-map.yaml');
+    await gateway.importUnitMap('unit-amls-l01', '~/audited/study-map.yaml', true);
+
+    assert.deepEqual(calls.map((c) => c.envelope.capability),
+      ['unit.map.import', 'unit.map.import']);
+    for (const call of calls) {
+      assert.equal(call.args[0], 'capability', 'the same write shape as every other mutation');
+      assert.equal(call.envelope.expected_snapshot, 'snapshot-test');
+      // The interface hands over a path, never the file's content: Core reads
+      // and refuses the map whole, so the audit gate cannot be half-applied.
+      assert.deepEqual(Object.keys(call.envelope.payload).sort().filter((k) => k !== 'replace'),
+        ['file', 'unit_id']);
+      assert.equal(call.envelope.payload.file, '~/audited/study-map.yaml');
+    }
+    assert.ok(!('replace' in calls[0].envelope.payload),
+      'a first import must not silently claim permission to overwrite');
+    assert.equal(calls[1].envelope.payload.replace, true);
   });
 
   await test('a half-read plan-template answer is refused rather than trusted', async () => {

@@ -20,6 +20,8 @@ import {
 } from './model';
 import { renderMaterialOverview } from './materials';
 import { renderLearningRouteRail } from '../learning-route';
+import { UnitMapImportModal } from './map-import';
+import { asPlanTemplate } from '../plan-template';
 
 export function render(
   view: UnitView,
@@ -176,6 +178,17 @@ export function render(
         ),
       );
 
+      /* The other half of "the core imports it only after review": the place
+       * to apply a map that has already been through the audit. Authoring
+       * happens elsewhere; this is the gate, and it refuses anything that is
+       * not on the current creation template. */
+      openMapImport(
+        view,
+        missing,
+        unit,
+        false,
+      );
+
       view.renderArtifacts(
         root,
         unit,
@@ -284,11 +297,85 @@ export function render(
       'los-unit-extras',
     );
 
+    const provenance = more.createDiv({
+      cls: 'los-map-provenance',
+    });
+
+    /* A map that predates the creation template is labelled rather than shown
+     * as though it conformed — the same distinction the Job plan cards make,
+     * because it is the same field and the same claim. */
+    provenance.createSpan({
+      cls: 'los-micro',
+      text:
+        studyMap.planTemplateVersion === null
+          ? 'This study map predates plan template v1. It stays readable; a replacement is imported from the current template.'
+          : `Study map on plan template v${studyMap.planTemplateVersion}.`,
+    });
+
+    openMapImport(
+      view,
+      provenance,
+      unit,
+      true,
+    );
+
     view.renderArtifacts(
       more,
       unit,
     );
   }
+
+/**
+ * The one place the interface applies a reviewed study map.
+ *
+ * It carries the file's path to `unit.map.import` and nothing else: Core reads
+ * the file, checks it against the creation template and the study-map schema,
+ * and refuses it whole. The SOP's coverage audit is unchanged and still
+ * happens before this point.
+ */
+function openMapImport(
+  view: UnitView,
+  parent: HTMLElement,
+  unit: UnitRecordView,
+  replacing: boolean,
+): void {
+  const actions = parent.createDiv({
+    cls: 'los-actions',
+  });
+
+  button(
+    actions,
+    replacing
+      ? 'Replace with reviewed map'
+      : 'Import reviewed map',
+    () => new UnitMapImportModal(
+      view.app,
+      {
+        unitId: unit.id,
+        unitTitle: unit.title,
+        replacing,
+        template: async () => asPlanTemplate(
+          await view.plugin.gateway.planTemplate(
+            'curriculum',
+            unit.title,
+            {
+              unitId: unit.id,
+              moduleId: unit.moduleId,
+            },
+          ),
+        ),
+        submit: (file, replace) => view.plugin.mutate(
+          () => view.plugin.gateway.importUnitMap(
+            unit.id,
+            file,
+            replace,
+          ),
+        ),
+      },
+    ).open(),
+    replacing ? 'quiet' : 'cta',
+  );
+}
 
 export function renderRail(
   view: UnitView,

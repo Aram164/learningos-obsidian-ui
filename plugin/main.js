@@ -35,7 +35,7 @@ __export(main_exports, {
   default: () => main_default
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian23 = require("obsidian");
+var import_obsidian24 = require("obsidian");
 
 // src/contracts/manifest.ts
 var MANIFEST_CONTRACT_VERSION = 5;
@@ -1337,8 +1337,8 @@ var HORIZON_LABEL = {
   next: "Use next",
   later: "Keep for later"
 };
-function entriesFor(horizon2, host, dashboard) {
-  const tracks = dashboard.learning_tracks.filter((item) => item.horizon === horizon2).map((track2) => ({
+function entriesFor(horizon3, host, dashboard) {
+  const tracks = dashboard.learning_tracks.filter((item) => item.horizon === horizon3).map((track2) => ({
     kicker: "Track",
     title: track2.title,
     sub: track2.cadence,
@@ -1352,18 +1352,18 @@ function entriesFor(horizon2, host, dashboard) {
       host.openJobPlan ? () => host.openJobPlan?.(track2.id) : null
     ]
   }));
-  const papers = dashboard.papers.filter((item) => item.horizon === horizon2).map((paper2) => ({
+  const papers = dashboard.papers.filter((item) => item.horizon === horizon3).map((paper2) => ({
     kicker: "Paper",
     title: paper2.title,
     sub: paper2.authors.join(", "),
     note: (() => {
       const meta = [paper2.year, paper2.pages ? `${paper2.pages} pages` : ""].filter(Boolean).join(" \xB7 ");
-      return meta ? [meta, horizon2] : null;
+      return meta ? [meta, horizon3] : null;
     })(),
     body: paper2.angle,
     action: paper2.available ? ["Open PDF", () => host.openJobPath(paper2.path)] : ["PDF unavailable", null]
   }));
-  const books = dashboard.canonical_shelf.filter((item) => item.horizon === horizon2).map((source) => ({
+  const books = dashboard.canonical_shelf.filter((item) => item.horizon === horizon3).map((source) => ({
     kicker: "Book",
     title: source.title,
     sub: source.authors.join(", "),
@@ -1375,12 +1375,12 @@ function entriesFor(horizon2, host, dashboard) {
 }
 function renderLibrary(root, host, dashboard) {
   const library = section(root, "Library", "Ordered by when you need it.");
-  for (const horizon2 of HORIZONS) {
-    const entries = entriesFor(horizon2, host, dashboard);
+  for (const horizon3 of HORIZONS) {
+    const entries = entriesFor(horizon3, host, dashboard);
     if (!entries.length) continue;
     const group = library.createDiv({ cls: "los-job-horizon" });
-    const head = cardTop(group, HORIZON_LABEL[horizon2]);
-    badge(head, String(entries.length), horizon2);
+    const head = cardTop(group, HORIZON_LABEL[horizon3]);
+    badge(head, String(entries.length), horizon3);
     for (const entry of entries) {
       const { card, top } = materialCard(group, entry.kicker, entry.title, entry.sub);
       if (entry.note) badge(top, entry.note[0], entry.note[1]);
@@ -2070,12 +2070,12 @@ function renderTasks(root, host, dashboard) {
     empty(wrap, "No Job tasks yet", "Add the first concrete action for this workspace.");
     return;
   }
-  for (const [horizon2, label] of HORIZONS2) {
-    const tasks = dashboard.tasks.filter((task2) => task2.horizon === horizon2);
+  for (const [horizon3, label] of HORIZONS2) {
+    const tasks = dashboard.tasks.filter((task2) => task2.horizon === horizon3);
     if (!tasks.length) continue;
     const group = wrap.createDiv({ cls: "los-job-task-group" });
     const head = cardTop(group, label);
-    badge(head, String(tasks.length), horizon2);
+    badge(head, String(tasks.length), horizon3);
     for (const task2 of tasks) taskRow(group, host, task2);
   }
 }
@@ -2102,6 +2102,34 @@ function renderJobDashboard(root, host, dashboard, active, choose) {
   if (host.editNote) button(actions, "New note", () => host.editNote?.(), "cta");
   filterTabs(root, "Job workspace sections", TABS, active, choose);
   (DESTINATIONS[active] || renderNow)(root, host, dashboard);
+}
+
+// src/contracts/plan-template.ts
+var PLAN_TEMPLATE_CONTRACT = "plan-template-v1";
+
+// src/features/plan-template.ts
+function horizon(value) {
+  return value === "now" || value === "next" ? value : "later";
+}
+function asPlanTemplate(result) {
+  if (result.ok !== true || result.contract !== PLAN_TEMPLATE_CONTRACT) {
+    throw new Error("LearningOS did not answer the plan-template contract.");
+  }
+  const profile = result.profile === "curriculum" || result.profile === "job" ? result.profile : null;
+  const version = asFiniteNumber(result.plan_template_version);
+  const plan = asRecordOrEmpty(result.plan);
+  if (!profile || version === null || version < 1) {
+    throw new Error("The plan template answer named no profile or template version.");
+  }
+  return {
+    profile,
+    planTemplateVersion: version,
+    schema: asTrimmedString(result.schema),
+    title: asTrimmedString(plan.title),
+    cadence: asTrimmedString(plan.cadence),
+    outcome: asTrimmedString(plan.outcome),
+    horizon: horizon(plan.horizon)
+  };
 }
 
 // src/features/job/session-modal.ts
@@ -2256,7 +2284,7 @@ var JobTaskModal = class extends JobEditorModal {
     );
     const title = labelledInput(root, "Task", task2?.title || "");
     const details = labelledTextarea(root, "Details", task2?.details || "", 5);
-    const horizon2 = labelledSelect(root, "Horizon", task2?.horizon || "now", [
+    const horizon3 = labelledSelect(root, "Horizon", task2?.horizon || "now", [
       ["now", "Today / now"],
       ["next", "Next"],
       ["later", "Later"]
@@ -2272,7 +2300,7 @@ var JobTaskModal = class extends JobEditorModal {
         ...task2 ? { id: task2.id } : {},
         title: value,
         details: details.value.trim(),
-        horizon: horizon2.value,
+        horizon: horizon3.value,
         status: task2?.status || "open",
         track_id: track2.value
       }, task2?.revision);
@@ -2297,14 +2325,14 @@ var JobPlanModal = class extends JobEditorModal {
     });
     standard?.setText("Reading the plan template from LearningOS\u2026");
     const title = labelledInput(root, "Plan name", plan?.title || "");
-    const horizon2 = labelledSelect(root, "Horizon", plan?.horizon || "now", [
+    const horizon3 = labelledSelect(root, "Horizon", plan?.horizon || "now", [
       ["now", "Use now"],
       ["next", "Use next"],
       ["later", "Keep for later"]
     ]);
     const cadence = labelledInput(root, "Cadence", plan?.cadence || "");
     const outcome = labelledTextarea(root, "Outcome", plan?.outcome || "", 4);
-    if (standard) this.offerTemplate(standard, { cadence, horizon: horizon2 });
+    if (standard) this.offerTemplate(standard, { cadence, horizon: horizon3 });
     const stages = plan ? null : labelledTextarea(
       root,
       "Stages \u2014 one per line: title | objective | done when | resource link | read-only anchor",
@@ -2326,7 +2354,7 @@ var JobPlanModal = class extends JobEditorModal {
       await this.options.submit({
         ...plan ? { id: plan.id } : {},
         title: planTitle,
-        horizon: horizon2.value,
+        horizon: horizon3.value,
         cadence: cadence.value.trim() || filled?.cadence || "",
         outcome: outcome.value.trim() || filled?.outcome || "",
         status: plan?.status || "ready",
@@ -2428,10 +2456,9 @@ var JobNoteModal = class extends JobEditorModal {
 
 // src/contracts/job-dashboard.ts
 var JOB_DASHBOARD_CONTRACT = "job-dashboard-v2";
-var PLAN_TEMPLATE_CONTRACT = "plan-template-v1";
 
 // src/features/job/model.ts
-function horizon(value) {
+function horizon2(value) {
   return value === "now" || value === "next" ? value : "later";
 }
 function anchorFreshness(value) {
@@ -2477,7 +2504,7 @@ function track(value) {
     path,
     status: asTrimmedString(row.status) || "ready",
     cadence: asTrimmedString(row.cadence),
-    horizon: horizon(row.horizon),
+    horizon: horizon2(row.horizon),
     outcome: asTrimmedString(row.outcome),
     stages: asRecords(row.stages).map((stage) => {
       const context = asRecordOrEmpty(stage.job_context);
@@ -2544,7 +2571,7 @@ function task(value) {
     id,
     title,
     details: asTrimmedString(row.details),
-    horizon: horizon(row.horizon),
+    horizon: horizon2(row.horizon),
     status: row.status === "done" ? "done" : "open",
     trackId: asTrimmedString(row.track_id),
     createdAt: asTrimmedString(row.created_at),
@@ -2576,7 +2603,7 @@ function paper(value) {
     authors: asTrimmedStrings(row.authors),
     year: row.year == null ? "" : String(row.year),
     pages: asNumber(row.pages),
-    horizon: horizon(row.horizon),
+    horizon: horizon2(row.horizon),
     angle: asTrimmedString(row.angle),
     available: row.available === true
   };
@@ -2591,28 +2618,8 @@ function shelfSource(value) {
     title,
     type: asTrimmedString(row.type) || "source",
     authors: asTrimmedStrings(row.authors),
-    horizon: horizon(row.horizon),
+    horizon: horizon2(row.horizon),
     why: asTrimmedString(row.why)
-  };
-}
-function asPlanTemplate(result) {
-  if (result.ok !== true || result.contract !== PLAN_TEMPLATE_CONTRACT) {
-    throw new Error("LearningOS did not answer the plan-template contract.");
-  }
-  const profile = result.profile === "curriculum" || result.profile === "job" ? result.profile : null;
-  const version = asFiniteNumber(result.plan_template_version);
-  const plan = asRecordOrEmpty(result.plan);
-  if (!profile || version === null || version < 1) {
-    throw new Error("The plan template answer named no profile or template version.");
-  }
-  return {
-    profile,
-    planTemplateVersion: version,
-    schema: asTrimmedString(result.schema),
-    title: asTrimmedString(plan.title),
-    cadence: asTrimmedString(plan.cadence),
-    outcome: asTrimmedString(plan.outcome),
-    horizon: horizon(plan.horizon)
   };
 }
 function asJobDashboard(result) {
@@ -9119,7 +9126,10 @@ function readStudyMap(record) {
       record.current_stage
     ),
     stages,
-    detours: asRecords(record.detours)
+    detours: asRecords(record.detours),
+    planTemplateVersion: asFiniteNumber(
+      record.plan_template_version
+    )
   };
 }
 function readArtifacts(value) {
@@ -9738,6 +9748,88 @@ function renderMaterialOverview(view, root, unit, options) {
   }
 }
 
+// src/features/unit/map-import.ts
+var import_obsidian18 = require("obsidian");
+var UnitMapImportModal = class extends import_obsidian18.Modal {
+  constructor(app, options) {
+    super(app);
+    this.options = options;
+  }
+  restoreAccessibility = null;
+  onOpen() {
+    const { replacing, unitTitle } = this.options;
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-job-editor-modal");
+    const heading = root.createEl("h2", {
+      text: replacing ? "Replace study map" : "Import study map"
+    });
+    heading.id = "los-map-import-heading";
+    root.createEl("p", {
+      cls: "los-muted",
+      text: replacing ? `${unitTitle} already has a current map. Importing archives the old one in Git and makes this the current map.` : `Apply a reviewed study map to ${unitTitle}. The coverage audit stays where the SOP puts it; this applies its result.`
+    });
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--job-editor",
+      labelledBy: heading.id
+    });
+    const standard = root.createDiv({
+      cls: "los-muted los-plan-standard",
+      attr: { "aria-live": "polite" }
+    });
+    standard.setText("Reading the plan template from LearningOS\u2026");
+    const field = root.createDiv({ cls: "los-job-field" });
+    field.createEl("label", { text: "Reviewed map file" });
+    const file = field.createEl("input", { attr: { type: "text" } });
+    file.placeholder = "path to the audited study-map YAML";
+    const status = root.createDiv({ cls: "los-draft-status", attr: { "aria-live": "polite" } });
+    const actions = root.createDiv({ cls: "los-actions los-job-editor-actions" });
+    const submit = button(actions, replacing ? "Replace map" : "Import map", async () => {
+      const path = file.value.trim();
+      if (!path) {
+        status.setText("Name the reviewed file first.");
+        return;
+      }
+      submit.disabled = true;
+      status.setText("Importing\u2026");
+      try {
+        await this.options.submit(path, replacing);
+        this.close();
+      } catch (error) {
+        submit.disabled = false;
+        status.setText(errorMessage(error));
+      }
+    }, "cta");
+    button(actions, "Cancel", () => this.close(), "quiet");
+    void this.describeStandard(standard);
+    file.focus();
+  }
+  async describeStandard(standard) {
+    if (!this.options.template) {
+      standard.setText(
+        "This host cannot read the plan template; LearningOS still enforces it on import."
+      );
+      return;
+    }
+    try {
+      const template = await this.options.template();
+      standard.setText(
+        `The file must declare plan_template_version ${template.planTemplateVersion}, carry stages numbered from one, and satisfy ${template.schema}. LearningOS refuses the whole import otherwise.`
+      );
+    } catch (error) {
+      standard.setText(
+        `Could not read the plan template: ${errorMessage(error)}. LearningOS still enforces it on import.`
+      );
+    }
+  }
+  onClose() {
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+  }
+};
+
 // src/features/unit/shell.ts
 function render(view) {
   const root = view.contentEl;
@@ -9843,6 +9935,12 @@ function render(view) {
         }
       )
     );
+    openMapImport(
+      view,
+      missing,
+      unit,
+      false
+    );
     view.renderArtifacts(
       root,
       unit
@@ -9913,9 +10011,57 @@ function render(view) {
     "Unit artifacts and evidence",
     "los-unit-extras"
   );
+  const provenance = more.createDiv({
+    cls: "los-map-provenance"
+  });
+  provenance.createSpan({
+    cls: "los-micro",
+    text: studyMap.planTemplateVersion === null ? "This study map predates plan template v1. It stays readable; a replacement is imported from the current template." : `Study map on plan template v${studyMap.planTemplateVersion}.`
+  });
+  openMapImport(
+    view,
+    provenance,
+    unit,
+    true
+  );
   view.renderArtifacts(
     more,
     unit
+  );
+}
+function openMapImport(view, parent, unit, replacing) {
+  const actions = parent.createDiv({
+    cls: "los-actions"
+  });
+  button(
+    actions,
+    replacing ? "Replace with reviewed map" : "Import reviewed map",
+    () => new UnitMapImportModal(
+      view.app,
+      {
+        unitId: unit.id,
+        unitTitle: unit.title,
+        replacing,
+        template: async () => asPlanTemplate(
+          await view.plugin.gateway.planTemplate(
+            "curriculum",
+            unit.title,
+            {
+              unitId: unit.id,
+              moduleId: unit.moduleId
+            }
+          )
+        ),
+        submit: (file, replace) => view.plugin.mutate(
+          () => view.plugin.gateway.importUnitMap(
+            unit.id,
+            file,
+            replace
+          )
+        )
+      }
+    ).open(),
+    replacing ? "quiet" : "cta"
   );
 }
 function renderRail(view, layout, unit, studyMap, current) {
@@ -9970,8 +10116,8 @@ function renderRail(view, layout, unit, studyMap, current) {
 }
 
 // src/views/unit-view.ts
-var import_obsidian18 = require("obsidian");
-var UnitView = class extends import_obsidian18.ItemView {
+var import_obsidian19 = require("obsidian");
+var UnitView = class extends import_obsidian19.ItemView {
   plugin;
   unitId;
   stageId;
@@ -10046,7 +10192,7 @@ var UnitView = class extends import_obsidian18.ItemView {
    */
   async mutate(action, onConfirmed = null) {
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian18.Notice(
+      new import_obsidian19.Notice(
         "A LearningOS write is already running."
       );
       return;
@@ -10058,7 +10204,7 @@ var UnitView = class extends import_obsidian18.ItemView {
       onConfirmed?.();
       this.render();
     } catch (error) {
-      new import_obsidian18.Notice(
+      new import_obsidian19.Notice(
         errorMessage3(error)
       );
     }
@@ -10066,7 +10212,7 @@ var UnitView = class extends import_obsidian18.ItemView {
   async selectStage(stageId) {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian18.Notice(
+      new import_obsidian19.Notice(
         "This unit is no longer available."
       );
       return;
@@ -10147,11 +10293,11 @@ function detachApplication(plugin) {
 }
 
 // src/app/navigator.ts
-var import_obsidian20 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 
 // src/app/global-search.ts
-var import_obsidian19 = require("obsidian");
-var GlobalSearchModal = class extends import_obsidian19.Modal {
+var import_obsidian20 = require("obsidian");
+var GlobalSearchModal = class extends import_obsidian20.Modal {
   plugin;
   query;
   filter;
@@ -10523,7 +10669,7 @@ var AppNavigator = class {
    */
   openFullTextSearch(query = "") {
     const ok = this.app.commands?.executeCommandById?.("omnisearch:show-modal");
-    if (!ok) new import_obsidian20.Notice("Omnisearch is unavailable; structural Library search still works.");
+    if (!ok) new import_obsidian21.Notice("Omnisearch is unavailable; structural Library search still works.");
     else if (query.trim()) {
       let attempts = 0;
       const transfer = () => {
@@ -10871,8 +11017,8 @@ var ApplicationRouter = class {
 };
 
 // src/app/unit-note-modal.ts
-var import_obsidian21 = require("obsidian");
-var UnitNoteModal = class extends import_obsidian21.Modal {
+var import_obsidian22 = require("obsidian");
+var UnitNoteModal = class extends import_obsidian22.Modal {
   plugin;
   unit;
   studyMap;
@@ -10991,22 +11137,22 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
   async save() {
     const text = String(this.editor?.value || "");
     if (!text.trim()) {
-      new import_obsidian21.Notice("Write a note before saving.");
+      new import_obsidian22.Notice("Write a note before saving.");
       this.editor?.focus();
       return;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian21.Notice("A LearningOS write is already running.");
+      new import_obsidian22.Notice("A LearningOS write is already running.");
       return;
     }
     const unitId = this.unit.id;
     if (!unitId) {
-      new import_obsidian21.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
+      new import_obsidian22.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
       return;
     }
     const filePaths = this.files.map((file) => localFilePath(file)).filter((value) => Boolean(value));
     if (filePaths.length !== this.files.length) {
-      new import_obsidian21.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
+      new import_obsidian22.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
       return;
     }
     try {
@@ -11017,10 +11163,10 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
         filePaths
       }));
       this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds);
-      new import_obsidian21.Notice("Learning-session note saved.");
+      new import_obsidian22.Notice("Learning-session note saved.");
       this.close();
     } catch (error) {
-      new import_obsidian21.Notice(errorMessage(error));
+      new import_obsidian22.Notice(errorMessage(error));
     }
   }
   onClose() {
@@ -11371,6 +11517,21 @@ var GatewayClient = class {
     return result;
   }
   /**
+   * Apply a study map that has already been through the SOP's coverage audit.
+   * The interface carries the reviewed file's path, never its content: Core
+   * reads it, checks it against the creation template and the study-map
+   * schema, and refuses it as a whole. Gate 1 stays where the SOP put it —
+   * this is where a reviewed result is applied, not where the review is
+   * skipped.
+   */
+  importUnitMap(unitId, file, replace = false) {
+    return this.capability("unit.map.import", {
+      unit_id: unitId,
+      file,
+      ...replace ? { replace: true } : {}
+    });
+  }
+  /**
    * The declared read-only `plan.template` query. Core generates and validates
    * the starting record; the interface never authors defaults of its own, so
    * "the standard" and "what the Create dialog offers" cannot drift apart.
@@ -11555,7 +11716,7 @@ var LosRuntime = class {
 var import_electron2 = require("electron");
 var fs3 = __toESM(require("node:fs"));
 var nodePath3 = __toESM(require("node:path"));
-var import_obsidian22 = require("obsidian");
+var import_obsidian23 = require("obsidian");
 var CODE_EXTENSIONS = /* @__PURE__ */ new Set([
   ".c",
   ".cc",
@@ -11654,14 +11815,14 @@ var ResourceOpener = class {
   }
   refuseQuarantined(path) {
     if (!this.isQuarantinedPath(path)) return false;
-    new import_obsidian22.Notice("Job/ is quarantined \u2014 LearningOS never opens or displays it.");
+    new import_obsidian23.Notice("Job/ is quarantined \u2014 LearningOS never opens or displays it.");
     return true;
   }
   async openVaultPath(path) {
     if (this.refuseQuarantined(path)) return void 0;
     const target = normalizedVaultPath(path);
     if (!target || target.startsWith("/") || target.split("/").includes("..")) {
-      new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian23.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return void 0;
     }
     const candidate = nodePath3.resolve(this.app.vault.adapter.getBasePath(), target);
@@ -11669,13 +11830,13 @@ var ResourceOpener = class {
       try {
         if (this.refuseQuarantined(fs3.realpathSync(candidate))) return void 0;
       } catch (_) {
-        new import_obsidian22.Notice(`File unavailable: ${target}`);
+        new import_obsidian23.Notice(`File unavailable: ${target}`);
         return void 0;
       }
     }
     const file = this.app.vault.getAbstractFileByPath(target);
     if (!file) {
-      new import_obsidian22.Notice(`File unavailable: ${target}`);
+      new import_obsidian23.Notice(`File unavailable: ${target}`);
       return void 0;
     }
     let existing = null;
@@ -11699,19 +11860,19 @@ var ResourceOpener = class {
   async openSystemPath(path, successMessage) {
     const error = await import_electron2.shell.openPath(path);
     if (error) {
-      new import_obsidian22.Notice(`Could not open file: ${error}`);
+      new import_obsidian23.Notice(`Could not open file: ${error}`);
       return false;
     }
-    new import_obsidian22.Notice(successMessage);
+    new import_obsidian23.Notice(successMessage);
     return true;
   }
   async openCodePath(path) {
     try {
       await import_electron2.shell.openExternal(visualStudioCodeUrl(path));
-      new import_obsidian22.Notice("Opened in Visual Studio Code.");
+      new import_obsidian23.Notice("Opened in Visual Studio Code.");
       return true;
     } catch (_) {
-      new import_obsidian22.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
+      new import_obsidian23.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
       return this.openSystemPath(path, "Opened in the system app.");
     }
   }
@@ -11720,11 +11881,11 @@ var ResourceOpener = class {
     try {
       realPath = fs3.realpathSync(path);
     } catch (_) {
-      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian23.Notice(`File unavailable: ${path || "unknown path"}`);
       return Promise.resolve(false);
     }
     if (this.isQuarantinedPath(realPath) && (!allowJob || this.isStratumPath(realPath))) {
-      new import_obsidian22.Notice(this.isStratumPath(realPath) ? "Stratum is strictly read-only and cannot be opened in an editor." : "Job/ is quarantined \u2014 LearningOS never opens or displays it.");
+      new import_obsidian23.Notice(this.isStratumPath(realPath) ? "Stratum is strictly read-only and cannot be opened in an editor." : "Job/ is quarantined \u2014 LearningOS never opens or displays it.");
       return Promise.resolve(false);
     }
     return this.isCodePath(realPath) ? this.openCodePath(realPath) : this.openSystemPath(realPath, systemMessage);
@@ -11732,14 +11893,14 @@ var ResourceOpener = class {
   async openExternalPath(path, successMessage = "Opened in the default app.") {
     if (this.refuseQuarantined(path)) return false;
     if (!path || !fs3.existsSync(path)) {
-      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian23.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     let realPath = "";
     try {
       realPath = fs3.realpathSync(path);
     } catch (_) {
-      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian23.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     if (this.refuseQuarantined(realPath)) return false;
@@ -11751,13 +11912,13 @@ var ResourceOpener = class {
    */
   async openJobPath(relativePath) {
     if (!this.jobAccessGranted) {
-      new import_obsidian22.Notice("Open the confidential Job workspace before opening Job files.");
+      new import_obsidian23.Notice("Open the confidential Job workspace before opening Job files.");
       return false;
     }
     const relative2 = String(relativePath || "").replace(/\\/g, "/").replace(/^\.\//, "");
     const top = relative2.split("/")[0] || "";
     if (!relative2 || relative2.startsWith("/") || relative2.split("/").includes("..") || !this.jobAllowedRoots.has(top)) {
-      new import_obsidian22.Notice("The Job dashboard refused a path outside its read-only allowlist.");
+      new import_obsidian23.Notice("The Job dashboard refused a path outside its read-only allowlist.");
       return false;
     }
     const vault = this.app.vault.adapter.getBasePath();
@@ -11765,7 +11926,7 @@ var ResourceOpener = class {
     const jobRoot = nodePath3.resolve(semesterRoot, "Job");
     const fullPath = nodePath3.resolve(jobRoot, relative2);
     if (!fs3.existsSync(nodePath3.join(jobRoot, "README.md")) || !fs3.existsSync(fullPath)) {
-      new import_obsidian22.Notice(`Job file unavailable: ${relative2 || "unknown path"}`);
+      new import_obsidian23.Notice(`Job file unavailable: ${relative2 || "unknown path"}`);
       return false;
     }
     let realJobRoot = "";
@@ -11774,13 +11935,13 @@ var ResourceOpener = class {
       realJobRoot = fs3.realpathSync(jobRoot);
       realFullPath = fs3.realpathSync(fullPath);
     } catch (_) {
-      new import_obsidian22.Notice(`Job file unavailable: ${relative2 || "unknown path"}`);
+      new import_obsidian23.Notice(`Job file unavailable: ${relative2 || "unknown path"}`);
       return false;
     }
     const escaped = nodePath3.relative(realJobRoot, realFullPath);
     const realTop = escaped.split(nodePath3.sep)[0] || "";
     if (!escaped || escaped.startsWith("..") || nodePath3.isAbsolute(escaped) || !this.jobAllowedRoots.has(realTop)) {
-      new import_obsidian22.Notice("The Job dashboard refused a symlink outside its read-only allowlist.");
+      new import_obsidian23.Notice("The Job dashboard refused a symlink outside its read-only allowlist.");
       return false;
     }
     return this.openPreferredLocalPath(
@@ -11792,19 +11953,19 @@ var ResourceOpener = class {
   /** Web references shown inside the ephemeral Job reader stay protocol-safe. */
   async openJobUrl(value) {
     if (!this.jobAccessGranted) {
-      new import_obsidian22.Notice("Open the confidential Job workspace before opening its links.");
+      new import_obsidian23.Notice("Open the confidential Job workspace before opening its links.");
       return false;
     }
     const url = safeWebUrl(value);
     if (!url) {
-      new import_obsidian22.Notice(`Refused an unsupported Job link: ${String(value || "").slice(0, 80)}`);
+      new import_obsidian23.Notice(`Refused an unsupported Job link: ${String(value || "").slice(0, 80)}`);
       return false;
     }
     try {
       await import_electron2.shell.openExternal(url.href);
       return true;
     } catch (_) {
-      new import_obsidian22.Notice("Could not open the Job link in your browser.");
+      new import_obsidian23.Notice("Could not open the Job link in your browser.");
       return false;
     }
   }
@@ -11814,13 +11975,13 @@ var ResourceOpener = class {
    */
   async openJobLearningPath(value) {
     if (!this.jobAccessGranted) {
-      new import_obsidian22.Notice("Open the confidential Job workspace before opening its learning material.");
+      new import_obsidian23.Notice("Open the confidential Job workspace before opening its learning material.");
       return false;
     }
     const portable = normalizedVaultPath(value);
     const prefix = "LearningOS/";
     if (!portable.startsWith(prefix) || portable.split("/").includes("..")) {
-      new import_obsidian22.Notice("The Job dashboard refused a learning path outside LearningOS.");
+      new import_obsidian23.Notice("The Job dashboard refused a learning path outside LearningOS.");
       return false;
     }
     const relative2 = portable.slice(prefix.length);
@@ -11829,7 +11990,7 @@ var ResourceOpener = class {
     const fullPath = nodePath3.resolve(learningRoot, relative2);
     const escaped = nodePath3.relative(learningRoot, fullPath);
     if (!relative2 || escaped.startsWith("..") || nodePath3.isAbsolute(escaped) || !fs3.existsSync(fullPath)) {
-      new import_obsidian22.Notice(`Learning material unavailable: ${portable || "unknown path"}`);
+      new import_obsidian23.Notice(`Learning material unavailable: ${portable || "unknown path"}`);
       return false;
     }
     return this.openPreferredLocalPath(fullPath, "Opened the LearningOS material.");
@@ -11841,7 +12002,7 @@ var ResourceOpener = class {
     const fullPath = nodePath3.resolve(learningRoot, path || "");
     const relative2 = nodePath3.relative(materialsRoot, fullPath);
     if (!path || relative2.startsWith("..") || nodePath3.isAbsolute(relative2)) {
-      new import_obsidian22.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
+      new import_obsidian23.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openExternalPath(fullPath, "Opened the local material in its default app.");
@@ -11854,11 +12015,11 @@ var ResourceOpener = class {
     const fullPath = nodePath3.resolve(base, path || "");
     const relative2 = nodePath3.relative(base, fullPath);
     if (!path || relative2.startsWith("..") || nodePath3.isAbsolute(relative2)) {
-      new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian23.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return false;
     }
     if (!fs3.existsSync(fullPath)) {
-      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian23.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     return this.openPreferredLocalPath(
@@ -11872,7 +12033,7 @@ var ResourceOpener = class {
     const vaultPath = typeof resource.vault_path === "string" ? resource.vault_path : "";
     if (vaultPath.trim()) {
       if (vaultPath.trim().toLowerCase().startsWith("material://")) {
-        new import_obsidian22.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
+        new import_obsidian23.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
         return false;
       }
       return ports.openVaultPath(vaultPath);
@@ -11880,11 +12041,11 @@ var ResourceOpener = class {
     if (resource.url) {
       const url = safeWebUrl(resource.url);
       if (!url) {
-        new import_obsidian22.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
+        new import_obsidian23.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
         return false;
       }
       return Promise.resolve(import_electron2.shell.openExternal(url.href)).catch(() => {
-        new import_obsidian22.Notice("Could not open the link in your browser.");
+        new import_obsidian23.Notice("Could not open the link in your browser.");
         return false;
       });
     }
@@ -11893,9 +12054,9 @@ var ResourceOpener = class {
   copyText(value) {
     try {
       void navigator.clipboard.writeText(value);
-      new import_obsidian22.Notice(`Copied ${value}`);
+      new import_obsidian23.Notice(`Copied ${value}`);
     } catch (_) {
-      new import_obsidian22.Notice(value);
+      new import_obsidian23.Notice(value);
     }
   }
 };
@@ -12225,7 +12386,7 @@ var ManifestStore = class {
 function errorMessage4(error) {
   return error instanceof Error ? error.message : String(error);
 }
-var LearningOSUI = class extends import_obsidian23.Plugin {
+var LearningOSUI = class extends import_obsidian24.Plugin {
   lastAiPrompt = "";
   async onload() {
     const loadedSettings = await this.loadData();
@@ -12397,7 +12558,7 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
    * capability contract, so nothing was written to repeat.
    */
   async rebuildAndRetry(action, reload) {
-    new import_obsidian23.Notice("Canonical files changed since this view loaded \u2014 rebuilding the projection, then retrying.");
+    new import_obsidian24.Notice("Canonical files changed since this view loaded \u2014 rebuilding the projection, then retrying.");
     await this.gateway.call(["generate"], { expectJson: false });
     await this.reloadStore();
     const result = await action();
@@ -12410,9 +12571,9 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
         await this.gateway.call(["validate"], { expectJson: false });
         await this.gateway.call(["generate"], { expectJson: false });
       });
-      new import_obsidian23.Notice("LearningOS projection rebuilt.");
+      new import_obsidian24.Notice("LearningOS projection rebuilt.");
     } catch (error) {
-      new import_obsidian23.Notice(errorMessage4(error));
+      new import_obsidian24.Notice(errorMessage4(error));
     }
   }
   async reviewSessionEnd() {
@@ -12421,7 +12582,7 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
       new SessionEndModal(this.app, this, review).open();
       return review;
     } catch (error) {
-      new import_obsidian23.Notice(errorMessage4(error));
+      new import_obsidian24.Notice(errorMessage4(error));
       return null;
     }
   }
@@ -12494,7 +12655,7 @@ The active file is supplementary context only. Use only action-specific Learning
     if (agent?.sendToChat) await agent.sendToChat(prompt);
     else {
       this.copyText(prompt);
-      new import_obsidian23.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
+      new import_obsidian24.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
     }
     return prompt;
   }

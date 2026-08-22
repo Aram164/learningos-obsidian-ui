@@ -3,6 +3,7 @@ import type { AppSurface } from '../../app/surface';
 import type { AppNavigator } from '../../app/navigator';
 import type { StageResourceView } from '../stage-resources';
 import {
+  asFiniteNumber,
   asRecords as projectedRecords,
   asString as projectedString,
   asStrings as projectedStrings,
@@ -87,6 +88,12 @@ export interface StudyMapView {
   readonly currentStageId: string | null;
   readonly stages: StageRecordView[];
   readonly detours: ProjectionRecord[];
+  /**
+   * The creation template this map was authored from, or `null` for one that
+   * predates plan-template v1. Null rather than 0: "no template" and
+   * "template zero" are different claims and the label depends on it.
+   */
+  readonly planTemplateVersion: number | null;
 }
 
 export interface StageAttachmentView {
@@ -478,6 +485,10 @@ export function readStudyMap(
     stages,
     detours:
       projectedRecords(record.detours),
+    planTemplateVersion:
+      asFiniteNumber(
+        record.plan_template_version,
+      ),
   };
 }
 

@@ -91,6 +91,11 @@ Master's and Job boundaries, Diagnostics and *Rebuild projection* live under
   the read-only `plan.template` query, so the interface never carries its own
   copy of the defaults; a plan authored before that template is badged
   `pre-template` rather than shown as if it conformed.
+- **Study maps**: the Unit surface applies a reviewed map through
+  `unit.map.import` — the dialog names the standard the importer will enforce
+  and carries a path, never file content, so the SOP's coverage audit stays a
+  human gate that happens first. A map that predates the creation template says
+  so under *Unit artifacts and evidence*, next to the action that replaces it.
 - **Review**: every decision queue in one destination — ready to shelve, inbox,
   units needing a map, the Garden.
 - **Diagnostics**: contract versions, projection freshness (`✓ current`,

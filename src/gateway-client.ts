@@ -1,4 +1,4 @@
-import type { PlanProfile } from './contracts/job-dashboard';
+import type { PlanProfile } from './contracts/plan-template';
 import type { JsonRecord, ProjectionRecord } from './contracts/manifest';
 import {
   GatewayError, exitCodeOf, structuredError,
@@ -297,6 +297,20 @@ export class GatewayClient {
       ? access.snapshot_id
       : null;
     return result;
+  }
+
+  /**
+   * Apply a study map that has already been through the SOP's coverage audit.
+   * The interface carries the reviewed file's path, never its content: Core
+   * reads it, checks it against the creation template and the study-map
+   * schema, and refuses it as a whole. Gate 1 stays where the SOP put it —
+   * this is where a reviewed result is applied, not where the review is
+   * skipped.
+   */
+  importUnitMap(unitId: string, file: string, replace = false) {
+    return this.capability('unit.map.import', {
+      unit_id: unitId, file, ...(replace ? { replace: true } : {}),
+    });
   }
 
   /**

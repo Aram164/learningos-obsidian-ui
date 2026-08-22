@@ -4,6 +4,7 @@ import { VIEW_BOUNDARY } from '../constants';
 import type { ProjectionRecord } from '../contracts/manifest';
 import { isProjectionConflict } from '../contracts/gateway-v1';
 import { renderJobDashboard } from '../features/job/shell';
+import { asPlanTemplate } from '../features/plan-template';
 import { JobSessionModal } from '../features/job/session-modal';
 import {
   JobNoteModal,
@@ -12,7 +13,6 @@ import {
 } from '../features/job/editor-modals';
 import {
   asJobDashboard,
-  asPlanTemplate,
   type JobDashboard,
   type JobLearningTrack,
   type JobNote,

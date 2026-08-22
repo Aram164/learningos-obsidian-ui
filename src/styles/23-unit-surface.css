@@ -370,3 +370,11 @@
   color: var(--los-ink-soft);
   font-size: 12px;
 }
+
+/* Provenance of the current study map, plus the one action that replaces it.
+   Quiet by design: it answers "which standard is this on?" without competing
+   with the learning route above it. */
+.los-map-provenance { display: flex; flex-direction: column; gap: var(--los-1); margin-bottom: var(--los-3); }
+.los-map-provenance .los-actions { margin: 0; }
+/* The line naming the creation template inside a plan dialog. */
+.los-plan-standard { margin-bottom: var(--los-2); }
