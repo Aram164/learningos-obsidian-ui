@@ -355,9 +355,15 @@ declare module 'node:fs' {
     path: string,
     encoding: 'utf8',
   ): string;
+
+  export function realpathSync(
+    path: string,
+  ): string;
 }
 
 declare module 'node:path' {
+  export const sep: string;
+
   export function join(
     ...paths: string[]
   ): string;

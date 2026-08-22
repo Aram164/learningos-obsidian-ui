@@ -26,6 +26,9 @@ const JOB_DASHBOARD_FIXTURE = {
     scope: 'job-dashboard', read_only: true, ephemeral: true,
     excluded_from_manifest: true, excluded_from_search: true, excluded_from_ai: true,
     writes_through_gateway: true,
+    stratum: {
+      mode: 'read-only', worktree_writes_allowed: false, git_metadata_writes_allowed: false,
+    },
     allowed_roots: ['legacy-plans', 'notes', 'papers', 'plans', 'workspace-job-deem'],
     snapshot_id: 'sha256:job-fixture-snapshot',
   },

@@ -1,4 +1,4 @@
-import { badge, button, empty, section } from '../../components';
+import { badge, button, cardTop, empty, section } from '../../components';
 import type { JobDashboardHost } from './host';
 import type { JobDashboard, JobHorizon, JobTask } from './model';
 
@@ -41,8 +41,7 @@ export function renderTasks(
     const tasks = dashboard.tasks.filter((task) => task.horizon === horizon);
     if (!tasks.length) continue;
     const group = wrap.createDiv({ cls: 'los-job-task-group' });
-    const head = group.createDiv({ cls: 'los-card-top' });
-    head.createEl('h3', { text: label });
+    const head = cardTop(group, label);
     badge(head, String(tasks.length), horizon);
     for (const task of tasks) taskRow(group, host, task);
   }

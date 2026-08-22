@@ -81,6 +81,12 @@ Master's and Job boundaries, Diagnostics and *Rebuild projection* live under
   menu. `Done when` criteria are interactive checkboxes whose ticks are
   UI-owned working state — the core still learns only "complete", from
   `stage-progress`.
+- **Job learning**: the confidential Job destination adapts its independent
+  plan records into the same presentation-only learning route, progress,
+  stage workspace, material catalogue, facts and card primitives as Unit.
+  This is deliberate reuse of the original learning experience, not a data
+  merge: Job records never enter the canonical manifest, Job writes still use
+  only the Job gateway, and Stratum remains an unopened, immutable reference.
 - **Review**: every decision queue in one destination — ready to shelve, inbox,
   units needing a map, the Garden.
 - **Diagnostics**: contract versions, projection freshness (`✓ current`,
@@ -105,7 +111,9 @@ Master's and Job boundaries, Diagnostics and *Rebuild projection* live under
   first-class navigation targets, not hidden vault furniture. Reopening a
   target reveals its existing tab instead of multiplying identical tabs.
 - **Boundaries**: Master's and Job display policy/action text only. No hidden
-  content is loaded to render them.
+  content is loaded to render them. Shared presentation components may render
+  explicitly supplied Job view models; they never acquire, index, persist, or
+  transmit Job content themselves.
 
 ## Components and tokens
 

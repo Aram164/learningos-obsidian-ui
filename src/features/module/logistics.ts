@@ -3,6 +3,7 @@ import {
   badge,
   disclosure,
   empty,
+  factList,
   section,
 } from '../../components';
 import {
@@ -62,10 +63,6 @@ export function renderLogistics(
     root: HTMLElement,
     module: ModuleRecordView,
   ): void {
-    const facts = root.createDiv({
-      cls: 'los-fact-list',
-    });
-
     const factRows: ReadonlyArray<
       readonly [string, string | null]
     > = [
@@ -84,28 +81,7 @@ export function renderLogistics(
       ],
     ];
 
-    for (const [label, value] of factRows) {
-      if (
-        value === null
-        || value === ''
-      ) {
-        continue;
-      }
-
-      const row = facts.createDiv({
-        cls: 'los-fact-row',
-      });
-
-      row.createSpan({
-        cls: 'los-fact-label',
-        text: label,
-      });
-
-      row.createSpan({
-        cls: 'los-fact-value',
-        text: value,
-      });
-    }
+    factList(root, factRows);
 
     if (module.examination.notes) {
       root.createEl('p', {

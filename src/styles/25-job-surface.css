@@ -79,19 +79,13 @@
   align-items: center;
 }
 .los-job-runway-copy { min-width: 0; }
+.los-job-runway-row > .los-stage-progress { grid-column: 1 / -1; }
 
 .los-job-plan-grid,
 .los-job-note-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--los-3); }
 .los-job-plan-card { display: flex; flex-direction: column; padding: var(--los-4); }
 .los-job-plan-card > .los-actions { margin-top: auto; padding-top: var(--los-3); }
-.los-job-plan-progress {
-  grid-column: 1 / -1;
-  height: 5px;
-  overflow: hidden;
-  border-radius: 999px;
-  background: var(--los-rule);
-}
-.los-job-plan-progress-fill { height: 100%; background: var(--los-ink); }
+.los-job-plan-card > .los-stage-progress-copy { margin-top: var(--los-3); }
 .los-job-plan-next {
   display: grid;
   gap: var(--los-1);
@@ -126,70 +120,8 @@
   gap: var(--los-4);
   align-items: start;
 }
-.los-job-stage-rail,
-.los-job-stage-reader {
-  min-width: 0;
-  border: 1px solid var(--los-rule);
-  border-radius: var(--los-r-lg);
-  background: var(--los-surface-raised);
-}
-.los-job-stage-rail { padding: var(--los-2); }
-.los-job-stage-rail h2 {
-  margin: 0;
-  padding: var(--los-2);
-  color: var(--los-ink-soft);
-  font-size: 11px !important;
-  letter-spacing: .075em;
-  text-transform: uppercase;
-}
-.los-root .los-job-stage-row {
-  display: grid;
-  width: 100%;
-  min-height: 54px;
-  grid-template-columns: 28px minmax(0, 1fr);
-  gap: var(--los-2);
-  align-items: start;
-  justify-content: stretch;
-  padding: var(--los-2);
-  border: 0;
-  background: transparent;
-  color: var(--los-ink-soft);
-  text-align: left;
-}
-.los-root .los-job-stage-row:hover,
-.los-root .los-job-stage-row.is-selected {
-  background: var(--los-accent-wash);
-  color: var(--los-ink);
-}
-.los-root .los-job-stage-row.is-selected { color: var(--los-accent); }
-.los-root .los-job-stage-row.is-done:not(.is-selected) { opacity: .62; }
-.los-job-stage-number {
-  color: var(--los-ink-soft);
-  font-variant-numeric: tabular-nums;
-}
-.los-job-stage-copy { display: grid; min-width: 0; gap: 2px; }
-.los-job-stage-copy > span:first-child { font-weight: 600; }
-.los-job-stage-reader {
-  padding: var(--los-5);
-  box-shadow: 0 2px 8px var(--los-shadow-soft);
-}
-.los-job-stage-heading {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--los-3);
-  align-items: start;
-  margin-bottom: var(--los-4);
-  padding-bottom: var(--los-4);
-  border-bottom: 1px solid var(--los-rule);
-}
-.los-job-stage-heading h2 { margin: var(--los-1) 0 0; }
-.los-job-stage-block {
-  padding: var(--los-4) 0;
-  border-top: 1px solid var(--los-rule);
-}
-.los-job-stage-heading + .los-job-stage-block { padding-top: 0; border-top: 0; }
-.los-job-stage-block h3 { margin: 0 0 var(--los-3); }
-.los-job-stage-block > p { margin: 0; color: var(--los-ink-soft); line-height: 1.65; }
+.los-job-plan-layout .los-stage-workspace { box-shadow: 0 2px 8px var(--los-shadow-soft); }
+.los-job-stage-block > p { color: var(--los-ink-soft); line-height: 1.65; }
 .los-job-concept-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
@@ -210,13 +142,6 @@
   border-radius: var(--los-r-sm);
   background: var(--los-info-wash);
 }
-.los-job-stage-actions {
-  justify-content: flex-end;
-  margin-top: var(--los-4);
-  padding-top: var(--los-4);
-  border-top: 1px solid var(--los-rule);
-}
-
 .modal.los-modal--job-editor,
 .modal:has(.los-job-editor-modal),
 .modal.los-modal--job-session,
@@ -298,7 +223,7 @@
   .los-job-plan-grid,
   .los-job-note-grid,
   .los-job-plan-layout { grid-template-columns: 1fr; }
-  .los-job-stage-reader { padding: var(--los-4); }
+  .los-job-plan-layout .los-stage-workspace { padding: var(--los-4); }
   .los-root.los-job-editor-modal,
   .los-root.los-job-session-modal { padding: var(--los-4); }
 }

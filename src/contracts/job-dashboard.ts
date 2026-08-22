@@ -9,6 +9,27 @@ export type JobHorizon = 'now' | 'next' | 'later';
 export type JobAnchorFreshness = '' | 'current' | 'drifting' | 'stale' | 'unverified';
 export type JobTab = 'now' | 'tasks' | 'plans' | 'notes' | 'library';
 
+export interface JobStratumAccess {
+  readonly mode: 'read-only';
+  readonly worktree_writes_allowed: false;
+  readonly git_metadata_writes_allowed: false;
+}
+
+export interface JobDashboardAccess {
+  readonly scope: 'job-dashboard';
+  readonly read_only: true;
+  readonly ephemeral: true;
+  readonly excluded_from_manifest: true;
+  readonly excluded_from_search: true;
+  readonly excluded_from_ai: true;
+  readonly writes_through_gateway: true;
+  readonly stratum: JobStratumAccess;
+  readonly allowed_roots: readonly (
+    'legacy-plans' | 'notes' | 'papers' | 'plans' | 'workspace-job-deem'
+  )[];
+  readonly snapshot_id: string;
+}
+
 export interface JobWorkspaceScope {
   readonly label: string;
   readonly text: string;

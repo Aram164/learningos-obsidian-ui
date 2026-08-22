@@ -1,7 +1,8 @@
-import { badge, button, section } from '../../components';
-import { cardTop, factList, noteCard } from './cards';
+import { badge, button, cardTop, factList, section } from '../../components';
+import { noteCard } from './cards';
 import type { JobDashboardHost } from './host';
 import type { JobDashboard, JobLearningTrack } from './model';
+import { renderLearningProgress } from '../learning-route';
 
 /** The next stage is the first one not yet recorded as done. */
 function nextStage(dashboard: JobDashboard) {
@@ -112,16 +113,13 @@ function planRunwayRow(
   copy.createEl('strong', { text: plan.title });
   copy.createDiv({ cls: 'los-micro', text: plan.outcome || plan.cadence });
   badge(row, `${completed}/${total}`, plan.horizon);
-  const progress = row.createDiv({ cls: 'los-job-plan-progress' });
-  progress.setAttrs({
-    role: 'progressbar',
-    'aria-valuemin': '0',
-    'aria-valuemax': String(total),
-    'aria-valuenow': String(completed),
-    'aria-label': `${plan.title}: ${completed} of ${total} stages complete`,
-  });
-  const fill = progress.createDiv({ cls: 'los-job-plan-progress-fill' });
-  fill.style.width = `${total ? Math.round((completed / total) * 100) : 0}%`;
+  renderLearningProgress(
+    row,
+    completed,
+    total,
+    `${plan.title}: overall learning route progress`,
+    false,
+  );
   if (host.openJobPlan) {
     const next = plan.stages.find((stage) => !stage.done) || plan.stages[0];
     button(

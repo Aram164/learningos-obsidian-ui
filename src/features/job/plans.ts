@@ -1,5 +1,4 @@
-import { badge, button, empty, section } from '../../components';
-import { cardTop } from './cards';
+import { badge, button, cardTop, empty, section } from '../../components';
 import type { JobDashboardHost } from './host';
 import type {
   JobDashboard,
@@ -7,21 +6,7 @@ import type {
   JobLearningTrack,
 } from './model';
 import { renderStageResources } from '../stage-resources';
-
-function planProgress(parent: HTMLElement, plan: JobLearningTrack): void {
-  const total = plan.stages.length;
-  const completed = plan.completedSessions.length;
-  const progress = parent.createDiv({ cls: 'los-job-plan-progress' });
-  progress.setAttrs({
-    role: 'progressbar',
-    'aria-valuemin': '0',
-    'aria-valuemax': String(total),
-    'aria-valuenow': String(completed),
-    'aria-label': `${plan.title}: ${completed} of ${total} stages complete`,
-  });
-  const fill = progress.createDiv({ cls: 'los-job-plan-progress-fill' });
-  fill.style.width = `${total ? Math.round((completed / total) * 100) : 0}%`;
-}
+import { renderLearningProgress, renderLearningRouteRail } from '../learning-route';
 
 function planCard(
   parent: HTMLElement,
@@ -34,8 +19,12 @@ function planCard(
   const top = cardTop(card, plan.title, `${total} stage${total === 1 ? '' : 's'}`);
   badge(top, plan.horizon, plan.horizon);
   if (plan.outcome) card.createEl('p', { text: plan.outcome });
-  planProgress(card, plan);
-  card.createDiv({ cls: 'los-micro', text: `${completed} of ${total} stages complete` });
+  renderLearningProgress(
+    card,
+    completed,
+    total,
+    `${plan.title}: overall learning route progress`,
+  );
 
   const next = plan.stages.find((stage) => !stage.done) || plan.stages[0];
   if (next) {
@@ -62,11 +51,11 @@ function planCard(
 
 function renderMentalModels(parent: HTMLElement, stage: JobLearningStage): void {
   if (!stage.jobContext.mentalModels.length) return;
-  const block = parent.createDiv({ cls: 'los-job-stage-block' });
+  const block = parent.createDiv({ cls: 'los-section los-stage-section los-job-stage-block' });
   const mirrored = stage.jobContext.mentalModels.some(
     (model) => model.label === 'Pandas baseline' || model.label === 'Polars mirror',
   );
-  block.createEl('h3', { text: mirrored ? 'Concept mirror' : 'Mental model' });
+  block.createEl('h2', { text: mirrored ? 'Concept mirror' : 'Mental model' });
   const grid = block.createDiv({ cls: 'los-job-concept-grid' });
   for (const model of stage.jobContext.mentalModels) {
     const item = grid.createEl('article', { cls: 'los-job-concept-part' });
@@ -82,23 +71,41 @@ function renderStage(
   plan: JobLearningTrack,
   stage: JobLearningStage,
 ): void {
-  const workspace = parent.createEl('article', { cls: 'los-job-stage-reader' });
-  const heading = workspace.createDiv({ cls: 'los-job-stage-heading' });
-  const copy = heading.createDiv({ cls: 'los-job-stage-heading-copy' });
+  const workspace = parent.createEl('article', { cls: 'los-stage-workspace' });
+  const heading = workspace.createDiv({ cls: 'los-stage-heading' });
+  const headingRow = heading.createDiv({ cls: 'los-stage-heading-row' });
+  const copy = headingRow.createDiv({ cls: 'los-stage-heading-copy' });
   copy.createDiv({
     cls: 'los-kicker',
-    text: `Stage ${String(stage.number).padStart(2, '0')} of ${plan.stages.length}`,
+    text: stage.examCritical
+      ? `Exam-critical · Stage ${String(stage.number).padStart(2, '0')} of ${plan.stages.length}`
+      : `Stage ${String(stage.number).padStart(2, '0')} of ${plan.stages.length}`,
   });
   copy.createEl('h2', { text: stage.title });
-  badge(heading, stage.done ? 'Done' : 'Open', stage.done ? 'complete' : 'ready');
-  if (stage.estimateMinutes) badge(heading, `${stage.estimateMinutes} min`, 'role');
+  copy.createDiv({
+    cls: 'los-stage-order-context',
+    text: `${stage.done ? 'Complete' : 'Selected'} · ${plan.title}`,
+  });
+  if (stage.estimateMinutes) badge(headingRow, `${stage.estimateMinutes} min`, 'role');
 
   if (stage.objective) {
     const goal = workspace.createDiv({ cls: 'los-stage-goal' });
     goal.createDiv({ cls: 'los-kicker', text: 'Goal' });
     goal.createEl('p', { text: stage.objective });
   }
-  renderMentalModels(workspace, stage);
+  if (stage.doneWhen.length) {
+    const done = workspace.createDiv({ cls: 'los-section los-stage-section' });
+    const doneHeading = done.createDiv({ cls: 'los-stage-section-heading' });
+    doneHeading.createEl('h2', { text: 'Done when' });
+    doneHeading.createSpan({
+      cls: 'los-micro',
+      text: `${stage.doneWhen.length} ${stage.doneWhen.length === 1 ? 'criterion' : 'criteria'}`,
+    });
+    const list = done.createEl('ul', { cls: 'los-donewhen-list' });
+    for (const criterion of stage.doneWhen) {
+      list.createEl('li', { cls: 'los-donewhen-row', text: criterion });
+    }
+  }
   renderStageResources(workspace, stage.resources, {
     sourceRecord: (sourceId) => {
       const source = dashboard.canonical_shelf.find((item) => item.source_id === sourceId);
@@ -113,8 +120,11 @@ function renderStage(
       return undefined;
     },
   });
+  renderMentalModels(workspace, stage);
   if (stage.jobContext.readOnlyAnchor) {
-    const anchor = workspace.createDiv({ cls: 'los-job-stage-block los-job-stratum-reference' });
+    const anchor = workspace.createDiv({
+      cls: 'los-section los-stage-section los-job-stage-block los-job-stratum-reference',
+    });
     const heading = anchor.createEl('h3', { text: 'Stratum read-only reference' });
     // The same badge the note cards use, for the same reason: a stage read in
     // month fourteen should say out loud whether the code it describes has
@@ -132,15 +142,12 @@ function renderStage(
       });
     }
   }
-  if (stage.doneWhen.length) {
-    const done = section(workspace, 'Done when');
-    const list = done.createEl('ul', { cls: 'los-donewhen-list' });
-    for (const criterion of stage.doneWhen) {
-      list.createEl('li', { cls: 'los-donewhen-row', text: criterion });
-    }
-  }
 
-  const actions = workspace.createDiv({ cls: 'los-actions los-job-stage-actions' });
+  const actions = workspace.createDiv({ cls: 'los-unit-actionbar' });
+  actions.createDiv({
+    cls: 'los-unit-action-note',
+    text: 'Job learning progress stays inside the quarantined workspace.',
+  });
   if (host.logJobSession) {
     button(actions, 'Log this stage', () => host.logJobSession?.(plan.id, stage.number), 'cta');
   }
@@ -180,7 +187,13 @@ function renderPlanDetail(
     cls: 'los-micro',
     text: `${completed} of ${plan.stages.length} stages complete`,
   });
-  planProgress(header, plan);
+  renderLearningProgress(
+    header,
+    completed,
+    plan.stages.length,
+    `${plan.title}: overall learning route progress`,
+    false,
+  );
   if (plan.cadence) {
     const cadence = header.createDiv({ cls: 'los-job-plan-cadence' });
     cadence.createDiv({ cls: 'los-kicker', text: 'Cadence' });
@@ -208,31 +221,31 @@ function renderPlanDetail(
   }
 
   const layout = page.createDiv({ cls: 'los-job-plan-layout' });
-  const rail = layout.createEl('nav', { cls: 'los-job-stage-rail' });
-  rail.setAttrs({ 'aria-label': `${plan.title} stages` });
-  rail.createEl('h2', { text: 'Stages' });
-  for (const stage of plan.stages) {
-    const control = button(
-      rail,
-      '',
-      () => host.openJobPlan?.(plan.id, stage.number),
-      'row',
-    );
-    control.addClass('los-job-stage-row');
-    control.toggleClass('is-selected', stage.number === selected.number);
-    control.toggleClass('is-done', stage.done);
-    control.setAttrs({
-      'aria-label': `Open stage ${stage.number}: ${stage.title}`,
-      'aria-pressed': String(stage.number === selected.number),
-    });
-    control.createSpan({
-      cls: 'los-job-stage-number',
-      text: String(stage.number).padStart(2, '0'),
-    });
-    const stageCopy = control.createSpan({ cls: 'los-job-stage-copy' });
-    stageCopy.createSpan({ text: stage.title });
-    stageCopy.createSpan({ cls: 'los-micro', text: stage.done ? 'Done' : 'Open' });
-  }
+  const selectedIndex = plan.stages.findIndex((stage) => stage.id === selected.id);
+  renderLearningRouteRail(layout, {
+    title: 'Learning route',
+    ariaLabel: `${plan.title} stages`,
+    progressLabel: `${plan.title}: overall learning route progress`,
+    completed: plan.completedSessions.length,
+    selectedId: selected.id,
+    items: plan.stages.map((stage, index) => ({
+      id: stage.id,
+      number: stage.number,
+      title: stage.title,
+      state: stage.done ? 'complete' : 'pending',
+      marker: stage.done
+        ? 'Complete'
+        : index === selectedIndex
+          ? `Done when · ${stage.doneWhen.length} criteria`
+          : index > selectedIndex
+            ? 'Not started'
+            : 'Open',
+    })),
+    select: (stageId) => {
+      const stage = plan.stages.find((item) => item.id === stageId);
+      if (stage) host.openJobPlan?.(plan.id, stage.number);
+    },
+  });
   renderStage(layout, host, dashboard, plan, selected);
 }
 

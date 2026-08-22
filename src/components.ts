@@ -128,6 +128,34 @@ export function section(
   return wrap;
 }
 
+/** Shared card heading: title, optional context line, and a badge/action slot. */
+export function cardTop(
+  parent: UiNode,
+  title: string,
+  context = '',
+): UiNode {
+  const top = parent.createDiv({ cls: 'los-card-top' });
+  const copy = top.createDiv({ cls: 'los-card-copy' });
+  copy.createEl('h3', { text: title });
+  if (context) copy.createDiv({ cls: 'los-micro', text: context });
+  return top;
+}
+
+/** Shared label/value facts used by learning, logistics, and diagnostics. */
+export function factList(
+  parent: UiNode,
+  facts: ReadonlyArray<readonly [string, unknown]>,
+): UiNode {
+  const list = parent.createDiv({ cls: 'los-fact-list' });
+  for (const [label, value] of facts) {
+    if (value === null || value === undefined || value === '') continue;
+    const row = list.createDiv({ cls: 'los-fact-row' });
+    row.createDiv({ cls: 'los-fact-label', text: label });
+    row.createDiv({ cls: 'los-fact-value', text: String(value) });
+  }
+  return list;
+}
+
 /**
  * One row of mutually exclusive tabs.
  *

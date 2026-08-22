@@ -1,4 +1,4 @@
-import { badge, button } from '../../components';
+import { badge, button, cardTop } from '../../components';
 import type { JobDashboardHost } from './host';
 import type { JobNote } from './model';
 
@@ -11,34 +11,6 @@ import type { JobNote } from './model';
  * thing genuinely particular to Job is which fields go in a card, so that is
  * the only thing this module decides.
  */
-
-/** Title, optional sub-line, and room for one badge on the right. */
-export function cardTop(
-  card: HTMLElement,
-  title: string,
-  sub = '',
-): HTMLElement {
-  const top = card.createDiv({ cls: 'los-card-top' });
-  const copy = top.createDiv({ cls: 'los-card-copy' });
-  copy.createEl('h3', { text: title });
-  if (sub) copy.createDiv({ cls: 'los-micro', text: sub });
-  return top;
-}
-
-/** Label/value pairs in the house fact-list, as Logistics and Library use. */
-export function factList(
-  parent: HTMLElement,
-  facts: ReadonlyArray<readonly [string, string]>,
-): void {
-  const present = facts.filter(([, value]) => value);
-  if (!present.length) return;
-  const list = parent.createDiv({ cls: 'los-fact-list' });
-  for (const [label, value] of present) {
-    const row = list.createDiv({ cls: 'los-fact-row' });
-    row.createDiv({ cls: 'los-fact-label', text: label });
-    row.createDiv({ cls: 'los-fact-value', text: value });
-  }
-}
 
 /**
  * One note. Freshness is the only badge worth the space: it is the single field

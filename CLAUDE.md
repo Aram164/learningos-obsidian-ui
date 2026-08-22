@@ -49,7 +49,10 @@ here.
     §13): never project, index, search, or send `Job/` content to AI. The sole
     exception is the explicit confidential Job destination, which reads the
     bounded `job-dashboard-v2` query after a user gesture and keeps its access
-    grant ephemeral.
+    grant ephemeral. `Job/stratum/` is stricter: its worktree and `.git/` are
+    immutable to the whole interface. The UI must reject any access envelope
+    that does not declare that policy exactly, must never allow `stratum` as an
+    open-file root, and must resolve symlinks before opening a Job path.
 11. This repository is **separate from the core repo** (Aram, 2026-08-03): its
     own git history, never folded in. It has a GitHub remote
     (`Aram164/learningos-obsidian-ui`); until 2026-08-18 this rule claimed it

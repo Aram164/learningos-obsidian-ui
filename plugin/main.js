@@ -303,6 +303,23 @@ function section(parent, title, description = "") {
   if (description) wrap.createEl("p", { cls: "los-muted", text: description });
   return wrap;
 }
+function cardTop(parent, title, context = "") {
+  const top = parent.createDiv({ cls: "los-card-top" });
+  const copy = top.createDiv({ cls: "los-card-copy" });
+  copy.createEl("h3", { text: title });
+  if (context) copy.createDiv({ cls: "los-micro", text: context });
+  return top;
+}
+function factList(parent, facts) {
+  const list = parent.createDiv({ cls: "los-fact-list" });
+  for (const [label, value] of facts) {
+    if (value === null || value === void 0 || value === "") continue;
+    const row = list.createDiv({ cls: "los-fact-row" });
+    row.createDiv({ cls: "los-fact-label", text: label });
+    row.createDiv({ cls: "los-fact-value", text: String(value) });
+  }
+  return list;
+}
 function filterTabs(parent, ariaLabel, tabs, active, choose, countOf = null) {
   const row = parent.createDiv({ cls: "los-filter-tabs" });
   row.setAttrs({ role: "group", "aria-label": ariaLabel });
@@ -1294,23 +1311,6 @@ var AtlasView = class extends import_obsidian3.ItemView {
 var import_obsidian6 = require("obsidian");
 
 // src/features/job/cards.ts
-function cardTop(card, title, sub = "") {
-  const top = card.createDiv({ cls: "los-card-top" });
-  const copy = top.createDiv({ cls: "los-card-copy" });
-  copy.createEl("h3", { text: title });
-  if (sub) copy.createDiv({ cls: "los-micro", text: sub });
-  return top;
-}
-function factList(parent, facts) {
-  const present = facts.filter(([, value]) => value);
-  if (!present.length) return;
-  const list = parent.createDiv({ cls: "los-fact-list" });
-  for (const [label, value] of present) {
-    const row = list.createDiv({ cls: "los-fact-row" });
-    row.createDiv({ cls: "los-fact-label", text: label });
-    row.createDiv({ cls: "los-fact-value", text: value });
-  }
-}
 function noteCard(parent, host, note2) {
   const card = parent.createDiv({ cls: "los-card" });
   const top = cardTop(card, note2.title, note2.component);
@@ -1379,8 +1379,7 @@ function renderLibrary(root, host, dashboard) {
     const entries = entriesFor(horizon2, host, dashboard);
     if (!entries.length) continue;
     const group = library.createDiv({ cls: "los-job-horizon" });
-    const head = group.createDiv({ cls: "los-card-top" });
-    head.createEl("h3", { text: HORIZON_LABEL[horizon2] });
+    const head = cardTop(group, HORIZON_LABEL[horizon2]);
     badge(head, String(entries.length), horizon2);
     for (const entry of entries) {
       const { card, top } = materialCard(group, entry.kicker, entry.title, entry.sub);
@@ -1390,6 +1389,66 @@ function renderLibrary(root, host, dashboard) {
       button(card.createDiv({ cls: "los-actions" }), label, onClick, "quiet");
     }
   }
+}
+
+// src/features/learning-route.ts
+function renderLearningProgress(parent, completedValue, totalValue, ariaLabel, showCopy = true) {
+  const total = Math.max(0, totalValue);
+  const completed = Math.min(Math.max(0, completedValue), total);
+  const percent = total ? Math.round(completed / total * 100) : 0;
+  if (showCopy) {
+    const copy = parent.createDiv({ cls: "los-stage-progress-copy" });
+    copy.createSpan({ text: `${completed} of ${total} complete` });
+    copy.createSpan({ cls: "los-micro", text: `${percent}%` });
+  }
+  const progress = parent.createDiv({
+    cls: "los-stage-progress",
+    attr: {
+      role: "progressbar",
+      "aria-label": ariaLabel,
+      "aria-valuemin": "0",
+      "aria-valuemax": "100",
+      "aria-valuenow": String(percent)
+    }
+  });
+  const value = progress.createDiv({ cls: "los-stage-progress-value" });
+  value.style.width = `${percent}%`;
+  return progress;
+}
+function renderLearningRouteRail(parent, options) {
+  const rail = parent.createEl("nav", { cls: "los-stage-rail" });
+  rail.setAttr("aria-label", options.ariaLabel);
+  const summary = rail.createDiv({ cls: "los-stage-rail-summary" });
+  summary.createEl("h2", { text: options.title });
+  renderLearningProgress(
+    summary,
+    options.completed,
+    options.items.length,
+    options.progressLabel
+  );
+  const list = rail.createDiv({ cls: "los-stage-list", attr: { role: "list" } });
+  const selectedIndex = options.items.findIndex((item) => item.id === options.selectedId);
+  for (const [index, item] of options.items.entries()) {
+    const selected = item.id === options.selectedId;
+    const row = list.createEl("button", {
+      cls: `los-stage-row los-s-${item.state} ${selected ? "is-selected" : index > selectedIndex ? "is-upcoming" : "is-before"} is-clickable`,
+      attr: {
+        type: "button",
+        role: "listitem",
+        "aria-label": `Open stage ${item.number}: ${item.title}`,
+        "aria-posinset": String(index + 1),
+        "aria-setsize": String(options.items.length),
+        "aria-current": selected ? "step" : "false",
+        "aria-pressed": String(selected)
+      }
+    });
+    row.createSpan({ cls: "los-stage-index", text: String(item.number).padStart(2, "0") });
+    const copy = row.createSpan({ cls: "los-stage-copy" });
+    copy.createSpan({ text: item.title });
+    if (item.marker) copy.createSpan({ cls: "los-micro", text: item.marker });
+    row.addEventListener("click", () => options.select(item.id));
+  }
+  return rail;
 }
 
 // src/features/job/now.ts
@@ -1472,16 +1531,13 @@ function planRunwayRow(parent, host, plan) {
   copy.createEl("strong", { text: plan.title });
   copy.createDiv({ cls: "los-micro", text: plan.outcome || plan.cadence });
   badge(row, `${completed}/${total}`, plan.horizon);
-  const progress = row.createDiv({ cls: "los-job-plan-progress" });
-  progress.setAttrs({
-    role: "progressbar",
-    "aria-valuemin": "0",
-    "aria-valuemax": String(total),
-    "aria-valuenow": String(completed),
-    "aria-label": `${plan.title}: ${completed} of ${total} stages complete`
-  });
-  const fill = progress.createDiv({ cls: "los-job-plan-progress-fill" });
-  fill.style.width = `${total ? Math.round(completed / total * 100) : 0}%`;
+  renderLearningProgress(
+    row,
+    completed,
+    total,
+    `${plan.title}: overall learning route progress`,
+    false
+  );
   if (host.openJobPlan) {
     const next = plan.stages.find((stage) => !stage.done) || plan.stages[0];
     button(
@@ -1552,10 +1608,7 @@ function renderHealth(parent, health) {
 }
 function renderLayer(parent, host, layer2, byId) {
   const group = parent.createDiv({ cls: "los-job-layer" });
-  const head = group.createDiv({ cls: "los-card-top" });
-  const copy = head.createDiv({ cls: "los-card-copy" });
-  copy.createEl("h3", { text: layer2.title });
-  if (layer2.summary) copy.createDiv({ cls: "los-micro", text: layer2.summary });
+  const head = cardTop(group, layer2.title, layer2.summary);
   if (!layer2.noteIds.length) {
     group.createEl("p", { cls: "los-muted", text: "No note describes this layer yet." });
     return;
@@ -1759,20 +1812,6 @@ function renderStageResources(parent, resourcesValue, renderer) {
 }
 
 // src/features/job/plans.ts
-function planProgress(parent, plan) {
-  const total = plan.stages.length;
-  const completed = plan.completedSessions.length;
-  const progress = parent.createDiv({ cls: "los-job-plan-progress" });
-  progress.setAttrs({
-    role: "progressbar",
-    "aria-valuemin": "0",
-    "aria-valuemax": String(total),
-    "aria-valuenow": String(completed),
-    "aria-label": `${plan.title}: ${completed} of ${total} stages complete`
-  });
-  const fill = progress.createDiv({ cls: "los-job-plan-progress-fill" });
-  fill.style.width = `${total ? Math.round(completed / total * 100) : 0}%`;
-}
 function planCard(parent, host, plan) {
   const total = plan.stages.length;
   const completed = plan.completedSessions.length;
@@ -1780,8 +1819,12 @@ function planCard(parent, host, plan) {
   const top = cardTop(card, plan.title, `${total} stage${total === 1 ? "" : "s"}`);
   badge(top, plan.horizon, plan.horizon);
   if (plan.outcome) card.createEl("p", { text: plan.outcome });
-  planProgress(card, plan);
-  card.createDiv({ cls: "los-micro", text: `${completed} of ${total} stages complete` });
+  renderLearningProgress(
+    card,
+    completed,
+    total,
+    `${plan.title}: overall learning route progress`
+  );
   const next = plan.stages.find((stage) => !stage.done) || plan.stages[0];
   if (next) {
     const preview = card.createDiv({ cls: "los-job-plan-next" });
@@ -1805,11 +1848,11 @@ function planCard(parent, host, plan) {
 }
 function renderMentalModels(parent, stage) {
   if (!stage.jobContext.mentalModels.length) return;
-  const block = parent.createDiv({ cls: "los-job-stage-block" });
+  const block = parent.createDiv({ cls: "los-section los-stage-section los-job-stage-block" });
   const mirrored = stage.jobContext.mentalModels.some(
     (model) => model.label === "Pandas baseline" || model.label === "Polars mirror"
   );
-  block.createEl("h3", { text: mirrored ? "Concept mirror" : "Mental model" });
+  block.createEl("h2", { text: mirrored ? "Concept mirror" : "Mental model" });
   const grid = block.createDiv({ cls: "los-job-concept-grid" });
   for (const model of stage.jobContext.mentalModels) {
     const item = grid.createEl("article", { cls: "los-job-concept-part" });
@@ -1818,22 +1861,38 @@ function renderMentalModels(parent, stage) {
   }
 }
 function renderStage(parent, host, dashboard, plan, stage) {
-  const workspace = parent.createEl("article", { cls: "los-job-stage-reader" });
-  const heading = workspace.createDiv({ cls: "los-job-stage-heading" });
-  const copy = heading.createDiv({ cls: "los-job-stage-heading-copy" });
+  const workspace = parent.createEl("article", { cls: "los-stage-workspace" });
+  const heading = workspace.createDiv({ cls: "los-stage-heading" });
+  const headingRow = heading.createDiv({ cls: "los-stage-heading-row" });
+  const copy = headingRow.createDiv({ cls: "los-stage-heading-copy" });
   copy.createDiv({
     cls: "los-kicker",
-    text: `Stage ${String(stage.number).padStart(2, "0")} of ${plan.stages.length}`
+    text: stage.examCritical ? `Exam-critical \xB7 Stage ${String(stage.number).padStart(2, "0")} of ${plan.stages.length}` : `Stage ${String(stage.number).padStart(2, "0")} of ${plan.stages.length}`
   });
   copy.createEl("h2", { text: stage.title });
-  badge(heading, stage.done ? "Done" : "Open", stage.done ? "complete" : "ready");
-  if (stage.estimateMinutes) badge(heading, `${stage.estimateMinutes} min`, "role");
+  copy.createDiv({
+    cls: "los-stage-order-context",
+    text: `${stage.done ? "Complete" : "Selected"} \xB7 ${plan.title}`
+  });
+  if (stage.estimateMinutes) badge(headingRow, `${stage.estimateMinutes} min`, "role");
   if (stage.objective) {
     const goal = workspace.createDiv({ cls: "los-stage-goal" });
     goal.createDiv({ cls: "los-kicker", text: "Goal" });
     goal.createEl("p", { text: stage.objective });
   }
-  renderMentalModels(workspace, stage);
+  if (stage.doneWhen.length) {
+    const done = workspace.createDiv({ cls: "los-section los-stage-section" });
+    const doneHeading = done.createDiv({ cls: "los-stage-section-heading" });
+    doneHeading.createEl("h2", { text: "Done when" });
+    doneHeading.createSpan({
+      cls: "los-micro",
+      text: `${stage.doneWhen.length} ${stage.doneWhen.length === 1 ? "criterion" : "criteria"}`
+    });
+    const list = done.createEl("ul", { cls: "los-donewhen-list" });
+    for (const criterion of stage.doneWhen) {
+      list.createEl("li", { cls: "los-donewhen-row", text: criterion });
+    }
+  }
   renderStageResources(workspace, stage.resources, {
     sourceRecord: (sourceId) => {
       const source = dashboard.canonical_shelf.find((item) => item.source_id === sourceId);
@@ -1847,8 +1906,11 @@ function renderStage(parent, host, dashboard, plan, stage) {
       return void 0;
     }
   });
+  renderMentalModels(workspace, stage);
   if (stage.jobContext.readOnlyAnchor) {
-    const anchor = workspace.createDiv({ cls: "los-job-stage-block los-job-stratum-reference" });
+    const anchor = workspace.createDiv({
+      cls: "los-section los-stage-section los-job-stage-block los-job-stratum-reference"
+    });
     const heading2 = anchor.createEl("h3", { text: "Stratum read-only reference" });
     if (stage.jobContext.freshness) {
       badge(heading2, stage.jobContext.freshness, stage.jobContext.freshness);
@@ -1861,14 +1923,11 @@ function renderStage(parent, host, dashboard, plan, stage) {
       });
     }
   }
-  if (stage.doneWhen.length) {
-    const done = section(workspace, "Done when");
-    const list = done.createEl("ul", { cls: "los-donewhen-list" });
-    for (const criterion of stage.doneWhen) {
-      list.createEl("li", { cls: "los-donewhen-row", text: criterion });
-    }
-  }
-  const actions = workspace.createDiv({ cls: "los-actions los-job-stage-actions" });
+  const actions = workspace.createDiv({ cls: "los-unit-actionbar" });
+  actions.createDiv({
+    cls: "los-unit-action-note",
+    text: "Job learning progress stays inside the quarantined workspace."
+  });
   if (host.logJobSession) {
     button(actions, "Log this stage", () => host.logJobSession?.(plan.id, stage.number), "cta");
   }
@@ -1901,7 +1960,13 @@ function renderPlanDetail(root, host, dashboard, plan) {
     cls: "los-micro",
     text: `${completed} of ${plan.stages.length} stages complete`
   });
-  planProgress(header, plan);
+  renderLearningProgress(
+    header,
+    completed,
+    plan.stages.length,
+    `${plan.title}: overall learning route progress`,
+    false
+  );
   if (plan.cadence) {
     const cadence = header.createDiv({ cls: "los-job-plan-cadence" });
     cadence.createDiv({ cls: "los-kicker", text: "Cadence" });
@@ -1927,31 +1992,25 @@ function renderPlanDetail(root, host, dashboard, plan) {
     return;
   }
   const layout = page.createDiv({ cls: "los-job-plan-layout" });
-  const rail = layout.createEl("nav", { cls: "los-job-stage-rail" });
-  rail.setAttrs({ "aria-label": `${plan.title} stages` });
-  rail.createEl("h2", { text: "Stages" });
-  for (const stage of plan.stages) {
-    const control = button(
-      rail,
-      "",
-      () => host.openJobPlan?.(plan.id, stage.number),
-      "row"
-    );
-    control.addClass("los-job-stage-row");
-    control.toggleClass("is-selected", stage.number === selected.number);
-    control.toggleClass("is-done", stage.done);
-    control.setAttrs({
-      "aria-label": `Open stage ${stage.number}: ${stage.title}`,
-      "aria-pressed": String(stage.number === selected.number)
-    });
-    control.createSpan({
-      cls: "los-job-stage-number",
-      text: String(stage.number).padStart(2, "0")
-    });
-    const stageCopy = control.createSpan({ cls: "los-job-stage-copy" });
-    stageCopy.createSpan({ text: stage.title });
-    stageCopy.createSpan({ cls: "los-micro", text: stage.done ? "Done" : "Open" });
-  }
+  const selectedIndex = plan.stages.findIndex((stage) => stage.id === selected.id);
+  renderLearningRouteRail(layout, {
+    title: "Learning route",
+    ariaLabel: `${plan.title} stages`,
+    progressLabel: `${plan.title}: overall learning route progress`,
+    completed: plan.completedSessions.length,
+    selectedId: selected.id,
+    items: plan.stages.map((stage, index) => ({
+      id: stage.id,
+      number: stage.number,
+      title: stage.title,
+      state: stage.done ? "complete" : "pending",
+      marker: stage.done ? "Complete" : index === selectedIndex ? `Done when \xB7 ${stage.doneWhen.length} criteria` : index > selectedIndex ? "Not started" : "Open"
+    })),
+    select: (stageId) => {
+      const stage = plan.stages.find((item) => item.id === stageId);
+      if (stage) host.openJobPlan?.(plan.id, stage.number);
+    }
+  });
   renderStage(layout, host, dashboard, plan, selected);
 }
 function renderPlans(root, host, dashboard) {
@@ -2009,8 +2068,7 @@ function renderTasks(root, host, dashboard) {
     const tasks = dashboard.tasks.filter((task2) => task2.horizon === horizon2);
     if (!tasks.length) continue;
     const group = wrap.createDiv({ cls: "los-job-task-group" });
-    const head = group.createDiv({ cls: "los-card-top" });
-    head.createEl("h3", { text: label });
+    const head = cardTop(group, label);
     badge(head, String(tasks.length), horizon2);
     for (const task2 of tasks) taskRow(group, host, task2);
   }
@@ -6135,9 +6193,6 @@ function statusLabel(value) {
   return words(value);
 }
 function renderLogistics(view, root, module2) {
-  const facts = root.createDiv({
-    cls: "los-fact-list"
-  });
   const factRows = [
     ["Status", statusLabel(module2.status)],
     ["Institution", module2.institution],
@@ -6151,22 +6206,7 @@ function renderLogistics(view, root, module2) {
       ) : null
     ]
   ];
-  for (const [label, value] of factRows) {
-    if (value === null || value === "") {
-      continue;
-    }
-    const row = facts.createDiv({
-      cls: "los-fact-row"
-    });
-    row.createSpan({
-      cls: "los-fact-label",
-      text: label
-    });
-    row.createSpan({
-      cls: "los-fact-value",
-      text: value
-    });
-  }
+  factList(root, factRows);
   if (module2.examination.notes) {
     root.createEl("p", {
       cls: "los-muted",
@@ -8540,7 +8580,6 @@ var DiagnosticsView = class extends import_obsidian15.ItemView {
     const generated = this.plugin.store.data?._generated ?? {};
     const build = this.buildInfo();
     const facts = section(root, "Contract and versions");
-    const table = facts.createDiv({ cls: "los-fact-list" });
     const factRows = [
       ["Manifest contract", generated.contract_version ?? "unknown"],
       ["UI expects contract", MANIFEST_CONTRACT_VERSION],
@@ -8560,11 +8599,7 @@ var DiagnosticsView = class extends import_obsidian15.ItemView {
       ["Python interpreter", this.plugin.resolvePython().path],
       ["Interpreter source", this.plugin.resolvePython().origin]
     ];
-    for (const [label, value] of factRows) {
-      const row = table.createDiv({ cls: "los-fact-row" });
-      row.createSpan({ cls: "los-fact-label", text: label });
-      row.createSpan({ cls: "los-fact-value", text: String(value) });
-    }
+    factList(facts, factRows);
     const actions = root.createDiv({ cls: "los-actions" });
     button(actions, "Validate and rebuild", () => this.plugin.generate(), "success");
     button(actions, "Test the interpreter", () => this.testInterpreter(), "info");
@@ -9824,105 +9859,29 @@ function render(view) {
   );
 }
 function renderRail(view, layout, unit, studyMap, current) {
-  const rail = layout.createDiv({
-    cls: "los-stage-rail"
-  });
-  rail.setAttr(
-    "aria-label",
-    "Ordered learning stages"
-  );
   const completedCount = studyMap.stages.filter(
     (stage) => stage.status === "complete"
   ).length;
-  const progressPercent = Math.round(
-    completedCount / studyMap.stages.length * 100
-  );
-  const summary = rail.createDiv({
-    cls: "los-stage-rail-summary"
-  });
-  summary.createEl("h2", {
-    text: "Learning route"
-  });
-  const progressCopy = summary.createDiv({
-    cls: "los-stage-progress-copy"
-  });
-  progressCopy.createSpan({
-    text: `${completedCount} of ${studyMap.stages.length} complete`
-  });
-  progressCopy.createSpan({
-    cls: "los-micro",
-    text: `${progressPercent}%`
-  });
-  const progress = summary.createDiv({
-    cls: "los-stage-progress",
-    attr: {
-      role: "progressbar",
-      "aria-label": "Overall learning route progress",
-      "aria-valuemin": "0",
-      "aria-valuemax": "100",
-      "aria-valuenow": String(
-        progressPercent
-      )
-    }
-  });
-  const progressValue = progress.createDiv({
-    cls: "los-stage-progress-value"
-  });
-  progressValue.style.width = `${progressPercent}%`;
-  const stageList = rail.createDiv({
-    cls: "los-stage-list",
-    attr: {
-      role: "list"
-    }
-  });
   const currentIndex = studyMap.stages.findIndex(
     (stage) => stage.id === current.id
   );
-  for (const [index, stage] of studyMap.stages.entries()) {
-    const selected = stage.id === current.id;
-    const row = stageList.createEl(
-      "button",
-      {
-        cls: `los-stage-row los-s-${stage.status} ${selected ? "is-selected" : index > currentIndex ? "is-upcoming" : "is-before"} is-clickable`,
-        attr: {
-          type: "button",
-          role: "listitem",
-          "aria-posinset": String(
-            index + 1
-          ),
-          "aria-setsize": String(
-            studyMap.stages.length
-          ),
-          "aria-current": selected ? "step" : "false"
-        }
-      }
-    );
-    row.createSpan({
-      cls: "los-stage-index",
-      text: String(index + 1).padStart(2, "0")
-    });
-    const copy = row.createSpan({
-      cls: "los-stage-copy"
-    });
-    copy.createSpan({
-      text: stage.title
-    });
-    const marker = stage.status === "complete" ? "Complete" : stage.status === "skipped" ? "Skipped" : index === currentIndex ? `Done when \xB7 ${stage.doneWhen.length} criteria` : index > currentIndex ? "Not started" : "";
-    if (marker) {
-      copy.createSpan({
-        cls: "los-micro",
-        text: marker
-      });
+  const rail = renderLearningRouteRail(layout, {
+    title: "Learning route",
+    ariaLabel: "Ordered learning stages",
+    progressLabel: "Overall learning route progress",
+    completed: completedCount,
+    selectedId: current.id,
+    items: studyMap.stages.map((stage, index) => ({
+      id: stage.id,
+      number: index + 1,
+      title: stage.title,
+      state: stage.status,
+      marker: stage.status === "complete" ? "Complete" : stage.status === "skipped" ? "Skipped" : index === currentIndex ? `Done when \xB7 ${stage.doneWhen.length} criteria` : index > currentIndex ? "Not started" : ""
+    })),
+    select: (stageId) => {
+      void view.selectStage(stageId);
     }
-    row.addEventListener(
-      "click",
-      () => {
-        void view.selectStage(
-          stage.id
-        );
-      }
-    );
-  }
+  });
   const stageRecords = studyMap.stages.map(
     (stage) => stage.record
   );
@@ -11567,6 +11526,13 @@ var CODE_EXTENSIONS = /* @__PURE__ */ new Set([
   ".yml",
   ".zsh"
 ]);
+var JOB_READABLE_ROOTS = /* @__PURE__ */ new Set([
+  "legacy-plans",
+  "notes",
+  "papers",
+  "plans",
+  "workspace-job-deem"
+]);
 function visualStudioCodeUrl(path) {
   const url = new URL("vscode://file");
   const portable = String(path || "").replace(/\\/g, "/");
@@ -11596,16 +11562,23 @@ var ResourceOpener = class {
   jobAllowedRoots = /* @__PURE__ */ new Set();
   grantJobAccess(value) {
     const access = value && typeof value === "object" ? value : {};
-    const allowedRoots = Array.isArray(access.allowed_roots) ? access.allowed_roots.filter(
-      (root) => typeof root === "string" && /^[a-z0-9][a-z0-9-]*$/.test(root) && root !== "stratum"
-    ) : [];
-    this.jobAccessGranted = access.scope === "job-dashboard" && access.read_only === true && access.ephemeral === true && access.excluded_from_manifest === true && access.excluded_from_search === true && access.excluded_from_ai === true && access.writes_through_gateway === true && typeof access.snapshot_id === "string" && access.snapshot_id.startsWith("sha256:") && allowedRoots.length > 0;
+    const declaredRoots = Array.isArray(access.allowed_roots) ? access.allowed_roots : [];
+    const allowedRoots = declaredRoots.filter(
+      (root) => typeof root === "string" && JOB_READABLE_ROOTS.has(root)
+    );
+    const rootsAreExact = allowedRoots.length === declaredRoots.length && new Set(allowedRoots).size === allowedRoots.length;
+    const stratum = access.stratum && typeof access.stratum === "object" ? access.stratum : {};
+    this.jobAccessGranted = access.scope === "job-dashboard" && access.read_only === true && access.ephemeral === true && access.excluded_from_manifest === true && access.excluded_from_search === true && access.excluded_from_ai === true && access.writes_through_gateway === true && stratum.mode === "read-only" && stratum.worktree_writes_allowed === false && stratum.git_metadata_writes_allowed === false && typeof access.snapshot_id === "string" && access.snapshot_id.startsWith("sha256:") && rootsAreExact && allowedRoots.length > 0;
     this.jobAllowedRoots = this.jobAccessGranted ? new Set(allowedRoots) : /* @__PURE__ */ new Set();
     return this.jobAccessGranted;
   }
   isQuarantinedPath(path) {
     const posix = String(path || "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/^\/+/, "");
     return posix === "Job" || posix.startsWith("Job/") || posix.includes("/Job/");
+  }
+  isStratumPath(path) {
+    const posix = String(path || "").replace(/\\/g, "/").replace(/^\.\//, "").replace(/^\/+/, "");
+    return posix === "Job/stratum" || posix.startsWith("Job/stratum/") || posix.includes("/Job/stratum/");
   }
   refuseQuarantined(path) {
     if (!this.isQuarantinedPath(path)) return false;
@@ -11618,6 +11591,15 @@ var ResourceOpener = class {
     if (!target || target.startsWith("/") || target.split("/").includes("..")) {
       new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return void 0;
+    }
+    const candidate = nodePath3.resolve(this.app.vault.adapter.getBasePath(), target);
+    if (fs3.existsSync(candidate)) {
+      try {
+        if (this.refuseQuarantined(fs3.realpathSync(candidate))) return void 0;
+      } catch (_) {
+        new import_obsidian22.Notice(`File unavailable: ${target}`);
+        return void 0;
+      }
     }
     const file = this.app.vault.getAbstractFileByPath(target);
     if (!file) {
@@ -11661,8 +11643,19 @@ var ResourceOpener = class {
       return this.openSystemPath(path, "Opened in the system app.");
     }
   }
-  openPreferredLocalPath(path, systemMessage) {
-    return this.isCodePath(path) ? this.openCodePath(path) : this.openSystemPath(path, systemMessage);
+  openPreferredLocalPath(path, systemMessage, allowJob = false) {
+    let realPath = "";
+    try {
+      realPath = fs3.realpathSync(path);
+    } catch (_) {
+      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
+      return Promise.resolve(false);
+    }
+    if (this.isQuarantinedPath(realPath) && (!allowJob || this.isStratumPath(realPath))) {
+      new import_obsidian22.Notice(this.isStratumPath(realPath) ? "Stratum is strictly read-only and cannot be opened in an editor." : "Job/ is quarantined \u2014 LearningOS never opens or displays it.");
+      return Promise.resolve(false);
+    }
+    return this.isCodePath(realPath) ? this.openCodePath(realPath) : this.openSystemPath(realPath, systemMessage);
   }
   async openExternalPath(path, successMessage = "Opened in the default app.") {
     if (this.refuseQuarantined(path)) return false;
@@ -11670,7 +11663,15 @@ var ResourceOpener = class {
       new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
-    return this.openSystemPath(path, successMessage);
+    let realPath = "";
+    try {
+      realPath = fs3.realpathSync(path);
+    } catch (_) {
+      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
+      return false;
+    }
+    if (this.refuseQuarantined(realPath)) return false;
+    return this.openSystemPath(realPath, successMessage);
   }
   /**
    * Deliberate Job-session exception. Ordinary open helpers still refuse every
@@ -11691,14 +11692,29 @@ var ResourceOpener = class {
     const semesterRoot = nodePath3.dirname(nodePath3.dirname(vault));
     const jobRoot = nodePath3.resolve(semesterRoot, "Job");
     const fullPath = nodePath3.resolve(jobRoot, relative2);
-    const escaped = nodePath3.relative(jobRoot, fullPath);
-    if (!escaped || escaped.startsWith("..") || nodePath3.isAbsolute(escaped) || !fs3.existsSync(nodePath3.join(jobRoot, "README.md")) || !fs3.existsSync(fullPath)) {
+    if (!fs3.existsSync(nodePath3.join(jobRoot, "README.md")) || !fs3.existsSync(fullPath)) {
       new import_obsidian22.Notice(`Job file unavailable: ${relative2 || "unknown path"}`);
       return false;
     }
+    let realJobRoot = "";
+    let realFullPath = "";
+    try {
+      realJobRoot = fs3.realpathSync(jobRoot);
+      realFullPath = fs3.realpathSync(fullPath);
+    } catch (_) {
+      new import_obsidian22.Notice(`Job file unavailable: ${relative2 || "unknown path"}`);
+      return false;
+    }
+    const escaped = nodePath3.relative(realJobRoot, realFullPath);
+    const realTop = escaped.split(nodePath3.sep)[0] || "";
+    if (!escaped || escaped.startsWith("..") || nodePath3.isAbsolute(escaped) || !this.jobAllowedRoots.has(realTop)) {
+      new import_obsidian22.Notice("The Job dashboard refused a symlink outside its read-only allowlist.");
+      return false;
+    }
     return this.openPreferredLocalPath(
-      fullPath,
-      "Opened from the confidential Job workspace."
+      realFullPath,
+      "Opened from the confidential Job workspace.",
+      true
     );
   }
   /** Web references shown inside the ephemeral Job reader stay protocol-safe. */

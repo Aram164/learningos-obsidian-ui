@@ -1,4 +1,4 @@
-import { badge, section } from '../../components';
+import { badge, cardTop, section } from '../../components';
 import { noteCard } from './cards';
 import type { JobDashboardHost } from './host';
 import type { JobDashboard, JobNote } from './model';
@@ -27,10 +27,7 @@ function renderLayer(
   byId: ReadonlyMap<string, JobNote>,
 ): void {
   const group = parent.createDiv({ cls: 'los-job-layer' });
-  const head = group.createDiv({ cls: 'los-card-top' });
-  const copy = head.createDiv({ cls: 'los-card-copy' });
-  copy.createEl('h3', { text: layer.title });
-  if (layer.summary) copy.createDiv({ cls: 'los-micro', text: layer.summary });
+  const head = cardTop(group, layer.title, layer.summary);
 
   if (!layer.noteIds.length) {
     group.createEl('p', { cls: 'los-muted', text: 'No note describes this layer yet.' });

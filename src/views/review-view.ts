@@ -1,7 +1,16 @@
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
-import { badge, button, empty, filterTabs, OWNERSHIP_STATEMENT, pageHeader, section } from '../components';
+import {
+  badge,
+  button,
+  empty,
+  factList,
+  filterTabs,
+  OWNERSHIP_STATEMENT,
+  pageHeader,
+  section,
+} from '../components';
 import { CONTRACT_VERSION, VIEW_DIAGNOSTICS, VIEW_REVIEW } from '../constants';
 import type { ProjectionRecord } from '../contracts/manifest';
 import type { AppSurface } from '../app/surface';
@@ -501,7 +510,6 @@ export class DiagnosticsView extends ItemView {
       this.plugin.store.data?._generated ?? {};
     const build = this.buildInfo();
     const facts = section(root, 'Contract and versions');
-    const table = facts.createDiv({ cls: 'los-fact-list' });
     const factRows: ReadonlyArray<
       readonly [string, unknown]
     > = [
@@ -528,11 +536,7 @@ export class DiagnosticsView extends ItemView {
       ['Interpreter source', this.plugin.resolvePython().origin],
     ];
 
-    for (const [label, value] of factRows) {
-      const row = table.createDiv({ cls: 'los-fact-row' });
-      row.createSpan({ cls: 'los-fact-label', text: label });
-      row.createSpan({ cls: 'los-fact-value', text: String(value) });
-    }
+    factList(facts, factRows);
 
     const actions = root.createDiv({ cls: 'los-actions' });
     button(actions, 'Validate and rebuild', () => this.plugin.generate(), 'success');

@@ -19,6 +19,7 @@ import {
   readMaterialOptions,
 } from './model';
 import { renderMaterialOverview } from './materials';
+import { renderLearningRouteRail } from '../learning-route';
 
 export function render(
   view: UnitView,
@@ -297,134 +298,27 @@ export function renderRail(
     studyMap: StudyMapView,
     current: StageRecordView,
   ): void {
-    const rail = layout.createDiv({
-      cls: 'los-stage-rail',
-    });
-
-    rail.setAttr(
-      'aria-label',
-      'Ordered learning stages',
-    );
-
     const completedCount =
       studyMap.stages.filter(
         (stage) =>
           stage.status === 'complete',
       ).length;
 
-    const progressPercent =
-      Math.round(
-        (
-          completedCount
-          / studyMap.stages.length
-        ) * 100,
-      );
-
-    const summary = rail.createDiv({
-      cls: 'los-stage-rail-summary',
-    });
-
-    summary.createEl('h2', {
-      text: 'Learning route',
-    });
-
-    const progressCopy = summary.createDiv({
-      cls: 'los-stage-progress-copy',
-    });
-
-    progressCopy.createSpan({
-      text:
-        `${completedCount} of ${studyMap.stages.length} complete`,
-    });
-
-    progressCopy.createSpan({
-      cls: 'los-micro',
-      text: `${progressPercent}%`,
-    });
-
-    const progress = summary.createDiv({
-      cls: 'los-stage-progress',
-      attr: {
-        role: 'progressbar',
-        'aria-label': 'Overall learning route progress',
-        'aria-valuemin': '0',
-        'aria-valuemax': '100',
-        'aria-valuenow': String(
-          progressPercent,
-        ),
-      },
-    });
-
-    const progressValue = progress.createDiv({
-      cls: 'los-stage-progress-value',
-    });
-
-    progressValue.style.width =
-      `${progressPercent}%`;
-
-    const stageList = rail.createDiv({
-      cls: 'los-stage-list',
-      attr: {
-        role: 'list',
-      },
-    });
-
     const currentIndex = studyMap.stages.findIndex(
       (stage) => stage.id === current.id,
     );
-
-    for (
-      const [index, stage]
-      of studyMap.stages.entries()
-    ) {
-      const selected =
-        stage.id === current.id;
-
-      const row = stageList.createEl(
-        'button',
-        {
-          cls:
-            `los-stage-row los-s-${stage.status} ${
-              selected
-                ? 'is-selected'
-                : index > currentIndex
-                  ? 'is-upcoming'
-                  : 'is-before'
-            } is-clickable`,
-          attr: {
-            type: 'button',
-            role: 'listitem',
-            'aria-posinset': String(
-              index + 1,
-            ),
-            'aria-setsize': String(
-              studyMap.stages.length,
-            ),
-            'aria-current':
-              selected
-                ? 'step'
-                : 'false',
-          },
-        },
-      );
-
-      row.createSpan({
-        cls: 'los-stage-index',
-        text:
-          String(index + 1)
-            .padStart(2, '0'),
-      });
-
-      const copy = row.createSpan({
-        cls: 'los-stage-copy',
-      });
-
-      copy.createSpan({
-        text: stage.title,
-      });
-
-      const marker =
-        stage.status === 'complete'
+    const rail = renderLearningRouteRail(layout, {
+      title: 'Learning route',
+      ariaLabel: 'Ordered learning stages',
+      progressLabel: 'Overall learning route progress',
+      completed: completedCount,
+      selectedId: current.id,
+      items: studyMap.stages.map((stage, index) => ({
+        id: stage.id,
+        number: index + 1,
+        title: stage.title,
+        state: stage.status,
+        marker: stage.status === 'complete'
           ? 'Complete'
           : stage.status === 'skipped'
             ? 'Skipped'
@@ -432,24 +326,10 @@ export function renderRail(
               ? `Done when · ${stage.doneWhen.length} criteria`
               : index > currentIndex
                 ? 'Not started'
-                : '';
-
-      if (marker) {
-        copy.createSpan({
-          cls: 'los-micro',
-          text: marker,
-        });
-      }
-
-      row.addEventListener(
-        'click',
-        () => {
-          void view.selectStage(
-            stage.id,
-          );
-        },
-      );
-    }
+                : '',
+      })),
+      select: (stageId) => { void view.selectStage(stageId); },
+    });
 
     const stageRecords =
       studyMap.stages.map(

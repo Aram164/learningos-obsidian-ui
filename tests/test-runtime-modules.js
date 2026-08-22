@@ -2,6 +2,7 @@
 
 const assert = require('assert/strict');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const { createSourceModuleLoader } = require('./source-module-loader');
 
@@ -281,6 +282,9 @@ function routerPlugin(settings = {}) {
       excluded_from_search: true,
       excluded_from_ai: true,
       writes_through_gateway: true,
+      stratum: {
+        mode: 'read-only', worktree_writes_allowed: false, git_metadata_writes_allowed: false,
+      },
       allowed_roots: ['notes', 'plans', 'workspace-job-deem'],
       snapshot_id: 'sha256:job-snapshot',
     }), true);
@@ -297,6 +301,68 @@ function routerPlugin(settings = {}) {
     assert.equal(externalLog.at(-1), 'https://docs.pola.rs/user-guide/');
     assert.equal(await opener.openJobLearningPath('Job/secret.pdf'), false);
     assert.match(noticeLog.at(-1), /outside LearningOS/);
+  });
+
+  await test('Job access fails closed for a weaker Stratum policy or an unknown root', async () => {
+    const opener = new ResourceOpener({});
+    const access = {
+      scope: 'job-dashboard', read_only: true, ephemeral: true,
+      excluded_from_manifest: true, excluded_from_search: true, excluded_from_ai: true,
+      writes_through_gateway: true,
+      stratum: {
+        mode: 'read-only', worktree_writes_allowed: false, git_metadata_writes_allowed: false,
+      },
+      allowed_roots: ['notes'], snapshot_id: 'sha256:job-snapshot',
+    };
+    assert.equal(opener.grantJobAccess({ ...access, stratum: { mode: 'read-only' } }), false);
+    assert.equal(opener.grantJobAccess({ ...access, allowed_roots: ['notes', 'stratum'] }), false);
+    assert.equal(opener.grantJobAccess({ ...access, allowed_roots: ['notes', 'unknown'] }), false);
+  });
+
+  await test('Job file opening resolves symlinks and cannot tunnel into Stratum', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'learningos-job-boundary-'));
+    try {
+      const vault = path.join(root, 'LearningOS', 'repository');
+      const job = path.join(root, 'Job');
+      fs.mkdirSync(vault, { recursive: true });
+      fs.mkdirSync(path.join(job, 'notes'), { recursive: true });
+      fs.mkdirSync(path.join(job, 'stratum'), { recursive: true });
+      fs.writeFileSync(path.join(job, 'README.md'), 'Job boundary\n');
+      fs.writeFileSync(path.join(job, 'stratum', 'secret.py'), 'SECRET = True\n');
+      fs.symlinkSync(
+        path.join(job, 'stratum', 'secret.py'),
+        path.join(job, 'notes', 'stratum-link.py'),
+      );
+
+      const opener = new ResourceOpener({
+        vault: { adapter: { getBasePath: () => vault } },
+      });
+      assert.equal(opener.grantJobAccess({
+        scope: 'job-dashboard', read_only: true, ephemeral: true,
+        excluded_from_manifest: true, excluded_from_search: true, excluded_from_ai: true,
+        writes_through_gateway: true,
+        stratum: {
+          mode: 'read-only', worktree_writes_allowed: false, git_metadata_writes_allowed: false,
+        },
+        allowed_roots: ['notes'], snapshot_id: 'sha256:job-snapshot',
+      }), true);
+      assert.equal(await opener.openJobPath('notes/stratum-link.py'), false);
+      assert.match(noticeLog.at(-1), /symlink outside its read-only allowlist/);
+      assert.equal(externalLog.some((entry) => entry.includes('secret.py')), false);
+
+      const learningLink = path.join(root, 'LearningOS', 'stratum-link.py');
+      fs.symlinkSync(path.join(job, 'stratum', 'secret.py'), learningLink);
+      assert.equal(await opener.openJobLearningPath('LearningOS/stratum-link.py'), false);
+      assert.match(noticeLog.at(-1), /Stratum is strictly read-only/);
+      assert.equal(externalLog.some((entry) => entry.includes('secret.py')), false);
+
+      const vaultLink = path.join(vault, 'stratum-vault-link.py');
+      fs.symlinkSync(path.join(job, 'stratum', 'secret.py'), vaultLink);
+      assert.equal(await opener.openVaultPath('stratum-vault-link.py'), undefined);
+      assert.match(noticeLog.at(-1), /quarantined/);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   });
 
   await test('VS Code file links preserve the exact local target', async () => {

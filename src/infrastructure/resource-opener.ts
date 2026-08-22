@@ -18,6 +18,10 @@ const CODE_EXTENSIONS = new Set([
   '.yaml', '.yml', '.zsh',
 ]);
 
+const JOB_READABLE_ROOTS = new Set([
+  'legacy-plans', 'notes', 'papers', 'plans', 'workspace-job-deem',
+]);
+
 /** VS Code's file URL keeps spaces, hashes and non-ASCII names attached to the
  * file they belong to instead of letting Electron interpret them as URL syntax. */
 export function visualStudioCodeUrl(path: string): string {
@@ -51,13 +55,15 @@ export class ResourceOpener {
     const access = value && typeof value === 'object'
       ? value as Record<string, unknown>
       : {};
-    const allowedRoots = Array.isArray(access.allowed_roots)
-      ? access.allowed_roots.filter(
-        (root): root is string => typeof root === 'string'
-          && /^[a-z0-9][a-z0-9-]*$/.test(root)
-          && root !== 'stratum',
-      )
-      : [];
+    const declaredRoots = Array.isArray(access.allowed_roots) ? access.allowed_roots : [];
+    const allowedRoots = declaredRoots.filter(
+      (root): root is string => typeof root === 'string' && JOB_READABLE_ROOTS.has(root),
+    );
+    const rootsAreExact = allowedRoots.length === declaredRoots.length
+      && new Set(allowedRoots).size === allowedRoots.length;
+    const stratum = access.stratum && typeof access.stratum === 'object'
+      ? access.stratum as Record<string, unknown>
+      : {};
     this.jobAccessGranted = access.scope === 'job-dashboard'
       && access.read_only === true
       && access.ephemeral === true
@@ -65,8 +71,12 @@ export class ResourceOpener {
       && access.excluded_from_search === true
       && access.excluded_from_ai === true
       && access.writes_through_gateway === true
+      && stratum.mode === 'read-only'
+      && stratum.worktree_writes_allowed === false
+      && stratum.git_metadata_writes_allowed === false
       && typeof access.snapshot_id === 'string'
       && access.snapshot_id.startsWith('sha256:')
+      && rootsAreExact
       && allowedRoots.length > 0;
     this.jobAllowedRoots = this.jobAccessGranted ? new Set(allowedRoots) : new Set();
     return this.jobAccessGranted;
@@ -75,6 +85,13 @@ export class ResourceOpener {
   isQuarantinedPath(path: string): boolean {
     const posix = String(path || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
     return posix === 'Job' || posix.startsWith('Job/') || posix.includes('/Job/');
+  }
+
+  isStratumPath(path: string): boolean {
+    const posix = String(path || '').replace(/\\/g, '/').replace(/^\.\//, '').replace(/^\/+/, '');
+    return posix === 'Job/stratum'
+      || posix.startsWith('Job/stratum/')
+      || posix.includes('/Job/stratum/');
   }
 
   refuseQuarantined(path: string): boolean {
@@ -89,6 +106,18 @@ export class ResourceOpener {
     if (!target || target.startsWith('/') || target.split('/').includes('..')) {
       new Notice(`Unsafe vault path refused: ${path || 'unknown path'}`);
       return undefined;
+    }
+    // Obsidian paths are lexical. Resolve a local symlink before asking the
+    // vault to open it so an innocent-looking canonical path cannot tunnel
+    // into Job (and especially not into the editable Stratum checkout).
+    const candidate = nodePath.resolve(this.app.vault.adapter.getBasePath(), target);
+    if (fs.existsSync(candidate)) {
+      try {
+        if (this.refuseQuarantined(fs.realpathSync(candidate))) return undefined;
+      } catch (_) {
+        new Notice(`File unavailable: ${target}`);
+        return undefined;
+      }
     }
     const file = this.app.vault.getAbstractFileByPath(target);
     if (!file) { new Notice(`File unavailable: ${target}`); return undefined; }
@@ -130,16 +159,38 @@ export class ResourceOpener {
     }
   }
 
-  private openPreferredLocalPath(path: string, systemMessage: string): Promise<boolean> {
-    return this.isCodePath(path)
-      ? this.openCodePath(path)
-      : this.openSystemPath(path, systemMessage);
+  private openPreferredLocalPath(
+    path: string,
+    systemMessage: string,
+    allowJob = false,
+  ): Promise<boolean> {
+    let realPath = '';
+    try { realPath = fs.realpathSync(path); } catch (_) {
+      new Notice(`File unavailable: ${path || 'unknown path'}`);
+      return Promise.resolve(false);
+    }
+    if (this.isQuarantinedPath(realPath)
+        && (!allowJob || this.isStratumPath(realPath))) {
+      new Notice(this.isStratumPath(realPath)
+        ? 'Stratum is strictly read-only and cannot be opened in an editor.'
+        : 'Job/ is quarantined — LearningOS never opens or displays it.');
+      return Promise.resolve(false);
+    }
+    return this.isCodePath(realPath)
+      ? this.openCodePath(realPath)
+      : this.openSystemPath(realPath, systemMessage);
   }
 
   async openExternalPath(path: string, successMessage = 'Opened in the default app.'): Promise<boolean> {
     if (this.refuseQuarantined(path)) return false;
     if (!path || !fs.existsSync(path)) { new Notice(`File unavailable: ${path || 'unknown path'}`); return false; }
-    return this.openSystemPath(path, successMessage);
+    let realPath = '';
+    try { realPath = fs.realpathSync(path); } catch (_) {
+      new Notice(`File unavailable: ${path || 'unknown path'}`);
+      return false;
+    }
+    if (this.refuseQuarantined(realPath)) return false;
+    return this.openSystemPath(realPath, successMessage);
   }
 
   /**
@@ -162,16 +213,30 @@ export class ResourceOpener {
     const semesterRoot = nodePath.dirname(nodePath.dirname(vault));
     const jobRoot = nodePath.resolve(semesterRoot, 'Job');
     const fullPath = nodePath.resolve(jobRoot, relative);
-    const escaped = nodePath.relative(jobRoot, fullPath);
-    if (!escaped || escaped.startsWith('..') || nodePath.isAbsolute(escaped)
-        || !fs.existsSync(nodePath.join(jobRoot, 'README.md'))
-        || !fs.existsSync(fullPath)) {
+    if (!fs.existsSync(nodePath.join(jobRoot, 'README.md')) || !fs.existsSync(fullPath)) {
       new Notice(`Job file unavailable: ${relative || 'unknown path'}`);
       return false;
     }
+    let realJobRoot = '';
+    let realFullPath = '';
+    try {
+      realJobRoot = fs.realpathSync(jobRoot);
+      realFullPath = fs.realpathSync(fullPath);
+    } catch (_) {
+      new Notice(`Job file unavailable: ${relative || 'unknown path'}`);
+      return false;
+    }
+    const escaped = nodePath.relative(realJobRoot, realFullPath);
+    const realTop = escaped.split(nodePath.sep)[0] || '';
+    if (!escaped || escaped.startsWith('..') || nodePath.isAbsolute(escaped)
+        || !this.jobAllowedRoots.has(realTop)) {
+      new Notice('The Job dashboard refused a symlink outside its read-only allowlist.');
+      return false;
+    }
     return this.openPreferredLocalPath(
-      fullPath,
+      realFullPath,
       'Opened from the confidential Job workspace.',
+      true,
     );
   }
 

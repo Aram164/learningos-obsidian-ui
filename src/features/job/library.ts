@@ -1,4 +1,4 @@
-import { badge, button, section } from '../../components';
+import { badge, button, cardTop, section } from '../../components';
 import { materialCard } from './cards';
 import type { JobDashboardHost } from './host';
 import type { JobDashboard, JobHorizon } from './model';
@@ -91,8 +91,7 @@ export function renderLibrary(
     if (!entries.length) continue;
 
     const group = library.createDiv({ cls: 'los-job-horizon' });
-    const head = group.createDiv({ cls: 'los-card-top' });
-    head.createEl('h3', { text: HORIZON_LABEL[horizon] });
+    const head = cardTop(group, HORIZON_LABEL[horizon]);
     badge(head, String(entries.length), horizon);
 
     for (const entry of entries) {

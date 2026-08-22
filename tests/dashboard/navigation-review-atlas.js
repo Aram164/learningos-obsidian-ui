@@ -109,7 +109,7 @@ module.exports = async function run() {
     jobRoot.findText('los-filter-tab', 'Plans').fire('click');
     check('Plans exposes progress and an in-app learning runway',
       jobRoot.allText().includes('Study plans')
-      && jobRoot.allText().includes('0 of 2 stages complete')
+      && jobRoot.allText().includes('0 of 2 complete')
       && Boolean(jobRoot.findText('los-btn', 'Open plan'))
       && Boolean(jobRoot.findText('los-btn', 'Edit plan'))
       && !jobRoot.allText().includes('Open source'));
@@ -121,10 +121,13 @@ module.exports = async function run() {
       && jobRoot.allText().includes('Polars mirror')
       && jobRoot.allText().includes('Done when')
       && jobRoot.allText().includes('Paired solutions')
-      && jobRoot.find('los-job-stage-row').length === 2
-      && jobRoot.find('los-job-stage-row').filter(
+      && jobRoot.find('los-stage-row').length === 2
+      && jobRoot.find('los-stage-rail').length === 1
+      && jobRoot.find('los-stage-workspace').length === 1
+      && jobRoot.find('los-stage-row').filter(
         (stage) => stage.getAttribute('aria-pressed') === 'true',
       ).length === 1
+      && jobRoot.find('los-job-stage-row').length === 0
       && !jobRoot.allText().includes('Open source'));
     check('Job stages use the same structured resource renderer as module stages',
       jobRoot.find('los-resource-row').length === 3
@@ -133,7 +136,7 @@ module.exports = async function run() {
       && jobRoot.allText().includes('Do this')
       && jobRoot.allText().includes('Reference — preserved, not reading for this stage')
       && jobRoot.findText('los-btn', 'Open'));
-    jobRoot.findText('los-job-stage-row', 'Lazy optimization').fire('click');
+    jobRoot.findText('los-stage-row', 'Lazy optimization').fire('click');
     check('Each plan stage opens independently and persists its location',
       jobRoot.allText().includes('Stage 02 of 2')
       && jobRoot.allText().includes('Mental model')
