@@ -1,6 +1,8 @@
 import { Modal, type App } from 'obsidian';
 import { makeModalAccessible } from '../../accessibility/modal';
 import { button } from '../../components';
+import type { PlanTemplate } from '../../contracts/job-dashboard';
+import { errorMessage } from '../../projection/readers';
 import type {
   JobHorizon,
   JobLearningTrack,
@@ -158,6 +160,12 @@ export class JobPlanModal extends JobEditorModal {
     app: App,
     private readonly options: {
       plan?: JobLearningTrack;
+      /**
+       * The `plan.template` query. Optional so a read-only host stays valid;
+       * when it is present the dialog offers Core's template rather than
+       * defaults of its own, which is the whole point of one standard.
+       */
+      template?: (title: string) => Promise<PlanTemplate>;
       submit: (plan: Record<string, unknown>, revision?: number) => Promise<unknown>;
     },
   ) { super(app); }
@@ -168,12 +176,18 @@ export class JobPlanModal extends JobEditorModal {
       plan ? 'Update study plan' : 'Create study plan',
       'Define the long-term outcome, then make each stage small enough to finish and prove.',
     );
+    const standard = plan ? null : root.createDiv({
+      cls: 'los-muted los-plan-standard',
+      attr: { 'aria-live': 'polite' },
+    });
+    standard?.setText('Reading the plan template from LearningOS…');
     const title = labelledInput(root, 'Plan name', plan?.title || '');
     const horizon = labelledSelect<JobHorizon>(root, 'Horizon', plan?.horizon || 'now', [
       ['now', 'Use now'], ['next', 'Use next'], ['later', 'Keep for later'],
     ]);
-    const cadence = labelledInput(root, 'Cadence', plan?.cadence || 'One stage per week');
+    const cadence = labelledInput(root, 'Cadence', plan?.cadence || '');
     const outcome = labelledTextarea(root, 'Outcome', plan?.outcome || '', 4);
+    if (standard) this.offerTemplate(standard, { cadence, horizon });
     const stages = plan ? null : labelledTextarea(
       root,
       'Stages — one per line: title | objective | done when | resource link | read-only anchor',
@@ -191,12 +205,17 @@ export class JobPlanModal extends JobEditorModal {
       if (!planTitle) throw new Error('Give the plan a name first.');
       const rows = stages ? jobPlanStageDrafts(stages.value) : [];
       if (!plan && !rows.length) throw new Error('Add at least one stage.');
+      // Blanks are filled from the template for the real title, not from a
+      // sentence written here. One generator owns every default.
+      const filled = plan || (cadence.value.trim() && outcome.value.trim())
+        ? null
+        : await this.templateFor(planTitle);
       await this.options.submit({
         ...(plan ? { id: plan.id } : {}),
         title: planTitle,
         horizon: horizon.value,
-        cadence: cadence.value.trim(),
-        outcome: outcome.value.trim(),
+        cadence: cadence.value.trim() || filled?.cadence || '',
+        outcome: outcome.value.trim() || filled?.outcome || '',
         status: plan?.status || 'ready',
         stages: plan ? plan.stages.map((stage) => ({
           id: stage.id,
@@ -235,6 +254,48 @@ export class JobPlanModal extends JobEditorModal {
       }, plan?.revision);
     });
     title.focus();
+  }
+
+  /** Never fail the dialog over the template: a plan can still be authored. */
+  private async templateFor(title: string): Promise<PlanTemplate | null> {
+    if (!this.options.template) return null;
+    try {
+      return await this.options.template(title);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /**
+   * Say which standard the plan will be created under, and prefill from it.
+   * Silence here is what let the template exist without ever reaching this
+   * dialog, so a failure is reported rather than swallowed.
+   */
+  private async offerTemplate(
+    standard: HTMLElement,
+    fields: { cadence: HTMLInputElement; horizon: HTMLSelectElement },
+  ): Promise<void> {
+    if (!this.options.template) {
+      standard.setText(
+        'This host cannot read the plan template; LearningOS still applies it when the plan is saved.',
+      );
+      return;
+    }
+    try {
+      const template = await this.options.template('New plan');
+      if (!fields.cadence.value.trim()) fields.cadence.value = template.cadence;
+      fields.horizon.value = template.horizon;
+      standard.setText(
+        `Plan template v${template.planTemplateVersion}, validated against ${template.schema}. `
+        + 'Stages are numbered from one, and LearningOS fills the objective, proof, '
+        + 'estimate, and scope of anything you leave blank.',
+      );
+    } catch (error: unknown) {
+      standard.setText(
+        `Could not read the plan template: ${errorMessage(error)}. `
+        + 'You can still author the plan; LearningOS applies the same template when it saves.',
+      );
+    }
   }
 }
 

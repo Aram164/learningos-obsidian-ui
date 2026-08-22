@@ -13,7 +13,7 @@ const { ManifestStore } = load('src/manifest-store.ts');
 const { GatewayClient } = load('src/gateway-client.ts');
 const { isProjectionConflict, GatewayError } = load('src/contracts/gateway-v1.ts');
 const { ApplicationRouter } = load('src/app/router.ts');
-const { asJobDashboard } = load('src/features/job/model.ts');
+const { asJobDashboard, asPlanTemplate } = load('src/features/job/model.ts');
 const { enableButtonGroupKeyboardNavigation } = load('src/accessibility/button-group.ts');
 const constants = load('src/constants.ts');
 
@@ -494,6 +494,95 @@ function routerPlugin(settings = {}) {
       assert.ok(!('expected_snapshot' in call.envelope.payload),
         'the payload must not restate what the envelope owns');
     }
+  });
+
+  await test('the plan template is read from Core, not authored in the interface', async () => {
+    const calls = [];
+    const answer = {
+      ok: true,
+      contract: 'plan-template-v1',
+      profile: 'job',
+      plan_template_version: 1,
+      schema: 'job-plan.schema.json',
+      plan: {
+        type: 'job-learning-plan',
+        plan_template_version: 1,
+        title: 'Rust systems track',
+        status: 'ready',
+        horizon: 'now',
+        cadence: 'One stage per week',
+        outcome: 'Apply Rust systems track independently in a real task.',
+        stages: [{ id: 'stage-x', number: 1, title: 'Rust systems track' }],
+      },
+    };
+    const gateway = new GatewayClient({
+      runLos: (args, callback) => {
+        calls.push(args);
+        callback(null, JSON.stringify(answer), '');
+      },
+      store: { snapshotId: 'snapshot-test' },
+    });
+
+    const template = asPlanTemplate(await gateway.planTemplate('job', 'Rust systems track'));
+    assert.deepEqual(calls, [[
+      'plan-template', 'job', '--title', 'Rust systems track', '--json',
+    ]], 'the query is the declared read, with no snapshot write guard');
+    assert.equal(template.planTemplateVersion, 1);
+    assert.equal(template.schema, 'job-plan.schema.json');
+    assert.equal(template.cadence, 'One stage per week');
+    assert.equal(template.horizon, 'now');
+
+    await gateway.planTemplate('curriculum', 'Lecture 01', {
+      unitId: 'unit-demo-l01', moduleId: 'module-demo',
+    });
+    assert.deepEqual(calls[1], [
+      'plan-template', 'curriculum', '--title', 'Lecture 01', '--json',
+      '--unit-id', 'unit-demo-l01', '--module-id', 'module-demo',
+    ]);
+  });
+
+  await test('a half-read plan-template answer is refused rather than trusted', async () => {
+    // Each of these would otherwise produce a "template" the dialog would
+    // present as authoritative while carrying none of the standard.
+    for (const broken of [
+      { ok: false, error: 'refused' },
+      { ok: true, contract: 'plan-template-v0', profile: 'job', plan_template_version: 1 },
+      { ok: true, contract: 'plan-template-v1', profile: 'unknown', plan_template_version: 1 },
+      { ok: true, contract: 'plan-template-v1', profile: 'job' },
+    ]) {
+      assert.throws(() => asPlanTemplate(broken), /plan[- ]template/i);
+    }
+  });
+
+  await test('a plan predating the template is distinguishable from one on it', async () => {
+    const track = (id, extra) => ({
+      id, title: id, status: 'ready', cadence: '', horizon: 'now', outcome: '',
+      stages: [], completed_sessions: [], last_session_at: '',
+      path: `plans/${id}.yaml`, revision: 0, ...extra,
+    });
+    const dashboard = asJobDashboard({
+      ok: true,
+      contract: 'job-dashboard-v2',
+      dashboard: {
+        title: 'Job', subtitle: 'Bounded', counts: {},
+        workspace: {
+          id: 'workspace-job-deem', title: 'Job', status: 'active', standing: true,
+          objective: 'Objective', current_scope: [], next_action: 'Next', open_questions: [],
+          path: 'workspace-job-deem/CONTEXT.md',
+        },
+        notes: { learning: [], skrub: [], stratum: [], health: {}, layers: [] },
+        learning_tracks: [
+          track('current', { source_kind: 'structured', plan_template_version: 1 }),
+          track('older', { source_kind: 'legacy-markdown', plan_template_version: null }),
+        ],
+        tasks: [], papers: [], canonical_shelf: [],
+      },
+    });
+    const [structured, legacy] = dashboard.learning_tracks;
+    assert.equal(structured.planTemplateVersion, 1);
+    // Null, never 0: "not authored from a template" and "template version
+    // zero" are different claims and the badge depends on the difference.
+    assert.equal(legacy.planTemplateVersion, null);
   });
 
   await test('GatewayClient serializes writes and recovers after rejection', async () => {

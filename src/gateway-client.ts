@@ -1,3 +1,4 @@
+import type { PlanProfile } from './contracts/job-dashboard';
 import type { JsonRecord, ProjectionRecord } from './contracts/manifest';
 import {
   GatewayError, exitCodeOf, structuredError,
@@ -296,6 +297,23 @@ export class GatewayClient {
       ? access.snapshot_id
       : null;
     return result;
+  }
+
+  /**
+   * The declared read-only `plan.template` query. Core generates and validates
+   * the starting record; the interface never authors defaults of its own, so
+   * "the standard" and "what the Create dialog offers" cannot drift apart.
+   * No snapshot guard: this reads no repository file and writes nothing.
+   */
+  planTemplate(
+    profile: PlanProfile,
+    title: string,
+    ids: { unitId?: string; moduleId?: string } = {},
+  ) {
+    const args = ['plan-template', profile, '--title', title, '--json'];
+    if (ids.unitId) args.push('--unit-id', ids.unitId);
+    if (ids.moduleId) args.push('--module-id', ids.moduleId);
+    return this.call(args);
   }
 
   private jobCapability(

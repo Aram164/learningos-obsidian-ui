@@ -12,6 +12,7 @@ import {
 } from '../features/job/editor-modals';
 import {
   asJobDashboard,
+  asPlanTemplate,
   type JobDashboard,
   type JobLearningTrack,
   type JobNote,
@@ -185,6 +186,11 @@ export class BoundaryView extends ItemView {
   private openPlanEditor(plan?: JobLearningTrack): void {
     new JobPlanModal(this.app, {
       ...(plan ? { plan } : {}),
+      // Read-only, so it does not join the write chain: queuing it behind a
+      // pending save would leave the dialog waiting on an unrelated write.
+      template: async (title: string) => asPlanTemplate(
+        await this.plugin.gateway.planTemplate('job', title),
+      ),
       submit: (value, revision) => this.commitJobWrite(
         () => this.plugin.gateway.saveJobPlan(value, revision),
       ),

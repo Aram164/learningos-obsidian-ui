@@ -1818,6 +1818,12 @@ function planCard(parent, host, plan) {
   const card = parent.createDiv({ cls: "los-card los-job-plan-card" });
   const top = cardTop(card, plan.title, `${total} stage${total === 1 ? "" : "s"}`);
   badge(top, plan.horizon, plan.horizon);
+  if (plan.planTemplateVersion === null) {
+    badge(top, "pre-template", "pre-template").setAttr(
+      "title",
+      "Authored before plan template v1. It stays readable; a new plan is created from the current template."
+    );
+  }
   if (plan.outcome) card.createEl("p", { text: plan.outcome });
   renderLearningProgress(
     card,
@@ -2285,14 +2291,20 @@ var JobPlanModal = class extends JobEditorModal {
       plan ? "Update study plan" : "Create study plan",
       "Define the long-term outcome, then make each stage small enough to finish and prove."
     );
+    const standard = plan ? null : root.createDiv({
+      cls: "los-muted los-plan-standard",
+      attr: { "aria-live": "polite" }
+    });
+    standard?.setText("Reading the plan template from LearningOS\u2026");
     const title = labelledInput(root, "Plan name", plan?.title || "");
     const horizon2 = labelledSelect(root, "Horizon", plan?.horizon || "now", [
       ["now", "Use now"],
       ["next", "Use next"],
       ["later", "Keep for later"]
     ]);
-    const cadence = labelledInput(root, "Cadence", plan?.cadence || "One stage per week");
+    const cadence = labelledInput(root, "Cadence", plan?.cadence || "");
     const outcome = labelledTextarea(root, "Outcome", plan?.outcome || "", 4);
+    if (standard) this.offerTemplate(standard, { cadence, horizon: horizon2 });
     const stages = plan ? null : labelledTextarea(
       root,
       "Stages \u2014 one per line: title | objective | done when | resource link | read-only anchor",
@@ -2310,12 +2322,13 @@ var JobPlanModal = class extends JobEditorModal {
       if (!planTitle) throw new Error("Give the plan a name first.");
       const rows = stages ? jobPlanStageDrafts(stages.value) : [];
       if (!plan && !rows.length) throw new Error("Add at least one stage.");
+      const filled = plan || cadence.value.trim() && outcome.value.trim() ? null : await this.templateFor(planTitle);
       await this.options.submit({
         ...plan ? { id: plan.id } : {},
         title: planTitle,
         horizon: horizon2.value,
-        cadence: cadence.value.trim(),
-        outcome: outcome.value.trim(),
+        cadence: cadence.value.trim() || filled?.cadence || "",
+        outcome: outcome.value.trim() || filled?.outcome || "",
         status: plan?.status || "ready",
         stages: plan ? plan.stages.map((stage) => ({
           id: stage.id,
@@ -2355,6 +2368,40 @@ var JobPlanModal = class extends JobEditorModal {
     });
     title.focus();
   }
+  /** Never fail the dialog over the template: a plan can still be authored. */
+  async templateFor(title) {
+    if (!this.options.template) return null;
+    try {
+      return await this.options.template(title);
+    } catch (_) {
+      return null;
+    }
+  }
+  /**
+   * Say which standard the plan will be created under, and prefill from it.
+   * Silence here is what let the template exist without ever reaching this
+   * dialog, so a failure is reported rather than swallowed.
+   */
+  async offerTemplate(standard, fields) {
+    if (!this.options.template) {
+      standard.setText(
+        "This host cannot read the plan template; LearningOS still applies it when the plan is saved."
+      );
+      return;
+    }
+    try {
+      const template = await this.options.template("New plan");
+      if (!fields.cadence.value.trim()) fields.cadence.value = template.cadence;
+      fields.horizon.value = template.horizon;
+      standard.setText(
+        `Plan template v${template.planTemplateVersion}, validated against ${template.schema}. Stages are numbered from one, and LearningOS fills the objective, proof, estimate, and scope of anything you leave blank.`
+      );
+    } catch (error) {
+      standard.setText(
+        `Could not read the plan template: ${errorMessage(error)}. You can still author the plan; LearningOS applies the same template when it saves.`
+      );
+    }
+  }
 };
 var JobNoteModal = class extends JobEditorModal {
   constructor(app, options) {
@@ -2381,6 +2428,7 @@ var JobNoteModal = class extends JobEditorModal {
 
 // src/contracts/job-dashboard.ts
 var JOB_DASHBOARD_CONTRACT = "job-dashboard-v2";
+var PLAN_TEMPLATE_CONTRACT = "plan-template-v1";
 
 // src/features/job/model.ts
 function horizon(value) {
@@ -2480,6 +2528,10 @@ function track(value) {
     completedSessions: asNumbers(row.completed_sessions),
     lastSessionAt: asTrimmedString(row.last_session_at),
     sourceKind: row.source_kind === "structured" ? "structured" : "legacy-markdown",
+    // Null and absent both mean "not authored from the current template", and
+    // both must stay distinguishable from 0 — reading this with asNumber()
+    // would turn a pre-standard plan into one claiming template version zero.
+    planTemplateVersion: asFiniteNumber(row.plan_template_version),
     revision: asNumber(row.revision)
   };
 }
@@ -2541,6 +2593,26 @@ function shelfSource(value) {
     authors: asTrimmedStrings(row.authors),
     horizon: horizon(row.horizon),
     why: asTrimmedString(row.why)
+  };
+}
+function asPlanTemplate(result) {
+  if (result.ok !== true || result.contract !== PLAN_TEMPLATE_CONTRACT) {
+    throw new Error("LearningOS did not answer the plan-template contract.");
+  }
+  const profile = result.profile === "curriculum" || result.profile === "job" ? result.profile : null;
+  const version = asFiniteNumber(result.plan_template_version);
+  const plan = asRecordOrEmpty(result.plan);
+  if (!profile || version === null || version < 1) {
+    throw new Error("The plan template answer named no profile or template version.");
+  }
+  return {
+    profile,
+    planTemplateVersion: version,
+    schema: asTrimmedString(result.schema),
+    title: asTrimmedString(plan.title),
+    cadence: asTrimmedString(plan.cadence),
+    outcome: asTrimmedString(plan.outcome),
+    horizon: horizon(plan.horizon)
   };
 }
 function asJobDashboard(result) {
@@ -2712,6 +2784,11 @@ var BoundaryView = class extends import_obsidian6.ItemView {
   openPlanEditor(plan) {
     new JobPlanModal(this.app, {
       ...plan ? { plan } : {},
+      // Read-only, so it does not join the write chain: queuing it behind a
+      // pending save would leave the dialog waiting on an unrelated write.
+      template: async (title) => asPlanTemplate(
+        await this.plugin.gateway.planTemplate("job", title)
+      ),
       submit: (value, revision) => this.commitJobWrite(
         () => this.plugin.gateway.saveJobPlan(value, revision)
       )
@@ -11292,6 +11369,18 @@ var GatewayClient = class {
     const access = result.access && typeof result.access === "object" ? result.access : {};
     this.jobSnapshotId = typeof access.snapshot_id === "string" && access.snapshot_id.startsWith("sha256:") ? access.snapshot_id : null;
     return result;
+  }
+  /**
+   * The declared read-only `plan.template` query. Core generates and validates
+   * the starting record; the interface never authors defaults of its own, so
+   * "the standard" and "what the Create dialog offers" cannot drift apart.
+   * No snapshot guard: this reads no repository file and writes nothing.
+   */
+  planTemplate(profile, title, ids = {}) {
+    const args = ["plan-template", profile, "--title", title, "--json"];
+    if (ids.unitId) args.push("--unit-id", ids.unitId);
+    if (ids.moduleId) args.push("--module-id", ids.moduleId);
+    return this.call(args);
   }
   jobCapability(name, payload, expectedRevisions = {}) {
     if (!this.jobSnapshotId) {

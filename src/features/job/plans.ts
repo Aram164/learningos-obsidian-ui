@@ -18,6 +18,15 @@ function planCard(
   const card = parent.createDiv({ cls: 'los-card los-job-plan-card' });
   const top = cardTop(card, plan.title, `${total} stage${total === 1 ? '' : 's'}`);
   badge(top, plan.horizon, plan.horizon);
+  // A plan authored before the creation standard is labelled, not silently
+  // shown as conforming: the label is the only thing that distinguishes
+  // "readable history" from "written to the current template".
+  if (plan.planTemplateVersion === null) {
+    badge(top, 'pre-template', 'pre-template').setAttr(
+      'title',
+      'Authored before plan template v1. It stays readable; a new plan is created from the current template.',
+    );
+  }
   if (plan.outcome) card.createEl('p', { text: plan.outcome });
   renderLearningProgress(
     card,

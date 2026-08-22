@@ -80,6 +80,10 @@
 .los-badge--active { color: var(--los-st-active); }
 .los-badge--needs-map { color: var(--los-st-attention); }
 .los-badge--role { color: var(--los-accent); }
+/* A record that predates the current creation template. Attention, not alarm:
+   the plan is readable and usable, it simply was not authored from the
+   standard the Create dialog now offers. */
+.los-badge--pre-template { color: var(--los-st-attention); }
 /* Level is a property of the evaluation, not a rank of the source — it reads
    as a neutral fact beside the roles, never as a score. */
 .los-badge--level { color: var(--los-ink-soft); border-color: var(--los-rule); }

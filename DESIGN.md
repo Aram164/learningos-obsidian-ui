@@ -87,6 +87,10 @@ Master's and Job boundaries, Diagnostics and *Rebuild projection* live under
   This is deliberate reuse of the original learning experience, not a data
   merge: Job records never enter the canonical manifest, Job writes still use
   only the Job gateway, and Stratum remains an unopened, immutable reference.
+  *Create study plan* names the standard it is creating under and prefills from
+  the read-only `plan.template` query, so the interface never carries its own
+  copy of the defaults; a plan authored before that template is badged
+  `pre-template` rather than shown as if it conformed.
 - **Review**: every decision queue in one destination — ready to shelve, inbox,
   units needing a map, the Garden.
 - **Diagnostics**: contract versions, projection freshness (`✓ current`,
