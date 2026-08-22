@@ -10,10 +10,13 @@
   padding-right: 160px;
 }
 
+/* Figma `04 · Unit workspace` (TRqyMF0WxGHOUPZ3PBsmST, node 14:462).
+   Panel title 20/27 semibold — the 28px it replaces was a page title on a
+   screen whose real subject is the stage card, not the unit name. */
 .los-unit-view > .los-page-header h1 {
-  font-size: 28px !important;
-  line-height: 34px;
-  letter-spacing: -.018em;
+  font-size: 20px !important;
+  line-height: 27px;
+  letter-spacing: 0;
 }
 
 .los-unit-view > .los-page-header > p { display: none; }
@@ -22,15 +25,11 @@
   top: 0;
   right: 0;
 }
-.los-unit-route-summary {
-  margin-top: 5px;
-  color: var(--los-ink-soft);
-  font-size: 14px;
-}
 
+/* 14:508 — two cards, 300px rail, 24px gutter. */
 .los-unit-layout {
-  grid-template-columns: 320px minmax(0, 1fr);
-  gap: 20px;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 24px;
   width: min(1240px, 100%);
   max-width: none;
   min-height: 720px;
@@ -42,14 +41,17 @@
 .los-stage-workspace {
   border: 1px solid var(--los-line);
   border-radius: var(--los-r-lg);
-  background: var(--los-surface-raised);
 }
 
+/* 14:509: the rail sits on bg/surface, the stage card on bg/raised with a
+   soft shadow. Two planes, so the card you are working in is the nearer one. */
 .los-stage-rail {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  padding: 18px 14px;
+  gap: 2px;
+  padding: 16px 10px;
+  background: var(--los-paper-2);
 }
 .los-stage-rail-summary {
   padding: 2px 10px 18px;
@@ -62,6 +64,16 @@
   letter-spacing: .075em;
   text-transform: uppercase;
 }
+/* 14:511 — label only, no rule and no progress bar under it. */
+.los-stage-rail-summary.is-label-only {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 12px 10px;
+  border-bottom: 0;
+}
+.los-stage-rail-summary.is-label-only h2 { margin-bottom: 0; }
 .los-stage-progress-copy {
   display: flex;
   align-items: baseline;
@@ -89,58 +101,80 @@
   min-width: 0;
   flex-direction: column;
   gap: 2px;
-  padding-top: 12px;
 }
 
+/* 5:21 `Stage rail item` — 12/11 padding, 12 gap, top-aligned so a wrapping
+   title does not drag the marker down with it. */
 .los-root .los-stage-row {
-  min-height: 58px;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
-  padding: 9px 10px;
+  padding: 11px 12px;
   border-radius: var(--los-r-md);
 }
 .los-root .los-stage-row.is-selected {
-  background: var(--los-accent-wash);
-  color: var(--los-accent);
+  background: var(--los-selected);
 }
-.los-root .los-stage-row.is-upcoming { opacity: .72; }
-.los-stage-index {
-  display: inline-grid;
-  width: 24px;
-  height: 24px;
-  flex: 0 0 24px;
-  place-items: center;
-  border: 1px solid var(--los-rule-strong);
+.los-root .los-stage-row.is-selected .los-stage-title {
+  color: var(--los-accent-strong);
+}
+.los-root .los-stage-row.is-upcoming .los-stage-title {
+  color: var(--los-ink-faint);
+}
+
+/* The marker is a dot, and its fill is the state. Shape carries the same
+   distinction as colour — hollow for not-yet, solid for reached — so the row
+   is still readable without hue (DESIGN.md: never colour alone). */
+.los-stage-marker {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 9px;
+  margin-top: 7px;
+  border: 1.5px solid var(--los-rule-strong);
   border-radius: var(--los-r-pill);
-  color: var(--los-ink-soft);
-  font-size: 10px;
-  font-weight: 600;
-  line-height: 1;
+  background: transparent;
 }
-.los-stage-row.los-s-complete .los-stage-index {
+.los-stage-row.los-s-complete .los-stage-marker {
   border-color: var(--los-success);
-  background: var(--los-success-wash);
-  color: var(--los-success-strong);
+  background: var(--los-success);
 }
-.los-stage-row.is-selected .los-stage-index {
+.los-stage-row.los-s-skipped .los-stage-marker {
+  border-color: var(--los-ink-faint);
+  background: var(--los-paper-3);
+}
+.los-stage-row.is-selected .los-stage-marker {
   border-color: var(--los-accent);
   background: var(--los-accent);
-  color: var(--los-on-accent);
 }
-.los-stage-copy > span:first-child { font-weight: 600; }
+
+.los-stage-copy { min-width: 0; }
+.los-stage-title {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 22px;
+}
 .los-stage-copy .los-micro { margin-top: 2px; font-weight: 400; }
-.los-add-unit-note {
-  margin-top: auto;
-  padding-top: 16px !important;
+
+/* 14:548 — the note action follows the last stage; it is not pinned to the
+   floor of the rail, because it belongs to the list above it. */
+/* `.los-root .los-btn` centres its label, and it outranks a bare class, so the
+   width reset and the alignment both have to be stated at that specificity. */
+.los-root .los-add-unit-note {
+  width: auto;
+  align-self: flex-start;
+  justify-content: flex-start;
+  margin: 10px 0 0 8px;
   border-color: transparent !important;
   color: var(--los-accent) !important;
 }
 
+/* 14:551 — the nearer plane: bg/raised, 26/28/22 padding, one soft shadow. */
 .los-stage-workspace {
   display: flex;
   min-height: 0;
   flex-direction: column;
-  padding: 30px 32px 24px;
+  padding: 26px 28px 22px;
+  background: var(--los-surface-raised);
+  box-shadow: 0 2px 8px var(--los-shadow-soft);
 }
 
 .los-stage-workspace > .los-section {
@@ -149,7 +183,7 @@
   margin: 0 0 18px;
 }
 
-.los-stage-heading { margin-bottom: 22px; }
+.los-stage-heading { margin-bottom: 18px; }
 .los-stage-heading-row {
   display: flex;
   align-items: flex-start;
@@ -157,28 +191,54 @@
   gap: 20px;
 }
 .los-stage-heading-copy { min-width: 0; }
+/* 14:553 — the eyebrow is accent here, not muted: on this card it is the one
+   line that says where in the route you are. */
+.los-stage-heading .los-kicker { color: var(--los-accent-strong); }
 .los-root .los-stage-heading h2 {
-  margin: 5px 0 2px;
-  font-size: 26px !important;
-  line-height: 32px;
-  letter-spacing: -.012em;
-}
-.los-stage-order-context {
-  color: var(--los-ink-soft);
-  font-size: 13px;
-}
-.los-stage-heading .los-badge { flex: 0 0 auto; }
-.los-stage-goal {
-  margin-bottom: 24px;
-  padding: 16px 18px;
-  border-left: 3px solid var(--los-accent);
-  border-radius: 0 var(--los-r-md) var(--los-r-md) 0;
-  background: var(--los-paper-3);
-}
-.los-stage-goal p {
   margin: 5px 0 0;
-  line-height: 1.5;
+  font-size: 20px !important;
+  line-height: 27px;
+  letter-spacing: 0;
 }
+.los-stage-objective {
+  max-width: 72ch;
+  margin: 8px 0 0;
+  color: var(--los-ink-soft);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+/* 14:555 — chips as typed pointers. The dot encodes the record type, so the
+   chip reads before it is read; the icon glyph is redundant at this size. */
+.los-stage-concepts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 18px;
+}
+.los-stage-concepts .los-chip {
+  gap: 7px;
+  min-height: 26px;
+  padding: 4px 11px 4px 9px;
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-pill);
+  background: var(--los-paper-3);
+  color: var(--los-ink-soft);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 18px;
+}
+.los-stage-concepts .los-chip-icon {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  overflow: hidden;
+  border-radius: var(--los-r-pill);
+  background: var(--los-accent-soft);
+}
+.los-stage-concepts .los-chip-icon svg { display: none; }
+.los-stage-concepts .los-chip.los-t-unit .los-chip-icon { background: var(--los-info); }
+
 .los-stage-section-heading {
   display: flex;
   align-items: baseline;
@@ -187,13 +247,31 @@
   margin-bottom: 8px;
 }
 .los-stage-section-heading h2 { margin: 0; }
-.los-donewhen-list { gap: 2px; }
+.los-donewhen-list { gap: 0; }
+/* 14:461 `Criterion row` — a 15px box, filled when ticked, and the criterion
+   greys out once satisfied. Ticks are UI-owned working state; the core only
+   ever learns that the stage completed. */
 .los-donewhen-row {
-  min-height: 42px;
-  align-items: center;
+  align-items: flex-start;
+  gap: 10px;
   padding: 8px 0;
+  font-size: 14px;
+  line-height: 22px;
 }
-.los-donewhen-row input { accent-color: var(--los-accent); }
+.los-donewhen-row input {
+  width: 15px;
+  height: 15px;
+  flex: 0 0 15px;
+  margin: 3px 0 0;
+  appearance: none;
+  border: 1.3px solid var(--los-rule-strong);
+  border-radius: var(--los-r-sm);
+  background: transparent;
+}
+.los-donewhen-row input:checked {
+  border-color: var(--los-accent);
+  background: var(--los-accent);
+}
 .los-donewhen-row.is-checked {
   color: var(--los-ink-faint);
   text-decoration: none;
@@ -357,18 +435,16 @@
   line-height: 16px;
 }
 
+/* 14:600 — a spacer pushes the actions to the foot of the card and they sit
+   left, under the work, where the reading ends. */
 .los-stage-workspace > .los-unit-actionbar {
   width: 100%;
   max-width: none;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: flex-start;
+  gap: 10px;
   margin: auto 0 0;
-  padding-top: 16px;
-}
-.los-unit-action-note {
-  margin-right: auto;
-  color: var(--los-ink-soft);
-  font-size: 12px;
+  padding-top: 18px;
 }
 
 /* Provenance of the current study map, plus the one action that replaces it.

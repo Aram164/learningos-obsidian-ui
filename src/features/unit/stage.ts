@@ -1,7 +1,7 @@
 import type { UnitView } from '../../views/unit-view';
 import {
-  badge,
   button,
+  chip,
   overflowMenu,
 } from '../../components';
 import {
@@ -39,13 +39,6 @@ export function renderStage(
     const stagePosition =
       Math.max(stageIndex, 0) + 1;
 
-    const previousStage =
-      stageIndex > 0
-        ? studyMap.stages[
-          stageIndex - 1
-        ]
-        : null;
-
     const stageState =
       stage.status === 'complete'
         ? 'Complete'
@@ -64,47 +57,63 @@ export function renderStage(
       cls: 'los-stage-heading-copy',
     });
 
+    /* Figma 14:553 — one accent eyebrow carrying position and state, in that
+     * order, as ` · `-joined clauses. The three separate lines this replaces
+     * (kicker, title, "Selected · ordered after X") spent a third of the card
+     * head restating the rail. */
+    const eyebrow = [
+      `Stage ${stagePosition} of ${studyMap.stages.length}`,
+      stage.examCritical ? 'exam-critical' : '',
+      stageState.toLowerCase(),
+      stage.estimateMinutes
+        ? `${stage.estimateMinutes} min`
+        : '',
+    ].filter(Boolean);
+
     headingCopy.createDiv({
       cls: 'los-kicker',
-      text:
-        stage.examCritical
-          ? `Exam-critical · Stage ${String(stagePosition).padStart(2, '0')} of ${studyMap.stages.length}`
-          : `Stage ${String(stagePosition).padStart(2, '0')} of ${studyMap.stages.length}`,
+      text: eyebrow.join(' · '),
     });
 
     headingCopy.createEl('h2', {
       text: stage.title,
     });
 
-    headingCopy.createDiv({
-      cls: 'los-stage-order-context',
-      text:
-        previousStage
-          ? `${stageState} · ordered after ${previousStage.title}`
-          : `${stageState} · first stage in the ordered route`,
-    });
-
-    if (stage.estimateMinutes) {
-      badge(
-        headingRow,
-        `${stage.estimateMinutes} min`,
-        'role',
-      );
-    }
-
+    /* Not in 14:551, which goes straight from the title to the concept chips.
+     * Kept as a quiet lede rather than dropped: the objective is authored
+     * content, and only some plans restate it in their first done-when. */
     if (stage.objective) {
-      const goal = center.createDiv({
-        cls: 'los-stage-goal',
-      });
-
-      goal.createDiv({
-        cls: 'los-kicker',
-        text: 'Goal',
-      });
-
-      goal.createEl('p', {
+      headingCopy.createEl('p', {
+        cls: 'los-stage-objective',
         text: stage.objective,
       });
+    }
+
+    /* 14:555 — "a typed pointer to another record" (Chip, 2:46). The label
+     * comes from the concept record; an id with no record is not rendered,
+     * because a raw `concept-foo` slug is not a name. */
+    const conceptRecords = stage.concepts.flatMap(
+      (conceptId) => {
+        const record =
+          view.plugin.store.get(conceptId);
+
+        return record ? [record] : [];
+      },
+    );
+
+    if (conceptRecords.length) {
+      const concepts = center.createDiv({
+        cls: 'los-stage-concepts',
+      });
+
+      for (const record of conceptRecords) {
+        chip(
+          concepts,
+          record,
+          (target) =>
+            view.plugin.nav.openRecord(target),
+        );
+      }
     }
 
     if (stage.doneWhen.length) {
@@ -218,6 +227,7 @@ export function renderStage(
     }
 
     renderStageResources(center, stage.resources, {
+      title: 'Exact work',
       emptyDetail: 'Use the unit scope and ask AI for a proposal.',
       sourceRecord: (sourceId) => view.plugin.store.get(sourceId),
       openSource: (source) => {
@@ -264,15 +274,13 @@ export function renderActionBar(
       cls: 'los-unit-actionbar',
     });
 
-    bar.createDiv({
-      cls: 'los-unit-action-note',
-      text:
-        'Progress saves locally until the stage is completed.',
-    });
-
+    /* 14:600 — the primary action and one overflow, left-aligned at the foot
+     * of the stage card. It is `cta` rather than `success` because Figma's
+     * Primary is bg/accent: green here would have been a second decisive
+     * colour on a screen that already has one. */
     button(
       bar,
-      'Mark complete',
+      'Complete stage',
       () => view.mutate(
         () =>
           view.plugin.gateway.progress(
@@ -286,7 +294,7 @@ export function renderActionBar(
             stage.id,
           ),
       ),
-      'success',
+      'cta',
     );
 
     const menuItems: Array<
@@ -373,12 +381,6 @@ export function renderActionBar(
             },
           );
         },
-      ],
-      [
-        'End learning session',
-        () =>
-          view.plugin
-            .reviewSessionEnd(),
       ],
     ];
 

@@ -22,6 +22,21 @@ export interface LearningRouteOptions {
   readonly selectedId: string;
   readonly items: readonly LearningRouteItem[];
   readonly select: (id: string) => unknown;
+  /**
+   * Whether the rail carries a progress bar above the stages. Figma's
+   * `Stage rail` (14:509) does not: every row already states its own state, so
+   * the bar restated in one number what six rows say precisely. The Job rail
+   * keeps it, which is why this is an option rather than a deletion.
+   */
+  readonly showProgress?: boolean;
+  /**
+   * A quiet count beside the rail label. Deliberate small deviation from
+   * 14:509, which labels the rail "Stages" and nothing else: dropping the
+   * progress bar with no replacement would have removed the only place the
+   * completed total was stated. Six rows each saying "Complete" is not the
+   * same as being told the total.
+   */
+  readonly titleMeta?: string;
 }
 
 export function renderLearningProgress(
@@ -63,12 +78,19 @@ export function renderLearningRouteRail(
 
   const summary = rail.createDiv({ cls: 'los-stage-rail-summary' });
   summary.createEl('h2', { text: options.title });
-  renderLearningProgress(
-    summary,
-    options.completed,
-    options.items.length,
-    options.progressLabel,
-  );
+  if (options.showProgress !== false) {
+    renderLearningProgress(
+      summary,
+      options.completed,
+      options.items.length,
+      options.progressLabel,
+    );
+  } else {
+    summary.addClass('is-label-only');
+    if (options.titleMeta) {
+      summary.createSpan({ cls: 'los-micro', text: options.titleMeta });
+    }
+  }
 
   const list = rail.createDiv({ cls: 'los-stage-list', attr: { role: 'list' } });
   const selectedIndex = options.items.findIndex((item) => item.id === options.selectedId);
@@ -88,9 +110,13 @@ export function renderLearningRouteRail(
         'aria-pressed': String(selected),
       },
     });
-    row.createSpan({ cls: 'los-stage-index', text: String(item.number).padStart(2, '0') });
+    /* Figma `Stage rail item` (5:21) carries the ordinal inside the title —
+     * "1 · What a query plan is" — and reduces the marker to a dot whose fill
+     * encodes state. The numbered circle it replaces competed with the title
+     * for the same glance and said nothing the ordinal did not. */
+    row.createSpan({ cls: 'los-stage-marker', attr: { 'aria-hidden': 'true' } });
     const copy = row.createSpan({ cls: 'los-stage-copy' });
-    copy.createSpan({ text: item.title });
+    copy.createSpan({ cls: 'los-stage-title', text: `${item.number} · ${item.title}` });
     if (item.marker) copy.createSpan({ cls: 'los-micro', text: item.marker });
     row.addEventListener('click', () => options.select(item.id));
   }

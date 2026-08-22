@@ -305,7 +305,7 @@ module.exports = async function run() {
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
     const writes = () => calls.envelopes.filter((e) => e.capability === 'stage.progress.update').length;
     const before = writes();
-    const complete = view.contentEl.findText('los-btn', 'Mark complete');
+    const complete = view.contentEl.findText('los-btn', 'Complete stage');
     complete.fire('click'); complete.fire('click');
     await tick(); await tick();
     check('two fast clicks produce exactly one guarded write', writes() === before + 1);

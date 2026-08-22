@@ -28,6 +28,12 @@ export interface StageResourceRenderer {
   ) => unknown;
   readonly emptyTitle?: string;
   readonly emptyDetail?: string;
+  /**
+   * Heading over the resource list. The unit surface passes "Exact work" after
+   * Figma 14:582 — the name WORKFLOWS.md step 8 already uses for the same
+   * thing. Job keeps the catalogue wording, so this is an option.
+   */
+  readonly title?: string;
 }
 
 const TRIAGE_ORDER = [
@@ -115,7 +121,7 @@ export function renderStageResources(
   resourcesValue: readonly StageResourceView[],
   renderer: StageResourceRenderer,
 ): HTMLElement {
-  const resources = section(parent, 'Material catalogue');
+  const resources = section(parent, renderer.title ?? 'Material catalogue');
   resources.addClass(
     'los-stage-resources',
   );

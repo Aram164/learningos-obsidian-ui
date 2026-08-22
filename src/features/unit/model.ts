@@ -82,6 +82,13 @@ export interface StageRecordView {
   readonly objective: string | null;
   readonly estimateMinutes: string | null;
   readonly examCritical: boolean;
+  /**
+   * Concept ids this stage teaches. Figma `04 · Unit workspace` puts these on
+   * the stage head as chips, because a chip is "a typed pointer to another
+   * record" — the label is resolved from the concept record, never invented
+   * from the id.
+   */
+  readonly concepts: string[];
   readonly resources: ResourceRecordView[];
   readonly doneWhen: string[];
   readonly attachments: StageAttachmentView[];
@@ -452,6 +459,8 @@ export function readStage(
       projectedText(record.estimate_minutes),
     examCritical:
       record.exam_critical === true,
+    concepts:
+      projectedStrings(record.concepts),
     resources:
       projectedRecords(
         record.resources,

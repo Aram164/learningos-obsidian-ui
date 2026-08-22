@@ -1420,12 +1420,19 @@ function renderLearningRouteRail(parent, options) {
   rail.setAttr("aria-label", options.ariaLabel);
   const summary = rail.createDiv({ cls: "los-stage-rail-summary" });
   summary.createEl("h2", { text: options.title });
-  renderLearningProgress(
-    summary,
-    options.completed,
-    options.items.length,
-    options.progressLabel
-  );
+  if (options.showProgress !== false) {
+    renderLearningProgress(
+      summary,
+      options.completed,
+      options.items.length,
+      options.progressLabel
+    );
+  } else {
+    summary.addClass("is-label-only");
+    if (options.titleMeta) {
+      summary.createSpan({ cls: "los-micro", text: options.titleMeta });
+    }
+  }
   const list = rail.createDiv({ cls: "los-stage-list", attr: { role: "list" } });
   const selectedIndex = options.items.findIndex((item) => item.id === options.selectedId);
   for (const [index, item] of options.items.entries()) {
@@ -1442,9 +1449,9 @@ function renderLearningRouteRail(parent, options) {
         "aria-pressed": String(selected)
       }
     });
-    row.createSpan({ cls: "los-stage-index", text: String(item.number).padStart(2, "0") });
+    row.createSpan({ cls: "los-stage-marker", attr: { "aria-hidden": "true" } });
     const copy = row.createSpan({ cls: "los-stage-copy" });
-    copy.createSpan({ text: item.title });
+    copy.createSpan({ cls: "los-stage-title", text: `${item.number} \xB7 ${item.title}` });
     if (item.marker) copy.createSpan({ cls: "los-micro", text: item.marker });
     row.addEventListener("click", () => options.select(item.id));
   }
@@ -1698,7 +1705,7 @@ function hasOpenTarget(record) {
   );
 }
 function renderStageResources(parent, resourcesValue, renderer) {
-  const resources = section(parent, "Material catalogue");
+  const resources = section(parent, renderer.title ?? "Material catalogue");
   resources.addClass(
     "los-stage-resources"
   );
@@ -9101,6 +9108,7 @@ function readStage(record) {
     objective: asText(record.objective),
     estimateMinutes: asText(record.estimate_minutes),
     examCritical: record.exam_critical === true,
+    concepts: asStrings(record.concepts),
     resources: asRecords(
       record.resources
     ).map(readResource),
@@ -9296,7 +9304,6 @@ function renderStage2(view, layout, unit, studyMap, stage) {
     (candidate) => candidate.id === stage.id
   );
   const stagePosition = Math.max(stageIndex, 0) + 1;
-  const previousStage = stageIndex > 0 ? studyMap.stages[stageIndex - 1] : null;
   const stageState = stage.status === "complete" ? "Complete" : stage.status === "skipped" ? "Skipped" : stage.id === studyMap.currentStageId ? "Current" : "Selected";
   const headingRow = top.createDiv({
     cls: "los-stage-heading-row"
@@ -9304,35 +9311,42 @@ function renderStage2(view, layout, unit, studyMap, stage) {
   const headingCopy = headingRow.createDiv({
     cls: "los-stage-heading-copy"
   });
+  const eyebrow = [
+    `Stage ${stagePosition} of ${studyMap.stages.length}`,
+    stage.examCritical ? "exam-critical" : "",
+    stageState.toLowerCase(),
+    stage.estimateMinutes ? `${stage.estimateMinutes} min` : ""
+  ].filter(Boolean);
   headingCopy.createDiv({
     cls: "los-kicker",
-    text: stage.examCritical ? `Exam-critical \xB7 Stage ${String(stagePosition).padStart(2, "0")} of ${studyMap.stages.length}` : `Stage ${String(stagePosition).padStart(2, "0")} of ${studyMap.stages.length}`
+    text: eyebrow.join(" \xB7 ")
   });
   headingCopy.createEl("h2", {
     text: stage.title
   });
-  headingCopy.createDiv({
-    cls: "los-stage-order-context",
-    text: previousStage ? `${stageState} \xB7 ordered after ${previousStage.title}` : `${stageState} \xB7 first stage in the ordered route`
-  });
-  if (stage.estimateMinutes) {
-    badge(
-      headingRow,
-      `${stage.estimateMinutes} min`,
-      "role"
-    );
-  }
   if (stage.objective) {
-    const goal = center.createDiv({
-      cls: "los-stage-goal"
-    });
-    goal.createDiv({
-      cls: "los-kicker",
-      text: "Goal"
-    });
-    goal.createEl("p", {
+    headingCopy.createEl("p", {
+      cls: "los-stage-objective",
       text: stage.objective
     });
+  }
+  const conceptRecords = stage.concepts.flatMap(
+    (conceptId) => {
+      const record = view.plugin.store.get(conceptId);
+      return record ? [record] : [];
+    }
+  );
+  if (conceptRecords.length) {
+    const concepts = center.createDiv({
+      cls: "los-stage-concepts"
+    });
+    for (const record of conceptRecords) {
+      chip(
+        concepts,
+        record,
+        (target) => view.plugin.nav.openRecord(target)
+      );
+    }
   }
   if (stage.doneWhen.length) {
     const marks = view.plugin.getDoneWhen(
@@ -9409,6 +9423,7 @@ function renderStage2(view, layout, unit, studyMap, stage) {
     }
   }
   renderStageResources(center, stage.resources, {
+    title: "Exact work",
     emptyDetail: "Use the unit scope and ask AI for a proposal.",
     sourceRecord: (sourceId) => view.plugin.store.get(sourceId),
     openSource: (source) => {
@@ -9445,13 +9460,9 @@ function renderActionBar(view, root, unit, stage) {
   const bar = root.createDiv({
     cls: "los-unit-actionbar"
   });
-  bar.createDiv({
-    cls: "los-unit-action-note",
-    text: "Progress saves locally until the stage is completed."
-  });
   button(
     bar,
-    "Mark complete",
+    "Complete stage",
     () => view.mutate(
       () => view.plugin.gateway.progress(
         unit.id,
@@ -9463,7 +9474,7 @@ function renderActionBar(view, root, unit, stage) {
         stage.id
       )
     ),
-    "success"
+    "cta"
   );
   const menuItems = [
     stage.status !== "active" && [
@@ -9530,10 +9541,6 @@ function renderActionBar(view, root, unit, stage) {
           }
         );
       }
-    ],
-    [
-      "End learning session",
-      () => view.plugin.reviewSessionEnd()
     ]
   ];
   overflowMenu(
@@ -9894,6 +9901,12 @@ function render(view) {
       "quiet"
     );
   }
+  button(
+    headerActions,
+    "End session",
+    () => view.plugin.reviewSessionEnd(),
+    "info"
+  );
   const sourceMap = view.plugin.store.sourceMap(
     unit.moduleId
   );
@@ -9903,18 +9916,20 @@ function render(view) {
     unit.record.source_selections
   );
   const hasMaterialOverview = unit.knowledgeNodes.length > 0 && materialOptions.length > 0;
-  if (hasMaterialOverview) {
+  const renderMaterials = () => {
+    if (!hasMaterialOverview) return;
     renderMaterialOverview(
       view,
       root,
       unit,
       materialOptions
     );
-  }
+  };
   const projectedStudyMap = view.plugin.store.mapForUnit(
     unit.id
   );
   if (!projectedStudyMap) {
+    renderMaterials();
     const owed = unit.needsStudyMap;
     const missing = section(
       root,
@@ -9954,6 +9969,7 @@ function render(view) {
   );
   const firstStage = studyMap.stages[0];
   if (!firstStage) {
+    renderMaterials();
     const bare = section(
       root,
       "Study map needs stages"
@@ -9986,13 +10002,6 @@ function render(view) {
   const stage = studyMap.stages.find(
     (candidate) => candidate.id === view.stageId
   ) ?? firstStage;
-  const completeStageCount = studyMap.stages.filter(
-    (candidate) => candidate.status === "complete"
-  ).length;
-  header.createDiv({
-    cls: "los-unit-route-summary",
-    text: `${studyMap.stages.length} ordered stages \xB7 ${completeStageCount} complete \xB7 Current focus: ${stage.title}`
-  });
   const layout = root.createDiv({
     cls: "los-unit-layout"
   });
@@ -10008,6 +10017,7 @@ function render(view) {
     studyMap,
     stage
   );
+  renderMaterials();
   const more = disclosure(
     root,
     "Unit artifacts and evidence",
@@ -10074,9 +10084,11 @@ function renderRail(view, layout, unit, studyMap, current) {
     (stage) => stage.id === current.id
   );
   const rail = renderLearningRouteRail(layout, {
-    title: "Learning route",
+    title: "Stages",
     ariaLabel: "Ordered learning stages",
     progressLabel: "Overall learning route progress",
+    showProgress: false,
+    titleMeta: `${completedCount} of ${studyMap.stages.length} complete`,
     completed: completedCount,
     selectedId: current.id,
     items: studyMap.stages.map((stage, index) => ({

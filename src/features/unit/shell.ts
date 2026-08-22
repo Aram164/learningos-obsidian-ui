@@ -108,6 +108,17 @@ export function render(
       );
     }
 
+    /* Figma 14:502 puts one Secondary action at the top right of the unit and
+     * it is this one. It used to live only at the bottom of the overflow menu,
+     * six items down, which is not where you reach for the thing you do at the
+     * end of every session. It is listed once, here. */
+    button(
+      headerActions,
+      'End session',
+      () => view.plugin.reviewSessionEnd(),
+      'info',
+    );
+
     const sourceMap =
       view.plugin.store.sourceMap(
         unit.moduleId,
@@ -124,14 +135,24 @@ export function render(
       unit.knowledgeNodes.length > 0
       && materialOptions.length > 0;
 
-    if (hasMaterialOverview) {
+    /* Handoff §7.5 gives `/learn/:unit` one job: ordered stages on the left,
+     * the selected stage in the centre. The knowledge map and the complete
+     * menu are Figma screen 11 (Source menu); stacking them above the layout
+     * put two full-width sections between the learner and the thing the route
+     * is named after. They stay on the page and stay complete — WORKFLOWS.md
+     * step 7 says a study map never replaces or truncates the menu — they just
+     * stop leading it. A unit with no map still opens on the menu, because
+     * there the menu is the whole account of what the lecture offers. */
+    const renderMaterials = (): void => {
+      if (!hasMaterialOverview) return;
+
       renderMaterialOverview(
         view,
         root,
         unit,
         materialOptions,
       );
-    }
+    };
 
     const projectedStudyMap =
       view.plugin.store.mapForUnit(
@@ -139,6 +160,8 @@ export function render(
       );
 
     if (!projectedStudyMap) {
+      renderMaterials();
+
       /* The producer decides whether this unit is owed a map; the interface
        * only reports it. A complete material menu says what may be used, not
        * in what order or against what proof, so it never discharges the
@@ -212,6 +235,8 @@ export function render(
     const firstStage = studyMap.stages[0];
 
     if (!firstStage) {
+      renderMaterials();
+
       const bare = section(
         root,
         'Study map needs stages',
@@ -265,18 +290,10 @@ export function render(
       )
       ?? firstStage;
 
-    const completeStageCount =
-      studyMap.stages.filter(
-        (candidate) =>
-          candidate.status === 'complete',
-      ).length;
-
-    header.createDiv({
-      cls: 'los-unit-route-summary',
-      text:
-        `${studyMap.stages.length} ordered stages · ${completeStageCount} complete · Current focus: ${stage.title}`,
-    });
-
+    /* 14:502 is an eyebrow, a title and one action — no third line. The
+     * summary that stood here restated the stage count, the completed count
+     * and the current stage title, all three of which the rail and the stage
+     * head now state where the eye already is. */
     const layout = root.createDiv({
       cls: 'los-unit-layout',
     });
@@ -294,6 +311,8 @@ export function render(
       studyMap,
       stage,
     );
+
+    renderMaterials();
 
     const more = disclosure(
       root,
@@ -399,9 +418,11 @@ export function renderRail(
       (stage) => stage.id === current.id,
     );
     const rail = renderLearningRouteRail(layout, {
-      title: 'Learning route',
+      title: 'Stages',
       ariaLabel: 'Ordered learning stages',
       progressLabel: 'Overall learning route progress',
+      showProgress: false,
+      titleMeta: `${completedCount} of ${studyMap.stages.length} complete`,
       completed: completedCount,
       selectedId: current.id,
       items: studyMap.stages.map((stage, index) => ({

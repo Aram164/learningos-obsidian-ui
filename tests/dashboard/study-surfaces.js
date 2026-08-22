@@ -156,6 +156,24 @@ module.exports = async function run() {
     check('stage has exact resources and done-when criteria', element.find('los-resource-row').length === 3
       && text.includes('Explain the medical-test result cold'));
     check('no permanent stage note editor remains', element.find('los-note-editor').length === 0);
+    /* Fidelity against Figma 04 · Unit workspace (14:462). Each of these was
+       a visible difference from the frame, so each is pinned by what renders
+       rather than by the CSS that renders it. */
+    check('rail rows carry a state dot and the ordinal inside the title',
+      element.find('los-stage-marker').length === 3
+      && element.find('los-stage-index').length === 0
+      && element.findText('los-stage-title', '2 · ') !== null);
+    check('the rail is labelled Stages and states the completed total once',
+      element.find('los-stage-rail-summary')[0].allText().includes('Stages')
+      && element.find('los-stage-progress').length === 0
+      && element.find('los-stage-rail-summary')[0].allText().includes('of 3 complete'));
+    check('the stage head is one accent eyebrow naming position and state',
+      element.find('los-stage-heading')[0].findText('los-kicker', 'Stage 2 of 3') !== null
+      && element.find('los-stage-order-context').length === 0);
+    check('stage concepts render as typed chips resolved from their records',
+      element.find('los-stage-concepts')[0].find('los-chip').length === 1
+      && element.find('los-stage-concepts')[0].allText().includes('Conditional probability'));
+    check('the resource list is headed Exact work', text.includes('Exact work'));
     check('Add note follows the final stage in the rail', element.find('los-stage-rail')[0].findText('los-btn', 'Add note'));
     check('existing unit note sections are projected', plugin.store.get('unit-fixture-sad-l04').note_sections[0].title === 'Foundations session');
     check('durable unit artifact remains a reference', text.includes('Ultimate Reference') && text.includes('Fixture probability reference'));
@@ -165,12 +183,20 @@ module.exports = async function run() {
     check('the action bar carries one primary button and one overflow',
       bar.children.filter((child) => child.classes.has('los-btn')).length === 1
       && bar.find('los-overflow').length === 1);
+    /* Figma 14:600 names it "Complete stage" and paints it bg/accent, not
+       green: Primary is the one action the screen exists for, and a second
+       decisive colour would have competed with the brand accent for it. */
     check('only one action on the screen is a filled completion action',
-      element.find('los-btn--success').length === 1
-      && bar.findText('los-btn', 'Mark complete').classes.has('los-btn--success'));
+      element.find('los-btn--cta').length === 1
+      && bar.findText('los-btn', 'Complete stage').classes.has('los-btn--cta'));
     check('secondary operations are discoverable in one menu',
-      ['Pause unit', 'Skip stage', 'Report prerequisite gap', 'Prepare shelving', 'End learning session']
+      ['Pause unit', 'Skip stage', 'Report prerequisite gap', 'Prepare shelving']
         .every((label) => bar.find('los-overflow')[0].allText().includes(label)));
+    /* 14:502 lists End session once, at the top right. It used to sit sixth in
+       the overflow, so the check is that it is in exactly one of the two. */
+    check('End session is a header action and not also an overflow item',
+      element.find('los-page-header')[0].findText('los-btn', 'End session') !== null
+      && !bar.find('los-overflow')[0].allText().includes('End session'));
     check('resource feedback collapses into a rate menu instead of three buttons',
       element.find('los-resource-row').some((row) => row.find('los-overflow').length === 1)
       && element.find('los-resource-actions').every((row) =>
@@ -352,6 +378,57 @@ module.exports = async function run() {
     check('optional-path AI context uses unit choices when no stage exists',
       plugin.lastAiPrompt.includes('source-fixture-islp')
       && plugin.lastAiPrompt.includes('Episode 4'));
+    plugin.onunload();
+  }
+
+  heading('the stage workspace leads a unit that has a map');
+  {
+    /* Handoff §7.5: `/learn/:unit` is ordered stages plus the selected stage.
+     * The knowledge map and the complete menu are Figma screen 11 and belong
+     * after it, not stacked on top pushing the workspace off the first screen.
+     * Order is asserted on rendered text position because that is what the
+     * learner actually meets; a presence check passed throughout the period
+     * this was wrong. */
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        const unit = manifest.units.find((row) => row.id === 'unit-fixture-sad-l04');
+        unit.knowledge_map = {
+          summary: 'One idea defines this lecture.',
+          nodes: [{
+            id: 'knowledge-fixture-conditioning',
+            title: 'Conditioning',
+            summary: 'Update belief once evidence arrives.',
+          }],
+        };
+        const sourceMap = manifest.module_source_maps.find(
+          (row) => row.module_id === 'module-fixture-m2');
+        sourceMap.sources[0].unit_routes.push({
+          unit_id: 'unit-fixture-sad-l04',
+          title: 'Fixture book — conditioning angle',
+          format: 'book',
+          angle: 'Works the conditioning rule through a medical-test example.',
+          covers: ['knowledge-fixture-conditioning'],
+          depth: 'derivation',
+          scope: 'current',
+          locator: 'Chapter 3 §3.1',
+          source_id: 'source-fixture-book',
+          material_path: '.flat/source-fixture-book/chapter-3.pdf',
+        });
+      },
+    });
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const text = view.contentEl.allText();
+    const route = text.indexOf('Stages');
+    const knowledge = text.indexOf('Lecture knowledge map');
+    const menu = text.indexOf('Choose your learning material');
+    check('the ordered stages and the selected stage come before the menu',
+      route !== -1 && knowledge !== -1 && menu !== -1
+      && route < knowledge && knowledge < menu);
+    check('the complete menu is still rendered in full, not truncated',
+      view.contentEl.find('los-material-option').length === 1
+      && view.contentEl.find('los-knowledge-node').length === 1
+      && text.includes('Works the conditioning rule through a medical-test example.'));
     plugin.onunload();
   }
 
