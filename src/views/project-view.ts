@@ -231,7 +231,7 @@ export class ProjectView extends ItemView {
   async onOpen(): Promise<void> {
     await this.setState(
       readProjectViewState(
-        this.leaf.state,
+        this.leaf.getViewState().state,
       ),
     );
   }

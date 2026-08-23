@@ -136,7 +136,7 @@ export class AtlasView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    const domain = this.leaf.state?.domain;
+    const domain = this.leaf.getViewState().state?.domain;
 
     this.domain =
       typeof domain === 'string'

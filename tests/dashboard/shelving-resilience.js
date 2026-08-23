@@ -278,6 +278,16 @@ module.exports = async function run() {
     app.workspace.getLeavesOfType(VIEW.library)[0].view.render();
     check('Library degrades instead of searching an unloaded record set',
       app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.allText().includes('Projection unavailable'));
+    let rebuilt = false;
+    plugin.generate = async () => { rebuilt = true; };
+    await plugin.nav.openBoundary('program-masters-planning');
+    const boundary = app.workspace.getLeavesOfType(VIEW.boundary)[0].view;
+    check('Boundary distinguishes an unloaded projection from a missing record',
+      boundary.contentEl.allText().includes('Projection unavailable')
+      && Boolean(boundary.contentEl.findText('los-btn', 'Rebuild views')));
+    boundary.contentEl.findText('los-btn', 'Rebuild views').fire('click');
+    await tick();
+    check('Boundary projection recovery invokes the shared rebuild path', rebuilt);
     plugin.onunload();
   }
   {
@@ -326,9 +336,11 @@ module.exports = async function run() {
       if (name === 'unit.note.append') settle = finish; else finish();
     };
     const first = plugin.mutate(() => plugin.gateway.saveUnitNote('unit-fixture-sad-l04', { text: 'x' }));
-    const second = plugin.mutate(() => plugin.gateway.captureText('a second thought'));
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const unitView = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const second = unitView.mutate(() => plugin.gateway.captureText('a second thought'));
     await tick();
-    check('a second write from another view waits instead of racing',
+    check('a Unit action waits behind a write from another view instead of being discarded',
       order.filter((entry) => entry.startsWith('start:')).length === 1);
     settle?.();
     await first; await second; await tick();
@@ -336,6 +348,42 @@ module.exports = async function run() {
       order.join('|') === 'start:unit.note.append|end:unit.note.append|start:capture.create|end:capture.create');
     check('a rejected transaction does not poison the queue',
       plugin.gateway.pending === 0);
+    plugin.onunload();
+  }
+  {
+    /* The note modal holds text the learner just wrote, so it is the one
+     * surface where dropping a write costs something irreplaceable. It used to
+     * refuse outright whenever any unrelated write was in flight. */
+    const { app, plugin } = await build();
+    await app.workspace._ready();
+    const order = [];
+    let settle = null;
+    plugin.runLos = (args, callback, stdin) => {
+      const name = stdin ? JSON.parse(stdin).capability : args[0];
+      order.push(name);
+      const finish = () => callback(null, JSON.stringify({ ok: true }), '');
+      if (name === 'capture.create') settle = finish; else finish();
+    };
+    const blocking = plugin.mutate(() => plugin.gateway.captureText('an unrelated thought'));
+    const modal = plugin.openUnitNote(
+      plugin.store.get('unit-fixture-sad-l04'),
+      plugin.store.mapForUnit('unit-fixture-sad-l04'),
+    );
+    await tick();
+    modal.editor.value = 'A synthesis worth keeping.';
+    modal.editor.fire('input');
+    const save = modal.contentEl.findText('los-btn', 'Save note');
+    save.fire('click');
+    save.fire('click');
+    await tick();
+    check('a note save is queued behind an unrelated write, not discarded',
+      order.filter((name) => name === 'capture.create').length === 1
+      && !order.includes('unit.note.append'));
+    settle?.();
+    await blocking; await tick(); await tick();
+    check('the queued note reaches the core exactly once after the write ahead of it',
+      order.filter((name) => name === 'unit.note.append').length === 1
+      && order.indexOf('unit.note.append') > order.indexOf('capture.create'));
     plugin.onunload();
   }
   {

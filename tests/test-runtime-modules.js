@@ -4,6 +4,7 @@ const assert = require('assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const { createSourceModuleLoader } = require('./source-module-loader');
 
 const ROOT = path.dirname(__dirname);
@@ -90,6 +91,20 @@ function routerPlugin(settings = {}) {
 
 (async () => {
   console.log('\nDirect TypeScript module tests');
+
+  await test('contract list parser accepts PyYAML and indented YAML sequences', async () => {
+    const tools = await import(
+      pathToFileURL(path.join(ROOT, 'scripts', 'contract-locks.mjs')).href
+    );
+    assert.deepEqual(
+      tools.yamlStringList('keys:\n- first\n- second\nnext: value\n', 'keys'),
+      ['first', 'second'],
+    );
+    assert.deepEqual(
+      tools.yamlStringList('keys:\n  - first\n  - second\nnext: value\n', 'keys'),
+      ['first', 'second'],
+    );
+  });
 
   await test('Job plan creation sends authored choices and leaves defaults to Core', async () => {
     assert.deepEqual(

@@ -183,8 +183,10 @@ def run_ui_tests(node: str | None = None) -> None:
     ]
     missing = [suite.name for suite in suites if not suite.is_file()]
     if missing:
-        log(f"WARNING: missing UI suite(s) {missing} — installing untested")
-        return
+        sys.exit(
+            f"install: missing required UI suite(s) {missing} — nothing was written.\n"
+            "  Restore the test files, or explicitly use --skip-tests."
+        )
     node_bin = resolve_node(node)
     log(f"node: {node_bin}")
     build = subprocess.run([node_bin, str(HERE / "build.mjs")], cwd=HERE,

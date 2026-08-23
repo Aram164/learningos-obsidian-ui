@@ -132,7 +132,7 @@ export class ProgramView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    const programId = this.leaf.state?.programId;
+    const programId = this.leaf.getViewState().state?.programId;
 
     if (typeof programId === 'string') {
       this.programId = programId;

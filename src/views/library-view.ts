@@ -69,6 +69,9 @@ export class LibraryView extends ItemView {
   private _shelfSnapshot:
     string | null = null;
 
+  private _shelfData:
+    object | null = null;
+
   constructor(
     leaf: WorkspaceLeaf,
     plugin: LibraryPlugin,
@@ -132,7 +135,7 @@ export class LibraryView extends ItemView {
 
   async onOpen(): Promise<void> {
     this.applyState(
-      this.leaf.state,
+      this.leaf.getViewState().state,
     );
     this.render();
   }
@@ -142,6 +145,8 @@ export class LibraryView extends ItemView {
       this._shelfIndex
       && this._shelfSnapshot
         === this.plugin.store.snapshotId
+      && this._shelfData
+        === this.plugin.store.data
     ) {
       return this._shelfIndex;
     }
@@ -179,6 +184,8 @@ export class LibraryView extends ItemView {
     this._shelfIndex = index;
     this._shelfSnapshot =
       this.plugin.store.snapshotId;
+    this._shelfData =
+      this.plugin.store.data;
 
     return index;
   }

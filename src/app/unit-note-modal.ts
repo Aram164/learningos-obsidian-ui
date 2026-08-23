@@ -34,6 +34,12 @@ export class UnitNoteModal extends Modal {
   private fileSummary!: HTMLDivElement;
   private restoreAccessibility: (() => void) | null = null;
 
+  /* Suppresses a second Save on this modal. The gateway's own lock already
+   * serialises writes across the app, so `gateway.isBusy` says "someone else
+   * is writing" — which is a reason to wait, never a reason to drop authored
+   * text on the floor. */
+  private saving = false;
+
   constructor(
     app: App,
     plugin: UnitNotePlugin,
@@ -164,7 +170,8 @@ export class UnitNoteModal extends Modal {
   async save() {
     const text = String(this.editor?.value || '');
     if (!text.trim()) { new Notice('Write a note before saving.'); this.editor?.focus(); return; }
-    if (this.plugin.gateway.isBusy) { new Notice('A LearningOS write is already running.'); return; }
+    if (this.saving) { new Notice('This note is already being saved.'); return; }
+    if (this.plugin.gateway.isBusy) { new Notice('Queued behind the running LearningOS write.'); }
     const unitId = this.unit.id;
     if (!unitId) { new Notice('The unit identity is unavailable. Reload LearningOS and try again.'); return; }
     const filePaths: string[] = this.files
@@ -174,6 +181,7 @@ export class UnitNoteModal extends Modal {
       new Notice('One selected attachment has no readable local path. Remove it and choose the file again.');
       return;
     }
+    this.saving = true;
     try {
       await this.plugin.mutate(() => this.plugin.gateway.saveUnitNote(unitId, {
         title: this.titleInput?.value || '', text, stageIds: this.referencedStageIds, filePaths,
@@ -183,6 +191,8 @@ export class UnitNoteModal extends Modal {
       this.close();
     } catch (error: unknown) {
       new Notice(errorMessage(error));
+    } finally {
+      this.saving = false;
     }
   }
 

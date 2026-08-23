@@ -108,7 +108,7 @@ export class ModuleView extends ItemView {
 
   async onOpen(): Promise<void> {
     await this.setState(
-      this.leaf.state,
+      this.leaf.getViewState().state,
     );
   }
 

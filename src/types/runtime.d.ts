@@ -232,8 +232,12 @@ declare module 'obsidian' {
 
   export interface WorkspaceLeaf {
     readonly app: App;
-    readonly state?: Record<string, unknown>;
     readonly view?: WorkspaceView;
+
+    getViewState(): {
+      type: string;
+      state?: Record<string, unknown>;
+    };
 
     setViewState(viewState: {
       type: string;

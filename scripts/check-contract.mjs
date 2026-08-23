@@ -23,7 +23,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { canonicalJson, manifestLock, namedLock } from './contract-locks.mjs';
+import {
+  canonicalJson,
+  manifestLock,
+  namedLock,
+  yamlStringList,
+} from './contract-locks.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const readJson = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), 'utf8'));
@@ -61,25 +66,6 @@ const typed = fs.readFileSync(path.join(root, 'src/contracts/manifest.ts'), 'utf
 const typedDeclared = Number(typed.match(/MANIFEST_CONTRACT_VERSION\s*=\s*(\d+)/)?.[1]);
 if (typedDeclared !== lock.contract_version) {
   throw new Error(`Typed contract expects ${typedDeclared}; lock expects ${lock.contract_version}.`);
-}
-
-/*
- * Enough YAML for a block list of plain strings, which is all the producer's
- * contract contains. A dependency to read four key lists would be a worse
- * trade than nine lines, and `yaml.safe_dump` writes exactly this shape.
- */
-function yamlStringList(text, key) {
-  const lines = text.split('\n');
-  const start = lines.indexOf(`${key}:`);
-  if (start === -1) return null;
-  const out = [];
-  for (let i = start + 1; i < lines.length; i += 1) {
-    const line = lines[i];
-    if (line.startsWith('- ')) { out.push(line.slice(2).trim()); continue; }
-    if (line.trim() === '' || line.startsWith('#')) continue;
-    break;
-  }
-  return out;
 }
 
 const producerPath = path.resolve(root, lock.mirrors ?? '../repository/system/contracts/manifest-contract.yaml');

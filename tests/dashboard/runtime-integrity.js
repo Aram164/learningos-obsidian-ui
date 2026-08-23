@@ -259,6 +259,47 @@ module.exports = async function run() {
       !source.includes('function viewFooter'));
     check('view refresh uses Obsidian public leaf iteration', source.includes('iterateAllLeaves')
       && !source.includes('workspace._leaves'));
+    const viewStateSources = fs.readdirSync(path.join(ROOT, 'src', 'views'))
+      .filter((name) => name.endsWith('.ts'))
+      .map((name) => fs.readFileSync(path.join(ROOT, 'src', 'views', name), 'utf8'))
+      .join('\n');
+    check('persisted view state uses the public Obsidian accessor',
+      !viewStateSources.includes('.leaf.state')
+      && viewStateSources.includes('.leaf.getViewState().state'));
+    /* `gateway.isBusy` reports that *someone else* is writing. The gateway's
+     * own queue already serialises writes, so that is a reason to say "you are
+     * queued" and carry on — never a reason to drop the action. Refusing on it
+     * discards work the learner authored: the unit-note modal did exactly that
+     * for a whole release, one directory outside any views-only scan. So this
+     * walks all of src/ and reads the guard body rather than the file. */
+    const tsSources = [];
+    (function walk(dir) {
+      for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.name.endsWith('.ts') && entry.name !== 'gateway-client.ts') {
+          tsSources.push([path.relative(ROOT, full), fs.readFileSync(full, 'utf8')]);
+        }
+      }
+    }(path.join(ROOT, 'src')));
+    const refusals = [];
+    for (const [file, text] of tsSources) {
+      const lines = text.split('\n');
+      lines.forEach((line, index) => {
+        if (!line.includes('isBusy')) return;
+        const depthOf = (value) =>
+          (value.match(/\{/g) || []).length - (value.match(/\}/g) || []).length;
+        let body = line;
+        let depth = depthOf(line);
+        for (let j = index + 1; depth > 0 && j < lines.length; j += 1) {
+          body += `\n${lines[j]}`;
+          depth += depthOf(lines[j]);
+        }
+        if (/\breturn\b/.test(body)) refusals.push(`${file}:${index + 1}`);
+      });
+    }
+    check(`no surface refuses a write merely because another one is running${
+      refusals.length ? ` (${refusals.join(', ')})` : ''}`, refusals.length === 0);
     check('local file paths use Electron webUtils', source.includes('webUtils.getPathForFile(file)')
       && !/function localFilePath\([\s\S]*?return file\??\.path/.test(source));
     /* Writes are declared capabilities now, so the bundle must name them —

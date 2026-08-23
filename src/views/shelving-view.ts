@@ -115,7 +115,7 @@ export class ShelvingView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    const unitId = this.leaf.state?.unitId;
+    const unitId = this.leaf.getViewState().state?.unitId;
 
     if (typeof unitId === 'string') {
       this.unitId = unitId;

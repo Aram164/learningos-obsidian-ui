@@ -41,3 +41,19 @@ export function canonicalJson(value) {
   }
   return value;
 }
+
+/** Read the producer contract's deliberately simple YAML string lists. */
+export function yamlStringList(text, key) {
+  const lines = text.split('\n');
+  const start = lines.indexOf(`${key}:`);
+  if (start === -1) return null;
+  const out = [];
+  for (let i = start + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    const item = line.match(/^\s*-\s+(.*)$/);
+    if (item) { out.push(item[1].trim()); continue; }
+    if (line.trim() === '' || line.trimStart().startsWith('#')) continue;
+    break;
+  }
+  return out;
+}

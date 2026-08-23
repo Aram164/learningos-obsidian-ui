@@ -25,7 +25,7 @@ import { asLabel } from '../projection/readers';
 
 type BoundaryPlugin = Pick<
   AppSurface,
-  'store' | 'gateway' | 'resources'
+  'store' | 'gateway' | 'resources' | 'generate'
 > & {
   readonly nav: Pick<AppNavigator, 'openSourceDetail'>;
 };
@@ -98,13 +98,14 @@ export class BoundaryView extends ItemView {
   }
 
   async onOpen(): Promise<void> {
-    const boundaryId = this.leaf.state?.boundaryId;
+    const state = this.leaf.getViewState().state;
+    const boundaryId = state?.boundaryId;
 
     if (typeof boundaryId === 'string') {
       this.boundaryId = boundaryId;
     }
-    const planId = this.leaf.state?.planId;
-    const planSession = this.leaf.state?.planSession;
+    const planId = state?.planId;
+    const planSession = state?.planSession;
     if (typeof planId === 'string' && planId.trim()) this.planId = planId.trim();
     if (typeof planSession === 'number' && Number.isInteger(planSession) && planSession > 0) {
       this.planSession = planSession;
@@ -240,6 +241,17 @@ export class BoundaryView extends ItemView {
 
   render() {
     const root = this.contentEl; root.empty(); root.removeClass('los-job-view'); root.addClass('los-root', 'los-boundary-view');
+    if (!this.plugin.store.ready) {
+      pageHeader(root, 'LearningOS', 'Projection unavailable');
+      empty(
+        root,
+        'The interface contract could not be loaded',
+        this.plugin.store.error,
+        'Rebuild views',
+        () => this.plugin.generate(),
+      );
+      return;
+    }
     const boundary = (this.plugin.store.data?.quarantine_boundaries || [])
       .find(
         (row: ProjectionRecord) => row.id === this.boundaryId,

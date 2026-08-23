@@ -261,6 +261,18 @@ module.exports = async function run() {
         ),
     );
 
+    const firstShelfIndex =
+      view.shelfIndex();
+    plugin.store.data = {
+      ...plugin.store.data,
+    };
+    const refreshedShelfIndex =
+      view.shelfIndex();
+    check(
+      'shelf membership cache refreshes for a new manifest with the same snapshot',
+      refreshedShelfIndex !== firstShelfIndex,
+    );
+
     const technical =
       view.contentEl.find(
         'los-technical-details',

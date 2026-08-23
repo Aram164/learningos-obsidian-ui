@@ -30,6 +30,8 @@ export class UnitView extends ItemView {
 
   stageId: string | null;
 
+  private mutationPending = false;
+
   constructor(
     leaf: WorkspaceLeaf,
     plugin: UnitPlugin,
@@ -98,7 +100,7 @@ export class UnitView extends ItemView {
   async onOpen(): Promise<void> {
     const state =
       readUnitViewState(
-        this.leaf.state,
+        this.leaf.getViewState().state,
       );
 
     this.unitId =
@@ -183,13 +185,21 @@ export class UnitView extends ItemView {
     onConfirmed:
       (() => void) | null = null,
   ): Promise<void> {
-    if (this.plugin.gateway.isBusy) {
+    if (this.mutationPending) {
       new Notice(
         'A LearningOS write is already running.',
       );
 
       return;
     }
+
+    if (this.plugin.gateway.isBusy) {
+      new Notice(
+        'Queued behind the running LearningOS write.',
+      );
+    }
+
+    this.mutationPending = true;
 
     try {
       await this.plugin.mutate(
@@ -202,6 +212,8 @@ export class UnitView extends ItemView {
       new Notice(
         errorMessage(error),
       );
+    } finally {
+      this.mutationPending = false;
     }
   }
 

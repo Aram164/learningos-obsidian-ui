@@ -903,7 +903,7 @@ var AtlasView = class extends import_obsidian3.ItemView {
     };
   }
   async onOpen() {
-    const domain = this.leaf.state?.domain;
+    const domain = this.leaf.getViewState().state?.domain;
     this.domain = typeof domain === "string" ? domain : null;
     this.render();
   }
@@ -2721,12 +2721,13 @@ var BoundaryView = class extends import_obsidian6.ItemView {
     };
   }
   async onOpen() {
-    const boundaryId = this.leaf.state?.boundaryId;
+    const state = this.leaf.getViewState().state;
+    const boundaryId = state?.boundaryId;
     if (typeof boundaryId === "string") {
       this.boundaryId = boundaryId;
     }
-    const planId = this.leaf.state?.planId;
-    const planSession = this.leaf.state?.planSession;
+    const planId = state?.planId;
+    const planSession = state?.planSession;
     if (typeof planId === "string" && planId.trim()) this.planId = planId.trim();
     if (typeof planSession === "number" && Number.isInteger(planSession) && planSession > 0) {
       this.planSession = planSession;
@@ -2848,6 +2849,17 @@ var BoundaryView = class extends import_obsidian6.ItemView {
     root.empty();
     root.removeClass("los-job-view");
     root.addClass("los-root", "los-boundary-view");
+    if (!this.plugin.store.ready) {
+      pageHeader(root, "LearningOS", "Projection unavailable");
+      empty(
+        root,
+        "The interface contract could not be loaded",
+        this.plugin.store.error,
+        "Rebuild views",
+        () => this.plugin.generate()
+      );
+      return;
+    }
     const boundary = (this.plugin.store.data?.quarantine_boundaries || []).find(
       (row) => row.id === this.boundaryId
     );
@@ -5555,6 +5567,7 @@ var LibraryView = class extends import_obsidian10.ItemView {
   selectedElementId = null;
   _shelfIndex = null;
   _shelfSnapshot = null;
+  _shelfData = null;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -5604,12 +5617,12 @@ var LibraryView = class extends import_obsidian10.ItemView {
   }
   async onOpen() {
     this.applyState(
-      this.leaf.state
+      this.leaf.getViewState().state
     );
     this.render();
   }
   shelfIndex() {
-    if (this._shelfIndex && this._shelfSnapshot === this.plugin.store.snapshotId) {
+    if (this._shelfIndex && this._shelfSnapshot === this.plugin.store.snapshotId && this._shelfData === this.plugin.store.data) {
       return this._shelfIndex;
     }
     const index = /* @__PURE__ */ new Map();
@@ -5637,6 +5650,7 @@ var LibraryView = class extends import_obsidian10.ItemView {
     }
     this._shelfIndex = index;
     this._shelfSnapshot = this.plugin.store.snapshotId;
+    this._shelfData = this.plugin.store.data;
     return index;
   }
   matchesSourceFacet(record) {
@@ -6946,7 +6960,7 @@ var ModuleView = class extends import_obsidian11.ItemView {
   }
   async onOpen() {
     await this.setState(
-      this.leaf.state
+      this.leaf.getViewState().state
     );
   }
   /** Units unless there is nothing to study yet. */
@@ -7153,7 +7167,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
     };
   }
   async onOpen() {
-    const programId = this.leaf.state?.programId;
+    const programId = this.leaf.getViewState().state?.programId;
     if (typeof programId === "string") {
       this.programId = programId;
     }
@@ -8262,7 +8276,7 @@ var ProjectView = class extends import_obsidian14.ItemView {
   async onOpen() {
     await this.setState(
       readProjectViewState(
-        this.leaf.state
+        this.leaf.getViewState().state
       )
     );
   }
@@ -8751,7 +8765,7 @@ var ShelvingView = class extends import_obsidian16.ItemView {
     return { unitId: this.unitId };
   }
   async onOpen() {
-    const unitId = this.leaf.state?.unitId;
+    const unitId = this.leaf.getViewState().state?.unitId;
     if (typeof unitId === "string") {
       this.unitId = unitId;
     }
@@ -10135,6 +10149,7 @@ var UnitView = class extends import_obsidian19.ItemView {
   plugin;
   unitId;
   stageId;
+  mutationPending = false;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -10169,7 +10184,7 @@ var UnitView = class extends import_obsidian19.ItemView {
   }
   async onOpen() {
     const state = readUnitViewState(
-      this.leaf.state
+      this.leaf.getViewState().state
     );
     this.unitId = state.unitId ?? this.unitId;
     const selectedStageId = this.unitId ? this.plugin.getSelectedStage(
@@ -10205,12 +10220,18 @@ var UnitView = class extends import_obsidian19.ItemView {
    * can no longer race the same `--expected-snapshot`.
    */
   async mutate(action, onConfirmed = null) {
-    if (this.plugin.gateway.isBusy) {
+    if (this.mutationPending) {
       new import_obsidian19.Notice(
         "A LearningOS write is already running."
       );
       return;
     }
+    if (this.plugin.gateway.isBusy) {
+      new import_obsidian19.Notice(
+        "Queued behind the running LearningOS write."
+      );
+    }
+    this.mutationPending = true;
     try {
       await this.plugin.mutate(
         action
@@ -10221,6 +10242,8 @@ var UnitView = class extends import_obsidian19.ItemView {
       new import_obsidian19.Notice(
         errorMessage3(error)
       );
+    } finally {
+      this.mutationPending = false;
     }
   }
   async selectStage(stageId) {
@@ -11044,6 +11067,11 @@ var UnitNoteModal = class extends import_obsidian22.Modal {
   fileInput;
   fileSummary;
   restoreAccessibility = null;
+  /* Suppresses a second Save on this modal. The gateway's own lock already
+   * serialises writes across the app, so `gateway.isBusy` says "someone else
+   * is writing" — which is a reason to wait, never a reason to drop authored
+   * text on the floor. */
+  saving = false;
   constructor(app, plugin, unit, studyMap) {
     super(app);
     this.plugin = plugin;
@@ -11155,9 +11183,12 @@ var UnitNoteModal = class extends import_obsidian22.Modal {
       this.editor?.focus();
       return;
     }
-    if (this.plugin.gateway.isBusy) {
-      new import_obsidian22.Notice("A LearningOS write is already running.");
+    if (this.saving) {
+      new import_obsidian22.Notice("This note is already being saved.");
       return;
+    }
+    if (this.plugin.gateway.isBusy) {
+      new import_obsidian22.Notice("Queued behind the running LearningOS write.");
     }
     const unitId = this.unit.id;
     if (!unitId) {
@@ -11169,6 +11200,7 @@ var UnitNoteModal = class extends import_obsidian22.Modal {
       new import_obsidian22.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
       return;
     }
+    this.saving = true;
     try {
       await this.plugin.mutate(() => this.plugin.gateway.saveUnitNote(unitId, {
         title: this.titleInput?.value || "",
@@ -11181,6 +11213,8 @@ var UnitNoteModal = class extends import_obsidian22.Modal {
       this.close();
     } catch (error) {
       new import_obsidian22.Notice(errorMessage(error));
+    } finally {
+      this.saving = false;
     }
   }
   onClose() {

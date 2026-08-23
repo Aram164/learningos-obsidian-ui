@@ -332,6 +332,9 @@ function makeApp(vaultRoot) {
           newTab: !!newTab,
           detached: false,
           setPinned(v) { this.pinned = v; },
+          getViewState() {
+            return { type: this.viewType, state: this.state || {} };
+          },
           detach() {
             this.detached = true;
             const i = leaves.indexOf(this);
