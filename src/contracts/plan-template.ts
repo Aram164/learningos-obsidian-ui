@@ -1,15 +1,12 @@
 /**
  * Producer-owned answer to the read-only `plan.template` query.
  *
- * It lives outside `job-dashboard.ts` on purpose. The template is the one
- * creation standard both authoring surfaces share, so the Unit surface must be
- * able to name it without importing anything from the quarantined Job feature.
- * No Job data passes through here: this describes a record Core generates on
- * request and has written nowhere.
+ * Core owns the curriculum creation standard so the Unit surface never carries
+ * a second, drift-prone copy of the defaults.
  */
 export const PLAN_TEMPLATE_CONTRACT = 'plan-template-v1' as const;
 
-export type PlanProfile = 'curriculum' | 'job';
+export type PlanProfile = 'curriculum';
 
 export type PlanHorizon = 'now' | 'next' | 'later';
 

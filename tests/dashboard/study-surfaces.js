@@ -10,9 +10,13 @@ const {
   FIXTURE,
   LearningOSUI,
   FIXTURE_GROUP_COUNT,
+  FIXTURE_SNAPSHOT,
+  NOTE_ATTACHMENT_FIXTURE_PATH,
+  fileDigest,
   VIEW,
   tick,
   frame,
+  waitFor,
   check,
   heading,
   build,
@@ -239,28 +243,38 @@ module.exports = async function run() {
     noteModal.editor.fire('input');
     check('the note save enables when required text is present',
       noteModal.contentEl.findText('los-btn', 'Save note').disabled === false);
-    noteModal.fileInput.files = [{ name: 'notes.png', __path: '/tmp/notes.png' }];
+    noteModal.fileInput.files = [{
+      name: 'notes.png', __path: NOTE_ATTACHMENT_FIXTURE_PATH,
+    }];
     noteModal.fileInput.fire('change');
-    noteModal.contentEl.findText('los-btn', 'Save note').fire('click'); await tick(); await tick();
+    noteModal.contentEl.findText('los-btn', 'Save note').fire('click');
+    await waitFor(() => Boolean(calls.envelope('unit.note.append'))
+      && !plugin.gateway.isBusy);
     const noteCall = calls.find((args) => args[0] === 'unit-note');
     const noteEnvelope = calls.envelope('unit.note.append');
     check('session note save uses the unit-level action-specific gateway',
       noteEnvelope?.payload.unit_id === 'unit-fixture-sad-l04'
       && noteEnvelope?.payload.text === 'Updated fixture session synthesis.');
     check('unit note attachments use Electron webUtils instead of the removed File.path',
-      (noteEnvelope?.payload.attachment || []).includes('/tmp/notes.png'));
+      (noteEnvelope?.payload.attachment || []).includes(NOTE_ATTACHMENT_FIXTURE_PATH)
+      && (noteEnvelope?.payload.attachment_sha256 || [])[0]
+        === fileDigest(NOTE_ATTACHMENT_FIXTURE_PATH));
     check('mutation carries optimistic snapshot token',
-      noteEnvelope?.expected_snapshot === 'sha256:fixture-v2-snapshot');
+      noteEnvelope?.expected_snapshot === FIXTURE_SNAPSHOT);
 
     element = view.contentEl;
-    element.findText('los-btn', 'Helpful').fire('click'); await tick();
+    element.findText('los-btn', 'Helpful').fire('click');
+    await waitFor(() => Boolean(calls.envelope('source.feedback.record'))
+      && !plugin.gateway.isBusy);
     const feedback = calls.envelope('source.feedback.record')?.payload;
     check('source feedback is unit/stage/source-specific',
       feedback?.unit_id === 'unit-fixture-sad-l04'
       && feedback?.stage_id === 'stage-fixture-conditioning'
       && feedback?.source_id === 'source-fixture-islp' && feedback?.feedback === 'helpful');
     element = view.contentEl;
-    element.findText('los-btn', 'Report prerequisite gap').fire('click'); await tick();
+    element.findText('los-btn', 'Report prerequisite gap').fire('click');
+    await waitFor(() => Boolean(calls.envelope('detour.create'))
+      && !plugin.gateway.isBusy);
     const detour = calls.envelope('detour.create')?.payload;
     check('gap action creates a scoped detour',
       detour?.stage_id === 'stage-fixture-conditioning' && detour?.classification === 'required-now');
@@ -294,12 +308,14 @@ module.exports = async function run() {
           ],
         };
         unit.source_selections = [{
+          route_id: 'route-fixture-analysis-video',
           source_id: 'source-fixture-islp',
           locator: 'Episode 4',
           purpose: 'Use the visual train-versus-test explanation.',
         }];
         const sourceMap = manifest.module_source_maps.find((row) => row.module_id === 'module-fixture-m2');
         sourceMap.sources[0].unit_routes.push({
+          id: 'route-fixture-analysis-book',
           unit_id: 'unit-fixture-analysis',
           title: 'Fixture book — derivation angle',
           format: 'book',
@@ -317,6 +333,7 @@ module.exports = async function run() {
           why: 'Alternate visual explanation.',
           priority: 2,
           unit_routes: [{
+            id: 'route-fixture-analysis-video',
             unit_id: 'unit-fixture-analysis',
             title: 'Fixture video — intuition angle',
             format: 'video',
@@ -363,10 +380,13 @@ module.exports = async function run() {
       && choose.classes.has('los-btn--choice')
       && view.contentEl.findText('los-btn', 'Open')?.classes.has('los-btn--info')
       && view.contentEl.findText('los-btn', 'Remove choice')?.getAttribute('aria-pressed') === 'true');
-    choose.fire('click'); await tick(); await tick();
+    choose.fire('click');
+    await waitFor(() => Boolean(calls.envelope('unit.source-selection.set'))
+      && !plugin.gateway.isBusy);
     const selection = calls.envelope('unit.source-selection.set');
     check('choosing a material persists the exact lecture option through the guarded gateway',
       selection?.payload.unit_id === 'unit-fixture-analysis'
+      && selection?.payload.route_id === 'route-fixture-analysis-book'
       && selection?.payload.source_id === 'source-fixture-book'
       && selection?.payload.locator === 'Chapter 2 §§2.1–2.3'
       && selection?.payload.action === 'select'
@@ -403,6 +423,7 @@ module.exports = async function run() {
         const sourceMap = manifest.module_source_maps.find(
           (row) => row.module_id === 'module-fixture-m2');
         sourceMap.sources[0].unit_routes.push({
+          id: 'route-fixture-sad-l04-book',
           unit_id: 'unit-fixture-sad-l04',
           title: 'Fixture book — conditioning angle',
           format: 'book',
@@ -429,6 +450,41 @@ module.exports = async function run() {
       view.contentEl.find('los-material-option').length === 1
       && view.contentEl.find('los-knowledge-node').length === 1
       && text.includes('Works the conditioning rule through a medical-test example.'));
+    check('approved material synthesis stays distinct from the option menu',
+      text.includes('Approved material synthesis')
+      && text.includes('current basis')
+      && text.includes('complete route coverage')
+      && text.includes('1/1 current routes assessed')
+      && text.includes('screened')
+      && text.includes('The route was screened for scope')
+      && text.includes('Concept bridges'));
+    plugin.onunload();
+  }
+
+  {
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        const synthesis = manifest.unit_material_syntheses[0];
+        synthesis.freshness = {
+          status: 'stale',
+          reasons: ['source_map_revision', 'material_checksums'],
+        };
+        synthesis.completeness = {
+          ...synthesis.completeness,
+          complete: false,
+          current_route_count: 2,
+          missing_route_ids: ['route-fixture-new-current'],
+        };
+      },
+    });
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const text = app.workspace.getLeavesOfType(VIEW.unit)[0].view.contentEl.allText();
+    check('stale synthesis is labelled while its approved dossier remains visible',
+      text.includes('stale basis')
+      && text.includes('incomplete route coverage')
+      && text.includes('source map revision, material checksums')
+      && text.includes('Missing: route-fixture-new-current')
+      && text.includes('The route was screened for scope'));
     plugin.onunload();
   }
 
@@ -449,7 +505,7 @@ module.exports = async function run() {
     check('AI prompt names area/module/component/unit/stage', ['program-bachelors', 'module-fixture-m2',
       'component-fixture-sad', 'unit-fixture-sad-l04', 'stage-fixture-conditioning'].every((id) => prompt.includes(id)));
     check('AI prompt carries sources and snapshot', prompt.includes('source-fixture-islp')
-      && prompt.includes('sha256:fixture-v2-snapshot'));
+      && prompt.includes(FIXTURE_SNAPSHOT));
     check('active file is supplementary only', prompt.includes('knowledge/notes/supplementary.md')
       && prompt.includes('supplementary context only'));
     plugin.onunload();

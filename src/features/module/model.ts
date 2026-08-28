@@ -64,6 +64,7 @@ export interface ModuleExaminationView {
 export interface ModuleRecordView {
   readonly record: ProjectionRecord;
   readonly id: string;
+  readonly areaId: string;
   readonly title: string;
   readonly kind: string;
   readonly code: string;
@@ -307,6 +308,9 @@ export function readModuleRecord(
   return {
     record,
     id,
+    areaId:
+      projectedString(record.area_id)
+      ?? '',
     title:
       projectedString(record.title)
       ?? id,

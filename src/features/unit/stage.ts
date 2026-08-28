@@ -22,6 +22,10 @@ export function renderStage(
     studyMap: StudyMapView,
     stage: StageRecordView,
   ): void {
+    const expectedRevisions = view.plugin.store.artifactGuard(
+      unit.id,
+      typeof studyMap.record.id === 'string' ? studyMap.record.id : null,
+    );
     const center = layout.createDiv({
       cls: 'los-stage-workspace',
     });
@@ -245,6 +249,7 @@ export function renderStage(
           sourceId,
           verdict,
           resourceId,
+          expectedRevisions,
         ),
       ),
     });
@@ -260,6 +265,7 @@ export function renderStage(
       center,
       unit,
       stage,
+      expectedRevisions,
     );
   }
 
@@ -269,6 +275,7 @@ export function renderActionBar(
     root: HTMLElement,
     unit: UnitRecordView,
     stage: StageRecordView,
+    expectedRevisions: Readonly<Record<string, number>>,
   ): void {
     const bar = root.createDiv({
       cls: 'los-unit-actionbar',
@@ -287,6 +294,7 @@ export function renderActionBar(
             unit.id,
             stage.id,
             'complete',
+            expectedRevisions,
           ),
         () =>
           view.plugin.clearDoneWhen(
@@ -309,6 +317,7 @@ export function renderActionBar(
               unit.id,
               stage.id,
               'revisit',
+              expectedRevisions,
             ),
         ),
       ],
@@ -320,6 +329,7 @@ export function renderActionBar(
               unit.id,
               stage.id,
               'paused',
+              expectedRevisions,
             ),
         ),
       ],
@@ -331,6 +341,7 @@ export function renderActionBar(
               unit.id,
               stage.id,
               'skipped',
+              expectedRevisions,
             ),
         ),
       ],
@@ -343,6 +354,7 @@ export function renderActionBar(
               stage.id,
               'Prerequisite gap',
               'required-now',
+              expectedRevisions,
             ),
         ),
       ],

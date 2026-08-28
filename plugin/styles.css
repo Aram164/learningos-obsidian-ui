@@ -37,10 +37,10 @@
   --los-paper-2:        #fffdf9;  /* surface */
   --los-paper-3:        #faf8f4;  /* subtle hover/inset */
   --los-ink:            #16130f;
-  --los-ink-soft:       #6e665a;
+  --los-ink-soft:       #625a4f;  /* muted text remains 4.5:1 on token washes */
   --los-ink-faint:      #756d63;  /* strengthened from Figma muted for 4.5:1 */
   --los-rule:           #e0d8c9;
-  --los-rule-strong:    #ada598;
+  --los-rule-strong:    #91897d;  /* 3:1 non-text boundary contrast on paper */
   --los-accent:         #7a2540;  /* brand / decisive action */
   --los-accent-strong:  #6e2038;
   --los-accent-soft:    #9a3657;
@@ -70,8 +70,8 @@
 
   --los-surface: var(--los-paper-2);
   --los-surface-raised: #ffffff;
-  --los-line: var(--los-rule);
-  --los-line-strong: var(--los-rule-strong);
+  --los-line: var(--los-rule-strong);
+  --los-line-strong: var(--los-ink-faint);
 
   min-height: 100%;
   padding: var(--los-4);
@@ -92,10 +92,10 @@
   --los-paper-2:        #fffdf9;
   --los-paper-3:        #faf8f4;
   --los-ink:            #16130f;
-  --los-ink-soft:       #6e665a;
+  --los-ink-soft:       #625a4f;
   --los-ink-faint:      #756d63;
   --los-rule:           #e0d8c9;
-  --los-rule-strong:    #ada598;
+  --los-rule-strong:    #91897d;
   --los-accent:         #7a2540;
   --los-accent-strong:  #6e2038;
   --los-accent-soft:    #9a3657;
@@ -189,7 +189,7 @@
   box-shadow: none;
 }
 .los-root input::placeholder,
-.los-root textarea::placeholder { color: var(--los-ink-soft); opacity: .78; }
+.los-root textarea::placeholder { color: var(--los-ink-soft); opacity: 1; }
 .los-root button:hover { border-color: var(--los-line-strong); background: var(--los-paper-3); }
 .los-root button:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
 .los-root button:focus-visible,
@@ -841,6 +841,56 @@
 }
 .los-diagnostic-glyph { font-size: 20px; }
 .los-diagnostic-report { overflow-x: auto; margin-top: var(--los-3); padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--los-paper); color: var(--los-ink-soft); font-size: 12px; white-space: pre-wrap; }
+.los-health-check {
+  padding: var(--los-3) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-health-check-head {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--los-2);
+  margin-bottom: var(--los-2);
+}
+
+.los-prospective-banner {
+  margin-bottom: var(--los-4);
+  padding: var(--los-3);
+  border: 1px solid var(--los-warning);
+  border-radius: var(--los-r-md);
+  background: var(--los-warning-wash);
+}
+.los-masters-counts,
+.los-masters-row-head {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--los-2);
+}
+.los-masters-counts { color: var(--los-ink-soft); font-size: 12px; }
+.los-masters-row {
+  padding: var(--los-3) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-masters-row-head { justify-content: space-between; }
+.los-masters-row p { margin: var(--los-1) 0 0; }
+.los-masters-evidence {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--los-3);
+  margin-top: var(--los-2);
+}
+.los-masters-evidence-side {
+  min-width: 0;
+  padding: var(--los-2);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-sm);
+  background: var(--los-paper-3);
+}
+@media (max-width: 720px) {
+  .los-masters-evidence { grid-template-columns: 1fr; }
+}
 
 .los-root .los-btn, .los-root .los-chip {
   display: inline-flex;
@@ -1748,7 +1798,7 @@
   gap: 0;
 }
 
-/* One tab row, used by Garden, Review and Job (components.ts `filterTabs`). */
+/* One tab row, used by Garden and Review (components.ts `filterTabs`). */
 .los-filter-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -1899,7 +1949,6 @@
 .los-review-decision-row:hover {
   background: var(--los-paper-2);
 }
-
 /* ── Daily-loop coherence ────────────────────────────────────────────────
  * Detail screens use the same calm record-row grammar as the Figma system.
  * Cards remain reserved for a current workspace, composer, or boundary — a
@@ -2366,6 +2415,34 @@
   font-size: 13px;
   line-height: 1.5;
 }
+.los-resource-angle-detail {
+  margin-top: 8px;
+  padding: 2px 0 2px 12px;
+  border-left: 2px solid var(--los-accent);
+  color: var(--los-ink-soft);
+  font-size: 13px;
+  line-height: 20px;
+}
+.los-resource-angle-detail[hidden] { display: none; }
+.los-resource-foot {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.los-resource-foot > * { margin: 0; }
+.los-root .los-resource-angle-trigger {
+  min-height: 26px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.los-root .los-resource-angle-trigger[aria-expanded="true"] {
+  border-color: var(--los-accent);
+  background: var(--los-selected);
+  color: var(--los-accent-strong);
+}
 
 .los-knowledge-grid {
   display: grid;
@@ -2444,6 +2521,57 @@
   line-height: 16px;
 }
 
+.los-material-synthesis-head,
+.los-synthesis-card-head,
+.los-synthesis-comparison-head {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.los-material-synthesis-head { margin-bottom: 12px; }
+.los-synthesis-status {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--los-info);
+  border-radius: var(--los-r-sm);
+  background: var(--los-info-wash);
+  color: var(--los-info-strong);
+}
+.los-synthesis-status.is-stale {
+  border-color: var(--los-warning);
+  background: var(--los-warning-wash);
+  color: var(--los-warning-strong);
+}
+.los-synthesis-status .los-material-synthesis-head { margin-bottom: 4px; }
+.los-synthesis-status p { margin: 6px 0 0; }
+.los-synthesis-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(290px, 100%), 1fr));
+  gap: 12px;
+}
+.los-synthesis-card {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-sm);
+  background: var(--los-paper);
+}
+.los-synthesis-card-head { justify-content: space-between; }
+.los-synthesis-card h3,
+.los-synthesis-card p,
+.los-synthesis-comparison h3,
+.los-synthesis-comparison p { margin: 0; }
+.los-synthesis-detail { margin-top: 10px; }
+.los-synthesis-detail p { margin-top: 2px; }
+.los-synthesis-comparisons { margin-top: 20px; }
+.los-synthesis-comparison {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-synthesis-comparison-head { justify-content: space-between; }
+.los-synthesis-comparison > p { margin-top: 5px; }
+
 /* 14:600 — a spacer pushes the actions to the foot of the card and they sit
    left, under the work, where the reading ends. */
 .los-stage-workspace > .los-unit-actionbar {
@@ -2463,6 +2591,42 @@
 .los-map-provenance .los-actions { margin: 0; }
 /* The line naming the creation template inside a plan dialog. */
 .los-plan-standard { margin-bottom: var(--los-2); }
+
+/* The reviewed-map importer is an ordinary unit tool, not a separate learning
+   surface. Keep its dialog bounded on small screens and its form controls
+   aligned with the rest of the unit workflow. */
+.modal.los-modal--map-import,
+.modal:has(.los-map-import-modal) {
+  box-sizing: border-box;
+  width: min(680px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  overflow: hidden;
+}
+.los-root.los-map-import-modal {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  max-height: calc(100vh - 32px);
+  padding: var(--los-5);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.los-map-import-field { display: grid; gap: 6px; margin-top: var(--los-3); }
+.los-map-import-field label { color: var(--los-ink); font-size: 12px; font-weight: 700; }
+.los-map-import-field input {
+  width: 100%;
+  min-height: 38px;
+  padding: var(--los-2);
+  font: inherit;
+}
+.los-map-import-actions { margin-top: var(--los-4); }
+
+@media (max-width: 820px) {
+  .los-root.los-map-import-modal { padding: var(--los-4); }
+}
 /* Projects are parallel work, rendered as workstreams and decisions rather
  * than a second module dashboard. */
 .los-project-view > .los-project-list,
@@ -2551,233 +2715,4 @@
   .los-material-actions { grid-column: 2; justify-content: flex-start; }
   .los-record-row { grid-template-columns: minmax(0, 1fr); }
   .los-record-action { justify-self: start; }
-}
-/* Confidential Job workspace.
- *
- * Job is an ordinary LearningOS surface that happens to be loaded on demand:
- * page header, tab row, sections, cards. It previously carried a private set of
- * boxes — its own note card, material row, drift row, session block, metric
- * tile — which made the same information look like a different application
- * depending on which destination you were standing in. Those are gone; what is
- * left here is only the layout the shared components cannot express.
- */
-.los-job-view {
-  padding: 28px 40px 40px !important;
-}
-
-.los-job-view > * {
-  width: min(1120px, 100%);
-  margin-right: auto;
-  margin-left: auto;
-}
-
-.los-job-header-actions { margin-top: var(--los-3); }
-
-.los-job-today-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.55fr) minmax(280px, .9fr);
-  gap: var(--los-4);
-  align-items: start;
-}
-
-.los-job-today-focus,
-.los-job-today-side {
-  display: grid;
-  gap: var(--los-3);
-}
-
-.los-job-today-grid .los-section,
-.los-job-task-group,
-.los-job-plan-card {
-  border: 1px solid var(--los-rule);
-  border-radius: var(--los-r-md);
-  background: var(--los-surface);
-}
-
-.los-job-today-grid .los-section {
-  width: 100%;
-  margin: 0;
-  padding: var(--los-4);
-}
-.los-job-today-focus .los-section:first-child { border-color: var(--los-ink); }
-
-.los-job-section-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin: calc(var(--los-2) * -1) 0 var(--los-2);
-}
-
-.los-job-task-group { margin-top: var(--los-3); padding: var(--los-3); }
-
-.los-job-task-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: var(--los-3);
-  align-items: start;
-  padding: var(--los-3) 0;
-  border-top: 1px solid var(--los-rule);
-}
-
-.los-job-task-row:first-of-type { border-top: none; }
-.los-job-task-row--compact { grid-template-columns: auto minmax(0, 1fr); }
-.los-job-task-row input,
-.los-job-plan-session input { margin-top: 3px; }
-.los-job-task-copy { display: grid; gap: 3px; }
-.los-job-task-row.is-done .los-job-task-copy { opacity: .58; text-decoration: line-through; }
-
-.los-job-runway { display: grid; gap: var(--los-3); }
-.los-job-runway-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--los-2) var(--los-3);
-  align-items: center;
-}
-.los-job-runway-copy { min-width: 0; }
-.los-job-runway-row > .los-stage-progress { grid-column: 1 / -1; }
-
-.los-job-plan-grid,
-.los-job-note-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--los-3); }
-.los-job-plan-card { display: flex; flex-direction: column; padding: var(--los-4); }
-.los-job-plan-card > .los-actions { margin-top: auto; padding-top: var(--los-3); }
-.los-job-plan-card > .los-stage-progress-copy { margin-top: var(--los-3); }
-.los-job-plan-next {
-  display: grid;
-  gap: var(--los-1);
-  margin-top: var(--los-3);
-  padding: var(--los-3);
-  border-radius: var(--los-r-sm);
-  background: var(--los-paper);
-}
-
-/* Plan reader — overview, stage rail, then one focused stage. */
-.los-job-plan-page { max-width: 1180px; }
-.los-job-plan-page > .los-btn--tertiary { margin-bottom: var(--los-3); }
-.los-job-plan-detail-header {
-  display: grid;
-  gap: var(--los-3);
-  margin-bottom: var(--los-4);
-  padding-bottom: var(--los-4);
-  border-bottom: 1px solid var(--los-rule);
-}
-.los-job-plan-detail-header h1 { margin: var(--los-1) 0 0; }
-.los-job-plan-outcome { max-width: 900px; margin: 0; color: var(--los-ink-soft); }
-.los-job-plan-cadence {
-  max-width: 900px;
-  padding: var(--los-3);
-  border-radius: var(--los-r-sm);
-  background: var(--los-paper);
-}
-.los-job-plan-cadence p { margin: var(--los-1) 0 0; }
-.los-job-plan-layout {
-  display: grid;
-  grid-template-columns: 270px minmax(0, 1fr);
-  gap: var(--los-4);
-  align-items: start;
-}
-.los-job-plan-layout .los-stage-workspace { box-shadow: 0 2px 8px var(--los-shadow-soft); }
-.los-job-stage-block > p { color: var(--los-ink-soft); line-height: 1.65; }
-.los-job-concept-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(210px, 100%), 1fr));
-  gap: var(--los-3);
-}
-.los-job-concept-part {
-  padding: var(--los-3);
-  border: 1px solid var(--los-rule);
-  border-radius: var(--los-r-sm);
-  background: var(--los-paper);
-}
-.los-job-concept-part p { margin: var(--los-2) 0 0; line-height: 1.55; }
-.los-job-stratum-reference {
-  margin-top: var(--los-2);
-  padding: var(--los-4);
-  border: 0;
-  border-left: 3px solid var(--los-info);
-  border-radius: var(--los-r-sm);
-  background: var(--los-info-wash);
-}
-.modal.los-modal--job-editor,
-.modal:has(.los-job-editor-modal),
-.modal.los-modal--job-session,
-.modal:has(.los-job-session-modal) {
-  box-sizing: border-box;
-  width: min(680px, calc(100vw - 32px));
-  max-width: calc(100vw - 32px);
-  max-height: calc(100vh - 32px);
-  padding: 0;
-  overflow: hidden;
-}
-
-.modal .los-root {
-  min-height: 0;
-}
-
-.los-root.los-job-editor-modal,
-.los-root.los-job-session-modal {
-  box-sizing: border-box;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  max-height: calc(100vh - 32px);
-  padding: var(--los-5);
-  overflow-x: hidden;
-  overflow-y: auto;
-}
-.los-job-field { display: grid; gap: 6px; margin-top: var(--los-3); }
-.los-job-field label { color: var(--los-ink); font-size: 12px; font-weight: 700; }
-.los-job-field input,
-.los-job-field select { width: 100%; min-height: 38px; padding: var(--los-2); font: inherit; }
-.los-job-field textarea {
-  width: 100%;
-  min-height: 140px;
-  max-height: min(42vh, 360px);
-  padding: var(--los-2);
-  resize: vertical;
-}
-.los-job-editor-actions { margin-top: var(--los-4); }
-
-/* System — one block per pipeline layer, empty ones included. */
-.los-job-layer {
-  padding: var(--los-3) 0;
-  border-top: 1px solid var(--los-rule);
-}
-
-.los-job-layer:first-of-type { border-top: none; }
-
-.los-job-health {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--los-2);
-  align-items: center;
-  margin-bottom: var(--los-3);
-}
-
-/* Library — horizon is the axis; type is only a kicker. */
-.los-job-horizon { margin-block: var(--los-4); }
-
-.los-job-notes {
-  display: grid;
-  gap: var(--los-2);
-}
-
-.los-job-horizon > .los-card { margin-top: var(--los-2); }
-.los-job-questions { margin: var(--los-2) 0 0; padding-left: 20px; }
-
-/* Session log modal — the core refuses an empty entry, so we ask first. */
-.los-job-session-editor {
-  width: 100%;
-  margin-block: var(--los-3);
-  font-family: inherit;
-  resize: vertical;
-}
-
-@media (max-width: 820px) {
-  .los-job-view { padding: 20px 18px 32px !important; }
-  .los-job-today-grid,
-  .los-job-plan-grid,
-  .los-job-note-grid,
-  .los-job-plan-layout { grid-template-columns: 1fr; }
-  .los-job-plan-layout .los-stage-workspace { padding: var(--los-4); }
-  .los-root.los-job-editor-modal,
-  .los-root.los-job-session-modal { padding: var(--los-4); }
 }

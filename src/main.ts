@@ -16,6 +16,10 @@ import {
 import type { AppSurface, LearningOSSettings } from './app/surface';
 import { asSessionReview, isProjectionConflict } from './contracts/gateway-v1';
 import {
+  assertGatewaySnapshotObserved,
+  isGatewaySuccessV2,
+} from './contracts/gateway-v2';
+import {
   DEFAULT_SETTINGS, VIEW_NAV,
 } from './constants';
 import { GatewayClient, explicitAiContext } from './gateway-client';
@@ -120,8 +124,9 @@ export class LearningOSUI extends Plugin implements AppSurface {
     unitId: string,
     title: string,
     text: string,
+    expectedRevisions: Readonly<Record<string, number>> = {},
   ): void {
-    this.drafts.setUnitNote(unitId, title, text);
+    this.drafts.setUnitNote(unitId, title, text, expectedRevisions);
   }
   clearUnitNoteDraft(
     unitId: string,
@@ -237,11 +242,17 @@ export class LearningOSUI extends Plugin implements AppSurface {
     return this.gateway.enqueue(async () => {
       try {
         const result = await action();
-        if (reload) await this.reloadStore();
+        if (reload) {
+          await this.reloadStore();
+          if (isGatewaySuccessV2(result)) {
+            assertGatewaySnapshotObserved(result, this.store.snapshotId);
+          }
+        }
         return result;
       } catch (error: unknown) {
         if (!healStaleProjection || !isProjectionConflict(error)) throw error;
-        return this.rebuildAndRetry(action, reload);
+        await this.refreshAfterConflict();
+        throw error;
       }
     });
   }
@@ -257,20 +268,15 @@ export class LearningOSUI extends Plugin implements AppSurface {
    * first write after any authoring session fails, and the advice on screen
    * does not fix it.
    *
-   * Retrying is safe because a conflict is refused whole — partial application
-   * of a validated transaction is a forbidden operation in the core's
-   * capability contract, so nothing was written to repeat.
+   * Refresh only. Exit code 3 also represents an artifact-revision conflict;
+   * automatically replaying the write after adopting fresh revisions would
+   * defeat that guard and could overwrite concurrent work. The learner's
+   * draft stays intact for one deliberate reconciliation and retry.
    */
-  private async rebuildAndRetry<T>(
-    action: () => T | PromiseLike<T>,
-    reload: boolean,
-  ): Promise<T> {
-    new Notice('Canonical files changed since this view loaded — rebuilding the projection, then retrying.');
+  private async refreshAfterConflict(): Promise<void> {
+    new Notice('Canonical files changed since this view loaded — refreshing them. Your draft was kept; review it before retrying.');
     await this.gateway.call(['generate'], { expectJson: false });
     await this.reloadStore();
-    const result = await action();   // re-read snapshot: `capability()` takes it at call time
-    if (reload) await this.reloadStore();
-    return result;
   }
 
   async generate() {
@@ -296,19 +302,6 @@ export class LearningOSUI extends Plugin implements AppSurface {
     }
   }
 
-  /**
-   * Hard rule 10 (core CLAUDE.md §13): `Job/` is quarantined. This is its
-   * mechanical enforcement. A `Job/…` path never leaves the vault, so the
-   * escape checks in the open helpers below cannot catch it — and every open
-   * funnels through one of them.
-   */
-  isQuarantinedPath(path: string): boolean {
-    return this.resources.isQuarantinedPath(path);
-  }
-  refuseQuarantined(path: string): boolean {
-    return this.resources.refuseQuarantined(path);
-  }
-
   async openVaultPath(path: string) {
     return this.resources.openVaultPath(path);
   }
@@ -323,9 +316,6 @@ export class LearningOSUI extends Plugin implements AppSurface {
   }
   openAuthoredPath(path: string) {
     return this.resources.openAuthoredPath(path);
-  }
-  openJobPath(path: string) {
-    return this.resources.openJobPath(path);
   }
   openRecord(record: ProjectionRecord | null | undefined) {
     if (!record) return;

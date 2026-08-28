@@ -159,8 +159,8 @@ export function factList(
 /**
  * One row of mutually exclusive tabs.
  *
- * Garden, Review and Job each grew their own copy of this loop, and the third
- * copy drifted — it styled itself differently and skipped `is-active`, so the
+ * Garden and Review once carried separate copies of this loop, and one copy
+ * drifted — it styled itself differently and skipped `is-active`, so the
  * same control looked like two different things depending on which surface you
  * were standing on. The definition lives here now; a caller supplies the values
  * and, optionally, a count per tab.
@@ -300,17 +300,6 @@ export function projectedExcerpt(
   // Slice by code point: a plain .slice() could cut an emoji in half and leak a
   // lone surrogate into the DOM.
   return `${Array.from(first).slice(0, limit - 1).join('')}…`;
-}
-
-/**
- * Boundary cards exist to prove nothing quarantined was loaded, so they show
- * short core-authored policy prose only: capped, single paragraph, and never a
- * `Job/` path. The field is core-owned, but this is the one view where trusting
- * the manifest has no upside.
- */
-export function boundaryPolicy(value: unknown): string {
-  const text = projectedExcerpt(value, 300);
-  return /(^|[\s([<'"])Job\//.test(text) ? '' : text;
 }
 
 export function workspaceCard(

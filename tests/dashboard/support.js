@@ -3,13 +3,34 @@
 
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+const os = require('os');
 const { makeApp, Notice, stub } = require('../harness');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const FIXTURE = path.join(ROOT, 'fixture-vault');
-const LearningOSUI = require(path.join(ROOT, 'plugin', 'main.js'));
+const LearningOSUI = require(
+  process.env.LEARNINGOS_TEST_BUNDLE || path.join(ROOT, 'plugin', 'main.js'),
+);
 const FIXTURE_GROUP_COUNT = JSON.parse(fs.readFileSync(
   path.join(FIXTURE, 'generated', 'manifest.json'), 'utf8')).thematic_groups.length;
+const FIXTURE_SNAPSHOT = JSON.parse(fs.readFileSync(
+  path.join(FIXTURE, 'generated', 'manifest.json'), 'utf8'))._generated.snapshot_id;
+const GATEWAY_INPUT_ROOT = fs.mkdtempSync(
+  path.join(os.tmpdir(), 'learningos-ui-dashboard-'),
+);
+const CAPTURE_FIXTURE_PATH = path.join(GATEWAY_INPUT_ROOT, 'handwriting.png');
+const NOTE_ATTACHMENT_FIXTURE_PATH = path.join(GATEWAY_INPUT_ROOT, 'notes.png');
+fs.writeFileSync(CAPTURE_FIXTURE_PATH, Buffer.from([0, 1, 2, 254, 255]));
+fs.writeFileSync(NOTE_ATTACHMENT_FIXTURE_PATH, Buffer.from([255, 4, 3, 2, 1]));
+process.on('exit', () => fs.rmSync(
+  GATEWAY_INPUT_ROOT, { recursive: true, force: true },
+));
+
+function fileDigest(filename) {
+  return `sha256:${crypto.createHash('sha256')
+    .update(fs.readFileSync(filename)).digest('hex')}`;
+}
 const VIEW = {
   home: 'learningos-home', nav: 'learningos-nav', program: 'learningos-program',
   module: 'learningos-module', project: 'learningos-project', unit: 'learningos-unit', library: 'learningos-library',
@@ -18,120 +39,164 @@ const VIEW = {
 };
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 const frame = () => new Promise((resolve) => setTimeout(resolve, 0));
+async function waitFor(predicate, attempts = 50) {
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    if (predicate()) return true;
+    await frame();
+  }
+  return predicate();
+}
 
-const JOB_DASHBOARD_FIXTURE = {
-  ok: true,
-  contract: 'job-dashboard-v2',
-  access: {
-    scope: 'job-dashboard', read_only: true, ephemeral: true,
-    excluded_from_manifest: true, excluded_from_search: true, excluded_from_ai: true,
-    writes_through_gateway: true,
-    stratum: {
-      mode: 'read-only', worktree_writes_allowed: false, git_metadata_writes_allowed: false,
+const HEALTH_REPORT_FIXTURE = {
+  schema_version: 1,
+  type: 'health-report',
+  generated_at: '2099-04-01T12:00:00Z',
+  status: 'healthy',
+  checks: [
+    {
+      id: 'manifest-contract', status: 'ok', summary: 'Manifest contract is current',
+      owner: 'Core', remedy: 'Rebuild the projection if this check changes.', details: {},
     },
-    allowed_roots: ['legacy-plans', 'notes', 'papers', 'plans', 'workspace-job-deem'],
-    snapshot_id: 'sha256:job-fixture-snapshot',
-  },
-  dashboard: {
-    id: 'job-fixture', title: 'BIFOLD / DEEM', subtitle: 'Fixture confidential workspace.',
-    counts: { notes: 4, learning_notes: 1, skrub_notes: 2, system_notes: 1, learning_tracks: 1, learning_stages: 2, open_tasks: 1, completed_tasks: 0, papers: 1, canonical_sources: 1 },
-    workspace: {
-      id: 'workspace-job-deem', title: 'Fixture Stratum job', status: 'active', standing: true,
-      objective: 'Build and understand the system.',
-      current_scope: [
-        { label: 'required-now', text: 'Current Stratum ticket.' },
-        { label: 'helpful-now', text: 'Read one Python chapter.' },
-      ],
-      next_action: 'Read the Skrub graph note.', open_questions: ['Which idea should become transferable?'],
-      path: 'workspace-job-deem/CONTEXT.md',
+    {
+      id: 'legacy-archive', status: 'ok', summary: 'Legacy Archive lock is verified',
+      owner: 'Operator', remedy: 'Review any unresolved archive disposition.', details: {},
     },
-    notes: {
-      health: { current: 0, drifting: 1, stale: 0, unverified: 0 },
-      learning: [
-        { id: 'job-note-joins', title: 'Join ordering', kind: 'learning', family: '', summary: 'My working model of join order.', body: 'A join order chooses the next relation.', path: 'notes/learning/job-note-joins.md', component: '', layer: '', verified_against: '', declared_status: 'draft', freshness: 'draft', revision: 1 },
-      ],
-      skrub: [
-        { id: 'job-skrub-dag', title: 'Skrub DataOp DAG', kind: 'skrub', family: '', summary: 'How the lazy graph is built.', path: 'notes/note-skrub-dag.md', component: '', layer: 'capture', verified_against: '', declared_status: 'evolving', freshness: 'evolving' },
-        { id: 'job-skrub-eval', title: 'Skrub evaluation engine', kind: 'skrub', family: '', summary: 'How the graph becomes values.', path: 'notes/note-skrub-eval.md', component: '', layer: 'capture', verified_against: '', declared_status: 'evolving', freshness: 'evolving' },
-      ],
-      stratum: [
-        { id: 'note-stratum-extract-dataframe-op', title: 'Stratum dispatch map', kind: 'stratum', family: '', summary: 'How calls become logical operators.', path: 'notes/stratum/note-dispatch.md', component: 'stratum/optimizer/ir/_dataframe_ops.py', layer: 'logical', verified_against: 'abc123 (2026-01-01)', declared_status: 'current', freshness: 'drifting' },
-      ],
-      layers: [
-        { id: 'capture', title: 'Capture / frontend', summary: 'building the DAG from user code', note_ids: ['job-skrub-dag', 'job-skrub-eval'] },
-        { id: 'logical', title: 'Logical IR', summary: 'the operator tree', note_ids: ['note-stratum-extract-dataframe-op'] },
-        { id: 'rewrites', title: 'Rewrites', summary: 'logical and cost-based optimization', note_ids: [] },
-        { id: 'physical', title: 'Physical', summary: 'lowering to executable ops', note_ids: [] },
-        { id: 'runtime', title: 'Runtime', summary: 'execution', note_ids: [] },
-        { id: 'cross-cutting', title: 'Cross-cutting', summary: '', note_ids: [] },
-      ],
-    },
-    learning_tracks: [{
-      id: 'polars', title: 'Polars — job-grounded through Stratum', status: 'ready', cadence: 'One session per week.', horizon: 'now',
-      outcome: 'Implement a Polars backend from scratch.', path: 'workspace-job-deem/inputs/Polars-Learning-Plan.md',
-      completed_sessions: [], last_session_at: '', source_kind: 'structured', revision: 2,
-      stages: [
-        {
-          id: 'stage-polars-expressions',
-          number: 1,
-          title: 'Expressions',
-          status: 'pending',
-          objective: 'Translate Series operations into expression contexts while preserving behavior.',
-          done_when: ['Paired solutions cover expressions and null behavior.'],
-          estimate_minutes: 90,
-          exam_critical: false,
-          concepts: ['concept-python'],
-          scope_triage: 'required-now',
-          resources: [
-            { kind: 'read', label: 'Polars definitive guide — expressions', vault_path: 'LearningOS/python-polars-the-definitive-guide.pdf', scope_triage: 'required-now' },
-            { kind: 'practise', label: 'Rebuild an expression in both backends', scope_triage: 'required-now' },
-            { kind: 'reference', label: 'Polars expressions reference', url: 'https://docs.pola.rs/user-guide/expressions/', scope_triage: 'reference-only' },
-          ],
-          attachments: [], source_feedback: [],
-          job_context: {
-            mental_models: [
-              { label: 'Pandas baseline', text: 'Series operations.' },
-              { label: 'Polars mirror', text: 'Expression contexts.' },
-              { label: 'Backend lesson', text: 'Preserve behavior, not method names.' },
-            ],
-            read_only_anchor: 'Read-only: stratum/optimizer/ir/_column_expr.py. Compare both backends.',
-          },
-          done: false,
-        },
-        {
-          id: 'stage-polars-lazy-optimization',
-          number: 2,
-          title: 'Lazy optimization',
-          status: 'pending',
-          objective: 'Inspect and explain a lazy query plan before execution.',
-          done_when: ['One annotated explain output identifies the optimizer changes.'],
-          estimate_minutes: 90,
-          exam_critical: false,
-          concepts: ['concept-python'],
-          scope_triage: 'required-now',
-          resources: [
-            { kind: 'read', label: 'Polars lazy API', url: 'https://docs.pola.rs/user-guide/lazy/', scope_triage: 'required-now' },
-            { kind: 'practise', label: 'Annotate one explain output', scope_triage: 'required-now' },
-          ],
-          attachments: [], source_feedback: [],
-          job_context: {
-            mental_models: [
-              { label: 'Core model', text: 'Plans are ordinary objects.' },
-              { label: 'Working practice', text: 'Inspect before execution.' },
-              { label: 'Job relevance', text: 'The optimizer transforms plans.' },
-              { label: 'Failure mode', text: 'Do not confuse a plan with its execution.' },
-            ],
-            read_only_anchor: 'Read-only: stratum/optimizer/physical/_lowering.py.',
-          },
-          done: false,
-        },
-      ],
+  ],
+};
+
+const LEGACY_ARCHIVE_FIXTURE = {
+  schema_version: 1,
+  type: 'legacy-archive-status',
+  available: true,
+  lock: {
+    schema_version: 1,
+    id: 'legacy-archive-lock',
+    type: 'legacy-archive-lock',
+    created_at: '2099-04-01T11:00:00Z',
+    entries: [{
+      relative_path: 'history/fixture.md', size: 12,
+      sha256: `sha256:${'a'.repeat(64)}`,
+      category: 'historical', disposition: 'historical-only', canonical_targets: [],
     }],
-    tasks: [{ id: 'job-task-trace-join', title: 'Trace the join planner', details: 'Write down one surprise.', horizon: 'now', status: 'open', track_id: 'polars', created_at: '2026-08-15T10:00:00+02:00', updated_at: '2026-08-15T10:00:00+02:00', revision: 1 }],
-    papers: [{ id: 'paper', title: 'Fixture systems paper', authors: ['A. Author'], year: 2026, pages: 8, horizon: 'now', angle: 'The architecture behind the job.', path: 'papers/paper.pdf', available: true }],
-    canonical_shelf: [{ source_id: 'source-fixture-islp', title: 'Reusable software book', authors: ['B. Author'], horizon: 'later', why: 'Keep it until a concrete design problem calls for it.' }],
+    excluded: { count: 1, status: 'sealed-not-inspected' },
+    verification: { verified_at: '2099-04-01T12:00:00Z', status: 'verified' },
   },
 };
+
+const MASTERS_PLANNING_FIXTURE = {
+  schema_version: 1,
+  type: 'masters-planning-dashboard',
+  opened_at: '2099-04-01T13:00:00Z',
+  banner: 'Prospective—not current LearningOS',
+  catalog: {
+    schema_version: 1,
+    id: 'master-planning-catalog',
+    type: 'master-planning-catalog',
+    revision: 1,
+    updated_at: '2099-04-01T12:30:00Z',
+    candidate_modules: [{
+      id: 'candidate-module-fixture', title: 'Fixture prospective module',
+      planning_state: 'shortlist', privacy_class: 'academic-only', provenance: ['fixture'],
+      fact_state: { status: 'verified-current', as_of: '2099-04-01', evidence: [] },
+      source_ids: ['candidate-source-fixture', 'candidate-source-fixture-companion'],
+      unresolved_references: [],
+    }],
+    candidate_sources: [{
+      id: 'candidate-source-fixture', title: 'Fixture prospective source',
+      planning_state: 'longlist', privacy_class: 'academic-only', provenance: ['fixture'],
+      fact_state: { status: 'unverified', as_of: null, evidence: [] },
+    }, {
+      id: 'candidate-source-fixture-companion', title: 'Fixture comparison source',
+      planning_state: 'shortlist', privacy_class: 'academic-only', provenance: ['fixture'],
+      fact_state: { status: 'verified-current', as_of: '2099-04-01', evidence: [] },
+    }],
+    comparison_ids: ['candidate-comparison-fixture'],
+  },
+  comparisons: [{
+    schema_version: 1,
+    id: 'candidate-comparison-fixture',
+    type: 'candidate-source-comparison',
+    candidate_module_id: 'candidate-module-fixture',
+    status: 'approved',
+    basis: {
+      catalog_revision: 1,
+      candidate_set_checksum: `sha256:${'b'.repeat(64)}`,
+      policy: 'tiered-v1',
+      request_id: 'fixture-masters-request',
+      delivery_id: 'fixture-masters-delivery',
+    },
+    source_assessments: [{
+      candidate_source_id: 'candidate-source-fixture',
+      role: 'selected',
+      review_status: 'deep-reviewed',
+      concept_ids: ['concept-bayes'],
+      contribution: 'Primary source for the prospective module.',
+      assumptions: 'The catalog facts remain current.',
+      notation: 'Uses the prospective module notation.',
+      exercise_value: 'Includes a focused practice route.',
+      best_for: 'The planned first learning pass.',
+      limitations: 'Prospective and not part of current LearningOS.',
+      evidence: [{
+        locator: 'Fixture candidate section',
+        checksum: `sha256:${'c'.repeat(64)}`,
+      }],
+    }, {
+      candidate_source_id: 'candidate-source-fixture-companion',
+      role: 'comparison',
+      review_status: 'deep-reviewed',
+      concept_ids: ['concept-bayes'],
+      contribution: 'A contrasting explanation of the same concept.',
+      assumptions: 'The catalog facts remain current.',
+      notation: 'Uses odds notation.',
+      exercise_value: 'Adds a worked comparison.',
+      best_for: 'Checking the selected source from a second angle.',
+      limitations: 'Prospective and not part of current LearningOS.',
+      evidence: [{
+        locator: 'Fixture companion section',
+        checksum: `sha256:${'d'.repeat(64)}`,
+      }],
+    }],
+    comparisons: [{
+      left_candidate_source_id: 'candidate-source-fixture',
+      right_candidate_source_id: 'candidate-source-fixture-companion',
+      relation: 'contrasts',
+      narrative: 'The selected source uses probability notation; the comparison uses odds.',
+      concept_ids: ['concept-bayes'],
+      evidence: {
+        left: [{
+          locator: 'Fixture candidate section',
+          checksum: `sha256:${'c'.repeat(64)}`,
+          note: 'Probability notation.',
+        }],
+        right: [{
+          locator: 'Fixture companion section',
+          checksum: `sha256:${'d'.repeat(64)}`,
+          note: 'Odds notation.',
+        }],
+      },
+    }],
+  }],
+  isolation: {
+    normal_manifest: false, search: false, workload: false,
+    recommendations: false, deadlines: false, ordinary_ai_context: false,
+  },
+};
+
+function gatewayConfirmation(envelope, result = {}) {
+  return {
+    schema_version: 2,
+    request_id: envelope.request_id,
+    idempotency_key: envelope.idempotency_key,
+    capability: envelope.capability,
+    ok: true,
+    replayed: false,
+    transaction_id: 'tx-fixture',
+    receipt_path: 'operations/transactions/tx-fixture/receipt.json',
+    snapshot_after: FIXTURE_SNAPSHOT,
+    result,
+    error: null,
+  };
+}
 
 let failures = 0;
 let group = '';
@@ -171,12 +236,23 @@ async function build(options = {}) {
     const envelope = stdin ? JSON.parse(stdin) : null;
     if (envelope) envelopes.push(envelope);
     if (options.offline) return callback(new Error('CLI down'), '', 'offline');
-    if (args[0] === 'job-dashboard') {
-      return callback(null, JSON.stringify(JOB_DASHBOARD_FIXTURE), '');
+    if (args[0] === 'health-report') {
+      return callback(null, JSON.stringify(HEALTH_REPORT_FIXTURE), '');
     }
-    if (envelope?.capability === 'review.prepare') return callback(null, JSON.stringify({
-      state: 'proposed', summary: 'Prepared fixture.', items: [{ id: 'proposal-prepared', title: 'Prepared note', destination: 'knowledge/notes/fixture.md', selected: true }],
-    }), '');
+    if (args[0] === 'legacy-archive-status') {
+      return callback(null, JSON.stringify(LEGACY_ARCHIVE_FIXTURE), '');
+    }
+    if (args[0] === 'masters-planning-dashboard') {
+      return callback(null, JSON.stringify(MASTERS_PLANNING_FIXTURE), '');
+    }
+    if (envelope?.capability === 'review.prepare') return callback(null, JSON.stringify(
+      gatewayConfirmation(envelope, {
+        state: 'proposed', summary: 'Prepared fixture.', items: [{ id: 'proposal-prepared', title: 'Prepared note', destination: 'knowledge/notes/fixture.md', selected: true }],
+      }),
+    ), '');
+    if (envelope) {
+      return callback(null, JSON.stringify(gatewayConfirmation(envelope)), '');
+    }
     return callback(null, JSON.stringify({ ok: true }), '');
   };
   app._plugin = plugin;
@@ -212,10 +288,18 @@ module.exports = {
   FIXTURE,
   LearningOSUI,
   FIXTURE_GROUP_COUNT,
+  FIXTURE_SNAPSHOT,
+  CAPTURE_FIXTURE_PATH,
+  NOTE_ATTACHMENT_FIXTURE_PATH,
+  fileDigest,
   VIEW,
   tick,
   frame,
-  JOB_DASHBOARD_FIXTURE,
+  waitFor,
+  HEALTH_REPORT_FIXTURE,
+  LEGACY_ARCHIVE_FIXTURE,
+  MASTERS_PLANNING_FIXTURE,
+  gatewayConfirmation,
   check,
   heading,
   build,

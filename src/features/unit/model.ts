@@ -2,6 +2,7 @@ import type { ProjectionRecord } from '../../contracts/manifest';
 import type { AppSurface } from '../../app/surface';
 import type { AppNavigator } from '../../app/navigator';
 import type { StageResourceView } from '../stage-resources';
+import { hasDirectResourceTarget } from '../../infrastructure/resource-target';
 import {
   asFiniteNumber,
   asRecords as projectedRecords,
@@ -56,6 +57,7 @@ export interface KnowledgeNodeView {
   readonly title: string;
   readonly summary: string;
   readonly buildsOn: string[];
+  readonly conceptIds: string[];
 }
 
 export interface MaterialOptionView {
@@ -68,6 +70,7 @@ export interface MaterialOptionView {
   readonly scope: string;
   readonly locator: string | null;
   readonly sourceId: string | null;
+  readonly routeId: string;
   readonly canOpen: boolean;
   readonly canChoose: boolean;
   readonly selected: boolean;
@@ -234,6 +237,9 @@ export function readUnitRecord(
         buildsOn: projectedStrings(
           node.builds_on,
         ),
+        conceptIds: projectedStrings(
+          node.concept_ids,
+        ),
       };
     })
     .filter(
@@ -278,10 +284,11 @@ export function readMaterialOptions(
   const selectionKeys = new Set(
     projectedRecords(selectionsValue)
       .flatMap((selection) => {
+        const routeId = projectedString(selection.route_id);
         const sourceId = projectedString(selection.source_id);
         const locator = projectedText(selection.locator);
-        return sourceId && locator
-          ? [`${sourceId}\u0000${locator}`]
+        return routeId && sourceId && locator
+          ? [`${routeId}\u0000${sourceId}\u0000${locator}`]
           : [];
       }),
   );
@@ -301,8 +308,9 @@ export function readMaterialOptions(
       const title = projectedString(route.title);
       const format = projectedString(route.format);
       const angle = projectedText(route.angle);
+      const routeId = projectedString(route.id);
 
-      if (!title || !format || !angle) {
+      if (!routeId || !title || !format || !angle) {
         continue;
       }
 
@@ -327,21 +335,15 @@ export function readMaterialOptions(
           ?? 'complementary',
         locator,
         sourceId,
-        canOpen: Boolean(
-          projectedString(
-            route.material_path,
-          )
-          ?? projectedString(route.url)
-          ?? projectedString(
-            route.vault_path,
-          ),
-        ),
+        routeId,
+        canOpen:
+          hasDirectResourceTarget(route),
         canChoose: Boolean(sourceId && locator),
         selected: Boolean(
           sourceId
           && locator
-          && selectionKeys.has(
-            `${sourceId}\u0000${locator}`,
+              && selectionKeys.has(
+                `${routeId}\u0000${sourceId}\u0000${locator}`,
           ),
         ),
       });
@@ -374,11 +376,8 @@ export function readResource(
       projectedString(record.source_id),
     scopeTriage:
       projectedString(record.scope_triage),
-    canOpen: Boolean(
-      projectedString(record.material_path)
-      ?? projectedString(record.url)
-      ?? projectedString(record.vault_path),
-    ),
+    canOpen:
+      hasDirectResourceTarget(record),
   };
 }
 

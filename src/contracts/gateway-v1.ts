@@ -37,13 +37,25 @@ export const EXIT_PROJECTION_CONFLICT = 3;
  */
 export class GatewayError extends Error {
   readonly exitCode: number | null;
-  constructor(message: string, exitCode: number | null = null) {
+  readonly gatewayCode: string | null;
+  readonly retryable: boolean | null;
+  constructor(
+    message: string,
+    exitCode: number | null = null,
+    details: { code?: string; retryable?: boolean } = {},
+  ) {
     super(message);
     this.name = 'GatewayError';
     this.exitCode = exitCode;
+    this.gatewayCode = details.code || null;
+    this.retryable = typeof details.retryable === 'boolean'
+      ? details.retryable
+      : null;
   }
   get isProjectionConflict(): boolean {
-    return this.exitCode === EXIT_PROJECTION_CONFLICT;
+    return this.exitCode === EXIT_PROJECTION_CONFLICT
+      || this.gatewayCode === 'STALE_SNAPSHOT'
+      || this.gatewayCode === 'REVISION_CONFLICT';
   }
 }
 
@@ -72,7 +84,9 @@ export function structuredError(stdout: string): string {
   if (!raw) return '';
   try {
     const parsed: unknown = JSON.parse(raw);
-    const message = (parsed as { error?: unknown } | null)?.error;
+    const error = (parsed as { error?: unknown } | null)?.error;
+    if (typeof error === 'string') return error.trim();
+    const message = (error as { message?: unknown } | null)?.message;
     return typeof message === 'string' ? message.trim() : '';
   } catch (_) {
     return '';

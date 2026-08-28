@@ -4,7 +4,7 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { STYLESHEET_MODULES, stylesheetSources, writeStylesheet } from './build-styles.mjs';
-import { manifestLock, namedLock } from './scripts/contract-locks.mjs';
+import { manifestLock } from './scripts/contract-locks.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const pluginDir = path.join(root, 'plugin');
@@ -161,7 +161,6 @@ const sources = [
 const sha256 = (value) => `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 const pluginManifest = JSON.parse(fs.readFileSync(path.join(pluginDir, 'manifest.json'), 'utf8'));
 const manifestContract = manifestLock(root);
-const jobDashboardContract = namedLock(root, 'job-dashboard-v2.lock.json');
 const contract = manifestContract.value;
 let sourceRevision = process.env.LEARNINGOS_UI_SOURCE_REVISION || process.env.GITHUB_SHA || '';
 if (!sourceRevision) {
@@ -177,7 +176,6 @@ const sourceMaterial = [
   fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
   fs.readFileSync(path.join(root, 'tsconfig.json'), 'utf8'),
   manifestContract.text,
-  jobDashboardContract.text,
   ...sources.flatMap(({ relative, source }) => [relative, source]),
 ].join('\0');
 /*

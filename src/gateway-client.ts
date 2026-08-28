@@ -1,9 +1,21 @@
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join, sep } from 'node:path';
 import type { PlanProfile } from './contracts/plan-template';
 import type { JsonRecord, ProjectionRecord } from './contracts/manifest';
 import {
   GatewayError, exitCodeOf, structuredError,
   type GatewayResultV1,
 } from './contracts/gateway-v1';
+import {
+  GATEWAY_SCHEMA_VERSION,
+  asGatewaySuccessV2,
+  gatewayApprovalSubject,
+  gatewaySubjectSha256,
+  isSha256,
+  type GatewaySuccessV2,
+} from './contracts/gateway-v2';
 
 type LosCallback = (
   error: Error | null,
@@ -27,10 +39,52 @@ function nextRequestId(capability: string): string {
   return `req-${capability.replace(/\./g, '-')}-${Date.now()}-${requestCounter}`;
 }
 
+function nextIdempotencyKey(requestId: string): string {
+  return `idem-${requestId}`;
+}
+
+function expandedLocalPath(filePath: string): string {
+  if (filePath === '~') return homedir();
+  if (filePath.startsWith(`~${sep}`)) return join(homedir(), filePath.slice(2));
+  return filePath;
+}
+
+/** Bind a user-selected path to the exact bytes Core is approved to consume. */
+async function fileSha256(filePath: string): Promise<string> {
+  const bytes = await readFile(expandedLocalPath(filePath));
+  return `sha256:${createHash('sha256').update(bytes).digest('hex')}`;
+}
+
+function gatewayErrorDetails(value: unknown): {
+  message: string;
+  code?: string;
+  retryable?: boolean;
+} {
+  const response = typeof value === 'object' && value !== null
+    ? value as Record<string, unknown>
+    : {};
+  const error = typeof response.error === 'object' && response.error !== null
+    ? response.error as Record<string, unknown>
+    : null;
+  if (error) {
+    return {
+      message: typeof error.message === 'string' && error.message.trim()
+        ? error.message.trim()
+        : 'LearningOS refused the change; your draft was kept.',
+      ...(typeof error.code === 'string' ? { code: error.code } : {}),
+      ...(typeof error.retryable === 'boolean' ? { retryable: error.retryable } : {}),
+    };
+  }
+  return {
+    message: typeof response.error === 'string' && response.error.trim()
+      ? response.error.trim()
+      : 'LearningOS refused the change; your draft was kept.',
+  };
+}
+
 export class GatewayClient {
   private readonly plugin: GatewayHost;
   private chain: Promise<void>;
-  private jobSnapshotId: string | null = null;
   pending: number;
   constructor(plugin: GatewayHost) {
     this.plugin = plugin;
@@ -76,9 +130,12 @@ export class GatewayClient {
           // "Command failed: python …" instead. The exit code travels with it
           // because code 3 (projection conflict) is recoverable and the
           // caller has to be able to tell.
+          let refusal: ReturnType<typeof gatewayErrorDetails> | null = null;
+          try { refusal = gatewayErrorDetails(JSON.parse(String(stdout || ''))); }
+          catch (_) { /* A non-JSON process failure is reported from stderr below. */ }
           const reason = structuredError(stdout) || stderr.trim()
             || error.message || String(error);
-          reject(new GatewayError(reason, exitCodeOf(error)));
+          reject(new GatewayError(reason, exitCodeOf(error), refusal || {}));
           return;
         }
         const raw = String(stdout ?? '').trim();
@@ -94,9 +151,11 @@ export class GatewayClient {
           return;
         }
         if (!parsed || typeof parsed !== 'object' || parsed.ok === false) {
+          const refusal = gatewayErrorDetails(parsed);
           reject(new GatewayError(
-            parsed?.error || 'LearningOS refused the change; your draft was kept.',
+            refusal.message,
             exitCodeOf(error),
+            refusal,
           ));
           return;
         }
@@ -122,18 +181,64 @@ export class GatewayClient {
       expectedSnapshot?: string;
       expectedRevisions?: Readonly<Record<string, number>>;
     } = {},
-  ): Promise<GatewayResultV1> {
+  ): Promise<GatewaySuccessV2> {
+    const expectedSnapshot = options.expectedSnapshot || this.snapshotId();
+    if (!isSha256(expectedSnapshot)) {
+      throw new GatewayError(
+        'LearningOS has no valid sha256 snapshot to guard this change against; nothing was written.',
+        null,
+        { code: 'INVALID_REQUEST', retryable: false },
+      );
+    }
+    const expectedRevisions = options.expectedRevisions || {};
+    if (Object.entries(expectedRevisions).some(
+      ([id, revision]) => !id || !Number.isInteger(revision) || revision < 0,
+    )) {
+      throw new GatewayError(
+        'LearningOS has invalid artifact revision guards; nothing was written.',
+        null,
+        { code: 'INVALID_REQUEST', retryable: false },
+      );
+    }
+    return this.sendCapability(
+      name,
+      payload,
+      expectedSnapshot,
+      expectedRevisions,
+    );
+  }
+
+  private async sendCapability(
+    name: string,
+    payload: Record<string, unknown>,
+    expectedSnapshot: string,
+    expectedRevisions: Readonly<Record<string, number>>,
+  ): Promise<GatewaySuccessV2> {
+    const requestId = nextRequestId(name);
+    const idempotencyKey = nextIdempotencyKey(requestId);
+    const subject = gatewayApprovalSubject(
+      name,
+      expectedSnapshot,
+      expectedRevisions,
+      payload,
+    );
     const envelope = {
-      request_id: nextRequestId(name),
+      schema_version: GATEWAY_SCHEMA_VERSION,
+      request_id: requestId,
+      idempotency_key: idempotencyKey,
       capability: name,
-      expected_snapshot: options.expectedSnapshot || this.snapshotId(),
-      ...(options.expectedRevisions && Object.keys(options.expectedRevisions).length
-        ? { expected_revisions: options.expectedRevisions }
-        : {}),
+      channel: 'ui',
+      expected_snapshot: expectedSnapshot,
+      expected_revisions: expectedRevisions,
+      approval: {
+        kind: 'direct-user-gesture',
+        subject_sha256: await gatewaySubjectSha256(subject),
+      },
       payload,
     };
-    return this.call(['capability', name, '--payload-file', '-'],
+    const response = await this.call(['capability', name, '--payload-file', '-'],
       { stdin: JSON.stringify(envelope) });
+    return asGatewaySuccessV2(response, { requestId, idempotencyKey, capability: name });
   }
 
   /**
@@ -156,11 +261,13 @@ export class GatewayClient {
   }
 
   // ---- porcelain: each is one declared capability, nothing more ----------
-  saveNote(unitId: string, stageId: string, text: string) {
+  saveNote(unitId: string, stageId: string, text: string,
+    expectedRevisions: Readonly<Record<string, number>> = {}) {
     return this.capability('stage.note.write',
-      { unit_id: unitId, stage_id: stageId, text, replace: true });
+      { unit_id: unitId, stage_id: stageId, text, replace: true },
+      { expectedRevisions });
   }
-  saveUnitNote(
+  async saveUnitNote(
     unitId: string,
     {
       title = '',
@@ -173,33 +280,42 @@ export class GatewayClient {
       stageIds?: readonly string[];
       filePaths?: readonly string[];
     },
+    expectedRevisions: Readonly<Record<string, number>> = {},
   ) {
     const payload: Record<string, unknown> = { unit_id: unitId, text };
     if (String(title).trim()) payload.title = String(title).trim();
     if (stageIds.length) payload.stage_id = [...stageIds];
-    if (filePaths.length) payload.attachment = [...filePaths];
-    return this.capability('unit.note.append', payload);
+    if (filePaths.length) {
+      payload.attachment = [...filePaths];
+      payload.attachment_sha256 = await Promise.all(filePaths.map(fileSha256));
+    }
+    return this.capability('unit.note.append', payload, { expectedRevisions });
   }
-  progress(unitId: string, stageId: string, status: string) {
+  progress(unitId: string, stageId: string, status: string,
+    expectedRevisions: Readonly<Record<string, number>> = {}) {
     return this.capability('stage.progress.update',
-      { unit_id: unitId, stage_id: stageId, status });
+      { unit_id: unitId, stage_id: stageId, status }, { expectedRevisions });
   }
   sourceSelection(
     unitId: string,
+    routeId: string,
     sourceId: string,
     locator: string,
     purpose: string,
     selected: boolean,
+    expectedRevisions: Readonly<Record<string, number>> = {},
   ) {
     return this.capability(
       'unit.source-selection.set',
       {
         unit_id: unitId,
+        route_id: routeId,
         source_id: sourceId,
         locator,
         action: selected ? 'select' : 'remove',
         ...(selected ? { purpose } : {}),
       },
+      { expectedRevisions },
     );
   }
   feedback(
@@ -212,6 +328,7 @@ export class GatewayClient {
     // course → paper → verdict, never a paper severed from its bundle.
     // Omitted (undefined) means source-level feedback, the pre-v3 shape.
     resourceId?: string | null,
+    expectedRevisions: Readonly<Record<string, number>> = {},
   ) {
     return this.capability('source.feedback.record', {
       unit_id: unitId,
@@ -219,43 +336,55 @@ export class GatewayClient {
       source_id: sourceId,
       feedback,
       ...(resourceId ? { resource_id: resourceId } : {}),
-    });
+    }, { expectedRevisions });
   }
   detour(
     unitId: string,
     stageId: string,
     title: string,
     classification = 'required-now',
+    expectedRevisions: Readonly<Record<string, number>> = {},
   ) {
     return this.capability('detour.create',
-      { unit_id: unitId, stage_id: stageId, title, classification });
+      { unit_id: unitId, stage_id: stageId, title, classification },
+      { expectedRevisions });
   }
   resolveDetour(
     unitId: string,
     detourId: string,
     resolution = '',
+    expectedRevisions: Readonly<Record<string, number>> = {},
   ) {
     const payload: Record<string, unknown> = { unit_id: unitId, detour_id: detourId };
     if (resolution) payload.resolution = resolution;
-    return this.capability('detour.resolve', payload);
+    return this.capability('detour.resolve', payload, { expectedRevisions });
   }
-  attach(
+  async attach(
     unitId: string,
     stageId: string,
     filePath: string,
     label = '',
+    expectedRevisions: Readonly<Record<string, number>> = {},
   ) {
-    const payload: Record<string, unknown> = { unit_id: unitId, stage_id: stageId, file: filePath };
+    const payload: Record<string, unknown> = {
+      unit_id: unitId,
+      stage_id: stageId,
+      file: filePath,
+      file_sha256: await fileSha256(filePath),
+    };
     if (label) payload.label = label;
-    return this.capability('stage.attachment.add', payload);
+    return this.capability('stage.attachment.add', payload, { expectedRevisions });
   }
   captureText(text: string, title = '') {
     const payload: Record<string, unknown> = { text };
     if (title) payload.title = title;
     return this.capability('capture.create', payload);
   }
-  captureFile(filePath: string) {
-    return this.capability('capture.create', { file: filePath });
+  async captureFile(filePath: string) {
+    return this.capability('capture.create', {
+      file: filePath,
+      file_sha256: await fileSha256(filePath),
+    });
   }
   createGardenSeed(
     text: string,
@@ -268,12 +397,15 @@ export class GatewayClient {
       payload,
     );
   }
-  prepareShelving(unitId: string) {
-    return this.capability('review.prepare', { unit_id: unitId });
+  prepareShelving(unitId: string,
+    expectedRevisions: Readonly<Record<string, number>> = {}) {
+    return this.capability('review.prepare', { unit_id: unitId }, { expectedRevisions });
   }
-  applyShelving(unitId: string, selected: readonly string[]) {
+  applyShelving(unitId: string, selected: readonly string[],
+    expectedRevisions: Readonly<Record<string, number>> = {}) {
     return this.capability('review.apply',
-      { unit_id: unitId, selected: [...selected], approve: true });
+      { unit_id: unitId, selected: [...selected] },
+      { expectedRevisions });
   }
   endSession(commitMessage: string | null = null, push = false) {
     const args = ['session-end'];
@@ -283,34 +415,21 @@ export class GatewayClient {
   }
 
   /**
-   * The Job dashboard is the sole read outside the normal projection. The
-   * confirmation flag is the learner's deliberate navigation gesture; the
-   * core still owns path bounding and returns no durable cache.
-   */
-  async jobDashboard() {
-    const result = await this.call(['job-dashboard', '--confirm-job-access']);
-    const access = result.access && typeof result.access === 'object'
-      ? result.access as Record<string, unknown>
-      : {};
-    this.jobSnapshotId = typeof access.snapshot_id === 'string'
-      && access.snapshot_id.startsWith('sha256:')
-      ? access.snapshot_id
-      : null;
-    return result;
-  }
-
-  /**
    * Apply a study map that has already been through the SOP's coverage audit.
-   * The interface carries the reviewed file's path, never its content: Core
-   * reads it, checks it against the creation template and the study-map
-   * schema, and refuses it as a whole. Gate 1 stays where the SOP put it —
-   * this is where a reviewed result is applied, not where the review is
-   * skipped.
+   * The interface carries the reviewed file's path and exact content digest.
+   * Core reads it once, verifies those approved bytes, checks them against the
+   * creation template and study-map schema, and refuses it as a whole. Gate 1
+   * stays where the SOP put it — this applies a reviewed result; it does not
+   * skip the review.
    */
-  importUnitMap(unitId: string, file: string, replace = false) {
+  async importUnitMap(unitId: string, file: string, replace = false,
+    expectedRevisions: Readonly<Record<string, number>> = {}) {
     return this.capability('unit.map.import', {
-      unit_id: unitId, file, ...(replace ? { replace: true } : {}),
-    });
+      unit_id: unitId,
+      file,
+      file_sha256: await fileSha256(file),
+      ...(replace ? { replace: true } : {}),
+    }, { expectedRevisions });
   }
 
   /**
@@ -330,79 +449,23 @@ export class GatewayClient {
     return this.call(args);
   }
 
-  private jobCapability(
-    name: string,
-    payload: Record<string, unknown>,
-    expectedRevisions: Readonly<Record<string, number>> = {},
-  ) {
-    if (!this.jobSnapshotId) {
-      throw new Error('Reload the confidential Job workspace before saving; nothing was written.');
-    }
-    return this.capability(name, payload, {
-      expectedSnapshot: this.jobSnapshotId,
-      expectedRevisions,
-    });
+  /** Versioned read-only status surfaces. Their feature layers decode the
+   *  exact producer schemas before rendering any field. */
+  healthReport() {
+    return this.call(['health-report', '--json']);
   }
 
-  /**
-   * Bounded Job writes (ADR-010). Each carries the same deliberate-gesture flag
-   * as the read, and each is a declared capability rooted at Job/ — the view
-   * never writes a Job file itself, exactly as it never writes a canonical one.
-   */
-  logJobSession(text: string, options: {
-    track?: string; session?: number; minutes?: number;
-  } = {}) {
-    const payload: Record<string, unknown> = { text, confirm_job_access: true };
-    if (options.track) payload.track = options.track;
-    if (options.session !== undefined) payload.session = options.session;
-    if (options.minutes !== undefined) payload.minutes = options.minutes;
-    return this.jobCapability('job.session.log', payload);
+  legacyArchiveStatus() {
+    return this.call(['legacy-archive-status', '--json']);
   }
 
-  stampJobNote(noteId: string, commit: string, status = 'current') {
-    return this.jobCapability('job.note.stamp', {
-      note: noteId, commit, status, confirm_job_access: true,
-    });
+  mastersPlanningDashboard() {
+    return this.call([
+      'masters-planning-dashboard',
+      '--confirm-masters-planning',
+    ]);
   }
 
-  saveJobNote(noteId: string, title: string, body: string, revision?: number) {
-    return this.jobCapability('job.note.save', {
-      note: noteId || title,
-      title,
-      body,
-      folder: 'learning',
-      approve: true,
-      confirm_job_access: true,
-    }, noteId && revision !== undefined ? { [`job-note:${noteId}`]: revision } : {});
-  }
-
-  saveJobPlan(plan: Record<string, unknown>, revision?: number) {
-    const id = typeof plan.id === 'string' ? plan.id : '';
-    return this.jobCapability('job.plan.save', {
-      plan,
-      approve: true,
-      confirm_job_access: true,
-    }, id && revision !== undefined ? { [`job-plan:${id}`]: revision } : {});
-  }
-
-  saveJobTask(task: Record<string, unknown>, revision?: number) {
-    const id = typeof task.id === 'string' ? task.id : '';
-    return this.jobCapability('job.task.save', {
-      task,
-      confirm_job_access: true,
-    }, id && revision !== undefined ? { [`job-task:${id}`]: revision } : {});
-  }
-
-  recordJobTrackSession(
-    trackId: string,
-    session: number,
-    state: 'done' | 'open',
-    revision: number,
-  ) {
-    return this.jobCapability('job.track.progress', {
-      track: trackId, session, state, confirm_job_access: true,
-    }, { [`job-track:${trackId}`]: revision });
-  }
 }
 
 /**

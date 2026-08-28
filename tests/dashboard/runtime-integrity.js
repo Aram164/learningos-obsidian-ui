@@ -19,6 +19,44 @@ const {
   boot,
 } = require('./support');
 
+function paletteBlocks(css) {
+  return [...css.matchAll(
+    /(?:^|\n)(\.los-root|\.theme-dark \.los-root)\s*\{([\s\S]*?)\n\}/g,
+  )].map((match) => ({
+    selector: match[1],
+    tokens: new Map([...match[2].matchAll(
+      /^\s*(--los-[a-z0-9-]+)\s*:\s*([^;]+);/gm,
+    )].map((declaration) => [declaration[1], declaration[2].trim()])),
+  }));
+}
+
+function resolvePaletteToken(tokens, name, seen = new Set()) {
+  if (seen.has(name)) return null;
+  seen.add(name);
+  const value = tokens.get(name);
+  if (!value) return null;
+  const reference = value.match(/^var\((--los-[a-z0-9-]+)\)$/);
+  if (reference) return resolvePaletteToken(tokens, reference[1], seen);
+  const hex = value.match(/^#([0-9a-f]{6})\b/i);
+  return hex ? `#${hex[1].toLowerCase()}` : null;
+}
+
+function relativeLuminance(hex) {
+  const channel = (offset) => {
+    const encoded = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255;
+    return encoded <= 0.04045
+      ? encoded / 12.92
+      : ((encoded + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5);
+}
+
+function contrastRatio(left, right) {
+  const light = Math.max(relativeLuminance(left), relativeLuminance(right));
+  const dark = Math.min(relativeLuminance(left), relativeLuminance(right));
+  return (light + 0.05) / (dark + 0.05);
+}
+
 module.exports = async function run() {
   heading('material consumer contract (red gate)');
   {
@@ -37,6 +75,7 @@ module.exports = async function run() {
     const projected = {
       material_uri: 'material://source-fixture/paper.pdf',
       material_path: 'materials/source-fixture/paper.pdf',
+      material_exists: true,
       vault_path: 'material://source-fixture/paper.pdf',
     };
     const projectedResult = await Promise.resolve(plugin.openResource(projected));
@@ -96,9 +135,73 @@ module.exports = async function run() {
     const stage = map.stages.find((row) => row.id === 'stage-fixture-conditioning');
     stage.resources = [{
       kind: 'read',
+      label: 'A whole lecture collection is not one exact resource',
+      locator: 'Choose lecture 11',
+      source_id: 'source-fixture-book',
+    }];
+    const source = plugin.store.get('source-fixture-book');
+    source.material_path = 'materials/fixture-lectures';
+    source.material_exists = true;
+
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    check('a source collection never becomes a stage-level Open source button',
+      !view.contentEl.findText('los-btn', 'Open source'));
+
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        const unit = manifest.units.find(
+          (row) => row.id === 'unit-fixture-sad-l04');
+        unit.knowledge_map = {
+          summary: 'One projected target exercises the opening gate.',
+          nodes: [{
+            id: 'knowledge-fixture-missing',
+            title: 'Missing target',
+            summary: 'The file is not available locally.',
+          }],
+        };
+        const sourceMap = manifest.module_source_maps.find(
+          (row) => row.module_id === 'module-fixture-m2');
+        sourceMap.sources[0].unit_routes = [{
+          id: 'route-fixture-missing',
+          unit_id: 'unit-fixture-sad-l04',
+          title: 'Missing projected lecture',
+          format: 'course-material',
+          angle: 'This target is deliberately absent.',
+          covers: ['knowledge-fixture-missing'],
+          depth: 'course-aligned',
+          scope: 'current',
+          locator: 'lectures/missing.pdf',
+          source_id: 'source-fixture-book',
+          material_path: 'materials/lectures/missing.pdf',
+          material_exists: false,
+        }];
+      },
+    });
+
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const missing = view.contentEl.find('los-material-option').find(
+      (row) => row.allText().includes('Missing projected lecture'));
+    check('a projected missing file never renders a broken Open button',
+      Boolean(missing) && !missing.findText('los-btn', 'Open'),
+      `screen=${view.contentEl.allText()}`);
+
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    const map = plugin.store.get('study-map-fixture-sad-l04');
+    const stage = map.stages.find((row) => row.id === 'stage-fixture-conditioning');
+    stage.resources = [{
+      kind: 'read',
       label: 'Projected local material',
       material_uri: 'material://source-fixture/projected.pdf',
       material_path: 'materials/source-fixture/projected.pdf',
+      material_exists: true,
     }];
 
     await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
@@ -236,7 +339,10 @@ module.exports = async function run() {
     plugin.onunload();
   }
   {
-    const source = fs.readFileSync(path.join(ROOT, 'plugin', 'main.js'), 'utf8');
+    const source = fs.readFileSync(
+      process.env.LEARNINGOS_TEST_BUNDLE || path.join(ROOT, 'plugin', 'main.js'),
+      'utf8',
+    );
     for (const [label, pattern] of [
       ['vault.modify', /vault\.modify\s*\(/], ['vault.delete', /vault\.delete\s*\(/],
       ['vault.rename/copy', /vault\.(rename|copy)\s*\(/], ['frontmatter writes', /processFrontMatter/],
@@ -318,7 +424,10 @@ module.exports = async function run() {
       && buildSource.includes('bundle: true')
       && registrationSource.includes("from '../views/unit-view'")
       && !buildSource.includes('const files = ['));
-    const css = fs.readFileSync(path.join(ROOT, 'plugin', 'styles.css'), 'utf8');
+    const css = fs.readFileSync(
+      process.env.LEARNINGOS_TEST_STYLESHEET || path.join(ROOT, 'plugin', 'styles.css'),
+      'utf8',
+    );
     /* The same rule the bundle already lives under, applied to the cascade: a
      * stylesheet assembled from whatever happens to be in a directory has no
      * declared order, and cascade order is the one thing a stylesheet cannot
@@ -366,6 +475,68 @@ module.exports = async function run() {
       tokenBlocks.length === 2
       && tokenNames[0].length > 0
       && tokenNames[0] === tokenNames[1]);
+    const paletteSource = fs.readFileSync(
+      path.join(ROOT, 'src', 'styles', '00-tokens.css'), 'utf8');
+    const parsedPalettes = paletteBlocks(paletteSource);
+    const lightPalette = parsedPalettes.find((block) => block.selector === '.los-root');
+    const darkOverrides = parsedPalettes.find(
+      (block) => block.selector === '.theme-dark .los-root');
+    const palettes = lightPalette && darkOverrides ? [
+      { name: 'light', tokens: new Map(lightPalette.tokens) },
+      {
+        name: 'dark',
+        tokens: new Map([...lightPalette.tokens, ...darkOverrides.tokens]),
+      },
+    ] : [];
+    const normalTextPairs = [
+      ['--los-ink', '--los-paper'],
+      ['--los-ink', '--los-paper-2'],
+      ['--los-ink-soft', '--los-paper'],
+      ['--los-ink-soft', '--los-paper-2'],
+      ['--los-ink-soft', '--los-paper-3'],
+      ['--los-ink-soft', '--los-accent-wash'],
+      ['--los-ink-soft', '--los-rule'],
+      ['--los-ink-faint', '--los-paper'],
+      ['--los-ink-faint', '--los-selected'],
+      ['--los-on-accent', '--los-accent'],
+      ['--los-on-accent', '--los-accent-strong'],
+      ['--los-on-accent', '--los-success'],
+      ['--los-on-accent', '--los-success-strong'],
+      ['--los-accent-strong', '--los-accent-wash'],
+      ['--los-success-strong', '--los-success-wash'],
+      ['--los-info-strong', '--los-info-wash'],
+      ['--los-warning-strong', '--los-warning-wash'],
+    ];
+    const nonTextPairs = [
+      ['--los-line', '--los-paper'],
+      ['--los-line', '--los-paper-2'],
+      ['--los-line-strong', '--los-paper'],
+      ['--los-accent', '--los-accent-wash'],
+      ['--los-success', '--los-paper'],
+      ['--los-info', '--los-info-wash'],
+      ['--los-warning', '--los-warning-wash'],
+    ];
+    const contrastFailures = [];
+    for (const palette of palettes) {
+      for (const [foreground, background, minimum] of [
+        ...normalTextPairs.map((pair) => [...pair, 4.5]),
+        ...nonTextPairs.map((pair) => [...pair, 3]),
+      ]) {
+        const foregroundColor = resolvePaletteToken(palette.tokens, foreground);
+        const backgroundColor = resolvePaletteToken(palette.tokens, background);
+        const ratio = foregroundColor && backgroundColor
+          ? contrastRatio(foregroundColor, backgroundColor)
+          : 0;
+        if (ratio + Number.EPSILON < minimum) {
+          contrastFailures.push(
+            `${palette.name} ${foreground}/${background} ${ratio.toFixed(2)} < ${minimum}`,
+          );
+        }
+      }
+    }
+    check('light and dark palette pairs meet numeric WCAG 2.2 AA contrast',
+      palettes.length === 2 && contrastFailures.length === 0,
+      contrastFailures.join('; '));
     check('narrow-screen workspace is responsive', css.includes('.los-unit-layout') && css.includes('@media (max-width: 720px)'));
     check('button-like components are insulated from Obsidian theme distortion',
       css.includes('appearance: none') && css.includes('min-width: 0')
@@ -379,7 +550,7 @@ module.exports = async function run() {
     check('LearningOS modals size their host and never overflow their content box',
       css.includes('.modal.los-modal--unit-note')
       && css.includes('.modal.los-modal--global-search')
-      && css.includes('.modal.los-modal--job-editor')
+      && css.includes('.modal.los-modal--map-import')
       && /\.los-unit-note-modal\s*\{[^}]*width:\s*100%/.test(css)
       && /\.los-global-search\s*\{[^}]*width:\s*100%/.test(css)
       && css.includes('max-width: calc(100vw - 32px)')

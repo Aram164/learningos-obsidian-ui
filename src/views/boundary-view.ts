@@ -1,52 +1,27 @@
-import { ItemView, Notice, type WorkspaceLeaf } from 'obsidian';
-import { boundaryPolicy, button, empty, pageHeader, section } from '../components';
+import { ItemView, type WorkspaceLeaf } from 'obsidian';
+import { badge, empty, pageHeader, section } from '../components';
 import { VIEW_BOUNDARY } from '../constants';
-import type { ProjectionRecord } from '../contracts/manifest';
-import { isProjectionConflict } from '../contracts/gateway-v1';
-import { renderJobDashboard } from '../features/job/shell';
-import { asPlanTemplate } from '../features/plan-template';
-import { JobSessionModal } from '../features/job/session-modal';
-import {
-  JobNoteModal,
-  JobPlanModal,
-  JobTaskModal,
-} from '../features/job/editor-modals';
-import {
-  asJobDashboard,
-  type JobDashboard,
-  type JobLearningTrack,
-  type JobNote,
-  type JobTab,
-  type JobTask,
-} from '../features/job/model';
 import type { AppSurface } from '../app/surface';
-import type { AppNavigator } from '../app/navigator';
-import { asLabel } from '../projection/readers';
+import {
+  asMastersPlanningDashboard,
+  type MastersPlanningDashboardV1,
+} from '../contracts/masters-planning';
 
 type BoundaryPlugin = Pick<
   AppSurface,
-  'store' | 'gateway' | 'resources' | 'generate'
-> & {
-  readonly nav: Pick<AppNavigator, 'openSourceDetail'>;
-};
+  'store' | 'gateway'
+>;
 
 interface BoundaryViewState {
   boundaryId?: string | null;
-  /** `system` is accepted only to migrate persisted pre-v2 workspace state. */
-  tab?: JobTab | 'system' | null;
-  planId?: string | null;
-  planSession?: number | null;
 }
 
 export class BoundaryView extends ItemView {
   private readonly plugin: BoundaryPlugin;
   private boundaryId: string | null = null;
-  private tab: JobTab = 'now';
-  private planId: string | null = null;
-  private planSession: number | null = null;
-  private dashboard: JobDashboard | null = null;
-  private loading = false;
-  private error = '';
+  private mastersDashboard: MastersPlanningDashboardV1 | null = null;
+  private mastersLoading = false;
+  private mastersError = '';
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -62,39 +37,16 @@ export class BoundaryView extends ItemView {
   ): Promise<void> {
     if (typeof state.boundaryId === 'string') {
       if (state.boundaryId !== this.boundaryId) {
-        this.dashboard = null;
-        this.error = '';
+        this.mastersDashboard = null;
+        this.mastersError = '';
       }
       this.boundaryId = state.boundaryId;
     }
-    if (state.tab === 'system') {
-      this.tab = 'notes';
-    } else if (['now', 'tasks', 'plans', 'notes', 'library'].includes(String(state.tab))) {
-      this.tab = state.tab as JobTab;
-    }
-    if ('planId' in state) {
-      this.planId = typeof state.planId === 'string' && state.planId.trim()
-        ? state.planId.trim()
-        : null;
-    }
-    if ('planSession' in state) {
-      this.planSession = typeof state.planSession === 'number'
-        && Number.isInteger(state.planSession) && state.planSession > 0
-        ? state.planSession
-        : null;
-    }
-
     this.render();
-    if (this.boundaryId === 'program-job-boundary') void this.loadJobDashboard();
   }
 
   getState(): BoundaryViewState {
-    return {
-      boundaryId: this.boundaryId,
-      tab: this.tab,
-      planId: this.planId,
-      planSession: this.planSession,
-    };
+    return { boundaryId: this.boundaryId };
   }
 
   async onOpen(): Promise<void> {
@@ -104,215 +56,200 @@ export class BoundaryView extends ItemView {
     if (typeof boundaryId === 'string') {
       this.boundaryId = boundaryId;
     }
-    const planId = state?.planId;
-    const planSession = state?.planSession;
-    if (typeof planId === 'string' && planId.trim()) this.planId = planId.trim();
-    if (typeof planSession === 'number' && Number.isInteger(planSession) && planSession > 0) {
-      this.planSession = planSession;
-    }
-
     this.render();
-    if (this.boundaryId === 'program-job-boundary') void this.loadJobDashboard();
   }
 
-  private async loadJobDashboard(): Promise<void> {
-    if (this.loading || this.dashboard || this.boundaryId !== 'program-job-boundary') return;
-    this.loading = true;
-    this.error = '';
+  private async loadMastersPlanning(): Promise<void> {
+    if (this.mastersLoading || this.mastersDashboard
+      || this.boundaryId !== 'program-masters-planning') return;
+    this.mastersLoading = true;
+    this.mastersError = '';
     this.render();
     try {
-      const result = await this.plugin.gateway.jobDashboard();
-      const dashboard = asJobDashboard(result);
-      if (!dashboard || !this.plugin.resources.grantJobAccess(result.access)) {
-        throw new Error('LearningOS refused an invalid Job dashboard response.');
+      const result = await this.plugin.gateway.mastersPlanningDashboard();
+      const knownConceptIds = new Set(
+        this.plugin.store.of('concept')
+          .flatMap((concept) => typeof concept.id === 'string' ? [concept.id] : []),
+      );
+      const dashboard = asMastersPlanningDashboard(result, knownConceptIds);
+      if (!dashboard) {
+        throw new Error('LearningOS refused an invalid Future Master\'s Planning response.');
       }
-      this.dashboard = dashboard;
+      this.mastersDashboard = dashboard;
     } catch (error: unknown) {
-      this.error = error instanceof Error ? error.message : String(error);
+      this.mastersError = error instanceof Error ? error.message : String(error);
     } finally {
-      this.loading = false;
-      this.render();
-    }
-  }
-
-  private chooseTab(tab: JobTab): void {
-    this.tab = tab;
-    this.render();
-  }
-
-  private openJobPlan(trackId: string, session?: number): void {
-    const plan = this.dashboard?.learning_tracks.find((item) => item.id === trackId);
-    if (!plan) {
-      new Notice('That study plan is no longer available.');
-      return;
-    }
-    const requested = typeof session === 'number'
-      ? plan.stages.find((item) => item.number === session)
-      : null;
-    const selected = requested || plan.stages.find((item) => !item.done) || plan.stages[0];
-    this.planId = plan.id;
-    this.planSession = selected?.number || null;
-    this.tab = 'plans';
-    this.render();
-  }
-
-  private closeJobPlan(): void {
-    this.planId = null;
-    this.planSession = null;
-    this.render();
-  }
-
-  /** The core refuses an empty entry, so the text is collected before writing. */
-  private openSessionLog(track: string, session: number): void {
-    const title = this.dashboard?.learning_tracks.find((item) => item.id === track)?.title || track;
-    new JobSessionModal(this.app, {
-      trackTitle: title,
-      sessionNumber: session,
-      submit: async (text: string) => {
-        await this.commitJobWrite(() => this.plugin.gateway.logJobSession(text, { track, session }));
-      },
-    }).open();
-  }
-
-  private openTaskEditor(task?: JobTask): void {
-    new JobTaskModal(this.app, {
-      ...(task ? { task } : {}),
-      tracks: this.dashboard?.learning_tracks || [],
-      submit: (value, revision) => this.commitJobWrite(
-        () => this.plugin.gateway.saveJobTask(value, revision),
-      ),
-    }).open();
-  }
-
-  private openPlanEditor(plan?: JobLearningTrack): void {
-    new JobPlanModal(this.app, {
-      ...(plan ? { plan } : {}),
-      // Read-only, so it does not join the write chain: queuing it behind a
-      // pending save would leave the dialog waiting on an unrelated write.
-      template: async (title: string) => asPlanTemplate(
-        await this.plugin.gateway.planTemplate('job', title),
-      ),
-      submit: (value, revision) => this.commitJobWrite(
-        () => this.plugin.gateway.saveJobPlan(value, revision),
-      ),
-    }).open();
-  }
-
-  private openNoteEditor(note?: JobNote): void {
-    new JobNoteModal(this.app, {
-      ...(note ? { note } : {}),
-      submit: (noteId, title, body, revision) => this.commitJobWrite(
-        () => this.plugin.gateway.saveJobNote(noteId, title, body, revision),
-      ),
-    }).open();
-  }
-
-  private async commitJobWrite(write: () => Promise<unknown>): Promise<void> {
-    try {
-      await this.plugin.gateway.enqueue(write);
-    } catch (error: unknown) {
-      // A Job conflict refreshes only the ephemeral Job read model. The draft
-      // stays in its modal and the rejected mutation is never retried for the
-      // learner, because the new state may change what they meant to write.
-      if (isProjectionConflict(error)) {
-        this.dashboard = null;
-        await this.loadJobDashboard();
-      }
-      throw error;
-    }
-    this.dashboard = null;
-    await this.loadJobDashboard();
-  }
-
-  /**
-   * Run one bounded Job write, then reload the dashboard so the view reflects
-   * what the core actually recorded rather than an optimistic local guess —
-   * the response is ephemeral and the core owns the merge (ADR-010).
-   */
-  private async runJobWrite(write: () => Promise<unknown>): Promise<void> {
-    try {
-      await this.commitJobWrite(write);
-    } catch (error: unknown) {
-      new Notice(error instanceof Error ? error.message : String(error));
-      this.error = '';
+      this.mastersLoading = false;
       this.render();
     }
   }
 
   render() {
-    const root = this.contentEl; root.empty(); root.removeClass('los-job-view'); root.addClass('los-root', 'los-boundary-view');
-    if (!this.plugin.store.ready) {
-      pageHeader(root, 'LearningOS', 'Projection unavailable');
+    const root = this.contentEl; root.empty(); root.addClass('los-root', 'los-boundary-view');
+    if (this.boundaryId === 'program-masters-planning') {
+      this.renderMastersPlanning(root);
+      return;
+    }
+    empty(root, 'Boundary unavailable', 'This destination is not a declared explicit boundary surface.');
+  }
+
+  private renderMastersPlanning(root: HTMLElement): void {
+    root.addClass('los-masters-planning');
+    pageHeader(
+      root,
+      'Future Master\'s Planning · isolated',
+      'Future Master\'s Planning',
+      'A deliberate academic planning workspace, separate from current LearningOS.',
+    );
+    const banner = root.createDiv({
+      cls: 'los-prospective-banner',
+      attr: { role: 'status' },
+    });
+    banner.createEl('strong', { text: 'Prospective—not current LearningOS' });
+    banner.createDiv({
+      cls: 'los-micro',
+      text: 'Candidates here do not enter the normal manifest, search, workload, recommendations, deadlines, or ordinary AI context.',
+    });
+
+    if (this.mastersLoading) {
+      empty(root, 'Opening prospective planning', 'Reading only the sanitized academic planning dashboard.');
+      return;
+    }
+    if (this.mastersError) {
       empty(
         root,
-        'The interface contract could not be loaded',
-        this.plugin.store.error,
-        'Rebuild views',
-        () => this.plugin.generate(),
+        'Future Master\'s Planning unavailable',
+        this.mastersError,
+        'Try again',
+        () => void this.loadMastersPlanning(),
       );
       return;
     }
-    const boundary = (this.plugin.store.data?.quarantine_boundaries || [])
-      .find(
-        (row: ProjectionRecord) => row.id === this.boundaryId,
-      );
-    if (!boundary) { empty(root, 'Boundary unavailable', 'No quarantined content was loaded.'); return; }
-    if (boundary.id === 'program-job-boundary') {
-      root.addClass('los-job-view');
-      if (this.dashboard) {
-        renderJobDashboard(
-          root,
-          {
-            openJobPath: (path: string) => this.plugin.resources.openJobPath(path),
-            openSourceDetail: (sourceId: string) => this.plugin.nav.openSourceDetail(sourceId),
-            openJobPlan: (trackId: string, session?: number) => this.openJobPlan(trackId, session),
-            closeJobPlan: () => this.closeJobPlan(),
-            selectedPlanId: this.planId,
-            selectedPlanSession: this.planSession,
-            openJobUrl: (url: string) => this.plugin.resources.openJobUrl(url),
-            openJobLearningPath: (path: string) => this.plugin.resources.openJobLearningPath(path),
-            logJobSession: (track: string, session: number) => this.openSessionLog(track, session),
-            setJobSessionState: (track, session, state, revision) => this.runJobWrite(
-              () => this.plugin.gateway.recordJobTrackSession(track, session, state, revision),
-            ),
-            editTask: (task) => this.openTaskEditor(task),
-            setTaskState: (task, state) => this.runJobWrite(
-              () => this.plugin.gateway.saveJobTask({
-                id: task.id,
-                title: task.title,
-                details: task.details,
-                horizon: task.horizon,
-                status: state,
-                track_id: task.trackId,
-              }, task.revision),
-            ),
-            editPlan: (plan) => this.openPlanEditor(plan),
-            editNote: (note) => this.openNoteEditor(note),
-          },
-          this.dashboard,
-          this.tab,
-          (tab: JobTab) => this.chooseTab(tab),
-        );
-        return;
-      }
-      pageHeader(
+    if (!this.mastersDashboard) {
+      empty(
         root,
-        'Job · confidential workspace',
-        asLabel(boundary, 'Job'),
-        boundaryPolicy(boundary.description),
+        'Prospective catalog is sealed',
+        'Open it only for a deliberate planning session. The response is read-only and schema-bounded.',
+        'Open prospective planning',
+        () => void this.loadMastersPlanning(),
       );
-      if (this.loading) {
-        empty(root, 'Opening the confidential workspace', 'Reading only the bounded Job dashboard. Nothing is being added to LearningOS search or the manifest.');
-      } else if (this.error) {
-        empty(root, 'Job workspace unavailable', this.error, 'Try again', () => void this.loadJobDashboard());
-      } else {
-        empty(root, 'Job workspace is sealed', 'Opening this destination creates an ephemeral Job session. Notes, plans, tasks, and progress can then be saved only through the guarded gateway.', 'Open confidential workspace', () => void this.loadJobDashboard());
-      }
       return;
     }
-    pageHeader(root, 'Deliberate boundary', asLabel(boundary, 'Boundary'), boundaryPolicy(boundary.description));
-    const guard = section(root, 'What this means');
-    guard.createEl('p', { text: 'Master’s planning is quarantined from current Bachelor’s work and all default search. This surface exposes only the boundary record.' });
-    button(guard, 'Open Master’s Planning boundary', () => new Notice('Open the quarantined folder manually only for a deliberate planning session.'), 'warm');
+
+    const catalog = this.mastersDashboard.catalog;
+    if (!catalog) {
+      empty(root, 'No prospective catalog', 'Core returned the isolated dashboard without a catalog.');
+      return;
+    }
+    const summary = section(
+      root,
+      'Prospective catalog',
+      `Revision ${catalog.revision} · updated ${catalog.updated_at}`,
+    );
+    const counts = summary.createDiv({ cls: 'los-masters-counts' });
+    counts.createSpan({ text: `${catalog.candidate_modules.length} candidate modules` });
+    counts.createSpan({ text: `${catalog.candidate_sources.length} candidate sources` });
+    counts.createSpan({ text: `${this.mastersDashboard.comparisons.length} approved comparisons` });
+
+    const modules = section(root, 'Candidate modules');
+    if (!catalog.candidate_modules.length) {
+      modules.createDiv({ cls: 'los-micro', text: 'No candidate modules in this revision.' });
+    }
+    for (const module of catalog.candidate_modules) {
+      const row = modules.createDiv({ cls: 'los-masters-row' });
+      const heading = row.createDiv({ cls: 'los-masters-row-head' });
+      heading.createEl('strong', { text: module.title });
+      badge(heading, module.planning_state, 'role');
+      badge(
+        heading,
+        module.fact_state.status.replaceAll('-', ' '),
+        module.fact_state.status === 'verified-current' ? 'status' : 'role',
+      );
+      if (module.fact_state.as_of) {
+        row.createDiv({ cls: 'los-micro', text: `Facts checked as of ${module.fact_state.as_of}` });
+      }
+      if (module.unresolved_references.length) {
+        row.createDiv({
+          cls: 'los-micro',
+          text: `${module.unresolved_references.length} unresolved reference${module.unresolved_references.length === 1 ? '' : 's'}`,
+        });
+      }
+    }
+
+    const sources = section(root, 'Candidate sources');
+    if (!catalog.candidate_sources.length) {
+      sources.createDiv({ cls: 'los-micro', text: 'No candidate sources in this revision.' });
+    }
+    for (const source of catalog.candidate_sources) {
+      const row = sources.createDiv({ cls: 'los-masters-row' });
+      const heading = row.createDiv({ cls: 'los-masters-row-head' });
+      heading.createEl('strong', { text: source.title });
+      badge(heading, source.planning_state, 'role');
+      badge(heading, source.fact_state.status.replaceAll('-', ' '),
+        source.fact_state.status === 'verified-current' ? 'status' : 'role');
+    }
+
+    const assessments = this.mastersDashboard.comparisons
+      .flatMap((comparison) => comparison.source_assessments);
+    if (assessments.length) {
+      const reviewed = section(root, 'Approved source assessments');
+      const sourceTitle = new Map(catalog.candidate_sources.map((source) => [source.id, source.title]));
+      for (const assessment of assessments) {
+        const row = reviewed.createDiv({ cls: 'los-masters-row' });
+        const heading = row.createDiv({ cls: 'los-masters-row-head' });
+        heading.createEl('strong', {
+          text: sourceTitle.get(assessment.candidate_source_id) || assessment.candidate_source_id,
+        });
+        badge(heading, assessment.role, assessment.role === 'selected' ? 'status' : 'role');
+        badge(heading, assessment.review_status.replaceAll('-', ' '),
+          assessment.review_status === 'deep-reviewed' ? 'status' : 'role');
+        const summary = assessment.contribution || assessment.reason;
+        if (summary) row.createEl('p', { text: summary });
+        if (assessment.concept_ids.length) {
+          row.createDiv({
+            cls: 'los-micro',
+            text: `Concepts: ${assessment.concept_ids.join(', ')}`,
+          });
+        }
+      }
+    }
+
+    const pairs = this.mastersDashboard.comparisons
+      .flatMap((comparison) => comparison.comparisons);
+    if (pairs.length) {
+      const comparisons = section(root, 'Approved source comparisons');
+      const sourceTitle = new Map(catalog.candidate_sources.map((source) => [source.id, source.title]));
+      for (const pair of pairs) {
+        const row = comparisons.createDiv({ cls: 'los-masters-row' });
+        const heading = row.createDiv({ cls: 'los-masters-row-head' });
+        heading.createEl('strong', {
+          text: `${sourceTitle.get(pair.left_candidate_source_id) || pair.left_candidate_source_id} ↔ ${sourceTitle.get(pair.right_candidate_source_id) || pair.right_candidate_source_id}`,
+        });
+        badge(heading, pair.relation.replaceAll('-', ' '), 'role');
+        row.createEl('p', { text: pair.narrative });
+        row.createDiv({
+          cls: 'los-micro',
+          text: `Concepts: ${pair.concept_ids.join(', ')}`,
+        });
+        const evidence = row.createDiv({ cls: 'los-masters-evidence' });
+        const leftTitle = sourceTitle.get(pair.left_candidate_source_id)
+          || pair.left_candidate_source_id;
+        const rightTitle = sourceTitle.get(pair.right_candidate_source_id)
+          || pair.right_candidate_source_id;
+        for (const [side, title] of [
+          [pair.evidence.left, leftTitle],
+          [pair.evidence.right, rightTitle],
+        ] as const) {
+          const list = evidence.createDiv({ cls: 'los-masters-evidence-side' });
+          list.createEl('strong', { text: `${title} evidence` });
+          for (const item of side) {
+            list.createDiv({
+              cls: 'los-micro',
+              text: item.note ? `${item.locator} — ${item.note}` : item.locator,
+            });
+          }
+        }
+      }
+    }
   }
 }

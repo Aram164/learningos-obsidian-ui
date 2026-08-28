@@ -13,10 +13,12 @@ const {
   VIEW,
   tick,
   frame,
+  waitFor,
   check,
   heading,
   build,
   boot,
+  gatewayConfirmation,
 } = require('./support');
 
 module.exports = async function run() {
@@ -118,8 +120,8 @@ module.exports = async function run() {
 
     approveButton.fire('click');
 
-    await tick();
-    await tick();
+    await waitFor(() => Boolean(calls.envelope('review.apply'))
+      && !plugin.gateway.isBusy);
 
     const applies =
       calls.envelopes.filter(
@@ -133,7 +135,7 @@ module.exports = async function run() {
 
     check(
       'approval invokes guarded core apply',
-      apply?.payload.approve === true
+      !Object.prototype.hasOwnProperty.call(apply?.payload || {}, 'approve')
         && Array.isArray(
           apply?.payload.selected,
         )
@@ -175,9 +177,9 @@ module.exports = async function run() {
       && view.contentEl.allText().includes('linear algebra'));
     check('source use routes back to several distinct units', view.contentEl.allText().includes('AML Lecture 03')
       && view.contentEl.allText().includes('AML Lecture 04'));
-    await plugin.nav.openLibraryGroup('sources', 'thematic-group-mathematics', 'Wahrscheinlichkeitsbuch');
+    await plugin.nav.openLibraryGroup('sources', 'thematic-group-mathematics', 'Fixture probability');
     view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    check('German source aliases search successfully', view.contentEl.find('los-route-row').length === 1
+    check('source-title search remains successful', view.contentEl.find('los-route-row').length === 1
       && view.contentEl.allText().includes('Fixture probability book'));
     plugin.onunload();
   }
@@ -225,26 +227,6 @@ module.exports = async function run() {
     plugin.onunload();
   }
   {
-    /* Hard rule 10: a Job/ path never leaves the vault, so the escape checks in
-     * the open helpers cannot see it. Refusal has to be explicit. */
-    const { app, plugin } = await boot();
-    Notice.log.length = 0;
-    await plugin.openVaultPath('Job/secret-plan.md');
-    plugin.openAuthoredPath('Job/notes/offer.md');
-    plugin.openAuthoredPath('Job/scan.png');
-    await plugin.openResource({ vault_path: 'Job/secret-plan.md' });
-    check('every ordinary open path refuses Job/',
-      !app.workspace.opened.some((entry) => String(entry).startsWith('Job/')));
-    check('the quarantine refusal is visible to the learner',
-      Notice.log.some((line) => line.includes('quarantined')));
-    const boundaries = plugin.store.rows('quarantine_boundaries');
-    boundaries[0].description = 'Leak probe: Job/private/offer.md salary numbers';
-    await plugin.nav.openBoundary(boundaries[0].id);
-    check('a boundary card refuses to display a Job/ reference',
-      !app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl.allText().includes('salary numbers'));
-    plugin.onunload();
-  }
-  {
     /* One null row anywhere in the projection used to blank Home on startup. */
     const { app, plugin, home } = await boot();
     plugin.store.data.modules.push(null);
@@ -278,16 +260,11 @@ module.exports = async function run() {
     app.workspace.getLeavesOfType(VIEW.library)[0].view.render();
     check('Library degrades instead of searching an unloaded record set',
       app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.allText().includes('Projection unavailable'));
-    let rebuilt = false;
-    plugin.generate = async () => { rebuilt = true; };
     await plugin.nav.openBoundary('program-masters-planning');
     const boundary = app.workspace.getLeavesOfType(VIEW.boundary)[0].view;
-    check('Boundary distinguishes an unloaded projection from a missing record',
-      boundary.contentEl.allText().includes('Projection unavailable')
-      && Boolean(boundary.contentEl.findText('los-btn', 'Rebuild views')));
-    boundary.contentEl.findText('los-btn', 'Rebuild views').fire('click');
-    await tick();
-    check('Boundary projection recovery invokes the shared rebuild path', rebuilt);
+    check('isolated prospective planning does not depend on the normal projection',
+      boundary.contentEl.allText().includes('Prospective—not current LearningOS')
+      && Boolean(boundary.contentEl.findText('los-btn', 'Open prospective planning')));
     plugin.onunload();
   }
   {
@@ -330,9 +307,13 @@ module.exports = async function run() {
     const order = [];
     let settle = null;
     plugin.runLos = (args, callback, stdin) => {
-      const name = stdin ? JSON.parse(stdin).capability : args[0];
+      const envelope = stdin ? JSON.parse(stdin) : null;
+      const name = envelope ? envelope.capability : args[0];
       order.push(`start:${name}`);
-      const finish = () => { order.push(`end:${name}`); callback(null, JSON.stringify({ ok: true }), ''); };
+      const finish = () => {
+        order.push(`end:${name}`);
+        callback(null, JSON.stringify(gatewayConfirmation(envelope)), '');
+      };
       if (name === 'unit.note.append') settle = finish; else finish();
     };
     const first = plugin.mutate(() => plugin.gateway.saveUnitNote('unit-fixture-sad-l04', { text: 'x' }));
@@ -359,9 +340,10 @@ module.exports = async function run() {
     const order = [];
     let settle = null;
     plugin.runLos = (args, callback, stdin) => {
-      const name = stdin ? JSON.parse(stdin).capability : args[0];
+      const envelope = stdin ? JSON.parse(stdin) : null;
+      const name = envelope ? envelope.capability : args[0];
       order.push(name);
-      const finish = () => callback(null, JSON.stringify({ ok: true }), '');
+      const finish = () => callback(null, JSON.stringify(gatewayConfirmation(envelope)), '');
       if (name === 'capture.create') settle = finish; else finish();
     };
     const blocking = plugin.mutate(() => plugin.gateway.captureText('an unrelated thought'));
@@ -387,6 +369,23 @@ module.exports = async function run() {
     plugin.onunload();
   }
   {
+    const { app, plugin } = await build();
+    await app.workspace._ready();
+    plugin.runLos = (_args, callback, stdin) => {
+      const envelope = JSON.parse(stdin);
+      const confirmation = gatewayConfirmation(envelope);
+      confirmation.snapshot_after = `sha256:${'9'.repeat(64)}`;
+      callback(null, JSON.stringify(confirmation), '');
+    };
+    let unobserved = null;
+    await plugin.mutate(() => plugin.gateway.captureText('receipt without projection'))
+      .catch((error) => { unobserved = error; });
+    check('a receipt is not success until its snapshot is observed after manifest reload',
+      /reloaded manifest does not show/.test(String(unobserved && unobserved.message))
+      && unobserved.gatewayCode === 'UNCONFIRMED');
+    plugin.onunload();
+  }
+  {
     /* Planning happens in Claude, so canonical files change between app
      * sessions by design. The core then refuses the next write and says
      * "reload before writing" — but reloading re-reads the same stale
@@ -397,7 +396,8 @@ module.exports = async function run() {
     const order = [];
     let refuse = true;
     plugin.runLos = (args, callback, stdin) => {
-      const name = stdin ? JSON.parse(stdin).capability : args[0];
+      const envelope = stdin ? JSON.parse(stdin) : null;
+      const name = envelope ? envelope.capability : args[0];
       order.push(name);
       if (name === 'generate') { callback(null, 'rebuilt', ''); return; }
       if (name === 'capture.create' && refuse) {
@@ -409,16 +409,19 @@ module.exports = async function run() {
         );
         return;
       }
-      callback(null, JSON.stringify({ ok: true }), '');
+      callback(null, JSON.stringify(gatewayConfirmation(envelope)), '');
     };
-    await plugin.mutate(() => plugin.gateway.captureText('written after Claude edited the tree'));
-    check('a stale projection is rebuilt rather than reported as a dead end',
-      order.join('|') === 'capture.create|generate|capture.create');
-    check('the retried write settles the queue',
+    let firstConflict = null;
+    await plugin.mutate(() => plugin.gateway.captureText('written after Claude edited the tree'))
+      .catch((error) => { firstConflict = error; });
+    check('a stale projection is rebuilt without replaying the refused write',
+      order.join('|') === 'capture.create|generate'
+      && /projection conflict/.test(String(firstConflict && firstConflict.message)));
+    check('the refreshed refusal settles the queue',
       plugin.gateway.pending === 0);
 
-    /* One retry, not a loop: a conflict that survives a rebuild is a real
-     * refusal and must reach the learner. */
+    /* Every conflict refreshes once and reaches the learner. The action is
+     * never replayed with freshly adopted artifact revisions. */
     const seen = [];
     plugin.runLos = (args, callback, stdin) => {
       const name = stdin ? JSON.parse(stdin).capability : args[0];
@@ -433,8 +436,8 @@ module.exports = async function run() {
     let surfaced = null;
     await plugin.mutate(() => plugin.gateway.captureText('still conflicting'))
       .catch((error) => { surfaced = error; });
-    check('a conflict that survives the rebuild is surfaced, not retried forever',
-      seen.join('|') === 'capture.create|generate|capture.create'
+    check('a conflict is surfaced after refresh and never replayed',
+      seen.join('|') === 'capture.create|generate'
       && /projection conflict/.test(String(surfaced && surfaced.message)));
     plugin.onunload();
   }

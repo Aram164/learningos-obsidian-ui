@@ -3,7 +3,6 @@ import {
   type WorkspaceLeaf,
 } from 'obsidian';
 import {
-  boundaryPolicy,
   button,
   empty,
   icon,
@@ -276,8 +275,13 @@ export class AtlasView extends ItemView {
     });
 
     this.renderDomain(body, current, domains);
-
-    this.renderBoundaries(body);
+    const mapActions = body.createDiv({ cls: 'los-actions' });
+    button(
+      mapActions,
+      'Open generated map file',
+      () => this.plugin.openVaultPath('generated/domain-atlas.md'),
+      'quiet',
+    );
   }
 
   noteRow(
@@ -605,68 +609,4 @@ export class AtlasView extends ItemView {
     this.renderNoteInventory(parent, domain);
   }
 
-  renderBoundaries(
-    root: HTMLElement,
-  ): void {
-    const boundaries =
-      this.plugin.store.rows(
-        'quarantine_boundaries',
-      );
-
-    const details = root.createEl('details', {
-      cls: 'los-atlas-boundaries',
-    });
-    details.createEl('summary', {
-      text: `Policy boundaries (${boundaries.length})`,
-    });
-    const wrap = details.createDiv({ cls: 'los-atlas-boundaries-body' });
-    wrap.createEl('p', {
-      cls: 'los-muted',
-      text: 'Named only so their absence is visible. Their content is not part of the Atlas.',
-    });
-
-    if (!boundaries.length) {
-      empty(
-        wrap,
-        'No boundary records',
-        'Nothing is currently quarantined in the projection.',
-      );
-    }
-
-    for (const boundary of boundaries) {
-      const card = wrap.createDiv({
-        cls: 'los-boundary-row',
-      });
-
-      card.createDiv({
-        cls: 'los-item-copy',
-        text: projectedLabel(boundary),
-      });
-
-      const description =
-        projectedString(
-          boundary.description,
-        ) ?? '';
-
-      const policy =
-        boundaryPolicy(description);
-
-      if (policy) {
-        card.createDiv({
-          cls: 'los-micro',
-          text: policy,
-        });
-      }
-    }
-
-    button(
-      wrap,
-      'Open generated map file',
-      () =>
-        this.plugin.openVaultPath(
-          'generated/domain-atlas.md',
-        ),
-      'quiet',
-    );
-  }
 }

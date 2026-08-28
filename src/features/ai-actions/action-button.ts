@@ -35,8 +35,6 @@ export function renderGardenShelveAction(
       row.id === plugin.settings.preferredAiProvider,
   )
     ? plugin.settings.preferredAiProvider : (available[0]?.id || 'manual-bundle');
-  let jobConfirmed = !target.job_derived;
-
   // Provider choice belongs in Settings. Repeating a technical adapter picker
   // on every seed made Garden look like an operator console and displaced the
   // human decision the row is actually for.
@@ -45,21 +43,10 @@ export function renderGardenShelveAction(
     plugin.scheduleDraftSave();
   }
 
-  if (target.job_derived) {
-    const consent = wrap.createEl('label', { cls: 'los-ai-consent' });
-    const checkbox = consent.createEl('input', { attr: { type: 'checkbox' } });
-    consent.createSpan({ text: 'Confirm this exported item may leave the Job boundary' });
-    checkbox.addEventListener('change', () => { jobConfirmed = Boolean(checkbox.checked); });
-  }
-
   const targetId = target.id;
   const launch = button(wrap, 'Refine with AI', async () => {
     if (!targetId) {
       new Notice('This Garden item has no projected identity. Refresh LearningOS and try again.');
-      return;
-    }
-    if (target.job_derived && !jobConfirmed) {
-      new Notice('Explicit export confirmation is required for job-derived material.');
       return;
     }
     launch.setAttr('disabled', 'disabled');
@@ -69,7 +56,6 @@ export function renderGardenShelveAction(
         await plugin.aiActions.prepareGardenShelving(
           targetId,
           provider,
-          jobConfirmed,
         );
       const bundlePath = result.bundle_path || result.request?.bundle_path;
       new Notice(bundlePath ? `AI request prepared: ${bundlePath}` : 'AI request prepared.');

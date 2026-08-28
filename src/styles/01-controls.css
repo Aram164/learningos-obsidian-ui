@@ -33,7 +33,7 @@
   box-shadow: none;
 }
 .los-root input::placeholder,
-.los-root textarea::placeholder { color: var(--los-ink-soft); opacity: .78; }
+.los-root textarea::placeholder { color: var(--los-ink-soft); opacity: 1; }
 .los-root button:hover { border-color: var(--los-line-strong); background: var(--los-paper-3); }
 .los-root button:disabled { cursor: not-allowed; opacity: 0.55; transform: none; }
 .los-root button:focus-visible,

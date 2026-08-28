@@ -28,6 +28,10 @@ export function renderStageContext(
     studyMap: StudyMapView,
     stage: StageRecordView,
   ): void {
+    const expectedRevisions = view.plugin.store.artifactGuard(
+      unit.id,
+      typeof studyMap.record.id === 'string' ? studyMap.record.id : null,
+    );
     const detours =
       studyMap.detours.filter(
         (row) =>
@@ -114,6 +118,7 @@ export function renderStageContext(
                 unit.id,
                 detourId,
                 'Resolved from the unit workspace.',
+                expectedRevisions,
               ),
         ),
         'quiet',

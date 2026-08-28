@@ -10,6 +10,7 @@ const {
   FIXTURE,
   LearningOSUI,
   FIXTURE_GROUP_COUNT,
+  FIXTURE_SNAPSHOT,
   VIEW,
   tick,
   frame,
@@ -37,7 +38,8 @@ module.exports = async function run() {
     check('maintenance and boundaries are not study destinations',
       nav.find('los-nav-more').length === 1
       && nav.find('los-nav-secondary')[0].allText().includes('Rebuild projection')
-      && nav.find('los-nav-secondary')[0].allText().includes('Job'));
+      && nav.find('los-nav-secondary')[0].allText().includes('Future Master’s Planning')
+      && !nav.find('los-nav-secondary')[0].allText().includes('Job'));
     check('legacy global path and entity taxonomy are absent', !text.includes('Learning path') && !text.includes('Collections'));
     nav.findText('los-app-nav-item', 'Learn').fire('click'); await tick();
     check('Learn opens one destination carrying every area',
@@ -55,132 +57,51 @@ module.exports = async function run() {
       && reviewRoot.find('los-review-count-badge').length === 1
       && reviewRoot.find('los-filter-tabs').length === 1);
     await plugin.nav.openDiagnostics();
-    const diagnostics = app.workspace.getLeavesOfType(VIEW.diagnostics)[0].view.contentEl.allText();
+    await tick(); await tick();
+    const diagnosticsRoot = app.workspace.getLeavesOfType(VIEW.diagnostics)[0].view.contentEl;
+    const diagnostics = diagnosticsRoot.allText();
     check('Diagnostics reports contract, freshness and interpreter',
       diagnostics.includes('Manifest contract') && diagnostics.includes('Python interpreter')
       && diagnostics.includes('Snapshot'));
+    check('Diagnostics health is Core-owned and actionable',
+      diagnostics.includes('Health checks')
+      && diagnostics.includes('Manifest contract is current')
+      && diagnostics.includes('Owner')
+      && diagnostics.includes('Remedy')
+      && calls.some((args) => args.join(' ') === 'health-report --json'));
     check('Diagnostics exposes the installed UI build identity',
       diagnostics.includes('UI source revision') && diagnostics.includes('UI source fingerprint')
       && diagnostics.includes('UI bundle fingerprint') && diagnostics.includes('Build Node')
       && diagnostics.includes('Copy build identity'));
     check('the ownership statement is stated once, in Diagnostics/About',
       diagnostics.includes('buttons are conveniences, never duties'));
-    await plugin.nav.openBoundary('program-job-boundary');
+    diagnosticsRoot.findText('los-btn', 'Legacy Archive').fire('click');
     await tick(); await tick();
-    const jobRoot = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl;
-    const job = jobRoot.allText();
-    check('Job opens an explicit bounded confidential dashboard',
-      job.includes('BIFOLD / DEEM') && job.includes('Job workspace')
-      && calls.some((args) => args.join(' ') === 'job-dashboard --confirm-job-access'), job);
-    /* The confidentiality contract is the gate you pass through to get here, so
-     * it is stated at that gate and not repeated as a banner over every
-     * destination — the same rule the ownership statement follows. */
-    check('the confidentiality notice is not repeated inside the workspace',
-      !job.includes('Confidential, on-demand view'));
-    /* Now answers one question. It leads with the workspace's own required-now
-     * scope and the first stage not yet recorded as done — not a restatement
-     * of what the other destinations already hold. */
-    check('Now leads with required-now scope and the next unfinished stage',
-      job.includes('Current Stratum ticket.')
-      && job.includes('Expressions') && job.includes('Rebuild an expression in both backends')
-      && job.includes('0/2 done')
-      && Boolean(jobRoot.findText('los-btn', 'Open this stage'))
-      && job.includes('Trace the join planner') && job.includes('Plan runway')
-      && !plugin.store.search('Skrub DataOp DAG').length);
-    /* Drift is a queue, not a badge hunt across every note card. The row names
-     * the note and the component it describes — the same card the System map
-     * uses, so a note does not change shape depending on where you meet it. */
-    check('Now surfaces drifted notes as a queue',
-      job.includes('Needs re-verifying')
-      && job.includes('Stratum dispatch map')
-      && job.includes('stratum/optimizer/ir/_dataframe_ops.py')
-      && job.includes('drifting'));
-    /* Job uses the system's tab row, the same one Garden and Review use, rather
-     * than a private copy that drifted into looking like a different control. */
-    check('Job local navigation is the shared tab row with pressed state',
-      jobRoot.find('los-filter-tab').length === 5
-      && jobRoot.find('los-filter-tab').every((tab) => tab.getAttribute('aria-pressed') !== null)
-      && jobRoot.find('los-job-tab').length === 0);
-    jobRoot.findText('los-filter-tab', 'Tasks').fire('click');
-    check('Tasks is a durable Job-only action list with add and edit controls',
-      jobRoot.allText().includes('Trace the join planner')
-      && Boolean(jobRoot.findText('los-btn', 'Add task'))
-      && Boolean(jobRoot.findText('los-btn', 'Edit')));
-    jobRoot.findText('los-filter-tab', 'Plans').fire('click');
-    check('Plans exposes progress and an in-app learning runway',
-      jobRoot.allText().includes('Study plans')
-      && jobRoot.allText().includes('0 of 2 complete')
-      && Boolean(jobRoot.findText('los-btn', 'Open plan'))
-      && Boolean(jobRoot.findText('los-btn', 'Edit plan'))
-      && !jobRoot.allText().includes('Open source'));
-    jobRoot.findText('los-btn', 'Open plan').fire('click');
-    check('Open plan renders the plan instead of opening its YAML source',
-      jobRoot.allText().includes('Study plan')
-      && jobRoot.allText().includes('Concept mirror')
-      && jobRoot.allText().includes('Pandas baseline')
-      && jobRoot.allText().includes('Polars mirror')
-      && jobRoot.allText().includes('Done when')
-      && jobRoot.allText().includes('Paired solutions')
-      && jobRoot.find('los-stage-row').length === 2
-      && jobRoot.find('los-stage-rail').length === 1
-      && jobRoot.find('los-stage-workspace').length === 1
-      && jobRoot.find('los-stage-row').filter(
-        (stage) => stage.getAttribute('aria-pressed') === 'true',
-      ).length === 1
-      && jobRoot.find('los-job-stage-row').length === 0
-      && !jobRoot.allText().includes('Open source'));
-    check('Job stages use the same structured resource renderer as module stages',
-      jobRoot.find('los-resource-row').length === 3
-      && jobRoot.allText().includes('Polars definitive guide — expressions')
-      && jobRoot.allText().includes('Polars expressions reference')
-      && jobRoot.allText().includes('Do this')
-      && jobRoot.allText().includes('Reference — preserved, not reading for this stage')
-      && jobRoot.findText('los-btn', 'Open'));
-    jobRoot.findText('los-stage-row', 'Lazy optimization').fire('click');
-    check('Each plan stage opens independently and persists its location',
-      jobRoot.allText().includes('Stage 02 of 2')
-      && jobRoot.allText().includes('Mental model')
-      && jobRoot.allText().includes('Working practice')
-      && jobRoot.allText().includes('Job relevance')
-      && jobRoot.allText().includes('One annotated explain output')
-      && app.workspace.getLeavesOfType(VIEW.boundary)[0].view.getState().planSession === 2);
-    jobRoot.findText('los-btn', '← All plans').fire('click');
-    check('The plan reader returns to the plan overview without a file round-trip',
-      jobRoot.allText().includes('Study plans')
-      && !jobRoot.allText().includes('Concept mirror'));
-    jobRoot.findText('los-filter-tab', 'Notes').fire('click');
-    /* The map is the pipeline. An undocumented layer is the finding, so it is
-     * stated rather than omitted — a flat list could never show it. */
-    check('Notes combines learner notes with the Stratum verification pipeline',
-      jobRoot.allText().includes('Learning notes')
-      && jobRoot.allText().includes('Join ordering')
-      && jobRoot.allText().includes('Capture / frontend')
-      && jobRoot.allText().includes('Logical IR')
-      && jobRoot.allText().includes('Skrub DataOp DAG')
-      && jobRoot.allText().includes('Stratum dispatch map')
-      && jobRoot.allText().includes('1 drifting')
-      && jobRoot.allText().includes('No note describes this layer yet.'));
-    jobRoot.findText('los-filter-tab', 'Library').fire('click');
-    /* Horizon is the axis; track, paper and book are only tags. */
-    check('Library orders every kind of material by horizon',
-      jobRoot.allText().includes('Use now')
-      && jobRoot.allText().includes('Keep for later')
-      && jobRoot.allText().includes('Polars — job-grounded through Stratum')
-      && jobRoot.allText().includes('Fixture systems paper')
-      && jobRoot.allText().includes('Reusable software book'));
-    /* The one-way reference used to be asserted as a sentence printed under
-     * every book. It is a property of the routing, so it is checked as routing:
-     * a canon book offers the Library and never a Job path. */
-    check('Library routes canon-owned material back to the canon',
-      Boolean(jobRoot.findText('los-btn', 'Open in Library')));
-    jobRoot.findText('los-btn', 'Open plan').fire('click');
-    check('Library opens a track in the same in-app plan reader',
-      jobRoot.allText().includes('Study plan')
-      && jobRoot.allText().includes('Stage 01 of 2')
-      && !jobRoot.allText().includes('Open source'));
+    const archive = diagnosticsRoot.allText();
+    check('Legacy Archive stays a bounded diagnostics surface',
+      archive.includes('Archive lock verified')
+      && archive.includes('sealed, not inspected')
+      && archive.includes('Historical only')
+      && calls.some((args) => args.join(' ') === 'legacy-archive-status --json'));
     await plugin.nav.openBoundary('program-masters-planning');
-    const masters = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl.allText();
-    check('Master surface exposes quarantine only', masters.includes('quarantined') && !masters.includes('prospective module menu'));
+    const mastersRoot = app.workspace.getLeavesOfType(VIEW.boundary)[0].view.contentEl;
+    check('Future Master’s Planning is visibly prospective before access',
+      mastersRoot.allText().includes('Prospective—not current LearningOS')
+      && mastersRoot.allText().includes('normal manifest, search, workload'));
+    check('restoring the surface does not silently confirm prospective access',
+      !calls.some((args) => args[0] === 'masters-planning-dashboard'));
+    mastersRoot.findText('los-btn', 'Open prospective planning').fire('click');
+    await tick(); await tick();
+    const masters = mastersRoot.allText();
+    check('a deliberate gesture opens only the sanitized prospective catalog',
+      masters.includes('Fixture prospective module')
+      && masters.includes('Fixture prospective source')
+      && masters.includes('selected')
+      && masters.includes('deep reviewed')
+      && masters.includes('concept-bayes')
+      && masters.includes('Fixture candidate section — Probability notation.')
+      && masters.includes('Fixture companion section — Odds notation.')
+      && calls.some((args) => args.join(' ') === 'masters-planning-dashboard --confirm-masters-planning'));
     await plugin.nav.openGarden();
     check('Garden marks Garden, not Review, as the active destination',
       nav.findText('los-app-nav-item', 'Garden')?.classes.has('is-active')
@@ -425,7 +346,7 @@ module.exports = async function run() {
         && seed?.payload.text
           === 'Decorators execute when the module is imported. #python'
         && seed?.expected_snapshot
-          === 'sha256:fixture-v2-snapshot',
+          === FIXTURE_SNAPSHOT,
     );
 
     check(
@@ -534,8 +455,8 @@ module.exports = async function run() {
       && !view.contentEl.find('los-atlas-inventory')[0].hasAttribute('open'));
     check('shelves carry their own rule for use',
       text.includes('Fixture math bookshelf') && text.includes('one spine, one supplement'));
-    check('quarantined strata are named but not opened',
-      text.includes('Job') && text.includes('Master') && !text.includes('Job client'));
+    check('prospective planning stays out of the ordinary atlas',
+      !text.includes('Prospective—not current LearningOS'));
     view.contentEl.findText('los-item', 'Fixture probability reference').fire('click'); await tick();
     check('an atlas row opens the note it names',
       app.workspace.opened.includes('knowledge/notes/mathematics/note-fixture-probability.md'));

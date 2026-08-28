@@ -21,21 +21,21 @@
  * LEARNINGOS_ALLOW_MISSING_CORE=1 is the deliberate escape hatch.
  */
 import fs from 'node:fs';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  canonicalJson,
-  manifestLock,
-  namedLock,
-  yamlStringList,
-} from './contract-locks.mjs';
+import { manifestLock, yamlStringList } from './contract-locks.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const readJson = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), 'utf8'));
 const manifestContract = manifestLock(root);
 const lock = manifestContract.value;
-const jobDashboardContract = namedLock(root, 'job-dashboard-v2.lock.json');
 const fixture = readJson('fixture-vault/generated/manifest.json');
+
+function yamlScalar(text, key) {
+  const match = text.match(new RegExp(`^${key}:\\s*(\\S+)\\s*$`, 'm'));
+  return match?.[1] ?? null;
+}
 
 function sameKeys(actualObject, expectedKeys, label) {
   const actual = Object.keys(actualObject || {}).sort();
@@ -49,6 +49,11 @@ function sameKeys(actualObject, expectedKeys, label) {
 
 if (fixture?._generated?.contract_version !== lock.contract_version) {
   throw new Error(`Fixture contract ${fixture?._generated?.contract_version ?? 'unknown'} does not match lock ${lock.contract_version}.`);
+}
+if (fixture?._generated?.schema_sha256 !== lock.schema_sha256) {
+  throw new Error(
+    `Fixture schema ${fixture?._generated?.schema_sha256 ?? 'unknown'} does not match lock ${lock.schema_sha256 ?? 'unknown'}.`,
+  );
 }
 sameKeys(fixture, lock.top_level_keys, 'Manifest top-level contract');
 sameKeys(fixture._generated, lock.generated_keys, 'Manifest _generated contract');
@@ -66,6 +71,10 @@ const typed = fs.readFileSync(path.join(root, 'src/contracts/manifest.ts'), 'utf
 const typedDeclared = Number(typed.match(/MANIFEST_CONTRACT_VERSION\s*=\s*(\d+)/)?.[1]);
 if (typedDeclared !== lock.contract_version) {
   throw new Error(`Typed contract expects ${typedDeclared}; lock expects ${lock.contract_version}.`);
+}
+const typedSchema = typed.match(/MANIFEST_SCHEMA_SHA256\s*=\s*['"]([^'"]+)['"]/)?.[1];
+if (typedSchema !== lock.schema_sha256) {
+  throw new Error(`Typed schema hash ${typedSchema ?? 'unknown'} does not match lock ${lock.schema_sha256 ?? 'unknown'}.`);
 }
 
 const producerPath = path.resolve(root, lock.mirrors ?? '../repository/system/contracts/manifest-contract.yaml');
@@ -103,46 +112,37 @@ if (!fs.existsSync(producerPath)) {
       + 'Core and the UI release together — mirror the bump instead of shipping half of it.',
     );
   }
+  const producerSchemaPath = yamlScalar(producer, 'schema_path');
+  const producerSchemaSha256 = yamlScalar(producer, 'schema_sha256');
+  if (producerSchemaPath !== lock.schema_path) {
+    throw new Error(
+      `Core manifest schema path ${producerSchemaPath ?? 'unknown'} does not match UI lock ${lock.schema_path ?? 'unknown'}.`,
+    );
+  }
+  if (producerSchemaSha256 !== lock.schema_sha256) {
+    throw new Error(
+      `Core manifest schema hash ${producerSchemaSha256 ?? 'unknown'} does not match UI lock ${lock.schema_sha256 ?? 'unknown'}.`,
+    );
+  }
+  const producerSchemaFile = path.resolve(producerRoot, producerSchemaPath);
+  if (!fs.existsSync(producerSchemaFile)) {
+    throw new Error(`Core manifest producer schema is missing: ${producerSchemaFile}`);
+  }
+  const actualSchemaSha256 = `sha256:${crypto.createHash('sha256')
+    .update(fs.readFileSync(producerSchemaFile))
+    .digest('hex')}`;
+  if (actualSchemaSha256 !== lock.schema_sha256) {
+    throw new Error(
+      `Core manifest schema bytes hash to ${actualSchemaSha256}; UI lock expects ${lock.schema_sha256}.`,
+    );
+  }
   for (const key of ['top_level_keys', 'generated_keys', 'index_keys', 'forbidden_top_level_keys']) {
     const producerKeys = yamlStringList(producer, key);
     if (producerKeys === null) throw new Error(`Core contract has no ${key} block.`);
     sameKeys(Object.fromEntries(producerKeys.map((k) => [k, true])), lock[key] || [],
       `Core/UI ${key} mirror`);
   }
-  const jobProducerPath = path.join(producerRoot, 'system', 'schema', 'job-dashboard.schema.json');
-  if (!fs.existsSync(jobProducerPath)) {
-    throw new Error(`Core is missing the Job dashboard producer schema: ${jobProducerPath}`);
-  }
-  const producerJob = JSON.parse(fs.readFileSync(jobProducerPath, 'utf8'));
-  if (JSON.stringify(canonicalJson(producerJob))
-      !== JSON.stringify(canonicalJson(jobDashboardContract.value))) {
-    throw new Error(
-      'Core/UI Job dashboard contract drifted. Mirror system/schema/job-dashboard.schema.json '
-      + 'to contracts/job-dashboard-v2.lock.json in the same release.',
-    );
-  }
   console.log(`contract: mirror of core v${producerVersion} verified`);
 }
 
-const jobTyped = fs.readFileSync(path.join(root, 'src/contracts/job-dashboard.ts'), 'utf8');
-const jobDeclared = jobTyped.match(/JOB_DASHBOARD_CONTRACT\s*=\s*['"]([^'"]+)['"]/)?.[1];
-const jobSchemaId = String(jobDashboardContract.value.$id || '').split('/').pop();
-if (jobDeclared !== jobSchemaId) {
-  throw new Error(`Typed Job contract ${jobDeclared ?? 'unknown'} does not match lock ${jobSchemaId}.`);
-}
-
-const jobModel = fs.readFileSync(path.join(root, 'src/features/job/model.ts'), 'utf8');
-if (!jobModel.includes("from '../../contracts/job-dashboard'")) {
-  throw new Error('Job feature model must consume the stable typed Job contract.');
-}
-if (!jobModel.includes("from '../../projection/readers'")) {
-  throw new Error('Job feature model must use the shared projection boundary readers.');
-}
-for (const duplicatedHelper of ['record', 'rows', 'string', 'strings', 'numberRecord']) {
-  if (new RegExp(`function\\s+${duplicatedHelper}\\s*\\(`).test(jobModel)) {
-    throw new Error(`Job feature model redeclared shared reader ${duplicatedHelper}().`);
-  }
-}
-
 console.log(`contract: manifest v${lock.contract_version} lock verified (${lock.top_level_keys.length} top-level keys)`);
-console.log(`contract: ${jobDeclared} schema lock verified`);

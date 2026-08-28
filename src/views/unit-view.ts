@@ -156,8 +156,9 @@ export class UnitView extends ItemView {
     root: HTMLElement,
     unit: UnitRecordView,
     stage: StageRecordView,
+    expectedRevisions: Readonly<Record<string, number>>,
   ): void {
-    renderActionBar(this, root, unit, stage);
+    renderActionBar(this, root, unit, stage, expectedRevisions);
   }
 
     renderStageContext(

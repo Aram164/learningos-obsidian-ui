@@ -89,6 +89,7 @@ export class ShelvingView extends ItemView {
   private proposal: ShelvingProposal | null = null;
   private readonly selected = new Set<string>();
   private selectionScope: string | null = null;
+  private expectedRevisions: Readonly<Record<string, number>> = {};
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -207,6 +208,10 @@ export class ShelvingView extends ItemView {
     if (!unit) { this.renderQueue(root); return; }
     if (!unit.id) { empty(root, 'Unit unavailable', 'The projection returned a unit without an identity.'); return; }
     const map = this.plugin.store.mapForUnit(unit.id);
+    this.expectedRevisions = this.plugin.store.artifactGuard(
+      unit.id,
+      typeof map?.id === 'string' ? map.id : null,
+    );
     const proposal = this.proposal
       ?? readShelvingProposal(map?.shelving);
     if (!proposal?.items?.length) {
@@ -274,7 +279,7 @@ export class ShelvingView extends ItemView {
 
     try {
       await this.plugin.mutate(
-        () => this.plugin.gateway.prepareShelving(unitId),
+        () => this.plugin.gateway.prepareShelving(unitId, this.expectedRevisions),
       );
       await this.loadProposal();
       this.render();
@@ -301,6 +306,7 @@ export class ShelvingView extends ItemView {
         () => this.plugin.gateway.applyShelving(
           unitId,
           [...this.selected],
+          this.expectedRevisions,
         ),
       );
       this.proposal = null;

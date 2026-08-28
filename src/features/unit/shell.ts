@@ -131,9 +131,15 @@ export function render(
         unit.record.source_selections,
       );
 
+    const materialSynthesis =
+      view.plugin.store.materialSynthesisForUnit(
+        unit.id,
+      );
+
     const hasMaterialOverview =
       unit.knowledgeNodes.length > 0
-      && materialOptions.length > 0;
+      || materialOptions.length > 0
+      || materialSynthesis !== null;
 
     /* Handoff §7.5 gives `/learn/:unit` one job: ordered stages on the left,
      * the selected stage in the centre. The knowledge map and the complete
@@ -151,6 +157,7 @@ export function render(
         root,
         unit,
         materialOptions,
+        materialSynthesis,
       );
     };
 
@@ -325,7 +332,7 @@ export function render(
     });
 
     /* A map that predates the creation template is labelled rather than shown
-     * as though it conformed — the same distinction the Job plan cards make,
+     * as though it conformed — the distinction remains explicit in the UI,
      * because it is the same field and the same claim. */
     provenance.createSpan({
       cls: 'los-micro',
@@ -362,6 +369,11 @@ function openMapImport(
   unit: UnitRecordView,
   replacing: boolean,
 ): void {
+  const currentMap = view.plugin.store.mapForUnit(unit.id);
+  const expectedRevisions = view.plugin.store.artifactGuard(
+    unit.id,
+    typeof currentMap?.id === 'string' ? currentMap.id : null,
+  );
   const actions = parent.createDiv({
     cls: 'los-actions',
   });
@@ -392,6 +404,7 @@ function openMapImport(
             unit.id,
             file,
             replace,
+            expectedRevisions,
           ),
         ),
       },

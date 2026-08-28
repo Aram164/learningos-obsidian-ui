@@ -1,9 +1,7 @@
 /** Shared ordered-learning route primitives.
  *
- * Canonical units and the quarantined Job reader own different data and write
- * gateways, but an ordered route is the same interaction in both places.  The
- * adapter values below contain presentation state only; no Job record crosses
- * into the canonical manifest and no canonical rule is reimplemented here.
+ * Ordered routes contain presentation state only; canonical records and writes
+ * remain owned by Core.
  */
 
 export interface LearningRouteItem {
@@ -25,8 +23,8 @@ export interface LearningRouteOptions {
   /**
    * Whether the rail carries a progress bar above the stages. Figma's
    * `Stage rail` (14:509) does not: every row already states its own state, so
-   * the bar restated in one number what six rows say precisely. The Job rail
-   * keeps it, which is why this is an option rather than a deletion.
+   * the bar restated in one number what six rows say precisely. Other ordered
+   * learning views may still opt into it.
    */
   readonly showProgress?: boolean;
   /**

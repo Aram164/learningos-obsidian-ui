@@ -39,6 +39,56 @@
 }
 .los-diagnostic-glyph { font-size: 20px; }
 .los-diagnostic-report { overflow-x: auto; margin-top: var(--los-3); padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--los-paper); color: var(--los-ink-soft); font-size: 12px; white-space: pre-wrap; }
+.los-health-check {
+  padding: var(--los-3) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-health-check-head {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--los-2);
+  margin-bottom: var(--los-2);
+}
+
+.los-prospective-banner {
+  margin-bottom: var(--los-4);
+  padding: var(--los-3);
+  border: 1px solid var(--los-warning);
+  border-radius: var(--los-r-md);
+  background: var(--los-warning-wash);
+}
+.los-masters-counts,
+.los-masters-row-head {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--los-2);
+}
+.los-masters-counts { color: var(--los-ink-soft); font-size: 12px; }
+.los-masters-row {
+  padding: var(--los-3) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-masters-row-head { justify-content: space-between; }
+.los-masters-row p { margin: var(--los-1) 0 0; }
+.los-masters-evidence {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--los-3);
+  margin-top: var(--los-2);
+}
+.los-masters-evidence-side {
+  min-width: 0;
+  padding: var(--los-2);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-sm);
+  background: var(--los-paper-3);
+}
+@media (max-width: 720px) {
+  .los-masters-evidence { grid-template-columns: 1fr; }
+}
 
 .los-root .los-btn, .los-root .los-chip {
   display: inline-flex;

@@ -34,7 +34,7 @@ export class UnitMapImportModal extends Modal {
     const { replacing, unitTitle } = this.options;
     const root = this.contentEl;
     root.empty();
-    root.addClass('los-root', 'los-job-editor-modal');
+    root.addClass('los-root', 'los-map-import-modal');
     const heading = root.createEl('h2', {
       text: replacing ? 'Replace study map' : 'Import study map',
     });
@@ -47,7 +47,7 @@ export class UnitMapImportModal extends Modal {
     });
     this.restoreAccessibility = makeModalAccessible(root, {
       close: () => this.close(),
-      hostClass: 'los-modal--job-editor',
+      hostClass: 'los-modal--map-import',
       labelledBy: heading.id,
     });
 
@@ -57,13 +57,13 @@ export class UnitMapImportModal extends Modal {
     });
     standard.setText('Reading the plan template from LearningOS…');
 
-    const field = root.createDiv({ cls: 'los-job-field' });
+    const field = root.createDiv({ cls: 'los-map-import-field' });
     field.createEl('label', { text: 'Reviewed map file' });
     const file = field.createEl('input', { attr: { type: 'text' } });
     file.placeholder = 'path to the audited study-map YAML';
 
     const status = root.createDiv({ cls: 'los-draft-status', attr: { 'aria-live': 'polite' } });
-    const actions = root.createDiv({ cls: 'los-actions los-job-editor-actions' });
+    const actions = root.createDiv({ cls: 'los-actions los-map-import-actions' });
     const submit = button(actions, replacing ? 'Replace map' : 'Import map', async () => {
       const path = file.value.trim();
       if (!path) { status.setText('Name the reviewed file first.'); return; }

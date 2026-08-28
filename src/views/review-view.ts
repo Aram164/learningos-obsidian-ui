@@ -16,6 +16,15 @@ import type { ProjectionRecord } from '../contracts/manifest';
 import type { AppSurface } from '../app/surface';
 import type { AppNavigator } from '../app/navigator';
 import { errorMessage, isRecord } from '../projection/readers';
+import {
+  asHealthReport,
+  type HealthReportV1,
+} from '../contracts/health-report';
+import {
+  asLegacyArchiveStatus,
+  type LegacyArchiveDispositionV1,
+  type LegacyArchiveLockV1,
+} from '../contracts/legacy-archive';
 
 type ReviewAction = [string, () => unknown];
 
@@ -41,10 +50,11 @@ interface DiagnosticsApp {
 
 interface DiagnosticsGenerated {
   readonly contract_version?: string | number;
+  readonly schema_sha256?: string;
   readonly generator?: string;
   readonly generated_at?: string;
   readonly snapshot_id?: string;
-  readonly source_revision?: string;
+  readonly source_revision?: string | null;
   readonly source_dirty?: boolean;
 }
 
@@ -386,6 +396,14 @@ export class ReviewView extends ItemView {
 export class DiagnosticsView extends ItemView {
   private readonly plugin: DiagnosticsPlugin;
   private report = '';
+  private screen: 'health' | 'legacy' = 'health';
+  private health: HealthReportV1 | null = null;
+  private healthLoading = false;
+  private healthError = '';
+  private legacy: LegacyArchiveLockV1 | null = null;
+  private legacyLoaded = false;
+  private legacyLoading = false;
+  private legacyError = '';
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -399,6 +417,53 @@ export class DiagnosticsView extends ItemView {
   getIcon() { return 'activity'; }
   async onOpen(): Promise<void> {
     this.render();
+    void this.loadHealth();
+  }
+
+  private async loadHealth(): Promise<void> {
+    if (this.healthLoading) return;
+    this.healthLoading = true;
+    this.healthError = '';
+    this.render();
+    try {
+      const report = asHealthReport(await this.plugin.gateway.healthReport());
+      if (!report) throw new Error('Core returned an invalid health-report response.');
+      this.health = report;
+    } catch (error: unknown) {
+      this.health = null;
+      this.healthError = errorMessage(error);
+    } finally {
+      this.healthLoading = false;
+      this.render();
+    }
+  }
+
+  private async loadLegacy(): Promise<void> {
+    if (this.legacyLoading) return;
+    this.legacyLoading = true;
+    this.legacyError = '';
+    this.render();
+    try {
+      const status = asLegacyArchiveStatus(
+        await this.plugin.gateway.legacyArchiveStatus(),
+      );
+      if (!status) throw new Error('Core returned an invalid Legacy Archive status response.');
+      this.legacy = status.lock;
+      this.legacyLoaded = true;
+    } catch (error: unknown) {
+      this.legacy = null;
+      this.legacyLoaded = false;
+      this.legacyError = errorMessage(error);
+    } finally {
+      this.legacyLoading = false;
+      this.render();
+    }
+  }
+
+  private selectScreen(screen: 'health' | 'legacy'): void {
+    this.screen = screen;
+    this.render();
+    if (screen === 'legacy' && !this.legacyLoaded) void this.loadLegacy();
   }
 
   buildInfo(): BuildInfo {
@@ -487,11 +552,16 @@ export class DiagnosticsView extends ItemView {
   }
 
   state(): [string, string, string] {
-    if (!this.plugin.store.ready) return ['?', 'Core unavailable', this.plugin.store.error];
-    if (this.plugin.store.data?._generated?.source_dirty) {
-      return ['●', 'Canonical files changed; projection is stale', 'Rebuild to bring the interface back in step.'];
+    if (this.healthLoading) return ['…', 'Checking LearningOS health', 'Waiting for the bounded Core health report.'];
+    if (this.health?.status === 'healthy') {
+      return ['✓', 'Healthy', `Core verified ${this.health.checks.length} registered checks at ${this.health.generated_at}.`];
     }
-    return ['✓', 'Valid and current', 'The projection matches the canonical tree as of its last rebuild.'];
+    if (this.health?.status === 'attention-required') {
+      const count = this.health.checks.filter((check) => check.status !== 'ok').length;
+      return ['!', 'Attention required', `${count} check${count === 1 ? '' : 's'} need an owner or remedy.`];
+    }
+    if (this.healthError) return ['?', 'Health unavailable', this.healthError];
+    return ['?', 'Health not checked', 'Run the bounded health report before trusting a green state.'];
   }
 
   render(): void {
@@ -499,12 +569,37 @@ export class DiagnosticsView extends ItemView {
     root.empty();
     root.addClass('los-root', 'los-diagnostics-view');
     pageHeader(root, 'More', 'Diagnostics');
+    const tabs = root.createDiv({ cls: 'los-subtabs', attr: { 'aria-label': 'Diagnostics sections' } });
+    for (const [key, label] of [['health', 'Health'], ['legacy', 'Legacy Archive']] as const) {
+      const tab = button(tabs, label, () => this.selectScreen(key), key === this.screen ? 'info' : 'quiet');
+      tab.setAttr('aria-pressed', key === this.screen ? 'true' : 'false');
+    }
+
+    if (this.screen === 'legacy') {
+      this.renderLegacy(root);
+      return;
+    }
     const [glyph, title, detail] = this.state();
     const status = root.createDiv({ cls: 'los-diagnostic-status' });
     status.createSpan({ cls: 'los-diagnostic-glyph', text: glyph });
     const copy = status.createDiv();
     copy.createEl('strong', { text: title });
     copy.createDiv({ cls: 'los-micro', text: detail });
+
+    if (this.health) {
+      const checks = section(root, 'Health checks', `Generated ${this.health.generated_at}`);
+      for (const check of this.health.checks) {
+        const row = checks.createDiv({ cls: 'los-health-check' });
+        const heading = row.createDiv({ cls: 'los-health-check-head' });
+        heading.createEl('strong', { text: check.summary });
+        badge(heading, check.status, check.status === 'ok' ? 'status' : 'role');
+        factList(row, [
+          ['Check', check.id],
+          ['Owner', check.owner],
+          ['Remedy', check.remedy],
+        ]);
+      }
+    }
 
     const generated: DiagnosticsGenerated =
       this.plugin.store.data?._generated ?? {};
@@ -514,6 +609,7 @@ export class DiagnosticsView extends ItemView {
       readonly [string, unknown]
     > = [
       ['Manifest contract', generated.contract_version ?? 'unknown'],
+      ['Manifest schema', generated.schema_sha256 ?? 'unknown'],
       ['UI expects contract', CONTRACT_VERSION],
       ['UI version', this.plugin.uiVersion()],
       ['UI source revision', build.source_revision],
@@ -539,6 +635,7 @@ export class DiagnosticsView extends ItemView {
     factList(facts, factRows);
 
     const actions = root.createDiv({ cls: 'los-actions' });
+    button(actions, 'Refresh health', () => void this.loadHealth(), 'info');
     button(actions, 'Validate and rebuild', () => this.plugin.generate(), 'success');
     button(actions, 'Test the interpreter', () => this.testInterpreter(), 'info');
     button(actions, 'Copy build identity', () => this.plugin.copyText(JSON.stringify(build, null, 2)), 'quiet');
@@ -546,6 +643,76 @@ export class DiagnosticsView extends ItemView {
 
     const policy = section(root, 'About LearningOS');
     policy.createEl('p', { text: OWNERSHIP_STATEMENT });
+  }
+
+  private renderLegacy(root: HTMLElement): void {
+    const header = section(
+      root,
+      'Legacy Archive',
+      'Read-only disposition and verification status. Archived records never become normal manifest content here.',
+    );
+    if (this.legacyLoading) {
+      empty(header, 'Checking archive lock', 'Waiting for Core’s bounded archive-status response.');
+      return;
+    }
+    if (this.legacyError) {
+      empty(header, 'Legacy Archive unavailable', this.legacyError, 'Try again', () => void this.loadLegacy());
+      return;
+    }
+    if (!this.legacyLoaded) {
+      empty(header, 'Archive status not loaded', 'Load the reviewed archive lock without opening archived content.', 'Load archive status', () => void this.loadLegacy());
+      return;
+    }
+    if (!this.legacy) {
+      empty(header, 'No approved archive lock', 'Core reports that no reviewed Legacy Archive disposition lock is available. Archived content remains sealed.');
+      const actions = root.createDiv({ cls: 'los-actions' });
+      button(actions, 'Refresh archive status', () => void this.loadLegacy(), 'info');
+      return;
+    }
+
+    const lock = this.legacy;
+    const status = root.createDiv({ cls: 'los-diagnostic-status' });
+    status.createSpan({
+      cls: 'los-diagnostic-glyph',
+      text: lock.verification.status === 'verified' ? '✓' : '!',
+    });
+    const copy = status.createDiv();
+    copy.createEl('strong', {
+      text: lock.verification.status === 'verified'
+        ? 'Archive lock verified'
+        : 'Archive lock needs attention',
+    });
+    copy.createDiv({
+      cls: 'los-micro',
+      text: `Verified ${lock.verification.verified_at}. ${lock.excluded.count} excluded item${lock.excluded.count === 1 ? '' : 's'} remain sealed and were not inspected.`,
+    });
+
+    const dispositions: LegacyArchiveDispositionV1[] = [
+      'canonicalized', 'byte-preserved', 'superseded-system', 'historical-only', 'unresolved',
+    ];
+    const counts = Object.fromEntries(dispositions.map((disposition) => [
+      disposition,
+      lock.entries.filter((entry) => entry.disposition === disposition).length,
+    ]));
+    const facts = section(root, 'Disposition summary');
+    factList(facts, [
+      ['Reviewed entries', lock.entries.length],
+      ['Canonicalized', counts.canonicalized],
+      ['Byte preserved', counts['byte-preserved']],
+      ['Superseded system', counts['superseded-system']],
+      ['Historical only', counts['historical-only']],
+      ['Unresolved', counts.unresolved],
+      ['Excluded', `${lock.excluded.count} · sealed, not inspected`],
+    ]);
+
+    if (lock.verification.issues?.length) {
+      const issues = section(root, 'Issues');
+      for (const issue of lock.verification.issues) {
+        issues.createDiv({ cls: 'los-health-check', text: issue });
+      }
+    }
+    const actions = root.createDiv({ cls: 'los-actions' });
+    button(actions, 'Refresh archive status', () => void this.loadLegacy(), 'info');
   }
 
   async testInterpreter(): Promise<void> {

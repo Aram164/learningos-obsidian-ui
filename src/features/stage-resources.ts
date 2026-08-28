@@ -3,8 +3,9 @@ import type { ProjectionRecord } from '../contracts/manifest';
 import {
   asText as projectedText,
 } from '../projection/readers';
+import { hasDirectResourceTarget } from '../infrastructure/resource-target';
 
-/** Shared study-map resource shape. Job plans use this exact view contract. */
+/** Shared study-map resource shape for every learning module. */
 export interface StageResourceView {
   readonly record: ProjectionRecord;
   readonly id: string | null;
@@ -31,7 +32,7 @@ export interface StageResourceRenderer {
   /**
    * Heading over the resource list. The unit surface passes "Exact work" after
    * Figma 14:582 — the name WORKFLOWS.md step 8 already uses for the same
-   * thing. Job keeps the catalogue wording, so this is an option.
+   * thing. Other compact surfaces may keep the catalogue wording, so this is an option.
    */
   readonly title?: string;
 }
@@ -73,6 +74,8 @@ const MATERIAL_TYPE_ICON: Readonly<Record<MaterialType, string>> = {
   exercise: 'pencil-line',
 };
 
+let angleDetailSequence = 0;
+
 function rankOf(value: string | null): number {
   const index = value ? TRIAGE_ORDER.indexOf(value as typeof TRIAGE_ORDER[number]) : -1;
   return index < 0 ? 0 : index;
@@ -108,12 +111,6 @@ function materialTypeOf(
   // all scan-friendly reading material. Source metadata can still name the
   // more precise medium inside the row without fragmenting the catalogue.
   return 'article';
-}
-
-function hasOpenTarget(record: ProjectionRecord): boolean {
-  return [record.material_path, record.url, record.vault_path].some(
-    (value) => typeof value === 'string' && value.trim().length > 0,
-  );
 }
 
 export function renderStageResources(
@@ -235,12 +232,53 @@ export function renderStageResources(
         });
       }
 
-      if (source) chip(copy, source, renderer.openSource);
+      const angleDetail = projectedText(
+        resource.record.angle_detail,
+      );
+
+      if (angleDetail) {
+        const detailId = `los-resource-angle-detail-${++angleDetailSequence}`;
+        const detail = copy.createDiv({
+          cls: 'los-resource-angle-detail',
+          text: angleDetail,
+          attr: {
+            hidden: '',
+            id: detailId,
+          },
+        });
+        const foot = copy.createDiv({ cls: 'los-resource-foot' });
+        if (source) chip(foot, source, renderer.openSource);
+
+        let expanded = false;
+        const toggle = button(
+          foot,
+          '▸ Why this one',
+          () => {
+            expanded = !expanded;
+            toggle.setText(`${expanded ? '▾' : '▸'} Why this one`);
+            toggle.setAttr('aria-expanded', String(expanded));
+            if (expanded) detail.removeAttribute('hidden');
+            else detail.setAttr('hidden', '');
+          },
+          'quiet',
+        );
+        toggle.addClass('los-resource-angle-trigger');
+        toggle.setAttrs({
+          'aria-controls': detailId,
+          'aria-expanded': 'false',
+        });
+      } else if (source) {
+        chip(copy, source, renderer.openSource);
+      }
 
       const actions = row.createDiv({ cls: 'los-actions los-resource-actions' });
       if (resource.canOpen && renderer.openResource) {
         button(actions, 'Open', () => renderer.openResource?.(resource), 'quiet');
-      } else if (source && hasOpenTarget(source) && renderer.openSourceResource) {
+      } else if (
+        source
+        && hasDirectResourceTarget(source)
+        && renderer.openSourceResource
+      ) {
         button(
           actions,
           'Open source',

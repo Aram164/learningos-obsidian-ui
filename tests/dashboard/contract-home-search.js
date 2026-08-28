@@ -10,6 +10,7 @@ const {
   FIXTURE,
   LearningOSUI,
   FIXTURE_GROUP_COUNT,
+  FIXTURE_SNAPSHOT,
   VIEW,
   tick,
   frame,
@@ -23,9 +24,9 @@ module.exports = async function run() {
   heading('versioned atomic contract');
   {
     const { plugin } = await build();
-    check('manifest contract v5 loads', plugin.store.ready && plugin.store.contractVersion === 5, plugin.store.error);
-    check('snapshot guard is loaded', plugin.store.snapshotId === 'sha256:fixture-v2-snapshot');
-    check('program/module/unit/map collections load atomically', plugin.store.programs().length === 5
+    check('manifest contract v7 loads', plugin.store.ready && plugin.store.contractVersion === 7, plugin.store.error);
+    check('snapshot guard is loaded', plugin.store.snapshotId === FIXTURE_SNAPSHOT);
+    check('program/module/unit/map collections load atomically', plugin.store.programs().length === 3
       && plugin.store.modules().length === 3 && plugin.store.projects().length === 1 && plugin.store.units().length === 7
       && plugin.store.studyMaps().length === 6);
     check('reverse indexes resolve the active unit map',
@@ -52,7 +53,10 @@ module.exports = async function run() {
      * rather than failing. Every key the bundle reads must exist in it. */
     const manifest = JSON.parse(fs.readFileSync(
       path.join(FIXTURE, 'generated', 'manifest.json'), 'utf8'));
-    const bundle = fs.readFileSync(path.join(ROOT, 'plugin', 'main.js'), 'utf8');
+    const bundle = fs.readFileSync(
+      process.env.LEARNINGOS_TEST_BUNDLE || path.join(ROOT, 'plugin', 'main.js'),
+      'utf8',
+    );
     const read = [...bundle.matchAll(/(?:store\.data|this\.data|manifest)\??\.([a-z_]+)/g)]
       .map((match) => match[1])
       /* `json` comes from the "generated/manifest.json" literal and `ts` from
@@ -70,15 +74,15 @@ module.exports = async function run() {
     const originalRead = app.vault.adapter.read;
     app.vault.adapter.read = async (file) => {
       const text = await originalRead(file);
-      return file === 'generated/manifest.json' ? text.replace('"contract_version": 5', '"contract_version": 1') : text;
+      return file === 'generated/manifest.json' ? text.replace('"contract_version": 7', '"contract_version": 1') : text;
     };
     const plugin = new LearningOSUI(app, { id: 'learningos-ui' }); app._plugin = plugin;
     await plugin.onload();
-    check('contract v1 fails closed with recovery text', !plugin.store.ready && plugin.store.error.includes('requires contract 5'));
+    check('contract v1 fails closed with recovery text', !plugin.store.ready && plugin.store.error.includes('requires contract 7'));
     plugin.onunload();
   }
 
-  heading('manifest v5 interaction plumbing');
+  heading('manifest v7 interaction plumbing');
   {
     const { plugin, calls } = await build();
 
@@ -119,7 +123,7 @@ module.exports = async function run() {
         && seed?.payload.title
           === 'Fixture Garden seed'
         && seed?.expected_snapshot
-          === 'sha256:fixture-v2-snapshot',
+          === FIXTURE_SNAPSHOT,
     );
 
     plugin.onunload();

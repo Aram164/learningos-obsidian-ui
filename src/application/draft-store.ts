@@ -11,10 +11,15 @@ export interface UnitNoteDraft {
   readonly title: string;
   readonly text: string;
   readonly recoveredStageIds: string[];
+  readonly expectedRevisions: Readonly<Record<string, number>>;
 }
 
 interface StageDraft { text: string; }
-interface UnitDraft { title: string; text: string; }
+interface UnitDraft {
+  title: string;
+  text: string;
+  expectedRevisions?: Record<string, number>;
+}
 
 export interface LearningOSUiDrafts {
   stages: Record<string, StageDraft>;
@@ -107,12 +112,22 @@ export class DraftStore {
       title: saved?.title || (recovered.length ? 'Recovered stage drafts' : ''),
       text: [String(saved?.text || '').trim(), recoveredText].filter(Boolean).join('\n\n'),
       recoveredStageIds: recovered.map((row) => row.id),
+      expectedRevisions: saved?.expectedRevisions ?? {},
     };
   }
 
-  setUnitNote(unitId: string, title: string, text: string): void {
+  setUnitNote(
+    unitId: string,
+    title: string,
+    text: string,
+    expectedRevisions: Readonly<Record<string, number>> = {},
+  ): void {
     if (!title.trim() && !text.trim()) delete this.settings.uiDrafts.unitNotes[unitId];
-    else this.settings.uiDrafts.unitNotes[unitId] = { title, text };
+    else this.settings.uiDrafts.unitNotes[unitId] = {
+      title,
+      text,
+      expectedRevisions: { ...expectedRevisions },
+    };
     this.scheduleSave();
   }
 

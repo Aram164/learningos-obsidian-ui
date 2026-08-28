@@ -1,4 +1,4 @@
-/* One tab row, used by Garden, Review and Job (components.ts `filterTabs`). */
+/* One tab row, used by Garden and Review (components.ts `filterTabs`). */
 .los-filter-tabs {
   display: flex;
   flex-wrap: wrap;
@@ -149,4 +149,3 @@
 .los-review-decision-row:hover {
   background: var(--los-paper-2);
 }
-

@@ -5,6 +5,7 @@ import type {
   ModuleProgress,
   ProjectRelationship,
   ProjectionRecord,
+  UnitMaterialSynthesisV1,
   UnitNoteSection,
 } from './contracts/manifest';
 import { asStrings } from './projection/readers';
@@ -68,12 +69,11 @@ export class ManifestStore {
       }
       assertManifest(parsed);
       const manifest: Manifest = parsed;
-      this.data = manifest;
-      this.contractVersion = version;
-      this.snapshotId = manifest._generated.snapshot_id;
-      this.records = (manifest.records || []).filter((row) => row && typeof row === 'object');
-      this.byId = new Map(
-        this.records.flatMap((row) => typeof row.id === 'string' ? [[row.id, row] as const] : []),
+      const records = (manifest.records || []).filter(
+        (row) => row && typeof row === 'object',
+      );
+      const byId = new Map(
+        records.flatMap((row) => typeof row.id === 'string' ? [[row.id, row] as const] : []),
       );
       // `stages` is the core's flat by-id index (each stage carries its
       // study_map_id/unit_id/module_id). `study_maps[].stages` stays the
@@ -88,20 +88,34 @@ export class ManifestStore {
         'stages',
         'thematic_groups',
         'topic_packs',
+        'unit_material_syntheses',
       ] as const;
       for (const group of indexedGroups) {
         for (const row of manifest[group]) {
           if (typeof row?.id === 'string') {
-            this.byId.set(row.id, row);
+            byId.set(row.id, row);
           }
         }
       }
+      // Publish one complete store snapshot only after every contract and
+      // indexing step succeeds. A reader can therefore never observe half of
+      // the new manifest mixed with half of the old one.
+      this.data = manifest;
+      this.contractVersion = version;
+      this.snapshotId = manifest._generated.snapshot_id;
+      this.records = records;
+      this.byId = byId;
       this.ready = true;
       this.error = '';
       return true;
     } catch (error: unknown) {
       this.ready = false;
       this.error = error instanceof Error ? error.message : String(error);
+      this.data = null;
+      this.records = [];
+      this.byId = new Map();
+      this.contractVersion = null;
+      this.snapshotId = null;
       return false;
     }
   }
@@ -270,6 +284,29 @@ export class ManifestStore {
     const mapId = this.data?.indexes?.unit_to_study_map?.[unitId];
     return mapId ? this.get(mapId) : null;
   }
+  materialSynthesisForUnit(unitId: string): UnitMaterialSynthesisV1 | null {
+    const synthesisId = this.data?.indexes?.unit_to_material_synthesis?.[unitId];
+    if (!synthesisId) return null;
+    return this.data?.unit_material_syntheses.find(
+      (synthesis) => synthesis.id === synthesisId && synthesis.unit_id === unitId,
+    ) || null;
+  }
+  artifactRevision(artifactId: string): number {
+    const projected = this.data?.artifact_revisions?.[artifactId];
+    if (typeof projected === 'number' && Number.isInteger(projected) && projected >= 0) {
+      return projected;
+    }
+    const embedded = this.byId.get(artifactId)?.revision;
+    return typeof embedded === 'number' && Number.isInteger(embedded) && embedded >= 0
+      ? embedded
+      : 0;
+  }
+  artifactGuard(...artifactIds: Array<string | null | undefined>): Record<string, number> {
+    return Object.fromEntries(
+      [...new Set(artifactIds.filter((id): id is string => Boolean(id)))]
+        .map((id) => [id, this.artifactRevision(id)]),
+    );
+  }
   /** Resolve a stage from its ID alone through the core's flat index. */
   stage(stageId: string): ProjectionRecord | null {
     const stage = this.get(stageId);
@@ -282,6 +319,7 @@ export class ManifestStore {
     return this.data?.progress?.[moduleId] || {
       stages_complete: 0,
       stages_total: 0,
+      units_complete: 0,
       units_total: 0,
       units_needing_map: 0,
     };

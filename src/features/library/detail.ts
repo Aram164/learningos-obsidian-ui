@@ -13,6 +13,7 @@ import {
   readLibraryRecords,
   readRelatedRecords,
 } from './model';
+import { isFileShapedPath } from '../../infrastructure/resource-target';
 
 export function renderRecordActions(
   view: LibraryView,
@@ -37,10 +38,12 @@ export function renderRecordActions(
       );
     }
 
-    if (record.materialPath) {
+    if (record.materialPath && record.materialExists === true) {
       button(
         actions,
-        'Open local copy',
+        isFileShapedPath(record.materialPath)
+          ? 'Open local copy'
+          : 'Browse local collection',
         () =>
           view.plugin.openMaterialPath(
             record.materialPath as string,

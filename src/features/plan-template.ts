@@ -25,9 +25,7 @@ export function asPlanTemplate(result: GatewayResultV1): PlanTemplate {
   if (result.ok !== true || result.contract !== PLAN_TEMPLATE_CONTRACT) {
     throw new Error('LearningOS did not answer the plan-template contract.');
   }
-  const profile = result.profile === 'curriculum' || result.profile === 'job'
-    ? result.profile
-    : null;
+  const profile = result.profile === 'curriculum' ? result.profile : null;
   const version = asFiniteNumber(result.plan_template_version);
   const plan = asRecordOrEmpty(result.plan);
   if (!profile || version === null || version < 1) {

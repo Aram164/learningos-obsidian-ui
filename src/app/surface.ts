@@ -22,9 +22,8 @@
  * add one here that the class does not have and the same. That check is the
  * point of the file — a port nothing verifies is just a second place to edit.
  *
- * Navigation returns are `unknown` on purpose, matching `JobDashboardHost`:
- * callers navigate for the effect, and a view that cannot see the leaf it
- * opened cannot start depending on it.
+ * Navigation returns are `unknown` on purpose: callers navigate for the effect,
+ * and a view that cannot see the leaf it opened cannot start depending on it.
  */
 import type { UnitNoteModal } from './unit-note-modal';
 import type { AppNavigator } from './navigator';
@@ -104,7 +103,12 @@ export interface AppSurface {
   ): void;
   clearDoneWhen(unitId: string, stageId: string): void;
   getUnitNoteDraft(unitId: string, stages?: ProjectionRecord[]): UnitNoteDraft;
-  setUnitNoteDraft(unitId: string, title: string, text: string): void;
+  setUnitNoteDraft(
+    unitId: string,
+    title: string,
+    text: string,
+    expectedRevisions?: Readonly<Record<string, number>>,
+  ): void;
   clearUnitNoteDraft(unitId: string, recoveredStageIds?: readonly string[]): void;
   openUnitNote(
     unit: ProjectionRecord,

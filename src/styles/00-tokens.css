@@ -35,10 +35,10 @@
   --los-paper-2:        #fffdf9;  /* surface */
   --los-paper-3:        #faf8f4;  /* subtle hover/inset */
   --los-ink:            #16130f;
-  --los-ink-soft:       #6e665a;
+  --los-ink-soft:       #625a4f;  /* muted text remains 4.5:1 on token washes */
   --los-ink-faint:      #756d63;  /* strengthened from Figma muted for 4.5:1 */
   --los-rule:           #e0d8c9;
-  --los-rule-strong:    #ada598;
+  --los-rule-strong:    #91897d;  /* 3:1 non-text boundary contrast on paper */
   --los-accent:         #7a2540;  /* brand / decisive action */
   --los-accent-strong:  #6e2038;
   --los-accent-soft:    #9a3657;
@@ -68,8 +68,8 @@
 
   --los-surface: var(--los-paper-2);
   --los-surface-raised: #ffffff;
-  --los-line: var(--los-rule);
-  --los-line-strong: var(--los-rule-strong);
+  --los-line: var(--los-rule-strong);
+  --los-line-strong: var(--los-ink-faint);
 
   min-height: 100%;
   padding: var(--los-4);
@@ -90,10 +90,10 @@
   --los-paper-2:        #fffdf9;
   --los-paper-3:        #faf8f4;
   --los-ink:            #16130f;
-  --los-ink-soft:       #6e665a;
+  --los-ink-soft:       #625a4f;
   --los-ink-faint:      #756d63;
   --los-rule:           #e0d8c9;
-  --los-rule-strong:    #ada598;
+  --los-rule-strong:    #91897d;
   --los-accent:         #7a2540;
   --los-accent-strong:  #6e2038;
   --los-accent-soft:    #9a3657;

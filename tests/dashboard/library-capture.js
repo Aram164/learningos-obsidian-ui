@@ -10,9 +10,12 @@ const {
   FIXTURE,
   LearningOSUI,
   FIXTURE_GROUP_COUNT,
+  CAPTURE_FIXTURE_PATH,
+  fileDigest,
   VIEW,
   tick,
   frame,
+  waitFor,
   check,
   heading,
   build,
@@ -568,7 +571,9 @@ module.exports = async function run() {
     element.find('los-capture-editor')[0].fire('input');
     check('Capture text enables only after required content is present',
       element.findText('los-btn', 'Capture text').disabled === false);
-    element.findText('los-btn', 'Capture text').fire('click'); await tick(); await tick();
+    element.findText('los-btn', 'Capture text').fire('click');
+    await waitFor(() => Boolean(calls.envelope('capture.create'))
+      && !plugin.gateway.isBusy);
     const textCapture = calls.envelope('capture.create')?.payload;
     check('text capture delegates exact wording and optional title to los.py',
       textCapture?.text === 'A half-formed synthetic idea.' && textCapture?.title === 'Fixture thought');
@@ -576,14 +581,21 @@ module.exports = async function run() {
       calls.some((args) => args.length === 1 && args[0] === 'generate'));
 
     element = view.contentEl;
-    element.find('los-capture-file')[0].files = [{ name: 'handwriting.png', __path: '/tmp/handwriting.png' }];
+    element.find('los-capture-file')[0].files = [{
+      name: 'handwriting.png', __path: CAPTURE_FIXTURE_PATH,
+    }];
     element.find('los-capture-file')[0].fire('change');
     check('file capture enables only after a local file is selected',
       element.findText('los-btn', 'Capture selected file').disabled === false);
-    element.findText('los-btn', 'Capture selected file').fire('click'); await tick(); await tick();
+    element.findText('los-btn', 'Capture selected file').fire('click');
+    await waitFor(() => calls.envelopes.some(
+      (envelope) => envelope.capability === 'capture.create'
+        && envelope.payload.file === CAPTURE_FIXTURE_PATH,
+    ) && !plugin.gateway.isBusy);
     check('file capture resolves the Electron File through webUtils',
       calls.envelopes.some((e) => e.capability === 'capture.create'
-        && e.payload.file === '/tmp/handwriting.png'));
+        && e.payload.file === CAPTURE_FIXTURE_PATH
+        && e.payload.file_sha256 === fileDigest(CAPTURE_FIXTURE_PATH)));
     plugin.onunload();
   }
 };

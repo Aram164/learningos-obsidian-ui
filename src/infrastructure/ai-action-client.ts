@@ -32,7 +32,6 @@ export class AIActionClient {
   prepareGardenShelving(
     targetId: string,
     provider = 'manual-bundle',
-    jobExportConfirmed = false,
   ): Promise<ProjectionRecord> {
     const args = [
       'ai-action-prepare',
@@ -46,10 +45,6 @@ export class AIActionClient {
       provider,
       ...this.plugin.gateway.guard(),
     ];
-
-    if (jobExportConfirmed) {
-      args.push('--confirm-job-export');
-    }
 
     return this.plugin.mutate(
       () => this.plugin.gateway.call(args),

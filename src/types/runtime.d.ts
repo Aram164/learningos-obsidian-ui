@@ -365,6 +365,27 @@ declare module 'node:fs' {
   ): string;
 }
 
+declare module 'node:fs/promises' {
+  export function readFile(
+    path: string,
+  ): Promise<Uint8Array>;
+}
+
+declare module 'node:crypto' {
+  export interface Hash {
+    update(data: Uint8Array): Hash;
+    digest(encoding: 'hex'): string;
+  }
+
+  export function createHash(
+    algorithm: string,
+  ): Hash;
+}
+
+declare module 'node:os' {
+  export function homedir(): string;
+}
+
 declare module 'node:path' {
   export const sep: string;
 

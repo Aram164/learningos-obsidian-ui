@@ -2,10 +2,15 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 const { makeApp, Notice } = require('./harness');
 const ROOT = path.resolve(__dirname, '..');
 const FIXTURE = path.join(ROOT, 'fixture-vault');
-const LearningOSUI = require(path.join(ROOT, 'plugin', 'main.js'));
+const LearningOSUI = require(
+  process.env.LEARNINGOS_TEST_BUNDLE || path.join(ROOT, 'plugin', 'main.js'),
+);
+const FIXTURE_SNAPSHOT = JSON.parse(fs.readFileSync(
+  path.join(FIXTURE, 'generated', 'manifest.json'), 'utf8'))._generated.snapshot_id;
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 let failures = 0;
 function check(name, condition, detail = '') {
@@ -51,10 +56,10 @@ async function main() {
   check('launcher invokes the exact garden.shelve capability', prepare?.includes('garden.shelve')
     && prepare?.includes('garden-note') && prepare?.includes('garden-note-fixture-soft-knn'));
   check('request is snapshot guarded', prepare?.includes('--expected-snapshot')
-    && prepare?.includes('sha256:fixture-v2-snapshot'));
+    && prepare?.includes(FIXTURE_SNAPSHOT));
   check('manual adapter is selected explicitly', prepare?.includes('--provider')
     && prepare?.includes('manual-bundle'));
-  check('quarantined Job paths never enter the request command', !prepare?.some((value) => String(value).includes('Job/')));
+  check('ordinary learning needs no Job export ceremony', !prepare?.includes('--confirm-job-export'));
 
   root.findText('los-btn', 'Apply approved delivery').fire('click');
   await tick(); await tick();

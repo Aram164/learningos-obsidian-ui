@@ -43,7 +43,6 @@ export const STYLESHEET_MODULES = [
   '22-daily-loop.css',
   '23-unit-surface.css',
   '24-projects-workstreams.css',
-  '25-job-surface.css',
 ];
 
 /*

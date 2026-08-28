@@ -199,7 +199,9 @@ export class AppNavigator {
 
   openResume() {
     const pointer = this.store.data?.resume_pointer;
-    return pointer ? this.openUnit(pointer.unit_id, pointer.stage_id) : this.openHome();
+    const unitId = asString(pointer?.unit_id);
+    const stageId = asString(pointer?.stage_id);
+    return unitId ? this.openUnit(unitId, stageId) : this.openHome();
   }
 
   openRecord(record: ProjectionRecord | null | undefined) {

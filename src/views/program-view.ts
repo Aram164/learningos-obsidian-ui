@@ -314,6 +314,10 @@ export class ProgramView extends ItemView {
 
       title.addClass('los-learning-title');
 
+      if (program.id === 'program-job') {
+        badge(copy, 'Job', 'role');
+      }
+
       const examination = isRecord(
         module.examination,
       )

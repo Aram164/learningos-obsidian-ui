@@ -71,6 +71,10 @@ export function renderModuleDetail(
       module.title,
     );
 
+    if (module.areaId === 'program-job') {
+      badge(header, 'Job', 'role');
+    }
+
     header.createDiv({
       cls: 'los-module-facts',
       text: view.headline(module),

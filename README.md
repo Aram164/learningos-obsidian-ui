@@ -23,7 +23,7 @@ second source of truth.
 6. End the learning session deliberately: review the exact gateway ledger,
    then optionally commit and push only those files.
 
-The current primary navigation is **Home · Modules · Learn · Projects · Library · Garden · Review**, with structural Search available from the navigator and command palette. Modules and Library use explicit full-page application routes; Library separates Learning Sources from purpose-built Topic Packs. Master's is a policy-only boundary. Job is a deliberate confidential workspace: opening it loads a bounded read-only dashboard on demand, while its content remains absent from the manifest, global search, academic recommendations, and AI context.
+The current primary navigation is **Home · Modules · Learn · Projects · Library · Garden · Review**, with structural Search available from the navigator and command palette. Modules and Library use explicit full-page application routes; Library separates Learning Sources from purpose-built Topic Packs. Future Master's Planning remains a policy-only boundary. Job learning uses the same projected module, unit, study-map, note, search, and AI surfaces as every other learning area, with a small visual badge for `program-job`.
 
 ## Engineering boundary
 
@@ -35,14 +35,12 @@ The current primary navigation is **Home · Modules · Learn · Projects · Libr
 - `npm run typecheck` checks all runtime source files. The versioned manifest
   contract remains independently strict-checked before projected data reaches
   the legacy view layer.
-- The app reads only atomic `generated/manifest.json` contract v5. It never
+- The app reads only atomic `generated/manifest.json` contract v7. It never
   parses canonical Markdown/YAML and remains useful when Python is offline.
   The contract is declared by the producer — core's
   `system/contracts/manifest-contract.yaml` — and the single
-  `contracts/manifest-v<N>.lock.json` here is a mirror of it. The Job dashboard
-  follows the same rule through Core's JSON Schema and
-  `contracts/job-dashboard-v2.lock.json`. `npm run contract:check` verifies both
-  mirrors whenever
+  `contracts/manifest-v<N>.lock.json` here is a mirror of it. `npm run contract:check` verifies the
+  mirror whenever
   core is checked out beside this repo, so a projection change cannot reach the
   UI as a surprise. Bump both together; they release together.
 - Mutations use `tools/los.py` action-specific commands: `unit-note`, legacy `stage-note`,
@@ -62,7 +60,7 @@ The current primary navigation is **Home · Modules · Learn · Projects · Libr
 `ecosystem-plugins.json` checksum-pins Agentic Copilot 1.5.3, Omnisearch
 1.30.1, Text Extractor 0.7.0, and PDF++ 0.40.31. The installer merges only
 managed keys: approval-mode local AI, PDF/image indexing with English/German
-OCR, HTTP API off, quarantine exclusions, and direct PDF editing off. See
+OCR, HTTP API off, bounded index exclusions, and direct PDF editing off. See
 `ECOSYSTEM.md`.
 
 ## Build, check, install

@@ -304,7 +304,7 @@ export class ApplicationRouter {
       case 'shelving': return { type: VIEW_SHELVING, state: { unitId: route.unitId || null }, nav: 'review' };
       case 'boundary': return {
         type: VIEW_BOUNDARY, state: { boundaryId: route.boundaryId },
-        nav: route.boundaryId === 'program-job-boundary' ? 'job' : 'masters',
+        nav: 'masters',
       };
       default: return { type: VIEW_HOME, state: {}, nav: 'home', pin: true };
     }

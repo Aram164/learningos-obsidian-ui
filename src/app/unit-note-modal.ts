@@ -12,6 +12,7 @@ type UnitNotePlugin = Pick<
   | 'setUnitNoteDraft'
   | 'clearUnitNoteDraft'
   | 'mutate'
+  | 'store'
 >;
 
 /**
@@ -27,6 +28,7 @@ export class UnitNoteModal extends Modal {
   private files: File[] = [];
   private recoveredStageIds: string[] = [];
   private referencedStageIds: string[] = [];
+  private expectedRevisions: Readonly<Record<string, number>> = {};
 
   private titleInput!: HTMLInputElement;
   private editor!: HTMLTextAreaElement;
@@ -62,8 +64,15 @@ export class UnitNoteModal extends Modal {
       empty(root, 'Unit unavailable', 'The projection returned a unit without an identity.');
       return;
     }
+    this.expectedRevisions = this.plugin.store.artifactGuard(
+      unitId,
+      typeof this.studyMap?.id === 'string' ? this.studyMap.id : null,
+    );
     const stages = asRecords(this.studyMap?.stages);
     const draft = this.plugin.getUnitNoteDraft(unitId, stages);
+    if (Object.keys(draft.expectedRevisions).length) {
+      this.expectedRevisions = draft.expectedRevisions;
+    }
     const recoveredStageIds: string[] = Array.isArray(
       draft.recoveredStageIds,
     )
@@ -133,7 +142,12 @@ export class UnitNoteModal extends Modal {
     button(actions, 'Cancel', () => this.close(), 'quiet');
     const saveButton = button(actions, 'Save note', () => this.save(), 'cta');
     const persist = () => {
-      this.plugin.setUnitNoteDraft(unitId, this.titleInput.value, this.editor.value);
+      this.plugin.setUnitNoteDraft(
+        unitId,
+        this.titleInput.value,
+        this.editor.value,
+        this.expectedRevisions,
+      );
       const hasNote = Boolean(this.editor.value.trim());
       status.setText(hasNote ? 'Draft kept locally until the core confirms the save.' : 'Write a note to enable saving.');
       status.toggleClass('is-dirty', hasNote);
@@ -185,7 +199,7 @@ export class UnitNoteModal extends Modal {
     try {
       await this.plugin.mutate(() => this.plugin.gateway.saveUnitNote(unitId, {
         title: this.titleInput?.value || '', text, stageIds: this.referencedStageIds, filePaths,
-      }));
+      }, this.expectedRevisions));
       this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds);
       new Notice('Learning-session note saved.');
       this.close();

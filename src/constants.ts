@@ -23,6 +23,7 @@ export const VIEW_DIAGNOSTICS = 'learningos-diagnostics';
 export const LEARN_AREAS = [
   ['program-bachelors', 'Bachelor’s'],
   ['program-skills', 'Skills'],
+  ['program-job', 'Job'],
   ['program-thesis-projects', 'Thesis & projects'],
 ] as const;
 export const LEGACY_VIEW_TYPES = [
