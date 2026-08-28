@@ -44,8 +44,51 @@ function canonical(value) {
   return value;
 }
 
+/*
+ * Core requires a V2 envelope's `expected_revisions` to cover exactly the
+ * artifacts its transaction touches, and `capture.create` / `garden.seed.create`
+ * guard the *request* because Core names their target file itself. A mock that
+ * confirms anything is the reason the UI could ship a build in which every
+ * capture and Garden seed was refused by the real gateway while every test
+ * passed. This one refuses the same envelopes Core refuses.
+ */
+const REQUEST_SCOPED_PREFIXES = {
+  'capture.create': 'capture-request',
+  'garden.seed.create': 'garden-request',
+};
+
+function guardRefusal(request) {
+  const prefix = REQUEST_SCOPED_PREFIXES[request.capability];
+  if (!prefix) return null;
+  const expected = { [`${prefix}:${request.idempotency_key}`]: 0 };
+  const actual = request.expected_revisions || {};
+  const same = Object.keys(expected).length === Object.keys(actual).length
+    && Object.entries(expected).every(([id, revision]) => actual[id] === revision);
+  return same ? null
+    : 'GatewayEnvelopeV2 expected_revisions must cover exactly every transaction '
+      + `artifact (wanted ${JSON.stringify(expected)}, got ${JSON.stringify(actual)})`;
+}
+
 function gatewayConfirmation(stdin, snapshotAfter = SNAPSHOT, overrides = {}) {
   const request = JSON.parse(stdin);
+  const refusal = guardRefusal(request);
+  if (refusal) {
+    return JSON.stringify({
+      schema_version: 2,
+      request_id: request.request_id,
+      idempotency_key: request.idempotency_key,
+      capability: request.capability,
+      ok: false,
+      replayed: false,
+      transaction_id: null,
+      receipt_path: null,
+      snapshot_after: null,
+      result: {},
+      error: {
+        code: 'INVALID_REQUEST', message: refusal, retryable: false, details: {},
+      },
+    });
+  }
   return JSON.stringify({
     schema_version: 2,
     request_id: request.request_id,
@@ -60,6 +103,27 @@ function gatewayConfirmation(stdin, snapshotAfter = SNAPSHOT, overrides = {}) {
     error: null,
     ...overrides,
   });
+}
+
+/** The guard Core will compute for this envelope, from the envelope itself. */
+function expectedRequestGuard(envelope) {
+  const prefix = REQUEST_SCOPED_PREFIXES[envelope.capability];
+  assert.ok(prefix, `${envelope.capability} is not request-scoped`);
+  return { [`${prefix}:${envelope.idempotency_key}`]: 0 };
+}
+
+/** Core's approval subject, recomputed here from what actually travelled. */
+function approvalSubjectSha256(envelope) {
+  const subject = {
+    schema_version: 2,
+    capability: envelope.capability,
+    channel: 'ui',
+    expected_snapshot: envelope.expected_snapshot,
+    expected_revisions: envelope.expected_revisions,
+    payload: envelope.payload,
+  };
+  return `sha256:${crypto.createHash('sha256')
+    .update(JSON.stringify(canonical(subject)), 'utf8').digest('hex')}`;
 }
 
 const noticeLog = [];
@@ -1192,8 +1256,19 @@ function routerPlugin(settings = {}) {
       assert.deepEqual(call.args.slice(2), ['--payload-file', '-']);
       assert.equal(call.envelope.schema_version, 2);
       assert.equal(call.envelope.expected_snapshot, SNAPSHOT);
-      assert.deepEqual(call.envelope.expected_revisions, {});
-      assert.match(call.envelope.approval.subject_sha256, /^sha256:[a-f0-9]{64}$/);
+      // The two request-scoped capabilities carry the guard Core derives from
+      // their own idempotency key; every other capability keeps transmitting
+      // exactly the caller-supplied map, empty here because these calls pass
+      // none.
+      assert.deepEqual(
+        call.envelope.expected_revisions,
+        REQUEST_SCOPED_PREFIXES[call.envelope.capability]
+          ? expectedRequestGuard(call.envelope)
+          : {},
+      );
+      assert.equal(call.envelope.approval.subject_sha256,
+        approvalSubjectSha256(call.envelope),
+        'the approval must be hashed over the map that actually travelled');
       assert.ok(!('expected_snapshot' in call.envelope.payload),
         'the payload must not restate what the envelope owns');
       assert.ok(!('approve' in call.envelope.payload),
@@ -1203,6 +1278,134 @@ function routerPlugin(settings = {}) {
     assert.equal(calls[5].envelope.payload.file_sha256, expectedFileDigest);
     assert.equal(calls[7].envelope.payload.file_sha256, expectedFileDigest);
     assert.deepEqual(calls[10].envelope.payload.attachment_sha256, [expectedFileDigest]);
+  });
+
+  /*
+   * The request-scoped guard, from the interface side.
+   *
+   * `capture.create` and `garden.seed.create` cannot be guarded against a
+   * filename, because Core picks it. They guard the request instead — which
+   * means the guard can only be built after the idempotency key exists, and
+   * Core hashes the approval over `expected_revisions`, so it must be final
+   * before the subject is hashed and identical to what the envelope carries.
+   * Deriving it in the wrong order produced a validly-signed approval for a
+   * guard Core never saw, and every capture the UI sent was refused.
+   *
+   * Each expectation below is computed from the envelope that was actually
+   * emitted, never from a literal — a test that hardcodes the key would keep
+   * passing while the two sides drifted apart, which is the failure mode.
+   */
+  await test('a fresh text capture carries the guard derived from its own request', async () => {
+    let envelope = null;
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        envelope = JSON.parse(stdin);
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    const confirmation = await gateway.captureText('a thought worth keeping', 'a title');
+    assert.equal(confirmation.transaction_id, 'tx-1');
+    assert.equal(envelope.capability, 'capture.create');
+    assert.deepEqual(envelope.expected_revisions, expectedRequestGuard(envelope));
+    assert.deepEqual(Object.keys(envelope.expected_revisions),
+      [`capture-request:${envelope.idempotency_key}`]);
+    assert.equal(envelope.approval.subject_sha256, approvalSubjectSha256(envelope),
+      'the approval hash must be taken after the guard is final');
+  });
+
+  await test('a fresh file capture carries the guard derived from its own request', async () => {
+    let envelope = null;
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        envelope = JSON.parse(stdin);
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await gateway.captureFile(gatewayFile);
+    assert.equal(envelope.capability, 'capture.create');
+    assert.equal(envelope.payload.file_sha256, fileDigest(gatewayFile),
+      'the approved bytes still travel with the request');
+    assert.deepEqual(envelope.expected_revisions, expectedRequestGuard(envelope));
+    assert.equal(envelope.approval.subject_sha256, approvalSubjectSha256(envelope));
+  });
+
+  await test('a fresh Garden seed carries the guard derived from its own request', async () => {
+    let envelope = null;
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        envelope = JSON.parse(stdin);
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await gateway.createGardenSeed('a loose thought', 'Seed title');
+    assert.equal(envelope.capability, 'garden.seed.create');
+    assert.deepEqual(envelope.expected_revisions, expectedRequestGuard(envelope));
+    assert.deepEqual(Object.keys(envelope.expected_revisions),
+      [`garden-request:${envelope.idempotency_key}`]);
+    assert.equal(envelope.approval.subject_sha256, approvalSubjectSha256(envelope));
+    assert.deepEqual(envelope.payload, { text: 'a loose thought', title: 'Seed title' });
+  });
+
+  await test('two captures never reuse one request guard', async () => {
+    const envelopes = [];
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        envelopes.push(JSON.parse(stdin));
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await gateway.captureText('first');
+    await gateway.captureText('second');
+    assert.notEqual(envelopes[0].idempotency_key, envelopes[1].idempotency_key);
+    assert.notDeepEqual(envelopes[0].expected_revisions, envelopes[1].expected_revisions);
+    for (const envelope of envelopes) {
+      assert.deepEqual(envelope.expected_revisions, expectedRequestGuard(envelope));
+    }
+  });
+
+  await test('a request-scoped capability refuses a competing caller guard locally', async () => {
+    let reached = false;
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        reached = true;
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    // Silently replacing or merging it would turn a guard the caller asked for
+    // into an unguarded write, so this is a refusal — and it happens here,
+    // before anything is sent.
+    assert.throws(
+      () => gateway.capability('capture.create', { text: 'x' },
+        { expectedRevisions: { 'capture-request:someone-elses': 4 } }),
+      (error) => error.gatewayCode === 'INVALID_REQUEST'
+        && /nothing was written/.test(error.message),
+    );
+    assert.equal(reached, false, 'nothing may reach Core after a local refusal');
+  });
+
+  await test('unrelated capabilities still transmit their caller-supplied guards unchanged', async () => {
+    const envelopes = [];
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        envelopes.push(JSON.parse(stdin));
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await gateway.saveNote('unit-a', 'stage-a', 'text', { 'unit-a': 3, 'study-map-a': 8 });
+    await gateway.progress('unit-a', 'stage-a', 'complete', { 'unit-a': 4 });
+    assert.deepEqual(envelopes[0].expected_revisions, { 'unit-a': 3, 'study-map-a': 8 });
+    assert.deepEqual(envelopes[1].expected_revisions, { 'unit-a': 4 });
+    for (const envelope of envelopes) {
+      assert.ok(!(`capture-request:${envelope.idempotency_key}` in envelope.expected_revisions),
+        'the request-scoped guard belongs only to the capabilities that need it');
+      assert.equal(envelope.approval.subject_sha256, approvalSubjectSha256(envelope));
+    }
   });
 
   await test('the plan template is read from Core, not authored in the interface', async () => {

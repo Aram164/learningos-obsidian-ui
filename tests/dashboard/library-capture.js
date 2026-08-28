@@ -16,6 +16,7 @@ const {
   tick,
   frame,
   waitFor,
+  requestGuardFor,
   check,
   heading,
   build,
@@ -574,9 +575,18 @@ module.exports = async function run() {
     element.findText('los-btn', 'Capture text').fire('click');
     await waitFor(() => Boolean(calls.envelope('capture.create'))
       && !plugin.gateway.isBusy);
-    const textCapture = calls.envelope('capture.create')?.payload;
+    const textEnvelope = calls.envelope('capture.create');
+    const textCapture = textEnvelope?.payload;
     check('text capture delegates exact wording and optional title to los.py',
       textCapture?.text === 'A half-formed synthetic idea.' && textCapture?.title === 'Fixture thought');
+    // Core names the inbox file itself, so the write is guarded against this
+    // request rather than a path. An empty guard is refused by Core, and the
+    // fixture now refuses it too — reaching this line at all means a real
+    // capture would have been accepted.
+    check('text capture carries the request-scoped guard Core requires',
+      JSON.stringify(textEnvelope?.expected_revisions)
+        === JSON.stringify(requestGuardFor(textEnvelope)),
+      `sent ${JSON.stringify(textEnvelope?.expected_revisions)}`);
     check('capture refreshes the atomic projection after the write',
       calls.some((args) => args.length === 1 && args[0] === 'generate'));
 
@@ -596,6 +606,13 @@ module.exports = async function run() {
       calls.envelopes.some((e) => e.capability === 'capture.create'
         && e.payload.file === CAPTURE_FIXTURE_PATH
         && e.payload.file_sha256 === fileDigest(CAPTURE_FIXTURE_PATH)));
+    const fileEnvelope = calls.envelopes.find(
+      (e) => e.capability === 'capture.create' && e.payload.file === CAPTURE_FIXTURE_PATH,
+    );
+    check('file capture carries the request-scoped guard Core requires',
+      JSON.stringify(fileEnvelope?.expected_revisions)
+        === JSON.stringify(requestGuardFor(fileEnvelope)),
+      `sent ${JSON.stringify(fileEnvelope?.expected_revisions)}`);
     plugin.onunload();
   }
 };

@@ -182,7 +182,55 @@ const MASTERS_PLANNING_FIXTURE = {
   },
 };
 
+/*
+ * `capture.create` and `garden.seed.create` name their own target file, so
+ * Core guards their *request* and requires `expected_revisions` to be exactly
+ * `{"<prefix>:<idempotency_key>": 0}` — an empty map is a refusal. A fixture
+ * that confirmed anything let the dashboard suites stay green while the real
+ * gateway refused every capture and every Garden seed the UI sent, which is
+ * how that shipped. This fixture refuses what Core refuses.
+ */
+const REQUEST_SCOPED_PREFIXES = {
+  'capture.create': 'capture-request',
+  'garden.seed.create': 'garden-request',
+};
+
+/** The guard Core will require, derived from the envelope's own key. */
+function requestGuardFor(envelope) {
+  const prefix = REQUEST_SCOPED_PREFIXES[envelope.capability];
+  return prefix ? { [`${prefix}:${envelope.idempotency_key}`]: 0 } : null;
+}
+
+function gatewayGuardRefusal(envelope) {
+  const wanted = requestGuardFor(envelope);
+  if (!wanted) return null;
+  const actual = envelope.expected_revisions || {};
+  const matches = Object.keys(wanted).length === Object.keys(actual).length
+    && Object.entries(wanted).every(([id, revision]) => actual[id] === revision);
+  return matches ? null
+    : 'GatewayEnvelopeV2 expected_revisions must cover exactly every transaction '
+      + `artifact (wanted ${JSON.stringify(wanted)}, got ${JSON.stringify(actual)})`;
+}
+
 function gatewayConfirmation(envelope, result = {}) {
+  const refusal = gatewayGuardRefusal(envelope);
+  if (refusal) {
+    return {
+      schema_version: 2,
+      request_id: envelope.request_id,
+      idempotency_key: envelope.idempotency_key,
+      capability: envelope.capability,
+      ok: false,
+      replayed: false,
+      transaction_id: null,
+      receipt_path: null,
+      snapshot_after: null,
+      result: {},
+      error: {
+        code: 'INVALID_REQUEST', message: refusal, retryable: false, details: {},
+      },
+    };
+  }
   return {
     schema_version: 2,
     request_id: envelope.request_id,
@@ -300,6 +348,7 @@ module.exports = {
   LEGACY_ARCHIVE_FIXTURE,
   MASTERS_PLANNING_FIXTURE,
   gatewayConfirmation,
+  requestGuardFor,
   check,
   heading,
   build,

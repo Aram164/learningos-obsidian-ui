@@ -14,6 +14,7 @@ const {
   VIEW,
   tick,
   frame,
+  requestGuardFor,
   check,
   heading,
   build,
@@ -124,6 +125,15 @@ module.exports = async function run() {
           === 'Fixture Garden seed'
         && seed?.expected_snapshot
           === FIXTURE_SNAPSHOT,
+    );
+
+    // Core names the seed file itself, so the write is guarded against this
+    // request. An empty guard is a refusal there, and now here too.
+    check(
+      'Garden creation carries the request-scoped guard Core requires',
+      JSON.stringify(seed?.expected_revisions)
+        === JSON.stringify(requestGuardFor(seed)),
+      `sent ${JSON.stringify(seed?.expected_revisions)}`,
     );
 
     plugin.onunload();

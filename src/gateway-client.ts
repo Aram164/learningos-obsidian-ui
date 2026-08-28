@@ -13,7 +13,9 @@ import {
   asGatewaySuccessV2,
   gatewayApprovalSubject,
   gatewaySubjectSha256,
+  isRequestScopedCapability,
   isSha256,
+  requestArtifactId,
   type GatewaySuccessV2,
 } from './contracts/gateway-v2';
 
@@ -200,6 +202,19 @@ export class GatewayClient {
         { code: 'INVALID_REQUEST', retryable: false },
       );
     }
+    // The guard for these two is derived below from an idempotency key that
+    // does not exist yet, so a caller-supplied map cannot be honoured and must
+    // not be silently replaced or merged either: quietly discarding a guard the
+    // caller asked for is how a stale-revision refusal turns into an
+    // unguarded write. Refuse here, before anything is sent.
+    if (isRequestScopedCapability(name)
+        && Object.keys(expectedRevisions).length > 0) {
+      throw new GatewayError(
+        `LearningOS guards ${name} against its own request, so it cannot also be guarded against caller-supplied artifact revisions; nothing was written.`,
+        null,
+        { code: 'INVALID_REQUEST', retryable: false },
+      );
+    }
     return this.sendCapability(
       name,
       payload,
@@ -216,10 +231,21 @@ export class GatewayClient {
   ): Promise<GatewaySuccessV2> {
     const requestId = nextRequestId(name);
     const idempotencyKey = nextIdempotencyKey(requestId);
+    // Order matters, and it is the whole defect this method once had. A
+    // request-scoped guard can only be built once the idempotency key exists,
+    // and Core hashes the approval subject over `expected_revisions` — so the
+    // map has to be final *before* the subject is hashed, and the identical map
+    // has to travel in the envelope. Deriving it afterwards produced a
+    // correctly-signed approval for a guard Core never received, and every
+    // capture and Garden seed was refused.
+    const effectiveRevisions: Readonly<Record<string, number>> =
+      isRequestScopedCapability(name)
+        ? { [requestArtifactId(name, idempotencyKey)]: 0 }
+        : expectedRevisions;
     const subject = gatewayApprovalSubject(
       name,
       expectedSnapshot,
-      expectedRevisions,
+      effectiveRevisions,
       payload,
     );
     const envelope = {
@@ -229,7 +255,7 @@ export class GatewayClient {
       capability: name,
       channel: 'ui',
       expected_snapshot: expectedSnapshot,
-      expected_revisions: expectedRevisions,
+      expected_revisions: effectiveRevisions,
       approval: {
         kind: 'direct-user-gesture',
         subject_sha256: await gatewaySubjectSha256(subject),

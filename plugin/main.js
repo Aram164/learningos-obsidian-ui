@@ -12204,6 +12204,34 @@ function exactKeys3(value, keys) {
 function isSha256(value) {
   return typeof value === "string" && /^sha256:[0-9a-f]{64}$/.test(value);
 }
+var REQUEST_SCOPED_ARTIFACT_PREFIXES = {
+  "capture.create": "capture-request",
+  "garden.seed.create": "garden-request"
+};
+function isRequestScopedCapability(capability) {
+  return Object.prototype.hasOwnProperty.call(
+    REQUEST_SCOPED_ARTIFACT_PREFIXES,
+    capability
+  );
+}
+function requestArtifactId(capability, idempotencyKey) {
+  const prefix = REQUEST_SCOPED_ARTIFACT_PREFIXES[capability];
+  if (!prefix) {
+    throw new GatewayError(
+      `${capability} does not use request-scoped artifacts; nothing was written.`,
+      null,
+      { code: "INVALID_REQUEST", retryable: false }
+    );
+  }
+  if (!nonEmpty2(idempotencyKey)) {
+    throw new GatewayError(
+      `${capability} needs an idempotency key to guard its request; nothing was written.`,
+      null,
+      { code: "INVALID_REQUEST", retryable: false }
+    );
+  }
+  return `${prefix}:${idempotencyKey}`;
+}
 function gatewayApprovalSubject(capability, expectedSnapshot, expectedRevisions, payload) {
   return {
     schema_version: GATEWAY_SCHEMA_VERSION,
@@ -12422,6 +12450,13 @@ var GatewayClient = class {
         { code: "INVALID_REQUEST", retryable: false }
       );
     }
+    if (isRequestScopedCapability(name) && Object.keys(expectedRevisions).length > 0) {
+      throw new GatewayError(
+        `LearningOS guards ${name} against its own request, so it cannot also be guarded against caller-supplied artifact revisions; nothing was written.`,
+        null,
+        { code: "INVALID_REQUEST", retryable: false }
+      );
+    }
     return this.sendCapability(
       name,
       payload,
@@ -12432,10 +12467,11 @@ var GatewayClient = class {
   async sendCapability(name, payload, expectedSnapshot, expectedRevisions) {
     const requestId = nextRequestId(name);
     const idempotencyKey = nextIdempotencyKey(requestId);
+    const effectiveRevisions = isRequestScopedCapability(name) ? { [requestArtifactId(name, idempotencyKey)]: 0 } : expectedRevisions;
     const subject = gatewayApprovalSubject(
       name,
       expectedSnapshot,
-      expectedRevisions,
+      effectiveRevisions,
       payload
     );
     const envelope = {
@@ -12445,7 +12481,7 @@ var GatewayClient = class {
       capability: name,
       channel: "ui",
       expected_snapshot: expectedSnapshot,
-      expected_revisions: expectedRevisions,
+      expected_revisions: effectiveRevisions,
       approval: {
         kind: "direct-user-gesture",
         subject_sha256: await gatewaySubjectSha256(subject)

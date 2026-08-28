@@ -78,6 +78,51 @@ export function isSha256(value: unknown): value is string {
 }
 
 /**
+ * Capabilities whose write target is named by Core, not by the caller.
+ *
+ * A capture cannot be guarded as `capture:work/inbox/<name>.md`, because the
+ * filename does not exist until Core picks it. Both of these guard the
+ * *request* instead, and Core requires the envelope's `expected_revisions` to
+ * cover exactly the artifacts the transaction touches — so an empty map is a
+ * refusal, not a permissive default. This mirrors
+ * `REQUEST_SCOPED_ARTIFACT_PREFIXES` in Core's `contracts/gateway.py`; the two
+ * must derive the identical string.
+ */
+export const REQUEST_SCOPED_ARTIFACT_PREFIXES: Readonly<Record<string, string>> = {
+  'capture.create': 'capture-request',
+  'garden.seed.create': 'garden-request',
+};
+
+export function isRequestScopedCapability(capability: string): boolean {
+  return Object.prototype.hasOwnProperty.call(
+    REQUEST_SCOPED_ARTIFACT_PREFIXES, capability,
+  );
+}
+
+/** The one request-scoped artifact id, derived from this request's own key. */
+export function requestArtifactId(
+  capability: string,
+  idempotencyKey: string,
+): string {
+  const prefix = REQUEST_SCOPED_ARTIFACT_PREFIXES[capability];
+  if (!prefix) {
+    throw new GatewayError(
+      `${capability} does not use request-scoped artifacts; nothing was written.`,
+      null,
+      { code: 'INVALID_REQUEST', retryable: false },
+    );
+  }
+  if (!nonEmpty(idempotencyKey)) {
+    throw new GatewayError(
+      `${capability} needs an idempotency key to guard its request; nothing was written.`,
+      null,
+      { code: 'INVALID_REQUEST', retryable: false },
+    );
+  }
+  return `${prefix}:${idempotencyKey}`;
+}
+
+/**
  * Core signs this exact object using sorted, compact JSON and UTF-8. Request
  * identifiers and approval are deliberately excluded so replay identity can
  * change without changing what the learner approved.
