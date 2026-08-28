@@ -952,8 +952,8 @@ function validProjectedRecord(value, validSynthesis) {
 }
 
 // src/contracts/manifest.ts
-var MANIFEST_CONTRACT_VERSION = 7;
-var MANIFEST_SCHEMA_SHA256 = "sha256:77819b5608c12a1e9cc7f326b14d858990df01824753b6ecdadf2e6c78b392db";
+var MANIFEST_CONTRACT_VERSION = 8;
+var MANIFEST_SCHEMA_SHA256 = "sha256:f08b0e5b4f131cff0a95bfc87d95863ae691a698c7bbf1d5e96d4da0fee03b10";
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -1109,6 +1109,7 @@ function assertManifest(value) {
     "counts",
     "garden_entries",
     "indexes",
+    "module_concept_edges",
     "module_source_maps",
     "modules",
     "programs",
@@ -1129,7 +1130,7 @@ function assertManifest(value) {
     "unit_material_syntheses",
     "units"
   ])) {
-    throw new TypeError("Manifest top-level keys do not match contract v7.");
+    throw new TypeError("Manifest top-level keys do not match contract v8.");
   }
   const generated = value._generated;
   if (!exactKeys(generated, [
@@ -1143,7 +1144,7 @@ function assertManifest(value) {
     "source_revision",
     "warning"
   ])) {
-    throw new TypeError("Manifest _generated keys do not match contract v7.");
+    throw new TypeError("Manifest _generated keys do not match contract v8.");
   }
   if (generated.contract_version !== MANIFEST_CONTRACT_VERSION) {
     throw new TypeError(
@@ -1156,7 +1157,7 @@ function assertManifest(value) {
     );
   }
   if (typeof generated.generated_at !== "string" || !nonEmptyText(generated.generator) || !sha256(generated.snapshot_id) || typeof generated.source_dirty !== "boolean" || typeof generated.source_fingerprint !== "string" || !/^[a-f0-9]{64}$/.test(generated.source_fingerprint) || !(generated.source_revision === null || typeof generated.source_revision === "string") || typeof generated.warning !== "string") {
-    throw new TypeError("Manifest _generated metadata does not match contract v7.");
+    throw new TypeError("Manifest _generated metadata does not match contract v8.");
   }
   for (const key of [
     "academic_deadlines",
@@ -1181,75 +1182,75 @@ function assertManifest(value) {
     requireArray(value, key);
   }
   if (!validAiActions(value.ai_actions)) {
-    throw new TypeError("Manifest ai_actions must match the closed v7 projection.");
+    throw new TypeError("Manifest ai_actions must match the closed v8 projection.");
   }
   if (!value.academic_deadlines.every(validAcademicDeadline)) {
-    throw new TypeError("Manifest academic deadlines must match the closed v7 projection.");
+    throw new TypeError("Manifest academic deadlines must match the closed v8 projection.");
   }
   if (!value.garden_entries.every(validGardenEntry)) {
-    throw new TypeError("Manifest Garden rows must match the closed v7 projection.");
+    throw new TypeError("Manifest Garden rows must match the closed v8 projection.");
   }
   if (!value.relations.every(validRelation)) {
-    throw new TypeError("Manifest relations must match the closed v7 projection.");
+    throw new TypeError("Manifest relations must match the closed v8 projection.");
   }
   if (!value.review_items.every(validReviewItem)) {
-    throw new TypeError("Manifest review rows must match the closed v7 projection.");
+    throw new TypeError("Manifest review rows must match the closed v8 projection.");
   }
   if (!value.semesters.every(validSemester)) {
-    throw new TypeError("Manifest semesters must match the closed v7 projection.");
+    throw new TypeError("Manifest semesters must match the closed v8 projection.");
   }
   if (!value.thematic_groups.every(validThematicGroup)) {
-    throw new TypeError("Manifest thematic groups must match the closed v7 projection.");
+    throw new TypeError("Manifest thematic groups must match the closed v8 projection.");
   }
   if (!value.topic_packs.every(validTopicPack)) {
-    throw new TypeError("Manifest topic packs must match the closed v7 projection.");
+    throw new TypeError("Manifest topic packs must match the closed v8 projection.");
   }
   if (!value.topics.every(validTopic)) {
-    throw new TypeError("Manifest topics must match the closed v7 projection.");
+    throw new TypeError("Manifest topics must match the closed v8 projection.");
   }
   for (const module2 of value.modules) {
     if (!validModuleRecord(module2)) {
-      throw new TypeError("Manifest module rows must match the closed v7 projection.");
+      throw new TypeError("Manifest module rows must match the closed v8 projection.");
     }
   }
   for (const program of value.programs) {
     if (!validProgramRecord(program)) {
-      throw new TypeError("Manifest program rows must match the closed v7 projection.");
+      throw new TypeError("Manifest program rows must match the closed v8 projection.");
     }
   }
   for (const project of value.projects) {
     if (!validProjectRecord(project)) {
-      throw new TypeError("Manifest project rows must match the closed v7 projection.");
+      throw new TypeError("Manifest project rows must match the closed v8 projection.");
     }
   }
   for (const relationship of value.project_relationships) {
     if (!validProjectRelationship(relationship)) {
-      throw new TypeError("Manifest project relationships must match the closed v7 projection.");
+      throw new TypeError("Manifest project relationships must match the closed v8 projection.");
     }
   }
   for (const sourceMap of value.module_source_maps) {
     if (!validModuleSourceMap(sourceMap)) {
-      throw new TypeError("Manifest module source maps must match the closed v7 projection.");
+      throw new TypeError("Manifest module source maps must match the closed v8 projection.");
     }
   }
   for (const unit of value.units) {
     if (!validProjectedUnit(unit)) {
-      throw new TypeError("Manifest unit rows must match the closed v7 projection.");
+      throw new TypeError("Manifest unit rows must match the closed v8 projection.");
     }
   }
   for (const studyMap of value.study_maps) {
     if (!validStudyMap(studyMap)) {
-      throw new TypeError("Manifest study maps must match the closed v7 projection.");
+      throw new TypeError("Manifest study maps must match the closed v8 projection.");
     }
   }
   for (const stage of value.stages) {
     if (!validFlatStage(stage)) {
-      throw new TypeError("Manifest flat stages must match the closed v7 projection.");
+      throw new TypeError("Manifest flat stages must match the closed v8 projection.");
     }
   }
   for (const record4 of value.records) {
     if (!validProjectedRecord(record4, validMaterialSynthesis)) {
-      throw new TypeError("Manifest records must match the closed v7 record union.");
+      throw new TypeError("Manifest records must match the closed v8 record union.");
     }
   }
   for (const key of ["ai_actions", "artifact_revisions", "backlinks", "counts", "indexes", "progress", "project_aliases", "resume_pointer"]) {
@@ -1261,19 +1262,50 @@ function assertManifest(value) {
     throw new TypeError("Manifest artifact revisions must map to non-negative integers.");
   }
   if (!validBacklinks(value.backlinks)) {
-    throw new TypeError("Manifest backlinks must match the closed v7 projection.");
+    throw new TypeError("Manifest backlinks must match the closed v8 projection.");
   }
   if (!validCounts(value.counts)) {
-    throw new TypeError("Manifest counts must match the closed v7 projection.");
+    throw new TypeError("Manifest counts must match the closed v8 projection.");
   }
   if (!validProgress(value.progress)) {
-    throw new TypeError("Manifest progress must match the closed v7 projection.");
+    throw new TypeError("Manifest progress must match the closed v8 projection.");
   }
   if (!validStringMap(value.project_aliases)) {
     throw new TypeError("Manifest project aliases must map to strings.");
   }
   if (!validResumePointer(value.resume_pointer)) {
-    throw new TypeError("Manifest resume pointer must match the closed v7 projection.");
+    throw new TypeError("Manifest resume pointer must match the closed v8 projection.");
+  }
+  const edges = value.module_concept_edges;
+  if (!Array.isArray(edges)) {
+    throw new TypeError("Manifest field module_concept_edges must be an array.");
+  }
+  for (const edge of edges) {
+    if (!isRecord(edge) || !exactKeys(edge, ["module_id", "concept_id", "evidence"])) {
+      throw new TypeError("Manifest module_concept_edges rows must be {module_id, concept_id, evidence}.");
+    }
+    if (!identifier2(edge.module_id, "module-") || !identifier2(edge.concept_id, "concept-")) {
+      throw new TypeError("Manifest module_concept_edges rows must name a module and a concept.");
+    }
+    if (!Array.isArray(edge.evidence) || edge.evidence.length === 0) {
+      throw new TypeError("Manifest module_concept_edges rows must carry at least one evidence item.");
+    }
+    for (const item of edge.evidence) {
+      if (!isRecord(item) || !identifier2(item.unit_id, "unit-")) {
+        throw new TypeError("Manifest module_concept_edges evidence must name a unit.");
+      }
+      if (item.kind === "stage-concept") {
+        if (!exactKeys(item, ["kind", "unit_id", "study_map_id", "stage_id"]) || !identifier2(item.study_map_id, "study-map-") || !identifier2(item.stage_id, "stage-")) {
+          throw new TypeError("Manifest stage-concept evidence must name its study map and stage.");
+        }
+      } else if (item.kind === "knowledge-node") {
+        if (!exactKeys(item, ["kind", "unit_id", "node_id"]) || !identifier2(item.node_id, "knowledge-")) {
+          throw new TypeError("Manifest knowledge-node evidence must name its node.");
+        }
+      } else {
+        throw new TypeError(`Unknown module_concept_edges evidence kind ${String(item.kind)}.`);
+      }
+    }
   }
   const indexes = value.indexes;
   if (!isRecord(indexes)) {
@@ -1281,7 +1313,9 @@ function assertManifest(value) {
   }
   if (!exactKeys(indexes, [
     "component_to_units",
+    "concept_to_modules",
     "concept_to_units",
+    "module_to_concepts",
     "module_to_units",
     "project_aliases",
     "project_to_relationships",
@@ -1295,7 +1329,7 @@ function assertManifest(value) {
     "workspace_to_modules",
     "workspace_to_units"
   ])) {
-    throw new TypeError("Manifest index keys do not match contract v7.");
+    throw new TypeError("Manifest index keys do not match contract v8.");
   }
   for (const key of [
     "concept_to_units",
@@ -1311,7 +1345,9 @@ function assertManifest(value) {
   }
   for (const key of [
     "component_to_units",
+    "concept_to_modules",
     "concept_to_units",
+    "module_to_concepts",
     "module_to_units",
     "project_to_relationships",
     "project_to_units",
@@ -1928,188 +1964,129 @@ var SessionEndModal = class extends import_obsidian2.Modal {
 // src/views/atlas-view.ts
 var import_obsidian3 = require("obsidian");
 
-// src/features/atlas/model.ts
-var ATLAS_ROLE_ORDER = [
-  "crosswalk",
-  "reference",
-  "synthesis",
-  "exercise-bank",
-  "mock-exam"
-];
-function humanLabel(value) {
-  const text5 = String(value || "cross-domain").replace(/^thematic-group-/, "").replace(/[-_]+/g, " ").trim();
-  return text5 ? `${text5.charAt(0).toUpperCase()}${text5.slice(1)}` : "Cross-domain";
+// src/features/atlas/crossing.ts
+function objectValue(value) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value : null;
 }
-function canonicalLabel(value) {
-  return String(value || "").replace(/^thematic-group-/, "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-");
+function conceptIds(value) {
+  return Array.isArray(value) ? value.filter((item) => typeof item === "string") : [];
 }
-function uniqueRecords(records) {
-  const seen = /* @__PURE__ */ new Set();
-  return records.filter(
-    (record4) => {
-      const key = asString(record4.id) || `${record4.type || "record"}:${asLabel(record4)}`;
-      if (seen.has(key)) {
-        return false;
-      }
-      seen.add(key);
-      return true;
+function sourceNamesConcept(source, conceptId) {
+  return Array.isArray(source.evaluations) && source.evaluations.some((evaluation) => {
+    const record4 = objectValue(evaluation);
+    return record4 ? conceptIds(record4.concepts).includes(conceptId) : false;
+  });
+}
+function byLabel(left, right) {
+  return asLabel(left).localeCompare(asLabel(right));
+}
+function buildConceptContext(store, conceptId) {
+  const notes = store.related(conceptId).map((row3) => row3.rec).filter((record4) => record4?.type === "note").sort(byLabel);
+  const sources = store.sources().filter((source) => sourceNamesConcept(source, conceptId)).sort(byLabel);
+  const relationTable = objectValue(
+    store.data?.backlinks?.concept_relations
+  );
+  const relationEntry = objectValue(relationTable?.[conceptId]);
+  const relations2 = [];
+  for (const direction of ["incoming", "outgoing"]) {
+    const rows = relationEntry?.[direction];
+    if (!Array.isArray(rows)) {
+      continue;
     }
-  );
-}
-function recordIds(records) {
-  return new Set(
-    records.map(
-      (record4) => asString(record4.id)
-    ).filter(
-      (id2) => Boolean(id2)
-    )
-  );
-}
-function intersectionSize(left, right) {
-  let count = 0;
-  for (const value of left) {
-    if (right.has(value)) {
-      count += 1;
+    for (const value of rows) {
+      const row3 = objectValue(value);
+      const relatedId = asString(
+        direction === "incoming" ? row3?.from : row3?.to
+      );
+      const relationType = asString(row3?.type);
+      const record4 = relatedId ? store.get(relatedId) : null;
+      if (record4 && relationType) {
+        relations2.push({ direction, relationType, record: record4 });
+      }
     }
   }
-  return count;
+  relations2.sort((left, right) => left.direction.localeCompare(right.direction) || left.relationType.localeCompare(right.relationType) || byLabel(left.record, right.record));
+  return { notes, sources, relations: relations2 };
 }
-function roleLabel(role) {
-  return humanLabel(role);
+function shortModuleLabel(module2) {
+  const code = asString(module2.code);
+  if (code) {
+    return code;
+  }
+  const title = asLabel(module2);
+  const words2 = title.split(/\s+/).filter(Boolean);
+  return words2.length > 2 ? words2.map((word) => word.charAt(0)).join("").toUpperCase() : title;
 }
-function buildAtlasDomains(store) {
-  const domains = /* @__PURE__ */ new Map();
-  const bucket = (name) => {
-    const key = String(
-      name || "cross-domain"
-    );
-    const existing = domains.get(key);
-    if (existing) {
-      return existing;
-    }
-    const created = {
-      name: key,
-      notes: [],
-      shelves: [],
-      modules: [],
-      concepts: [],
-      sources: []
+function orderColumns(modules, conceptsByModule) {
+  return modules.filter((module2) => Boolean(asString(module2.id))).map((module2) => {
+    const moduleId = asString(module2.id);
+    return {
+      moduleId,
+      label: asLabel(module2),
+      shortLabel: shortModuleLabel(module2),
+      actionable: module2.is_actionable === true,
+      conceptCount: conceptsByModule.get(moduleId) ?? 0
     };
-    domains.set(
-      key,
-      created
-    );
-    return created;
-  };
-  for (const note of store.of("note")) {
-    bucket(note.domain).notes.push(note);
+  }).sort((left, right) => {
+    if (left.actionable !== right.actionable) {
+      return left.actionable ? -1 : 1;
+    }
+    return left.label.localeCompare(right.label);
+  });
+}
+function buildCrossing(store) {
+  const edges = store.moduleConceptEdges();
+  const byConcept = /* @__PURE__ */ new Map();
+  const conceptsByModule = /* @__PURE__ */ new Map();
+  let totalEdges = 0;
+  for (const edge of edges) {
+    const { module_id: moduleId, concept_id: conceptId } = edge;
+    if (!moduleId || !conceptId || !edge.evidence?.length) {
+      continue;
+    }
+    totalEdges += 1;
+    const cells = byConcept.get(conceptId) ?? /* @__PURE__ */ new Map();
+    cells.set(moduleId, { moduleId, evidence: edge.evidence });
+    byConcept.set(conceptId, cells);
+    conceptsByModule.set(moduleId, (conceptsByModule.get(moduleId) ?? 0) + 1);
   }
-  const shelves = uniqueRecords([
-    ...store.of("collection"),
-    ...store.topicPacks()
-  ]);
-  for (const shelf of shelves) {
-    bucket(shelf.domain).shelves.push(shelf);
-  }
-  for (const domain of domains.values()) {
-    const sourceIds = /* @__PURE__ */ new Set();
-    const conceptIds = /* @__PURE__ */ new Set();
-    const groupIds = /* @__PURE__ */ new Set();
-    for (const note of domain.notes) {
-      asStrings(note.sources).forEach(
-        (id2) => sourceIds.add(id2)
-      );
-      asStrings(note.concepts).forEach(
-        (id2) => conceptIds.add(id2)
-      );
-    }
-    for (const shelf of domain.shelves) {
-      asStrings(shelf.sources).forEach(
-        (id2) => sourceIds.add(id2)
-      );
-      asStrings(shelf.thematic_group_ids).forEach(
-        (id2) => groupIds.add(id2)
-      );
-      for (const entry of asRecords(shelf.entries)) {
-        const sourceId = asString(entry.source);
-        if (sourceId) {
-          sourceIds.add(sourceId);
-        }
-      }
-    }
-    for (const group of store.thematicGroups()) {
-      if (canonicalLabel(group.id) === canonicalLabel(domain.name) || canonicalLabel(group.title) === canonicalLabel(domain.name)) {
-        const groupId = asString(group.id);
-        if (groupId) {
-          groupIds.add(groupId);
-        }
-      }
-    }
-    for (const source of store.sources()) {
-      const sourceId = asString(source.id);
-      const sourceGroups = asStrings(
-        source.thematic_group_ids
-      );
-      if (sourceGroups.some(
-        (id2) => groupIds.has(id2)
-      ) && sourceId) {
-        sourceIds.add(sourceId);
-      }
-    }
-    const resolvedSources = [...sourceIds].map(
-      (id2) => store.get(id2)
-    ).filter(
-      (record4) => record4?.type === "source"
-    );
-    domain.sources.push(
-      ...uniqueRecords(resolvedSources)
-    );
-    const resolvedConcepts = [...conceptIds].map(
-      (id2) => store.get(id2)
-    ).filter(
-      (record4) => record4?.type === "concept"
-    );
-    domain.concepts.push(
-      ...uniqueRecords(resolvedConcepts)
-    );
-    const relatedModules = [
-      ...domain.sources.flatMap(
-        (source) => {
-          const sourceId = asString(source.id);
-          return sourceId ? store.useModules(sourceId) : [];
-        }
-      ),
-      ...store.modules().filter(
-        (module2) => asStrings(
-          module2.thematic_group_ids
-        ).some(
-          (id2) => groupIds.has(id2)
-        )
-      )
-    ];
-    domain.modules.push(
-      ...uniqueRecords(relatedModules)
-    );
-  }
-  return [...domains.values()].sort(
-    (left, right) => right.notes.length - left.notes.length || left.name.localeCompare(
-      right.name
-    )
+  const columns = orderColumns(store.modules(), conceptsByModule);
+  const visibleModules = new Set(
+    columns.map((column) => column.moduleId)
   );
+  const rows = [];
+  for (const [conceptId, cells] of byConcept) {
+    const visible = new Map(
+      [...cells].filter(([moduleId]) => visibleModules.has(moduleId))
+    );
+    if (!visible.size) {
+      continue;
+    }
+    const record4 = store.get(conceptId);
+    rows.push({
+      conceptId,
+      label: record4 ? asLabel(record4) : conceptId,
+      cells: visible,
+      moduleCount: visible.size
+    });
+  }
+  rows.sort(
+    (left, right) => right.moduleCount - left.moduleCount || left.label.localeCompare(right.label)
+  );
+  return {
+    columns,
+    rows,
+    sharedRows: rows.filter((row3) => row3.moduleCount > 1),
+    totalConcepts: rows.length,
+    totalEdges
+  };
 }
 
 // src/views/atlas-view.ts
-function projectedMetadata(values2) {
-  return values2.filter(
-    (value) => typeof value === "string" || typeof value === "number"
-  ).map(String).filter(Boolean).join(" \xB7 ");
-}
-function plural(count, noun, pluralNoun = `${noun}s`) {
-  return `${count} ${count === 1 ? noun : pluralNoun}`;
-}
 var AtlasView = class extends import_obsidian3.ItemView {
   plugin;
-  domain = null;
+  scope = "shared";
+  concept = null;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -2118,31 +2095,38 @@ var AtlasView = class extends import_obsidian3.ItemView {
     return VIEW_ATLAS;
   }
   getDisplayText() {
-    return "LearningOS \xB7 Domain atlas";
+    return "LearningOS \xB7 Atlas";
   }
   getIcon() {
     return "map";
   }
   async setState(state = {}) {
-    if (typeof state.domain === "string" || state.domain === null) {
-      this.domain = state.domain;
+    if (typeof state.concept === "string" || state.concept === null) {
+      this.concept = state.concept;
+    }
+    if (this.concept) {
+      this.scope = "all";
     }
     this.render();
   }
   getState() {
     return {
-      domain: this.domain
+      concept: this.concept
     };
   }
   async onOpen() {
-    const domain = this.leaf.getViewState().state?.domain;
-    this.domain = typeof domain === "string" ? domain : null;
+    const concept = this.leaf.getViewState().state?.concept;
+    this.concept = typeof concept === "string" ? concept : null;
+    if (this.concept) {
+      this.scope = "all";
+    }
     this.render();
   }
-  atlas() {
-    return buildAtlasDomains(
-      this.plugin.store
-    );
+  crossing() {
+    return buildCrossing(this.plugin.store);
+  }
+  visibleRows(crossing) {
+    return this.scope === "shared" ? crossing.sharedRows : crossing.rows;
   }
   render() {
     const root = this.contentEl;
@@ -2155,7 +2139,7 @@ var AtlasView = class extends import_obsidian3.ItemView {
       pageHeader(
         root,
         "Reach",
-        "Domain atlas unavailable"
+        "Atlas unavailable"
       );
       empty(
         root,
@@ -2169,329 +2153,294 @@ var AtlasView = class extends import_obsidian3.ItemView {
     pageHeader(
       root,
       "Reach",
-      "Domain atlas",
-      "See where your learning lives, what connects across subjects, and which source or module to open next."
+      "Module \xD7 Concept atlas",
+      "Where one concept is taught in more than one module \u2014 and the exact stage in each that says so."
     );
-    const domains = this.atlas();
-    if (!domains.length) {
+    const crossing = this.crossing();
+    if (!crossing.rows.length) {
       empty(
         root,
-        "Nothing mapped yet",
-        "No notes or shelves are registered."
+        "No concepts are mapped to modules yet",
+        "A cell appears when a stage carries a concept tag, or a knowledge-map node carries a reviewed concept id. Nothing here is inferred, so an empty atlas means nothing is tagged \u2014 not that nothing overlaps."
       );
+      this.fallbackAction(root);
       return;
     }
-    if (!this.domain || !domains.some(
-      (row3) => row3.name === this.domain
-    )) {
-      this.domain = domains[0]?.name ?? null;
-    }
-    const glance = root.createDiv({
-      cls: "los-atlas-glance"
-    });
-    glance.setAttrs({
-      role: "group",
-      "aria-label": "Choose a knowledge domain"
-    });
-    enableButtonGroupKeyboardNavigation(glance, "both");
-    for (const domain of domains) {
-      const selected = domain.name === this.domain;
-      const tile = glance.createEl(
-        "button",
-        {
-          cls: `los-atlas-tile is-clickable ${selected ? "is-selected" : ""}`,
-          attr: {
-            type: "button",
-            "aria-pressed": String(selected)
-          }
-        }
-      );
-      tile.createSpan({
-        cls: "los-atlas-tile-name",
-        text: humanLabel(domain.name)
-      });
-      const summaryParts = [
-        domain.modules.length ? plural(domain.modules.length, "module") : "",
-        domain.concepts.length ? plural(domain.concepts.length, "concept") : "",
-        domain.sources.length ? plural(domain.sources.length, "source") : "",
-        !domain.modules.length && !domain.concepts.length && !domain.sources.length ? plural(domain.shelves.length, "shelf", "shelves") : ""
-      ].filter((part) => Boolean(part));
-      tile.createSpan({
-        cls: "los-micro",
-        text: summaryParts.join(" \xB7 ")
-      });
-      tile.addEventListener(
-        "click",
-        () => {
-          this.domain = domain.name;
-          this.render();
-        }
-      );
-    }
-    const current = domains.find(
-      (row3) => row3.name === this.domain
+    filterTabs(
+      root,
+      "Which concepts to show",
+      [
+        ["shared", "Shared across modules"],
+        ["all", "All concepts"]
+      ],
+      this.scope,
+      (value) => {
+        this.scope = value;
+        this.render();
+      },
+      (value) => value === "shared" ? crossing.sharedRows.length : crossing.rows.length
     );
-    const body = root.createDiv({
-      cls: "los-atlas-body"
+    const rows = this.visibleRows(crossing);
+    if (!rows.length) {
+      empty(
+        root,
+        "No concept is carried by more than one module",
+        `${crossing.totalConcepts} concept(s) are mapped, each to a single module. Switch to All concepts to see them.`
+      );
+      this.fallbackAction(root);
+      return;
+    }
+    this.renderGrid(root, crossing, rows);
+    const selected = rows.find(
+      (row3) => row3.conceptId === this.concept
+    );
+    if (selected) {
+      this.renderConceptDetail(root, crossing, selected);
+    }
+    this.fallbackAction(root);
+  }
+  /**
+   * Concepts are rows and modules are columns, because a learner reads down
+   * the concept they are about to study and across to see who else wants it.
+   * Below the responsive breakpoint the grid restacks into per-concept cards —
+   * a horizontally scrolling table is unreadable on a narrow pane, and the
+   * information is the same either way.
+   */
+  renderGrid(root, crossing, rows) {
+    const wrap = root.createDiv({ cls: "los-crossing" });
+    wrap.setAttrs({
+      role: "group",
+      "aria-label": "Concepts by module"
     });
-    this.renderDomain(body, current, domains);
-    const mapActions = body.createDiv({ cls: "los-actions" });
+    enableButtonGroupKeyboardNavigation(wrap, "both");
+    wrap.style.setProperty(
+      "--los-crossing-columns",
+      String(crossing.columns.length)
+    );
+    const head = wrap.createDiv({ cls: "los-crossing-head" });
+    head.createDiv({
+      cls: "los-crossing-corner los-micro",
+      text: "Concept"
+    });
+    for (const column of crossing.columns) {
+      const cell = head.createDiv({ cls: "los-crossing-col" });
+      cell.toggleClass("is-actionable", column.actionable);
+      cell.createSpan({
+        cls: "los-crossing-col-name",
+        text: column.shortLabel
+      });
+      cell.createSpan({
+        cls: "los-micro",
+        text: `${column.conceptCount}`
+      });
+      cell.setAttrs({
+        title: column.actionable ? `${column.label} \u2014 current` : column.label
+      });
+    }
+    for (const row3 of rows) {
+      const line = wrap.createDiv({ cls: "los-crossing-row" });
+      line.toggleClass("is-selected", row3.conceptId === this.concept);
+      const label = line.createEl("button", {
+        cls: "los-crossing-concept is-clickable",
+        attr: { type: "button" }
+      });
+      label.createSpan({
+        cls: "los-crossing-concept-name",
+        text: row3.label
+      });
+      label.createSpan({
+        cls: "los-micro",
+        text: row3.moduleCount > 1 ? `${row3.moduleCount} modules` : "1 module"
+      });
+      label.addEventListener("click", () => this.select(row3.conceptId));
+      for (const column of crossing.columns) {
+        const cell = row3.cells.get(column.moduleId);
+        if (!cell) {
+          const blank = line.createDiv({ cls: "los-crossing-cell is-empty" });
+          blank.setAttrs({
+            "aria-label": `${row3.label} is not mapped in ${column.label}`,
+            "data-module-label": column.label
+          });
+          continue;
+        }
+        const filled = line.createEl("button", {
+          cls: "los-crossing-cell is-filled is-clickable",
+          attr: { type: "button" }
+        });
+        filled.createSpan({
+          cls: "los-crossing-mark",
+          text: String(cell.evidence.length)
+        });
+        filled.setAttrs({
+          "aria-label": `${row3.label} in ${column.label}: ${cell.evidence.length} piece(s) of evidence`,
+          title: `${column.label} \u2014 ${cell.evidence.length} piece(s) of evidence`,
+          "data-module-label": column.label
+        });
+        filled.addEventListener("click", () => this.select(row3.conceptId));
+      }
+    }
+  }
+  /**
+   * Secondary published context. These links explain where else the concept
+   * can be opened; they never create or strengthen a Module x Concept edge.
+   */
+  renderPublishedContext(parent, conceptId, conceptLabel) {
+    const context = buildConceptContext(this.plugin.store, conceptId);
+    if (!context.notes.length && !context.sources.length && !context.relations.length) {
+      return;
+    }
+    const wrap = parent.createDiv({ cls: "los-crossing-context" });
+    if (context.notes.length) {
+      const group = wrap.createDiv({ cls: "los-crossing-context-group" });
+      group.createEl("h3", { text: "Linked notes" });
+      for (const note of context.notes) {
+        const item = group.createEl("button", {
+          cls: "los-item is-clickable",
+          attr: { type: "button" }
+        });
+        item.createDiv({ cls: "los-item-title", text: asLabel(note) });
+        item.createDiv({ cls: "los-micro", text: "Explicit concept backlink" });
+        item.addEventListener("click", () => this.plugin.nav.openRecord(note));
+      }
+    }
+    if (context.sources.length) {
+      const group = wrap.createDiv({ cls: "los-crossing-context-group" });
+      group.createEl("h3", { text: "Source evaluations" });
+      for (const source of context.sources) {
+        const sourceId = asString(source.id);
+        if (!sourceId) {
+          continue;
+        }
+        const item = group.createEl("button", {
+          cls: "los-item is-clickable",
+          attr: { type: "button" }
+        });
+        item.createDiv({ cls: "los-item-title", text: asLabel(source) });
+        item.createDiv({ cls: "los-micro", text: "Explicit evaluation concept" });
+        item.addEventListener(
+          "click",
+          () => this.plugin.nav.openSourceDetail(sourceId)
+        );
+      }
+    }
+    if (context.relations.length) {
+      const group = wrap.createDiv({ cls: "los-crossing-context-group" });
+      group.createEl("h3", { text: "Concept relationships" });
+      for (const relation of context.relations) {
+        const relatedLabel = asLabel(relation.record);
+        const relationLabel = relation.relationType.replaceAll("-", " ");
+        const explanation = relation.direction === "outgoing" ? `${conceptLabel} ${relationLabel} ${relatedLabel}` : `${relatedLabel} ${relationLabel} ${conceptLabel}`;
+        const item = group.createEl("button", {
+          cls: "los-item is-clickable",
+          attr: { type: "button" }
+        });
+        item.createDiv({ cls: "los-item-title", text: relatedLabel });
+        item.createDiv({ cls: "los-micro", text: explanation });
+        item.addEventListener(
+          "click",
+          () => this.plugin.nav.openRecord(relation.record)
+        );
+      }
+    }
+  }
+  select(conceptId) {
+    const selected = this.concept === conceptId ? null : conceptId;
+    void this.plugin.nav.openAtlas(null, selected);
+  }
+  /**
+   * The drill-down. Everything here is already published — stages, units, the
+   * concept record itself — so this panel navigates rather than restating.
+   */
+  renderConceptDetail(root, crossing, row3) {
+    const body = section(
+      root,
+      row3.label,
+      row3.moduleCount > 1 ? `Taught in ${row3.moduleCount} modules. Each entry below is the authored tag that puts it there.` : "Taught in one module."
+    );
+    const record4 = this.plugin.store.get(row3.conceptId);
+    if (record4) {
+      const actions = body.createDiv({ cls: "los-actions" });
+      button(
+        actions,
+        "Open concept",
+        () => this.plugin.nav.openRecord(record4),
+        "quiet"
+      );
+      this.renderAliases(body, record4);
+    }
+    for (const column of crossing.columns) {
+      const cell = row3.cells.get(column.moduleId);
+      if (!cell) {
+        continue;
+      }
+      const group = body.createDiv({ cls: "los-crossing-evidence" });
+      const header = group.createDiv({ cls: "los-crossing-evidence-head" });
+      const moduleButton = header.createEl("button", {
+        cls: "los-crossing-evidence-module is-clickable",
+        attr: { type: "button" }
+      });
+      moduleButton.setText(column.label);
+      moduleButton.addEventListener(
+        "click",
+        () => this.plugin.nav.openModule(column.moduleId)
+      );
+      if (column.actionable) {
+        header.createSpan({ cls: "los-micro", text: "current" });
+      }
+      for (const evidence2 of cell.evidence) {
+        this.renderEvidence(group, evidence2);
+      }
+    }
+    this.renderPublishedContext(body, row3.conceptId, row3.label);
+  }
+  renderEvidence(parent, evidence2) {
+    const unit = this.plugin.store.get(evidence2.unit_id);
+    const unitLabel = unit ? asLabel(unit) : evidence2.unit_id;
+    const openable = evidence2.kind === "stage-concept" ? () => this.plugin.nav.openUnit(evidence2.unit_id, evidence2.stage_id) : () => this.plugin.nav.openUnit(evidence2.unit_id);
+    const item = parent.createEl("button", {
+      cls: "los-item is-clickable",
+      attr: { type: "button" }
+    });
+    item.addEventListener("click", openable);
+    const copy = item.createDiv({ cls: "los-item-copy" });
+    copy.createDiv({ cls: "los-item-title", text: unitLabel });
+    if (evidence2.kind === "stage-concept") {
+      const stage = this.plugin.store.get(evidence2.stage_id) ?? this.plugin.store.stage(evidence2.stage_id);
+      copy.createDiv({
+        cls: "los-micro",
+        text: stage ? `Stage tag \xB7 ${asLabel(stage)}` : `Stage tag \xB7 ${evidence2.stage_id}`
+      });
+    } else {
+      copy.createDiv({
+        cls: "los-micro",
+        text: `Reviewed knowledge-map node \xB7 ${evidence2.node_id}`
+      });
+    }
+  }
+  renderAliases(parent, record4) {
+    const aliases = Array.isArray(record4.aliases) ? record4.aliases.map((value) => asString(value)).filter((value) => Boolean(value)) : [];
+    if (!aliases.length) {
+      return;
+    }
+    parent.createDiv({
+      cls: "los-micro",
+      text: `Also called: ${aliases.join(" \xB7 ")}`
+    });
+  }
+  /**
+   * The generated textual atlas stays reachable, and stays a fallback. It is
+   * the human-operable copy (README, "without the operator"), not a second
+   * primary surface — two atlases with no rule for which to open is the
+   * confusion ADR-005 was written against.
+   */
+  fallbackAction(root) {
+    const actions = root.createDiv({ cls: "los-actions" });
     button(
-      mapActions,
-      "Open generated map file",
+      actions,
+      "Open generated domain map",
       () => this.plugin.openVaultPath("generated/domain-atlas.md"),
       "quiet"
     );
-  }
-  noteRow(parent, note) {
-    const row3 = parent.createEl(
-      "button",
-      {
-        cls: "los-item is-clickable",
-        attr: {
-          type: "button"
-        }
-      }
-    );
-    icon(
-      row3.createSpan(),
-      ICONS.note
-    );
-    const copy = row3.createSpan({
-      cls: "los-item-copy"
-    });
-    copy.createSpan({
-      text: asLabel(note)
-    });
-    const metadata = projectedMetadata([
-      note.role ? roleLabel(String(note.role)) : "",
-      note.state ? humanLabel(note.state) : ""
-    ]);
-    if (metadata) {
-      copy.createSpan({
-        cls: "los-micro",
-        text: metadata
-      });
-    }
-    const summary = asString(note.summary);
-    if (summary) {
-      copy.createSpan({
-        cls: "los-atlas-note-summary",
-        text: projectedExcerpt(summary, 150)
-      });
-    }
-    const path = asString(note.path);
-    row3.addEventListener(
-      "click",
-      () => {
-        if (path) {
-          void this.plugin.openAuthoredPath(
-            path
-          );
-        }
-      }
-    );
-    return row3;
-  }
-  renderCoveragePanel(parent, title, iconName, records, kind) {
-    const panel = parent.createDiv({ cls: "los-atlas-map-panel" });
-    const heading = panel.createDiv({ cls: "los-atlas-map-panel-head" });
-    icon(heading.createSpan(), iconName);
-    heading.createEl("h3", { text: title });
-    heading.createSpan({ cls: "los-atlas-count", text: String(records.length) });
-    if (!records.length) {
-      panel.createDiv({
-        cls: "los-atlas-panel-empty",
-        text: kind === "concept" ? "No named concepts are linked yet." : `No ${kind}s are linked yet.`
-      });
-      return;
-    }
-    const rows = records.slice().sort((left, right) => asLabel(left).localeCompare(asLabel(right))).slice(0, 5);
-    for (const record4 of rows) {
-      if (kind === "concept") {
-        const concept = panel.createDiv({ cls: "los-atlas-concept" });
-        icon(concept.createSpan(), ICONS.concept);
-        concept.createSpan({ text: asLabel(record4) });
-        continue;
-      }
-      const recordId = asString(record4.id);
-      const row3 = panel.createEl("button", {
-        cls: "los-atlas-map-link is-clickable",
-        attr: { type: "button" }
-      });
-      icon(row3.createSpan(), kind === "module" ? ICONS.module : ICONS.source);
-      const copy = row3.createSpan({ cls: "los-item-copy" });
-      copy.createSpan({ text: asLabel(record4) });
-      const context = kind === "module" ? projectedMetadata([record4.code, record4.kind ? humanLabel(record4.kind) : ""]) : humanLabel(record4.source_type || "source");
-      if (context) copy.createSpan({ cls: "los-micro", text: context });
-      row3.addEventListener("click", () => {
-        if (!recordId) return;
-        if (kind === "module") void this.plugin.nav.openModule(recordId);
-        else void this.plugin.nav.openSourceDetail(recordId);
-      });
-    }
-    if (records.length > rows.length) {
-      panel.createDiv({
-        cls: "los-atlas-more",
-        text: `+${records.length - rows.length} more`
-      });
-    }
-  }
-  renderConnections(parent, domain, domains) {
-    const crosswalks = domain.notes.filter(
-      (note) => note.role === "crosswalk"
-    );
-    const currentSourceIds = recordIds(domain.sources);
-    const currentConceptIds = recordIds(domain.concepts);
-    const currentModuleIds = recordIds(domain.modules);
-    const peers = domains.filter((candidate) => candidate.name !== domain.name).map((candidate) => {
-      const sources = intersectionSize(currentSourceIds, recordIds(candidate.sources));
-      const concepts = intersectionSize(currentConceptIds, recordIds(candidate.concepts));
-      const modules = intersectionSize(currentModuleIds, recordIds(candidate.modules));
-      return { candidate, sources, concepts, modules, score: sources + concepts + modules };
-    }).filter((peer) => peer.score > 0).sort((left, right) => right.score - left.score || left.candidate.name.localeCompare(right.candidate.name));
-    if (!crosswalks.length && !peers.length) return;
-    const wrap = section(
-      parent,
-      "Connections",
-      "Use a narrative bridge or jump to a neighbouring domain that shares learning material."
-    );
-    const grid = wrap.createDiv({ cls: "los-atlas-connection-grid" });
-    if (crosswalks.length) {
-      const card = grid.createDiv({ cls: "los-atlas-connection-card" });
-      card.createEl("h3", { text: "Narrative bridges" });
-      card.createDiv({
-        cls: "los-muted",
-        text: "These notes explain how the pieces fit together."
-      });
-      for (const note of crosswalks) this.noteRow(card, note);
-    }
-    if (peers.length) {
-      const card = grid.createDiv({ cls: "los-atlas-connection-card" });
-      card.createEl("h3", { text: "Connected domains" });
-      card.createDiv({
-        cls: "los-muted",
-        text: "Shared sources, concepts, or modules create these links."
-      });
-      for (const peer of peers.slice(0, 6)) {
-        const row3 = card.createEl("button", {
-          cls: "los-atlas-domain-link is-clickable",
-          attr: { type: "button" }
-        });
-        const copy = row3.createSpan({ cls: "los-item-copy" });
-        copy.createSpan({ text: humanLabel(peer.candidate.name) });
-        const shared = [
-          peer.modules ? plural(peer.modules, "module") : "",
-          peer.concepts ? plural(peer.concepts, "concept") : "",
-          peer.sources ? plural(peer.sources, "source") : ""
-        ].filter(Boolean).join(" \xB7 ");
-        copy.createSpan({ cls: "los-micro", text: `Shared: ${shared}` });
-        row3.createSpan({ cls: "los-atlas-arrow", text: "\u2192" });
-        row3.addEventListener("click", () => {
-          this.domain = peer.candidate.name;
-          this.render();
-        });
-      }
-    }
-  }
-  renderShelves(parent, domain) {
-    const wrap = section(
-      parent,
-      `Curated shelves (${domain.shelves.length})`,
-      "Purpose-built reading routes, kept ahead of the full note inventory."
-    );
-    if (!domain.shelves.length) {
-      empty(
-        wrap,
-        "No curated shelf yet",
-        "Sources are mapped above, but this domain does not have a reading route yet."
-      );
-      return;
-    }
-    const grid = wrap.createDiv({ cls: "los-atlas-shelf-grid" });
-    const shelves = domain.shelves.slice().sort((left, right) => asLabel(left).localeCompare(asLabel(right)));
-    for (const shelf of shelves) {
-      const card = grid.createDiv({ cls: "los-shelf-entry" });
-      const head = card.createEl("button", {
-        cls: "los-shelf-entry-title is-clickable",
-        attr: { type: "button" }
-      });
-      icon(head.createSpan(), shelf.type === "topic-pack" ? ICONS["topic-pack"] : ICONS.collection);
-      const copy = head.createSpan({ cls: "los-item-copy" });
-      copy.createSpan({ text: asLabel(shelf) });
-      copy.createSpan({
-        cls: "los-micro",
-        text: plural(asListLength(shelf.entries), "source")
-      });
-      const shelfId = asString(shelf.id);
-      head.addEventListener("click", () => {
-        if (shelfId) void this.plugin.nav.openLibrary(shelfId, String(shelf.type || "collection"));
-      });
-      const summary = asString(shelf.summary) || asString(shelf.purpose);
-      if (summary) {
-        card.createDiv({
-          cls: "los-shelf-why",
-          text: projectedExcerpt(summary, 220)
-        });
-      }
-    }
-  }
-  renderNoteInventory(parent, domain) {
-    const notes = domain.notes.filter((note) => note.role !== "crosswalk");
-    if (!notes.length) return;
-    const wrap = section(
-      parent,
-      "Reference notes",
-      "The complete inventory stays available without taking over the map."
-    );
-    const inventory = wrap.createEl("details", { cls: "los-atlas-inventory" });
-    inventory.createEl("summary", { text: `Open all ${plural(notes.length, "note")}` });
-    const body = inventory.createDiv({ cls: "los-atlas-inventory-body" });
-    const byRole = /* @__PURE__ */ new Map();
-    for (const note of notes) {
-      const role = String(note.role || "synthesis");
-      const rows = byRole.get(role) ?? [];
-      rows.push(note);
-      byRole.set(role, rows);
-    }
-    const roles = [...byRole.keys()].sort((left, right) => {
-      const rank = (role) => ATLAS_ROLE_ORDER.indexOf(role) + 1 || 99;
-      return rank(left) - rank(right) || left.localeCompare(right);
-    });
-    for (const role of roles) {
-      const rows = (byRole.get(role) ?? []).slice().sort((left, right) => asLabel(left).localeCompare(asLabel(right)));
-      const group = body.createEl("details", { cls: "los-atlas-group" });
-      group.createEl("summary", { text: `${roleLabel(role)} (${rows.length})` });
-      for (const note of rows) this.noteRow(group, note);
-    }
-  }
-  renderDomain(parent, domain, domains) {
-    if (!domain) return;
-    const header = parent.createDiv({ cls: "los-atlas-domain-head" });
-    const copy = header.createDiv({ cls: "los-atlas-domain-copy" });
-    copy.createEl("h2", { text: `${humanLabel(domain.name)} map` });
-    copy.createEl("p", {
-      text: [
-        plural(domain.modules.length, "module"),
-        plural(domain.concepts.length, "concept"),
-        plural(domain.sources.length, "source"),
-        plural(domain.shelves.length, "curated shelf", "curated shelves")
-      ].join(" \xB7 ")
-    });
-    const actions = header.createDiv({ cls: "los-actions" });
-    button(
-      actions,
-      "Browse domain in Library",
-      () => this.plugin.nav.openLibraryFiltered("note", domain.name),
-      "quiet"
-    );
-    const coverage = parent.createDiv({ cls: "los-atlas-map-grid" });
-    this.renderCoveragePanel(coverage, "Modules", ICONS.module, domain.modules, "module");
-    this.renderCoveragePanel(coverage, "Concepts", ICONS.concept, domain.concepts, "concept");
-    this.renderCoveragePanel(coverage, "Sources", ICONS.source, domain.sources, "source");
-    this.renderConnections(parent, domain, domains);
-    this.renderShelves(parent, domain);
-    this.renderNoteInventory(parent, domain);
   }
 };
 
@@ -7212,7 +7161,7 @@ var NavView = class extends import_obsidian10.ItemView {
     const secondary = more.createDiv({ cls: "los-nav-secondary" });
     enableButtonGroupKeyboardNavigation(secondary, "vertical");
     this.nav(secondary, "plus", "Capture", "capture", () => this.plugin.nav.openCapture());
-    this.nav(secondary, "map", "Domain atlas", "atlas", () => this.plugin.nav.openAtlas());
+    this.nav(secondary, "map", "Concept atlas", "atlas", () => this.plugin.nav.openAtlas());
     this.nav(
       secondary,
       "shield",
@@ -11184,7 +11133,7 @@ function registerApplication(plugin) {
   plugin.addCommand({ id: "open-projects", name: "Open Projects", callback: () => plugin.nav.openProjects() });
   plugin.addCommand({ id: "open-library", name: "Open Library", callback: () => plugin.nav.openLibrary() });
   plugin.addCommand({ id: "open-global-search", name: "Search LearningOS", callback: () => plugin.nav.openGlobalSearch() });
-  plugin.addCommand({ id: "open-atlas", name: "Open Domain atlas", callback: () => plugin.nav.openAtlas() });
+  plugin.addCommand({ id: "open-atlas", name: "Open Module \xD7 Concept atlas", callback: () => plugin.nav.openAtlas() });
   plugin.addCommand({ id: "open-garden", name: "Open Garden", callback: () => plugin.nav.openGarden() });
   plugin.addCommand({ id: "open-review", name: "Open Review", callback: () => plugin.nav.openReview() });
   plugin.addCommand({ id: "rebuild-projection", name: "Validate and rebuild projection", callback: () => plugin.generate() });
@@ -11530,8 +11479,13 @@ var AppNavigator = class {
   openLibraryFiltered(recordType, domain = "") {
     return this.router.navigate({ name: "legacy-library-list", recordType, domain, query: "" });
   }
-  openAtlas(domain = null) {
-    return this.router.navigate({ name: "atlas", domain });
+  openAtlas(domain = null, concept = null) {
+    const current = this.router.snapshot().current;
+    const changingAtlasState = current?.name === "atlas";
+    return this.router.navigate(
+      { name: "atlas", domain, concept },
+      { pushHistory: !changingAtlasState }
+    );
   }
   openShelving(unitId = null) {
     return this.router.navigate({ name: "shelving", unitId });
@@ -11643,7 +11597,7 @@ var ApplicationRouter = class {
     if (type === VIEW_UNIT) return { name: "unit", unitId: asText2(state.unitId), stageId: asNullableText(state.stageId) };
     if (type === VIEW_PROJECT) return state.projectId ? { name: "project-detail", projectId: asText2(state.projectId), tab: asProjectDetailTab(state.tab) } : { name: "project-list", query: asText2(state.query) };
     if (type === VIEW_LIBRARY) return this.libraryRouteFromState(state);
-    if (type === VIEW_ATLAS) return { name: "atlas", domain: asNullableText(state.domain) };
+    if (type === VIEW_ATLAS) return { name: "atlas", domain: asNullableText(state.domain), concept: asNullableText(state.concept) };
     if (type === VIEW_SHELVING) return { name: "shelving", unitId: asNullableText(state.unitId) };
     if (type === VIEW_BOUNDARY) return { name: "boundary", boundaryId: asText2(state.boundaryId) };
     if (type === VIEW_REVIEW) return { name: "review" };
@@ -11821,7 +11775,7 @@ var ApplicationRouter = class {
         return this.descriptor(compatible);
       }
       case "atlas":
-        return { type: VIEW_ATLAS, state: { domain: route.domain || null }, nav: "atlas" };
+        return { type: VIEW_ATLAS, state: { domain: route.domain || null, concept: route.concept || null }, nav: "atlas" };
       case "shelving":
         return { type: VIEW_SHELVING, state: { unitId: route.unitId || null }, nav: "review" };
       case "boundary":
@@ -13212,6 +13166,10 @@ var ManifestStore = class {
   }
   topicPacksForGroup(groupId) {
     return this.topicPacks().filter((row3) => (row3.thematic_group_ids || []).includes(groupId));
+  }
+  /** ADR-015: the Module x Concept crossing, evidence included. */
+  moduleConceptEdges() {
+    return this.rows("module_concept_edges");
   }
   units() {
     return this.rows("units");

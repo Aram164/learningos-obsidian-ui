@@ -16,7 +16,9 @@ class El {
     this.classes = new Set();
     this.text = '';
     this._attrs = {};
-    this.style = {};
+    this.style = {
+      setProperty(name, value) { this[name] = String(value); },
+    };
     this.value = '';
     this.listeners = {};
     this.classList = {

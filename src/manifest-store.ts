@@ -2,6 +2,7 @@ import { CONTRACT_VERSION } from './constants';
 import { assertManifest } from './contracts/manifest';
 import type {
   Manifest,
+  ModuleConceptEdge,
   ModuleProgress,
   ProjectRelationship,
   ProjectionRecord,
@@ -245,6 +246,11 @@ export class ManifestStore {
   topicPacksForGroup(groupId: string): ProjectionRecord[] {
     return this.topicPacks().filter((row) => (row.thematic_group_ids || []).includes(groupId));
   }
+  /** ADR-015: the Module x Concept crossing, evidence included. */
+  moduleConceptEdges(): ModuleConceptEdge[] {
+    return this.rows('module_concept_edges') as unknown as ModuleConceptEdge[];
+  }
+
   units() { return this.rows('units'); }
   unitNoteSections(unitId: string): UnitNoteSection[] {
     return [...(this.data?.units.find((unit) => unit.id === unitId)?.note_sections || [])];

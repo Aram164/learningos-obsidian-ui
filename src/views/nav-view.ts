@@ -106,7 +106,7 @@ export class NavView extends ItemView {
     const secondary = more.createDiv({ cls: 'los-nav-secondary' });
     enableButtonGroupKeyboardNavigation(secondary, 'vertical');
     this.nav(secondary, 'plus', 'Capture', 'capture', () => this.plugin.nav.openCapture());
-    this.nav(secondary, 'map', 'Domain atlas', 'atlas', () => this.plugin.nav.openAtlas());
+    this.nav(secondary, 'map', 'Concept atlas', 'atlas', () => this.plugin.nav.openAtlas());
     this.nav(secondary, 'shield', 'Future Master’s Planning', 'masters',
       () => this.plugin.nav.openBoundary('program-masters-planning'));
     this.nav(secondary, 'activity', 'Diagnostics', 'diagnostics', () => this.plugin.nav.openDiagnostics());

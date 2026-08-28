@@ -230,24 +230,24 @@ function routerPlugin(settings = {}) {
       'Job modules keep the same module tabs as every other module');
   });
 
-  await test('ManifestStore loads a contract-valid v7 fixture', async () => {
+  await test('ManifestStore loads a contract-valid v8 fixture', async () => {
     const store = new ManifestStore(manifestApp());
     assert.equal(await store.load(), true);
     assert.equal(store.ready, true);
-    assert.equal(store.contractVersion, 7);
+    assert.equal(store.contractVersion, 8);
     assert.ok(store.records.length > 0);
   });
 
   await test('ManifestStore rejects an old contract before exposing data', async () => {
     const store = new ManifestStore(manifestApp((text) =>
-      text.replace('"contract_version": 7', '"contract_version": 1')));
+      text.replace('"contract_version": 8', '"contract_version": 1')));
     assert.equal(await store.load(), false);
     assert.equal(store.ready, false);
     assert.equal(store.data, null);
-    assert.match(store.error, /requires contract 7/);
+    assert.match(store.error, /requires contract 8/);
   });
 
-  await test('ManifestStore rejects a v7 manifest with a different schema byte hash', async () => {
+  await test('ManifestStore rejects a v8 manifest with a different schema byte hash', async () => {
     const store = new ManifestStore(manifestApp((text) => {
       const manifest = JSON.parse(text);
       manifest._generated.schema_sha256 = `sha256:${'0'.repeat(64)}`;
@@ -259,11 +259,33 @@ function routerPlugin(settings = {}) {
     assert.match(store.error, /Unsupported manifest schema/);
   });
 
+  await test('ManifestStore rejects an Atlas edge without evidence', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest.module_concept_edges[0].evidence = [];
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), false);
+    assert.equal(store.data, null);
+    assert.match(store.error, /at least one evidence item/);
+  });
+
+  await test('ManifestStore rejects an undeclared Atlas evidence field', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest.module_concept_edges[0].evidence[0].confidence = 1;
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), false);
+    assert.equal(store.data, null);
+    assert.match(store.error, /stage-concept evidence/);
+  });
+
   await test('ManifestStore clears the prior snapshot after a reload failure', async () => {
     let valid = true;
     const store = new ManifestStore(manifestApp((text) => valid
       ? text
-      : text.replace('"contract_version": 7', '"contract_version": 1')));
+      : text.replace('"contract_version": 8', '"contract_version": 1')));
     assert.equal(await store.load(), true);
     assert.ok(store.records.length > 0);
     valid = false;
@@ -291,7 +313,7 @@ function routerPlugin(settings = {}) {
     });
   });
 
-  await test('ManifestStore resolves approved material synthesis only through the v7 index', async () => {
+  await test('ManifestStore resolves approved material synthesis only through the v8 index', async () => {
     const store = new ManifestStore(manifestApp());
     assert.equal(await store.load(), true);
     const synthesis = store.materialSynthesisForUnit('unit-fixture-sad-l04');
@@ -323,17 +345,17 @@ function routerPlugin(settings = {}) {
     assert.match(store.error, /UnitMaterialSynthesisV1/);
   });
 
-  await test('ManifestStore rejects extension fields in closed v7 record rows', async () => {
+  await test('ManifestStore rejects extension fields in closed v8 record rows', async () => {
     const store = new ManifestStore(manifestApp((text) => {
       const manifest = JSON.parse(text);
       manifest.records[0].invented_projection_field = true;
       return JSON.stringify(manifest);
     }));
     assert.equal(await store.load(), false);
-    assert.match(store.error, /closed v7 record union/);
+    assert.match(store.error, /closed v8 record union/);
   });
 
-  await test('ManifestStore rejects malformed secondary v7 surfaces before exposing data', async () => {
+  await test('ManifestStore rejects malformed secondary v8 surfaces before exposing data', async () => {
     const corruptions = [
       ['academic deadlines', (manifest) => manifest.academic_deadlines.push(42)],
       ['artifact revisions', (manifest) => { manifest.artifact_revisions.bad = 'oops'; }],
@@ -377,7 +399,7 @@ function routerPlugin(settings = {}) {
     assert.equal(destination, 'home');
   });
 
-  await test('ManifestStore excludes prospective and boundary rows from normal v7', async () => {
+  await test('ManifestStore excludes prospective and boundary rows from normal v8', async () => {
     const store = new ManifestStore(manifestApp((text) => {
       const manifest = JSON.parse(text);
       manifest.programs.push({
@@ -388,7 +410,7 @@ function routerPlugin(settings = {}) {
       return JSON.stringify(manifest);
     }));
     assert.equal(await store.load(), false);
-    assert.match(store.error, /closed v7 projection/);
+    assert.match(store.error, /closed v8 projection/);
   });
 
   await test('bounded health, archive, and prospective-planning decoders fail closed', async () => {
@@ -650,7 +672,7 @@ function routerPlugin(settings = {}) {
       return JSON.stringify(manifest);
     }));
     assert.equal(await store.load(), false);
-    assert.match(store.error, /top-level keys do not match contract v7/);
+    assert.match(store.error, /top-level keys do not match contract v8/);
     assert.deepEqual(store.units(), []);
   });
 

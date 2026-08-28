@@ -35,7 +35,7 @@ The current primary navigation is **Home · Modules · Learn · Projects · Libr
 - `npm run typecheck` checks all runtime source files. The versioned manifest
   contract remains independently strict-checked before projected data reaches
   the legacy view layer.
-- The app reads only atomic `generated/manifest.json` contract v7. It never
+- The app reads only atomic `generated/manifest.json` contract v8. It never
   parses canonical Markdown/YAML and remains useful when Python is offline.
   The contract is declared by the producer — core's
   `system/contracts/manifest-contract.yaml` — and the single

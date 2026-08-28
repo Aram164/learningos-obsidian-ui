@@ -1,9 +1,9 @@
 {
   "_generated": {
-    "contract_version": 7,
+    "contract_version": 8,
     "generated_at": "2099-04-01",
-    "generator": "synthetic-fixture-v7",
-    "schema_sha256": "sha256:77819b5608c12a1e9cc7f326b14d858990df01824753b6ecdadf2e6c78b392db",
+    "generator": "synthetic-fixture-v8",
+    "schema_sha256": "sha256:f08b0e5b4f131cff0a95bfc87d95863ae691a698c7bbf1d5e96d4da0fee03b10",
     "snapshot_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "source_dirty": false,
     "source_fingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
@@ -121,12 +121,29 @@
   },
   "backlinks": {
     "concept_relations": {
-      "concept-bedingte-wahrscheinlichkeit": {
+      "concept-bayes": {
         "incoming": [],
+        "outgoing": [
+          {
+            "to": "concept-bedingte-wahrscheinlichkeit",
+            "type": "builds-on"
+          }
+        ]
+      },
+      "concept-bedingte-wahrscheinlichkeit": {
+        "incoming": [
+          {
+            "from": "concept-bayes",
+            "type": "builds-on"
+          }
+        ],
         "outgoing": []
       }
     },
     "concept_to_notes": {
+      "concept-bayes": [
+        "note-fixture-probability"
+      ],
       "concept-bedingte-wahrscheinlichkeit": [
         "note-fixture-probability"
       ]
@@ -226,6 +243,33 @@
         "unit-fixture-sad-l04"
       ]
     },
+    "concept_to_modules": {
+      "concept-bayes": [
+        "module-fixture-aml",
+        "module-fixture-m2"
+      ],
+      "concept-bedingte-wahrscheinlichkeit": [
+        "module-fixture-m2"
+      ]
+    },
+    "concept_to_units": {
+      "concept-bayes": [
+        "unit-fixture-aml-l04",
+        "unit-fixture-sad-l04"
+      ],
+      "concept-bedingte-wahrscheinlichkeit": [
+        "unit-fixture-sad-l04"
+      ]
+    },
+    "module_to_concepts": {
+      "module-fixture-aml": [
+        "concept-bayes"
+      ],
+      "module-fixture-m2": [
+        "concept-bayes",
+        "concept-bedingte-wahrscheinlichkeit"
+      ]
+    },
     "module_to_units": {
       "module-fixture-aml": [
         "unit-fixture-aml-l03",
@@ -280,13 +324,12 @@
         "unit-fixture-aml-l04"
       ]
     },
-    "concept_to_units": {
-      "concept-bedingte-wahrscheinlichkeit": [
-        "unit-fixture-sad-l04"
-      ]
-    },
     "unit_to_concepts": {
+      "unit-fixture-aml-l04": [
+        "concept-bayes"
+      ],
       "unit-fixture-sad-l04": [
+        "concept-bayes",
         "concept-bedingte-wahrscheinlichkeit"
       ]
     },
@@ -312,6 +355,44 @@
       ]
     }
   },
+  "module_concept_edges": [
+    {
+      "module_id": "module-fixture-aml",
+      "concept_id": "concept-bayes",
+      "evidence": [
+        {
+          "kind": "stage-concept",
+          "unit_id": "unit-fixture-aml-l04",
+          "study_map_id": "study-map-fixture-aml-l04",
+          "stage_id": "stage-fixture-aml-bayes"
+        }
+      ]
+    },
+    {
+      "module_id": "module-fixture-m2",
+      "concept_id": "concept-bayes",
+      "evidence": [
+        {
+          "kind": "stage-concept",
+          "unit_id": "unit-fixture-sad-l04",
+          "study_map_id": "study-map-fixture-sad-l04",
+          "stage_id": "stage-fixture-conditioning"
+        }
+      ]
+    },
+    {
+      "module_id": "module-fixture-m2",
+      "concept_id": "concept-bedingte-wahrscheinlichkeit",
+      "evidence": [
+        {
+          "kind": "stage-concept",
+          "unit_id": "unit-fixture-sad-l04",
+          "study_map_id": "study-map-fixture-sad-l04",
+          "stage_id": "stage-fixture-conditioning"
+        }
+      ]
+    }
+  ],
   "module_source_maps": [
     {
       "id": "source-map-fixture-m2",
@@ -683,7 +764,8 @@
             "first-year undergraduates"
           ],
           "concepts": [
-            "concept-fixture-conditioning"
+            "concept-bayes",
+            "concept-bedingte-wahrscheinlichkeit"
           ],
           "level": "introductory",
           "prerequisites": [],
@@ -836,6 +918,7 @@
       "attachments": [],
       "authorship": null,
       "concepts": [
+        "concept-bayes",
         "concept-bedingte-wahrscheinlichkeit"
       ],
       "contexts": [
@@ -1164,6 +1247,7 @@
     {
       "attachments": [],
       "concepts": [
+        "concept-bayes",
         "concept-bedingte-wahrscheinlichkeit"
       ],
       "done_when": [
@@ -1267,6 +1351,28 @@
       "title": "Classification scope",
       "unit_id": "unit-fixture-aml-l04",
       "working_note": "curriculum/fixture/aml-l04/stages/stage-aml-l04/notes.md"
+    },
+    {
+      "attachments": [],
+      "concepts": [
+        "concept-bayes"
+      ],
+      "done_when": [
+        "State the prior, likelihood, and posterior used in the fixture decision."
+      ],
+      "id": "stage-fixture-aml-bayes",
+      "module_id": "module-fixture-aml",
+      "notes_text": "",
+      "notes_updated": null,
+      "objective": "Apply Bayes theorem to one explicitly synthetic classification decision.",
+      "resources": [],
+      "scope_triage": "required-now",
+      "source_feedback": [],
+      "status": "pending",
+      "study_map_id": "study-map-fixture-aml-l04",
+      "title": "Bayes decision rule",
+      "unit_id": "unit-fixture-aml-l04",
+      "working_note": "curriculum/fixture/aml-l04/stages/stage-fixture-aml-bayes/notes.md"
     },
     {
       "attachments": [],
@@ -1382,6 +1488,7 @@
         {
           "attachments": [],
           "concepts": [
+            "concept-bayes",
             "concept-bedingte-wahrscheinlichkeit"
           ],
           "done_when": [
@@ -1522,6 +1629,25 @@
           "status": "active",
           "title": "Classification scope",
           "working_note": "curriculum/fixture/aml-l04/stages/stage-aml-l04/notes.md"
+        },
+        {
+          "attachments": [],
+          "concepts": [
+            "concept-bayes"
+          ],
+          "done_when": [
+            "State the prior, likelihood, and posterior used in the fixture decision."
+          ],
+          "id": "stage-fixture-aml-bayes",
+          "notes_text": "",
+          "notes_updated": null,
+          "objective": "Apply Bayes theorem to one explicitly synthetic classification decision.",
+          "resources": [],
+          "scope_triage": "required-now",
+          "source_feedback": [],
+          "status": "pending",
+          "title": "Bayes decision rule",
+          "working_note": "curriculum/fixture/aml-l04/stages/stage-fixture-aml-bayes/notes.md"
         }
       ],
       "source_plan": {

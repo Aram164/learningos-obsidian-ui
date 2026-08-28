@@ -63,7 +63,7 @@ export type ApplicationRouteV1 =
       facet?: string;
       domain?: string;
     }
-  | { name: "atlas"; domain?: string | null }
+  | { name: "atlas"; domain?: string | null; concept?: string | null }
   | { name: "shelving"; unitId?: string | null }
   | { name: "boundary"; boundaryId: string };
 

@@ -14,7 +14,7 @@
  * The module and type names are deliberately stable. Contract version is data:
  * a bump changes this constant and the mirrored lock, not every import path.
  */
-export const MANIFEST_CONTRACT_VERSION = 7 as const;
+export const MANIFEST_CONTRACT_VERSION = 8 as const;
 import {
   validAcademicDeadline,
   validAiActions,
@@ -42,7 +42,7 @@ import {
   validTopicPack,
 } from './manifest-records';
 
-export const MANIFEST_SCHEMA_SHA256 = 'sha256:77819b5608c12a1e9cc7f326b14d858990df01824753b6ecdadf2e6c78b392db' as const;
+export const MANIFEST_SCHEMA_SHA256 = 'sha256:f08b0e5b4f131cff0a95bfc87d95863ae691a698c7bbf1d5e96d4da0fee03b10' as const;
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -135,6 +135,8 @@ export interface ManifestIndexes extends JsonRecord {
   unit_to_material_synthesis: Record<string, string>;
   unit_to_concepts: Record<string, string[]>;
   concept_to_units: Record<string, string[]>;
+  module_to_concepts: Record<string, string[]>;
+  concept_to_modules: Record<string, string[]>;
   source_to_modules: Record<string, string[]>;
   source_to_units: Record<string, string[]>;
 }
@@ -375,6 +377,32 @@ export interface MaterialSynthesisCompleteness extends JsonRecord {
   duplicate_route_ids: readonly string[];
 }
 
+/**
+ * One cell of the Module x Concept crossing, and why it is filled (ADR-015).
+ *
+ * The evidence is not diagnostics. Core refuses to publish an edge without it,
+ * because an unexplained cell is a claim the learner has to take on faith —
+ * and this projection makes claims about how to spend weeks of study.
+ */
+export type ModuleConceptEvidence =
+  | {
+      readonly kind: 'stage-concept';
+      readonly unit_id: string;
+      readonly study_map_id: string;
+      readonly stage_id: string;
+    }
+  | {
+      readonly kind: 'knowledge-node';
+      readonly unit_id: string;
+      readonly node_id: string;
+    };
+
+export interface ModuleConceptEdge extends JsonRecord {
+  module_id: string;
+  concept_id: string;
+  evidence: readonly ModuleConceptEvidence[];
+}
+
 export interface GeneratedMetadata extends JsonRecord {
   contract_version: typeof MANIFEST_CONTRACT_VERSION;
   schema_sha256: typeof MANIFEST_SCHEMA_SHA256;
@@ -396,6 +424,7 @@ export interface Manifest extends JsonRecord {
   garden_entries: readonly ProjectionRecord[];
   review_items: readonly ProjectionRecord[];
   indexes: ManifestIndexes;
+  module_concept_edges: readonly ModuleConceptEdge[];
   module_source_maps: readonly ProjectionRecord[];
   modules: readonly ModuleRecord[];
   programs: readonly ProgramRecord[];
@@ -632,20 +661,21 @@ export function assertManifest(value: unknown): asserts value is Manifest {
   }
   if (!exactKeys(value, [
     "_generated", "academic_deadlines", "ai_actions", "artifact_revisions",
-    "backlinks", "counts", "garden_entries", "indexes", "module_source_maps",
+    "backlinks", "counts", "garden_entries", "indexes",
+    "module_concept_edges", "module_source_maps",
     "modules", "programs", "progress", "project_aliases", "project_relationships",
     "projects", "records", "relations", "resume_pointer",
     "review_items", "semesters", "stages", "study_maps", "thematic_groups",
     "topic_packs", "topics", "unit_material_syntheses", "units",
   ])) {
-    throw new TypeError("Manifest top-level keys do not match contract v7.");
+    throw new TypeError("Manifest top-level keys do not match contract v8.");
   }
   const generated = value._generated;
   if (!exactKeys(generated, [
     "contract_version", "generated_at", "generator", "schema_sha256",
     "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning",
   ])) {
-    throw new TypeError("Manifest _generated keys do not match contract v7.");
+    throw new TypeError("Manifest _generated keys do not match contract v8.");
   }
   if (generated.contract_version !== MANIFEST_CONTRACT_VERSION) {
     throw new TypeError(
@@ -665,7 +695,7 @@ export function assertManifest(value: unknown): asserts value is Manifest {
     || !/^[a-f0-9]{64}$/.test(generated.source_fingerprint)
     || !(generated.source_revision === null || typeof generated.source_revision === "string")
     || typeof generated.warning !== "string") {
-    throw new TypeError("Manifest _generated metadata does not match contract v7.");
+    throw new TypeError("Manifest _generated metadata does not match contract v8.");
   }
 
   for (const key of [
@@ -692,75 +722,75 @@ export function assertManifest(value: unknown): asserts value is Manifest {
   }
 
   if (!validAiActions(value.ai_actions)) {
-    throw new TypeError("Manifest ai_actions must match the closed v7 projection.");
+    throw new TypeError("Manifest ai_actions must match the closed v8 projection.");
   }
   if (!(value.academic_deadlines as unknown[]).every(validAcademicDeadline)) {
-    throw new TypeError("Manifest academic deadlines must match the closed v7 projection.");
+    throw new TypeError("Manifest academic deadlines must match the closed v8 projection.");
   }
   if (!(value.garden_entries as unknown[]).every(validGardenEntry)) {
-    throw new TypeError("Manifest Garden rows must match the closed v7 projection.");
+    throw new TypeError("Manifest Garden rows must match the closed v8 projection.");
   }
   if (!(value.relations as unknown[]).every(validRelation)) {
-    throw new TypeError("Manifest relations must match the closed v7 projection.");
+    throw new TypeError("Manifest relations must match the closed v8 projection.");
   }
   if (!(value.review_items as unknown[]).every(validReviewItem)) {
-    throw new TypeError("Manifest review rows must match the closed v7 projection.");
+    throw new TypeError("Manifest review rows must match the closed v8 projection.");
   }
   if (!(value.semesters as unknown[]).every(validSemester)) {
-    throw new TypeError("Manifest semesters must match the closed v7 projection.");
+    throw new TypeError("Manifest semesters must match the closed v8 projection.");
   }
   if (!(value.thematic_groups as unknown[]).every(validThematicGroup)) {
-    throw new TypeError("Manifest thematic groups must match the closed v7 projection.");
+    throw new TypeError("Manifest thematic groups must match the closed v8 projection.");
   }
   if (!(value.topic_packs as unknown[]).every(validTopicPack)) {
-    throw new TypeError("Manifest topic packs must match the closed v7 projection.");
+    throw new TypeError("Manifest topic packs must match the closed v8 projection.");
   }
   if (!(value.topics as unknown[]).every(validTopic)) {
-    throw new TypeError("Manifest topics must match the closed v7 projection.");
+    throw new TypeError("Manifest topics must match the closed v8 projection.");
   }
   for (const module of value.modules as unknown[]) {
     if (!validModuleRecord(module)) {
-      throw new TypeError("Manifest module rows must match the closed v7 projection.");
+      throw new TypeError("Manifest module rows must match the closed v8 projection.");
     }
   }
   for (const program of value.programs as unknown[]) {
     if (!validProgramRecord(program)) {
-      throw new TypeError("Manifest program rows must match the closed v7 projection.");
+      throw new TypeError("Manifest program rows must match the closed v8 projection.");
     }
   }
   for (const project of value.projects as unknown[]) {
     if (!validProjectRecord(project)) {
-      throw new TypeError("Manifest project rows must match the closed v7 projection.");
+      throw new TypeError("Manifest project rows must match the closed v8 projection.");
     }
   }
   for (const relationship of value.project_relationships as unknown[]) {
     if (!validProjectRelationship(relationship)) {
-      throw new TypeError("Manifest project relationships must match the closed v7 projection.");
+      throw new TypeError("Manifest project relationships must match the closed v8 projection.");
     }
   }
   for (const sourceMap of value.module_source_maps as unknown[]) {
     if (!validModuleSourceMap(sourceMap)) {
-      throw new TypeError("Manifest module source maps must match the closed v7 projection.");
+      throw new TypeError("Manifest module source maps must match the closed v8 projection.");
     }
   }
   for (const unit of value.units as unknown[]) {
     if (!validProjectedUnit(unit)) {
-      throw new TypeError("Manifest unit rows must match the closed v7 projection.");
+      throw new TypeError("Manifest unit rows must match the closed v8 projection.");
     }
   }
   for (const studyMap of value.study_maps as unknown[]) {
     if (!validStudyMap(studyMap)) {
-      throw new TypeError("Manifest study maps must match the closed v7 projection.");
+      throw new TypeError("Manifest study maps must match the closed v8 projection.");
     }
   }
   for (const stage of value.stages as unknown[]) {
     if (!validFlatStage(stage)) {
-      throw new TypeError("Manifest flat stages must match the closed v7 projection.");
+      throw new TypeError("Manifest flat stages must match the closed v8 projection.");
     }
   }
   for (const record of value.records as unknown[]) {
     if (!validProjectedRecord(record, validMaterialSynthesis)) {
-      throw new TypeError("Manifest records must match the closed v7 record union.");
+      throw new TypeError("Manifest records must match the closed v8 record union.");
     }
   }
 
@@ -774,19 +804,56 @@ export function assertManifest(value: unknown): asserts value is Manifest {
     throw new TypeError("Manifest artifact revisions must map to non-negative integers.");
   }
   if (!validBacklinks(value.backlinks)) {
-    throw new TypeError("Manifest backlinks must match the closed v7 projection.");
+    throw new TypeError("Manifest backlinks must match the closed v8 projection.");
   }
   if (!validCounts(value.counts)) {
-    throw new TypeError("Manifest counts must match the closed v7 projection.");
+    throw new TypeError("Manifest counts must match the closed v8 projection.");
   }
   if (!validProgress(value.progress)) {
-    throw new TypeError("Manifest progress must match the closed v7 projection.");
+    throw new TypeError("Manifest progress must match the closed v8 projection.");
   }
   if (!validStringMap(value.project_aliases)) {
     throw new TypeError("Manifest project aliases must map to strings.");
   }
   if (!validResumePointer(value.resume_pointer)) {
-    throw new TypeError("Manifest resume pointer must match the closed v7 projection.");
+    throw new TypeError("Manifest resume pointer must match the closed v8 projection.");
+  }
+
+  const edges = value.module_concept_edges;
+  if (!Array.isArray(edges)) {
+    throw new TypeError("Manifest field module_concept_edges must be an array.");
+  }
+  for (const edge of edges as unknown[]) {
+    if (!isRecord(edge) || !exactKeys(edge, ["module_id", "concept_id", "evidence"])) {
+      throw new TypeError("Manifest module_concept_edges rows must be {module_id, concept_id, evidence}.");
+    }
+    if (!identifier(edge.module_id, "module-") || !identifier(edge.concept_id, "concept-")) {
+      throw new TypeError("Manifest module_concept_edges rows must name a module and a concept.");
+    }
+    if (!Array.isArray(edge.evidence) || edge.evidence.length === 0) {
+      // An edge with no evidence is an inferred edge. Core will not emit one;
+      // failing closed here means the UI can never render an unexplained cell.
+      throw new TypeError("Manifest module_concept_edges rows must carry at least one evidence item.");
+    }
+    for (const item of edge.evidence as unknown[]) {
+      if (!isRecord(item) || !identifier(item.unit_id, "unit-")) {
+        throw new TypeError("Manifest module_concept_edges evidence must name a unit.");
+      }
+      if (item.kind === "stage-concept") {
+        if (!exactKeys(item, ["kind", "unit_id", "study_map_id", "stage_id"])
+          || !identifier(item.study_map_id, "study-map-")
+          || !identifier(item.stage_id, "stage-")) {
+          throw new TypeError("Manifest stage-concept evidence must name its study map and stage.");
+        }
+      } else if (item.kind === "knowledge-node") {
+        if (!exactKeys(item, ["kind", "unit_id", "node_id"])
+          || !identifier(item.node_id, "knowledge-")) {
+          throw new TypeError("Manifest knowledge-node evidence must name its node.");
+        }
+      } else {
+        throw new TypeError(`Unknown module_concept_edges evidence kind ${String(item.kind)}.`);
+      }
+    }
   }
 
   const indexes = value.indexes;
@@ -795,13 +862,14 @@ export function assertManifest(value: unknown): asserts value is Manifest {
   }
 
   if (!exactKeys(indexes, [
-    "component_to_units", "concept_to_units", "module_to_units", "project_aliases",
+    "component_to_units", "concept_to_modules", "concept_to_units",
+    "module_to_concepts", "module_to_units", "project_aliases",
     "project_to_relationships", "project_to_units", "project_to_workspaces",
     "source_to_modules", "source_to_units", "unit_to_concepts",
     "unit_to_material_synthesis", "unit_to_study_map", "workspace_to_modules",
     "workspace_to_units",
   ])) {
-    throw new TypeError("Manifest index keys do not match contract v7.");
+    throw new TypeError("Manifest index keys do not match contract v8.");
   }
 
   for (const key of [
@@ -818,7 +886,8 @@ export function assertManifest(value: unknown): asserts value is Manifest {
   }
 
   for (const key of [
-    "component_to_units", "concept_to_units", "module_to_units",
+    "component_to_units", "concept_to_modules", "concept_to_units",
+    "module_to_concepts", "module_to_units",
     "project_to_relationships", "project_to_units", "project_to_workspaces",
     "source_to_modules", "source_to_units", "unit_to_concepts",
     "workspace_to_modules", "workspace_to_units",

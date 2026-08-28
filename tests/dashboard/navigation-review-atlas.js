@@ -106,14 +106,14 @@ module.exports = async function run() {
     check('Garden marks Garden, not Review, as the active destination',
       nav.findText('los-app-nav-item', 'Garden')?.classes.has('is-active')
       && !nav.findText('los-app-nav-item', 'Review')?.classes.has('is-active'));
-    nav.findText('los-app-nav-item', 'Domain atlas').fire('click'); await tick();
+    nav.findText('los-app-nav-item', 'Concept atlas').fire('click'); await tick();
     /* The atlas is a decision surface, not a document: opening it must give a
      * navigable view. The Markdown file stays reachable from inside it, because
      * it is still the session-bootstrap artifact (core CLAUDE.md §2.8). */
     const atlas = app.workspace.getLeavesOfType(VIEW.atlas)[0]?.view;
-    check('Domain atlas navigation opens the atlas view, not a Markdown wall',
+    check('Concept atlas navigation opens the atlas view, not a Markdown wall',
       Boolean(atlas) && !app.workspace.opened.includes('generated/domain-atlas.md'));
-    atlas.contentEl.findText('los-btn', 'Open generated map file').fire('click'); await tick();
+    atlas.contentEl.findText('los-btn', 'Open generated domain map').fire('click'); await tick();
     check('the generated atlas file stays reachable from the view',
       app.workspace.opened.includes('generated/domain-atlas.md'));
     plugin.onunload();
@@ -431,45 +431,67 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
-  heading('domain atlas reach');
+  heading('module by concept atlas');
   {
     const { app, plugin } = await boot();
     await plugin.nav.openAtlas();
     const view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
     let text = view.contentEl.allText();
-    /* ADR-005: the atlas exists so a session does not collapse into the active
-     * workspace's domain. The first layer is relationships and ways in; the
-     * complete note registry remains available under progressive disclosure. */
-    check('every domain with content appears, not just the active one',
-      text.includes('Mathematics') && text.includes('Programming'));
-    check('the selected domain leads with modules, concepts, and sources',
-      text.includes('Mathematics map') && text.includes('Modules')
-      && text.includes('Concepts') && text.includes('Sources')
-      && text.includes('Fixture Statistics & Analysis')
-      && text.includes('Conditional probability')
-      && text.includes('Fixture probability book'));
-    check('raw record IDs are removed from the learning surface',
-      text.includes('Fixture probability reference') && !text.includes('note-fixture-probability'));
-    check('the full note inventory is present but collapsed by default',
-      view.contentEl.find('los-atlas-inventory').length === 1
-      && !view.contentEl.find('los-atlas-inventory')[0].hasAttribute('open'));
-    check('shelves carry their own rule for use',
-      text.includes('Fixture math bookshelf') && text.includes('one spine, one supplement'));
-    check('prospective planning stays out of the ordinary atlas',
-      !text.includes('Prospective—not current LearningOS'));
-    view.contentEl.findText('los-item', 'Fixture probability reference').fire('click'); await tick();
-    check('an atlas row opens the note it names',
-      app.workspace.opened.includes('knowledge/notes/mathematics/note-fixture-probability.md'));
-    view.contentEl.findText('los-shelf-entry-title', 'Fixture math bookshelf').fire('click'); await tick();
-    const library = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    check('an atlas shelf opens that shelf in the Library',
-      library.contentEl.allText().includes('The spine — read this before anything else on the shelf.'));
-    await plugin.nav.openAtlas();
+    check('the Atlas defaults to concepts shared across modules',
+      text.includes('Module × Concept atlas')
+      && text.includes('Bayes theorem')
+      && !text.includes('Conditional probability'));
+    check('every module stays visible, including a module with zero mapped concepts',
+      text.includes('AMLF') && text.includes('M2F') && text.includes('Python')
+      && view.contentEl.find('los-crossing-col').length === 3);
+    check('the shared crossing has one row and two evidence-backed cells',
+      view.contentEl.find('los-crossing-row').length === 1
+      && view.contentEl.find('is-filled').length === 2);
+
+    view.contentEl.findText('los-filter-tab', 'All concepts').fire('click');
+    text = view.contentEl.allText();
+    check('the explicit all-concepts toggle reveals single-module concepts',
+      text.includes('Conditional probability')
+      && view.contentEl.find('los-crossing-row').length === 2);
+
+    view.contentEl.findText('los-crossing-concept', 'Bayes theorem').fire('click');
+    await tick(); await tick();
+    text = app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl.allText();
+    check('a selected concept exposes the exact authored evidence',
+      text.includes('Taught in 2 modules')
+      && text.includes('Stage tag · Bayes decision rule')
+      && text.includes('Stage tag · Conditional probability and Bayes'));
+    check('the drill-down keeps published notes, sources, and concept relations reachable',
+      text.includes('Linked notes')
+      && text.includes('Fixture probability reference')
+      && text.includes('Source evaluations')
+      && text.includes('Fixture probability book')
+      && text.includes('Concept relationships')
+      && text.includes('Bayes theorem builds on Conditional probability'));
+    check('Atlas selection is persisted in the product route',
+      plugin.router.snapshot().current?.name === 'atlas'
+      && plugin.router.snapshot().current?.concept === 'concept-bayes');
+
     app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl
-      .findText('los-btn', 'Browse domain in Library').fire('click'); await tick();
-    text = app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.allText();
-    check('the atlas can hand a whole domain to the Library',
-      text.includes('Domain: mathematics') && !text.includes('Fixture Python wiring crosswalk'));
+      .findText('los-item', 'Bayes decision rule').fire('click');
+    await tick(); await tick();
+    check('evidence drills into the exact published unit and stage',
+      plugin.router.snapshot().current?.name === 'unit'
+      && plugin.router.snapshot().current?.unitId === 'unit-fixture-aml-l04'
+      && plugin.router.snapshot().current?.stageId === 'stage-fixture-aml-bayes');
+
+    await plugin.nav.back();
+    text = app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl.allText();
+    check('Back restores the selected Atlas concept rather than losing the drill-down',
+      plugin.router.snapshot().current?.name === 'atlas'
+      && plugin.router.snapshot().current?.concept === 'concept-bayes'
+      && text.includes('Stage tag · Bayes decision rule'));
+
+    app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl
+      .findText('los-btn', 'Open generated domain map').fire('click');
+    await tick();
+    check('the generated textual atlas remains available only as a fallback',
+      app.workspace.opened.includes('generated/domain-atlas.md'));
     plugin.onunload();
   }
 };

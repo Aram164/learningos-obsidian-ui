@@ -175,8 +175,9 @@ module.exports = async function run() {
       element.find('los-stage-heading')[0].findText('los-kicker', 'Stage 2 of 3') !== null
       && element.find('los-stage-order-context').length === 0);
     check('stage concepts render as typed chips resolved from their records',
-      element.find('los-stage-concepts')[0].find('los-chip').length === 1
-      && element.find('los-stage-concepts')[0].allText().includes('Conditional probability'));
+      element.find('los-stage-concepts')[0].find('los-chip').length === 2
+      && element.find('los-stage-concepts')[0].allText().includes('Conditional probability')
+      && element.find('los-stage-concepts')[0].allText().includes('Bayes theorem'));
     check('the resource list is headed Exact work', text.includes('Exact work'));
     check('Add note follows the final stage in the rail', element.find('los-stage-rail')[0].findText('los-btn', 'Add note'));
     check('existing unit note sections are projected', plugin.store.get('unit-fixture-sad-l04').note_sections[0].title === 'Foundations session');

@@ -75,7 +75,7 @@ export function registerApplication(plugin: LearningOSUI): void {
   plugin.addCommand({ id: 'open-projects', name: 'Open Projects', callback: () => plugin.nav.openProjects() });
   plugin.addCommand({ id: 'open-library', name: 'Open Library', callback: () => plugin.nav.openLibrary() });
   plugin.addCommand({ id: 'open-global-search', name: 'Search LearningOS', callback: () => plugin.nav.openGlobalSearch() });
-  plugin.addCommand({ id: 'open-atlas', name: 'Open Domain atlas', callback: () => plugin.nav.openAtlas() });
+  plugin.addCommand({ id: 'open-atlas', name: 'Open Module × Concept atlas', callback: () => plugin.nav.openAtlas() });
   plugin.addCommand({ id: 'open-garden', name: 'Open Garden', callback: () => plugin.nav.openGarden() });
   plugin.addCommand({ id: 'open-review', name: 'Open Review', callback: () => plugin.nav.openReview() });
   plugin.addCommand({ id: 'rebuild-projection', name: 'Validate and rebuild projection', callback: () => plugin.generate() });

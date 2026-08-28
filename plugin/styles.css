@@ -597,161 +597,289 @@
 .los-root .los-shelf-entry-title:hover { color: var(--los-accent); }
 .los-shelf-why { margin-top: var(--los-1); color: var(--los-ink-soft); }
 
-/* Domain atlas */
-.los-atlas-glance {
-  display: grid;
-  max-width: 1180px;
+/* Module x Concept Atlas (ADR-015). */
+.los-crossing {
+  --los-crossing-columns: 1;
+  max-width: 1320px;
   margin: 0 auto var(--los-5);
-  gap: var(--los-2);
-  grid-template-columns: repeat(auto-fit, minmax(165px, 1fr));
-}
-.los-root .los-atlas-tile {
-  position: relative;
-  display: flex;
-  min-height: 68px;
-  flex-direction: column;
-  align-items: flex-start;
-  justify-content: center;
-  gap: var(--los-1);
-  padding: var(--los-3);
+  overflow-x: auto;
   border: 1px solid var(--los-line);
   border-radius: var(--los-r-md);
   background: var(--los-surface);
+}
+
+.los-crossing-head,
+.los-crossing-row {
+  display: grid;
+  grid-template-columns:
+    minmax(210px, 1.6fr)
+    repeat(var(--los-crossing-columns), minmax(92px, 1fr));
+}
+
+.los-crossing-head {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  border-bottom: 1px solid var(--los-line-strong);
+  background: var(--los-paper-3);
+}
+
+.los-crossing-corner,
+.los-crossing-concept {
+  position: sticky;
+  z-index: 2;
+  left: 0;
+  border-right: 1px solid var(--los-line-strong);
+  background: var(--los-surface);
+  box-shadow: 4px 0 10px color-mix(in srgb, var(--los-ink) 5%, transparent);
+}
+
+.los-crossing-corner {
+  z-index: 4;
+  padding: var(--los-3);
+  background: var(--los-paper-3);
+  font-weight: 650;
+}
+
+.los-crossing-col {
+  display: grid;
+  min-width: 0;
+  place-content: center;
+  gap: 2px;
+  padding: var(--los-2);
+  border-left: 1px solid var(--los-line);
+  color: var(--los-ink-soft);
+  text-align: center;
+}
+
+.los-crossing-col.is-actionable {
+  color: var(--los-ink);
+  box-shadow: inset 0 3px 0 var(--los-accent);
+}
+
+.los-crossing-col-name {
+  overflow: hidden;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.los-crossing-row + .los-crossing-row {
+  border-top: 1px solid var(--los-line);
+}
+
+.los-crossing-row.is-selected {
+  background: var(--los-accent-wash);
+}
+
+.los-root .los-crossing-concept {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  min-height: 54px;
+  align-content: center;
+  gap: 2px;
+  padding: var(--los-2) var(--los-3);
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-radius: 0;
   text-align: left;
 }
-.los-root .los-atlas-tile:hover { background: var(--los-paper-3); }
-.los-root .los-atlas-tile.is-selected {
-  border-color: var(--los-accent);
+
+.los-root .los-crossing-concept:hover,
+.los-crossing-row.is-selected .los-crossing-concept {
   background: var(--los-accent-wash);
-  box-shadow: inset 3px 0 0 var(--los-accent);
 }
-.los-atlas-tile-name { font-weight: 650; }
-.los-atlas-body { max-width: 1180px; margin: 0 auto; }
-.los-atlas-domain-head {
-  display: flex;
-  margin-bottom: var(--los-3);
-  gap: var(--los-3);
-  align-items: flex-end;
-  justify-content: space-between;
-  flex-wrap: wrap;
+
+.los-crossing-concept-name {
+  overflow: hidden;
+  color: var(--los-ink);
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.los-atlas-domain-head h2 { margin: 0; }
-.los-atlas-domain-copy p { margin: var(--los-1) 0 0; color: var(--los-ink-soft); }
-.los-atlas-map-grid {
+
+.los-root .los-crossing-cell {
   display: grid;
-  margin: 0 0 var(--los-6);
-  gap: var(--los-2);
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+  min-height: 54px;
+  place-items: center;
+  padding: var(--los-2);
+  border: 0;
+  border-left: 1px solid var(--los-line);
+  border-radius: 0;
+  background: transparent;
 }
-.los-atlas-map-panel,
-.los-atlas-connection-card,
-.los-atlas-view .los-shelf-entry {
+
+.los-crossing-cell.is-empty::after {
+  color: var(--los-line-strong);
+  content: "—";
+}
+
+.los-root .los-crossing-cell.is-filled {
+  background: color-mix(in srgb, var(--los-accent) 9%, transparent);
+  color: var(--los-accent);
+}
+
+.los-root .los-crossing-cell.is-filled:hover {
+  background: color-mix(in srgb, var(--los-accent) 16%, transparent);
+}
+
+.los-crossing-mark {
+  display: grid;
+  min-width: 26px;
+  min-height: 26px;
+  place-items: center;
+  padding: 2px var(--los-1);
+  border: 1px solid color-mix(in srgb, var(--los-accent) 45%, var(--los-line));
+  border-radius: var(--los-r-pill);
+  background: var(--los-surface);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.los-crossing-evidence {
+  margin-top: var(--los-3);
+  padding-top: var(--los-3);
+  border-top: 1px solid var(--los-line);
+}
+
+.los-crossing-evidence-head {
+  display: flex;
+  gap: var(--los-2);
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--los-1);
+}
+
+.los-root .los-crossing-evidence-module {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--los-ink);
+  font-weight: 700;
+  text-align: left;
+}
+
+.los-root .los-crossing-evidence-module:hover {
+  color: var(--los-accent);
+}
+
+.los-crossing-context {
+  display: grid;
+  margin-top: var(--los-4);
+  gap: var(--los-3);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.los-crossing-context-group {
   min-width: 0;
   padding: var(--los-3);
   border: 1px solid var(--los-line);
   border-radius: var(--los-r-md);
   background: var(--los-surface);
 }
-.los-atlas-map-panel-head {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr) auto;
-  gap: var(--los-2);
-  align-items: center;
-  margin-bottom: var(--los-2);
+
+.los-crossing-context-group h3 {
+  margin: 0 0 var(--los-2);
 }
-.los-atlas-map-panel-head h3 { margin: 0; }
-.los-atlas-count {
-  min-width: 24px;
-  padding: 1px var(--los-2);
-  border-radius: var(--los-r-pill);
-  background: var(--los-paper-3);
-  color: var(--los-ink-soft);
-  font-size: 11px;
-  text-align: center;
-}
-.los-root .los-atlas-map-link,
-.los-root .los-atlas-domain-link {
-  display: flex;
-  width: 100%;
-  min-height: 40px;
-  gap: var(--los-2);
-  align-items: center;
-  padding: var(--los-2);
-  border: 0;
-  border-radius: var(--los-r-sm);
-  background: transparent;
-}
-.los-root .los-atlas-map-link:hover,
-.los-root .los-atlas-domain-link:hover { background: var(--los-paper-3); }
-.los-atlas-concept {
-  display: flex;
-  min-height: 34px;
-  gap: var(--los-2);
-  align-items: center;
-  padding: var(--los-1) var(--los-2);
-  color: var(--los-ink);
-}
-.los-atlas-panel-empty,
-.los-atlas-more {
-  padding: var(--los-2);
-  color: var(--los-ink-soft);
-  font-size: 12px;
-}
-.los-atlas-connection-grid {
-  display: grid;
-  gap: var(--los-2);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.los-atlas-connection-card > .los-muted { margin: 0 0 var(--los-2); }
-.los-atlas-arrow { margin-left: auto; color: var(--los-accent); }
-.los-atlas-shelf-grid {
-  display: grid;
-  gap: var(--los-2);
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-.los-atlas-view .los-shelf-entry { margin: 0; }
-.los-atlas-view .los-shelf-entry:first-of-type { border-top: 1px solid var(--los-line); }
-.los-atlas-view .los-shelf-why { margin-top: var(--los-2); }
-.los-atlas-note-summary { color: var(--los-ink-soft); font-size: 12px; }
-.los-atlas-inventory {
-  border: 1px solid var(--los-line);
-  border-radius: var(--los-r-md);
-  background: var(--los-surface);
-}
-.los-atlas-inventory > summary,
-.los-atlas-boundaries > summary {
-  padding: var(--los-3);
-  color: var(--los-ink);
-  cursor: pointer;
-  font-weight: 650;
-}
-.los-atlas-inventory-body { padding: 0 var(--los-3) var(--los-3); }
-.los-atlas-group { margin: var(--los-1) 0; }
-.los-atlas-group > summary {
-  padding: var(--los-2);
-  color: var(--los-ink-soft);
-  cursor: pointer;
-}
-.los-atlas-boundaries {
-  max-width: 1180px;
-  margin: 0 auto var(--los-4);
-  border-top: 1px solid var(--los-line);
-}
-.los-atlas-boundaries-body { padding: 0 var(--los-3) var(--los-3); }
-.los-boundary-row { margin: var(--los-2) 0; padding-left: var(--los-2); border-left: 2px solid var(--los-line-strong); }
 
 @media (max-width: 820px) {
-  .los-atlas-map-grid { grid-template-columns: minmax(0, 1fr); }
-  .los-atlas-connection-grid,
-  .los-atlas-shelf-grid { grid-template-columns: minmax(0, 1fr); }
-}
+  .los-crossing {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
 
-.los-proposal-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--los-2); margin: var(--los-2) 0; padding: var(--los-3); border: 1px solid var(--los-line); border-radius: var(--los-r-md); background: var(--los-surface); }
-.los-proposal-diff { overflow-x: auto; padding: var(--los-2); border-radius: var(--los-r-sm); background: var(--los-paper); color: var(--los-ink-soft); white-space: pre-wrap; }
-.los-validation-preview { max-width: 1180px; margin: var(--los-4) auto; padding: var(--los-3); border-left: 2px solid var(--los-accent); background: var(--los-surface); }
-.los-empty { padding: var(--los-4); border: 1px dashed var(--los-line-strong); border-radius: var(--los-r-md); color: var(--los-ink-soft); }
-.los-empty h3 { color: var(--los-ink); }
-.los-empty p { margin: var(--los-1) 0 var(--los-2); }
+  .los-crossing-head {
+    position: static;
+    display: flex;
+    min-width: 0;
+    margin-bottom: var(--los-3);
+    overflow: hidden;
+    border: 1px solid var(--los-line);
+    border-radius: var(--los-r-md);
+    background: var(--los-surface);
+    flex-wrap: wrap;
+  }
+
+  .los-crossing-corner {
+    position: static;
+    flex: 1 0 100%;
+    border-right: 0;
+    box-shadow: none;
+    font-size: 0;
+  }
+
+  .los-crossing-corner::after {
+    content: "Modules in this projection";
+    font-size: 11px;
+  }
+
+  .los-crossing-col {
+    flex: 1 1 140px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    place-content: stretch;
+    align-items: center;
+    border-top: 1px solid var(--los-line);
+    border-left: 0;
+    text-align: left;
+  }
+
+  .los-crossing-col.is-actionable {
+    box-shadow: inset 3px 0 0 var(--los-accent);
+  }
+
+  .los-crossing-row {
+    display: grid;
+    min-width: 0;
+    margin-bottom: var(--los-3);
+    overflow: hidden;
+    border: 1px solid var(--los-line);
+    border-radius: var(--los-r-md);
+    background: var(--los-surface);
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .los-crossing-row + .los-crossing-row {
+    border-top: 1px solid var(--los-line);
+  }
+
+  .los-root .los-crossing-concept {
+    position: static;
+    border-right: 0;
+    box-shadow: none;
+  }
+
+  .los-crossing-cell.is-empty {
+    display: none;
+  }
+
+  .los-root .los-crossing-cell.is-filled {
+    grid-template-columns: minmax(0, 1fr) auto;
+    min-height: 46px;
+    justify-items: stretch;
+    border-top: 1px solid var(--los-line);
+    border-left: 0;
+    text-align: left;
+  }
+
+  .los-crossing-cell.is-filled::before {
+    align-self: center;
+    overflow: hidden;
+    color: var(--los-ink);
+    content: attr(data-module-label);
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .los-crossing-mark {
+    justify-self: end;
+  }
+}
 /* Progressive disclosure. Native details, so it works with the keyboard and
  * with no script at all. */
 .los-disclosure > summary { min-height: 28px; padding: var(--los-1) 0; color: var(--los-accent); cursor: pointer; font-size: 13px; }

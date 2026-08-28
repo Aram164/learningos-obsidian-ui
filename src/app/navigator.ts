@@ -183,8 +183,14 @@ export class AppNavigator {
     return this.router.navigate({ name: 'legacy-library-list', recordType, domain, query: '' });
   }
 
-  openAtlas(domain: string | null = null) {
-    return this.router.navigate({ name: 'atlas', domain });
+  openAtlas(domain: string | null = null, concept: string | null = null) {
+    const current = this.router.snapshot().current;
+    const changingAtlasState = current?.name === 'atlas';
+
+    return this.router.navigate(
+      { name: 'atlas', domain, concept },
+      { pushHistory: !changingAtlasState },
+    );
   }
 
   openShelving(unitId: string | null = null) {
