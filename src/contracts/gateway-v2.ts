@@ -52,6 +52,57 @@ export interface GatewaySuccessV2 {
   error: null;
 }
 
+/**
+ * The refused counterpart of `GatewaySuccessV2`.
+ *
+ * Core answers a V2 envelope with the same eleven keys whether it committed or
+ * not, so a refusal is as checkable as a receipt — and it has to be, because
+ * "Core says it refused" is the only evidence that lets recovery stop worrying
+ * about a write. A shape that is merely *not* a success is not a refusal.
+ */
+export interface GatewayFailureV2 {
+  schema_version: typeof GATEWAY_SCHEMA_VERSION;
+  request_id: string;
+  idempotency_key: string;
+  capability: string;
+  ok: false;
+  replayed: boolean;
+  transaction_id: null;
+  receipt_path: null;
+  snapshot_after: null;
+  result: Record<string, unknown>;
+  error: GatewayErrorBodyV2;
+}
+
+/**
+ * Codes that mean, definitively, that nothing was committed.
+ *
+ * Each of these is produced by Core *before* the transaction, or by a guard
+ * that aborts it whole — so an interrupted retry that receives one of them has
+ * learned that the original attempt cannot have landed either. Everything
+ * else, including every code not on this list, leaves the question open.
+ *
+ * `INTERNAL_FAILURE` and `IDEMPOTENCY_CONFLICT` are deliberately absent:
+ * Core raises the first from inside the write path and the second when a
+ * previous transaction with this key exists but cannot be reconciled. Both are
+ * exactly the situations where "did it commit?" is the question.
+ */
+export const DEFINITIVE_NO_COMMIT_CODES: readonly string[] = [
+  'INVALID_REQUEST',
+  'UNKNOWN_CAPABILITY',
+  'STALE_SNAPSHOT',
+  'REVISION_CONFLICT',
+  'OUT_OF_SCOPE',
+  'AMBIGUOUS_MIGRATION',
+  'VALIDATION_FAILED',
+  'PROJECTION_FAILED',
+  'UNCONFIRMED',
+];
+
+export function isDefinitiveNoCommitCode(code: unknown): boolean {
+  return typeof code === 'string' && DEFINITIVE_NO_COMMIT_CODES.includes(code);
+}
+
 export interface GatewayResponseIdentityV2 {
   requestId: string;
   idempotencyKey: string;
@@ -213,6 +264,85 @@ export function asGatewaySuccessV2(
     );
   }
   return response as unknown as GatewaySuccessV2;
+}
+
+/**
+ * The strict failure parser that sits beside `asGatewaySuccessV2`.
+ *
+ * It returns null rather than throwing, because "this is not a trustworthy
+ * refusal" is an *answer* the recovery path acts on: an unrecognisable response
+ * means the outcome is unknown, and the record must be kept. Trusting a
+ * half-read refusal would clear the evidence of a write that may have landed.
+ */
+export function asGatewayFailureV2(
+  value: unknown,
+  expected: GatewayResponseIdentityV2,
+): GatewayFailureV2 | null {
+  const response = record(value);
+  if (!response) return null;
+  const responseKeys = [
+    'schema_version', 'request_id', 'idempotency_key', 'capability', 'ok',
+    'replayed', 'transaction_id', 'receipt_path', 'snapshot_after', 'result',
+    'error',
+  ] as const;
+  const error = record(response.error);
+  const refused = exactKeys(response, responseKeys)
+    && response.schema_version === GATEWAY_SCHEMA_VERSION
+    && response.request_id === expected.requestId
+    && response.idempotency_key === expected.idempotencyKey
+    && response.capability === expected.capability
+    && response.ok === false
+    && typeof response.replayed === 'boolean'
+    && response.transaction_id === null
+    && response.receipt_path === null
+    && response.snapshot_after === null
+    && record(response.result) !== null
+    && error !== null
+    && exactKeys(error, ['code', 'message', 'retryable', 'details'])
+    && nonEmpty(error.code)
+    && nonEmpty(error.message)
+    && typeof error.retryable === 'boolean'
+    && record(error.details) !== null;
+  return refused ? response as unknown as GatewayFailureV2 : null;
+}
+
+/**
+ * Strictly narrow a persisted or received envelope back to `GatewayRequestV2`.
+ *
+ * Recovery resends a string that has been sitting in `data.json`, possibly
+ * across an Obsidian restart and an editor that can open that file. Nothing
+ * downstream re-derives the envelope, so this is the only place that can
+ * establish it is still the shape the learner approved.
+ */
+export function asGatewayRequestV2(value: unknown): GatewayRequestV2 | null {
+  const envelope = record(value);
+  if (!envelope) return null;
+  const approval = record(envelope.approval);
+  const revisions = record(envelope.expected_revisions);
+  const valid = exactKeys(envelope, [
+    'schema_version', 'request_id', 'idempotency_key', 'capability', 'channel',
+    'expected_snapshot', 'expected_revisions', 'approval', 'payload',
+  ])
+    && envelope.schema_version === GATEWAY_SCHEMA_VERSION
+    && nonEmpty(envelope.request_id)
+    && nonEmpty(envelope.idempotency_key)
+    && nonEmpty(envelope.capability)
+    // The UI only ever prepares its own channel; a persisted record claiming
+    // another one was not written by this interface.
+    && envelope.channel === 'ui'
+    && isSha256(envelope.expected_snapshot)
+    && revisions !== null
+    && Object.entries(revisions).every(
+      ([id, revision]) => nonEmpty(id)
+        && Number.isInteger(revision)
+        && (revision as number) >= 0,
+    )
+    && approval !== null
+    && exactKeys(approval, ['kind', 'subject_sha256'])
+    && approval.kind === 'direct-user-gesture'
+    && isSha256(approval.subject_sha256)
+    && record(envelope.payload) !== null;
+  return valid ? envelope as unknown as GatewayRequestV2 : null;
 }
 
 /** A cheap marker used only after `asGatewaySuccessV2` has narrowed the value. */

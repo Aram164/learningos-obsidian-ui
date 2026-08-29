@@ -105,7 +105,12 @@ interface RouterHost {
       type?: string;
     } | null;
   };
-  saveData<T>(data: T): Promise<void>;
+  /**
+   * Navigation shares `data.json` with the drafts and the Gateway recovery
+   * record, so it goes through the application's single serialized writer
+   * rather than calling `saveData` on its own.
+   */
+  persistSettings(): Promise<void>;
   setActiveNav(nav: string): void;
 }
 
@@ -336,7 +341,7 @@ export class ApplicationRouter {
   async persist() {
     this.plugin.settings.navigation = this.navigation;
     delete this.plugin.settings.lastView;
-    await this.plugin.saveData(this.plugin.settings);
+    await this.plugin.persistSettings();
   }
 
   openOverlay(overlay: Exclude<OverlayStateV1, null>) {

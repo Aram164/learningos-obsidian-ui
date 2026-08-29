@@ -21,11 +21,19 @@ interface UnitDraft {
   expectedRevisions?: Record<string, number>;
 }
 
+export interface ComposerDraft { title: string; text: string; }
+
 export interface LearningOSUiDrafts {
   stages: Record<string, StageDraft>;
   unitNotes: Record<string, UnitDraft>;
   selectedStages: Record<string, string>;
-  inbox: { title: string; text: string };
+  inbox: ComposerDraft;
+  /**
+   * Garden's composer kept its text in view state only, so an Obsidian restart
+   * during an unresolved seed write lost the very draft recovery exists to
+   * protect. It is persisted for the same reason the inbox draft is.
+   */
+  garden: ComposerDraft;
   doneWhen: Record<string, boolean[]>;
 }
 
@@ -39,6 +47,7 @@ export function emptyUiDrafts(): LearningOSUiDrafts {
     unitNotes: {},
     selectedStages: {},
     inbox: { title: '', text: '' },
+    garden: { title: '', text: '' },
     doneWhen: {},
   };
 }
@@ -50,8 +59,25 @@ export function normalizeUiDrafts(value: Partial<LearningOSUiDrafts> | null | un
     unitNotes: value?.unitNotes ?? empty.unitNotes,
     selectedStages: value?.selectedStages ?? empty.selectedStages,
     inbox: value?.inbox ?? empty.inbox,
+    garden: value?.garden ?? empty.garden,
     doneWhen: value?.doneWhen ?? empty.doneWhen,
   };
+}
+
+/**
+ * Is this draft still the one that was sent?
+ *
+ * Trimmed on both sides: the composer keeps what was typed and the envelope
+ * carries what was sent, and those differ by whitespace by construction. Any
+ * edit with content in it still fails, which is the property that matters —
+ * a learner who kept typing while the write ran keeps the newer text.
+ */
+export function sameComposerDraft(
+  draft: ComposerDraft,
+  sent: ComposerDraft,
+): boolean {
+  return draft.text.trim() === sent.text.trim()
+    && draft.title.trim() === sent.title.trim();
 }
 
 /** UI-owned, recoverable working state. Canonical learning facts never live here. */
@@ -131,7 +157,25 @@ export class DraftStore {
     this.scheduleSave();
   }
 
-  clearUnitNote(unitId: string, recoveredStageIds: readonly string[] = []): void {
+  /**
+   * `match` makes this safe to call after a write has already resolved.
+   *
+   * Without it, a learner who kept typing while the note was being saved lost
+   * the newer text to the success handler. With it, the clear happens only
+   * when the draft is still the one that was sent — which is also what makes
+   * repeating the cleanup harmless.
+   */
+  clearUnitNote(
+    unitId: string,
+    recoveredStageIds: readonly string[] = [],
+    match: { title: string; text: string } | null = null,
+  ): void {
+    const draft = this.settings.uiDrafts.unitNotes[unitId];
+    if (match && draft
+      && (draft.text !== match.text
+        || String(draft.title || '').trim() !== match.title.trim())) {
+      return;
+    }
     delete this.settings.uiDrafts.unitNotes[unitId];
     for (const stageId of recoveredStageIds) {
       delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
@@ -167,7 +211,7 @@ export class DraftStore {
     this.scheduleSave();
   }
 
-  getInbox(): { title: string; text: string } {
+  getInbox(): ComposerDraft {
     return { ...this.settings.uiDrafts.inbox };
   }
 
@@ -176,8 +220,31 @@ export class DraftStore {
     this.scheduleSave();
   }
 
-  clearInbox(): void {
+  /**
+   * Compared after trimming, because the composer stores what was typed and
+   * the envelope carries what was sent — the two differ by whitespace alone.
+   * Any real edit still fails the comparison and keeps the newer text.
+   */
+  clearInbox(match: ComposerDraft | null = null): void {
+    const draft = this.settings.uiDrafts.inbox;
+    if (match && !sameComposerDraft(draft, match)) return;
     this.settings.uiDrafts.inbox = { title: '', text: '' };
+    this.scheduleSave();
+  }
+
+  getGarden(): ComposerDraft {
+    return { ...this.settings.uiDrafts.garden };
+  }
+
+  setGarden(title: string, text: string): void {
+    this.settings.uiDrafts.garden = { title, text };
+    this.scheduleSave();
+  }
+
+  clearGarden(match: ComposerDraft | null = null): void {
+    const draft = this.settings.uiDrafts.garden;
+    if (match && !sameComposerDraft(draft, match)) return;
+    this.settings.uiDrafts.garden = { title: '', text: '' };
     this.scheduleSave();
   }
 }

@@ -519,16 +519,25 @@ export class ProgramView extends ItemView {
           return;
         }
 
+        const captured = {
+          title: title.value.trim(),
+          text,
+        };
+
         this.capture(
           () =>
             this.plugin.gateway.captureText(
-              text,
-              title.value.trim(),
+              captured.text,
+              captured.title,
             ),
           () => {
-            this.plugin.clearInboxDraft();
-            editor.value = '';
-            title.value = '';
+            // The confirmed write already cleared this draft if it was still
+            // the captured text. Passing the match keeps a repeat harmless and
+            // stops it discarding anything typed while the write ran.
+            this.plugin.clearInboxDraft(captured);
+            const draft = this.plugin.getInboxDraft();
+            editor.value = draft.text;
+            title.value = draft.title;
           },
         );
       },

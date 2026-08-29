@@ -36,6 +36,7 @@ const VIEW = {
   module: 'learningos-module', project: 'learningos-project', unit: 'learningos-unit', library: 'learningos-library',
   atlas: 'learningos-atlas', shelving: 'learningos-shelving', boundary: 'learningos-boundary',
   review: 'learningos-review', diagnostics: 'learningos-diagnostics',
+  garden: 'learningos-garden',
 };
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 const frame = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -212,6 +213,31 @@ function gatewayGuardRefusal(envelope) {
       + `artifact (wanted ${JSON.stringify(wanted)}, got ${JSON.stringify(actual)})`;
 }
 
+/**
+ * The refusal Core actually sends for a V2 envelope.
+ *
+ * Core answers a V2 request with a V2 response whether it committed or not, so
+ * a fixture that refuses with the older `{ok:false, error:"…"}` body is
+ * describing a response the real gateway cannot produce — and the UI now
+ * treats an unrecognisable body as "outcome unknown" rather than as a refusal,
+ * which is exactly the difference such a fixture would hide.
+ */
+function gatewayRefusal(envelope, code, message, retryable = false) {
+  return {
+    schema_version: 2,
+    request_id: envelope.request_id,
+    idempotency_key: envelope.idempotency_key,
+    capability: envelope.capability,
+    ok: false,
+    replayed: false,
+    transaction_id: null,
+    receipt_path: null,
+    snapshot_after: null,
+    result: {},
+    error: { code, message, retryable, details: {} },
+  };
+}
+
 function gatewayConfirmation(envelope, result = {}) {
   const refusal = gatewayGuardRefusal(envelope);
   if (refusal) {
@@ -279,10 +305,19 @@ async function build(options = {}) {
   calls.envelopes = envelopes;
   const plugin = new LearningOSUI(app, { id: 'learningos-ui', version: 'test' });
   plugin._data = options.settings || {};
+  /*
+   * `onload` can now start a process of its own — an unfinished write from the
+   * previous session is replayed during startup — so a test that needs to see
+   * or replace that first call has to say so before `onload` runs, not after.
+   */
   plugin.runLos = (args, callback, stdin) => {
     calls.push(args);
     const envelope = stdin ? JSON.parse(stdin) : null;
     if (envelope) envelopes.push(envelope);
+    options.spy?.(args, stdin);
+    if (options.runLosOverride) {
+      return options.runLosOverride(args, callback, stdin);
+    }
     if (options.offline) return callback(new Error('CLI down'), '', 'offline');
     if (args[0] === 'health-report') {
       return callback(null, JSON.stringify(HEALTH_REPORT_FIXTURE), '');
@@ -299,7 +334,9 @@ async function build(options = {}) {
       }),
     ), '');
     if (envelope) {
-      return callback(null, JSON.stringify(gatewayConfirmation(envelope)), '');
+      const confirmation = gatewayConfirmation(envelope);
+      if (confirmation.ok && args.includes('--replay-only')) confirmation.replayed = true;
+      return callback(null, JSON.stringify(confirmation), '');
     }
     return callback(null, JSON.stringify({ ok: true }), '');
   };
@@ -348,6 +385,7 @@ module.exports = {
   LEGACY_ARCHIVE_FIXTURE,
   MASTERS_PLANNING_FIXTURE,
   gatewayConfirmation,
+  gatewayRefusal,
   requestGuardFor,
   check,
   heading,

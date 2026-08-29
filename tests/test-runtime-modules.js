@@ -15,6 +15,13 @@ const { ManifestStore } = load('src/manifest-store.ts');
 const { GatewayClient } = load('src/gateway-client.ts');
 const { gatewaySubjectSha256 } = load('src/contracts/gateway-v2.ts');
 const { DraftStore, emptyUiDrafts } = load('src/application/draft-store.ts');
+const {
+  MemoryGatewayRecoveryStore,
+  SettingsGatewayRecoveryStore,
+  clearDraftsOwnedBy,
+  gatewayRecoverySummary,
+  validateGatewayRecoveryRecord,
+} = load('src/application/gateway-recovery.ts');
 const { isProjectionConflict, GatewayError } = load('src/contracts/gateway-v1.ts');
 const { asHealthReport } = load('src/contracts/health-report.ts');
 const { asLegacyArchiveLock, asLegacyArchiveStatus } = load('src/contracts/legacy-archive.ts');
@@ -241,7 +248,7 @@ function routerPlugin(settings = {}) {
     settings,
     store: { get: () => null },
     app: { workspace: {} },
-    saveData: async () => undefined,
+    persistSettings: async () => undefined,
     setActiveNav: () => undefined,
   };
 }
@@ -969,30 +976,55 @@ function routerPlugin(settings = {}) {
     );
   });
 
-  await test('GatewayClient refuses a success response without the matching receipt identity', async () => {
+  /*
+   * A response that is not a receipt is not therefore a refusal.
+   *
+   * These two used to reject with UNCONFIRMED, which reads as "nothing was
+   * written" — but neither a mismatched identity nor an unrecognised extra
+   * field tells you whether Core committed. They are ambiguous, so the client
+   * replays the same envelope once and then blocks with the record retained.
+   * The draft survives either way, which is what the learner sees.
+   */
+  await test('a success response with the wrong identity is ambiguous, not a refusal', async () => {
+    const sent = [];
+    const recovery = new MemoryGatewayRecoveryStore(true);
     const gateway = new GatewayClient({
-      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin, SNAPSHOT, {
-        request_id: 'req-from-another-write',
-      }), ''),
+      runLos: (_args, callback, stdin) => {
+        sent.push(stdin);
+        callback(null, gatewayConfirmation(stdin, SNAPSHOT, {
+          request_id: 'req-from-another-write',
+        }), '');
+      },
       store: { snapshotId: SNAPSHOT },
+      recovery,
     });
     await assert.rejects(
       gateway.captureText('keep this draft'),
-      (error) => error.gatewayCode === 'UNCONFIRMED' && /draft was kept/.test(error.message),
+      (error) => error.gatewayCode === 'RECOVERY_BLOCKED'
+        && /draft was kept/.test(error.message),
     );
+    assert.equal(sent.length, 2, 'exactly one automatic replay, never a loop');
+    assert.equal(sent[0], sent[1], 'the replay is the same bytes, not a new request');
+    assert.equal(recovery.replayable().record.phase, 'blocked');
+    assert.equal(recovery.replayable().record.last_error.code, 'IDENTITY_MISMATCH');
   });
 
-  await test('GatewayClient refuses extension fields in the closed V2 success envelope', async () => {
+  await test('extension fields in the closed V2 success envelope leave the outcome open', async () => {
+    const recovery = new MemoryGatewayRecoveryStore(true);
     const gateway = new GatewayClient({
       runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin, SNAPSHOT, {
         invented_confirmation_field: true,
       }), ''),
       store: { snapshotId: SNAPSHOT },
+      recovery,
     });
     await assert.rejects(
       gateway.captureText('keep this draft'),
-      (error) => error.gatewayCode === 'UNCONFIRMED' && /draft was kept/.test(error.message),
+      (error) => error.gatewayCode === 'RECOVERY_BLOCKED'
+        && /draft was kept/.test(error.message),
     );
+    assert.equal(recovery.replayable().record.phase, 'blocked',
+      'an unresolved write stays on the record rather than being forgotten');
   });
 
   await test('ordinary vault and material openers refuse symlinks outside their roots', async () => {
@@ -1147,8 +1179,12 @@ function routerPlugin(settings = {}) {
    * The core answers a refusal on stdout and leaves stderr empty. Preferring
    * stderr meant the learner saw Node's "Command failed: python …" instead of
    * the sentence explaining what was refused and why.
+   *
+   * A V1-shaped body is no longer trusted as a refusal of a V2 write — only a
+   * complete, identity-matched V2 failure envelope can say "nothing was
+   * written" — but the sentence still has to reach the learner, and does.
    */
-  await test('a refusal surfaces the reason the core gave, not the process failure', async () => {
+  await test('an unrecognised body still surfaces the reason the core gave', async () => {
     const refusal = JSON.stringify({
       ok: false,
       error: 'los: projection conflict — authored files changed since the app loaded',
@@ -1157,6 +1193,7 @@ function routerPlugin(settings = {}) {
     const plugin = {
       runLos: (_args, callback) => callback(failure, refusal, ''),
       store: { snapshotId: SNAPSHOT },
+      recovery: new MemoryGatewayRecoveryStore(true),
     };
     const gateway = new GatewayClient(plugin);
     await assert.rejects(
@@ -1165,8 +1202,11 @@ function routerPlugin(settings = {}) {
         assert.match(error.message, /projection conflict/,
           'the core’s reason must reach the learner');
         assert.doesNotMatch(error.message, /Command failed/);
-        assert.equal(error.exitCode, 3, 'the exit code decides whether this is recoverable');
-        assert.equal(isProjectionConflict(error), true);
+        assert.equal(error.gatewayCode, 'RECOVERY_BLOCKED');
+        // Deliberately NOT a projection conflict: an automatic rebuild-and-
+        // retry is only safe when the refusal proves nothing was committed,
+        // and an unrecognisable body proves nothing at all.
+        assert.equal(isProjectionConflict(error), false);
         return true;
       },
     );
@@ -1212,6 +1252,7 @@ function routerPlugin(settings = {}) {
     const plugin = {
       runLos: (_args, callback) => callback(failure, '', 'python: no such interpreter'),
       store: { snapshotId: SNAPSHOT },
+      recovery: new MemoryGatewayRecoveryStore(true),
     };
     const gateway = new GatewayClient(plugin);
     await assert.rejects(gateway.progress('u', 's', 'complete'), (error) => {
@@ -1514,6 +1555,353 @@ function routerPlugin(settings = {}) {
     await gateway.chain;
     assert.deepEqual(order, ['first:start', 'first:end', 'second', 'third']);
     assert.equal(gateway.isBusy, false);
+  });
+
+  /* --------------------------------------------------------------------
+   * Gateway recovery: one interrupted write, never two canonical ones.
+   *
+   * These exercise the client directly with an in-memory record store. The
+   * plugin-level counterparts (tests/dashboard) prove the same behaviour with
+   * the record actually persisted through `data.json`.
+   * ------------------------------------------------------------------ */
+
+  /** A gateway whose process answers from a scripted queue of responses. */
+  function scriptedGateway(responses, { snapshot = SNAPSHOT } = {}) {
+    const sent = [];
+    const notices = [];
+    const recovery = new MemoryGatewayRecoveryStore(true);
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        sent.push(stdin);
+        const next = responses[Math.min(sent.length - 1, responses.length - 1)];
+        next(callback, stdin);
+      },
+      store: { snapshotId: snapshot },
+      notify: (message) => notices.push(message),
+      recovery,
+    });
+    return { gateway, recovery, sent, notices };
+  }
+
+  const answerWith = (body, error = null) => (callback, stdin) => callback(
+    error, typeof body === 'function' ? body(stdin) : body, '',
+  );
+
+  function refusalFor(stdin, code, message = 'refused', retryable = false) {
+    const request = JSON.parse(stdin);
+    return JSON.stringify({
+      schema_version: 2,
+      request_id: request.request_id,
+      idempotency_key: request.idempotency_key,
+      capability: request.capability,
+      ok: false,
+      replayed: false,
+      transaction_id: null,
+      receipt_path: null,
+      snapshot_after: null,
+      result: {},
+      error: { code, message, retryable, details: {} },
+    });
+  }
+
+  await test('a prepared request is recorded before the process is ever started', async () => {
+    const seen = [];
+    const recovery = new MemoryGatewayRecoveryStore(true);
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        // The order this asserts is the whole design: if the record were
+        // written after the spawn, an interruption in between would leave a
+        // committed write with nothing on disk that knows about it.
+        seen.push(recovery.replayable()?.record.phase ?? 'none');
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+      recovery,
+    });
+    await gateway.captureText('recorded before it is sent');
+    assert.deepEqual(seen, ['prepared']);
+    assert.equal(recovery.replayable().record.phase, 'confirmed',
+      'a receipt is not the end of it — the record waits for reconciliation');
+  });
+
+  await test('an interrupted response is replayed once, byte for byte', async () => {
+    const { gateway, sent, notices, recovery } = scriptedGateway([
+      answerWith('', Object.assign(new Error('killed'), { code: null })),
+      answerWith((stdin) => gatewayConfirmation(stdin, SNAPSHOT, { replayed: true })),
+    ]);
+    const confirmation = await gateway.captureText('one thought, one write');
+    assert.equal(confirmation.replayed, true, 'Core recognised the retry as the same write');
+    assert.equal(sent.length, 2);
+    assert.equal(sent[0], sent[1], 'the replay is the stored string, not a rebuilt envelope');
+    const first = JSON.parse(sent[0]);
+    const second = JSON.parse(sent[1]);
+    assert.equal(first.request_id, second.request_id);
+    assert.equal(first.idempotency_key, second.idempotency_key);
+    assert.deepEqual(first.expected_revisions, second.expected_revisions);
+    assert.equal(first.approval.subject_sha256, second.approval.subject_sha256);
+    assert.ok(notices.some((line) => /Replaying the same approved request/.test(line)),
+      'a replay is never silent');
+    assert.equal(recovery.replayable().record.phase, 'confirmed');
+  });
+
+  await test('a second ambiguity blocks instead of looping', async () => {
+    const { gateway, sent, recovery } = scriptedGateway([
+      answerWith('', new Error('interrupted')),
+    ]);
+    await assert.rejects(gateway.captureText('unknowable'),
+      (error) => error.gatewayCode === 'RECOVERY_BLOCKED');
+    assert.equal(sent.length, 2, 'exactly two attempts, ever');
+    assert.equal(recovery.replayable().record.phase, 'blocked');
+  });
+
+  await test('a refusal during recovery cannot erase an ambiguous first attempt', async () => {
+    const { gateway, sent, recovery } = scriptedGateway([
+      answerWith('', new Error('the child died during commit')),
+      answerWith(
+        (stdin) => refusalFor(
+          stdin,
+          'STALE_SNAPSHOT',
+          'canonical state changed since this request was approved',
+          true,
+        ),
+        Object.assign(new Error('refused'), { code: 3 }),
+      ),
+    ]);
+    await assert.rejects(
+      gateway.captureText('the first attempt may have changed canonical bytes'),
+      (error) => error.gatewayCode === 'RECOVERY_BLOCKED',
+    );
+    assert.equal(sent.length, 2, 'one exact recovery attempt is still the limit');
+    assert.equal(recovery.replayable().record.phase, 'blocked');
+    assert.equal(recovery.replayable().record.last_error.code, 'STALE_SNAPSHOT',
+      'the replay refusal remains visible without claiming the first attempt was clean');
+  });
+
+  await test('a definitive refusal clears the record; an ambiguous one keeps it', async () => {
+    const definitive = [
+      'INVALID_REQUEST', 'UNKNOWN_CAPABILITY', 'STALE_SNAPSHOT', 'REVISION_CONFLICT',
+      'OUT_OF_SCOPE', 'AMBIGUOUS_MIGRATION', 'VALIDATION_FAILED', 'PROJECTION_FAILED',
+      'UNCONFIRMED',
+    ];
+    for (const code of definitive) {
+      const { gateway, sent, recovery } = scriptedGateway([
+        answerWith((stdin) => refusalFor(stdin, code),
+          Object.assign(new Error('refused'), { code: 2 })),
+      ]);
+      await assert.rejects(gateway.captureText('draft is kept either way'),
+        (error) => error.gatewayCode === code);
+      assert.equal(sent.length, 1, `${code} is definitive, so it is never replayed`);
+      assert.equal(recovery.replayable(), null, `${code} retires the record`);
+    }
+    // These two are raised from inside the write path, so "did it commit?" is
+    // exactly the open question. Neither may retire the record.
+    for (const code of ['INTERNAL_FAILURE', 'IDEMPOTENCY_CONFLICT', 'A_CODE_FROM_A_NEWER_CORE']) {
+      const { gateway, sent, recovery } = scriptedGateway([
+        answerWith((stdin) => refusalFor(stdin, code),
+          Object.assign(new Error('refused'), { code: 2 })),
+      ]);
+      await assert.rejects(gateway.captureText('unknowable'),
+        (error) => error.gatewayCode === 'RECOVERY_BLOCKED');
+      assert.equal(sent.length, 2, `${code} earns one replay`);
+      assert.equal(recovery.replayable().record.phase, 'blocked',
+        `${code} must not retire the record`);
+    }
+  });
+
+  await test('success-shaped JSON from a failed process is not believed', async () => {
+    const { gateway, recovery } = scriptedGateway([
+      answerWith((stdin) => gatewayConfirmation(stdin),
+        Object.assign(new Error('Command failed'), { code: 2 })),
+    ]);
+    await assert.rejects(gateway.captureText('contradiction'),
+      (error) => error.gatewayCode === 'RECOVERY_BLOCKED');
+    assert.equal(recovery.replayable().record.last_error.code, 'PROCESS_CONTRADICTION');
+  });
+
+  await test('a fresh write is refused while any outcome is unresolved', async () => {
+    const { gateway, sent } = scriptedGateway([
+      answerWith('', new Error('interrupted')),
+    ]);
+    await assert.rejects(gateway.captureText('first'), /Diagnostics/);
+    const before = sent.length;
+    assert.throws(() => gateway.captureText('second'),
+      (error) => error.gatewayCode === 'RECOVERY_REQUIRED');
+    assert.throws(() => gateway.endSession(),
+      (error) => error.gatewayCode === 'RECOVERY_REQUIRED',
+      'review-only session closure also publishes and deletes its ownership ledger');
+    assert.equal(sent.length, before, 'nothing may reach Core while the first is unsettled');
+  });
+
+  await test('recovery is shared by every V2 method, not only capture and Garden', async () => {
+    // stage.progress.update carries caller-supplied guards rather than a
+    // request-scoped one, so it is the case a Capture-only implementation
+    // would silently miss.
+    const { gateway, sent, recovery } = scriptedGateway([
+      answerWith('', new Error('interrupted')),
+      answerWith((stdin) => gatewayConfirmation(stdin, SNAPSHOT, { replayed: true })),
+    ]);
+    const confirmation = await gateway.progress('unit-a', 'stage-a', 'complete', { 'unit-a': 2 });
+    assert.equal(confirmation.replayed, true);
+    assert.equal(sent[0], sent[1]);
+    assert.deepEqual(JSON.parse(sent[0]).expected_revisions, { 'unit-a': 2 },
+      'the caller-supplied guard survives the replay unchanged');
+    assert.equal(recovery.replayable().record.phase, 'confirmed');
+  });
+
+  await test('a tampered persisted record is refused and nothing is sent', async () => {
+    const { gateway, recovery, sent } = scriptedGateway([
+      answerWith((stdin) => gatewayConfirmation(stdin)),
+    ]);
+    await gateway.captureText('a thought');
+    const stored = recovery.replayable().record;
+    const envelope = JSON.parse(stored.envelope_json);
+    // The payload is edited without re-signing — which is exactly what an
+    // attacker or a clumsy editor of data.json would produce.
+    envelope.payload.text = 'a different thought';
+    const tampered = await validateGatewayRecoveryRecord({
+      ...stored, phase: 'prepared', confirmation: null,
+      envelope_json: JSON.stringify(envelope),
+    });
+    assert.equal(tampered.ok, false);
+    assert.match(tampered.error, /approval/);
+    const sentBefore = sent.length;
+    await assert.rejects(recovery.begin({
+      ...stored, phase: 'prepared', confirmation: null,
+      envelope_json: JSON.stringify(envelope),
+    }), /invalid recovery record/);
+    assert.equal(sent.length, sentBefore, 'a record that cannot be trusted starts no process');
+  });
+
+  await test('recovery record validation is closed against shape and phase', async () => {
+    const { gateway, recovery } = scriptedGateway([
+      answerWith((stdin) => gatewayConfirmation(stdin)),
+    ]);
+    await gateway.captureText('a thought');
+    const good = recovery.replayable().record;
+    assert.equal((await validateGatewayRecoveryRecord(good)).ok, true);
+    const broken = [
+      [{ ...good, schema_version: 2 }, /schema_version/],
+      [{ ...good, phase: 'finished' }, /phase/],
+      [{ ...good, created_at: 'the other day' }, /timestamp/],
+      [{ ...good, envelope_json: '{' }, /readable JSON/],
+      [{ ...good, extra: true }, /exactly/],
+      [{ ...good, phase: 'confirmed', confirmation: null }, /carry its receipt/],
+      [{ ...good, phase: 'prepared' }, /cannot already carry a receipt/],
+      [{ ...good, last_error: { code: 'X' } }, /code, message/],
+      [null, /not an object/],
+    ];
+    for (const [candidate, pattern] of broken) {
+      const result = await validateGatewayRecoveryRecord(candidate);
+      assert.equal(result.ok, false, `expected a refusal for ${JSON.stringify(candidate)?.slice(0, 60)}`);
+      assert.match(result.error, pattern);
+    }
+  });
+
+  await test('only the draft the envelope carried is cleared', async () => {
+    const envelope = (capability, payload) => ({
+      schema_version: 2,
+      request_id: 'r', idempotency_key: 'k', capability, channel: 'ui',
+      expected_snapshot: SNAPSHOT, expected_revisions: {},
+      approval: { kind: 'direct-user-gesture', subject_sha256: SNAPSHOT },
+      payload,
+    });
+
+    const matching = emptyUiDrafts();
+    matching.inbox = { title: 'Title', text: 'the captured thought' };
+    clearDraftsOwnedBy(matching, envelope('capture.create', { title: 'Title', text: 'the captured thought' }));
+    assert.deepEqual(matching.inbox, { title: '', text: '' });
+
+    const edited = emptyUiDrafts();
+    edited.inbox = { title: 'Title', text: 'the captured thought, plus a new sentence' };
+    clearDraftsOwnedBy(edited, envelope('capture.create', { title: 'Title', text: 'the captured thought' }));
+    assert.equal(edited.inbox.text, 'the captured thought, plus a new sentence',
+      'text written while the write ran is newer, and survives');
+
+    const garden = emptyUiDrafts();
+    garden.garden = { title: '', text: 'a loose thought' };
+    clearDraftsOwnedBy(garden, envelope('garden.seed.create', { text: 'a loose thought' }));
+    assert.deepEqual(garden.garden, { title: '', text: '' });
+
+    const note = emptyUiDrafts();
+    note.unitNotes['unit-a'] = { title: 'Session', text: 'body', expectedRevisions: {} };
+    note.stages['unit-a::stage-a'] = { text: 'scratch' };
+    note.stages['unit-a::stage-b'] = { text: 'unrelated scratch' };
+    clearDraftsOwnedBy(note, envelope('unit.note.append', {
+      unit_id: 'unit-a', title: 'Session', text: 'body', stage_id: ['stage-a'],
+    }));
+    assert.equal('unit-a' in note.unitNotes, false);
+    assert.equal('unit-a::stage-a' in note.stages, false);
+    assert.equal(note.stages['unit-a::stage-b'].text, 'unrelated scratch',
+      'only the stages the envelope named are cleared');
+
+    const done = emptyUiDrafts();
+    done.doneWhen['unit-a::stage-a'] = [true];
+    done.doneWhen['unit-a::stage-b'] = [true];
+    clearDraftsOwnedBy(done, envelope('stage.progress.update', {
+      unit_id: 'unit-a', stage_id: 'stage-a', status: 'complete',
+    }));
+    assert.deepEqual(Object.keys(done.doneWhen), ['unit-a::stage-b']);
+
+    const picker = emptyUiDrafts();
+    picker.inbox = { title: '', text: 'unrelated typing' };
+    clearDraftsOwnedBy(picker, envelope('capture.create', { file: '/tmp/x.pdf', file_sha256: SNAPSHOT }));
+    assert.equal(picker.inbox.text, 'unrelated typing',
+      'a file capture owns no composer draft');
+  });
+
+  await test('the Diagnostics summary carries metadata and never the payload', async () => {
+    const { gateway, recovery } = scriptedGateway([
+      answerWith('', new Error('interrupted')),
+    ]);
+    await assert.rejects(gateway.captureText('a private thought about a private thing'));
+    const rows = gatewayRecoverySummary(recovery.state);
+    const rendered = JSON.stringify(rows);
+    assert.match(rendered, /capture\.create/);
+    assert.match(rendered, /blocked/);
+    assert.doesNotMatch(rendered, /private thought/,
+      'the screen a learner screenshots must not carry their captured text');
+    assert.deepEqual(rows.map(([label]) => label), [
+      'Capability', 'Phase', 'Created', 'Request ID', 'Idempotency key', 'Last error',
+    ]);
+    assert.equal(gatewayRecoverySummary({ kind: 'clear' }), null);
+  });
+
+  await test('an older settings save cannot overwrite newer recovery state', async () => {
+    // The store hands its writes to whatever `persist` it was given; the
+    // plugin's is a serialized queue. This proves the store awaits that
+    // promise before believing a phase, so a slow save cannot be overtaken.
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    const saved = [];
+    let release = null;
+    const store = new SettingsGatewayRecoveryStore(settings, () => {
+      const captured = settings.gatewayRecovery
+        ? JSON.parse(JSON.stringify(settings.gatewayRecovery)) : null;
+      return new Promise((resolve) => {
+        release = () => { saved.push(captured); resolve(); };
+      });
+    });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+    const until = async (predicate) => {
+      for (let attempt = 0; attempt < 200 && !predicate(); attempt += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      assert.ok(predicate(), 'the awaited condition never arrived');
+    };
+    const write = gateway.captureText('serialized');
+    await until(() => release !== null);
+    assert.equal(saved.length, 0, 'the prepared record is not believed until its save resolves');
+    const first = release;
+    release = null;
+    first();
+    await until(() => release !== null);
+    release();
+    await write;
+    assert.deepEqual(saved.map((entry) => entry && entry.phase), ['prepared', 'confirmed'],
+      'each save serialized the newest state, in order');
   });
 
   await test('ApplicationRouter converts legacy leaves to product routes', async () => {

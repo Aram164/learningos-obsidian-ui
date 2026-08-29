@@ -11,18 +11,29 @@ import { UnitNoteModal } from './app/unit-note-modal';
 import {
   DraftStore,
   normalizeUiDrafts,
+  type ComposerDraft,
   type UnitNoteDraft,
 } from './application/draft-store';
-import type { AppSurface, LearningOSSettings } from './app/surface';
-import { asSessionReview, isProjectionConflict } from './contracts/gateway-v1';
 import {
-  assertGatewaySnapshotObserved,
-  isGatewaySuccessV2,
-} from './contracts/gateway-v2';
+  SettingsGatewayRecoveryStore,
+  type GatewayRecoveryState,
+} from './application/gateway-recovery';
+import type { AppSurface, LearningOSSettings } from './app/surface';
+import {
+  GatewayError,
+  asSessionReview,
+  isProjectionConflict,
+} from './contracts/gateway-v1';
+import type { GatewaySuccessV2 } from './contracts/gateway-v2';
 import {
   DEFAULT_SETTINGS, VIEW_NAV,
 } from './constants';
-import { GatewayClient, explicitAiContext } from './gateway-client';
+import {
+  GATEWAY_RECOVERY_BLOCKED,
+  GATEWAY_RECOVERY_NOTICE,
+  GatewayClient,
+  explicitAiContext,
+} from './gateway-client';
 import { AIActionClient } from './infrastructure/ai-action-client';
 import {
   LosRuntime,
@@ -37,6 +48,39 @@ import { asString } from './projection/readers';
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
+}
+
+interface SettingsSaveCoordinator {
+  generation: number;
+  tail: Promise<void>;
+}
+
+interface LearningOSProcessState {
+  __learningosUiSettingsCoordinators?: Map<string, SettingsSaveCoordinator>;
+}
+
+/*
+ * Plugin instances overlap during disable/re-enable: an old child callback can
+ * arrive after a new instance has loaded.  Keep one process-wide save queue
+ * and lease per vault so the old instance cannot write stale `data.json` over
+ * the new one.  `globalThis` deliberately survives a bundle reload in the same
+ * Obsidian process; a module-local map would not.
+ */
+const processState = globalThis as typeof globalThis & LearningOSProcessState;
+const settingsCoordinators = processState.__learningosUiSettingsCoordinators
+  ?? new Map<string, SettingsSaveCoordinator>();
+processState.__learningosUiSettingsCoordinators = settingsCoordinators;
+
+function settingsCoordinator(vaultRoot: string): SettingsSaveCoordinator {
+  const existing = settingsCoordinators.get(vaultRoot);
+  if (existing) return existing;
+  const created = { generation: 0, tail: Promise.resolve() };
+  settingsCoordinators.set(vaultRoot, created);
+  return created;
+}
+
+function cloneSettings(settings: LearningOSSettings): LearningOSSettings {
+  return JSON.parse(JSON.stringify(settings)) as LearningOSSettings;
 }
 
 /**
@@ -56,10 +100,73 @@ export class LearningOSUI extends Plugin implements AppSurface {
   declare resources: ResourceOpener;
   declare settings: LearningOSSettings;
   declare activeNav: string;
+  declare recovery: SettingsGatewayRecoveryStore;
 
   lastAiPrompt = '';
+  /** Set when startup found an unusable record; the app registers read-only. */
+  recoveryBlocked = false;
+
+  /**
+   * One writer for `data.json`, in arrival order and across plugin instances.
+   *
+   * Drafts, navigation, settings toggles and now the recovery record all live
+   * in the same file, and each used to call `saveData(this.settings)` on its
+   * own. Two of those in flight together is a lost update: whichever `await`
+   * resolved last wrote the object it had captured. For a debounced draft save
+   * that is a mild annoyance; for the record that says a write may be in
+   * flight, it is the difference between recovering and duplicating.
+   *
+   * Each queued task calls `saveData` only when its turn begins, so it
+   * serializes the newest in-memory settings rather than an old snapshot — the
+   * queue orders the writes without freezing what they contain.
+   */
+  private settingsCoordinator: SettingsSaveCoordinator | null = null;
+  private lifecycleGeneration = 0;
+  private lifecycleLive = false;
+
+  isLifecycleActive(): boolean {
+    return this.lifecycleLive
+      && this.settingsCoordinator?.generation === this.lifecycleGeneration;
+  }
+
+  private enqueueSettingsSave(
+    value: LearningOSSettings,
+    { requireOwner = true }: { requireOwner?: boolean } = {},
+  ): Promise<void> {
+    const coordinator = this.settingsCoordinator;
+    if (!coordinator) return Promise.resolve();
+    const generation = this.lifecycleGeneration;
+    const save = () => {
+      if (requireOwner && (!this.lifecycleLive || coordinator.generation !== generation)) {
+        return Promise.resolve();
+      }
+      return this.saveData(value);
+    };
+    const run = coordinator.tail.then(save, save);
+    coordinator.tail = run.then(() => undefined, () => undefined);
+    return run;
+  }
+
+  persistSettings(): Promise<void> {
+    if (!this.isLifecycleActive()) return Promise.resolve();
+    // The settings object is deliberately read when this queued task starts,
+    // so two rapid saves serialize the newest state instead of old snapshots.
+    return this.enqueueSettingsSave(this.settings);
+  }
 
   async onload(): Promise<void> {
+    const coordinator = settingsCoordinator(
+      this.app.vault.adapter.getBasePath(),
+    );
+    this.settingsCoordinator = coordinator;
+    this.lifecycleGeneration = coordinator.generation + 1;
+    coordinator.generation = this.lifecycleGeneration;
+    this.lifecycleLive = true;
+    // A prior instance may still have one physical save in progress.  It owns
+    // the queue position before this load, so wait for it rather than reading
+    // and later overwriting a half-settled settings file.
+    await coordinator.tail;
+    if (!this.isLifecycleActive()) return;
     const loadedSettings = await this.loadData<
       Partial<LearningOSSettings> | null
     >();
@@ -70,7 +177,12 @@ export class LearningOSUI extends Plugin implements AppSurface {
       ...savedSettings,
       uiDrafts: normalizeUiDrafts(savedSettings.uiDrafts),
     };
-    this.drafts = new DraftStore(this.settings, () => this.saveData(this.settings));
+    this.drafts = new DraftStore(this.settings, () => this.persistSettings());
+    this.recovery = new SettingsGatewayRecoveryStore(
+      this.settings,
+      () => this.persistSettings(),
+    );
+    const recoveryState = await this.recovery.load();
     this.store = new ManifestStore(this.app);
     this.runtime = new LosRuntime(this.app, () => this.settings.pythonPath);
     this.resources = new ResourceOpener(this.app);
@@ -87,11 +199,80 @@ export class LearningOSUI extends Plugin implements AppSurface {
     );
     await this.store.load();
     registerApplication(this);
+    await this.resumeInterruptedWrite(recoveryState);
+  }
+
+  /** Every Notice the gateway and recovery paths raise goes through here. */
+  notify(message: string): void {
+    if (!this.isLifecycleActive()) return;
+    new Notice(message);
+  }
+
+  /**
+   * Finish, or refuse to finish, whatever the last session left in flight.
+   *
+   * The order is deliberate: settings, then the recovery record, then the
+   * projection, and only then a replay — a replay decided before the projection
+   * loaded could not reconcile its own receipt.
+   */
+  private async resumeInterruptedWrite(state: GatewayRecoveryState): Promise<void> {
+    if (state.kind === 'clear') return;
+    if (state.kind === 'malformed') {
+      this.recoveryBlocked = true;
+      this.notify('LearningOS found an unreadable record of an unfinished write and will not send anything until it is reviewed. Open Diagnostics → Gateway recovery.');
+      return;
+    }
+    const phase = state.entry.record.phase;
+    if (phase === 'blocked' || phase === 'recovering') {
+      // `recovering` was persisted before the automatic replay started. If the
+      // process then died, another automatic replay on every launch would make
+      // the promised one-retry limit unbounded. Both states wait for the
+      // learner's explicit Diagnostics action; the original bytes remain.
+      this.recoveryBlocked = true;
+      this.notify(GATEWAY_RECOVERY_BLOCKED);
+      return;
+    }
+    if (phase === 'confirmed') {
+      // Settings JSON is evidence, not authority.  Ask Core's idempotency
+      // ledger for the exact committed receipt without running the handler;
+      // only then may projection reconciliation clear the record and draft.
+      try {
+        const confirmation = await this.gateway.settle(
+          await this.gateway.verifyConfirmedEnvelope(),
+        );
+        await this.finishConfirmedWrite(confirmation);
+      } catch (error: unknown) {
+        // A failed projection must not reject plugin startup: Diagnostics is
+        // the recovery surface, so it has to remain registered and reachable.
+        this.recoveryBlocked = this.recovery.unresolved;
+        this.notify(errorMessage(error));
+      }
+      return;
+    }
+    this.notify(GATEWAY_RECOVERY_NOTICE);
+    try {
+      await this.gateway.enqueue(async () => {
+        const outcome = await this.gateway.recoverPreparedEnvelope();
+        const confirmation = await this.gateway.settle(outcome);
+        await this.finishConfirmedWrite(confirmation);
+      });
+    } catch (error: unknown) {
+      this.recoveryBlocked = this.recovery.unresolved;
+      this.notify(errorMessage(error));
+    }
   }
 
   onunload(): void {
-    this.drafts.dispose();
-    void this.saveData(this.settings);
+    this.drafts?.dispose();
+    if (this.isLifecycleActive() && this.settings) {
+      // This final snapshot is already ordered before any replacement
+      // instance's load.  It is allowed to finish even if that instance claims
+      // the lease meanwhile; the replacement waits for the shared tail.
+      void this.enqueueSettingsSave(cloneSettings(this.settings), {
+        requireOwner: false,
+      }).catch(() => undefined);
+    }
+    this.lifecycleLive = false;
     detachApplication(this);
   }
 
@@ -131,8 +312,9 @@ export class LearningOSUI extends Plugin implements AppSurface {
   clearUnitNoteDraft(
     unitId: string,
     recoveredStageIds: readonly string[] = [],
+    match: { title: string; text: string } | null = null,
   ): void {
-    this.drafts.clearUnitNote(unitId, recoveredStageIds);
+    this.drafts.clearUnitNote(unitId, recoveredStageIds, match);
   }
   openUnitNote(
     unit: ProjectionRecord,
@@ -172,8 +354,49 @@ export class LearningOSUI extends Plugin implements AppSurface {
   setInboxDraft(title: string, text: string): void {
     this.drafts.setInbox(title, text);
   }
-  clearInboxDraft(): void {
-    this.drafts.clearInbox();
+  clearInboxDraft(match: ComposerDraft | null = null): void {
+    this.drafts.clearInbox(match);
+  }
+  getGardenDraft() { return this.drafts.getGarden(); }
+  setGardenDraft(title: string, text: string): void {
+    this.drafts.setGarden(title, text);
+  }
+  clearGardenDraft(match: ComposerDraft | null = null): void {
+    this.drafts.clearGarden(match);
+  }
+  /** Metadata about an unresolved write, for Diagnostics. Never payload text. */
+  gatewayRecoveryState(): GatewayRecoveryState {
+    return this.recovery.state;
+  }
+  /**
+   * Retry the *same* request from Diagnostics. It never creates a new one:
+   * the stored envelope is the only thing that can be sent, which is why the
+   * screen offers no discard.
+   */
+  async retryRecoveredWrite(): Promise<void> {
+    if (!this.recovery.unresolved) {
+      new Notice('There is no unresolved Gateway write.');
+      return;
+    }
+    if (this.recovery.state.kind === 'malformed') {
+      new Notice('The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.');
+      return;
+    }
+    try {
+      await this.gateway.enqueue(async () => {
+        const stored = this.recovery.replayable();
+        const outcome = stored?.record.confirmation
+          ? await this.gateway.verifyConfirmedEnvelope()
+          : await this.gateway.recoverPreparedEnvelope();
+        const confirmation = await this.gateway.settle(outcome);
+        await this.finishConfirmedWrite(confirmation);
+      });
+      this.recoveryBlocked = this.recovery.unresolved;
+      new Notice('The recovered Gateway write is settled.');
+    } catch (error: unknown) {
+      this.recoveryBlocked = this.recovery.unresolved;
+      new Notice(errorMessage(error));
+    }
   }
 
   /**
@@ -212,6 +435,71 @@ export class LearningOSUI extends Plugin implements AppSurface {
     );
   }
 
+  /** Reload without throwing: the snapshot now visible, or null. */
+  private async observedSnapshot(): Promise<string | null> {
+    const ok = await this.store.load();
+    this.app.workspace.iterateAllLeaves(
+      (leaf: WorkspaceLeaf) => leaf.view?.render?.(),
+    );
+    return ok ? this.store.snapshotId : null;
+  }
+
+  /**
+   * Turn a receipt into an observation, then retire the record.
+   *
+   * A receipt says Core committed. It does not say this vault can see the
+   * result — the projection is a separate artifact, and a write recovered after
+   * a crash is very likely to be looking at a stale one. So the manifest is
+   * reloaded, rebuilt once if it disagrees, and only a manifest that actually
+   * loads retires the record. If it never does, the record stays and blocks:
+   * an unobservable write is not a finished one, and starting a new write on
+   * top of it is how the duplicate would come back.
+   */
+  private async finishConfirmedWrite(
+    confirmation: GatewaySuccessV2 | null,
+  ): Promise<void> {
+    if (!confirmation) return;
+    this.gateway.assertLifecycleActive();
+    let observed = await this.observedSnapshot();
+    this.gateway.assertLifecycleActive();
+    let rebuildSucceeded = false;
+    let rebuildError: unknown = null;
+    if (observed !== confirmation.snapshot_after) {
+      new Notice('LearningOS is rebuilding the projection so the confirmed write becomes visible.');
+      try {
+        await this.gateway.call(['generate'], { expectJson: false });
+        rebuildSucceeded = true;
+      } catch (error: unknown) {
+        rebuildError = error;
+        // Reload once anyway: another process may already have published the
+        // receipt's snapshot while this rebuild was failing.
+      }
+      observed = await this.observedSnapshot();
+      this.gateway.assertLifecycleActive();
+    }
+    const failedToEstablishCurrentProjection = observed === null
+      || (observed !== confirmation.snapshot_after && !rebuildSucceeded);
+    if (failedToEstablishCurrentProjection) {
+      const detail = observed === null
+        ? (this.store.error || 'the projection could not be reloaded')
+        : `the projection rebuild failed and the readable manifest is still at ${observed}: ${errorMessage(rebuildError)}`;
+      await this.recovery.markBlocked({
+        code: 'PROJECTION_FAILED',
+        message: detail,
+      });
+      this.recoveryBlocked = true;
+      throw new GatewayError(
+        'LearningOS committed the write but cannot load a projection that shows it. Your draft was kept. Open Diagnostics → Gateway recovery.',
+        null,
+        { code: 'PROJECTION_FAILED', retryable: true },
+      );
+    }
+    if (observed !== confirmation.snapshot_after) {
+      new Notice('Recovered the prior write; newer canonical changes are also present.');
+    }
+    await this.recovery.settleConfirmed();
+  }
+
   /** The active destination is a display fact, so the Navigator is the only
    *  thing it redraws — never the working view the learner is reading. */
   setActiveNav(key: string): void {
@@ -241,12 +529,23 @@ export class LearningOSUI extends Plugin implements AppSurface {
   ): Promise<T> {
     return this.gateway.enqueue(async () => {
       try {
+        this.gateway.assertMutationAllowed();
         const result = await action();
-        if (reload) {
+        this.gateway.assertLifecycleActive();
+        /*
+         * Reconciliation is keyed on the record, not on what the action
+         * happened to return. Several call sites wrap the capability call in
+         * something larger — the inbox capture follows its write with a
+         * `generate` — so the confirmation never reaches this line, and a
+         * value-based check silently skipped reconciliation and left the next
+         * write refused. The record is the fact; the return value is an
+         * accident of how the caller composed its action.
+         */
+        const pending = this.recovery.replayable();
+        if (pending?.record.phase === 'confirmed') {
+          await this.finishConfirmedWrite(pending.record.confirmation);
+        } else if (reload) {
           await this.reloadStore();
-          if (isGatewaySuccessV2(result)) {
-            assertGatewaySnapshotObserved(result, this.store.snapshotId);
-          }
         }
         return result;
       } catch (error: unknown) {
@@ -293,7 +592,9 @@ export class LearningOSUI extends Plugin implements AppSurface {
 
   async reviewSessionEnd() {
     try {
-      const review = asSessionReview(await this.gateway.endSession());
+      const review = asSessionReview(await this.mutate(
+        () => this.gateway.endSession(),
+      ));
       new SessionEndModal(this.app, this, review).open();
       return review;
     } catch (error: unknown) {

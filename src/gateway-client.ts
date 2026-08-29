@@ -10,14 +10,22 @@ import {
 } from './contracts/gateway-v1';
 import {
   GATEWAY_SCHEMA_VERSION,
+  asGatewayFailureV2,
   asGatewaySuccessV2,
   gatewayApprovalSubject,
   gatewaySubjectSha256,
+  isDefinitiveNoCommitCode,
   isRequestScopedCapability,
   isSha256,
   requestArtifactId,
+  type GatewayFailureV2,
   type GatewaySuccessV2,
 } from './contracts/gateway-v2';
+import {
+  MemoryGatewayRecoveryStore,
+  type GatewayRecoveryErrorV1,
+  type GatewayRecoveryPort,
+} from './application/gateway-recovery';
 
 type LosCallback = (
   error: Error | null,
@@ -31,6 +39,45 @@ interface GatewayHost {
   store: {
     snapshotId: string | null;
   };
+  /**
+   * Where an in-flight write is remembered. Optional so a test can exercise
+   * transmission alone; the plugin always supplies the persisted store, and
+   * `LearningOSUI` is where that wiring is asserted.
+   */
+  recovery?: GatewayRecoveryPort;
+  /** Recovery is never silent — the learner is told before a replay is sent. */
+  notify?(message: string): void;
+  /** False once this plugin instance has yielded ownership during unload. */
+  isLifecycleActive?(): boolean;
+}
+
+export const GATEWAY_RECOVERY_NOTICE =
+  'The Gateway response was interrupted. Replaying the same approved request; '
+  + 'no new write will be created.';
+
+export const GATEWAY_RECOVERY_BLOCKED =
+  'LearningOS could not confirm whether the previous write landed, so it will '
+  + 'not send another. Your draft was kept. Open Diagnostics → Gateway recovery '
+  + 'to retry the same request.';
+
+/**
+ * What one attempt at a prepared envelope produced.
+ *
+ * Three outcomes, not two: "it worked", "Core refused before writing anything",
+ * and "nobody knows". The third is the one the old code did not have, and
+ * collapsing it into either of the others is how one gesture became two writes
+ * (collapse into failure, learner retries) or lost a capture (collapse into
+ * success, draft cleared).
+ */
+export type GatewayDispatchOutcome =
+  | { outcome: 'confirmed'; confirmation: GatewaySuccessV2 }
+  | { outcome: 'refused'; failure: GatewayFailureV2 }
+  | { outcome: 'ambiguous'; error: GatewayRecoveryErrorV1 };
+
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
 }
 
 let requestCounter = 0;
@@ -87,6 +134,7 @@ function gatewayErrorDetails(value: unknown): {
 export class GatewayClient {
   private readonly plugin: GatewayHost;
   private chain: Promise<void>;
+  readonly recovery: GatewayRecoveryPort;
   pending: number;
   constructor(plugin: GatewayHost) {
     this.plugin = plugin;
@@ -94,6 +142,43 @@ export class GatewayClient {
     // protected is the single CLI process and the snapshot it was handed.
     this.chain = Promise.resolve();
     this.pending = 0;
+    this.recovery = plugin.recovery ?? new MemoryGatewayRecoveryStore();
+  }
+
+  private announce(message: string): void {
+    if (!this.lifecycleActive()) return;
+    this.plugin.notify?.(message);
+  }
+
+  private lifecycleActive(): boolean {
+    return this.plugin.isLifecycleActive?.() ?? true;
+  }
+
+  assertLifecycleActive(): void {
+    if (this.lifecycleActive()) return;
+    throw new GatewayError(
+      'This LearningOS plugin instance has been unloaded; its pending operation was left for the active instance to recover.',
+      null,
+      { code: 'PLUGIN_UNLOADED', retryable: false },
+    );
+  }
+
+  /**
+   * The global write gate while any earlier transaction is unresolved.
+   *
+   * `capability()` is not the only mutating route: session closure and the
+   * provider-independent AI action commands still use positional CLI calls.
+   * Their hosts call this same guard before starting those processes, so
+   * recovery cannot be bypassed by choosing a different write surface.
+   */
+  assertMutationAllowed(): void {
+    this.assertLifecycleActive();
+    if (!this.recovery.unresolved) return;
+    throw new GatewayError(
+      'LearningOS has an unresolved Gateway write and will not start another until it is settled. Open Diagnostics → Gateway recovery.',
+      null,
+      { code: 'RECOVERY_REQUIRED', retryable: false },
+    );
   }
 
   /**
@@ -103,7 +188,11 @@ export class GatewayClient {
    */
   enqueue<T>(task: () => T | PromiseLike<T>): Promise<T> {
     this.pending += 1;
-    const run = this.chain.then(task, task);
+    const guarded = () => {
+      this.assertLifecycleActive();
+      return task();
+    };
+    const run = this.chain.then(guarded, guarded);
     this.chain = run.then(() => undefined, () => undefined)
       .then(() => { this.pending -= 1; });
     return run;
@@ -122,10 +211,19 @@ export class GatewayClient {
     args: string[],
     { expectJson = true, stdin }: { expectJson?: boolean; stdin?: string } = {},
   ): Promise<GatewayResultV1> {
+    this.assertLifecycleActive();
     return new Promise((resolve, reject) => {
       this.plugin.runLos(
         args,
         (error: Error | null, stdout: string, stderr: string) => {
+        if (!this.lifecycleActive()) {
+          reject(new GatewayError(
+            'This LearningOS plugin instance was unloaded while Core was finishing; its durable recovery record was left untouched.',
+            null,
+            { code: 'PLUGIN_UNLOADED', retryable: false },
+          ));
+          return;
+        }
         if (error) {
           // A refusal puts its reason on stdout and leaves stderr empty, so
           // reading stderr first threw the sentence away and reported Node's
@@ -215,6 +313,10 @@ export class GatewayClient {
         { code: 'INVALID_REQUEST', retryable: false },
       );
     }
+    // A second write while the first outcome is unknown is exactly the
+    // duplicate this whole path exists to prevent, and it must be refused
+    // before the envelope is built rather than after it is sent.
+    this.assertMutationAllowed();
     return this.sendCapability(
       name,
       payload,
@@ -223,12 +325,20 @@ export class GatewayClient {
     );
   }
 
-  private async sendCapability(
+  /**
+   * Phase one: build the request, persist it, send nothing.
+   *
+   * Identity, guards, approval and serialization all happen exactly once here,
+   * and the record is durably saved before this returns — so the process that
+   * comes next can be interrupted at any point and still be recognisable.
+   */
+  async prepareCapability(
     name: string,
     payload: Record<string, unknown>,
     expectedSnapshot: string,
     expectedRevisions: Readonly<Record<string, number>>,
-  ): Promise<GatewaySuccessV2> {
+  ): Promise<string> {
+    this.assertLifecycleActive();
     const requestId = nextRequestId(name);
     const idempotencyKey = nextIdempotencyKey(requestId);
     // Order matters, and it is the whole defect this method once had. A
@@ -262,9 +372,263 @@ export class GatewayClient {
       },
       payload,
     };
-    const response = await this.call(['capability', name, '--payload-file', '-'],
-      { stdin: JSON.stringify(envelope) });
-    return asGatewaySuccessV2(response, { requestId, idempotencyKey, capability: name });
+    const envelopeJson = JSON.stringify(envelope);
+    this.assertLifecycleActive();
+    await this.recovery.begin({
+      schema_version: 1,
+      phase: 'prepared',
+      created_at: new Date().toISOString(),
+      envelope_json: envelopeJson,
+      confirmation: null,
+      last_error: null,
+    });
+    return envelopeJson;
+  }
+
+  /** The raw process result, before anything has been believed about it. */
+  private runRaw(
+    args: string[],
+    stdin?: string,
+  ): Promise<{ error: Error | null; stdout: string; stderr: string }> {
+    return new Promise((resolve) => {
+      this.plugin.runLos(args, (error, stdout, stderr) => {
+        resolve({ error, stdout: String(stdout ?? ''), stderr: String(stderr ?? '') });
+      }, stdin);
+    });
+  }
+
+  /**
+   * Phase two: send the stored string, byte for byte.
+   *
+   * It generates nothing. Reconstructing the envelope here — even "identically"
+   * — would defeat the point: a rebuilt envelope carries a fresh identity, and
+   * Core would treat the retry as a new write.
+   */
+  async dispatchPreparedEnvelope(
+    envelopeJson: string,
+    { replayOnly = false }: { replayOnly?: boolean } = {},
+  ): Promise<GatewayDispatchOutcome> {
+    this.assertLifecycleActive();
+    let envelope: { capability?: unknown; request_id?: unknown; idempotency_key?: unknown };
+    try {
+      envelope = JSON.parse(envelopeJson);
+    } catch (_) {
+      return {
+        outcome: 'ambiguous',
+        error: { code: 'INVALID_REQUEST', message: 'the prepared envelope is unreadable' },
+      };
+    }
+    const expected = {
+      requestId: String(envelope.request_id ?? ''),
+      idempotencyKey: String(envelope.idempotency_key ?? ''),
+      capability: String(envelope.capability ?? ''),
+    };
+    const args = ['capability', expected.capability, '--payload-file', '-'];
+    if (replayOnly) args.push('--replay-only');
+    const { error, stdout, stderr } = await this.runRaw(args, envelopeJson);
+    this.assertLifecycleActive();
+    const raw = stdout.trim();
+    let parsed: unknown = null;
+    let readable = false;
+    if (raw) {
+      try { parsed = JSON.parse(raw); readable = true; }
+      catch (_) { readable = false; }
+    }
+    if (!readable) {
+      return {
+        outcome: 'ambiguous',
+        error: {
+          code: 'UNREADABLE_RESPONSE',
+          message: raw
+            ? `LearningOS answered with unreadable output: ${raw.slice(0, 160)}`
+            : (stderr.trim() || error?.message || 'LearningOS wrote nothing back.'),
+        },
+      };
+    }
+    const failure = asGatewayFailureV2(parsed, expected);
+    if (failure) {
+      // Only a definitive code retires the record. Everything else — an
+      // internal failure, an idempotency conflict, a code this build does not
+      // know — leaves the write's fate open, which is the safe reading.
+      return isDefinitiveNoCommitCode(failure.error.code)
+        ? { outcome: 'refused', failure }
+        : {
+          outcome: 'ambiguous',
+          error: { code: failure.error.code, message: failure.error.message },
+        };
+    }
+    let confirmation: GatewaySuccessV2 | null = null;
+    try { confirmation = asGatewaySuccessV2(parsed, expected); }
+    catch (_) { confirmation = null; }
+    if (confirmation && !error) return { outcome: 'confirmed', confirmation };
+    if (confirmation && error) {
+      // Success-shaped JSON from a process that failed contradicts itself; the
+      // receipt cannot be trusted and the write cannot be assumed absent.
+      return {
+        outcome: 'ambiguous',
+        error: {
+          code: 'PROCESS_CONTRADICTION',
+          message: 'LearningOS printed a receipt but the process reported failure.',
+        },
+      };
+    }
+    // Readable, but not a Gateway V2 answer to *this* request. Whatever it is,
+    // it does not establish that nothing was written — so the core's own words
+    // are carried forward for the learner while the outcome stays open.
+    const identity = record(parsed);
+    const claimsAnother = identity !== null
+      && (typeof identity.request_id === 'string'
+        || typeof identity.idempotency_key === 'string')
+      && (identity.request_id !== expected.requestId
+        || identity.idempotency_key !== expected.idempotencyKey
+        || identity.capability !== expected.capability);
+    return {
+      outcome: 'ambiguous',
+      error: {
+        code: claimsAnother ? 'IDENTITY_MISMATCH' : 'UNRECOGNISED_RESPONSE',
+        message: structuredError(raw)
+          || 'LearningOS answered with a response that does not match this request.',
+      },
+    };
+  }
+
+  /**
+   * Phase three: resend what was persisted.
+   *
+   * Used both for the one in-session replay and for a replay after restart, so
+   * there is only one code path that can send a retry, and it can only send the
+   * stored string.
+   */
+  async recoverPreparedEnvelope(): Promise<GatewayDispatchOutcome> {
+    this.assertLifecycleActive();
+    const entry = this.recovery.replayable();
+    if (!entry) {
+      return {
+        outcome: 'ambiguous',
+        error: { code: 'RECOVERY_REQUIRED', message: 'There is no replayable Gateway request.' },
+      };
+    }
+    await this.recovery.markRecovering(entry.record.last_error);
+    const result = await this.dispatchPreparedEnvelope(entry.record.envelope_json);
+    if (result.outcome !== 'refused') return result;
+    /*
+     * The refusal proves only that *this replay* wrote nothing. It cannot prove
+     * the earlier, interrupted attempt left nothing behind: a killed process or
+     * an incomplete rollback can change canonical bytes without reaching the
+     * idempotency ledger, after which the exact retry legitimately answers
+     * STALE_SNAPSHOT or REVISION_CONFLICT. Clearing here would erase the only
+     * evidence and invite a fresh-key duplicate.
+     */
+    return {
+      outcome: 'ambiguous',
+      error: {
+        code: result.failure.error.code,
+        message: `The recovery attempt was refused (${result.failure.error.code}): ${result.failure.error.message}`,
+      },
+    };
+  }
+
+  /**
+   * Ask Core to prove a persisted confirmation without running its handler.
+   *
+   * `data.json` is not an authority boundary: a syntactically valid success
+   * body can be corrupted or fabricated there.  Core's idempotency ledger and
+   * Receipt V2 are the authority, so startup and Diagnostics retire a stored
+   * confirmation only after this read-only lookup returns the exact replay.
+   */
+  async verifyConfirmedEnvelope(): Promise<GatewayDispatchOutcome> {
+    this.assertLifecycleActive();
+    const entry = this.recovery.replayable();
+    if (!entry || entry.record.confirmation === null) {
+      return {
+        outcome: 'ambiguous',
+        error: {
+          code: 'RECOVERY_REQUIRED',
+          message: 'There is no persisted confirmation for Core to verify.',
+        },
+      };
+    }
+    const result = await this.dispatchPreparedEnvelope(
+      entry.record.envelope_json,
+      { replayOnly: true },
+    );
+    if (result.outcome === 'confirmed' && result.confirmation.replayed) {
+      return result;
+    }
+    if (result.outcome === 'confirmed') {
+      return {
+        outcome: 'ambiguous',
+        error: {
+          code: 'UNVERIFIED_CONFIRMATION',
+          message: 'Core returned a non-replay response to a receipt-only lookup.',
+        },
+      };
+    }
+    if (result.outcome === 'refused') {
+      return {
+        outcome: 'ambiguous',
+        error: {
+          code: result.failure.error.code,
+          message: `Core could not verify the persisted receipt (${result.failure.error.code}): ${result.failure.error.message}`,
+        },
+      };
+    }
+    return result;
+  }
+
+  /**
+   * The shared write path for every V2 porcelain method.
+   *
+   * One ambiguous result buys exactly one visible replay. A second ambiguity
+   * blocks: looping in the background is how an interrupted write becomes many,
+   * and a blocked record deliberately does not retry itself on the next launch.
+   */
+  private async sendCapability(
+    name: string,
+    payload: Record<string, unknown>,
+    expectedSnapshot: string,
+    expectedRevisions: Readonly<Record<string, number>>,
+  ): Promise<GatewaySuccessV2> {
+    const envelopeJson = await this.prepareCapability(
+      name, payload, expectedSnapshot, expectedRevisions,
+    );
+    let result = await this.dispatchPreparedEnvelope(envelopeJson);
+    if (result.outcome === 'ambiguous') {
+      this.announce(GATEWAY_RECOVERY_NOTICE);
+      await this.recovery.markRecovering(result.error);
+      result = await this.recoverPreparedEnvelope();
+    }
+    return this.settle(result);
+  }
+
+  /** Turn one settled outcome into the record state and the caller's answer. */
+  async settle(result: GatewayDispatchOutcome): Promise<GatewaySuccessV2> {
+    this.assertLifecycleActive();
+    if (result.outcome === 'confirmed') {
+      // Not cleared here: a receipt is not yet an observation. The record is
+      // retired only after the projection has been reconciled with it.
+      await this.recovery.markConfirmed(result.confirmation);
+      return result.confirmation;
+    }
+    if (result.outcome === 'refused') {
+      await this.recovery.discardRefused();
+      throw new GatewayError(
+        result.failure.error.message,
+        null,
+        {
+          code: result.failure.error.code,
+          retryable: result.failure.error.retryable,
+        },
+      );
+    }
+    await this.recovery.markBlocked(result.error);
+    throw new GatewayError(
+      // The last thing Core said travels with the refusal. The learner cannot
+      // act on "unknown", but they can act on the sentence underneath it.
+      `${GATEWAY_RECOVERY_BLOCKED}\nLast response: ${result.error.message}`,
+      null,
+      { code: 'RECOVERY_BLOCKED', retryable: false },
+    );
   }
 
   /**
@@ -434,6 +798,9 @@ export class GatewayClient {
       { expectedRevisions });
   }
   endSession(commitMessage: string | null = null, push = false) {
+    // Review-only session closure still publishes the projection and removes
+    // the ownership ledger, so it is a mutation even without a commit message.
+    this.assertMutationAllowed();
     const args = ['session-end'];
     if (commitMessage) args.push('--commit-message', commitMessage);
     if (push) args.push('--push');

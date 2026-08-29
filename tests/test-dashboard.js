@@ -9,6 +9,7 @@ const suites = [
   require('./dashboard/library-capture'),
   require('./dashboard/study-surfaces'),
   require('./dashboard/shelving-resilience'),
+  require('./dashboard/gateway-recovery'),
   require('./dashboard/runtime-integrity'),
 ];
 

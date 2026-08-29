@@ -27,6 +27,7 @@ type SettingsPlugin =
   & Pick<
   AppSurface,
   | 'generate'
+  | 'persistSettings'
   | 'settings'
 > & {
   readonly nav: Pick<
@@ -41,7 +42,8 @@ function errorMessage(error: unknown): string {
 
 type SessionEndPlugin = Pick<
   AppSurface,
-  'gateway'
+  | 'gateway'
+  | 'mutate'
 >;
 
 type SessionReview = SessionReviewV1;
@@ -78,7 +80,7 @@ export class LearningOSSettingsTab extends PluginSettingTab {
         .setValue(this.plugin.settings[key]).onChange(
           async (value: boolean) => {
           this.plugin.settings[key] = value;
-          await this.plugin.saveData(this.plugin.settings);
+          await this.plugin.persistSettings();
         }),
       );
     }
@@ -88,7 +90,7 @@ export class LearningOSSettingsTab extends PluginSettingTab {
         .setValue(this.plugin.settings.pythonPath || '')
         .onChange(async (value: string) => {
           this.plugin.settings.pythonPath = value.trim();
-          await this.plugin.saveData(this.plugin.settings);
+          await this.plugin.persistSettings();
         }));
     new Setting(root).setName('Validate and rebuild').setDesc('Run the canonical core projection pipeline.')
       .addButton(
@@ -150,9 +152,12 @@ export class SessionEndModal extends Modal {
     button(actions, 'Commit session-owned files', async () => {
       if (!message.value.trim()) { new Notice('Enter a commit message first.'); return; }
       try {
-        const result = asSessionReview(
-          await this.plugin.gateway.endSession(message.value.trim(), Boolean(push.checked)),
-        );
+        const result = asSessionReview(await this.plugin.mutate(
+          () => this.plugin.gateway.endSession(
+            message.value.trim(),
+            Boolean(push.checked),
+          ),
+        ));
         new Notice(result.pushed ? 'Learning session committed and pushed.' : 'Learning session committed.');
         this.close();
       } catch (error: unknown) {

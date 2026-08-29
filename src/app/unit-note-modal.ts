@@ -197,10 +197,13 @@ export class UnitNoteModal extends Modal {
     }
     this.saving = true;
     try {
+      const sent = { title: this.titleInput?.value || '', text };
       await this.plugin.mutate(() => this.plugin.gateway.saveUnitNote(unitId, {
-        title: this.titleInput?.value || '', text, stageIds: this.referencedStageIds, filePaths,
+        ...sent, stageIds: this.referencedStageIds, filePaths,
       }, this.expectedRevisions));
-      this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds);
+      // The confirmed write already cleared this draft if it was still the
+      // note that was sent; the match keeps the repeat from taking a newer one.
+      this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds, sent);
       new Notice('Learning-session note saved.');
       this.close();
     } catch (error: unknown) {

@@ -28,7 +28,8 @@
 import type { UnitNoteModal } from './unit-note-modal';
 import type { AppNavigator } from './navigator';
 import type { ApplicationRouter } from './router';
-import type { UnitNoteDraft } from '../application/draft-store';
+import type { ComposerDraft, UnitNoteDraft } from '../application/draft-store';
+import type { GatewayRecoveryState } from '../application/gateway-recovery';
 import type { DEFAULT_SETTINGS } from '../constants';
 import type { ProjectionRecord } from '../contracts/manifest';
 import type { GatewayClient } from '../gateway-client';
@@ -72,6 +73,16 @@ export interface AppSurface {
     action: () => T | PromiseLike<T>,
     options?: { reload?: boolean; healStaleProjection?: boolean },
   ): Promise<T>;
+  /**
+   * The single writer for `data.json`. Nothing calls `saveData` directly any
+   * more: two unordered saves of the same settings object is a lost update,
+   * and the record that says a write may be in flight is the one value that
+   * cannot survive losing one.
+   */
+  persistSettings(): Promise<void>;
+  notify(message: string): void;
+  gatewayRecoveryState(): GatewayRecoveryState;
+  retryRecoveredWrite(): Promise<void>;
   generate(): Promise<void>;
   reviewSessionEnd(): Promise<unknown>;
   askAiScoped(
@@ -109,12 +120,24 @@ export interface AppSurface {
     text: string,
     expectedRevisions?: Readonly<Record<string, number>>,
   ): void;
-  clearUnitNoteDraft(unitId: string, recoveredStageIds?: readonly string[]): void;
+  /**
+   * `match` is what makes clearing safe after an awaited write: the draft goes
+   * only if it is still the text that was sent, so a learner who kept typing
+   * while the note saved does not lose the newer version to the success path.
+   */
+  clearUnitNoteDraft(
+    unitId: string,
+    recoveredStageIds?: readonly string[],
+    match?: { title: string; text: string } | null,
+  ): void;
   openUnitNote(
     unit: ProjectionRecord,
     studyMap: ProjectionRecord | null,
   ): UnitNoteModal;
-  getInboxDraft(): { title: string; text: string };
+  getInboxDraft(): ComposerDraft;
   setInboxDraft(title: string, text: string): void;
-  clearInboxDraft(): void;
+  clearInboxDraft(match?: ComposerDraft | null): void;
+  getGardenDraft(): ComposerDraft;
+  setGardenDraft(title: string, text: string): void;
+  clearGardenDraft(match?: ComposerDraft | null): void;
 }

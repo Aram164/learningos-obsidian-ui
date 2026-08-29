@@ -14,6 +14,7 @@ const {
   VIEW,
   tick,
   frame,
+  waitFor,
   check,
   heading,
   build,
@@ -328,9 +329,13 @@ module.exports = async function run() {
       'Add seed',
     ).fire('click');
 
-    await tick();
-    await tick();
-    await tick();
+    // The seed is persisted as a recovery record before it is sent, so the
+    // envelope appears after an awaited save rather than on the next tick.
+    await waitFor(
+      () => calls.envelopes.some(
+        (envelope) => envelope.capability === 'garden.seed.create',
+      ) && !plugin.gateway.isBusy,
+    );
 
     const seed =
       calls.envelopes.find(

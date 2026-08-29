@@ -16,6 +16,7 @@ import type { ProjectionRecord } from '../contracts/manifest';
 import type { AppSurface } from '../app/surface';
 import type { AppNavigator } from '../app/navigator';
 import { errorMessage, isRecord } from '../projection/readers';
+import { gatewayRecoverySummary } from '../application/gateway-recovery';
 import {
   asHealthReport,
   type HealthReportV1,
@@ -62,9 +63,11 @@ type DiagnosticsPlugin = Pick<
   AppSurface,
   | 'copyText'
   | 'gateway'
+  | 'gatewayRecoveryState'
   | 'generate'
   | 'manifest'
   | 'resolvePython'
+  | 'retryRecoveredWrite'
   | 'store'
   | 'uiVersion'
 >;
@@ -634,6 +637,8 @@ export class DiagnosticsView extends ItemView {
 
     factList(facts, factRows);
 
+    this.renderGatewayRecovery(root);
+
     const actions = root.createDiv({ cls: 'los-actions' });
     button(actions, 'Refresh health', () => void this.loadHealth(), 'info');
     button(actions, 'Validate and rebuild', () => this.plugin.generate(), 'success');
@@ -643,6 +648,56 @@ export class DiagnosticsView extends ItemView {
 
     const policy = section(root, 'About LearningOS');
     policy.createEl('p', { text: OWNERSHIP_STATEMENT });
+  }
+
+  /**
+   * The one place an unresolved write is visible and actionable.
+   *
+   * Metadata only: no payload text and no file paths, because this screen is
+   * the one a learner is most likely to screenshot when asking for help.
+   *
+   * There is deliberately no discard, delete, reset or "start over". Every one
+   * of those would let a learner resolve an ambiguity by declaring it resolved,
+   * which is precisely the judgement nobody at this screen can make — the write
+   * either landed or it did not, and only Core can say which.
+   */
+  private renderGatewayRecovery(root: HTMLElement): void {
+    const state = this.plugin.gatewayRecoveryState();
+    const panel = section(
+      root,
+      'Gateway recovery',
+      'One unresolved canonical write, if there is one.',
+    );
+    if (state.kind === 'clear') {
+      panel.createEl('p', { text: 'No unresolved Gateway write.' });
+      return;
+    }
+    const rows = gatewayRecoverySummary(state) ?? [];
+    factList(panel, rows);
+    const actions = root.createDiv({ cls: 'los-actions' });
+    if (state.kind === 'record' && state.entry.record.phase !== 'confirmed') {
+      button(
+        actions,
+        'Retry exact request',
+        () => void this.plugin.retryRecoveredWrite(),
+        'info',
+      );
+    } else if (state.kind === 'record') {
+      button(
+        actions,
+        'Finish confirmed write',
+        () => void this.plugin.retryRecoveredWrite(),
+        'info',
+      );
+    }
+    button(
+      actions,
+      'Copy recovery summary',
+      () => this.plugin.copyText(
+        rows.map(([label, value]) => `${label}: ${value}`).join('\n'),
+      ),
+      'quiet',
+    );
   }
 
   private renderLegacy(root: HTMLElement): void {

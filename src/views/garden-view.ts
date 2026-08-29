@@ -24,12 +24,15 @@ import { asLabel, asString, errorMessage } from '../projection/readers';
 type GardenPlugin = Pick<
   AppSurface,
   | 'aiActions'
+  | 'clearGardenDraft'
   | 'copyText'
   | 'gateway'
   | 'generate'
+  | 'getGardenDraft'
   | 'mutate'
   | 'openVaultPath'
   | 'scheduleDraftSave'
+  | 'setGardenDraft'
   | 'settings'
   | 'store'
 >;
@@ -60,8 +63,6 @@ const GARDEN_FILTERS: ReadonlyArray<
  */
 export class GardenView extends ItemView {
   private readonly plugin: GardenPlugin;
-  private seedTitle = '';
-  private seedText = '';
   private planting = false;
   private filter: GardenFilter = 'all';
 
@@ -71,6 +72,21 @@ export class GardenView extends ItemView {
   ) {
     super(leaf);
     this.plugin = plugin;
+  }
+
+  /*
+   * The composer's text lives in the persisted draft rather than in two view
+   * fields. It used to be view state, which meant an Obsidian restart during
+   * an unresolved seed write lost exactly the text the recovery record exists
+   * to protect — the seed might have landed, and the learner had nothing left
+   * to compare it against.
+   */
+  private get seedTitle(): string {
+    return this.plugin.getGardenDraft().title;
+  }
+
+  private get seedText(): string {
+    return this.plugin.getGardenDraft().text;
   }
 
   getViewType() {
@@ -247,7 +263,7 @@ export class GardenView extends ItemView {
     editor.addEventListener(
       'input',
       () => {
-        this.seedText = editor.value;
+        this.plugin.setGardenDraft(title.value, editor.value);
         syncAddState();
       },
     );
@@ -275,7 +291,7 @@ export class GardenView extends ItemView {
     title.addEventListener(
       'input',
       () => {
-        this.seedTitle = title.value;
+        this.plugin.setGardenDraft(title.value, editor.value);
         syncAddState();
       },
     );
@@ -331,8 +347,10 @@ export class GardenView extends ItemView {
           ),
       );
 
-      this.seedTitle = '';
-      this.seedText = '';
+      // Idempotent by design: the confirmed write already cleared this draft
+      // if it was still the text that was sent, and `match` is what stops a
+      // repeat from discarding something the learner typed since.
+      this.plugin.clearGardenDraft({ title, text });
 
       new Notice('Garden seed added.');
     } catch (error: unknown) {

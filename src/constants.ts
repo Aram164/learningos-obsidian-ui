@@ -40,6 +40,12 @@ export const DEFAULT_SETTINGS = {
   learnArea: 'program-bachelors',
   pythonPath: '',
   preferredAiProvider: 'manual-bundle',
+  /**
+   * One unresolved Gateway V2 write, or null. Deliberately `unknown`: a value
+   * that fails validation must reach Diagnostics exactly as it was written
+   * rather than be narrowed — or worse, normalised away — on the way in.
+   */
+  gatewayRecovery: null as unknown,
 };
 
 /** Protocols an interface layer may hand to a viewer. Everything else — and
