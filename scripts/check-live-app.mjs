@@ -195,7 +195,7 @@ export function redactDiagnostics(value) {
 
 function runCli(binary, args, { cwd, vaultName, timeout = 30000 } = {}) {
   assertAllowedCommand(args);
-  const finalArgs = vaultName ? [...args, `vault=${vaultName}`] : args;
+  const finalArgs = vaultName ? [`vault=${vaultName}`, ...args] : args;
   const result = spawnSync(binary, finalArgs, { cwd, encoding: 'utf8', timeout });
   if (result.error) {
     throw new LiveAppCheckError(`obsidian-cli could not be run: ${result.error.message}`);
