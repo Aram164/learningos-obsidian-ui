@@ -21,23 +21,6 @@ jobs:
         with:
           path: obsidian-ui
 
-      # contracts/manifest-v5.lock.json is a MIRROR of the producer's
-      # declaration in core (system/contracts/manifest-contract.yaml), and
-      # scripts/check-contract.mjs can only compare the two when core sits at
-      # ../repository. Until 2026-08-18 this job checked out only the UI, so
-      # that comparison never ran here: it printed "core not checked out beside
-      # this repo" and passed. The one contract in the system enforced by memory
-      # rather than by code was the one guarding "core ships a shape the UI does
-      # not know about" — the exact failure the producer-owned-contract design
-      # was written in response to. Checking core out is what makes it run.
-      #
-      # The path must be a sibling of obsidian-ui inside the workspace, which is
-      # why the UI is no longer checked out at the workspace root.
-      #
-      # Prefer a same-named Core branch when one exists, otherwise use main.
-      # A cross-repository change can therefore verify the pair under review
-      # without a permanent branch pin; ordinary UI-only branches still test
-      # against the released Core line.
       - name: Resolve the matching producer branch
         id: producer-ref
         env:
@@ -51,24 +34,35 @@ jobs:
             echo "ref=main" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Check out the producer of the manifest contract
+      - name: Check out the paired Core producer
         uses: actions/checkout@v4
         with:
           repository: Aram164/LearningOS
           ref: ${{ steps.producer-ref.outputs.ref }}
           path: repository
 
+      - name: Print the resolved Core ref and commit
+        working-directory: repository
+        run: |
+          echo "Core ref resolved: ${{ steps.producer-ref.outputs.ref }}"
+          echo "Core commit checked out: $(git rev-parse HEAD)"
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
 
-      - name: Install pinned development dependencies
+      - name: Install UI dependencies
         run: npm ci --ignore-scripts
+      - name: Install Core development dependencies
+        working-directory: repository
+        run: pip install -e ".[dev]"
 
-      # CI is set, so check-contract.mjs now refuses to pass on an unverified
-      # mirror instead of skipping it.
-      - name: Typecheck, contract-check, build and test
-        run: npm run check
+      - name: paired release gate (make system-check)
+        working-directory: repository
+        run: make system-check
 
       - name: Exercise the fixture installer path
         run: python3 install.py --vault fixture-vault --dry-run --node "$(command -v node)"

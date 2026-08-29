@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "contract:check": "node scripts/check-contract.mjs",
     "test:ui": "node tests/test-dashboard.js && node tests/test-ai-actions.js",
-    "test": "npm run build && npm run typecheck && npm run typecheck:contracts && npm run contract:check && npm run test:installer && npm run test:modules && npm run test:ui && npm run test:live-app-check",
+    "test": "npm run build && npm run typecheck && npm run typecheck:contracts && npm run contract:check && npm run test:installer && npm run test:modules && npm run test:ui && npm run test:live-app-check && npm run test:ci-policy",
     "check": "npm run test && node scripts/check-host-surface.mjs && node scripts/check-build.mjs",
     "build:info": "node scripts/print-build-info.mjs",
     "install:status": "node scripts/check-install-current.mjs",
@@ -19,6 +19,7 @@
     "test:installer": "python3 tests/test_installer.py",
     "test:modules": "node tests/test-runtime-modules.js",
     "test:live-app-check": "node tests/test-live-app-check.js",
+    "test:ci-policy": "node tests/test-ci-policy.js",
     "check:live": "node scripts/check-live-app.mjs"
   },
   "devDependencies": {
