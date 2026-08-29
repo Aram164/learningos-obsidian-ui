@@ -11,8 +11,10 @@ const stylesPath = path.join(root, 'plugin', 'styles.css');
 const infoPath = path.join(root, 'plugin', 'build-info.json');
 const hash = (value) => crypto.createHash('sha256').update(value).digest('hex');
 
-function buildOnce() {
-  const result = spawnSync(process.execPath, ['build.mjs'], { cwd: root, encoding: 'utf8' });
+function buildOnce(env = {}) {
+  const result = spawnSync(process.execPath, ['build.mjs'], {
+    cwd: root, encoding: 'utf8', env: { ...process.env, ...env },
+  });
   if (result.status !== 0) throw new Error(result.stderr || result.stdout || 'build failed');
   return {
     bundle: fs.readFileSync(bundlePath),
@@ -26,6 +28,34 @@ const second = buildOnce();
 if (!first.bundle.equals(second.bundle) || first.styles !== second.styles || first.info !== second.info) {
   throw new Error('Build is not deterministic: two consecutive builds differ.');
 }
+
+/*
+ * A commit is metadata, not source. `LEARNINGOS_UI_SOURCE_REVISION` changes
+ * only which commit build-info.json *names* — never a file esbuild reads — so
+ * a build with a different fake revision must produce a byte-identical
+ * bundle and stylesheet, differing only in the two revision-shaped fields.
+ * Embedding an actual commit into the bundle would fail this: rebuilding
+ * after every commit would then change the bundle again, and a clean,
+ * reproducible commit would be impossible (risk 10.6 in the hardening plan).
+ */
+const thirdInfo = JSON.parse(
+  buildOnce({ LEARNINGOS_UI_SOURCE_REVISION: 'f'.repeat(40) }).info,
+);
+const secondInfoForCompare = JSON.parse(second.info);
+if (thirdInfo.source_revision !== 'f'.repeat(40)) {
+  throw new Error('LEARNINGOS_UI_SOURCE_REVISION did not take effect.');
+}
+if (thirdInfo.source_fingerprint !== secondInfoForCompare.source_fingerprint
+    || thirdInfo.bundle_sha256 !== secondInfoForCompare.bundle_sha256
+    || thirdInfo.stylesheet_sha256 !== secondInfoForCompare.stylesheet_sha256) {
+  throw new Error(
+    'Changing only the recorded commit changed the fingerprint or the bundle — '
+    + 'a commit SHA has leaked into build content.',
+  );
+}
+// Rebuild once more with the real environment so the committed working tree
+// is left in its normal, non-fake-revision state.
+buildOnce();
 
 const info = JSON.parse(second.info);
 if (!['esbuild', 'typescript-fallback'].includes(info.bundler) || info.entry_point !== 'src/main.ts') {
@@ -51,8 +81,36 @@ if (process.env.CI && process.env.LEARNINGOS_ALLOW_MISSING_CORE !== '1'
   );
 }
 if (!Array.isArray(info.modules) || !info.modules.includes('src/main.ts')
-    || !info.modules.includes('src/manifest-store.ts')) {
+    || !info.modules.includes('src/manifest-store.ts')
+    || !info.modules.includes('src/build-identity.ts')) {
   throw new Error('The module graph did not report the expected source inputs.');
+}
+
+/*
+ * The runtime identity `src/build-identity.ts` exposes must actually be the
+ * fingerprint build-info claims — otherwise the "compiled source fingerprint"
+ * Diagnostics compares against build-info would just be re-reading build-info
+ * under a different name, proving nothing about what the running bundle
+ * actually contains. This inspects the bundle text directly rather than
+ * loading it (loading requires mocking the `obsidian` module), which is
+ * sufficient to catch every failure mode the two-pass build guards against:
+ * a leaked placeholder, a raw unsubstituted identifier, or an embedded value
+ * that does not match the fingerprint build-info itself records.
+ */
+const bundleText = second.bundle.toString('utf8');
+if (!info.source_fingerprint || typeof info.source_fingerprint !== 'string') {
+  throw new Error('build-info.json has no source_fingerprint to verify against the bundle.');
+}
+if (!bundleText.includes(JSON.stringify(info.source_fingerprint))) {
+  throw new Error(
+    'The bundle does not embed the source_fingerprint build-info.json records — '
+    + 'the running plugin and its installed metadata could disagree.',
+  );
+}
+if (bundleText.includes('pending-build-pass')
+    || bundleText.includes('__LEARNINGOS_SOURCE_FINGERPRINT__')
+    || bundleText.includes('__LEARNINGOS_CONTRACT_VERSION__')) {
+  throw new Error('The bundle leaked a build-identity placeholder instead of the real values.');
 }
 if (second.bundle.includes(Buffer.from('/* ---- src/'))) {
   throw new Error('Legacy concatenation section markers remain in the bundle.');

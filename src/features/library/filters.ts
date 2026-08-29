@@ -232,10 +232,7 @@ export function renderSourceBrowser(
     const fullTextSearch = button(
       toolbar,
       'Full text / OCR',
-      () =>
-        view.plugin.nav.openFullTextSearch(
-          view.query,
-        ),
+      () => view.plugin.nav.openFullTextSearch(),
       'quiet',
     );
 

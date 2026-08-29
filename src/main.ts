@@ -8,6 +8,7 @@ import { detachApplication, registerApplication } from './app/registration';
 import { AppNavigator } from './app/navigator';
 import { ApplicationRouter } from './app/router';
 import { UnitNoteModal } from './app/unit-note-modal';
+import { runtimeContractVersion, runtimeSourceFingerprint } from './build-identity';
 import {
   DraftStore,
   normalizeUiDrafts,
@@ -410,6 +411,14 @@ export class LearningOSUI extends Plugin implements AppSurface {
   uiVersion(): string {
     const info = this.manifest;
     return info?.version || 'unknown';
+  }
+
+  /** The identity compiled into *this* running bundle — see build-identity.ts. */
+  runtimeBuildIdentity(): { fingerprint: string; contractVersion: number } {
+    return {
+      fingerprint: runtimeSourceFingerprint(),
+      contractVersion: runtimeContractVersion(),
+    };
   }
 
   resolvePython(): PythonResolution {

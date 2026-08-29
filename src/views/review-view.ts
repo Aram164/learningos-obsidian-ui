@@ -68,6 +68,7 @@ type DiagnosticsPlugin = Pick<
   | 'manifest'
   | 'resolvePython'
   | 'retryRecoveredWrite'
+  | 'runtimeBuildIdentity'
   | 'store'
   | 'uiVersion'
 >;
@@ -607,6 +608,15 @@ export class DiagnosticsView extends ItemView {
     const generated: DiagnosticsGenerated =
       this.plugin.store.data?._generated ?? {};
     const build = this.buildInfo();
+    const runtime = this.plugin.runtimeBuildIdentity();
+    // The installed build-info.json and the code actually executing right now
+    // can disagree: an old in-memory plugin can go on running after a newer
+    // build lands on disk, and only a reload replaces it. Comparing the two
+    // fingerprints is the one way to tell which of them Diagnostics is
+    // actually looking at.
+    const identityMatches = runtime.fingerprint !== 'unavailable'
+      && runtime.fingerprint === build.source_fingerprint
+      && runtime.contractVersion === build.manifest_contract_version;
     const facts = section(root, 'Contract and versions');
     const factRows: ReadonlyArray<
       readonly [string, unknown]
@@ -624,7 +634,11 @@ export class DiagnosticsView extends ItemView {
         : build.source_dirty
           ? `${build.source_committed_at} + uncommitted sources`
           : build.source_committed_at],
-      ['UI source fingerprint', build.source_fingerprint],
+      ['UI source fingerprint (installed)', build.source_fingerprint],
+      ['UI source fingerprint (running)', runtime.fingerprint],
+      ['Running code matches installed build-info', identityMatches
+        ? 'yes'
+        : 'NO — reload learningos-ui'],
       ['UI bundle fingerprint', build.bundle_sha256],
       ['Build Node', build.node_version],
       ['Generator', generated.generator || 'unknown'],

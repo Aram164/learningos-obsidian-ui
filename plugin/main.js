@@ -1091,8 +1091,8 @@ function validMaterialSynthesis(value) {
     "completeness"
   ]) && value.schema_version === 1 && identifier2(value.id, "material-synthesis-") && value.type === "unit-material-synthesis" && identifier2(value.unit_id, "unit-") && value.status === "approved" && validSynthesisBasis(value.basis) && Array.isArray(value.route_assessments) && value.route_assessments.length > 0 && value.route_assessments.every(validRouteAssessment) && Array.isArray(value.comparisons) && value.comparisons.every(validRouteComparison) && Array.isArray(value.concept_groups) && value.concept_groups.every(validConceptGroup) && validSynthesisFreshness(value.freshness) && validSynthesisCompleteness(value.completeness);
 }
-function requireArray(record4, key) {
-  if (!Array.isArray(record4[key])) {
+function requireArray(record6, key) {
+  if (!Array.isArray(record6[key])) {
     throw new TypeError(`Manifest field ${String(key)} must be an array.`);
   }
 }
@@ -1248,8 +1248,8 @@ function assertManifest(value) {
       throw new TypeError("Manifest flat stages must match the closed v8 projection.");
     }
   }
-  for (const record4 of value.records) {
-    if (!validProjectedRecord(record4, validMaterialSynthesis)) {
+  for (const record6 of value.records) {
+    if (!validProjectedRecord(record6, validMaterialSynthesis)) {
       throw new TypeError("Manifest records must match the closed v8 record union.");
     }
   }
@@ -1415,7 +1415,13 @@ var DEFAULT_SETTINGS = {
   navMoreOpen: false,
   learnArea: "program-bachelors",
   pythonPath: "",
-  preferredAiProvider: "manual-bundle"
+  preferredAiProvider: "manual-bundle",
+  /**
+   * One unresolved Gateway V2 write, or null. Deliberately `unknown`: a value
+   * that fails validation must reach Diagnostics exactly as it was written
+   * rather than be narrowed — or worse, normalised away — on the way in.
+   */
+  gatewayRecovery: null
 };
 var SAFE_URL_PROTOCOLS = ["https:", "http:"];
 var ICONS = {
@@ -1489,9 +1495,9 @@ function optionalString(value) {
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
-function asLabel(record4, fallback = "Untitled") {
-  if (!record4) return fallback;
-  return asString(record4.title) ?? asString(record4.label) ?? asString(record4.name) ?? asString(record4.id) ?? fallback;
+function asLabel(record6, fallback = "Untitled") {
+  if (!record6) return fallback;
+  return asString(record6.title) ?? asString(record6.label) ?? asString(record6.name) ?? asString(record6.id) ?? fallback;
 }
 
 // src/accessibility/button-group.ts
@@ -1551,15 +1557,15 @@ function button(parent, label, onClick, variant = "") {
 function badge(parent, text5, variant = "") {
   return parent.createSpan({ cls: `los-badge ${variant ? `los-badge--${variant}` : ""}`, text: text5 });
 }
-function chip(parent, record4, onClick) {
+function chip(parent, record6, onClick) {
   const el = parent.createEl("button", {
-    cls: `los-chip los-t-${record4?.type || "record"} is-clickable`,
+    cls: `los-chip los-t-${record6?.type || "record"} is-clickable`,
     attr: { type: "button" }
   });
-  const iconName = ICONS[String(record4?.type || "")] || "circle";
+  const iconName = ICONS[String(record6?.type || "")] || "circle";
   icon(el.createSpan({ cls: "los-chip-icon" }), iconName);
-  el.createSpan({ text: record4?.title || record4?.id || "Unknown" });
-  if (onClick) el.addEventListener("click", () => onClick(record4));
+  el.createSpan({ text: record6?.title || record6?.id || "Unknown" });
+  if (onClick) el.addEventListener("click", () => onClick(record6));
   return el;
 }
 function pageHeader(parent, kicker, title, description = "", headingId = "") {
@@ -1756,8 +1762,8 @@ var FOCUSABLE = [
   '[tabindex]:not([tabindex="-1"])'
 ].join(",");
 function makeModalAccessible(content, options) {
-  const document2 = content.ownerDocument ?? globalThis.document;
-  const previousFocus = document2?.activeElement;
+  const document = content.ownerDocument ?? globalThis.document;
+  const previousFocus = document?.activeElement;
   const host = typeof content.closest === "function" ? content.closest(".modal") : null;
   const dialog = host ?? content;
   const focusRoot = dialog;
@@ -1766,8 +1772,8 @@ function makeModalAccessible(content, options) {
   dialog.setAttribute("aria-labelledby", options.labelledBy);
   dialog.setAttribute("tabindex", "-1");
   host?.classList.add(options.hostClass);
-  const workspaces = document2 && typeof document2.querySelectorAll === "function" ? Array.from(
-    document2.querySelectorAll(".workspace")
+  const workspaces = document && typeof document.querySelectorAll === "function" ? Array.from(
+    document.querySelectorAll(".workspace")
   ) : [];
   const backgrounds = workspaces.filter(
     (element) => typeof element.contains !== "function" || !element.contains(dialog)
@@ -1782,7 +1788,7 @@ function makeModalAccessible(content, options) {
   }
   let cancelInitialFocus = null;
   if (options.initialFocus) {
-    const view = document2?.defaultView ?? globalThis.window;
+    const view = document?.defaultView ?? globalThis.window;
     const focus = () => options.initialFocus?.()?.focus?.();
     if (typeof view?.requestAnimationFrame === "function") {
       const frame = view.requestAnimationFrame(focus);
@@ -1820,7 +1826,7 @@ function makeModalAccessible(content, options) {
     }
     const first = controls[0];
     const last = controls.at(-1);
-    const active = document2?.activeElement;
+    const active = document?.activeElement;
     if (event.shiftKey && (active === first || !focusRoot.contains(active))) {
       event.preventDefault();
       last.focus();
@@ -1878,14 +1884,14 @@ var LearningOSSettingsTab = class extends import_obsidian2.PluginSettingTab {
         (toggle) => toggle.setValue(this.plugin.settings[key]).onChange(
           async (value) => {
             this.plugin.settings[key] = value;
-            await this.plugin.saveData(this.plugin.settings);
+            await this.plugin.persistSettings();
           }
         )
       );
     }
     new import_obsidian2.Setting(root).setName("Python interpreter").setDesc("Leave blank to auto-detect: the project virtual environment, then the system Python.").addText((text5) => text5.setValue(this.plugin.settings.pythonPath || "").onChange(async (value) => {
       this.plugin.settings.pythonPath = value.trim();
-      await this.plugin.saveData(this.plugin.settings);
+      await this.plugin.persistSettings();
     }));
     new import_obsidian2.Setting(root).setName("Validate and rebuild").setDesc("Run the canonical core projection pipeline.").addButton(
       (control) => control.setButtonText("Rebuild").setCta().onClick(() => this.plugin.generate())
@@ -1942,9 +1948,12 @@ var SessionEndModal = class extends import_obsidian2.Modal {
         return;
       }
       try {
-        const result = asSessionReview(
-          await this.plugin.gateway.endSession(message.value.trim(), Boolean(push.checked))
-        );
+        const result = asSessionReview(await this.plugin.mutate(
+          () => this.plugin.gateway.endSession(
+            message.value.trim(),
+            Boolean(push.checked)
+          )
+        ));
         new import_obsidian2.Notice(result.pushed ? "Learning session committed and pushed." : "Learning session committed.");
         this.close();
       } catch (error) {
@@ -1973,15 +1982,15 @@ function conceptIds(value) {
 }
 function sourceNamesConcept(source, conceptId) {
   return Array.isArray(source.evaluations) && source.evaluations.some((evaluation) => {
-    const record4 = objectValue(evaluation);
-    return record4 ? conceptIds(record4.concepts).includes(conceptId) : false;
+    const record6 = objectValue(evaluation);
+    return record6 ? conceptIds(record6.concepts).includes(conceptId) : false;
   });
 }
 function byLabel(left, right) {
   return asLabel(left).localeCompare(asLabel(right));
 }
 function buildConceptContext(store, conceptId) {
-  const notes = store.related(conceptId).map((row3) => row3.rec).filter((record4) => record4?.type === "note").sort(byLabel);
+  const notes = store.related(conceptId).map((row3) => row3.rec).filter((record6) => record6?.type === "note").sort(byLabel);
   const sources = store.sources().filter((source) => sourceNamesConcept(source, conceptId)).sort(byLabel);
   const relationTable = objectValue(
     store.data?.backlinks?.concept_relations
@@ -1999,9 +2008,9 @@ function buildConceptContext(store, conceptId) {
         direction === "incoming" ? row3?.from : row3?.to
       );
       const relationType = asString(row3?.type);
-      const record4 = relatedId ? store.get(relatedId) : null;
-      if (record4 && relationType) {
-        relations2.push({ direction, relationType, record: record4 });
+      const record6 = relatedId ? store.get(relatedId) : null;
+      if (record6 && relationType) {
+        relations2.push({ direction, relationType, record: record6 });
       }
     }
   }
@@ -2062,10 +2071,10 @@ function buildCrossing(store) {
     if (!visible.size) {
       continue;
     }
-    const record4 = store.get(conceptId);
+    const record6 = store.get(conceptId);
     rows.push({
       conceptId,
-      label: record4 ? asLabel(record4) : conceptId,
+      label: record6 ? asLabel(record6) : conceptId,
       cells: visible,
       moduleCount: visible.size
     });
@@ -2357,16 +2366,16 @@ var AtlasView = class extends import_obsidian3.ItemView {
       row3.label,
       row3.moduleCount > 1 ? `Taught in ${row3.moduleCount} modules. Each entry below is the authored tag that puts it there.` : "Taught in one module."
     );
-    const record4 = this.plugin.store.get(row3.conceptId);
-    if (record4) {
+    const record6 = this.plugin.store.get(row3.conceptId);
+    if (record6) {
       const actions = body.createDiv({ cls: "los-actions" });
       button(
         actions,
         "Open concept",
-        () => this.plugin.nav.openRecord(record4),
+        () => this.plugin.nav.openRecord(record6),
         "quiet"
       );
-      this.renderAliases(body, record4);
+      this.renderAliases(body, record6);
     }
     for (const column of crossing.columns) {
       const cell = row3.cells.get(column.moduleId);
@@ -2417,8 +2426,8 @@ var AtlasView = class extends import_obsidian3.ItemView {
       });
     }
   }
-  renderAliases(parent, record4) {
-    const aliases = Array.isArray(record4.aliases) ? record4.aliases.map((value) => asString(value)).filter((value) => Boolean(value)) : [];
+  renderAliases(parent, record6) {
+    const aliases = Array.isArray(record6.aliases) ? record6.aliases.map((value) => asString(value)).filter((value) => Boolean(value)) : [];
     if (!aliases.length) {
       return;
     }
@@ -3046,13 +3055,24 @@ var GARDEN_FILTERS = [
 ];
 var GardenView = class extends import_obsidian6.ItemView {
   plugin;
-  seedTitle = "";
-  seedText = "";
   planting = false;
   filter = "all";
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
+  }
+  /*
+   * The composer's text lives in the persisted draft rather than in two view
+   * fields. It used to be view state, which meant an Obsidian restart during
+   * an unresolved seed write lost exactly the text the recovery record exists
+   * to protect — the seed might have landed, and the learner had nothing left
+   * to compare it against.
+   */
+  get seedTitle() {
+    return this.plugin.getGardenDraft().title;
+  }
+  get seedText() {
+    return this.plugin.getGardenDraft().text;
   }
   getViewType() {
     return VIEW_GARDEN;
@@ -3182,7 +3202,7 @@ var GardenView = class extends import_obsidian6.ItemView {
     editor.addEventListener(
       "input",
       () => {
-        this.seedText = editor.value;
+        this.plugin.setGardenDraft(title.value, editor.value);
         syncAddState();
       }
     );
@@ -3204,7 +3224,7 @@ var GardenView = class extends import_obsidian6.ItemView {
     title.addEventListener(
       "input",
       () => {
-        this.seedTitle = title.value;
+        this.plugin.setGardenDraft(title.value, editor.value);
         syncAddState();
       }
     );
@@ -3246,8 +3266,7 @@ var GardenView = class extends import_obsidian6.ItemView {
           title
         )
       );
-      this.seedTitle = "";
-      this.seedText = "";
+      this.plugin.clearGardenDraft({ title, text: text5 });
       new import_obsidian6.Notice("Garden seed added.");
     } catch (error) {
       new import_obsidian6.Notice(errorMessage(error));
@@ -3410,33 +3429,33 @@ function renderElsewhere(view, root) {
     view.plugin.store.data?.resume_pointer
   );
   const rows = [];
-  for (const record4 of view.plugin.store.currentSemesterModules()) {
-    const recordId = asString(record4.id);
+  for (const record6 of view.plugin.store.currentSemesterModules()) {
+    const recordId = asString(record6.id);
     if (!recordId || recordId === pointer.module_id) {
       continue;
     }
-    if (record4.is_actionable !== true) {
+    if (record6.is_actionable !== true) {
       continue;
     }
     rows.push({
-      record: record4,
-      type: asString(record4.kind) === "skill" ? "Skill" : "Module",
+      record: record6,
+      type: asString(record6.kind) === "skill" ? "Skill" : "Module",
       open: () => view.plugin.nav.openModule(
         recordId
       )
     });
   }
-  for (const record4 of view.plugin.store.projects()) {
-    const recordId = asString(record4.id);
+  for (const record6 of view.plugin.store.projects()) {
+    const recordId = asString(record6.id);
     if (!recordId) {
       continue;
     }
-    const status = asString(record4.status);
+    const status = asString(record6.status);
     if (status && ["completed", "archived"].includes(status)) {
       continue;
     }
     rows.push({
-      record: record4,
+      record: record6,
       type: "Project",
       open: () => view.plugin.nav.openProject(
         recordId
@@ -3898,8 +3917,8 @@ function isProjectDetailTab(value) {
   return PROJECT_DETAIL_TABS.includes(value);
 }
 function asLibrarySourceFilters(value) {
-  const record4 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
-  const read = (key) => typeof record4[key] === "string" ? record4[key] : "";
+  const record6 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+  const read = (key) => typeof record6[key] === "string" ? record6[key] : "";
   return {
     domain: read("domain"),
     topic: read("topic"),
@@ -4164,7 +4183,7 @@ function readLibraryRecords(value) {
     return [];
   }
   return value.map(readLibraryRecord).filter(
-    (record4) => record4 !== null
+    (record6) => record6 !== null
   );
 }
 function readRelatedRecords(value) {
@@ -4176,9 +4195,9 @@ function readRelatedRecords(value) {
     if (!isRecord2(candidate)) {
       continue;
     }
-    const record4 = readLibraryRecord(candidate.rec);
-    if (record4) {
-      records.push(record4);
+    const record6 = readLibraryRecord(candidate.rec);
+    if (record6) {
+      records.push(record6);
     }
   }
   return records;
@@ -4191,23 +4210,23 @@ function isFileShapedPath(value) {
   const name = path.replace(/\\/g, "/").split("/").pop() ?? "";
   return /^[^./][^/]*\.[^./]+$/.test(name);
 }
-function isDirectMaterialFileTarget(record4) {
-  return record4.material_exists === true && isFileShapedPath(record4.material_path);
+function isDirectMaterialFileTarget(record6) {
+  return record6.material_exists === true && isFileShapedPath(record6.material_path);
 }
-function hasDirectResourceTarget(record4) {
-  if (isDirectMaterialFileTarget(record4)) return true;
-  const vaultPath = typeof record4.vault_path === "string" ? record4.vault_path.trim() : "";
+function hasDirectResourceTarget(record6) {
+  if (isDirectMaterialFileTarget(record6)) return true;
+  const vaultPath = typeof record6.vault_path === "string" ? record6.vault_path.trim() : "";
   if (vaultPath && !vaultPath.toLowerCase().startsWith("material://") && isFileShapedPath(vaultPath)) return true;
-  return safeWebUrl(record4.url) !== null;
+  return safeWebUrl(record6.url) !== null;
 }
 
 // src/features/library/detail.ts
-function renderRecordActions(view, detail, record4) {
+function renderRecordActions(view, detail, record6) {
   const actions = detail.createDiv({
     cls: "los-actions"
   });
-  if (record4.url) {
-    const url = record4.url;
+  if (record6.url) {
+    const url = record6.url;
     button(
       actions,
       "Open online",
@@ -4217,29 +4236,29 @@ function renderRecordActions(view, detail, record4) {
       "info"
     );
   }
-  if (record4.materialPath && record4.materialExists === true) {
+  if (record6.materialPath && record6.materialExists === true) {
     button(
       actions,
-      isFileShapedPath(record4.materialPath) ? "Open local copy" : "Browse local collection",
+      isFileShapedPath(record6.materialPath) ? "Open local copy" : "Browse local collection",
       () => view.plugin.openMaterialPath(
-        record4.materialPath
+        record6.materialPath
       ),
       "info"
     );
   }
-  if (record4.path) {
+  if (record6.path) {
     button(
       actions,
       "Open authored file",
       () => view.plugin.openAuthoredPath(
-        record4.path
+        record6.path
       ),
       "info"
     );
   }
 }
-function renderAttachments(view, detail, record4) {
-  if (!record4.attachments.length) {
+function renderAttachments(view, detail, record6) {
+  if (!record6.attachments.length) {
     return;
   }
   const attachments = section(
@@ -4247,7 +4266,7 @@ function renderAttachments(view, detail, record4) {
     "Attachments",
     "Open the original handwriting, image, or PDF."
   );
-  for (const attachment of record4.attachments) {
+  for (const attachment of record6.attachments) {
     button(
       attachments,
       `Open ${attachment.label}`,
@@ -4258,10 +4277,10 @@ function renderAttachments(view, detail, record4) {
     );
   }
 }
-function renderRelated(view, detail, record4) {
+function renderRelated(view, detail, record6) {
   const related = readRelatedRecords(
     view.plugin.store.related(
-      record4.id
+      record6.id
     )
   );
   const groups = /* @__PURE__ */ new Map();
@@ -4331,7 +4350,7 @@ function renderRelated(view, detail, record4) {
     }
   }
 }
-function renderSourceDetail(view, detail, record4) {
+function renderSourceDetail(view, detail, record6) {
   const facts = section(
     detail,
     "Source facts"
@@ -4339,19 +4358,19 @@ function renderSourceDetail(view, detail, record4) {
   const factRows = [
     [
       "Authors",
-      record4.authors.join(", ")
+      record6.authors.join(", ")
     ],
     [
       "Organization",
-      record4.organization
+      record6.organization
     ],
     [
       "Year",
-      record4.year
+      record6.year
     ],
     [
       "Type",
-      record4.sourceType
+      record6.sourceType
     ]
   ];
   for (const [
@@ -4374,7 +4393,7 @@ function renderSourceDetail(view, detail, record4) {
     });
   }
   const memberships = view.shelfIndex().get(
-    record4.id
+    record6.id
   ) ?? [];
   const placed = section(
     detail,
@@ -4436,7 +4455,7 @@ function renderSourceDetail(view, detail, record4) {
   );
   const units = readLibraryRecords(
     view.plugin.store.useUnits(
-      record4.id
+      record6.id
     )
   );
   if (!units.length) {
@@ -4455,12 +4474,12 @@ function renderSourceDetail(view, detail, record4) {
       )
     );
   }
-  if (record4.evaluations.length) {
+  if (record6.evaluations.length) {
     const evidence2 = section(
       detail,
       "What this source is good for"
     );
-    for (const evaluation of record4.evaluations) {
+    for (const evaluation of record6.evaluations) {
       const card = evidence2.createDiv({
         cls: "los-evidence-card"
       });
@@ -4489,7 +4508,7 @@ function renderSourceDetail(view, detail, record4) {
     }
   }
 }
-function renderTechnical(view, detail, record4) {
+function renderTechnical(view, detail, record6) {
   const technical = disclosure(
     detail,
     "Technical details",
@@ -4504,17 +4523,17 @@ function renderTechnical(view, detail, record4) {
   });
   idRow.createSpan({
     cls: "los-fact-value los-detail-id",
-    text: record4.id
+    text: record6.id
   });
   button(
     technical,
     "Copy ID",
     () => view.plugin.copyText(
-      record4.id
+      record6.id
     ),
     "quiet"
   );
-  if (record4.path) {
+  if (record6.path) {
     const pathRow = technical.createDiv({
       cls: "los-fact-row"
     });
@@ -4524,21 +4543,21 @@ function renderTechnical(view, detail, record4) {
     });
     pathRow.createSpan({
       cls: "los-fact-value",
-      text: record4.path
+      text: record6.path
     });
   }
 }
 
 // src/features/library/collections.ts
-function renderRecordRow(view, list2, record4, isPack = false) {
+function renderRecordRow(view, list2, record6, isPack = false) {
   const row3 = list2.createEl(
     "button",
     {
       cls: "los-route-row is-clickable",
       attr: {
         type: "button",
-        "aria-label": `Open ${record4.title}`,
-        "data-record-id": record4.id
+        "aria-label": `Open ${record6.title}`,
+        "data-record-id": record6.id
       }
     }
   );
@@ -4548,18 +4567,18 @@ function renderRecordRow(view, list2, record4, isPack = false) {
   copy.createEl(
     "strong",
     {
-      text: record4.title
+      text: record6.title
     }
   );
   const meta = isPack ? [
-    record4.purpose,
-    `${record4.entries.length} items`
+    record6.purpose,
+    `${record6.entries.length} items`
   ].filter(Boolean).join(" \xB7 ") : [
-    record4.sourceType,
-    record4.year,
-    record4.organization,
-    record4.materialExists || record4.materialPath ? "local" : null,
-    record4.url ? "online" : null
+    record6.sourceType,
+    record6.year,
+    record6.organization,
+    record6.materialExists || record6.materialPath ? "local" : null,
+    record6.url ? "online" : null
   ].filter(Boolean).join(" \xB7 ");
   if (meta) {
     copy.createDiv({
@@ -4574,17 +4593,17 @@ function renderRecordRow(view, list2, record4, isPack = false) {
   row3.addEventListener(
     "click",
     () => {
-      view.selectedElementId = record4.id;
+      view.selectedElementId = record6.id;
       if (isPack) {
         view.plugin.nav.openTopicPackDetail(
-          record4.id,
+          record6.id,
           view.groupId,
           view.query
         );
         return;
       }
       view.plugin.nav.openSourceDetail(
-        record4.id,
+        record6.id,
         view.groupId,
         view.query,
         view.facet,
@@ -4594,7 +4613,7 @@ function renderRecordRow(view, list2, record4, isPack = false) {
   );
 }
 function renderSourcePage(view, root) {
-  const record4 = readLibraryRecord(
+  const record6 = readLibraryRecord(
     view.resourceId ? view.plugin.store.get(
       view.resourceId
     ) : null
@@ -4606,7 +4625,7 @@ function renderSourcePage(view, root) {
     "quiet"
   );
   back.addClass("los-route-back");
-  if (!record4 || record4.type !== "source") {
+  if (!record6 || record6.type !== "source") {
     empty(
       root,
       "Learning source unavailable",
@@ -4622,28 +4641,28 @@ function renderSourcePage(view, root) {
   pageHeader(
     detail,
     "Learning Source",
-    record4.title,
-    record4.summary
+    record6.title,
+    record6.summary
   );
   view.renderRecordActions(
     detail,
-    record4
+    record6
   );
   view.renderAttachments(
     detail,
-    record4
+    record6
   );
   view.renderSourceDetail(
     detail,
-    record4
+    record6
   );
   view.renderRelated(
     detail,
-    record4
+    record6
   );
   view.renderTechnical(
     detail,
-    record4
+    record6
   );
 }
 function renderTopicPackPage(view, root) {
@@ -4880,7 +4899,7 @@ function renderLegacyList(view, root) {
   );
   if (view.domain) {
     rows = rows.filter(
-      (record4) => record4.domain === view.domain
+      (record6) => record6.domain === view.domain
     );
   }
   rows.sort(
@@ -4899,14 +4918,14 @@ function renderLegacyList(view, root) {
   const list2 = root.createDiv({
     cls: "los-route-list"
   });
-  for (const record4 of rows) {
+  for (const record6 of rows) {
     const row3 = list2.createEl(
       "button",
       {
         cls: "los-route-row is-clickable",
         attr: {
           type: "button",
-          "data-record-id": record4.id
+          "data-record-id": record6.id
         }
       }
     );
@@ -4916,33 +4935,33 @@ function renderLegacyList(view, root) {
     copy.createEl(
       "strong",
       {
-        text: record4.title
+        text: record6.title
       }
     );
     copy.createDiv({
       cls: "los-route-meta",
       text: [
-        record4.role,
-        record4.domain,
-        record4.state
+        record6.role,
+        record6.domain,
+        record6.state
       ].filter(Boolean).join(" \xB7 ")
     });
     row3.createSpan({
       cls: "los-route-open",
-      text: record4.path ? "Open file \u2192" : "Open \u2192"
+      text: record6.path ? "Open file \u2192" : "Open \u2192"
     });
     row3.addEventListener(
       "click",
       () => {
-        view.selectedElementId = record4.id;
-        if (record4.path) {
+        view.selectedElementId = record6.id;
+        if (record6.path) {
           view.plugin.openAuthoredPath(
-            record4.path
+            record6.path
           );
           return;
         }
         view.plugin.nav.openRecord(
-          record4.record
+          record6.record
         );
       }
     );
@@ -5110,9 +5129,7 @@ function renderGroup(view, root) {
     button(
       toolbar,
       "Full-text / OCR search",
-      () => view.plugin.nav.openFullTextSearch(
-        view.query
-      ),
+      () => view.plugin.nav.openFullTextSearch(),
       "quiet"
     );
   }
@@ -5123,9 +5140,9 @@ function renderGroup(view, root) {
   }
   const needle = view.query.trim().toLocaleLowerCase();
   const words2 = needle.split(/\s+/).filter(Boolean);
-  const rows = all.filter((record4) => {
+  const rows = all.filter((record6) => {
     if (!isPacks && !view.matchesSourceFacet(
-      record4.record
+      record6.record
     )) {
       return false;
     }
@@ -5133,13 +5150,13 @@ function renderGroup(view, root) {
       return true;
     }
     const hay = [
-      record4.id,
-      record4.title,
-      record4.purpose,
-      record4.summary,
-      ...record4.aliases,
-      ...record4.authors,
-      record4.organization
+      record6.id,
+      record6.title,
+      record6.purpose,
+      record6.summary,
+      ...record6.aliases,
+      ...record6.authors,
+      record6.organization
     ].filter(Boolean).join(" ").toLocaleLowerCase();
     return words2.every(
       (word) => hay.includes(word)
@@ -5175,10 +5192,10 @@ function renderGroup(view, root) {
   const list2 = root.createDiv({
     cls: "los-route-list los-library-route-list"
   });
-  for (const record4 of rows) {
+  for (const record6 of rows) {
     view.renderRecordRow(
       list2,
-      record4,
+      record6,
       isPacks
     );
   }
@@ -5309,9 +5326,7 @@ function renderSourceBrowser(view, root) {
   const fullTextSearch = button(
     toolbar,
     "Full text / OCR",
-    () => view.plugin.nav.openFullTextSearch(
-      view.query
-    ),
+    () => view.plugin.nav.openFullTextSearch(),
     "quiet"
   );
   fullTextSearch.addClass(
@@ -5721,8 +5736,8 @@ var LibraryView = class extends import_obsidian8.ItemView {
     this._shelfData = this.plugin.store.data;
     return index;
   }
-  matchesSourceFacet(record4) {
-    const source = readLibraryRecord(record4);
+  matchesSourceFacet(record6) {
+    const source = readLibraryRecord(record6);
     if (!source) {
       return false;
     }
@@ -5944,8 +5959,8 @@ var LibraryView = class extends import_obsidian8.ItemView {
   renderFacetValues(parent, sources) {
     renderFacetValues(this, parent, sources);
   }
-  renderRecordRow(list2, record4, isPack = false) {
-    renderRecordRow(this, list2, record4, isPack);
+  renderRecordRow(list2, record6, isPack = false) {
+    renderRecordRow(this, list2, record6, isPack);
   }
   renderSourcePage(root) {
     renderSourcePage(this, root);
@@ -5962,20 +5977,20 @@ var LibraryView = class extends import_obsidian8.ItemView {
   renderLegacyList(root) {
     renderLegacyList(this, root);
   }
-  renderRecordActions(detail, record4) {
-    renderRecordActions(this, detail, record4);
+  renderRecordActions(detail, record6) {
+    renderRecordActions(this, detail, record6);
   }
-  renderAttachments(detail, record4) {
-    renderAttachments(this, detail, record4);
+  renderAttachments(detail, record6) {
+    renderAttachments(this, detail, record6);
   }
-  renderRelated(detail, record4) {
-    renderRelated(this, detail, record4);
+  renderRelated(detail, record6) {
+    renderRelated(this, detail, record6);
   }
-  renderSourceDetail(detail, record4) {
-    renderSourceDetail(this, detail, record4);
+  renderSourceDetail(detail, record6) {
+    renderSourceDetail(this, detail, record6);
   }
-  renderTechnical(detail, record4) {
-    renderTechnical(this, detail, record4);
+  renderTechnical(detail, record6) {
+    renderTechnical(this, detail, record6);
   }
 };
 
@@ -6035,29 +6050,29 @@ function readModuleViewState(value) {
     hasTab
   };
 }
-function readThematicGroup2(record4) {
-  if (!record4) {
+function readThematicGroup2(record6) {
+  if (!record6) {
     return null;
   }
-  const id2 = asString(record4.id);
+  const id2 = asString(record6.id);
   if (!id2) {
     return null;
   }
   return {
     id: id2,
-    title: asString(record4.title) ?? asString(record4.label) ?? id2,
-    description: asText(record4.description) ?? ""
+    title: asString(record6.title) ?? asString(record6.label) ?? id2,
+    description: asText(record6.description) ?? ""
   };
 }
 function readComponents(value) {
-  return asRecords(value).map((record4) => {
-    const id2 = asString(record4.id);
+  return asRecords(value).map((record6) => {
+    const id2 = asString(record6.id);
     if (!id2) {
       return null;
     }
     return {
       id: id2,
-      title: asString(record4.short_title) ?? asString(record4.title) ?? id2
+      title: asString(record6.short_title) ?? asString(record6.title) ?? id2
     };
   }).filter(nonNull);
 }
@@ -6068,44 +6083,44 @@ function readExamination(value) {
     notes: asText(examination.notes)
   };
 }
-function readModuleRecord(record4, fallbackId = null) {
-  if (!record4) {
+function readModuleRecord(record6, fallbackId = null) {
+  if (!record6) {
     return null;
   }
-  const id2 = asString(record4.id) ?? fallbackId;
+  const id2 = asString(record6.id) ?? fallbackId;
   if (!id2) {
     return null;
   }
   return {
-    record: record4,
+    record: record6,
     id: id2,
-    areaId: asString(record4.area_id) ?? "",
-    title: asString(record4.title) ?? id2,
-    kind: asString(record4.kind) ?? "Module",
-    code: asText(record4.code) ?? "",
-    semester: asText(record4.semester) ?? "",
-    status: asString(record4.status) ?? "unspecified",
-    institution: asText(record4.institution) ?? "",
-    credits: asText(record4.credits),
-    examination: readExamination(record4.examination),
-    components: readComponents(record4.components),
-    unitOrder: asStrings(record4.unit_order)
+    areaId: asString(record6.area_id) ?? "",
+    title: asString(record6.title) ?? id2,
+    kind: asString(record6.kind) ?? "Module",
+    code: asText(record6.code) ?? "",
+    semester: asText(record6.semester) ?? "",
+    status: asString(record6.status) ?? "unspecified",
+    institution: asText(record6.institution) ?? "",
+    credits: asText(record6.credits),
+    examination: readExamination(record6.examination),
+    components: readComponents(record6.components),
+    unitOrder: asStrings(record6.unit_order)
   };
 }
-function normalizeUnitRecord(record4) {
-  const id2 = asString(record4.id);
+function normalizeUnitRecord(record6) {
+  const id2 = asString(record6.id);
   if (!id2) {
     return null;
   }
-  const title = asString(record4.title) ?? id2;
-  const status = asString(record4.status) ?? "unspecified";
-  const order = asCount(record4.order);
+  const title = asString(record6.title) ?? id2;
+  const status = asString(record6.status) ?? "unspecified";
+  const order = asCount(record6.order);
   const normalized = {
-    ...record4,
+    ...record6,
     id: id2,
     title,
     status,
-    scope: asText(record4.scope) ?? ""
+    scope: asText(record6.scope) ?? ""
   };
   return {
     record: normalized,
@@ -6132,18 +6147,18 @@ function orderModuleUnits(module2, units) {
     }
   );
 }
-function normalizeWorkspaceRecord(record4) {
+function normalizeWorkspaceRecord(record6) {
   return {
-    ...record4,
-    id: asString(record4.id) ?? "",
-    title: asString(record4.title) ?? asString(record4.id) ?? "Workspace",
-    status: asString(record4.status) ?? "unspecified",
-    objective: asText(record4.objective) ?? "",
-    next_action: asText(record4.next_action) ?? "",
-    deadline: asText(record4.deadline) ?? "",
-    standing: record4.standing === true,
-    module_ids: asStrings(record4.module_ids),
-    unit_ids: asStrings(record4.unit_ids)
+    ...record6,
+    id: asString(record6.id) ?? "",
+    title: asString(record6.title) ?? asString(record6.id) ?? "Workspace",
+    status: asString(record6.status) ?? "unspecified",
+    objective: asText(record6.objective) ?? "",
+    next_action: asText(record6.next_action) ?? "",
+    deadline: asText(record6.deadline) ?? "",
+    standing: record6.standing === true,
+    module_ids: asStrings(record6.module_ids),
+    unit_ids: asStrings(record6.unit_ids)
   };
 }
 function readProgress(value) {
@@ -6161,42 +6176,42 @@ function readProgress(value) {
   };
 }
 function readDeadlineModules(value) {
-  return asRecords(value).map((record4) => {
-    const moduleId = asString(record4.module_id);
+  return asRecords(value).map((record6) => {
+    const moduleId = asString(record6.module_id);
     if (!moduleId) {
       return null;
     }
     return {
       moduleId,
-      action: asText(record4.action)
+      action: asText(record6.action)
     };
   }).filter(nonNull);
 }
-function readAcademicDeadline(record4) {
-  const startDate = asString(record4.start_date) ?? "";
-  const endDate = asString(record4.end_date) ?? "";
+function readAcademicDeadline(record6) {
+  const startDate = asString(record6.start_date) ?? "";
+  const endDate = asString(record6.end_date) ?? "";
   return {
-    record: record4,
-    kind: asString(record4.kind) ?? "academic-date",
-    label: asString(record4.label) ?? asString(record4.title) ?? "Academic date",
-    title: asString(record4.title) ?? "",
+    record: record6,
+    kind: asString(record6.kind) ?? "academic-date",
+    label: asString(record6.label) ?? asString(record6.title) ?? "Academic date",
+    title: asString(record6.title) ?? "",
     startDate,
     endDate,
-    time: asText(record4.time),
+    time: asText(record6.time),
     registrationState: asString(
-      record4.registration_state
+      record6.registration_state
     ) ?? "unregistered",
-    directModuleId: asString(record4.module_id),
-    modules: readDeadlineModules(record4.modules)
+    directModuleId: asString(record6.module_id),
+    modules: readDeadlineModules(record6.modules)
   };
 }
 function readSourceEntries(value) {
-  return asRecords(value).map((record4) => ({
-    record: record4,
-    role: asString(record4.role) ?? "unassigned",
-    sourceId: asString(record4.source_id),
-    why: asText(record4.why) ?? "",
-    unitRouteCount: Array.isArray(record4.unit_routes) ? record4.unit_routes.length : 0
+  return asRecords(value).map((record6) => ({
+    record: record6,
+    role: asString(record6.role) ?? "unassigned",
+    sourceId: asString(record6.source_id),
+    why: asText(record6.why) ?? "",
+    unitRouteCount: Array.isArray(record6.unit_routes) ? record6.unit_routes.length : 0
   }));
 }
 
@@ -6296,9 +6311,9 @@ function renderSources(view, root, module2) {
         chip(
           row3,
           source,
-          (record4) => {
+          (record6) => {
             const id2 = asString(
-              record4.id
+              record6.id
             );
             if (!id2) {
               return;
@@ -6377,7 +6392,7 @@ function renderLogistics(view, root, module2) {
 }
 function deadlinesFor(view, module2) {
   return view.plugin.store.rows("academic_deadlines").map(
-    (record4) => readAcademicDeadline(record4)
+    (record6) => readAcademicDeadline(record6)
   ).filter(
     (row3) => row3.directModuleId === module2.id || row3.modules.some(
       (entry) => entry.moduleId === module2.id
@@ -6588,7 +6603,7 @@ function renderOverview(view, root, module2) {
     text: `${progress.stagesComplete} of ${progress.stagesTotal} stages complete across ${progress.unitsTotal} unit${progress.unitsTotal === 1 ? "" : "s"}`
   });
   const workspaces = view.plugin.store.workspacesForModule(module2.id).map(
-    (record4) => normalizeWorkspaceRecord(record4)
+    (record6) => normalizeWorkspaceRecord(record6)
   );
   for (const workspace of workspaces) {
     workspaceCard(
@@ -6608,7 +6623,7 @@ function renderOverview(view, root, module2) {
   const units = orderModuleUnits(
     module2,
     view.plugin.store.unitsFor(module2.id).map(
-      (record4) => normalizeUnitRecord(record4)
+      (record6) => normalizeUnitRecord(record6)
     ).filter(nonNull)
   );
   const next = units.find(
@@ -6673,7 +6688,7 @@ function renderUnits(view, root, module2) {
     module2.id,
     view.componentId
   ).map(
-    (record4) => normalizeUnitRecord(record4)
+    (record6) => normalizeUnitRecord(record6)
   ).filter(nonNull);
   if (!units.length) {
     empty(
@@ -6761,7 +6776,7 @@ function renderUnits(view, root, module2) {
 function renderGroups(view, root) {
   const semester = view.plugin.store.currentSemester();
   const modules = view.plugin.store.currentSemesterModules().map(
-    (record4) => readModuleRecord(record4)
+    (record6) => readModuleRecord(record6)
   ).filter(nonNull);
   pageHeader(
     root,
@@ -6884,7 +6899,7 @@ function renderGroupList(view, root) {
     }
   );
   const all = view.plugin.store.modulesForGroup(group.id).map(
-    (record4) => readModuleRecord(record4)
+    (record6) => readModuleRecord(record6)
   ).filter(nonNull);
   const needle = view.query.trim().toLocaleLowerCase();
   const rows = all.filter(
@@ -7512,15 +7527,20 @@ var ProgramView = class extends import_obsidian11.ItemView {
           editor.focus();
           return;
         }
+        const captured = {
+          title: title.value.trim(),
+          text: text5
+        };
         this.capture(
           () => this.plugin.gateway.captureText(
-            text5,
-            title.value.trim()
+            captured.text,
+            captured.title
           ),
           () => {
-            this.plugin.clearInboxDraft();
-            editor.value = "";
-            title.value = "";
+            this.plugin.clearInboxDraft(captured);
+            const draft2 = this.plugin.getInboxDraft();
+            editor.value = draft2.text;
+            title.value = draft2.title;
           }
         );
       },
@@ -7945,11 +7965,11 @@ function renderDetail(view, root) {
     ...asStrings(project.unit_ids)
   ];
   for (const id2 of linkedIds) {
-    const record4 = view.plugin.store.get(id2);
-    if (!record4) continue;
+    const record6 = view.plugin.store.get(id2);
+    if (!record6) continue;
     chip(
       links,
-      record4,
+      record6,
       (target) => view.plugin.nav.openRecord(target)
     );
   }
@@ -8458,11 +8478,606 @@ var import_obsidian13 = require("obsidian");
 var fs = __toESM(require("node:fs"));
 var nodePath = __toESM(require("node:path"));
 
-// src/contracts/health-report.ts
+// src/contracts/gateway-v2.ts
+var GATEWAY_SCHEMA_VERSION = 2;
+var DEFINITIVE_NO_COMMIT_CODES = [
+  "INVALID_REQUEST",
+  "UNKNOWN_CAPABILITY",
+  "STALE_SNAPSHOT",
+  "REVISION_CONFLICT",
+  "OUT_OF_SCOPE",
+  "AMBIGUOUS_MIGRATION",
+  "VALIDATION_FAILED",
+  "PROJECTION_FAILED",
+  "UNCONFIRMED"
+];
+function isDefinitiveNoCommitCode(code) {
+  return typeof code === "string" && DEFINITIVE_NO_COMMIT_CODES.includes(code);
+}
 function record(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
-function exactKeys2(value, required, optional2 = []) {
+function nonEmpty2(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+function exactKeys2(value, keys) {
+  return Object.keys(value).length === keys.length && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
+}
+function isSha256(value) {
+  return typeof value === "string" && /^sha256:[0-9a-f]{64}$/.test(value);
+}
+var REQUEST_SCOPED_ARTIFACT_PREFIXES = {
+  "capture.create": "capture-request",
+  "garden.seed.create": "garden-request"
+};
+function isRequestScopedCapability(capability) {
+  return Object.prototype.hasOwnProperty.call(
+    REQUEST_SCOPED_ARTIFACT_PREFIXES,
+    capability
+  );
+}
+function requestArtifactId(capability, idempotencyKey) {
+  const prefix = REQUEST_SCOPED_ARTIFACT_PREFIXES[capability];
+  if (!prefix) {
+    throw new GatewayError(
+      `${capability} does not use request-scoped artifacts; nothing was written.`,
+      null,
+      { code: "INVALID_REQUEST", retryable: false }
+    );
+  }
+  if (!nonEmpty2(idempotencyKey)) {
+    throw new GatewayError(
+      `${capability} needs an idempotency key to guard its request; nothing was written.`,
+      null,
+      { code: "INVALID_REQUEST", retryable: false }
+    );
+  }
+  return `${prefix}:${idempotencyKey}`;
+}
+function gatewayApprovalSubject(capability, expectedSnapshot, expectedRevisions, payload) {
+  return {
+    schema_version: GATEWAY_SCHEMA_VERSION,
+    capability,
+    channel: "ui",
+    expected_snapshot: expectedSnapshot,
+    expected_revisions: expectedRevisions,
+    payload
+  };
+}
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  const object = record(value);
+  if (!object) return value;
+  return Object.fromEntries(
+    Object.keys(object).sort(unicodeCodePointCompare).map((key) => [key, canonical(object[key])])
+  );
+}
+function unicodeCodePointCompare(left, right) {
+  const leftPoints = [...left].map((value) => value.codePointAt(0) ?? 0);
+  const rightPoints = [...right].map((value) => value.codePointAt(0) ?? 0);
+  const shared = Math.min(leftPoints.length, rightPoints.length);
+  for (let index = 0; index < shared; index += 1) {
+    const leftPoint = leftPoints[index] ?? 0;
+    const rightPoint = rightPoints[index] ?? 0;
+    if (leftPoint !== rightPoint) {
+      return leftPoint - rightPoint;
+    }
+  }
+  return leftPoints.length - rightPoints.length;
+}
+async function gatewaySubjectSha256(subject) {
+  const bytes = new TextEncoder().encode(JSON.stringify(canonical(subject)));
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
+  return `sha256:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
+}
+function asGatewaySuccessV2(value, expected) {
+  const response = record(value);
+  const result = record(response?.result);
+  const responseKeys = [
+    "schema_version",
+    "request_id",
+    "idempotency_key",
+    "capability",
+    "ok",
+    "replayed",
+    "transaction_id",
+    "receipt_path",
+    "snapshot_after",
+    "result",
+    "error"
+  ];
+  const identityMatches = response?.request_id === expected.requestId && response?.idempotency_key === expected.idempotencyKey && response?.capability === expected.capability;
+  const confirmed = response !== null && exactKeys2(response, responseKeys) && response.schema_version === GATEWAY_SCHEMA_VERSION && identityMatches && response.ok === true && typeof response.replayed === "boolean" && nonEmpty2(response.transaction_id) && nonEmpty2(response.receipt_path) && isSha256(response.snapshot_after) && result !== null && response.error === null;
+  if (!confirmed) {
+    throw new GatewayError(
+      "LearningOS did not return a complete Gateway V2 receipt, so the change is unconfirmed. Your draft was kept.",
+      null,
+      { code: "UNCONFIRMED", retryable: false }
+    );
+  }
+  return response;
+}
+function asGatewayFailureV2(value, expected) {
+  const response = record(value);
+  if (!response) return null;
+  const responseKeys = [
+    "schema_version",
+    "request_id",
+    "idempotency_key",
+    "capability",
+    "ok",
+    "replayed",
+    "transaction_id",
+    "receipt_path",
+    "snapshot_after",
+    "result",
+    "error"
+  ];
+  const error = record(response.error);
+  const refused = exactKeys2(response, responseKeys) && response.schema_version === GATEWAY_SCHEMA_VERSION && response.request_id === expected.requestId && response.idempotency_key === expected.idempotencyKey && response.capability === expected.capability && response.ok === false && typeof response.replayed === "boolean" && response.transaction_id === null && response.receipt_path === null && response.snapshot_after === null && record(response.result) !== null && error !== null && exactKeys2(error, ["code", "message", "retryable", "details"]) && nonEmpty2(error.code) && nonEmpty2(error.message) && typeof error.retryable === "boolean" && record(error.details) !== null;
+  return refused ? response : null;
+}
+function asGatewayRequestV2(value) {
+  const envelope = record(value);
+  if (!envelope) return null;
+  const approval = record(envelope.approval);
+  const revisions = record(envelope.expected_revisions);
+  const valid = exactKeys2(envelope, [
+    "schema_version",
+    "request_id",
+    "idempotency_key",
+    "capability",
+    "channel",
+    "expected_snapshot",
+    "expected_revisions",
+    "approval",
+    "payload"
+  ]) && envelope.schema_version === GATEWAY_SCHEMA_VERSION && nonEmpty2(envelope.request_id) && nonEmpty2(envelope.idempotency_key) && nonEmpty2(envelope.capability) && envelope.channel === "ui" && isSha256(envelope.expected_snapshot) && revisions !== null && Object.entries(revisions).every(
+    ([id2, revision]) => nonEmpty2(id2) && Number.isInteger(revision) && revision >= 0
+  ) && approval !== null && exactKeys2(approval, ["kind", "subject_sha256"]) && approval.kind === "direct-user-gesture" && isSha256(approval.subject_sha256) && record(envelope.payload) !== null;
+  return valid ? envelope : null;
+}
+
+// src/application/draft-store.ts
+function emptyUiDrafts() {
+  return {
+    stages: {},
+    unitNotes: {},
+    selectedStages: {},
+    inbox: { title: "", text: "" },
+    garden: { title: "", text: "" },
+    doneWhen: {}
+  };
+}
+function normalizeUiDrafts(value) {
+  const empty2 = emptyUiDrafts();
+  return {
+    stages: value?.stages ?? empty2.stages,
+    unitNotes: value?.unitNotes ?? empty2.unitNotes,
+    selectedStages: value?.selectedStages ?? empty2.selectedStages,
+    inbox: value?.inbox ?? empty2.inbox,
+    garden: value?.garden ?? empty2.garden,
+    doneWhen: value?.doneWhen ?? empty2.doneWhen
+  };
+}
+function sameComposerDraft(draft, sent) {
+  return draft.text.trim() === sent.text.trim() && draft.title.trim() === sent.title.trim();
+}
+var DraftStore = class {
+  constructor(settings, persist) {
+    this.settings = settings;
+    this.persist = persist;
+  }
+  saveTimer = null;
+  scheduleSave() {
+    if (this.saveTimer) clearTimeout(this.saveTimer);
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = null;
+      void this.persist();
+    }, 250);
+  }
+  dispose() {
+    if (this.saveTimer) clearTimeout(this.saveTimer);
+    this.saveTimer = null;
+  }
+  stageKey(unitId, stageId) {
+    return `${unitId}::${stageId}`;
+  }
+  getStage(unitId, stageId, savedText = "") {
+    const entry = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
+    return { text: entry?.text ?? savedText, dirty: entry != null && entry.text !== savedText };
+  }
+  setStage(unitId, stageId, text5, savedText = "") {
+    const key = this.stageKey(unitId, stageId);
+    if (text5 === savedText) delete this.settings.uiDrafts.stages[key];
+    else this.settings.uiDrafts.stages[key] = { text: text5 };
+    this.scheduleSave();
+  }
+  clearStage(unitId, stageId) {
+    delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
+    this.scheduleSave();
+  }
+  getUnitNote(unitId, stages = []) {
+    const saved = this.settings.uiDrafts.unitNotes[unitId];
+    const recovered = [];
+    for (const stage of stages) {
+      const stageId = asString(stage.id);
+      if (!stageId) continue;
+      const entry = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
+      if (entry?.text?.trim()) recovered.push({ id: stageId, title: asLabel(stage, stageId), text: entry.text });
+    }
+    const recoveredText = recovered.map((row3) => `### ${row3.title}
+
+${row3.text.trim()}`).join("\n\n");
+    return {
+      title: saved?.title || (recovered.length ? "Recovered stage drafts" : ""),
+      text: [String(saved?.text || "").trim(), recoveredText].filter(Boolean).join("\n\n"),
+      recoveredStageIds: recovered.map((row3) => row3.id),
+      expectedRevisions: saved?.expectedRevisions ?? {}
+    };
+  }
+  setUnitNote(unitId, title, text5, expectedRevisions = {}) {
+    if (!title.trim() && !text5.trim()) delete this.settings.uiDrafts.unitNotes[unitId];
+    else this.settings.uiDrafts.unitNotes[unitId] = {
+      title,
+      text: text5,
+      expectedRevisions: { ...expectedRevisions }
+    };
+    this.scheduleSave();
+  }
+  /**
+   * `match` makes this safe to call after a write has already resolved.
+   *
+   * Without it, a learner who kept typing while the note was being saved lost
+   * the newer text to the success handler. With it, the clear happens only
+   * when the draft is still the one that was sent — which is also what makes
+   * repeating the cleanup harmless.
+   */
+  clearUnitNote(unitId, recoveredStageIds = [], match = null) {
+    const draft = this.settings.uiDrafts.unitNotes[unitId];
+    if (match && draft && (draft.text !== match.text || String(draft.title || "").trim() !== match.title.trim())) {
+      return;
+    }
+    delete this.settings.uiDrafts.unitNotes[unitId];
+    for (const stageId of recoveredStageIds) {
+      delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
+    }
+    this.scheduleSave();
+  }
+  getSelectedStage(unitId) {
+    return this.settings.uiDrafts.selectedStages[unitId] || null;
+  }
+  setSelectedStage(unitId, stageId) {
+    if (stageId) this.settings.uiDrafts.selectedStages[unitId] = stageId;
+    else delete this.settings.uiDrafts.selectedStages[unitId];
+    this.scheduleSave();
+  }
+  getDoneWhen(unitId, stageId) {
+    return this.settings.uiDrafts.doneWhen[this.stageKey(unitId, stageId)] || [];
+  }
+  setDoneWhen(unitId, stageId, index, checked) {
+    const key = this.stageKey(unitId, stageId);
+    const marks = [...this.settings.uiDrafts.doneWhen[key] || []];
+    marks[index] = checked;
+    if (marks.some(Boolean)) this.settings.uiDrafts.doneWhen[key] = marks;
+    else delete this.settings.uiDrafts.doneWhen[key];
+    this.scheduleSave();
+  }
+  clearDoneWhen(unitId, stageId) {
+    delete this.settings.uiDrafts.doneWhen[this.stageKey(unitId, stageId)];
+    this.scheduleSave();
+  }
+  getInbox() {
+    return { ...this.settings.uiDrafts.inbox };
+  }
+  setInbox(title, text5) {
+    this.settings.uiDrafts.inbox = { title, text: text5 };
+    this.scheduleSave();
+  }
+  /**
+   * Compared after trimming, because the composer stores what was typed and
+   * the envelope carries what was sent — the two differ by whitespace alone.
+   * Any real edit still fails the comparison and keeps the newer text.
+   */
+  clearInbox(match = null) {
+    const draft = this.settings.uiDrafts.inbox;
+    if (match && !sameComposerDraft(draft, match)) return;
+    this.settings.uiDrafts.inbox = { title: "", text: "" };
+    this.scheduleSave();
+  }
+  getGarden() {
+    return { ...this.settings.uiDrafts.garden };
+  }
+  setGarden(title, text5) {
+    this.settings.uiDrafts.garden = { title, text: text5 };
+    this.scheduleSave();
+  }
+  clearGarden(match = null) {
+    const draft = this.settings.uiDrafts.garden;
+    if (match && !sameComposerDraft(draft, match)) return;
+    this.settings.uiDrafts.garden = { title: "", text: "" };
+    this.scheduleSave();
+  }
+};
+
+// src/application/gateway-recovery.ts
+var PHASES = [
+  "prepared",
+  "recovering",
+  "confirmed",
+  "blocked"
+];
+var RECORD_KEYS = [
+  "schema_version",
+  "phase",
+  "created_at",
+  "envelope_json",
+  "confirmation",
+  "last_error"
+];
+function record2(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
+function exactKeys3(value, keys) {
+  return Object.keys(value).length === keys.length && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
+}
+function nonEmpty3(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+async function validateGatewayRecoveryRecord(value) {
+  const refuse = (error) => ({ ok: false, error });
+  const candidate = record2(value);
+  if (!candidate) return refuse("the recovery record is not an object");
+  if (!exactKeys3(candidate, RECORD_KEYS)) {
+    return refuse(`the recovery record must carry exactly ${RECORD_KEYS.join(", ")}`);
+  }
+  if (candidate.schema_version !== 1) {
+    return refuse(`unsupported recovery schema_version ${JSON.stringify(candidate.schema_version)}`);
+  }
+  if (!PHASES.includes(candidate.phase)) {
+    return refuse(`unknown recovery phase ${JSON.stringify(candidate.phase)}`);
+  }
+  const phase = candidate.phase;
+  if (!nonEmpty3(candidate.created_at) || !Number.isFinite(Date.parse(candidate.created_at))) {
+    return refuse("the recovery record has no readable creation timestamp");
+  }
+  if (typeof candidate.envelope_json !== "string" || !candidate.envelope_json) {
+    return refuse("the recovery record carries no persisted envelope");
+  }
+  let parsed = null;
+  try {
+    parsed = JSON.parse(candidate.envelope_json);
+  } catch (_) {
+    return refuse("the persisted envelope is not readable JSON");
+  }
+  const envelope = asGatewayRequestV2(parsed);
+  if (!envelope) return refuse("the persisted envelope is not a complete Gateway V2 request");
+  const recomputed = await gatewaySubjectSha256(gatewayApprovalSubject(
+    envelope.capability,
+    envelope.expected_snapshot,
+    envelope.expected_revisions,
+    envelope.payload
+  ));
+  if (recomputed !== envelope.approval.subject_sha256) {
+    return refuse("the persisted envelope no longer matches the approval it carries");
+  }
+  let confirmation = null;
+  if (candidate.confirmation !== null) {
+    try {
+      confirmation = asGatewaySuccessV2(candidate.confirmation, {
+        requestId: envelope.request_id,
+        idempotencyKey: envelope.idempotency_key,
+        capability: envelope.capability
+      });
+    } catch (_) {
+      return refuse("the recorded confirmation is not a complete receipt for this request");
+    }
+  }
+  if (phase === "confirmed" && confirmation === null) {
+    return refuse("a confirmed recovery record must carry its receipt");
+  }
+  if ((phase === "prepared" || phase === "recovering") && confirmation !== null) {
+    return refuse(`a ${phase} recovery record cannot already carry a receipt`);
+  }
+  let lastError = null;
+  if (candidate.last_error !== null) {
+    const failure = record2(candidate.last_error);
+    if (!failure || !exactKeys3(failure, ["code", "message"]) || !nonEmpty3(failure.code) || typeof failure.message !== "string") {
+      return refuse("the recorded error is not a {code, message} pair");
+    }
+    lastError = { code: failure.code, message: failure.message };
+  }
+  return {
+    ok: true,
+    entry: {
+      record: {
+        schema_version: 1,
+        phase,
+        created_at: candidate.created_at,
+        envelope_json: candidate.envelope_json,
+        confirmation,
+        last_error: lastError
+      },
+      envelope
+    }
+  };
+}
+var MemoryGatewayRecoveryStore = class {
+  current = null;
+  gate;
+  constructor(gate = false) {
+    this.gate = gate;
+  }
+  get unresolved() {
+    return this.gate && this.current !== null;
+  }
+  get state() {
+    return this.current ? { kind: "record", entry: this.current } : { kind: "clear" };
+  }
+  replayable() {
+    return this.current;
+  }
+  async write(entry) {
+    this.current = entry;
+  }
+  required() {
+    if (!this.current) throw new Error("There is no prepared Gateway request to advance.");
+    return this.current;
+  }
+  async begin(next) {
+    const validated = await validateGatewayRecoveryRecord(next);
+    if (!validated.ok) throw new Error(`Refusing to persist an invalid recovery record: ${validated.error}`);
+    await this.write(validated.entry);
+  }
+  async markRecovering(error) {
+    const { record: stored, envelope } = this.required();
+    await this.write({
+      record: { ...stored, phase: "recovering", last_error: error },
+      envelope
+    });
+  }
+  async markConfirmed(confirmation) {
+    const { record: stored, envelope } = this.required();
+    await this.write({
+      record: { ...stored, phase: "confirmed", confirmation, last_error: null },
+      envelope
+    });
+  }
+  async markBlocked(error) {
+    const { record: stored, envelope } = this.required();
+    await this.write({
+      record: { ...stored, phase: "blocked", last_error: error },
+      envelope
+    });
+  }
+  async discardRefused() {
+    await this.write(null);
+  }
+};
+var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
+  constructor(settings, persist) {
+    super(true);
+    this.settings = settings;
+    this.persist = persist;
+  }
+  status = { kind: "clear" };
+  get unresolved() {
+    return this.status.kind !== "clear";
+  }
+  get state() {
+    return this.status;
+  }
+  replayable() {
+    return this.status.kind === "record" ? this.status.entry : null;
+  }
+  /**
+   * Read the persisted slot once at startup.
+   *
+   * An absent setting normalises to clear — existing installations predate the
+   * field and have nothing in flight. A *present but malformed* one does not:
+   * the raw value stays exactly as written and the store goes blocked, so the
+   * evidence survives for Diagnostics and no write process is launched.
+   */
+  async load() {
+    const raw = this.settings.gatewayRecovery;
+    if (raw === null || raw === void 0) {
+      this.status = { kind: "clear" };
+      return this.status;
+    }
+    const validated = await validateGatewayRecoveryRecord(raw);
+    this.current = validated.ok ? validated.entry : null;
+    this.status = validated.ok ? { kind: "record", entry: validated.entry } : { kind: "malformed", error: validated.error };
+    return this.status;
+  }
+  async write(entry) {
+    if (this.status.kind === "malformed") {
+      throw new Error("A malformed Gateway recovery record is unresolved; nothing was written.");
+    }
+    this.settings.gatewayRecovery = entry ? entry.record : null;
+    this.current = entry;
+    this.status = entry ? { kind: "record", entry } : { kind: "clear" };
+    await this.persist();
+  }
+  /**
+   * The only path that clears a confirmed write, and it clears the matching
+   * draft in the same in-memory update before a single awaited save.
+   *
+   * Two saves would leave a window in which a crash had erased the recovery
+   * evidence but not the draft that belongs to it — the learner would be
+   * offered their text back for a write that already landed.
+   */
+  async settleConfirmed() {
+    const entry = this.replayable();
+    if (!entry) return;
+    clearDraftsOwnedBy(this.settings.uiDrafts, entry.envelope);
+    this.settings.gatewayRecovery = null;
+    this.current = null;
+    this.status = { kind: "clear" };
+    await this.persist();
+  }
+};
+function clearDraftsOwnedBy(drafts, envelope) {
+  const payload = envelope.payload;
+  const text5 = typeof payload.text === "string" ? payload.text : null;
+  const title = typeof payload.title === "string" ? payload.title : "";
+  if (envelope.capability === "capture.create") {
+    if (text5 === null) return;
+    if (sameComposerDraft(drafts.inbox, { title, text: text5 })) {
+      drafts.inbox = { title: "", text: "" };
+    }
+    return;
+  }
+  if (envelope.capability === "garden.seed.create") {
+    if (text5 === null) return;
+    if (sameComposerDraft(drafts.garden, { title, text: text5 })) {
+      drafts.garden = { title: "", text: "" };
+    }
+    return;
+  }
+  if (envelope.capability === "unit.note.append") {
+    const unitId = typeof payload.unit_id === "string" ? payload.unit_id : "";
+    if (!unitId) return;
+    const draft = drafts.unitNotes[unitId];
+    if (draft && draft.text === text5 && String(draft.title || "").trim() === title) {
+      delete drafts.unitNotes[unitId];
+    }
+    const stageIds = Array.isArray(payload.stage_id) ? payload.stage_id : [];
+    for (const stageId of stageIds) {
+      if (typeof stageId === "string") delete drafts.stages[`${unitId}::${stageId}`];
+    }
+    return;
+  }
+  if (envelope.capability === "stage.progress.update" && payload.status === "complete") {
+    const unitId = typeof payload.unit_id === "string" ? payload.unit_id : "";
+    const stageId = typeof payload.stage_id === "string" ? payload.stage_id : "";
+    if (unitId && stageId) delete drafts.doneWhen[`${unitId}::${stageId}`];
+  }
+}
+function gatewayRecoverySummary(state) {
+  if (state.kind === "clear") return null;
+  if (state.kind === "malformed") {
+    return [
+      ["Capability", "unreadable"],
+      ["Phase", "blocked"],
+      ["Validation error", state.error]
+    ];
+  }
+  const { record: stored, envelope } = state.entry;
+  return [
+    ["Capability", envelope.capability],
+    ["Phase", stored.phase],
+    ["Created", stored.created_at],
+    ["Request ID", envelope.request_id],
+    ["Idempotency key", envelope.idempotency_key],
+    ["Last error", stored.last_error ? `${stored.last_error.code}: ${stored.last_error.message}` : "none"]
+  ];
+}
+
+// src/contracts/health-report.ts
+function record3(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
+function exactKeys4(value, required, optional2 = []) {
   const allowed = /* @__PURE__ */ new Set([...required, ...optional2]);
   return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => allowed.has(key));
 }
@@ -8473,19 +9088,19 @@ function dateTime3(value) {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
 }
 function asHealthReport(value) {
-  const report = record(value);
-  if (!report || !exactKeys2(
+  const report = record3(value);
+  if (!report || !exactKeys4(
     report,
     ["schema_version", "type", "generated_at", "status", "checks"]
   ) || report.schema_version !== 1 || report.type !== "health-report" || !dateTime3(report.generated_at) || !["healthy", "attention-required"].includes(String(report.status)) || !Array.isArray(report.checks)) return null;
   const checks = [];
   for (const valueCheck of report.checks) {
-    const check = record(valueCheck);
-    if (!check || !exactKeys2(
+    const check = record3(valueCheck);
+    if (!check || !exactKeys4(
       check,
       ["id", "status", "summary", "owner", "remedy"],
       ["details"]
-    ) || !text3(check.id) || !["ok", "warning", "error", "unknown"].includes(String(check.status)) || !text3(check.summary) || !text3(check.owner) || !text3(check.remedy) || "details" in check && record(check.details) === null) return null;
+    ) || !text3(check.id) || !["ok", "warning", "error", "unknown"].includes(String(check.status)) || !text3(check.summary) || !text3(check.owner) || !text3(check.remedy) || "details" in check && record3(check.details) === null) return null;
     checks.push({
       id: check.id,
       status: check.status,
@@ -8507,7 +9122,7 @@ function asHealthReport(value) {
 }
 
 // src/contracts/legacy-archive.ts
-function record2(value) {
+function record4(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
 function exact3(value, required, optional2 = []) {
@@ -8520,7 +9135,7 @@ var dateTime4 = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2
 var natural4 = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0;
 var relativePath = (value) => text4(value) && !value.startsWith("/") && !value.split("/").includes("..");
 function asLegacyArchiveLock(value) {
-  const lock = record2(value);
+  const lock = record4(value);
   if (!lock || !exact3(lock, [
     "schema_version",
     "id",
@@ -8539,7 +9154,7 @@ function asLegacyArchiveLock(value) {
   ];
   const entries = [];
   for (const valueEntry of lock.entries) {
-    const entry = record2(valueEntry);
+    const entry = record4(valueEntry);
     if (!entry || !exact3(entry, [
       "relative_path",
       "size",
@@ -8550,7 +9165,7 @@ function asLegacyArchiveLock(value) {
     ]) || !relativePath(entry.relative_path) || !natural4(entry.size) || !sha2563(entry.sha256) || !text4(entry.category) || !dispositions.includes(entry.disposition) || !Array.isArray(entry.canonical_targets)) return null;
     const targets = [];
     for (const valueTarget of entry.canonical_targets) {
-      const target = record2(valueTarget);
+      const target = record4(valueTarget);
       if (!target || !exact3(
         target,
         ["path", "exists", "checksum_matches"],
@@ -8572,8 +9187,8 @@ function asLegacyArchiveLock(value) {
       canonical_targets: targets
     });
   }
-  const excluded = record2(lock.excluded);
-  const verification = record2(lock.verification);
+  const excluded = record4(lock.excluded);
+  const verification = record4(lock.verification);
   if (!excluded || !exact3(excluded, ["count", "status"]) || !natural4(excluded.count) || excluded.status !== "sealed-not-inspected" || !verification || !exact3(verification, ["verified_at", "status"], ["issues"]) || !dateTime4(verification.verified_at) || !["verified", "attention-required"].includes(String(verification.status)) || "issues" in verification && (!Array.isArray(verification.issues) || !verification.issues.every(text4))) return null;
   return {
     schema_version: 1,
@@ -8590,7 +9205,7 @@ function asLegacyArchiveLock(value) {
   };
 }
 function asLegacyArchiveStatus(value) {
-  const status = record2(value);
+  const status = record4(value);
   if (!status || !exact3(status, ["schema_version", "type", "available", "lock"]) || status.schema_version !== 1 || status.type !== "legacy-archive-status" || typeof status.available !== "boolean") return null;
   const lock = status.lock === null ? null : asLegacyArchiveLock(status.lock);
   if (status.lock !== null && lock === null) return null;
@@ -8962,6 +9577,8 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
     }
     const generated = this.plugin.store.data?._generated ?? {};
     const build = this.buildInfo();
+    const runtime = this.plugin.runtimeBuildIdentity();
+    const identityMatches = runtime.fingerprint !== "unavailable" && runtime.fingerprint === build.source_fingerprint && runtime.contractVersion === build.manifest_contract_version;
     const facts = section(root, "Contract and versions");
     const factRows = [
       ["Manifest contract", generated.contract_version ?? "unknown"],
@@ -8973,7 +9590,9 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
       // stated nothing about its own, and a vault quietly ran a build 32
       // commits behind its source for a day.
       ["UI built from", build.source_dirty === null ? `${build.source_committed_at} (working tree unknown)` : build.source_dirty ? `${build.source_committed_at} + uncommitted sources` : build.source_committed_at],
-      ["UI source fingerprint", build.source_fingerprint],
+      ["UI source fingerprint (installed)", build.source_fingerprint],
+      ["UI source fingerprint (running)", runtime.fingerprint],
+      ["Running code matches installed build-info", identityMatches ? "yes" : "NO \u2014 reload learningos-ui"],
       ["UI bundle fingerprint", build.bundle_sha256],
       ["Build Node", build.node_version],
       ["Generator", generated.generator || "unknown"],
@@ -8984,6 +9603,7 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
       ["Interpreter source", this.plugin.resolvePython().origin]
     ];
     factList(facts, factRows);
+    this.renderGatewayRecovery(root);
     const actions = root.createDiv({ cls: "los-actions" });
     button(actions, "Refresh health", () => void this.loadHealth(), "info");
     button(actions, "Validate and rebuild", () => this.plugin.generate(), "success");
@@ -8992,6 +9612,55 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
     if (this.report) root.createEl("pre", { cls: "los-diagnostic-report", text: this.report });
     const policy = section(root, "About LearningOS");
     policy.createEl("p", { text: OWNERSHIP_STATEMENT });
+  }
+  /**
+   * The one place an unresolved write is visible and actionable.
+   *
+   * Metadata only: no payload text and no file paths, because this screen is
+   * the one a learner is most likely to screenshot when asking for help.
+   *
+   * There is deliberately no discard, delete, reset or "start over". Every one
+   * of those would let a learner resolve an ambiguity by declaring it resolved,
+   * which is precisely the judgement nobody at this screen can make — the write
+   * either landed or it did not, and only Core can say which.
+   */
+  renderGatewayRecovery(root) {
+    const state = this.plugin.gatewayRecoveryState();
+    const panel = section(
+      root,
+      "Gateway recovery",
+      "One unresolved canonical write, if there is one."
+    );
+    if (state.kind === "clear") {
+      panel.createEl("p", { text: "No unresolved Gateway write." });
+      return;
+    }
+    const rows = gatewayRecoverySummary(state) ?? [];
+    factList(panel, rows);
+    const actions = root.createDiv({ cls: "los-actions" });
+    if (state.kind === "record" && state.entry.record.phase !== "confirmed") {
+      button(
+        actions,
+        "Retry exact request",
+        () => void this.plugin.retryRecoveredWrite(),
+        "info"
+      );
+    } else if (state.kind === "record") {
+      button(
+        actions,
+        "Finish confirmed write",
+        () => void this.plugin.retryRecoveredWrite(),
+        "info"
+      );
+    }
+    button(
+      actions,
+      "Copy recovery summary",
+      () => this.plugin.copyText(
+        rows.map(([label, value]) => `${label}: ${value}`).join("\n")
+      ),
+      "quiet"
+    );
   }
   renderLegacy(root) {
     const header = section(
@@ -9340,18 +10009,18 @@ function readUnitViewState(value) {
     hasStageId
   };
 }
-function readUnitRecord(record4, fallbackId) {
-  if (!record4) {
+function readUnitRecord(record6, fallbackId) {
+  if (!record6) {
     return null;
   }
-  const id2 = asString(record4.id) ?? fallbackId;
-  const moduleId = asString(record4.module_id);
+  const id2 = asString(record6.id) ?? fallbackId;
+  const moduleId = asString(record6.module_id);
   if (!id2 || !moduleId) {
     return null;
   }
   const knowledgeMap = isRecord2(
-    record4.knowledge_map
-  ) ? record4.knowledge_map : null;
+    record6.knowledge_map
+  ) ? record6.knowledge_map : null;
   const knowledgeNodes = asRecords(
     knowledgeMap?.nodes
   ).map((node) => {
@@ -9376,18 +10045,18 @@ function readUnitRecord(record4, fallbackId) {
     (node) => node !== null
   );
   return {
-    record: record4,
+    record: record6,
     id: id2,
     moduleId,
-    componentId: asString(record4.component_id),
-    kind: asString(record4.kind) ?? "unit",
-    title: asString(record4.title) ?? id2,
-    scope: asText(record4.scope) ?? "",
+    componentId: asString(record6.component_id),
+    kind: asString(record6.kind) ?? "unit",
+    title: asString(record6.title) ?? id2,
+    scope: asText(record6.scope) ?? "",
     knowledgeSummary: asText(
       knowledgeMap?.summary
     ) ?? "",
     knowledgeNodes,
-    needsStudyMap: record4.needs_study_map === true
+    needsStudyMap: record6.needs_study_map === true
   };
 }
 function readMaterialOptions(value, unitId, selectionsValue) {
@@ -9437,17 +10106,17 @@ function readMaterialOptions(value, unitId, selectionsValue) {
   }
   return options;
 }
-function readResource(record4) {
-  const label = asString(record4.label) ?? asString(record4.title) ?? asString(record4.source_id) ?? "Resource";
+function readResource(record6) {
+  const label = asString(record6.label) ?? asString(record6.title) ?? asString(record6.source_id) ?? "Resource";
   return {
-    record: record4,
-    id: asString(record4.id),
-    kind: asString(record4.kind) ?? "read",
+    record: record6,
+    id: asString(record6.id),
+    kind: asString(record6.kind) ?? "read",
     label,
-    locator: asText(record4.locator),
-    sourceId: asString(record4.source_id),
-    scopeTriage: asString(record4.scope_triage),
-    canOpen: hasDirectResourceTarget(record4)
+    locator: asText(record6.locator),
+    sourceId: asString(record6.source_id),
+    scopeTriage: asString(record6.scope_triage),
+    canOpen: hasDirectResourceTarget(record6)
   };
 }
 function readStageAttachment(value) {
@@ -9472,55 +10141,55 @@ function readStageAttachment(value) {
     label: asString(value.label) ?? path
   };
 }
-function readStage(record4) {
-  const id2 = asString(record4.id);
+function readStage(record6) {
+  const id2 = asString(record6.id);
   if (!id2) {
     return null;
   }
   const attachments = Array.isArray(
-    record4.attachments
-  ) ? record4.attachments.map(readStageAttachment).filter(
+    record6.attachments
+  ) ? record6.attachments.map(readStageAttachment).filter(
     (attachment) => attachment !== null
   ) : [];
   return {
-    record: record4,
+    record: record6,
     id: id2,
-    title: asString(record4.title) ?? id2,
-    status: asString(record4.status) ?? "active",
-    scopeTriage: asText(record4.scope_triage) ?? "",
-    objective: asText(record4.objective),
-    estimateMinutes: asText(record4.estimate_minutes),
-    examCritical: record4.exam_critical === true,
-    concepts: asStrings(record4.concepts),
+    title: asString(record6.title) ?? id2,
+    status: asString(record6.status) ?? "active",
+    scopeTriage: asText(record6.scope_triage) ?? "",
+    objective: asText(record6.objective),
+    estimateMinutes: asText(record6.estimate_minutes),
+    examCritical: record6.exam_critical === true,
+    concepts: asStrings(record6.concepts),
     resources: asRecords(
-      record4.resources
+      record6.resources
     ).map(readResource),
     doneWhen: asStrings(
-      record4.done_when
+      record6.done_when
     ).filter(
       (criterion) => Boolean(criterion.trim())
     ),
     attachments,
     sourceFeedback: asRecords(
-      record4.source_feedback
+      record6.source_feedback
     )
   };
 }
-function readStudyMap(record4) {
+function readStudyMap(record6) {
   const stages = asRecords(
-    record4.stages
+    record6.stages
   ).map(readStage).filter(
     (stage) => stage !== null
   );
   return {
-    record: record4,
+    record: record6,
     currentStageId: asString(
-      record4.current_stage
+      record6.current_stage
     ),
     stages,
-    detours: asRecords(record4.detours),
+    detours: asRecords(record6.detours),
     planTemplateVersion: asFiniteNumber(
-      record4.plan_template_version
+      record6.plan_template_version
     )
   };
 }
@@ -9651,10 +10320,10 @@ function renderArtifacts(view, root, unit) {
     card.createEl("h3", {
       text: artifactLabel(key)
     });
-    const record4 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
+    const record6 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
     chip(
       card,
-      record4,
+      record6,
       (selected) => view.plugin.nav.openRecord(
         selected
       )
@@ -9662,10 +10331,10 @@ function renderArtifacts(view, root, unit) {
   }
   for (const id2 of artifacts.other) {
     count += 1;
-    const record4 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
+    const record6 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
     chip(
       wrap,
-      record4,
+      record6,
       (selected) => view.plugin.nav.openRecord(
         selected
       )
@@ -9918,18 +10587,18 @@ function renderStage(view, layout, unit, studyMap, stage) {
   }
   const conceptRecords = stage.concepts.flatMap(
     (conceptId) => {
-      const record4 = view.plugin.store.get(conceptId);
-      return record4 ? [record4] : [];
+      const record6 = view.plugin.store.get(conceptId);
+      return record6 ? [record6] : [];
     }
   );
   if (conceptRecords.length) {
     const concepts = center.createDiv({
       cls: "los-stage-concepts"
     });
-    for (const record4 of conceptRecords) {
+    for (const record6 of conceptRecords) {
       chip(
         concepts,
-        record4,
+        record6,
         (target) => view.plugin.nav.openRecord(target)
       );
     }
@@ -10294,8 +10963,8 @@ function renderMaterialOverview(view, root, unit, options, synthesis) {
           chip(
             copy,
             source,
-            (record4) => {
-              const id2 = asString(record4.id);
+            (record6) => {
+              const id2 = asString(record6.id);
               return id2 ? view.plugin.nav.openLibrary(id2) : void 0;
             }
           );
@@ -10417,8 +11086,8 @@ function renderMaterialSynthesis(view, root, synthesis, options) {
     card.createDiv({ cls: "los-micro", text: assessment2.locator });
     const source = view.plugin.store.get(assessment2.source_id);
     if (source) {
-      chip(card, source, (record4) => {
-        const sourceId = asString(record4.id);
+      chip(card, source, (record6) => {
+        const sourceId = asString(record6.id);
         return sourceId ? view.plugin.nav.openLibrary(sourceId) : void 0;
       });
     }
@@ -10441,7 +11110,7 @@ function renderMaterialSynthesis(view, root, synthesis, options) {
       const concepts = card.createDiv({ cls: "los-material-metadata" });
       for (const conceptId of assessment2.concept_ids) {
         const concept = view.plugin.store.get(conceptId);
-        if (concept) chip(concepts, concept, (record4) => view.plugin.nav.openRecord(record4));
+        if (concept) chip(concepts, concept, (record6) => view.plugin.nav.openRecord(record6));
       }
     }
     const evidenceCount = assessment2.evidence?.length || 0;
@@ -10479,8 +11148,8 @@ function renderMaterialSynthesis(view, root, synthesis, options) {
       row3.createEl("p", { text: group.narrative });
       const related = row3.createDiv({ cls: "los-material-metadata" });
       for (const relatedId of [...group.related_unit_ids, ...group.bridge_note_ids]) {
-        const record4 = view.plugin.store.get(relatedId);
-        if (record4) chip(related, record4, (target) => view.plugin.nav.openRecord(target));
+        const record6 = view.plugin.store.get(relatedId);
+        if (record6) chip(related, record6, (target) => view.plugin.nav.openRecord(target));
       }
     }
   }
@@ -11241,13 +11910,13 @@ var GlobalSearchModal = class extends import_obsidian18.Modal {
   }
   candidates() {
     const rows = [];
-    const add = (record4, kind, subtitle, open) => {
-      if (!record4?.id || !record4?.title) return;
+    const add = (record6, kind, subtitle, open) => {
+      if (!record6?.id || !record6?.title) return;
       rows.push({
-        id: record4.id,
-        title: record4.title,
-        aliases: [...record4.aliases || []],
-        authors: [...record4.authors || []],
+        id: record6.id,
+        title: record6.title,
+        aliases: [...record6.aliases || []],
+        authors: [...record6.authors || []],
         kind,
         subtitle,
         open
@@ -11435,11 +12104,11 @@ var AppNavigator = class {
     if (recordId === void 0 || recordId === null) {
       return this.openLibraryHome(recordType === "topic-pack" ? "topic-packs" : "sources");
     }
-    const record4 = this.store.get(recordId);
-    if (record4?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
-    if (record4?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
-    if (record4?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
-    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record4?.type || "note", query: "" });
+    const record6 = this.store.get(recordId);
+    if (record6?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
+    if (record6?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
+    if (record6?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
+    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record6?.type || "note", query: "" });
   }
   openLibraryHome(collection = "sources", query = "", filters) {
     return this.router.navigate({
@@ -11502,58 +12171,43 @@ var AppNavigator = class {
     const stageId = asString(pointer?.stage_id);
     return unitId ? this.openUnit(unitId, stageId) : this.openHome();
   }
-  openRecord(record4) {
-    if (!record4) return;
-    const recordId = asString(record4.id);
-    if (record4.type === "unit" && recordId) return this.openUnit(recordId);
-    if (record4.type === "module" && recordId) return this.openModule(recordId);
-    if (record4.type === "project" && recordId) return this.openProject(recordId);
-    if (record4.type === "program" && recordId) return this.openProgram(recordId);
-    if (record4.type === "source" && recordId) return this.openSourceDetail(recordId);
-    if (record4.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
-    if (record4.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
-    if (record4.type === "note" || record4.type === "concept") {
-      if (record4.path) return this.resources.openAuthoredPath(record4.path);
-      return this.openLibraryFiltered(record4.type);
+  openRecord(record6) {
+    if (!record6) return;
+    const recordId = asString(record6.id);
+    if (record6.type === "unit" && recordId) return this.openUnit(recordId);
+    if (record6.type === "module" && recordId) return this.openModule(recordId);
+    if (record6.type === "project" && recordId) return this.openProject(recordId);
+    if (record6.type === "program" && recordId) return this.openProgram(recordId);
+    if (record6.type === "source" && recordId) return this.openSourceDetail(recordId);
+    if (record6.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
+    if (record6.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
+    if (record6.type === "note" || record6.type === "concept") {
+      if (record6.path) return this.resources.openAuthoredPath(record6.path);
+      return this.openLibraryFiltered(record6.type);
     }
-    if (record4.type === "workspace") {
-      if (record4.project_id) return this.openProject(record4.project_id);
-      const unit = (record4.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+    if (record6.type === "workspace") {
+      if (record6.project_id) return this.openProject(record6.project_id);
+      const unit = (record6.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       if (unit?.id) return this.openUnit(unit.id);
-      const module2 = (record4.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+      const module2 = (record6.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       return module2?.id ? this.openModule(module2.id) : this.openHome();
     }
-    if (record4.path) return this.resources.openAuthoredPath(record4.path);
+    if (record6.path) return this.resources.openAuthoredPath(record6.path);
   }
   /**
-   * Omnisearch's modal is another plugin's DOM, and this is the only place in
-   * the UI that reaches into one. It fires the command, then polls for a
-   * visible `.prompt-input` to seed. It will break silently on any Omnisearch
-   * DOM change and no test can catch that; it is acceptable only because it
-   * degrades to "modal opens, query not transferred".
+   * Omnisearch's modal is another plugin's DOM, and reaching into it to seed
+   * a query was the one place this interface depended on internals it does
+   * not own: a private input-field selector, polled for up to a second, then
+   * fed a synthetic keystroke event. Any Omnisearch DOM change could break
+   * that silently, and no test here could catch it.
+   *
+   * Only the registered public command remains. The convenience loss is
+   * small and explicit: Omnisearch opens without automatic query prefill.
+   * LearningOS's own structural Library search is unaffected either way.
    */
-  openFullTextSearch(query = "") {
+  openFullTextSearch() {
     const ok = this.app.commands?.executeCommandById?.("omnisearch:show-modal");
     if (!ok) new import_obsidian19.Notice("Omnisearch is unavailable; structural Library search still works.");
-    else if (query.trim()) {
-      let attempts = 0;
-      const transfer = () => {
-        const input = [...document.querySelectorAll(".prompt-input")].find((candidate) => candidate.offsetParent !== null);
-        if (!input && attempts++ < 20) {
-          setTimeout(transfer, 50);
-          return;
-        }
-        if (!input || input.value) return;
-        input.value = query;
-        input.dispatchEvent(new InputEvent("input", {
-          bubbles: true,
-          inputType: "insertText",
-          data: query
-        }));
-        input.focus();
-      };
-      setTimeout(transfer, 50);
-    }
   }
 };
 
@@ -11638,12 +12292,12 @@ var ApplicationRouter = class {
     };
     const recordId = asText2(state.recordId);
     if (recordId) {
-      const record4 = this.plugin.store?.get?.(recordId);
-      if (record4?.type === "source" || recordType === "source") {
+      const record6 = this.plugin.store?.get?.(recordId);
+      if (record6?.type === "source" || recordType === "source") {
         return { name: "source-detail", resourceId: recordId };
       }
-      if (record4?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: recordId };
-      if (record4?.type === "collection" || recordType === "collection") {
+      if (record6?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: recordId };
+      if (record6?.type === "collection" || recordType === "collection") {
         return { name: "catalogue-detail", catalogueId: recordId };
       }
     }
@@ -11807,7 +12461,7 @@ var ApplicationRouter = class {
   async persist() {
     this.plugin.settings.navigation = this.navigation;
     delete this.plugin.settings.lastView;
-    await this.plugin.saveData(this.plugin.settings);
+    await this.plugin.persistSettings();
   }
   openOverlay(overlay) {
     this.overlay = { ...overlay };
@@ -12043,13 +12697,13 @@ var UnitNoteModal = class extends import_obsidian20.Modal {
     }
     this.saving = true;
     try {
+      const sent = { title: this.titleInput?.value || "", text: text5 };
       await this.plugin.mutate(() => this.plugin.gateway.saveUnitNote(unitId, {
-        title: this.titleInput?.value || "",
-        text: text5,
+        ...sent,
         stageIds: this.referencedStageIds,
         filePaths
       }, this.expectedRevisions));
-      this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds);
+      this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds, sent);
       new import_obsidian20.Notice("Learning-session note saved.");
       this.close();
     } catch (error) {
@@ -12065,248 +12719,12 @@ var UnitNoteModal = class extends import_obsidian20.Modal {
   }
 };
 
-// src/application/draft-store.ts
-function emptyUiDrafts() {
-  return {
-    stages: {},
-    unitNotes: {},
-    selectedStages: {},
-    inbox: { title: "", text: "" },
-    doneWhen: {}
-  };
+// src/build-identity.ts
+function runtimeSourceFingerprint() {
+  return true ? "sha256:8d9fab6fd61318b6e82c43871bce0c042b785a5f40d79e9cf70e7dfa630723f0" : "unavailable";
 }
-function normalizeUiDrafts(value) {
-  const empty2 = emptyUiDrafts();
-  return {
-    stages: value?.stages ?? empty2.stages,
-    unitNotes: value?.unitNotes ?? empty2.unitNotes,
-    selectedStages: value?.selectedStages ?? empty2.selectedStages,
-    inbox: value?.inbox ?? empty2.inbox,
-    doneWhen: value?.doneWhen ?? empty2.doneWhen
-  };
-}
-var DraftStore = class {
-  constructor(settings, persist) {
-    this.settings = settings;
-    this.persist = persist;
-  }
-  saveTimer = null;
-  scheduleSave() {
-    if (this.saveTimer) clearTimeout(this.saveTimer);
-    this.saveTimer = setTimeout(() => {
-      this.saveTimer = null;
-      void this.persist();
-    }, 250);
-  }
-  dispose() {
-    if (this.saveTimer) clearTimeout(this.saveTimer);
-    this.saveTimer = null;
-  }
-  stageKey(unitId, stageId) {
-    return `${unitId}::${stageId}`;
-  }
-  getStage(unitId, stageId, savedText = "") {
-    const entry = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-    return { text: entry?.text ?? savedText, dirty: entry != null && entry.text !== savedText };
-  }
-  setStage(unitId, stageId, text5, savedText = "") {
-    const key = this.stageKey(unitId, stageId);
-    if (text5 === savedText) delete this.settings.uiDrafts.stages[key];
-    else this.settings.uiDrafts.stages[key] = { text: text5 };
-    this.scheduleSave();
-  }
-  clearStage(unitId, stageId) {
-    delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-    this.scheduleSave();
-  }
-  getUnitNote(unitId, stages = []) {
-    const saved = this.settings.uiDrafts.unitNotes[unitId];
-    const recovered = [];
-    for (const stage of stages) {
-      const stageId = asString(stage.id);
-      if (!stageId) continue;
-      const entry = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-      if (entry?.text?.trim()) recovered.push({ id: stageId, title: asLabel(stage, stageId), text: entry.text });
-    }
-    const recoveredText = recovered.map((row3) => `### ${row3.title}
-
-${row3.text.trim()}`).join("\n\n");
-    return {
-      title: saved?.title || (recovered.length ? "Recovered stage drafts" : ""),
-      text: [String(saved?.text || "").trim(), recoveredText].filter(Boolean).join("\n\n"),
-      recoveredStageIds: recovered.map((row3) => row3.id),
-      expectedRevisions: saved?.expectedRevisions ?? {}
-    };
-  }
-  setUnitNote(unitId, title, text5, expectedRevisions = {}) {
-    if (!title.trim() && !text5.trim()) delete this.settings.uiDrafts.unitNotes[unitId];
-    else this.settings.uiDrafts.unitNotes[unitId] = {
-      title,
-      text: text5,
-      expectedRevisions: { ...expectedRevisions }
-    };
-    this.scheduleSave();
-  }
-  clearUnitNote(unitId, recoveredStageIds = []) {
-    delete this.settings.uiDrafts.unitNotes[unitId];
-    for (const stageId of recoveredStageIds) {
-      delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-    }
-    this.scheduleSave();
-  }
-  getSelectedStage(unitId) {
-    return this.settings.uiDrafts.selectedStages[unitId] || null;
-  }
-  setSelectedStage(unitId, stageId) {
-    if (stageId) this.settings.uiDrafts.selectedStages[unitId] = stageId;
-    else delete this.settings.uiDrafts.selectedStages[unitId];
-    this.scheduleSave();
-  }
-  getDoneWhen(unitId, stageId) {
-    return this.settings.uiDrafts.doneWhen[this.stageKey(unitId, stageId)] || [];
-  }
-  setDoneWhen(unitId, stageId, index, checked) {
-    const key = this.stageKey(unitId, stageId);
-    const marks = [...this.settings.uiDrafts.doneWhen[key] || []];
-    marks[index] = checked;
-    if (marks.some(Boolean)) this.settings.uiDrafts.doneWhen[key] = marks;
-    else delete this.settings.uiDrafts.doneWhen[key];
-    this.scheduleSave();
-  }
-  clearDoneWhen(unitId, stageId) {
-    delete this.settings.uiDrafts.doneWhen[this.stageKey(unitId, stageId)];
-    this.scheduleSave();
-  }
-  getInbox() {
-    return { ...this.settings.uiDrafts.inbox };
-  }
-  setInbox(title, text5) {
-    this.settings.uiDrafts.inbox = { title, text: text5 };
-    this.scheduleSave();
-  }
-  clearInbox() {
-    this.settings.uiDrafts.inbox = { title: "", text: "" };
-    this.scheduleSave();
-  }
-};
-
-// src/contracts/gateway-v2.ts
-var GATEWAY_SCHEMA_VERSION = 2;
-function record3(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
-}
-function nonEmpty2(value) {
-  return typeof value === "string" && value.trim().length > 0;
-}
-function exactKeys3(value, keys) {
-  return Object.keys(value).length === keys.length && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
-}
-function isSha256(value) {
-  return typeof value === "string" && /^sha256:[0-9a-f]{64}$/.test(value);
-}
-var REQUEST_SCOPED_ARTIFACT_PREFIXES = {
-  "capture.create": "capture-request",
-  "garden.seed.create": "garden-request"
-};
-function isRequestScopedCapability(capability) {
-  return Object.prototype.hasOwnProperty.call(
-    REQUEST_SCOPED_ARTIFACT_PREFIXES,
-    capability
-  );
-}
-function requestArtifactId(capability, idempotencyKey) {
-  const prefix = REQUEST_SCOPED_ARTIFACT_PREFIXES[capability];
-  if (!prefix) {
-    throw new GatewayError(
-      `${capability} does not use request-scoped artifacts; nothing was written.`,
-      null,
-      { code: "INVALID_REQUEST", retryable: false }
-    );
-  }
-  if (!nonEmpty2(idempotencyKey)) {
-    throw new GatewayError(
-      `${capability} needs an idempotency key to guard its request; nothing was written.`,
-      null,
-      { code: "INVALID_REQUEST", retryable: false }
-    );
-  }
-  return `${prefix}:${idempotencyKey}`;
-}
-function gatewayApprovalSubject(capability, expectedSnapshot, expectedRevisions, payload) {
-  return {
-    schema_version: GATEWAY_SCHEMA_VERSION,
-    capability,
-    channel: "ui",
-    expected_snapshot: expectedSnapshot,
-    expected_revisions: expectedRevisions,
-    payload
-  };
-}
-function canonical(value) {
-  if (Array.isArray(value)) return value.map(canonical);
-  const object = record3(value);
-  if (!object) return value;
-  return Object.fromEntries(
-    Object.keys(object).sort(unicodeCodePointCompare).map((key) => [key, canonical(object[key])])
-  );
-}
-function unicodeCodePointCompare(left, right) {
-  const leftPoints = [...left].map((value) => value.codePointAt(0) ?? 0);
-  const rightPoints = [...right].map((value) => value.codePointAt(0) ?? 0);
-  const shared = Math.min(leftPoints.length, rightPoints.length);
-  for (let index = 0; index < shared; index += 1) {
-    const leftPoint = leftPoints[index] ?? 0;
-    const rightPoint = rightPoints[index] ?? 0;
-    if (leftPoint !== rightPoint) {
-      return leftPoint - rightPoint;
-    }
-  }
-  return leftPoints.length - rightPoints.length;
-}
-async function gatewaySubjectSha256(subject) {
-  const bytes = new TextEncoder().encode(JSON.stringify(canonical(subject)));
-  const digest = await globalThis.crypto.subtle.digest("SHA-256", bytes);
-  return `sha256:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
-}
-function asGatewaySuccessV2(value, expected) {
-  const response = record3(value);
-  const result = record3(response?.result);
-  const responseKeys = [
-    "schema_version",
-    "request_id",
-    "idempotency_key",
-    "capability",
-    "ok",
-    "replayed",
-    "transaction_id",
-    "receipt_path",
-    "snapshot_after",
-    "result",
-    "error"
-  ];
-  const identityMatches = response?.request_id === expected.requestId && response?.idempotency_key === expected.idempotencyKey && response?.capability === expected.capability;
-  const confirmed = response !== null && exactKeys3(response, responseKeys) && response.schema_version === GATEWAY_SCHEMA_VERSION && identityMatches && response.ok === true && typeof response.replayed === "boolean" && nonEmpty2(response.transaction_id) && nonEmpty2(response.receipt_path) && isSha256(response.snapshot_after) && result !== null && response.error === null;
-  if (!confirmed) {
-    throw new GatewayError(
-      "LearningOS did not return a complete Gateway V2 receipt, so the change is unconfirmed. Your draft was kept.",
-      null,
-      { code: "UNCONFIRMED", retryable: false }
-    );
-  }
-  return response;
-}
-function isGatewaySuccessV2(value) {
-  const response = record3(value);
-  return response?.schema_version === GATEWAY_SCHEMA_VERSION && response?.ok === true && nonEmpty2(response?.receipt_path) && isSha256(response?.snapshot_after);
-}
-function assertGatewaySnapshotObserved(confirmation, observedSnapshot) {
-  if (observedSnapshot !== confirmation.snapshot_after) {
-    throw new GatewayError(
-      "LearningOS wrote a receipt, but the reloaded manifest does not show its resulting snapshot. The change is unconfirmed in this view; your draft was kept.",
-      null,
-      { code: "UNCONFIRMED", retryable: true }
-    );
-  }
+function runtimeContractVersion() {
+  return true ? 8 : 0;
 }
 
 // src/gateway-client.ts
@@ -12314,6 +12732,11 @@ var import_node_crypto = require("node:crypto");
 var import_promises = require("node:fs/promises");
 var import_node_os = require("node:os");
 var import_node_path = require("node:path");
+var GATEWAY_RECOVERY_NOTICE = "The Gateway response was interrupted. Replaying the same approved request; no new write will be created.";
+var GATEWAY_RECOVERY_BLOCKED = "LearningOS could not confirm whether the previous write landed, so it will not send another. Your draft was kept. Open Diagnostics \u2192 Gateway recovery to retry the same request.";
+function record5(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
 var requestCounter = 0;
 function nextRequestId(capability) {
   requestCounter += 1;
@@ -12348,11 +12771,45 @@ function gatewayErrorDetails(value) {
 var GatewayClient = class {
   plugin;
   chain;
+  recovery;
   pending;
   constructor(plugin) {
     this.plugin = plugin;
     this.chain = Promise.resolve();
     this.pending = 0;
+    this.recovery = plugin.recovery ?? new MemoryGatewayRecoveryStore();
+  }
+  announce(message) {
+    if (!this.lifecycleActive()) return;
+    this.plugin.notify?.(message);
+  }
+  lifecycleActive() {
+    return this.plugin.isLifecycleActive?.() ?? true;
+  }
+  assertLifecycleActive() {
+    if (this.lifecycleActive()) return;
+    throw new GatewayError(
+      "This LearningOS plugin instance has been unloaded; its pending operation was left for the active instance to recover.",
+      null,
+      { code: "PLUGIN_UNLOADED", retryable: false }
+    );
+  }
+  /**
+   * The global write gate while any earlier transaction is unresolved.
+   *
+   * `capability()` is not the only mutating route: session closure and the
+   * provider-independent AI action commands still use positional CLI calls.
+   * Their hosts call this same guard before starting those processes, so
+   * recovery cannot be bypassed by choosing a different write surface.
+   */
+  assertMutationAllowed() {
+    this.assertLifecycleActive();
+    if (!this.recovery.unresolved) return;
+    throw new GatewayError(
+      "LearningOS has an unresolved Gateway write and will not start another until it is settled. Open Diagnostics \u2192 Gateway recovery.",
+      null,
+      { code: "RECOVERY_REQUIRED", retryable: false }
+    );
   }
   /**
    * Serialize every mutation, wherever it was clicked. Failures do not poison
@@ -12361,7 +12818,11 @@ var GatewayClient = class {
    */
   enqueue(task) {
     this.pending += 1;
-    const run = this.chain.then(task, task);
+    const guarded = () => {
+      this.assertLifecycleActive();
+      return task();
+    };
+    const run = this.chain.then(guarded, guarded);
     this.chain = run.then(() => void 0, () => void 0).then(() => {
       this.pending -= 1;
     });
@@ -12378,10 +12839,19 @@ var GatewayClient = class {
    * the text-reporting commands (`validate`, `generate`).
    */
   call(args, { expectJson = true, stdin } = {}) {
+    this.assertLifecycleActive();
     return new Promise((resolve2, reject) => {
       this.plugin.runLos(
         args,
         (error, stdout, stderr) => {
+          if (!this.lifecycleActive()) {
+            reject(new GatewayError(
+              "This LearningOS plugin instance was unloaded while Core was finishing; its durable recovery record was left untouched.",
+              null,
+              { code: "PLUGIN_UNLOADED", retryable: false }
+            ));
+            return;
+          }
           if (error) {
             let refusal = null;
             try {
@@ -12457,6 +12927,7 @@ var GatewayClient = class {
         { code: "INVALID_REQUEST", retryable: false }
       );
     }
+    this.assertMutationAllowed();
     return this.sendCapability(
       name,
       payload,
@@ -12464,7 +12935,15 @@ var GatewayClient = class {
       expectedRevisions
     );
   }
-  async sendCapability(name, payload, expectedSnapshot, expectedRevisions) {
+  /**
+   * Phase one: build the request, persist it, send nothing.
+   *
+   * Identity, guards, approval and serialization all happen exactly once here,
+   * and the record is durably saved before this returns — so the process that
+   * comes next can be interrupted at any point and still be recognisable.
+   */
+  async prepareCapability(name, payload, expectedSnapshot, expectedRevisions) {
+    this.assertLifecycleActive();
     const requestId = nextRequestId(name);
     const idempotencyKey = nextIdempotencyKey(requestId);
     const effectiveRevisions = isRequestScopedCapability(name) ? { [requestArtifactId(name, idempotencyKey)]: 0 } : expectedRevisions;
@@ -12488,11 +12967,229 @@ var GatewayClient = class {
       },
       payload
     };
-    const response = await this.call(
-      ["capability", name, "--payload-file", "-"],
-      { stdin: JSON.stringify(envelope) }
+    const envelopeJson = JSON.stringify(envelope);
+    this.assertLifecycleActive();
+    await this.recovery.begin({
+      schema_version: 1,
+      phase: "prepared",
+      created_at: (/* @__PURE__ */ new Date()).toISOString(),
+      envelope_json: envelopeJson,
+      confirmation: null,
+      last_error: null
+    });
+    return envelopeJson;
+  }
+  /** The raw process result, before anything has been believed about it. */
+  runRaw(args, stdin) {
+    return new Promise((resolve2) => {
+      this.plugin.runLos(args, (error, stdout, stderr) => {
+        resolve2({ error, stdout: String(stdout ?? ""), stderr: String(stderr ?? "") });
+      }, stdin);
+    });
+  }
+  /**
+   * Phase two: send the stored string, byte for byte.
+   *
+   * It generates nothing. Reconstructing the envelope here — even "identically"
+   * — would defeat the point: a rebuilt envelope carries a fresh identity, and
+   * Core would treat the retry as a new write.
+   */
+  async dispatchPreparedEnvelope(envelopeJson, { replayOnly = false } = {}) {
+    this.assertLifecycleActive();
+    let envelope;
+    try {
+      envelope = JSON.parse(envelopeJson);
+    } catch (_) {
+      return {
+        outcome: "ambiguous",
+        error: { code: "INVALID_REQUEST", message: "the prepared envelope is unreadable" }
+      };
+    }
+    const expected = {
+      requestId: String(envelope.request_id ?? ""),
+      idempotencyKey: String(envelope.idempotency_key ?? ""),
+      capability: String(envelope.capability ?? "")
+    };
+    const args = ["capability", expected.capability, "--payload-file", "-"];
+    if (replayOnly) args.push("--replay-only");
+    const { error, stdout, stderr } = await this.runRaw(args, envelopeJson);
+    this.assertLifecycleActive();
+    const raw = stdout.trim();
+    let parsed = null;
+    let readable = false;
+    if (raw) {
+      try {
+        parsed = JSON.parse(raw);
+        readable = true;
+      } catch (_) {
+        readable = false;
+      }
+    }
+    if (!readable) {
+      return {
+        outcome: "ambiguous",
+        error: {
+          code: "UNREADABLE_RESPONSE",
+          message: raw ? `LearningOS answered with unreadable output: ${raw.slice(0, 160)}` : stderr.trim() || error?.message || "LearningOS wrote nothing back."
+        }
+      };
+    }
+    const failure = asGatewayFailureV2(parsed, expected);
+    if (failure) {
+      return isDefinitiveNoCommitCode(failure.error.code) ? { outcome: "refused", failure } : {
+        outcome: "ambiguous",
+        error: { code: failure.error.code, message: failure.error.message }
+      };
+    }
+    let confirmation = null;
+    try {
+      confirmation = asGatewaySuccessV2(parsed, expected);
+    } catch (_) {
+      confirmation = null;
+    }
+    if (confirmation && !error) return { outcome: "confirmed", confirmation };
+    if (confirmation && error) {
+      return {
+        outcome: "ambiguous",
+        error: {
+          code: "PROCESS_CONTRADICTION",
+          message: "LearningOS printed a receipt but the process reported failure."
+        }
+      };
+    }
+    const identity = record5(parsed);
+    const claimsAnother = identity !== null && (typeof identity.request_id === "string" || typeof identity.idempotency_key === "string") && (identity.request_id !== expected.requestId || identity.idempotency_key !== expected.idempotencyKey || identity.capability !== expected.capability);
+    return {
+      outcome: "ambiguous",
+      error: {
+        code: claimsAnother ? "IDENTITY_MISMATCH" : "UNRECOGNISED_RESPONSE",
+        message: structuredError(raw) || "LearningOS answered with a response that does not match this request."
+      }
+    };
+  }
+  /**
+   * Phase three: resend what was persisted.
+   *
+   * Used both for the one in-session replay and for a replay after restart, so
+   * there is only one code path that can send a retry, and it can only send the
+   * stored string.
+   */
+  async recoverPreparedEnvelope() {
+    this.assertLifecycleActive();
+    const entry = this.recovery.replayable();
+    if (!entry) {
+      return {
+        outcome: "ambiguous",
+        error: { code: "RECOVERY_REQUIRED", message: "There is no replayable Gateway request." }
+      };
+    }
+    await this.recovery.markRecovering(entry.record.last_error);
+    const result = await this.dispatchPreparedEnvelope(entry.record.envelope_json);
+    if (result.outcome !== "refused") return result;
+    return {
+      outcome: "ambiguous",
+      error: {
+        code: result.failure.error.code,
+        message: `The recovery attempt was refused (${result.failure.error.code}): ${result.failure.error.message}`
+      }
+    };
+  }
+  /**
+   * Ask Core to prove a persisted confirmation without running its handler.
+   *
+   * `data.json` is not an authority boundary: a syntactically valid success
+   * body can be corrupted or fabricated there.  Core's idempotency ledger and
+   * Receipt V2 are the authority, so startup and Diagnostics retire a stored
+   * confirmation only after this read-only lookup returns the exact replay.
+   */
+  async verifyConfirmedEnvelope() {
+    this.assertLifecycleActive();
+    const entry = this.recovery.replayable();
+    if (!entry || entry.record.confirmation === null) {
+      return {
+        outcome: "ambiguous",
+        error: {
+          code: "RECOVERY_REQUIRED",
+          message: "There is no persisted confirmation for Core to verify."
+        }
+      };
+    }
+    const result = await this.dispatchPreparedEnvelope(
+      entry.record.envelope_json,
+      { replayOnly: true }
     );
-    return asGatewaySuccessV2(response, { requestId, idempotencyKey, capability: name });
+    if (result.outcome === "confirmed" && result.confirmation.replayed) {
+      return result;
+    }
+    if (result.outcome === "confirmed") {
+      return {
+        outcome: "ambiguous",
+        error: {
+          code: "UNVERIFIED_CONFIRMATION",
+          message: "Core returned a non-replay response to a receipt-only lookup."
+        }
+      };
+    }
+    if (result.outcome === "refused") {
+      return {
+        outcome: "ambiguous",
+        error: {
+          code: result.failure.error.code,
+          message: `Core could not verify the persisted receipt (${result.failure.error.code}): ${result.failure.error.message}`
+        }
+      };
+    }
+    return result;
+  }
+  /**
+   * The shared write path for every V2 porcelain method.
+   *
+   * One ambiguous result buys exactly one visible replay. A second ambiguity
+   * blocks: looping in the background is how an interrupted write becomes many,
+   * and a blocked record deliberately does not retry itself on the next launch.
+   */
+  async sendCapability(name, payload, expectedSnapshot, expectedRevisions) {
+    const envelopeJson = await this.prepareCapability(
+      name,
+      payload,
+      expectedSnapshot,
+      expectedRevisions
+    );
+    let result = await this.dispatchPreparedEnvelope(envelopeJson);
+    if (result.outcome === "ambiguous") {
+      this.announce(GATEWAY_RECOVERY_NOTICE);
+      await this.recovery.markRecovering(result.error);
+      result = await this.recoverPreparedEnvelope();
+    }
+    return this.settle(result);
+  }
+  /** Turn one settled outcome into the record state and the caller's answer. */
+  async settle(result) {
+    this.assertLifecycleActive();
+    if (result.outcome === "confirmed") {
+      await this.recovery.markConfirmed(result.confirmation);
+      return result.confirmation;
+    }
+    if (result.outcome === "refused") {
+      await this.recovery.discardRefused();
+      throw new GatewayError(
+        result.failure.error.message,
+        null,
+        {
+          code: result.failure.error.code,
+          retryable: result.failure.error.retryable
+        }
+      );
+    }
+    await this.recovery.markBlocked(result.error);
+    throw new GatewayError(
+      // The last thing Core said travels with the refusal. The learner cannot
+      // act on "unknown", but they can act on the sentence underneath it.
+      `${GATEWAY_RECOVERY_BLOCKED}
+Last response: ${result.error.message}`,
+      null,
+      { code: "RECOVERY_BLOCKED", retryable: false }
+    );
   }
   /**
    * The snapshot guard is what makes a write refusable, so a missing snapshot
@@ -12616,6 +13313,7 @@ var GatewayClient = class {
     );
   }
   endSession(commitMessage = null, push = false) {
+    this.assertMutationAllowed();
     const args = ["session-end"];
     if (commitMessage) args.push("--commit-message", commitMessage);
     if (push) args.push("--push");
@@ -13105,8 +13803,8 @@ var ManifestStore = class {
     }
   }
   get(id2) {
-    const record4 = this.byId.get(id2) || null;
-    return record4 && !this.isArchivedCurriculumRecord(record4) ? record4 : null;
+    const record6 = this.byId.get(id2) || null;
+    return record6 && !this.isArchivedCurriculumRecord(record6) ? record6 : null;
   }
   of(type) {
     return this.records.filter(
@@ -13124,11 +13822,11 @@ var ManifestStore = class {
       (row3) => row3 && typeof row3 === "object" && !this.isArchivedCurriculumRecord(row3)
     ) : [];
   }
-  isArchivedCurriculumRecord(record4) {
-    if (record4.type === "module" && record4.status === "archived") {
+  isArchivedCurriculumRecord(record6) {
+    if (record6.type === "module" && record6.status === "archived") {
       return true;
     }
-    const moduleId = typeof record4.module_id === "string" ? record4.module_id : null;
+    const moduleId = typeof record6.module_id === "string" ? record6.module_id : null;
     if (!moduleId) {
       return false;
     }
@@ -13345,8 +14043,8 @@ var ManifestStore = class {
     });
   }
   related(id2) {
-    const record4 = this.get(id2);
-    if (!record4) return [];
+    const record6 = this.get(id2);
+    if (!record6) return [];
     const ids2 = /* @__PURE__ */ new Set();
     for (const key of [
       "concepts",
@@ -13359,7 +14057,7 @@ var ManifestStore = class {
       "unit_order",
       "related_module_ids"
     ]) {
-      for (const value of asStrings(record4[key])) ids2.add(value);
+      for (const value of asStrings(record6[key])) ids2.add(value);
     }
     for (const table of Object.values(this.data?.backlinks || {})) {
       if (isRecord3(table) && Array.isArray(table[id2])) {
@@ -13381,9 +14079,71 @@ var ManifestStore = class {
 function errorMessage4(error) {
   return error instanceof Error ? error.message : String(error);
 }
+var processState = globalThis;
+var settingsCoordinators = processState.__learningosUiSettingsCoordinators ?? /* @__PURE__ */ new Map();
+processState.__learningosUiSettingsCoordinators = settingsCoordinators;
+function settingsCoordinator(vaultRoot) {
+  const existing = settingsCoordinators.get(vaultRoot);
+  if (existing) return existing;
+  const created = { generation: 0, tail: Promise.resolve() };
+  settingsCoordinators.set(vaultRoot, created);
+  return created;
+}
+function cloneSettings(settings) {
+  return JSON.parse(JSON.stringify(settings));
+}
 var LearningOSUI = class extends import_obsidian22.Plugin {
   lastAiPrompt = "";
+  /** Set when startup found an unusable record; the app registers read-only. */
+  recoveryBlocked = false;
+  /**
+   * One writer for `data.json`, in arrival order and across plugin instances.
+   *
+   * Drafts, navigation, settings toggles and now the recovery record all live
+   * in the same file, and each used to call `saveData(this.settings)` on its
+   * own. Two of those in flight together is a lost update: whichever `await`
+   * resolved last wrote the object it had captured. For a debounced draft save
+   * that is a mild annoyance; for the record that says a write may be in
+   * flight, it is the difference between recovering and duplicating.
+   *
+   * Each queued task calls `saveData` only when its turn begins, so it
+   * serializes the newest in-memory settings rather than an old snapshot — the
+   * queue orders the writes without freezing what they contain.
+   */
+  settingsCoordinator = null;
+  lifecycleGeneration = 0;
+  lifecycleLive = false;
+  isLifecycleActive() {
+    return this.lifecycleLive && this.settingsCoordinator?.generation === this.lifecycleGeneration;
+  }
+  enqueueSettingsSave(value, { requireOwner = true } = {}) {
+    const coordinator = this.settingsCoordinator;
+    if (!coordinator) return Promise.resolve();
+    const generation = this.lifecycleGeneration;
+    const save = () => {
+      if (requireOwner && (!this.lifecycleLive || coordinator.generation !== generation)) {
+        return Promise.resolve();
+      }
+      return this.saveData(value);
+    };
+    const run = coordinator.tail.then(save, save);
+    coordinator.tail = run.then(() => void 0, () => void 0);
+    return run;
+  }
+  persistSettings() {
+    if (!this.isLifecycleActive()) return Promise.resolve();
+    return this.enqueueSettingsSave(this.settings);
+  }
   async onload() {
+    const coordinator = settingsCoordinator(
+      this.app.vault.adapter.getBasePath()
+    );
+    this.settingsCoordinator = coordinator;
+    this.lifecycleGeneration = coordinator.generation + 1;
+    coordinator.generation = this.lifecycleGeneration;
+    this.lifecycleLive = true;
+    await coordinator.tail;
+    if (!this.isLifecycleActive()) return;
     const loadedSettings = await this.loadData();
     const savedSettings = loadedSettings ?? {};
     this.settings = {
@@ -13391,7 +14151,12 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
       ...savedSettings,
       uiDrafts: normalizeUiDrafts(savedSettings.uiDrafts)
     };
-    this.drafts = new DraftStore(this.settings, () => this.saveData(this.settings));
+    this.drafts = new DraftStore(this.settings, () => this.persistSettings());
+    this.recovery = new SettingsGatewayRecoveryStore(
+      this.settings,
+      () => this.persistSettings()
+    );
+    const recoveryState = await this.recovery.load();
     this.store = new ManifestStore(this.app);
     this.runtime = new LosRuntime(this.app, () => this.settings.pythonPath);
     this.resources = new ResourceOpener(this.app);
@@ -13408,10 +14173,65 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
     );
     await this.store.load();
     registerApplication(this);
+    await this.resumeInterruptedWrite(recoveryState);
+  }
+  /** Every Notice the gateway and recovery paths raise goes through here. */
+  notify(message) {
+    if (!this.isLifecycleActive()) return;
+    new import_obsidian22.Notice(message);
+  }
+  /**
+   * Finish, or refuse to finish, whatever the last session left in flight.
+   *
+   * The order is deliberate: settings, then the recovery record, then the
+   * projection, and only then a replay — a replay decided before the projection
+   * loaded could not reconcile its own receipt.
+   */
+  async resumeInterruptedWrite(state) {
+    if (state.kind === "clear") return;
+    if (state.kind === "malformed") {
+      this.recoveryBlocked = true;
+      this.notify("LearningOS found an unreadable record of an unfinished write and will not send anything until it is reviewed. Open Diagnostics \u2192 Gateway recovery.");
+      return;
+    }
+    const phase = state.entry.record.phase;
+    if (phase === "blocked" || phase === "recovering") {
+      this.recoveryBlocked = true;
+      this.notify(GATEWAY_RECOVERY_BLOCKED);
+      return;
+    }
+    if (phase === "confirmed") {
+      try {
+        const confirmation = await this.gateway.settle(
+          await this.gateway.verifyConfirmedEnvelope()
+        );
+        await this.finishConfirmedWrite(confirmation);
+      } catch (error) {
+        this.recoveryBlocked = this.recovery.unresolved;
+        this.notify(errorMessage4(error));
+      }
+      return;
+    }
+    this.notify(GATEWAY_RECOVERY_NOTICE);
+    try {
+      await this.gateway.enqueue(async () => {
+        const outcome = await this.gateway.recoverPreparedEnvelope();
+        const confirmation = await this.gateway.settle(outcome);
+        await this.finishConfirmedWrite(confirmation);
+      });
+    } catch (error) {
+      this.recoveryBlocked = this.recovery.unresolved;
+      this.notify(errorMessage4(error));
+    }
   }
   onunload() {
-    this.drafts.dispose();
-    void this.saveData(this.settings);
+    this.drafts?.dispose();
+    if (this.isLifecycleActive() && this.settings) {
+      void this.enqueueSettingsSave(cloneSettings(this.settings), {
+        requireOwner: false
+      }).catch(() => void 0);
+    }
+    this.lifecycleLive = false;
     detachApplication(this);
   }
   scheduleDraftSave() {
@@ -13438,8 +14258,8 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
   setUnitNoteDraft(unitId, title, text5, expectedRevisions = {}) {
     this.drafts.setUnitNote(unitId, title, text5, expectedRevisions);
   }
-  clearUnitNoteDraft(unitId, recoveredStageIds = []) {
-    this.drafts.clearUnitNote(unitId, recoveredStageIds);
+  clearUnitNoteDraft(unitId, recoveredStageIds = [], match = null) {
+    this.drafts.clearUnitNote(unitId, recoveredStageIds, match);
   }
   openUnitNote(unit, studyMap) {
     const modal = new UnitNoteModal(this.app, this, unit, studyMap);
@@ -13470,8 +14290,49 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
   setInboxDraft(title, text5) {
     this.drafts.setInbox(title, text5);
   }
-  clearInboxDraft() {
-    this.drafts.clearInbox();
+  clearInboxDraft(match = null) {
+    this.drafts.clearInbox(match);
+  }
+  getGardenDraft() {
+    return this.drafts.getGarden();
+  }
+  setGardenDraft(title, text5) {
+    this.drafts.setGarden(title, text5);
+  }
+  clearGardenDraft(match = null) {
+    this.drafts.clearGarden(match);
+  }
+  /** Metadata about an unresolved write, for Diagnostics. Never payload text. */
+  gatewayRecoveryState() {
+    return this.recovery.state;
+  }
+  /**
+   * Retry the *same* request from Diagnostics. It never creates a new one:
+   * the stored envelope is the only thing that can be sent, which is why the
+   * screen offers no discard.
+   */
+  async retryRecoveredWrite() {
+    if (!this.recovery.unresolved) {
+      new import_obsidian22.Notice("There is no unresolved Gateway write.");
+      return;
+    }
+    if (this.recovery.state.kind === "malformed") {
+      new import_obsidian22.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
+      return;
+    }
+    try {
+      await this.gateway.enqueue(async () => {
+        const stored = this.recovery.replayable();
+        const outcome = stored?.record.confirmation ? await this.gateway.verifyConfirmedEnvelope() : await this.gateway.recoverPreparedEnvelope();
+        const confirmation = await this.gateway.settle(outcome);
+        await this.finishConfirmedWrite(confirmation);
+      });
+      this.recoveryBlocked = this.recovery.unresolved;
+      new import_obsidian22.Notice("The recovered Gateway write is settled.");
+    } catch (error) {
+      this.recoveryBlocked = this.recovery.unresolved;
+      new import_obsidian22.Notice(errorMessage4(error));
+    }
   }
   /**
    * Interpreter resolution, in order: an explicitly configured path, the POSIX
@@ -13484,6 +14345,13 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
   uiVersion() {
     const info = this.manifest;
     return info?.version || "unknown";
+  }
+  /** The identity compiled into *this* running bundle — see build-identity.ts. */
+  runtimeBuildIdentity() {
+    return {
+      fingerprint: runtimeSourceFingerprint(),
+      contractVersion: runtimeContractVersion()
+    };
   }
   resolvePython() {
     return this.runtime.resolvePython();
@@ -13504,6 +14372,62 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
     this.app.workspace.iterateAllLeaves(
       (leaf) => leaf.view?.render?.()
     );
+  }
+  /** Reload without throwing: the snapshot now visible, or null. */
+  async observedSnapshot() {
+    const ok = await this.store.load();
+    this.app.workspace.iterateAllLeaves(
+      (leaf) => leaf.view?.render?.()
+    );
+    return ok ? this.store.snapshotId : null;
+  }
+  /**
+   * Turn a receipt into an observation, then retire the record.
+   *
+   * A receipt says Core committed. It does not say this vault can see the
+   * result — the projection is a separate artifact, and a write recovered after
+   * a crash is very likely to be looking at a stale one. So the manifest is
+   * reloaded, rebuilt once if it disagrees, and only a manifest that actually
+   * loads retires the record. If it never does, the record stays and blocks:
+   * an unobservable write is not a finished one, and starting a new write on
+   * top of it is how the duplicate would come back.
+   */
+  async finishConfirmedWrite(confirmation) {
+    if (!confirmation) return;
+    this.gateway.assertLifecycleActive();
+    let observed = await this.observedSnapshot();
+    this.gateway.assertLifecycleActive();
+    let rebuildSucceeded = false;
+    let rebuildError = null;
+    if (observed !== confirmation.snapshot_after) {
+      new import_obsidian22.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
+      try {
+        await this.gateway.call(["generate"], { expectJson: false });
+        rebuildSucceeded = true;
+      } catch (error) {
+        rebuildError = error;
+      }
+      observed = await this.observedSnapshot();
+      this.gateway.assertLifecycleActive();
+    }
+    const failedToEstablishCurrentProjection = observed === null || observed !== confirmation.snapshot_after && !rebuildSucceeded;
+    if (failedToEstablishCurrentProjection) {
+      const detail = observed === null ? this.store.error || "the projection could not be reloaded" : `the projection rebuild failed and the readable manifest is still at ${observed}: ${errorMessage4(rebuildError)}`;
+      await this.recovery.markBlocked({
+        code: "PROJECTION_FAILED",
+        message: detail
+      });
+      this.recoveryBlocked = true;
+      throw new GatewayError(
+        "LearningOS committed the write but cannot load a projection that shows it. Your draft was kept. Open Diagnostics \u2192 Gateway recovery.",
+        null,
+        { code: "PROJECTION_FAILED", retryable: true }
+      );
+    }
+    if (observed !== confirmation.snapshot_after) {
+      new import_obsidian22.Notice("Recovered the prior write; newer canonical changes are also present.");
+    }
+    await this.recovery.settleConfirmed();
   }
   /** The active destination is a display fact, so the Navigator is the only
    *  thing it redraws — never the working view the learner is reading. */
@@ -13528,12 +14452,14 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
   async mutate(action, { reload = true, healStaleProjection = true } = {}) {
     return this.gateway.enqueue(async () => {
       try {
+        this.gateway.assertMutationAllowed();
         const result = await action();
-        if (reload) {
+        this.gateway.assertLifecycleActive();
+        const pending = this.recovery.replayable();
+        if (pending?.record.phase === "confirmed") {
+          await this.finishConfirmedWrite(pending.record.confirmation);
+        } else if (reload) {
           await this.reloadStore();
-          if (isGatewaySuccessV2(result)) {
-            assertGatewaySnapshotObserved(result, this.store.snapshotId);
-          }
         }
         return result;
       } catch (error) {
@@ -13577,7 +14503,9 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
   }
   async reviewSessionEnd() {
     try {
-      const review = asSessionReview(await this.gateway.endSession());
+      const review = asSessionReview(await this.mutate(
+        () => this.gateway.endSession()
+      ));
       new SessionEndModal(this.app, this, review).open();
       return review;
     } catch (error) {
@@ -13597,28 +14525,28 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
   openAuthoredPath(path) {
     return this.resources.openAuthoredPath(path);
   }
-  openRecord(record4) {
-    if (!record4) return;
-    const recordId = asString(record4.id);
-    if (record4.type === "unit" && recordId) return this.nav.openUnit(recordId);
-    if (record4.type === "module" && recordId) return this.nav.openModule(recordId);
-    if (record4.type === "project" && recordId) return this.nav.openProject(recordId);
-    if (record4.type === "program" && recordId) return this.nav.openProgram(recordId);
-    if (record4.type === "source" && recordId) return this.nav.openSourceDetail(recordId);
-    if (record4.type === "topic-pack" && recordId) return this.nav.openTopicPackDetail(recordId);
-    if (record4.type === "collection" && recordId) return this.nav.openCatalogueDetail(recordId);
-    if (record4.type === "note" || record4.type === "concept") {
-      if (record4.path) return this.openAuthoredPath(record4.path);
-      return this.nav.openLibraryFiltered(record4.type);
+  openRecord(record6) {
+    if (!record6) return;
+    const recordId = asString(record6.id);
+    if (record6.type === "unit" && recordId) return this.nav.openUnit(recordId);
+    if (record6.type === "module" && recordId) return this.nav.openModule(recordId);
+    if (record6.type === "project" && recordId) return this.nav.openProject(recordId);
+    if (record6.type === "program" && recordId) return this.nav.openProgram(recordId);
+    if (record6.type === "source" && recordId) return this.nav.openSourceDetail(recordId);
+    if (record6.type === "topic-pack" && recordId) return this.nav.openTopicPackDetail(recordId);
+    if (record6.type === "collection" && recordId) return this.nav.openCatalogueDetail(recordId);
+    if (record6.type === "note" || record6.type === "concept") {
+      if (record6.path) return this.openAuthoredPath(record6.path);
+      return this.nav.openLibraryFiltered(record6.type);
     }
-    if (record4.type === "workspace") {
-      if (record4.project_id) return this.nav.openProject(record4.project_id);
-      const unit = (record4.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+    if (record6.type === "workspace") {
+      if (record6.project_id) return this.nav.openProject(record6.project_id);
+      const unit = (record6.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       if (unit?.id) return this.nav.openUnit(unit.id);
-      const module2 = (record4.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+      const module2 = (record6.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       return module2?.id ? this.nav.openModule(module2.id) : this.nav.openHome();
     }
-    if (record4.path) return this.openAuthoredPath(record4.path);
+    if (record6.path) return this.openAuthoredPath(record6.path);
   }
   openResource(resource) {
     return this.resources.openResource(resource, this);

@@ -100,6 +100,33 @@ vault/plugin settings, verifies pinned downloads, installs only into gitignored
 vault paths, copies the generated build identity with the plugin, and smoke-tests
 the CLI. Reload Obsidian with `Cmd+R`.
 
+### Release identity and the clean-install rule
+
+`build.mjs` runs a deterministic two-pass build: the first pass resolves the
+real module graph, `source_fingerprint` is computed from that graph plus every
+other declared build input (never a commit SHA, a timestamp, or the bundle's
+own hash — embedding any of those would make rebuilding after a commit change
+the bundle again), and the second pass injects that fingerprint and the
+manifest contract version into the running bundle through
+`src/build-identity.ts`. `plugin/build-info.json` additionally records
+`source_revision`/`source_dirty` for this repository's complete worktree and
+`core_revision`/`core_dirty` for the sibling Core repository's — `null` means
+unknown, and unknown is never read as clean anywhere downstream.
+
+Installing into the real `../repository` vault (not a fixture) additionally
+requires, before anything is written: the deterministic build check
+(`scripts/check-build.mjs`) passing; both repositories' worktrees reporting
+clean; both `source_revision`/`core_revision` reading as full 40-character
+revisions; and those revisions matching each repository's actual current
+`HEAD`. Any dirty flag, unreadable Git state, or mismatch refuses the install
+outright. A fixture or `--dry-run` install needs none of this.
+
+Diagnostics inside the running app compares the fingerprint compiled into the
+bundle that is actually executing against the fingerprint the installed
+`build-info.json` on disk claims — the one way to tell whether an older
+in-memory plugin is still running after a newer build landed, since a reload
+is the only thing that replaces it.
+
 It finds Node itself — PATH first, then `/opt/homebrew/bin`, `/usr/local/bin`,
 `/usr/bin`, `~/.nvm`, `~/.volta`, and bundled agent runtimes under
 `~/.cache/codex-runtimes` — and prints which binary it used. A GUI-launched or

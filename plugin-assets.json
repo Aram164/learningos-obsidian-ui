@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "type": "learningos-ui-plugin-assets",
+  "shipped": [
+    "main.js",
+    "styles.css",
+    "manifest.json",
+    "build-info.json"
+  ],
+  "vault_owned": [
+    "data.json"
+  ]
+}

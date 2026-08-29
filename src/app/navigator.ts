@@ -239,29 +239,18 @@ export class AppNavigator {
   }
 
   /**
-   * Omnisearch's modal is another plugin's DOM, and this is the only place in
-   * the UI that reaches into one. It fires the command, then polls for a
-   * visible `.prompt-input` to seed. It will break silently on any Omnisearch
-   * DOM change and no test can catch that; it is acceptable only because it
-   * degrades to "modal opens, query not transferred".
+   * Omnisearch's modal is another plugin's DOM, and reaching into it to seed
+   * a query was the one place this interface depended on internals it does
+   * not own: a private input-field selector, polled for up to a second, then
+   * fed a synthetic keystroke event. Any Omnisearch DOM change could break
+   * that silently, and no test here could catch it.
+   *
+   * Only the registered public command remains. The convenience loss is
+   * small and explicit: Omnisearch opens without automatic query prefill.
+   * LearningOS's own structural Library search is unaffected either way.
    */
-  openFullTextSearch(query = ''): void {
+  openFullTextSearch(): void {
     const ok = this.app.commands?.executeCommandById?.('omnisearch:show-modal');
     if (!ok) new Notice('Omnisearch is unavailable; structural Library search still works.');
-    else if (query.trim()) {
-      let attempts = 0;
-      const transfer = () => {
-        const input = [...document.querySelectorAll<HTMLInputElement>('.prompt-input')]
-          .find((candidate) => candidate.offsetParent !== null);
-        if (!input && attempts++ < 20) { setTimeout(transfer, 50); return; }
-        if (!input || input.value) return;
-        input.value = query;
-        input.dispatchEvent(new InputEvent('input', {
-          bubbles: true, inputType: 'insertText', data: query,
-        }));
-        input.focus();
-      };
-      setTimeout(transfer, 50);
-    }
   }
 }

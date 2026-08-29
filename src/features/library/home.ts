@@ -260,10 +260,7 @@ export function renderGroup(
       button(
         toolbar,
         'Full-text / OCR search',
-        () =>
-          view.plugin.nav.openFullTextSearch(
-            view.query,
-          ),
+        () => view.plugin.nav.openFullTextSearch(),
         'quiet',
       );
     }

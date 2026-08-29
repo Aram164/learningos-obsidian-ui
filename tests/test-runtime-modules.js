@@ -454,6 +454,29 @@ function routerPlugin(settings = {}) {
     }
   });
 
+  await test('Omnisearch full-text search uses only the public command', async () => {
+    // This harness has no DOM at all — `document` is genuinely undefined
+    // here, so the private-selector/synthetic-keystroke path this replaced
+    // would throw a ReferenceError the instant it ran, not silently degrade.
+    // That is exactly why the old implementation could regress unnoticed: no
+    // test ever called this method. Calling it now, with an argument shaped
+    // like the removed `query` parameter would have been, is the regression
+    // guard — a reintroduced DOM reach-in fails this test immediately.
+    assert.equal(typeof document, 'undefined');
+    let requestedCommand = null;
+    const nav = {
+      app: {
+        commands: {
+          executeCommandById: (id) => { requestedCommand = id; return true; },
+        },
+      },
+    };
+    assert.doesNotThrow(() => AppNavigator.prototype.openFullTextSearch.call(nav, 'a query'));
+    assert.equal(requestedCommand, 'omnisearch:show-modal');
+    assert.equal(AppNavigator.prototype.openFullTextSearch.length, 0,
+      'the method must take no query argument to seed into private DOM');
+  });
+
   await test('an empty contract-valid resume pointer returns Home', async () => {
     const store = new ManifestStore(manifestApp((text) => {
       const manifest = JSON.parse(text);

@@ -5,10 +5,20 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { STYLESHEET_MODULES, stylesheetSources, writeStylesheet } from './build-styles.mjs';
 import { manifestLock } from './scripts/contract-locks.mjs';
+import {
+  readPluginAssets,
+  directoryProblem,
+  shippedFileProblem,
+  unexpectedEntries,
+} from './scripts/plugin-assets.mjs';
 
 const root = path.dirname(fileURLToPath(import.meta.url));
 const pluginDir = path.join(root, 'plugin');
 const outfile = path.join(pluginDir, 'main.js');
+const existingPluginDirectoryProblem = directoryProblem(pluginDir, { missingOk: true });
+if (existingPluginDirectoryProblem) {
+  throw new Error(`build: plugin/ ${existingPluginDirectoryProblem}; refusing an indirect or misshapen output directory`);
+}
 fs.mkdirSync(pluginDir, { recursive: true });
 
 async function loadEsbuild() {
@@ -117,7 +127,7 @@ async function fallbackBundle() {
   return { bundler: 'typescript-fallback', modules: modules.map(([id]) => id) };
 }
 
-async function esbuildBundle(build) {
+async function esbuildBundle(build, define) {
   const result = await build({
     absWorkingDir: root,
     entryPoints: ['src/main.ts'],
@@ -135,6 +145,7 @@ async function esbuildBundle(build) {
     // Preserve the plugin's historical CommonJS surface while source code uses
     // the standard Obsidian default export.
     footer: { js: 'module.exports = module.exports.default;' },
+    define,
   });
   return {
     bundler: 'esbuild',
@@ -144,15 +155,42 @@ async function esbuildBundle(build) {
   };
 }
 
+/*
+ * Two-pass build.
+ *
+ * `src/build-identity.ts` exposes the running bundle's own source fingerprint
+ * and contract version (see that file). Those values are computed *from* the
+ * module graph, so the graph has to be resolved once before either constant
+ * exists — pass one runs with placeholder identity values purely to learn
+ * which files esbuild actually pulled in. Pass two then rebuilds with the
+ * real values injected and is the build that ships; its module graph is
+ * asserted equal to pass one's, so a source-conditional import (there are
+ * none today, but nothing here assumes there never will be) cannot silently
+ * make the shipped bundle describe a graph other than the one it actually
+ * has.
+ *
+ * The offline TypeScript-fallback bundler does not participate: it has no
+ * `define` mechanism, always resolves the same graph regardless of identity
+ * values, and is never used for a release build, so one pass is sufficient
+ * and its build-identity constants read as the documented 'unavailable' / 0.
+ */
+async function bundleOnce(esbuild, define) {
+  return esbuild ? esbuildBundle(esbuild, define) : fallbackBundle();
+}
+
+const PLACEHOLDER_DEFINE = {
+  __LEARNINGOS_SOURCE_FINGERPRINT__: JSON.stringify('pending-build-pass'),
+  __LEARNINGOS_CONTRACT_VERSION__: JSON.stringify(0),
+};
+
 const esbuild = await loadEsbuild();
-const buildResult = esbuild ? await esbuildBundle(esbuild) : await fallbackBundle();
-const output = fs.readFileSync(outfile);
+const passOne = await bundleOnce(esbuild, PLACEHOLDER_DEFINE);
 /* The stylesheet is built the same way and for the same reason as the bundle:
  * it has source modules and one composed artifact, and the artifact is
  * fingerprinted so a stale plugin/styles.css cannot masquerade as current. */
 const stylesheet = writeStylesheet(path.join(pluginDir, 'styles.css'));
-const sources = [
-  ...buildResult.modules.map((relative) => ({
+const passOneSources = [
+  ...passOne.modules.map((relative) => ({
     relative,
     source: fs.readFileSync(path.join(root, relative), 'utf8'),
   })),
@@ -162,7 +200,16 @@ const sha256 = (value) => `sha256:${crypto.createHash('sha256').update(value).di
 const pluginManifest = JSON.parse(fs.readFileSync(path.join(pluginDir, 'manifest.json'), 'utf8'));
 const manifestContract = manifestLock(root);
 const contract = manifestContract.value;
-let sourceRevision = process.env.LEARNINGOS_UI_SOURCE_REVISION || process.env.GITHUB_SHA || '';
+/*
+ * `source_revision` names the exact commit only; it is never a substitute for
+ * a workflow's own SHA. A Core CI workflow's GITHUB_SHA is the Core commit —
+ * using it here for the UI would silently claim the UI's own current checkout
+ * is whatever commit Core's workflow happens to be running, which is simply
+ * false whenever the two differ. LEARNINGOS_UI_SOURCE_REVISION is this
+ * repository's own explicit override, set only by a workflow that actually
+ * checked out this UI at a specific SHA (see .github/workflows/*.yml).
+ */
+let sourceRevision = process.env.LEARNINGOS_UI_SOURCE_REVISION || '';
 if (!sourceRevision) {
   try {
     sourceRevision = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8' }).trim();
@@ -170,14 +217,58 @@ if (!sourceRevision) {
     sourceRevision = 'working-tree';
   }
 }
+/* One inventory for direct build/packaging inputs. It drives the content
+ * fingerprint, so a newly authoritative input cannot be added to the claim
+ * without also becoming visible in it. */
+const DIRECT_BUILD_INPUTS = [
+  'build.mjs',
+  'build-styles.mjs',
+  'package.json',
+  'package-lock.json',
+  'tsconfig.json',
+  'plugin-assets.json',
+  'scripts/plugin-assets.mjs',
+  'scripts/contract-locks.mjs',
+  'plugin/manifest.json',
+];
+const invalidDirectBuildInputs = DIRECT_BUILD_INPUTS
+  .map((relative) => [relative, shippedFileProblem(path.join(root, relative))])
+  .filter(([, problem]) => problem);
+if (invalidDirectBuildInputs.length) {
+  throw new Error(`build: required direct input is missing, misshapen, or indirect:\n${
+    invalidDirectBuildInputs
+      .map(([relative, problem]) => `  ${relative} ${problem}`)
+      .join('\n')
+  }`);
+}
 const sourceMaterial = [
-  fs.readFileSync(path.join(root, 'build.mjs'), 'utf8'),
-  fs.readFileSync(path.join(root, 'build-styles.mjs'), 'utf8'),
-  fs.readFileSync(path.join(root, 'package.json'), 'utf8'),
-  fs.readFileSync(path.join(root, 'tsconfig.json'), 'utf8'),
+  ...DIRECT_BUILD_INPUTS.flatMap((relative) => [
+    relative,
+    fs.readFileSync(path.join(root, relative), 'utf8'),
+  ]),
+  'manifest-contract-lock',
   manifestContract.text,
-  ...sources.flatMap(({ relative, source }) => [relative, source]),
+  ...passOneSources.flatMap(({ relative, source }) => [relative, source]),
 ].join('\0');
+const sourceFingerprint = sha256(sourceMaterial);
+
+/* Pass two: the real build, with the real identity injected. Its module graph
+ * must equal pass one's exactly — anything else means the graph esbuild
+ * actually resolved depends on the identity values themselves, which would
+ * make `source_fingerprint` describe a bundle other than the one it ships in. */
+const passTwo = await bundleOnce(esbuild, {
+  __LEARNINGOS_SOURCE_FINGERPRINT__: JSON.stringify(sourceFingerprint),
+  __LEARNINGOS_CONTRACT_VERSION__: JSON.stringify(contract.contract_version),
+});
+if (JSON.stringify(passTwo.modules) !== JSON.stringify(passOne.modules)) {
+  throw new Error(
+    'build: the module graph changed between the two build passes — refusing '
+    + 'to ship a bundle whose fingerprint may not describe its own contents.',
+  );
+}
+const buildResult = passTwo;
+const output = fs.readFileSync(outfile);
+
 /*
  * `source_revision` alone is a claim with no honesty in it: it records what
  * HEAD pointed at when the build ran, so a build from an edited working tree
@@ -196,8 +287,32 @@ const gitOrNull = (args) => {
     return null;
   }
 };
-const dirtyPaths = gitOrNull(['status', '--porcelain', '--', 'src', 'build.mjs', 'build-styles.mjs', 'package.json', 'tsconfig.json', 'contracts']);
-const sourceDirty = dirtyPaths === null ? null : dirtyPaths.length > 0;
+/* An unreadable Git state is unknown, never clean — a consumer (install.py,
+ * the release-pair workflow) that cannot tell "unknown" from "false" would
+ * treat a broken checkout as a green light. */
+const GENERATED_PLUGIN_OUTPUTS = new Set(['plugin/main.js', 'plugin/styles.css', 'plugin/build-info.json']);
+function worktreeDirty(cwd) {
+  let raw;
+  try {
+    raw = execFileSync('git', ['status', '--porcelain'], { cwd, encoding: 'utf8' });
+  } catch (_) {
+    return null;
+  }
+  return raw.split('\n').some((line) => {
+    if (!line.trim()) return false;
+    // Porcelain v1: two status characters, a space, then the path (renames
+    // add " -> new"). The generated plugin/ artifacts are excluded because
+    // this very build is about to rewrite them — treating that as "dirty
+    // source" would make the flag true after every single build.
+    const filePath = line.slice(3).split(' -> ').pop();
+    return !GENERATED_PLUGIN_OUTPUTS.has(filePath);
+  });
+}
+/* The complete UI worktree, not the narrower fingerprint-input list above:
+ * a dirty file that is not a *build* input (a stray edit to README.md, an
+ * uncommitted test) is still a dirty *release*, and a real-vault install
+ * must refuse it just the same. */
+const sourceDirty = worktreeDirty(root);
 const sourceCommittedAt = gitOrNull(['show', '-s', '--format=%cI', 'HEAD']);
 
 /*
@@ -220,25 +335,32 @@ const sourceCommittedAt = gitOrNull(['show', '-s', '--format=%cI', 'HEAD']);
  */
 const producerContract = path.resolve(root, contract.mirrors ?? '../repository/system/contracts/manifest-contract.yaml');
 const coreRoot = path.resolve(path.dirname(producerContract), '..', '..');
-const coreRevision = fs.existsSync(producerContract)
+const coreCheckedOut = fs.existsSync(producerContract);
+const coreRevision = coreCheckedOut
   ? (gitOrNull(['-C', coreRoot, 'rev-parse', 'HEAD']) ?? 'unknown')
   : null;
+const coreDirty = coreCheckedOut ? worktreeDirty(coreRoot) : null;
 
 const buildInfo = {
   /* 3: the stylesheet stopped being a hand-edited file and became a composed
    *    artifact, so build-info describes its modules and fingerprint too.
    * 4: `core_revision` — the plugin now states which core it was verified
-   *    against, so the release-together rule leaves evidence. */
-  schema_version: 4,
+   *    against, so the release-together rule leaves evidence.
+   * 5: `core_dirty` and a `source_dirty` computed over the complete worktree,
+   *    not just the fingerprint's direct inputs — a real-vault install must
+   *    refuse on either repository being dirty in any file, not only a file
+   *    that happens to feed the bundle. */
+  schema_version: 5,
   bundler: buildResult.bundler,
   entry_point: 'src/main.ts',
   ui_version: pluginManifest.version,
   manifest_contract_version: contract.contract_version,
   core_revision: coreRevision,
+  core_dirty: coreDirty,
   source_revision: sourceRevision,
   source_dirty: sourceDirty,
   source_committed_at: sourceCommittedAt,
-  source_fingerprint: sha256(sourceMaterial),
+  source_fingerprint: sourceFingerprint,
   bundle_sha256: sha256(output),
   stylesheet_sha256: sha256(stylesheet),
   node_version: process.version,
@@ -246,5 +368,30 @@ const buildInfo = {
   stylesheet_modules: STYLESHEET_MODULES.map((name) => `src/styles/${name}`),
 };
 fs.writeFileSync(path.join(pluginDir, 'build-info.json'), `${JSON.stringify(buildInfo, null, 2)}\n`, 'utf8');
+
+/*
+ * `plugin/` is what the installer copies, so the build is the right place to
+ * insist it is exactly the declared set. A missing file would be discovered by
+ * the installer; a *surplus* one would not be discovered at all — it would be
+ * copied into the vault by the old `plugin/*` wildcard and then reported as
+ * unknown by every check afterwards, with nothing able to say where it came
+ * from.
+ */
+const assets = readPluginAssets(root);
+const built = assets.shipped
+  .map((name) => [name, shippedFileProblem(path.join(pluginDir, name))])
+  .filter(([, problem]) => problem);
+if (built.length) {
+  throw new Error(`build: plugin/ ${built.map(([name, problem]) => `${name} ${problem}`).join('; ')}`);
+}
+const surplus = unexpectedEntries(pluginDir, assets.shipped);
+if (surplus.length) {
+  throw new Error(
+    'build: plugin/ contains files the shipping manifest does not declare:\n  '
+    + `${surplus.join('\n  ')}\n`
+    + 'Declare them in plugin-assets.json or remove them; they are never shipped silently.',
+  );
+}
+
 console.log(`build: ${buildResult.bundler} bundled ${buildResult.modules.length} modules -> plugin/main.js (${output.byteLength} bytes, ${buildInfo.bundle_sha256})`);
 console.log(`build: composed ${STYLESHEET_MODULES.length} style modules -> plugin/styles.css (${Buffer.byteLength(stylesheet)} bytes, ${buildInfo.stylesheet_sha256})`);

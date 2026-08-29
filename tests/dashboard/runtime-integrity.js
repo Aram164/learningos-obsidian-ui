@@ -577,6 +577,24 @@ module.exports = async function run() {
       && namedContracts.length === 0
       && readme.includes('contracts/manifest-v<N>.lock.json')
       && readme.includes(`manifest.json\` contract v${currentContract}`));
+    /*
+     * ECOSYSTEM.md once said "Reads manifest v2 only" — three major contract
+     * bumps stale, and the only place in the repository still naming v2. This
+     * derives the check from the same single lock file rather than hardcoding
+     * the current number, for the same reason as the README check above: it
+     * survives the next bump instead of becoming one more thing to forget.
+     */
+    const ecosystem = fs.readFileSync(path.join(ROOT, 'ECOSYSTEM.md'), 'utf8');
+    const ecosystemStaleContracts = [...ecosystem.matchAll(/manifest v(\d+)/g)]
+      .map((match) => match[1])
+      .filter((version) => version !== currentContract);
+    check('ECOSYSTEM.md names the active manifest contract, not a retired one',
+      currentContract !== null
+      && ecosystemStaleContracts.length === 0
+      && ecosystem.includes(`manifest contract v${currentContract}`));
+    check('ECOSYSTEM.md documents Text Extractor and PDF++ as supplemental, never authoritative',
+      /Text Extractor[\s\S]*?(?:[Uu]nmaintained|supplemental)/.test(ecosystem)
+      && /PDF\+\+[\s\S]*?[Ss]upplemental/.test(ecosystem));
     const runtimeSources = [
       'src/app/global-search.ts',
       'src/views/review-view.ts',

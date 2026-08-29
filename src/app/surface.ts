@@ -92,6 +92,8 @@ export interface AppSurface {
 
   // -------------------------------------------------------------- diagnostics
   uiVersion(): string;
+  /** The fingerprint and contract version compiled into this running bundle. */
+  runtimeBuildIdentity(): { fingerprint: string; contractVersion: number };
   resolvePython(): PythonResolution;
 
   // ------------------------------------------ opening things outside the app
