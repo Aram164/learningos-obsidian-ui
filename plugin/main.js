@@ -11805,6 +11805,7 @@ function registerApplication(plugin) {
   plugin.addCommand({ id: "open-atlas", name: "Open Module \xD7 Concept atlas", callback: () => plugin.nav.openAtlas() });
   plugin.addCommand({ id: "open-garden", name: "Open Garden", callback: () => plugin.nav.openGarden() });
   plugin.addCommand({ id: "open-review", name: "Open Review", callback: () => plugin.nav.openReview() });
+  plugin.addCommand({ id: "open-diagnostics", name: "Open Diagnostics", callback: () => plugin.nav.openDiagnostics() });
   plugin.addCommand({ id: "rebuild-projection", name: "Validate and rebuild projection", callback: () => plugin.generate() });
   plugin.addCommand({ id: "end-learning-session", name: "End learning session safely", callback: () => plugin.reviewSessionEnd() });
   plugin.app.workspace.onLayoutReady(async () => {
@@ -12721,7 +12722,7 @@ var UnitNoteModal = class extends import_obsidian20.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:8d9fab6fd61318b6e82c43871bce0c042b785a5f40d79e9cf70e7dfa630723f0" : "unavailable";
+  return true ? "sha256:2da24c75cc770a9bb2744fc12906972ada85054ab3a29e45bee7348795a11c33" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 8 : 0;

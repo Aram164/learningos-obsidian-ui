@@ -78,6 +78,10 @@ export function registerApplication(plugin: LearningOSUI): void {
   plugin.addCommand({ id: 'open-atlas', name: 'Open Module × Concept atlas', callback: () => plugin.nav.openAtlas() });
   plugin.addCommand({ id: 'open-garden', name: 'Open Garden', callback: () => plugin.nav.openGarden() });
   plugin.addCommand({ id: 'open-review', name: 'Open Review', callback: () => plugin.nav.openReview() });
+  // The live-app verification driver (scripts/check-live-app.mjs) needs a
+  // stable command id to open Diagnostics from outside the app — otherwise
+  // it can only ever prove Home works. Read-only: it navigates, nothing more.
+  plugin.addCommand({ id: 'open-diagnostics', name: 'Open Diagnostics', callback: () => plugin.nav.openDiagnostics() });
   plugin.addCommand({ id: 'rebuild-projection', name: 'Validate and rebuild projection', callback: () => plugin.generate() });
   plugin.addCommand({ id: 'end-learning-session', name: 'End learning session safely', callback: () => plugin.reviewSessionEnd() });
 
