@@ -324,14 +324,36 @@ export class SettingsGatewayRecoveryStore extends MemoryGatewayRecoveryStore {
     return this.status;
   }
 
+  /**
+   * Every transition is failure-atomic: memory only keeps a change that the
+   * disk actually accepted.
+   *
+   * The defect this guards against: memory used to be mutated before the save
+   * was awaited, so a rejected `data.json` write left the record cleared in
+   * memory while disk still held a `prepared` one. The fresh-write gate then
+   * reported nothing unresolved and allowed the next write, and the next
+   * startup replayed the stale envelope — a gesture already treated as
+   * refused could turn into an unexpected canonical write. Snapshotting and
+   * restoring on rejection keeps `unresolved` true and new writes blocked.
+   */
   protected async write(entry: GatewayRecoveryEntry | null): Promise<void> {
     if (this.status.kind === 'malformed') {
       throw new Error('A malformed Gateway recovery record is unresolved; nothing was written.');
     }
+    const previousSlot = this.settings.gatewayRecovery;
+    const previousCurrent = this.current;
+    const previousStatus = this.status;
     this.settings.gatewayRecovery = entry ? entry.record : null;
     this.current = entry;
     this.status = entry ? { kind: 'record', entry } : { kind: 'clear' };
-    await this.persist();
+    try {
+      await this.persist();
+    } catch (error: unknown) {
+      this.settings.gatewayRecovery = previousSlot;
+      this.current = previousCurrent;
+      this.status = previousStatus;
+      throw error;
+    }
   }
 
   /**
@@ -340,16 +362,34 @@ export class SettingsGatewayRecoveryStore extends MemoryGatewayRecoveryStore {
    *
    * Two saves would leave a window in which a crash had erased the recovery
    * evidence but not the draft that belongs to it — the learner would be
-   * offered their text back for a write that already landed.
+   * offered their text back for a write that already landed. For the same
+   * reason a rejected save must restore *both* halves: the confirmed record
+   * and every draft this settlement cleared, so the learner's text is not
+   * silently destroyed by a settlement that never reached disk.
    */
   async settleConfirmed(): Promise<void> {
     const entry = this.replayable();
     if (!entry) return;
+    const previousSlot = this.settings.gatewayRecovery;
+    const previousCurrent = this.current;
+    const previousStatus = this.status;
+    const previousDrafts = structuredClone(this.settings.uiDrafts);
     clearDraftsOwnedBy(this.settings.uiDrafts, entry.envelope);
     this.settings.gatewayRecovery = null;
     this.current = null;
     this.status = { kind: 'clear' };
-    await this.persist();
+    try {
+      await this.persist();
+    } catch (error: unknown) {
+      this.settings.gatewayRecovery = previousSlot;
+      this.current = previousCurrent;
+      this.status = previousStatus;
+      // Restored field by field, not by reassigning `uiDrafts`: the draft
+      // store reads through the same settings object, and swapping the
+      // reference would strand any holder of the old one.
+      Object.assign(this.settings.uiDrafts, previousDrafts);
+      throw error;
+    }
   }
 }
 

@@ -75,7 +75,6 @@
 }
 .los-library-toolbar { max-width: 1180px; margin: 0 auto var(--los-4); }
 .los-library-toolbar .los-route-search { margin-bottom: var(--los-3); }
-.los-library-facets-inline { display: flex; flex-wrap: wrap; gap: var(--los-2); }
 .los-detail-page { max-width: 1180px; margin: 0 auto; }
 .los-detail-page > .los-page-header { margin-left: 0; margin-right: 0; }
 .los-pack-purpose {
@@ -110,4 +109,3 @@
   .los-route-open { justify-self: start; }
   .los-collection-switch { flex-direction: column; }
 }
-

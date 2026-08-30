@@ -4,12 +4,24 @@
  *
  * Everything a headless test can prove, it already does. What none of them
  * can prove is that the actual, currently-running Obsidian process — the one
- * a real session would use — has reloaded the exact clean pair this release
- * built, is free of new JavaScript errors, and renders Home and Diagnostics
- * once each. This script asks the free CLI Obsidian 1.12.7 ships
- * (https://obsidian.md/help/cli) to answer exactly that, using only the
- * commands in HARD_ALLOWED_COMMANDS below. It never creates, edits, or
- * deletes a note or a setting.
+ * a real session would use — is running the exact clean pair this release
+ * built and is free of new JavaScript errors. This script asks the free CLI
+ * Obsidian 1.12.7 ships (https://obsidian.md/help/cli) to answer exactly
+ * that, using only the commands in HARD_ALLOWED_COMMANDS below. It never
+ * creates, edits, or deletes a note or a setting.
+ *
+ * It is strictly an observer, and that is a correction: it used to reload the
+ * plugin and navigate to each view. Reloading runs startup recovery, which
+ * can replay a prepared Gateway envelope — a real canonical write performed
+ * by a verification script — and navigating persists UI route state. So the
+ * operator opens Diagnostics in the target vault first, and this script only
+ * reads what is already on screen.
+ *
+ * It also proves identity rather than restating it. It used to copy the
+ * caller's own --core-sha/--ui-sha into an {ok:true} result and emit a
+ * hardcoded manifest contract, so an arbitrary wrong pair could be reported
+ * as verified. Every value it now reports is extracted from the live
+ * Diagnostics DOM and compared against the requested pair.
  *
  * KNOWN PLAN DEFECT THIS FIXES: earlier drafts ran the CLI from wherever this
  * script happened to be invoked (typically `obsidian-ui/`, which is not a
@@ -45,9 +57,16 @@ export const REQUIRED_PLUGIN_VERSION = '2.0.0';
 // Every command this driver may ever pass to obsidian-cli. Nothing outside
 // this set is dispatched, regardless of what a caller or a discovery result
 // asks for.
+//
+// `plugin:reload` and `command` are deliberately absent. Reloading the plugin
+// runs startup recovery, which can replay a prepared Gateway envelope — an
+// actual canonical write performed by a script whose entire purpose is to
+// observe. Navigating persists UI route state. Neither is read-only, so this
+// driver does not get to do either: the operator opens Diagnostics in the
+// target vault first, and inspection here is pure observation.
 export const HARD_ALLOWED_COMMANDS = new Set([
   'version', 'plugins', 'plugins:enabled', 'commands',
-  'plugin:reload', 'command', 'dev:dom', 'dev:errors', 'dev:screenshot',
+  'dev:dom', 'dev:errors', 'dev:screenshot',
 ]);
 
 // Substrings that must never appear anywhere in a dispatched command line —
@@ -114,18 +133,6 @@ export function parseCommandList(raw) {
     .map(([id, name = '']) => ({ id: id.trim(), name: name.trim() }));
 }
 
-/** Exactly one command must match `id`. Ambiguous or missing both refuse. */
-export function resolveCommandId(commands, id) {
-  const matches = commands.filter((entry) => entry.id === id);
-  if (matches.length === 0) {
-    throw new LiveAppCheckError(`no registered command has id "${id}"`);
-  }
-  if (matches.length > 1) {
-    throw new LiveAppCheckError(`command id "${id}" is ambiguous (${matches.length} matches)`);
-  }
-  return matches[0].id;
-}
-
 /**
  * Count occurrences of each required CSS class in a DOM snapshot.
  *
@@ -147,10 +154,143 @@ export function assertExactlyOne(html, className) {
   }
 }
 
-/** Only entries present in `after` but not in `before` are "new". */
+/**
+ * New errors, counted by multiplicity rather than by set membership.
+ *
+ * Set membership silently hid a real regression: an error that had already
+ * happened once and then happened *again* was reported as nothing new, even
+ * though a second identical failure is exactly the signal this check exists to
+ * catch. Each occurrence beyond the count already present in `before` is
+ * returned.
+ */
 export function newErrors(before, after) {
-  const seen = new Set(before);
-  return after.filter((entry) => !seen.has(entry));
+  const remaining = new Map();
+  for (const entry of before) remaining.set(entry, (remaining.get(entry) ?? 0) + 1);
+  const introduced = [];
+  for (const entry of after) {
+    const budget = remaining.get(entry) ?? 0;
+    if (budget > 0) remaining.set(entry, budget - 1);
+    else introduced.push(entry);
+  }
+  return introduced;
+}
+
+/**
+ * The manifest contract this build declares, as a string.
+ *
+ * Read from the built `plugin/build-info.json` rather than repeated as a
+ * literal here: the version already lives in Core's manifest-contract.yaml and
+ * in the UI's own constant, and a third hand-maintained copy would silently
+ * keep demanding the old number the next time the contract is bumped.
+ * build-info.json is generated from Core's declaration, so it cannot drift.
+ */
+export function declaredManifestContract(root) {
+  const buildInfoPath = path.join(root, 'plugin', 'build-info.json');
+  let parsed = null;
+  try {
+    parsed = JSON.parse(fs.readFileSync(buildInfoPath, 'utf8'));
+  } catch (error) {
+    throw new LiveAppCheckError(`cannot read ${buildInfoPath}: ${error.message}`);
+  }
+  if (!Number.isInteger(parsed?.manifest_contract_version)) {
+    throw new LiveAppCheckError(
+      `${buildInfoPath} declares no integer manifest_contract_version`,
+    );
+  }
+  return String(parsed.manifest_contract_version);
+}
+
+/** A full 40-character lowercase hex commit SHA, or a refusal. */
+export function requireFullSha(value, label) {
+  if (typeof value !== 'string' || !/^[0-9a-f]{40}$/.test(value)) {
+    throw new LiveAppCheckError(
+      `--${label} must be exactly 40 lowercase hexadecimal characters`,
+    );
+  }
+  return value;
+}
+
+/**
+ * Every machine-readable Diagnostics attribute, read out of a DOM snapshot.
+ *
+ * This is the driver's only source of truth about what is actually running.
+ * It deliberately does not accept caller-supplied values as evidence: the
+ * defect this replaces copied `--core-sha`/`--ui-sha` straight into an
+ * `{ok:true}` result, so any pair of wrong SHAs could be attested as verified.
+ */
+export const DIAGNOSTICS_ATTRIBUTES = {
+  manifestContract: 'data-los-manifest-contract',
+  runtimeFingerprintMatches: 'data-los-runtime-fingerprint-matches',
+  coreRevision: 'data-los-core-revision',
+  uiRevision: 'data-los-ui-revision',
+  coreDirty: 'data-los-core-dirty',
+  sourceDirty: 'data-los-ui-dirty',
+  gatewayRecoveryClear: 'data-los-gateway-recovery-clear',
+};
+
+export function extractDiagnostics(html) {
+  const found = {};
+  for (const [field, attribute] of Object.entries(DIAGNOSTICS_ATTRIBUTES)) {
+    const matches = [...html.matchAll(
+      new RegExp(`${attribute}="([^"]*)"`, 'g'),
+    )].map((match) => match[1]);
+    if (matches.length === 0) {
+      throw new LiveAppCheckError(
+        `Diagnostics did not report ${attribute}; open Diagnostics in the target vault first`,
+      );
+    }
+    if (matches.length > 1) {
+      throw new LiveAppCheckError(
+        `Diagnostics reported ${attribute} ${matches.length} times; the DOM is ambiguous`,
+      );
+    }
+    found[field] = matches[0];
+  }
+  return found;
+}
+
+/**
+ * The live app must be the exact clean pair the caller named, on the current
+ * contract, with nothing unresolved. Each condition refuses on its own; an
+ * "unknown" dirty flag is a refusal too, because unknown is never clean.
+ */
+export function assertLiveIdentity(diagnostics, { coreSha, uiSha, manifestContract }) {
+  if (diagnostics.coreRevision !== coreSha) {
+    throw new LiveAppCheckError(
+      'the running app reports a different Core revision than the one requested',
+    );
+  }
+  if (diagnostics.uiRevision !== uiSha) {
+    throw new LiveAppCheckError(
+      'the running app reports a different UI revision than the one requested',
+    );
+  }
+  if (diagnostics.runtimeFingerprintMatches !== 'yes') {
+    throw new LiveAppCheckError(
+      'the running code does not match the installed build-info; reload learningos-ui',
+    );
+  }
+  if (diagnostics.coreDirty !== 'false') {
+    throw new LiveAppCheckError(
+      `the Core working tree is not proven clean (reported ${diagnostics.coreDirty})`,
+    );
+  }
+  if (diagnostics.sourceDirty !== 'false') {
+    throw new LiveAppCheckError(
+      `the UI working tree is not proven clean (reported ${diagnostics.sourceDirty})`,
+    );
+  }
+  if (diagnostics.manifestContract !== manifestContract) {
+    throw new LiveAppCheckError(
+      `the running app reports manifest contract ${diagnostics.manifestContract}, `
+      + `expected ${manifestContract}`,
+    );
+  }
+  if (diagnostics.gatewayRecoveryClear !== 'yes') {
+    throw new LiveAppCheckError(
+      'the running app has an unresolved Gateway recovery record',
+    );
+  }
 }
 
 /** Semver-lite: major.minor.patch, no pre-release/build metadata. */
@@ -215,8 +355,8 @@ async function main() {
     const index = args.indexOf(`--${name}`);
     return index === -1 ? null : args[index + 1];
   };
-  const coreSha = flag('core-sha');
-  const uiSha = flag('ui-sha');
+  const coreSha = requireFullSha(flag('core-sha'), 'core-sha');
+  const uiSha = requireFullSha(flag('ui-sha'), 'ui-sha');
   const evidenceDir = flag('evidence-dir');
   const vaultPath = path.resolve(flag('vault') || path.join(path.dirname(root), 'repository'));
   const vaultName = path.basename(vaultPath);
@@ -229,6 +369,10 @@ async function main() {
     process.exitCode = 2;
     return;
   }
+  console.log(
+    'check-live-app: open Diagnostics in the target vault before running this — '
+    + 'this check only observes and will not navigate or reload for you.',
+  );
   const cliOptions = { cwd: vaultPath, vaultName };
 
   const version = runCli(binary, ['version'], cliOptions).trim();
@@ -247,40 +391,32 @@ async function main() {
     );
   }
 
-  const commands = parseCommandList(runCli(binary, ['commands'], cliOptions));
-  const homeCommand = resolveCommandId(commands, 'open-home');
-  const diagnosticsCommand = resolveCommandId(commands, 'open-diagnostics');
-
+  // No reload and no navigation: the operator must already have Diagnostics
+  // open in the target vault. Both of those commands change state — a reload
+  // can replay a prepared Gateway envelope into a real canonical write, and
+  // navigating persists route state — and this driver only observes.
   const errorsBefore = parseCommandList(runCli(binary, ['dev:errors'], cliOptions)).map((e) => e.id);
-  runCli(binary, ['plugin:reload', REQUIRED_PLUGIN_ID], cliOptions);
 
-  runCli(binary, ['command', homeCommand], cliOptions);
-  const homeDom = runCli(binary, ['dev:dom'], cliOptions);
-  assertExactlyOne(homeDom, 'los-home');
-  assertExactlyOne(homeDom, 'los-app-nav');
-  if (evidenceDir) {
-    fs.mkdirSync(evidenceDir, { recursive: true });
-    runCli(binary, ['dev:screenshot', path.join(evidenceDir, 'home.png')], cliOptions);
-  }
-
-  runCli(binary, ['command', diagnosticsCommand], cliOptions);
   const diagnosticsDom = runCli(binary, ['dev:dom'], cliOptions);
   assertExactlyOne(diagnosticsDom, 'los-diagnostics-view');
+  const diagnostics = extractDiagnostics(diagnosticsDom);
+  assertLiveIdentity(diagnostics, {
+    coreSha, uiSha, manifestContract: declaredManifestContract(root),
+  });
   if (evidenceDir) {
+    fs.mkdirSync(evidenceDir, { recursive: true });
     runCli(binary, ['dev:screenshot', path.join(evidenceDir, 'diagnostics.png')], cliOptions);
   }
 
   const errorsAfter = parseCommandList(runCli(binary, ['dev:errors'], cliOptions)).map((e) => e.id);
   const introduced = newErrors(errorsBefore, errorsAfter);
   if (introduced.length) {
-    throw new LiveAppCheckError(`new JavaScript error(s) after reload: ${introduced.join('; ')}`);
+    throw new LiveAppCheckError(`new JavaScript error(s) during the check: ${introduced.join('; ')}`);
   }
 
-  const result = redactDiagnostics({
-    manifestContract: 8,
-    coreRevision: coreSha ?? null,
-    uiRevision: uiSha ?? null,
-  });
+  // The extracted live values, never the caller's arguments: echoing the
+  // inputs back would make any wrong pair look verified.
+  const result = redactDiagnostics(diagnostics);
   console.log(JSON.stringify({ ok: true, appVersion: version, plugin: learningos, ...result }));
 }
 

@@ -175,6 +175,13 @@ export function renderGroup(
 
     root: HTMLElement,
   ): void {
+    // Source-group routes are compatibility entry points into the global peer-
+    // filter browser. Only Topic Packs retain a group page.
+    if (view.collection === 'sources') {
+      view.renderSourceBrowser(root);
+      return;
+    }
+
     const group = readThematicGroup(
       view.groupId
         ? view.plugin.store.get(
@@ -203,18 +210,11 @@ export function renderGroup(
       return;
     }
 
-    const isPacks =
-      view.collection === 'topic-packs';
-
     pageHeader(
       root,
-      isPacks
-        ? 'Topic Packs'
-        : 'Learning Sources',
+      'Topic Packs',
       group.title,
-      isPacks
-        ? 'Purpose-built collections in this thematic group.'
-        : 'Learning sources in this thematic group.',
+      'Purpose-built collections in this thematic group.',
     );
 
     const toolbar = root.createDiv({
@@ -230,15 +230,9 @@ export function renderGroup(
         attr: {
           type: 'search',
           placeholder:
-            `Search ${group.title} `
-            + `${isPacks
-              ? 'topic packs'
-              : 'sources'}…`,
+            `Search ${group.title} topic packs…`,
           'aria-label':
-            `Search ${group.title} `
-            + `${isPacks
-              ? 'topic packs'
-              : 'sources'}`,
+            `Search ${group.title} topic packs`,
         },
       },
     ) as HTMLInputElement;
@@ -254,31 +248,10 @@ export function renderGroup(
       },
     );
 
-    if (!isPacks) {
-      view.renderSourceFacets(toolbar);
-
-      button(
-        toolbar,
-        'Full-text / OCR search',
-        () => view.plugin.nav.openFullTextSearch(),
-        'quiet',
-      );
-    }
-
-    const rawRecords = isPacks
-      ? view.plugin.store
-        .topicPacksForGroup(group.id)
-      : view.plugin.store
-        .sourcesForGroup(group.id);
-
-    const all =
-      readLibraryRecords(rawRecords);
-
-    // Facet values are tallied over the whole group, before the value filter,
-    // so the counts do not collapse to 1 as soon as you pick one.
-    if (!isPacks) {
-      view.renderFacetValues(toolbar, all);
-    }
+    const all = readLibraryRecords(
+      view.plugin.store
+        .topicPacksForGroup(group.id),
+    );
 
     const needle =
       view.query
@@ -292,15 +265,6 @@ export function renderGroup(
 
     const rows = all
       .filter((record) => {
-        if (
-          !isPacks
-          && !view.matchesSourceFacet(
-            record.record,
-          )
-        ) {
-          return false;
-        }
-
         if (!words.length) {
           return true;
         }
@@ -332,12 +296,8 @@ export function renderGroup(
     if (!all.length) {
       empty(
         root,
-        isPacks
-          ? 'No Topic Packs in this group'
-          : 'No Learning Sources in this group',
-        isPacks
-          ? 'The group exists, but no purpose-built pack currently references it.'
-          : 'The group exists, but no learning source currently references it.',
+        'No Topic Packs in this group',
+        'The group exists, but no purpose-built pack currently references it.',
       );
       return;
     }
@@ -346,11 +306,10 @@ export function renderGroup(
       empty(
         root,
         'No matching results',
-        `Nothing in ${group.title} matches the current search and filters.`,
-        'Clear search and filters',
+        `Nothing in ${group.title} matches the current search.`,
+        'Clear search',
         async () => {
           view.query = '';
-          view.facet = 'all';
 
           await view.rememberGroup();
           view.render();
@@ -369,7 +328,7 @@ export function renderGroup(
       view.renderRecordRow(
         list,
         record,
-        isPacks,
+        true,
       );
     }
   }

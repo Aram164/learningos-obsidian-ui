@@ -1889,6 +1889,82 @@ function routerPlugin(settings = {}) {
     assert.equal(gatewayRecoverySummary({ kind: 'clear' }), null);
   });
 
+  /* --------------------------------------------------------------------
+   * Failure-atomic recovery transitions (release-hardening 2026-08-29).
+   *
+   * Memory used to be mutated before the save was awaited, so a rejected
+   * `data.json` write left memory clear while disk still held a prepared
+   * record: the fresh-write gate opened, and the next startup could replay a
+   * gesture already treated as refused.
+   * ------------------------------------------------------------------ */
+
+  /** A settings store whose save can be made to reject on demand. */
+  async function preparedStore() {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    let failing = false;
+    const store = new SettingsGatewayRecoveryStore(settings, async () => {
+      if (failing) throw new Error('data.json could not be written');
+    });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+    return { settings, store, gateway, fail: () => { failing = true; } };
+  }
+
+  await test('a failed discardRefused keeps the record in memory and on disk', async () => {
+    const { settings, store, gateway, fail } = await preparedStore();
+    await gateway.captureText('a refused gesture');
+    assert.equal(store.replayable().record.phase, 'confirmed');
+    const onDisk = JSON.parse(JSON.stringify(settings.gatewayRecovery));
+
+    fail();
+    await assert.rejects(store.discardRefused(), /data\.json could not be written/);
+
+    assert.equal(store.unresolved, true,
+      'a clear that never reached disk must not open the fresh-write gate');
+    assert.ok(store.replayable(), 'the unresolved record must survive in memory');
+    assert.deepEqual(settings.gatewayRecovery, onDisk,
+      'the durable slot must still hold the record the save failed to remove');
+    // The gate is enforced before the envelope is built, so this throws
+    // synchronously rather than returning a rejected promise.
+    assert.throws(() => gateway.captureText('the next write'),
+      /unresolved Gateway write/);
+  });
+
+  await test('a failed settleConfirmed restores the record and its drafts', async () => {
+    const { settings, store, gateway, fail } = await preparedStore();
+    settings.uiDrafts.inbox = { title: '', text: 'a captured thought' };
+    await gateway.captureText('a captured thought');
+    const onDisk = JSON.parse(JSON.stringify(settings.gatewayRecovery));
+
+    fail();
+    await assert.rejects(store.settleConfirmed(), /data\.json could not be written/);
+
+    assert.equal(store.unresolved, true);
+    assert.equal(store.replayable().record.phase, 'confirmed',
+      'the confirmed record must be restored, not silently retired');
+    assert.deepEqual(settings.gatewayRecovery, onDisk);
+    assert.equal(settings.uiDrafts.inbox.text, 'a captured thought',
+      'a settlement that never landed must not destroy the learner\'s draft');
+  });
+
+  await test('a failed transition enables no fresh write and no startup replay', async () => {
+    const { settings, store, gateway, fail } = await preparedStore();
+    await gateway.captureText('the only gesture');
+    fail();
+    await assert.rejects(store.discardRefused());
+
+    // What a restart would actually read back: still a full, replayable
+    // record, exactly as it was before the failed clear.
+    const reloaded = new SettingsGatewayRecoveryStore(settings, async () => {});
+    const state = await reloaded.load();
+    assert.equal(state.kind, 'record');
+    assert.equal(reloaded.unresolved, true);
+    assert.equal(reloaded.replayable().record.phase, 'confirmed');
+  });
+
   await test('an older settings save cannot overwrite newer recovery state', async () => {
     // The store hands its writes to whatever `persist` it was given; the
     // plugin's is a serialized queue. This proves the store awaits that

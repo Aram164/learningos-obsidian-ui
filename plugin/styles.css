@@ -1467,7 +1467,6 @@
 }
 .los-library-toolbar { max-width: 1180px; margin: 0 auto var(--los-4); }
 .los-library-toolbar .los-route-search { margin-bottom: var(--los-3); }
-.los-library-facets-inline { display: flex; flex-wrap: wrap; gap: var(--los-2); }
 .los-detail-page { max-width: 1180px; margin: 0 auto; }
 .los-detail-page > .los-page-header { margin-left: 0; margin-right: 0; }
 .los-pack-purpose {
@@ -1502,7 +1501,6 @@
   .los-route-open { justify-self: start; }
   .los-collection-switch { flex-direction: column; }
 }
-
 /* First-class Projects */
 .los-project-list { display: grid; gap: var(--size-4-3); margin-top: var(--size-4-4); }
 .los-project-row { width: 100%; text-align: left; appearance: none; min-width: 0; }
@@ -1571,22 +1569,6 @@
 .los-resource-row.los-triage-reference-only { padding-left: calc(var(--los-2) + 2px); }
 .los-resource-row.los-triage-deferred .los-resource-copy strong,
 .los-resource-row.los-triage-reference-only .los-resource-copy strong { font-weight: 400; color: var(--los-ink-soft); }
-
-/* Faceted Library values (ADR-009). Counts overlap on purpose — a source
- * participates in several topics/purposes/modules at once — so these read as a
- * set of overlapping lenses, not a partition. */
-.los-library-facet-values {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--los-1);
-  width: 100%;
-  margin-top: var(--los-2);
-  padding-top: var(--los-2);
-  border-top: 1px solid var(--los-line);
-}
-.los-library-facet-values .los-micro { flex-basis: 100%; margin-top: var(--los-1); }
-.los-library-facet-values .los-muted { flex-basis: 100%; }
-
 /* ── Interaction redesign: global faceted Library ── */
 .los-library-browser {
   max-width: 1180px;

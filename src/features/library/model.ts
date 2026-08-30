@@ -14,34 +14,18 @@ import {
   isRecord,
 } from '../../projection/readers';
 
-// ADR-009. The first four are availability facets — where a source physically
-// is. They answer "can I open this now?", not "what is it about?", which is why
-// the Library still felt like a sea of ML: you could filter 239 sources by
-// whether they were downloaded, but not by subject, purpose or current use.
-//
-// The dimensions that answer the real question already existed in the Core
-// (domain, topic, purpose = evaluation roles, form = source type, current use =
-// module routes); they were simply never projected into the picker. These are
-// facet MODES: choosing one reveals its values, and a source may appear under
-// several of them at once. Overlapping counts are correct, not a bug.
-export const SOURCE_FACETS = [
-  ['all', 'All'],
-  ['local', 'Local copy'],
-  ['online', 'Online'],
-  ['in-unit', 'Used in a unit'],
-  ['topic', 'By topic'],
-  ['purpose', 'By purpose'],
-  ['form', 'By form'],
-  ['use', 'By current use'],
-] as const;
-
-/** Facets whose value is chosen from a list rather than being a yes/no test. */
-export const VALUED_FACETS = new Set([
+// Kept only to decode persisted routes from the superseded single-facet source
+// browser. The active browser uses the five simultaneous filters below.
+const LEGACY_SOURCE_FACETS = [
+  'all',
+  'local',
+  'online',
+  'in-unit',
   'topic',
   'purpose',
   'form',
   'use',
-]);
+] as const;
 
 export const SOURCE_FILTER_DIMENSIONS = [
   ['domain', 'Domain'],
@@ -72,7 +56,7 @@ export const RELATED_LABELS: Readonly<Record<string, string>> = {
 };
 
 export type SourceFacet =
-  (typeof SOURCE_FACETS)[number][0];
+  (typeof LEGACY_SOURCE_FACETS)[number];
 
 export type LibraryScreen =
   | 'home'
@@ -225,8 +209,8 @@ export function isLibraryCollection(
 export function isSourceFacet(
   value: unknown,
 ): value is SourceFacet {
-  return SOURCE_FACETS.some(
-    ([facet]) => facet === value,
+  return LEGACY_SOURCE_FACETS.some(
+    (facet) => facet === value,
   );
 }
 
@@ -633,4 +617,3 @@ export function readRelatedRecords(
 
   return records;
 }
-

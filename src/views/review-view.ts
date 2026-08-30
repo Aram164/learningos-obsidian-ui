@@ -579,6 +579,20 @@ export class DiagnosticsView extends ItemView {
       tab.setAttr('aria-pressed', key === this.screen ? 'true' : 'false');
     }
 
+    const generated: DiagnosticsGenerated =
+      this.plugin.store.data?._generated ?? {};
+    const build = this.buildInfo();
+    const runtime = this.plugin.runtimeBuildIdentity();
+    // The installed build-info.json and the code actually executing right now
+    // can disagree: an old in-memory plugin can go on running after a newer
+    // build lands on disk, and only a reload replaces it. Comparing the two
+    // fingerprints is the one way to tell which of them Diagnostics is
+    // actually looking at.
+    const identityMatches = runtime.fingerprint !== 'unavailable'
+      && runtime.fingerprint === build.source_fingerprint
+      && runtime.contractVersion === build.manifest_contract_version;
+    this.setIdentityAttributes(root, generated, build, identityMatches);
+
     if (this.screen === 'legacy') {
       this.renderLegacy(root);
       return;
@@ -605,18 +619,6 @@ export class DiagnosticsView extends ItemView {
       }
     }
 
-    const generated: DiagnosticsGenerated =
-      this.plugin.store.data?._generated ?? {};
-    const build = this.buildInfo();
-    const runtime = this.plugin.runtimeBuildIdentity();
-    // The installed build-info.json and the code actually executing right now
-    // can disagree: an old in-memory plugin can go on running after a newer
-    // build lands on disk, and only a reload replaces it. Comparing the two
-    // fingerprints is the one way to tell which of them Diagnostics is
-    // actually looking at.
-    const identityMatches = runtime.fingerprint !== 'unavailable'
-      && runtime.fingerprint === build.source_fingerprint
-      && runtime.contractVersion === build.manifest_contract_version;
     const facts = section(root, 'Contract and versions');
     const factRows: ReadonlyArray<
       readonly [string, unknown]
@@ -662,6 +664,42 @@ export class DiagnosticsView extends ItemView {
 
     const policy = section(root, 'About LearningOS');
     policy.createEl('p', { text: OWNERSHIP_STATEMENT });
+  }
+
+  /**
+   * The visible facts above, as stable machine-readable attributes.
+   *
+   * The live-app checker used to *echo back* the SHAs its caller passed on the
+   * command line and call that verification, so any wrong pair could be
+   * attested as correct. These attributes are what it extracts and compares
+   * against instead — read from the running app rather than from its own
+   * arguments. Nothing here is payload text or a local path, exactly like the
+   * visible facts.
+   *
+   * Set before the tab branch, so the checker can read identity whichever
+   * Diagnostics tab the operator happens to be on. A flag that is not a real
+   * boolean reports `unknown` rather than stringifying itself, because the
+   * checker treats unknown as "not proven clean" and must never be handed a
+   * `"null"` it would have to interpret.
+   */
+  private setIdentityAttributes(
+    root: HTMLElement,
+    generated: DiagnosticsGenerated,
+    build: BuildInfo,
+    identityMatches: boolean,
+  ): void {
+    const flag = (value: unknown): string =>
+      (typeof value === 'boolean' ? String(value) : 'unknown');
+    root.setAttr('data-los-manifest-contract', String(generated.contract_version ?? 'unknown'));
+    root.setAttr('data-los-runtime-fingerprint-matches', identityMatches ? 'yes' : 'no');
+    root.setAttr('data-los-core-revision', String(generated.source_revision || 'unknown'));
+    root.setAttr('data-los-ui-revision', String(build.source_revision || 'unknown'));
+    root.setAttr('data-los-core-dirty', flag(generated.source_dirty));
+    root.setAttr('data-los-ui-dirty', flag(build.source_dirty));
+    root.setAttr(
+      'data-los-gateway-recovery-clear',
+      this.plugin.gatewayRecoveryState().kind === 'clear' ? 'yes' : 'no',
+    );
   }
 
   /**

@@ -9,18 +9,25 @@
  * here — it can only be verified against the real CLI (Phase 15).
  */
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
+  DIAGNOSTICS_ATTRIBUTES,
   HARD_ALLOWED_COMMANDS,
   LiveAppCheckError,
   REQUIRED_APP_VERSION,
   REQUIRED_PLUGIN_VERSION,
   assertAllowedCommand,
   assertExactlyOne,
+  assertLiveIdentity,
   countDomClass,
+  declaredManifestContract,
+  extractDiagnostics,
   newErrors,
   parseCommandList,
   redactDiagnostics,
-  resolveCommandId,
+  requireFullSha,
   versionAtLeast,
   versionExactly,
 } from '../scripts/check-live-app.mjs';
@@ -54,41 +61,29 @@ test('a command outside the allowlist is refused', () => {
   assert.throws(() => assertAllowedCommand(['some-unlisted-command']), LiveAppCheckError);
 });
 
-test('a write-shaped argument is refused even to an otherwise-allowed command', () => {
-  // "command" itself is allowed; the id it is asked to invoke is not.
-  assert.throws(() => assertAllowedCommand(['command', 'note:create']), LiveAppCheckError);
-  assert.throws(() => assertAllowedCommand(['command', 'note:delete']), LiveAppCheckError);
-  assert.throws(() => assertAllowedCommand(['command', 'sync:now']), LiveAppCheckError);
-  assert.throws(() => assertAllowedCommand(['command', 'publish:site']), LiveAppCheckError);
+test('a write-shaped argument is refused', () => {
+  assert.throws(() => assertAllowedCommand(['dev:dom', 'note:create']), LiveAppCheckError);
+  assert.throws(() => assertAllowedCommand(['dev:dom', 'note:delete']), LiveAppCheckError);
+  assert.throws(() => assertAllowedCommand(['dev:dom', 'sync:now']), LiveAppCheckError);
+  assert.throws(() => assertAllowedCommand(['dev:dom', 'publish:site']), LiveAppCheckError);
 });
 
 test('an ordinary allowed command passes', () => {
-  assert.doesNotThrow(() => assertAllowedCommand(['command', 'open-home']));
   assert.doesNotThrow(() => assertAllowedCommand(['dev:dom']));
   assert.doesNotThrow(() => assertAllowedCommand(['version']));
 });
 
-// ---- command-id resolution ----------------------------------------------
-
-test('resolveCommandId finds an exact single match', () => {
-  const commands = [{ id: 'open-home', name: 'Open Home' }, { id: 'open-review', name: 'Open Review' }];
-  assert.equal(resolveCommandId(commands, 'open-home'), 'open-home');
+test('the allowlist contains no reload or navigation command', () => {
+  // Both change state: a reload can replay a prepared Gateway envelope into a
+  // real canonical write, and navigating persists UI route state. A read-only
+  // checker gets neither.
+  assert.equal(HARD_ALLOWED_COMMANDS.has('plugin:reload'), false);
+  assert.equal(HARD_ALLOWED_COMMANDS.has('command'), false);
+  assert.throws(() => assertAllowedCommand(['plugin:reload', 'learningos-ui']), LiveAppCheckError);
+  assert.throws(() => assertAllowedCommand(['command', 'open-diagnostics']), LiveAppCheckError);
 });
 
-test('resolveCommandId refuses a missing command id', () => {
-  assert.throws(
-    () => resolveCommandId([{ id: 'open-home', name: 'Open Home' }], 'open-diagnostics'),
-    LiveAppCheckError,
-  );
-});
-
-test('resolveCommandId refuses an ambiguous command id', () => {
-  const commands = [
-    { id: 'open-home', name: 'Open Home' },
-    { id: 'open-home', name: 'Open Home (duplicate registration)' },
-  ];
-  assert.throws(() => resolveCommandId(commands, 'open-home'), LiveAppCheckError);
-});
+// ---- command-list parsing ------------------------------------------------
 
 test('parseCommandList reads JSON array output', () => {
   const raw = JSON.stringify([{ id: 'open-home', name: 'Open Home' }]);
@@ -163,6 +158,132 @@ test('newErrors reports nothing when the buffer only shrinks', () => {
 
 test('newErrors reports nothing for an unchanged buffer', () => {
   assert.deepEqual(newErrors(['a', 'b'], ['a', 'b']), []);
+});
+
+test('newErrors counts a repeated identical error as new', () => {
+  // Set membership hid this: an error that had already happened once and then
+  // happened again was reported as nothing new.
+  assert.deepEqual(newErrors(['a'], ['a', 'a']), ['a']);
+  assert.deepEqual(newErrors(['a', 'a'], ['a', 'a', 'a']), ['a']);
+  assert.deepEqual(newErrors([], ['a', 'a']), ['a', 'a']);
+});
+
+// ---- exact-SHA inputs ------------------------------------------------------
+
+test('requireFullSha accepts exactly 40 lowercase hex characters', () => {
+  assert.equal(requireFullSha('a'.repeat(40), 'core-sha'), 'a'.repeat(40));
+});
+
+test('requireFullSha refuses short, uppercase, empty and missing values', () => {
+  assert.throws(() => requireFullSha('a'.repeat(12), 'core-sha'), LiveAppCheckError);
+  assert.throws(() => requireFullSha('A'.repeat(40), 'core-sha'), LiveAppCheckError);
+  assert.throws(() => requireFullSha('', 'core-sha'), LiveAppCheckError);
+  assert.throws(() => requireFullSha(null, 'ui-sha'), LiveAppCheckError);
+});
+
+// ---- live Diagnostics extraction and comparison ----------------------------
+
+const CORE_SHA = 'a'.repeat(40);
+const UI_SHA = 'b'.repeat(40);
+
+function diagnosticsDom(overrides = {}) {
+  const values = {
+    manifestContract: '8',
+    runtimeFingerprintMatches: 'yes',
+    coreRevision: CORE_SHA,
+    uiRevision: UI_SHA,
+    coreDirty: 'false',
+    sourceDirty: 'false',
+    gatewayRecoveryClear: 'yes',
+    ...overrides,
+  };
+  const attributes = Object.entries(DIAGNOSTICS_ATTRIBUTES)
+    .map(([field, name]) => `${name}="${values[field]}"`)
+    .join(' ');
+  return `<div class="los-root los-diagnostics-view" ${attributes}></div>`;
+}
+
+test('extractDiagnostics reads every declared attribute', () => {
+  assert.deepEqual(extractDiagnostics(diagnosticsDom()), {
+    manifestContract: '8',
+    runtimeFingerprintMatches: 'yes',
+    coreRevision: CORE_SHA,
+    uiRevision: UI_SHA,
+    coreDirty: 'false',
+    sourceDirty: 'false',
+    gatewayRecoveryClear: 'yes',
+  });
+});
+
+test('extractDiagnostics refuses missing metadata', () => {
+  assert.throws(
+    () => extractDiagnostics('<div class="los-diagnostics-view"></div>'),
+    LiveAppCheckError,
+  );
+});
+
+test('extractDiagnostics refuses ambiguous duplicated metadata', () => {
+  assert.throws(
+    () => extractDiagnostics(diagnosticsDom() + diagnosticsDom()),
+    LiveAppCheckError,
+  );
+});
+
+test('a clean, matching live app passes identity verification', () => {
+  assert.doesNotThrow(() => assertLiveIdentity(
+    extractDiagnostics(diagnosticsDom()), { coreSha: CORE_SHA, uiSha: UI_SHA, manifestContract: '8' },
+  ));
+});
+
+test('a wrong Core or UI SHA is refused rather than echoed back', () => {
+  // The defect this replaces copied the caller's own --core-sha/--ui-sha into
+  // an {ok:true} result, so any wrong pair could be attested as verified.
+  const live = extractDiagnostics(diagnosticsDom());
+  assert.throws(
+    () => assertLiveIdentity(live, { coreSha: 'c'.repeat(40), uiSha: UI_SHA, manifestContract: '8' }),
+    LiveAppCheckError,
+  );
+  assert.throws(
+    () => assertLiveIdentity(live, { coreSha: CORE_SHA, uiSha: 'd'.repeat(40), manifestContract: '8' }),
+    LiveAppCheckError,
+  );
+});
+
+test('the expected manifest contract is derived from the built pair', () => {
+  // Never a fourth hand-maintained copy of the contract version: it is read
+  // from build-info.json, which is generated from Core's own declaration, so
+  // it cannot keep demanding an old number after a contract bump.
+  const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+  const declared = declaredManifestContract(root);
+  const buildInfo = JSON.parse(
+    fs.readFileSync(path.join(root, 'plugin', 'build-info.json'), 'utf8'),
+  );
+  assert.equal(declared, String(buildInfo.manifest_contract_version));
+  assert.doesNotThrow(() => assertLiveIdentity(
+    extractDiagnostics(diagnosticsDom({ manifestContract: declared })),
+    { coreSha: CORE_SHA, uiSha: UI_SHA, manifestContract: declared },
+  ));
+});
+
+test('declaredManifestContract refuses a missing or malformed build-info', () => {
+  assert.throws(() => declaredManifestContract('/nonexistent-root'), LiveAppCheckError);
+});
+
+test('dirty, unknown, mismatched, stale and unresolved states all fail', () => {
+  const refuse = (overrides) => assert.throws(
+    () => assertLiveIdentity(
+      extractDiagnostics(diagnosticsDom(overrides)),
+      { coreSha: CORE_SHA, uiSha: UI_SHA, manifestContract: '8' },
+    ),
+    LiveAppCheckError,
+  );
+  refuse({ coreDirty: 'true' });
+  refuse({ coreDirty: 'unknown' });
+  refuse({ sourceDirty: 'true' });
+  refuse({ sourceDirty: 'unknown' });
+  refuse({ runtimeFingerprintMatches: 'no' });
+  refuse({ manifestContract: '7' });
+  refuse({ gatewayRecoveryClear: 'no' });
 });
 
 // ---- metadata redaction -----------------------------------------------

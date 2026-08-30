@@ -3935,22 +3935,16 @@ function asProjectDetailTab(value) {
 }
 
 // src/features/library/model.ts
-var SOURCE_FACETS = [
-  ["all", "All"],
-  ["local", "Local copy"],
-  ["online", "Online"],
-  ["in-unit", "Used in a unit"],
-  ["topic", "By topic"],
-  ["purpose", "By purpose"],
-  ["form", "By form"],
-  ["use", "By current use"]
-];
-var VALUED_FACETS = /* @__PURE__ */ new Set([
+var LEGACY_SOURCE_FACETS = [
+  "all",
+  "local",
+  "online",
+  "in-unit",
   "topic",
   "purpose",
   "form",
   "use"
-]);
+];
 var SOURCE_FILTER_DIMENSIONS = [
   ["domain", "Domain"],
   ["topic", "Topic"],
@@ -3980,8 +3974,8 @@ function isLibraryCollection2(value) {
   return value === "sources" || value === "topic-packs";
 }
 function isSourceFacet(value) {
-  return SOURCE_FACETS.some(
-    ([facet]) => facet === value
+  return LEGACY_SOURCE_FACETS.some(
+    (facet) => facet === value
   );
 }
 function readLibraryViewState(value, currentCollection, currentRecordType) {
@@ -5072,6 +5066,10 @@ function renderCollectionSwitch(view, root) {
   }
 }
 function renderGroup(view, root) {
+  if (view.collection === "sources") {
+    view.renderSourceBrowser(root);
+    return;
+  }
   const group = readThematicGroup(
     view.groupId ? view.plugin.store.get(
       view.groupId
@@ -5094,12 +5092,11 @@ function renderGroup(view, root) {
     );
     return;
   }
-  const isPacks = view.collection === "topic-packs";
   pageHeader(
     root,
-    isPacks ? "Topic Packs" : "Learning Sources",
+    "Topic Packs",
     group.title,
-    isPacks ? "Purpose-built collections in this thematic group." : "Learning sources in this thematic group."
+    "Purpose-built collections in this thematic group."
   );
   const toolbar = root.createDiv({
     cls: "los-library-toolbar"
@@ -5110,8 +5107,8 @@ function renderGroup(view, root) {
       cls: "los-search los-route-search",
       attr: {
         type: "search",
-        placeholder: `Search ${group.title} ${isPacks ? "topic packs" : "sources"}\u2026`,
-        "aria-label": `Search ${group.title} ${isPacks ? "topic packs" : "sources"}`
+        placeholder: `Search ${group.title} topic packs\u2026`,
+        "aria-label": `Search ${group.title} topic packs`
       }
     }
   );
@@ -5124,28 +5121,12 @@ function renderGroup(view, root) {
       view.render();
     }
   );
-  if (!isPacks) {
-    view.renderSourceFacets(toolbar);
-    button(
-      toolbar,
-      "Full-text / OCR search",
-      () => view.plugin.nav.openFullTextSearch(),
-      "quiet"
-    );
-  }
-  const rawRecords = isPacks ? view.plugin.store.topicPacksForGroup(group.id) : view.plugin.store.sourcesForGroup(group.id);
-  const all = readLibraryRecords(rawRecords);
-  if (!isPacks) {
-    view.renderFacetValues(toolbar, all);
-  }
+  const all = readLibraryRecords(
+    view.plugin.store.topicPacksForGroup(group.id)
+  );
   const needle = view.query.trim().toLocaleLowerCase();
   const words2 = needle.split(/\s+/).filter(Boolean);
   const rows = all.filter((record6) => {
-    if (!isPacks && !view.matchesSourceFacet(
-      record6.record
-    )) {
-      return false;
-    }
     if (!words2.length) {
       return true;
     }
@@ -5169,8 +5150,8 @@ function renderGroup(view, root) {
   if (!all.length) {
     empty(
       root,
-      isPacks ? "No Topic Packs in this group" : "No Learning Sources in this group",
-      isPacks ? "The group exists, but no purpose-built pack currently references it." : "The group exists, but no learning source currently references it."
+      "No Topic Packs in this group",
+      "The group exists, but no purpose-built pack currently references it."
     );
     return;
   }
@@ -5178,11 +5159,10 @@ function renderGroup(view, root) {
     empty(
       root,
       "No matching results",
-      `Nothing in ${group.title} matches the current search and filters.`,
-      "Clear search and filters",
+      `Nothing in ${group.title} matches the current search.`,
+      "Clear search",
       async () => {
         view.query = "";
-        view.facet = "all";
         await view.rememberGroup();
         view.render();
       }
@@ -5196,7 +5176,7 @@ function renderGroup(view, root) {
     view.renderRecordRow(
       list2,
       record6,
-      isPacks
+      true
     );
   }
 }
@@ -5540,94 +5520,6 @@ function renderSourceBrowser(view, root) {
     );
   }
 }
-function renderSourceFacets(view, parent) {
-  const facets = parent.createDiv({
-    cls: "los-library-facets-inline",
-    attr: {
-      "aria-label": "Source filters"
-    }
-  });
-  for (const [
-    id2,
-    label
-  ] of SOURCE_FACETS) {
-    const control = button(
-      facets,
-      label,
-      async () => {
-        view.facet = id2;
-        view.facetValue = null;
-        await view.rememberGroup();
-        view.render();
-      },
-      view.facet === id2 ? "row" : "quiet"
-    );
-    control.setAttribute(
-      "aria-pressed",
-      String(view.facet === id2)
-    );
-  }
-}
-function renderFacetValues(view, parent, sources) {
-  if (!VALUED_FACETS.has(view.facet)) {
-    return;
-  }
-  const tally = view.facetTally(sources);
-  const wrap = parent.createDiv({
-    cls: "los-library-facet-values"
-  });
-  if (!tally.size) {
-    wrap.createDiv({
-      cls: "los-muted",
-      text: view.facet === "topic" ? "No source in this view carries a topic yet. Topics are added when a source is actually used, never in a bulk pass." : "Nothing to filter by here yet."
-    });
-    return;
-  }
-  const clear = button(
-    wrap,
-    `All (${sources.length})`,
-    () => {
-      view.facetValue = null;
-      view.render();
-    },
-    view.facetValue ? "quiet" : "row"
-  );
-  clear.setAttribute(
-    "aria-pressed",
-    String(!view.facetValue)
-  );
-  const ordered = [...tally.entries()].sort(
-    (a, b) => b[1] - a[1] || a[0].localeCompare(b[0])
-  );
-  for (const [value, count] of ordered) {
-    const control = button(
-      wrap,
-      `${view.facetValueLabel(value)} (${count})`,
-      () => {
-        view.facetValue = view.facetValue === value ? null : value;
-        view.render();
-      },
-      view.facetValue === value ? "row" : "quiet"
-    );
-    control.setAttribute(
-      "aria-pressed",
-      String(view.facetValue === value)
-    );
-  }
-  if (view.facet === "topic") {
-    const untopiced = sources.filter(
-      (source) => !asStrings(
-        source.record.topics
-      ).length
-    ).length;
-    if (untopiced) {
-      wrap.createDiv({
-        cls: "los-micro",
-        text: `${untopiced} of ${sources.length} not yet classified by topic \u2014 expected, not a backlog.`
-      });
-    }
-  }
-}
 
 // src/views/library-view.ts
 var import_obsidian8 = require("obsidian");
@@ -5639,9 +5531,6 @@ var LibraryView = class extends import_obsidian8.ItemView {
   query = "";
   facet = "all";
   filters = asLibrarySourceFilters(null);
-  /** Selected value within a valued facet (a topic id, a role, a type, a
-   *  module id). Null means "show the values to pick from". */
-  facetValue = null;
   resourceId = null;
   topicPackId = null;
   catalogueId = null;
@@ -5735,96 +5624,6 @@ var LibraryView = class extends import_obsidian8.ItemView {
     this._shelfSnapshot = this.plugin.store.snapshotId;
     this._shelfData = this.plugin.store.data;
     return index;
-  }
-  matchesSourceFacet(record6) {
-    const source = readLibraryRecord(record6);
-    if (!source) {
-      return false;
-    }
-    if (this.facet === "all") {
-      return true;
-    }
-    if (this.facet === "local") {
-      return Boolean(
-        source.materialExists || source.materialPath
-      );
-    }
-    if (this.facet === "online") {
-      return Boolean(source.url);
-    }
-    if (this.facet === "in-unit") {
-      return this.plugin.store.useUnits(source.id).length > 0;
-    }
-    if (VALUED_FACETS.has(this.facet)) {
-      if (!this.facetValue) {
-        return true;
-      }
-      return this.facetValuesFor(source).includes(this.facetValue);
-    }
-    return true;
-  }
-  /** Which values of the ACTIVE facet this source participates in.
-   *
-   *  Deliberately returns a list, not a value: a source belongs to several
-   *  topics, serves several purposes and is used by several modules at once.
-   *  Collapsing that to one would rebuild the single-placement tree ADR-009
-   *  exists to remove. Every field here is read from the projection — the UI
-   *  never parses generated/library.md, which is the human view of the same
-   *  facts. */
-  facetValuesFor(source) {
-    if (this.facet === "topic") {
-      return asStrings(
-        source.record.topics
-      );
-    }
-    if (this.facet === "form") {
-      return source.sourceType ? [source.sourceType] : [];
-    }
-    if (this.facet === "purpose") {
-      const roles = /* @__PURE__ */ new Set();
-      for (const evaluation of source.evaluations) {
-        for (const role of evaluation.roles) {
-          roles.add(role);
-        }
-      }
-      return [...roles];
-    }
-    if (this.facet === "use") {
-      return this.plugin.store.useModules(source.id).map(
-        (module2) => asString(module2.id)
-      ).filter(
-        (id2) => id2 !== null
-      );
-    }
-    return [];
-  }
-  /** Value → source count for the active facet, with overlap preserved. */
-  facetTally(sources) {
-    const tally = /* @__PURE__ */ new Map();
-    for (const source of sources) {
-      for (const value of this.facetValuesFor(source)) {
-        tally.set(
-          value,
-          (tally.get(value) ?? 0) + 1
-        );
-      }
-    }
-    return tally;
-  }
-  /** Human label for a facet value. Topics carry titles in the projection;
-   *  everything else is already readable. */
-  facetValueLabel(value) {
-    if (this.facet === "topic") {
-      const topic = this.plugin.store.topics().find(
-        (row3) => asString(row3.id) === value
-      );
-      return topic ? asString(topic.title) ?? value : value;
-    }
-    if (this.facet === "use") {
-      const module2 = this.plugin.store.get(value);
-      return module2 ? asString(module2.title) ?? value : value;
-    }
-    return value;
   }
   render() {
     const root = this.contentEl;
@@ -5946,18 +5745,6 @@ var LibraryView = class extends import_obsidian8.ItemView {
       query: this.query,
       facet: this.facet
     });
-  }
-  renderSourceFacets(parent) {
-    renderSourceFacets(this, parent);
-  }
-  /** The values of the active valued facet, with counts.
-   *
-   *  This is the part that answers "the Library is a sea of ML". A domain
-   *  heading says 73; this says Deep Learning 22 · ML Compilation 4 · … and
-   *  lets those add to more than 73, because a source really does belong to
-   *  several at once. */
-  renderFacetValues(parent, sources) {
-    renderFacetValues(this, parent, sources);
   }
   renderRecordRow(list2, record6, isPack = false) {
     renderRecordRow(this, list2, record6, isPack);
@@ -8989,14 +8776,36 @@ var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
     this.status = validated.ok ? { kind: "record", entry: validated.entry } : { kind: "malformed", error: validated.error };
     return this.status;
   }
+  /**
+   * Every transition is failure-atomic: memory only keeps a change that the
+   * disk actually accepted.
+   *
+   * The defect this guards against: memory used to be mutated before the save
+   * was awaited, so a rejected `data.json` write left the record cleared in
+   * memory while disk still held a `prepared` one. The fresh-write gate then
+   * reported nothing unresolved and allowed the next write, and the next
+   * startup replayed the stale envelope — a gesture already treated as
+   * refused could turn into an unexpected canonical write. Snapshotting and
+   * restoring on rejection keeps `unresolved` true and new writes blocked.
+   */
   async write(entry) {
     if (this.status.kind === "malformed") {
       throw new Error("A malformed Gateway recovery record is unresolved; nothing was written.");
     }
+    const previousSlot = this.settings.gatewayRecovery;
+    const previousCurrent = this.current;
+    const previousStatus = this.status;
     this.settings.gatewayRecovery = entry ? entry.record : null;
     this.current = entry;
     this.status = entry ? { kind: "record", entry } : { kind: "clear" };
-    await this.persist();
+    try {
+      await this.persist();
+    } catch (error) {
+      this.settings.gatewayRecovery = previousSlot;
+      this.current = previousCurrent;
+      this.status = previousStatus;
+      throw error;
+    }
   }
   /**
    * The only path that clears a confirmed write, and it clears the matching
@@ -9004,16 +8813,31 @@ var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
    *
    * Two saves would leave a window in which a crash had erased the recovery
    * evidence but not the draft that belongs to it — the learner would be
-   * offered their text back for a write that already landed.
+   * offered their text back for a write that already landed. For the same
+   * reason a rejected save must restore *both* halves: the confirmed record
+   * and every draft this settlement cleared, so the learner's text is not
+   * silently destroyed by a settlement that never reached disk.
    */
   async settleConfirmed() {
     const entry = this.replayable();
     if (!entry) return;
+    const previousSlot = this.settings.gatewayRecovery;
+    const previousCurrent = this.current;
+    const previousStatus = this.status;
+    const previousDrafts = structuredClone(this.settings.uiDrafts);
     clearDraftsOwnedBy(this.settings.uiDrafts, entry.envelope);
     this.settings.gatewayRecovery = null;
     this.current = null;
     this.status = { kind: "clear" };
-    await this.persist();
+    try {
+      await this.persist();
+    } catch (error) {
+      this.settings.gatewayRecovery = previousSlot;
+      this.current = previousCurrent;
+      this.status = previousStatus;
+      Object.assign(this.settings.uiDrafts, previousDrafts);
+      throw error;
+    }
   }
 };
 function clearDraftsOwnedBy(drafts, envelope) {
@@ -9551,6 +9375,11 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
       const tab = button(tabs, label, () => this.selectScreen(key), key === this.screen ? "info" : "quiet");
       tab.setAttr("aria-pressed", key === this.screen ? "true" : "false");
     }
+    const generated = this.plugin.store.data?._generated ?? {};
+    const build = this.buildInfo();
+    const runtime = this.plugin.runtimeBuildIdentity();
+    const identityMatches = runtime.fingerprint !== "unavailable" && runtime.fingerprint === build.source_fingerprint && runtime.contractVersion === build.manifest_contract_version;
+    this.setIdentityAttributes(root, generated, build, identityMatches);
     if (this.screen === "legacy") {
       this.renderLegacy(root);
       return;
@@ -9575,10 +9404,6 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
         ]);
       }
     }
-    const generated = this.plugin.store.data?._generated ?? {};
-    const build = this.buildInfo();
-    const runtime = this.plugin.runtimeBuildIdentity();
-    const identityMatches = runtime.fingerprint !== "unavailable" && runtime.fingerprint === build.source_fingerprint && runtime.contractVersion === build.manifest_contract_version;
     const facts = section(root, "Contract and versions");
     const factRows = [
       ["Manifest contract", generated.contract_version ?? "unknown"],
@@ -9612,6 +9437,35 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
     if (this.report) root.createEl("pre", { cls: "los-diagnostic-report", text: this.report });
     const policy = section(root, "About LearningOS");
     policy.createEl("p", { text: OWNERSHIP_STATEMENT });
+  }
+  /**
+   * The visible facts above, as stable machine-readable attributes.
+   *
+   * The live-app checker used to *echo back* the SHAs its caller passed on the
+   * command line and call that verification, so any wrong pair could be
+   * attested as correct. These attributes are what it extracts and compares
+   * against instead — read from the running app rather than from its own
+   * arguments. Nothing here is payload text or a local path, exactly like the
+   * visible facts.
+   *
+   * Set before the tab branch, so the checker can read identity whichever
+   * Diagnostics tab the operator happens to be on. A flag that is not a real
+   * boolean reports `unknown` rather than stringifying itself, because the
+   * checker treats unknown as "not proven clean" and must never be handed a
+   * `"null"` it would have to interpret.
+   */
+  setIdentityAttributes(root, generated, build, identityMatches) {
+    const flag = (value) => typeof value === "boolean" ? String(value) : "unknown";
+    root.setAttr("data-los-manifest-contract", String(generated.contract_version ?? "unknown"));
+    root.setAttr("data-los-runtime-fingerprint-matches", identityMatches ? "yes" : "no");
+    root.setAttr("data-los-core-revision", String(generated.source_revision || "unknown"));
+    root.setAttr("data-los-ui-revision", String(build.source_revision || "unknown"));
+    root.setAttr("data-los-core-dirty", flag(generated.source_dirty));
+    root.setAttr("data-los-ui-dirty", flag(build.source_dirty));
+    root.setAttr(
+      "data-los-gateway-recovery-clear",
+      this.plugin.gatewayRecoveryState().kind === "clear" ? "yes" : "no"
+    );
   }
   /**
    * The one place an unresolved write is visible and actionable.
@@ -12722,7 +12576,7 @@ var UnitNoteModal = class extends import_obsidian20.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:dc09bf0e87ae91250de10453e343388693123096860b4ca6e4c78282f8b3b7d8" : "unavailable";
+  return true ? "sha256:ba2869cfbd9f1e3ac34e388148c070493712d340365704adf80aff434972bb96" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 8 : 0;

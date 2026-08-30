@@ -43,9 +43,11 @@ jobs:
 
       - name: Print the resolved Core ref and commit
         working-directory: repository
+        env:
+          RESOLVED_CORE_REF: ${{ steps.producer-ref.outputs.ref }}
         run: |
-          echo "Core ref resolved: ${{ steps.producer-ref.outputs.ref }}"
-          echo "Core commit checked out: $(git rev-parse HEAD)"
+          printf 'Core ref resolved: %s\n' "$RESOLVED_CORE_REF"
+          printf 'Core commit checked out: %s\n' "$(git rev-parse HEAD)"
 
       - uses: actions/setup-node@v4
         with:
