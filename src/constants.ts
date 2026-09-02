@@ -53,11 +53,6 @@ export const DEFAULT_SETTINGS = {
  *  reach Electron. */
 export const SAFE_URL_PROTOCOLS = ['https:', 'http:'];
 
-export const STATUS_ORDER = [
-  'active', 'ready', 'not-started', 'needs-map', 'paused',
-  'ready-to-shelve', 'complete',
-];
-
 export const ICONS = {
   program: 'graduation-cap', module: 'book-open', project: 'briefcase-business', unit: 'layers-3',
   'study-map': 'route', stage: 'list-checks', note: 'file-text',

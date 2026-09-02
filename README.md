@@ -25,6 +25,10 @@ second source of truth.
 
 The current primary navigation is **Home · Modules · Learn · Projects · Library · Garden · Review**, with structural Search available from the navigator and command palette. Modules and Library use explicit full-page application routes; Library separates Learning Sources from purpose-built Topic Packs. Future Master's Planning remains a policy-only boundary. Job learning uses the same projected module, unit, study-map, note, search, and AI surfaces as every other learning area, with a small visual badge for `program-job`.
 
+[`ARCHITECTURE.md`](ARCHITECTURE.md) is the concise source map: runtime flow,
+directory ownership, dependency direction, compatibility surfaces, artifacts,
+and code-only gates.
+
 ## Engineering boundary
 
 - TypeScript source under `src/` uses explicit ESM imports and one `src/main.ts`
@@ -34,7 +38,10 @@ The current primary navigation is **Home · Modules · Learn · Projects · Libr
   offline verification and is refused by CI unless explicitly enabled.
 - `npm run typecheck` checks all runtime source files. The versioned manifest
   contract remains independently strict-checked before projected data reaches
-  the legacy view layer.
+  the typed store and view/feature layers. `npm run check:source-graph` proves
+  that every non-declaration TypeScript source module is reachable from
+  `src/main.ts`, the runtime graph is acyclic, and feature code does not depend
+  on concrete view classes.
 - The app reads only atomic `generated/manifest.json` contract v8. It never
   parses canonical Markdown/YAML and remains useful when Python is offline.
   The contract is declared by the producer — core's
@@ -69,14 +76,17 @@ The checked development gate is:
 
 ```bash
 npm install
+npm run check:code  # fast type, architecture, and indexed-store checks
 npm run check       # build, typed contract check, contract lock, fixture suites, reproducibility
 npm run build:info  # print the exact source and bundle identity
 ```
 
-Gate A introduces a strict typed boundary for the versioned manifest contract.
-The legacy concatenated view modules remain protected by the complete synthetic
-fixture suites while they are moved behind the typed router and feature
-contracts. `scripts/check-build.mjs` also proves that two consecutive
+The source-only command remains useful during small refactors and is also part
+of the complete gate, so unreachable runtime code, reversed feature/view
+dependencies, and indexed-store regressions cannot bypass release checks. The
+versioned manifest has a strict typed boundary, and the explicit ESM view and
+feature modules remain protected by the complete synthetic fixture suites.
+`scripts/check-build.mjs` also proves that two consecutive
 builds are byte-identical and that `plugin/build-info.json` describes the bundle
 that was actually produced.
 

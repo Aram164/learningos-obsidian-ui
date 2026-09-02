@@ -1,5 +1,4 @@
 import type {
-  ModuleConceptEdge,
   ModuleConceptEvidence,
   ProjectionRecord,
 } from '../../contracts/manifest';
@@ -272,24 +271,4 @@ export function buildCrossing(store: CrossingStore): Crossing {
     totalConcepts: rows.length,
     totalEdges,
   };
-}
-
-/** One line naming what a piece of evidence is, for the drill-down. */
-export function evidenceLabel(evidence: ModuleConceptEvidence): string {
-  return evidence.kind === 'stage-concept'
-    ? `Stage ${evidence.stage_id}`
-    : `Knowledge node ${evidence.node_id}`;
-}
-
-export function evidenceUnitId(evidence: ModuleConceptEvidence): string {
-  return evidence.unit_id;
-}
-
-export function isModuleConceptEdge(value: unknown): value is ModuleConceptEdge {
-  return Boolean(
-    value
-    && typeof value === 'object'
-    && typeof (value as ModuleConceptEdge).module_id === 'string'
-    && typeof (value as ModuleConceptEdge).concept_id === 'string',
-  );
 }

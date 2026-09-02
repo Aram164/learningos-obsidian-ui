@@ -49,12 +49,12 @@ The interface carries usability while the core carries meaning.
 
 ## Navigation
 
-Six permanent destinations: **Home, Modules, Learn, Library, Capture, Review.**
-Modules begins with explicit thematic groups and opens full-page lists/details. Areas
-(Bachelor's / Skills / Thesis) remain sub-areas inside Learn; the decision queues
-(Shelving / Garden / Inbox / needs-a-map) are Review. Domain atlas, the
-Master's and Job boundaries, Diagnostics and *Rebuild projection* live under
-**More** — maintenance is never mixed with study destinations.
+Seven permanent destinations: **Home, Modules, Learn, Projects, Library,
+Garden, Review.** Modules begins with explicit thematic groups and opens
+full-page lists/details. Bachelor's, Skills, Job, and Thesis & projects remain
+sub-areas inside Learn. Capture, Concept atlas, the Future Master's Planning
+boundary, Diagnostics, and *Rebuild projection* live under **More** —
+maintenance is never mixed with study destinations.
 
 ## Primary patterns
 
@@ -81,16 +81,11 @@ Master's and Job boundaries, Diagnostics and *Rebuild projection* live under
   menu. `Done when` criteria are interactive checkboxes whose ticks are
   UI-owned working state — the core still learns only "complete", from
   `stage-progress`.
-- **Job learning**: the confidential Job destination adapts its independent
-  plan records into the same presentation-only learning route, progress,
-  stage workspace, material catalogue, facts and card primitives as Unit.
-  This is deliberate reuse of the original learning experience, not a data
-  merge: Job records never enter the canonical manifest, Job writes still use
-  only the Job gateway, and Stratum remains an unopened, immutable reference.
-  *Create study plan* names the standard it is creating under and prefills from
-  the read-only `plan.template` query, so the interface never carries its own
-  copy of the defaults; a plan authored before that template is badged
-  `pre-template` rather than shown as if it conformed.
+- **Job learning**: `program-job` is an ordinary non-semester learning area.
+  Its modules use the same manifest, search, module detail, unit workspace,
+  study-map, note, AI-action, gateway, and receipt paths as every other module.
+  The `Job` badge is presentation only; there is no Job-specific dashboard,
+  access grant, schema, plan profile, or write path.
 - **Study maps**: the Unit surface applies a reviewed map through
   `unit.map.import` — the dialog names the standard the importer will enforce
   and carries a path, never file content, so the SOP's coverage audit stays a
@@ -119,10 +114,8 @@ Master's and Job boundaries, Diagnostics and *Rebuild projection* live under
 - **Garden and atlas**: the managed Garden Base and generated domain atlas are
   first-class navigation targets, not hidden vault furniture. Reopening a
   target reveals its existing tab instead of multiplying identical tabs.
-- **Boundaries**: Master's and Job display policy/action text only. No hidden
-  content is loaded to render them. Shared presentation components may render
-  explicitly supplied Job view models; they never acquire, index, persist, or
-  transmit Job content themselves.
+- **Boundaries**: Future Master's Planning is the sole curriculum boundary.
+  No quarantined content is loaded to render it.
 
 ## Components and tokens
 
@@ -138,8 +131,8 @@ alignment, line height, wrapping, hover, focus, and disabled behavior. Shared
 variants are primary (`--cta`), secondary (default), quiet, row, and tertiary.
 Row actions keep the whole label readable with normal word wrapping; they never
 allow character-by-character wrapping. Shared primitives also include badges,
-typed chips, learning progress rows, two-column academic-date rows, cards,
-empty states, sections, page headers, `disclosure()` and `overflowMenu()`.
+typed chips, fact lists, workspace/unit cards, empty states, sections, page
+headers, filter tabs, `disclosure()` and `overflowMenu()`.
 
 **Amended 2026-08-03: the always-visible ownership footer is retired.** It
 stated architecture policy under every screen, which made the product read as

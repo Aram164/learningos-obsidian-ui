@@ -344,29 +344,3 @@ export function asGatewayRequestV2(value: unknown): GatewayRequestV2 | null {
     && record(envelope.payload) !== null;
   return valid ? envelope as unknown as GatewayRequestV2 : null;
 }
-
-/** A cheap marker used only after `asGatewaySuccessV2` has narrowed the value. */
-export function isGatewaySuccessV2(value: unknown): value is GatewaySuccessV2 {
-  const response = record(value);
-  return response?.schema_version === GATEWAY_SCHEMA_VERSION
-    && response?.ok === true
-    && nonEmpty(response?.receipt_path)
-    && isSha256(response?.snapshot_after);
-}
-
-/**
- * Receipt is necessary, not sufficient: the newly loaded projection must be
- * the state the receipt says the transaction published.
- */
-export function assertGatewaySnapshotObserved(
-  confirmation: GatewaySuccessV2,
-  observedSnapshot: string | null,
-): void {
-  if (observedSnapshot !== confirmation.snapshot_after) {
-    throw new GatewayError(
-      'LearningOS wrote a receipt, but the reloaded manifest does not show its resulting snapshot. The change is unconfirmed in this view; your draft was kept.',
-      null,
-      { code: 'UNCONFIRMED', retryable: true },
-    );
-  }
-}

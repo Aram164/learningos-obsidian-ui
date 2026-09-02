@@ -1,4 +1,4 @@
-import type { ProjectView } from '../../views/project-view';
+import type { ProjectFilesHost } from './ports';
 import {
   badge,
   button,
@@ -14,7 +14,7 @@ import {
 } from '../../projection/readers';
 
 export function renderFiles(
-  view: ProjectView,
+  view: ProjectFilesHost,
 
     root: HTMLElement,
     project: ProjectionRecord,

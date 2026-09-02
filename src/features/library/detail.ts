@@ -1,4 +1,4 @@
-import type { LibraryView } from '../../views/library-view';
+import type { LibraryDetailHost } from './ports';
 import {
   badge,
   button,
@@ -16,7 +16,7 @@ import {
 import { isFileShapedPath } from '../../infrastructure/resource-target';
 
 export function renderRecordActions(
-  view: LibraryView,
+  view: LibraryDetailHost,
 
     detail: HTMLElement,
     record: LibraryRecordView,
@@ -66,7 +66,7 @@ export function renderRecordActions(
   }
 
 export function renderAttachments(
-  view: LibraryView,
+  view: LibraryDetailHost,
 
     detail: HTMLElement,
     record: LibraryRecordView,
@@ -98,7 +98,7 @@ export function renderAttachments(
   }
 
 export function renderRelated(
-  view: LibraryView,
+  view: LibraryDetailHost,
 
     detail: HTMLElement,
     record: LibraryRecordView,
@@ -210,7 +210,7 @@ export function renderRelated(
   }
 
 export function renderSourceDetail(
-  view: LibraryView,
+  view: LibraryDetailHost,
 
     detail: HTMLElement,
     record: LibraryRecordView,
@@ -433,7 +433,7 @@ export function renderSourceDetail(
   }
 
 export function renderTechnical(
-  view: LibraryView,
+  view: LibraryDetailHost,
 
     detail: HTMLElement,
     record: LibraryRecordView,

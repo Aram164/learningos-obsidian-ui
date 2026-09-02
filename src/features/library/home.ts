@@ -1,4 +1,4 @@
-import type { LibraryView } from '../../views/library-view';
+import type { LibraryHomeHost } from './ports';
 import {
   button,
   empty,
@@ -13,7 +13,7 @@ import {
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 
 export function renderHome(
-  view: LibraryView,
+  view: LibraryHomeHost,
 
     root: HTMLElement,
   ): void {
@@ -132,7 +132,7 @@ export function renderHome(
   }
 
 export function renderCollectionSwitch(
-  view: LibraryView,
+  view: LibraryHomeHost,
 
     root: HTMLElement,
   ): void {
@@ -171,7 +171,7 @@ export function renderCollectionSwitch(
   }
 
 export function renderGroup(
-  view: LibraryView,
+  view: LibraryHomeHost,
 
     root: HTMLElement,
   ): void {

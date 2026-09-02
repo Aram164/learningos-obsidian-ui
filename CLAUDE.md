@@ -39,26 +39,26 @@ here.
    `.obsidian/`): link auto-update OFF, attachments captured into the inbox,
    and `generated/`, `archive/`, registries, migration and curriculum
    quarantine excluded from default search.
-8. Run the complete checked development gate (`npm run check`) before
-   installation or review. `install.py` independently reruns the runtime build
-   and synthetic fixture tests and aborts on failure. Installing into the real
-   vault requires explicit authorization.
+8. Run the complete checked development gate (`npm run check`) before release
+   or installation. An explicitly bounded source-only tranche may use the
+   targeted gates in `ARCHITECTURE.md`; that is not build, installation, or live
+   proof. `install.py` independently reruns the runtime build and synthetic
+   fixture tests and aborts on failure. Installing into the real vault requires
+   explicit authorization.
 9. The app never writes the core directly. Cross-layer changes are made
    core-side first (schema/gateway/projection), then consumed here.
-10. Job/ quarantine applies to every general interface path (core CLAUDE.md
-    §13): never project, index, search, or send `Job/` content to AI. The sole
-    exception is the explicit confidential Job destination, which reads the
-    bounded `job-dashboard-v2` query after a user gesture and keeps its access
-    grant ephemeral. `Job/stratum/` is stricter: its worktree and `.git/` are
-    immutable to the whole interface. The UI must reject any access envelope
-    that does not declare that policy exactly, must never allow `stratum` as an
-    open-file root, and must resolve symlinks before opening a Job path.
+10. Job learning follows core ADR-013: `program-job` uses the ordinary program,
+    module, unit, study-map, note, search, AI-action, gateway, and receipt
+    contracts. The UI may add a `Job` badge, but it must not reintroduce a
+    Job-specific dashboard, access grant, schema, plan profile, transaction
+    root, or validation path. External sibling code is not LearningOS data and
+    is never indexed, validated, migrated, or managed by this interface.
 11. This repository is **separate from the core repo** (Aram, 2026-08-03): its
     own git history, never folded in. It has a GitHub remote
     (`Aram164/learningos-obsidian-ui`); until 2026-08-18 this rule claimed it
     did not, which in a system whose thesis is that written contracts are
-    authoritative made the governance layer itself untrustworthy. Commit freely
-    here; ask before adding another remote or changing where this one points.
+    authoritative made the governance layer itself untrustworthy. Commits,
+    pushes, installation, and remote changes remain explicit operator actions.
     Core and the UI release together — a contract bump that lands on one side
     alone is the failure `contracts/manifest-v<N>.lock.json` exists to prevent,
     and CI now checks core out to enforce it.
@@ -68,11 +68,12 @@ here.
 13. **All usability constraints live here** (Aram, 2026-08-03). The core is
     allowed to be optimised for robustness and efficacy at the cost of being
     unpleasant to browse; this project is what makes it usable. Concretely:
-    no primary view may present a bare list of links. Home shows all current
-    Bachelor's modules plus separate Skills/Thesis areas; resume is only a
-    shortcut. The current stage owns its resources; a single session note is attached to the unit after the relevant stages; record references
-    are typed actions or chips. Follow `DESIGN.md`; extend it rather than
-    inventing CSS.
+    no primary view may present a bare list of links. Home shows one resumable
+    focus, a short Today list, and a short Continue elsewhere list; Modules,
+    Learn, and Projects keep the complete hierarchy reachable. The current
+    stage owns its resources; a single session note is attached to the unit
+    after the relevant stages; record references are typed actions or chips.
+    Follow `DESIGN.md`; extend it rather than inventing CSS.
 
 ## Module boundaries
 
@@ -81,10 +82,14 @@ here.
 - `src/projection/` owns shared structural readers for untrusted JSON values.
 - `src/features/` owns domain decoding, presentation models, and interactions;
   it must reuse the shared readers rather than grow a per-feature parsing kit.
+  Feature-owned `ports.ts` files describe the narrow host surface a feature
+  needs; feature modules never import concrete classes from `src/views/`.
 - `src/views/` owns Obsidian leaf shells and delegates product behaviour to
   features. New domain logic does not enter view shells.
 - `src/infrastructure/` owns host and process adapters. No feature bypasses the
   gateway to read or mutate Core files.
+
+The complete directory and dependency map is in `ARCHITECTURE.md`.
 
 ## Anti-goals (from core ADR-006 and the 2026-07-16 external review)
 

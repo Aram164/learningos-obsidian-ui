@@ -2,8 +2,7 @@ import { setIcon } from 'obsidian';
 import { webUtils } from 'electron';
 import { ICONS } from './constants';
 import type { ProjectionRecord } from './contracts/manifest';
-import type { AppSurface } from './app/surface';
-import type { AppNavigator } from './app/navigator';
+import type { ManifestStore } from './manifest-store';
 import { asLabel, asRecords, asString } from './projection/readers';
 import { enableButtonGroupKeyboardNavigation } from './accessibility/button-group';
 export { safeWebUrl } from './security/safe-url';
@@ -12,15 +11,12 @@ export { safeWebUrl } from './security/safe-url';
  * The card components read the projection and navigate. That is the whole
  * surface they need — they must not reach further into the plugin.
  */
-type CardHost = Pick<
-  AppSurface,
-  | 'store'
-> & {
-  readonly nav: Pick<
-    AppNavigator,
-    | 'openModule'
-    | 'openUnit'
-  >;
+type CardHost = {
+  readonly store: Pick<ManifestStore, 'get' | 'mapForUnit'>;
+  readonly nav: {
+    openModule(moduleId: string): unknown;
+    openUnit(unitId: string): unknown;
+  };
 };
 
 /*
@@ -128,19 +124,6 @@ export function section(
   return wrap;
 }
 
-/** Shared card heading: title, optional context line, and a badge/action slot. */
-export function cardTop(
-  parent: UiNode,
-  title: string,
-  context = '',
-): UiNode {
-  const top = parent.createDiv({ cls: 'los-card-top' });
-  const copy = top.createDiv({ cls: 'los-card-copy' });
-  copy.createEl('h3', { text: title });
-  if (context) copy.createDiv({ cls: 'los-micro', text: context });
-  return top;
-}
-
 /** Shared label/value facts used by learning, logistics, and diagnostics. */
 export function factList(
   parent: UiNode,
@@ -231,36 +214,6 @@ export function overflowMenu(
     button(body, itemLabel, () => { details.removeAttribute?.('open'); action(); }, 'menu');
   }
   return details;
-}
-
-/**
- * One learning row: what it is, where you are, one way in. Replaces the
- * Module/Status/Next-up table — a status badge is only worth the space when the
- * state needs the learner to do something.
- */
-export function progressRow(
-  parent: UiNode,
-  plugin: CardHost,
-  module: ProjectionRecord,
-  nextUp = '',
-): UiNode {
-  const moduleId = asString(module.id);
-  const moduleTitle = asLabel(module);
-  const row = parent.createDiv({ cls: 'los-learning-row' });
-  const copy = row.createDiv({ cls: 'los-learning-copy' });
-  const title = button(copy, moduleTitle, moduleId ? () => plugin.nav.openModule(moduleId) : null, 'row');
-  title.addClass('los-learning-title');
-  if (nextUp) copy.createDiv({ cls: 'los-learning-next', text: nextUp });
-  const progress = moduleId ? plugin.store.progress(moduleId) : {
-    stages_complete: 0, stages_total: 0, units_total: 0, units_needing_map: 0,
-  };
-  const meta = row.createDiv({ cls: 'los-learning-meta' });
-  meta.createSpan({
-    cls: 'los-micro',
-    text: `${progress.stages_complete || 0} of ${progress.stages_total || 0} stages`,
-  });
-  if (progress.units_needing_map) badge(meta, `${progress.units_needing_map} need a map`, 'needs-map');
-  return row;
 }
 
 /**
@@ -361,30 +314,6 @@ export function unitCard(
     card.createDiv({ cls: 'los-progress-copy', text: 'No study map yet' });
   }
   if (unitId) card.addEventListener('click', () => plugin.nav.openUnit(unitId));
-  return card;
-}
-
-export function moduleCard(
-  parent: UiNode,
-  plugin: CardHost,
-  module: ProjectionRecord,
-): UiNode {
-  const moduleId = asString(module.id);
-  const moduleTitle = asLabel(module);
-  const moduleStatus = asString(module.status) || 'ready';
-  const card = parent.createEl('button', {
-    cls: `los-card los-module-card los-s-${moduleStatus} is-clickable`,
-    attr: { type: 'button', 'aria-label': `Open module: ${moduleTitle}` },
-  });
-  const top = card.createDiv({ cls: 'los-card-top' });
-  top.createEl('h3', { text: moduleTitle });
-  badge(top, asString(module.kind) || 'module', 'role');
-  const progress = moduleId ? plugin.store.progress(moduleId) : {
-    stages_complete: 0, stages_total: 0, units_total: 0, units_needing_map: 0,
-  };
-  card.createEl('p', { text: `${progress.units_total || 0} units · ${progress.stages_complete || 0}/${progress.stages_total || 0} stages complete` });
-  if (progress.units_needing_map) badge(card, `${progress.units_needing_map} need a map`, 'needs-map');
-  if (moduleId) card.addEventListener('click', () => plugin.nav.openModule(moduleId));
   return card;
 }
 

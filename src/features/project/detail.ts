@@ -1,4 +1,4 @@
-import type { ProjectView } from '../../views/project-view';
+import type { ProjectDetailHost } from './ports';
 import {
   button,
   chip,
@@ -20,7 +20,7 @@ import {
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 
 export function renderDetail(
-  view: ProjectView,
+  view: ProjectDetailHost,
 
     root: HTMLElement,
   ): void {
@@ -196,7 +196,7 @@ export function renderDetail(
   }
 
 export function renderOverview(
-  view: ProjectView,
+  view: ProjectDetailHost,
 
     root: HTMLElement,
     project: ProjectionRecord,

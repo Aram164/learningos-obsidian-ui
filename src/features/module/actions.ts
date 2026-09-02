@@ -1,4 +1,4 @@
-import type { ModuleView } from '../../views/module-view';
+import type { ModuleActionsHost } from './ports';
 import {
   chip,
   empty,
@@ -16,7 +16,7 @@ import {
 } from './model';
 
 export async function selectTab(
-  view: ModuleView,
+  view: ModuleActionsHost,
 
     tab: ModuleTab,
   ): Promise<void> {
@@ -46,7 +46,7 @@ export async function selectTab(
   }
 
 export async function selectComponent(
-  view: ModuleView,
+  view: ModuleActionsHost,
 
     componentId: string | null,
   ): Promise<void> {
@@ -80,7 +80,7 @@ export async function selectComponent(
   }
 
 export function renderSources(
-  view: ModuleView,
+  view: ModuleActionsHost,
 
     root: HTMLElement,
     module: ModuleRecordView,

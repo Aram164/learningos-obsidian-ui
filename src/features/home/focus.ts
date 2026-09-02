@@ -1,4 +1,4 @@
-import type { HomeView } from '../../views/home-view';
+import type { HomeFocusHost } from './ports';
 import {
   button,
   empty,
@@ -18,7 +18,7 @@ import {
 } from './model';
 
 export function renderContinue(
-  view: HomeView,
+  view: HomeFocusHost,
 
     root: HTMLElement,
   ): void {
@@ -153,7 +153,7 @@ export function renderContinue(
   }
 
 export function renderToday(
-  view: HomeView,
+  view: HomeFocusHost,
 
     root: HTMLElement,
   ): void {

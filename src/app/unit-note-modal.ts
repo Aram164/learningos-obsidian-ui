@@ -1,19 +1,29 @@
 import { Modal, Notice, type App } from 'obsidian';
 import { button, empty, localFilePath, pageHeader } from '../components';
+import type { UnitNoteDraft } from '../application/draft-store';
 import type { ProjectionRecord } from '../contracts/manifest';
-import type { AppSurface } from './surface';
+import type { GatewayClient } from '../gateway-client';
+import type { ManifestStore } from '../manifest-store';
 import { asRecords, errorMessage } from '../projection/readers';
 import { makeModalAccessible } from '../accessibility/modal';
 
-type UnitNotePlugin = Pick<
-  AppSurface,
-  | 'gateway'
-  | 'getUnitNoteDraft'
-  | 'setUnitNoteDraft'
-  | 'clearUnitNoteDraft'
-  | 'mutate'
-  | 'store'
->;
+type UnitNotePlugin = {
+  readonly gateway: Pick<GatewayClient, 'isBusy' | 'saveUnitNote'>;
+  readonly store: Pick<ManifestStore, 'artifactGuard'>;
+  getUnitNoteDraft(unitId: string, stages?: ProjectionRecord[]): UnitNoteDraft;
+  setUnitNoteDraft(
+    unitId: string,
+    title: string,
+    text: string,
+    expectedRevisions?: Readonly<Record<string, number>>,
+  ): void;
+  clearUnitNoteDraft(
+    unitId: string,
+    recoveredStageIds?: readonly string[],
+    match?: { title: string; text: string } | null,
+  ): void;
+  mutate<T>(action: () => T | PromiseLike<T>): Promise<T>;
+};
 
 /**
  * One note after a learning session, attached to the unit rather than to every

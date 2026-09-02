@@ -1,4 +1,4 @@
-import type { ModuleView } from '../../views/module-view';
+import type { ModuleDetailHost } from './ports';
 import {
   badge,
   button,
@@ -27,7 +27,7 @@ import {
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 
 export function renderModuleDetail(
-  view: ModuleView,
+  view: ModuleDetailHost,
 
     root: HTMLElement,
   ): void {
@@ -129,7 +129,7 @@ export function renderModuleDetail(
   }
 
 export function headline(
-  view: ModuleView,
+  view: ModuleDetailHost,
 
     module: ModuleRecordView,
   ): string {
@@ -170,7 +170,7 @@ export function headline(
   }
 
 export function renderOverview(
-  view: ModuleView,
+  view: ModuleDetailHost,
 
     root: HTMLElement,
     module: ModuleRecordView,
@@ -273,7 +273,7 @@ export function renderOverview(
   }
 
 export function renderUnits(
-  view: ModuleView,
+  view: ModuleDetailHost,
 
     root: HTMLElement,
     module: ModuleRecordView,

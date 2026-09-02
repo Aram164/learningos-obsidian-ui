@@ -30,19 +30,15 @@ import type { AppNavigator } from './navigator';
 import type { ApplicationRouter } from './router';
 import type { ComposerDraft, UnitNoteDraft } from '../application/draft-store';
 import type { GatewayRecoveryState } from '../application/gateway-recovery';
-import type { DEFAULT_SETTINGS } from '../constants';
 import type { ProjectionRecord } from '../contracts/manifest';
 import type { GatewayClient } from '../gateway-client';
 import type { AIActionClient } from '../infrastructure/ai-action-client';
 import type { PythonResolution } from '../infrastructure/los-runtime';
 import type { ResourceOpener } from '../infrastructure/resource-opener';
 import type { ManifestStore } from '../manifest-store';
-import type { LearningOSUiDrafts } from '../application/draft-store';
+import type { LearningOSSettings } from './settings-contract';
 
-/** Persisted plugin settings, including the UI's own working drafts. */
-export type LearningOSSettings = typeof DEFAULT_SETTINGS & {
-  uiDrafts: LearningOSUiDrafts;
-};
+export type { LearningOSSettings } from './settings-contract';
 
 export interface AppSurface {
   // ------------------------------------------------------------ collaborators

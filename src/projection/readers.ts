@@ -43,12 +43,6 @@ export function asStrings(value: unknown): string[] {
     : [];
 }
 
-export function asTrimmedStrings(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.map(asTrimmedString).filter(Boolean)
-    : [];
-}
-
 export function asCount(value: unknown): number {
   return typeof value === 'number' && Number.isFinite(value)
     ? Math.max(0, Math.trunc(value))
@@ -57,26 +51,6 @@ export function asCount(value: unknown): number {
 
 export function asFiniteNumber(value: unknown): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
-}
-
-export function asNumber(value: unknown): number {
-  return asFiniteNumber(value) ?? 0;
-}
-
-export function asNumbers(value: unknown): number[] {
-  return Array.isArray(value)
-    ? value.filter((item): item is number => asFiniteNumber(item) !== null)
-    : [];
-}
-
-export function asNumberRecord(value: unknown): Record<string, number> {
-  const result: Record<string, number> = {};
-  if (!isRecord(value)) return result;
-  for (const [key, entry] of Object.entries(value)) {
-    const number = asFiniteNumber(entry);
-    if (number !== null) result[key] = number;
-  }
-  return result;
 }
 
 export function asListLength(value: unknown): number {

@@ -1,4 +1,4 @@
-import type { LibraryView } from '../../views/library-view';
+import type { LibraryCollectionsHost } from './ports';
 import {
   button,
   empty,
@@ -12,7 +12,7 @@ import {
 } from './model';
 
 export function renderRecordRow(
-  view: LibraryView,
+  view: LibraryCollectionsHost,
 
     list: HTMLElement,
     record: LibraryRecordView,
@@ -106,7 +106,7 @@ export function renderRecordRow(
   }
 
 export function renderSourcePage(
-  view: LibraryView,
+  view: LibraryCollectionsHost,
 
     root: HTMLElement,
   ): void {
@@ -179,7 +179,7 @@ export function renderSourcePage(
   }
 
 export function renderTopicPackPage(
-  view: LibraryView,
+  view: LibraryCollectionsHost,
 
     root: HTMLElement,
   ): void {
@@ -260,7 +260,7 @@ export function renderTopicPackPage(
   }
 
 export function renderCataloguePage(
-  view: LibraryView,
+  view: LibraryCollectionsHost,
 
     root: HTMLElement,
   ): void {
@@ -326,7 +326,7 @@ export function renderCataloguePage(
   }
 
 export function renderOrderedCollection(
-  view: LibraryView,
+  view: LibraryCollectionsHost,
 
     detail: HTMLElement,
     collection: LibraryRecordView,
@@ -452,7 +452,7 @@ export function renderOrderedCollection(
   }
 
 export function renderLegacyList(
-  view: LibraryView,
+  view: LibraryCollectionsHost,
 
     root: HTMLElement,
   ): void {

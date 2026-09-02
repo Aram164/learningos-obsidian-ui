@@ -1,4 +1,4 @@
-import type { UnitView } from '../../views/unit-view';
+import type { UnitContextHost } from './ports';
 import {
   button,
   chip,
@@ -21,7 +21,7 @@ import {
 } from './model';
 
 export function renderStageContext(
-  view: UnitView,
+  view: UnitContextHost,
 
     center: HTMLElement,
     unit: UnitRecordView,
@@ -150,7 +150,7 @@ export function renderStageContext(
   }
 
 export function renderArtifacts(
-  view: UnitView,
+  view: UnitContextHost,
 
     root: HTMLElement,
     unit: UnitRecordView,

@@ -1,14 +1,14 @@
 import type {
   ProjectionRecord,
 } from '../contracts/manifest';
-import type { AppSurface } from '../app/surface';
+import type { GatewayClient } from '../gateway-client';
+import type { ManifestStore } from '../manifest-store';
 
-type AIActionPlugin = Pick<
-  AppSurface,
-  | 'gateway'
-  | 'mutate'
-  | 'store'
->;
+type AIActionPlugin = {
+  readonly gateway: Pick<GatewayClient, 'call' | 'guard'>;
+  readonly store: Pick<ManifestStore, 'aiProviders'>;
+  mutate<T>(action: () => T | PromiseLike<T>): Promise<T>;
+};
 
 /**
  * Provider-independent client for the core AI-action gateway. The UI never

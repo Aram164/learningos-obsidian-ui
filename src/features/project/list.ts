@@ -1,4 +1,4 @@
-import type { ProjectView } from '../../views/project-view';
+import type { ProjectListHost } from './ports';
 import {
   empty,
   pageHeader,
@@ -12,7 +12,7 @@ import {
 } from '../../projection/readers';
 
 export function renderList(
-  view: ProjectView,
+  view: ProjectListHost,
 
     root: HTMLElement,
   ): void {

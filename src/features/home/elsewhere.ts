@@ -1,4 +1,4 @@
-import type { HomeView } from '../../views/home-view';
+import type { HomeElsewhereHost } from './ports';
 import {
   button,
   empty,
@@ -19,7 +19,7 @@ import {
 } from './model';
 
 export function renderElsewhere(
-  view: HomeView,
+  view: HomeElsewhereHost,
 
     root: HTMLElement,
   ): void {
@@ -194,7 +194,7 @@ export function renderHomeRow(
   }
 
 export function nextWorkspaceDate(
-  view: HomeView,
+  view: HomeElsewhereHost,
 
     workspace: ProjectionRecord,
   ): string {
@@ -269,7 +269,7 @@ export function nextWorkspaceDate(
   }
 
 export function moduleNextAction(
-  view: HomeView,
+  view: HomeElsewhereHost,
 
     module: ProjectionRecord,
   ): string {

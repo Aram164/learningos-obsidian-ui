@@ -1,4 +1,4 @@
-import type { ModuleView } from '../../views/module-view';
+import type { ModuleLogisticsHost } from './ports';
 import {
   badge,
   disclosure,
@@ -58,7 +58,7 @@ export function statusLabel(value: string): string {
 }
 
 export function renderLogistics(
-  view: ModuleView,
+  view: ModuleLogisticsHost,
 
     root: HTMLElement,
     module: ModuleRecordView,
@@ -98,7 +98,7 @@ export function renderLogistics(
   }
 
 export function deadlinesFor(
-  view: ModuleView,
+  view: ModuleLogisticsHost,
 
     module: ModuleRecordView,
   ): AcademicDeadlineView[] {
@@ -123,7 +123,7 @@ export function deadlinesFor(
   }
 
 export function renderAcademicDates(
-  view: ModuleView,
+  view: ModuleLogisticsHost,
 
     root: HTMLElement,
     module: ModuleRecordView,

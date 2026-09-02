@@ -1,4 +1,4 @@
-import type { UnitView } from '../../views/unit-view';
+import type { UnitMaterialsHost } from './ports';
 import { Notice } from 'obsidian';
 import {
   badge,
@@ -65,7 +65,7 @@ function optionIcon(
 }
 
 export function renderMaterialOverview(
-  view: UnitView,
+  view: UnitMaterialsHost,
   root: HTMLElement,
   unit: UnitRecordView,
   options: MaterialOptionView[],
@@ -299,7 +299,7 @@ export function renderMaterialOverview(
 }
 
 function renderMaterialSynthesis(
-  view: UnitView,
+  view: UnitMaterialsHost,
   root: HTMLElement,
   synthesis: UnitMaterialSynthesisV1,
   options: MaterialOptionView[],

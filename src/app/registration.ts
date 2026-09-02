@@ -1,4 +1,4 @@
-import type { WorkspaceLeaf } from 'obsidian';
+import type { Plugin, WorkspaceLeaf } from 'obsidian';
 import {
   LEGACY_VIEW_TYPES,
   VIEW_ATLAS,
@@ -15,7 +15,7 @@ import {
   VIEW_SHELVING,
   VIEW_UNIT,
 } from '../constants';
-import type { LearningOSUI } from '../main';
+import type { AppSurface } from './surface';
 import { LearningOSSettingsTab } from '../settings';
 import { AtlasView } from '../views/atlas-view';
 import { BoundaryView } from '../views/boundary-view';
@@ -46,12 +46,16 @@ export const APPLICATION_VIEW_TYPES = [
   VIEW_DIAGNOSTICS,
 ] as const;
 
-export function detachLegacyViews(plugin: LearningOSUI): void {
+type ApplicationPlugin = Plugin & AppSurface & {
+  readonly activeNav: string;
+};
+
+export function detachLegacyViews(plugin: ApplicationPlugin): void {
   for (const type of LEGACY_VIEW_TYPES) plugin.app.workspace.detachLeavesOfType(type);
 }
 
 /** Register the Obsidian host surface; feature behavior remains in its module. */
-export function registerApplication(plugin: LearningOSUI): void {
+export function registerApplication(plugin: ApplicationPlugin): void {
   detachLegacyViews(plugin);
   plugin.registerView(VIEW_HOME, (leaf: WorkspaceLeaf) => new HomeView(leaf, plugin));
   plugin.registerView(VIEW_NAV, (leaf: WorkspaceLeaf) => new NavView(leaf, plugin));
@@ -94,6 +98,6 @@ export function registerApplication(plugin: LearningOSUI): void {
   });
 }
 
-export function detachApplication(plugin: LearningOSUI): void {
+export function detachApplication(plugin: ApplicationPlugin): void {
   for (const type of APPLICATION_VIEW_TYPES) plugin.app.workspace.detachLeavesOfType(type);
 }

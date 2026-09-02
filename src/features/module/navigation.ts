@@ -1,4 +1,4 @@
-import type { ModuleView } from '../../views/module-view';
+import type { ModuleNavigationHost } from './ports';
 import {
   button,
   empty,
@@ -12,7 +12,7 @@ import {
 } from './model';
 
 export function renderGroups(
-  view: ModuleView,
+  view: ModuleNavigationHost,
 
     root: HTMLElement,
   ): void {
@@ -128,7 +128,7 @@ export function renderGroups(
   }
 
 export function renderGroupList(
-  view: ModuleView,
+  view: ModuleNavigationHost,
 
     root: HTMLElement,
   ): void {

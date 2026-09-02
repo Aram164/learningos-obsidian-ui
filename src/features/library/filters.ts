@@ -1,4 +1,4 @@
-import type { LibraryView } from '../../views/library-view';
+import type { LibraryFiltersHost } from './ports';
 import {
   button,
   empty,
@@ -16,7 +16,7 @@ import {
 } from './model';
 
 export function sourceFilterValuesFor(
-  view: LibraryView,
+  view: LibraryFiltersHost,
 
     source: LibraryRecordView,
     dimension: SourceFilterDimension,
@@ -63,7 +63,7 @@ export function sourceFilterValuesFor(
   }
 
 export function sourceMatchesFilters(
-  view: LibraryView,
+  view: LibraryFiltersHost,
 
     source: LibraryRecordView,
     omit: SourceFilterDimension | null = null,
@@ -91,7 +91,7 @@ export function sourceMatchesFilters(
   }
 
 export function sourceFilterTally(
-  view: LibraryView,
+  view: LibraryFiltersHost,
 
     sources: LibraryRecordView[],
     dimension: SourceFilterDimension,
@@ -123,7 +123,7 @@ export function sourceFilterTally(
   }
 
 export function sourceFilterLabel(
-  view: LibraryView,
+  view: LibraryFiltersHost,
 
     dimension: SourceFilterDimension,
     value: string,
@@ -170,7 +170,7 @@ export function sourceFilterLabel(
   }
 
 export function renderSourceBrowser(
-  view: LibraryView,
+  view: LibraryFiltersHost,
 
     root: HTMLElement,
   ): void {

@@ -1,4 +1,4 @@
-import type { UnitView } from '../../views/unit-view';
+import type { UnitStageHost } from './ports';
 import {
   button,
   chip,
@@ -15,7 +15,7 @@ import {
 import { renderStageResources } from '../stage-resources';
 
 export function renderStage(
-  view: UnitView,
+  view: UnitStageHost,
 
     layout: HTMLElement,
     unit: UnitRecordView,
@@ -270,7 +270,7 @@ export function renderStage(
   }
 
 export function renderActionBar(
-  view: UnitView,
+  view: UnitStageHost,
 
     root: HTMLElement,
     unit: UnitRecordView,

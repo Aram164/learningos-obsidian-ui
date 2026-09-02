@@ -12576,7 +12576,7 @@ var UnitNoteModal = class extends import_obsidian20.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:ba2869cfbd9f1e3ac34e388148c070493712d340365704adf80aff434972bb96" : "unavailable";
+  return true ? "sha256:ea01b8afb49c45ec61c116a869b5547b1996d1b0cc1e4b3756f11187f11e3e0a" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 8 : 0;
@@ -13578,8 +13578,108 @@ var ResourceOpener = class {
 function isRecord3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+function emptyStoreIndexes() {
+  return {
+    archivedModuleIds: /* @__PURE__ */ new Set(),
+    rowsByGroup: /* @__PURE__ */ new Map(),
+    rowsByType: /* @__PURE__ */ new Map(),
+    sourceMapByModule: /* @__PURE__ */ new Map(),
+    unitNoteSectionsByUnit: /* @__PURE__ */ new Map(),
+    materialSynthesisByUnit: /* @__PURE__ */ new Map(),
+    searchDocuments: []
+  };
+}
+function isArchivedRecord(record6, archivedModuleIds) {
+  if (record6.type === "module" && record6.status === "archived") {
+    return true;
+  }
+  return typeof record6.module_id === "string" && archivedModuleIds.has(record6.module_id);
+}
+function projectedRows(value) {
+  return Array.isArray(value) ? value.filter(
+    (row3) => isRecord3(row3)
+  ) : [];
+}
+function buildStoreIndexes(manifest, records) {
+  const archivedModuleIds = new Set(
+    manifest.modules.flatMap((module2) => module2.status === "archived" && typeof module2.id === "string" ? [module2.id] : [])
+  );
+  const rowsByGroup = /* @__PURE__ */ new Map();
+  for (const [group, value] of Object.entries(manifest)) {
+    if (!Array.isArray(value)) continue;
+    rowsByGroup.set(
+      group,
+      projectedRows(value).filter(
+        (row3) => !isArchivedRecord(row3, archivedModuleIds)
+      )
+    );
+  }
+  const visibleRecords = records.filter(
+    (row3) => !isArchivedRecord(row3, archivedModuleIds)
+  );
+  const rowsByType = /* @__PURE__ */ new Map();
+  for (const row3 of visibleRecords) {
+    if (typeof row3.type !== "string") continue;
+    const rows = rowsByType.get(row3.type);
+    if (rows) rows.push(row3);
+    else rowsByType.set(row3.type, [row3]);
+  }
+  const sourceMapByModule = /* @__PURE__ */ new Map();
+  for (const sourceMap of rowsByGroup.get("module_source_maps") ?? []) {
+    if (typeof sourceMap.module_id === "string" && !sourceMapByModule.has(sourceMap.module_id)) {
+      sourceMapByModule.set(sourceMap.module_id, sourceMap);
+    }
+  }
+  const unitNoteSectionsByUnit = /* @__PURE__ */ new Map();
+  for (const unit of manifest.units) {
+    if (!unitNoteSectionsByUnit.has(unit.id)) {
+      unitNoteSectionsByUnit.set(unit.id, unit.note_sections);
+    }
+  }
+  const synthesisById = /* @__PURE__ */ new Map();
+  for (const synthesis of manifest.unit_material_syntheses) {
+    if (!synthesisById.has(synthesis.id)) {
+      synthesisById.set(synthesis.id, synthesis);
+    }
+  }
+  const materialSynthesisByUnit = /* @__PURE__ */ new Map();
+  for (const [unitId, synthesisId] of Object.entries(
+    manifest.indexes.unit_to_material_synthesis
+  )) {
+    const synthesis = synthesisById.get(synthesisId);
+    if (synthesis?.unit_id === unitId) {
+      materialSynthesisByUnit.set(unitId, synthesis);
+    }
+  }
+  const searchDocuments = visibleRecords.map((record6) => ({
+    record: record6,
+    strictText: [
+      record6.id,
+      record6.title,
+      ...record6.aliases || [],
+      ...record6.authors || [],
+      record6.organization,
+      record6.domain
+    ].filter(Boolean).join(" ").toLocaleLowerCase(),
+    compactText: [
+      record6.id,
+      record6.title,
+      ...record6.aliases || []
+    ].filter(Boolean).join(" ").toLocaleLowerCase().replace(/\s+/g, "")
+  }));
+  return {
+    archivedModuleIds,
+    rowsByGroup,
+    rowsByType,
+    sourceMapByModule,
+    unitNoteSectionsByUnit,
+    materialSynthesisByUnit,
+    searchDocuments
+  };
+}
 var ManifestStore = class {
   app;
+  indexes;
   ready;
   error;
   data;
@@ -13594,6 +13694,7 @@ var ManifestStore = class {
     this.data = null;
     this.records = [];
     this.byId = /* @__PURE__ */ new Map();
+    this.indexes = emptyStoreIndexes();
   }
   async load() {
     try {
@@ -13638,11 +13739,13 @@ var ManifestStore = class {
           }
         }
       }
+      const indexes = buildStoreIndexes(manifest, records);
       this.data = manifest;
       this.contractVersion = version;
       this.snapshotId = manifest._generated.snapshot_id;
       this.records = records;
       this.byId = byId;
+      this.indexes = indexes;
       this.ready = true;
       this.error = "";
       return true;
@@ -13652,6 +13755,7 @@ var ManifestStore = class {
       this.data = null;
       this.records = [];
       this.byId = /* @__PURE__ */ new Map();
+      this.indexes = emptyStoreIndexes();
       this.contractVersion = null;
       this.snapshotId = null;
       return false;
@@ -13662,9 +13766,7 @@ var ManifestStore = class {
     return record6 && !this.isArchivedCurriculumRecord(record6) ? record6 : null;
   }
   of(type) {
-    return this.records.filter(
-      (row3) => row3?.type === type && !this.isArchivedCurriculumRecord(row3)
-    );
+    return [...this.indexes.rowsByType.get(type) ?? []];
   }
   /**
    * One null row anywhere in a projected array used to take Home down on
@@ -13672,22 +13774,13 @@ var ManifestStore = class {
    * has to defend itself row by row.
    */
   rows(group) {
-    const value = this.data?.[group];
-    return Array.isArray(value) ? value.filter(
-      (row3) => row3 && typeof row3 === "object" && !this.isArchivedCurriculumRecord(row3)
-    ) : [];
+    if (!this.data) return [];
+    return [...this.indexes.rowsByGroup.get(group) ?? []];
   }
   isArchivedCurriculumRecord(record6) {
-    if (record6.type === "module" && record6.status === "archived") {
-      return true;
-    }
-    const moduleId = typeof record6.module_id === "string" ? record6.module_id : null;
-    if (!moduleId) {
-      return false;
-    }
-    const modules = this.data?.modules;
-    return Array.isArray(modules) && modules.some(
-      (module2) => module2?.id === moduleId && module2.status === "archived"
+    return isArchivedRecord(
+      record6,
+      this.indexes.archivedModuleIds
     );
   }
   programs() {
@@ -13742,7 +13835,8 @@ var ManifestStore = class {
     return this.of("source");
   }
   topicPacks() {
-    return this.rows("topic_packs").length ? this.rows("topic_packs") : this.of("topic-pack");
+    const rows = this.rows("topic_packs");
+    return rows.length ? rows : this.of("topic-pack");
   }
   catalogues() {
     return this.of("collection").filter((row3) => row3.collection_kind !== "topic-pack");
@@ -13764,7 +13858,8 @@ var ManifestStore = class {
     return this.rows("units");
   }
   unitNoteSections(unitId) {
-    return [...this.data?.units.find((unit) => unit.id === unitId)?.note_sections || []];
+    if (!this.data) return [];
+    return [...this.indexes.unitNoteSectionsByUnit.get(unitId) ?? []];
   }
   studyMaps() {
     return this.rows("study_maps");
@@ -13807,11 +13902,8 @@ var ManifestStore = class {
     return mapId ? this.get(mapId) : null;
   }
   materialSynthesisForUnit(unitId) {
-    const synthesisId = this.data?.indexes?.unit_to_material_synthesis?.[unitId];
-    if (!synthesisId) return null;
-    return this.data?.unit_material_syntheses.find(
-      (synthesis) => synthesis.id === synthesisId && synthesis.unit_id === unitId
-    ) || null;
+    if (!this.data) return null;
+    return this.indexes.materialSynthesisByUnit.get(unitId) ?? null;
   }
   artifactRevision(artifactId) {
     const projected = this.data?.artifact_revisions?.[artifactId];
@@ -13832,7 +13924,8 @@ var ManifestStore = class {
     return stage?.study_map_id ? stage : null;
   }
   sourceMap(moduleId) {
-    return this.rows("module_source_maps").find((row3) => row3.module_id === moduleId) || null;
+    if (!this.data) return null;
+    return this.indexes.sourceMapByModule.get(moduleId) ?? null;
   }
   progress(moduleId) {
     return this.data?.progress?.[moduleId] || {
@@ -13873,29 +13966,22 @@ var ManifestStore = class {
   search(query, types = null) {
     const words2 = String(query || "").toLocaleLowerCase().split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
-    const rows = this.records.filter(
-      (row3) => !this.isArchivedCurriculumRecord(row3) && (!allowed || typeof row3.type === "string" && allowed.has(row3.type))
+    const documents = this.indexes.searchDocuments.filter(
+      ({ record: record6 }) => !allowed || typeof record6.type === "string" && allowed.has(record6.type)
     );
-    if (!words2.length) return rows;
-    const strict = rows.filter((row3) => {
-      const hay = [
-        row3.id,
-        row3.title,
-        ...row3.aliases || [],
-        ...row3.authors || [],
-        row3.organization,
-        row3.domain
-      ].filter(Boolean).join(" ").toLocaleLowerCase();
-      return words2.every((word) => hay.includes(word));
-    });
-    if (strict.length) return strict;
+    if (!words2.length) {
+      return documents.map(({ record: record6 }) => record6);
+    }
+    const strict = documents.filter(({ strictText }) => words2.every((word) => strictText.includes(word)));
+    if (strict.length) return strict.map(({ record: record6 }) => record6);
     const needle = words2.join("");
-    return rows.filter((row3) => {
-      const hay = [row3.id, row3.title, ...row3.aliases || []].filter(Boolean).join(" ").toLocaleLowerCase().replace(/\s+/g, "");
+    return documents.filter(({ compactText }) => {
       let at = 0;
-      for (const char of hay) if (char === needle[at]) at += 1;
+      for (const char of compactText) {
+        if (char === needle[at]) at += 1;
+      }
       return at === needle.length;
-    });
+    }).map(({ record: record6 }) => record6);
   }
   related(id2) {
     const record6 = this.get(id2);

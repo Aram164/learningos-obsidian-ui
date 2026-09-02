@@ -1,4 +1,4 @@
-import type { UnitView } from '../../views/unit-view';
+import type { UnitShellHost } from './ports';
 import {
   button,
   disclosure,
@@ -24,7 +24,7 @@ import { UnitMapImportModal } from './map-import';
 import { asPlanTemplate } from '../plan-template';
 
 export function render(
-  view: UnitView,
+  view: UnitShellHost,
 ): void {
     const root = view.contentEl;
 
@@ -364,7 +364,7 @@ export function render(
  * happens before this point.
  */
 function openMapImport(
-  view: UnitView,
+  view: UnitShellHost,
   parent: HTMLElement,
   unit: UnitRecordView,
   replacing: boolean,
@@ -414,7 +414,7 @@ function openMapImport(
 }
 
 export function renderRail(
-  view: UnitView,
+  view: UnitShellHost,
 
     layout: HTMLElement,
     unit: UnitRecordView,

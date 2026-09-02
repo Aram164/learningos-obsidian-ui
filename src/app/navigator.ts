@@ -36,7 +36,7 @@ import {
 import type { ResourceOpener } from '../infrastructure/resource-opener';
 import type { ManifestStore } from '../manifest-store';
 import { asString } from '../projection/readers';
-import type { LearningOSSettings } from './surface';
+import type { LearningOSSettings } from './settings-contract';
 
 export class AppNavigator {
   constructor(
