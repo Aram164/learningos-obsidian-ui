@@ -77,10 +77,34 @@ maintenance is never mixed with study destinations.
   follows the stage list and opens a temporary unit/session-note modal rather
   than permanently splitting the workspace. The stage action bar keeps one
   primary action and a `•••` overflow holding pause, skip, prerequisite gap,
-  shelving, scoped AI and session end. Resource feedback collapses into a per-resource rate
+  shelving, scoped AI and session end; the completion rule ("finish only
+  when…") is stated beside that action, derived from the criteria the producer
+  authored. Resource feedback collapses into a per-resource rate
   menu. `Done when` criteria are interactive checkboxes whose ticks are
   UI-owned working state — the core still learns only "complete", from
   `stage-progress`.
+
+  **The stage shows one current action** (revised 2026-09-04, Figma 05).
+  Order is stage target → `Done when` → **Current work** → the collapsed
+  catalogue → the action bar. *Current work* promotes the single `required-now`
+  resource; an unranked pre-v2 row counts as primary, never as deprioritised.
+  Everything else collapses to one line that states the true total and the
+  triage split — *"All 5 materials · 1 required · 1 if stuck · 3 preserved for
+  depth/reference"* — because collapsing a list may never make a source
+  unreachable or uncountable.
+
+- **Choose learning material**: the comparison drawer behind *Compare all*.
+  It carries the complete stage menu grouped by triage, and — where the unit
+  has authored routes — a need lens (Derivation / Intuition / Practice) over
+  the producer's own `depth` and `format`, one recommended source, and every
+  remaining source as an alternative. **The lens changes what is offered
+  first, never what exists**: filtering the catalogue down to the lens would
+  make a material unreachable at the moment the learner went looking for it.
+  Selection stays `unit.source-selection.set` with its snapshot guard, and it
+  changes the current route only — it never deletes or hides a source record.
+  The menu stays on the page instead when there is no stage to open a drawer
+  from (no study map, or a map with no stages), because there it is the whole
+  account of what the lecture offers.
 - **Job learning**: `program-job` is an ordinary non-semester learning area.
   Its modules use the same manifest, search, module detail, unit workspace,
   study-map, note, AI-action, gateway, and receipt paths as every other module.

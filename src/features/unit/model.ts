@@ -138,6 +138,7 @@ export type UnitPlugin = Pick<
   | 'openResource'
   | 'openUnitNote'
   | 'reviewSessionEnd'
+  | 'router'
   | 'setDoneWhen'
   | 'setSelectedStage'
   | 'settings'

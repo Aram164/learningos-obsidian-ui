@@ -154,11 +154,17 @@ module.exports = async function run() {
     let text = element.allText();
     check('ordered stages and one current workspace render', element.find('los-stage-row').length === 3
       && text.includes('medical-test fixture'));
-    /* Three, not two: the fixture gained an unranked, id-less resource when
-     * ADR-008/009 landed, so that the triage renderer is exercised against the
-     * pre-v2 shape as well as the ranked one. */
-    check('stage has exact resources and done-when criteria', element.find('los-resource-row').length === 3
+    /* Figma 05 · 36:5. The stage shows ONE current action; the catalogue moved
+     * into the comparison drawer. What must not happen is a material becoming
+     * unreachable, so the page states the full total and the triage split, and
+     * the drawer below is asserted to contain every row. */
+    check('the stage promotes exactly one current action',
+      element.find('los-current-work-card').length === 1
+      && element.find('los-current-work-card')[0].find('los-resource-row').length === 1
       && text.includes('Explain the medical-test result cold'));
+    check('collapsing the catalogue still counts every material',
+      text.includes('All 3 materials')
+      && element.find('los-stage-materials-summary')[0].allText().includes('required'));
     check('no permanent stage note editor remains', element.find('los-note-editor').length === 0);
     /* Fidelity against Figma 04 · Unit workspace (14:462). Each of these was
        a visible difference from the frame, so each is pinned by what renders
@@ -178,7 +184,10 @@ module.exports = async function run() {
       element.find('los-stage-concepts')[0].find('los-chip').length === 2
       && element.find('los-stage-concepts')[0].allText().includes('Conditional probability')
       && element.find('los-stage-concepts')[0].allText().includes('Bayes theorem'));
-    check('the resource list is headed Exact work', text.includes('Exact work'));
+    check('the current action and the catalogue are named separately',
+      text.includes('Current work') && text.includes('Compare all'));
+    check('the completion rule is stated beside the completion action',
+      text.includes('Finish only when the criterion above is true.'));
     check('Add note follows the final stage in the rail', element.find('los-stage-rail')[0].findText('los-btn', 'Add note'));
     check('existing unit note sections are projected', plugin.store.get('unit-fixture-sad-l04').note_sections[0].title === 'Foundations session');
     check('durable unit artifact remains a reference', text.includes('Ultimate Reference') && text.includes('Fixture probability reference'));
@@ -202,25 +211,43 @@ module.exports = async function run() {
     check('End session is a header action and not also an overflow item',
       element.find('los-page-header')[0].findText('los-btn', 'End session') !== null
       && !bar.find('los-overflow')[0].allText().includes('End session'));
-    check('resource feedback collapses into a rate menu instead of three buttons',
-      element.find('los-resource-row').some((row) => row.find('los-overflow').length === 1)
-      && element.find('los-resource-actions').every((row) =>
+    check('one filled action per context survives the promotion',
+      element.find('los-resource-actions').every((row) =>
         row.children.filter((child) => child.classes.has('los-btn')).length <= 1));
+
+    /* The comparison drawer (Figma 05 · 36:12). "Compare all" is where the
+     * complete catalogue went, so this is where the guarantees that used to be
+     * checked on the page are checked now. */
+    element.findText('los-btn', 'Compare all').fire('click');
+    await frame();
+    const drawer = stub.Modal.last.contentEl;
+    const drawerText = drawer.allText();
+    check('the drawer is a named dialog carrying the honesty note',
+      drawer.getAttribute('role') === 'dialog'
+      && drawer.getAttribute('aria-labelledby') === 'los-material-drawer-heading'
+      && drawerText.includes('Choose learning material')
+      && drawerText.includes('never deletes or hides the complete source record'));
+    check('every material the page counted is reachable in the drawer',
+      drawer.find('los-resource-row').length === 3);
 
     /* ADR-008/009 integration. The Core has carried resource rank and resource
      * identity since contract v2/v3; until the UI read them, a required stage
      * still showed the deck, the depth paper and the preserved bibliography at
      * one weight, and every verdict still landed on the whole source. */
     check('resource triage tiers are visible, not just stored',
-      text.includes('Do this') && text.includes('Depth — not now')
-      && element.find('los-triage-required-now').length >= 1
-      && element.find('los-triage-deferred').length >= 1);
+      drawerText.includes('Do this') && drawerText.includes('Depth — not now')
+      && drawer.find('los-triage-required-now').length >= 1
+      && drawer.find('los-triage-deferred').length >= 1);
     check('an unranked resource sorts with the primaries, never below them',
-      element.find('los-triage-unranked').length === 1
-      && element.find('los-resource-row')
+      drawer.find('los-triage-unranked').length === 1
+      && drawer.find('los-resource-row')
         .findIndex((row) => row.classes.has('los-triage-unranked'))
-      < element.find('los-resource-row')
+      < drawer.find('los-resource-row')
         .findIndex((row) => row.classes.has('los-triage-deferred')));
+    check('resource feedback collapses into a rate menu instead of three buttons',
+      drawer.find('los-resource-row').some((row) => row.find('los-overflow').length === 1)
+      && drawer.find('los-resource-actions').every((row) =>
+        row.children.filter((child) => child.classes.has('los-btn')).length <= 1));
     check('done-when criteria are interactive checkboxes',
       element.find('los-donewhen-row').length >= 1
       && element.find('los-donewhen-row')[0].children[0].getAttribute('type') === 'checkbox');
@@ -263,10 +290,15 @@ module.exports = async function run() {
     check('mutation carries optimistic snapshot token',
       noteEnvelope?.expected_snapshot === FIXTURE_SNAPSHOT);
 
-    element = view.contentEl;
-    element.findText('los-btn', 'Helpful').fire('click');
+    /* Rating a material the stage is not currently on belongs where the
+     * comparison happens. The capability, the scope and the payload are
+     * unchanged — only the surface moved. */
+    element.findText('los-btn', 'Compare all').fire('click');
+    await frame();
+    stub.Modal.last.contentEl.findText('los-btn', 'Helpful').fire('click');
     await waitFor(() => Boolean(calls.envelope('source.feedback.record'))
       && !plugin.gateway.isBusy);
+    element = view.contentEl;
     const feedback = calls.envelope('source.feedback.record')?.payload;
     check('source feedback is unit/stage/source-specific',
       feedback?.unit_id === 'unit-fixture-sad-l04'
@@ -284,6 +316,79 @@ module.exports = async function run() {
       calls.some((args) => args.length === 1 && args[0] === 'session-end')
       && stub.Modal.last?.contentEl?.getAttribute('role') === 'dialog'
       && stub.Modal.last?.contentEl?.getAttribute('aria-labelledby') === 'los-session-end-heading');
+    plugin.onunload();
+  }
+
+  heading('the stage comparison drawer');
+  {
+    const { app, plugin, calls } = await boot({
+      patchManifest: (manifest) => {
+        const sourceMap = manifest.module_source_maps.find(
+          (row) => row.module_id === 'module-fixture-m2');
+        sourceMap.sources[0].unit_routes = [
+          {
+            id: 'route-drawer-deck', unit_id: 'unit-fixture-sad-l04',
+            title: 'Current L02 lecture deck', format: 'book',
+            angle: 'Scope authority for the current unit.',
+            angle_detail: 'Derives the geometry and connects scaling and validation.',
+            covers: ['knowledge-fixture-conditioning'],
+            depth: 'derivation', scope: 'current',
+            locator: 'lecture-slides/VL_02.pdf', source_id: 'source-fixture-book',
+          },
+          {
+            id: 'route-drawer-intuition', unit_id: 'unit-fixture-sad-l04',
+            title: 'Domingos perspective', format: 'article',
+            angle: 'Why similarity deteriorates in high dimensions.',
+            covers: ['knowledge-fixture-conditioning'],
+            depth: 'intuition', scope: 'complementary',
+            locator: 'papers/domingos.pdf', source_id: 'source-fixture-book',
+          },
+        ];
+      },
+    });
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+
+    view.contentEl.findText('los-btn', 'Compare all').fire('click');
+    await frame();
+    let drawer = stub.Modal.last.contentEl;
+    check('the drawer recommends for the selected need and says which need',
+      drawer.allText().includes('Recommended for derivation')
+      && drawer.find('los-material-recommended')[0].allText()
+        .includes('Current L02 lecture deck'));
+    check('value, angle, depth, scope and the exact locator all survive',
+      ['Value · Scope authority', 'Angle · Derives the geometry',
+        'Depth · derivation · scope current', 'Locator · lecture-slides/VL_02.pdf']
+        .every((line) => drawer.allText().includes(line)));
+
+    /* The lens is the whole reason a filter here would be a defect: switching
+     * need must change what is offered first and nothing else. */
+    const beforeTotal = drawer.find('los-material-alternative').length
+      + drawer.find('los-material-recommended').length;
+    drawer.findText('los-btn', 'Intuition 1').fire('click');
+    drawer = stub.Modal.last.contentEl;
+    check('switching the lens re-ranks without hiding a single source',
+      drawer.allText().includes('Recommended for intuition')
+      && drawer.find('los-material-recommended')[0].allText()
+        .includes('Domingos perspective')
+      && drawer.find('los-material-alternative').length
+        + drawer.find('los-material-recommended').length === beforeTotal);
+    check('an unpromoted source is named by the need it serves',
+      drawer.find('los-material-alternative')[0].allText().includes('Derivation'));
+
+    /* D4: the surface moved, the governed write did not. */
+    drawer.findText('los-btn', 'Choose').fire('click');
+    await waitFor(() => Boolean(calls.envelope('unit.source-selection.set'))
+      && !plugin.gateway.isBusy);
+    const selection = calls.envelope('unit.source-selection.set');
+    check('choosing from the drawer sends the unchanged governed selection',
+      selection?.payload.unit_id === 'unit-fixture-sad-l04'
+      && selection?.payload.route_id === 'route-drawer-intuition'
+      && selection?.payload.source_id === 'source-fixture-book'
+      && selection?.payload.locator === 'papers/domingos.pdf'
+      && selection?.payload.action === 'select'
+      && selection?.payload.purpose === 'Why similarity deteriorates in high dimensions.'
+      && selection?.expected_snapshot === FIXTURE_SNAPSHOT);
     plugin.onunload();
   }
 
@@ -443,14 +548,22 @@ module.exports = async function run() {
     const text = view.contentEl.allText();
     const route = text.indexOf('Stages');
     const knowledge = text.indexOf('Lecture knowledge map');
-    const menu = text.indexOf('Choose your learning material');
-    check('the ordered stages and the selected stage come before the menu',
-      route !== -1 && knowledge !== -1 && menu !== -1
-      && route < knowledge && knowledge < menu);
+    /* The stage leads the route it is named after. The choose-a-source menu is
+     * no longer on the page beneath it — Figma 05 moved it into the comparison
+     * drawer so the stage shows one current action — so what is checked here is
+     * that the workspace comes first and the menu is not competing with it. */
+    check('the ordered stages and the selected stage lead the page',
+      route !== -1 && knowledge !== -1 && route < knowledge
+      && text.indexOf('Choose your learning material') === -1);
     check('the complete menu is still rendered in full, not truncated',
-      view.contentEl.find('los-material-option').length === 1
-      && view.contentEl.find('los-knowledge-node').length === 1
-      && text.includes('Works the conditioning rule through a medical-test example.'));
+      view.contentEl.find('los-knowledge-node').length === 1
+      && (() => {
+        view.contentEl.findText('los-btn', 'Compare all').fire('click');
+        const drawer = stub.Modal.last.contentEl;
+        return drawer.allText().includes(
+          'Works the conditioning rule through a medical-test example.',
+        );
+      })());
     check('approved material synthesis stays distinct from the option menu',
       text.includes('Approved material synthesis')
       && text.includes('current basis')

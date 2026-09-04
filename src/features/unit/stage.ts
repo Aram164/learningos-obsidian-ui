@@ -2,8 +2,10 @@ import type { UnitStageHost } from './ports';
 import {
   button,
   chip,
+  empty,
   overflowMenu,
 } from '../../components';
+import type { ProjectionRecord } from '../../contracts/manifest';
 import {
   asString as projectedString,
 } from '../../projection/readers';
@@ -12,7 +14,14 @@ import {
   type StageRecordView,
   type StudyMapView,
 } from './model';
-import { renderStageResources } from '../stage-resources';
+import {
+  currentWorkResource,
+  renderResourceRow,
+  triageSummary,
+  type StageResourceView,
+} from '../stage-resources';
+import { readMaterialOptions } from './model';
+import { MaterialComparisonModal } from './material-drawer';
 
 export function renderStage(
   view: UnitStageHost,
@@ -230,19 +239,36 @@ export function renderStage(
       }
     }
 
-    renderStageResources(center, stage.resources, {
-      title: 'Exact work',
+    /* One current action, and everything else one click away.
+     *
+     * The screen used to expand every resource at once, so a required reading
+     * and a reference book arrived at the same weight and the learner did the
+     * triage the producer had already done. Figma 05 keeps the target and the
+     * completion criteria, promotes the single required action, and moves the
+     * catalogue into a comparison drawer. Nothing is removed: the summary line
+     * below counts every material, and the drawer lists all of them.
+     *
+     * DESIGN.md principle 8 holds throughout — `Complete stage` is the only
+     * filled action on this screen, so `Compare all` is a plain control and the
+     * current-work card carries `Open` alone. */
+    const resourceRenderer = {
       emptyDetail: 'Use the unit scope and ask AI for a proposal.',
-      sourceRecord: (sourceId) => view.plugin.store.get(sourceId),
-      openSource: (source) => {
+      sourceRecord: (sourceId: string) => view.plugin.store.get(sourceId),
+      openSource: (source: ProjectionRecord) => {
         const sourceId = projectedString(source.id);
         return sourceId ? view.plugin.nav.openLibrary(sourceId) : undefined;
       },
-      openSourceResource: (source) => view.plugin.openResource(source),
-      openResource: (resource) => view.plugin.openResource(resource.record),
+      openSourceResource: (source: ProjectionRecord) =>
+        view.plugin.openResource(source),
+      openResource: (resource: StageResourceView) =>
+        view.plugin.openResource(resource.record),
       // ADR-009: when an id exists, feedback lands on the exact resource;
       // otherwise it deliberately describes the whole source.
-      rateResource: (sourceId, resourceId, verdict) => view.mutate(
+      rateResource: (
+        sourceId: string,
+        resourceId: string | null,
+        verdict: string,
+      ) => view.mutate(
         () => view.plugin.gateway.feedback(
           unit.id,
           stage.id,
@@ -252,7 +278,94 @@ export function renderStage(
           expectedRevisions,
         ),
       ),
+    };
+
+    const current = currentWorkResource(stage.resources);
+    const requiredCount = stage.resources.filter(
+      (resource) =>
+        resource.scopeTriage === 'required-now' || !resource.scopeTriage,
+    ).length;
+
+    const work = center.createDiv({
+      cls: 'los-section los-stage-section los-current-work',
     });
+    const workHeading = work.createDiv({
+      cls: 'los-stage-section-heading',
+    });
+    workHeading.createEl('h2', { text: 'Current work' });
+    if (requiredCount) {
+      workHeading.createSpan({
+        cls: 'los-micro los-current-work-count',
+        text: `${requiredCount} required now`,
+      });
+    }
+
+    if (current) {
+      const card = work.createDiv({ cls: 'los-current-work-card' });
+      renderResourceRow(
+        card,
+        current,
+        current.sourceId
+          ? view.plugin.store.get(current.sourceId)
+          : null,
+        resourceRenderer,
+      );
+    } else if (stage.resources.length) {
+      empty(
+        work,
+        'Nothing is marked required for this stage',
+        'The materials below are preserved for depth and reference. Open the '
+        + 'comparison to choose where to start.',
+      );
+    } else {
+      empty(
+        work,
+        'No source action selected',
+        'Use the unit scope and ask AI for a proposal.',
+      );
+    }
+
+    if (stage.resources.length) {
+      const catalogue = center.createDiv({
+        cls: 'los-section los-stage-materials',
+      });
+      const catalogueCopy = catalogue.createDiv({
+        cls: 'los-stage-materials-copy',
+      });
+      catalogueCopy.createEl('h2', {
+        text: `All ${stage.resources.length} `
+          + `${stage.resources.length === 1 ? 'material' : 'materials'}`,
+      });
+      catalogueCopy.createSpan({
+        cls: 'los-micro los-stage-materials-summary',
+        text: triageSummary(stage.resources),
+      });
+
+      const catalogueActions = catalogue.createDiv({
+        cls: 'los-actions los-stage-materials-actions',
+      });
+      button(
+        catalogueActions,
+        'Compare all',
+        () => {
+          const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
+          new MaterialComparisonModal(view.app, {
+            plugin: view.plugin,
+            unit,
+            stage,
+            resources: stage.resources,
+            materialOptions: readMaterialOptions(
+              sourceMap?.sources,
+              unit.id,
+              unit.record.source_selections,
+            ),
+            expectedRevisions,
+            renderer: resourceRenderer,
+            onChanged: () => view.render(),
+          }).open();
+        },
+      );
+    }
 
     view.renderStageContext(
       center,
@@ -280,6 +393,21 @@ export function renderActionBar(
     const bar = root.createDiv({
       cls: 'los-unit-actionbar',
     });
+
+    /* Figma 05 puts the completion rule beside the completion action, where it
+     * is read at the moment it applies. Derived from the criteria the producer
+     * authored — the interface never invents a finishing condition, and says
+     * nothing at all when the stage declares none. */
+    if (stage.doneWhen.length) {
+      bar.createSpan({
+        cls: 'los-micro los-unit-actionbar-rule',
+        text: stage.doneWhen.length === 1
+          ? 'Finish only when the criterion above is true.'
+          : stage.doneWhen.length === 2
+            ? 'Finish only when both criteria are true.'
+            : `Finish only when all ${stage.doneWhen.length} criteria are true.`,
+      });
+    }
 
     /* 14:600 — the primary action and one overflow, left-aligned at the foot
      * of the stage card. It is `cta` rather than `success` because Figma's

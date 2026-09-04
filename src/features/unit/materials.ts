@@ -70,6 +70,17 @@ export function renderMaterialOverview(
   unit: UnitRecordView,
   options: MaterialOptionView[],
   synthesis: UnitMaterialSynthesisV1 | null,
+  /**
+   * Whether to render the complete choose-a-source menu on the page.
+   *
+   * False once a stage workspace is on screen: the menu moved into the
+   * comparison drawer (Figma 05 · 36:12) so the stage shows one current action
+   * instead of the whole catalogue at one weight. It stays on the page when
+   * there is no stage to open a drawer from — a unit with no study map, or a
+   * map with no stages — because there the menu is the whole account of what
+   * the lecture offers, and the only place a selection can be made.
+   */
+  includeMenu = true,
 ): void {
   const studyMap = view.plugin.store.mapForUnit(unit.id);
   const expectedRevisions = view.plugin.store.artifactGuard(
@@ -109,7 +120,7 @@ export function renderMaterialOverview(
     renderMaterialSynthesis(view, root, synthesis, options);
   }
 
-  if (!options.length) return;
+  if (!options.length || !includeMenu) return;
 
   const materials = section(
     root,

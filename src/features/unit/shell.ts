@@ -149,7 +149,7 @@ export function render(
      * step 7 says a study map never replaces or truncates the menu — they just
      * stop leading it. A unit with no map still opens on the menu, because
      * there the menu is the whole account of what the lecture offers. */
-    const renderMaterials = (): void => {
+    const renderMaterials = (includeMenu = true): void => {
       if (!hasMaterialOverview) return;
 
       renderMaterialOverview(
@@ -158,6 +158,7 @@ export function render(
         unit,
         materialOptions,
         materialSynthesis,
+        includeMenu,
       );
     };
 
@@ -319,7 +320,7 @@ export function render(
       stage,
     );
 
-    renderMaterials();
+    renderMaterials(false);
 
     const more = disclosure(
       root,

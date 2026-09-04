@@ -37,19 +37,71 @@ export interface StageResourceRenderer {
   readonly title?: string;
 }
 
-const TRIAGE_ORDER = [
+export const TRIAGE_ORDER = [
   'required-now',
   'helpful-now',
   'deferred',
   'reference-only',
 ] as const;
 
-const TRIAGE_HEADING: Readonly<Record<string, string>> = {
+export type TriageRank = typeof TRIAGE_ORDER[number];
+
+function isTriageRank(value: string | null): value is TriageRank {
+  return Boolean(value) && (TRIAGE_ORDER as readonly string[]).includes(value as string);
+}
+
+export const TRIAGE_HEADING: Readonly<Record<TriageRank, string>> = {
   'required-now': 'Do this',
   'helpful-now': 'If you get stuck',
   deferred: 'Depth — not now',
   'reference-only': 'Reference — preserved, not reading for this stage',
 };
+
+/**
+ * The one-line account of everything this stage points at, in the learner's
+ * words rather than the schema's: "1 required · 1 if stuck · 3 preserved for
+ * depth/reference".
+ *
+ * Every count is derived from the triage the producer authored. None of it is
+ * a quota, and nothing is ever dropped from the total — the summary exists so
+ * that collapsing the list cannot hide a source (Figma 05, non-negotiable 1).
+ */
+export function triageSummary(
+  resources: readonly StageResourceView[],
+): string {
+  const count = (rank: string) => resources.filter(
+    (resource) => resource.scopeTriage === rank,
+  ).length;
+
+  const required = count('required-now')
+    + resources.filter((resource) => !resource.scopeTriage).length;
+  const stuck = count('helpful-now');
+  const preserved = count('deferred') + count('reference-only');
+
+  const parts: string[] = [];
+  if (required) parts.push(`${required} required`);
+  if (stuck) parts.push(`${stuck} if stuck`);
+  if (preserved) parts.push(`${preserved} preserved for depth/reference`);
+  return parts.join(' · ');
+}
+
+/**
+ * The single resource the stage is asking for right now, or null.
+ *
+ * "Required now" first; an unranked pre-v2 row counts as primary, never as
+ * deprioritised, which is the same rule the ordering already follows. When a
+ * stage names several required resources there is no basis for preferring one,
+ * so the first in authored order is used and the rest stay one click away.
+ */
+export function currentWorkResource(
+  resources: readonly StageResourceView[],
+): StageResourceView | null {
+  return resources.find(
+    (resource) => resource.scopeTriage === 'required-now',
+  ) ?? resources.find(
+    (resource) => !resource.scopeTriage,
+  ) ?? null;
+}
 
 const MATERIAL_TYPE_ORDER = [
   'video',
@@ -60,13 +112,6 @@ const MATERIAL_TYPE_ORDER = [
 
 type MaterialType = typeof MATERIAL_TYPE_ORDER[number];
 
-const MATERIAL_TYPE_HEADING: Readonly<Record<MaterialType, string>> = {
-  video: 'Videos',
-  article: 'Articles',
-  book: 'Books',
-  exercise: 'Exercises',
-};
-
 const MATERIAL_TYPE_ICON: Readonly<Record<MaterialType, string>> = {
   video: 'play',
   article: 'file-text',
@@ -75,11 +120,6 @@ const MATERIAL_TYPE_ICON: Readonly<Record<MaterialType, string>> = {
 };
 
 let angleDetailSequence = 0;
-
-function rankOf(value: string | null): number {
-  const index = value ? TRIAGE_ORDER.indexOf(value as typeof TRIAGE_ORDER[number]) : -1;
-  return index < 0 ? 0 : index;
-}
 
 function materialTypeOf(
   resource: StageResourceView,
@@ -113,19 +153,138 @@ function materialTypeOf(
   return 'article';
 }
 
+export function renderResourceRow(
+  parent: HTMLElement,
+  resource: StageResourceView,
+  source: ProjectionRecord | null,
+  renderer: StageResourceRenderer,
+): HTMLElement {
+  const materialType = materialTypeOf(resource, source);
+  const row = parent.createDiv({
+    cls: `los-resource-row los-triage-${resource.scopeTriage || 'unranked'}`,
+  });
+  icon(row.createSpan(), MATERIAL_TYPE_ICON[materialType]);
+
+  const copy = row.createDiv({ cls: 'los-resource-copy' });
+  copy.createEl('strong', { text: resource.label });
+
+  const metadata = copy.createDiv({
+    cls: 'los-resource-row-meta',
+  });
+  metadata.createSpan({
+    cls: `los-resource-priority los-resource-priority-${resource.scopeTriage || 'unranked'}`,
+    text: isTriageRank(resource.scopeTriage)
+      ? TRIAGE_HEADING[resource.scopeTriage]
+      : resource.scopeTriage || 'Primary · unranked',
+  });
+  if (resource.locator) {
+    metadata.createSpan({
+      cls: 'los-micro los-resource-locator',
+      text: resource.locator,
+    });
+  }
+
+  const angle = projectedText(resource.record.angle);
+  if (angle) {
+    copy.createDiv({
+      cls: 'los-resource-angle',
+      text: angle,
+    });
+  }
+
+  const angleDetail = projectedText(resource.record.angle_detail);
+  if (angleDetail) {
+    const detailId = `los-resource-angle-detail-${++angleDetailSequence}`;
+    const detail = copy.createDiv({
+      cls: 'los-resource-angle-detail',
+      text: angleDetail,
+      attr: {
+        hidden: '',
+        id: detailId,
+      },
+    });
+    const foot = copy.createDiv({ cls: 'los-resource-foot' });
+    if (source) chip(foot, source, renderer.openSource);
+
+    let expanded = false;
+    const toggle = button(
+      foot,
+      '▸ Why this one',
+      () => {
+        expanded = !expanded;
+        toggle.setText(`${expanded ? '▾' : '▸'} Why this one`);
+        toggle.setAttr('aria-expanded', String(expanded));
+        if (expanded) detail.removeAttribute('hidden');
+        else detail.setAttr('hidden', '');
+      },
+      'quiet',
+    );
+    toggle.addClass('los-resource-angle-trigger');
+    toggle.setAttrs({
+      'aria-controls': detailId,
+      'aria-expanded': 'false',
+    });
+  } else if (source) {
+    chip(copy, source, renderer.openSource);
+  }
+
+  const actions = row.createDiv({ cls: 'los-actions los-resource-actions' });
+  if (resource.canOpen && renderer.openResource) {
+    button(actions, 'Open', () => renderer.openResource?.(resource), 'quiet');
+  } else if (
+    source
+    && hasDirectResourceTarget(source)
+    && renderer.openSourceResource
+  ) {
+    button(
+      actions,
+      'Open source',
+      () => renderer.openSourceResource?.(source),
+      'quiet',
+    );
+  }
+  if (resource.sourceId && renderer.rateResource) {
+    const sourceId = resource.sourceId;
+    const resourceId = resource.id;
+    const rate = (verdict: string) => renderer.rateResource?.(
+      sourceId,
+      resourceId,
+      verdict,
+    );
+    overflowMenu(actions, [
+      ['Helpful', () => rate('helpful')],
+      ['Too advanced', () => rate('too-advanced')],
+      ['Useful for review', () => rate('useful-for-review')],
+    ], resourceId
+      ? `Rate ${resource.label}`
+      : `Rate ${resource.label} (whole source)`);
+  }
+  return row;
+}
+
+/**
+ * The complete stage menu, grouped by triage.
+ *
+ * Grouping used to be by media type, with triage sorted only *inside* each
+ * group — so a required reading and a reference book sat at the same weight
+ * two rows apart, and the learner had to reconstruct the priority the producer
+ * had already authored. Triage is the axis the decision actually turns on, so
+ * it is the axis the list is cut along; the media type survives as the row
+ * icon, which is what it was really doing.
+ *
+ * Nothing is filtered. Collapsing the list on the stage screen is a disclosure
+ * choice, and this is where the whole of it stays reachable and countable.
+ */
 export function renderStageResources(
   parent: HTMLElement,
   resourcesValue: readonly StageResourceView[],
   renderer: StageResourceRenderer,
 ): HTMLElement {
   const resources = section(parent, renderer.title ?? 'Material catalogue');
-  resources.addClass(
-    'los-stage-resources',
-  );
+  resources.addClass('los-stage-resources');
 
   resources.createSpan({
-    cls:
-      'los-micro los-stage-resource-count',
+    cls: 'los-micro los-stage-resource-count',
     text:
       `${resourcesValue.length} ${resourcesValue.length === 1 ? 'material' : 'materials'}`,
   });
@@ -133,7 +292,8 @@ export function renderStageResources(
   resources.createEl('p', {
     cls: 'los-stage-resource-summary',
     text:
-      'Every material stays visible, grouped by type. Priority changes the order inside each group; each angle explains what the material covers.',
+      'Every material stays visible, grouped by what this stage asks of it. '
+      + 'The angle explains what each one covers; nothing here is ranked by quality.',
   });
 
   if (!resourcesValue.length) {
@@ -145,41 +305,32 @@ export function renderStageResources(
     return resources;
   }
 
-  const grouped = new Map<
-    MaterialType,
-    Array<{
-      readonly resource: StageResourceView;
-      readonly source: ProjectionRecord | null;
-    }>
-  >();
-
-  for (const resource of resourcesValue) {
-    const source = resource.sourceId && renderer.sourceRecord
+  const sourceFor = (resource: StageResourceView) => (
+    resource.sourceId && renderer.sourceRecord
       ? renderer.sourceRecord(resource.sourceId)
-      : null;
-    const materialType = materialTypeOf(resource, source);
-    const entries = grouped.get(materialType);
-    const entry = { resource, source };
-    if (entries) entries.push(entry);
-    else grouped.set(materialType, [entry]);
+      : null
+  );
+
+  // Unranked pre-v2 records stay with the primary work. Missing priority means
+  // "not yet ranked", never "deprioritised".
+  const buckets = new Map<string, StageResourceView[]>();
+  for (const resource of resourcesValue) {
+    const key: TriageRank = isTriageRank(resource.scopeTriage)
+      ? resource.scopeTriage
+      : 'required-now';
+    const bucket = buckets.get(key);
+    if (bucket) bucket.push(resource);
+    else buckets.set(key, [resource]);
   }
 
-  for (const materialType of MATERIAL_TYPE_ORDER) {
-    const entries = grouped.get(materialType);
+  for (const rank of TRIAGE_ORDER) {
+    const entries = buckets.get(rank);
     if (!entries?.length) continue;
 
-    // Unranked pre-v2 records stay with the primary work. Missing priority
-    // means "not yet ranked", never "deprioritised".
-    entries.sort(
-      (left, right) =>
-        rankOf(left.resource.scopeTriage)
-        - rankOf(right.resource.scopeTriage),
-    );
-
     const group = resources.createDiv({
-      cls: `los-resource-type-group los-resource-type-${materialType}`,
+      cls: `los-resource-triage-group los-resource-triage-${rank}`,
     });
-    group.setAttr('aria-label', MATERIAL_TYPE_HEADING[materialType]);
+    group.setAttr('aria-label', TRIAGE_HEADING[rank]);
 
     const groupHeading = group.createDiv({
       cls: 'los-resource-type-heading',
@@ -187,121 +338,14 @@ export function renderStageResources(
     const headingCopy = groupHeading.createDiv({
       cls: 'los-resource-type-heading-copy',
     });
-    icon(headingCopy.createSpan(), MATERIAL_TYPE_ICON[materialType]);
-    headingCopy.createEl('h3', {
-      text: MATERIAL_TYPE_HEADING[materialType],
-    });
+    headingCopy.createEl('h3', { text: TRIAGE_HEADING[rank] });
     groupHeading.createSpan({
       cls: 'los-micro',
       text: `${entries.length} ${entries.length === 1 ? 'material' : 'materials'}`,
     });
 
-    for (const { resource, source } of entries) {
-      const row = group.createDiv({
-        cls: `los-resource-row los-triage-${resource.scopeTriage || 'unranked'}`,
-      });
-      icon(row.createSpan(), MATERIAL_TYPE_ICON[materialType]);
-
-      const copy = row.createDiv({ cls: 'los-resource-copy' });
-      copy.createEl('strong', { text: resource.label });
-
-      const metadata = copy.createDiv({
-        cls: 'los-resource-row-meta',
-      });
-      metadata.createSpan({
-        cls: `los-resource-priority los-resource-priority-${resource.scopeTriage || 'unranked'}`,
-        text: resource.scopeTriage
-          ? TRIAGE_HEADING[resource.scopeTriage] || resource.scopeTriage
-          : 'Primary · unranked',
-      });
-      if (resource.locator) {
-        metadata.createSpan({
-          cls: 'los-micro los-resource-locator',
-          text: resource.locator,
-        });
-      }
-
-      const angle = projectedText(
-        resource.record.angle,
-      );
-
-      if (angle) {
-        copy.createDiv({
-          cls: 'los-resource-angle',
-          text: angle,
-        });
-      }
-
-      const angleDetail = projectedText(
-        resource.record.angle_detail,
-      );
-
-      if (angleDetail) {
-        const detailId = `los-resource-angle-detail-${++angleDetailSequence}`;
-        const detail = copy.createDiv({
-          cls: 'los-resource-angle-detail',
-          text: angleDetail,
-          attr: {
-            hidden: '',
-            id: detailId,
-          },
-        });
-        const foot = copy.createDiv({ cls: 'los-resource-foot' });
-        if (source) chip(foot, source, renderer.openSource);
-
-        let expanded = false;
-        const toggle = button(
-          foot,
-          '▸ Why this one',
-          () => {
-            expanded = !expanded;
-            toggle.setText(`${expanded ? '▾' : '▸'} Why this one`);
-            toggle.setAttr('aria-expanded', String(expanded));
-            if (expanded) detail.removeAttribute('hidden');
-            else detail.setAttr('hidden', '');
-          },
-          'quiet',
-        );
-        toggle.addClass('los-resource-angle-trigger');
-        toggle.setAttrs({
-          'aria-controls': detailId,
-          'aria-expanded': 'false',
-        });
-      } else if (source) {
-        chip(copy, source, renderer.openSource);
-      }
-
-      const actions = row.createDiv({ cls: 'los-actions los-resource-actions' });
-      if (resource.canOpen && renderer.openResource) {
-        button(actions, 'Open', () => renderer.openResource?.(resource), 'quiet');
-      } else if (
-        source
-        && hasDirectResourceTarget(source)
-        && renderer.openSourceResource
-      ) {
-        button(
-          actions,
-          'Open source',
-          () => renderer.openSourceResource?.(source),
-          'quiet',
-        );
-      }
-      if (resource.sourceId && renderer.rateResource) {
-        const sourceId = resource.sourceId;
-        const resourceId = resource.id;
-        const rate = (verdict: string) => renderer.rateResource?.(
-          sourceId,
-          resourceId,
-          verdict,
-        );
-        overflowMenu(actions, [
-          ['Helpful', () => rate('helpful')],
-          ['Too advanced', () => rate('too-advanced')],
-          ['Useful for review', () => rate('useful-for-review')],
-        ], resourceId
-          ? `Rate ${resource.label}`
-          : `Rate ${resource.label} (whole source)`);
-      }
+    for (const resource of entries) {
+      renderResourceRow(group, resource, sourceFor(resource), renderer);
     }
   }
   return resources;

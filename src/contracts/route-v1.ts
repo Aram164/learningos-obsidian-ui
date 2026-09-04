@@ -79,7 +79,14 @@ export interface GlobalSearchOverlayV1 {
   filter: "all" | "learning" | "sources" | "projects";
 }
 
-export type OverlayStateV1 = GlobalSearchOverlayV1 | { kind: "linked-material-reason"; relationshipId: string } | null;
+export type OverlayStateV1 =
+  | GlobalSearchOverlayV1
+  | { kind: "linked-material-reason"; relationshipId: string }
+  // The stage material-comparison drawer. Registered so Escape and Back
+  // restore the route the learner was on, rather than dropping them
+  // somewhere the drawer never came from.
+  | { kind: "material-comparison"; unitId: string; stageId: string }
+  | null;
 
 export interface NavigationStateV1 {
   version: 1;

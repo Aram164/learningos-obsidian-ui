@@ -20,6 +20,12 @@ export interface UnitMaterialsHost {
 
 export interface UnitStageHost
   extends UnitContextHost {
+  /** Modal host. The comparison drawer is an Obsidian `Modal`, like the unit
+   *  note and map-import dialogs already in this feature. */
+  readonly app: App;
+  /** Redraw after a confirmed source selection, so the promoted current-work
+   *  card reflects the choice the learner just made. */
+  render(): void;
   renderActionBar(
     root: HTMLElement,
     unit: UnitRecordView,

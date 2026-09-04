@@ -2737,6 +2737,156 @@
 @media (max-width: 820px) {
   .los-root.los-map-import-modal { padding: var(--los-4); }
 }
+
+
+/* ── Compact session (Figma 05 · 36:5) ───────────────────────────────────────
+   The stage screen shows the target, the completion criteria, and ONE current
+   action. Everything else is counted in a summary line and reachable through
+   the comparison drawer. DESIGN.md principle 8 governs the weights here:
+   `Complete stage` is the only filled action, so nothing below competes with
+   it — `Compare all` is a plain control and the work card carries `Open`. */
+
+/* `Done when` and `Current work` read as the two cards the stage is about, so
+   they get the raised surface the rest of the workspace does not. */
+.los-stage-workspace > .los-current-work,
+.los-stage-workspace > .los-stage-section:has(.los-donewhen-list) {
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+}
+
+/* The rule sits left of the action and pushes it to the right edge, so the
+   sentence is read on the way to the button rather than after it. */
+.los-unit-actionbar-rule {
+  flex: 1 1 auto;
+  color: var(--los-ink-soft);
+}
+
+.los-current-work-count {
+  padding: 2px var(--los-2);
+  border-radius: var(--los-r-pill);
+  background: var(--los-accent-wash);
+  color: var(--los-accent-strong);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* The promoted row. Selection is carried by a border, which is what borders
+   mean in this system — not by a second accent fill competing with the
+   completion action. */
+.los-current-work-card {
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-accent);
+  border-radius: var(--los-r-md);
+  background: var(--los-selected);
+}
+.los-current-work-card > .los-resource-row {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/* "All 5 materials · 1 required · 1 if stuck · 3 preserved for depth/reference"
+   — the promise that collapsing the list hid nothing. */
+.los-stage-materials {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--los-4);
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+}
+.los-stage-materials-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.los-stage-materials-copy h2 {
+  margin: 0;
+  font-size: 15px;
+}
+.los-stage-materials-actions { flex: 0 0 auto; }
+
+/* ── Comparison drawer (Figma 05 · 36:12) ───────────────────────────────── */
+
+.los-root.los-material-drawer {
+  width: min(760px, 92vw);
+  max-height: 82vh;
+  overflow-y: auto;
+}
+.los-material-drawer .los-page-header { margin-bottom: var(--los-4); }
+
+.los-material-need {
+  display: flex;
+  align-items: center;
+  gap: var(--los-3);
+  margin-bottom: var(--los-4);
+}
+.los-material-need-label { flex: 0 0 auto; }
+
+/* The one source offered first for the selected need. "Recommended" is the
+   producer's own `depth` field read back, never a judgement of quality. */
+.los-material-recommended {
+  padding: var(--los-3) var(--los-4);
+  margin-bottom: var(--los-4);
+  border: 1px solid var(--los-accent);
+  border-radius: var(--los-r-md);
+  background: var(--los-selected);
+}
+.los-material-recommended h3 { margin: var(--los-1) 0 var(--los-2); }
+.los-material-recommended-line {
+  margin: 0 0 var(--los-1);
+  color: var(--los-ink-soft);
+  font-size: 13px;
+}
+.los-material-recommended-locator { margin: var(--los-2) 0 var(--los-3); }
+
+.los-material-alternatives {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(260px, 100%), 1fr));
+  gap: var(--los-3);
+}
+.los-material-alternative {
+  padding: var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-3);
+}
+.los-material-alternative h4 { margin: var(--los-1) 0 var(--los-1); }
+.los-material-alternative p {
+  margin: 0 0 var(--los-1);
+  color: var(--los-ink-soft);
+  font-size: 13px;
+}
+
+.los-material-drawer-note {
+  margin: var(--los-4) 0 var(--los-3);
+  color: var(--los-ink-faint);
+}
+
+/* Triage is the axis the complete menu is cut along, so its group headings are
+   quiet labels rather than a second heading level competing with the drawer. */
+.los-resource-triage-group + .los-resource-triage-group {
+  margin-top: var(--los-3);
+}
+.los-resource-triage-group .los-resource-type-heading h3 {
+  font-size: 13px;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--los-ink-faint);
+}
+
+@media (max-width: 720px) {
+  .los-stage-materials {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--los-2);
+  }
+}
 /* Projects are parallel work, rendered as workstreams and decisions rather
  * than a second module dashboard. */
 .los-project-view > .los-project-list,

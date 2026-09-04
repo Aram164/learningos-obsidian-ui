@@ -184,11 +184,18 @@ module.exports = async function run() {
 
     await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
-    const missing = view.contentEl.find('los-material-option').find(
-      (row) => row.allText().includes('Missing projected lecture'));
+    /* The choose-a-source menu lives in the comparison drawer once a stage is
+     * on screen (Figma 05 · 36:12). The contract is unchanged: a file the
+     * projection says is absent never gets an Open button. */
+    view.contentEl.findText('los-btn', 'Compare all').fire('click');
+    const drawer = stub.Modal.last.contentEl;
+    const missing = [
+      ...drawer.find('los-material-recommended'),
+      ...drawer.find('los-material-alternative'),
+    ].find((card) => card.allText().includes('Missing projected lecture'));
     check('a projected missing file never renders a broken Open button',
       Boolean(missing) && !missing.findText('los-btn', 'Open'),
-      `screen=${view.contentEl.allText()}`);
+      `screen=${drawer.allText()}`);
 
     plugin.onunload();
   }
@@ -221,7 +228,10 @@ module.exports = async function run() {
 
     await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
-    const fallback = view.contentEl.findText('los-btn', 'Open source');
+    /* This resource is not the one the stage promotes, so it is reached
+     * through the drawer. The fallback rule itself is untouched. */
+    view.contentEl.findText('los-btn', 'Compare all').fire('click');
+    const fallback = stub.Modal.last.contentEl.findText('los-btn', 'Open source');
     check('a locator-only resource can fall back to its openable source',
       Boolean(fallback));
     fallback?.fire('click');

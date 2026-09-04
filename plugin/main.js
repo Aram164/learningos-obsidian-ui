@@ -35,7 +35,7 @@ __export(main_exports, {
   default: () => main_default
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian22 = require("obsidian");
+var import_obsidian23 = require("obsidian");
 
 // src/contracts/manifest-records.ts
 var row = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
@@ -10210,24 +10210,35 @@ var TRIAGE_ORDER = [
   "deferred",
   "reference-only"
 ];
+function isTriageRank(value) {
+  return Boolean(value) && TRIAGE_ORDER.includes(value);
+}
 var TRIAGE_HEADING = {
   "required-now": "Do this",
   "helpful-now": "If you get stuck",
   deferred: "Depth \u2014 not now",
   "reference-only": "Reference \u2014 preserved, not reading for this stage"
 };
-var MATERIAL_TYPE_ORDER = [
-  "video",
-  "article",
-  "book",
-  "exercise"
-];
-var MATERIAL_TYPE_HEADING = {
-  video: "Videos",
-  article: "Articles",
-  book: "Books",
-  exercise: "Exercises"
-};
+function triageSummary(resources) {
+  const count = (rank) => resources.filter(
+    (resource) => resource.scopeTriage === rank
+  ).length;
+  const required = count("required-now") + resources.filter((resource) => !resource.scopeTriage).length;
+  const stuck = count("helpful-now");
+  const preserved = count("deferred") + count("reference-only");
+  const parts = [];
+  if (required) parts.push(`${required} required`);
+  if (stuck) parts.push(`${stuck} if stuck`);
+  if (preserved) parts.push(`${preserved} preserved for depth/reference`);
+  return parts.join(" \xB7 ");
+}
+function currentWorkResource(resources) {
+  return resources.find(
+    (resource) => resource.scopeTriage === "required-now"
+  ) ?? resources.find(
+    (resource) => !resource.scopeTriage
+  ) ?? null;
+}
 var MATERIAL_TYPE_ICON = {
   video: "play",
   article: "file-text",
@@ -10235,10 +10246,6 @@ var MATERIAL_TYPE_ICON = {
   exercise: "pencil-line"
 };
 var angleDetailSequence = 0;
-function rankOf(value) {
-  const index = value ? TRIAGE_ORDER.indexOf(value) : -1;
-  return index < 0 ? 0 : index;
-}
 function materialTypeOf(resource, source) {
   if (resource.kind === "practise") return "exercise";
   if (resource.kind === "watch") return "video";
@@ -10248,18 +10255,105 @@ function materialTypeOf(resource, source) {
   if (declared === "book" || declared === "textbook") return "book";
   return "article";
 }
+function renderResourceRow(parent, resource, source, renderer) {
+  const materialType = materialTypeOf(resource, source);
+  const row3 = parent.createDiv({
+    cls: `los-resource-row los-triage-${resource.scopeTriage || "unranked"}`
+  });
+  icon(row3.createSpan(), MATERIAL_TYPE_ICON[materialType]);
+  const copy = row3.createDiv({ cls: "los-resource-copy" });
+  copy.createEl("strong", { text: resource.label });
+  const metadata = copy.createDiv({
+    cls: "los-resource-row-meta"
+  });
+  metadata.createSpan({
+    cls: `los-resource-priority los-resource-priority-${resource.scopeTriage || "unranked"}`,
+    text: isTriageRank(resource.scopeTriage) ? TRIAGE_HEADING[resource.scopeTriage] : resource.scopeTriage || "Primary \xB7 unranked"
+  });
+  if (resource.locator) {
+    metadata.createSpan({
+      cls: "los-micro los-resource-locator",
+      text: resource.locator
+    });
+  }
+  const angle = asText(resource.record.angle);
+  if (angle) {
+    copy.createDiv({
+      cls: "los-resource-angle",
+      text: angle
+    });
+  }
+  const angleDetail = asText(resource.record.angle_detail);
+  if (angleDetail) {
+    const detailId = `los-resource-angle-detail-${++angleDetailSequence}`;
+    const detail = copy.createDiv({
+      cls: "los-resource-angle-detail",
+      text: angleDetail,
+      attr: {
+        hidden: "",
+        id: detailId
+      }
+    });
+    const foot = copy.createDiv({ cls: "los-resource-foot" });
+    if (source) chip(foot, source, renderer.openSource);
+    let expanded = false;
+    const toggle = button(
+      foot,
+      "\u25B8 Why this one",
+      () => {
+        expanded = !expanded;
+        toggle.setText(`${expanded ? "\u25BE" : "\u25B8"} Why this one`);
+        toggle.setAttr("aria-expanded", String(expanded));
+        if (expanded) detail.removeAttribute("hidden");
+        else detail.setAttr("hidden", "");
+      },
+      "quiet"
+    );
+    toggle.addClass("los-resource-angle-trigger");
+    toggle.setAttrs({
+      "aria-controls": detailId,
+      "aria-expanded": "false"
+    });
+  } else if (source) {
+    chip(copy, source, renderer.openSource);
+  }
+  const actions = row3.createDiv({ cls: "los-actions los-resource-actions" });
+  if (resource.canOpen && renderer.openResource) {
+    button(actions, "Open", () => renderer.openResource?.(resource), "quiet");
+  } else if (source && hasDirectResourceTarget(source) && renderer.openSourceResource) {
+    button(
+      actions,
+      "Open source",
+      () => renderer.openSourceResource?.(source),
+      "quiet"
+    );
+  }
+  if (resource.sourceId && renderer.rateResource) {
+    const sourceId = resource.sourceId;
+    const resourceId = resource.id;
+    const rate = (verdict) => renderer.rateResource?.(
+      sourceId,
+      resourceId,
+      verdict
+    );
+    overflowMenu(actions, [
+      ["Helpful", () => rate("helpful")],
+      ["Too advanced", () => rate("too-advanced")],
+      ["Useful for review", () => rate("useful-for-review")]
+    ], resourceId ? `Rate ${resource.label}` : `Rate ${resource.label} (whole source)`);
+  }
+  return row3;
+}
 function renderStageResources(parent, resourcesValue, renderer) {
   const resources = section(parent, renderer.title ?? "Material catalogue");
-  resources.addClass(
-    "los-stage-resources"
-  );
+  resources.addClass("los-stage-resources");
   resources.createSpan({
     cls: "los-micro los-stage-resource-count",
     text: `${resourcesValue.length} ${resourcesValue.length === 1 ? "material" : "materials"}`
   });
   resources.createEl("p", {
     cls: "los-stage-resource-summary",
-    text: "Every material stays visible, grouped by type. Priority changes the order inside each group; each angle explains what the material covers."
+    text: "Every material stays visible, grouped by what this stage asks of it. The angle explains what each one covers; nothing here is ranked by quality."
   });
   if (!resourcesValue.length) {
     empty(
@@ -10269,133 +10363,302 @@ function renderStageResources(parent, resourcesValue, renderer) {
     );
     return resources;
   }
-  const grouped = /* @__PURE__ */ new Map();
+  const sourceFor = (resource) => resource.sourceId && renderer.sourceRecord ? renderer.sourceRecord(resource.sourceId) : null;
+  const buckets = /* @__PURE__ */ new Map();
   for (const resource of resourcesValue) {
-    const source = resource.sourceId && renderer.sourceRecord ? renderer.sourceRecord(resource.sourceId) : null;
-    const materialType = materialTypeOf(resource, source);
-    const entries = grouped.get(materialType);
-    const entry = { resource, source };
-    if (entries) entries.push(entry);
-    else grouped.set(materialType, [entry]);
+    const key = isTriageRank(resource.scopeTriage) ? resource.scopeTriage : "required-now";
+    const bucket = buckets.get(key);
+    if (bucket) bucket.push(resource);
+    else buckets.set(key, [resource]);
   }
-  for (const materialType of MATERIAL_TYPE_ORDER) {
-    const entries = grouped.get(materialType);
+  for (const rank of TRIAGE_ORDER) {
+    const entries = buckets.get(rank);
     if (!entries?.length) continue;
-    entries.sort(
-      (left, right) => rankOf(left.resource.scopeTriage) - rankOf(right.resource.scopeTriage)
-    );
     const group = resources.createDiv({
-      cls: `los-resource-type-group los-resource-type-${materialType}`
+      cls: `los-resource-triage-group los-resource-triage-${rank}`
     });
-    group.setAttr("aria-label", MATERIAL_TYPE_HEADING[materialType]);
+    group.setAttr("aria-label", TRIAGE_HEADING[rank]);
     const groupHeading = group.createDiv({
       cls: "los-resource-type-heading"
     });
     const headingCopy = groupHeading.createDiv({
       cls: "los-resource-type-heading-copy"
     });
-    icon(headingCopy.createSpan(), MATERIAL_TYPE_ICON[materialType]);
-    headingCopy.createEl("h3", {
-      text: MATERIAL_TYPE_HEADING[materialType]
-    });
+    headingCopy.createEl("h3", { text: TRIAGE_HEADING[rank] });
     groupHeading.createSpan({
       cls: "los-micro",
       text: `${entries.length} ${entries.length === 1 ? "material" : "materials"}`
     });
-    for (const { resource, source } of entries) {
-      const row3 = group.createDiv({
-        cls: `los-resource-row los-triage-${resource.scopeTriage || "unranked"}`
-      });
-      icon(row3.createSpan(), MATERIAL_TYPE_ICON[materialType]);
-      const copy = row3.createDiv({ cls: "los-resource-copy" });
-      copy.createEl("strong", { text: resource.label });
-      const metadata = copy.createDiv({
-        cls: "los-resource-row-meta"
-      });
-      metadata.createSpan({
-        cls: `los-resource-priority los-resource-priority-${resource.scopeTriage || "unranked"}`,
-        text: resource.scopeTriage ? TRIAGE_HEADING[resource.scopeTriage] || resource.scopeTriage : "Primary \xB7 unranked"
-      });
-      if (resource.locator) {
-        metadata.createSpan({
-          cls: "los-micro los-resource-locator",
-          text: resource.locator
-        });
-      }
-      const angle = asText(
-        resource.record.angle
-      );
-      if (angle) {
-        copy.createDiv({
-          cls: "los-resource-angle",
-          text: angle
-        });
-      }
-      const angleDetail = asText(
-        resource.record.angle_detail
-      );
-      if (angleDetail) {
-        const detailId = `los-resource-angle-detail-${++angleDetailSequence}`;
-        const detail = copy.createDiv({
-          cls: "los-resource-angle-detail",
-          text: angleDetail,
-          attr: {
-            hidden: "",
-            id: detailId
-          }
-        });
-        const foot = copy.createDiv({ cls: "los-resource-foot" });
-        if (source) chip(foot, source, renderer.openSource);
-        let expanded = false;
-        const toggle = button(
-          foot,
-          "\u25B8 Why this one",
-          () => {
-            expanded = !expanded;
-            toggle.setText(`${expanded ? "\u25BE" : "\u25B8"} Why this one`);
-            toggle.setAttr("aria-expanded", String(expanded));
-            if (expanded) detail.removeAttribute("hidden");
-            else detail.setAttr("hidden", "");
-          },
-          "quiet"
-        );
-        toggle.addClass("los-resource-angle-trigger");
-        toggle.setAttrs({
-          "aria-controls": detailId,
-          "aria-expanded": "false"
-        });
-      } else if (source) {
-        chip(copy, source, renderer.openSource);
-      }
-      const actions = row3.createDiv({ cls: "los-actions los-resource-actions" });
-      if (resource.canOpen && renderer.openResource) {
-        button(actions, "Open", () => renderer.openResource?.(resource), "quiet");
-      } else if (source && hasDirectResourceTarget(source) && renderer.openSourceResource) {
-        button(
-          actions,
-          "Open source",
-          () => renderer.openSourceResource?.(source),
-          "quiet"
-        );
-      }
-      if (resource.sourceId && renderer.rateResource) {
-        const sourceId = resource.sourceId;
-        const resourceId = resource.id;
-        const rate = (verdict) => renderer.rateResource?.(
-          sourceId,
-          resourceId,
-          verdict
-        );
-        overflowMenu(actions, [
-          ["Helpful", () => rate("helpful")],
-          ["Too advanced", () => rate("too-advanced")],
-          ["Useful for review", () => rate("useful-for-review")]
-        ], resourceId ? `Rate ${resource.label}` : `Rate ${resource.label} (whole source)`);
-      }
+    for (const resource of entries) {
+      renderResourceRow(group, resource, sourceFor(resource), renderer);
     }
   }
   return resources;
 }
+
+// src/features/unit/material-drawer.ts
+var import_obsidian15 = require("obsidian");
+var NEEDS = [
+  ["derivation", "Derivation"],
+  ["intuition", "Intuition"],
+  ["practice", "Practice"]
+];
+var PRACTICE_FORMATS = /* @__PURE__ */ new Set([
+  "exercise",
+  "practice",
+  "practise",
+  "problem-set",
+  "homework",
+  "quiz"
+]);
+function matchesNeed(option, need) {
+  const depth = option.depth.toLowerCase();
+  const format = option.format.toLowerCase();
+  if (need === "practice") {
+    return PRACTICE_FORMATS.has(format) || depth.includes("practice");
+  }
+  return depth.includes(need);
+}
+var MaterialComparisonModal = class extends import_obsidian15.Modal {
+  options;
+  need = "derivation";
+  restoreAccessibility = null;
+  /** Whether this draw is the first one, or a redraw after a lens switch. */
+  opening = true;
+  /** The lens control, so a redraw can hand focus back to the pressed tab. */
+  lensRow = null;
+  constructor(app, options) {
+    super(app);
+    this.options = options;
+  }
+  onOpen() {
+    this.options.plugin.router.openOverlay({
+      kind: "material-comparison",
+      unitId: this.options.unit.id,
+      stageId: this.options.stage.id
+    });
+    this.draw();
+  }
+  onClose() {
+    this.options.plugin.router.clearOverlay();
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+  }
+  /** Full redraw. The lens is the only state, and it changes rarely. */
+  draw() {
+    const root = this.contentEl;
+    const { unit, stage, resources, materialOptions, renderer } = this.options;
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    root.empty();
+    root.addClass("los-root", "los-material-drawer");
+    pageHeader(
+      root,
+      "Source comparison",
+      "Choose learning material",
+      "Every source stays available. Ranking changes with the learning need; provenance and locators do not.",
+      "los-material-drawer-heading"
+    );
+    this.lensRow = null;
+    if (materialOptions.length) this.renderNeedLenses(root);
+    renderStageResources(root, resources, {
+      ...renderer,
+      title: `Complete menu \xB7 ${resources.length} ${resources.length === 1 ? "material" : "materials"} for ${stage.title}`
+    });
+    root.createEl("p", {
+      cls: "los-micro los-material-drawer-note",
+      text: "A selection changes the current route only; it never deletes or hides the complete source record."
+    });
+    const actions = root.createDiv({ cls: "los-actions" });
+    const close = button(actions, "Close", () => this.close(), "quiet");
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--material-drawer",
+      labelledBy: "los-material-drawer-heading"
+    });
+    this.restoreFocus(close);
+    this.opening = true;
+    void unit;
+  }
+  /** Kept out of `draw()` so control-flow narrowing on `lensRow` does not
+   *  collapse the type the moment the field is reset for a redraw. */
+  restoreFocus(close) {
+    if (this.opening) {
+      close.focus();
+      return;
+    }
+    const tabs = Array.from(this.lensRow?.children ?? []);
+    const current = tabs.find(
+      (tab) => tab.getAttribute?.("aria-pressed") === "true"
+    );
+    (current ?? close).focus();
+  }
+  renderNeedLenses(root) {
+    const { materialOptions } = this.options;
+    const lens = root.createDiv({ cls: "los-material-need" });
+    lens.createSpan({ cls: "los-micro los-material-need-label", text: "I need" });
+    this.lensRow = filterTabs(
+      lens,
+      "Learning need",
+      NEEDS,
+      this.need,
+      (value) => {
+        this.need = value;
+        this.opening = false;
+        this.draw();
+      },
+      (value) => materialOptions.filter(
+        (option) => matchesNeed(option, value)
+      ).length
+    );
+    const matching = materialOptions.filter(
+      (option) => matchesNeed(option, this.need)
+    );
+    const label = NEEDS.find(([value]) => value === this.need)?.[1] ?? this.need;
+    const recommended = matching.find((option) => option.selected) ?? matching[0] ?? null;
+    if (recommended) {
+      this.renderRecommended(root, recommended, label);
+    } else {
+      empty(
+        root,
+        `No source is recorded as a ${label.toLowerCase()} route`,
+        "Every source for this unit is still listed below, under the angle its producer gave it."
+      );
+    }
+    const alternatives = materialOptions.filter(
+      (option) => option !== recommended
+    );
+    if (alternatives.length) this.renderAlternatives(root, alternatives);
+  }
+  /**
+   * Everything the design's contract says must survive the move: value, angle,
+   * exact locator, coverage, depth and scope. All six are producer-authored
+   * fields read back — the card ranks nothing and adds nothing.
+   */
+  renderRecommended(root, option, needLabel) {
+    const card = root.createDiv({ cls: "los-material-recommended" });
+    card.createDiv({
+      cls: "los-kicker",
+      text: `Recommended for ${needLabel.toLowerCase()}`
+    });
+    card.createEl("h3", { text: option.title });
+    if (option.angle) {
+      card.createEl("p", {
+        cls: "los-material-recommended-line",
+        text: `Value \xB7 ${option.angle}`
+      });
+    }
+    const detail = asText(option.record.angle_detail);
+    if (detail) {
+      card.createEl("p", {
+        cls: "los-material-recommended-line",
+        text: `Angle \xB7 ${detail}`
+      });
+    }
+    card.createEl("p", {
+      cls: "los-material-recommended-line",
+      text: `Depth \xB7 ${option.depth} \xB7 scope ${option.scope}`
+    });
+    if (option.locator) {
+      card.createEl("p", {
+        cls: "los-micro los-material-recommended-locator",
+        text: `Locator \xB7 ${option.locator}`
+      });
+    }
+    this.renderCoverage(card, option);
+    const actions = card.createDiv({ cls: "los-actions los-material-actions" });
+    this.renderChoose(actions, option);
+    if (option.canOpen) {
+      button(
+        actions,
+        "Open",
+        () => this.options.plugin.openResource(option.record),
+        "info"
+      );
+    }
+  }
+  /** Which knowledge-map nodes this route covers, by their authored titles. */
+  renderCoverage(card, option) {
+    const titleById = new Map(
+      this.options.unit.knowledgeNodes.map((node) => [node.id, node.title])
+    );
+    const labels = option.covers.map((id2) => titleById.get(id2)).filter((label) => Boolean(label));
+    if (!labels.length) return;
+    const covers = card.createDiv({ cls: "los-material-metadata" });
+    for (const label of labels) {
+      covers.createSpan({ cls: "los-knowledge-chip", text: label });
+    }
+  }
+  renderAlternatives(root, alternatives) {
+    const wrap = section(
+      root,
+      "Useful alternatives",
+      "Different angle \u2014 not duplicates."
+    );
+    const grid = wrap.createDiv({ cls: "los-material-alternatives" });
+    for (const option of alternatives) {
+      const card = grid.createDiv({ cls: "los-material-alternative" });
+      const serves = NEEDS.find(([value]) => matchesNeed(option, value))?.[1];
+      card.createDiv({
+        cls: "los-kicker",
+        text: serves ?? (option.scope || option.depth)
+      });
+      card.createEl("h4", { text: option.title });
+      if (option.angle) card.createEl("p", { text: option.angle });
+      if (option.locator) {
+        card.createEl("p", {
+          cls: "los-micro",
+          text: option.locator
+        });
+      }
+      this.renderCoverage(card, option);
+      const actions = card.createDiv({
+        cls: "los-actions los-material-actions"
+      });
+      this.renderChoose(actions, option);
+    }
+  }
+  /**
+   * The governed selection, unchanged.
+   *
+   * Same capability, same guard, same payload as the unit material menu has
+   * always sent — `unit.source-selection.set` carrying the route, source,
+   * locator and the angle as its purpose. The redesign moved where this button
+   * lives; it did not become a second way to write.
+   */
+  renderChoose(actions, option) {
+    if (!option.canChoose || !option.sourceId || !option.locator) return;
+    const { plugin, unit, expectedRevisions, onChanged } = this.options;
+    const choice = button(
+      actions,
+      option.selected ? "Remove choice" : "Choose",
+      () => {
+        void plugin.mutate(
+          () => plugin.gateway.sourceSelection(
+            unit.id,
+            option.routeId,
+            option.sourceId ?? "",
+            option.locator ?? "",
+            option.angle,
+            !option.selected,
+            expectedRevisions
+          )
+        ).then(() => {
+          new import_obsidian15.Notice(
+            option.selected ? "Material choice removed." : "Material chosen for this lecture."
+          );
+          onChanged();
+          this.close();
+        }).catch((error) => {
+          new import_obsidian15.Notice(error instanceof Error ? error.message : String(error));
+        });
+      },
+      "choice"
+    );
+    choice.setAttr("aria-pressed", option.selected ? "true" : "false");
+  }
+};
 
 // src/features/unit/stage.ts
 function renderStage(view, layout, unit, studyMap, stage) {
@@ -10531,8 +10794,7 @@ function renderStage(view, layout, unit, studyMap, stage) {
       });
     }
   }
-  renderStageResources(center, stage.resources, {
-    title: "Exact work",
+  const resourceRenderer = {
     emptyDetail: "Use the unit scope and ask AI for a proposal.",
     sourceRecord: (sourceId) => view.plugin.store.get(sourceId),
     openSource: (source) => {
@@ -10553,7 +10815,84 @@ function renderStage(view, layout, unit, studyMap, stage) {
         expectedRevisions
       )
     )
+  };
+  const current = currentWorkResource(stage.resources);
+  const requiredCount = stage.resources.filter(
+    (resource) => resource.scopeTriage === "required-now" || !resource.scopeTriage
+  ).length;
+  const work = center.createDiv({
+    cls: "los-section los-stage-section los-current-work"
   });
+  const workHeading = work.createDiv({
+    cls: "los-stage-section-heading"
+  });
+  workHeading.createEl("h2", { text: "Current work" });
+  if (requiredCount) {
+    workHeading.createSpan({
+      cls: "los-micro los-current-work-count",
+      text: `${requiredCount} required now`
+    });
+  }
+  if (current) {
+    const card = work.createDiv({ cls: "los-current-work-card" });
+    renderResourceRow(
+      card,
+      current,
+      current.sourceId ? view.plugin.store.get(current.sourceId) : null,
+      resourceRenderer
+    );
+  } else if (stage.resources.length) {
+    empty(
+      work,
+      "Nothing is marked required for this stage",
+      "The materials below are preserved for depth and reference. Open the comparison to choose where to start."
+    );
+  } else {
+    empty(
+      work,
+      "No source action selected",
+      "Use the unit scope and ask AI for a proposal."
+    );
+  }
+  if (stage.resources.length) {
+    const catalogue = center.createDiv({
+      cls: "los-section los-stage-materials"
+    });
+    const catalogueCopy = catalogue.createDiv({
+      cls: "los-stage-materials-copy"
+    });
+    catalogueCopy.createEl("h2", {
+      text: `All ${stage.resources.length} ${stage.resources.length === 1 ? "material" : "materials"}`
+    });
+    catalogueCopy.createSpan({
+      cls: "los-micro los-stage-materials-summary",
+      text: triageSummary(stage.resources)
+    });
+    const catalogueActions = catalogue.createDiv({
+      cls: "los-actions los-stage-materials-actions"
+    });
+    button(
+      catalogueActions,
+      "Compare all",
+      () => {
+        const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
+        new MaterialComparisonModal(view.app, {
+          plugin: view.plugin,
+          unit,
+          stage,
+          resources: stage.resources,
+          materialOptions: readMaterialOptions(
+            sourceMap?.sources,
+            unit.id,
+            unit.record.source_selections
+          ),
+          expectedRevisions,
+          renderer: resourceRenderer,
+          onChanged: () => view.render()
+        }).open();
+      }
+    );
+  }
   view.renderStageContext(
     center,
     unit,
@@ -10571,6 +10910,12 @@ function renderActionBar(view, root, unit, stage, expectedRevisions) {
   const bar = root.createDiv({
     cls: "los-unit-actionbar"
   });
+  if (stage.doneWhen.length) {
+    bar.createSpan({
+      cls: "los-micro los-unit-actionbar-rule",
+      text: stage.doneWhen.length === 1 ? "Finish only when the criterion above is true." : stage.doneWhen.length === 2 ? "Finish only when both criteria are true." : `Finish only when all ${stage.doneWhen.length} criteria are true.`
+    });
+  }
   button(
     bar,
     "Complete stage",
@@ -10667,8 +11012,8 @@ function renderActionBar(view, root, unit, stage, expectedRevisions) {
 }
 
 // src/features/unit/materials.ts
-var import_obsidian15 = require("obsidian");
-var MATERIAL_TYPE_ORDER2 = [
+var import_obsidian16 = require("obsidian");
+var MATERIAL_TYPE_ORDER = [
   "video",
   "article",
   "book",
@@ -10692,7 +11037,7 @@ function optionIcon(materialType) {
   if (materialType === "article") return "file-text";
   return "book-open";
 }
-function renderMaterialOverview(view, root, unit, options, synthesis) {
+function renderMaterialOverview(view, root, unit, options, synthesis, includeMenu = true) {
   const studyMap = view.plugin.store.mapForUnit(unit.id);
   const expectedRevisions = view.plugin.store.artifactGuard(
     unit.id,
@@ -10726,7 +11071,7 @@ function renderMaterialOverview(view, root, unit, options, synthesis) {
   if (synthesis) {
     renderMaterialSynthesis(view, root, synthesis, options);
   }
-  if (!options.length) return;
+  if (!options.length || !includeMenu) return;
   const materials = section(
     root,
     "Choose your learning material",
@@ -10741,7 +11086,7 @@ function renderMaterialOverview(view, root, unit, options, synthesis) {
     if (group) group.push(option);
     else grouped.set(materialType, [option]);
   }
-  for (const materialType of MATERIAL_TYPE_ORDER2) {
+  for (const materialType of MATERIAL_TYPE_ORDER) {
     if (!grouped.has(materialType)) continue;
     const group = materials.createDiv({
       cls: `los-material-group los-material-group-${materialType}`
@@ -10844,11 +11189,11 @@ function renderMaterialOverview(view, root, unit, options, synthesis) {
                   expectedRevisions
                 )
               ).then(
-                () => new import_obsidian15.Notice(
+                () => new import_obsidian16.Notice(
                   option.selected ? "Material choice removed." : "Material chosen for this lecture."
                 )
               ).catch(
-                (error) => new import_obsidian15.Notice(
+                (error) => new import_obsidian16.Notice(
                   error instanceof Error ? error.message : String(error)
                 )
               );
@@ -11077,8 +11422,8 @@ function renderLearningRouteRail(parent, options) {
 }
 
 // src/features/unit/map-import.ts
-var import_obsidian16 = require("obsidian");
-var UnitMapImportModal = class extends import_obsidian16.Modal {
+var import_obsidian17 = require("obsidian");
+var UnitMapImportModal = class extends import_obsidian17.Modal {
   constructor(app, options) {
     super(app);
     this.options = options;
@@ -11267,14 +11612,15 @@ function render(view) {
     unit.id
   );
   const hasMaterialOverview = unit.knowledgeNodes.length > 0 || materialOptions.length > 0 || materialSynthesis !== null;
-  const renderMaterials = () => {
+  const renderMaterials = (includeMenu = true) => {
     if (!hasMaterialOverview) return;
     renderMaterialOverview(
       view,
       root,
       unit,
       materialOptions,
-      materialSynthesis
+      materialSynthesis,
+      includeMenu
     );
   };
   const projectedStudyMap = view.plugin.store.mapForUnit(
@@ -11369,7 +11715,7 @@ function render(view) {
     studyMap,
     stage
   );
-  renderMaterials();
+  renderMaterials(false);
   const more = disclosure(
     root,
     "Unit artifacts and evidence",
@@ -11488,8 +11834,8 @@ function renderRail(view, layout, unit, studyMap, current) {
 }
 
 // src/views/unit-view.ts
-var import_obsidian17 = require("obsidian");
-var UnitView = class extends import_obsidian17.ItemView {
+var import_obsidian18 = require("obsidian");
+var UnitView = class extends import_obsidian18.ItemView {
   plugin;
   unitId;
   stageId;
@@ -11565,13 +11911,13 @@ var UnitView = class extends import_obsidian17.ItemView {
    */
   async mutate(action, onConfirmed = null) {
     if (this.mutationPending) {
-      new import_obsidian17.Notice(
+      new import_obsidian18.Notice(
         "A LearningOS write is already running."
       );
       return;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian17.Notice(
+      new import_obsidian18.Notice(
         "Queued behind the running LearningOS write."
       );
     }
@@ -11583,7 +11929,7 @@ var UnitView = class extends import_obsidian17.ItemView {
       onConfirmed?.();
       this.render();
     } catch (error) {
-      new import_obsidian17.Notice(
+      new import_obsidian18.Notice(
         errorMessage3(error)
       );
     } finally {
@@ -11593,7 +11939,7 @@ var UnitView = class extends import_obsidian17.ItemView {
   async selectStage(stageId) {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian17.Notice(
+      new import_obsidian18.Notice(
         "This unit is no longer available."
       );
       return;
@@ -11675,11 +12021,11 @@ function detachApplication(plugin) {
 }
 
 // src/app/navigator.ts
-var import_obsidian19 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 
 // src/app/global-search.ts
-var import_obsidian18 = require("obsidian");
-var GlobalSearchModal = class extends import_obsidian18.Modal {
+var import_obsidian19 = require("obsidian");
+var GlobalSearchModal = class extends import_obsidian19.Modal {
   plugin;
   query;
   filter;
@@ -12062,7 +12408,7 @@ var AppNavigator = class {
    */
   openFullTextSearch() {
     const ok = this.app.commands?.executeCommandById?.("omnisearch:show-modal");
-    if (!ok) new import_obsidian19.Notice("Omnisearch is unavailable; structural Library search still works.");
+    if (!ok) new import_obsidian20.Notice("Omnisearch is unavailable; structural Library search still works.");
   }
 };
 
@@ -12391,8 +12737,8 @@ var ApplicationRouter = class {
 };
 
 // src/app/unit-note-modal.ts
-var import_obsidian20 = require("obsidian");
-var UnitNoteModal = class extends import_obsidian20.Modal {
+var import_obsidian21 = require("obsidian");
+var UnitNoteModal = class extends import_obsidian21.Modal {
   plugin;
   unit;
   studyMap;
@@ -12529,25 +12875,25 @@ var UnitNoteModal = class extends import_obsidian20.Modal {
   async save() {
     const text5 = String(this.editor?.value || "");
     if (!text5.trim()) {
-      new import_obsidian20.Notice("Write a note before saving.");
+      new import_obsidian21.Notice("Write a note before saving.");
       this.editor?.focus();
       return;
     }
     if (this.saving) {
-      new import_obsidian20.Notice("This note is already being saved.");
+      new import_obsidian21.Notice("This note is already being saved.");
       return;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian20.Notice("Queued behind the running LearningOS write.");
+      new import_obsidian21.Notice("Queued behind the running LearningOS write.");
     }
     const unitId = this.unit.id;
     if (!unitId) {
-      new import_obsidian20.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
+      new import_obsidian21.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
       return;
     }
     const filePaths = this.files.map((file) => localFilePath(file)).filter((value) => Boolean(value));
     if (filePaths.length !== this.files.length) {
-      new import_obsidian20.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
+      new import_obsidian21.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
       return;
     }
     this.saving = true;
@@ -12559,10 +12905,10 @@ var UnitNoteModal = class extends import_obsidian20.Modal {
         filePaths
       }, this.expectedRevisions));
       this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds, sent);
-      new import_obsidian20.Notice("Learning-session note saved.");
+      new import_obsidian21.Notice("Learning-session note saved.");
       this.close();
     } catch (error) {
-      new import_obsidian20.Notice(errorMessage(error));
+      new import_obsidian21.Notice(errorMessage(error));
     } finally {
       this.saving = false;
     }
@@ -12576,7 +12922,7 @@ var UnitNoteModal = class extends import_obsidian20.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:ea01b8afb49c45ec61c116a869b5547b1996d1b0cc1e4b3756f11187f11e3e0a" : "unavailable";
+  return true ? "sha256:e2d72abee3b74663f657943d32d11758b4926d9e30ff4b6fe4fddb54c1be82dd" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 8 : 0;
@@ -13324,7 +13670,7 @@ var LosRuntime = class {
 var import_electron2 = require("electron");
 var fs3 = __toESM(require("node:fs"));
 var nodePath3 = __toESM(require("node:path"));
-var import_obsidian21 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 var CODE_EXTENSIONS = /* @__PURE__ */ new Set([
   ".c",
   ".cc",
@@ -13405,7 +13751,7 @@ var ResourceOpener = class {
   async openVaultPath(path) {
     const target = normalizedVaultPath(path);
     if (!target || target.startsWith("/") || target.split("/").includes("..")) {
-      new import_obsidian21.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return void 0;
     }
     const candidate = nodePath3.resolve(this.app.vault.adapter.getBasePath(), target);
@@ -13413,7 +13759,7 @@ var ResourceOpener = class {
       try {
         fs3.realpathSync(candidate);
       } catch (_) {
-        new import_obsidian21.Notice(`File unavailable: ${target}`);
+        new import_obsidian22.Notice(`File unavailable: ${target}`);
         return void 0;
       }
       const realPath = resolvedWithin(
@@ -13421,13 +13767,13 @@ var ResourceOpener = class {
         candidate
       );
       if (!realPath) {
-        new import_obsidian21.Notice(`Unsafe vault symlink refused: ${target}`);
+        new import_obsidian22.Notice(`Unsafe vault symlink refused: ${target}`);
         return void 0;
       }
     }
     const file = this.app.vault.getAbstractFileByPath(target);
     if (!file) {
-      new import_obsidian21.Notice(`File unavailable: ${target}`);
+      new import_obsidian22.Notice(`File unavailable: ${target}`);
       return void 0;
     }
     let existing = null;
@@ -13451,19 +13797,19 @@ var ResourceOpener = class {
   async openSystemPath(path, successMessage) {
     const error = await import_electron2.shell.openPath(path);
     if (error) {
-      new import_obsidian21.Notice(`Could not open file: ${error}`);
+      new import_obsidian22.Notice(`Could not open file: ${error}`);
       return false;
     }
-    new import_obsidian21.Notice(successMessage);
+    new import_obsidian22.Notice(successMessage);
     return true;
   }
   async openCodePath(path) {
     try {
       await import_electron2.shell.openExternal(visualStudioCodeUrl(path));
-      new import_obsidian21.Notice("Opened in Visual Studio Code.");
+      new import_obsidian22.Notice("Opened in Visual Studio Code.");
       return true;
     } catch (_) {
-      new import_obsidian21.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
+      new import_obsidian22.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
       return this.openSystemPath(path, "Opened in the system app.");
     }
   }
@@ -13472,21 +13818,21 @@ var ResourceOpener = class {
     try {
       realPath = fs3.realpathSync(path);
     } catch (_) {
-      new import_obsidian21.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return Promise.resolve(false);
     }
     return this.isCodePath(realPath) ? this.openCodePath(realPath) : this.openSystemPath(realPath, systemMessage);
   }
   async openExternalPath(path, successMessage = "Opened in the default app.") {
     if (!path || !fs3.existsSync(path)) {
-      new import_obsidian21.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     let realPath = "";
     try {
       realPath = fs3.realpathSync(path);
     } catch (_) {
-      new import_obsidian21.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     return this.openSystemPath(realPath, successMessage);
@@ -13498,12 +13844,12 @@ var ResourceOpener = class {
     const fullPath = nodePath3.resolve(learningRoot, path || "");
     const relative2 = nodePath3.relative(materialsRoot, fullPath);
     if (!path || relative2.startsWith("..") || nodePath3.isAbsolute(relative2)) {
-      new import_obsidian21.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
       return false;
     }
     const realPath = resolvedWithin(materialsRoot, fullPath);
     if (!realPath) {
-      new import_obsidian21.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openExternalPath(realPath, "Opened the local material in its default app.");
@@ -13515,16 +13861,16 @@ var ResourceOpener = class {
     const fullPath = nodePath3.resolve(base, path || "");
     const relative2 = nodePath3.relative(base, fullPath);
     if (!path || relative2.startsWith("..") || nodePath3.isAbsolute(relative2)) {
-      new import_obsidian21.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return false;
     }
     if (!fs3.existsSync(fullPath)) {
-      new import_obsidian21.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     const realPath = resolvedWithin(base, fullPath);
     if (!realPath) {
-      new import_obsidian21.Notice(`Unsafe vault symlink refused: ${path || "unknown path"}`);
+      new import_obsidian22.Notice(`Unsafe vault symlink refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openPreferredLocalPath(
@@ -13547,29 +13893,29 @@ var ResourceOpener = class {
     if (resource.url) {
       const url = safeWebUrl(resource.url);
       if (!url) {
-        new import_obsidian21.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
+        new import_obsidian22.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
         return false;
       }
       return Promise.resolve(import_electron2.shell.openExternal(url.href)).catch(() => {
-        new import_obsidian21.Notice("Could not open the link in your browser.");
+        new import_obsidian22.Notice("Could not open the link in your browser.");
         return false;
       });
     }
     if (materialPath.trim()) {
-      new import_obsidian21.Notice(resource.material_exists === false ? `File unavailable: ${materialPath.trim()}` : "Choose an exact file from this material collection.");
+      new import_obsidian22.Notice(resource.material_exists === false ? `File unavailable: ${materialPath.trim()}` : "Choose an exact file from this material collection.");
     } else if (vaultPath.trim().toLowerCase().startsWith("material://")) {
-      new import_obsidian21.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
+      new import_obsidian22.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
     } else if (vaultPath.trim()) {
-      new import_obsidian21.Notice("Choose an exact file from this vault collection.");
+      new import_obsidian22.Notice("Choose an exact file from this vault collection.");
     }
     return false;
   }
   copyText(value) {
     try {
       void navigator.clipboard.writeText(value);
-      new import_obsidian21.Notice(`Copied ${value}`);
+      new import_obsidian22.Notice(`Copied ${value}`);
     } catch (_) {
-      new import_obsidian21.Notice(value);
+      new import_obsidian22.Notice(value);
     }
   }
 };
@@ -14033,7 +14379,7 @@ function settingsCoordinator(vaultRoot) {
 function cloneSettings(settings) {
   return JSON.parse(JSON.stringify(settings));
 }
-var LearningOSUI = class extends import_obsidian22.Plugin {
+var LearningOSUI = class extends import_obsidian23.Plugin {
   lastAiPrompt = "";
   /** Set when startup found an unusable record; the app registers read-only. */
   recoveryBlocked = false;
@@ -14119,7 +14465,7 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
   /** Every Notice the gateway and recovery paths raise goes through here. */
   notify(message) {
     if (!this.isLifecycleActive()) return;
-    new import_obsidian22.Notice(message);
+    new import_obsidian23.Notice(message);
   }
   /**
    * Finish, or refuse to finish, whatever the last session left in flight.
@@ -14254,11 +14600,11 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
    */
   async retryRecoveredWrite() {
     if (!this.recovery.unresolved) {
-      new import_obsidian22.Notice("There is no unresolved Gateway write.");
+      new import_obsidian23.Notice("There is no unresolved Gateway write.");
       return;
     }
     if (this.recovery.state.kind === "malformed") {
-      new import_obsidian22.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
+      new import_obsidian23.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
       return;
     }
     try {
@@ -14269,10 +14615,10 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
         await this.finishConfirmedWrite(confirmation);
       });
       this.recoveryBlocked = this.recovery.unresolved;
-      new import_obsidian22.Notice("The recovered Gateway write is settled.");
+      new import_obsidian23.Notice("The recovered Gateway write is settled.");
     } catch (error) {
       this.recoveryBlocked = this.recovery.unresolved;
-      new import_obsidian22.Notice(errorMessage4(error));
+      new import_obsidian23.Notice(errorMessage4(error));
     }
   }
   /**
@@ -14341,7 +14687,7 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
     let rebuildSucceeded = false;
     let rebuildError = null;
     if (observed !== confirmation.snapshot_after) {
-      new import_obsidian22.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
+      new import_obsidian23.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
       try {
         await this.gateway.call(["generate"], { expectJson: false });
         rebuildSucceeded = true;
@@ -14366,7 +14712,7 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
       );
     }
     if (observed !== confirmation.snapshot_after) {
-      new import_obsidian22.Notice("Recovered the prior write; newer canonical changes are also present.");
+      new import_obsidian23.Notice("Recovered the prior write; newer canonical changes are also present.");
     }
     await this.recovery.settleConfirmed();
   }
@@ -14427,7 +14773,7 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
    * draft stays intact for one deliberate reconciliation and retry.
    */
   async refreshAfterConflict() {
-    new import_obsidian22.Notice("Canonical files changed since this view loaded \u2014 refreshing them. Your draft was kept; review it before retrying.");
+    new import_obsidian23.Notice("Canonical files changed since this view loaded \u2014 refreshing them. Your draft was kept; review it before retrying.");
     await this.gateway.call(["generate"], { expectJson: false });
     await this.reloadStore();
   }
@@ -14437,9 +14783,9 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
         await this.gateway.call(["validate"], { expectJson: false });
         await this.gateway.call(["generate"], { expectJson: false });
       });
-      new import_obsidian22.Notice("LearningOS projection rebuilt.");
+      new import_obsidian23.Notice("LearningOS projection rebuilt.");
     } catch (error) {
-      new import_obsidian22.Notice(errorMessage4(error));
+      new import_obsidian23.Notice(errorMessage4(error));
     }
   }
   async reviewSessionEnd() {
@@ -14450,7 +14796,7 @@ var LearningOSUI = class extends import_obsidian22.Plugin {
       new SessionEndModal(this.app, this, review).open();
       return review;
     } catch (error) {
-      new import_obsidian22.Notice(errorMessage4(error));
+      new import_obsidian23.Notice(errorMessage4(error));
       return null;
     }
   }
@@ -14508,7 +14854,7 @@ The active file is supplementary context only. Use only action-specific Learning
     if (agent?.sendToChat) await agent.sendToChat(prompt);
     else {
       this.copyText(prompt);
-      new import_obsidian22.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
+      new import_obsidian23.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
     }
     return prompt;
   }
