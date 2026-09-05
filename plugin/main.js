@@ -9720,9 +9720,6 @@ function renderRail(view, layout, unit, studyMap, current) {
       }
     );
   }
-  const stageRecords = studyMap.stages.map(
-    (stage) => stage.record
-  );
   const add = button(
     rail,
     "Add note",
@@ -9735,10 +9732,7 @@ function renderRail(view, layout, unit, studyMap, current) {
   add.addClass(
     "los-add-unit-note"
   );
-  const draft = view.plugin.getUnitNoteDraft(
-    unit.id,
-    stageRecords
-  );
+  const draft = view.plugin.getUnitNoteDraft(unit.id);
   if (typeof draft.text === "string" && draft.text.trim()) {
     rail.createDiv({
       cls: "los-micro los-unit-note-draft",
@@ -10655,7 +10649,6 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
   unit;
   studyMap;
   files = [];
-  recoveredStageIds = [];
   referencedStageIds = [];
   titleInput;
   editor;
@@ -10679,17 +10672,10 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
       return;
     }
     const stages = asRecords(this.studyMap?.stages);
-    const draft = this.plugin.getUnitNoteDraft(unitId, stages);
-    const recoveredStageIds = Array.isArray(
-      draft.recoveredStageIds
-    ) ? draft.recoveredStageIds.filter(
-      (id) => typeof id === "string"
-    ) : [];
-    this.recoveredStageIds = recoveredStageIds;
+    const draft = this.plugin.getUnitNoteDraft(unitId);
     this.referencedStageIds = [
       .../* @__PURE__ */ new Set([
-        ...this.unrecordedCompletedStages(stages),
-        ...recoveredStageIds
+        ...this.unrecordedCompletedStages(stages)
       ])
     ];
     pageHeader(
@@ -10794,7 +10780,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
         stageIds: this.referencedStageIds,
         filePaths
       }));
-      this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds);
+      this.plugin.clearUnitNoteDraft(unitId);
       new import_obsidian21.Notice("Learning-session note saved.");
       this.close();
     } catch (error) {
@@ -10811,7 +10797,6 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 // src/application/draft-store.ts
 function emptyUiDrafts() {
   return {
-    stages: {},
     unitNotes: {},
     selectedStages: {},
     inbox: { title: "", text: "" },
@@ -10821,7 +10806,6 @@ function emptyUiDrafts() {
 function normalizeUiDrafts(value) {
   const empty2 = emptyUiDrafts();
   return {
-    stages: value?.stages ?? empty2.stages,
     unitNotes: value?.unitNotes ?? empty2.unitNotes,
     selectedStages: value?.selectedStages ?? empty2.selectedStages,
     inbox: value?.inbox ?? empty2.inbox,
@@ -10848,36 +10832,11 @@ var DraftStore = class {
   stageKey(unitId, stageId) {
     return `${unitId}::${stageId}`;
   }
-  getStage(unitId, stageId, savedText = "") {
-    const entry = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-    return { text: entry?.text ?? savedText, dirty: entry != null && entry.text !== savedText };
-  }
-  setStage(unitId, stageId, text, savedText = "") {
-    const key = this.stageKey(unitId, stageId);
-    if (text === savedText) delete this.settings.uiDrafts.stages[key];
-    else this.settings.uiDrafts.stages[key] = { text };
-    this.scheduleSave();
-  }
-  clearStage(unitId, stageId) {
-    delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-    this.scheduleSave();
-  }
-  getUnitNote(unitId, stages = []) {
+  getUnitNote(unitId) {
     const saved = this.settings.uiDrafts.unitNotes[unitId];
-    const recovered = [];
-    for (const stage of stages) {
-      const stageId = asString(stage.id);
-      if (!stageId) continue;
-      const entry = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-      if (entry?.text?.trim()) recovered.push({ id: stageId, title: asLabel(stage, stageId), text: entry.text });
-    }
-    const recoveredText = recovered.map((row) => `### ${row.title}
-
-${row.text.trim()}`).join("\n\n");
     return {
-      title: saved?.title || (recovered.length ? "Recovered stage drafts" : ""),
-      text: [String(saved?.text || "").trim(), recoveredText].filter(Boolean).join("\n\n"),
-      recoveredStageIds: recovered.map((row) => row.id)
+      title: saved?.title || "",
+      text: String(saved?.text || "").trim()
     };
   }
   setUnitNote(unitId, title, text) {
@@ -10885,11 +10844,8 @@ ${row.text.trim()}`).join("\n\n");
     else this.settings.uiDrafts.unitNotes[unitId] = { title, text };
     this.scheduleSave();
   }
-  clearUnitNote(unitId, recoveredStageIds = []) {
+  clearUnitNote(unitId) {
     delete this.settings.uiDrafts.unitNotes[unitId];
-    for (const stageId of recoveredStageIds) {
-      delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-    }
     this.scheduleSave();
   }
   getSelectedStage(unitId) {
@@ -11950,29 +11906,14 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
   scheduleDraftSave() {
     this.drafts.scheduleSave();
   }
-  /*
-   * `stageDraftKey`, `getStageDraft`, `setStageDraft` and `clearStageDraft`
-   * were four pass-throughs to DraftStore that nothing called — no view, no
-   * feature module, no test, and no entry in any host `Pick<>`. Removed
-   * 2026-08-21 (item 11).
-   *
-   * Worth knowing what their absence reveals rather than just deleting them:
-   * they were the only callers of `DraftStore.getStage/setStage/clearStage`,
-   * so nothing in the app writes a stage draft any more. `getUnitNote` still
-   * reads `uiDrafts.stages` to recover unsaved stage text into a unit note,
-   * which means that recovery path now reads a bag that is always empty. That
-   * is either a feature that was retired without removing its reader, or a
-   * regression from an earlier extraction. It is a behavioural question, not a
-   * mechanical one, so it is left for Aram rather than guessed at here.
-   */
-  getUnitNoteDraft(unitId, stages = []) {
-    return this.drafts.getUnitNote(unitId, stages);
+  getUnitNoteDraft(unitId) {
+    return this.drafts.getUnitNote(unitId);
   }
   setUnitNoteDraft(unitId, title, text) {
     this.drafts.setUnitNote(unitId, title, text);
   }
-  clearUnitNoteDraft(unitId, recoveredStageIds = []) {
-    this.drafts.clearUnitNote(unitId, recoveredStageIds);
+  clearUnitNoteDraft(unitId) {
+    this.drafts.clearUnitNote(unitId);
   }
   openUnitNote(unit, studyMap) {
     const modal = new UnitNoteModal(this.app, this, unit, studyMap);

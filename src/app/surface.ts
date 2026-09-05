@@ -103,9 +103,9 @@ export interface AppSurface {
     checked: boolean,
   ): void;
   clearDoneWhen(unitId: string, stageId: string): void;
-  getUnitNoteDraft(unitId: string, stages?: ProjectionRecord[]): UnitNoteDraft;
+  getUnitNoteDraft(unitId: string): UnitNoteDraft;
   setUnitNoteDraft(unitId: string, title: string, text: string): void;
-  clearUnitNoteDraft(unitId: string, recoveredStageIds?: readonly string[]): void;
+  clearUnitNoteDraft(unitId: string): void;
   openUnitNote(
     unit: ProjectionRecord,
     studyMap: ProjectionRecord | null,
