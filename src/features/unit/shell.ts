@@ -368,11 +368,6 @@ export function renderRail(
       );
     }
 
-    const stageRecords =
-      studyMap.stages.map(
-        (stage) => stage.record,
-      );
-
     const add = button(
       rail,
       'Add note',
@@ -387,11 +382,7 @@ export function renderRail(
       'los-add-unit-note',
     );
 
-    const draft =
-      view.plugin.getUnitNoteDraft(
-        unit.id,
-        stageRecords,
-      );
+    const draft = view.plugin.getUnitNoteDraft(unit.id);
 
     if (
       typeof draft.text === 'string'

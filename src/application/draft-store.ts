@@ -1,23 +1,11 @@
-import type { ProjectionRecord } from '../contracts/manifest';
-import { asLabel, asString } from '../projection/readers';
-
-export interface RecoveredStageDraft {
-  readonly id: string;
-  readonly title: string;
-  readonly text: string;
-}
-
 export interface UnitNoteDraft {
   readonly title: string;
   readonly text: string;
-  readonly recoveredStageIds: string[];
 }
 
-interface StageDraft { text: string; }
 interface UnitDraft { title: string; text: string; }
 
 export interface LearningOSUiDrafts {
-  stages: Record<string, StageDraft>;
   unitNotes: Record<string, UnitDraft>;
   selectedStages: Record<string, string>;
   inbox: { title: string; text: string };
@@ -30,7 +18,6 @@ export interface DraftSettingsHost {
 
 export function emptyUiDrafts(): LearningOSUiDrafts {
   return {
-    stages: {},
     unitNotes: {},
     selectedStages: {},
     inbox: { title: '', text: '' },
@@ -41,7 +28,6 @@ export function emptyUiDrafts(): LearningOSUiDrafts {
 export function normalizeUiDrafts(value: Partial<LearningOSUiDrafts> | null | undefined): LearningOSUiDrafts {
   const empty = emptyUiDrafts();
   return {
-    stages: value?.stages ?? empty.stages,
     unitNotes: value?.unitNotes ?? empty.unitNotes,
     selectedStages: value?.selectedStages ?? empty.selectedStages,
     inbox: value?.inbox ?? empty.inbox,
@@ -75,38 +61,11 @@ export class DraftStore {
     return `${unitId}::${stageId}`;
   }
 
-  getStage(unitId: string, stageId: string, savedText = ''): { text: string; dirty: boolean } {
-    const entry = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-    return { text: entry?.text ?? savedText, dirty: entry != null && entry.text !== savedText };
-  }
-
-  setStage(unitId: string, stageId: string, text: string, savedText = ''): void {
-    const key = this.stageKey(unitId, stageId);
-    if (text === savedText) delete this.settings.uiDrafts.stages[key];
-    else this.settings.uiDrafts.stages[key] = { text };
-    this.scheduleSave();
-  }
-
-  clearStage(unitId: string, stageId: string): void {
-    delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-    this.scheduleSave();
-  }
-
-  getUnitNote(unitId: string, stages: readonly ProjectionRecord[] = []): UnitNoteDraft {
+  getUnitNote(unitId: string): UnitNoteDraft {
     const saved = this.settings.uiDrafts.unitNotes[unitId];
-    const recovered: RecoveredStageDraft[] = [];
-    for (const stage of stages) {
-      const stageId = asString(stage.id);
-      if (!stageId) continue;
-      const entry = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-      if (entry?.text?.trim()) recovered.push({ id: stageId, title: asLabel(stage, stageId), text: entry.text });
-    }
-    const recoveredText = recovered
-      .map((row) => `### ${row.title}\n\n${row.text.trim()}`).join('\n\n');
     return {
-      title: saved?.title || (recovered.length ? 'Recovered stage drafts' : ''),
-      text: [String(saved?.text || '').trim(), recoveredText].filter(Boolean).join('\n\n'),
-      recoveredStageIds: recovered.map((row) => row.id),
+      title: saved?.title || '',
+      text: String(saved?.text || '').trim(),
     };
   }
 
@@ -116,11 +75,8 @@ export class DraftStore {
     this.scheduleSave();
   }
 
-  clearUnitNote(unitId: string, recoveredStageIds: readonly string[] = []): void {
+  clearUnitNote(unitId: string): void {
     delete this.settings.uiDrafts.unitNotes[unitId];
-    for (const stageId of recoveredStageIds) {
-      delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-    }
     this.scheduleSave();
   }
 

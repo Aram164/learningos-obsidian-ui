@@ -25,7 +25,6 @@ export class UnitNoteModal extends Modal {
   private readonly studyMap: ProjectionRecord | null;
 
   private files: File[] = [];
-  private recoveredStageIds: string[] = [];
   private referencedStageIds: string[] = [];
 
   private titleInput!: HTMLInputElement;
@@ -57,19 +56,10 @@ export class UnitNoteModal extends Modal {
       return;
     }
     const stages = asRecords(this.studyMap?.stages);
-    const draft = this.plugin.getUnitNoteDraft(unitId, stages);
-    const recoveredStageIds: string[] = Array.isArray(
-      draft.recoveredStageIds,
-    )
-      ? draft.recoveredStageIds.filter(
-        (id: unknown): id is string => typeof id === 'string',
-      )
-      : [];
-    this.recoveredStageIds = recoveredStageIds;
+    const draft = this.plugin.getUnitNoteDraft(unitId);
     this.referencedStageIds = [
       ...new Set<string>([
         ...this.unrecordedCompletedStages(stages),
-        ...recoveredStageIds,
       ]),
     ];
 
@@ -178,7 +168,7 @@ export class UnitNoteModal extends Modal {
       await this.plugin.mutate(() => this.plugin.gateway.saveUnitNote(unitId, {
         title: this.titleInput?.value || '', text, stageIds: this.referencedStageIds, filePaths,
       }));
-      this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds);
+      this.plugin.clearUnitNoteDraft(unitId);
       new Notice('Learning-session note saved.');
       this.close();
     } catch (error: unknown) {

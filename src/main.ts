@@ -95,26 +95,8 @@ export class LearningOSUI extends Plugin implements AppSurface {
     this.drafts.scheduleSave();
   }
 
-  /*
-   * `stageDraftKey`, `getStageDraft`, `setStageDraft` and `clearStageDraft`
-   * were four pass-throughs to DraftStore that nothing called — no view, no
-   * feature module, no test, and no entry in any host `Pick<>`. Removed
-   * 2026-08-21 (item 11).
-   *
-   * Worth knowing what their absence reveals rather than just deleting them:
-   * they were the only callers of `DraftStore.getStage/setStage/clearStage`,
-   * so nothing in the app writes a stage draft any more. `getUnitNote` still
-   * reads `uiDrafts.stages` to recover unsaved stage text into a unit note,
-   * which means that recovery path now reads a bag that is always empty. That
-   * is either a feature that was retired without removing its reader, or a
-   * regression from an earlier extraction. It is a behavioural question, not a
-   * mechanical one, so it is left for Aram rather than guessed at here.
-   */
-  getUnitNoteDraft(
-    unitId: string,
-    stages: ProjectionRecord[] = [],
-  ): UnitNoteDraft {
-    return this.drafts.getUnitNote(unitId, stages);
+  getUnitNoteDraft(unitId: string): UnitNoteDraft {
+    return this.drafts.getUnitNote(unitId);
   }
   setUnitNoteDraft(
     unitId: string,
@@ -123,11 +105,8 @@ export class LearningOSUI extends Plugin implements AppSurface {
   ): void {
     this.drafts.setUnitNote(unitId, title, text);
   }
-  clearUnitNoteDraft(
-    unitId: string,
-    recoveredStageIds: readonly string[] = [],
-  ): void {
-    this.drafts.clearUnitNote(unitId, recoveredStageIds);
+  clearUnitNoteDraft(unitId: string): void {
+    this.drafts.clearUnitNote(unitId);
   }
   openUnitNote(
     unit: ProjectionRecord,
