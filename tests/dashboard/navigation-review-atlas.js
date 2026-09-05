@@ -114,7 +114,14 @@ module.exports = async function run() {
     const atlas = app.workspace.getLeavesOfType(VIEW.atlas)[0]?.view;
     check('Concept atlas navigation opens the atlas view, not a Markdown wall',
       Boolean(atlas) && !app.workspace.opened.includes('generated/domain-atlas.md'));
-    atlas.contentEl.findText('los-btn', 'Open generated domain map').fire('click'); await tick();
+    /* ADR-016 moved the generated map behind the Diagnostics corpus lens: it is
+     * a secondary view (decision 10), not the thing the screen opens on. It is
+     * still one control away from the entry state, and still reachable. */
+    atlas.contentEl.findText('los-atlas-record', 'Diagnostics').fire('click');
+    await tick();
+    app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl
+      .findText('los-btn', 'Open generated domain map').fire('click');
+    await tick();
     check('the generated atlas file stays reachable from the view',
       app.workspace.opened.includes('generated/domain-atlas.md'));
     plugin.onunload();
@@ -436,49 +443,141 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
-  heading('module by concept atlas');
+  /* ADR-016 retired the Module x Concept crossing as the Atlas default; ADR-015
+   * decision 5 went with it. What replaced it is a focused prerequisite graph,
+   * so what is checked here is the focused graph's own behaviour rather than a
+   * renamed version of the crossing's. The crossing itself survives as the
+   * Cross-module bridges lens and is covered there. */
+  heading('focused prerequisite atlas');
   {
     const { app, plugin } = await boot();
     await plugin.nav.openAtlas();
-    const view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    let view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
     let text = view.contentEl.allText();
-    check('the Atlas defaults to concepts shared across modules',
-      text.includes('Module × Concept atlas')
-      && text.includes('Bayes theorem')
-      && !text.includes('Conditional probability'));
-    check('every module stays visible, including a module with zero mapped concepts',
-      text.includes('AMLF') && text.includes('M2F') && text.includes('Python')
-      && view.contentEl.find('los-crossing-col').length === 3);
-    check('the shared crossing has one row and two evidence-backed cells',
-      view.contentEl.find('los-crossing-row').length === 1
-      && view.contentEl.find('is-filled').length === 2);
 
-    view.contentEl.findText('los-filter-tab', 'All concepts').fire('click');
+    check('the Atlas opens on search and recent focuses, not on the corpus',
+      text.includes('Search concepts')
+      && text.includes('Recently visited')
+      && !text.includes('Module \u00d7 Concept atlas'));
+    check('the entry state sizes the corpus without spreading it on the screen',
+      text.includes('5 concepts')
+      && text.includes('5 authored relations')
+      && text.includes('4 of them order learning'));
+
+    /* A4. A manifest refresh is not a reason to interrupt a half-typed query:
+     * the field is rebuilt by the redraw, so focus and caret have to be carried
+     * across it deliberately. The caret sits mid-word, not at the end, because
+     * restoring to the end would still lose the learner's place. */
+    const search = view.contentEl.find('los-atlas-search-input')[0];
+    search.focus();
+    search.typeText('cond');
+    search.setSelectionRange(2, 2);
+    check('typing filters concepts without redrawing the field under the caret',
+      view.contentEl.find('los-atlas-search-results')[0].allText()
+        .includes('Conditional probability')
+      && global.document.activeElement === search);
+
+    await plugin.reloadStore();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    const refreshed = view.contentEl.find('los-atlas-search-input')[0];
+    check('an unrelated manifest refresh preserves the query, the focus and the caret',
+      refreshed !== search
+      && refreshed.value === 'cond'
+      && global.document.activeElement === refreshed
+      && refreshed.selectionStart === 2 && refreshed.selectionEnd === 2);
+
+    /* A2. The same authored row read from the other end. "requires" is not
+     * symmetric, so a headline built from the far endpoint alone would say
+     * that Conditional probability requires Bayes theorem. */
+    await plugin.nav.openAtlas({ concept: 'concept-bayes' });
+    await tick();
+    const fromDependent = app.workspace.getLeavesOfType(VIEW.atlas)[0].view
+      .contentEl.find('los-atlas-outline-row')
+      .find((row) => row.getAttribute('data-relation-id')
+        === 'concept-bayes--requires--concept-bedingte-wahrscheinlichkeit');
+
+    await plugin.nav.openAtlas({ concept: 'concept-bedingte-wahrscheinlichkeit' });
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    const fromPrerequisite = view.contentEl.find('los-atlas-outline-row')
+      .find((row) => row.getAttribute('data-relation-id')
+        === 'concept-bayes--requires--concept-bedingte-wahrscheinlichkeit');
+
+    check('one relation reads the same from either endpoint',
+      Boolean(fromDependent) && Boolean(fromPrerequisite)
+      && fromDependent.allText().includes('Bayes theorem requires Conditional probability')
+      && fromPrerequisite.allText().includes('Bayes theorem requires Conditional probability')
+      && !fromPrerequisite.allText().includes('Conditional probability requires Bayes theorem'));
+
+    /* A3. The outline is a complete alternative to the picture, not a summary
+     * of the focus's own adjacency: an edge between two drawn neighbours is
+     * still an edge the picture shows. */
+    const drawn = view.contentEl.find('los-atlas-node')
+      .map((node) => node.getAttribute('data-atlas-concept'));
+    const stated = view.contentEl.find('los-atlas-outline-row')
+      .map((row) => row.getAttribute('data-relation-id'));
+    check('the outline carries edges between neighbours, not only the focus\u2019s own',
+      stated.includes('concept-logistic-regression--builds-on--concept-bayes')
+      && drawn.includes('concept-logistic-regression') && drawn.includes('concept-bayes'));
+    check('every stated relation has both endpoints drawn, and none is stated twice',
+      stated.length === new Set(stated).size
+      && stated.every((id) => id && id.split('--').length === 3));
+
+    /* The package's acceptance condition: one relation, three surfaces, one
+     * sentence. A picture that says something the outline does not is a
+     * picture the keyboard reader is denied. */
+    fromPrerequisite.fire('click');
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    const sentence = 'Bayes theorem requires Conditional probability';
+    const node = view.contentEl.find('los-atlas-node')
+      .find((row) => row.getAttribute('data-atlas-concept') === 'concept-bayes');
+    const inspector = view.contentEl.find('los-atlas-inspector')[0];
+    check('graph, outline and inspector describe the selected relation identically',
+      Boolean(node) && Boolean(inspector)
+      && node.allText().includes(sentence)
+      && fromPrerequisite.allText().includes(sentence)
+      && inspector.allText().includes(sentence));
+    check('inspecting a connection does not re-centre the view on the other concept',
+      plugin.router.snapshot().current?.concept === 'concept-bedingte-wahrscheinlichkeit');
+
+    /* Provenance keeps its three states apart: recorded, absent, unresolvable.
+     * The semantic lens is where all three are on screen at once, because the
+     * unresolved citation is the one carried by the semantic edge. */
+    await plugin.nav.openAtlas({ concept: 'concept-bayes', lens: 'semantic' });
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
     text = view.contentEl.allText();
-    check('the explicit all-concepts toggle reveals single-module concepts',
-      text.includes('Conditional probability')
-      && view.contentEl.find('los-crossing-row').length === 2);
+    check('the three provenance states stay distinct and none is invented',
+      text.includes('source Fixture probability book')
+      && text.includes('No source recorded')
+      && text.includes('source-fixture-missing does not resolve'));
+    check('the semantic layer is stated without joining the prerequisite order',
+      view.contentEl.find('los-atlas-outline-row')
+        .some((row) => row.getAttribute('data-relation-id')
+          === 'concept-bayes--contrasts-with--concept-frequentist-inference')
+      && text.includes('excluded from path order'));
 
-    view.contentEl.findText('los-crossing-concept', 'Bayes theorem').fire('click');
-    await tick(); await tick();
-    text = app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl.allText();
-    check('a selected concept exposes the exact authored evidence',
-      text.includes('Taught in 2 modules')
-      && text.includes('Stage tag · Bayes decision rule')
-      && text.includes('Stage tag · Conditional probability and Bayes'));
-    check('the drill-down keeps published notes, sources, and concept relations reachable',
-      text.includes('Linked notes')
-      && text.includes('Fixture probability reference')
-      && text.includes('Source evaluations')
-      && text.includes('Fixture probability book')
-      && text.includes('Concept relationships')
-      && text.includes('Bayes theorem builds on Conditional probability'));
+    /* Retained from the crossing-table coverage this block replaced: the
+     * evidence trail still reaches the exact unit and stage, and Back still
+     * returns to the concept rather than to the entry state. */
+    await plugin.nav.openAtlas({ concept: 'concept-bayes' });
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
     check('Atlas selection is persisted in the product route',
       plugin.router.snapshot().current?.name === 'atlas'
       && plugin.router.snapshot().current?.concept === 'concept-bayes');
 
-    app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl
-      .findText('los-item', 'Bayes decision rule').fire('click');
+    view.contentEl.find('los-filter-tab')
+      .find((tab) => tab.allText().includes('Evidence')).fire('click');
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    check('module evidence is reachable and names what exists, not what was understood',
+      view.contentEl.allText().includes('what exists, not what was understood')
+      && view.contentEl.find('los-item').length === 2);
+
+    view.contentEl.findText('los-item', 'Bayes decision rule').fire('click');
     await tick(); await tick();
     check('evidence drills into the exact published unit and stage',
       plugin.router.snapshot().current?.name === 'unit'
@@ -486,17 +585,284 @@ module.exports = async function run() {
       && plugin.router.snapshot().current?.stageId === 'stage-fixture-aml-bayes');
 
     await plugin.nav.back();
-    text = app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl.allText();
+    await tick();
     check('Back restores the selected Atlas concept rather than losing the drill-down',
       plugin.router.snapshot().current?.name === 'atlas'
-      && plugin.router.snapshot().current?.concept === 'concept-bayes'
-      && text.includes('Stage tag · Bayes decision rule'));
+      && plugin.router.snapshot().current?.concept === 'concept-bayes');
 
-    app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl
-      .findText('los-btn', 'Open generated domain map').fire('click');
+    plugin.onunload();
+  }
+
+  /* ADR-017. A question is the learner's, it lives on the note that carries it,
+   * and it is not a claim about the graph. These checks are mostly about what
+   * recording one must NOT do. */
+  heading('atlas questions');
+  {
+    const { app, plugin, calls } = await boot();
+    await plugin.nav.openAtlas();
+    let view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+
+    const rows = view.contentEl.find('los-atlas-question-row');
+    const text = view.contentEl.allText();
+    check('open questions appear by their explicit target, resolved ones do not',
+      rows.length === 3
+      && text.includes('My open questions')
+      && text.includes('Why does Bayes need the conditional first?')
+      && text.includes('On Bayes theorem and Conditional probability')
+      && text.includes('Is this really a prerequisite or just how it was taught?')
+      && text.includes('On the connection Bayes theorem requires Conditional probability')
+      && !text.includes('Settled: probability before conditioning'));
+
+    const orphan = rows.find((row) => row.classes.has('is-orphaned'));
+    check('a question whose target is gone keeps that target and stops being a link',
+      Boolean(orphan)
+      && orphan.allText().includes('Bayes theorem derives Frequentist inference')
+      && orphan.allText().includes('no longer authored')
+      && orphan.tag !== 'button'
+      && !rows.filter((row) => row.classes.has('is-clickable'))
+        .some((row) => row.allText().includes('derivation link')));
+
+    /* The load-bearing one: a recorded question is not an edge. */
+    await plugin.nav.openAtlas({ concept: 'concept-bayes' });
     await tick();
-    check('the generated textual atlas remains available only as a fallback',
-      app.workspace.opened.includes('generated/domain-atlas.md'));
+    view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    const stated = view.contentEl.find('los-atlas-outline-row')
+      .map((row) => row.getAttribute('data-relation-id'));
+    check('four questions add no relation to the graph and no arrow to the picture',
+      stated.length === 3
+      && !stated.includes('concept-bayes--derives--concept-frequentist-inference')
+      && plugin.store.relations().length === 5);
+
+    check('a concept carries the questions recorded against it, and only those',
+      view.contentEl.find('los-atlas-questions')[0].allText()
+        .includes('Why does Bayes need the conditional first?')
+      && !view.contentEl.find('los-atlas-questions')[0].allText()
+        .includes('just how it was taught'));
+
+    view.contentEl.find('los-atlas-outline-row')
+      .find((row) => row.getAttribute('data-relation-id')
+        === 'concept-bayes--requires--concept-bedingte-wahrscheinlichkeit')
+      .fire('click');
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    const band = view.contentEl.find('los-atlas-questions')[0];
+    check('a selected connection carries the question recorded against the connection',
+      Boolean(band)
+      && band.allText().includes('Is this really a prerequisite or just how it was taught?')
+      && band.allText().includes('1 open of 1'));
+
+    /* Absence is absence of a recorded question, never evidence of mastery. */
+    await plugin.nav.openAtlas({ concept: 'concept-logistic-regression' });
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    const absence = view.contentEl.find('los-atlas-questions')[0].allText();
+    check('no recorded question is stated as absence, not as understanding',
+      absence.includes('No question recorded against Logistic regression')
+      && !/understood|understand|mastered|complete/i.test(absence));
+
+    /* The write. ADR-017 lifted ADR-016 decision 9's read-only boundary, so the
+     * Atlas can reach the gateway — through one named port, not a general
+     * mutate. What it may carry is the point: an id and a state, never the
+     * target and never the learner's words. */
+    const settle = async () => {
+      for (let i = 0; i < 8; i += 1) { await tick(); await frame(); }
+    };
+    await plugin.nav.openAtlas({ concept: 'concept-bayes' });
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    view.contentEl.find('los-atlas-question-action')[0].fire('click');
+    await settle();
+    const saved = calls.envelope('atlas.question.save');
+    check('resolving a question sends one guarded capability envelope',
+      Boolean(saved)
+      && saved.expected_snapshot === FIXTURE_SNAPSHOT
+      && JSON.stringify(saved.expected_revisions)
+        === JSON.stringify({ 'note-fixture-question-concepts': 0 }));
+    check('the write carries an id and a state, never the target or the wording',
+      Boolean(saved)
+      && JSON.stringify(saved.payload) === JSON.stringify({
+        question: { id: 'note-fixture-question-concepts', state: 'resolved' },
+      }));
+
+    await plugin.nav.openAtlas({ concept: 'concept-wahrscheinlichkeit' });
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    const reopen = view.contentEl.find('los-atlas-question-action')[0];
+    check('a resolved question offers to be asked again, not marked incomplete',
+      Boolean(reopen) && reopen.allText() === 'Ask it again');
+    reopen.fire('click');
+    await settle();
+    const reopened = calls.envelopes
+      .filter((envelope) => envelope.capability === 'atlas.question.save').pop();
+    check('reopening sends the same capability with the opposite state',
+      Boolean(reopened)
+      && JSON.stringify(reopened.payload) === JSON.stringify({
+        question: { id: 'note-fixture-question-resolved', state: 'open' },
+      }));
+
+    await plugin.nav.openAtlas();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    view.contentEl.find('los-atlas-question-row')
+      .find((row) => row.allText().includes('Why does Bayes need the conditional first?'))
+      .fire('click');
+    await tick();
+    check('opening a question focuses the concept it was recorded against',
+      plugin.router.snapshot().current?.name === 'atlas'
+      && plugin.router.snapshot().current?.concept === 'concept-bayes');
+
+    plugin.onunload();
+  }
+
+  /* ADR-017 decision 1 and 3. Aram authors the graph; this is the editor that
+   * makes that true rather than aspirational. What the checks defend is that
+   * the sentence on screen is the assertion written, that an edit binds the
+   * exact previous row, and that none of it needs an AI. */
+  heading('authoring connections');
+  {
+    const { app, plugin, calls } = await boot();
+    const settle = async () => {
+      for (let i = 0; i < 8; i += 1) { await tick(); await frame(); }
+    };
+    const atlas = () => app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+
+    await plugin.nav.openAtlas({ concept: 'concept-bayes' });
+    await tick();
+    atlas().contentEl.find('los-atlas-connect-action')[0].fire('click');
+    await tick();
+    let view = atlas();
+    check('connecting starts from the focused concept with the other end to choose',
+      view.contentEl.find('los-atlas-editor').length === 1
+      && view.contentEl.find('los-atlas-editor-sentence')[0].allText()
+        === 'Bayes theorem requires the concept you choose.'
+      && view.contentEl.find('los-atlas-editor-result').length > 0);
+    check('the far end never offers the concept already chosen',
+      !view.contentEl.find('los-atlas-editor-result')
+        .some((row) => row.allText() === 'Bayes theorem'));
+    check('an incomplete claim cannot be saved, and says what is missing',
+      view.contentEl.find('los-atlas-editor')[0].allText()
+        .includes('Choose the concept at the other end')
+      && view.contentEl.find('los-atlas-editor-save')[0].getAttribute('disabled') === 'true');
+
+    view.contentEl.find('los-atlas-editor-result')
+      .find((row) => row.allText() === 'Probability').fire('click');
+    await tick();
+    view = atlas();
+    check('the preview is the assertion, and names the study order it implies',
+      view.contentEl.find('los-atlas-editor-sentence')[0].allText()
+        === 'Bayes theorem requires Probability.'
+      && view.contentEl.find('los-atlas-editor-preview')[0].allText()
+        .includes('Learn Probability before Bayes theorem'));
+
+    view.contentEl.find('los-atlas-editor-save')[0].fire('click');
+    await settle();
+    const added = calls.envelope('concept.relations.change');
+    check('saving sends exactly one authored add, guarded on the registry',
+      Boolean(added)
+      && added.expected_snapshot === FIXTURE_SNAPSHOT
+      && JSON.stringify(added.expected_revisions)
+        === JSON.stringify({ 'registry-concept-relations': 0 })
+      && JSON.stringify(added.payload) === JSON.stringify({
+        change: {
+          operations: [{
+            action: 'add',
+            new: { from: 'concept-bayes', type: 'requires', to: 'concept-wahrscheinlichkeit' },
+          }],
+        },
+      }));
+    check('authoring a connection needs no AI provider',
+      !calls.some((args) => args[0] === 'ai-action-prepare' || args[0] === 'ask'));
+
+    /* An edit binds the previous row byte for byte, including the parts the
+     * projection would have turned into nulls. */
+    await plugin.nav.openAtlas({ concept: 'concept-bayes' });
+    await tick();
+    atlas().contentEl.find('los-atlas-outline-row')
+      .find((row) => row.getAttribute('data-relation-id')
+        === 'concept-bayes--requires--concept-bedingte-wahrscheinlichkeit')
+      .fire('click');
+    await tick();
+    atlas().contentEl.find('los-atlas-edit-connection')[0].fire('click');
+    await tick();
+    view = atlas();
+    check('changing a connection opens it as authored, wording and source intact',
+      view.contentEl.find('los-atlas-editor-context')[0].value
+        === 'Bayes rewrites a conditional, so the conditional comes first.'
+      && view.contentEl.find('los-atlas-editor-source')[0].value === 'source-fixture-book'
+      && view.contentEl.find('los-atlas-editor-preview')[0].allText()
+        .includes('Was: Bayes theorem requires Conditional probability'));
+
+    view.contentEl.find('los-atlas-editor-swap')[0].fire('click');
+    await tick();
+    view = atlas();
+    check('swapping the ends changes the claim visibly rather than being tidied away',
+      view.contentEl.find('los-atlas-editor-sentence')[0].allText()
+        === 'Conditional probability requires Bayes theorem.');
+
+    view.contentEl.find('los-atlas-editor-save')[0].fire('click');
+    await settle();
+    const replaced = calls.envelopes
+      .filter((envelope) => envelope.capability === 'concept.relations.change').pop();
+    check('an edit binds the exact previous row, not a reconstruction of it',
+      JSON.stringify(replaced.payload.change.operations[0]) === JSON.stringify({
+        action: 'replace',
+        old: {
+          from: 'concept-bayes',
+          type: 'requires',
+          to: 'concept-bedingte-wahrscheinlichkeit',
+          context: 'Bayes rewrites a conditional, so the conditional comes first.',
+          source: 'source-fixture-book',
+        },
+        new: {
+          from: 'concept-bedingte-wahrscheinlichkeit',
+          type: 'requires',
+          to: 'concept-bayes',
+          context: 'Bayes rewrites a conditional, so the conditional comes first.',
+          source: 'source-fixture-book',
+        },
+      }));
+
+    /* Removal names the exact assertion, and says what it does not touch. */
+    await plugin.nav.openAtlas({ concept: 'concept-logistic-regression' });
+    await tick();
+    atlas().contentEl.find('los-atlas-outline-row')
+      .find((row) => row.getAttribute('data-relation-id')
+        === 'concept-logistic-regression--builds-on--concept-bayes')
+      .fire('click');
+    await tick();
+    view = atlas();
+    check('removal names the assertion and what stays untouched',
+      view.contentEl.allText()
+        .includes('Removing takes away the claim that Logistic regression builds on Bayes theorem')
+      && view.contentEl.allText().includes('any question recorded about them stay exactly as they are'));
+
+    view.contentEl.find('los-atlas-remove-connection')[0].fire('click');
+    await settle();
+    const removed = calls.envelopes
+      .filter((envelope) => envelope.capability === 'concept.relations.change').pop();
+    check('removing sends the exact stored row and nothing else',
+      JSON.stringify(removed.payload.change.operations[0]) === JSON.stringify({
+        action: 'remove',
+        old: {
+          from: 'concept-logistic-regression',
+          type: 'builds-on',
+          to: 'concept-bayes',
+          source: 'source-fixture-islp',
+        },
+      }));
+
+    /* Cancel is not a write. */
+    const before = calls.envelopes.length;
+    await plugin.nav.openAtlas({ concept: 'concept-bayes' });
+    await tick();
+    atlas().contentEl.find('los-atlas-connect-action')[0].fire('click');
+    await tick();
+    atlas().contentEl.find('los-atlas-editor-cancel')[0].fire('click');
+    await settle();
+    check('cancelling writes nothing and closes the editor',
+      calls.envelopes.length === before
+      && atlas().contentEl.find('los-atlas-editor').length === 0);
+
     plugin.onunload();
   }
 };

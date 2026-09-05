@@ -20,6 +20,10 @@ class El {
       setProperty(name, value) { this[name] = String(value); },
     };
     this.value = '';
+    /* A caret, so a test can tell "the field survived the redraw" from "the
+     * field was rebuilt and the learner lost their place". */
+    this.selectionStart = null;
+    this.selectionEnd = null;
     this.listeners = {};
     this.classList = {
       add: (...c) => c.forEach((x) => this.classes.add(x)),
@@ -33,6 +37,10 @@ class El {
     if (o.cls) String(o.cls).split(/\s+/).filter(Boolean).forEach((c) => e.classes.add(c));
     if (o.text != null) e.text = String(o.text);
     if (o.attr) Object.assign(e._attrs, o.attr);
+    /* A real input reflects its `value` attribute into the property. Without
+     * this the double cannot tell a redraw that preserved the typed query from
+     * one that silently threw it away. */
+    if (o.attr && o.attr.value != null) e.value = String(o.attr.value);
     this.children.push(e);
     return e;
   }
@@ -67,6 +75,26 @@ class El {
   remove() { return this; }
   focus() {
     if (global.document) global.document.activeElement = this;
+    return this;
+  }
+  blur() {
+    if (global.document && global.document.activeElement === this) {
+      global.document.activeElement = null;
+    }
+    return this;
+  }
+  setSelectionRange(start, end) {
+    this.selectionStart = start;
+    this.selectionEnd = end;
+    return this;
+  }
+  /** Type `chars` at the caret, as a keyboard would, and fire one input event. */
+  typeText(chars) {
+    const at = this.selectionStart == null ? this.value.length : this.selectionStart;
+    const to = this.selectionEnd == null ? at : this.selectionEnd;
+    this.value = this.value.slice(0, at) + chars + this.value.slice(to);
+    this.selectionStart = this.selectionEnd = at + chars.length;
+    this.fire('input');
     return this;
   }
   addEventListener(ev, fn) { (this.listeners[ev] ||= []).push(fn); }

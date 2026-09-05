@@ -29,14 +29,26 @@ import type { DraftStore } from '../application/draft-store';
 import { LEARN_AREAS } from '../constants';
 import type { ProjectionRecord } from '../contracts/manifest';
 import {
+  asAtlasDepth,
+  asAtlasLens,
   asLibraryCollection,
   asProjectDetailTab,
+  type AtlasDepthV1,
+  type AtlasLensV1,
   type LibrarySourceFiltersV1,
 } from '../contracts/route-v1';
 import type { ResourceOpener } from '../infrastructure/resource-opener';
 import type { ManifestStore } from '../manifest-store';
 import { asString } from '../projection/readers';
 import type { LearningOSSettings } from './settings-contract';
+
+/** Where the Atlas should open, named rather than positional. */
+export interface AtlasTarget {
+  readonly concept?: string | null;
+  readonly module?: string | null;
+  readonly lens?: AtlasLensV1;
+  readonly depth?: AtlasDepthV1;
+}
 
 export class AppNavigator {
   constructor(
@@ -183,12 +195,26 @@ export class AppNavigator {
     return this.router.navigate({ name: 'legacy-library-list', recordType, domain, query: '' });
   }
 
-  openAtlas(domain: string | null = null, concept: string | null = null) {
+  /**
+   * Open the Atlas (ADR-016).
+   *
+   * A named target rather than positional arguments: `lens` and `depth` join
+   * `concept` and `module`, and four bare positions at one call site is how a
+   * concept ends up in the depth slot. Unknown values are coerced by the route
+   * contract rather than rejected here.
+   */
+  openAtlas(target: AtlasTarget = {}) {
     const current = this.router.snapshot().current;
     const changingAtlasState = current?.name === 'atlas';
 
     return this.router.navigate(
-      { name: 'atlas', domain, concept },
+      {
+        name: 'atlas',
+        concept: target.concept ?? null,
+        module: target.module ?? null,
+        lens: asAtlasLens(target.lens),
+        depth: asAtlasDepth(target.depth),
+      },
       { pushHistory: !changingAtlasState },
     );
   }

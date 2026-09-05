@@ -1,283 +1,1024 @@
-/* Module x Concept Atlas (ADR-015). */
-.los-crossing {
-  --los-crossing-columns: 1;
-  max-width: 1320px;
-  margin: 0 auto var(--los-5);
-  overflow-x: auto;
-  border: 1px solid var(--los-line);
-  border-radius: var(--los-r-md);
-  background: var(--los-surface);
+/*
+ * The Concept Atlas (ADR-016).
+ *
+ * Every value here resolves to a --los-* token. A one-off colour would look
+ * right in one theme and wrong in the other, and the palette is the only place
+ * light and dark are held together.
+ *
+ * DOM cards carry concept controls; SVG connectors carry exact relation IDs.
+ * The synchronized outline exposes the same edges without relying on geometry.
+ */
+
+.los-atlas-view {
+  --los-atlas-node: 210px;
 }
 
-.los-crossing-head,
-.los-crossing-row {
-  display: grid;
-  grid-template-columns:
-    minmax(210px, 1.6fr)
-    repeat(var(--los-crossing-columns), minmax(92px, 1fr));
+/* -------------------------------------------------------------- controls */
+
+.los-atlas-controls {
+  display: flex;
+  gap: var(--los-4);
+  align-items: flex-start;
+  margin-bottom: var(--los-3);
+  padding-bottom: var(--los-3);
+  border-bottom: 1px solid var(--los-line);
+  flex-wrap: wrap;
 }
 
-.los-crossing-head {
-  position: sticky;
-  z-index: 3;
-  top: 0;
-  border-bottom: 1px solid var(--los-line-strong);
-  background: var(--los-paper-3);
-}
-
-.los-crossing-corner,
-.los-crossing-concept {
-  position: sticky;
-  z-index: 2;
-  left: 0;
-  border-right: 1px solid var(--los-line-strong);
-  background: var(--los-surface);
-  box-shadow: 4px 0 10px color-mix(in srgb, var(--los-ink) 5%, transparent);
-}
-
-.los-crossing-corner {
-  z-index: 4;
-  padding: var(--los-3);
-  background: var(--los-paper-3);
-  font-weight: 650;
-}
-
-.los-crossing-col {
+.los-atlas-search {
   display: grid;
   min-width: 0;
-  place-content: center;
-  gap: 2px;
-  padding: var(--los-2);
-  border-left: 1px solid var(--los-line);
-  color: var(--los-ink-soft);
-  text-align: center;
+  flex: 1 1 320px;
+  gap: var(--los-1);
 }
 
-.los-crossing-col.is-actionable {
-  color: var(--los-ink);
-  box-shadow: inset 0 3px 0 var(--los-accent);
-}
-
-.los-crossing-col-name {
-  overflow: hidden;
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.los-crossing-row + .los-crossing-row {
-  border-top: 1px solid var(--los-line);
-}
-
-.los-crossing-row.is-selected {
-  background: var(--los-accent-wash);
-}
-
-.los-root .los-crossing-concept {
-  display: grid;
+.los-root .los-atlas-search-input {
   width: 100%;
   min-width: 0;
-  min-height: 54px;
-  align-content: center;
-  gap: 2px;
   padding: var(--los-2) var(--los-3);
-  border-top: 0;
-  border-bottom: 0;
-  border-left: 0;
-  border-radius: 0;
-  text-align: left;
-}
-
-.los-root .los-crossing-concept:hover,
-.los-crossing-row.is-selected .los-crossing-concept {
-  background: var(--los-accent-wash);
-}
-
-.los-crossing-concept-name {
-  overflow: hidden;
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  appearance: none;
+  background: var(--los-surface);
   color: var(--los-ink);
-  font-weight: 650;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  font-size: 13px;
 }
 
-.los-root .los-crossing-cell {
+.los-root .los-atlas-search-input:focus-visible {
+  border-color: var(--los-accent);
+  outline: 2px solid var(--los-accent);
+  outline-offset: 1px;
+}
+
+.los-atlas-modules,
+.los-atlas-depth {
   display: grid;
   min-width: 0;
-  min-height: 54px;
-  place-items: center;
-  padding: var(--los-2);
-  border: 0;
-  border-left: 1px solid var(--los-line);
-  border-radius: 0;
-  background: transparent;
+  gap: var(--los-1);
 }
 
-.los-crossing-cell.is-empty::after {
-  color: var(--los-line-strong);
-  content: "—";
+.los-atlas-module-chips {
+  display: flex;
+  gap: var(--los-1);
+  flex-wrap: wrap;
 }
 
-.los-root .los-crossing-cell.is-filled {
-  background: color-mix(in srgb, var(--los-accent) 9%, transparent);
+.los-root .los-atlas-module-chip {
+  min-width: 0;
+  padding: 3px var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-pill);
+  appearance: none;
+  background: var(--los-surface);
+  color: var(--los-ink-soft);
+  font-size: 11px;
+  font-weight: 650;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.los-root .los-atlas-module-chip.is-actionable {
+  color: var(--los-ink);
+}
+
+.los-root .los-atlas-module-chip.is-active {
+  border-color: var(--los-accent);
+  background: var(--los-accent-wash);
   color: var(--los-accent);
 }
 
-.los-root .los-crossing-cell.is-filled:hover {
-  background: color-mix(in srgb, var(--los-accent) 16%, transparent);
+.los-atlas-stepper {
+  display: flex;
+  gap: var(--los-1);
+  align-items: center;
 }
 
-.los-crossing-mark {
+.los-atlas-stepper-value {
+  min-width: 22px;
+  color: var(--los-ink);
+  font-weight: 700;
+  text-align: center;
+}
+
+.los-root .los-atlas-stepper .los-btn.is-active {
+  border-color: var(--los-accent);
+  background: var(--los-accent-wash);
+  color: var(--los-accent);
+}
+
+/* -------------------------------------------------------------- lens bar */
+
+.los-atlas-lensbar {
+  display: flex;
+  gap: var(--los-5);
+  align-items: flex-start;
+  margin-bottom: var(--los-3);
+  padding-bottom: var(--los-3);
+  border-bottom: 1px solid var(--los-line);
+  flex-wrap: wrap;
+}
+
+.los-atlas-lensgroup {
   display: grid;
-  min-width: 26px;
-  min-height: 26px;
-  place-items: center;
-  padding: 2px var(--los-1);
-  border: 1px solid color-mix(in srgb, var(--los-accent) 45%, var(--los-line));
-  border-radius: var(--los-r-pill);
+  min-width: 0;
+  gap: var(--los-1);
+}
+
+.los-atlas-corpus-lenses {
+  display: flex;
+  gap: var(--los-2);
+  flex-wrap: wrap;
+}
+
+.los-root .los-atlas-corpus-lens.is-active {
+  border-color: var(--los-accent);
+  background: var(--los-accent-wash);
+  color: var(--los-accent);
+}
+
+/* ------------------------------------------------ question and summary */
+
+.los-atlas-question {
+  margin-bottom: var(--los-2);
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-accent);
+  border-radius: var(--los-r-md);
+  background: var(--los-accent-wash);
+}
+
+.los-atlas-kicker {
+  color: var(--los-accent);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.los-atlas-question-text {
+  margin: 2px 0 0;
+  color: var(--los-ink);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.los-atlas-summary {
+  margin-bottom: var(--los-4);
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
   background: var(--los-surface);
+  color: var(--los-ink);
   font-size: 12px;
+}
+
+/* ------------------------------------------------------------ the body */
+
+.los-atlas-body {
+  display: grid;
+  gap: var(--los-4);
+  align-items: start;
+  grid-template-columns: minmax(0, 1fr) 340px;
+}
+
+.los-atlas-main {
+  display: grid;
+  min-width: 0;
+  gap: var(--los-4);
+}
+
+/* ------------------------------------------------------- focused graph */
+
+.los-atlas-canvas {
+  display: grid;
+  min-width: 0;
+  gap: var(--los-4);
+  padding: var(--los-4);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+}
+
+.los-atlas-lanes {
+  display: flex;
+  min-width: 0;
+  gap: var(--los-5);
+  align-items: flex-start;
+  overflow-x: auto;
+}
+
+.los-atlas-lane {
+  display: grid;
+  min-width: var(--los-atlas-node);
+  flex: 0 0 var(--los-atlas-node);
+  gap: var(--los-2);
+  align-content: start;
+}
+
+.los-atlas-lane-head {
+  color: var(--los-ink-soft);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.los-atlas-lane--focus > .los-atlas-lane-head {
+  color: var(--los-accent);
+}
+
+.los-atlas-canvas {
+  position: relative;
+  isolation: isolate;
+}
+
+.los-atlas-edge-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.los-atlas-edge {
+  fill: none;
+  stroke: var(--los-line-strong);
+  stroke-width: 2px;
+}
+
+.los-atlas-arrowhead { fill: var(--los-ink-soft); }
+.los-atlas-edge--builds-on { stroke-width: 1.5px; }
+.los-atlas-edge:not(.los-atlas-edge--requires, .los-atlas-edge--builds-on) {
+  stroke: var(--los-accent);
+  stroke-dasharray: 5 4;
+}
+.los-atlas-edge.is-selected { stroke: var(--los-accent); stroke-width: 3px; }
+.los-atlas-edge-hit { fill: none; stroke: transparent; stroke-width: 16px; pointer-events: stroke; cursor: pointer; }
+.los-atlas-connection.is-selected { outline: 2px solid var(--los-accent); outline-offset: 2px; }
+.los-atlas-node { position: relative; z-index: 2; }
+.los-atlas-search-results:empty { display: none; }
+.los-atlas-search-results { margin-bottom: var(--los-4); }
+
+@media (max-width: 720px) {
+  .los-atlas-edge-layer { display: none; }
+}
+
+.los-root .los-atlas-node {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 3px;
+  padding: var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  appearance: none;
+  background: var(--los-surface);
+  color: var(--los-ink);
+  text-align: left;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.los-root .los-atlas-node:hover {
+  border-color: var(--los-accent);
+}
+
+.los-root .los-atlas-node.is-focus {
+  border: 2px solid var(--los-accent);
+  background: var(--los-accent-wash);
+}
+
+.los-root .los-atlas-node.is-unresolved {
+  border-style: dashed;
+  border-color: var(--los-line-strong);
+}
+
+.los-root .los-atlas-node--related {
+  border-color: var(--los-info);
+}
+
+.los-atlas-node-title {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.los-atlas-node--focus .los-atlas-node-title {
+  font-size: 15px;
   font-weight: 700;
 }
 
-.los-crossing-evidence {
-  margin-top: var(--los-3);
+.los-atlas-node-trail {
+  color: var(--los-ink-soft);
+}
+
+.los-atlas-node--related .los-atlas-node-trail {
+  color: var(--los-info-strong);
+}
+
+/* ------------------------------------------------- absence and remainder */
+
+.los-atlas-absence {
+  padding: var(--los-3);
+  border: 1px dashed var(--los-line-strong);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+  color: var(--los-ink-soft);
+  font-size: 11px;
+}
+
+.los-atlas-absence-title {
+  color: var(--los-ink);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.los-atlas-remainder {
+  display: grid;
+  gap: var(--los-2);
+}
+
+.los-root .los-atlas-remainder-toggle {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 2px;
+  padding: var(--los-2) var(--los-3);
+  border: 1px dashed var(--los-line-strong);
+  border-radius: var(--los-r-md);
+  appearance: none;
+  background: var(--los-surface);
+  color: var(--los-ink);
+  text-align: left;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.los-atlas-remainder-title {
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.los-atlas-remainder-list {
+  display: grid;
+  gap: 2px;
+}
+
+.los-root .los-atlas-remainder-item {
+  min-width: 0;
+  padding: var(--los-1) var(--los-2);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-sm);
+  appearance: none;
+  background: var(--los-surface);
+  color: var(--los-ink);
+  font-size: 11px;
+  text-align: left;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+/* ---------------------------------------------------- semantic and other */
+
+.los-atlas-semantic {
+  display: grid;
+  gap: var(--los-2);
   padding-top: var(--los-3);
   border-top: 1px solid var(--los-line);
 }
 
-.los-crossing-evidence-head {
+.los-atlas-semantic > .los-atlas-lane-head {
+  color: var(--los-info-strong);
+}
+
+.los-atlas-semantic-row {
+  display: flex;
+  gap: var(--los-3);
+  flex-wrap: wrap;
+}
+
+.los-atlas-semantic-row > .los-atlas-node {
+  width: var(--los-atlas-node);
+}
+
+.los-atlas-unrecognized {
+  display: grid;
+  gap: 2px;
+  padding: var(--los-3);
+  border: 1px dashed var(--los-warning);
+  border-radius: var(--los-r-md);
+  background: var(--los-warning-wash);
+}
+
+.los-atlas-path-note {
+  color: var(--los-ink-soft);
+}
+
+.los-atlas-blocked {
+  display: grid;
+  gap: var(--los-2);
+  padding: var(--los-4);
+  border: 1px solid var(--los-warning);
+  border-radius: var(--los-r-md);
+  background: var(--los-warning-wash);
+}
+
+.los-atlas-blocked-title {
+  color: var(--los-warning-strong);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.los-atlas-blocked-body {
+  color: var(--los-ink);
+  font-size: 12px;
+}
+
+/* ------------------------------------------------------------- legend */
+
+.los-atlas-legend {
+  display: grid;
+  gap: var(--los-2);
+  padding-top: var(--los-3);
+  border-top: 1px solid var(--los-line);
+}
+
+.los-atlas-legend-kicker {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.los-atlas-legend-items {
+  display: flex;
+  gap: var(--los-4);
+  flex-wrap: wrap;
+  font-size: 11px;
+}
+
+.los-atlas-legend-item {
   display: flex;
   gap: var(--los-2);
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--los-1);
 }
 
-.los-root .los-crossing-evidence-module {
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--los-ink);
-  font-weight: 700;
-  text-align: left;
+.los-atlas-legend-mark {
+  display: inline-block;
+  width: 26px;
+  height: 0;
+  border-top: 2px solid var(--los-ink);
 }
 
-.los-root .los-crossing-evidence-module:hover {
-  color: var(--los-accent);
+.los-atlas-legend-mark--builds-on {
+  border-top-width: 1px;
 }
 
-.los-crossing-context {
+.los-atlas-legend-mark--semantic {
+  border-top-style: dashed;
+  border-top-color: var(--los-info-strong);
+}
+
+.los-atlas-legend-mark--order {
+  border-top-color: var(--los-accent);
+}
+
+.los-atlas-legend-mark--unauthored {
+  height: 14px;
+  border: 1px dashed var(--los-line-strong);
+  border-radius: var(--los-r-sm);
+}
+
+/* ------------------------------------------------------------- outline */
+
+.los-atlas-outline {
   display: grid;
-  margin-top: var(--los-4);
-  gap: var(--los-3);
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-}
-
-.los-crossing-context-group {
   min-width: 0;
-  padding: var(--los-3);
+  gap: var(--los-3);
+  padding: var(--los-4);
   border: 1px solid var(--los-line);
   border-radius: var(--los-r-md);
   background: var(--los-surface);
 }
 
-.los-crossing-context-group h3 {
-  margin: 0 0 var(--los-2);
+.los-atlas-outline-head {
+  display: grid;
+  gap: 2px;
 }
 
-@media (max-width: 820px) {
-  .los-crossing {
-    overflow: visible;
-    border: 0;
-    background: transparent;
-  }
+.los-atlas-outline-kicker {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 
-  .los-crossing-head {
-    position: static;
-    display: flex;
-    min-width: 0;
-    margin-bottom: var(--los-3);
-    overflow: hidden;
-    border: 1px solid var(--los-line);
-    border-radius: var(--los-r-md);
-    background: var(--los-surface);
-    flex-wrap: wrap;
-  }
+.los-atlas-outline-summary {
+  color: var(--los-ink);
+  font-size: 12px;
+}
 
-  .los-crossing-corner {
-    position: static;
-    flex: 1 0 100%;
-    border-right: 0;
-    box-shadow: none;
-    font-size: 0;
-  }
+.los-atlas-outline-list {
+  display: grid;
+  gap: var(--los-2);
+}
 
-  .los-crossing-corner::after {
-    content: "Modules in this projection";
-    font-size: 11px;
-  }
+.los-atlas-outline-group {
+  margin-top: var(--los-2);
+  color: var(--los-ink-soft);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 
-  .los-crossing-col {
-    flex: 1 1 140px;
-    grid-template-columns: minmax(0, 1fr) auto;
-    place-content: stretch;
-    align-items: center;
-    border-top: 1px solid var(--los-line);
-    border-left: 0;
-    text-align: left;
-  }
+.los-root .los-atlas-outline-row {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 2px;
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  appearance: none;
+  background: var(--los-surface);
+  color: var(--los-ink);
+  grid-template-columns: minmax(0, 1fr) auto;
+  text-align: left;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
 
-  .los-crossing-col.is-actionable {
-    box-shadow: inset 3px 0 0 var(--los-accent);
-  }
+.los-root .los-atlas-outline-row:hover {
+  border-color: var(--los-accent);
+  background: var(--los-accent-wash);
+}
 
-  .los-crossing-row {
+.los-root .los-atlas-outline-row--semantic {
+  border-left: 3px dashed var(--los-info);
+}
+
+.los-root .los-atlas-outline-row--unrecognized {
+  border-left: 3px dashed var(--los-warning);
+}
+
+.los-atlas-outline-title {
+  font-size: 12px;
+  font-weight: 650;
+  grid-column: 1;
+}
+
+.los-atlas-outline-row > .los-micro {
+  color: var(--los-ink-soft);
+  grid-column: 1;
+}
+
+.los-atlas-outline-action {
+  align-self: center;
+  color: var(--los-accent);
+  font-weight: 650;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+
+.los-atlas-outline-absence {
+  padding: var(--los-2) var(--los-3);
+  border: 1px dashed var(--los-line-strong);
+  border-radius: var(--los-r-md);
+  color: var(--los-ink-soft);
+}
+
+.los-atlas-keys {
+  display: grid;
+  gap: 2px;
+  padding-top: var(--los-3);
+  border-top: 1px solid var(--los-line);
+  color: var(--los-ink-soft);
+}
+
+/* ----------------------------------------------------------- inspector */
+
+.los-atlas-inspector {
+  display: grid;
+  min-width: 0;
+  gap: var(--los-3);
+  padding: var(--los-4);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+  align-content: start;
+}
+
+.los-atlas-inspector h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.los-atlas-inspector-body {
+  display: grid;
+  gap: var(--los-2);
+}
+
+.los-atlas-group-head {
+  margin-top: var(--los-2);
+  color: var(--los-ink-soft);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.los-atlas-connections {
+  display: grid;
+  gap: var(--los-2);
+}
+
+.los-atlas-connection {
+  display: grid;
+  gap: var(--los-2);
+  padding: var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.los-atlas-connection-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.los-atlas-connection-title {
+  display: flex;
+  gap: var(--los-2);
+  align-items: center;
+  color: var(--los-ink);
+  font-size: 12px;
+  font-weight: 700;
+  flex-wrap: wrap;
+}
+
+.los-atlas-connection-context {
+  color: var(--los-ink-soft);
+  font-size: 11px;
+  font-style: italic;
+}
+
+.los-atlas-connection-action {
+  align-self: center;
+}
+
+/*
+ * Three provenance states, three treatments — and each one is also written out
+ * in the row's text, so the colour is emphasis and never the only signal.
+ */
+.los-atlas-provenance,
+.los-atlas-provenance-row {
+  display: flex;
+  gap: var(--los-2);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.los-atlas-provenance-row {
+  display: grid;
+  gap: 2px;
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-line);
+  border-left: 3px solid var(--los-line-strong);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+}
+
+.los-atlas-provenance--resolved {
+  border-left-color: var(--los-success);
+}
+
+.los-atlas-provenance--undocumented {
+  border-left-color: var(--los-line-strong);
+}
+
+.los-atlas-provenance--unresolved {
+  border-left-color: var(--los-warning-strong);
+}
+
+.los-atlas-unresolved {
+  color: var(--los-warning-strong);
+}
+
+.los-root .los-atlas-semantic-toggle {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 2px;
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-info);
+  border-radius: var(--los-r-md);
+  appearance: none;
+  background: var(--los-info-wash);
+  color: var(--los-ink);
+  text-align: left;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.los-atlas-authoring {
+  margin-top: var(--los-3);
+  padding-top: var(--los-3);
+  border-top: 1px solid var(--los-line);
+  color: var(--los-ink-soft);
+}
+
+.los-atlas-evidence {
+  display: grid;
+  gap: var(--los-1);
+  margin-top: var(--los-2);
+  padding-top: var(--los-2);
+  border-top: 1px solid var(--los-line);
+}
+
+.los-atlas-evidence-head {
+  display: flex;
+  gap: var(--los-2);
+  align-items: center;
+  justify-content: space-between;
+}
+
+.los-root .los-atlas-evidence-module {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  appearance: none;
+  background: transparent;
+  color: var(--los-ink);
+  font-weight: 700;
+  text-align: left;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.los-root .los-atlas-evidence-module:hover {
+  color: var(--los-accent);
+}
+
+.los-atlas-facts {
+  display: grid;
+  gap: var(--los-2);
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+}
+
+.los-atlas-fact {
+  display: grid;
+  gap: 2px;
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+}
+
+.los-atlas-fact-value {
+  color: var(--los-ink);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+/* --------------------------------------------------- entry and lenses */
+
+.los-atlas-entry,
+.los-atlas-lens-panel {
+  display: grid;
+  min-width: 0;
+  gap: var(--los-3);
+  max-width: 1000px;
+}
+
+.los-atlas-entry-group {
+  display: grid;
+  gap: var(--los-2);
+}
+
+.los-atlas-lens-lead {
+  color: var(--los-ink);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.los-atlas-records {
+  display: grid;
+  gap: var(--los-2);
+}
+
+.los-root .los-atlas-record {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 2px;
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  appearance: none;
+  background: var(--los-surface);
+  color: var(--los-ink);
+  text-align: left;
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
+.los-root .los-atlas-record:hover {
+  border-color: var(--los-accent);
+  background: var(--los-accent-wash);
+}
+
+.los-atlas-record-title {
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.los-atlas-diagnostics {
+  display: grid;
+  gap: var(--los-2);
+}
+
+.los-atlas-diagnostic.is-empty {
+  opacity: 0.72;
+}
+
+/* -------------------------------------------------------- narrow widths */
+
+@media (max-width: 1020px) {
+  .los-atlas-body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 720px) {
+  .los-atlas-lanes {
     display: grid;
-    min-width: 0;
-    margin-bottom: var(--los-3);
-    overflow: hidden;
-    border: 1px solid var(--los-line);
-    border-radius: var(--los-r-md);
-    background: var(--los-surface);
+    gap: var(--los-3);
     grid-template-columns: minmax(0, 1fr);
   }
 
-  .los-crossing-row + .los-crossing-row {
-    border-top: 1px solid var(--los-line);
+  .los-atlas-lane {
+    min-width: 0;
+    flex: 1 1 auto;
   }
 
-  .los-root .los-crossing-concept {
-    position: static;
-    border-right: 0;
-    box-shadow: none;
-  }
-
-  .los-crossing-cell.is-empty {
+  /*
+   * The connector goes, and nothing goes with it: which concept attaches to
+   * which is written on every node and stated in full in the outline below.
+   */
+  .los-atlas-lane + .los-atlas-lane::before {
     display: none;
   }
 
-  .los-root .los-crossing-cell.is-filled {
-    grid-template-columns: minmax(0, 1fr) auto;
-    min-height: 46px;
-    justify-items: stretch;
-    border-top: 1px solid var(--los-line);
-    border-left: 0;
-    text-align: left;
+  .los-atlas-connection {
+    grid-template-columns: minmax(0, 1fr);
   }
 
-  .los-crossing-cell.is-filled::before {
-    align-self: center;
-    overflow: hidden;
-    color: var(--los-ink);
-    content: attr(data-module-label);
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+  .los-atlas-semantic-row > .los-atlas-node {
+    width: 100%;
   }
+}
 
-  .los-crossing-mark {
-    justify-self: end;
-  }
+/* --------------------------------------------------------------------------
+ * My questions (ADR-017)
+ *
+ * Deliberately quiet. A recorded question is the learner's own note beside the
+ * graph, not a finding about it, and it must not read as a warning or as a
+ * defect in the concept it sits under.
+ * ----------------------------------------------------------------------- */
+
+.los-atlas-questions {
+  display: grid;
+  gap: var(--los-2);
+  margin-top: var(--los-3);
+}
+
+.los-atlas-question-list {
+  display: grid;
+  gap: var(--los-2);
+}
+
+.los-root .los-atlas-question-row {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: var(--los-1, 4px);
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-line);
+  border-left: 3px solid var(--los-accent);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+  color: var(--los-ink);
+  text-align: left;
+  overflow-wrap: break-word;
+}
+
+/* The row itself is a container in the inspector, where it holds an action;
+ * in the entry list it is the control. Both keep the same skin. */
+.los-root button.los-atlas-question-row,
+.los-root .los-atlas-question-open {
+  appearance: none;
+  width: 100%;
+  display: grid;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  text-align: left;
+}
+
+.los-root button.los-atlas-question-row {
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-line);
+  border-left: 3px solid var(--los-accent);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+
+.los-root button.los-atlas-question-row:hover,
+.los-root .los-atlas-question-open:hover {
+  color: var(--los-accent);
+}
+
+/* Resolved is past tense, not success: quieter, never green. */
+.los-root .los-atlas-question-row.is-resolved {
+  border-left-color: var(--los-line-strong);
+  color: var(--los-ink-soft);
+}
+
+/* The target is gone. The question is still the learner's, so it stays
+ * readable and simply stops being a link to somewhere that no longer exists. */
+.los-root .los-atlas-question-row.is-orphaned {
+  border-left-style: dashed;
+  border-left-color: var(--los-line-strong);
+}
+
+/* --------------------------------------------------------------------------
+ * The connection editor (ADR-017)
+ *
+ * It sits with the graph it changes rather than in a modal, because authoring
+ * a connection is reading the graph and then saying one more thing about it.
+ * ----------------------------------------------------------------------- */
+
+.los-atlas-editor {
+  display: grid;
+  gap: var(--los-3);
+  padding: var(--los-3);
+  margin-bottom: var(--los-3);
+  border: 1px solid var(--los-accent);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+
+.los-atlas-editor-ends {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-2);
+  align-items: end;
+}
+
+.los-atlas-editor-endpoint { display: grid; gap: 2px; min-width: 0; }
+
+.los-atlas-editor-typegroup,
+.los-atlas-editor-results {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-1, 4px);
+}
+
+.los-atlas-editor-results { flex-direction: column; }
+
+.los-root .los-atlas-editor-type.is-active {
+  border-color: var(--los-accent);
+  background: var(--los-accent-wash);
+  color: var(--los-accent);
+}
+
+/* The assertion, in the words it will be stored in. */
+.los-atlas-editor-preview {
+  display: grid;
+  gap: 2px;
+  padding: var(--los-2) var(--los-3);
+  border-left: 3px solid var(--los-accent);
+  background: var(--los-accent-wash);
+  border-radius: var(--los-r-md);
+}
+
+.los-atlas-editor-sentence { font-size: 13px; font-weight: 650; }
+.los-atlas-editor-was { color: var(--los-ink-soft); }
+
+.los-atlas-editor-field { display: grid; gap: 2px; }
+
+.los-atlas-editor-context,
+.los-atlas-editor-source,
+.los-atlas-editor-search {
+  width: 100%;
+  padding: var(--los-2);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+  color: var(--los-ink);
+  font: inherit;
+}
+
+.los-atlas-editor-refusal { color: var(--los-ink-soft); }
+
+.los-root .los-atlas-editor-save[disabled] {
+  opacity: 0.55;
+  cursor: not-allowed;
 }

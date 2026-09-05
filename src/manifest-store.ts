@@ -6,6 +6,7 @@ import type {
   ModuleProgress,
   ProjectRelationship,
   ProjectionRecord,
+  RelationRecord,
   UnitMaterialSynthesisV1,
   UnitNoteSection,
 } from './contracts/manifest';
@@ -17,6 +18,11 @@ function isRecord(
   return typeof value === 'object'
     && value !== null
     && !Array.isArray(value);
+}
+
+/** A projected string field, or null for both absent and empty. */
+function projectedText(value: unknown): string | null {
+  return typeof value === 'string' && value.length > 0 ? value : null;
 }
 
 interface ManifestStoreHost {
@@ -385,6 +391,37 @@ export class ManifestStore {
   /** ADR-015: the Module x Concept crossing, evidence included. */
   moduleConceptEdges(): ModuleConceptEdge[] {
     return this.rows('module_concept_edges') as unknown as ModuleConceptEdge[];
+  }
+
+  /**
+   * ADR-016: the authored concept relations, `context` and `source` included.
+   *
+   * `backlinks.concept_relations` carries `{from|to, type}` and nothing else,
+   * so every reader of that table discards the two fields provenance is made
+   * of. This collection is the one the Atlas reads.
+   *
+   * `validRelation` already enforces the closed five-field shape, so the
+   * narrowing here is the store's usual boundary discipline rather than a
+   * second opinion about the contract: a row missing an endpoint or a type
+   * cannot be placed on a graph, and is dropped instead of rendered half-known.
+   * `context` and `source` stay nullable, because null is their meaning.
+   */
+  relations(): RelationRecord[] {
+    return this.rows('relations').flatMap((row) => {
+      const from = projectedText(row.from);
+      const type = projectedText(row.type);
+      const to = projectedText(row.to);
+
+      return from && type && to
+        ? [{
+          from,
+          type,
+          to,
+          context: projectedText(row.context),
+          source: projectedText(row.source),
+        }]
+        : [];
+    });
   }
 
   units() { return this.rows('units'); }

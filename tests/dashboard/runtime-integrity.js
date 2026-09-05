@@ -358,7 +358,11 @@ module.exports = async function run() {
       ['vault.rename/copy', /vault\.(rename|copy)\s*\(/], ['frontmatter writes', /processFrontMatter/],
       ['filesystem writes', /fs\.(writeFile|appendFile|unlink|rename|mkdir)/],
       ['direct canonical parsing', /cachedRead|records\/modules\.yaml|work\/active\/.*paths/],
-      ['legacy global-path commands', /path-note|path-progress|openLearningPath\(/],
+      /* Matched as command strings, not as bare words. Unanchored, `path-note`
+       * also matches an unrelated CSS class — it fired on the Atlas path lens's
+       * own `los-atlas-path-note`, which is not a CLI call at all. A gate that
+       * cries wolf is a gate somebody eventually loosens for the wrong reason. */
+      ['legacy global-path commands', /["'`]path-(note|progress)["'`]|openLearningPath\(/],
     ]) check(`bundle has no ${label}`, !pattern.test(source));
     check('bundle uses only the atomic manifest projection', /generated\/manifest\.json/.test(source)
       && !/generated\/backlinks\.json/.test(source));

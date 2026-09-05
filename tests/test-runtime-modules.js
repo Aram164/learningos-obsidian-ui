@@ -12,6 +12,10 @@ const ROOT = path.dirname(__dirname);
 const FIXTURE_MANIFEST = path.join(ROOT, 'fixture-vault', 'generated', 'manifest.json');
 const load = createSourceModuleLoader(ROOT);
 const { ManifestStore } = load('src/manifest-store.ts');
+/* The app's own declaration, not a literal: check-contract.mjs already binds it
+ * to the lock and to Core, so deriving here cannot drift and cannot go stale on
+ * the next bump. It did go stale, as v8, the day the projection reached v9. */
+const { MANIFEST_CONTRACT_VERSION: CONTRACT } = load('src/contracts/manifest.ts');
 const { GatewayClient } = load('src/gateway-client.ts');
 const { gatewaySubjectSha256 } = load('src/contracts/gateway-v2.ts');
 const { DraftStore, emptyUiDrafts } = load('src/application/draft-store.ts');
@@ -301,21 +305,21 @@ function routerPlugin(settings = {}) {
       'Job modules keep the same module tabs as every other module');
   });
 
-  await test('ManifestStore loads a contract-valid v8 fixture', async () => {
+  await test(`ManifestStore loads a contract-valid v${CONTRACT} fixture`, async () => {
     const store = new ManifestStore(manifestApp());
     assert.equal(await store.load(), true);
     assert.equal(store.ready, true);
-    assert.equal(store.contractVersion, 8);
+    assert.equal(store.contractVersion, CONTRACT);
     assert.ok(store.records.length > 0);
   });
 
   await test('ManifestStore rejects an old contract before exposing data', async () => {
     const store = new ManifestStore(manifestApp((text) =>
-      text.replace('"contract_version": 8', '"contract_version": 1')));
+      text.replace(`"contract_version": ${CONTRACT}`, '"contract_version": 1')));
     assert.equal(await store.load(), false);
     assert.equal(store.ready, false);
     assert.equal(store.data, null);
-    assert.match(store.error, /requires contract 8/);
+    assert.match(store.error, new RegExp(`requires contract ${CONTRACT}`));
   });
 
   await test('ManifestStore rejects a v8 manifest with a different schema byte hash', async () => {
@@ -356,7 +360,7 @@ function routerPlugin(settings = {}) {
     let valid = true;
     const store = new ManifestStore(manifestApp((text) => valid
       ? text
-      : text.replace('"contract_version": 8', '"contract_version": 1')));
+      : text.replace(`"contract_version": ${CONTRACT}`, '"contract_version": 1')));
     assert.equal(await store.load(), true);
     assert.ok(store.records.length > 0);
     valid = false;

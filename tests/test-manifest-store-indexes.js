@@ -110,6 +110,26 @@ function fixtureManifest() {
     topic_packs: [],
     unit_material_syntheses: [synthesis],
     module_source_maps: [activeSourceMap, archivedSourceMap],
+    relations: [
+      {
+        from: 'concept-logistic-regression',
+        type: 'requires',
+        to: 'concept-conditional-probability',
+        context: 'the link function is a conditional probability',
+        source: 'note-stats-l04',
+      },
+      // Documented and undocumented rows are both valid; the accessor must
+      // keep null as null rather than inventing a citation.
+      {
+        from: 'concept-gradient-descent',
+        type: 'builds-on',
+        to: 'concept-derivative',
+        context: null,
+        source: null,
+      },
+      // Unplaceable on a graph: dropped at the boundary, never half-rendered.
+      { from: 'concept-orphan', type: 'requires', to: '', context: null, source: null },
+    ],
     indexes: {
       unit_to_material_synthesis: {
         [activeUnit.id]: synthesis.id,
@@ -166,6 +186,27 @@ function fixtureManifest() {
     'compact subsequence fallback remains available',
   );
 
+  assert.deepEqual(
+    store.relations(),
+    [
+      {
+        from: 'concept-logistic-regression',
+        type: 'requires',
+        to: 'concept-conditional-probability',
+        context: 'the link function is a conditional probability',
+        source: 'note-stats-l04',
+      },
+      {
+        from: 'concept-gradient-descent',
+        type: 'builds-on',
+        to: 'concept-derivative',
+        context: null,
+        source: null,
+      },
+    ],
+    'relations() preserves context and source, and drops only unplaceable rows',
+  );
+
   const firstModules = store.modules();
   firstModules.length = 0;
   assert.deepEqual(
@@ -182,6 +223,7 @@ function fixtureManifest() {
   assert.equal(store.sourceMap('module-active'), null);
   assert.equal(store.materialSynthesisForUnit('unit-active'), null);
   assert.deepEqual(store.unitNoteSections('unit-active'), []);
+  assert.deepEqual(store.relations(), []);
 
   console.log('ManifestStore indexes OK: cached reads preserve filtering, search, and atomic failure semantics.');
 })().catch((error) => {

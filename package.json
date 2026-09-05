@@ -10,7 +10,7 @@
     "build:styles": "node build-styles.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:source-graph": "node scripts/check-source-graph.mjs",
-    "check:code": "npm run typecheck && npm run check:source-graph && npm run test:manifest-store-indexes",
+    "check:code": "npm run typecheck && npm run check:source-graph && npm run test:manifest-store-indexes && npm run test:atlas-graph",
     "contract:check": "node scripts/check-contract.mjs",
     "test:ui": "node tests/test-dashboard.js && node tests/test-ai-actions.js",
     "test": "npm run build && npm run check:code && npm run typecheck:contracts && npm run contract:check && npm run test:installer && npm run test:modules && npm run test:ui && npm run test:live-app-check && npm run test:ci-policy",
@@ -21,6 +21,7 @@
     "test:installer": "python3 tests/test_installer.py",
     "test:modules": "node tests/test-runtime-modules.js",
     "test:manifest-store-indexes": "node tests/test-manifest-store-indexes.js",
+    "test:atlas-graph": "node tests/test-atlas-graph.js",
     "test:live-app-check": "node tests/test-live-app-check.js",
     "test:ci-policy": "node tests/test-ci-policy.js",
     "check:live": "node scripts/check-live-app.mjs"

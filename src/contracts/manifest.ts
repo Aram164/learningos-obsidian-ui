@@ -14,7 +14,7 @@
  * The module and type names are deliberately stable. Contract version is data:
  * a bump changes this constant and the mirrored lock, not every import path.
  */
-export const MANIFEST_CONTRACT_VERSION = 8 as const;
+export const MANIFEST_CONTRACT_VERSION = 9 as const;
 import {
   validAcademicDeadline,
   validAiActions,
@@ -42,7 +42,7 @@ import {
   validTopicPack,
 } from './manifest-records';
 
-export const MANIFEST_SCHEMA_SHA256 = 'sha256:f08b0e5b4f131cff0a95bfc87d95863ae691a698c7bbf1d5e96d4da0fee03b10' as const;
+export const MANIFEST_SCHEMA_SHA256 = 'sha256:09f1b5d492a32d387cc942fe6c9ae5a17b48e5e3b02f325320c3070667642ddb' as const;
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -396,6 +396,23 @@ export type ModuleConceptEvidence =
       readonly unit_id: string;
       readonly node_id: string;
     };
+
+/**
+ * One authored concept relation (ADR-016).
+ *
+ * `context` and `source` are nullable by schema, and that is a meaning rather
+ * than a gap: an undocumented relation is a valid relation. Nothing may
+ * substitute a citation for a row that carries none, and nothing may drop the
+ * row for lacking one. `backlinks.concept_relations` publishes the same edges
+ * without these two fields, which is why the Atlas reads this collection.
+ */
+export interface RelationRecord extends JsonRecord {
+  from: string;
+  type: string;
+  to: string;
+  context: string | null;
+  source: string | null;
+}
 
 export interface ModuleConceptEdge extends JsonRecord {
   module_id: string;

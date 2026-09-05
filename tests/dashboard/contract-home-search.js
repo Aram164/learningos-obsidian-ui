@@ -21,11 +21,25 @@ const {
   boot,
 } = require('./support');
 
+/*
+ * The active contract version, read from the single lock file rather than
+ * written in. A literal here is only correct until the next bump, which is the
+ * same reason the README and ECOSYSTEM checks in runtime-integrity.js derive
+ * theirs — this file did hardcode 8, and went red the day the projection
+ * reached v9.
+ */
+const CONTRACT = Number(
+  fs.readdirSync(path.join(ROOT, 'contracts'))
+    .find((name) => /^manifest-v\d+\.lock\.json$/.test(name))
+    .match(/v(\d+)/)[1],
+);
+
 module.exports = async function run() {
   heading('versioned atomic contract');
   {
     const { plugin } = await build();
-    check('manifest contract v8 loads', plugin.store.ready && plugin.store.contractVersion === 8, plugin.store.error);
+    check(`manifest contract v${CONTRACT} loads`,
+      plugin.store.ready && plugin.store.contractVersion === CONTRACT, plugin.store.error);
     check('snapshot guard is loaded', plugin.store.snapshotId === FIXTURE_SNAPSHOT);
     check('program/module/unit/map collections load atomically', plugin.store.programs().length === 3
       && plugin.store.modules().length === 3 && plugin.store.projects().length === 1 && plugin.store.units().length === 7
@@ -75,15 +89,18 @@ module.exports = async function run() {
     const originalRead = app.vault.adapter.read;
     app.vault.adapter.read = async (file) => {
       const text = await originalRead(file);
-      return file === 'generated/manifest.json' ? text.replace('"contract_version": 8', '"contract_version": 1') : text;
+      return file === 'generated/manifest.json'
+        ? text.replace(`"contract_version": ${CONTRACT}`, '"contract_version": 1')
+        : text;
     };
     const plugin = new LearningOSUI(app, { id: 'learningos-ui' }); app._plugin = plugin;
     await plugin.onload();
-    check('contract v1 fails closed with recovery text', !plugin.store.ready && plugin.store.error.includes('requires contract 8'));
+    check('contract v1 fails closed with recovery text',
+      !plugin.store.ready && plugin.store.error.includes(`requires contract ${CONTRACT}`));
     plugin.onunload();
   }
 
-  heading('manifest v8 interaction plumbing');
+  heading(`manifest v${CONTRACT} interaction plumbing`);
   {
     const { plugin, calls } = await build();
 

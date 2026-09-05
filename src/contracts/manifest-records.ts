@@ -1,7 +1,7 @@
 /**
  * Closed decoders for the heterogeneous records emitted by Manifest v8.
  *
- * These key sets mirror Core's `system/contracts/manifest-v8.schema.json`.
+ * These key sets mirror Core's `system/contracts/manifest-v9.schema.json`.
  * Keeping the checks here makes the permissive `ProjectionRecord` convenience
  * type safe to use after `assertManifest`: extension fields are available to
  * feature code, but an undeclared producer field cannot cross the read boundary.
@@ -433,7 +433,7 @@ function validNoteRecord(value: unknown): boolean {
   return Boolean(source && exact(source, [
     'id', 'type', 'title', 'path', 'domain', 'summary', 'role', 'state', 'authorship',
     'concepts', 'sources', 'contexts', 'attachments', 'evidence', 'supersedes',
-    'reviewed', 'transcription', 'semantic_review',
+    'reviewed', 'transcription', 'semantic_review', 'atlas_question',
   ]) && identifier(source.id, 'note-') && source.type === 'note'
     && nonEmpty(source.title) && nonEmpty(source.path) && text(source.domain) && text(source.summary)
     && values(source.role, [
@@ -455,7 +455,41 @@ function validNoteRecord(value: unknown): boolean {
     ] as const))
     && nullable(source.semantic_review, (item) => values(item, [
       'unreviewed', 'user-reviewed',
-    ] as const)));
+    ] as const))
+    && nullable(source.atlas_question, validAtlasQuestion)
+    // Core's own schema guards this with if/then: the block is only valid on a
+    // question note. Mirroring it means a manifest that broke the rule upstream
+    // is refused here too, rather than rendered as if it were fine.
+    && (source.atlas_question === null || source.role === 'question'));
+}
+
+/**
+ * A question the learner recorded against a concept or an authored relation
+ * (ADR-017). Its target is one of two closed shapes and never both, because a
+ * question about a relation that does not exist yet is a question about its two
+ * concepts — not a claim that the edge is there.
+ */
+function validAtlasQuestion(value: unknown): boolean {
+  const source = row(value);
+  if (!source || !exact(source, ['state', 'target'], ['answer_notes'])) return false;
+
+  const target = row(source.target);
+  if (!target) return false;
+
+  const concepts = exact(target, ['concepts'])
+    && ids(target.concepts, 'concept-')
+    && Array.isArray(target.concepts)
+    && target.concepts.length >= 1 && target.concepts.length <= 2;
+  const relation = exact(target, ['from', 'type', 'to'])
+    && identifier(target.from, 'concept-') && identifier(target.to, 'concept-')
+    && values(target.type, [
+      'requires', 'builds-on', 'derives', 'generalizes',
+      'contrasts-with', 'equivalent-to', 'applies-in', 'motivates',
+    ] as const);
+
+  return values(source.state, ['open', 'resolved'] as const)
+    && (concepts || relation)
+    && (source.answer_notes === undefined || ids(source.answer_notes, 'note-'));
 }
 
 function validConceptRecord(value: unknown): boolean {

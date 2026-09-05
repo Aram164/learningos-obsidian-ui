@@ -9,6 +9,8 @@ import type {
   OverlayStateV1,
 } from '../contracts/route-v1';
 import {
+  asAtlasDepth,
+  asAtlasLens,
   asLibraryCollection,
   asLibrarySourceFilters,
   asProjectDetailTab,
@@ -155,7 +157,13 @@ export class ApplicationRouter {
       ? { name: 'project-detail', projectId: asText(state.projectId), tab: asProjectDetailTab(state.tab) }
       : { name: 'project-list', query: asText(state.query) };
     if (type === VIEW_LIBRARY) return this.libraryRouteFromState(state);
-    if (type === VIEW_ATLAS) return { name: 'atlas', domain: asNullableText(state.domain), concept: asNullableText(state.concept) };
+    if (type === VIEW_ATLAS) return {
+      name: 'atlas',
+      concept: asNullableText(state.concept),
+      module: asNullableText(state.module),
+      lens: asAtlasLens(state.lens),
+      depth: asAtlasDepth(state.depth),
+    };
     if (type === VIEW_SHELVING) return { name: 'shelving', unitId: asNullableText(state.unitId) };
     if (type === VIEW_BOUNDARY) return { name: 'boundary', boundaryId: asText(state.boundaryId) };
     if (type === VIEW_REVIEW) return { name: 'review' };
@@ -305,7 +313,16 @@ export class ApplicationRouter {
         const compatible = this.libraryRouteFromState(route);
         return this.descriptor(compatible);
       }
-      case 'atlas': return { type: VIEW_ATLAS, state: { domain: route.domain || null, concept: route.concept || null }, nav: 'atlas' };
+      case 'atlas': return {
+        type: VIEW_ATLAS,
+        state: {
+          concept: route.concept || null,
+          module: route.module || null,
+          lens: asAtlasLens(route.lens),
+          depth: asAtlasDepth(route.depth),
+        },
+        nav: 'atlas',
+      };
       case 'shelving': return { type: VIEW_SHELVING, state: { unitId: route.unitId || null }, nav: 'review' };
       case 'boundary': return {
         type: VIEW_BOUNDARY, state: { boundaryId: route.boundaryId },

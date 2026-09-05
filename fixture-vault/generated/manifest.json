@@ -1,9 +1,9 @@
 {
   "_generated": {
-    "contract_version": 8,
+    "contract_version": 9,
     "generated_at": "2099-04-01",
     "generator": "synthetic-fixture-v8",
-    "schema_sha256": "sha256:f08b0e5b4f131cff0a95bfc87d95863ae691a698c7bbf1d5e96d4da0fee03b10",
+    "schema_sha256": "sha256:09f1b5d492a32d387cc942fe6c9ae5a17b48e5e3b02f325320c3070667642ddb",
     "snapshot_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "source_dirty": false,
     "source_fingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
@@ -57,12 +57,12 @@
         "description": "Prepare a bounded Garden seed for discussion.",
         "id": "garden.shelve",
         "interaction_mode": "discussion",
+        "status": "implemented",
         "supported_providers": [
           "manual-bundle",
           "claude",
           "chatgpt"
         ],
-        "status": "implemented",
         "target_kinds": [
           "garden-note"
         ],
@@ -122,11 +122,20 @@
   "backlinks": {
     "concept_relations": {
       "concept-bayes": {
-        "incoming": [],
+        "incoming": [
+          {
+            "from": "concept-logistic-regression",
+            "type": "builds-on"
+          }
+        ],
         "outgoing": [
           {
             "to": "concept-bedingte-wahrscheinlichkeit",
-            "type": "builds-on"
+            "type": "requires"
+          },
+          {
+            "to": "concept-frequentist-inference",
+            "type": "contrasts-with"
           }
         ]
       },
@@ -134,7 +143,47 @@
         "incoming": [
           {
             "from": "concept-bayes",
+            "type": "requires"
+          },
+          {
+            "from": "concept-logistic-regression",
+            "type": "requires"
+          }
+        ],
+        "outgoing": [
+          {
+            "to": "concept-wahrscheinlichkeit",
+            "type": "requires"
+          }
+        ]
+      },
+      "concept-frequentist-inference": {
+        "incoming": [
+          {
+            "from": "concept-bayes",
+            "type": "contrasts-with"
+          }
+        ],
+        "outgoing": []
+      },
+      "concept-logistic-regression": {
+        "incoming": [],
+        "outgoing": [
+          {
+            "to": "concept-bayes",
             "type": "builds-on"
+          },
+          {
+            "to": "concept-bedingte-wahrscheinlichkeit",
+            "type": "requires"
+          }
+        ]
+      },
+      "concept-wahrscheinlichkeit": {
+        "incoming": [
+          {
+            "from": "concept-bedingte-wahrscheinlichkeit",
+            "type": "requires"
           }
         ],
         "outgoing": []
@@ -191,18 +240,18 @@
   "counts": {
     "ai_action_requests": 1,
     "collections": 2,
-    "concepts": 2,
+    "concepts": 5,
     "garden_entries": 1,
     "inbox_items": 2,
     "learning_paths": 6,
     "learning_paths_active": 6,
     "modules": 3,
-    "notes": 1,
+    "notes": 6,
     "notes_reviewed": 1,
     "notes_with_evidence": 1,
     "programs": 5,
     "projects": 1,
-    "relations": 0,
+    "relations": 5,
     "source_feedback_records": 0,
     "sources": 3,
     "sources_with_topics": 3,
@@ -357,40 +406,40 @@
   },
   "module_concept_edges": [
     {
-      "module_id": "module-fixture-aml",
       "concept_id": "concept-bayes",
       "evidence": [
         {
           "kind": "stage-concept",
-          "unit_id": "unit-fixture-aml-l04",
+          "stage_id": "stage-fixture-aml-bayes",
           "study_map_id": "study-map-fixture-aml-l04",
-          "stage_id": "stage-fixture-aml-bayes"
+          "unit_id": "unit-fixture-aml-l04"
         }
-      ]
+      ],
+      "module_id": "module-fixture-aml"
     },
     {
-      "module_id": "module-fixture-m2",
       "concept_id": "concept-bayes",
       "evidence": [
         {
           "kind": "stage-concept",
-          "unit_id": "unit-fixture-sad-l04",
+          "stage_id": "stage-fixture-conditioning",
           "study_map_id": "study-map-fixture-sad-l04",
-          "stage_id": "stage-fixture-conditioning"
+          "unit_id": "unit-fixture-sad-l04"
         }
-      ]
+      ],
+      "module_id": "module-fixture-m2"
     },
     {
-      "module_id": "module-fixture-m2",
       "concept_id": "concept-bedingte-wahrscheinlichkeit",
       "evidence": [
         {
           "kind": "stage-concept",
-          "unit_id": "unit-fixture-sad-l04",
+          "stage_id": "stage-fixture-conditioning",
           "study_map_id": "study-map-fixture-sad-l04",
-          "stage_id": "stage-fixture-conditioning"
+          "unit_id": "unit-fixture-sad-l04"
         }
-      ]
+      ],
+      "module_id": "module-fixture-m2"
     }
   ],
   "module_source_maps": [
@@ -437,6 +486,7 @@
     {
       "administrative_status": "enrolled",
       "area_id": "program-bachelors",
+      "attempts": [],
       "code": "M2F",
       "components": [
         {
@@ -476,13 +526,12 @@
         ],
         "type": "klausur"
       },
+      "grade": null,
       "id": "module-fixture-m2",
       "institution": "Fixture University",
       "is_actionable": true,
       "kind": "academic",
       "operational_state": "active",
-      "attempts": [],
-      "grade": null,
       "path": "curriculum/modules/module-fixture-m2/module.yaml",
       "revision": 1,
       "semester": "sose-2099",
@@ -502,11 +551,11 @@
     {
       "administrative_status": "enrolled",
       "area_id": "program-bachelors",
+      "attempts": [],
       "code": "AMLF",
       "components": [],
       "credits": null,
       "examination": null,
-      "attempts": [],
       "grade": null,
       "id": "module-fixture-aml",
       "institution": "Fixture University",
@@ -837,11 +886,11 @@
           "useful_sections": [
             {
               "note": "the whole regression argument",
-              "section": "Chapter 3 \u00a7\u00a73.1\u20133.3"
+              "section": "Chapter 3 §§3.1–3.3"
             },
             {
               "note": "exact selections, nothing around them",
-              "section": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2"
+              "section": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2"
             }
           ],
           "weaknesses": [
@@ -898,9 +947,9 @@
         "bedingte Wahrscheinlichkeit",
         "conditioning"
       ],
+      "deprecated": false,
       "id": "concept-bedingte-wahrscheinlichkeit",
       "path": "knowledge/concepts.yaml",
-      "deprecated": false,
       "title": "Conditional probability",
       "type": "concept"
     },
@@ -908,13 +957,14 @@
       "aliases": [
         "Satz von Bayes"
       ],
+      "deprecated": false,
       "id": "concept-bayes",
       "path": "knowledge/concepts.yaml",
-      "deprecated": false,
       "title": "Bayes theorem",
       "type": "concept"
     },
     {
+      "atlas_question": null,
       "attachments": [],
       "authorship": null,
       "concepts": [
@@ -928,15 +978,15 @@
       "evidence": [],
       "id": "note-fixture-probability",
       "path": "knowledge/notes/mathematics/note-fixture-probability.md",
-      "role": "reference",
       "reviewed": null,
+      "role": "reference",
+      "semantic_review": null,
       "sources": [
         "source-fixture-book"
       ],
       "state": "evolving",
       "summary": "Synthetic durable reference.",
       "supersedes": [],
-      "semantic_review": null,
       "title": "Fixture probability reference",
       "transcription": null,
       "type": "note"
@@ -955,10 +1005,11 @@
       ],
       "objective": "Prepare the synthetic combined exam without flattening its components.",
       "path": "work/active/workspace-fixture-m2/CONTEXT.md",
-      "project_id": null,
       "program_ids": [
         "program-bachelors"
       ],
+      "project_id": null,
+      "revision": 0,
       "sources": [
         "source-fixture-book"
       ],
@@ -966,7 +1017,6 @@
       "status": "active",
       "title": "Fixture M2 exam prep",
       "type": "workspace",
-      "revision": 0,
       "unit_ids": [
         "unit-fixture-sad-l04"
       ]
@@ -983,6 +1033,7 @@
       "type": "coordination"
     },
     {
+      "atlas_question": null,
       "attachments": [],
       "authorship": null,
       "concepts": [],
@@ -991,15 +1042,15 @@
       "evidence": [],
       "id": "note-fixture-python-wiring",
       "path": "knowledge/notes/programming/note-fixture-python-wiring.md",
-      "role": "crosswalk",
       "reviewed": null,
+      "role": "crosswalk",
+      "semantic_review": null,
       "sources": [
         "source-fixture-video"
       ],
       "state": "evolving",
       "summary": "Synthetic crosswalk in a second domain.",
       "supersedes": [],
-      "semantic_review": null,
       "title": "Fixture Python wiring crosswalk",
       "transcription": null,
       "type": "note"
@@ -1011,7 +1062,7 @@
         {
           "group": "tier-1-now",
           "source": "source-fixture-book",
-          "why": "The spine \u2014 read this before anything else on the shelf."
+          "why": "The spine — read this before anything else on the shelf."
         },
         {
           "group": "tier-2-optional",
@@ -1177,9 +1228,189 @@
         "unit-fixture-thesis-landscape"
       ],
       "workspace_ids": []
+    },
+    {
+      "aliases": [
+        "Wahrscheinlichkeit"
+      ],
+      "deprecated": false,
+      "id": "concept-wahrscheinlichkeit",
+      "path": "knowledge/concepts.yaml",
+      "title": "Probability",
+      "type": "concept"
+    },
+    {
+      "aliases": [
+        "logistische Regression"
+      ],
+      "deprecated": false,
+      "id": "concept-logistic-regression",
+      "path": "knowledge/concepts.yaml",
+      "title": "Logistic regression",
+      "type": "concept"
+    },
+    {
+      "aliases": [],
+      "deprecated": false,
+      "id": "concept-frequentist-inference",
+      "path": "knowledge/concepts.yaml",
+      "title": "Frequentist inference",
+      "type": "concept"
+    },
+    {
+      "atlas_question": {
+        "state": "open",
+        "target": {
+          "concepts": [
+            "concept-bayes",
+            "concept-bedingte-wahrscheinlichkeit"
+          ]
+        }
+      },
+      "attachments": [],
+      "authorship": "user",
+      "concepts": [],
+      "contexts": [],
+      "domain": "mathematics",
+      "evidence": [],
+      "id": "note-fixture-question-concepts",
+      "path": "knowledge/notes/mathematics/note-fixture-question-concepts.md",
+      "reviewed": null,
+      "role": "question",
+      "semantic_review": null,
+      "sources": [],
+      "state": "rough",
+      "summary": "I can restate Bayes but I cannot say why the conditional has to come first.",
+      "supersedes": [],
+      "title": "Why does Bayes need the conditional first?",
+      "transcription": null,
+      "type": "note"
+    },
+    {
+      "atlas_question": {
+        "state": "open",
+        "target": {
+          "from": "concept-bayes",
+          "to": "concept-bedingte-wahrscheinlichkeit",
+          "type": "requires"
+        }
+      },
+      "attachments": [],
+      "authorship": "user",
+      "concepts": [],
+      "contexts": [],
+      "domain": "mathematics",
+      "evidence": [],
+      "id": "note-fixture-question-relation",
+      "path": "knowledge/notes/mathematics/note-fixture-question-relation.md",
+      "reviewed": null,
+      "role": "question",
+      "semantic_review": null,
+      "sources": [],
+      "state": "rough",
+      "summary": "The lecture ordered them this way; I am not sure the dependency is real.",
+      "supersedes": [],
+      "title": "Is this really a prerequisite or just how it was taught?",
+      "transcription": null,
+      "type": "note"
+    },
+    {
+      "atlas_question": {
+        "state": "open",
+        "target": {
+          "from": "concept-bayes",
+          "to": "concept-frequentist-inference",
+          "type": "derives"
+        }
+      },
+      "attachments": [],
+      "authorship": "user",
+      "concepts": [],
+      "contexts": [],
+      "domain": "mathematics",
+      "evidence": [],
+      "id": "note-fixture-question-stale",
+      "path": "knowledge/notes/mathematics/note-fixture-question-stale.md",
+      "reviewed": null,
+      "role": "question",
+      "semantic_review": null,
+      "sources": [],
+      "state": "rough",
+      "summary": "Recorded against a relation that is no longer authored.",
+      "supersedes": [],
+      "title": "What happened to the derivation link?",
+      "transcription": null,
+      "type": "note"
+    },
+    {
+      "atlas_question": {
+        "answer_notes": [
+          "note-fixture-probability"
+        ],
+        "state": "resolved",
+        "target": {
+          "concepts": [
+            "concept-wahrscheinlichkeit"
+          ]
+        }
+      },
+      "attachments": [],
+      "authorship": "user",
+      "concepts": [],
+      "contexts": [],
+      "domain": "mathematics",
+      "evidence": [],
+      "id": "note-fixture-question-resolved",
+      "path": "knowledge/notes/mathematics/note-fixture-question-resolved.md",
+      "reviewed": null,
+      "role": "question",
+      "semantic_review": null,
+      "sources": [],
+      "state": "rough",
+      "summary": "Answered while working the exercise sheet.",
+      "supersedes": [],
+      "title": "Settled: probability before conditioning",
+      "transcription": null,
+      "type": "note"
     }
   ],
-  "relations": [],
+  "relations": [
+    {
+      "context": "Bayes rewrites a conditional, so the conditional comes first.",
+      "from": "concept-bayes",
+      "source": "source-fixture-book",
+      "to": "concept-bedingte-wahrscheinlichkeit",
+      "type": "requires"
+    },
+    {
+      "context": null,
+      "from": "concept-bedingte-wahrscheinlichkeit",
+      "source": null,
+      "to": "concept-wahrscheinlichkeit",
+      "type": "requires"
+    },
+    {
+      "context": null,
+      "from": "concept-logistic-regression",
+      "source": "source-fixture-islp",
+      "to": "concept-bayes",
+      "type": "builds-on"
+    },
+    {
+      "context": null,
+      "from": "concept-logistic-regression",
+      "source": null,
+      "to": "concept-bedingte-wahrscheinlichkeit",
+      "type": "requires"
+    },
+    {
+      "context": "Two readings of the same probability statement.",
+      "from": "concept-bayes",
+      "source": "source-fixture-missing",
+      "to": "concept-frequentist-inference",
+      "type": "contrasts-with"
+    }
+  ],
   "resume_pointer": {
     "module_id": "module-fixture-m2",
     "stage_id": "stage-fixture-conditioning",
@@ -1188,6 +1419,21 @@
     "unit_id": "unit-fixture-sad-l04",
     "updated": "2099-04-01"
   },
+  "review_items": [
+    {
+      "category": "planning",
+      "context": "",
+      "id": "review-planning-unit-fixture-analysis",
+      "reason": "This unit needs a study map before structured study can continue.",
+      "target": {
+        "id": "unit-fixture-analysis",
+        "kind": "unit",
+        "module_id": "module-fixture-m2",
+        "revision": 0
+      },
+      "title": "Plan Analysis exam prep"
+    }
+  ],
   "semesters": [
     {
       "id": "semester-sose-2099",
@@ -1313,8 +1559,8 @@
       "resources": [
         {
           "kind": "read",
-          "label": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3",
-          "locator": "Chapter 3 \u00a7\u00a73.1\u20133.3",
+          "label": "ISLP Chapter 3 §§3.1–3.3",
+          "locator": "Chapter 3 §§3.1–3.3",
           "source_id": "source-fixture-islp"
         }
       ],
@@ -1340,7 +1586,7 @@
         {
           "kind": "read",
           "label": "ISLP selected sections",
-          "locator": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2",
+          "locator": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2",
           "source_id": "source-fixture-islp"
         }
       ],
@@ -1424,6 +1670,10 @@
       "shelving": {
         "state": "none"
       },
+      "source_plan": {
+        "path": "fixture/source-plan.md",
+        "provenance": "operator"
+      },
       "stages": [
         {
           "attachments": [],
@@ -1442,10 +1692,6 @@
           "working_note": "curriculum/fixture/l02/stages/stage-l02-start/notes.md"
         }
       ],
-      "source_plan": {
-        "path": "fixture/source-plan.md",
-        "provenance": "operator"
-      },
       "status": "ready",
       "type": "study-map",
       "unit_id": "unit-fixture-sad-l02"
@@ -1459,6 +1705,10 @@
       "revision": 1,
       "shelving": {
         "state": "none"
+      },
+      "source_plan": {
+        "path": "fixture/source-plan.md",
+        "provenance": "operator"
       },
       "stages": [
         {
@@ -1545,10 +1795,6 @@
           "working_note": "curriculum/fixture/l04/stages/stage-fixture-self-test/notes.md"
         }
       ],
-      "source_plan": {
-        "path": "fixture/source-plan.md",
-        "provenance": "operator"
-      },
       "status": "active",
       "type": "study-map",
       "unit_id": "unit-fixture-sad-l04"
@@ -1563,6 +1809,10 @@
       "shelving": {
         "state": "none"
       },
+      "source_plan": {
+        "path": "fixture/source-plan.md",
+        "provenance": "operator"
+      },
       "stages": [
         {
           "attachments": [],
@@ -1576,8 +1826,8 @@
           "resources": [
             {
               "kind": "read",
-              "label": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3",
-              "locator": "Chapter 3 \u00a7\u00a73.1\u20133.3",
+              "label": "ISLP Chapter 3 §§3.1–3.3",
+              "locator": "Chapter 3 §§3.1–3.3",
               "source_id": "source-fixture-islp"
             }
           ],
@@ -1588,10 +1838,6 @@
           "working_note": "curriculum/fixture/aml-l03/stages/stage-aml-l03/notes.md"
         }
       ],
-      "source_plan": {
-        "path": "fixture/source-plan.md",
-        "provenance": "operator"
-      },
       "status": "ready",
       "type": "study-map",
       "unit_id": "unit-fixture-aml-l03"
@@ -1605,6 +1851,10 @@
       "revision": 1,
       "shelving": {
         "state": "none"
+      },
+      "source_plan": {
+        "path": "fixture/source-plan.md",
+        "provenance": "operator"
       },
       "stages": [
         {
@@ -1620,7 +1870,7 @@
             {
               "kind": "read",
               "label": "ISLP selected sections",
-              "locator": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2",
+              "locator": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2",
               "source_id": "source-fixture-islp"
             }
           ],
@@ -1650,10 +1900,6 @@
           "working_note": "curriculum/fixture/aml-l04/stages/stage-fixture-aml-bayes/notes.md"
         }
       ],
-      "source_plan": {
-        "path": "fixture/source-plan.md",
-        "provenance": "operator"
-      },
       "status": "ready",
       "type": "study-map",
       "unit_id": "unit-fixture-aml-l04"
@@ -1667,6 +1913,10 @@
       "revision": 1,
       "shelving": {
         "state": "none"
+      },
+      "source_plan": {
+        "path": "fixture/source-plan.md",
+        "provenance": "operator"
       },
       "stages": [
         {
@@ -1686,10 +1936,6 @@
           "working_note": "curriculum/fixture/python/stages/stage-python-oop/notes.md"
         }
       ],
-      "source_plan": {
-        "path": "fixture/source-plan.md",
-        "provenance": "operator"
-      },
       "status": "ready",
       "type": "study-map",
       "unit_id": "unit-fixture-python-oop"
@@ -1706,8 +1952,8 @@
           {
             "destination": "knowledge/notes/research/note-fixture-synthesis.md",
             "diff": "+ Preserve fixture wording.",
-        "id": "proposal-note",
-        "kind": "durable-note",
+            "id": "proposal-note",
+            "kind": "durable-note",
             "rationale": "The reasoning has an independent purpose.",
             "selected": true,
             "title": "Fixture synthesis"
@@ -1715,8 +1961,8 @@
           {
             "destination": "knowledge/garden/open-fixture.md",
             "diff": "+ Track uncertainty.",
-        "id": "proposal-garden",
-        "kind": "garden",
+            "id": "proposal-garden",
+            "kind": "garden",
             "rationale": "Still uncertain.",
             "selected": false,
             "title": "Open fixture question"
@@ -1724,6 +1970,10 @@
         ],
         "state": "proposed",
         "summary": "Two synthetic candidates."
+      },
+      "source_plan": {
+        "path": "fixture/source-plan.md",
+        "provenance": "operator"
       },
       "stages": [
         {
@@ -1743,10 +1993,6 @@
           "working_note": "curriculum/fixture/thesis/stages/stage-thesis-landscape/notes.md"
         }
       ],
-      "source_plan": {
-        "path": "fixture/source-plan.md",
-        "provenance": "operator"
-      },
       "status": "ready-to-shelve",
       "type": "study-map",
       "unit_id": "unit-fixture-thesis-landscape"
@@ -1760,7 +2006,7 @@
       "title": "Mathematics"
     },
     {
-      "description": "Convex, numerical and combinatorial optimization; statistical learning theory and kernel methods \u2014 the bridge between mathematics and learning.",
+      "description": "Convex, numerical and combinatorial optimization; statistical learning theory and kernel methods — the bridge between mathematics and learning.",
       "id": "thematic-group-optimization",
       "order": 20,
       "title": "Optimization & Learning Theory"
@@ -1796,7 +2042,7 @@
       "title": "Software & Languages"
     },
     {
-      "description": "Research method, degree regulations, and dataset catalogues \u2014 small, but everything needs a home or it becomes invisible.",
+      "description": "Research method, degree regulations, and dataset catalogues — small, but everything needs a home or it becomes invisible.",
       "id": "thematic-group-method-admin",
       "order": 80,
       "title": "Method & Administration"
@@ -1848,66 +2094,66 @@
   ],
   "unit_material_syntheses": [
     {
-      "schema_version": 1,
-      "id": "material-synthesis-fixture-sad-l04",
-      "type": "unit-material-synthesis",
-      "unit_id": "unit-fixture-sad-l04",
-      "status": "approved",
       "basis": {
-        "unit_revision": 1,
-        "source_map_revision": 1,
-        "source_map_checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "route_set_checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "ai_provenance": {
+          "delivery_id": "fixture-material-delivery",
+          "provider": "manual-bundle",
+          "request_id": "fixture-material-request"
+        },
         "material_checksums": {
           "route-fixture-sad-l04-book": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
         },
         "policy": "tiered-v1",
-        "ai_provenance": {
-          "request_id": "fixture-material-request",
-          "delivery_id": "fixture-material-delivery",
-          "provider": "manual-bundle"
-        }
+        "route_set_checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "source_map_checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "source_map_revision": 1,
+        "unit_revision": 1
       },
-      "route_assessments": [
-        {
-          "route_id": "route-fixture-sad-l04-book",
-          "source_id": "source-fixture-book",
-          "locator": "Synthetic probability chapter",
-          "review_status": "screened",
-          "concept_ids": [
-            "concept-bedingte-wahrscheinlichkeit"
-          ],
-          "reason": "The route was screened for scope; a deep evidence review has not been approved."
-        }
-      ],
       "comparisons": [],
+      "completeness": {
+        "assessed_route_count": 1,
+        "complete": true,
+        "current_route_count": 1,
+        "deep_reviewed_count": 0,
+        "duplicate_route_ids": [],
+        "missing_route_ids": [],
+        "orphaned_route_ids": [],
+        "screened_count": 1,
+        "unavailable_count": 0,
+        "unevaluated_count": 0
+      },
       "concept_groups": [
         {
-          "concept_id": "concept-bedingte-wahrscheinlichkeit",
-          "local_node_ids": [],
-          "related_unit_ids": [],
           "bridge_note_ids": [
             "note-fixture-probability"
           ],
-          "narrative": "The screened route connects the lecture to the existing probability note."
+          "concept_id": "concept-bedingte-wahrscheinlichkeit",
+          "local_node_ids": [],
+          "narrative": "The screened route connects the lecture to the existing probability note.",
+          "related_unit_ids": []
         }
       ],
       "freshness": {
-        "status": "current",
-        "reasons": []
+        "reasons": [],
+        "status": "current"
       },
-      "completeness": {
-        "complete": true,
-        "current_route_count": 1,
-        "assessed_route_count": 1,
-        "deep_reviewed_count": 0,
-        "screened_count": 1,
-        "unevaluated_count": 0,
-        "unavailable_count": 0,
-        "missing_route_ids": [],
-        "orphaned_route_ids": [],
-        "duplicate_route_ids": []
-      }
+      "id": "material-synthesis-fixture-sad-l04",
+      "route_assessments": [
+        {
+          "concept_ids": [
+            "concept-bedingte-wahrscheinlichkeit"
+          ],
+          "locator": "Synthetic probability chapter",
+          "reason": "The route was screened for scope; a deep evidence review has not been approved.",
+          "review_status": "screened",
+          "route_id": "route-fixture-sad-l04-book",
+          "source_id": "source-fixture-book"
+        }
+      ],
+      "schema_version": 1,
+      "status": "approved",
+      "type": "unit-material-synthesis",
+      "unit_id": "unit-fixture-sad-l04"
     }
   ],
   "units": [
@@ -1918,20 +2164,20 @@
       "id": "unit-fixture-sad-l02",
       "kind": "lecture",
       "module_id": "module-fixture-m2",
-      "path": "curriculum/modules/module-fixture-m2/units/unit-fixture-sad-l02.yaml",
+      "needs_study_map": false,
       "note_sections": [],
       "notes_text": "",
       "notes_updated": null,
       "order": 2,
+      "path": "curriculum/modules/module-fixture-m2/units/unit-fixture-sad-l02.yaml",
       "project_ids": [],
       "revision": 1,
       "scope": "Synthetic Lecture 02 scope.",
       "scope_sources": [],
       "source_selections": [],
       "status": "ready",
-      "title": "SaD Lecture 02 \u2014 Descriptive statistics",
+      "title": "SaD Lecture 02 — Descriptive statistics",
       "type": "unit",
-      "needs_study_map": false,
       "workspace_ids": []
     },
     {
@@ -1943,7 +2189,7 @@
       "id": "unit-fixture-sad-l04",
       "kind": "lecture",
       "module_id": "module-fixture-m2",
-      "path": "curriculum/modules/module-fixture-m2/units/unit-fixture-sad-l04.yaml",
+      "needs_study_map": false,
       "note_sections": [
         {
           "attachments": [],
@@ -1959,16 +2205,16 @@
       "notes_text": "<!-- learningos:unit-note {\"attachments\":[],\"recorded_at\":\"2099-03-01T18:00:00+00:00\",\"stage_ids\":[\"stage-fixture-foundations\"],\"title\":\"Foundations session\"} -->\n## Foundations session\n\nI connected the counting rule to the probability model.\n",
       "notes_updated": "2099-03-01",
       "order": 4,
+      "path": "curriculum/modules/module-fixture-m2/units/unit-fixture-sad-l04.yaml",
       "project_ids": [],
       "revision": 1,
       "scope": "Synthetic Lecture 04 scope.",
       "scope_sources": [],
       "source_selections": [],
       "status": "active",
-      "title": "SaD Lecture 04 \u2014 Probability & Bayes",
+      "title": "SaD Lecture 04 — Probability & Bayes",
       "type": "unit",
       "working_note": "curriculum/modules/module-fixture-m2/units/unit-fixture-sad-l04/notes.md",
-      "needs_study_map": false,
       "workspace_ids": [
         "workspace-fixture-m2"
       ]
@@ -1979,11 +2225,12 @@
       "id": "unit-fixture-analysis",
       "kind": "exam-prep",
       "module_id": "module-fixture-m2",
-      "path": "curriculum/modules/module-fixture-m2/units/unit-fixture-analysis.yaml",
+      "needs_study_map": true,
       "note_sections": [],
       "notes_text": "",
       "notes_updated": null,
       "order": 20,
+      "path": "curriculum/modules/module-fixture-m2/units/unit-fixture-analysis.yaml",
       "project_ids": [],
       "revision": 0,
       "scope": "Needs a map from confirmed course scope.",
@@ -1992,7 +2239,6 @@
       "status": "needs-map",
       "title": "Analysis exam prep",
       "type": "unit",
-      "needs_study_map": true,
       "workspace_ids": []
     },
     {
@@ -2001,20 +2247,20 @@
       "id": "unit-fixture-aml-l03",
       "kind": "lecture",
       "module_id": "module-fixture-aml",
-      "path": "curriculum/modules/module-fixture-aml/units/unit-fixture-aml-l03.yaml",
+      "needs_study_map": false,
       "note_sections": [],
       "notes_text": "",
       "notes_updated": null,
       "order": 3,
+      "path": "curriculum/modules/module-fixture-aml/units/unit-fixture-aml-l03.yaml",
       "project_ids": [],
       "revision": 1,
-      "scope": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3.",
+      "scope": "ISLP Chapter 3 §§3.1–3.3.",
       "scope_sources": [],
       "source_selections": [],
       "status": "ready",
-      "title": "AML Lecture 03 \u2014 Linear regression",
+      "title": "AML Lecture 03 — Linear regression",
       "type": "unit",
-      "needs_study_map": false,
       "workspace_ids": []
     },
     {
@@ -2023,20 +2269,20 @@
       "id": "unit-fixture-aml-l04",
       "kind": "lecture",
       "module_id": "module-fixture-aml",
-      "path": "curriculum/modules/module-fixture-aml/units/unit-fixture-aml-l04.yaml",
+      "needs_study_map": false,
       "note_sections": [],
       "notes_text": "",
       "notes_updated": null,
       "order": 4,
+      "path": "curriculum/modules/module-fixture-aml/units/unit-fixture-aml-l04.yaml",
       "project_ids": [],
       "revision": 1,
-      "scope": "ISLP \u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2.",
+      "scope": "ISLP §3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2.",
       "scope_sources": [],
       "source_selections": [],
       "status": "ready",
-      "title": "AML Lecture 04 \u2014 Classification",
+      "title": "AML Lecture 04 — Classification",
       "type": "unit",
-      "needs_study_map": false,
       "workspace_ids": []
     },
     {
@@ -2045,11 +2291,12 @@
       "id": "unit-fixture-python-oop",
       "kind": "topic",
       "module_id": "module-fixture-python",
-      "path": "curriculum/modules/module-fixture-python/units/unit-fixture-python-oop.yaml",
+      "needs_study_map": false,
       "note_sections": [],
       "notes_text": "",
       "notes_updated": null,
       "order": 1,
+      "path": "curriculum/modules/module-fixture-python/units/unit-fixture-python-oop.yaml",
       "project_ids": [],
       "revision": 1,
       "scope": "Classes and object collaboration; no completion claim.",
@@ -2058,7 +2305,6 @@
       "status": "ready",
       "title": "Python OOP scope",
       "type": "unit",
-      "needs_study_map": false,
       "workspace_ids": []
     },
     {
@@ -2067,11 +2313,12 @@
       "id": "unit-fixture-thesis-landscape",
       "kind": "milestone",
       "module_id": "module-fixture-thesis",
-      "path": "curriculum/modules/module-fixture-thesis/units/unit-fixture-thesis-landscape.yaml",
+      "needs_study_map": false,
       "note_sections": [],
       "notes_text": "",
       "notes_updated": null,
       "order": 1,
+      "path": "curriculum/modules/module-fixture-thesis/units/unit-fixture-thesis-landscape.yaml",
       "project_ids": [
         "project-fixture-thesis"
       ],
@@ -2082,23 +2329,7 @@
       "status": "ready-to-shelve",
       "title": "Thesis landscape",
       "type": "unit",
-      "needs_study_map": false,
       "workspace_ids": []
-    }
-  ],
-  "review_items": [
-    {
-      "id": "review-planning-unit-fixture-analysis",
-      "category": "planning",
-      "title": "Plan Analysis exam prep",
-      "context": "",
-      "reason": "This unit needs a study map before structured study can continue.",
-      "target": {
-        "kind": "unit",
-        "id": "unit-fixture-analysis",
-        "module_id": "module-fixture-m2",
-        "revision": 0
-      }
     }
   ]
 }

@@ -38,6 +38,12 @@ export const DEFAULT_SETTINGS = {
   showAiRecommendation: true,
   navMoreOpen: false,
   learnArea: 'program-bachelors',
+  /**
+   * Concepts the Atlas has been focused on, most recent first. The screen
+   * opens on search and these (ADR-016 decision 7), so a learner arrives at
+   * something they were already working on rather than at a blank canvas.
+   */
+  atlasRecentConcepts: [] as string[],
   pythonPath: '',
   preferredAiProvider: 'manual-bundle',
   /**

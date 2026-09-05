@@ -9,6 +9,23 @@ export interface LibrarySourceFiltersV1 {
   use: string;
 }
 
+/**
+ * The Atlas lens (ADR-016 decision 8).
+ *
+ * One field carries all five values even though the shell splits them across
+ * two controls, because two fields would make `lens=prerequisites` with
+ * `scope=diagnostics` expressible and it means nothing.
+ */
+export type AtlasLensV1 =
+  | "prerequisites"
+  | "path"
+  | "semantic"
+  | "bridges"
+  | "diagnostics";
+
+/** How far the focused graph reaches. Depth 1 is the default. */
+export type AtlasDepthV1 = 1 | 2;
+
 export type ProjectDetailTabV1 =
   | "overview"
   | "structure"
@@ -63,7 +80,13 @@ export type ApplicationRouteV1 =
       facet?: string;
       domain?: string;
     }
-  | { name: "atlas"; domain?: string | null; concept?: string | null }
+  | {
+      name: "atlas";
+      concept?: string | null;
+      module?: string | null;
+      lens?: AtlasLensV1;
+      depth?: AtlasDepthV1;
+    }
   | { name: "shelving"; unitId?: string | null }
   | { name: "boundary"; boundaryId: string };
 
@@ -108,6 +131,16 @@ const LIBRARY_COLLECTIONS: readonly LibraryCollectionV1[] = [
   "topic-packs",
 ];
 
+const ATLAS_LENSES: readonly AtlasLensV1[] = [
+  "prerequisites",
+  "path",
+  "semantic",
+  "bridges",
+  "diagnostics",
+];
+
+const ATLAS_DEPTHS: readonly AtlasDepthV1[] = [1, 2];
+
 const PROJECT_DETAIL_TABS: readonly ProjectDetailTabV1[] = [
   "overview",
   "structure",
@@ -118,6 +151,14 @@ const PROJECT_DETAIL_TABS: readonly ProjectDetailTabV1[] = [
 
 export function isLibraryCollection(value: unknown): value is LibraryCollectionV1 {
   return LIBRARY_COLLECTIONS.includes(value as LibraryCollectionV1);
+}
+
+export function isAtlasLens(value: unknown): value is AtlasLensV1 {
+  return ATLAS_LENSES.includes(value as AtlasLensV1);
+}
+
+export function isAtlasDepth(value: unknown): value is AtlasDepthV1 {
+  return ATLAS_DEPTHS.includes(value as AtlasDepthV1);
 }
 
 export function isProjectDetailTab(value: unknown): value is ProjectDetailTabV1 {
@@ -151,6 +192,23 @@ export function asLibrarySourceFilters(
 /** Coerce a loose collection value; anything unrecognised falls back to sources. */
 export function asLibraryCollection(value: unknown): LibraryCollectionV1 {
   return isLibraryCollection(value) ? value : "sources";
+}
+
+/**
+ * Coerce a loose lens value; anything unrecognised falls back to the default.
+ *
+ * A stale deep link or a hand-edited workspace file is a routine event, and
+ * ADR-016 decision 8 answers it: the Atlas opens on its default lens rather
+ * than refusing to open.
+ */
+export function asAtlasLens(value: unknown): AtlasLensV1 {
+  return isAtlasLens(value) ? value : "prerequisites";
+}
+
+/** Coerce a loose depth value; anything outside the bound falls back to 1. */
+export function asAtlasDepth(value: unknown): AtlasDepthV1 {
+  const numeric = typeof value === "string" ? Number(value) : value;
+  return isAtlasDepth(numeric) ? numeric : 1;
 }
 
 /** Coerce a loose project tab value; anything unrecognised falls back to overview. */

@@ -787,6 +787,43 @@ export class GatewayClient {
       payload,
     );
   }
+  /**
+   * Save one of the learner's own Atlas questions (ADR-017).
+   *
+   * Artifact-scoped, not request-scoped: the note id is the artifact, so the
+   * write is guarded against that note's current revision and a stale view
+   * refuses rather than overwrites. Core preserves the original target and the
+   * learner's wording; this only ever carries the fields the caller names, so
+   * resolving a question cannot silently rewrite its text.
+   */
+  saveAtlasQuestion(
+    question: Readonly<Record<string, unknown>>,
+    expectedRevisions: Readonly<Record<string, number>> = {},
+  ) {
+    return this.capability(
+      'atlas.question.save',
+      { question: { ...question } },
+      { expectedRevisions },
+    );
+  }
+  /**
+   * Apply explicitly authored changes to the concept relation registry
+   * (ADR-017 decision 1).
+   *
+   * Core takes only `add`, `replace` and `remove` and matches every `old` row
+   * exactly and uniquely, so an edit made from a stale screen is refused rather
+   * than resolved by guessing. The whole batch commits or none of it does.
+   */
+  changeConceptRelations(
+    operations: readonly Readonly<Record<string, unknown>>[],
+    expectedRevisions: Readonly<Record<string, number>> = {},
+  ) {
+    return this.capability(
+      'concept.relations.change',
+      { change: { operations: operations.map((operation) => ({ ...operation })) } },
+      { expectedRevisions },
+    );
+  }
   prepareShelving(unitId: string,
     expectedRevisions: Readonly<Record<string, number>> = {}) {
     return this.capability('review.prepare', { unit_id: unitId }, { expectedRevisions });
