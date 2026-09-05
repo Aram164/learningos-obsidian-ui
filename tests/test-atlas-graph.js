@@ -584,4 +584,96 @@ assert.deepEqual(neighbourhood(empty, 'concept-absent').nodes.map((node) => node
 assert.equal(strictPath(empty, 'concept-absent').ok, true);
 assert.deepEqual(bridges(empty), []);
 
+/* ---- F09 (2026-09-05 audit): a remainder is directional ------------------
+ *
+ * "Beyond depth" promises two things at once: the concept is further along the
+ * stated direction from the focus, and raising the depth brings it in. A
+ * remainder collected from every edge with one endpoint inside the view keeps
+ * neither promise for a concept that merely shares a prerequisite.
+ */
+{
+  const shape = (edges) => buildAtlasGraph(storeOf({
+    records: ['a', 'b', 'c', 'd'].map((key) => ({
+      id: `concept-${key}`, type: 'concept', title: key.toUpperCase(),
+    })),
+    relations: edges,
+  }));
+
+  // Converging: A requires B, C requires B. C is a sibling, not a dependent.
+  const converging = shape([
+    { from: 'concept-a', type: 'requires', to: 'concept-b' },
+    { from: 'concept-c', type: 'requires', to: 'concept-b' },
+  ]);
+  assert.deepEqual(
+    neighbourhood(converging, 'concept-a', { depth: 1 }).beyond.dependents.map((r) => r.id),
+    [],
+    'a concept sharing a prerequisite is not advertised as a dependent',
+  );
+  assert.deepEqual(
+    neighbourhood(converging, 'concept-a', { depth: 5 }).nodes.map((n) => n.concept.id).sort(),
+    ['concept-a', 'concept-b'],
+    'and raising the depth to its maximum never reaches it, which is why it must not be promised',
+  );
+
+  // Chain: A requires B requires C requires D. Each bound names the next hop,
+  // and raising the bound consumes exactly that remainder.
+  const chain = shape([
+    { from: 'concept-a', type: 'requires', to: 'concept-b' },
+    { from: 'concept-b', type: 'requires', to: 'concept-c' },
+    { from: 'concept-c', type: 'requires', to: 'concept-d' },
+  ]);
+  for (const [depth, expected] of [[1, ['concept-c']], [2, ['concept-d']], [3, []]]) {
+    assert.deepEqual(
+      neighbourhood(chain, 'concept-a', { depth }).beyond.prerequisites.map((r) => r.id),
+      expected,
+      `depth ${depth} names exactly the prerequisites one hop past the bound`,
+    );
+  }
+  assert.deepEqual(
+    neighbourhood(chain, 'concept-d', { depth: 1 }).beyond.dependents.map((r) => r.id),
+    ['concept-b'],
+    'the dependent direction is walked the same way',
+  );
+
+  // Diverging: A requires B; C and D both require A. Both are real dependents.
+  const diverging = shape([
+    { from: 'concept-a', type: 'requires', to: 'concept-b' },
+    { from: 'concept-c', type: 'requires', to: 'concept-a' },
+    { from: 'concept-d', type: 'requires', to: 'concept-a' },
+  ]);
+  const divergingView = neighbourhood(diverging, 'concept-b', { depth: 1 });
+  assert.deepEqual(
+    divergingView.beyond.dependents.map((r) => r.id),
+    ['concept-c', 'concept-d'],
+    'real dependents past the bound are still named',
+  );
+  assert.deepEqual(
+    neighbourhood(diverging, 'concept-b', { depth: 2 }).beyond.dependents,
+    [],
+    'and the promise holds: depth 2 brings them into the view',
+  );
+
+  // Diamond: A requires B and C; both require D.
+  const diamond = shape([
+    { from: 'concept-a', type: 'requires', to: 'concept-b' },
+    { from: 'concept-a', type: 'requires', to: 'concept-c' },
+    { from: 'concept-b', type: 'requires', to: 'concept-d' },
+    { from: 'concept-c', type: 'requires', to: 'concept-d' },
+  ]);
+  assert.deepEqual(
+    neighbourhood(diamond, 'concept-a', { depth: 1 }).beyond.prerequisites.map((r) => r.id),
+    ['concept-d'],
+    'a shared far prerequisite is named once',
+  );
+  assert.deepEqual(
+    neighbourhood(diamond, 'concept-a', { depth: 2 }).beyond.prerequisites,
+    [],
+  );
+  assert.deepEqual(
+    neighbourhood(diamond, 'concept-a', { depth: 1 }).beyond.dependents,
+    [],
+    'and neither sibling is called a dependent of the other',
+  );
+}
+
 console.log('Atlas graph OK: layers, direction, provenance, remainders, cycles, and determinism.');

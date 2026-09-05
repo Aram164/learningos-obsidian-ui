@@ -763,6 +763,143 @@ function routerPlugin(settings = {}) {
     drafts.dispose();
   });
 
+  await test('a completion tick certifies a criterion, not a position', async () => {
+    // F08 (2026-09-05 audit): position-keyed marks carried the tick for
+    // "Describe a scatterplot" over to the criterion that replaced it.
+    const settings = { uiDrafts: emptyUiDrafts() };
+    const drafts = new DraftStore(settings, async () => undefined);
+    const original = ['Describe a scatterplot', 'Compute the covariance'];
+
+    drafts.setDoneWhen('unit-a', 'stage-a', 0, true, original);
+    assert.deepEqual(drafts.getDoneWhen('unit-a', 'stage-a', original), [true, false]);
+
+    const reworded = ['Derive the normal equation', 'Compute the covariance'];
+    assert.deepEqual(
+      drafts.getDoneWhen('unit-a', 'stage-a', reworded),
+      [false, false],
+      'a revised criterion does not inherit the mark made against the old one',
+    );
+
+    const reordered = ['Compute the covariance', 'Describe a scatterplot'];
+    assert.deepEqual(
+      drafts.getDoneWhen('unit-a', 'stage-a', reordered),
+      [false, true],
+      'and an unchanged criterion keeps its mark through a reorder',
+    );
+
+    // Unrelated stages and units are untouched by either.
+    drafts.setDoneWhen('unit-a', 'stage-b', 0, true, original);
+    assert.deepEqual(drafts.getDoneWhen('unit-a', 'stage-b', original), [true, false]);
+    drafts.dispose();
+  });
+
+  await test('a mark survives a restart, and a legacy positional array upgrades once', async () => {
+    // Persistence is the settings object, so a "restart" is a second store
+    // over the same stored value.
+    const settings = { uiDrafts: emptyUiDrafts() };
+    const first = new DraftStore(settings, async () => undefined);
+    const criteria = ['Describe a scatterplot', 'Compute the covariance'];
+    first.setDoneWhen('unit-a', 'stage-a', 1, true, criteria);
+    first.dispose();
+
+    const restarted = new DraftStore(settings, async () => undefined);
+    assert.deepEqual(restarted.getDoneWhen('unit-a', 'stage-a', criteria), [false, true]);
+    restarted.dispose();
+
+    const legacy = { uiDrafts: emptyUiDrafts() };
+    legacy.uiDrafts.doneWhen['unit-b::stage-b'] = [true, false];
+    const upgrading = new DraftStore(legacy, async () => undefined);
+    assert.deepEqual(
+      upgrading.getDoneWhen('unit-b', 'stage-b', criteria),
+      [true, false],
+      'ticks a learner already made are kept across the upgrade',
+    );
+    assert.equal(
+      Array.isArray(legacy.uiDrafts.doneWhen['unit-b::stage-b']),
+      false,
+      'and the positional array is replaced, so the next revision invalidates properly',
+    );
+    assert.deepEqual(
+      upgrading.getDoneWhen('unit-b', 'stage-b', ['Derive the normal equation', 'Compute the covariance']),
+      [false, false],
+    );
+    upgrading.dispose();
+  });
+
+  await test('editing one relation is checked against the graph the edit produces', async () => {
+    // F11 (2026-09-05 audit): reversing a single edge was refused as a loop,
+    // because the preflight traversed the edge the replacement removes.
+    // The editor module reaches for the host's `obsidian` surface at import
+    // time; only the two constructors it names are needed to load it headless.
+    const atlasLoad = createSourceModuleLoader(ROOT, {
+      obsidian: { Modal: class {}, Notice: class {} },
+      electron: {},
+    });
+    const { buildAtlasGraph, findStrictCycle } = atlasLoad('src/features/atlas/graph.ts');
+    const { editDraft, draftRefusal } = atlasLoad('src/features/atlas/relation-editor.ts');
+    const conceptsOf = (keys) => keys.map((key) => ({
+      id: `concept-${key}`, type: 'concept', title: key.toUpperCase(),
+    }));
+    const graphOf = (keys, relations) => {
+      const records = conceptsOf(keys);
+      return buildAtlasGraph({
+        get: (id) => records.find((row) => row.id === id) ?? null,
+        of: (type) => records.filter((row) => row.type === type),
+        modules: () => [],
+        moduleConceptEdges: () => [],
+        relations: () => relations,
+      });
+    };
+
+    const single = graphOf(['a', 'b'], [
+      { from: 'concept-a', type: 'requires', to: 'concept-b' },
+    ]);
+    const reversal = editDraft(single.edges[0]);
+    reversal.from = 'concept-b';
+    reversal.to = 'concept-a';
+    assert.equal(draftRefusal(single, reversal), null, 'a single-edge reversal is legal');
+    assert.equal(
+      findStrictCycle(graphOf(['a', 'b'], [
+        { from: 'concept-b', type: 'requires', to: 'concept-a' },
+      ])),
+      null,
+      'and the graph it produces really has no cycle',
+    );
+
+    // An edit that closes a loop through edges the replacement keeps is still
+    // refused. A→B→C plus an unrelated D→A, retargeted to C→A, is a cycle.
+    const chain = graphOf(['a', 'b', 'c', 'd'], [
+      { from: 'concept-a', type: 'requires', to: 'concept-b' },
+      { from: 'concept-b', type: 'requires', to: 'concept-c' },
+      { from: 'concept-d', type: 'requires', to: 'concept-a' },
+    ]);
+    const closing = editDraft(chain.edges.find((edge) => edge.from === 'concept-d'));
+    closing.from = 'concept-c';
+    closing.to = 'concept-a';
+    assert.match(String(draftRefusal(chain, closing)), /loop of prerequisites/);
+    assert.ok(
+      findStrictCycle(graphOf(['a', 'b', 'c'], [
+        { from: 'concept-a', type: 'requires', to: 'concept-b' },
+        { from: 'concept-b', type: 'requires', to: 'concept-c' },
+        { from: 'concept-c', type: 'requires', to: 'concept-a' },
+      ])),
+      'and that replacement graph really does contain a cycle',
+    );
+
+    // Adding, rather than editing, still sees the whole graph.
+    const addition = {
+      mode: 'add', from: 'concept-c', type: 'requires', to: 'concept-a',
+      context: '', source: '', original: null, picking: null, search: '', error: null,
+    };
+    assert.match(String(draftRefusal(chain, addition)), /loop of prerequisites/);
+
+    // Removing the old row does not license a duplicate of a different one.
+    const duplicate = editDraft(chain.edges.find((edge) => edge.from === 'concept-d'));
+    duplicate.from = 'concept-a';
+    duplicate.to = 'concept-b';
+    assert.match(String(draftRefusal(chain, duplicate)), /already authored/);
+  });
+
   await test('ManifestStore assertion rejects a missing required array', async () => {
     const store = new ManifestStore(manifestApp((text) => {
       const manifest = JSON.parse(text);

@@ -337,16 +337,17 @@ export class LearningOSUI extends Plugin implements AppSurface {
   /** Done-when ticks are UI-owned working state: they help the learner see how
    *  far through a stage's criteria they are, and are never a second record of
    *  completion. The core still learns only "complete" from `stage-progress`. */
-  getDoneWhen(unitId: string, stageId: string): boolean[] {
-    return this.drafts.getDoneWhen(unitId, stageId);
+  getDoneWhen(unitId: string, stageId: string, criteria: readonly string[] = []): boolean[] {
+    return this.drafts.getDoneWhen(unitId, stageId, criteria);
   }
   setDoneWhen(
     unitId: string,
     stageId: string,
     index: number,
     checked: boolean,
+    criteria: readonly string[] = [],
   ): void {
-    this.drafts.setDoneWhen(unitId, stageId, index, checked);
+    this.drafts.setDoneWhen(unitId, stageId, index, checked, criteria);
   }
   clearDoneWhen(unitId: string, stageId: string): void {
     this.drafts.clearDoneWhen(unitId, stageId);

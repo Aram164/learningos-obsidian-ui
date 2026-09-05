@@ -34,7 +34,18 @@ export interface LearningOSUiDrafts {
    * protect. It is persisted for the same reason the inbox draft is.
    */
   garden: ComposerDraft;
-  doneWhen: Record<string, boolean[]>;
+  /**
+   * Learner attestations against a stage's completion criteria, keyed by what
+   * each criterion says rather than by its position.
+   *
+   * A positional `boolean[]` survived a revision that replaced the criterion
+   * it certified: the tick for "Describe a scatterplot" carried over to
+   * "Derive the normal equation" (2026-09-05 audit, F08). Reordering keeps a
+   * mark because the text is unchanged; rewording drops it, which is the
+   * invalidation the learner needs to see. Legacy arrays are still read once,
+   * then upgraded in place against the criteria on screen.
+   */
+  doneWhen: Record<string, Record<string, boolean> | boolean[]>;
 }
 
 export interface DraftSettingsHost {
@@ -72,6 +83,30 @@ export function normalizeUiDrafts(value: Partial<LearningOSUiDrafts> | null | un
  * edit with content in it still fails, which is the property that matters —
  * a learner who kept typing while the write ran keeps the newer text.
  */
+/**
+ * A stable key for one completion criterion.
+ *
+ * FNV-1a over the whitespace-normalized text: short enough to keep the stored
+ * settings small, and derived only from what the criterion says. Two identical
+ * criteria on one stage are disambiguated by occurrence, so a repeated line
+ * does not make one tick stand for both.
+ */
+export function criterionKeys(criteria: readonly string[]): string[] {
+  const seen = new Map<string, number>();
+  return criteria.map((criterion) => {
+    const text = String(criterion ?? '').replace(/\s+/g, ' ').trim();
+    let hash = 0x811c9dc5;
+    for (let index = 0; index < text.length; index += 1) {
+      hash ^= text.charCodeAt(index);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    const base = hash.toString(16).padStart(8, '0');
+    const occurrence = seen.get(base) ?? 0;
+    seen.set(base, occurrence + 1);
+    return occurrence ? `${base}#${occurrence}` : base;
+  });
+}
+
 export function sameComposerDraft(
   draft: ComposerDraft,
   sent: ComposerDraft,
@@ -193,17 +228,63 @@ export class DraftStore {
     this.scheduleSave();
   }
 
-  getDoneWhen(unitId: string, stageId: string): boolean[] {
-    return this.settings.uiDrafts.doneWhen[this.stageKey(unitId, stageId)] || [];
+  /**
+   * The marks belonging to *these* criteria, in their order.
+   *
+   * A criterion the learner has not seen before is unmarked, however many
+   * marks the stage carries — the tick certifies a sentence, not a slot.
+   */
+  getDoneWhen(unitId: string, stageId: string, criteria: readonly string[] = []): boolean[] {
+    const marks = this.doneWhenMarks(unitId, stageId, criteria);
+    return criterionKeys(criteria).map((key) => Boolean(marks[key]));
   }
 
-  setDoneWhen(unitId: string, stageId: string, index: number, checked: boolean): void {
+  setDoneWhen(
+    unitId: string,
+    stageId: string,
+    index: number,
+    checked: boolean,
+    criteria: readonly string[] = [],
+  ): void {
     const key = this.stageKey(unitId, stageId);
-    const marks = [...(this.settings.uiDrafts.doneWhen[key] || [])];
-    marks[index] = checked;
-    if (marks.some(Boolean)) this.settings.uiDrafts.doneWhen[key] = marks;
+    const criterionKey = criterionKeys(criteria)[index];
+    if (criterionKey === undefined) return;
+    const marks = { ...this.doneWhenMarks(unitId, stageId, criteria) };
+    if (checked) marks[criterionKey] = true;
+    else delete marks[criterionKey];
+    if (Object.keys(marks).length) this.settings.uiDrafts.doneWhen[key] = marks;
     else delete this.settings.uiDrafts.doneWhen[key];
     this.scheduleSave();
+  }
+
+  /**
+   * Read the stored marks, upgrading one legacy positional array in place.
+   *
+   * The upgrade reads the old array against the criteria currently on screen,
+   * which is the same assumption the positional storage made — but it is made
+   * exactly once, at the first render after the upgrade, instead of on every
+   * later revision. Ticks a learner has already made are therefore kept, and
+   * from that point a changed criterion invalidates its own mark.
+   */
+  private doneWhenMarks(
+    unitId: string,
+    stageId: string,
+    criteria: readonly string[],
+  ): Record<string, boolean> {
+    const key = this.stageKey(unitId, stageId);
+    const stored = this.settings.uiDrafts.doneWhen[key];
+    if (!stored) return {};
+    if (!Array.isArray(stored)) return stored;
+    const keys = criterionKeys(criteria);
+    const upgraded: Record<string, boolean> = {};
+    stored.forEach((mark, index) => {
+      const criterionKey = keys[index];
+      if (mark && criterionKey !== undefined) upgraded[criterionKey] = true;
+    });
+    if (Object.keys(upgraded).length) this.settings.uiDrafts.doneWhen[key] = upgraded;
+    else delete this.settings.uiDrafts.doneWhen[key];
+    this.scheduleSave();
+    return upgraded;
   }
 
   clearDoneWhen(unitId: string, stageId: string): void {

@@ -50,6 +50,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+export const DIAGNOSTICS_VIEW_CLASS = 'los-diagnostics-view';
 export const REQUIRED_APP_VERSION = '1.12.7';
 export const REQUIRED_PLUGIN_ID = 'learningos-ui';
 export const REQUIRED_PLUGIN_VERSION = '2.0.0';
@@ -226,6 +227,7 @@ export const DIAGNOSTICS_ATTRIBUTES = {
   coreDirty: 'data-los-core-dirty',
   sourceDirty: 'data-los-ui-dirty',
   gatewayRecoveryClear: 'data-los-gateway-recovery-clear',
+  uiPluginVersion: 'data-los-ui-plugin-version',
 };
 
 export function extractDiagnostics(html) {
@@ -291,6 +293,30 @@ export function assertLiveIdentity(diagnostics, { coreSha, uiSha, manifestContra
       'the running app has an unresolved Gateway recovery record',
     );
   }
+  if (!versionExactly(diagnostics.uiPluginVersion, REQUIRED_PLUGIN_VERSION)) {
+    throw new LiveAppCheckError(
+      `the running ${REQUIRED_PLUGIN_ID} reports version `
+      + `${diagnostics.uiPluginVersion}, expected exactly ${REQUIRED_PLUGIN_VERSION}`,
+    );
+  }
+}
+
+/**
+ * The two versions `obsidian version` actually prints.
+ *
+ * The installed build answers `1.13.7 (installer 1.12.7)`: the app version and
+ * the installer that placed it. Expecting a bare triple made the very first
+ * step of the release check refuse a perfectly valid installation, and every
+ * later incompatibility stayed invisible behind that refusal (2026-09-05
+ * audit, F15). Both numbers are parsed and reported; the requirement is stated
+ * against the app version, which is the code that is running.
+ */
+export function parseObsidianVersion(value) {
+  const text = String(value ?? '').trim();
+  const app = /^(\d+\.\d+\.\d+)/.exec(text);
+  if (!app) return null;
+  const installer = /\(installer\s+(\d+\.\d+\.\d+)\)/i.exec(text);
+  return { app: app[1], installer: installer ? installer[1] : null, raw: text };
 }
 
 /** Semver-lite: major.minor.patch, no pre-release/build metadata. */
@@ -301,7 +327,7 @@ function parseVersion(value) {
 }
 
 export function versionAtLeast(actual, required) {
-  const a = parseVersion(actual);
+  const a = parseVersion(parseObsidianVersion(actual)?.app ?? actual);
   const r = parseVersion(required);
   if (!a || !r) return false;
   for (let i = 0; i < 3; i += 1) {
@@ -322,7 +348,7 @@ export function versionExactly(actual, required) {
  */
 const SAFE_DIAGNOSTICS_FIELDS = [
   'manifestContract', 'runtimeFingerprintMatches', 'coreRevision', 'uiRevision',
-  'coreDirty', 'sourceDirty', 'gatewayRecoveryClear',
+  'coreDirty', 'sourceDirty', 'gatewayRecoveryClear', 'uiPluginVersion',
 ];
 
 export function redactDiagnostics(value) {
@@ -345,7 +371,29 @@ function runCli(binary, args, { cwd, vaultName, timeout = 30000 } = {}) {
       `obsidian-cli ${finalArgs.join(' ')} exited ${result.status}: ${result.stderr || result.stdout}`,
     );
   }
+  const refusal = cliRefusal(result.stdout, result.stderr);
+  if (refusal) {
+    throw new LiveAppCheckError(
+      `obsidian-cli ${finalArgs.join(' ')} refused the request: ${refusal}`,
+    );
+  }
   return result.stdout;
+}
+
+/**
+ * The installed host reports a parameter error on **exit status 0**.
+ *
+ * `dev:dom` with no selector printed `Error: Missing required parameter` and
+ * exited cleanly, so a driver reading only the status treated the usage text
+ * as a DOM snapshot. Any output whose first line announces an error is treated
+ * as a refusal (2026-09-05 audit, F15).
+ */
+export function cliRefusal(stdout, stderr = '') {
+  for (const stream of [stdout, stderr]) {
+    const first = String(stream ?? '').trim().split('\n')[0] ?? '';
+    if (/^(error|usage)\b[:\s]/i.test(first)) return first.trim();
+  }
+  return null;
 }
 
 async function main() {
@@ -375,20 +423,26 @@ async function main() {
   );
   const cliOptions = { cwd: vaultPath, vaultName };
 
-  const version = runCli(binary, ['version'], cliOptions).trim();
-  if (!versionAtLeast(version, REQUIRED_APP_VERSION)) {
-    throw new LiveAppCheckError(`Obsidian ${version} does not meet the required ${REQUIRED_APP_VERSION}`);
+  const versionLine = runCli(binary, ['version'], cliOptions).trim();
+  const version = parseObsidianVersion(versionLine);
+  if (!version) {
+    throw new LiveAppCheckError(
+      `could not read an Obsidian version from ${JSON.stringify(versionLine)}`,
+    );
+  }
+  if (!versionAtLeast(version.app, REQUIRED_APP_VERSION)) {
+    throw new LiveAppCheckError(
+      `Obsidian ${version.app} does not meet the required ${REQUIRED_APP_VERSION}`,
+    );
   }
 
-  const enabledPlugins = parseCommandList(runCli(binary, ['plugins:enabled'], cliOptions));
+  // `plugins:enabled` answers with ids and no versions on this host, so it can
+  // only establish that the plugin is enabled. Which build is running is read
+  // from the live Diagnostics attributes below, beside the source fingerprint.
+  const enabledPlugins = parseCommandList(runCli(binary, ['plugins:enabled', 'json'], cliOptions));
   const learningos = enabledPlugins.find((entry) => entry.id === REQUIRED_PLUGIN_ID);
   if (!learningos) {
     throw new LiveAppCheckError(`${REQUIRED_PLUGIN_ID} is not installed and enabled`);
-  }
-  if (!versionExactly(learningos.name, REQUIRED_PLUGIN_VERSION)) {
-    throw new LiveAppCheckError(
-      `${REQUIRED_PLUGIN_ID} is at ${learningos.name}, expected exactly ${REQUIRED_PLUGIN_VERSION}`,
-    );
   }
 
   // No reload and no navigation: the operator must already have Diagnostics
@@ -397,15 +451,29 @@ async function main() {
   // navigating persists route state — and this driver only observes.
   const errorsBefore = parseCommandList(runCli(binary, ['dev:errors'], cliOptions)).map((e) => e.id);
 
-  const diagnosticsDom = runCli(binary, ['dev:dom'], cliOptions);
-  assertExactlyOne(diagnosticsDom, 'los-diagnostics-view');
+  // `dev:dom` requires its selector as a named parameter; without one the host
+  // prints usage text and exits 0, which an earlier driver read as a DOM.
+  const diagnosticsDom = runCli(
+    binary,
+    ['dev:dom', `selector=.${DIAGNOSTICS_VIEW_CLASS}`],
+    cliOptions,
+  );
+  assertExactlyOne(diagnosticsDom, DIAGNOSTICS_VIEW_CLASS);
   const diagnostics = extractDiagnostics(diagnosticsDom);
   assertLiveIdentity(diagnostics, {
     coreSha, uiSha, manifestContract: declaredManifestContract(root),
   });
   if (evidenceDir) {
     fs.mkdirSync(evidenceDir, { recursive: true });
-    runCli(binary, ['dev:screenshot', path.join(evidenceDir, 'diagnostics.png')], cliOptions);
+    // The installed command takes its destination as `path=<filename>`; a bare
+    // positional argument was ignored and the capture went to a temporary file
+    // nobody read.
+    const shot = path.join(evidenceDir, 'diagnostics.png');
+    runCli(binary, ['dev:screenshot', `path=${shot}`], cliOptions);
+    const captured = fs.existsSync(shot) ? fs.statSync(shot).size : 0;
+    if (!captured) {
+      throw new LiveAppCheckError(`the screenshot at ${shot} is missing or empty`);
+    }
   }
 
   const errorsAfter = parseCommandList(runCli(binary, ['dev:errors'], cliOptions)).map((e) => e.id);
@@ -417,7 +485,13 @@ async function main() {
   // The extracted live values, never the caller's arguments: echoing the
   // inputs back would make any wrong pair look verified.
   const result = redactDiagnostics(diagnostics);
-  console.log(JSON.stringify({ ok: true, appVersion: version, plugin: learningos, ...result }));
+  console.log(JSON.stringify({
+    ok: true,
+    appVersion: version.app,
+    installerVersion: version.installer,
+    plugin: { id: learningos.id, enabled: true },
+    ...result,
+  }));
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {

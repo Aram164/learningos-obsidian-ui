@@ -694,6 +694,12 @@ export class DiagnosticsView extends ItemView {
     root.setAttr('data-los-runtime-fingerprint-matches', identityMatches ? 'yes' : 'no');
     root.setAttr('data-los-core-revision', String(generated.source_revision || 'unknown'));
     root.setAttr('data-los-ui-revision', String(build.source_revision || 'unknown'));
+    /* The installed Obsidian CLI reports plugin ids without versions, so the
+       release check cannot ask it which build is enabled. It reads the running
+       plugin's own version here instead — a live reading beside the live
+       fingerprint, rather than a value echoed back from the request
+       (2026-09-05 audit, F15). */
+    root.setAttr('data-los-ui-plugin-version', String(build.ui_version || 'unknown'));
     root.setAttr('data-los-core-dirty', flag(generated.source_dirty));
     root.setAttr('data-los-ui-dirty', flag(build.source_dirty));
     root.setAttr(

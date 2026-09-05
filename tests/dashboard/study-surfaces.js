@@ -162,9 +162,13 @@ module.exports = async function run() {
       element.find('los-current-work-card').length === 1
       && element.find('los-current-work-card')[0].find('los-resource-row').length === 1
       && text.includes('Explain the medical-test result cold'));
-    check('collapsing the catalogue still counts every material',
-      text.includes('All 3 materials')
-      && element.find('los-stage-materials-summary')[0].allText().includes('required'));
+    /* Both totals, each owned. The stage's count and the unit's are different
+     * questions, and a single "All N materials" line let them be read as one
+     * (2026-09-05 audit, F04). */
+    check('collapsing the catalogue still counts every material, on both scopes',
+      text.includes('3 materials on this stage')
+      && element.find('los-stage-materials-summary')[0].allText().includes('required')
+      && element.find('los-stage-materials-summary')[0].allText().includes('on the unit'));
     check('no permanent stage note editor remains', element.find('los-note-editor').length === 0);
     /* Fidelity against Figma 04 · Unit workspace (14:462). Each of these was
        a visible difference from the frame, so each is pinned by what renders
@@ -251,11 +255,22 @@ module.exports = async function run() {
     check('done-when criteria are interactive checkboxes',
       element.find('los-donewhen-row').length >= 1
       && element.find('los-donewhen-row')[0].children[0].getAttribute('type') === 'checkbox');
-    const criterion = element.find('los-donewhen-row')[0].children[0];
+    const criterionRow = element.find('los-donewhen-row')[0];
+    const criterion = criterionRow.children[0];
+    const criterionText = criterion.getAttribute('aria-label');
     criterion.checked = true; criterion.fire('change');
     check('a ticked criterion is UI-owned state, never a second completion record',
-      plugin.getDoneWhen('unit-fixture-sad-l04', 'stage-fixture-conditioning')[0] === true
+      plugin.getDoneWhen(
+        'unit-fixture-sad-l04', 'stage-fixture-conditioning', [criterionText],
+      )[0] === true
       && !calls.some((args) => args[0] === 'stage-progress'));
+    /* F08 (2026-09-05 audit): the mark certifies that sentence, so a stage
+     * revision that replaces the criterion does not inherit it. */
+    check('a tick does not survive a revision of the criterion it certifies',
+      plugin.getDoneWhen(
+        'unit-fixture-sad-l04', 'stage-fixture-conditioning',
+        ['Derive the normal equation instead'],
+      )[0] === false);
 
     const noteModal = plugin.openUnitNote(plugin.store.get('unit-fixture-sad-l04'), plugin.store.mapForUnit('unit-fixture-sad-l04'));
     await frame();
@@ -339,6 +354,7 @@ module.exports = async function run() {
             id: 'route-drawer-intuition', unit_id: 'unit-fixture-sad-l04',
             title: 'Domingos perspective', format: 'article',
             angle: 'Why similarity deteriorates in high dimensions.',
+            angle_detail: 'Argues the geometry informally and assumes no measure theory.',
             covers: ['knowledge-fixture-conditioning'],
             depth: 'intuition', scope: 'complementary',
             locator: 'papers/domingos.pdf', source_id: 'source-fixture-book',
@@ -352,6 +368,13 @@ module.exports = async function run() {
     view.contentEl.findText('los-btn', 'Compare all').fire('click');
     await frame();
     let drawer = stub.Modal.last.contentEl;
+    /* F05 (2026-09-05 audit): focusing Close sent the learner to the end of a
+     * long list, so the drawer opened showing its bottom rather than its
+     * heading and recommendation. */
+    check('the drawer opens at its heading, not at the foot of the list',
+      global.document.activeElement
+        === drawer.find('los-page-header')[0].children.find(
+          (child) => child.getAttribute('id') === 'los-material-drawer-heading'));
     check('the drawer recommends for the selected need and says which need',
       drawer.allText().includes('Recommended for derivation')
       && drawer.find('los-material-recommended')[0].allText()
@@ -375,6 +398,20 @@ module.exports = async function run() {
         + drawer.find('los-material-recommended').length === beforeTotal);
     check('an unpromoted source is named by the need it serves',
       drawer.find('los-material-alternative')[0].allText().includes('Derivation'));
+
+    /* F04 (2026-09-05 audit): reading why an alternative is worth choosing must
+     * not require choosing it. `Choose` is a canonical preference mutation, so
+     * an alternative that withheld its long-form angle and its Open action
+     * could only be inspected by making that write first. */
+    const alternative = drawer.find('los-material-alternative')[0];
+    check('an alternative discloses the same authored fields as the promoted card',
+      alternative.allText().includes('Angle · Derives the geometry')
+      && alternative.allText().includes('Depth · derivation · scope current')
+      && alternative.allText().includes('Locator · lecture-slides/VL_02.pdf'));
+    check('the drawer states which total is the unit\'s and which the stage\'s',
+      drawer.allText().includes('routes on this unit')
+      && drawer.allText().includes('placed on this stage')
+      && drawer.allText().includes('Chosen across all 2 routes on this unit'));
 
     /* D4: the surface moved, the governed write did not. */
     drawer.findText('los-btn', 'Choose').fire('click');

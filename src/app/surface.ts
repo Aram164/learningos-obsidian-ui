@@ -103,12 +103,18 @@ export interface AppSurface {
   scheduleDraftSave(): void;
   getSelectedStage(unitId: string): string | null;
   setSelectedStage(unitId: string, stageId: string | null): void;
-  getDoneWhen(unitId: string, stageId: string): boolean[];
+  /**
+   * `criteria` is what the ticks certify. Marks are stored against the text of
+   * each criterion, so a revision that rewords one drops its mark instead of
+   * carrying it over to a different requirement (2026-09-05 audit, F08).
+   */
+  getDoneWhen(unitId: string, stageId: string, criteria?: readonly string[]): boolean[];
   setDoneWhen(
     unitId: string,
     stageId: string,
     index: number,
     checked: boolean,
+    criteria?: readonly string[],
   ): void;
   clearDoneWhen(unitId: string, stageId: string): void;
   getUnitNoteDraft(unitId: string, stages?: ProjectionRecord[]): UnitNoteDraft;

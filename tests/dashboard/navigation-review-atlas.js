@@ -629,9 +629,28 @@ module.exports = async function run() {
     const stated = view.contentEl.find('los-atlas-outline-row')
       .map((row) => row.getAttribute('data-relation-id'));
     check('four questions add no relation to the graph and no arrow to the picture',
-      stated.length === 3
+      // Three prerequisite rows plus the one authored semantic relation this
+      // lens does not draw — every row an authored relation, none a question.
+      stated.length === 4
       && !stated.includes('concept-bayes--derives--concept-frequentist-inference')
       && plugin.store.relations().length === 5);
+
+    /* F10 (2026-09-05 audit): the header said one semantic link was hidden by
+     * the lens while the outline beneath it said none was authored. Three
+     * different quantities — authored, drawn, absent — and the outline must
+     * not collapse them. */
+    const outlineText = view.contentEl.find('los-atlas-outline')[0].allText();
+    check('a filtered semantic relation is reported as hidden, never as absent',
+      outlineText.includes('Semantic · 1 authored, 0 drawn by this lens')
+      && outlineText.includes('hidden by the selected lens')
+      && !outlineText.includes('No authored semantic relations')
+      && view.contentEl.find('los-atlas-outline-row--hidden-by-lens').length === 1);
+    check('a hidden relation is still inspectable rather than merely mentioned',
+      view.contentEl.find('los-atlas-outline-row--hidden-by-lens')[0]
+        .getAttribute('data-relation-id')
+        === 'concept-bayes--contrasts-with--concept-frequentist-inference'
+      && view.contentEl.find('los-atlas-outline-row--hidden-by-lens')[0]
+        .classes.has('is-clickable'));
 
     check('a concept carries the questions recorded against it, and only those',
       view.contentEl.find('los-atlas-questions')[0].allText()

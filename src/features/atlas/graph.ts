@@ -531,9 +531,19 @@ export function neighbourhood(
   const placed = new Map<string, AtlasNode>();
   placed.set(focus.id, { concept: focus, direction: 'focus', distance: 0, column: 0 });
 
+  /**
+   * Walk one direction to the depth bound, and return the frontier it stops at.
+   *
+   * The returned ids are the nodes whose own neighbours in this direction lie
+   * *beyond* the bound. That is the only honest source for the "N more"
+   * remainder: collecting it instead from every edge with one endpoint inside
+   * the view calls a concept a dependent of the focus when it merely shares a
+   * prerequisite with it, and raising the depth never reveals it because the
+   * directional traversal correctly does not reach it (2026-09-05 audit, F09).
+   */
   const walk = (
     direction: 'prerequisite' | 'dependent',
-  ): void => {
+  ): readonly string[] => {
     let frontier = [focus.id];
 
     for (let distance = 1; distance <= depth; distance += 1) {
@@ -563,10 +573,12 @@ export function neighbourhood(
 
       frontier = next;
     }
+
+    return frontier;
   };
 
-  walk('prerequisite');
-  walk('dependent');
+  const prerequisiteFrontier = walk('prerequisite');
+  const dependentFrontier = walk('dependent');
 
   const semanticNeighbours = new Map<string, AtlasConcept>();
   for (const edge of graph.semanticEdges.get(focus.id) ?? []) {
@@ -612,24 +624,12 @@ export function neighbourhood(
   const strictEdges: AtlasEdge[] = [];
   const drawnSemantic: AtlasEdge[] = [];
   const drawnUnrecognized: AtlasEdge[] = [];
-  const beyondPrerequisites = new Map<string, AtlasConcept>();
-  const beyondDependents = new Map<string, AtlasConcept>();
 
   for (const edge of graph.edges) {
     const both = inside(edge.from) && inside(edge.to);
 
     if (edge.layer === 'strict') {
-      if (both) {
-        strictEdges.push(edge);
-        continue;
-      }
-      // One end inside, one out: the depth bound excluded it. Name the
-      // concept on the far side instead of letting the edge vanish.
-      if (inside(edge.from) && !inside(edge.to)) {
-        beyondPrerequisites.set(edge.to, conceptOf(graph, edge.to));
-      } else if (inside(edge.to) && !inside(edge.from)) {
-        beyondDependents.set(edge.from, conceptOf(graph, edge.from));
-      }
+      if (both) strictEdges.push(edge);
       continue;
     }
 
@@ -637,6 +637,34 @@ export function neighbourhood(
     if (edge.layer === 'semantic') drawnSemantic.push(edge);
     else drawnUnrecognized.push(edge);
   }
+
+  /**
+   * One more step in the stated direction from where the walk stopped.
+   *
+   * Everything named here is reachable from the focus by following the same
+   * kind of edge, so raising the depth by one is guaranteed to bring it into
+   * the view — which is precisely the promise the "N more" affordance makes.
+   */
+  const beyondFrom = (
+    frontier: readonly string[],
+    direction: 'prerequisite' | 'dependent',
+  ): Map<string, AtlasConcept> => {
+    const found = new Map<string, AtlasConcept>();
+    for (const id of frontier) {
+      const edges = direction === 'prerequisite'
+        ? graph.prerequisiteEdges.get(id) ?? []
+        : graph.dependentEdges.get(id) ?? [];
+      for (const edge of edges) {
+        const neighbour = direction === 'prerequisite' ? edge.to : edge.from;
+        if (placed.has(neighbour) || found.has(neighbour)) continue;
+        found.set(neighbour, conceptOf(graph, neighbour));
+      }
+    }
+    return found;
+  };
+
+  const beyondPrerequisites = beyondFrom(prerequisiteFrontier, 'prerequisite');
+  const beyondDependents = beyondFrom(dependentFrontier, 'dependent');
 
   const sortedConcepts = (
     values: Iterable<AtlasConcept>,

@@ -645,10 +645,37 @@
 
 /* ── Comparison drawer (Figma 05 · 36:12) ───────────────────────────────── */
 
+/* Size the *host*, not only the content.
+   The inner surface asked for 760px inside a host the theme had already sized
+   to about 465px, so the drawer scrolled sideways and clipped its titles, its
+   locators and its buttons (2026-09-05 audit, F05). The host is bounded here
+   the same way the note and map-import dialogs are, and the content is then
+   told to fill it rather than to want a width of its own. One scroll area,
+   vertical, on the content. */
+.modal.los-modal--material-drawer,
+.modal:has(.los-material-drawer) {
+  box-sizing: border-box;
+  width: min(760px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  overflow: hidden;
+}
 .los-root.los-material-drawer {
-  width: min(760px, 92vw);
-  max-height: 82vh;
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  max-height: calc(100vh - 32px);
+  padding: var(--los-5);
+  overflow-x: hidden;
   overflow-y: auto;
+}
+/* Long locators and URLs are the usual cause of a horizontal overflow inside
+   a bounded dialog; wrap them rather than widening the drawer. */
+.los-material-drawer :is(p, h1, h2, h3, h4, span, div) {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .los-material-drawer .los-page-header { margin-bottom: var(--los-4); }
 
@@ -687,6 +714,14 @@
   border: 1px solid var(--los-rule);
   border-radius: var(--los-r-md);
   background: var(--los-paper-3);
+}
+/* The long-form angle on an alternative reads at the same weight as the
+   recommended card's, so a learner comparing two routes compares the same
+   fields on both. */
+.los-material-alternative-detail {
+  margin: 0 0 var(--los-1);
+  color: var(--los-ink-soft);
+  font-size: 13px;
 }
 .los-material-alternative h4 { margin: var(--los-1) 0 var(--los-1); }
 .los-material-alternative p {

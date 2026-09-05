@@ -141,10 +141,16 @@ export function draftRefusal(
 
   const row = draftRow(draft);
   const identity = `${row.from}--${row.type}--${row.to}`;
-  const existing = graph.relationByIdentity.get(identity);
-  if (existing && identity !== (draft.original
+  // An edit replaces one row. Everything below is evaluated against the graph
+  // that replacement produces — the old row removed, the new one added — not
+  // against the graph plus the new row. Testing an edit as if it were an
+  // addition refused a plain reversal of a single edge as a loop, because the
+  // edge being reversed was still in the traversal (2026-09-05 audit, F11).
+  const replaced = draft.original
     ? `${draft.original.from}--${draft.original.type}--${draft.original.to}`
-    : '')) {
+    : null;
+  const existing = graph.relationByIdentity.get(identity);
+  if (existing && identity !== replaced) {
     return 'That connection is already authored.';
   }
 
@@ -159,7 +165,10 @@ export function draftRefusal(
       if (id === row.from) return 'That would make a loop of prerequisites.';
       if (seen.has(id)) continue;
       seen.add(id);
-      for (const edge of graph.prerequisiteEdges.get(id) ?? []) frontier.push(edge.to);
+      for (const edge of graph.prerequisiteEdges.get(id) ?? []) {
+        if (replaced && `${edge.from}--${edge.type}--${edge.to}` === replaced) continue;
+        frontier.push(edge.to);
+      }
     }
   }
 

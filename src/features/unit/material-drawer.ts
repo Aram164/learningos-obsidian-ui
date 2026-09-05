@@ -124,28 +124,44 @@ export class MaterialComparisonModal extends Modal {
     root.empty();
     root.addClass('los-root', 'los-material-drawer');
 
-    pageHeader(
+    const header = pageHeader(
       root,
       'Source comparison',
       'Choose learning material',
       'Every source stays available. Ranking changes with the learning need; '
       + 'provenance and locators do not.',
       'los-material-drawer-heading',
-    );
+    ) as HTMLElement;
+    const heading = Array.from(header.children ?? []).find(
+      (child) => (child as HTMLElement).getAttribute?.('id')
+        === 'los-material-drawer-heading',
+    ) as HTMLElement | undefined;
+    heading?.setAttribute?.('tabindex', '-1');
 
     this.lensRow = null;
     if (materialOptions.length) this.renderNeedLenses(root);
 
-    renderStageResources(root, resources, {
-      ...renderer,
-      title: `Complete menu · ${resources.length} `
-        + `${resources.length === 1 ? 'material' : 'materials'} for ${stage.title}`,
-    });
+    if (resources.length) {
+      renderStageResources(root, resources, {
+        ...renderer,
+        title: `On this stage · ${resources.length} `
+          + `${resources.length === 1 ? 'material' : 'materials'} for ${stage.title}`,
+      });
+    } else {
+      empty(
+        root,
+        'This stage places no material of its own',
+        'Every route on the unit is listed above and stays choosable.',
+      );
+    }
 
     root.createEl('p', {
       cls: 'los-micro los-material-drawer-note',
       text:
-        'A selection changes the current route only; it never deletes or hides '
+        `${materialOptions.length} `
+        + `${materialOptions.length === 1 ? 'route' : 'routes'} on this unit; `
+        + `${resources.length} placed on this stage. `
+        + 'A selection changes the current route only; it never deletes or hides '
         + 'the complete source record.',
     });
 
@@ -158,11 +174,14 @@ export class MaterialComparisonModal extends Modal {
       labelledBy: 'los-material-drawer-heading',
     });
 
-    /* On open, focus the dismissal, as every dialog in this app does. On a
-     * lens switch the learner is *at* the lens, so focus goes back to the tab
-     * they just pressed — a full redraw that dumps focus at the bottom of the
-     * drawer would make the control unusable from the keyboard. */
-    this.restoreFocus(close);
+    /* On open, focus the heading. Focusing the dismissal sent the learner to
+     * the end of a long list, so the drawer opened scrolled past its own
+     * recommendation and title (2026-09-05 audit, F05). On a lens switch the
+     * learner is *at* the lens, so focus goes back to the tab they just
+     * pressed — a full redraw that dumps focus elsewhere would make the
+     * control unusable from the keyboard. Escape still closes, focus is still
+     * contained, and Close is still the last stop in the tab order. */
+    this.restoreFocus(heading ?? close);
     this.opening = true;
 
     void unit;
@@ -170,16 +189,17 @@ export class MaterialComparisonModal extends Modal {
 
   /** Kept out of `draw()` so control-flow narrowing on `lensRow` does not
    *  collapse the type the moment the field is reset for a redraw. */
-  private restoreFocus(close: HTMLElement): void {
+  private restoreFocus(onOpen: HTMLElement): void {
     if (this.opening) {
-      close.focus();
+      onOpen.focus();
+      onOpen.scrollIntoView?.({ block: 'start' });
       return;
     }
     const tabs = Array.from(this.lensRow?.children ?? []) as HTMLElement[];
     const current = tabs.find(
       (tab) => tab.getAttribute?.('aria-pressed') === 'true',
     );
-    (current ?? close).focus();
+    (current ?? onOpen).focus();
   }
 
   private renderNeedLenses(root: HTMLElement): void {
@@ -253,6 +273,15 @@ export class MaterialComparisonModal extends Modal {
     card.createDiv({
       cls: 'los-kicker',
       text: `Recommended for ${needLabel.toLowerCase()}`,
+    });
+    /* The lens ranks every route on the unit, not the routes this stage
+     * places. Saying so is the difference between a stage recommendation and
+     * a unit-wide one; the drawer must not let the two totals be read as the
+     * same set (2026-09-05 audit, F04). */
+    card.createDiv({
+      cls: 'los-micro',
+      text: `Chosen across all ${this.options.materialOptions.length} `
+        + `${this.options.materialOptions.length === 1 ? 'route' : 'routes'} on this unit`,
     });
     card.createEl('h3', { text: option.title });
 
@@ -336,10 +365,26 @@ export class MaterialComparisonModal extends Modal {
       });
       card.createEl('h4', { text: option.title });
       if (option.angle) card.createEl('p', { text: option.angle });
+      /* The long-form judgment, on every card rather than only the promoted
+       * one. Reading why a route is worth choosing must not require choosing
+       * it: `Choose` is a canonical preference mutation, and an alternative
+       * whose detail and target were withheld could only be inspected by
+       * making that write first (2026-09-05 audit, F04). */
+      const detail = projectedText(option.record.angle_detail);
+      if (detail) {
+        card.createEl('p', {
+          cls: 'los-material-alternative-detail',
+          text: `Angle · ${detail}`,
+        });
+      }
+      card.createEl('p', {
+        cls: 'los-micro',
+        text: `Depth · ${option.depth} · scope ${option.scope}`,
+      });
       if (option.locator) {
         card.createEl('p', {
           cls: 'los-micro',
-          text: option.locator,
+          text: `Locator · ${option.locator}`,
         });
       }
       this.renderCoverage(card, option);
@@ -347,6 +392,14 @@ export class MaterialComparisonModal extends Modal {
         cls: 'los-actions los-material-actions',
       });
       this.renderChoose(actions, option);
+      if (option.canOpen) {
+        button(
+          actions,
+          'Open',
+          () => this.options.plugin.openResource(option.record),
+          'info',
+        );
+      }
     }
   }
 

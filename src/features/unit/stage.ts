@@ -134,6 +134,7 @@ export function renderStage(
         view.plugin.getDoneWhen(
           unit.id,
           stage.id,
+          stage.doneWhen,
         );
 
       const checkedCount =
@@ -219,6 +220,7 @@ export function renderStage(
               stage.id,
               index,
               nextChecked,
+              stage.doneWhen,
             );
 
             row.toggleClass(
@@ -325,7 +327,24 @@ export function renderStage(
       );
     }
 
-    if (stage.resources.length) {
+    /* The unit's complete menu is reachable from every stage, including one
+     * that carries no resources of its own.
+     *
+     * The unit shell suppresses its own inline menu whenever a study map has
+     * stages, on the understanding that the stage screen offers the catalogue.
+     * Gating that offer on `stage.resources.length` therefore made a valid
+     * zero-resource stage the one place where the complete menu could not be
+     * reached at all (2026-09-05 audit, F04). The two counts are stated
+     * separately so it is clear which one is the stage's and which the
+     * unit's. */
+    {
+      const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
+      const materialOptions = readMaterialOptions(
+        sourceMap?.sources,
+        unit.id,
+        unit.record.source_selections,
+      );
+
       const catalogue = center.createDiv({
         cls: 'los-section los-stage-materials',
       });
@@ -333,12 +352,18 @@ export function renderStage(
         cls: 'los-stage-materials-copy',
       });
       catalogueCopy.createEl('h2', {
-        text: `All ${stage.resources.length} `
-          + `${stage.resources.length === 1 ? 'material' : 'materials'}`,
+        text: stage.resources.length
+          ? `${stage.resources.length} `
+            + `${stage.resources.length === 1 ? 'material' : 'materials'} on this stage`
+          : 'No material is placed on this stage',
       });
       catalogueCopy.createSpan({
         cls: 'los-micro los-stage-materials-summary',
-        text: triageSummary(stage.resources),
+        text: stage.resources.length
+          ? `${triageSummary(stage.resources)} · `
+            + `${materialOptions.length} on the unit`
+          : `The unit's complete menu still lists ${materialOptions.length} `
+            + `${materialOptions.length === 1 ? 'route' : 'routes'}.`,
       });
 
       const catalogueActions = catalogue.createDiv({
@@ -348,17 +373,12 @@ export function renderStage(
         catalogueActions,
         'Compare all',
         () => {
-          const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
           new MaterialComparisonModal(view.app, {
             plugin: view.plugin,
             unit,
             stage,
             resources: stage.resources,
-            materialOptions: readMaterialOptions(
-              sourceMap?.sources,
-              unit.id,
-              unit.record.source_selections,
-            ),
+            materialOptions,
             expectedRevisions,
             renderer: resourceRenderer,
             onChanged: () => view.render(),

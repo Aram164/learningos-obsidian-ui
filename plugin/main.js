@@ -2303,9 +2303,10 @@ function neighbourhood(graph, focusId, options = {}) {
       }
       frontier = next;
     }
+    return frontier;
   };
-  walk("prerequisite");
-  walk("dependent");
+  const prerequisiteFrontier = walk("prerequisite");
+  const dependentFrontier = walk("dependent");
   const semanticNeighbours = /* @__PURE__ */ new Map();
   for (const edge of graph.semanticEdges.get(focus.id) ?? []) {
     const other = edge.from === focus.id ? edge.to : edge.from;
@@ -2337,26 +2338,30 @@ function neighbourhood(graph, focusId, options = {}) {
   const strictEdges = [];
   const drawnSemantic = [];
   const drawnUnrecognized = [];
-  const beyondPrerequisites = /* @__PURE__ */ new Map();
-  const beyondDependents = /* @__PURE__ */ new Map();
   for (const edge of graph.edges) {
     const both = inside(edge.from) && inside(edge.to);
     if (edge.layer === "strict") {
-      if (both) {
-        strictEdges.push(edge);
-        continue;
-      }
-      if (inside(edge.from) && !inside(edge.to)) {
-        beyondPrerequisites.set(edge.to, conceptOf(graph, edge.to));
-      } else if (inside(edge.to) && !inside(edge.from)) {
-        beyondDependents.set(edge.from, conceptOf(graph, edge.from));
-      }
+      if (both) strictEdges.push(edge);
       continue;
     }
     if (!both) continue;
     if (edge.layer === "semantic") drawnSemantic.push(edge);
     else drawnUnrecognized.push(edge);
   }
+  const beyondFrom = (frontier, direction) => {
+    const found = /* @__PURE__ */ new Map();
+    for (const id2 of frontier) {
+      const edges = direction === "prerequisite" ? graph.prerequisiteEdges.get(id2) ?? [] : graph.dependentEdges.get(id2) ?? [];
+      for (const edge of edges) {
+        const neighbour = direction === "prerequisite" ? edge.to : edge.from;
+        if (placed.has(neighbour) || found.has(neighbour)) continue;
+        found.set(neighbour, conceptOf(graph, neighbour));
+      }
+    }
+    return found;
+  };
+  const beyondPrerequisites = beyondFrom(prerequisiteFrontier, "prerequisite");
+  const beyondDependents = beyondFrom(dependentFrontier, "dependent");
   const sortedConcepts = (values2) => [...values2].sort(compareConcepts);
   const prerequisites = sortedConcepts(beyondPrerequisites.values());
   const dependents = sortedConcepts(beyondDependents.values());
@@ -2964,16 +2969,18 @@ function renderLegend(parent) {
     text: "Every distinction above is also written on the node and in the outline. None of them is carried by colour, weight, or dash alone."
   });
 }
-function outlineRow(parent, host, graph, edge, focusId, position) {
+function outlineRow(parent, host, graph, edge, focusId, position, hiddenByLens = false) {
   const row3 = parent.createEl("button", {
     cls: "los-atlas-outline-row is-clickable",
     attr: { type: "button" }
   });
   row3.addClass(`los-atlas-outline-row--${edge.layer}`);
+  if (hiddenByLens) row3.addClass("los-atlas-outline-row--hidden-by-lens");
   row3.setAttribute("data-relation-id", edge.id);
+  const state = hiddenByLens ? " \xB7 hidden by the selected lens" : "";
   row3.createDiv({
     cls: "los-atlas-outline-title",
-    text: `${position} \xB7 ${relationSentences(graph, edge).join(" ")}`
+    text: `${position} \xB7 ${relationSentences(graph, edge).join(" ")}${state}`
   });
   row3.createDiv({
     cls: "los-micro",
@@ -2981,7 +2988,7 @@ function outlineRow(parent, host, graph, edge, focusId, position) {
   });
   row3.createSpan({ cls: "los-atlas-outline-action los-micro", text: "Inspect connection" });
   row3.setAttrs({
-    "aria-label": `${relationSentences(graph, edge).join(" ")} ${provenanceLine(graph, edge, focusId)}. Inspect connection.`
+    "aria-label": `${relationSentences(graph, edge).join(" ")}${state}. ${provenanceLine(graph, edge, focusId)}. Inspect connection.`
   });
   row3.addEventListener("click", () => host.inspectEdge(edge.id));
 }
@@ -3002,35 +3009,46 @@ function renderOutline(parent, host, graph, view) {
     text: "The same data as the graph, not a summary of it."
   });
   const prerequisites = view.strictEdges;
-  const semantic = host.state.lens === "semantic" ? view.semanticEdges : [];
+  const authoredSemantic = graph.semanticEdges.get(view.focus.id) ?? [];
+  const drawnSemantic = host.state.lens === "semantic" ? view.semanticEdges : [];
+  const drawnSemanticIds = new Set(drawnSemantic.map((edge) => edge.id));
+  const hiddenSemantic = authoredSemantic.filter((edge) => !drawnSemanticIds.has(edge.id));
+  const semanticHeading = authoredSemantic.length ? `Semantic \xB7 ${plural(authoredSemantic.length, "authored", "authored")}, ${drawnSemantic.length} drawn by this lens` : "Semantic \xB7 0 authored";
   const list2 = outline.createDiv({ cls: "los-atlas-outline-list" });
   enableButtonGroupKeyboardNavigation(list2, "vertical");
-  for (const [heading, edges, absence] of [
+  for (const [heading, edges, absence, hidden] of [
     [
       `Visible prerequisite connections \xB7 ${plural(prerequisites.length, "authored", "authored")}`,
       prerequisites,
-      "No authored prerequisites. Absence is not a claim that none exist; nothing is inferred to fill this row."
+      "No authored prerequisites. Absence is not a claim that none exist; nothing is inferred to fill this row.",
+      []
     ],
     [
-      `Semantic \xB7 ${plural(semantic.length, "authored", "authored")}`,
-      semantic,
-      "No authored semantic relations."
+      semanticHeading,
+      drawnSemantic,
+      "No authored semantic relations.",
+      hiddenSemantic
     ]
   ]) {
-    if (!edges.length && !absence) continue;
+    if (!edges.length && !hidden.length && !absence) continue;
     list2.createDiv({ cls: "los-micro los-atlas-outline-group", text: heading });
-    if (!edges.length) {
+    if (!edges.length && !hidden.length) {
       list2.createDiv({ cls: "los-atlas-outline-absence los-micro", text: absence });
       continue;
     }
+    const total = edges.length + hidden.length;
     edges.forEach((edge, index) => {
+      outlineRow(list2, host, graph, edge, view.focus.id, `${index + 1} of ${total}`);
+    });
+    hidden.forEach((edge, index) => {
       outlineRow(
         list2,
         host,
         graph,
         edge,
         view.focus.id,
-        `${index + 1} of ${edges.length}`
+        `${edges.length + index + 1} of ${total}`,
+        true
       );
     });
   }
@@ -3275,8 +3293,9 @@ function draftRefusal(graph, draft) {
   }
   const row3 = draftRow(draft);
   const identity = `${row3.from}--${row3.type}--${row3.to}`;
+  const replaced = draft.original ? `${draft.original.from}--${draft.original.type}--${draft.original.to}` : null;
   const existing = graph.relationByIdentity.get(identity);
-  if (existing && identity !== (draft.original ? `${draft.original.from}--${draft.original.type}--${draft.original.to}` : "")) {
+  if (existing && identity !== replaced) {
     return "That connection is already authored.";
   }
   if (relationLayer(row3.type) === "strict") {
@@ -3287,7 +3306,10 @@ function draftRefusal(graph, draft) {
       if (id2 === row3.from) return "That would make a loop of prerequisites.";
       if (seen.has(id2)) continue;
       seen.add(id2);
-      for (const edge of graph.prerequisiteEdges.get(id2) ?? []) frontier.push(edge.to);
+      for (const edge of graph.prerequisiteEdges.get(id2) ?? []) {
+        if (replaced && `${edge.from}--${edge.type}--${edge.to}` === replaced) continue;
+        frontier.push(edge.to);
+      }
     }
   }
   if (row3.source && !graph.conceptById.has(row3.source) && !graph.resolvedSources.has(row3.source) && !/^(note|source)-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row3.source)) {
@@ -10520,6 +10542,21 @@ function normalizeUiDrafts(value) {
     doneWhen: value?.doneWhen ?? empty2.doneWhen
   };
 }
+function criterionKeys(criteria) {
+  const seen = /* @__PURE__ */ new Map();
+  return criteria.map((criterion) => {
+    const text5 = String(criterion ?? "").replace(/\s+/g, " ").trim();
+    let hash = 2166136261;
+    for (let index = 0; index < text5.length; index += 1) {
+      hash ^= text5.charCodeAt(index);
+      hash = Math.imul(hash, 16777619) >>> 0;
+    }
+    const base = hash.toString(16).padStart(8, "0");
+    const occurrence = seen.get(base) ?? 0;
+    seen.set(base, occurrence + 1);
+    return occurrence ? `${base}#${occurrence}` : base;
+  });
+}
 function sameComposerDraft(draft, sent) {
   return draft.text.trim() === sent.text.trim() && draft.title.trim() === sent.title.trim();
 }
@@ -10612,16 +10649,51 @@ ${row3.text.trim()}`).join("\n\n");
     else delete this.settings.uiDrafts.selectedStages[unitId];
     this.scheduleSave();
   }
-  getDoneWhen(unitId, stageId) {
-    return this.settings.uiDrafts.doneWhen[this.stageKey(unitId, stageId)] || [];
+  /**
+   * The marks belonging to *these* criteria, in their order.
+   *
+   * A criterion the learner has not seen before is unmarked, however many
+   * marks the stage carries — the tick certifies a sentence, not a slot.
+   */
+  getDoneWhen(unitId, stageId, criteria = []) {
+    const marks = this.doneWhenMarks(unitId, stageId, criteria);
+    return criterionKeys(criteria).map((key) => Boolean(marks[key]));
   }
-  setDoneWhen(unitId, stageId, index, checked) {
+  setDoneWhen(unitId, stageId, index, checked, criteria = []) {
     const key = this.stageKey(unitId, stageId);
-    const marks = [...this.settings.uiDrafts.doneWhen[key] || []];
-    marks[index] = checked;
-    if (marks.some(Boolean)) this.settings.uiDrafts.doneWhen[key] = marks;
+    const criterionKey = criterionKeys(criteria)[index];
+    if (criterionKey === void 0) return;
+    const marks = { ...this.doneWhenMarks(unitId, stageId, criteria) };
+    if (checked) marks[criterionKey] = true;
+    else delete marks[criterionKey];
+    if (Object.keys(marks).length) this.settings.uiDrafts.doneWhen[key] = marks;
     else delete this.settings.uiDrafts.doneWhen[key];
     this.scheduleSave();
+  }
+  /**
+   * Read the stored marks, upgrading one legacy positional array in place.
+   *
+   * The upgrade reads the old array against the criteria currently on screen,
+   * which is the same assumption the positional storage made — but it is made
+   * exactly once, at the first render after the upgrade, instead of on every
+   * later revision. Ticks a learner has already made are therefore kept, and
+   * from that point a changed criterion invalidates its own mark.
+   */
+  doneWhenMarks(unitId, stageId, criteria) {
+    const key = this.stageKey(unitId, stageId);
+    const stored = this.settings.uiDrafts.doneWhen[key];
+    if (!stored) return {};
+    if (!Array.isArray(stored)) return stored;
+    const keys = criterionKeys(criteria);
+    const upgraded = {};
+    stored.forEach((mark, index) => {
+      const criterionKey = keys[index];
+      if (mark && criterionKey !== void 0) upgraded[criterionKey] = true;
+    });
+    if (Object.keys(upgraded).length) this.settings.uiDrafts.doneWhen[key] = upgraded;
+    else delete this.settings.uiDrafts.doneWhen[key];
+    this.scheduleSave();
+    return upgraded;
   }
   clearDoneWhen(unitId, stageId) {
     delete this.settings.uiDrafts.doneWhen[this.stageKey(unitId, stageId)];
@@ -11533,6 +11605,7 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
     root.setAttr("data-los-runtime-fingerprint-matches", identityMatches ? "yes" : "no");
     root.setAttr("data-los-core-revision", String(generated.source_revision || "unknown"));
     root.setAttr("data-los-ui-revision", String(build.source_revision || "unknown"));
+    root.setAttr("data-los-ui-plugin-version", String(build.ui_version || "unknown"));
     root.setAttr("data-los-core-dirty", flag(generated.source_dirty));
     root.setAttr("data-los-ui-dirty", flag(build.source_dirty));
     root.setAttr(
@@ -12526,22 +12599,34 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
     this.restoreAccessibility = null;
     root.empty();
     root.addClass("los-root", "los-material-drawer");
-    pageHeader(
+    const header = pageHeader(
       root,
       "Source comparison",
       "Choose learning material",
       "Every source stays available. Ranking changes with the learning need; provenance and locators do not.",
       "los-material-drawer-heading"
     );
+    const heading = Array.from(header.children ?? []).find(
+      (child) => child.getAttribute?.("id") === "los-material-drawer-heading"
+    );
+    heading?.setAttribute?.("tabindex", "-1");
     this.lensRow = null;
     if (materialOptions.length) this.renderNeedLenses(root);
-    renderStageResources(root, resources, {
-      ...renderer,
-      title: `Complete menu \xB7 ${resources.length} ${resources.length === 1 ? "material" : "materials"} for ${stage.title}`
-    });
+    if (resources.length) {
+      renderStageResources(root, resources, {
+        ...renderer,
+        title: `On this stage \xB7 ${resources.length} ${resources.length === 1 ? "material" : "materials"} for ${stage.title}`
+      });
+    } else {
+      empty(
+        root,
+        "This stage places no material of its own",
+        "Every route on the unit is listed above and stays choosable."
+      );
+    }
     root.createEl("p", {
       cls: "los-micro los-material-drawer-note",
-      text: "A selection changes the current route only; it never deletes or hides the complete source record."
+      text: `${materialOptions.length} ${materialOptions.length === 1 ? "route" : "routes"} on this unit; ${resources.length} placed on this stage. A selection changes the current route only; it never deletes or hides the complete source record.`
     });
     const actions = root.createDiv({ cls: "los-actions" });
     const close = button(actions, "Close", () => this.close(), "quiet");
@@ -12550,22 +12635,23 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
       hostClass: "los-modal--material-drawer",
       labelledBy: "los-material-drawer-heading"
     });
-    this.restoreFocus(close);
+    this.restoreFocus(heading ?? close);
     this.opening = true;
     void unit;
   }
   /** Kept out of `draw()` so control-flow narrowing on `lensRow` does not
    *  collapse the type the moment the field is reset for a redraw. */
-  restoreFocus(close) {
+  restoreFocus(onOpen) {
     if (this.opening) {
-      close.focus();
+      onOpen.focus();
+      onOpen.scrollIntoView?.({ block: "start" });
       return;
     }
     const tabs = Array.from(this.lensRow?.children ?? []);
     const current = tabs.find(
       (tab) => tab.getAttribute?.("aria-pressed") === "true"
     );
-    (current ?? close).focus();
+    (current ?? onOpen).focus();
   }
   renderNeedLenses(root) {
     const { materialOptions } = this.options;
@@ -12614,6 +12700,10 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
     card.createDiv({
       cls: "los-kicker",
       text: `Recommended for ${needLabel.toLowerCase()}`
+    });
+    card.createDiv({
+      cls: "los-micro",
+      text: `Chosen across all ${this.options.materialOptions.length} ${this.options.materialOptions.length === 1 ? "route" : "routes"} on this unit`
     });
     card.createEl("h3", { text: option.title });
     if (option.angle) {
@@ -12679,10 +12769,21 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
       });
       card.createEl("h4", { text: option.title });
       if (option.angle) card.createEl("p", { text: option.angle });
+      const detail = asText(option.record.angle_detail);
+      if (detail) {
+        card.createEl("p", {
+          cls: "los-material-alternative-detail",
+          text: `Angle \xB7 ${detail}`
+        });
+      }
+      card.createEl("p", {
+        cls: "los-micro",
+        text: `Depth \xB7 ${option.depth} \xB7 scope ${option.scope}`
+      });
       if (option.locator) {
         card.createEl("p", {
           cls: "los-micro",
-          text: option.locator
+          text: `Locator \xB7 ${option.locator}`
         });
       }
       this.renderCoverage(card, option);
@@ -12690,6 +12791,14 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
         cls: "los-actions los-material-actions"
       });
       this.renderChoose(actions, option);
+      if (option.canOpen) {
+        button(
+          actions,
+          "Open",
+          () => this.options.plugin.openResource(option.record),
+          "info"
+        );
+      }
     }
   }
   /**
@@ -12796,7 +12905,8 @@ function renderStage(view, layout, unit, studyMap, stage) {
   if (stage.doneWhen.length) {
     const marks = view.plugin.getDoneWhen(
       unit.id,
-      stage.id
+      stage.id,
+      stage.doneWhen
     );
     const checkedCount = stage.doneWhen.reduce(
       (count, _criterion, index) => count + (marks[index] ? 1 : 0),
@@ -12850,7 +12960,8 @@ function renderStage(view, layout, unit, studyMap, stage) {
             unit.id,
             stage.id,
             index,
-            nextChecked
+            nextChecked,
+            stage.doneWhen
           );
           row3.toggleClass(
             "is-checked",
@@ -12927,7 +13038,13 @@ function renderStage(view, layout, unit, studyMap, stage) {
       "Use the unit scope and ask AI for a proposal."
     );
   }
-  if (stage.resources.length) {
+  {
+    const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
+    const materialOptions = readMaterialOptions(
+      sourceMap?.sources,
+      unit.id,
+      unit.record.source_selections
+    );
     const catalogue = center.createDiv({
       cls: "los-section los-stage-materials"
     });
@@ -12935,11 +13052,11 @@ function renderStage(view, layout, unit, studyMap, stage) {
       cls: "los-stage-materials-copy"
     });
     catalogueCopy.createEl("h2", {
-      text: `All ${stage.resources.length} ${stage.resources.length === 1 ? "material" : "materials"}`
+      text: stage.resources.length ? `${stage.resources.length} ${stage.resources.length === 1 ? "material" : "materials"} on this stage` : "No material is placed on this stage"
     });
     catalogueCopy.createSpan({
       cls: "los-micro los-stage-materials-summary",
-      text: triageSummary(stage.resources)
+      text: stage.resources.length ? `${triageSummary(stage.resources)} \xB7 ${materialOptions.length} on the unit` : `The unit's complete menu still lists ${materialOptions.length} ${materialOptions.length === 1 ? "route" : "routes"}.`
     });
     const catalogueActions = catalogue.createDiv({
       cls: "los-actions los-stage-materials-actions"
@@ -12948,17 +13065,12 @@ function renderStage(view, layout, unit, studyMap, stage) {
       catalogueActions,
       "Compare all",
       () => {
-        const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
         new MaterialComparisonModal(view.app, {
           plugin: view.plugin,
           unit,
           stage,
           resources: stage.resources,
-          materialOptions: readMaterialOptions(
-            sourceMap?.sources,
-            unit.id,
-            unit.record.source_selections
-          ),
+          materialOptions,
           expectedRevisions,
           renderer: resourceRenderer,
           onChanged: () => view.render()
@@ -15024,7 +15136,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:90bcc7944b324b2cfe7b3a7fa635b9f389de343c3cbf68686d44bed7ea2ee8d4" : "unavailable";
+  return true ? "sha256:957d9ff56707308ba1c32ee218e84a9ef5764cd1b08b6255dd84117a3bb8efd4" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 9 : 0;
@@ -16725,11 +16837,11 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
   /** Done-when ticks are UI-owned working state: they help the learner see how
    *  far through a stage's criteria they are, and are never a second record of
    *  completion. The core still learns only "complete" from `stage-progress`. */
-  getDoneWhen(unitId, stageId) {
-    return this.drafts.getDoneWhen(unitId, stageId);
+  getDoneWhen(unitId, stageId, criteria = []) {
+    return this.drafts.getDoneWhen(unitId, stageId, criteria);
   }
-  setDoneWhen(unitId, stageId, index, checked) {
-    this.drafts.setDoneWhen(unitId, stageId, index, checked);
+  setDoneWhen(unitId, stageId, index, checked, criteria = []) {
+    this.drafts.setDoneWhen(unitId, stageId, index, checked, criteria);
   }
   clearDoneWhen(unitId, stageId) {
     this.drafts.clearDoneWhen(unitId, stageId);

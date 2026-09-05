@@ -325,17 +325,20 @@ function outlineRow(
   edge: AtlasEdge,
   focusId: string,
   position: string,
+  hiddenByLens = false,
 ): void {
   const row = parent.createEl('button', {
     cls: 'los-atlas-outline-row is-clickable',
     attr: { type: 'button' },
   });
   row.addClass(`los-atlas-outline-row--${edge.layer}`);
+  if (hiddenByLens) row.addClass('los-atlas-outline-row--hidden-by-lens');
   row.setAttribute('data-relation-id', edge.id);
 
+  const state = hiddenByLens ? ' · hidden by the selected lens' : '';
   row.createDiv({
     cls: 'los-atlas-outline-title',
-    text: `${position} · ${relationSentences(graph, edge).join(' ')}`,
+    text: `${position} · ${relationSentences(graph, edge).join(' ')}${state}`,
   });
   row.createDiv({
     cls: 'los-micro',
@@ -343,7 +346,7 @@ function outlineRow(
   });
   row.createSpan({ cls: 'los-atlas-outline-action los-micro', text: 'Inspect connection' });
   row.setAttrs({
-    'aria-label': `${relationSentences(graph, edge).join(' ')} ${provenanceLine(graph, edge, focusId)}. Inspect connection.`,
+    'aria-label': `${relationSentences(graph, edge).join(' ')}${state}. ${provenanceLine(graph, edge, focusId)}. Inspect connection.`,
   });
   row.addEventListener('click', () => host.inspectEdge(edge.id));
 }
@@ -372,40 +375,62 @@ export function renderOutline(
   });
 
   const prerequisites = view.strictEdges;
-  const semantic = host.state.lens === 'semantic' ? view.semanticEdges : [];
+  // Three different quantities, and conflating them is how the outline came to
+  // say "No authored semantic relations" about a concept whose own header
+  // reported three of them hidden by the lens (2026-09-05 audit, F10):
+  // what is authored, what this lens draws, and what is genuinely absent.
+  const authoredSemantic = graph.semanticEdges.get(view.focus.id) ?? [];
+  const drawnSemantic = host.state.lens === 'semantic' ? view.semanticEdges : [];
+  const drawnSemanticIds = new Set(drawnSemantic.map((edge) => edge.id));
+  const hiddenSemantic = authoredSemantic
+    .filter((edge) => !drawnSemanticIds.has(edge.id));
+
+  const semanticHeading = authoredSemantic.length
+    ? `Semantic · ${plural(authoredSemantic.length, 'authored', 'authored')}`
+      + `, ${drawnSemantic.length} drawn by this lens`
+    : 'Semantic · 0 authored';
 
   const list = outline.createDiv({ cls: 'los-atlas-outline-list' });
   enableButtonGroupKeyboardNavigation(list, 'vertical');
 
-  for (const [heading, edges, absence] of [
+  for (const [heading, edges, absence, hidden] of [
     [
       `Visible prerequisite connections · ${plural(prerequisites.length, 'authored', 'authored')}`,
       prerequisites,
       'No authored prerequisites. Absence is not a claim that none exist; nothing is inferred to fill this row.',
+      [] as readonly AtlasEdge[],
     ],
     [
-      `Semantic · ${plural(semantic.length, 'authored', 'authored')}`,
-      semantic,
+      semanticHeading,
+      drawnSemantic,
       'No authored semantic relations.',
+      hiddenSemantic,
     ],
   ] as const) {
-    if (!edges.length && !absence) continue;
+    if (!edges.length && !hidden.length && !absence) continue;
 
     list.createDiv({ cls: 'los-micro los-atlas-outline-group', text: heading });
 
-    if (!edges.length) {
+    // Absence is only claimed when nothing is authored at all. A relation the
+    // lens filters out is listed, marked as hidden, and still inspectable.
+    if (!edges.length && !hidden.length) {
       list.createDiv({ cls: 'los-atlas-outline-absence los-micro', text: absence });
       continue;
     }
 
+    const total = edges.length + hidden.length;
     edges.forEach((edge, index) => {
+      outlineRow(list, host, graph, edge, view.focus.id, `${index + 1} of ${total}`);
+    });
+    hidden.forEach((edge, index) => {
       outlineRow(
         list,
         host,
         graph,
         edge,
         view.focus.id,
-        `${index + 1} of ${edges.length}`,
+        `${edges.length + index + 1} of ${total}`,
+        true,
       );
     });
   }

@@ -555,6 +555,18 @@
   border-left: 3px dashed var(--los-warning);
 }
 
+/* A relation the current lens does not draw. It is authored and inspectable,
+   so it is listed rather than reported as absent — recessed, never removed. */
+.los-root .los-atlas-outline-row--hidden-by-lens {
+  border-style: dashed;
+  background: var(--los-surface);
+  opacity: 0.82;
+}
+
+.los-root .los-atlas-outline-row--hidden-by-lens:hover {
+  opacity: 1;
+}
+
 .los-atlas-outline-title {
   font-size: 12px;
   font-weight: 650;

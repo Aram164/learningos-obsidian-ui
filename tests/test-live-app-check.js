@@ -14,6 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   DIAGNOSTICS_ATTRIBUTES,
+  DIAGNOSTICS_VIEW_CLASS,
   HARD_ALLOWED_COMMANDS,
   LiveAppCheckError,
   REQUIRED_APP_VERSION,
@@ -21,11 +22,13 @@ import {
   assertAllowedCommand,
   assertExactlyOne,
   assertLiveIdentity,
+  cliRefusal,
   countDomClass,
   declaredManifestContract,
   extractDiagnostics,
   newErrors,
   parseCommandList,
+  parseObsidianVersion,
   redactDiagnostics,
   requireFullSha,
   versionAtLeast,
@@ -195,6 +198,7 @@ function diagnosticsDom(overrides = {}) {
     coreDirty: 'false',
     sourceDirty: 'false',
     gatewayRecoveryClear: 'yes',
+    uiPluginVersion: '2.0.0',
     ...overrides,
   };
   const attributes = Object.entries(DIAGNOSTICS_ATTRIBUTES)
@@ -212,6 +216,7 @@ test('extractDiagnostics reads every declared attribute', () => {
     coreDirty: 'false',
     sourceDirty: 'false',
     gatewayRecoveryClear: 'yes',
+    uiPluginVersion: '2.0.0',
   });
 });
 
@@ -284,6 +289,10 @@ test('dirty, unknown, mismatched, stale and unresolved states all fail', () => {
   refuse({ runtimeFingerprintMatches: 'no' });
   refuse({ manifestContract: '7' });
   refuse({ gatewayRecoveryClear: 'no' });
+  // The installed Obsidian CLI reports plugin ids without versions, so the
+  // running build is read from Diagnostics. A mismatch there must refuse.
+  refuse({ uiPluginVersion: '1.9.0' });
+  refuse({ uiPluginVersion: 'unknown' });
 });
 
 // ---- metadata redaction -----------------------------------------------
@@ -297,6 +306,7 @@ test('redactDiagnostics keeps only the declared safe fields', () => {
     coreDirty: false,
     sourceDirty: false,
     gatewayRecoveryClear: true,
+    uiPluginVersion: '2.0.0',
     capturedText: 'this must never appear',
     localFilePath: '/Users/aram/secret/path.md',
   });
@@ -308,6 +318,7 @@ test('redactDiagnostics keeps only the declared safe fields', () => {
     coreDirty: false,
     sourceDirty: false,
     gatewayRecoveryClear: true,
+    uiPluginVersion: '2.0.0',
   });
   assert.ok(!('capturedText' in redacted));
   assert.ok(!('localFilePath' in redacted));
@@ -316,6 +327,68 @@ test('redactDiagnostics keeps only the declared safe fields', () => {
 test('redactDiagnostics tolerates a missing or empty input', () => {
   assert.deepEqual(redactDiagnostics(undefined), {});
   assert.deepEqual(redactDiagnostics({}), {});
+});
+
+
+
+/* ---- the installed host's actual protocol -----------------------------
+ *
+ * These fixtures are the real output of the installed Obsidian 1.13.7 CLI,
+ * captured on 2026-09-05. The suite passed 32 synthetic tests while the driver
+ * could not complete a single real step, so what the host actually prints is
+ * pinned here rather than what a bare semver would have been.
+ */
+
+const REAL_VERSION_LINE = '1.13.7 (installer 1.12.7)';
+const REAL_PLUGINS_ENABLED_JSON = JSON.stringify([
+  { id: 'bases' }, { id: 'canvas' }, { id: 'learningos-ui' }, { id: 'outline' },
+]);
+const REAL_DOM_PARAMETER_ERROR =
+  'Error: Missing required parameter: selector=<css>\n'
+  + 'Usage: dev:dom selector=<css> [total] [text] [inner] [all] [attr=<name>] [css=<prop>]';
+
+test('the app and installer versions are read from the line the host prints', () => {
+  const parsed = parseObsidianVersion(REAL_VERSION_LINE);
+  assert.equal(parsed.app, '1.13.7');
+  assert.equal(parsed.installer, '1.12.7');
+  assert.equal(parseObsidianVersion('not a version'), null);
+});
+
+test('a newer app with an older installer meets the requirement', () => {
+  // The exact refusal this repair removes: 1.13.7 was rejected as not meeting
+  // 1.12.7 because the parser demanded a bare three-part version.
+  assert.ok(versionAtLeast(REAL_VERSION_LINE, REQUIRED_APP_VERSION));
+  assert.ok(!versionAtLeast('1.11.0 (installer 1.10.0)', REQUIRED_APP_VERSION));
+});
+
+test('plugins:enabled json is parsed for ids, which is all it reports', () => {
+  const entries = parseCommandList(REAL_PLUGINS_ENABLED_JSON);
+  assert.ok(entries.some((entry) => entry.id === 'learningos-ui'));
+  // No version field exists in this output; the running build's version comes
+  // from Diagnostics instead, and assertLiveIdentity checks it there.
+  assert.equal(entries.find((entry) => entry.id === 'learningos-ui').name, '');
+});
+
+test('a parameter error printed on exit 0 is detected as a refusal', () => {
+  assert.ok(cliRefusal(REAL_DOM_PARAMETER_ERROR));
+  assert.ok(cliRefusal('', REAL_DOM_PARAMETER_ERROR));
+  assert.equal(cliRefusal(diagnosticsDom()), null);
+  assert.equal(cliRefusal(REAL_VERSION_LINE), null);
+  assert.equal(cliRefusal(REAL_PLUGINS_ENABLED_JSON), null);
+});
+
+test('the dev:dom selector the driver sends names the Diagnostics view', () => {
+  assert.equal(DIAGNOSTICS_VIEW_CLASS, 'los-diagnostics-view');
+  assert.doesNotThrow(
+    () => assertAllowedCommand(['dev:dom', `selector=.${DIAGNOSTICS_VIEW_CLASS}`]),
+  );
+  assert.doesNotThrow(
+    () => assertAllowedCommand(['dev:screenshot', 'path=/tmp/evidence/diagnostics.png']),
+  );
+  assert.doesNotThrow(() => assertAllowedCommand(['plugins:enabled', 'json']));
+  // The read-only allowlist is unchanged by the protocol repair.
+  assert.throws(() => assertAllowedCommand(['plugin:reload']), LiveAppCheckError);
+  assert.throws(() => assertAllowedCommand(['command', 'app:reload']), LiveAppCheckError);
 });
 
 if (failures) {
