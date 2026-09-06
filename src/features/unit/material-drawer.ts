@@ -32,7 +32,7 @@ export interface MaterialComparisonOptions {
   readonly onChanged: () => void;
 }
 export class MaterialComparisonModal extends Modal {
-  private scope: Scope = 'stage';
+  private sourceScope: Scope = 'stage';
   private purpose: Purpose = 'all';
   private query = '';
   private restoreAccessibility: (() => void) | null = null;
@@ -54,8 +54,8 @@ export class MaterialComparisonModal extends Modal {
     const component = unit.componentId ? plugin.store.get(unit.componentId) : null;
     const widerLabel = unit.componentId === 'component-m2-sad' ? 'All SaD' : `All ${asString(component?.title) ?? 'module sources'}`;
     for (const [value, text] of [['stage', 'This stage'], ['unit', 'This lecture'], ['component', widerLabel]] as const) scope.createEl('option', { text, attr: { value } });
-    scope.value = this.scope;
-    scope.addEventListener('change', () => { this.scope = scope.value as Scope; this.updateResults(); });
+    scope.value = this.sourceScope;
+    scope.addEventListener('change', () => { this.sourceScope = scope.value as Scope; this.updateResults(); });
     const purposeLabel = controls.createEl('label', { text: 'Purpose' });
     const purpose = purposeLabel.createEl('select', { cls: 'los-source-purpose', attr: { 'aria-label': 'Learning purpose' } });
     for (const [value, text] of [['all', 'All purposes'], ['derivation', 'Derivation'], ['intuition', 'Intuition'], ['practice', 'Practice']] as const) purpose.createEl('option', { text, attr: { value } });
@@ -86,7 +86,7 @@ export class MaterialComparisonModal extends Modal {
   }
   private entries(): BrowserEntry[] {
     const { plugin, unit, resources, materialOptions } = this.options;
-    if (this.scope === 'stage') return resources.map(resource => {
+    if (this.sourceScope === 'stage') return resources.map(resource => {
       const routeId = asString(resource.record.route_id);
       const route = routeId ? materialOptions.find(option => option.routeId === routeId) : undefined;
       return { sourceId: resource.sourceId ?? route?.sourceId ?? null,
@@ -95,7 +95,7 @@ export class MaterialComparisonModal extends Modal {
         format: resource.kind === 'practise' ? 'practice' : asString(resource.record.format) ?? route?.format ?? resource.kind,
         angle: asText(resource.record.angle) ?? '' };
     });
-    const owners = this.scope === 'unit' ? [unit] : plugin.store.unitsFor(unit.moduleId, unit.componentId)
+    const owners = this.sourceScope === 'unit' ? [unit] : plugin.store.unitsFor(unit.moduleId, unit.componentId)
       .map(record => readUnitRecord(record, asString(record.id)))
       .filter((record): record is UnitRecordView => record !== null);
     const sourceMap = plugin.store.sourceMap(unit.moduleId);

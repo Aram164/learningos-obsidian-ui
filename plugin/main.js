@@ -12639,7 +12639,7 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
     super(app);
     this.options = options;
   }
-  scope = "stage";
+  sourceScope = "stage";
   purpose = "all";
   query = "";
   restoreAccessibility = null;
@@ -12665,9 +12665,9 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
     const component = unit.componentId ? plugin.store.get(unit.componentId) : null;
     const widerLabel = unit.componentId === "component-m2-sad" ? "All SaD" : `All ${asString(component?.title) ?? "module sources"}`;
     for (const [value, text5] of [["stage", "This stage"], ["unit", "This lecture"], ["component", widerLabel]]) scope.createEl("option", { text: text5, attr: { value } });
-    scope.value = this.scope;
+    scope.value = this.sourceScope;
     scope.addEventListener("change", () => {
-      this.scope = scope.value;
+      this.sourceScope = scope.value;
       this.updateResults();
     });
     const purposeLabel = controls.createEl("label", { text: "Purpose" });
@@ -12716,7 +12716,7 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
   }
   entries() {
     const { plugin, unit, resources, materialOptions } = this.options;
-    if (this.scope === "stage") return resources.map((resource) => {
+    if (this.sourceScope === "stage") return resources.map((resource) => {
       const routeId = asString(resource.record.route_id);
       const route = routeId ? materialOptions.find((option) => option.routeId === routeId) : void 0;
       return {
@@ -12730,7 +12730,7 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
         angle: asText(resource.record.angle) ?? ""
       };
     });
-    const owners = this.scope === "unit" ? [unit] : plugin.store.unitsFor(unit.moduleId, unit.componentId).map((record6) => readUnitRecord(record6, asString(record6.id))).filter((record6) => record6 !== null);
+    const owners = this.sourceScope === "unit" ? [unit] : plugin.store.unitsFor(unit.moduleId, unit.componentId).map((record6) => readUnitRecord(record6, asString(record6.id))).filter((record6) => record6 !== null);
     const sourceMap = plugin.store.sourceMap(unit.moduleId);
     return owners.flatMap((owner) => {
       const options = owner.id === unit.id ? materialOptions : readMaterialOptions(sourceMap?.sources, owner.id, owner.record.source_selections);
@@ -15064,7 +15064,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:2d4281e7e3fc2bade7e2488b0cf5928365a60792aa8ab5b7b0657a0b215021e5" : "unavailable";
+  return true ? "sha256:c1842b5fd777ed026c41b72bbb823cda0856dc2c6bab9884bec926097e19f503" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 9 : 0;

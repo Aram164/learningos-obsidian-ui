@@ -128,8 +128,17 @@ class Notice {
 Notice.log = [];
 
 class Modal {
-  constructor(app) { this.app = app; this.contentEl = new El('div'); }
-  open() { Modal.last = this; this.onOpen(); }
+  constructor(app) {
+    this.app = app; this.contentEl = new El('div');
+    // Obsidian owns this keyboard scope; subclasses must not replace it.
+    this.scope = { handleKey() {} };
+  }
+  open() {
+    if (!this.scope || typeof this.scope.handleKey !== 'function') {
+      throw new TypeError('Modal keyboard scope was overwritten');
+    }
+    Modal.last = this; this.onOpen();
+  }
   close() { this.onClose && this.onClose(); }
   onOpen() {}
   onClose() {}

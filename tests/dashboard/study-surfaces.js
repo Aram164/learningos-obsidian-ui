@@ -385,6 +385,8 @@ module.exports = async function run() {
       global.document.activeElement
         === drawer.find('los-page-header')[0].children.find(
           (child) => child.getAttribute('id') === 'los-material-drawer-heading'));
+    check('source browsing preserves the host modal keyboard scope',
+      typeof stub.Modal.last.scope.handleKey === 'function');
     check('stage scope preserves all original placements',
       drawer.find('los-source-entry').length === 5 && drawer.allText().includes('5 of 5 entries'));
     const opened = [];
