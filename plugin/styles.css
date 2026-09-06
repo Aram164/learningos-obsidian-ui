@@ -3683,11 +3683,11 @@
 .los-source-counts { margin-bottom: var(--los-2); color: var(--los-ink-soft); font-size: 13px; }
 .los-source-group { border-bottom: 1px solid var(--los-line); padding: var(--los-2) 0; }
 .los-source-group > summary { font-weight: 600; min-height: 36px; }
-.los-source-entry { margin-left: var(--los-3); padding: var(--los-1) 0; }
-.los-source-entry > summary { line-height: 1.5; overflow-wrap: anywhere; }
-.los-source-locator { display: block; padding-left: var(--los-3); color: var(--los-ink-soft); }
-.los-source-entry-body { padding: var(--los-2); }
-.los-source-entry-body .los-section { margin: 0; }
+/* A material inside a source group is a card, not a second disclosure: the
+   group heading names the source and the card carries the rest. */
+.los-source-entry { margin-left: var(--los-3); overflow-wrap: anywhere; }
+.los-source-entry + .los-source-entry { border-top: 1px solid var(--los-line); }
+.los-resource-badge, .los-resource-chosen { color: var(--los-ink-soft); }
 /* Projects are parallel work, rendered as workstreams and decisions rather
  * than a second module dashboard. */
 .los-project-view > .los-project-list,

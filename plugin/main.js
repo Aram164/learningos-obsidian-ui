@@ -12460,7 +12460,35 @@ var MATERIAL_TYPE_ICON = {
   book: "book-open",
   exercise: "pencil-line"
 };
+function materialTypeIcon(type) {
+  return MATERIAL_TYPE_ICON[type] ?? MATERIAL_TYPE_ICON.article;
+}
 var angleDetailSequence = 0;
+function whyThisOne(copy, detailText, fillFoot) {
+  const detailId = `los-resource-angle-detail-${++angleDetailSequence}`;
+  const detail = copy.createDiv({
+    cls: "los-resource-angle-detail",
+    text: detailText,
+    attr: { hidden: "", id: detailId }
+  });
+  const foot = copy.createDiv({ cls: "los-resource-foot" });
+  fillFoot?.(foot);
+  let expanded = false;
+  const toggle = button(
+    foot,
+    "\u25B8 Why this one",
+    () => {
+      expanded = !expanded;
+      toggle.setText(`${expanded ? "\u25BE" : "\u25B8"} Why this one`);
+      toggle.setAttr("aria-expanded", String(expanded));
+      if (expanded) detail.removeAttribute("hidden");
+      else detail.setAttr("hidden", "");
+    },
+    "quiet"
+  );
+  toggle.addClass("los-resource-angle-trigger");
+  toggle.setAttrs({ "aria-controls": detailId, "aria-expanded": "false" });
+}
 function materialTypeOf(resource, source) {
   if (resource.kind === "practise") return "exercise";
   if (resource.kind === "watch") return "video";
@@ -12470,7 +12498,7 @@ function materialTypeOf(resource, source) {
   if (declared === "book" || declared === "textbook") return "book";
   return "article";
 }
-function renderResourceRow(parent, resource, source, renderer) {
+function renderResourceRow(parent, resource, source, renderer, extras = {}) {
   const materialType = materialTypeOf(resource, source);
   const row3 = parent.createDiv({
     cls: `los-resource-row los-triage-${resource.scopeTriage || "unranked"}`
@@ -12491,6 +12519,9 @@ function renderResourceRow(parent, resource, source, renderer) {
       text: resource.locator
     });
   }
+  for (const badge2 of extras.badges ?? []) {
+    metadata.createSpan({ cls: "los-micro los-resource-badge", text: badge2 });
+  }
   const angle = asText(resource.record.angle);
   if (angle) {
     copy.createDiv({
@@ -12498,39 +12529,14 @@ function renderResourceRow(parent, resource, source, renderer) {
       text: angle
     });
   }
+  const showChip = source && !extras.hideSourceChip ? source : null;
   const angleDetail = asText(resource.record.angle_detail);
   if (angleDetail) {
-    const detailId = `los-resource-angle-detail-${++angleDetailSequence}`;
-    const detail = copy.createDiv({
-      cls: "los-resource-angle-detail",
-      text: angleDetail,
-      attr: {
-        hidden: "",
-        id: detailId
-      }
+    whyThisOne(copy, angleDetail, (foot) => {
+      if (showChip) chip(foot, showChip, renderer.openSource);
     });
-    const foot = copy.createDiv({ cls: "los-resource-foot" });
-    if (source) chip(foot, source, renderer.openSource);
-    let expanded = false;
-    const toggle = button(
-      foot,
-      "\u25B8 Why this one",
-      () => {
-        expanded = !expanded;
-        toggle.setText(`${expanded ? "\u25BE" : "\u25B8"} Why this one`);
-        toggle.setAttr("aria-expanded", String(expanded));
-        if (expanded) detail.removeAttribute("hidden");
-        else detail.setAttr("hidden", "");
-      },
-      "quiet"
-    );
-    toggle.addClass("los-resource-angle-trigger");
-    toggle.setAttrs({
-      "aria-controls": detailId,
-      "aria-expanded": "false"
-    });
-  } else if (source) {
-    chip(copy, source, renderer.openSource);
+  } else if (showChip) {
+    chip(copy, showChip, renderer.openSource);
   }
   const actions = row3.createDiv({ cls: "los-actions los-resource-actions" });
   if (resource.canOpen && renderer.openResource) {
@@ -12559,57 +12565,6 @@ function renderResourceRow(parent, resource, source, renderer) {
   }
   return row3;
 }
-function renderStageResources(parent, resourcesValue, renderer) {
-  const resources = section(parent, renderer.title ?? "Material catalogue");
-  resources.addClass("los-stage-resources");
-  resources.createSpan({
-    cls: "los-micro los-stage-resource-count",
-    text: `${resourcesValue.length} ${resourcesValue.length === 1 ? "material" : "materials"}`
-  });
-  resources.createEl("p", {
-    cls: "los-stage-resource-summary",
-    text: "Every material stays visible, grouped by what this stage asks of it. The angle explains what each one covers; nothing here is ranked by quality."
-  });
-  if (!resourcesValue.length) {
-    empty(
-      resources,
-      renderer.emptyTitle || "No source action selected",
-      renderer.emptyDetail || "Add a focused source or practice action to this stage."
-    );
-    return resources;
-  }
-  const sourceFor = (resource) => resource.sourceId && renderer.sourceRecord ? renderer.sourceRecord(resource.sourceId) : null;
-  const buckets = /* @__PURE__ */ new Map();
-  for (const resource of resourcesValue) {
-    const key = isTriageRank(resource.scopeTriage) ? resource.scopeTriage : "required-now";
-    const bucket = buckets.get(key);
-    if (bucket) bucket.push(resource);
-    else buckets.set(key, [resource]);
-  }
-  for (const rank of TRIAGE_ORDER) {
-    const entries = buckets.get(rank);
-    if (!entries?.length) continue;
-    const group = resources.createDiv({
-      cls: `los-resource-triage-group los-resource-triage-${rank}`
-    });
-    group.setAttr("aria-label", TRIAGE_HEADING[rank]);
-    const groupHeading = group.createDiv({
-      cls: "los-resource-type-heading"
-    });
-    const headingCopy = groupHeading.createDiv({
-      cls: "los-resource-type-heading-copy"
-    });
-    headingCopy.createEl("h3", { text: TRIAGE_HEADING[rank] });
-    groupHeading.createSpan({
-      cls: "los-micro",
-      text: `${entries.length} ${entries.length === 1 ? "material" : "materials"}`
-    });
-    for (const resource of entries) {
-      renderResourceRow(group, resource, sourceFor(resource), renderer);
-    }
-  }
-  return resources;
-}
 
 // src/features/unit/material-drawer.ts
 var import_obsidian15 = require("obsidian");
@@ -12624,9 +12579,10 @@ function groupBySource(entries) {
   }
   return groups;
 }
-function renderSourceGroups(root, entries, sourceTitle, renderEntry2) {
+function renderSourceGroups(root, entries, sourceTitle, renderEntry2, open = false) {
   for (const [id2, group] of groupBySource(entries)) {
     const details = root.createEl("details", { cls: "los-disclosure los-source-group" });
+    if (open) details.setAttr("open", "");
     details.createEl("summary", { text: `${sourceTitle(id2)} \xB7 ${group.length} ${group.length === 1 ? "entry" : "entries"}` });
     const body = details.createDiv({ cls: "los-disclosure-body" });
     for (const entry of group) renderEntry2(body, entry);
@@ -12747,39 +12703,71 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
       const purpose = this.purpose === "all" || entry.depth.toLowerCase().includes(this.purpose) || this.purpose === "practice" && ["practice", "practise", "exercise", "problem-set", "homework", "quiz"].includes(entry.format);
       return purpose && (!query || [this.sourceTitle(entry.sourceId), entry.title, entry.locator ?? "", entry.angle].some((text5) => foldCase(text5).includes(query)));
     });
-    root.createDiv({ cls: "los-source-counts", attr: { role: "status", "aria-live": "polite" }, text: `${entries.length} of ${all.length} entries \xB7 ${groupBySource(entries).size} source groups` });
+    const groups = groupBySource(entries).size;
+    root.createDiv({ cls: "los-source-counts", attr: { role: "status", "aria-live": "polite" }, text: `${entries.length} of ${all.length} entries \xB7 ${groups} source groups` });
     if (!entries.length) empty(root, "No materials match", "Change scope or reset the filters to see the complete list.");
-    renderSourceGroups(root, entries, (id2) => this.sourceTitle(id2), (parent, entry) => this.renderEntry(parent, entry));
+    const narrowed = Boolean(query) || this.purpose !== "all" || groups === 1;
+    renderSourceGroups(root, entries, (id2) => this.sourceTitle(id2), (parent, entry) => this.renderEntry(parent, entry), narrowed);
   }
+  /**
+   * One material, one card — the same card the stage screen shows.
+   *
+   * This used to be a disclosure whose summary printed the title, status and
+   * locator, wrapping a full `renderStageResources` section that printed a
+   * heading, a count of one, a paragraph of standing advice, a triage bucket
+   * heading, and then a card repeating the title, status and locator again.
+   * Reaching a PDF took three expansions to read the same two facts four
+   * times. The group heading already names the source, so the card carries
+   * only what the group has not said, and the long rationale stays behind the
+   * card's own "Why this one".
+   */
   renderEntry(parent, entry) {
-    const details = parent.createEl("details", { cls: "los-disclosure los-source-entry" });
-    const summary = details.createEl("summary");
-    summary.createSpan({ text: entry.title });
-    const triage = entry.resource?.scopeTriage;
-    const status = triage ? TRIAGE_HEADING[triage] ?? triage : entry.option?.scope;
-    if (status) summary.createSpan({ cls: "los-micro los-source-locator", text: status });
-    if (entry.locator) summary.createSpan({ cls: "los-micro los-source-locator", text: entry.locator });
-    if (entry.owner.id !== this.options.unit.id) summary.createSpan({ cls: "los-micro", text: entry.owner.title });
-    const body = details.createDiv({ cls: "los-source-entry-body" });
+    const badges = entry.owner.id === this.options.unit.id ? [] : [entry.owner.title];
     if (entry.resource) {
-      renderStageResources(body, [entry.resource], { ...this.options.renderer, title: "Details" });
+      const sourceId = entry.resource.sourceId;
+      const source = sourceId ? this.options.renderer.sourceRecord?.(sourceId) ?? null : null;
+      const row3 = renderResourceRow(parent, entry.resource, source, this.options.renderer, {
+        badges,
+        hideSourceChip: true
+      });
+      row3.addClass("los-source-entry");
       return;
     }
+    this.renderRouteEntry(parent, entry, badges);
+  }
+  /**
+   * A route the owning unit offers, rendered in the resource card's shape so
+   * stage placements and wider-scope routes read as one system rather than as
+   * two surfaces that happen to sit in the same dialog.
+   */
+  renderRouteEntry(parent, entry, badges) {
     const option = entry.option;
-    body.createEl("p", { text: option.angle });
-    const detail = asText(option.record.angle_detail);
-    if (detail) body.createEl("p", { text: detail });
-    body.createDiv({ cls: "los-micro", text: `${option.format} \xB7 ${option.depth} \xB7 ${option.scope}` });
-    const labels = option.covers.map((id2) => entry.owner.knowledgeNodes.find((node) => node.id === id2)?.title).filter(Boolean);
-    if (labels.length) body.createDiv({ cls: "los-micro", text: `Covers: ${labels.join(" \xB7 ")}` });
-    const actions = body.createDiv({ cls: "los-actions" });
-    if (entry.owner.id === this.options.unit.id) this.renderChoose(actions, option);
-    else button(actions, "Go to lecture", () => {
-      this.close();
-      this.options.plugin.nav.openUnit(entry.owner.id);
-    }, "quiet");
-    if (option.selected) body.createDiv({ cls: "los-micro", text: "Chosen for this lecture" });
-    if (option.canOpen) button(actions, "Open", () => this.options.plugin.openResource(option.record), "info");
+    const own = entry.owner.id === this.options.unit.id;
+    const row3 = parent.createDiv({ cls: "los-resource-row los-source-entry los-triage-unranked" });
+    icon(row3.createSpan(), materialTypeIcon(option.format));
+    const copy = row3.createDiv({ cls: "los-resource-copy" });
+    copy.createEl("strong", { text: entry.title });
+    const metadata = copy.createDiv({ cls: "los-resource-row-meta" });
+    metadata.createSpan({
+      cls: "los-resource-priority los-resource-priority-unranked",
+      text: `${option.format} \xB7 ${option.depth}`
+    });
+    if (entry.locator) metadata.createSpan({ cls: "los-micro los-resource-locator", text: entry.locator });
+    for (const badge2 of badges) metadata.createSpan({ cls: "los-micro los-resource-badge", text: badge2 });
+    if (option.selected) metadata.createSpan({ cls: "los-micro los-resource-chosen", text: "Chosen for this lecture" });
+    if (option.angle) copy.createDiv({ cls: "los-resource-angle", text: option.angle });
+    const labels = option.covers.map((id2) => entry.owner.knowledgeNodes.find((node) => node.id === id2)?.title).filter((title) => Boolean(title));
+    const rationale = [asText(option.record.angle_detail), labels.length ? `Covers: ${labels.join(" \xB7 ")}` : ""].filter(Boolean).join("\n\n");
+    if (rationale) whyThisOne(copy, rationale);
+    const actions = row3.createDiv({ cls: "los-actions los-resource-actions" });
+    if (option.canOpen) button(actions, "Open", () => this.options.plugin.openResource(option.record), "quiet");
+    if (own) this.renderChoose(actions, option);
+    else {
+      button(actions, "Go to lecture", () => {
+        this.close();
+        this.options.plugin.nav.openUnit(entry.owner.id);
+      }, "quiet");
+    }
   }
   renderChoose(actions, option) {
     if (!option.canChoose || !option.sourceId || !option.locator) return;
@@ -13211,10 +13199,8 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
     group.createEl("summary", { text: `${asString(source?.title) ?? sourceId ?? "Source not yet identified"} \xB7 ${entries.length} entries` });
     for (const option of entries) {
       const materialType = materialTypeOf2(option.format);
-      const detail = group.createEl("details", { cls: "los-disclosure los-source-entry" });
-      detail.createEl("summary", { text: option.title });
-      const row3 = detail.createDiv({
-        cls: "los-material-option"
+      const row3 = group.createDiv({
+        cls: "los-material-option los-source-entry"
       });
       icon(
         row3.createSpan({
@@ -13232,7 +13218,6 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
         text: option.angle
       });
       const fullDetail = asText(option.record.angle_detail);
-      if (fullDetail) copy.createEl("p", { text: fullDetail });
       if (option.locator) {
         copy.createDiv({
           cls: "los-micro",
@@ -13266,21 +13251,7 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
           });
         }
       }
-      if (option.sourceId) {
-        const source2 = view.plugin.store.get(
-          option.sourceId
-        );
-        if (source2) {
-          chip(
-            copy,
-            source2,
-            (record6) => {
-              const id2 = asString(record6.id);
-              return id2 ? view.plugin.nav.openLibrary(id2) : void 0;
-            }
-          );
-        }
-      }
+      if (fullDetail) whyThisOne(copy, fullDetail);
       if (option.canOpen || option.canChoose) {
         const actions = row3.createDiv({
           cls: "los-actions los-material-actions"
@@ -15064,7 +15035,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:c1842b5fd777ed026c41b72bbb823cda0856dc2c6bab9884bec926097e19f503" : "unavailable";
+  return true ? "sha256:a93eddfb1a9da31cfbc817040ec4fd0246cd881c6c320efa8dd346d951eca5e7" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 9 : 0;

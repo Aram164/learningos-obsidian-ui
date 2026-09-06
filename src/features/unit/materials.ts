@@ -1,4 +1,5 @@
 import { groupBySource } from './source-browser';
+import { whyThisOne } from '../stage-resources';
 import { asText } from '../../projection/readers';
 import type { UnitMaterialsHost } from './ports';
 import { Notice } from 'obsidian';
@@ -129,10 +130,10 @@ export function renderMaterialOverview(
     group.createEl('summary', { text: `${projectedString(source?.title) ?? sourceId ?? 'Source not yet identified'} · ${entries.length} entries` });
     for (const option of entries) {
       const materialType = materialTypeOf(option.format);
-      const detail = group.createEl('details', { cls: 'los-disclosure los-source-entry' });
-      detail.createEl('summary', { text: option.title });
-      const row = detail.createDiv({
-        cls: 'los-material-option',
+      // No disclosure around the card: its own heading is the title, so a
+      // summary above it printed the same string twice at two depths.
+      const row = group.createDiv({
+        cls: 'los-material-option los-source-entry',
       });
 
       icon(
@@ -154,7 +155,6 @@ export function renderMaterialOverview(
       });
 
       const fullDetail = asText(option.record.angle_detail);
-      if (fullDetail) copy.createEl('p', { text: fullDetail });
 
       if (option.locator) {
         copy.createDiv({
@@ -194,24 +194,10 @@ export function renderMaterialOverview(
         }
       }
 
-      if (option.sourceId) {
-        const source = view.plugin.store.get(
-          option.sourceId,
-        );
-
-        if (source) {
-          chip(
-            copy,
-            source,
-            (record: ProjectionRecord) => {
-              const id = projectedString(record.id);
-              return id
-                ? view.plugin.nav.openLibrary(id)
-                : undefined;
-            },
-          );
-        }
-      }
+      // The group heading above already names the source, so the row carries
+      // the rationale instead — behind the same "Why this one" gesture the
+      // stage screen and the material browser use.
+      if (fullDetail) whyThisOne(copy, fullDetail);
 
       if (option.canOpen || option.canChoose) {
         const actions = row.createDiv({

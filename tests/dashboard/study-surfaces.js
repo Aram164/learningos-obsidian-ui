@@ -389,6 +389,18 @@ module.exports = async function run() {
       typeof stub.Modal.last.scope.handleKey === 'function');
     check('stage scope preserves all original placements',
       drawer.find('los-source-entry').length === 5 && drawer.allText().includes('5 of 5 entries'));
+    // Regression: an entry used to be a disclosure wrapping a whole stage
+    // section, so reaching one material took three expansions and printed its
+    // title, status and locator four times over. One group click, one card.
+    const entryCards = drawer.find('los-source-entry');
+    check('a material is a card, not a second disclosure inside its group',
+      entryCards.every((card) => card.tag !== 'details' && card.find('los-disclosure').length === 0));
+    check('the stage-section boilerplate is not reprinted per material',
+      !drawer.allText().includes('Every material stays visible, grouped by what this stage asks of it')
+      && !drawer.allText().includes('1 material'));
+    const firstCard = entryCards.find((card) => card.allText().includes('first exact video'));
+    check('a card states its title once',
+      firstCard.allText().split('first exact video').length - 1 === 1);
     const opened = [];
     plugin.openResource = record => opened.push(record);
     const firstVideo = drawer.find('los-source-entry').find(row => row.allText().includes('first exact video'));

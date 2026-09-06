@@ -2,8 +2,8 @@ import { App, Modal, Notice } from 'obsidian';
 import { makeModalAccessible } from '../../accessibility/modal';
 import { foldCase } from '../../sorting';
 import { asText, asString } from '../../projection/readers';
-import { button, empty, pageHeader } from '../../components';
-import { TRIAGE_HEADING, renderStageResources, type TriageRank, type StageResourceRenderer, type StageResourceView } from '../stage-resources';
+import { button, empty, icon, pageHeader } from '../../components';
+import { materialTypeIcon, renderResourceRow, whyThisOne, type StageResourceRenderer, type StageResourceView } from '../stage-resources';
 import { readMaterialOptions, readUnitRecord } from './model';
 import type { MaterialOptionView, StageRecordView, UnitPlugin, UnitRecordView } from './model';
 import { groupBySource, renderSourceGroups } from './source-browser';
@@ -113,36 +113,83 @@ export class MaterialComparisonModal extends Modal {
         || (this.purpose === 'practice' && ['practice', 'practise', 'exercise', 'problem-set', 'homework', 'quiz'].includes(entry.format));
       return purpose && (!query || [this.sourceTitle(entry.sourceId), entry.title, entry.locator ?? '', entry.angle].some(text => foldCase(text).includes(query)));
     });
-    root.createDiv({ cls: 'los-source-counts', attr: { role: 'status', 'aria-live': 'polite' }, text: `${entries.length} of ${all.length} entries · ${groupBySource(entries).size} source groups` });
+    const groups = groupBySource(entries).size;
+    root.createDiv({ cls: 'los-source-counts', attr: { role: 'status', 'aria-live': 'polite' }, text: `${entries.length} of ${all.length} entries · ${groups} source groups` });
     if (!entries.length) empty(root, 'No materials match', 'Change scope or reset the filters to see the complete list.');
-    renderSourceGroups(root, entries, id => this.sourceTitle(id), (parent, entry) => this.renderEntry(parent, entry));
+    // A narrowed list is already the answer; opening it costs the learner nothing.
+    const narrowed = Boolean(query) || this.purpose !== 'all' || groups === 1;
+    renderSourceGroups(root, entries, id => this.sourceTitle(id), (parent, entry) => this.renderEntry(parent, entry), narrowed);
   }
+  /**
+   * One material, one card — the same card the stage screen shows.
+   *
+   * This used to be a disclosure whose summary printed the title, status and
+   * locator, wrapping a full `renderStageResources` section that printed a
+   * heading, a count of one, a paragraph of standing advice, a triage bucket
+   * heading, and then a card repeating the title, status and locator again.
+   * Reaching a PDF took three expansions to read the same two facts four
+   * times. The group heading already names the source, so the card carries
+   * only what the group has not said, and the long rationale stays behind the
+   * card's own "Why this one".
+   */
   private renderEntry(parent: HTMLElement, entry: BrowserEntry): void {
-    const details = parent.createEl('details', { cls: 'los-disclosure los-source-entry' });
-    const summary = details.createEl('summary');
-    summary.createSpan({ text: entry.title });
-    const triage = entry.resource?.scopeTriage;
-    const status = triage ? TRIAGE_HEADING[triage as TriageRank] ?? triage : entry.option?.scope;
-    if (status) summary.createSpan({ cls: 'los-micro los-source-locator', text: status });
-    if (entry.locator) summary.createSpan({ cls: 'los-micro los-source-locator', text: entry.locator });
-    if (entry.owner.id !== this.options.unit.id) summary.createSpan({ cls: 'los-micro', text: entry.owner.title });
-    const body = details.createDiv({ cls: 'los-source-entry-body' });
+    const badges = entry.owner.id === this.options.unit.id ? [] : [entry.owner.title];
     if (entry.resource) {
-      // Each placement retains its own target, instructions and feedback identity.
-      renderStageResources(body, [entry.resource], { ...this.options.renderer, title: 'Details' });
+      // Each placement keeps its own target, instructions and feedback identity.
+      const sourceId = entry.resource.sourceId;
+      const source = sourceId ? this.options.renderer.sourceRecord?.(sourceId) ?? null : null;
+      const row = renderResourceRow(parent, entry.resource, source, this.options.renderer, {
+        badges,
+        hideSourceChip: true,
+      });
+      row.addClass('los-source-entry');
       return;
     }
+    this.renderRouteEntry(parent, entry, badges);
+  }
+
+  /**
+   * A route the owning unit offers, rendered in the resource card's shape so
+   * stage placements and wider-scope routes read as one system rather than as
+   * two surfaces that happen to sit in the same dialog.
+   */
+  private renderRouteEntry(parent: HTMLElement, entry: BrowserEntry, badges: readonly string[]): void {
     const option = entry.option!;
-    body.createEl('p', { text: option.angle });
-    const detail = asText(option.record.angle_detail); if (detail) body.createEl('p', { text: detail });
-    body.createDiv({ cls: 'los-micro', text: `${option.format} · ${option.depth} · ${option.scope}` });
-    const labels = option.covers.map(id => entry.owner.knowledgeNodes.find(node => node.id === id)?.title).filter(Boolean);
-    if (labels.length) body.createDiv({ cls: 'los-micro', text: `Covers: ${labels.join(' · ')}` });
-    const actions = body.createDiv({ cls: 'los-actions' });
-    if (entry.owner.id === this.options.unit.id) this.renderChoose(actions, option);
-    else button(actions, 'Go to lecture', () => { this.close(); this.options.plugin.nav.openUnit(entry.owner.id); }, 'quiet');
-    if (option.selected) body.createDiv({ cls: 'los-micro', text: 'Chosen for this lecture' });
-    if (option.canOpen) button(actions, 'Open', () => this.options.plugin.openResource(option.record), 'info');
+    const own = entry.owner.id === this.options.unit.id;
+    const row = parent.createDiv({ cls: 'los-resource-row los-source-entry los-triage-unranked' });
+    icon(row.createSpan(), materialTypeIcon(option.format));
+
+    const copy = row.createDiv({ cls: 'los-resource-copy' });
+    copy.createEl('strong', { text: entry.title });
+    const metadata = copy.createDiv({ cls: 'los-resource-row-meta' });
+    metadata.createSpan({
+      cls: 'los-resource-priority los-resource-priority-unranked',
+      text: `${option.format} · ${option.depth}`,
+    });
+    if (entry.locator) metadata.createSpan({ cls: 'los-micro los-resource-locator', text: entry.locator });
+    for (const badge of badges) metadata.createSpan({ cls: 'los-micro los-resource-badge', text: badge });
+    if (option.selected) metadata.createSpan({ cls: 'los-micro los-resource-chosen', text: 'Chosen for this lecture' });
+
+    if (option.angle) copy.createDiv({ cls: 'los-resource-angle', text: option.angle });
+
+    // Coverage belongs with the rationale, not on its own line: both answer
+    // "why this one", and the owning unit's labels are what make it readable.
+    const labels = option.covers
+      .map(id => entry.owner.knowledgeNodes.find(node => node.id === id)?.title)
+      .filter((title): title is string => Boolean(title));
+    const rationale = [asText(option.record.angle_detail), labels.length ? `Covers: ${labels.join(' · ')}` : '']
+      .filter(Boolean).join('\n\n');
+    if (rationale) whyThisOne(copy, rationale);
+
+    const actions = row.createDiv({ cls: 'los-actions los-resource-actions' });
+    if (option.canOpen) button(actions, 'Open', () => this.options.plugin.openResource(option.record), 'quiet');
+    if (own) this.renderChoose(actions, option);
+    else {
+      button(actions, 'Go to lecture', () => {
+        this.close();
+        this.options.plugin.nav.openUnit(entry.owner.id);
+      }, 'quiet');
+    }
   }
   private renderChoose(actions: HTMLElement, option: MaterialOptionView): void {
     if (!option.canChoose || !option.sourceId || !option.locator) return;

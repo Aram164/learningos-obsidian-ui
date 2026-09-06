@@ -119,7 +119,55 @@ const MATERIAL_TYPE_ICON: Readonly<Record<MaterialType, string>> = {
   exercise: 'pencil-line',
 };
 
+/** The row icon for a media type, so other surfaces render the same card. */
+export function materialTypeIcon(type: string): string {
+  return MATERIAL_TYPE_ICON[type as MaterialType] ?? MATERIAL_TYPE_ICON.article;
+}
+
 let angleDetailSequence = 0;
+
+/**
+ * The "Why this one" disclosure: the long authored rationale, hidden until
+ * asked for.
+ *
+ * It lives here rather than in each surface because every place that shows a
+ * material owes the learner the same gesture. Duplicating it produced the
+ * defect this replaced — one surface expanded the detail inline and another
+ * wrapped an already-expanded card in a second disclosure, so the same
+ * sentence arrived twice at two different depths.
+ *
+ * `fillFoot` runs before the toggle so a caller's chips sit left of it.
+ */
+export function whyThisOne(
+  copy: HTMLElement,
+  detailText: string,
+  fillFoot?: (foot: HTMLElement) => void,
+): void {
+  const detailId = `los-resource-angle-detail-${++angleDetailSequence}`;
+  const detail = copy.createDiv({
+    cls: 'los-resource-angle-detail',
+    text: detailText,
+    attr: { hidden: '', id: detailId },
+  });
+  const foot = copy.createDiv({ cls: 'los-resource-foot' });
+  fillFoot?.(foot);
+
+  let expanded = false;
+  const toggle = button(
+    foot,
+    '▸ Why this one',
+    () => {
+      expanded = !expanded;
+      toggle.setText(`${expanded ? '▾' : '▸'} Why this one`);
+      toggle.setAttr('aria-expanded', String(expanded));
+      if (expanded) detail.removeAttribute('hidden');
+      else detail.setAttr('hidden', '');
+    },
+    'quiet',
+  );
+  toggle.addClass('los-resource-angle-trigger');
+  toggle.setAttrs({ 'aria-controls': detailId, 'aria-expanded': 'false' });
+}
 
 function materialTypeOf(
   resource: StageResourceView,
@@ -153,11 +201,23 @@ function materialTypeOf(
   return 'article';
 }
 
+export interface ResourceRowExtras {
+  /** Extra context chips after the locator, e.g. the owning lecture. */
+  readonly badges?: readonly string[];
+  /**
+   * Drop the source chip. The material browser groups BY source, so repeating
+   * it on every row inside that group is noise, not provenance — while the
+   * source record itself is still needed for the "Open source" fallback.
+   */
+  readonly hideSourceChip?: boolean;
+}
+
 export function renderResourceRow(
   parent: HTMLElement,
   resource: StageResourceView,
   source: ProjectionRecord | null,
   renderer: StageResourceRenderer,
+  extras: ResourceRowExtras = {},
 ): HTMLElement {
   const materialType = materialTypeOf(resource, source);
   const row = parent.createDiv({
@@ -183,6 +243,9 @@ export function renderResourceRow(
       text: resource.locator,
     });
   }
+  for (const badge of extras.badges ?? []) {
+    metadata.createSpan({ cls: 'los-micro los-resource-badge', text: badge });
+  }
 
   const angle = projectedText(resource.record.angle);
   if (angle) {
@@ -192,40 +255,14 @@ export function renderResourceRow(
     });
   }
 
+  const showChip = source && !extras.hideSourceChip ? source : null;
   const angleDetail = projectedText(resource.record.angle_detail);
   if (angleDetail) {
-    const detailId = `los-resource-angle-detail-${++angleDetailSequence}`;
-    const detail = copy.createDiv({
-      cls: 'los-resource-angle-detail',
-      text: angleDetail,
-      attr: {
-        hidden: '',
-        id: detailId,
-      },
+    whyThisOne(copy, angleDetail, (foot) => {
+      if (showChip) chip(foot, showChip, renderer.openSource);
     });
-    const foot = copy.createDiv({ cls: 'los-resource-foot' });
-    if (source) chip(foot, source, renderer.openSource);
-
-    let expanded = false;
-    const toggle = button(
-      foot,
-      '▸ Why this one',
-      () => {
-        expanded = !expanded;
-        toggle.setText(`${expanded ? '▾' : '▸'} Why this one`);
-        toggle.setAttr('aria-expanded', String(expanded));
-        if (expanded) detail.removeAttribute('hidden');
-        else detail.setAttr('hidden', '');
-      },
-      'quiet',
-    );
-    toggle.addClass('los-resource-angle-trigger');
-    toggle.setAttrs({
-      'aria-controls': detailId,
-      'aria-expanded': 'false',
-    });
-  } else if (source) {
-    chip(copy, source, renderer.openSource);
+  } else if (showChip) {
+    chip(copy, showChip, renderer.openSource);
   }
 
   const actions = row.createDiv({ cls: 'los-actions los-resource-actions' });
