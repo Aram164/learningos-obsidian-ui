@@ -16,6 +16,7 @@ type UnitNotePlugin = {
     title: string,
     text: string,
     expectedRevisions?: Readonly<Record<string, number>>,
+    recoveredStages?: Readonly<Record<string, string>>,
   ): void;
   clearUnitNoteDraft(
     unitId: string,
@@ -157,6 +158,7 @@ export class UnitNoteModal extends Modal {
         this.titleInput.value,
         this.editor.value,
         this.expectedRevisions,
+        draft.recoveredStages,
       );
       const hasNote = Boolean(this.editor.value.trim());
       status.setText(hasNote ? 'Draft kept locally until the core confirms the save.' : 'Write a note to enable saving.');

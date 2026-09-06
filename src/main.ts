@@ -307,8 +307,9 @@ export class LearningOSUI extends Plugin implements AppSurface {
     title: string,
     text: string,
     expectedRevisions: Readonly<Record<string, number>> = {},
+    recoveredStages: Readonly<Record<string, string>> = {},
   ): void {
-    this.drafts.setUnitNote(unitId, title, text, expectedRevisions);
+    this.drafts.setUnitNote(unitId, title, text, expectedRevisions, recoveredStages);
   }
   clearUnitNoteDraft(
     unitId: string,

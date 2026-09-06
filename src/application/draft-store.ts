@@ -11,6 +11,7 @@ export interface UnitNoteDraft {
   readonly title: string;
   readonly text: string;
   readonly recoveredStageIds: string[];
+  readonly recoveredStages: Readonly<Record<string, string>>;
   readonly expectedRevisions: Readonly<Record<string, number>>;
 }
 
@@ -19,6 +20,7 @@ interface UnitDraft {
   title: string;
   text: string;
   expectedRevisions?: Record<string, number>;
+  recoveredStages?: Record<string, string>;
 }
 
 export interface ComposerDraft { title: string; text: string; }
@@ -161,18 +163,25 @@ export class DraftStore {
   getUnitNote(unitId: string, stages: readonly ProjectionRecord[] = []): UnitNoteDraft {
     const saved = this.settings.uiDrafts.unitNotes[unitId];
     const recovered: RecoveredStageDraft[] = [];
+    const recoveredStages: Record<string, string> = { ...saved?.recoveredStages };
     for (const stage of stages) {
       const stageId = asString(stage.id);
       if (!stageId) continue;
       const entry = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-      if (entry?.text?.trim()) recovered.push({ id: stageId, title: asLabel(stage, stageId), text: entry.text });
+      if (entry?.text?.trim()) {
+        const previousText = saved?.recoveredStages?.[stageId];
+        if (previousText === entry.text) continue;
+        recovered.push({ id: stageId, title: asLabel(stage, stageId), text: entry.text });
+        recoveredStages[stageId] = entry.text;
+      }
     }
     const recoveredText = recovered
       .map((row) => `### ${row.title}\n\n${row.text.trim()}`).join('\n\n');
     return {
       title: saved?.title || (recovered.length ? 'Recovered stage drafts' : ''),
       text: [String(saved?.text || '').trim(), recoveredText].filter(Boolean).join('\n\n'),
-      recoveredStageIds: recovered.map((row) => row.id),
+      recoveredStageIds: Object.keys(recoveredStages),
+      recoveredStages,
       expectedRevisions: saved?.expectedRevisions ?? {},
     };
   }
@@ -182,12 +191,14 @@ export class DraftStore {
     title: string,
     text: string,
     expectedRevisions: Readonly<Record<string, number>> = {},
+    recoveredStages: Readonly<Record<string, string>> = {},
   ): void {
     if (!title.trim() && !text.trim()) delete this.settings.uiDrafts.unitNotes[unitId];
     else this.settings.uiDrafts.unitNotes[unitId] = {
       title,
       text,
       expectedRevisions: { ...expectedRevisions },
+      recoveredStages: { ...recoveredStages },
     };
     this.scheduleSave();
   }

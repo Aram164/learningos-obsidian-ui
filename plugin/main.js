@@ -10616,11 +10616,17 @@ var DraftStore = class {
   getUnitNote(unitId, stages = []) {
     const saved = this.settings.uiDrafts.unitNotes[unitId];
     const recovered = [];
+    const recoveredStages = { ...saved?.recoveredStages };
     for (const stage of stages) {
       const stageId = asString(stage.id);
       if (!stageId) continue;
       const entry = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-      if (entry?.text?.trim()) recovered.push({ id: stageId, title: asLabel(stage, stageId), text: entry.text });
+      if (entry?.text?.trim()) {
+        const previousText = saved?.recoveredStages?.[stageId];
+        if (previousText === entry.text) continue;
+        recovered.push({ id: stageId, title: asLabel(stage, stageId), text: entry.text });
+        recoveredStages[stageId] = entry.text;
+      }
     }
     const recoveredText = recovered.map((row3) => `### ${row3.title}
 
@@ -10628,16 +10634,18 @@ ${row3.text.trim()}`).join("\n\n");
     return {
       title: saved?.title || (recovered.length ? "Recovered stage drafts" : ""),
       text: [String(saved?.text || "").trim(), recoveredText].filter(Boolean).join("\n\n"),
-      recoveredStageIds: recovered.map((row3) => row3.id),
+      recoveredStageIds: Object.keys(recoveredStages),
+      recoveredStages,
       expectedRevisions: saved?.expectedRevisions ?? {}
     };
   }
-  setUnitNote(unitId, title, text5, expectedRevisions = {}) {
+  setUnitNote(unitId, title, text5, expectedRevisions = {}, recoveredStages = {}) {
     if (!title.trim() && !text5.trim()) delete this.settings.uiDrafts.unitNotes[unitId];
     else this.settings.uiDrafts.unitNotes[unitId] = {
       title,
       text: text5,
-      expectedRevisions: { ...expectedRevisions }
+      expectedRevisions: { ...expectedRevisions },
+      recoveredStages: { ...recoveredStages }
     };
     this.scheduleSave();
   }
@@ -15081,7 +15089,8 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
         unitId,
         this.titleInput.value,
         this.editor.value,
-        this.expectedRevisions
+        this.expectedRevisions,
+        draft.recoveredStages
       );
       const hasNote = Boolean(this.editor.value.trim());
       status.setText(hasNote ? "Draft kept locally until the core confirms the save." : "Write a note to enable saving.");
@@ -15155,7 +15164,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:ea92633e4d587d3851623eb91708684e4e637728deb3ed40420bd468769a0f68" : "unavailable";
+  return true ? "sha256:ad7aec5e85cf9254207e14570ea0f49774c1180cccef33e3419f357af0c78067" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 9 : 0;
@@ -16836,8 +16845,8 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
   getUnitNoteDraft(unitId, stages = []) {
     return this.drafts.getUnitNote(unitId, stages);
   }
-  setUnitNoteDraft(unitId, title, text5, expectedRevisions = {}) {
-    this.drafts.setUnitNote(unitId, title, text5, expectedRevisions);
+  setUnitNoteDraft(unitId, title, text5, expectedRevisions = {}, recoveredStages = {}) {
+    this.drafts.setUnitNote(unitId, title, text5, expectedRevisions, recoveredStages);
   }
   clearUnitNoteDraft(unitId, recoveredStageIds = [], match = null) {
     this.drafts.clearUnitNote(unitId, recoveredStageIds, match);

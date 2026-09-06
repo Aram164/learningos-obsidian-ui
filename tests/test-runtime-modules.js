@@ -763,6 +763,52 @@ function routerPlugin(settings = {}) {
     drafts.dispose();
   });
 
+  await test('recovering stage drafts into a unit-note draft is idempotent', async () => {
+    let settings = { uiDrafts: emptyUiDrafts() };
+    settings.uiDrafts.stages['unit-a::stage-a'] = { text: 'Original learner reasoning' };
+    const drafts = new DraftStore(settings, async () => undefined);
+
+    const stages = [{ id: 'stage-a', title: 'Stage A' }];
+
+    let noteDraft = drafts.getUnitNote('unit-a', stages);
+    drafts.setUnitNote('unit-a', noteDraft.title, noteDraft.text, noteDraft.expectedRevisions, noteDraft.recoveredStages);
+
+    drafts.setUnitNote('unit-a', 'My Note', noteDraft.text + '\n\nExtra insight.', noteDraft.expectedRevisions, drafts.getUnitNote('unit-a').recoveredStages);
+
+    noteDraft = drafts.getUnitNote('unit-a', stages);
+    drafts.setUnitNote('unit-a', noteDraft.title, noteDraft.text, noteDraft.expectedRevisions, noteDraft.recoveredStages);
+
+    noteDraft = drafts.getUnitNote('unit-a', stages);
+    drafts.setUnitNote('unit-a', noteDraft.title, noteDraft.text, noteDraft.expectedRevisions, noteDraft.recoveredStages);
+
+    const serialized = JSON.parse(JSON.stringify(settings));
+    const reloaded = new DraftStore(serialized, async () => undefined);
+    const finalDraft = reloaded.getUnitNote('unit-a', stages);
+
+    assert.equal(
+      finalDraft.text.match(/Original learner reasoning/g)?.length,
+      1,
+      'the recovered stage text appears exactly once despite repeated opens'
+    );
+    assert.equal(
+      finalDraft.text.includes('Extra insight.'),
+      true,
+      'subsequent learner edits to the unit note remain intact'
+    );
+
+    reloaded.clearUnitNote('unit-a', finalDraft.recoveredStageIds, { title: 'Different', text: 'Mismatched' });
+    assert.equal(reloaded.getUnitNote('unit-a', stages).text, finalDraft.text, 'draft remains on failed save (mismatched match)');
+    assert.equal(reloaded.getStage('unit-a', 'stage-a').text, 'Original learner reasoning', 'stage draft is preserved on failed save');
+
+    reloaded.clearUnitNote('unit-a', finalDraft.recoveredStageIds, { title: finalDraft.title, text: finalDraft.text });
+    assert.equal(reloaded.getUnitNote('unit-a', stages).text, '', 'unit draft is cleared on successful save');
+    assert.equal(reloaded.getStage('unit-a', 'stage-a').text, '', 'stage draft is cleared on successful save');
+
+    reloaded.dispose();
+    drafts.dispose();
+    reloaded.dispose();
+  });
+
   await test('a completion tick certifies a criterion, not a position', async () => {
     // F08 (2026-09-05 audit): position-keyed marks carried the tick for
     // "Describe a scatterplot" over to the criterion that replaced it.
