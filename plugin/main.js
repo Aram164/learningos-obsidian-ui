@@ -1780,6 +1780,7 @@ function asSessionReview(result) {
 // src/accessibility/modal.ts
 var FOCUSABLE = [
   "a[href]",
+  "summary",
   "button:not([disabled])",
   "input:not([disabled])",
   "select:not([disabled])",
@@ -1830,7 +1831,9 @@ function makeModalAccessible(content, options) {
     return Array.from(
       focusRoot.querySelectorAll(FOCUSABLE)
     ).filter(
-      (element) => element.getAttribute("aria-hidden") !== "true" && !element.disabled
+      (element) => element.getAttribute("aria-hidden") !== "true" && !element.disabled && !element.closest?.("[hidden]") && !Array.from(focusRoot.querySelectorAll("details:not([open])")).some(
+        (details) => details.contains(element) && details.querySelector("summary") !== element
+      )
     );
   };
   const onKeyDown = (event) => {
@@ -12610,301 +12613,187 @@ function renderStageResources(parent, resourcesValue, renderer) {
 
 // src/features/unit/material-drawer.ts
 var import_obsidian15 = require("obsidian");
-var NEEDS = [
-  ["derivation", "Derivation"],
-  ["intuition", "Intuition"],
-  ["practice", "Practice"]
-];
-var PRACTICE_FORMATS = /* @__PURE__ */ new Set([
-  "exercise",
-  "practice",
-  "practise",
-  "problem-set",
-  "homework",
-  "quiz"
-]);
-function matchesNeed(option, need) {
-  const depth = option.depth.toLowerCase();
-  const format = option.format.toLowerCase();
-  if (need === "practice") {
-    return PRACTICE_FORMATS.has(format) || depth.includes("practice");
+
+// src/features/unit/source-browser.ts
+function groupBySource(entries) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const entry of entries) {
+    const group = groups.get(entry.sourceId) ?? [];
+    group.push(entry);
+    groups.set(entry.sourceId, group);
   }
-  return depth.includes(need);
+  return groups;
 }
+function renderSourceGroups(root, entries, sourceTitle, renderEntry2) {
+  for (const [id2, group] of groupBySource(entries)) {
+    const details = root.createEl("details", { cls: "los-disclosure los-source-group" });
+    details.createEl("summary", { text: `${sourceTitle(id2)} \xB7 ${group.length} ${group.length === 1 ? "entry" : "entries"}` });
+    const body = details.createDiv({ cls: "los-disclosure-body" });
+    for (const entry of group) renderEntry2(body, entry);
+  }
+}
+
+// src/features/unit/material-drawer.ts
 var MaterialComparisonModal = class extends import_obsidian15.Modal {
-  options;
-  need = "derivation";
-  restoreAccessibility = null;
-  /** Whether this draw is the first one, or a redraw after a lens switch. */
-  opening = true;
-  /** The lens control, so a redraw can hand focus back to the pressed tab. */
-  lensRow = null;
   constructor(app, options) {
     super(app);
     this.options = options;
   }
+  scope = "stage";
+  purpose = "all";
+  query = "";
+  restoreAccessibility = null;
+  results = null;
   onOpen() {
-    this.options.plugin.router.openOverlay({
-      kind: "material-comparison",
-      unitId: this.options.unit.id,
-      stageId: this.options.stage.id
-    });
-    this.draw();
-  }
-  onClose() {
-    this.options.plugin.router.clearOverlay();
-    this.restoreAccessibility?.();
-    this.restoreAccessibility = null;
-    this.contentEl.empty();
-  }
-  /** Full redraw. The lens is the only state, and it changes rarely. */
-  draw() {
+    const { plugin, unit, stage } = this.options;
+    plugin.router.openOverlay({ kind: "material-comparison", unitId: unit.id, stageId: stage.id });
     const root = this.contentEl;
-    const { unit, stage, resources, materialOptions, renderer } = this.options;
-    this.restoreAccessibility?.();
-    this.restoreAccessibility = null;
     root.empty();
     root.addClass("los-root", "los-material-drawer");
     const header = pageHeader(
       root,
       "Source comparison",
       "Choose learning material",
-      "Every source stays available. Ranking changes with the learning need; provenance and locators do not.",
+      "Browse by source. Open an entry for its full description and exact work.",
       "los-material-drawer-heading"
     );
-    const heading = Array.from(header.children ?? []).find(
-      (child) => child.getAttribute?.("id") === "los-material-drawer-heading"
-    );
-    heading?.setAttribute?.("tabindex", "-1");
-    this.lensRow = null;
-    if (materialOptions.length) this.renderNeedLenses(root);
-    if (resources.length) {
-      renderStageResources(root, resources, {
-        ...renderer,
-        title: `On this stage \xB7 ${resources.length} ${resources.length === 1 ? "material" : "materials"} for ${stage.title}`
-      });
-    } else {
-      empty(
-        root,
-        "This stage places no material of its own",
-        "Every route on the unit is listed above and stays choosable."
-      );
-    }
-    root.createEl("p", {
-      cls: "los-micro los-material-drawer-note",
-      text: `${materialOptions.length} ${materialOptions.length === 1 ? "route" : "routes"} on this unit; ${resources.length} placed on this stage. A selection changes the current route only; it never deletes or hides the complete source record.`
+    const heading = Array.from(header.children).find((child) => child.getAttribute("id") === "los-material-drawer-heading");
+    heading?.setAttribute("tabindex", "-1");
+    const controls = root.createDiv({ cls: "los-source-controls" });
+    const scopeLabel = controls.createEl("label", { text: "Show" });
+    const scope = scopeLabel.createEl("select", { cls: "los-source-scope", attr: { "aria-label": "Source scope" } });
+    const component = unit.componentId ? plugin.store.get(unit.componentId) : null;
+    const widerLabel = unit.componentId === "component-m2-sad" ? "All SaD" : `All ${asString(component?.title) ?? "module sources"}`;
+    for (const [value, text5] of [["stage", "This stage"], ["unit", "This lecture"], ["component", widerLabel]]) scope.createEl("option", { text: text5, attr: { value } });
+    scope.value = this.scope;
+    scope.addEventListener("change", () => {
+      this.scope = scope.value;
+      this.updateResults();
     });
-    const actions = root.createDiv({ cls: "los-actions" });
-    const close = button(actions, "Close", () => this.close(), "quiet");
+    const purposeLabel = controls.createEl("label", { text: "Purpose" });
+    const purpose = purposeLabel.createEl("select", { cls: "los-source-purpose", attr: { "aria-label": "Learning purpose" } });
+    for (const [value, text5] of [["all", "All purposes"], ["derivation", "Derivation"], ["intuition", "Intuition"], ["practice", "Practice"]]) purpose.createEl("option", { text: text5, attr: { value } });
+    purpose.value = this.purpose;
+    purpose.addEventListener("change", () => {
+      this.purpose = purpose.value;
+      this.updateResults();
+    });
+    const searchLabel = controls.createEl("label", { text: "Search" });
+    const search = searchLabel.createEl("input", { cls: "los-source-search", attr: { type: "search", placeholder: "Source, chapter or lecture", "aria-label": "Search sources" } });
+    search.addEventListener("input", () => {
+      this.query = search.value;
+      this.updateResults();
+    });
+    button(controls, "Reset filters", () => {
+      this.purpose = "all";
+      this.query = "";
+      purpose.value = "all";
+      search.value = "";
+      this.updateResults();
+      search.focus();
+    }, "quiet");
+    this.results = root.createDiv({ cls: "los-source-results" });
+    this.updateResults();
+    root.createEl("p", { cls: "los-micro los-material-drawer-note", text: "Browsing never deletes or hides the complete source record. Choosing material is a separate action." });
+    const close = button(root.createDiv({ cls: "los-actions" }), "Close", () => this.close(), "quiet");
     this.restoreAccessibility = makeModalAccessible(root, {
       close: () => this.close(),
       hostClass: "los-modal--material-drawer",
-      labelledBy: "los-material-drawer-heading"
+      labelledBy: "los-material-drawer-heading",
+      initialFocus: () => heading ?? search
     });
-    this.restoreFocus(heading ?? close);
-    this.opening = true;
-    void unit;
+    (heading ?? close).focus();
   }
-  /** Kept out of `draw()` so control-flow narrowing on `lensRow` does not
-   *  collapse the type the moment the field is reset for a redraw. */
-  restoreFocus(onOpen) {
-    if (this.opening) {
-      onOpen.focus();
-      onOpen.scrollIntoView?.({ block: "start" });
+  onClose() {
+    this.options.plugin.router.clearOverlay();
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+    this.results = null;
+  }
+  sourceTitle(id2) {
+    return id2 ? asString(this.options.plugin.store.get(id2)?.title) ?? id2 : "Source not yet identified";
+  }
+  entries() {
+    const { plugin, unit, resources, materialOptions } = this.options;
+    if (this.scope === "stage") return resources.map((resource) => {
+      const routeId = asString(resource.record.route_id);
+      const route = routeId ? materialOptions.find((option) => option.routeId === routeId) : void 0;
+      return {
+        sourceId: resource.sourceId ?? route?.sourceId ?? null,
+        title: resource.label,
+        locator: resource.locator,
+        owner: unit,
+        resource,
+        depth: asString(resource.record.depth) ?? route?.depth ?? "",
+        format: resource.kind === "practise" ? "practice" : asString(resource.record.format) ?? route?.format ?? resource.kind,
+        angle: asText(resource.record.angle) ?? ""
+      };
+    });
+    const owners = this.scope === "unit" ? [unit] : plugin.store.unitsFor(unit.moduleId, unit.componentId).map((record6) => readUnitRecord(record6, asString(record6.id))).filter((record6) => record6 !== null);
+    const sourceMap = plugin.store.sourceMap(unit.moduleId);
+    return owners.flatMap((owner) => {
+      const options = owner.id === unit.id ? materialOptions : readMaterialOptions(sourceMap?.sources, owner.id, owner.record.source_selections);
+      return options.map((option) => ({ ...option, owner, option }));
+    });
+  }
+  updateResults() {
+    const root = this.results;
+    if (!root) return;
+    root.empty();
+    const all = this.entries();
+    const query = foldCase(this.query.trim());
+    const entries = all.filter((entry) => {
+      const purpose = this.purpose === "all" || entry.depth.toLowerCase().includes(this.purpose) || this.purpose === "practice" && ["practice", "practise", "exercise", "problem-set", "homework", "quiz"].includes(entry.format);
+      return purpose && (!query || [this.sourceTitle(entry.sourceId), entry.title, entry.locator ?? "", entry.angle].some((text5) => foldCase(text5).includes(query)));
+    });
+    root.createDiv({ cls: "los-source-counts", attr: { role: "status", "aria-live": "polite" }, text: `${entries.length} of ${all.length} entries \xB7 ${groupBySource(entries).size} source groups` });
+    if (!entries.length) empty(root, "No materials match", "Change scope or reset the filters to see the complete list.");
+    renderSourceGroups(root, entries, (id2) => this.sourceTitle(id2), (parent, entry) => this.renderEntry(parent, entry));
+  }
+  renderEntry(parent, entry) {
+    const details = parent.createEl("details", { cls: "los-disclosure los-source-entry" });
+    const summary = details.createEl("summary");
+    summary.createSpan({ text: entry.title });
+    const triage = entry.resource?.scopeTriage;
+    const status = triage ? TRIAGE_HEADING[triage] ?? triage : entry.option?.scope;
+    if (status) summary.createSpan({ cls: "los-micro los-source-locator", text: status });
+    if (entry.locator) summary.createSpan({ cls: "los-micro los-source-locator", text: entry.locator });
+    if (entry.owner.id !== this.options.unit.id) summary.createSpan({ cls: "los-micro", text: entry.owner.title });
+    const body = details.createDiv({ cls: "los-source-entry-body" });
+    if (entry.resource) {
+      renderStageResources(body, [entry.resource], { ...this.options.renderer, title: "Details" });
       return;
     }
-    const tabs = Array.from(this.lensRow?.children ?? []);
-    const current = tabs.find(
-      (tab) => tab.getAttribute?.("aria-pressed") === "true"
-    );
-    (current ?? onOpen).focus();
-  }
-  renderNeedLenses(root) {
-    const { materialOptions } = this.options;
-    const lens = root.createDiv({ cls: "los-material-need" });
-    lens.createSpan({ cls: "los-micro los-material-need-label", text: "I need" });
-    this.lensRow = filterTabs(
-      lens,
-      "Learning need",
-      NEEDS,
-      this.need,
-      (value) => {
-        this.need = value;
-        this.opening = false;
-        this.draw();
-      },
-      (value) => materialOptions.filter(
-        (option) => matchesNeed(option, value)
-      ).length
-    );
-    const matching = materialOptions.filter(
-      (option) => matchesNeed(option, this.need)
-    );
-    const label = NEEDS.find(([value]) => value === this.need)?.[1] ?? this.need;
-    const recommended = matching.find((option) => option.selected) ?? matching[0] ?? null;
-    if (recommended) {
-      this.renderRecommended(root, recommended, label);
-    } else {
-      empty(
-        root,
-        `No source is recorded as a ${label.toLowerCase()} route`,
-        "Every source for this unit is still listed below, under the angle its producer gave it."
-      );
-    }
-    const alternatives = materialOptions.filter(
-      (option) => option !== recommended
-    );
-    if (alternatives.length) this.renderAlternatives(root, alternatives);
-  }
-  /**
-   * Everything the design's contract says must survive the move: value, angle,
-   * exact locator, coverage, depth and scope. All six are producer-authored
-   * fields read back — the card ranks nothing and adds nothing.
-   */
-  renderRecommended(root, option, needLabel) {
-    const card = root.createDiv({ cls: "los-material-recommended" });
-    card.createDiv({
-      cls: "los-kicker",
-      text: `Recommended for ${needLabel.toLowerCase()}`
-    });
-    card.createDiv({
-      cls: "los-micro",
-      text: `Chosen across all ${this.options.materialOptions.length} ${this.options.materialOptions.length === 1 ? "route" : "routes"} on this unit`
-    });
-    card.createEl("h3", { text: option.title });
-    if (option.angle) {
-      card.createEl("p", {
-        cls: "los-material-recommended-line",
-        text: `Value \xB7 ${option.angle}`
-      });
-    }
+    const option = entry.option;
+    body.createEl("p", { text: option.angle });
     const detail = asText(option.record.angle_detail);
-    if (detail) {
-      card.createEl("p", {
-        cls: "los-material-recommended-line",
-        text: `Angle \xB7 ${detail}`
-      });
-    }
-    card.createEl("p", {
-      cls: "los-material-recommended-line",
-      text: `Depth \xB7 ${option.depth} \xB7 scope ${option.scope}`
-    });
-    if (option.locator) {
-      card.createEl("p", {
-        cls: "los-micro los-material-recommended-locator",
-        text: `Locator \xB7 ${option.locator}`
-      });
-    }
-    this.renderCoverage(card, option);
-    const actions = card.createDiv({ cls: "los-actions los-material-actions" });
-    this.renderChoose(actions, option);
-    if (option.canOpen) {
-      button(
-        actions,
-        "Open",
-        () => this.options.plugin.openResource(option.record),
-        "info"
-      );
-    }
+    if (detail) body.createEl("p", { text: detail });
+    body.createDiv({ cls: "los-micro", text: `${option.format} \xB7 ${option.depth} \xB7 ${option.scope}` });
+    const labels = option.covers.map((id2) => entry.owner.knowledgeNodes.find((node) => node.id === id2)?.title).filter(Boolean);
+    if (labels.length) body.createDiv({ cls: "los-micro", text: `Covers: ${labels.join(" \xB7 ")}` });
+    const actions = body.createDiv({ cls: "los-actions" });
+    if (entry.owner.id === this.options.unit.id) this.renderChoose(actions, option);
+    else button(actions, "Go to lecture", () => {
+      this.close();
+      this.options.plugin.nav.openUnit(entry.owner.id);
+    }, "quiet");
+    if (option.selected) body.createDiv({ cls: "los-micro", text: "Chosen for this lecture" });
+    if (option.canOpen) button(actions, "Open", () => this.options.plugin.openResource(option.record), "info");
   }
-  /** Which knowledge-map nodes this route covers, by their authored titles. */
-  renderCoverage(card, option) {
-    const titleById = new Map(
-      this.options.unit.knowledgeNodes.map((node) => [node.id, node.title])
-    );
-    const labels = option.covers.map((id2) => titleById.get(id2)).filter((label) => Boolean(label));
-    if (!labels.length) return;
-    const covers = card.createDiv({ cls: "los-material-metadata" });
-    for (const label of labels) {
-      covers.createSpan({ cls: "los-knowledge-chip", text: label });
-    }
-  }
-  renderAlternatives(root, alternatives) {
-    const wrap = section(
-      root,
-      "Useful alternatives",
-      "Different angle \u2014 not duplicates."
-    );
-    const grid = wrap.createDiv({ cls: "los-material-alternatives" });
-    for (const option of alternatives) {
-      const card = grid.createDiv({ cls: "los-material-alternative" });
-      const serves = NEEDS.find(([value]) => matchesNeed(option, value))?.[1];
-      card.createDiv({
-        cls: "los-kicker",
-        text: serves ?? (option.scope || option.depth)
-      });
-      card.createEl("h4", { text: option.title });
-      if (option.angle) card.createEl("p", { text: option.angle });
-      const detail = asText(option.record.angle_detail);
-      if (detail) {
-        card.createEl("p", {
-          cls: "los-material-alternative-detail",
-          text: `Angle \xB7 ${detail}`
-        });
-      }
-      card.createEl("p", {
-        cls: "los-micro",
-        text: `Depth \xB7 ${option.depth} \xB7 scope ${option.scope}`
-      });
-      if (option.locator) {
-        card.createEl("p", {
-          cls: "los-micro",
-          text: `Locator \xB7 ${option.locator}`
-        });
-      }
-      this.renderCoverage(card, option);
-      const actions = card.createDiv({
-        cls: "los-actions los-material-actions"
-      });
-      this.renderChoose(actions, option);
-      if (option.canOpen) {
-        button(
-          actions,
-          "Open",
-          () => this.options.plugin.openResource(option.record),
-          "info"
-        );
-      }
-    }
-  }
-  /**
-   * The governed selection, unchanged.
-   *
-   * Same capability, same guard, same payload as the unit material menu has
-   * always sent — `unit.source-selection.set` carrying the route, source,
-   * locator and the angle as its purpose. The redesign moved where this button
-   * lives; it did not become a second way to write.
-   */
   renderChoose(actions, option) {
     if (!option.canChoose || !option.sourceId || !option.locator) return;
     const { plugin, unit, expectedRevisions, onChanged } = this.options;
-    const choice = button(
-      actions,
-      option.selected ? "Remove choice" : "Choose",
-      () => {
-        void plugin.mutate(
-          () => plugin.gateway.sourceSelection(
-            unit.id,
-            option.routeId,
-            option.sourceId ?? "",
-            option.locator ?? "",
-            option.angle,
-            !option.selected,
-            expectedRevisions
-          )
-        ).then(() => {
-          new import_obsidian15.Notice(
-            option.selected ? "Material choice removed." : "Material chosen for this lecture."
-          );
-          onChanged();
-          this.close();
-        }).catch((error) => {
-          new import_obsidian15.Notice(error instanceof Error ? error.message : String(error));
-        });
-      },
-      "choice"
-    );
-    choice.setAttr("aria-pressed", option.selected ? "true" : "false");
+    const choice = button(actions, option.selected ? "Remove choice" : "Choose", () => {
+      void plugin.mutate(() => plugin.gateway.sourceSelection(unit.id, option.routeId, option.sourceId ?? "", option.locator ?? "", option.angle, !option.selected, expectedRevisions)).then(() => {
+        new import_obsidian15.Notice(option.selected ? "Material choice removed." : "Material chosen for this lecture.");
+        onChanged();
+        this.close();
+      }).catch((error) => {
+        new import_obsidian15.Notice(error instanceof Error ? error.message : String(error));
+      });
+    }, "choice");
+    choice.setAttr("aria-pressed", String(option.selected));
   }
 };
 
@@ -13264,18 +13153,6 @@ function renderActionBar(view, root, unit, stage, expectedRevisions) {
 
 // src/features/unit/materials.ts
 var import_obsidian16 = require("obsidian");
-var MATERIAL_TYPE_ORDER = [
-  "video",
-  "article",
-  "book",
-  "exercise"
-];
-var MATERIAL_TYPE_LABELS = {
-  video: "Videos",
-  article: "Articles",
-  book: "Books",
-  exercise: "Exercises"
-};
 function materialTypeOf2(format) {
   if (format === "video") return "video";
   if (format === "exercise" || format === "code" || format === "notebook" || format === "quiz" || format === "homework" || format === "problem-set") return "exercise";
@@ -13328,33 +13205,15 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
     "Choose your learning material",
     "This is a complete menu, not a sequence. Pick the explanation angle and depth that fit your current need."
   );
-  const grouped = /* @__PURE__ */ new Map();
-  for (const option of options) {
-    const materialType = materialTypeOf2(
-      option.format
-    );
-    const group = grouped.get(materialType);
-    if (group) group.push(option);
-    else grouped.set(materialType, [option]);
-  }
-  for (const materialType of MATERIAL_TYPE_ORDER) {
-    if (!grouped.has(materialType)) continue;
-    const group = materials.createDiv({
-      cls: `los-material-group los-material-group-${materialType}`
-    });
-    const entries = grouped.get(materialType) ?? [];
-    const heading = group.createDiv({
-      cls: "los-material-group-heading"
-    });
-    heading.createEl("h3", {
-      text: MATERIAL_TYPE_LABELS[materialType]
-    });
-    heading.createSpan({
-      cls: "los-micro",
-      text: `${entries.length} option${entries.length === 1 ? "" : "s"}`
-    });
+  for (const [sourceId, entries] of groupBySource(options)) {
+    const source = sourceId ? view.plugin.store.get(sourceId) : null;
+    const group = materials.createEl("details", { cls: "los-disclosure los-source-group" });
+    group.createEl("summary", { text: `${asString(source?.title) ?? sourceId ?? "Source not yet identified"} \xB7 ${entries.length} entries` });
     for (const option of entries) {
-      const row3 = group.createDiv({
+      const materialType = materialTypeOf2(option.format);
+      const detail = group.createEl("details", { cls: "los-disclosure los-source-entry" });
+      detail.createEl("summary", { text: option.title });
+      const row3 = detail.createDiv({
         cls: "los-material-option"
       });
       icon(
@@ -13372,6 +13231,8 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
       copy.createEl("p", {
         text: option.angle
       });
+      const fullDetail = asText(option.record.angle_detail);
+      if (fullDetail) copy.createEl("p", { text: fullDetail });
       if (option.locator) {
         copy.createDiv({
           cls: "los-micro",
@@ -13406,13 +13267,13 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
         }
       }
       if (option.sourceId) {
-        const source = view.plugin.store.get(
+        const source2 = view.plugin.store.get(
           option.sourceId
         );
-        if (source) {
+        if (source2) {
           chip(
             copy,
-            source,
+            source2,
             (record6) => {
               const id2 = asString(record6.id);
               return id2 ? view.plugin.nav.openLibrary(id2) : void 0;
@@ -15203,7 +15064,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:4a524a5f646e8abb6731606814a773930991c766bb9ee6001149ff6730c664ef" : "unavailable";
+  return true ? "sha256:2d4281e7e3fc2bade7e2488b0cf5928365a60792aa8ab5b7b0657a0b215021e5" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 9 : 0;

@@ -242,12 +242,9 @@ module.exports = async function run() {
       drawerText.includes('Do this') && drawerText.includes('Depth — not now')
       && drawer.find('los-triage-required-now').length >= 1
       && drawer.find('los-triage-deferred').length >= 1);
-    check('an unranked resource sorts with the primaries, never below them',
+    check('unranked resources stay visible with their primary classification',
       drawer.find('los-triage-unranked').length === 1
-      && drawer.find('los-resource-row')
-        .findIndex((row) => row.classes.has('los-triage-unranked'))
-      < drawer.find('los-resource-row')
-        .findIndex((row) => row.classes.has('los-triage-deferred')));
+      && drawerText.includes('Do this'));
     check('resource feedback collapses into a rate menu instead of three buttons',
       drawer.find('los-resource-row').some((row) => row.find('los-overflow').length === 1)
       && drawer.find('los-resource-actions').every((row) =>
@@ -360,11 +357,24 @@ module.exports = async function run() {
             locator: 'papers/domingos.pdf', source_id: 'source-fixture-book',
           },
         ];
+        const foreign = { ...sourceMap.sources[0].unit_routes[0], id: 'route-foreign', unit_id: 'unit-fixture-sad-l02', title: 'Foreign lecture entry', covers: ['knowledge-foreign-only'] };
+        sourceMap.sources[0].unit_routes.push(foreign, { ...foreign, id: 'route-analysis-hidden', unit_id: 'unit-fixture-analysis', title: 'Analysis must stay outside SaD' });
+        const owner = manifest.units.find(row => row.id === 'unit-fixture-sad-l02');
+        owner.source_selections = [{ route_id: foreign.id, source_id: foreign.source_id, locator: foreign.locator, purpose: "Existing learner choice" }];
+        owner.knowledge_map = { summary: 'Foreign lecture scope', nodes: [{ id: 'knowledge-foreign-only', title: 'Foreign coverage name', summary: 'Owned by the foreign lecture.' }] };
+        const stage = manifest.study_maps.find(row => row.unit_id === 'unit-fixture-sad-l04').stages.find(row => row.id === 'stage-fixture-conditioning');
+        stage.resources.push(...['first', 'second'].map((name, index) => ({
+          id: `resource-distinct-${name}`, route_id: 'route-drawer-deck', source_id: 'source-fixture-book',
+          kind: 'watch', label: `${name} exact video`, locator: `Lecture ${index + 1}`,
+          url: `https://example.org/video-${name}`, angle: `${name} stage instruction`, scope_triage: 'reference-only',
+        })));
+
       },
     });
     await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
 
+    if (!view.contentEl.findText('los-btn', 'Compare all')) throw new Error(view.contentEl.allText() + ' STORE ' + plugin.store.error);
     view.contentEl.findText('los-btn', 'Compare all').fire('click');
     await frame();
     let drawer = stub.Modal.last.contentEl;
@@ -375,43 +385,54 @@ module.exports = async function run() {
       global.document.activeElement
         === drawer.find('los-page-header')[0].children.find(
           (child) => child.getAttribute('id') === 'los-material-drawer-heading'));
-    check('the drawer recommends for the selected need and says which need',
-      drawer.allText().includes('Recommended for derivation')
-      && drawer.find('los-material-recommended')[0].allText()
-        .includes('Current L02 lecture deck'));
-    check('value, angle, depth, scope and the exact locator all survive',
-      ['Value · Scope authority', 'Angle · Derives the geometry',
-        'Depth · derivation · scope current', 'Locator · lecture-slides/VL_02.pdf']
-        .every((line) => drawer.allText().includes(line)));
-
-    /* The lens is the whole reason a filter here would be a defect: switching
-     * need must change what is offered first and nothing else. */
-    const beforeTotal = drawer.find('los-material-alternative').length
-      + drawer.find('los-material-recommended').length;
-    drawer.findText('los-btn', 'Intuition 1').fire('click');
-    drawer = stub.Modal.last.contentEl;
-    check('switching the lens re-ranks without hiding a single source',
-      drawer.allText().includes('Recommended for intuition')
-      && drawer.find('los-material-recommended')[0].allText()
-        .includes('Domingos perspective')
-      && drawer.find('los-material-alternative').length
-        + drawer.find('los-material-recommended').length === beforeTotal);
-    check('an unpromoted source is named by the need it serves',
-      drawer.find('los-material-alternative')[0].allText().includes('Derivation'));
-
-    /* F04 (2026-09-05 audit): reading why an alternative is worth choosing must
-     * not require choosing it. `Choose` is a canonical preference mutation, so
-     * an alternative that withheld its long-form angle and its Open action
-     * could only be inspected by making that write first. */
-    const alternative = drawer.find('los-material-alternative')[0];
-    check('an alternative discloses the same authored fields as the promoted card',
-      alternative.allText().includes('Angle · Derives the geometry')
-      && alternative.allText().includes('Depth · derivation · scope current')
-      && alternative.allText().includes('Locator · lecture-slides/VL_02.pdf'));
-    check('the drawer states which total is the unit\'s and which the stage\'s',
-      drawer.allText().includes('routes on this unit')
-      && drawer.allText().includes('placed on this stage')
-      && drawer.allText().includes('Chosen across all 2 routes on this unit'));
+    check('stage scope preserves all original placements',
+      drawer.find('los-source-entry').length === 5 && drawer.allText().includes('5 of 5 entries'));
+    const opened = [];
+    plugin.openResource = record => opened.push(record);
+    const firstVideo = drawer.find('los-source-entry').find(row => row.allText().includes('first exact video'));
+    const secondVideo = drawer.find('los-source-entry').find(row => row.allText().includes('second exact video'));
+    firstVideo.findText('los-btn', 'Open').fire('click');
+    secondVideo.findText('los-btn', 'Open').fire('click');
+    check('same-route stage placements preserve separate instructions and direct targets',
+      firstVideo.allText().includes('first stage instruction') && secondVideo.allText().includes('second stage instruction')
+      && opened[0].url === 'https://example.org/video-first' && opened[1].url === 'https://example.org/video-second');
+    const scope = drawer.find('los-source-scope')[0];
+    const search = drawer.find('los-source-search')[0];
+    const purpose = drawer.find('los-source-purpose')[0];
+    scope.value = 'unit'; scope.fire('change');
+    check('unit scope renders all routes grouped by source',
+      drawer.find('los-source-entry').length === 2
+      && drawer.find('los-source-group').length === 1
+      && drawer.find('los-source-group')[0].tag === 'details');
+    check('full descriptions and exact locators remain readable before choosing',
+      ['Scope authority for the current unit.', 'Derives the geometry and connects scaling and validation.',
+        'derivation', 'current', 'lecture-slides/VL_02.pdf', 'Argues the geometry informally']
+        .every(line => drawer.allText().includes(line)));
+    search.focus(); search.value = 'Dom'; search.fire('input');
+    search.value = 'Domingos'; search.fire('input');
+    check('multi-character search preserves its input node and focus',
+      drawer.find('los-source-search')[0] === search && global.document.activeElement === search
+      && drawer.find('los-source-entry').length === 1 && drawer.allText().includes('1 of 2 entries'));
+    search.value = plugin.store.get('source-fixture-book').title; search.fire('input');
+    check('search also matches the parent source title', drawer.find('los-source-entry').length === 2);
+    search.value = 'does not exist'; search.fire('input');
+    check('no-result state retains visible totals and reset', drawer.allText().includes('0 of 2 entries')
+      && drawer.allText().includes('No materials match') && drawer.findText('los-btn', 'Reset filters'));
+    drawer.findText('los-btn', 'Reset filters').fire('click');
+    check('reset recovers the entire current scope', scope.value === 'unit' && drawer.find('los-source-entry').length === 2);
+    scope.value = 'component'; scope.fire('change');
+    check('component scope excludes Analysis while including the other SaD lecture',
+      drawer.find('los-source-entry').length === 3 && !drawer.allText().includes('Analysis must stay outside SaD'));
+    const foreignRow = drawer.find('los-source-entry').find(row => row.allText().includes('Foreign lecture entry'));
+    check('foreign rows use their own choices and coverage without offering cross-unit mutation',
+      foreignRow.allText().includes('Chosen for this lecture') && foreignRow.allText().includes('Foreign coverage name')
+      && foreignRow.findText('los-btn', 'Go to lecture') && !foreignRow.findText('los-btn', 'Choose')
+      && !foreignRow.findText('los-btn', 'Remove choice'));
+    scope.value = 'unit'; scope.fire('change');
+    purpose.value = 'intuition'; purpose.fire('change');
+    check('purpose filters show honest filtered totals', drawer.find('los-source-entry').length === 1
+      && drawer.allText().includes('1 of 2 entries') && drawer.allText().includes('Domingos perspective'));
+    check('browsing and filtering never change canonical selection', !calls.envelope('unit.source-selection.set'));
 
     /* D4: the surface moved, the governed write did not. */
     drawer.findText('los-btn', 'Choose').fire('click');
@@ -498,10 +519,11 @@ module.exports = async function run() {
       view.contentEl.find('los-knowledge-node').length === 2
       && text.includes('Lecture knowledge map')
       && text.includes('Builds on: Problem formulation'));
-    check('all material options are grouped by material type instead of sequenced',
+    check('all material options are grouped by source with full detail available',
       view.contentEl.find('los-material-option').length === 2
       && text.includes('Choose your learning material')
-      && text.includes('Books') && text.includes('Videos'));
+      && view.contentEl.find('los-source-group').length === 2
+      && view.contentEl.find('los-source-entry').length === 2);
     check('material cards preserve the source angle, locator, coverage, depth, and scope',
       text.includes('Builds the generalization argument from a worked mathematical example.')
       && text.includes('Chapter 2 §§2.1–2.3')
@@ -597,6 +619,7 @@ module.exports = async function run() {
       && (() => {
         view.contentEl.findText('los-btn', 'Compare all').fire('click');
         const drawer = stub.Modal.last.contentEl;
+        const scope = drawer.find('los-source-scope')[0]; scope.value = 'unit'; scope.fire('change');
         return drawer.allText().includes(
           'Works the conditioning rule through a medical-test example.',
         );

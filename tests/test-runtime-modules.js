@@ -260,6 +260,20 @@ function routerPlugin(settings = {}) {
 (async () => {
   console.log('\nDirect TypeScript module tests');
 
+  await test('source groups preserve repeated placements, missing identities and authored order', async () => {
+    const { groupBySource } = load('src/features/unit/source-browser.ts');
+    const first = { sourceId: 'source-one', routeId: 'same-route', text: 'first instruction' };
+    const second = { sourceId: 'source-one', routeId: 'same-route', text: 'different instruction' };
+    const missing = { sourceId: null, text: 'unresolved source' };
+    const other = { sourceId: 'source-two', text: 'another book' };
+    const groups = groupBySource([first, missing, second, other]);
+    assert.deepEqual([...groups.keys()], ['source-one', null, 'source-two']);
+    assert.deepEqual(groups.get('source-one'), [first, second]);
+    assert.equal(groups.get('source-one')[0], first);
+    assert.equal(groups.get(null)[0], missing);
+    assert.equal([...groups.values()].flat().length, 4);
+  });
+
   await test('contract list parser accepts PyYAML and indented YAML sequences', async () => {
     const tools = await import(
       pathToFileURL(path.join(ROOT, 'scripts', 'contract-locks.mjs')).href

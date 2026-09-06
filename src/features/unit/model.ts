@@ -151,6 +151,7 @@ export type UnitPlugin = Pick<
     | 'openModule'
     | 'openRecord'
     | 'openShelving'
+    | 'openUnit'
   >;
 };
 

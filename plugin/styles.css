@@ -3675,6 +3675,19 @@
     gap: var(--los-2);
   }
 }
+
+/* Source overview: one compact, keyboard-accessible disclosure per source. */
+.los-source-controls { display: flex; flex-wrap: wrap; align-items: end; gap: var(--los-2); margin-bottom: var(--los-3); }
+.los-source-controls label { display: flex; flex-direction: column; gap: var(--los-1); flex: 1 1 150px; font-size: 12px; }
+.los-source-controls :is(input, select) { width: 100%; min-width: 0; }
+.los-source-counts { margin-bottom: var(--los-2); color: var(--los-ink-soft); font-size: 13px; }
+.los-source-group { border-bottom: 1px solid var(--los-line); padding: var(--los-2) 0; }
+.los-source-group > summary { font-weight: 600; min-height: 36px; }
+.los-source-entry { margin-left: var(--los-3); padding: var(--los-1) 0; }
+.los-source-entry > summary { line-height: 1.5; overflow-wrap: anywhere; }
+.los-source-locator { display: block; padding-left: var(--los-3); color: var(--los-ink-soft); }
+.los-source-entry-body { padding: var(--los-2); }
+.los-source-entry-body .los-section { margin: 0; }
 /* Projects are parallel work, rendered as workstreams and decisions rather
  * than a second module dashboard. */
 .los-project-view > .los-project-list,

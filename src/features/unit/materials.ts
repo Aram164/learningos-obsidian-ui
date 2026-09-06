@@ -1,3 +1,5 @@
+import { groupBySource } from './source-browser';
+import { asText } from '../../projection/readers';
 import type { UnitMaterialsHost } from './ports';
 import { Notice } from 'obsidian';
 import {
@@ -27,13 +29,6 @@ const MATERIAL_TYPE_ORDER = [
 ] as const;
 
 type MaterialType = typeof MATERIAL_TYPE_ORDER[number];
-
-const MATERIAL_TYPE_LABELS: Readonly<Record<MaterialType, string>> = {
-  video: 'Videos',
-  article: 'Articles',
-  book: 'Books',
-  exercise: 'Exercises',
-};
 
 function materialTypeOf(
   format: string,
@@ -128,43 +123,15 @@ export function renderMaterialOverview(
     'This is a complete menu, not a sequence. Pick the explanation angle and depth that fit your current need.',
   );
 
-  const grouped = new Map<
-    MaterialType,
-    MaterialOptionView[]
-  >();
-
-  for (const option of options) {
-    const materialType = materialTypeOf(
-      option.format,
-    );
-    const group = grouped.get(materialType);
-    if (group) group.push(option);
-    else grouped.set(materialType, [option]);
-  }
-
-  for (const materialType of MATERIAL_TYPE_ORDER) {
-    if (!grouped.has(materialType)) continue;
-
-    const group = materials.createDiv({
-      cls:
-        'los-material-group '
-        + `los-material-group-${materialType}`,
-    });
-    const entries = grouped.get(materialType) ?? [];
-
-    const heading = group.createDiv({
-      cls: 'los-material-group-heading',
-    });
-    heading.createEl('h3', {
-      text: MATERIAL_TYPE_LABELS[materialType],
-    });
-    heading.createSpan({
-      cls: 'los-micro',
-      text: `${entries.length} option${entries.length === 1 ? '' : 's'}`,
-    });
-
+  for (const [sourceId, entries] of groupBySource(options)) {
+    const source = sourceId ? view.plugin.store.get(sourceId) : null;
+    const group = materials.createEl('details', { cls: 'los-disclosure los-source-group' });
+    group.createEl('summary', { text: `${projectedString(source?.title) ?? sourceId ?? 'Source not yet identified'} · ${entries.length} entries` });
     for (const option of entries) {
-      const row = group.createDiv({
+      const materialType = materialTypeOf(option.format);
+      const detail = group.createEl('details', { cls: 'los-disclosure los-source-entry' });
+      detail.createEl('summary', { text: option.title });
+      const row = detail.createDiv({
         cls: 'los-material-option',
       });
 
@@ -185,6 +152,9 @@ export function renderMaterialOverview(
       copy.createEl('p', {
         text: option.angle,
       });
+
+      const fullDetail = asText(option.record.angle_detail);
+      if (fullDetail) copy.createEl('p', { text: fullDetail });
 
       if (option.locator) {
         copy.createDiv({

@@ -189,10 +189,8 @@ module.exports = async function run() {
      * projection says is absent never gets an Open button. */
     view.contentEl.findText('los-btn', 'Compare all').fire('click');
     const drawer = stub.Modal.last.contentEl;
-    const missing = [
-      ...drawer.find('los-material-recommended'),
-      ...drawer.find('los-material-alternative'),
-    ].find((card) => card.allText().includes('Missing projected lecture'));
+    const scope = drawer.find('los-source-scope')[0]; scope.value = 'unit'; scope.fire('change');
+    const missing = drawer.find('los-source-entry').find((card) => card.allText().includes('Missing projected lecture'));
     check('a projected missing file never renders a broken Open button',
       Boolean(missing) && !missing.findText('los-btn', 'Open'),
       `screen=${drawer.allText()}`);

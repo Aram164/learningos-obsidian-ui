@@ -1,55 +1,26 @@
 import { App, Modal, Notice } from 'obsidian';
-
 import { makeModalAccessible } from '../../accessibility/modal';
-import { asText as projectedText } from '../../projection/readers';
-import {
-  button,
-  empty,
-  filterTabs,
-  pageHeader,
-  section,
-} from '../../components';
-import {
-  renderStageResources,
-  type StageResourceRenderer,
-  type StageResourceView,
-} from '../stage-resources';
-import type {
-  MaterialOptionView,
-  StageRecordView,
-  UnitPlugin,
-  UnitRecordView,
-} from './model';
+import { foldCase } from '../../sorting';
+import { asText, asString } from '../../projection/readers';
+import { button, empty, pageHeader } from '../../components';
+import { TRIAGE_HEADING, renderStageResources, type TriageRank, type StageResourceRenderer, type StageResourceView } from '../stage-resources';
+import { readMaterialOptions, readUnitRecord } from './model';
+import type { MaterialOptionView, StageRecordView, UnitPlugin, UnitRecordView } from './model';
+import { groupBySource, renderSourceGroups } from './source-browser';
 
-/**
- * The three questions a learner is actually asking when they stop and compare.
- *
- * These are a **lens over fields the producer already authored** — `depth` and
- * `format` on a projected route — not a new axis and not a ranking the system
- * invents. Switching lens changes which source is offered first; it never
- * changes a locator, an angle, or what the complete menu contains.
- */
-const NEEDS = [
-  ['derivation', 'Derivation'],
-  ['intuition', 'Intuition'],
-  ['practice', 'Practice'],
-] as const;
-
-type Need = typeof NEEDS[number][0];
-
-const PRACTICE_FORMATS = new Set([
-  'exercise', 'practice', 'practise', 'problem-set', 'homework', 'quiz',
-]);
-
-function matchesNeed(option: MaterialOptionView, need: Need): boolean {
-  const depth = option.depth.toLowerCase();
-  const format = option.format.toLowerCase();
-  if (need === 'practice') {
-    return PRACTICE_FORMATS.has(format) || depth.includes('practice');
-  }
-  return depth.includes(need);
+type Scope = 'stage' | 'unit' | 'component';
+type Purpose = 'all' | 'derivation' | 'intuition' | 'practice';
+interface BrowserEntry {
+  readonly sourceId: string | null;
+  readonly title: string;
+  readonly locator: string | null;
+  readonly depth: string;
+  readonly format: string;
+  readonly angle: string;
+  readonly owner: UnitRecordView;
+  readonly resource?: StageResourceView;
+  readonly option?: MaterialOptionView;
 }
-
 export interface MaterialComparisonOptions {
   readonly plugin: UnitPlugin;
   readonly unit: UnitRecordView;
@@ -58,394 +29,129 @@ export interface MaterialComparisonOptions {
   readonly materialOptions: readonly MaterialOptionView[];
   readonly expectedRevisions: Readonly<Record<string, number>>;
   readonly renderer: StageResourceRenderer;
-  /** Re-render the surface behind the drawer once a choice is confirmed. */
   readonly onChanged: () => void;
 }
-
-/**
- * "Choose learning material" — the comparison drawer (Figma 05 · 36:12).
- *
- * The stage screen shows one required action; this is where the rest of the
- * catalogue lives. It is a drawer rather than an inline disclosure because it
- * is a decision surface with its own heading, its own controls and its own
- * honesty note, and because a route-registered overlay gives Escape and Back
- * something to restore — the same pattern the project "Why this is linked"
- * drawer already uses.
- *
- * What must survive the move, from the design's own contract:
- *
- *   * every material stays reachable **and countable** — the complete menu is
- *     unfiltered and states its own total;
- *   * source value, angle, exact locator, coverage, depth and scope all
- *     survive;
- *   * one filled action per context — `Choose` is the only one here, and the
- *     stage screen's `Complete stage` is not on screen at the same time;
- *   * no invented schedule, mastery or recommendation. The "recommended" card
- *     is recommended *for the selected need*, by the producer's own `depth`
- *     field, and says so.
- */
 export class MaterialComparisonModal extends Modal {
-  private readonly options: MaterialComparisonOptions;
-  private need: Need = 'derivation';
+  private scope: Scope = 'stage';
+  private purpose: Purpose = 'all';
+  private query = '';
   private restoreAccessibility: (() => void) | null = null;
-  /** Whether this draw is the first one, or a redraw after a lens switch. */
-  private opening = true;
-  /** The lens control, so a redraw can hand focus back to the pressed tab. */
-  private lensRow: HTMLElement | null = null;
-
-  constructor(app: App, options: MaterialComparisonOptions) {
-    super(app);
-    this.options = options;
-  }
-
+  private results: HTMLElement | null = null;
+  constructor(app: App, private readonly options: MaterialComparisonOptions) { super(app); }
   onOpen(): void {
-    this.options.plugin.router.openOverlay({
-      kind: 'material-comparison',
-      unitId: this.options.unit.id,
-      stageId: this.options.stage.id,
-    });
-    this.draw();
-  }
-
-  onClose(): void {
-    this.options.plugin.router.clearOverlay();
-    this.restoreAccessibility?.();
-    this.restoreAccessibility = null;
-    this.contentEl.empty();
-  }
-
-  /** Full redraw. The lens is the only state, and it changes rarely. */
-  private draw(): void {
+    const { plugin, unit, stage } = this.options;
+    plugin.router.openOverlay({ kind: 'material-comparison', unitId: unit.id, stageId: stage.id });
     const root = this.contentEl;
-    const { unit, stage, resources, materialOptions, renderer } = this.options;
-
-    this.restoreAccessibility?.();
-    this.restoreAccessibility = null;
-    root.empty();
-    root.addClass('los-root', 'los-material-drawer');
-
-    const header = pageHeader(
-      root,
-      'Source comparison',
-      'Choose learning material',
-      'Every source stays available. Ranking changes with the learning need; '
-      + 'provenance and locators do not.',
-      'los-material-drawer-heading',
-    ) as HTMLElement;
-    const heading = Array.from(header.children ?? []).find(
-      (child) => (child as HTMLElement).getAttribute?.('id')
-        === 'los-material-drawer-heading',
-    ) as HTMLElement | undefined;
-    heading?.setAttribute?.('tabindex', '-1');
-
-    this.lensRow = null;
-    if (materialOptions.length) this.renderNeedLenses(root);
-
-    if (resources.length) {
-      renderStageResources(root, resources, {
-        ...renderer,
-        title: `On this stage · ${resources.length} `
-          + `${resources.length === 1 ? 'material' : 'materials'} for ${stage.title}`,
-      });
-    } else {
-      empty(
-        root,
-        'This stage places no material of its own',
-        'Every route on the unit is listed above and stays choosable.',
-      );
-    }
-
-    root.createEl('p', {
-      cls: 'los-micro los-material-drawer-note',
-      text:
-        `${materialOptions.length} `
-        + `${materialOptions.length === 1 ? 'route' : 'routes'} on this unit; `
-        + `${resources.length} placed on this stage. `
-        + 'A selection changes the current route only; it never deletes or hides '
-        + 'the complete source record.',
-    });
-
-    const actions = root.createDiv({ cls: 'los-actions' });
-    const close = button(actions, 'Close', () => this.close(), 'quiet');
-
+    root.empty(); root.addClass('los-root', 'los-material-drawer');
+    const header = pageHeader(root, 'Source comparison', 'Choose learning material',
+      'Browse by source. Open an entry for its full description and exact work.',
+      'los-material-drawer-heading') as HTMLElement;
+    const heading = Array.from(header.children).find(child => child.getAttribute('id') === 'los-material-drawer-heading') as HTMLElement | undefined;
+    heading?.setAttribute('tabindex', '-1');
+    const controls = root.createDiv({ cls: 'los-source-controls' });
+    const scopeLabel = controls.createEl('label', { text: 'Show' });
+    const scope = scopeLabel.createEl('select', { cls: 'los-source-scope', attr: { 'aria-label': 'Source scope' } });
+    const component = unit.componentId ? plugin.store.get(unit.componentId) : null;
+    const widerLabel = unit.componentId === 'component-m2-sad' ? 'All SaD' : `All ${asString(component?.title) ?? 'module sources'}`;
+    for (const [value, text] of [['stage', 'This stage'], ['unit', 'This lecture'], ['component', widerLabel]] as const) scope.createEl('option', { text, attr: { value } });
+    scope.value = this.scope;
+    scope.addEventListener('change', () => { this.scope = scope.value as Scope; this.updateResults(); });
+    const purposeLabel = controls.createEl('label', { text: 'Purpose' });
+    const purpose = purposeLabel.createEl('select', { cls: 'los-source-purpose', attr: { 'aria-label': 'Learning purpose' } });
+    for (const [value, text] of [['all', 'All purposes'], ['derivation', 'Derivation'], ['intuition', 'Intuition'], ['practice', 'Practice']] as const) purpose.createEl('option', { text, attr: { value } });
+    purpose.value = this.purpose;
+    purpose.addEventListener('change', () => { this.purpose = purpose.value as Purpose; this.updateResults(); });
+    const searchLabel = controls.createEl('label', { text: 'Search' });
+    const search = searchLabel.createEl('input', { cls: 'los-source-search', attr: { type: 'search', placeholder: 'Source, chapter or lecture', 'aria-label': 'Search sources' } });
+    search.addEventListener('input', () => { this.query = search.value; this.updateResults(); });
+    button(controls, 'Reset filters', () => {
+      this.purpose = 'all'; this.query = ''; purpose.value = 'all'; search.value = '';
+      this.updateResults(); search.focus();
+    }, 'quiet');
+    this.results = root.createDiv({ cls: 'los-source-results' }); this.updateResults();
+    root.createEl('p', { cls: 'los-micro los-material-drawer-note', text: 'Browsing never deletes or hides the complete source record. Choosing material is a separate action.' });
+    const close = button(root.createDiv({ cls: 'los-actions' }), 'Close', () => this.close(), 'quiet');
     this.restoreAccessibility = makeModalAccessible(root, {
-      close: () => this.close(),
-      hostClass: 'los-modal--material-drawer',
-      labelledBy: 'los-material-drawer-heading',
+      close: () => this.close(), hostClass: 'los-modal--material-drawer',
+      labelledBy: 'los-material-drawer-heading', initialFocus: () => heading ?? search,
     });
-
-    /* On open, focus the heading. Focusing the dismissal sent the learner to
-     * the end of a long list, so the drawer opened scrolled past its own
-     * recommendation and title (2026-09-05 audit, F05). On a lens switch the
-     * learner is *at* the lens, so focus goes back to the tab they just
-     * pressed — a full redraw that dumps focus elsewhere would make the
-     * control unusable from the keyboard. Escape still closes, focus is still
-     * contained, and Close is still the last stop in the tab order. */
-    this.restoreFocus(heading ?? close);
-    this.opening = true;
-
-    void unit;
+    (heading ?? close).focus();
   }
-
-  /** Kept out of `draw()` so control-flow narrowing on `lensRow` does not
-   *  collapse the type the moment the field is reset for a redraw. */
-  private restoreFocus(onOpen: HTMLElement): void {
-    if (this.opening) {
-      onOpen.focus();
-      onOpen.scrollIntoView?.({ block: 'start' });
+  onClose(): void {
+    this.options.plugin.router.clearOverlay(); this.restoreAccessibility?.(); this.restoreAccessibility = null;
+    this.contentEl.empty(); this.results = null;
+  }
+  private sourceTitle(id: string | null): string {
+    return id ? asString(this.options.plugin.store.get(id)?.title) ?? id : 'Source not yet identified';
+  }
+  private entries(): BrowserEntry[] {
+    const { plugin, unit, resources, materialOptions } = this.options;
+    if (this.scope === 'stage') return resources.map(resource => {
+      const routeId = asString(resource.record.route_id);
+      const route = routeId ? materialOptions.find(option => option.routeId === routeId) : undefined;
+      return { sourceId: resource.sourceId ?? route?.sourceId ?? null,
+        title: resource.label, locator: resource.locator, owner: unit, resource,
+        depth: asString(resource.record.depth) ?? route?.depth ?? '',
+        format: resource.kind === 'practise' ? 'practice' : asString(resource.record.format) ?? route?.format ?? resource.kind,
+        angle: asText(resource.record.angle) ?? '' };
+    });
+    const owners = this.scope === 'unit' ? [unit] : plugin.store.unitsFor(unit.moduleId, unit.componentId)
+      .map(record => readUnitRecord(record, asString(record.id)))
+      .filter((record): record is UnitRecordView => record !== null);
+    const sourceMap = plugin.store.sourceMap(unit.moduleId);
+    return owners.flatMap(owner => {
+      const options = owner.id === unit.id ? materialOptions : readMaterialOptions(sourceMap?.sources, owner.id, owner.record.source_selections);
+      return options.map(option => ({ ...option, owner, option }));
+    });
+  }
+  private updateResults(): void {
+    const root = this.results; if (!root) return;
+    root.empty();
+    const all = this.entries(); const query = foldCase(this.query.trim());
+    const entries = all.filter(entry => {
+      const purpose = this.purpose === 'all' || entry.depth.toLowerCase().includes(this.purpose)
+        || (this.purpose === 'practice' && ['practice', 'practise', 'exercise', 'problem-set', 'homework', 'quiz'].includes(entry.format));
+      return purpose && (!query || [this.sourceTitle(entry.sourceId), entry.title, entry.locator ?? '', entry.angle].some(text => foldCase(text).includes(query)));
+    });
+    root.createDiv({ cls: 'los-source-counts', attr: { role: 'status', 'aria-live': 'polite' }, text: `${entries.length} of ${all.length} entries · ${groupBySource(entries).size} source groups` });
+    if (!entries.length) empty(root, 'No materials match', 'Change scope or reset the filters to see the complete list.');
+    renderSourceGroups(root, entries, id => this.sourceTitle(id), (parent, entry) => this.renderEntry(parent, entry));
+  }
+  private renderEntry(parent: HTMLElement, entry: BrowserEntry): void {
+    const details = parent.createEl('details', { cls: 'los-disclosure los-source-entry' });
+    const summary = details.createEl('summary');
+    summary.createSpan({ text: entry.title });
+    const triage = entry.resource?.scopeTriage;
+    const status = triage ? TRIAGE_HEADING[triage as TriageRank] ?? triage : entry.option?.scope;
+    if (status) summary.createSpan({ cls: 'los-micro los-source-locator', text: status });
+    if (entry.locator) summary.createSpan({ cls: 'los-micro los-source-locator', text: entry.locator });
+    if (entry.owner.id !== this.options.unit.id) summary.createSpan({ cls: 'los-micro', text: entry.owner.title });
+    const body = details.createDiv({ cls: 'los-source-entry-body' });
+    if (entry.resource) {
+      // Each placement retains its own target, instructions and feedback identity.
+      renderStageResources(body, [entry.resource], { ...this.options.renderer, title: 'Details' });
       return;
     }
-    const tabs = Array.from(this.lensRow?.children ?? []) as HTMLElement[];
-    const current = tabs.find(
-      (tab) => tab.getAttribute?.('aria-pressed') === 'true',
-    );
-    (current ?? onOpen).focus();
+    const option = entry.option!;
+    body.createEl('p', { text: option.angle });
+    const detail = asText(option.record.angle_detail); if (detail) body.createEl('p', { text: detail });
+    body.createDiv({ cls: 'los-micro', text: `${option.format} · ${option.depth} · ${option.scope}` });
+    const labels = option.covers.map(id => entry.owner.knowledgeNodes.find(node => node.id === id)?.title).filter(Boolean);
+    if (labels.length) body.createDiv({ cls: 'los-micro', text: `Covers: ${labels.join(' · ')}` });
+    const actions = body.createDiv({ cls: 'los-actions' });
+    if (entry.owner.id === this.options.unit.id) this.renderChoose(actions, option);
+    else button(actions, 'Go to lecture', () => { this.close(); this.options.plugin.nav.openUnit(entry.owner.id); }, 'quiet');
+    if (option.selected) body.createDiv({ cls: 'los-micro', text: 'Chosen for this lecture' });
+    if (option.canOpen) button(actions, 'Open', () => this.options.plugin.openResource(option.record), 'info');
   }
-
-  private renderNeedLenses(root: HTMLElement): void {
-    const { materialOptions } = this.options;
-
-    const lens = root.createDiv({ cls: 'los-material-need' });
-    lens.createSpan({ cls: 'los-micro los-material-need-label', text: 'I need' });
-    this.lensRow = filterTabs<Need>(
-      lens,
-      'Learning need',
-      NEEDS,
-      this.need,
-      (value) => {
-        this.need = value;
-        this.opening = false;
-        this.draw();
-      },
-      (value) => materialOptions.filter(
-        (option) => matchesNeed(option, value),
-      ).length,
-    ) as HTMLElement;
-
-    const matching = materialOptions.filter(
-      (option) => matchesNeed(option, this.need),
-    );
-    const label = NEEDS.find(([value]) => value === this.need)?.[1] ?? this.need;
-
-    // A selection the learner already made outranks position in the list; it is
-    // the only ordering signal here that came from a person.
-    const recommended = matching.find((option) => option.selected)
-      ?? matching[0]
-      ?? null;
-
-    if (recommended) {
-      this.renderRecommended(root, recommended, label);
-    } else {
-      // Honest absence. Promoting the nearest thing instead would be the system
-      // inventing a recommendation the producer never authored.
-      empty(
-        root,
-        `No source is recorded as a ${label.toLowerCase()} route`,
-        'Every source for this unit is still listed below, under the angle its '
-        + 'producer gave it.',
-      );
-    }
-
-    /* Everything the lens did not promote — not only what matched it.
-     *
-     * The lens changes which source is offered first. It must not change which
-     * sources exist, or "compare all" would quietly become "compare some" and
-     * a material would be unreachable at the exact moment the learner went
-     * looking for it. Figma's own alternatives are drawn from other needs for
-     * this reason: an "if stuck" card sits beside a "practice" one. */
-    const alternatives = materialOptions.filter(
-      (option) => option !== recommended,
-    );
-    if (alternatives.length) this.renderAlternatives(root, alternatives);
-  }
-
-  /**
-   * Everything the design's contract says must survive the move: value, angle,
-   * exact locator, coverage, depth and scope. All six are producer-authored
-   * fields read back — the card ranks nothing and adds nothing.
-   */
-  private renderRecommended(
-    root: HTMLElement,
-    option: MaterialOptionView,
-    needLabel: string,
-  ): void {
-    const card = root.createDiv({ cls: 'los-material-recommended' });
-    card.createDiv({
-      cls: 'los-kicker',
-      text: `Recommended for ${needLabel.toLowerCase()}`,
-    });
-    /* The lens ranks every route on the unit, not the routes this stage
-     * places. Saying so is the difference between a stage recommendation and
-     * a unit-wide one; the drawer must not let the two totals be read as the
-     * same set (2026-09-05 audit, F04). */
-    card.createDiv({
-      cls: 'los-micro',
-      text: `Chosen across all ${this.options.materialOptions.length} `
-        + `${this.options.materialOptions.length === 1 ? 'route' : 'routes'} on this unit`,
-    });
-    card.createEl('h3', { text: option.title });
-
-    if (option.angle) {
-      card.createEl('p', {
-        cls: 'los-material-recommended-line',
-        text: `Value · ${option.angle}`,
-      });
-    }
-    const detail = projectedText(option.record.angle_detail);
-    if (detail) {
-      card.createEl('p', {
-        cls: 'los-material-recommended-line',
-        text: `Angle · ${detail}`,
-      });
-    }
-    card.createEl('p', {
-      cls: 'los-material-recommended-line',
-      text: `Depth · ${option.depth} · scope ${option.scope}`,
-    });
-    if (option.locator) {
-      card.createEl('p', {
-        cls: 'los-micro los-material-recommended-locator',
-        text: `Locator · ${option.locator}`,
-      });
-    }
-    this.renderCoverage(card, option);
-
-    const actions = card.createDiv({ cls: 'los-actions los-material-actions' });
-    this.renderChoose(actions, option);
-    if (option.canOpen) {
-      button(
-        actions,
-        'Open',
-        () => this.options.plugin.openResource(option.record),
-        'info',
-      );
-    }
-  }
-
-  /** Which knowledge-map nodes this route covers, by their authored titles. */
-  private renderCoverage(
-    card: HTMLElement,
-    option: MaterialOptionView,
-  ): void {
-    const titleById = new Map(
-      this.options.unit.knowledgeNodes.map((node) => [node.id, node.title]),
-    );
-    const labels = option.covers
-      .map((id) => titleById.get(id))
-      .filter((label): label is string => Boolean(label));
-    if (!labels.length) return;
-
-    const covers = card.createDiv({ cls: 'los-material-metadata' });
-    for (const label of labels) {
-      covers.createSpan({ cls: 'los-knowledge-chip', text: label });
-    }
-  }
-
-  private renderAlternatives(
-    root: HTMLElement,
-    alternatives: readonly MaterialOptionView[],
-  ): void {
-    const wrap = section(
-      root,
-      'Useful alternatives',
-      'Different angle — not duplicates.',
-    ) as HTMLElement;
-    const grid = wrap.createDiv({ cls: 'los-material-alternatives' });
-
-    for (const option of alternatives) {
-      const card = grid.createDiv({ cls: 'los-material-alternative' });
-      /* Name the need this route serves, so the alternatives read as different
-       * angles rather than as also-rans. Falls back to the producer's scope
-       * when the route matches no lens — inventing a need for it would be the
-       * one thing this drawer must not do. */
-      const serves = NEEDS.find(([value]) => matchesNeed(option, value))?.[1];
-      card.createDiv({
-        cls: 'los-kicker',
-        text: serves ?? (option.scope || option.depth),
-      });
-      card.createEl('h4', { text: option.title });
-      if (option.angle) card.createEl('p', { text: option.angle });
-      /* The long-form judgment, on every card rather than only the promoted
-       * one. Reading why a route is worth choosing must not require choosing
-       * it: `Choose` is a canonical preference mutation, and an alternative
-       * whose detail and target were withheld could only be inspected by
-       * making that write first (2026-09-05 audit, F04). */
-      const detail = projectedText(option.record.angle_detail);
-      if (detail) {
-        card.createEl('p', {
-          cls: 'los-material-alternative-detail',
-          text: `Angle · ${detail}`,
-        });
-      }
-      card.createEl('p', {
-        cls: 'los-micro',
-        text: `Depth · ${option.depth} · scope ${option.scope}`,
-      });
-      if (option.locator) {
-        card.createEl('p', {
-          cls: 'los-micro',
-          text: `Locator · ${option.locator}`,
-        });
-      }
-      this.renderCoverage(card, option);
-      const actions = card.createDiv({
-        cls: 'los-actions los-material-actions',
-      });
-      this.renderChoose(actions, option);
-      if (option.canOpen) {
-        button(
-          actions,
-          'Open',
-          () => this.options.plugin.openResource(option.record),
-          'info',
-        );
-      }
-    }
-  }
-
-  /**
-   * The governed selection, unchanged.
-   *
-   * Same capability, same guard, same payload as the unit material menu has
-   * always sent — `unit.source-selection.set` carrying the route, source,
-   * locator and the angle as its purpose. The redesign moved where this button
-   * lives; it did not become a second way to write.
-   */
-  private renderChoose(
-    actions: HTMLElement,
-    option: MaterialOptionView,
-  ): void {
+  private renderChoose(actions: HTMLElement, option: MaterialOptionView): void {
     if (!option.canChoose || !option.sourceId || !option.locator) return;
     const { plugin, unit, expectedRevisions, onChanged } = this.options;
-
-    const choice = button(
-      actions,
-      option.selected ? 'Remove choice' : 'Choose',
-      () => {
-        void plugin.mutate(
-          () => plugin.gateway.sourceSelection(
-            unit.id,
-            option.routeId,
-            option.sourceId ?? '',
-            option.locator ?? '',
-            option.angle,
-            !option.selected,
-            expectedRevisions,
-          ),
-        ).then(() => {
-          new Notice(
-            option.selected
-              ? 'Material choice removed.'
-              : 'Material chosen for this lecture.',
-          );
-          onChanged();
-          this.close();
-        }).catch((error: unknown) => {
-          new Notice(error instanceof Error ? error.message : String(error));
-        });
-      },
-      'choice',
-    );
-    choice.setAttr('aria-pressed', option.selected ? 'true' : 'false');
+    const choice = button(actions, option.selected ? 'Remove choice' : 'Choose', () => {
+      void plugin.mutate(() => plugin.gateway.sourceSelection(unit.id, option.routeId, option.sourceId ?? '', option.locator ?? '', option.angle, !option.selected, expectedRevisions))
+        .then(() => { new Notice(option.selected ? 'Material choice removed.' : 'Material chosen for this lecture.'); onChanged(); this.close(); })
+        .catch((error: unknown) => { new Notice(error instanceof Error ? error.message : String(error)); });
+    }, 'choice');
+    choice.setAttr('aria-pressed', String(option.selected));
   }
 }

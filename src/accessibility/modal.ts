@@ -14,6 +14,7 @@ interface BackgroundState {
 
 const FOCUSABLE = [
   'a[href]',
+  'summary',
   'button:not([disabled])',
   'input:not([disabled])',
   'select:not([disabled])',
@@ -96,7 +97,11 @@ export function makeModalAccessible(
       focusRoot.querySelectorAll<HTMLElement>(FOCUSABLE),
     ).filter((element) =>
       element.getAttribute('aria-hidden') !== 'true'
-      && !(element as HTMLButtonElement).disabled,
+      && !(element as HTMLButtonElement).disabled
+      && !element.closest?.('[hidden]')
+      && !Array.from(focusRoot.querySelectorAll('details:not([open])')).some(details =>
+        details.contains(element) && details.querySelector('summary') !== element
+      ),
     );
   };
 
