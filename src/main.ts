@@ -313,10 +313,10 @@ export class LearningOSUI extends Plugin implements AppSurface {
   }
   clearUnitNoteDraft(
     unitId: string,
-    recoveredStageIds: readonly string[] = [],
+    recoveredStages: Readonly<Record<string, string>> = {},
     match: { title: string; text: string } | null = null,
   ): void {
-    this.drafts.clearUnitNote(unitId, recoveredStageIds, match);
+    this.drafts.clearUnitNote(unitId, recoveredStages, match);
   }
   openUnitNote(
     unit: ProjectionRecord,

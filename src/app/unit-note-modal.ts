@@ -20,7 +20,7 @@ type UnitNotePlugin = {
   ): void;
   clearUnitNoteDraft(
     unitId: string,
-    recoveredStageIds?: readonly string[],
+    recoveredStages?: Readonly<Record<string, string>>,
     match?: { title: string; text: string } | null,
   ): void;
   mutate<T>(action: () => T | PromiseLike<T>): Promise<T>;
@@ -37,7 +37,7 @@ export class UnitNoteModal extends Modal {
   private readonly studyMap: ProjectionRecord | null;
 
   private files: File[] = [];
-  private recoveredStageIds: string[] = [];
+  private recoveredStages: Readonly<Record<string, string>> = {};
   private referencedStageIds: string[] = [];
   private expectedRevisions: Readonly<Record<string, number>> = {};
 
@@ -91,7 +91,7 @@ export class UnitNoteModal extends Modal {
         (id: unknown): id is string => typeof id === 'string',
       )
       : [];
-    this.recoveredStageIds = recoveredStageIds;
+    this.recoveredStages = draft.recoveredStages || {};
     this.referencedStageIds = [
       ...new Set<string>([
         ...this.unrecordedCompletedStages(stages),
@@ -215,7 +215,7 @@ export class UnitNoteModal extends Modal {
       }, this.expectedRevisions));
       // The confirmed write already cleared this draft if it was still the
       // note that was sent; the match keeps the repeat from taking a newer one.
-      this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds, sent);
+      this.plugin.clearUnitNoteDraft(unitId, this.recoveredStages, sent);
       new Notice('Learning-session note saved.');
       this.close();
     } catch (error: unknown) {

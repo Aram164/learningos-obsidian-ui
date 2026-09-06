@@ -374,7 +374,10 @@ export class SettingsGatewayRecoveryStore extends MemoryGatewayRecoveryStore {
     const previousCurrent = this.current;
     const previousStatus = this.status;
     const previousDrafts = structuredClone(this.settings.uiDrafts);
+
     clearDraftsOwnedBy(this.settings.uiDrafts, entry.envelope);
+    const postCleanupDrafts = structuredClone(this.settings.uiDrafts);
+
     this.settings.gatewayRecovery = null;
     this.current = null;
     this.status = { kind: 'clear' };
@@ -384,10 +387,33 @@ export class SettingsGatewayRecoveryStore extends MemoryGatewayRecoveryStore {
       this.settings.gatewayRecovery = previousSlot;
       this.current = previousCurrent;
       this.status = previousStatus;
-      // Restored field by field, not by reassigning `uiDrafts`: the draft
-      // store reads through the same settings object, and swapping the
-      // reference would strand any holder of the old one.
-      Object.assign(this.settings.uiDrafts, previousDrafts);
+
+      const sameDraft = (a: any, b: any) => a.title === b.title && a.text === b.text;
+
+      if (!sameDraft(previousDrafts.inbox, postCleanupDrafts.inbox)) {
+        if (sameDraft(this.settings.uiDrafts.inbox, postCleanupDrafts.inbox)) {
+          this.settings.uiDrafts.inbox = previousDrafts.inbox;
+        }
+      }
+
+      if (!sameDraft(previousDrafts.garden, postCleanupDrafts.garden)) {
+        if (sameDraft(this.settings.uiDrafts.garden, postCleanupDrafts.garden)) {
+          this.settings.uiDrafts.garden = previousDrafts.garden;
+        }
+      }
+
+      for (const mapName of ['unitNotes', 'stages', 'doneWhen'] as const) {
+        const preMap = previousDrafts[mapName] as Record<string, any>;
+        const postMap = postCleanupDrafts[mapName] as Record<string, any>;
+        const currentMap = this.settings.uiDrafts[mapName] as Record<string, any>;
+
+        for (const key of Object.keys(preMap)) {
+          if (!(key in postMap) && !(key in currentMap)) {
+            currentMap[key] = preMap[key];
+          }
+        }
+      }
+
       throw error;
     }
   }
@@ -431,14 +457,27 @@ export function clearDraftsOwnedBy(
     const unitId = typeof payload.unit_id === 'string' ? payload.unit_id : '';
     if (!unitId) return;
     const draft = drafts.unitNotes[unitId];
-    if (draft && draft.text === text && String(draft.title || '').trim() === title) {
+    const matches = draft && draft.text === text && String(draft.title || '').trim() === title;
+
+    if (matches) {
       delete drafts.unitNotes[unitId];
     }
-    // The stage scratch drafts folded into this note are named by the
-    // envelope, so they are cleared by identity rather than by guesswork.
+
+    if (!matches || !draft || !draft.recoveredStages) {
+      return;
+    }
+
     const stageIds = Array.isArray(payload.stage_id) ? payload.stage_id : [];
     for (const stageId of stageIds) {
-      if (typeof stageId === 'string') delete drafts.stages[`${unitId}::${stageId}`];
+      if (typeof stageId === 'string') {
+        const provenanceText = draft.recoveredStages[stageId];
+        if (provenanceText !== undefined) {
+          const currentStage = drafts.stages[`${unitId}::${stageId}`];
+          if (currentStage && currentStage.text === provenanceText) {
+            delete drafts.stages[`${unitId}::${stageId}`];
+          }
+        }
+      }
     }
     return;
   }

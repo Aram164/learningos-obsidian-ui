@@ -796,11 +796,11 @@ function routerPlugin(settings = {}) {
       'subsequent learner edits to the unit note remain intact'
     );
 
-    reloaded.clearUnitNote('unit-a', finalDraft.recoveredStageIds, { title: 'Different', text: 'Mismatched' });
+    reloaded.clearUnitNote('unit-a', finalDraft.recoveredStages, { title: 'Different', text: 'Mismatched' });
     assert.equal(reloaded.getUnitNote('unit-a', stages).text, finalDraft.text, 'draft remains on failed save (mismatched match)');
     assert.equal(reloaded.getStage('unit-a', 'stage-a').text, 'Original learner reasoning', 'stage draft is preserved on failed save');
 
-    reloaded.clearUnitNote('unit-a', finalDraft.recoveredStageIds, { title: finalDraft.title, text: finalDraft.text });
+    reloaded.clearUnitNote('unit-a', finalDraft.recoveredStages, { title: finalDraft.title, text: finalDraft.text });
     assert.equal(reloaded.getUnitNote('unit-a', stages).text, '', 'unit draft is cleared on successful save');
     assert.equal(reloaded.getStage('unit-a', 'stage-a').text, '', 'stage draft is cleared on successful save');
 
@@ -2033,16 +2033,46 @@ function routerPlugin(settings = {}) {
     assert.deepEqual(garden.garden, { title: '', text: '' });
 
     const note = emptyUiDrafts();
-    note.unitNotes['unit-a'] = { title: 'Session', text: 'body', expectedRevisions: {} };
+    note.unitNotes['unit-a'] = { title: 'Session', text: 'body', expectedRevisions: {}, recoveredStages: { 'stage-a': 'scratch', 'stage-b': 'context scratch' } };
     note.stages['unit-a::stage-a'] = { text: 'scratch' };
-    note.stages['unit-a::stage-b'] = { text: 'unrelated scratch' };
+    note.stages['unit-a::stage-b'] = { text: 'changed scratch' };
+    note.stages['unit-a::stage-c'] = { text: 'unrelated scratch' };
+
     clearDraftsOwnedBy(note, envelope('unit.note.append', {
-      unit_id: 'unit-a', title: 'Session', text: 'body', stage_id: ['stage-a'],
+      unit_id: 'unit-a', title: 'Session', text: 'body', stage_id: ['stage-a', 'stage-b', 'stage-c'],
     }));
     assert.equal('unit-a' in note.unitNotes, false);
-    assert.equal('unit-a::stage-a' in note.stages, false);
-    assert.equal(note.stages['unit-a::stage-b'].text, 'unrelated scratch',
-      'only the stages the envelope named are cleared');
+    assert.equal('unit-a::stage-a' in note.stages, false, 'exact matching recovered scratch clears');
+    assert.equal(note.stages['unit-a::stage-b'].text, 'changed scratch', 'changed scratch survives');
+    assert.equal(note.stages['unit-a::stage-c'].text, 'unrelated scratch', 'unrelated/context-only scratch survives');
+
+    // missing legacy provenance preserves
+    const legacy = emptyUiDrafts();
+    legacy.unitNotes['unit-a'] = { title: 'Session', text: 'body', expectedRevisions: {} }; // no recoveredStages
+    legacy.stages['unit-a::stage-a'] = { text: 'scratch' };
+    clearDraftsOwnedBy(legacy, envelope('unit.note.append', {
+      unit_id: 'unit-a', title: 'Session', text: 'body', stage_id: ['stage-a'],
+    }));
+    assert.equal('unit-a' in legacy.unitNotes, false);
+    assert.equal(legacy.stages['unit-a::stage-a'].text, 'scratch', 'missing legacy provenance preserves');
+
+    // changed unit draft preserves its stage drafts
+    const changedUnit = emptyUiDrafts();
+    changedUnit.unitNotes['unit-a'] = { title: 'Session', text: 'body PLUS NEWER TEXT', expectedRevisions: {}, recoveredStages: { 'stage-a': 'scratch' } };
+    changedUnit.stages['unit-a::stage-a'] = { text: 'scratch' };
+    clearDraftsOwnedBy(changedUnit, envelope('unit.note.append', {
+      unit_id: 'unit-a', title: 'Session', text: 'body', stage_id: ['stage-a'],
+    }));
+    assert.equal(changedUnit.unitNotes['unit-a'].text, 'body PLUS NEWER TEXT');
+    assert.equal(changedUnit.stages['unit-a::stage-a'].text, 'scratch', 'changed unit draft preserves its stage drafts');
+
+    // repeated cleanup after settlement preserves a newer stage draft
+    const repeated = emptyUiDrafts();
+    repeated.stages['unit-a::stage-a'] = { text: 'newer scratch' };
+    clearDraftsOwnedBy(repeated, envelope('unit.note.append', {
+      unit_id: 'unit-a', title: 'Session', text: 'body', stage_id: ['stage-a'],
+    }));
+    assert.equal(repeated.stages['unit-a::stage-a'].text, 'newer scratch', 'repeated cleanup after settlement preserves a newer stage draft');
 
     const done = emptyUiDrafts();
     done.doneWhen['unit-a::stage-a'] = [true];
@@ -2120,7 +2150,7 @@ function routerPlugin(settings = {}) {
       /unresolved Gateway write/);
   });
 
-  await test('a failed settleConfirmed restores the record and its drafts', async () => {
+  await test('a failed settleConfirmed restores the record and its cleared drafts', async () => {
     const { settings, store, gateway, fail } = await preparedStore();
     settings.uiDrafts.inbox = { title: '', text: 'a captured thought' };
     await gateway.captureText('a captured thought');
@@ -2134,7 +2164,116 @@ function routerPlugin(settings = {}) {
       'the confirmed record must be restored, not silently retired');
     assert.deepEqual(settings.gatewayRecovery, onDisk);
     assert.equal(settings.uiDrafts.inbox.text, 'a captured thought',
-      'a settlement that never landed must not destroy the learner\'s draft');
+      'a settlement that never landed must restore the cleared draft');
+  });
+
+  await test('a failed settleConfirmed preserves newer edits in the cleared composer', async () => {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    settings.uiDrafts.inbox = { title: '', text: 'a captured thought' };
+
+    let failAndEdit = false;
+    const store = new SettingsGatewayRecoveryStore(settings, async () => {
+      if (failAndEdit) {
+        settings.uiDrafts.inbox = { title: '', text: 'a captured thought and more' };
+        throw new Error('data.json could not be written');
+      }
+    });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+
+    await gateway.captureText('a captured thought');
+    failAndEdit = true;
+
+    await assert.rejects(store.settleConfirmed(), /data\.json could not be written/);
+
+    assert.equal(settings.uiDrafts.inbox.text, 'a captured thought and more',
+      'newer text typed during the save must survive the failure rollback');
+    assert.equal(store.unresolved, true, 'recovery must remain unresolved on failure');
+  });
+
+  await test('a failed settleConfirmed preserves unrelated drafts added during the await', async () => {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    settings.uiDrafts.inbox = { title: '', text: 'a captured thought' };
+
+    let failAndEdit = false;
+    const store = new SettingsGatewayRecoveryStore(settings, async () => {
+      if (failAndEdit) {
+        settings.uiDrafts.unitNotes['unit-1'] = { title: 'Unit Note', text: 'New note' };
+        throw new Error('data.json could not be written');
+      }
+    });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+
+    await gateway.captureText('a captured thought');
+    failAndEdit = true;
+
+    await assert.rejects(store.settleConfirmed(), /data\.json could not be written/);
+
+    assert.equal(settings.uiDrafts.inbox.text, 'a captured thought', 'cleared draft is restored');
+    assert.equal(settings.uiDrafts.unitNotes['unit-1'].text, 'New note',
+      'unrelated drafts added during the save must survive the failure rollback');
+  });
+
+  await test('a failed settleConfirmed preserves existing unrelated drafts', async () => {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    settings.uiDrafts.inbox = { title: '', text: 'a captured thought' };
+    settings.uiDrafts.garden = { title: 'Seed', text: 'Existing garden seed' };
+
+    let failing = false;
+    const store = new SettingsGatewayRecoveryStore(settings, async () => {
+      if (failing) throw new Error('data.json could not be written');
+    });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+
+    await gateway.captureText('a captured thought');
+    failing = true;
+
+    await assert.rejects(store.settleConfirmed(), /data\.json could not be written/);
+
+    assert.equal(settings.uiDrafts.inbox.text, 'a captured thought', 'cleared draft is restored');
+    assert.equal(settings.uiDrafts.garden.text, 'Existing garden seed', 'unrelated draft is untouched');
+  });
+
+  await test('subsequent successful settlement remains safe and idempotent', async () => {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    settings.uiDrafts.inbox = { title: '', text: 'a captured thought' };
+
+    let failAndEdit = false;
+    const store = new SettingsGatewayRecoveryStore(settings, async () => {
+      if (failAndEdit) {
+        settings.uiDrafts.inbox = { title: '', text: 'a captured thought and more' };
+        throw new Error('data.json could not be written');
+      }
+    });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+
+    await gateway.captureText('a captured thought');
+    failAndEdit = true;
+
+    await assert.rejects(store.settleConfirmed(), /data\.json could not be written/);
+    assert.equal(store.unresolved, true);
+
+    failAndEdit = false;
+    await store.settleConfirmed();
+
+    assert.equal(store.unresolved, false, 'recovery must clear on success');
+    assert.equal(settings.uiDrafts.inbox.text, 'a captured thought and more',
+      'idempotent success leaves changed drafts alone');
   });
 
   await test('a failed transition enables no fresh write and no startup replay', async () => {

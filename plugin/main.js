@@ -10657,14 +10657,20 @@ ${row3.text.trim()}`).join("\n\n");
    * when the draft is still the one that was sent — which is also what makes
    * repeating the cleanup harmless.
    */
-  clearUnitNote(unitId, recoveredStageIds = [], match = null) {
+  clearUnitNote(unitId, recoveredStages = {}, match = null) {
     const draft = this.settings.uiDrafts.unitNotes[unitId];
     if (match && draft && (draft.text !== match.text || String(draft.title || "").trim() !== match.title.trim())) {
       return;
     }
     delete this.settings.uiDrafts.unitNotes[unitId];
-    for (const stageId of recoveredStageIds) {
-      delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
+    for (const stageId of Object.keys(recoveredStages)) {
+      const provenanceText = recoveredStages[stageId];
+      if (provenanceText !== void 0) {
+        const currentStage = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
+        if (currentStage && currentStage.text === provenanceText) {
+          delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
+        }
+      }
     }
     this.scheduleSave();
   }
@@ -10998,6 +11004,7 @@ var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
     const previousStatus = this.status;
     const previousDrafts = structuredClone(this.settings.uiDrafts);
     clearDraftsOwnedBy(this.settings.uiDrafts, entry.envelope);
+    const postCleanupDrafts = structuredClone(this.settings.uiDrafts);
     this.settings.gatewayRecovery = null;
     this.current = null;
     this.status = { kind: "clear" };
@@ -11007,7 +11014,27 @@ var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
       this.settings.gatewayRecovery = previousSlot;
       this.current = previousCurrent;
       this.status = previousStatus;
-      Object.assign(this.settings.uiDrafts, previousDrafts);
+      const sameDraft = (a, b) => a.title === b.title && a.text === b.text;
+      if (!sameDraft(previousDrafts.inbox, postCleanupDrafts.inbox)) {
+        if (sameDraft(this.settings.uiDrafts.inbox, postCleanupDrafts.inbox)) {
+          this.settings.uiDrafts.inbox = previousDrafts.inbox;
+        }
+      }
+      if (!sameDraft(previousDrafts.garden, postCleanupDrafts.garden)) {
+        if (sameDraft(this.settings.uiDrafts.garden, postCleanupDrafts.garden)) {
+          this.settings.uiDrafts.garden = previousDrafts.garden;
+        }
+      }
+      for (const mapName of ["unitNotes", "stages", "doneWhen"]) {
+        const preMap = previousDrafts[mapName];
+        const postMap = postCleanupDrafts[mapName];
+        const currentMap = this.settings.uiDrafts[mapName];
+        for (const key of Object.keys(preMap)) {
+          if (!(key in postMap) && !(key in currentMap)) {
+            currentMap[key] = preMap[key];
+          }
+        }
+      }
       throw error;
     }
   }
@@ -11034,12 +11061,24 @@ function clearDraftsOwnedBy(drafts, envelope) {
     const unitId = typeof payload.unit_id === "string" ? payload.unit_id : "";
     if (!unitId) return;
     const draft = drafts.unitNotes[unitId];
-    if (draft && draft.text === text5 && String(draft.title || "").trim() === title) {
+    const matches = draft && draft.text === text5 && String(draft.title || "").trim() === title;
+    if (matches) {
       delete drafts.unitNotes[unitId];
+    }
+    if (!matches || !draft || !draft.recoveredStages) {
+      return;
     }
     const stageIds = Array.isArray(payload.stage_id) ? payload.stage_id : [];
     for (const stageId of stageIds) {
-      if (typeof stageId === "string") delete drafts.stages[`${unitId}::${stageId}`];
+      if (typeof stageId === "string") {
+        const provenanceText = draft.recoveredStages[stageId];
+        if (provenanceText !== void 0) {
+          const currentStage = drafts.stages[`${unitId}::${stageId}`];
+          if (currentStage && currentStage.text === provenanceText) {
+            delete drafts.stages[`${unitId}::${stageId}`];
+          }
+        }
+      }
     }
     return;
   }
@@ -14984,7 +15023,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
   unit;
   studyMap;
   files = [];
-  recoveredStageIds = [];
+  recoveredStages = {};
   referencedStageIds = [];
   expectedRevisions = {};
   titleInput;
@@ -15027,7 +15066,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
     ) ? draft.recoveredStageIds.filter(
       (id2) => typeof id2 === "string"
     ) : [];
-    this.recoveredStageIds = recoveredStageIds;
+    this.recoveredStages = draft.recoveredStages || {};
     this.referencedStageIds = [
       .../* @__PURE__ */ new Set([
         ...this.unrecordedCompletedStages(stages),
@@ -15146,7 +15185,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
         stageIds: this.referencedStageIds,
         filePaths
       }, this.expectedRevisions));
-      this.plugin.clearUnitNoteDraft(unitId, this.recoveredStageIds, sent);
+      this.plugin.clearUnitNoteDraft(unitId, this.recoveredStages, sent);
       new import_obsidian21.Notice("Learning-session note saved.");
       this.close();
     } catch (error) {
@@ -15164,7 +15203,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:ad7aec5e85cf9254207e14570ea0f49774c1180cccef33e3419f357af0c78067" : "unavailable";
+  return true ? "sha256:4a524a5f646e8abb6731606814a773930991c766bb9ee6001149ff6730c664ef" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 9 : 0;
@@ -16848,8 +16887,8 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
   setUnitNoteDraft(unitId, title, text5, expectedRevisions = {}, recoveredStages = {}) {
     this.drafts.setUnitNote(unitId, title, text5, expectedRevisions, recoveredStages);
   }
-  clearUnitNoteDraft(unitId, recoveredStageIds = [], match = null) {
-    this.drafts.clearUnitNote(unitId, recoveredStageIds, match);
+  clearUnitNoteDraft(unitId, recoveredStages = {}, match = null) {
+    this.drafts.clearUnitNote(unitId, recoveredStages, match);
   }
   openUnitNote(unit, studyMap) {
     const modal = new UnitNoteModal(this.app, this, unit, studyMap);

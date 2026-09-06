@@ -213,7 +213,7 @@ export class DraftStore {
    */
   clearUnitNote(
     unitId: string,
-    recoveredStageIds: readonly string[] = [],
+    recoveredStages: Readonly<Record<string, string>> = {},
     match: { title: string; text: string } | null = null,
   ): void {
     const draft = this.settings.uiDrafts.unitNotes[unitId];
@@ -223,8 +223,14 @@ export class DraftStore {
       return;
     }
     delete this.settings.uiDrafts.unitNotes[unitId];
-    for (const stageId of recoveredStageIds) {
-      delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
+    for (const stageId of Object.keys(recoveredStages)) {
+      const provenanceText = recoveredStages[stageId];
+      if (provenanceText !== undefined) {
+        const currentStage = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
+        if (currentStage && currentStage.text === provenanceText) {
+          delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
+        }
+      }
     }
     this.scheduleSave();
   }
