@@ -1,3 +1,4 @@
+import { compareStrings, foldCase } from '../sorting';
 import { Modal, type App } from 'obsidian';
 import { button, empty } from '../components';
 import type { ProjectionRecord } from '../contracts/manifest';
@@ -213,27 +214,27 @@ export class GlobalSearchModal extends Modal {
   }
 
   matches(candidate: SearchCandidate): boolean {
-    const words = this.query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
+    const words = foldCase(this.query).trim().split(/\s+/).filter(Boolean);
     if (!words.length) return true;
-    const haystack = [candidate.id, candidate.title, candidate.subtitle,
+    const haystack = foldCase([candidate.id, candidate.title, candidate.subtitle,
       ...candidate.aliases, ...candidate.authors]
-      .filter(Boolean).join(' ').toLocaleLowerCase();
+      .filter(Boolean).join(' '));
     return words.every(
       (word: string) => haystack.includes(word),
     );
   }
 
   rankedCandidates(): SearchCandidate[] {
-    const needle = this.query.toLocaleLowerCase().trim();
+    const needle = foldCase(this.query).trim();
     return this.candidates()
       .filter((candidate) => this.filter === 'all' || candidate.kind === this.filter)
       .filter((candidate) => this.matches(candidate))
       .sort((left, right) => {
-        const leftTitle = left.title.toLocaleLowerCase();
-        const rightTitle = right.title.toLocaleLowerCase();
+        const leftTitle = foldCase(left.title);
+        const rightTitle = foldCase(right.title);
         const leftRank = !needle ? 2 : leftTitle === needle ? 0 : leftTitle.startsWith(needle) ? 1 : 2;
         const rightRank = !needle ? 2 : rightTitle === needle ? 0 : rightTitle.startsWith(needle) ? 1 : 2;
-        return leftRank - rightRank || left.title.localeCompare(right.title);
+        return leftRank - rightRank || compareStrings(left.title, right.title);
       });
   }
 

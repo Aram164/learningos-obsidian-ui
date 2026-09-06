@@ -1,3 +1,4 @@
+import { compareStrings } from '../../sorting';
 import type { ProjectionRecord } from '../../contracts/manifest';
 import type { ManifestStore } from '../../manifest-store';
 import { asLabel as projectedLabel } from '../../projection/readers';
@@ -53,7 +54,7 @@ function byLabel(
   left: ProjectionRecord,
   right: ProjectionRecord,
 ): number {
-  return projectedLabel(left).localeCompare(projectedLabel(right));
+  return compareStrings(projectedLabel(left), projectedLabel(right));
 }
 
 export function buildConceptContext(

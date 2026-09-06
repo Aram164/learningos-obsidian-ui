@@ -1,3 +1,4 @@
+import { foldCase, compareStrings } from '../../sorting';
 import type { LibraryHomeHost } from './ports';
 import {
   button,
@@ -254,9 +255,7 @@ export function renderGroup(
     );
 
     const needle =
-      view.query
-        .trim()
-        .toLocaleLowerCase();
+      foldCase(view.query.trim());
 
     const words =
       needle
@@ -269,7 +268,7 @@ export function renderGroup(
           return true;
         }
 
-        const hay = [
+        const hay = foldCase([
           record.id,
           record.title,
           record.purpose,
@@ -280,7 +279,7 @@ export function renderGroup(
         ]
           .filter(Boolean)
           .join(' ')
-          .toLocaleLowerCase();
+        );
 
         return words.every(
           (word) => hay.includes(word),
@@ -288,9 +287,7 @@ export function renderGroup(
       })
       .sort(
         (left, right) =>
-          left.title.localeCompare(
-            right.title,
-          ),
+          compareStrings(left.title, right.title),
       );
 
     if (!all.length) {

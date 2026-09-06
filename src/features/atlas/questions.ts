@@ -1,3 +1,4 @@
+import { compareStrings } from '../../sorting';
 import {
   asRecord,
   asString,
@@ -68,7 +69,7 @@ function present(graph: AtlasGraph, target: AtlasQuestionTarget): boolean {
 /** Open questions first, then by title — the unanswered ones are the point. */
 function compare(left: AtlasQuestion, right: AtlasQuestion): number {
   if (left.state !== right.state) return left.state === 'open' ? -1 : 1;
-  return left.title.localeCompare(right.title) || left.noteId.localeCompare(right.noteId);
+  return compareStrings(left.title, right.title) || compareStrings(left.noteId, right.noteId);
 }
 
 export function collectQuestions(

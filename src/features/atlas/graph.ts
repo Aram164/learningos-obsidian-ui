@@ -1,3 +1,4 @@
+import { compareStrings, foldCase } from '../../sorting';
 import type {
   ModuleConceptEvidence,
   ProjectionRecord,
@@ -165,18 +166,18 @@ export function moduleConceptKey(moduleId: string, conceptId: string): string {
 }
 
 function normalizedSortKey(label: string): string {
-  return label.trim().toLocaleLowerCase();
+  return foldCase(label.trim());
 }
 
 function compareConcepts(left: AtlasConcept, right: AtlasConcept): number {
-  return left.sortKey.localeCompare(right.sortKey)
-    || left.id.localeCompare(right.id);
+  return compareStrings(left.sortKey, right.sortKey)
+    || compareStrings(left.id, right.id);
 }
 
 function compareModules(left: AtlasModule, right: AtlasModule): number {
   if (left.actionable !== right.actionable) return left.actionable ? -1 : 1;
-  return left.sortKey.localeCompare(right.sortKey)
-    || left.id.localeCompare(right.id);
+  return compareStrings(left.sortKey, right.sortKey)
+    || compareStrings(left.id, right.id);
 }
 
 function shortModuleLabel(record: ProjectionRecord, label: string): string {
@@ -339,8 +340,8 @@ export function buildAtlasGraph(store: AtlasGraphStore): AtlasGraph {
     for (const list of index.values()) {
       list.sort((left, right) =>
         order(farEnd(left), farEnd(right))
-        || left.type.localeCompare(right.type)
-        || left.id.localeCompare(right.id));
+        || compareStrings(left.type, right.type)
+        || compareStrings(left.id, right.id));
     }
   }
 
@@ -349,15 +350,15 @@ export function buildAtlasGraph(store: AtlasGraphStore): AtlasGraph {
       list.sort((left, right) => {
         const leftFar = left.from === conceptId ? left.to : left.from;
         const rightFar = right.from === conceptId ? right.to : right.from;
-        return left.type.localeCompare(right.type)
+        return compareStrings(left.type, right.type)
           || order(leftFar, rightFar)
-          || left.id.localeCompare(right.id);
+          || compareStrings(left.id, right.id);
       });
     }
   }
 
   for (const list of modulesByConcept.values()) {
-    list.sort((left, right) => left.localeCompare(right));
+    list.sort((left, right) => compareStrings(left, right));
   }
   for (const list of conceptsByModule.values()) {
     list.sort(order);
@@ -366,7 +367,7 @@ export function buildAtlasGraph(store: AtlasGraphStore): AtlasGraph {
   return {
     concepts,
     conceptById,
-    edges: edges.slice().sort((left, right) => left.id.localeCompare(right.id)),
+    edges: edges.slice().sort((left, right) => compareStrings(left.id, right.id)),
     relationByIdentity,
     prerequisiteEdges,
     dependentEdges,

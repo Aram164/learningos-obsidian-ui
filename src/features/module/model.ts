@@ -1,3 +1,4 @@
+import { compareStrings } from '../../sorting';
 import type { ProjectionRecord } from '../../contracts/manifest';
 import type { AppSurface } from '../../app/surface';
 import type { AppNavigator } from '../../app/navigator';
@@ -406,7 +407,7 @@ export function orderModuleUnits(
 
       return (
         left.order - right.order
-        || left.title.localeCompare(right.title)
+        || compareStrings(left.title, right.title)
       );
     },
   );

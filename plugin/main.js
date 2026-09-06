@@ -2055,6 +2055,22 @@ function asProjectDetailTab(value) {
   return isProjectDetailTab(value) ? value : "overview";
 }
 
+// src/sorting.ts
+var collator = new Intl.Collator("en", {
+  numeric: true,
+  sensitivity: "variant",
+  caseFirst: "lower"
+});
+function compareStrings(left, right) {
+  return collator.compare(left, right) || (left < right ? -1 : left > right ? 1 : 0);
+}
+function foldCase(value) {
+  return value.toLocaleLowerCase("en");
+}
+function upperCase(value) {
+  return value.toLocaleUpperCase("en");
+}
+
 // src/features/atlas/graph.ts
 var STRICT_RELATION_TYPES = ["builds-on", "requires"];
 var SEMANTIC_RELATION_TYPES = [
@@ -2089,14 +2105,14 @@ function moduleConceptKey(moduleId, conceptId) {
   return `${moduleId}\0${conceptId}`;
 }
 function normalizedSortKey(label) {
-  return label.trim().toLocaleLowerCase();
+  return foldCase(label.trim());
 }
 function compareConcepts(left, right) {
-  return left.sortKey.localeCompare(right.sortKey) || left.id.localeCompare(right.id);
+  return compareStrings(left.sortKey, right.sortKey) || compareStrings(left.id, right.id);
 }
 function compareModules(left, right) {
   if (left.actionable !== right.actionable) return left.actionable ? -1 : 1;
-  return left.sortKey.localeCompare(right.sortKey) || left.id.localeCompare(right.id);
+  return compareStrings(left.sortKey, right.sortKey) || compareStrings(left.id, right.id);
 }
 function shortModuleLabel(record6, label) {
   const code = asString(record6.code);
@@ -2212,7 +2228,7 @@ function buildAtlasGraph(store) {
     [dependentEdges, (edge) => edge.from]
   ]) {
     for (const list2 of index.values()) {
-      list2.sort((left, right) => order(farEnd(left), farEnd(right)) || left.type.localeCompare(right.type) || left.id.localeCompare(right.id));
+      list2.sort((left, right) => order(farEnd(left), farEnd(right)) || compareStrings(left.type, right.type) || compareStrings(left.id, right.id));
     }
   }
   for (const index of [semanticEdges, unrecognizedEdges]) {
@@ -2220,12 +2236,12 @@ function buildAtlasGraph(store) {
       list2.sort((left, right) => {
         const leftFar = left.from === conceptId ? left.to : left.from;
         const rightFar = right.from === conceptId ? right.to : right.from;
-        return left.type.localeCompare(right.type) || order(leftFar, rightFar) || left.id.localeCompare(right.id);
+        return compareStrings(left.type, right.type) || order(leftFar, rightFar) || compareStrings(left.id, right.id);
       });
     }
   }
   for (const list2 of modulesByConcept.values()) {
-    list2.sort((left, right) => left.localeCompare(right));
+    list2.sort((left, right) => compareStrings(left, right));
   }
   for (const list2 of conceptsByModule.values()) {
     list2.sort(order);
@@ -2233,7 +2249,7 @@ function buildAtlasGraph(store) {
   return {
     concepts,
     conceptById,
-    edges: edges.slice().sort((left, right) => left.id.localeCompare(right.id)),
+    edges: edges.slice().sort((left, right) => compareStrings(left.id, right.id)),
     relationByIdentity,
     prerequisiteEdges,
     dependentEdges,
@@ -3151,7 +3167,7 @@ function sourceNamesConcept(source, conceptId) {
   });
 }
 function byLabel(left, right) {
-  return asLabel(left).localeCompare(asLabel(right));
+  return compareStrings(asLabel(left), asLabel(right));
 }
 function buildConceptContext(store, conceptId) {
   const notes = store.related(conceptId).map((row3) => row3.rec).filter((record6) => record6?.type === "note").sort(byLabel);
@@ -3176,7 +3192,7 @@ function present(graph, target) {
 }
 function compare(left, right) {
   if (left.state !== right.state) return left.state === "open" ? -1 : 1;
-  return left.title.localeCompare(right.title) || left.noteId.localeCompare(right.noteId);
+  return compareStrings(left.title, right.title) || compareStrings(left.noteId, right.noteId);
 }
 function collectQuestions(store, graph) {
   const questions = [];
@@ -5698,11 +5714,7 @@ function moduleNextAction(view, module2) {
       ).includes(moduleId);
     }
   ).sort(
-    (left, right) => view.nextWorkspaceDate(left).localeCompare(
-      view.nextWorkspaceDate(
-        right
-      )
-    )
+    (left, right) => compareStrings(view.nextWorkspaceDate(left), view.nextWorkspaceDate(right))
   )[0];
   if (workspace?.next_action) {
     return projectedExcerpt(
@@ -5848,7 +5860,8 @@ function renderToday(view, root) {
       ) ?? asString(
         right.end_date
       ) ?? "";
-      return leftDate.localeCompare(
+      return compareStrings(
+        leftDate,
         rightDate
       );
     }
@@ -6992,7 +7005,8 @@ function renderLegacyList(view, root) {
     );
   }
   rows.sort(
-    (left, right) => left.title.localeCompare(
+    (left, right) => compareStrings(
+      left.title,
       right.title
     )
   );
@@ -7219,28 +7233,28 @@ function renderGroup(view, root) {
   const all = readLibraryRecords(
     view.plugin.store.topicPacksForGroup(group.id)
   );
-  const needle = view.query.trim().toLocaleLowerCase();
+  const needle = foldCase(view.query.trim());
   const words2 = needle.split(/\s+/).filter(Boolean);
   const rows = all.filter((record6) => {
     if (!words2.length) {
       return true;
     }
-    const hay = [
-      record6.id,
-      record6.title,
-      record6.purpose,
-      record6.summary,
-      ...record6.aliases,
-      ...record6.authors,
-      record6.organization
-    ].filter(Boolean).join(" ").toLocaleLowerCase();
+    const hay = foldCase(
+      [
+        record6.id,
+        record6.title,
+        record6.purpose,
+        record6.summary,
+        ...record6.aliases,
+        ...record6.authors,
+        record6.organization
+      ].filter(Boolean).join(" ")
+    );
     return words2.every(
       (word) => hay.includes(word)
     );
   }).sort(
-    (left, right) => left.title.localeCompare(
-      right.title
-    )
+    (left, right) => compareStrings(left.title, right.title)
   );
   if (!all.length) {
     empty(
@@ -7356,7 +7370,7 @@ function sourceFilterLabel(view, dimension, value) {
   }
   return value.replace(/[-_]+/g, " ").replace(
     /\b\w/g,
-    (letter) => letter.toLocaleUpperCase()
+    (letter) => upperCase(letter)
   );
 }
 function renderSourceBrowser(view, root) {
@@ -7468,7 +7482,8 @@ function renderSourceBrowser(view, root) {
           dimension,
           right[0]
         );
-        return leftLabel.localeCompare(
+        return compareStrings(
+          leftLabel,
           rightLabel
         );
       }
@@ -7541,7 +7556,7 @@ function renderSourceBrowser(view, root) {
       "quiet"
     );
   }
-  const words2 = view.query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+  const words2 = foldCase(view.query.trim()).split(/\s+/).filter(Boolean);
   const rows = all.filter(
     (source) => view.sourceMatchesFilters(source)
   ).filter(
@@ -7549,22 +7564,25 @@ function renderSourceBrowser(view, root) {
       if (!words2.length) {
         return true;
       }
-      const hay = [
-        source.id,
-        source.title,
-        source.summary,
-        source.purpose,
-        source.organization,
-        source.sourceType,
-        ...source.aliases,
-        ...source.authors
-      ].filter(Boolean).join(" ").toLocaleLowerCase();
+      const hay = foldCase(
+        [
+          source.id,
+          source.title,
+          source.summary,
+          source.purpose,
+          source.organization,
+          source.sourceType,
+          ...source.aliases,
+          ...source.authors
+        ].filter(Boolean).join(" ")
+      );
       return words2.every(
         (word) => hay.includes(word)
       );
     }
   ).sort(
-    (left, right) => left.title.localeCompare(
+    (left, right) => compareStrings(
+      left.title,
       right.title
     )
   );
@@ -8025,7 +8043,7 @@ function orderModuleUnits(module2, units) {
       if (leftRank !== void 0 || rightRank !== void 0) {
         return (leftRank ?? Number.MAX_SAFE_INTEGER) - (rightRank ?? Number.MAX_SAFE_INTEGER);
       }
-      return left.order - right.order || left.title.localeCompare(right.title);
+      return left.order - right.order || compareStrings(left.title, right.title);
     }
   );
 }
@@ -8241,7 +8259,7 @@ function semesterLabel(value) {
   return words(value);
 }
 function examinationLabel(value) {
-  return EXAMINATION_LABELS[value.toLocaleLowerCase()] ?? words(value);
+  return EXAMINATION_LABELS[foldCase(value)] ?? words(value);
 }
 function statusLabel(value) {
   return words(value);
@@ -8280,7 +8298,8 @@ function deadlinesFor(view, module2) {
       (entry) => entry.moduleId === module2.id
     )
   ).sort(
-    (a, b) => a.startDate.localeCompare(
+    (a, b) => compareStrings(
+      a.startDate,
       b.startDate
     )
   );
@@ -8783,18 +8802,18 @@ function renderGroupList(view, root) {
   const all = view.plugin.store.modulesForGroup(group.id).map(
     (record6) => readModuleRecord(record6)
   ).filter(nonNull);
-  const needle = view.query.trim().toLocaleLowerCase();
+  const needle = foldCase(view.query.trim());
   const rows = all.filter(
     (module2) => {
       if (!needle) {
         return true;
       }
-      return [
+      return foldCase([
         module2.title,
         module2.code,
         module2.kind,
         module2.semester
-      ].filter(Boolean).join(" ").toLocaleLowerCase().includes(needle);
+      ].filter(Boolean).join(" ")).includes(needle);
     }
   );
   if (!all.length) {
@@ -10003,14 +10022,14 @@ function renderList(view, root) {
   });
   const draw = () => {
     results.empty();
-    const words2 = input.value.toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const words2 = foldCase(input.value).split(/\s+/).filter(Boolean);
     const rows = view.plugin.store.projects().filter(
       (project) => {
         const id2 = asString(project.id);
         if (!id2) {
           return false;
         }
-        const hay = [
+        const hay = foldCase([
           id2,
           asString(project.title),
           asString(project.objective),
@@ -10019,7 +10038,7 @@ function renderList(view, root) {
           )
         ].filter(
           (value) => Boolean(value)
-        ).join(" ").toLocaleLowerCase();
+        ).join(" "));
         return words2.every(
           (word) => hay.includes(word)
         );
@@ -14350,27 +14369,27 @@ var GlobalSearchModal = class extends import_obsidian19.Modal {
     return rows;
   }
   matches(candidate) {
-    const words2 = this.query.toLocaleLowerCase().trim().split(/\s+/).filter(Boolean);
+    const words2 = foldCase(this.query).trim().split(/\s+/).filter(Boolean);
     if (!words2.length) return true;
-    const haystack = [
+    const haystack = foldCase([
       candidate.id,
       candidate.title,
       candidate.subtitle,
       ...candidate.aliases,
       ...candidate.authors
-    ].filter(Boolean).join(" ").toLocaleLowerCase();
+    ].filter(Boolean).join(" "));
     return words2.every(
       (word) => haystack.includes(word)
     );
   }
   rankedCandidates() {
-    const needle = this.query.toLocaleLowerCase().trim();
+    const needle = foldCase(this.query).trim();
     return this.candidates().filter((candidate) => this.filter === "all" || candidate.kind === this.filter).filter((candidate) => this.matches(candidate)).sort((left, right) => {
-      const leftTitle = left.title.toLocaleLowerCase();
-      const rightTitle = right.title.toLocaleLowerCase();
+      const leftTitle = foldCase(left.title);
+      const rightTitle = foldCase(right.title);
       const leftRank = !needle ? 2 : leftTitle === needle ? 0 : leftTitle.startsWith(needle) ? 1 : 2;
       const rightRank = !needle ? 2 : rightTitle === needle ? 0 : rightTitle.startsWith(needle) ? 1 : 2;
-      return leftRank - rightRank || left.title.localeCompare(right.title);
+      return leftRank - rightRank || compareStrings(left.title, right.title);
     });
   }
   renderResults() {
@@ -15136,7 +15155,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:957d9ff56707308ba1c32ee218e84a9ef5764cd1b08b6255dd84117a3bb8efd4" : "unavailable";
+  return true ? "sha256:ea92633e4d587d3851623eb91708684e4e637728deb3ed40420bd468769a0f68" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 9 : 0;
@@ -16036,7 +16055,7 @@ var ResourceOpener = class {
   }
   isCodePath(path) {
     if (!fs3.existsSync(path)) return false;
-    const extension = nodePath3.extname(path).toLocaleLowerCase();
+    const extension = foldCase(nodePath3.extname(path));
     return !extension || CODE_EXTENSIONS.has(extension);
   }
   async openSystemPath(path, successMessage) {
@@ -16100,7 +16119,7 @@ var ResourceOpener = class {
     return this.openExternalPath(realPath, "Opened the local material in its default app.");
   }
   openAuthoredPath(path) {
-    const extension = nodePath3.extname(path || "").toLocaleLowerCase();
+    const extension = foldCase(nodePath3.extname(path || ""));
     if ([".md", ".pdf", ".canvas", ".base"].includes(extension)) return this.openVaultPath(path);
     const base = this.app.vault.adapter.getBasePath();
     const fullPath = nodePath3.resolve(base, path || "");
@@ -16247,19 +16266,19 @@ function buildStoreIndexes(manifest, records) {
   }
   const searchDocuments = visibleRecords.map((record6) => ({
     record: record6,
-    strictText: [
+    strictText: foldCase([
       record6.id,
       record6.title,
       ...record6.aliases || [],
       ...record6.authors || [],
       record6.organization,
       record6.domain
-    ].filter(Boolean).join(" ").toLocaleLowerCase(),
-    compactText: [
+    ].filter(Boolean).join(" ")),
+    compactText: foldCase([
       record6.id,
       record6.title,
       ...record6.aliases || []
-    ].filter(Boolean).join(" ").toLocaleLowerCase().replace(/\s+/g, "")
+    ].filter(Boolean).join(" ")).replace(/\s+/g, "")
   }));
   return {
     archivedModuleIds,
@@ -16406,7 +16425,7 @@ var ManifestStore = class {
       if (["completed", "archived", "dropped"].includes(String(row3.status || ""))) return false;
       if (!semesterIds.size) return row3.status === "enrolled";
       return semesterIds.has(String(row3.semester || ""));
-    }).sort((a, b) => String(a.title || a.id || "").localeCompare(String(b.title || b.id || "")));
+    }).sort((a, b) => compareStrings(String(a.title || a.id || ""), String(b.title || b.id || "")));
   }
   projects() {
     return this.rows("projects");
@@ -16423,7 +16442,7 @@ var ManifestStore = class {
     return ids2.map((id2) => this.get(id2)).find((row3) => row3?.type === "project") || null;
   }
   thematicGroups() {
-    return this.rows("thematic_groups").slice().sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || String(a.title || "").localeCompare(String(b.title || "")));
+    return this.rows("thematic_groups").slice().sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || compareStrings(String(a.title || ""), String(b.title || "")));
   }
   sources() {
     return this.of("source");
@@ -16509,7 +16528,7 @@ var ManifestStore = class {
     return (Array.isArray(rows) ? rows : []).filter((row3) => row3?.target?.id === targetId);
   }
   latestAiRequest(targetId) {
-    return this.aiRequestsForTarget(targetId).slice().sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")))[0] || null;
+    return this.aiRequestsForTarget(targetId).slice().sort((a, b) => compareStrings(String(b.created_at || ""), String(a.created_at || "")))[0] || null;
   }
   modulesFor(programId) {
     return this.modules().filter((row3) => row3.area_id === programId);
@@ -16585,7 +16604,7 @@ var ManifestStore = class {
     );
   }
   search(query, types = null) {
-    const words2 = String(query || "").toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const words2 = foldCase(String(query || "")).split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
     const documents = this.indexes.searchDocuments.filter(
       ({ record: record6 }) => !allowed || typeof record6.type === "string" && allowed.has(record6.type)

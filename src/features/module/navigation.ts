@@ -1,3 +1,4 @@
+import { foldCase } from "../../sorting";
 import type { ModuleNavigationHost } from './ports';
 import {
   button,
@@ -210,9 +211,7 @@ export function renderGroupList(
       .filter(nonNull);
 
     const needle =
-      view.query
-        .trim()
-        .toLocaleLowerCase();
+      foldCase(view.query.trim());
 
     const rows = all.filter(
       (module) => {
@@ -220,15 +219,14 @@ export function renderGroupList(
           return true;
         }
 
-        return [
+        return foldCase([
           module.title,
           module.code,
           module.kind,
           module.semester,
         ]
           .filter(Boolean)
-          .join(' ')
-          .toLocaleLowerCase()
+          .join(' '))
           .includes(needle);
       },
     );

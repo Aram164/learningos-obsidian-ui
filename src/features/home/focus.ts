@@ -1,3 +1,4 @@
+import { compareStrings } from '../../sorting';
 import type { HomeFocusHost } from './ports';
 import {
   button,
@@ -206,7 +207,8 @@ export function renderToday(
               )
               ?? '';
 
-            return leftDate.localeCompare(
+            return compareStrings(
+              leftDate,
               rightDate,
             );
           },

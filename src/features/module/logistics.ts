@@ -1,3 +1,4 @@
+import { compareStrings, foldCase } from '../../sorting';
 import type { ModuleLogisticsHost } from './ports';
 import {
   badge,
@@ -49,7 +50,7 @@ export function semesterLabel(value: string): string {
 }
 
 export function examinationLabel(value: string): string {
-  return EXAMINATION_LABELS[value.toLocaleLowerCase()]
+  return EXAMINATION_LABELS[foldCase(value)]
     ?? words(value);
 }
 
@@ -116,7 +117,8 @@ export function deadlinesFor(
         ),
       )
       .sort((a, b) =>
-        a.startDate.localeCompare(
+        compareStrings(
+          a.startDate,
           b.startDate,
         ),
       );

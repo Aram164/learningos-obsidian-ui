@@ -1,6 +1,8 @@
 import { test } from 'node:test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import assert from 'node:assert';
+import path from 'node:path';
+import ts from 'typescript';
 
 function runScripts(yml) {
     const lines = yml.split('\n');
@@ -37,4 +39,50 @@ test('UI CI policy', () => {
         'GitHub expressions must cross into run-shell steps through env, never interpolation',
     );
     assert.match(yml, /RESOLVED_CORE_REF:\s*\$\{\{ steps\.producer-ref\.outputs\.ref \}\}/);
+});
+
+// These two calls only format display prose; neither supplies a match/sort key.
+const displayCalls = new Map([
+    ['src/features/library/filters.ts', 'label.toLocaleLowerCase()'],
+    ['src/features/module/logistics.ts', 'normalized[0]!.toLocaleUpperCase()'],
+]);
+function localeCalls(filename, content) {
+    if (filename === 'src/sorting.ts') return [];
+    const source = ts.createSourceFile(filename, content, ts.ScriptTarget.Latest, true);
+    const violations = [];
+    function visit(node) {
+        if (ts.isCallExpression(node)) {
+            const member = node.expression;
+            const name = ts.isPropertyAccessExpression(member) ? member.name.text
+                : ts.isElementAccessExpression(member) && ts.isStringLiteral(member.argumentExpression)
+                    ? member.argumentExpression.text : '';
+            if (['localeCompare', 'toLocaleLowerCase', 'toLocaleUpperCase'].includes(name)
+                && node.getText(source) !== displayCalls.get(filename)) {
+                violations.push(node.getText(source));
+            }
+        }
+        ts.forEachChild(node, visit);
+    }
+    visit(source);
+    return violations;
+}
+
+test('locale policy detects comparisons, multiline calls and case conversion', () => {
+    for (const call of ['a.localeCompare(b)', 'a\n.localeCompare(\nb\n)',
+        'a.toLocaleLowerCase()', 'a.toLocaleUpperCase()', 'a["localeCompare"](b)']) {
+        assert.equal(localeCalls('src/example.ts', call).length, 1, call);
+    }
+});
+
+test('source code uses shared locale helpers', () => {
+    function check(dir) {
+        for (const entry of readdirSync(dir, { withFileTypes: true })) {
+            const filename = path.posix.join(dir, entry.name);
+            if (entry.isDirectory()) check(filename);
+            else if (entry.name.endsWith('.ts')) {
+                assert.deepEqual(localeCalls(filename, readFileSync(filename, 'utf8')), [], filename);
+            }
+        }
+    }
+    check('src');
 });

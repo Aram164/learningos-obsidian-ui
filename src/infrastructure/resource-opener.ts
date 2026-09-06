@@ -1,3 +1,4 @@
+import { foldCase } from '../sorting';
 import { shell } from 'electron';
 import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
@@ -101,7 +102,7 @@ export class ResourceOpener {
 
   private isCodePath(path: string): boolean {
     if (!fs.existsSync(path)) return false;
-    const extension = nodePath.extname(path).toLocaleLowerCase();
+    const extension = foldCase(nodePath.extname(path));
     return !extension || CODE_EXTENSIONS.has(extension);
   }
 
@@ -166,7 +167,7 @@ export class ResourceOpener {
   }
 
   openAuthoredPath(path: string): Promise<boolean | WorkspaceLeaf | undefined> | false {
-    const extension = nodePath.extname(path || '').toLocaleLowerCase();
+    const extension = foldCase(nodePath.extname(path || ''));
     if (['.md', '.pdf', '.canvas', '.base'].includes(extension)) return this.openVaultPath(path);
     const base = this.app.vault.adapter.getBasePath();
     const fullPath = nodePath.resolve(base, path || '');

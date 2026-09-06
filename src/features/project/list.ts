@@ -1,3 +1,4 @@
+import { foldCase } from "../../sorting";
 import type { ProjectListHost } from './ports';
 import {
   empty,
@@ -45,8 +46,7 @@ export function renderList(
     const draw = (): void => {
       results.empty();
 
-      const words = input.value
-        .toLocaleLowerCase()
+      const words = foldCase(input.value)
         .split(/\s+/)
         .filter(Boolean);
 
@@ -60,7 +60,7 @@ export function renderList(
               return false;
             }
 
-            const hay = [
+            const hay = foldCase([
               id,
               projectedString(project.title),
               projectedString(project.objective),
@@ -74,8 +74,7 @@ export function renderList(
                 ): value is string =>
                   Boolean(value),
               )
-              .join(' ')
-              .toLocaleLowerCase();
+              .join(' '));
 
             return words.every(
               (word: string) =>

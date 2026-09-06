@@ -1,3 +1,4 @@
+import { compareStrings } from '../../sorting';
 import type { HomeElsewhereHost } from './ports';
 import {
   button,
@@ -302,12 +303,7 @@ export function moduleNextAction(
             left: ProjectionRecord,
             right: ProjectionRecord,
           ) =>
-            view.nextWorkspaceDate(left)
-              .localeCompare(
-                view.nextWorkspaceDate(
-                  right,
-                ),
-              ),
+            compareStrings(view.nextWorkspaceDate(left), view.nextWorkspaceDate(right)),
         )[0];
 
     if (workspace?.next_action) {

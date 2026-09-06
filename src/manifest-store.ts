@@ -1,3 +1,4 @@
+import { compareStrings, foldCase } from './sorting';
 import { CONTRACT_VERSION } from './constants';
 import { assertManifest } from './contracts/manifest';
 import type {
@@ -167,19 +168,19 @@ function buildStoreIndexes(
 
   const searchDocuments = visibleRecords.map((record): SearchDocument => ({
     record,
-    strictText: [
+    strictText: foldCase([
       record.id,
       record.title,
       ...(record.aliases || []),
       ...(record.authors || []),
       record.organization,
       record.domain,
-    ].filter(Boolean).join(' ').toLocaleLowerCase(),
-    compactText: [
+    ].filter(Boolean).join(' ')),
+    compactText: foldCase([
       record.id,
       record.title,
       ...(record.aliases || []),
-    ].filter(Boolean).join(' ').toLocaleLowerCase().replace(/\s+/g, ''),
+    ].filter(Boolean).join(' ')).replace(/\s+/g, ''),
   }));
 
   return {
@@ -350,8 +351,7 @@ export class ManifestStore {
         if (!semesterIds.size) return row.status === 'enrolled';
         return semesterIds.has(String(row.semester || ''));
       })
-      .sort((a, b) => String(a.title || a.id || '')
-        .localeCompare(String(b.title || b.id || '')));
+      .sort((a, b) => compareStrings(String(a.title || a.id || ''), String(b.title || b.id || '')))
   }
   projects() { return this.rows('projects'); }
   projectRelationships(
@@ -371,7 +371,7 @@ export class ManifestStore {
   }
   thematicGroups() {
     return this.rows('thematic_groups').slice().sort((a, b) =>
-      Number(a.order || 0) - Number(b.order || 0) || String(a.title || '').localeCompare(String(b.title || '')));
+      Number(a.order || 0) - Number(b.order || 0) || compareStrings(String(a.title || ''), String(b.title || '')));
   }
   sources() { return this.of('source'); }
   topicPacks() {
@@ -450,7 +450,7 @@ export class ManifestStore {
   }
   latestAiRequest(targetId: string): ProjectionRecord | null {
     return this.aiRequestsForTarget(targetId)
-      .slice().sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')))[0] || null;
+      .slice().sort((a, b) => compareStrings(String(b.created_at || ''), String(a.created_at || '')))[0] || null;
   }
   modulesFor(programId: string): ProjectionRecord[] { return this.modules().filter((row) => row.area_id === programId); }
   unitsFor(
@@ -557,7 +557,7 @@ export class ManifestStore {
     query: string,
     types: readonly string[] | null = null,
   ): ProjectionRecord[] {
-    const words = String(query || '').toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const words = foldCase(String(query || '')).split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
     const documents = this.indexes.searchDocuments.filter(
       ({ record }) =>

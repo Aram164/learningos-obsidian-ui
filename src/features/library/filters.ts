@@ -1,3 +1,4 @@
+import { compareStrings, foldCase, upperCase } from '../../sorting';
 import type { LibraryFiltersHost } from './ports';
 import {
   button,
@@ -165,7 +166,7 @@ export function sourceFilterLabel(
       .replace(
         /\b\w/g,
         (letter) =>
-          letter.toLocaleUpperCase(),
+          upperCase(letter),
       );
   }
 
@@ -318,7 +319,8 @@ export function renderSourceBrowser(
                 );
 
               return (
-                leftLabel.localeCompare(
+                compareStrings(
+                  leftLabel,
                   rightLabel,
                 )
               );
@@ -417,9 +419,7 @@ export function renderSourceBrowser(
     }
 
     const words =
-      view.query
-        .trim()
-        .toLocaleLowerCase()
+      foldCase(view.query.trim())
         .split(/\s+/)
         .filter(Boolean);
 
@@ -434,7 +434,7 @@ export function renderSourceBrowser(
             return true;
           }
 
-          const hay = [
+          const hay = foldCase([
             source.id,
             source.title,
             source.summary,
@@ -446,7 +446,7 @@ export function renderSourceBrowser(
           ]
             .filter(Boolean)
             .join(' ')
-            .toLocaleLowerCase();
+          );
 
           return words.every(
             (word) =>
@@ -456,7 +456,8 @@ export function renderSourceBrowser(
       )
       .sort(
         (left, right) =>
-          left.title.localeCompare(
+          compareStrings(
+            left.title,
             right.title,
           ),
       );

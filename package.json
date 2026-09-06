@@ -23,7 +23,7 @@
     "test:manifest-store-indexes": "node tests/test-manifest-store-indexes.js",
     "test:atlas-graph": "node tests/test-atlas-graph.js",
     "test:live-app-check": "node tests/test-live-app-check.js",
-    "test:ci-policy": "node tests/test-ci-policy.js",
+    "test:ci-policy": "node tests/test-ci-policy.js && node tests/test-sorting.js",
     "check:live": "node scripts/check-live-app.mjs"
   },
   "devDependencies": {

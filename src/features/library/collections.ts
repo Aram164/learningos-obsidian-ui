@@ -1,3 +1,4 @@
+import { compareStrings } from '../../sorting';
 import type { LibraryCollectionsHost } from './ports';
 import {
   button,
@@ -530,7 +531,8 @@ export function renderLegacyList(
 
     rows.sort(
       (left, right) =>
-        left.title.localeCompare(
+        compareStrings(
+          left.title,
           right.title,
         ),
     );
