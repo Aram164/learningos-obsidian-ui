@@ -145,3 +145,5 @@ install. Override with `--node /absolute/path/to/node`.
 
 This repository has its own history and GitHub remote. Core and UI remain
 separate ownership layers; the core remains portable plain files and Git.
+
+Implementation handoff: [source navigation and the SaD L05 pilot](docs/source-navigation-replication.md), including host integration failure, gateway provenance, verification and safe repetition.
