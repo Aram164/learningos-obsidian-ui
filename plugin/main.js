@@ -1149,7 +1149,7 @@ function assertManifest(value) {
     "unit_material_syntheses",
     "units"
   ])) {
-    throw new TypeError("Manifest top-level keys do not match contract v8.");
+    throw new TypeError(`Manifest top-level keys do not match contract v${MANIFEST_CONTRACT_VERSION}.`);
   }
   const generated = value._generated;
   if (!exactKeys(generated, [
@@ -1163,7 +1163,7 @@ function assertManifest(value) {
     "source_revision",
     "warning"
   ])) {
-    throw new TypeError("Manifest _generated keys do not match contract v8.");
+    throw new TypeError(`Manifest _generated keys do not match contract v${MANIFEST_CONTRACT_VERSION}.`);
   }
   if (generated.contract_version !== MANIFEST_CONTRACT_VERSION) {
     throw new TypeError(
@@ -1176,7 +1176,7 @@ function assertManifest(value) {
     );
   }
   if (typeof generated.generated_at !== "string" || !nonEmptyText(generated.generator) || !sha256(generated.snapshot_id) || typeof generated.source_dirty !== "boolean" || typeof generated.source_fingerprint !== "string" || !/^[a-f0-9]{64}$/.test(generated.source_fingerprint) || !(generated.source_revision === null || typeof generated.source_revision === "string") || typeof generated.warning !== "string") {
-    throw new TypeError("Manifest _generated metadata does not match contract v8.");
+    throw new TypeError(`Manifest _generated metadata does not match contract v${MANIFEST_CONTRACT_VERSION}.`);
   }
   for (const key of [
     "academic_deadlines",
@@ -1348,7 +1348,7 @@ function assertManifest(value) {
     "workspace_to_modules",
     "workspace_to_units"
   ])) {
-    throw new TypeError("Manifest index keys do not match contract v8.");
+    throw new TypeError(`Manifest index keys do not match contract v${MANIFEST_CONTRACT_VERSION}.`);
   }
   for (const key of [
     "concept_to_units",
@@ -15035,7 +15035,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:a93eddfb1a9da31cfbc817040ec4fd0246cd881c6c320efa8dd346d951eca5e7" : "unavailable";
+  return true ? "sha256:bd8747bf2ec90fb7b4403c4a296d20b324d5b773d638f0511c7f2db8cba2b1cb" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 9 : 0;

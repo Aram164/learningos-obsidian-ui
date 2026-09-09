@@ -967,7 +967,7 @@ function routerPlugin(settings = {}) {
       return JSON.stringify(manifest);
     }));
     assert.equal(await store.load(), false);
-    assert.match(store.error, /top-level keys do not match contract v8/);
+    assert.match(store.error, /top-level keys do not match contract v9/);
     assert.deepEqual(store.units(), []);
   });
 

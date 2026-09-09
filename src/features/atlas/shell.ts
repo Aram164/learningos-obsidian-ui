@@ -33,7 +33,7 @@ import type { AtlasHost } from './ports';
  *
  * The screen opens on search and recently visited concepts, with the two
  * corpus lenses named beside them — not on the corpus, and not on a blank
- * canvas. Opening on a list of thirty-six bridges answers a question before it
+ * canvas. Opening on a list of every bridge answers a question before it
  * has been asked; opening on nothing asks the learner to re-supply context the
  * system already had.
  *

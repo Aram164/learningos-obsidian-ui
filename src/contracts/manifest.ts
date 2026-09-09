@@ -685,14 +685,14 @@ export function assertManifest(value: unknown): asserts value is Manifest {
     "review_items", "semesters", "stages", "study_maps", "thematic_groups",
     "topic_packs", "topics", "unit_material_syntheses", "units",
   ])) {
-    throw new TypeError("Manifest top-level keys do not match contract v8.");
+    throw new TypeError(`Manifest top-level keys do not match contract v${MANIFEST_CONTRACT_VERSION}.`);
   }
   const generated = value._generated;
   if (!exactKeys(generated, [
     "contract_version", "generated_at", "generator", "schema_sha256",
     "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning",
   ])) {
-    throw new TypeError("Manifest _generated keys do not match contract v8.");
+    throw new TypeError(`Manifest _generated keys do not match contract v${MANIFEST_CONTRACT_VERSION}.`);
   }
   if (generated.contract_version !== MANIFEST_CONTRACT_VERSION) {
     throw new TypeError(
@@ -712,7 +712,7 @@ export function assertManifest(value: unknown): asserts value is Manifest {
     || !/^[a-f0-9]{64}$/.test(generated.source_fingerprint)
     || !(generated.source_revision === null || typeof generated.source_revision === "string")
     || typeof generated.warning !== "string") {
-    throw new TypeError("Manifest _generated metadata does not match contract v8.");
+    throw new TypeError(`Manifest _generated metadata does not match contract v${MANIFEST_CONTRACT_VERSION}.`);
   }
 
   for (const key of [
@@ -886,7 +886,7 @@ export function assertManifest(value: unknown): asserts value is Manifest {
     "unit_to_material_synthesis", "unit_to_study_map", "workspace_to_modules",
     "workspace_to_units",
   ])) {
-    throw new TypeError("Manifest index keys do not match contract v8.");
+    throw new TypeError(`Manifest index keys do not match contract v${MANIFEST_CONTRACT_VERSION}.`);
   }
 
   for (const key of [
