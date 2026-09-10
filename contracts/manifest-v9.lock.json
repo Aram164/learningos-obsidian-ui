@@ -1,11 +1,27 @@
 {
   "_comment": [
-    "Mirror of Core manifest v10. Adds optional resource affordance: intervention, evidence, or mixed."
+    "MIRROR, not original. The manifest contract is declared by Core in",
+    "system/contracts/manifest-contract.yaml and enforced by Core itself.",
+    "",
+    "v9 adds atlas_question to every note record: the learner's own recorded",
+    "question against a concept or an authored relation (ADR-017). It is null",
+    "on a note that carries none. The field rides the note it is stored on",
+    "rather than becoming a second store, and it is published for the same",
+    "reason transcription and semantic_review are — an interface cannot show",
+    "a question it never receives.",
+    "",
+    "v8 published module_concept_edges — the Module x Concept crossing as",
+    "{module_id, concept_id, evidence} rows (ADR-015). Every edge carries the",
+    "explicit authored tag that licenses it; no concept is inferred.",
+    "",
+    "The UI fails closed unless both version and schema hash match the",
+    "producer lock. This lock must move in the same release as the producer",
+    "contract."
   ],
-  "contract_version": 10,
+  "contract_version": 9,
   "mirrors": "../repository/system/contracts/manifest-contract.yaml",
-  "schema_path": "system/contracts/manifest-v10.schema.json",
-  "schema_sha256": "sha256:65d07d67041f5ffc1bf7615d46805a22f5a15e8d083d484eecc5348ec86c9b7c",
+  "schema_path": "system/contracts/manifest-v9.schema.json",
+  "schema_sha256": "sha256:09f1b5d492a32d387cc942fe6c9ae5a17b48e5e3b02f325320c3070667642ddb",
   "top_level_keys": [
     "_generated",
     "academic_deadlines",

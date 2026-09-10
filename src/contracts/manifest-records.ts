@@ -1,7 +1,7 @@
 /**
  * Closed decoders for the heterogeneous records emitted by Manifest v8.
  *
- * These key sets mirror Core's `system/contracts/manifest-v10.schema.json`.
+ * These key sets mirror Core's `system/contracts/manifest-v9.schema.json`.
  * Keeping the checks here makes the permissive `ProjectionRecord` convenience
  * type safe to use after `assertManifest`: extension fields are available to
  * feature code, but an undeclared producer field cannot cross the read boundary.
@@ -592,9 +592,8 @@ function validResource(value: unknown): boolean {
   const source = row(value);
   return Boolean(source && exact(source, ['kind', 'label'], [
     'id', 'route_id', 'source_id', 'locator', 'angle', 'angle_detail', 'url',
-    'vault_path', 'scope_triage', 'material_uri', 'material_path', 'material_exists', 'affordance',
+    'vault_path', 'scope_triage', 'material_uri', 'material_path', 'material_exists',
   ]) && text(source.kind) && text(source.label) && optional(source, 'id', text)
-    && optional(source, 'affordance', (item) => values(item, ['intervention', 'evidence', 'mixed'] as const))
     && optional(source, 'route_id', (item) => identifier(item, 'route-'))
     && optional(source, 'source_id', text) && optional(source, 'locator', text)
     && optional(source, 'angle', text) && optional(source, 'angle_detail', text)
