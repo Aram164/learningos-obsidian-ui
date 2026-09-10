@@ -617,8 +617,9 @@ function validResource(value) {
     "scope_triage",
     "material_uri",
     "material_path",
-    "material_exists"
-  ]) && text(source.kind) && text(source.label) && optional(source, "id", text) && optional(source, "route_id", (item) => identifier(item, "route-")) && optional(source, "source_id", text) && optional(source, "locator", text) && optional(source, "angle", text) && optional(source, "angle_detail", text) && optional(source, "url", uri) && optional(source, "vault_path", text) && optional(source, "scope_triage", text) && optional(source, "material_uri", text) && optional(source, "material_path", text) && optional(source, "material_exists", (item) => typeof item === "boolean"));
+    "material_exists",
+    "affordance"
+  ]) && text(source.kind) && text(source.label) && optional(source, "id", text) && optional(source, "affordance", (item) => values(item, ["intervention", "evidence", "mixed"])) && optional(source, "route_id", (item) => identifier(item, "route-")) && optional(source, "source_id", text) && optional(source, "locator", text) && optional(source, "angle", text) && optional(source, "angle_detail", text) && optional(source, "url", uri) && optional(source, "vault_path", text) && optional(source, "scope_triage", text) && optional(source, "material_uri", text) && optional(source, "material_path", text) && optional(source, "material_exists", (item) => typeof item === "boolean"));
 }
 function validSourceFeedback(value) {
   const source = row(value);
@@ -971,8 +972,8 @@ function validProjectedRecord(value, validSynthesis) {
 }
 
 // src/contracts/manifest.ts
-var MANIFEST_CONTRACT_VERSION = 9;
-var MANIFEST_SCHEMA_SHA256 = "sha256:09f1b5d492a32d387cc942fe6c9ae5a17b48e5e3b02f325320c3070667642ddb";
+var MANIFEST_CONTRACT_VERSION = 10;
+var MANIFEST_SCHEMA_SHA256 = "sha256:65d07d67041f5ffc1bf7615d46805a22f5a15e8d083d484eecc5348ec86c9b7c";
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -15035,10 +15036,10 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:bd8747bf2ec90fb7b4403c4a296d20b324d5b773d638f0511c7f2db8cba2b1cb" : "unavailable";
+  return true ? "sha256:892c43be8e410c0a890fcb4c1b892ee6d49ddebf7fc67cd81096e616b6d1a846" : "unavailable";
 }
 function runtimeContractVersion() {
-  return true ? 9 : 0;
+  return true ? 10 : 0;
 }
 
 // src/gateway-client.ts

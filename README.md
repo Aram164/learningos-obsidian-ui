@@ -42,7 +42,7 @@ and code-only gates.
   that every non-declaration TypeScript source module is reachable from
   `src/main.ts`, the runtime graph is acyclic, and feature code does not depend
   on concrete view classes.
-- The app reads only atomic `generated/manifest.json` contract v9. It never
+- The app reads only atomic `generated/manifest.json` contract v10. It never
   parses canonical Markdown/YAML and remains useful when Python is offline.
   The contract is declared by the producer — core's
   `system/contracts/manifest-contract.yaml` — and the single

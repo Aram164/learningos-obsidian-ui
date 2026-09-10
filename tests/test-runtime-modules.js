@@ -960,6 +960,19 @@ function routerPlugin(settings = {}) {
     assert.match(String(draftRefusal(chain, duplicate)), /already authored/);
   });
 
+  await test('ManifestStore accepts declared resource affordances and rejects invented roles', async () => {
+    for (const affordance of ['intervention', 'evidence', 'mixed', 'mastery']) {
+      const store = new ManifestStore(manifestApp((text) => {
+        const manifest = JSON.parse(text);
+        const stage = manifest.stages.find((row) => row.resources?.length);
+        assert.ok(stage, 'fixture supplies an actual stage resource');
+        stage.resources[0].affordance = affordance;
+        return JSON.stringify(manifest);
+      }));
+      assert.equal(await store.load(), affordance !== 'mastery', affordance);
+    }
+  });
+
   await test('ManifestStore assertion rejects a missing required array', async () => {
     const store = new ManifestStore(manifestApp((text) => {
       const manifest = JSON.parse(text);
@@ -967,7 +980,7 @@ function routerPlugin(settings = {}) {
       return JSON.stringify(manifest);
     }));
     assert.equal(await store.load(), false);
-    assert.match(store.error, /top-level keys do not match contract v9/);
+    assert.match(store.error, new RegExp(`top-level keys do not match contract v${CONTRACT}`));
     assert.deepEqual(store.units(), []);
   });
 
