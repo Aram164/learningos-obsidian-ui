@@ -1480,7 +1480,10 @@ var PALETTES = [
   ["wine", "Wine \u2014 warm paper, berry brand (default)"],
   ["graphite", "Graphite \u2014 warm paper, no brand hue"],
   ["indigo", "Indigo \u2014 cool paper, blue-violet brand"],
-  ["ink", "Ink \u2014 dark canvas"]
+  ["ink", "Ink \u2014 dark, warm berry brand"],
+  ["midnight", "Midnight \u2014 dark navy, violet brand"],
+  ["slate", "Slate \u2014 dark blue-grey, cyan brand"],
+  ["carbon", "Carbon \u2014 dark near-black, no brand hue"]
 ];
 var KNOWN = new Set(PALETTES.map(([id2]) => id2));
 function normalizePalette(value) {
@@ -15091,7 +15094,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:8988d2049c779b544504fb74c8071c1eece72fac702a48b607fc12592d99d724" : "unavailable";
+  return true ? "sha256:69004b426ec821ca1857b3b9159d0ab5ce3b5f1eb7fef6ec381538301ce3119b" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 9 : 0;

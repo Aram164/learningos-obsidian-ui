@@ -133,3 +133,125 @@ body[data-los-palette="ink"] .los-root {
 
   --los-surface-raised: #252932;
 }
+
+/* ── Midnight — navy canvas, violet brand ─────────────────────────────────
+ * The first of the cool darks. Brand is violet rather than blue so it stays
+ * clear of the blue-grey that means "information": on a cool ground those
+ * two are the pair most at risk of reading as one signal. */
+body[data-los-palette="midnight"] .los-root {
+  --los-paper:          #0f1524;
+  --los-paper-2:        #161d30;
+  --los-paper-3:        #1b2339;
+  --los-ink:            #e9edf7;
+  --los-ink-soft:       #b3bdd3;
+  --los-ink-faint:      #a4aec7;
+  --los-rule:           #242e47;
+  --los-rule-strong:    #6e7a97;
+  --los-accent:         #b49bf0;
+  --los-accent-strong:  #c9b6f6;
+  --los-accent-soft:    #9a80d8;
+  --los-accent-wash:    #251f3d;
+  --los-st-active:      var(--los-success);
+  --los-st-ready:       var(--los-accent);
+  --los-st-attention:   var(--los-warning);
+  --los-st-paused:      #d8b877;
+  --los-st-done:        var(--los-success);
+  --los-st-shelve:      var(--los-info);
+
+  --los-sidebar:        #121828;
+  --los-selected:       #1f1b34;
+  --los-on-accent:      #0f1524;
+  --los-success:        #8fc6a4;
+  --los-success-strong: #aed8bd;
+  --los-success-wash:   #142418;
+  --los-info:           #8fb6d9;
+  --los-info-strong:    #b0cee9;
+  --los-info-wash:      #13202c;
+  --los-warning:        #d9b978;
+  --los-warning-strong: #e8ce98;
+  --los-warning-wash:   #2a2216;
+  --los-shadow-soft:    rgba(0, 0, 0, .40);
+  --los-surface-raised: #1c2438;
+}
+
+/* ── Slate — blue-grey canvas, cyan brand ─────────────────────────────────
+ * Cooler and flatter than Midnight. Because the brand is cyan, "information"
+ * moves off blue-grey onto periwinkle: the rule is that the brand must stay
+ * distinguishable from all three semantic hues, and here it is the semantic
+ * that yields, not the brand. */
+body[data-los-palette="slate"] .los-root {
+  --los-paper:          #151a1f;
+  --los-paper-2:        #1c232a;
+  --los-paper-3:        #212931;
+  --los-ink:            #e9eef3;
+  --los-ink-soft:       #b0bac5;
+  --los-ink-faint:      #a1abb8;
+  --los-rule:           #28313a;
+  --los-rule-strong:    #6f7c8a;
+  --los-accent:         #63cfd8;
+  --los-accent-strong:  #8adde4;
+  --los-accent-soft:    #4aaeb6;
+  --los-accent-wash:    #12292c;
+  --los-st-active:      var(--los-success);
+  --los-st-ready:       var(--los-accent);
+  --los-st-attention:   var(--los-warning);
+  --los-st-paused:      #d8b877;
+  --los-st-done:        var(--los-success);
+  --los-st-shelve:      var(--los-info);
+
+  --los-sidebar:        #181e24;
+  --los-selected:       #16282b;
+  --los-on-accent:      #151a1f;
+  --los-success:        #93c4a1;
+  --los-success-strong: #aed6ba;
+  --los-success-wash:   #1a2a20;
+  --los-info:           #a9b3e8;
+  --los-info-strong:    #c2c9f0;
+  --los-info-wash:      #1b1e33;
+  --los-warning:        #d9b978;
+  --los-warning-strong: #e8ce98;
+  --los-warning-wash:   #2b2318;
+  --los-shadow-soft:    rgba(0, 0, 0, .40);
+  --los-surface-raised: #222a33;
+}
+
+/* ── Carbon — near-black, cool cast, no brand hue ─────────────────────────
+ * Graphite's dark counterpart: the only hues on screen are the three that
+ * mean something. Decisive action is carried by a near-white fill, so it is
+ * the brightest thing on the page without being a fourth colour competing
+ * with sage, periwinkle-blue and amber. */
+body[data-los-palette="carbon"] .los-root {
+  --los-paper:          #141619;
+  --los-paper-2:        #1b1e22;
+  --los-paper-3:        #202429;
+  --los-ink:            #eceef1;
+  --los-ink-soft:       #b4b9c0;
+  --los-ink-faint:      #a5aab2;
+  --los-rule:           #272b31;
+  --los-rule-strong:    #737983;
+  --los-accent:         #d7dbe2;
+  --los-accent-strong:  #e8ebef;
+  --los-accent-soft:    #b6bbc4;
+  --los-accent-wash:    #24272c;
+  --los-st-active:      var(--los-success);
+  --los-st-ready:       var(--los-accent);
+  --los-st-attention:   var(--los-warning);
+  --los-st-paused:      #d8b877;
+  --los-st-done:        var(--los-success);
+  --los-st-shelve:      var(--los-info);
+
+  --los-sidebar:        #17191d;
+  --los-selected:       #22252a;
+  --los-on-accent:      #141619;
+  --los-success:        #93c4a1;
+  --los-success-strong: #aed6ba;
+  --los-success-wash:   #1e2a22;
+  --los-info:           #9fb6cf;
+  --los-info-strong:    #bacde1;
+  --los-info-wash:      #1d242e;
+  --los-warning:        #d9b978;
+  --los-warning-strong: #e8ce98;
+  --los-warning-wash:   #2c2418;
+  --los-shadow-soft:    rgba(0, 0, 0, .45);
+  --los-surface-raised: #212429;
+}

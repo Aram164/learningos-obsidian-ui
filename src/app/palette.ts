@@ -18,7 +18,10 @@ export const PALETTES = [
   ['wine', 'Wine — warm paper, berry brand (default)'],
   ['graphite', 'Graphite — warm paper, no brand hue'],
   ['indigo', 'Indigo — cool paper, blue-violet brand'],
-  ['ink', 'Ink — dark canvas'],
+  ['ink', 'Ink — dark, warm berry brand'],
+  ['midnight', 'Midnight — dark navy, violet brand'],
+  ['slate', 'Slate — dark blue-grey, cyan brand'],
+  ['carbon', 'Carbon — dark near-black, no brand hue'],
 ] as const;
 
 export type PaletteId = typeof PALETTES[number][0];
