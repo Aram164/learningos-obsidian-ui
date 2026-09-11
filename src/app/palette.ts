@@ -22,6 +22,7 @@ export const PALETTES = [
   ['midnight', 'Midnight — dark navy, violet brand'],
   ['slate', 'Slate — dark blue-grey, cyan brand'],
   ['carbon', 'Carbon — dark near-black, no brand hue'],
+  ['custom', 'Custom — your own, via a CSS snippet (not contrast-checked)'],
 ] as const;
 
 export type PaletteId = typeof PALETTES[number][0];
@@ -31,7 +32,15 @@ const KNOWN = new Set<string>(PALETTES.map(([id]) => id));
 /** 'wine' is the base palette in `00-tokens.css`, so it is the absence of the
  *  attribute rather than a value of it. An unrecognised id resolves to it too:
  *  a stale or hand-edited setting degrades to the default palette, never to an
- *  unstyled app. */
+ *  unstyled app.
+ *
+ *  'custom' is the opposite case: it is a real value that the plugin ships no
+ *  rules for. Selecting it sets the attribute and nothing else, so the base
+ *  palette still renders and a reader's own snippet is the only thing defining
+ *  `body[data-los-palette="custom"] .los-root`. That is deliberate — with no
+ *  plugin rule at that specificity there is no cascade tie to lose, and the
+ *  tokens stay overridable without `!important`. It is also outside the
+ *  contrast gate, which is why the label says so. */
 export function normalizePalette(value: unknown): PaletteId {
   return typeof value === 'string' && KNOWN.has(value)
     ? value as PaletteId

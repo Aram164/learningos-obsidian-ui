@@ -119,10 +119,20 @@
   --los-st-done:        var(--los-success);
   --los-st-shelve:      var(--los-info);
 
-  /* The host's dark view rule has the same cascade weight as `.los-root`, so
-     restate the intended daylight application surface explicitly. */
-  background: var(--los-paper) !important;
-  color: var(--los-ink) !important;
+}
+
+/* The host's dark view rule has the same cascade weight as `.los-root`, so the
+ * application surface has to out-specify it. The doubled class is exactly one
+ * step of specificity and nothing more.
+ *
+ * This used to be `!important`, which won the same argument but also blocked
+ * the one override that should always win: a reader's own CSS snippet. Obsidian's
+ * styling guidance says as much — `!important` in a plugin is what makes a
+ * snippet unable to fix it. Kept out of the token block above so that block
+ * stays exactly a palette: tokens, no declarations. */
+.theme-dark .los-root.los-root {
+  background: var(--los-paper);
+  color: var(--los-ink);
 }
 
 .los-root *, .los-root *::before, .los-root *::after { box-sizing: border-box; }
@@ -4052,3 +4062,28 @@ body[data-los-palette="carbon"] .los-root {
   --los-shadow-soft:    rgba(0, 0, 0, .45);
   --los-surface-raised: #212429;
 }
+
+/* ── Custom — the reader's own, defined outside this file ─────────────────
+ * Selecting "Custom" sets `data-los-palette="custom"` and the plugin ships no
+ * rules for it, so the base palette renders until a CSS snippet says otherwise
+ * (Settings → Appearance → CSS snippets). Because nothing here declares those
+ * tokens, a snippet is the only rule at that specificity and needs no
+ * `!important` to win:
+ *
+ *   body[data-los-palette="custom"] .los-root {
+ *     --los-paper:     <canvas>;
+ *     --los-paper-2:   <surface>;
+ *     --los-ink:       <body text>;
+ *     --los-accent:    <brand>;
+ *     --los-on-accent: <text that sits on the brand fill>;
+ *     ...
+ *   }
+ *
+ * (Written with placeholders rather than literal values on purpose: raw colour
+ * is legal in this file only inside a palette block, and the gate that enforces
+ * that reads the file as text, comments included.)
+ *
+ * Nothing checks a custom palette's contrast. Every scheme above clears its
+ * WCAG pairs before it can ship; this one is the deliberate exception, and the
+ * dropdown label says so rather than letting the gate look wider than it is.
+ * `src/styles/00-tokens.css` lists every token worth setting. */

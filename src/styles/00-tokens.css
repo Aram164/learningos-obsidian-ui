@@ -117,10 +117,20 @@
   --los-st-done:        var(--los-success);
   --los-st-shelve:      var(--los-info);
 
-  /* The host's dark view rule has the same cascade weight as `.los-root`, so
-     restate the intended daylight application surface explicitly. */
-  background: var(--los-paper) !important;
-  color: var(--los-ink) !important;
+}
+
+/* The host's dark view rule has the same cascade weight as `.los-root`, so the
+ * application surface has to out-specify it. The doubled class is exactly one
+ * step of specificity and nothing more.
+ *
+ * This used to be `!important`, which won the same argument but also blocked
+ * the one override that should always win: a reader's own CSS snippet. Obsidian's
+ * styling guidance says as much — `!important` in a plugin is what makes a
+ * snippet unable to fix it. Kept out of the token block above so that block
+ * stays exactly a palette: tokens, no declarations. */
+.theme-dark .los-root.los-root {
+  background: var(--los-paper);
+  color: var(--los-ink);
 }
 
 .los-root *, .los-root *::before, .los-root *::after { box-sizing: border-box; }

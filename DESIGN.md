@@ -21,13 +21,45 @@ The interface carries usability while the core carries meaning.
 
    The constraint the old rule was protecting is unchanged and still binding:
    **no component may name a colour.** Every rule refers to a token, colour is
-   defined in exactly two blocks (light, and `.theme-dark`), and both are
+   defined only in palette blocks, and every one of them is
    contrast-checked — body text 16.5:1, secondary text 5.0:1, muted text 4.5:1,
    brand fill 9.7:1, completion fill 8.0:1, information 6.1:1, attention 6.3:1,
    and reversible choice 8.6:1. Wine remains the brand action; sage is reserved
    for commit/apply, slate for opening information, amber for attention, and
    blush for reversible selection. Colour never carries meaning alone: every
    state and action also has a text label.
+2a. **Schemes are palette swaps; meaning does not move.** Amends principle 2,
+   2026-09-11. Colour now lives in more than two blocks: the base palette in
+   `00-tokens.css`, the `.theme-dark` restatement beside it, and one block per
+   selectable scheme in `25-palettes.css` (Graphite, Indigo, Ink, Midnight,
+   Slate, Carbon). The reader chooses in Settings → LearningOS UI.
+
+   Three rules keep this from becoming the drift principle 2 exists to prevent:
+
+   - **A scheme may vary canvas and brand only.** The light schemes do not
+     touch `--los-success`, `--los-info` or `--los-warning`: sage still means
+     applied, slate information, amber attention. A skin the reader picks must
+     not change what a colour *means*. The dark schemes restate the semantics
+     because a wash is a tinted panel, and on a dark ground a tinted panel is
+     darker than the canvas rather than lighter — but they keep the same
+     assignments.
+   - **The brand must stay distinguishable from all three semantic hues**, so
+     decisive action is never mistaken for applied, information, or attention.
+     That is why there is no green or amber scheme: Graphite and Carbon solve
+     it by having no brand hue at all, Indigo and Midnight by being far more
+     saturated than slate, and Slate by moving *information* onto periwinkle
+     rather than moving the brand.
+   - **Every scheme passes the same numeric gate** before it can ship — the
+     contrast pairs in `tests/dashboard/runtime-integrity.js`, which also
+     refuses a scheme declaring a token the others lack. The state hues are
+     checked as text (4.5:1), not only as dots (3:1), since a status word now
+     carries its tone.
+
+   `Custom` is the deliberate exception: it sets the attribute, ships no rules,
+   and is labelled as unchecked. A reader's CSS snippet is then the only rule
+   defining those tokens, so it needs no `!important` to win — which is also
+   why the dark-surface rule no longer uses one.
+
 3. **No orphan links or dumps.** Typed chips, cards and exact source actions
    show why a record matters in the current module/unit/stage.
 4. **One stage workspace at a time.** Stage rail, exact work, and scratch are
