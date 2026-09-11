@@ -202,6 +202,14 @@ declare module 'obsidian' {
     ): this;
   }
 
+  export interface DropdownComponent {
+    addOption(value: string, display: string): this;
+    setValue(value: string): this;
+    onChange(
+      callback: (value: string) => unknown,
+    ): this;
+  }
+
   export interface TextComponent {
     setValue(value: string): this;
     onChange(
@@ -287,6 +295,12 @@ declare module 'obsidian' {
     addToggle(
       callback: (
         component: ToggleComponent,
+      ) => unknown,
+    ): this;
+
+    addDropdown(
+      callback: (
+        component: DropdownComponent,
       ) => unknown,
     ): this;
 

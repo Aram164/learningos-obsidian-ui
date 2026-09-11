@@ -199,6 +199,24 @@ export function renderFocusedGraph(
   const columns = [...new Set(strictNodes.map((node) => node.column))]
     .sort((left, right) => left - right);
 
+  // Absence is absence. A root has no authored prerequisites; that is a fact
+  // about the registry, and calling it "foundational" would turn a gap in what
+  // has been written into a claim about the concept.
+  //
+  // It is emitted BEFORE the column loop because prerequisites are the
+  // leftmost lane (ADR-016 decision 1): arrows read prerequisite → dependent,
+  // so "left" means "comes first". Emitted after the loop it landed right of
+  // the focus, and the screen then said the opposite of what it means for
+  // exactly those concepts that have nothing before them.
+  if (!strictNodes.some((node) => node.direction === 'prerequisite')) {
+    const lane = lanes.createDiv({ cls: 'los-atlas-lane los-atlas-lane--prerequisite' });
+    lane.createDiv({ cls: 'los-atlas-lane-head los-micro', text: COLUMN_HEADINGS.prerequisite as string });
+    const card = lane.createDiv({ cls: 'los-atlas-absence' });
+    card.createDiv({ cls: 'los-atlas-absence-title', text: 'No authored prerequisites' });
+    card.createDiv({ cls: 'los-micro', text: 'Absence, not a claim that none exist.' });
+    renderRemainder(lane, host, view, view.beyond.prerequisites, 'prerequisite');
+  }
+
   for (const column of columns) {
     const nodes = strictNodes.filter((node) => node.column === column);
     const first = nodes[0];
@@ -221,18 +239,6 @@ export function renderFocusedGraph(
     if (column === Math.max(...columns) && column > 0) {
       renderRemainder(lane, host, view, view.beyond.dependents, 'dependent');
     }
-  }
-
-  // Absence is absence. A root has no authored prerequisites; that is a fact
-  // about the registry, and calling it "foundational" would turn a gap in what
-  // has been written into a claim about the concept.
-  if (!strictNodes.some((node) => node.direction === 'prerequisite')) {
-    const lane = lanes.createDiv({ cls: 'los-atlas-lane los-atlas-lane--prerequisite' });
-    lane.createDiv({ cls: 'los-atlas-lane-head los-micro', text: COLUMN_HEADINGS.prerequisite as string });
-    const card = lane.createDiv({ cls: 'los-atlas-absence' });
-    card.createDiv({ cls: 'los-atlas-absence-title', text: 'No authored prerequisites' });
-    card.createDiv({ cls: 'los-micro', text: 'Absence, not a claim that none exist.' });
-    renderRemainder(lane, host, view, view.beyond.prerequisites, 'prerequisite');
   }
 
   if (!strictNodes.some((node) => node.direction === 'dependent')) {

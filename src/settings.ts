@@ -5,6 +5,7 @@ import {
   Setting,
   type App,
   type ButtonComponent,
+  type DropdownComponent,
   type Plugin,
   type TextComponent,
   type ToggleComponent,
@@ -15,6 +16,7 @@ import type { SessionReviewV1 } from './contracts/gateway-v1';
 import type { AppSurface } from './app/surface';
 import type { AppNavigator } from './app/navigator';
 import { makeModalAccessible } from './accessibility/modal';
+import { applyPalette, PALETTES } from './app/palette';
 
 type ToggleSettingKey =
   | 'openHomeOnStartup'
@@ -84,6 +86,24 @@ export class LearningOSSettingsTab extends PluginSettingTab {
         }),
       );
     }
+    new Setting(root).setName('Colour scheme')
+      .setDesc(
+        'Changes the palette only. Sage still means applied, slate information '
+        + 'and amber attention in every scheme, and each one is held to the same '
+        + 'contrast floor. Ink is a dark canvas; the others keep the daylight surface.',
+      )
+      .addDropdown((dropdown: DropdownComponent) => {
+        for (const [id, label] of PALETTES) dropdown.addOption(id, label);
+        return dropdown
+          .setValue(this.plugin.settings.palette)
+          .onChange(async (value: string) => {
+            // Apply first so the choice is visible while the write happens,
+            // and store what was actually applied rather than what was asked
+            // for — an unknown id resolves to the default palette.
+            this.plugin.settings.palette = applyPalette(document.body, value);
+            await this.plugin.persistSettings();
+          });
+      });
     new Setting(root).setName('Python interpreter')
       .setDesc('Leave blank to auto-detect: the project virtual environment, then the system Python.')
       .addText((text: TextComponent) => text

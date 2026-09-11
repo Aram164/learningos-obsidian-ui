@@ -16,6 +16,7 @@ import {
   VIEW_UNIT,
 } from '../constants';
 import type { AppSurface } from './surface';
+import { applyPalette, clearPalette } from './palette';
 import { LearningOSSettingsTab } from '../settings';
 import { AtlasView } from '../views/atlas-view';
 import { BoundaryView } from '../views/boundary-view';
@@ -89,6 +90,8 @@ export function registerApplication(plugin: ApplicationPlugin): void {
   plugin.addCommand({ id: 'rebuild-projection', name: 'Validate and rebuild projection', callback: () => plugin.generate() });
   plugin.addCommand({ id: 'end-learning-session', name: 'End learning session safely', callback: () => plugin.reviewSessionEnd() });
 
+  applyPalette(document.body, plugin.settings.palette);
+
   plugin.app.workspace.onLayoutReady(async () => {
     detachLegacyViews(plugin);
     await plugin.router.openNavigator();
@@ -99,5 +102,6 @@ export function registerApplication(plugin: ApplicationPlugin): void {
 }
 
 export function detachApplication(plugin: ApplicationPlugin): void {
+  clearPalette(document.body);
   for (const type of APPLICATION_VIEW_TYPES) plugin.app.workspace.detachLeavesOfType(type);
 }

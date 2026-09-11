@@ -1439,6 +1439,13 @@ var DEFAULT_SETTINGS = {
    * something they were already working on rather than at a blank canvas.
    */
   atlasRecentConcepts: [],
+  /**
+   * Selected colour scheme. 'wine' is the base palette in 00-tokens.css and
+   * sets no attribute; every other value is applied as `data-los-palette` on
+   * `document.body` and swaps the root tokens in 25-palettes.css. An unknown
+   * value falls back to 'wine' rather than leaving the app unstyled.
+   */
+  palette: "wine",
   pythonPath: "",
   preferredAiProvider: "manual-bundle",
   /**
@@ -1467,6 +1474,27 @@ var ICONS = {
   "topic-pack": "notebook-tabs",
   atlas: "map"
 };
+
+// src/app/palette.ts
+var PALETTES = [
+  ["wine", "Wine \u2014 warm paper, berry brand (default)"],
+  ["graphite", "Graphite \u2014 warm paper, no brand hue"],
+  ["indigo", "Indigo \u2014 cool paper, blue-violet brand"],
+  ["ink", "Ink \u2014 dark canvas"]
+];
+var KNOWN = new Set(PALETTES.map(([id2]) => id2));
+function normalizePalette(value) {
+  return typeof value === "string" && KNOWN.has(value) ? value : "wine";
+}
+function applyPalette(body, value) {
+  const palette = normalizePalette(value);
+  if (palette === "wine") body.removeAttribute("data-los-palette");
+  else body.setAttribute("data-los-palette", palette);
+  return palette;
+}
+function clearPalette(body) {
+  body.removeAttribute("data-los-palette");
+}
 
 // src/settings.ts
 var import_obsidian2 = require("obsidian");
@@ -1917,6 +1945,15 @@ var LearningOSSettingsTab = class extends import_obsidian2.PluginSettingTab {
         )
       );
     }
+    new import_obsidian2.Setting(root).setName("Colour scheme").setDesc(
+      "Changes the palette only. Sage still means applied, slate information and amber attention in every scheme, and each one is held to the same contrast floor. Ink is a dark canvas; the others keep the daylight surface."
+    ).addDropdown((dropdown) => {
+      for (const [id2, label] of PALETTES) dropdown.addOption(id2, label);
+      return dropdown.setValue(this.plugin.settings.palette).onChange(async (value) => {
+        this.plugin.settings.palette = applyPalette(document.body, value);
+        await this.plugin.persistSettings();
+      });
+    });
     new import_obsidian2.Setting(root).setName("Python interpreter").setDesc("Leave blank to auto-detect: the project virtual environment, then the system Python.").addText((text5) => text5.setValue(this.plugin.settings.pythonPath || "").onChange(async (value) => {
       this.plugin.settings.pythonPath = value.trim();
       await this.plugin.persistSettings();
@@ -2900,6 +2937,14 @@ function renderFocusedGraph(parent, host, graph, view) {
   enableButtonGroupKeyboardNavigation(lanes, "both");
   const strictNodes = view.nodes.filter((node) => node.direction !== "related");
   const columns = [...new Set(strictNodes.map((node) => node.column))].sort((left, right) => left - right);
+  if (!strictNodes.some((node) => node.direction === "prerequisite")) {
+    const lane = lanes.createDiv({ cls: "los-atlas-lane los-atlas-lane--prerequisite" });
+    lane.createDiv({ cls: "los-atlas-lane-head los-micro", text: COLUMN_HEADINGS.prerequisite });
+    const card = lane.createDiv({ cls: "los-atlas-absence" });
+    card.createDiv({ cls: "los-atlas-absence-title", text: "No authored prerequisites" });
+    card.createDiv({ cls: "los-micro", text: "Absence, not a claim that none exist." });
+    renderRemainder(lane, host, view, view.beyond.prerequisites, "prerequisite");
+  }
   for (const column of columns) {
     const nodes = strictNodes.filter((node) => node.column === column);
     const first = nodes[0];
@@ -2917,14 +2962,6 @@ function renderFocusedGraph(parent, host, graph, view) {
     if (column === Math.max(...columns) && column > 0) {
       renderRemainder(lane, host, view, view.beyond.dependents, "dependent");
     }
-  }
-  if (!strictNodes.some((node) => node.direction === "prerequisite")) {
-    const lane = lanes.createDiv({ cls: "los-atlas-lane los-atlas-lane--prerequisite" });
-    lane.createDiv({ cls: "los-atlas-lane-head los-micro", text: COLUMN_HEADINGS.prerequisite });
-    const card = lane.createDiv({ cls: "los-atlas-absence" });
-    card.createDiv({ cls: "los-atlas-absence-title", text: "No authored prerequisites" });
-    card.createDiv({ cls: "los-micro", text: "Absence, not a claim that none exist." });
-    renderRemainder(lane, host, view, view.beyond.prerequisites, "prerequisite");
   }
   if (!strictNodes.some((node) => node.direction === "dependent")) {
     const lane = lanes.createDiv({ cls: "los-atlas-lane los-atlas-lane--dependent" });
@@ -14091,6 +14128,7 @@ function registerApplication(plugin) {
   plugin.addCommand({ id: "open-diagnostics", name: "Open Diagnostics", callback: () => plugin.nav.openDiagnostics() });
   plugin.addCommand({ id: "rebuild-projection", name: "Validate and rebuild projection", callback: () => plugin.generate() });
   plugin.addCommand({ id: "end-learning-session", name: "End learning session safely", callback: () => plugin.reviewSessionEnd() });
+  applyPalette(document.body, plugin.settings.palette);
   plugin.app.workspace.onLayoutReady(async () => {
     detachLegacyViews(plugin);
     await plugin.router.openNavigator();
@@ -14100,6 +14138,7 @@ function registerApplication(plugin) {
   });
 }
 function detachApplication(plugin) {
+  clearPalette(document.body);
   for (const type of APPLICATION_VIEW_TYPES) plugin.app.workspace.detachLeavesOfType(type);
 }
 
@@ -15035,7 +15074,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:bd8747bf2ec90fb7b4403c4a296d20b324d5b773d638f0511c7f2db8cba2b1cb" : "unavailable";
+  return true ? "sha256:7d135d17db7c7b368b790b9fff47c2a9ceaa5c66c6cfb8eab0210a01f784bff6" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 9 : 0;

@@ -21,7 +21,7 @@ const {
 
 function paletteBlocks(css) {
   return [...css.matchAll(
-    /(?:^|\n)(\.los-root|\.theme-dark \.los-root)\s*\{([\s\S]*?)\n\}/g,
+    /(?:^|\n)((?:body\[data-los-palette="[a-z]+"\] )?(?:\.theme-dark )?\.los-root)\s*\{([\s\S]*?)\n\}/g,
   )].map((match) => ({
     selector: match[1],
     tokens: new Map([...match[2].matchAll(
@@ -465,8 +465,12 @@ module.exports = async function run() {
      * colour, and light/dark must not drift apart — is stronger here: raw colour
      * is legal ONLY inside the two token blocks, and both must define the same
      * token names. */
+    /* Selectable schemes (25-palettes.css) are palette blocks too: raw colour
+     * is legal inside one and nowhere else, and every one of them must declare
+     * the same token names, so a scheme cannot ship with a token the others
+     * have and it lacks. */
     const tokenBlocks = css.match(
-      /(?:^|\n)(?:\.theme-dark )?\.los-root \{[\s\S]*?\n\}/g) || [];
+      /(?:^|\n)(?:body\[data-los-palette="[a-z]+"\] )?(?:\.theme-dark )?\.los-root \{[\s\S]*?\n\}/g) || [];
     const cssOutsideTokens = tokenBlocks.reduce(
       (rest, block) => rest.replace(block, ''), css);
     const tokenNames = tokenBlocks.map((block) =>
@@ -483,22 +487,35 @@ module.exports = async function run() {
       (cssOutsideTokens.match(
         /var\(--(?:color|text|background|interactive)[a-z0-9-]*\)/g) || [])
         .length === 0);
-    check('light and dark define the same palette tokens',
-      tokenBlocks.length === 2
+    check('every palette defines the same tokens',
+      tokenBlocks.length >= 2
       && tokenNames[0].length > 0
-      && tokenNames[0] === tokenNames[1]);
+      && tokenNames.every((names) => names === tokenNames[0]),
+      `${tokenBlocks.length} palette block(s)`);
     const paletteSource = fs.readFileSync(
       path.join(ROOT, 'src', 'styles', '00-tokens.css'), 'utf8');
     const parsedPalettes = paletteBlocks(paletteSource);
     const lightPalette = parsedPalettes.find((block) => block.selector === '.los-root');
     const darkOverrides = parsedPalettes.find(
       (block) => block.selector === '.theme-dark .los-root');
+    /* A scheme states only what it changes, so each one is checked as the base
+     * palette with its own overrides laid over it — which is exactly how the
+     * cascade resolves it at runtime. */
+    const schemeSource = fs.readFileSync(
+      path.join(ROOT, 'src', 'styles', '25-palettes.css'), 'utf8');
+    const overrideBlocks = [
+      ...(darkOverrides ? [{ name: 'dark', tokens: darkOverrides.tokens }] : []),
+      ...paletteBlocks(schemeSource).map((block) => ({
+        name: (block.selector.match(/palette="([a-z]+)"/) || [])[1] || block.selector,
+        tokens: block.tokens,
+      })),
+    ];
     const palettes = lightPalette && darkOverrides ? [
       { name: 'light', tokens: new Map(lightPalette.tokens) },
-      {
-        name: 'dark',
-        tokens: new Map([...lightPalette.tokens, ...darkOverrides.tokens]),
-      },
+      ...overrideBlocks.map((override) => ({
+        name: override.name,
+        tokens: new Map([...lightPalette.tokens, ...override.tokens]),
+      })),
     ] : [];
     const normalTextPairs = [
       ['--los-ink', '--los-paper'],
@@ -546,8 +563,8 @@ module.exports = async function run() {
         }
       }
     }
-    check('light and dark palette pairs meet numeric WCAG 2.2 AA contrast',
-      palettes.length === 2 && contrastFailures.length === 0,
+    check('every selectable palette meets numeric WCAG 2.2 AA contrast',
+      palettes.length >= 2 && contrastFailures.length === 0,
       contrastFailures.join('; '));
     check('narrow-screen workspace is responsive', css.includes('.los-unit-layout') && css.includes('@media (max-width: 720px)'));
     check('button-like components are insulated from Obsidian theme distortion',
