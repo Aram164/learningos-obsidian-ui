@@ -1610,6 +1610,23 @@ function button(parent, label, onClick, variant = "") {
 function badge(parent, text5, variant = "") {
   return parent.createSpan({ cls: `los-badge ${variant ? `los-badge--${variant}` : ""}`, text: text5 });
 }
+var STATUS_TONES = {
+  active: "active",
+  enrolled: "active",
+  "in-progress": "active",
+  complete: "complete",
+  completed: "complete",
+  passed: "complete",
+  paused: "paused",
+  "on-hold": "paused",
+  "awaiting-grade": "attention",
+  blocked: "attention"
+};
+function statusTone(status) {
+  const key = String(status ?? "").trim().toLowerCase();
+  const tone = STATUS_TONES[key];
+  return tone ? `los-status los-status--${tone}` : "los-status";
+}
 function chip(parent, record6, onClick) {
   const el = parent.createEl("button", {
     cls: `los-chip los-t-${record6?.type || "record"} is-clickable`,
@@ -9330,15 +9347,15 @@ var ProgramView = class extends import_obsidian11.ItemView {
         module2.examination.type,
         80
       ) : "";
-      const meta = [
-        projectedExcerpt(module2.status, 60),
+      const status = projectedExcerpt(module2.status, 60);
+      const rest = [
         module2.credits ? `${projectedExcerpt(module2.credits, 20)} LP` : "",
         examination
       ].filter(Boolean).join(" \xB7 ");
-      row3.createDiv({
-        cls: "los-learning-meta los-micro",
-        text: meta
-      });
+      const metaRow = row3.createDiv({ cls: "los-learning-meta los-micro" });
+      if (status) metaRow.createSpan({ cls: statusTone(module2.status), text: status });
+      if (status && rest) metaRow.createSpan({ text: " \xB7 " });
+      if (rest) metaRow.createSpan({ text: rest });
     }
     if (Boolean(program.semester_bound)) {
       const semesters2 = disclosure(root, "Semesters");
@@ -15074,7 +15091,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:7d135d17db7c7b368b790b9fff47c2a9ceaa5c66c6cfb8eab0210a01f784bff6" : "unavailable";
+  return true ? "sha256:8988d2049c779b544504fb74c8071c1eece72fac702a48b607fc12592d99d724" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 9 : 0;

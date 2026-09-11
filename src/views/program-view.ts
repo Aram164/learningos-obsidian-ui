@@ -8,6 +8,7 @@ import {
   pageHeader,
   projectedExcerpt,
   section,
+  statusTone,
   unitCard,
 } from '../components';
 import { LEARN_AREAS, VIEW_PROGRAM } from '../constants';
@@ -327,8 +328,8 @@ export class ProgramView extends ItemView {
         )
         : '';
 
-      const meta = [
-        projectedExcerpt(module.status, 60),
+      const status = projectedExcerpt(module.status, 60);
+      const rest = [
         module.credits
           ? `${projectedExcerpt(module.credits, 20)} LP`
           : '',
@@ -337,10 +338,13 @@ export class ProgramView extends ItemView {
         .filter(Boolean)
         .join(' · ');
 
-      row.createDiv({
-        cls: 'los-learning-meta los-micro',
-        text: meta,
-      });
+      // The status is its own element rather than one segment of a joined
+      // string, so it can carry its tone while the rest of the line stays
+      // muted. Both halves are still plain words in reading order.
+      const metaRow = row.createDiv({ cls: 'los-learning-meta los-micro' });
+      if (status) metaRow.createSpan({ cls: statusTone(module.status), text: status });
+      if (status && rest) metaRow.createSpan({ text: ' · ' });
+      if (rest) metaRow.createSpan({ text: rest });
     }
 
     if (Boolean(program.semester_bound)) {

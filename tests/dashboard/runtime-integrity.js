@@ -535,6 +535,14 @@ module.exports = async function run() {
       ['--los-success-strong', '--los-success-wash'],
       ['--los-info-strong', '--los-info-wash'],
       ['--los-warning-strong', '--los-warning-wash'],
+      /* Status words are text, so the state hues have to clear the text floor
+       * on every palette — not just the 3:1 non-text floor they met as dots. */
+      ['--los-st-active', '--los-paper'],
+      ['--los-st-active', '--los-paper-2'],
+      ['--los-st-done', '--los-paper'],
+      ['--los-st-paused', '--los-paper'],
+      ['--los-st-paused', '--los-paper-2'],
+      ['--los-st-attention', '--los-paper'],
     ];
     const nonTextPairs = [
       ['--los-line', '--los-paper'],

@@ -95,6 +95,18 @@
 /* Title and sub-line together, so a long title wraps instead of shoving the badge off the row. */
 .los-card-copy { min-width: 0; }
 .los-card p { margin: var(--los-2) 0; color: var(--los-ink-soft); }
+/* A status word that also carries its state. The word is the signal and is
+ * always present; the tone only reinforces it, so nothing is lost to a reader
+ * who cannot separate these hues (DESIGN.md principle 2). `.los-status` with
+ * no modifier is the inert case — planned, dropped, archived — which stays
+ * muted on purpose: a hue there would read as a verdict on a decision that
+ * was simply made. Every tone is checked as text against every palette. */
+.los-status { color: var(--los-ink-soft); }
+.los-status--active { color: var(--los-st-active); }
+.los-status--complete { color: var(--los-st-done); }
+.los-status--paused { color: var(--los-st-paused); }
+.los-status--attention { color: var(--los-st-attention); }
+
 .los-s-active::before { background: var(--los-st-active); }
 .los-s-ready::before { background: var(--los-st-ready); }
 .los-s-needs-map::before { background: var(--los-st-attention); }

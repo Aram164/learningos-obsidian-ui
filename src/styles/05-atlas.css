@@ -57,6 +57,12 @@
   gap: var(--los-1);
 }
 
+/* Search, modules and depth are one row. The module chips wrap inside their
+ * own block rather than pushing depth onto a line of its own, where a
+ * modifier reads as a separate section instead of as part of the query. */
+.los-atlas-modules { flex: 1 1 240px; }
+.los-atlas-depth { flex: 0 0 auto; }
+
 .los-atlas-module-chips {
   display: flex;
   gap: var(--los-1);

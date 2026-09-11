@@ -80,6 +80,35 @@ export function badge(
   return parent.createSpan({ cls: `los-badge ${variant ? `los-badge--${variant}` : ''}`, text });
 }
 
+/**
+ * The tone a status word carries, or none.
+ *
+ * The word is the signal; the tone only reinforces it, so a reader who cannot
+ * separate these hues loses nothing (DESIGN.md principle 2). States that are
+ * *inert* — planned, dropped, archived — deliberately get no tone: colouring
+ * them would read as a verdict on a decision that was simply made, and
+ * "dropped" is not a failure state the interface gets to editorialise.
+ */
+const STATUS_TONES: Readonly<Record<string, string>> = {
+  active: 'active',
+  enrolled: 'active',
+  'in-progress': 'active',
+  complete: 'complete',
+  completed: 'complete',
+  passed: 'complete',
+  paused: 'paused',
+  'on-hold': 'paused',
+  'awaiting-grade': 'attention',
+  blocked: 'attention',
+};
+
+/** Class for a status word, or '' when the status is unknown or inert. */
+export function statusTone(status: unknown): string {
+  const key = String(status ?? '').trim().toLowerCase();
+  const tone = STATUS_TONES[key];
+  return tone ? `los-status los-status--${tone}` : 'los-status';
+}
+
 export function chip(
   parent: UiNode,
   record: ProjectionRecord,
