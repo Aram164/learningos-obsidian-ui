@@ -1496,6 +1496,16 @@ function applyPalette(body, value) {
   else body.setAttribute("data-los-palette", palette);
   return palette;
 }
+function applyPaletteEverywhere(bodies, value) {
+  const palette = normalizePalette(value);
+  const seen = /* @__PURE__ */ new Set();
+  for (const body of bodies) {
+    if (!body || seen.has(body)) continue;
+    seen.add(body);
+    applyPalette(body, palette);
+  }
+  return palette;
+}
 function clearPalette(body) {
   body.removeAttribute("data-los-palette");
 }
@@ -1971,7 +1981,14 @@ var LearningOSSettingsTab = class extends import_obsidian2.PluginSettingTab {
     ).addDropdown((dropdown) => {
       for (const [id2, label] of PALETTES) dropdown.addOption(id2, label);
       return dropdown.setValue(this.plugin.settings.palette).onChange(async (value) => {
-        this.plugin.settings.palette = applyPalette(document.body, value);
+        this.plugin.settings.palette = applyPaletteEverywhere(
+          // The settings tab's own document is not necessarily the one the
+          // app is rendered into (Obsidian opens Settings in its own
+          // window), so name both rather than trusting whichever `document`
+          // this code happens to see.
+          [this.containerEl.ownerDocument?.body, document.body],
+          value
+        );
         await this.plugin.persistSettings();
       });
     });
@@ -14151,6 +14168,7 @@ function registerApplication(plugin) {
   plugin.addCommand({ id: "end-learning-session", name: "End learning session safely", callback: () => plugin.reviewSessionEnd() });
   applyPalette(document.body, plugin.settings.palette);
   plugin.app.workspace.onLayoutReady(async () => {
+    applyPalette(document.body, plugin.settings.palette);
     detachLegacyViews(plugin);
     await plugin.router.openNavigator();
     plugin.app.workspace.leftSplit?.setSize?.(280);
@@ -15095,7 +15113,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:51075457120091ea039c2987bbde8f264ebe1a6d09f63285e6548b667d4ebfb5" : "unavailable";
+  return true ? "sha256:d59e5c8d2e3193558745cd4dba24f13777e2d9b24084ab47b05f189b1613e5c3" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 9 : 0;

@@ -93,6 +93,11 @@ export function registerApplication(plugin: ApplicationPlugin): void {
   applyPalette(document.body, plugin.settings.palette);
 
   plugin.app.workspace.onLayoutReady(async () => {
+    // Applied again once the layout exists. The call above runs during
+    // registration, before any view is mounted; repeating it here costs one
+    // attribute write and removes a whole class of "the setting is saved but
+    // the screen never changed" that is otherwise invisible to a reader.
+    applyPalette(document.body, plugin.settings.palette);
     detachLegacyViews(plugin);
     await plugin.router.openNavigator();
     plugin.app.workspace.leftSplit?.setSize?.(280);

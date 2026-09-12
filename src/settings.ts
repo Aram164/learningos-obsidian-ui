@@ -16,7 +16,7 @@ import type { SessionReviewV1 } from './contracts/gateway-v1';
 import type { AppSurface } from './app/surface';
 import type { AppNavigator } from './app/navigator';
 import { makeModalAccessible } from './accessibility/modal';
-import { applyPalette, PALETTES } from './app/palette';
+import { applyPaletteEverywhere, PALETTES } from './app/palette';
 
 type ToggleSettingKey =
   | 'openHomeOnStartup'
@@ -100,7 +100,14 @@ export class LearningOSSettingsTab extends PluginSettingTab {
             // Apply first so the choice is visible while the write happens,
             // and store what was actually applied rather than what was asked
             // for — an unknown id resolves to the default palette.
-            this.plugin.settings.palette = applyPalette(document.body, value);
+            this.plugin.settings.palette = applyPaletteEverywhere(
+              // The settings tab's own document is not necessarily the one the
+              // app is rendered into (Obsidian opens Settings in its own
+              // window), so name both rather than trusting whichever `document`
+              // this code happens to see.
+              [this.containerEl.ownerDocument?.body, document.body],
+              value,
+            );
             await this.plugin.persistSettings();
           });
       });

@@ -54,6 +54,31 @@ export function applyPalette(body: HTMLElement, value: unknown): PaletteId {
   return palette;
 }
 
+/**
+ * Apply to every document that can host a `.los-root`, skipping what is not
+ * there.
+ *
+ * One `document` is not enough. Obsidian 1.13.7 opens Settings in a window of
+ * its own and supports popped-out leaves, so the body the dropdown can reach
+ * and the body the app is rendered into are not always the same element — and
+ * a scheme written to the wrong one persists correctly while appearing to do
+ * nothing at all. Callers pass every body they can name; duplicates are
+ * harmless because the write is idempotent.
+ */
+export function applyPaletteEverywhere(
+  bodies: Iterable<HTMLElement | null | undefined>,
+  value: unknown,
+): PaletteId {
+  const palette = normalizePalette(value);
+  const seen = new Set<HTMLElement>();
+  for (const body of bodies) {
+    if (!body || seen.has(body)) continue;
+    seen.add(body);
+    applyPalette(body, palette);
+  }
+  return palette;
+}
+
 /** Leave no trace in the host DOM when the plugin unloads. */
 export function clearPalette(body: HTMLElement): void {
   body.removeAttribute('data-los-palette');
