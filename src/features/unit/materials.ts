@@ -1,5 +1,5 @@
 import { groupBySource } from './source-browser';
-import { whyThisOne } from '../stage-resources';
+import { renderMaterialCautions, whyThisOne } from '../stage-resources';
 import { asText } from '../../projection/readers';
 import type { UnitMaterialsHost } from './ports';
 import { Notice } from 'obsidian';
@@ -155,6 +155,7 @@ export function renderMaterialOverview(
       });
 
       const fullDetail = asText(option.record.angle_detail);
+      renderMaterialCautions(copy, option.record);
 
       if (option.locator) {
         copy.createDiv({

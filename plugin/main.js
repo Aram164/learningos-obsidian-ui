@@ -842,6 +842,10 @@ function validProjectedUnit(value) {
     "related_module_ids"
   ]) && identifier(source.id, "unit-") && source.type === "unit" && identifier(source.module_id, "module-") && optional(source, "component_id", text) && text(source.kind) && text(source.title) && natural(source.order) && text(source.scope) && text(source.status) && natural(source.revision) && text(source.path) && typeof source.needs_study_map === "boolean" && text(source.notes_text) && nullable(source.notes_updated, text) && strings(source.project_ids, true) && validUnitArtifacts(source.artifacts) && strings(source.workspace_ids) && list(source.source_selections, validSourceSelection) && list(source.scope_sources, validScopeSource) && list(source.note_sections, validUnitNoteSection) && optional(source, "knowledge_map", validKnowledgeMap) && optional(source, "current_study_map", text) && optional(source, "working_note", text) && optional(source, "parent_unit_id", text) && optional(source, "child_unit_ids", strings) && optional(source, "related_module_ids", strings));
 }
+function validRequiredAsset(value) {
+  const source = row(value);
+  return Boolean(source && exact(source, ["name"], ["material_uri", "needed_for", "obtain_from"]) && nonEmpty(source.name) && optional(source, "material_uri", (v) => text(v) && String(v).startsWith("material://")) && optional(source, "needed_for", nonEmpty) && optional(source, "obtain_from", nonEmpty));
+}
 function validProjectedRoute(value) {
   const source = row(value);
   return Boolean(source && exact(source, [
@@ -861,8 +865,10 @@ function validProjectedRoute(value) {
     "vault_path",
     "material_uri",
     "material_path",
-    "material_exists"
-  ]) && identifier(source.id, "route-") && identifier(source.unit_id, "unit-") && identifier(source.source_id, "source-") && nonEmpty(source.title) && nonEmpty(source.format) && nonEmpty(source.angle) && Array.isArray(source.covers) && source.covers.length > 0 && ids(source.covers, "knowledge-") && nonEmpty(source.depth) && nonEmpty(source.scope) && optional(source, "angle_detail", nonEmpty) && optional(source, "locator", text) && optional(source, "url", uri) && optional(source, "vault_path", text) && optional(source, "material_uri", text) && optional(source, "material_path", text) && optional(source, "material_exists", (item) => typeof item === "boolean"));
+    "material_exists",
+    "requires_assets",
+    "exposes_solutions_for"
+  ]) && identifier(source.id, "route-") && identifier(source.unit_id, "unit-") && identifier(source.source_id, "source-") && nonEmpty(source.title) && nonEmpty(source.format) && nonEmpty(source.angle) && Array.isArray(source.covers) && source.covers.length > 0 && ids(source.covers, "knowledge-") && nonEmpty(source.depth) && nonEmpty(source.scope) && optional(source, "angle_detail", nonEmpty) && optional(source, "locator", text) && optional(source, "url", uri) && optional(source, "vault_path", text) && optional(source, "material_uri", text) && optional(source, "material_path", text) && optional(source, "material_exists", (item) => typeof item === "boolean") && optional(source, "requires_assets", (v) => Array.isArray(v) && v.length > 0 && list(v, validRequiredAsset)) && optional(source, "exposes_solutions_for", (v) => ids(v, "route-")));
 }
 function validSourceMapEntry(value) {
   const source = row(value);
@@ -971,8 +977,8 @@ function validProjectedRecord(value, validSynthesis) {
 }
 
 // src/contracts/manifest.ts
-var MANIFEST_CONTRACT_VERSION = 9;
-var MANIFEST_SCHEMA_SHA256 = "sha256:09f1b5d492a32d387cc942fe6c9ae5a17b48e5e3b02f325320c3070667642ddb";
+var MANIFEST_CONTRACT_VERSION = 10;
+var MANIFEST_SCHEMA_SHA256 = "sha256:1209c4d49ec4ae7c826e9893c66490830f9a838d524a72278d45d33ad096acdd";
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -6393,6 +6399,24 @@ function isFileShapedPath(value) {
 function isDirectMaterialFileTarget(record6) {
   return record6.material_exists === true && isFileShapedPath(record6.material_path);
 }
+var QUALIFIED_PAGES = /(?:physical\s+PDF|physical|PDF)\s+(?:p{1,2}\.|pages?)\s*(\d{1,4})(?:\s*[-–—]\s*(\d{1,4}))?/i;
+function pageDestination(record6) {
+  const target = typeof record6.material_path === "string" ? record6.material_path : typeof record6.vault_path === "string" ? record6.vault_path : "";
+  if (!/\.pdf$/i.test(target.trim().split(/[?#]/, 1)[0] ?? "")) return null;
+  const locator = typeof record6.locator === "string" ? record6.locator : "";
+  const match = QUALIFIED_PAGES.exec(locator);
+  if (!match) return null;
+  const first = Number(match[1]);
+  const last = match[2] ? Number(match[2]) : null;
+  if (!Number.isInteger(first) || first < 1) return null;
+  if (last !== null && (!Number.isInteger(last) || last <= first)) {
+    return { page: first, label: `physical page ${first}` };
+  }
+  return {
+    page: first,
+    label: last === null ? `physical page ${first}` : `physical pages ${first}\u2013${last}`
+  };
+}
 function hasDirectResourceTarget(record6) {
   if (isDirectMaterialFileTarget(record6)) return true;
   const vaultPath = typeof record6.vault_path === "string" ? record6.vault_path.trim() : "";
@@ -10485,6 +10509,49 @@ function exactKeys2(value, keys) {
 function isSha256(value) {
   return typeof value === "string" && /^sha256:[0-9a-f]{64}$/.test(value);
 }
+var UI_GESTURE_CAPABILITIES = [
+  // The learner's own study record, admitted from any channel in Core.
+  "atlas.question.save",
+  "capture.create",
+  "detour.create",
+  "detour.resolve",
+  "garden.seed.create",
+  "source.feedback.record",
+  "stage.attachment.add",
+  "stage.progress.update",
+  "unit.note.append",
+  "unit.source-selection.set",
+  /*
+   * Canonical changes this app may authorize, and only this app: Core admits
+   * these to a gesture over `channel: "ui"` alone. Each is applied from a
+   * screen that shows the exact change first, and that deliberate Save or
+   * Apply is the explicit approval their contracts always required — ADR-017
+   * designed the Atlas for exactly this, and a readable refusal was still a
+   * refusal of a current architecture decision (review
+   * workbench/audits/repair-review-2026-09-13, D1).
+   *
+   * A capability reaching this list must have a screen that renders the
+   * concrete change before the control that sends it. Adding one here because
+   * "the app needs it" reintroduces the thing the allowlist exists to stop.
+   */
+  "concept.relations.change",
+  "review.apply",
+  "review.prepare",
+  "unit.map.import"
+];
+var UI_GESTURE_SET = new Set(UI_GESTURE_CAPABILITIES);
+function isGestureCapability(capability) {
+  return UI_GESTURE_SET.has(capability);
+}
+var GESTURE_UNAVAILABLE_RECOVERY = {
+  "module.plan.import": "A module plan is applied from a reviewed file after its preflight, through an operator request. Nothing was changed.",
+  "route.patch": "Material details change through the reviewed route-patch preflight and an operator request. Nothing was changed.",
+  "note.revise": "Rewriting a note body is a semantic edit: it needs an explicit request and a reviewable diff. Your text is kept here; nothing was changed.",
+  "stage.note.write": "Stage notes are a retired surface. Save the note against the unit instead; nothing was changed."
+};
+function gestureUnavailableMessage(capability) {
+  return GESTURE_UNAVAILABLE_RECOVERY[capability] ?? `LearningOS does not accept ${capability} from a direct action in this app, because it writes canonical content. It needs a reviewed operator request. Nothing was changed.`;
+}
 var REQUEST_SCOPED_ARTIFACT_PREFIXES = {
   "capture.create": "capture-request",
   "garden.seed.create": "garden-request"
@@ -11146,8 +11213,8 @@ function clearDraftsOwnedBy(drafts, envelope) {
     if (!matches || !draft || !draft.recoveredStages) {
       return;
     }
-    const stageIds = Array.isArray(payload.stage_id) ? payload.stage_id : [];
-    for (const stageId of stageIds) {
+    const stageIds2 = Array.isArray(payload.stage_id) ? payload.stage_id : [];
+    for (const stageId of stageIds2) {
       if (typeof stageId === "string") {
         const provenanceText = draft.recoveredStages[stageId];
         if (provenanceText !== void 0) {
@@ -12573,6 +12640,17 @@ function materialTypeOf(resource, source) {
   if (declared === "book" || declared === "textbook") return "book";
   return "article";
 }
+function renderMaterialCautions(parent, record6) {
+  for (const asset of Array.isArray(record6.requires_assets) ? record6.requires_assets : []) {
+    if (!isRecord2(asset) || typeof asset.name !== "string") continue;
+    const part = asText(asset.needed_for);
+    const origin = asText(asset.obtain_from);
+    parent.createDiv({ cls: "los-micro", text: `${asset.material_uri ? "Required file" : "Not registered locally"}: ${asset.name}` + (part ? ` \u2014 needed for ${part}` : "") + (origin ? `. Obtain from ${origin}.` : ".") });
+  }
+  if (Array.isArray(record6.exposes_solutions_for) && record6.exposes_solutions_for.length) {
+    parent.createDiv({ cls: "los-micro", text: "Contains related task solutions. Read after your attempt, and report prior exposure before using those tasks as independent evidence." });
+  }
+}
 function renderResourceRow(parent, resource, source, renderer, extras = {}) {
   const materialType = materialTypeOf(resource, source);
   const row3 = parent.createDiv({
@@ -12604,6 +12682,8 @@ function renderResourceRow(parent, resource, source, renderer, extras = {}) {
       text: angle
     });
   }
+  const routeId = asText(resource.record.route_id);
+  renderMaterialCautions(copy, (routeId ? renderer.routeRecord?.(routeId) : null) ?? resource.record);
   const showChip = source && !extras.hideSourceChip ? source : null;
   const angleDetail = asText(resource.record.angle_detail);
   if (angleDetail) {
@@ -12831,6 +12911,7 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
     for (const badge2 of badges) metadata.createSpan({ cls: "los-micro los-resource-badge", text: badge2 });
     if (option.selected) metadata.createSpan({ cls: "los-micro los-resource-chosen", text: "Chosen for this lecture" });
     if (option.angle) copy.createDiv({ cls: "los-resource-angle", text: option.angle });
+    renderMaterialCautions(copy, option.record);
     const labels = option.covers.map((id2) => entry.owner.knowledgeNodes.find((node) => node.id === id2)?.title).filter((title) => Boolean(title));
     const rationale = [asText(option.record.angle_detail), labels.length ? `Covers: ${labels.join(" \xB7 ")}` : ""].filter(Boolean).join("\n\n");
     if (rationale) whyThisOne(copy, rationale);
@@ -12996,9 +13077,12 @@ function renderStage(view, layout, unit, studyMap, stage) {
       });
     }
   }
+  const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
+  const materialOptions = readMaterialOptions(sourceMap?.sources, unit.id, unit.record.source_selections);
   const resourceRenderer = {
     emptyDetail: "Use the unit scope and ask AI for a proposal.",
     sourceRecord: (sourceId) => view.plugin.store.get(sourceId),
+    routeRecord: (routeId) => materialOptions.find((option) => option.routeId === routeId)?.record ?? null,
     openSource: (source) => {
       const sourceId = asString(source.id);
       return sourceId ? view.plugin.nav.openLibrary(sourceId) : void 0;
@@ -13057,12 +13141,6 @@ function renderStage(view, layout, unit, studyMap, stage) {
     );
   }
   {
-    const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
-    const materialOptions = readMaterialOptions(
-      sourceMap?.sources,
-      unit.id,
-      unit.record.source_selections
-    );
     const catalogue = center.createDiv({
       cls: "los-section los-stage-materials"
     });
@@ -13293,6 +13371,7 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
         text: option.angle
       });
       const fullDetail = asText(option.record.angle_detail);
+      renderMaterialCautions(copy, option.record);
       if (option.locator) {
         copy.createDiv({
           cls: "los-micro",
@@ -13581,12 +13660,77 @@ function renderLearningRouteRail(parent, options) {
 
 // src/features/unit/map-import.ts
 var import_obsidian17 = require("obsidian");
+function stageIds(value) {
+  return Array.isArray(value) ? value.map((row3) => asString(row3)).filter((row3) => Boolean(row3)) : [];
+}
+function renderImportDiff(root, answer) {
+  root.empty();
+  const payload = isRecord2(answer) ? answer : null;
+  const diff = payload && isRecord2(payload.diff) ? payload.diff : null;
+  if (!diff || !Array.isArray(diff.stages_after) || !Array.isArray(diff.content_changes) || !Array.isArray(diff.map_changes) || !diff.stages_after.every((v) => typeof v === "string" && v.length > 0) || payload?.canonical_files_written !== 0) {
+    root.createDiv({
+      cls: "los-muted",
+      text: "LearningOS answered in a shape this version cannot read. Do not import on the strength of an unread check."
+    });
+    return false;
+  }
+  const added = stageIds(diff.stages_added);
+  const retired = stageIds(diff.stages_retired);
+  const preserved = stageIds(diff.preserved_stage_state);
+  const after = stageIds(diff.stages_after);
+  const replacement = diff.replacement === true;
+  root.createDiv({
+    cls: "los-kicker",
+    text: replacement ? "This replaces the current map" : "This creates the first map"
+  });
+  const list2 = root.createEl("ul", { cls: "los-map-import-diff" });
+  const line = (text5) => list2.createEl("li", { text: text5 });
+  line(`${after.length} stage${after.length === 1 ? "" : "s"} after the import.`);
+  if (added.length) line(`Adds: ${added.join(", ")}.`);
+  if (retired.length) line(`Retires: ${retired.join(", ")}.`);
+  if (!added.length && !retired.length && replacement) {
+    line("No stage is added or retired.");
+  }
+  if (diff.relative_order_changed === true) {
+    const reason = asString(diff.intentional_reorder_reason);
+    line(`Relative order of surviving stages changes${reason ? `: ${reason}` : ""}.`);
+  }
+  if (preserved.length) {
+    line(`Recorded work carried forward on ${preserved.length} stage${preserved.length === 1 ? "" : "s"}.`);
+  }
+  const resume = asString(diff.resume_stage);
+  if (resume) line(`Resumes at ${resume}.`);
+  const reset = asString(diff.state_reset_reason);
+  if (reset) line(`Recorded stage state is reset: ${reset}.`);
+  const evidence2 = stageIds(diff.retired_stage_evidence);
+  if (evidence2.length) {
+    line(`Evidence exists on retired stage${evidence2.length === 1 ? "" : "s"}: ${evidence2.join(", ")}.`);
+  }
+  for (const value of [...diff.content_changes, ...diff.map_changes]) {
+    if (!isRecord2(value) || "stage_id" in value && typeof value.stage_id !== "string" || typeof value.field !== "string" || !("before" in value) || !("after" in value)) return false;
+    const change = root.createEl("details");
+    change.createEl("summary", { text: `${value.stage_id ?? "Map"}: ${value.field.replaceAll("_", " ")}` });
+    change.createEl("div", { text: "Before" });
+    change.createEl("pre", { text: JSON.stringify(value.before, null, 2) });
+    change.createEl("div", { text: "After" });
+    change.createEl("pre", { text: JSON.stringify(value.after, null, 2) });
+  }
+  const written = payload?.canonical_files_written;
+  root.createDiv({
+    cls: "los-micro los-muted",
+    text: written === 0 ? "Checked only \u2014 nothing was written." : "LearningOS did not confirm this was a no-write check."
+  });
+  return true;
+}
 var UnitMapImportModal = class extends import_obsidian17.Modal {
   constructor(app, options) {
     super(app);
     this.options = options;
   }
   restoreAccessibility = null;
+  /** The exact bytes a rendered preflight approved, or null before one ran. */
+  checked = null;
+  reviewGeneration = 0;
   onOpen() {
     const { replacing, unitTitle } = this.options;
     const root = this.contentEl;
@@ -13598,7 +13742,7 @@ var UnitMapImportModal = class extends import_obsidian17.Modal {
     heading.id = "los-map-import-heading";
     root.createEl("p", {
       cls: "los-muted",
-      text: replacing ? `${unitTitle} already has a current map. Importing archives the old one in Git and makes this the current map.` : `Apply a reviewed study map to ${unitTitle}. The coverage audit stays where the SOP puts it; this applies its result.`
+      text: replacing ? `${unitTitle} already has a current map. Review the changes and the recorded work carried forward before replacing it.` : `Apply a reviewed study map to ${unitTitle}. The coverage audit stays where the SOP puts it; this applies its result.`
     });
     this.restoreAccessibility = makeModalAccessible(root, {
       close: () => this.close(),
@@ -13615,23 +13759,66 @@ var UnitMapImportModal = class extends import_obsidian17.Modal {
     const file = field.createEl("input", { attr: { type: "text" } });
     file.placeholder = "path to the audited study-map YAML";
     const status = root.createDiv({ cls: "los-draft-status", attr: { "aria-live": "polite" } });
+    const preview = root.createDiv({
+      cls: "los-map-import-preview",
+      attr: { "aria-live": "polite" }
+    });
     const actions = root.createDiv({ cls: "los-actions los-map-import-actions" });
     const submit = button(actions, replacing ? "Replace map" : "Import map", async () => {
       const path = file.value.trim();
-      if (!path) {
-        status.setText("Name the reviewed file first.");
+      if (!path || !this.checked || path !== this.checked.file) {
+        status.setText("Check the file first; the import applies the diff you were shown.");
         return;
       }
       submit.disabled = true;
       status.setText("Importing\u2026");
       try {
-        await this.options.submit(path, replacing);
+        await this.options.submit(this.checked);
         this.close();
       } catch (error) {
-        submit.disabled = false;
+        this.checked = null;
+        submit.disabled = true;
         status.setText(errorMessage(error));
       }
     }, "cta");
+    submit.disabled = true;
+    const check = button(actions, "Check", async () => {
+      const path = file.value.trim();
+      if (!path) {
+        status.setText("Name the reviewed file first.");
+        return;
+      }
+      const generation = ++this.reviewGeneration;
+      this.checked = null;
+      submit.disabled = true;
+      check.disabled = true;
+      status.setText("Checking \u2014 nothing is written\u2026");
+      try {
+        const answer = await this.options.check(path, replacing);
+        if (generation !== this.reviewGeneration || path !== file.value.trim()) return;
+        if (answer.file !== path || answer.unitId !== this.options.unitId || answer.replace !== replacing || !renderImportDiff(preview, answer.result)) {
+          throw new Error("This review could not be read completely. Check again before importing.");
+        }
+        this.checked = answer;
+        submit.disabled = false;
+        status.setText("Checked. Review the change below, then import.");
+      } catch (error) {
+        if (generation !== this.reviewGeneration) return;
+        this.checked = null;
+        submit.disabled = true;
+        preview.empty();
+        status.setText(errorMessage(error));
+      } finally {
+        check.disabled = false;
+      }
+    });
+    file.addEventListener("input", () => {
+      this.reviewGeneration += 1;
+      this.checked = null;
+      submit.disabled = true;
+      preview.empty();
+      status.setText("File changed \u2014 check it again before importing.");
+    });
     button(actions, "Cancel", () => this.close(), "quiet");
     void this.describeStandard(standard);
     file.focus();
@@ -13655,6 +13842,8 @@ var UnitMapImportModal = class extends import_obsidian17.Modal {
     }
   }
   onClose() {
+    this.reviewGeneration += 1;
+    this.checked = null;
     this.restoreAccessibility?.();
     this.restoreAccessibility = null;
     this.contentEl.empty();
@@ -13841,13 +14030,13 @@ function render(view) {
     );
     return;
   }
-  const stageIds = new Set(
+  const stageIds2 = new Set(
     studyMap.stages.map(
       (stage2) => stage2.id
     )
   );
-  if (!view.stageId || !stageIds.has(view.stageId)) {
-    view.stageId = studyMap.currentStageId && stageIds.has(
+  if (!view.stageId || !stageIds2.has(view.stageId)) {
+    view.stageId = studyMap.currentStageId && stageIds2.has(
       studyMap.currentStageId
     ) ? studyMap.currentStageId : firstStage.id;
     view.plugin.setSelectedStage(
@@ -13898,11 +14087,6 @@ function render(view) {
   );
 }
 function openMapImport(view, parent, unit, replacing) {
-  const currentMap = view.plugin.store.mapForUnit(unit.id);
-  const expectedRevisions = view.plugin.store.artifactGuard(
-    unit.id,
-    typeof currentMap?.id === "string" ? currentMap.id : null
-  );
   const actions = parent.createDiv({
     cls: "los-actions"
   });
@@ -13925,13 +14109,15 @@ function openMapImport(view, parent, unit, replacing) {
             }
           )
         ),
-        submit: (file, replace) => view.plugin.mutate(
-          () => view.plugin.gateway.importUnitMap(
-            unit.id,
-            file,
-            replace,
-            expectedRevisions
-          )
+        // Read-only: it writes nothing, so it does not go through the write
+        // queue and needs no snapshot guard of its own.
+        check: (file, replace) => view.plugin.gateway.checkUnitMapImport(
+          unit.id,
+          file,
+          replace
+        ),
+        submit: (review) => view.plugin.mutate(
+          () => view.plugin.gateway.importUnitMap(review)
         )
       }
     ).open(),
@@ -15113,10 +15299,10 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:d59e5c8d2e3193558745cd4dba24f13777e2d9b24084ab47b05f189b1613e5c3" : "unavailable";
+  return true ? "sha256:682c4bb96077b0aa2ae19ffb86e4f7622d73ae0919090d70db330f814b4a5b36" : "unavailable";
 }
 function runtimeContractVersion() {
-  return true ? 9 : 0;
+  return true ? 10 : 0;
 }
 
 // src/gateway-client.ts
@@ -15294,6 +15480,13 @@ var GatewayClient = class {
    * flag order to get wrong. The named methods below are porcelain over this.
    */
   capability(name, payload, options = {}) {
+    if (!isGestureCapability(name)) {
+      throw new GatewayError(
+        gestureUnavailableMessage(name),
+        null,
+        { code: "UNCONFIRMED", retryable: false }
+      );
+    }
     const expectedSnapshot = options.expectedSnapshot || this.snapshotId();
     if (!isSha256(expectedSnapshot)) {
       throw new GatewayError(
@@ -15611,12 +15804,12 @@ Last response: ${result.error.message}`,
   async saveUnitNote(unitId, {
     title = "",
     text: text5,
-    stageIds = [],
+    stageIds: stageIds2 = [],
     filePaths = []
   }, expectedRevisions = {}) {
     const payload = { unit_id: unitId, text: text5 };
     if (String(title).trim()) payload.title = String(title).trim();
-    if (stageIds.length) payload.stage_id = [...stageIds];
+    if (stageIds2.length) payload.stage_id = [...stageIds2];
     if (filePaths.length) {
       payload.attachment = [...filePaths];
       payload.attachment_sha256 = await Promise.all(filePaths.map(fileSha256));
@@ -15750,13 +15943,56 @@ Last response: ${result.error.message}`,
    * stays where the SOP put it — this applies a reviewed result; it does not
    * skip the review.
    */
-  async importUnitMap(unitId, file, replace = false, expectedRevisions = {}) {
+  async importUnitMap(review) {
+    if (!isSha256(review.fileSha256) || !isSha256(review.expectedSnapshot)) {
+      throw new Error("Check this map again before importing; its review has no valid binding.");
+    }
+    if (await fileSha256(review.file) !== review.fileSha256) {
+      throw new Error("The map file changed after review. Check it again before importing.");
+    }
     return this.capability("unit.map.import", {
-      unit_id: unitId,
+      unit_id: review.unitId,
+      file: review.file,
+      file_sha256: review.fileSha256,
+      ...review.replace ? { replace: true } : {}
+    }, { expectedRevisions: review.expectedRevisions, expectedSnapshot: review.expectedSnapshot });
+  }
+  /**
+   * The no-write preflight that has to run before an import is approved.
+   *
+   * Core's `--check` prints the concrete replacement diff and writes nothing.
+   * Naming a file is not approval to import it — the learner approves *this
+   * diff*, which is what makes the Import control an explicit review rather
+   * than a file picker with consequences (review
+   * `workbench/audits/repair-review-2026-09-13`, D1). No snapshot guard:
+   * nothing is written, so there is nothing to guard against.
+   */
+  async checkUnitMapImport(unitId, file, replace = false) {
+    const digest = await fileSha256(file);
+    const args = [
+      "unit-map-import",
+      unitId,
+      "--file",
       file,
-      file_sha256: await fileSha256(file),
-      ...replace ? { replace: true } : {}
-    }, { expectedRevisions });
+      "--file-sha256",
+      digest,
+      "--check"
+    ];
+    if (replace) args.push("--replace");
+    const result = record5(await this.call(args));
+    const revisions = record5(result?.expected_revisions);
+    if (!result || result.ok !== true || result.mode !== "check" || result.canonical_files_written !== 0 || !record5(result.diff) || result.unit_id !== unitId || result.file_sha256 !== digest || !isSha256(result.snapshot_id) || !revisions || Object.keys(revisions).length !== 2 || !Object.values(revisions).every((v) => Number.isInteger(v) && Number(v) >= 0) || !(unitId in revisions) || !(String(result.study_map_id) in revisions)) {
+      throw new Error("LearningOS could not provide a complete, bound no-write review. Nothing was imported.");
+    }
+    return {
+      unitId,
+      file,
+      replace,
+      fileSha256: digest,
+      expectedSnapshot: result.snapshot_id,
+      expectedRevisions: revisions,
+      result
+    };
   }
   /**
    * The declared read-only `plan.template` query. Core generates and validates
@@ -15970,7 +16206,7 @@ var ResourceOpener = class {
   constructor(app) {
     this.app = app;
   }
-  async openVaultPath(path) {
+  async openVaultPath(path, destination = null) {
     const target = normalizedVaultPath(path);
     if (!target || target.startsWith("/") || target.split("/").includes("..")) {
       new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
@@ -16005,11 +16241,49 @@ var ResourceOpener = class {
     if (existing) {
       this.app.workspace.revealLeaf(existing);
       this.app.workspace.setActiveLeaf?.(existing, { focus: true });
+      if (destination) {
+        await this.repositionLeaf(existing, file, destination);
+      }
       return existing;
     }
     const leaf = this.app.workspace.getLeaf(true);
-    await leaf.openFile(file);
+    await leaf.openFile(file, destination ? { eState: { page: destination.page } } : void 0);
+    if (destination) this.announceDestination(leaf, destination);
     return leaf;
+  }
+  /**
+   * Move an open document to the assigned location, or say where to go.
+   *
+   * `setEphemeralState` is how Obsidian's own viewer is repositioned without
+   * reloading the file; re-opening it through the leaf is the fallback. Either
+   * way the claim made to the learner matches what actually happened: a viewer
+   * that cannot be positioned gets an instruction, never an announcement that
+   * it landed somewhere.
+   */
+  async repositionLeaf(leaf, file, destination) {
+    const view = leaf.view;
+    if (typeof view?.setEphemeralState === "function") {
+      try {
+        view.setEphemeralState({ page: destination.page });
+      } catch (_) {
+        new import_obsidian22.Notice(`Go to ${destination.label}.`);
+        return;
+      }
+      new import_obsidian22.Notice(`Page requested \u2014 go to ${destination.label} if the viewer did not move.`);
+      return;
+    }
+    try {
+      await leaf.openFile(file, { eState: { page: destination.page } });
+    } catch (_) {
+      new import_obsidian22.Notice(`Go to ${destination.label}.`);
+      return;
+    }
+    this.announceDestination(leaf, destination);
+  }
+  /** Only a viewer that can be positioned is told it landed there. */
+  announceDestination(leaf, destination) {
+    void leaf;
+    new import_obsidian22.Notice(`Opened \u2014 go to ${destination.label}.`);
   }
   isCodePath(path) {
     if (!fs3.existsSync(path)) return false;
@@ -16059,7 +16333,7 @@ var ResourceOpener = class {
     }
     return this.openSystemPath(realPath, successMessage);
   }
-  openMaterialPath(path) {
+  openMaterialPath(path, destination = null) {
     const vault = this.app.vault.adapter.getBasePath();
     const learningRoot = nodePath3.dirname(vault);
     const materialsRoot = nodePath3.resolve(learningRoot, "materials");
@@ -16074,7 +16348,10 @@ var ResourceOpener = class {
       new import_obsidian22.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
       return false;
     }
-    return this.openExternalPath(realPath, "Opened the local material in its default app.");
+    return this.openExternalPath(
+      realPath,
+      destination ? `Opened the local material in its default app \u2014 go to ${destination.label}.` : "Opened the local material in its default app."
+    );
   }
   openAuthoredPath(path) {
     const extension = foldCase(nodePath3.extname(path || ""));
@@ -16102,14 +16379,15 @@ var ResourceOpener = class {
   }
   openResource(resource, ports = this) {
     const materialPath = typeof resource.material_path === "string" ? resource.material_path : "";
+    const destination = pageDestination(resource);
     if (isDirectMaterialFileTarget(resource)) {
-      return ports.openMaterialPath(materialPath);
+      return ports.openMaterialPath(materialPath, destination);
     }
     const vaultPath = typeof resource.vault_path === "string" ? resource.vault_path : "";
     if (vaultPath.trim()) {
       if (vaultPath.trim().toLowerCase().startsWith("material://")) {
       } else if (isFileShapedPath(vaultPath)) {
-        return ports.openVaultPath(vaultPath);
+        return ports.openVaultPath(vaultPath, destination);
       }
     }
     if (resource.url) {
@@ -17052,14 +17330,14 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
       return null;
     }
   }
-  async openVaultPath(path) {
-    return this.resources.openVaultPath(path);
+  async openVaultPath(path, destination = null) {
+    return this.resources.openVaultPath(path, destination);
   }
   async openExternalPath(path, successMessage = "Opened in the default app.") {
     return this.resources.openExternalPath(path, successMessage);
   }
-  openMaterialPath(path) {
-    return this.resources.openMaterialPath(path);
+  openMaterialPath(path, destination = null) {
+    return this.resources.openMaterialPath(path, destination);
   }
   openAuthoredPath(path) {
     return this.resources.openAuthoredPath(path);

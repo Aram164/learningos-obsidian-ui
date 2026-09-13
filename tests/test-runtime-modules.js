@@ -173,6 +173,7 @@ const {
 } = loadWithHost('src/infrastructure/resource-opener.ts');
 const {
   hasDirectResourceTarget,
+  pageDestination,
 } = loadWithHost('src/infrastructure/resource-target.ts');
 const {
   renderStageResources,
@@ -967,7 +968,7 @@ function routerPlugin(settings = {}) {
       return JSON.stringify(manifest);
     }));
     assert.equal(await store.load(), false);
-    assert.match(store.error, /top-level keys do not match contract v9/);
+    assert.match(store.error, /top-level keys do not match contract v10/);
     assert.deepEqual(store.units(), []);
   });
 
@@ -1150,14 +1151,15 @@ function routerPlugin(settings = {}) {
       store: { snapshotId: SNAPSHOT },
     };
     const gateway = new GatewayClient(plugin);
-    const result = await gateway.saveNote(
-      'unit-a', 'stage-a', 'text', { 'unit-a': 3, 'study-map-a': 8 },
+    const result = await gateway.saveUnitNote(
+      'unit-a', { text: 'text', stageIds: ['stage-a'] },
+      { 'unit-a': 3, 'study-map-a': 8 },
     );
     assert.equal(result.transaction_id, 'tx-1');
     // One write shape: a declared capability, its payload on stdin.
-    assert.deepEqual(received, ['capability', 'stage.note.write', '--payload-file', '-']);
+    assert.deepEqual(received, ['capability', 'unit.note.append', '--payload-file', '-']);
     const envelope = JSON.parse(sent);
-    assert.equal(envelope.capability, 'stage.note.write');
+    assert.equal(envelope.capability, 'unit.note.append');
     assert.equal(envelope.schema_version, 2);
     assert.equal(envelope.channel, 'ui');
     assert.equal(envelope.expected_snapshot, SNAPSHOT,
@@ -1167,7 +1169,7 @@ function routerPlugin(settings = {}) {
       'study-map-a': 8,
     });
     assert.deepEqual(envelope.payload,
-      { unit_id: 'unit-a', stage_id: 'stage-a', text: 'text', replace: true });
+      { unit_id: 'unit-a', text: 'text', stage_id: ['stage-a'] });
     assert.ok(envelope.request_id, 'every write is identifiable');
     assert.ok(envelope.idempotency_key, 'every write is safe to replay deliberately');
     assert.equal(envelope.approval.kind, 'direct-user-gesture');
@@ -1304,6 +1306,103 @@ function routerPlugin(settings = {}) {
     }), true);
     assert.equal(hasDirectResourceTarget({ url: 'javascript:alert(1)' }), false);
     assert.equal(hasDirectResourceTarget({ url: 'https://example.org/lecture-11' }), true);
+  });
+
+  /*
+   * F07: the page the stage names.
+   *
+   * Opening the CLT lecture reached the right file and showed page 1 of 38.
+   * The stage knew it wanted physical pages 20-22 and the opening path did
+   * not carry it, so the learner had to rediscover the location by hand
+   * (audit workbench/audits/synthetic-learner-2026-09-12, F07).
+   */
+  await test('a qualified physical page in the locator becomes a destination', () => {
+    const pdf = { material_path: 'materials/sad/08_normal_distribution.pdf' };
+    assert.deepEqual(
+      pageDestination({ ...pdf, locator: 'lecture-slides/08_normal_distribution.pdf, PDF pp. 20-22' }),
+      { page: 20, label: 'physical pages 20\u201322' });
+    assert.deepEqual(
+      pageDestination({ ...pdf, locator: '\u00a74.3, physical PDF pp. 214\u2013220' }),
+      { page: 214, label: 'physical pages 214\u2013220' });
+    assert.deepEqual(
+      pageDestination({ ...pdf, locator: 'Read physical p. 14 only' }),
+      { page: 14, label: 'physical page 14' });
+  });
+
+  await test('a printed page beside a physical one is never the destination', () => {
+    /*
+     * Analysis Chapter 01 declares both numberings, which is exactly the case
+     * F07 said to check. The first parser tested for a qualifier *somewhere*
+     * and then extracted with an optional-qualifier pattern, so the guard was
+     * satisfied by the `PDF` further along while the match landed on the
+     * printed `p. 1` (review workbench/audits/repair-review-2026-09-13, R2).
+     */
+    const pdf = { material_path: 'materials/analysis/skript.pdf' };
+    assert.deepEqual(pageDestination({
+      ...pdf,
+      locator: 'unser skript.pdf Kapitel 1, printed p. 1 (PDF p. 11)\u2013printed p. 6 '
+        + '(PDF p. 16); \u00a71.1 Zahlenmengen printed p. 2 (PDF p. 12)',
+    }), { page: 11, label: 'physical page 11' });
+    // The qualifier has to be adjacent, not merely present in the string.
+    assert.equal(pageDestination({
+      ...pdf, locator: 'printed pp. 12-20; see the PDF for the full deck',
+    }), null);
+    assert.equal(pageDestination({ ...pdf, locator: 'printed p. 4' }), null);
+  });
+
+  await test('an unqualified page or a slide label is never guessed at', () => {
+    const pdf = { material_path: 'materials/sad/deck.pdf' };
+    // A printed slide number routinely differs from its position in the file;
+    // the L08 route says so itself. Landing on the wrong page confidently is
+    // worse than landing on page 1 and being told where to go.
+    for (const locator of [
+      'exercise-slides/UE6.pdf, slides 5-20',
+      'exercise-slides/Blatt.pdf, pp. 1 and 3, Aufgaben 1 and 3',
+      '\u00a79.3.1 Maximum Likelihood-Sch\u00e4tzung',
+      'lecture-slides/08_normal_distribution.pdf, 38 slides',
+      '',
+    ]) {
+      assert.equal(pageDestination({ ...pdf, locator }), null, locator || '(empty)');
+    }
+    // Not a PDF: nothing to be positioned inside.
+    assert.equal(pageDestination({
+      material_path: 'materials/sad/notes.md', locator: 'PDF pp. 20-22',
+    }), null);
+    assert.equal(pageDestination({ ...pdf, locator: 'PDF p. 0' }), null);
+    // A malformed span still names a usable opening page; inventing the span
+    // would be the guess, not reading the first number.
+    assert.deepEqual(pageDestination({ ...pdf, locator: 'PDF pp. 22-20' }),
+      { page: 22, label: 'physical page 22' });
+  });
+
+  await test('the destination reaches the opener that can act on it', async () => {
+    const seen = { material: [], vault: [] };
+    const opener = new ResourceOpener({});
+    const ports = {
+      openMaterialPath: (path, destination) => seen.material.push([path, destination]),
+      openVaultPath: (path, destination) => seen.vault.push([path, destination]),
+    };
+    await opener.openResource({
+      material_path: 'materials/sad/08_normal_distribution.pdf',
+      material_exists: true,
+      locator: 'lecture-slides/08_normal_distribution.pdf, PDF pp. 20-22',
+    }, ports);
+    assert.deepEqual(seen.material.at(-1),
+      ['materials/sad/08_normal_distribution.pdf', { page: 20, label: 'physical pages 20\u201322' }]);
+    await opener.openResource({
+      vault_path: 'knowledge/attachments/chapter.pdf',
+      locator: 'chapter.pdf, physical PDF pp. 5-9',
+    }, ports);
+    assert.deepEqual(seen.vault.at(-1),
+      ['knowledge/attachments/chapter.pdf', { page: 5, label: 'physical pages 5\u20139' }]);
+    // No declaration, no destination: the opener is told nothing rather than
+    // being handed a guess to announce.
+    await opener.openResource({
+      material_path: 'materials/sad/UE6.pdf',
+      material_exists: true,
+      locator: 'exercise-slides/UE6.pdf, slides 5-20',
+    }, ports);
+    assert.deepEqual(seen.material.at(-1), ['materials/sad/UE6.pdf', null]);
   });
 
   await test('resource opening skips a collection folder for its exact website', async () => {
@@ -1505,8 +1604,7 @@ function routerPlugin(settings = {}) {
     await gateway.attach('u', 's', gatewayFile);
     await gateway.captureText('note text', 'a title');
     await gateway.captureFile(gatewayFile);
-    await gateway.prepareShelving('u');
-    await gateway.applyShelving('u', ['p1']);
+    await gateway.saveAtlasQuestion({ id: 'note-q', state: 'resolved' });
     await gateway.saveUnitNote('u', {
       text: 'body', stageIds: ['s'], filePaths: [gatewayFile],
     });
@@ -1514,7 +1612,7 @@ function routerPlugin(settings = {}) {
     assert.deepEqual(calls.map((c) => c.envelope.capability), [
       'stage.progress.update', 'unit.source-selection.set', 'source.feedback.record', 'detour.create',
       'detour.resolve', 'stage.attachment.add', 'capture.create',
-      'capture.create', 'review.prepare', 'review.apply', 'unit.note.append',
+      'capture.create', 'atlas.question.save', 'unit.note.append',
     ]);
     for (const call of calls) {
       assert.equal(call.args[0], 'capability', 'one call shape for every write');
@@ -1539,10 +1637,18 @@ function routerPlugin(settings = {}) {
       assert.ok(!('approve' in call.envelope.payload),
         'Gateway V2 approval belongs only in the envelope');
     }
+    // Addressed by capability rather than by position: the list above changes
+    // whenever the app gains or loses a write, and an index silently pointed
+    // at the wrong envelope the last time it did.
     const expectedFileDigest = fileDigest(gatewayFile);
-    assert.equal(calls[5].envelope.payload.file_sha256, expectedFileDigest);
-    assert.equal(calls[7].envelope.payload.file_sha256, expectedFileDigest);
-    assert.deepEqual(calls[10].envelope.payload.attachment_sha256, [expectedFileDigest]);
+    const sentAs = (capability) => calls
+      .filter((c) => c.envelope.capability === capability)
+      .map((c) => c.envelope.payload);
+    assert.equal(sentAs('stage.attachment.add')[0].file_sha256, expectedFileDigest);
+    const [captureText, captureFile] = sentAs('capture.create');
+    assert.ok(!('file_sha256' in captureText), 'a typed capture carries no file');
+    assert.equal(captureFile.file_sha256, expectedFileDigest);
+    assert.deepEqual(sentAs('unit.note.append')[0].attachment_sha256, [expectedFileDigest]);
   });
 
   /*
@@ -1662,7 +1768,7 @@ function routerPlugin(settings = {}) {
       },
       store: { snapshotId: SNAPSHOT },
     });
-    await gateway.saveNote('unit-a', 'stage-a', 'text', { 'unit-a': 3, 'study-map-a': 8 });
+    await gateway.saveUnitNote('unit-a', { text: 'text' }, { 'unit-a': 3, 'study-map-a': 8 });
     await gateway.progress('unit-a', 'stage-a', 'complete', { 'unit-a': 4 });
     assert.deepEqual(envelopes[0].expected_revisions, { 'unit-a': 3, 'study-map-a': 8 });
     assert.deepEqual(envelopes[1].expected_revisions, { 'unit-a': 4 });
@@ -1719,34 +1825,74 @@ function routerPlugin(settings = {}) {
   });
 
   await test('a reviewed study map is applied by path through one declared capability', async () => {
+    /*
+     * Core admits `unit.map.import` to a gesture over `channel: "ui"`, because
+     * the dialog runs the no-write preflight and renders the concrete diff
+     * before this control exists (review repair-review-2026-09-13, D1). The
+     * envelope is unchanged: a path plus its exact digest, so Core reads the
+     * approved bytes once and refuses the map whole.
+     */
     const calls = [];
     const gateway = new GatewayClient({
       runLos: (args, callback, stdin) => {
-        calls.push({ args, envelope: JSON.parse(stdin) });
-        callback(null, gatewayConfirmation(stdin), '');
+        calls.push({ args, envelope: args[0] === 'capability' ? JSON.parse(stdin) : null });
+        callback(null, args[0] === 'capability'
+          ? gatewayConfirmation(stdin)
+          : JSON.stringify({ ok: true, mode: 'check', canonical_files_written: 0, unit_id: 'unit-amls-l01', study_map_id: 'study-map-amls-l01', file_sha256: fileDigest(gatewayMap), snapshot_id: SNAPSHOT, expected_revisions: { 'unit-amls-l01': 1, 'study-map-amls-l01': 2 }, diff: { stages_after: [], content_changes: [] } }), '');
       },
       store: { snapshotId: SNAPSHOT },
     });
 
-    await gateway.importUnitMap('unit-amls-l01', gatewayMap);
-    await gateway.importUnitMap('unit-amls-l01', gatewayMap, true);
+    const reviewed = await gateway.checkUnitMapImport('unit-amls-l01', gatewayMap);
+    const preflight = calls.at(-1).args;
+    assert.equal(preflight[0], 'unit-map-import', 'the preflight is not a capability write');
+    assert.ok(preflight.includes('--check'), 'the preflight must write nothing');
+    assert.ok(preflight.includes(fileDigest(gatewayMap)),
+      'the diff shown is bound to the exact bytes that will be imported');
 
-    assert.deepEqual(calls.map((c) => c.envelope.capability),
+    await gateway.importUnitMap(reviewed);
+    await gateway.importUnitMap(await gateway.checkUnitMapImport('unit-amls-l01', gatewayMap, true));
+    const envelopes = calls.map((c) => c.envelope).filter(Boolean);
+    assert.deepEqual(envelopes.map((e) => e.capability),
       ['unit.map.import', 'unit.map.import']);
-    for (const call of calls) {
-      assert.equal(call.args[0], 'capability', 'the same write shape as every other mutation');
-      assert.equal(call.envelope.expected_snapshot, SNAPSHOT);
-      // The interface hands over a path plus its exact digest: Core reads the
-      // approved bytes once and refuses the map whole, so the audit gate cannot
-      // be half-applied or redirected after the gesture.
-      assert.deepEqual(Object.keys(call.envelope.payload).sort().filter((k) => k !== 'replace'),
+    for (const envelope of envelopes) {
+      assert.equal(envelope.channel, 'ui', 'the admission is channel-bound');
+      assert.equal(envelope.approval.kind, 'direct-user-gesture');
+      assert.equal(envelope.expected_snapshot, SNAPSHOT);
+      assert.deepEqual(Object.keys(envelope.payload).sort().filter((k) => k !== 'replace'),
         ['file', 'file_sha256', 'unit_id']);
-      assert.equal(call.envelope.payload.file, gatewayMap);
-      assert.equal(call.envelope.payload.file_sha256, fileDigest(gatewayMap));
+      assert.equal(envelope.payload.file, gatewayMap);
+      assert.equal(envelope.payload.file_sha256, fileDigest(gatewayMap));
     }
-    assert.ok(!('replace' in calls[0].envelope.payload),
+    assert.ok(!('replace' in envelopes[0].payload),
       'a first import must not silently claim permission to overwrite');
-    assert.equal(calls[1].envelope.payload.replace, true);
+    assert.equal(envelopes[1].payload.replace, true);
+  });
+
+  await test('the four reviewed workflows send, and nothing else does', async () => {
+    const sent = [];
+    const gateway = new GatewayClient({
+      runLos: (args, callback, stdin) => {
+        sent.push(JSON.parse(stdin).capability);
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await gateway.changeConceptRelations([{ action: 'add', new: { from: 'a', type: 'requires', to: 'b' } }]);
+    await gateway.prepareShelving('u');
+    await gateway.applyShelving('u', ['p1']);
+    assert.deepEqual(sent,
+      ['concept.relations.change', 'review.prepare', 'review.apply']);
+
+    // Everything else this client can still name refuses before an envelope
+    // exists, naming its own route back rather than the approval kind.
+    let invoked = false;
+    const closed = new GatewayClient({
+      runLos: () => { invoked = true; },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await assert.rejects(async () => closed.saveNote('u', 's', 'text'), /retired surface/);
+    assert.equal(invoked, false, 'no envelope reaches Core for it');
   });
 
   await test('a half-read plan-template answer is refused rather than trusted', async () => {
@@ -2480,7 +2626,7 @@ function routerPlugin(settings = {}) {
       runLos: () => { invoked = true; },
       store: { snapshotId: null },
     });
-    assert.throws(() => gateway.saveNote('unit-a', 'stage-a', 'text'), /no loaded snapshot/);
+    assert.throws(() => gateway.progress('unit-a', 'stage-a', 'complete'), /no loaded snapshot/);
     assert.equal(invoked, false, 'the CLI must not be invoked at all');
   });
 

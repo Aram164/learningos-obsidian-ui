@@ -14,7 +14,9 @@ import {
   asGatewaySuccessV2,
   gatewayApprovalSubject,
   gatewaySubjectSha256,
+  gestureUnavailableMessage,
   isDefinitiveNoCommitCode,
+  isGestureCapability,
   isRequestScopedCapability,
   isSha256,
   requestArtifactId,
@@ -49,6 +51,17 @@ interface GatewayHost {
   notify?(message: string): void;
   /** False once this plugin instance has yielded ownership during unload. */
   isLifecycleActive?(): boolean;
+}
+
+/** The exact file and repository state inspected by the import preflight. */
+export interface UnitMapImportReview {
+  unitId: string;
+  file: string;
+  replace: boolean;
+  fileSha256: string;
+  expectedSnapshot: string;
+  expectedRevisions: Readonly<Record<string, number>>;
+  result: Record<string, unknown>;
 }
 
 export const GATEWAY_RECOVERY_NOTICE =
@@ -282,6 +295,18 @@ export class GatewayClient {
       expectedRevisions?: Readonly<Record<string, number>>;
     } = {},
   ): Promise<GatewaySuccessV2> {
+    // Every envelope this client sends claims `direct-user-gesture`, because
+    // that is honestly what it is. Core admits that claim only where a click
+    // is sufficient authority, so a capability outside that set is refused
+    // here — with the route back to a permitted write, and before a request
+    // identity, a recovery record or a draft-losing round trip exists.
+    if (!isGestureCapability(name)) {
+      throw new GatewayError(
+        gestureUnavailableMessage(name),
+        null,
+        { code: 'UNCONFIRMED', retryable: false },
+      );
+    }
     const expectedSnapshot = options.expectedSnapshot || this.snapshotId();
     if (!isSha256(expectedSnapshot)) {
       throw new GatewayError(
@@ -852,14 +877,50 @@ export class GatewayClient {
    * stays where the SOP put it — this applies a reviewed result; it does not
    * skip the review.
    */
-  async importUnitMap(unitId: string, file: string, replace = false,
-    expectedRevisions: Readonly<Record<string, number>> = {}) {
+  async importUnitMap(review: UnitMapImportReview) {
+    if (!isSha256(review.fileSha256) || !isSha256(review.expectedSnapshot)) {
+      throw new Error('Check this map again before importing; its review has no valid binding.');
+    }
+    if (await fileSha256(review.file) !== review.fileSha256) {
+      throw new Error('The map file changed after review. Check it again before importing.');
+    }
     return this.capability('unit.map.import', {
-      unit_id: unitId,
-      file,
-      file_sha256: await fileSha256(file),
-      ...(replace ? { replace: true } : {}),
-    }, { expectedRevisions });
+      unit_id: review.unitId,
+      file: review.file,
+      file_sha256: review.fileSha256,
+      ...(review.replace ? { replace: true } : {}),
+    }, { expectedRevisions: review.expectedRevisions, expectedSnapshot: review.expectedSnapshot });
+  }
+
+  /**
+   * The no-write preflight that has to run before an import is approved.
+   *
+   * Core's `--check` prints the concrete replacement diff and writes nothing.
+   * Naming a file is not approval to import it — the learner approves *this
+   * diff*, which is what makes the Import control an explicit review rather
+   * than a file picker with consequences (review
+   * `workbench/audits/repair-review-2026-09-13`, D1). No snapshot guard:
+   * nothing is written, so there is nothing to guard against.
+   */
+  async checkUnitMapImport(unitId: string, file: string, replace = false): Promise<UnitMapImportReview> {
+    const digest = await fileSha256(file);
+    const args = ['unit-map-import', unitId, '--file', file,
+      '--file-sha256', digest, '--check'];
+    if (replace) args.push('--replace');
+    const result = record(await this.call(args));
+    const revisions = record(result?.expected_revisions);
+    if (!result || result.ok !== true || result.mode !== 'check'
+      || result.canonical_files_written !== 0 || !record(result.diff)
+      || result.unit_id !== unitId || result.file_sha256 !== digest
+      || !isSha256(result.snapshot_id) || !revisions
+      || Object.keys(revisions).length !== 2
+      || !Object.values(revisions).every(v => Number.isInteger(v) && Number(v) >= 0)
+      || !(unitId in revisions) || !(String(result.study_map_id) in revisions)) {
+      throw new Error('LearningOS could not provide a complete, bound no-write review. Nothing was imported.');
+    }
+    return { unitId, file, replace, fileSha256: digest,
+      expectedSnapshot: result.snapshot_id,
+      expectedRevisions: revisions as Record<string, number>, result };
   }
 
   /**

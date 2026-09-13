@@ -42,6 +42,7 @@ import {
   type PythonResolution,
 } from './infrastructure/los-runtime';
 import { ResourceOpener } from './infrastructure/resource-opener';
+import type { PageDestination } from './infrastructure/resource-target';
 import { ManifestStore } from './manifest-store';
 import { SessionEndModal } from './settings';
 import type { ProjectionRecord } from './contracts/manifest';
@@ -614,8 +615,8 @@ export class LearningOSUI extends Plugin implements AppSurface {
     }
   }
 
-  async openVaultPath(path: string) {
-    return this.resources.openVaultPath(path);
+  async openVaultPath(path: string, destination: PageDestination | null = null) {
+    return this.resources.openVaultPath(path, destination);
   }
   async openExternalPath(
     path: string,
@@ -623,8 +624,8 @@ export class LearningOSUI extends Plugin implements AppSurface {
   ): Promise<boolean> {
     return this.resources.openExternalPath(path, successMessage);
   }
-  openMaterialPath(path: string) {
-    return this.resources.openMaterialPath(path);
+  openMaterialPath(path: string, destination: PageDestination | null = null) {
+    return this.resources.openMaterialPath(path, destination);
   }
   openAuthoredPath(path: string) {
     return this.resources.openAuthoredPath(path);

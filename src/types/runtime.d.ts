@@ -261,6 +261,13 @@ declare module 'obsidian' {
 
     openFile(
       file: TAbstractFile,
+      /**
+       * Optional view state. `eState.page` positions Obsidian's own PDF view;
+       * a view that does not understand the key ignores it, so an unsupported
+       * destination still opens the file (audit synthetic-learner-2026-09-12,
+       * F07).
+       */
+      state?: { eState?: Record<string, unknown> },
     ): Promise<void> | void;
   }
 

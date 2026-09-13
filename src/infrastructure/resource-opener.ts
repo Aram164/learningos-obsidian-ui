@@ -2,14 +2,19 @@ import { foldCase } from '../sorting';
 import { shell } from 'electron';
 import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
-import { Notice, type App, type WorkspaceLeaf } from 'obsidian';
+import { Notice, type App, type TAbstractFile, type WorkspaceLeaf } from 'obsidian';
 import type { ProjectionRecord } from '../contracts/manifest';
 import { safeWebUrl } from '../security/safe-url';
-import { isDirectMaterialFileTarget, isFileShapedPath } from './resource-target';
+import {
+  isDirectMaterialFileTarget,
+  isFileShapedPath,
+  pageDestination,
+  type PageDestination,
+} from './resource-target';
 
 export interface ResourceOpenPorts {
-  openMaterialPath(path: string): unknown;
-  openVaultPath(path: string): unknown;
+  openMaterialPath(path: string, destination?: PageDestination | null): unknown;
+  openVaultPath(path: string, destination?: PageDestination | null): unknown;
 }
 
 const CODE_EXTENSIONS = new Set([
@@ -59,7 +64,10 @@ function resolvedWithin(root: string, candidate: string): string | null {
 export class ResourceOpener {
   constructor(private readonly app: App) {}
 
-  async openVaultPath(path: string): Promise<WorkspaceLeaf | undefined> {
+  async openVaultPath(
+    path: string,
+    destination: PageDestination | null = null,
+  ): Promise<WorkspaceLeaf | undefined> {
     const target = normalizedVaultPath(path);
     if (!target || target.startsWith('/') || target.split('/').includes('..')) {
       new Notice(`Unsafe vault path refused: ${path || 'unknown path'}`);
@@ -93,11 +101,65 @@ export class ResourceOpener {
     if (existing) {
       this.app.workspace.revealLeaf(existing);
       this.app.workspace.setActiveLeaf?.(existing, { focus: true });
+      // An already-open document is the case where the wrong page is most
+      // likely: it is sitting wherever it was last left, which is very
+      // probably a different stage's assigned location. Reposition it, and
+      // say so — revealing the leaf and stopping was silently the same bug
+      // F07 reported (review workbench/audits/repair-review-2026-09-13, R2).
+      if (destination) {
+        await this.repositionLeaf(existing, file, destination);
+      }
       return existing;
     }
     const leaf = this.app.workspace.getLeaf(true);
-    await leaf.openFile(file);
+    // Obsidian's own viewer can be positioned, so here the destination is
+    // honoured rather than described. `eState` is ignored by views that do
+    // not understand it, which is the right failure: the file still opens.
+    await leaf.openFile(file, destination ? { eState: { page: destination.page } } : undefined);
+    if (destination) this.announceDestination(leaf, destination);
     return leaf;
+  }
+
+  /**
+   * Move an open document to the assigned location, or say where to go.
+   *
+   * `setEphemeralState` is how Obsidian's own viewer is repositioned without
+   * reloading the file; re-opening it through the leaf is the fallback. Either
+   * way the claim made to the learner matches what actually happened: a viewer
+   * that cannot be positioned gets an instruction, never an announcement that
+   * it landed somewhere.
+   */
+  private async repositionLeaf(
+    leaf: WorkspaceLeaf,
+    file: TAbstractFile,
+    destination: PageDestination,
+  ): Promise<void> {
+    const view = leaf.view as { setEphemeralState?: (state: unknown) => void } | undefined;
+    if (typeof view?.setEphemeralState === 'function') {
+      try {
+        view.setEphemeralState({ page: destination.page });
+      } catch (_) {
+        new Notice(`Go to ${destination.label}.`);
+        return;
+      }
+      new Notice(`Page requested — go to ${destination.label} if the viewer did not move.`);
+      return;
+    }
+    try {
+      await leaf.openFile(file, { eState: { page: destination.page } });
+    } catch (_) {
+      new Notice(`Go to ${destination.label}.`);
+      return;
+    }
+    this.announceDestination(leaf, destination);
+  }
+
+  /** Only a viewer that can be positioned is told it landed there. */
+  private announceDestination(leaf: WorkspaceLeaf, destination: PageDestination): void {
+    // A viewer method can accept state without honoring it. Until an actual
+    // location is observable, carry the instruction instead of claiming a landing.
+    void leaf;
+    new Notice(`Opened — go to ${destination.label}.`);
   }
 
   private isCodePath(path: string): boolean {
@@ -148,7 +210,10 @@ export class ResourceOpener {
     return this.openSystemPath(realPath, successMessage);
   }
 
-  openMaterialPath(path: string): Promise<boolean> | false {
+  openMaterialPath(
+    path: string,
+    destination: PageDestination | null = null,
+  ): Promise<boolean> | false {
     const vault = this.app.vault.adapter.getBasePath();
     const learningRoot = nodePath.dirname(vault);
     const materialsRoot = nodePath.resolve(learningRoot, 'materials');
@@ -163,7 +228,17 @@ export class ResourceOpener {
       new Notice(`Unsafe material symlink refused: ${path || 'unknown path'}`);
       return false;
     }
-    return this.openExternalPath(realPath, 'Opened the local material in its default app.');
+    // The system opener takes a path and nothing else, and an external
+    // viewer may reopen a PDF wherever it was last left — so the page
+    // travels as an instruction rather than a promise. Saying "opened"
+    // and stopping is what left the learner on page 1 of 38 with no idea
+    // where to go (audit synthetic-learner-2026-09-12, F07).
+    return this.openExternalPath(
+      realPath,
+      destination
+        ? `Opened the local material in its default app — go to ${destination.label}.`
+        : 'Opened the local material in its default app.',
+    );
   }
 
   openAuthoredPath(path: string): Promise<boolean | WorkspaceLeaf | undefined> | false {
@@ -198,8 +273,9 @@ export class ResourceOpener {
     const materialPath = typeof resource.material_path === 'string'
       ? resource.material_path
       : '';
+    const destination = pageDestination(resource);
     if (isDirectMaterialFileTarget(resource)) {
-      return ports.openMaterialPath(materialPath);
+      return ports.openMaterialPath(materialPath, destination);
     }
     const vaultPath = typeof resource.vault_path === 'string' ? resource.vault_path : '';
     if (vaultPath.trim()) {
@@ -208,7 +284,7 @@ export class ResourceOpener {
         // material URI is not handed to Obsidian, but a safe web target on the
         // same source may still be the correct direct destination.
       } else if (isFileShapedPath(vaultPath)) {
-        return ports.openVaultPath(vaultPath);
+        return ports.openVaultPath(vaultPath, destination);
       }
     }
     if (resource.url) {

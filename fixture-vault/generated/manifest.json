@@ -1,9 +1,9 @@
 {
   "_generated": {
-    "contract_version": 9,
+    "contract_version": 10,
     "generated_at": "2099-04-01",
     "generator": "synthetic-fixture-v8",
-    "schema_sha256": "sha256:09f1b5d492a32d387cc942fe6c9ae5a17b48e5e3b02f325320c3070667642ddb",
+    "schema_sha256": "sha256:1209c4d49ec4ae7c826e9893c66490830f9a838d524a72278d45d33ad096acdd",
     "snapshot_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "source_dirty": false,
     "source_fingerprint": "2222222222222222222222222222222222222222222222222222222222222222",

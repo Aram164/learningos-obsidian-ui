@@ -2,6 +2,7 @@ import { button, chip, empty, icon, overflowMenu, section } from '../components'
 import type { ProjectionRecord } from '../contracts/manifest';
 import {
   asText as projectedText,
+  isRecord,
 } from '../projection/readers';
 import { hasDirectResourceTarget } from '../infrastructure/resource-target';
 
@@ -20,6 +21,7 @@ export interface StageResourceView {
 export interface StageResourceRenderer {
   readonly openResource?: (resource: StageResourceView) => unknown;
   readonly sourceRecord?: (sourceId: string) => ProjectionRecord | null;
+  readonly routeRecord?: (routeId: string) => ProjectionRecord | null;
   readonly openSource?: (source: ProjectionRecord) => unknown;
   readonly openSourceResource?: (source: ProjectionRecord) => unknown;
   readonly rateResource?: (
@@ -212,6 +214,22 @@ export interface ResourceRowExtras {
   readonly hideSourceChip?: boolean;
 }
 
+/** Material-owned cautions remain visible before opening a task or its answers. */
+export function renderMaterialCautions(parent: HTMLElement, record: ProjectionRecord): void {
+  for (const asset of Array.isArray(record.requires_assets) ? record.requires_assets : []) {
+    if (!isRecord(asset) || typeof asset.name !== 'string') continue;
+    const part = projectedText(asset.needed_for);
+    const origin = projectedText(asset.obtain_from);
+    parent.createDiv({ cls: 'los-micro', text:
+      `${asset.material_uri ? 'Required file' : 'Not registered locally'}: ${asset.name}`
+      + (part ? ` — needed for ${part}` : '') + (origin ? `. Obtain from ${origin}.` : '.') });
+  }
+  if (Array.isArray(record.exposes_solutions_for) && record.exposes_solutions_for.length) {
+    parent.createDiv({ cls: 'los-micro', text:
+      'Contains related task solutions. Read after your attempt, and report prior exposure before using those tasks as independent evidence.' });
+  }
+}
+
 export function renderResourceRow(
   parent: HTMLElement,
   resource: StageResourceView,
@@ -254,6 +272,8 @@ export function renderResourceRow(
       text: angle,
     });
   }
+  const routeId = projectedText(resource.record.route_id);
+  renderMaterialCautions(copy, (routeId ? renderer.routeRecord?.(routeId) : null) ?? resource.record);
 
   const showChip = source && !extras.hideSourceChip ? source : null;
   const angleDetail = projectedText(resource.record.angle_detail);

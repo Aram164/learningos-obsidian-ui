@@ -1,7 +1,7 @@
 /**
  * Closed decoders for the heterogeneous records emitted by Manifest v8.
  *
- * These key sets mirror Core's `system/contracts/manifest-v9.schema.json`.
+ * These key sets mirror Core's `system/contracts/manifest-v10.schema.json`.
  * Keeping the checks here makes the permissive `ProjectionRecord` convenience
  * type safe to use after `assertManifest`: extension fields are available to
  * feature code, but an undeclared producer field cannot cross the read boundary.
@@ -818,13 +818,20 @@ export function validProjectedUnit(value: unknown): boolean {
     && optional(source, 'related_module_ids', strings));
 }
 
+function validRequiredAsset(value: unknown): boolean {
+  const source = row(value);
+  return Boolean(source && exact(source, ['name'], ['material_uri', 'needed_for', 'obtain_from'])
+    && nonEmpty(source.name) && optional(source, 'material_uri', (v) => text(v) && String(v).startsWith('material://'))
+    && optional(source, 'needed_for', nonEmpty) && optional(source, 'obtain_from', nonEmpty));
+}
+
 function validProjectedRoute(value: unknown): boolean {
   const source = row(value);
   return Boolean(source && exact(source, [
     'id', 'unit_id', 'source_id', 'title', 'format', 'angle', 'covers', 'depth', 'scope',
   ], [
     'angle_detail', 'locator', 'url', 'vault_path', 'material_uri', 'material_path',
-    'material_exists',
+    'material_exists', 'requires_assets', 'exposes_solutions_for',
   ]) && identifier(source.id, 'route-') && identifier(source.unit_id, 'unit-')
     && identifier(source.source_id, 'source-') && nonEmpty(source.title)
     && nonEmpty(source.format) && nonEmpty(source.angle)
@@ -833,7 +840,9 @@ function validProjectedRoute(value: unknown): boolean {
     && optional(source, 'angle_detail', nonEmpty) && optional(source, 'locator', text)
     && optional(source, 'url', uri) && optional(source, 'vault_path', text)
     && optional(source, 'material_uri', text) && optional(source, 'material_path', text)
-    && optional(source, 'material_exists', (item) => typeof item === 'boolean'));
+    && optional(source, 'material_exists', (item) => typeof item === 'boolean')
+    && optional(source, 'requires_assets', (v) => Array.isArray(v) && v.length > 0 && list(v, validRequiredAsset))
+    && optional(source, 'exposes_solutions_for', (v) => ids(v, 'route-')));
 }
 
 function validSourceMapEntry(value: unknown): boolean {

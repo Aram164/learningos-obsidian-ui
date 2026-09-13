@@ -3,7 +3,7 @@ import { makeModalAccessible } from '../../accessibility/modal';
 import { foldCase } from '../../sorting';
 import { asText, asString } from '../../projection/readers';
 import { button, empty, icon, pageHeader } from '../../components';
-import { materialTypeIcon, renderResourceRow, whyThisOne, type StageResourceRenderer, type StageResourceView } from '../stage-resources';
+import { materialTypeIcon, renderMaterialCautions, renderResourceRow, whyThisOne, type StageResourceRenderer, type StageResourceView } from '../stage-resources';
 import { readMaterialOptions, readUnitRecord } from './model';
 import type { MaterialOptionView, StageRecordView, UnitPlugin, UnitRecordView } from './model';
 import { groupBySource, renderSourceGroups } from './source-browser';
@@ -171,6 +171,7 @@ export class MaterialComparisonModal extends Modal {
     if (option.selected) metadata.createSpan({ cls: 'los-micro los-resource-chosen', text: 'Chosen for this lecture' });
 
     if (option.angle) copy.createDiv({ cls: 'los-resource-angle', text: option.angle });
+    renderMaterialCautions(copy, option.record);
 
     // Coverage belongs with the rationale, not on its own line: both answer
     // "why this one", and the owning unit's labels are what make it readable.

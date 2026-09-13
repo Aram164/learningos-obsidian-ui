@@ -19,6 +19,7 @@ const {
   heading,
   build,
   boot,
+  gatewayRefusal,
 } = require('./support');
 
 module.exports = async function run() {
@@ -773,22 +774,28 @@ module.exports = async function run() {
       && view.contentEl.find('los-atlas-editor-preview')[0].allText()
         .includes('Learn Probability before Bayes theorem'));
 
+    /* The reviewed UI path carries the exact authored claim and registry guard. */
+    const authored = [];
+    const realChange = plugin.gateway.changeConceptRelations.bind(plugin.gateway);
+    plugin.gateway.changeConceptRelations = (operations, guards) => {
+      authored.push({ operations, guards });
+      return realChange(operations, guards);
+    };
+
     view.contentEl.find('los-atlas-editor-save')[0].fire('click');
     await settle();
-    const added = calls.envelope('concept.relations.change');
-    check('saving sends exactly one authored add, guarded on the registry',
-      Boolean(added)
-      && added.expected_snapshot === FIXTURE_SNAPSHOT
-      && JSON.stringify(added.expected_revisions)
+    check('saving asks for exactly one authored add, guarded on the registry',
+      authored.length === 1
+      && JSON.stringify(authored[0].guards)
         === JSON.stringify({ 'registry-concept-relations': 0 })
-      && JSON.stringify(added.payload) === JSON.stringify({
-        change: {
-          operations: [{
-            action: 'add',
-            new: { from: 'concept-bayes', type: 'requires', to: 'concept-wahrscheinlichkeit' },
-          }],
-        },
-      }));
+      && JSON.stringify(authored[0].operations) === JSON.stringify([{
+        action: 'add',
+        new: { from: 'concept-bayes', type: 'requires', to: 'concept-wahrscheinlichkeit' },
+      }]));
+    check('a reviewed UI claim is submitted and confirmation closes the editor',
+      calls.envelope('concept.relations.change')?.channel === 'ui'
+      && calls.envelope('concept.relations.change')?.approval.kind === 'direct-user-gesture'
+      && atlas().contentEl.find('los-atlas-editor').length === 0);
     check('authoring a connection needs no AI provider',
       !calls.some((args) => args[0] === 'ai-action-prepare' || args[0] === 'ask'));
 
@@ -818,10 +825,23 @@ module.exports = async function run() {
       view.contentEl.find('los-atlas-editor-sentence')[0].allText()
         === 'Conditional probability requires Bayes theorem.');
 
+    const originalRunLos = plugin.runLos;
+    plugin.runLos = (args, callback, stdin) => {
+      const envelope = stdin ? JSON.parse(stdin) : null;
+      if (envelope?.capability === 'concept.relations.change') {
+        callback(Object.assign(new Error('refused'), { code: 3 }), JSON.stringify(gatewayRefusal(
+          envelope, 'REVISION_CONFLICT', 'The connection changed; reload before applying this draft.')));
+        return;
+      }
+      return originalRunLos(args, callback, stdin);
+    };
     view.contentEl.find('los-atlas-editor-save')[0].fire('click');
     await settle();
-    const replaced = calls.envelopes
-      .filter((envelope) => envelope.capability === 'concept.relations.change').pop();
+    check('a refused edit keeps the swapped claim intact',
+      view.contentEl.find('los-atlas-editor-sentence')[0].allText()
+        === 'Conditional probability requires Bayes theorem.');
+    plugin.runLos = originalRunLos;
+    const replaced = { payload: { change: { operations: authored.at(-1).operations } } };
     check('an edit binds the exact previous row, not a reconstruction of it',
       JSON.stringify(replaced.payload.change.operations[0]) === JSON.stringify({
         action: 'replace',
@@ -857,9 +877,8 @@ module.exports = async function run() {
 
     view.contentEl.find('los-atlas-remove-connection')[0].fire('click');
     await settle();
-    const removed = calls.envelopes
-      .filter((envelope) => envelope.capability === 'concept.relations.change').pop();
-    check('removing sends the exact stored row and nothing else',
+    const removed = { payload: { change: { operations: authored.at(-1).operations } } };
+    check('removing asks for the exact stored row and nothing else',
       JSON.stringify(removed.payload.change.operations[0]) === JSON.stringify({
         action: 'remove',
         old: {

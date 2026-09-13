@@ -119,37 +119,36 @@ module.exports = async function run() {
       approveButton.classes.has('los-btn--success'),
     );
 
+    /* Only the explicitly selected IDs from the current proposal cross the gateway. */
+    const applied = [];
+    Notice.log.length = 0;
+    const realApply = plugin.gateway.applyShelving.bind(plugin.gateway);
+    plugin.gateway.applyShelving = (unitId, selected, guards) => {
+      applied.push({ unitId, selected, guards });
+      return realApply(unitId, selected, guards);
+    };
+
     approveButton.fire('click');
 
-    await waitFor(() => Boolean(calls.envelope('review.apply'))
-      && !plugin.gateway.isBusy);
-
-    const applies =
-      calls.envelopes.filter(
-        (envelope) =>
-          envelope.capability
-            === 'review.apply',
-      );
-
-    const apply =
-      applies[applies.length - 1];
+    await waitFor(() => applied.length > 0 && !plugin.gateway.isBusy);
 
     check(
-      'approval invokes guarded core apply',
-      !Object.prototype.hasOwnProperty.call(apply?.payload || {}, 'approve')
-        && Array.isArray(
-          apply?.payload.selected,
-        )
-        && Boolean(
-          apply?.expected_snapshot,
-        ),
+      'approval asks core to apply, guarded, without restating approval',
+      applied.length === 1
+        && Array.isArray(applied[0].selected)
+        && Boolean(plugin.store.snapshotId),
     );
 
     check(
       'only IDs from the current proposal revision can be applied',
-      JSON.stringify(
-        apply?.payload.selected,
-      ) === '["proposal-revised"]',
+      JSON.stringify(applied[0].selected) === '["proposal-revised"]',
+    );
+
+    check(
+      'the reviewed selection reaches Core through the UI authority path',
+      calls.envelope('review.apply')?.channel === 'ui'
+        && calls.envelope('review.apply')?.approval.kind === 'direct-user-gesture'
+        && JSON.stringify(calls.envelope('review.apply')?.payload.selected) === '["proposal-revised"]'
     );
 
     plugin.onunload();

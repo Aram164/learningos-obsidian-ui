@@ -698,4 +698,71 @@ module.exports = async function run() {
       && prompt.includes('supplementary context only'));
     plugin.onunload();
   }
+
+  heading('the assigned page survives the whole plugin route');
+  {
+    /*
+     * The delegate probe the review ran, kept as a test.
+     *
+     * `ResourceOpener` accepted a destination and its own tests passed, while
+     * `main.ts` accepted and forwarded only `path` — so on the real plugin
+     * route the page option and the external-viewer instruction were dropped
+     * before they reached any opener. Calling ResourceOpener directly cannot
+     * see that, which is the point of going through the built plugin here
+     * (review workbench/audits/repair-review-2026-09-13, R2).
+     */
+    const { app, plugin } = await boot();
+    const seen = [];
+    // The real opener still derives the destination; only the two boundaries
+    // the delegates reach are recorded, exactly as the review probed them.
+    const real = plugin.resources;
+    plugin.resources = {
+      openResource: (record, ports) => real.openResource(record, ports),
+      openVaultPath: (path, destination) => { seen.push(['vault', path, destination]); },
+      openMaterialPath: (path, destination) => { seen.push(['material', path, destination]); },
+      openExternalPath: (path, message) => { seen.push(['external', path, message]); },
+      openAuthoredPath: (path) => { seen.push(['authored', path]); },
+    };
+
+    const destination = { page: 20, label: 'physical pages 20\u201322' };
+    await plugin.openVaultPath('knowledge/attachments/deck.pdf', destination);
+    plugin.openMaterialPath('materials/lecture.pdf', destination);
+    check('both plugin delegates forward the destination, not just the path',
+      JSON.stringify(seen) === JSON.stringify([
+        ['vault', 'knowledge/attachments/deck.pdf', destination],
+        ['material', 'materials/lecture.pdf', destination],
+      ]));
+
+    seen.length = 0;
+    plugin.openResource({
+      material_path: 'materials/sad/08_normal_distribution.pdf',
+      material_exists: true,
+      locator: 'lecture-slides/08_normal_distribution.pdf, PDF pp. 20-22',
+    });
+    check('openResource derives the destination and hands it on',
+      seen.length === 1 && seen[0][0] === 'material'
+      && seen[0][2] && seen[0][2].page === 20);
+
+    seen.length = 0;
+    plugin.openResource({
+      material_path: 'materials/sad/UE6.pdf',
+      material_exists: true,
+      locator: 'exercise-slides/UE6.pdf, slides 5-20',
+    });
+    check('an unqualified locator hands on no destination rather than a guess',
+      seen.length === 1 && seen[0][2] === null);
+
+    /* The mixed-numbering case F07 named: Analysis Chapter 01 declares both
+     * numberings, and the printed page came first. */
+    seen.length = 0;
+    plugin.openResource({
+      material_path: 'materials/analysis/skript.pdf',
+      material_exists: true,
+      locator: 'unser skript.pdf Kapitel 1, printed p. 1 (PDF p. 11)\u2013printed p. 6 (PDF p. 16)',
+    });
+    check('a printed page beside a physical one never becomes the destination',
+      seen.length === 1 && seen[0][2] && seen[0][2].page === 11);
+
+    plugin.onunload();
+  }
 };

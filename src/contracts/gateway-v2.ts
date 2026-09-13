@@ -129,6 +129,89 @@ export function isSha256(value: unknown): value is string {
 }
 
 /**
+ * Capabilities this interface may authorize with a direct user gesture.
+ *
+ * This is the producer half of one policy whose enforcing copy is Core's
+ * `GESTURE_ALLOWLIST`, and `scripts/check-contract.mjs` fails when the two
+ * disagree. A gesture is sufficient authority when the record written is the
+ * learner's own study activity, or her own choice among material someone
+ * already authored. It is never sufficient for canonical semantics or plan
+ * content, however genuine the click — those go through a reviewed operator
+ * request, and this app does not have one.
+ *
+ * Until 2026-09-13 the client claimed a gesture for every capability it sent,
+ * so Core refused Revisit stage, Report prerequisite gap, Save session note
+ * and Rate explanation with `direct-user-gesture is not admitted for …` —
+ * internal approval vocabulary, in front of a learner who had done nothing
+ * wrong (audit `synthetic-learner-2026-09-12`, F01). Sending what will be
+ * refused is now caught here, before an envelope exists.
+ */
+export const UI_GESTURE_CAPABILITIES: readonly string[] = [
+  // The learner's own study record, admitted from any channel in Core.
+  'atlas.question.save',
+  'capture.create',
+  'detour.create',
+  'detour.resolve',
+  'garden.seed.create',
+  'source.feedback.record',
+  'stage.attachment.add',
+  'stage.progress.update',
+  'unit.note.append',
+  'unit.source-selection.set',
+  /*
+   * Canonical changes this app may authorize, and only this app: Core admits
+   * these to a gesture over `channel: "ui"` alone. Each is applied from a
+   * screen that shows the exact change first, and that deliberate Save or
+   * Apply is the explicit approval their contracts always required — ADR-017
+   * designed the Atlas for exactly this, and a readable refusal was still a
+   * refusal of a current architecture decision (review
+   * workbench/audits/repair-review-2026-09-13, D1).
+   *
+   * A capability reaching this list must have a screen that renders the
+   * concrete change before the control that sends it. Adding one here because
+   * "the app needs it" reintroduces the thing the allowlist exists to stop.
+   */
+  'concept.relations.change',
+  'review.apply',
+  'review.prepare',
+  'unit.map.import',
+];
+
+const UI_GESTURE_SET: ReadonlySet<string> = new Set(UI_GESTURE_CAPABILITIES);
+
+export function isGestureCapability(capability: string): boolean {
+  return UI_GESTURE_SET.has(capability);
+}
+
+/**
+ * What to do instead, for the write paths this app can still reach from a
+ * click but cannot authorize. Saying "needs approval" and stopping would leave
+ * the learner exactly where the raw Core refusal did.
+ */
+const GESTURE_UNAVAILABLE_RECOVERY: Readonly<Record<string, string>> = {
+  'module.plan.import':
+    'A module plan is applied from a reviewed file after its preflight, '
+    + 'through an operator request. Nothing was changed.',
+  'route.patch':
+    'Material details change through the reviewed route-patch preflight and '
+    + 'an operator request. Nothing was changed.',
+  'note.revise':
+    'Rewriting a note body is a semantic edit: it needs an explicit request '
+    + 'and a reviewable diff. Your text is kept here; nothing was changed.',
+  'stage.note.write':
+    'Stage notes are a retired surface. Save the note against the unit '
+    + 'instead; nothing was changed.',
+};
+
+/** The message shown when this app may not authorize a capability itself. */
+export function gestureUnavailableMessage(capability: string): string {
+  return GESTURE_UNAVAILABLE_RECOVERY[capability]
+    ?? `LearningOS does not accept ${capability} from a direct action in this `
+      + 'app, because it writes canonical content. It needs a reviewed '
+      + 'operator request. Nothing was changed.';
+}
+
+/**
  * Capabilities whose write target is named by Core, not by the caller.
  *
  * A capture cannot be guarded as `capture:work/inbox/<name>.md`, because the
