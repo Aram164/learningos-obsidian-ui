@@ -3716,6 +3716,99 @@
 .los-source-entry { margin-left: var(--los-3); overflow-wrap: anywhere; }
 .los-source-entry + .los-source-entry { border-top: 1px solid var(--los-line); }
 .los-resource-badge, .los-resource-chosen { color: var(--los-ink-soft); }
+
+/* ── Purpose-first comparison list ────────────────────────────────────
+   Partition: purpose section → type sub-heading → cards. The sub-heading is
+   a lightweight inline label with a count, never a second accordion. */
+
+/* Every interactive target in the dialog meets 36px. */
+.los-material-drawer .los-btn,
+.los-material-drawer select,
+.los-material-drawer input {
+  min-height: 36px;
+}
+.los-material-drawer summary {
+  min-height: 36px;
+  cursor: pointer;
+}
+
+/* Jump bar: the primary navigation at wide scopes. Sticks to the top of the
+   single vertical scroll area; wraps instead of scrolling sideways. */
+.los-jump-bar {
+  position: sticky;
+  top: calc(-1 * var(--los-5));
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-1) var(--los-2);
+  padding: var(--los-2) 0;
+  margin-bottom: var(--los-2);
+  background: var(--los-paper-2);
+  border-bottom: 1px solid var(--los-rule);
+}
+.los-jump-chip {
+  min-height: 36px;
+  padding: 2px 12px;
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-pill);
+  background: var(--los-paper-3);
+  color: var(--los-ink);
+  font-size: 12px;
+}
+.los-jump-chip.is-muted {
+  border-style: dashed;
+  background: transparent;
+  color: var(--los-ink-faint);
+}
+
+/* Purpose sections: real h2 headings carrying label, sub-label and counts so
+   a collapsed section still states everything it holds. */
+.los-purpose-group { border-bottom: 1px solid var(--los-line); padding: var(--los-2) 0; }
+.los-purpose-summary { list-style: none; }
+.los-purpose-heading {
+  display: inline;
+  margin: 0;
+  font-size: 15px;
+}
+.los-purpose-sub {
+  margin: 2px 0 0;
+  color: var(--los-ink-soft);
+  font-size: 13px;
+}
+
+/* Type sub-headings sit one level below the section, with a count and a
+   hairline rule. They are labels, not disclosures. */
+.los-type-subhead {
+  margin: var(--los-3) 0 var(--los-1);
+  padding-bottom: var(--los-1);
+  border-bottom: 1px solid var(--los-rule);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--los-ink-faint);
+}
+.los-type-subgroup:first-child .los-type-subhead { margin-top: var(--los-2); }
+
+/* Group-by segmented control and the urgency toggle share the control row. */
+.los-source-groupby {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-1);
+  align-items: end;
+  flex: 1 1 100%;
+}
+.los-groupby-btn.is-active {
+  background: var(--los-accent-wash);
+  color: var(--los-accent);
+}
+.los-source-required-label {
+  flex-direction: row !important;
+  align-items: center;
+  gap: var(--los-2);
+}
+.los-source-required-label input { width: auto; }
+.los-source-required-label span { font-size: 12px; }
 /* Projects are parallel work, rendered as workstreams and decisions rather
  * than a second module dashboard. */
 .los-project-view > .los-project-list,

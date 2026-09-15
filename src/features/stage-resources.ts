@@ -106,24 +106,89 @@ export function currentWorkResource(
 }
 
 const MATERIAL_TYPE_ORDER = [
-  'video',
-  'article',
-  'book',
+  'course-material',
   'exercise',
+  'solutions',
+  'exam',
+  'book',
+  'paper',
+  'video',
+  'website',
+  'documentation',
+  'code',
+  'course',
+  'article',
 ] as const;
 
 type MaterialType = typeof MATERIAL_TYPE_ORDER[number];
 
+/**
+ * Every value must be a key of the Lucide registry Obsidian bundles — 1,995
+ * icons in 1.13.7. `setIcon` renders NOTHING for a name it does not know: no
+ * error, no fallback, just a blank gap, so a wrong name here fails silently.
+ *
+ * To re-verify after an Obsidian upgrade, read the registry itself — it is a
+ * name-to-path map, hyphenated keys quoted:
+ *
+ *   strings ~/Library/Application\ Support/obsidian/obsidian-*.asar \
+ *     | grep -oE '"?[a-z][a-z0-9-]{1,40}"?:\[\[' \
+ *     | sed -E 's/:\[\[$//; s/"//g' | sort -u
+ *
+ * Do NOT grep for `lucide-<name>`: that matches only the CSS-class spellings
+ * that happen to appear elsewhere in the bundle — a 235-name subset which
+ * omits names that demonstrably render, and which produced a confident, wrong
+ * verdict that these icons were broken.
+ */
 const MATERIAL_TYPE_ICON: Readonly<Record<MaterialType, string>> = {
-  video: 'play',
-  article: 'file-text',
-  book: 'book-open',
+  'course-material': 'presentation',
   exercise: 'pencil-line',
+  solutions: 'clipboard-check',
+  exam: 'graduation-cap',
+  book: 'book-open',
+  paper: 'newspaper',
+  video: 'play',
+  website: 'globe',
+  documentation: 'file-text',
+  code: 'code',
+  course: 'library',
+  article: 'file-text',
 };
+
+/**
+ * The schema `format` value (or a working kind's fallback) mapped to one
+ * precise material type. Every type keeps its own icon so the glyph answers
+ * "what kind of thing is this" before a word is read.
+ */
+function normaliseMaterialType(declared: string): MaterialType {
+  switch (declared) {
+    case 'course-material': return 'course-material';
+    case 'exercise':
+    case 'practice':
+    case 'practise':
+    case 'problem-set':
+    case 'homework':
+    case 'quiz': return 'exercise';
+    case 'solutions': return 'solutions';
+    case 'exam': return 'exam';
+    case 'book':
+    case 'textbook': return 'book';
+    case 'paper': return 'paper';
+    case 'video': return 'video';
+    case 'website':
+    case 'web':
+    case 'web-page':
+    case 'webpage': return 'website';
+    case 'documentation':
+    case 'docs': return 'documentation';
+    case 'code': return 'code';
+    case 'course': return 'course';
+    default: return 'article';
+  }
+}
 
 /** The row icon for a media type, so other surfaces render the same card. */
 export function materialTypeIcon(type: string): string {
-  return MATERIAL_TYPE_ICON[type as MaterialType] ?? MATERIAL_TYPE_ICON.article;
+  return MATERIAL_TYPE_ICON[normaliseMaterialType((type ?? '').toLowerCase())];
 }
 
 let angleDetailSequence = 0;
@@ -186,21 +251,7 @@ function materialTypeOf(
     ?? ''
   ).toLowerCase();
 
-  if (
-    declared === 'exercise'
-    || declared === 'practice'
-    || declared === 'practise'
-    || declared === 'problem-set'
-    || declared === 'homework'
-    || declared === 'quiz'
-  ) return 'exercise';
-  if (declared === 'video') return 'video';
-  if (declared === 'book' || declared === 'textbook') return 'book';
-
-  // Papers, websites, documentation, lecture notes, and untyped readings are
-  // all scan-friendly reading material. Source metadata can still name the
-  // more precise medium inside the row without fragmenting the catalogue.
-  return 'article';
+  return normaliseMaterialType(declared);
 }
 
 export interface ResourceRowExtras {
@@ -212,6 +263,12 @@ export interface ResourceRowExtras {
    * source record itself is still needed for the "Open source" fallback.
    */
   readonly hideSourceChip?: boolean;
+  /**
+   * Carry the source chip in the meta row (urgency · source · locator).
+   * Used where no group heading names the source — the purpose-first browser
+   * — so provenance stays on the card without a second disclosure.
+   */
+  readonly sourceInMeta?: boolean;
 }
 
 /** Material-owned cautions remain visible before opening a task or its answers. */
@@ -255,6 +312,9 @@ export function renderResourceRow(
       ? TRIAGE_HEADING[resource.scopeTriage]
       : resource.scopeTriage || 'Primary · unranked',
   });
+  if (extras.sourceInMeta && source && !extras.hideSourceChip) {
+    chip(metadata, source, renderer.openSource);
+  }
   if (resource.locator) {
     metadata.createSpan({
       cls: 'los-micro los-resource-locator',
@@ -275,7 +335,7 @@ export function renderResourceRow(
   const routeId = projectedText(resource.record.route_id);
   renderMaterialCautions(copy, (routeId ? renderer.routeRecord?.(routeId) : null) ?? resource.record);
 
-  const showChip = source && !extras.hideSourceChip ? source : null;
+  const showChip = source && !extras.hideSourceChip && !extras.sourceInMeta ? source : null;
   const angleDetail = projectedText(resource.record.angle_detail);
   if (angleDetail) {
     whyThisOne(copy, angleDetail, (foot) => {
