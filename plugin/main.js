@@ -12825,9 +12825,6 @@ function normalisePurpose(value) {
   return PURPOSE_ORDER.some((def) => def.value === candidate) ? candidate : "";
 }
 function normaliseType(raw, kind) {
-  const workingKind = (kind ?? "").trim().toLowerCase();
-  if (workingKind === "practise" || workingKind === "practice") return "exercise";
-  if (workingKind === "watch") return "video";
   switch ((raw ?? "").trim().toLowerCase()) {
     case "course-material":
       return "course-material";
@@ -12862,8 +12859,12 @@ function normaliseType(raw, kind) {
     case "course":
       return "course";
     default:
-      return "";
+      break;
   }
+  const workingKind = (kind ?? "").trim().toLowerCase();
+  if (workingKind === "practise" || workingKind === "practice") return "exercise";
+  if (workingKind === "watch") return "video";
+  return "";
 }
 var TRIAGE_WEIGHT = {
   "required-now": 1,
@@ -15631,7 +15632,7 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:02935709d82fff6e6cf49044042bb887c3024dc7d2b2df763b034511a46a30ae" : "unavailable";
+  return true ? "sha256:4c1fceb1176bed43829d6bea045bea3e1fb853e10488b2f034c1ed4e79ca1ac2" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 10 : 0;

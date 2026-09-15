@@ -544,6 +544,14 @@ module.exports = async function run() {
             depth: 'orientation', scope: 'complementary',
             locator: 'clip', source_id: 'source-fixture-book',
           },
+          {
+            id: 'route-optional-solutions', unit_id: 'unit-fixture-sad-l04',
+            title: 'Waiting-time worked answers', format: 'solutions',
+            angle: 'The answers, worked in full.',
+            covers: ['knowledge-fixture-conditioning'],
+            depth: 'practice', scope: 'complementary',
+            locator: 'pp. 20-24', source_id: 'source-fixture-book',
+          },
         ];
         const stage = manifest.study_maps.find((row) => row.unit_id === 'unit-fixture-sad-l04')
           .stages.find((row) => row.id === 'stage-fixture-conditioning');
@@ -559,6 +567,12 @@ module.exports = async function run() {
             source_id: 'source-fixture-book', kind: 'watch',
             label: 'Waiting-time picture', locator: 'clip', scope_triage: 'reference-only',
           },
+          {
+            id: 'resource-optional-solutions', route_id: 'route-optional-solutions',
+            source_id: 'source-fixture-book', kind: 'practise',
+            label: 'Waiting-time worked answers', locator: 'pp. 20-24',
+            scope_triage: 'helpful-now',
+          },
         ];
       },
     });
@@ -571,12 +585,20 @@ module.exports = async function run() {
       .map((node) => [node.allText(), node.getAttribute('open') !== null]);
     const opened = (label) => state.find(([text]) => text.includes(label))?.[1];
     check('a stage with nothing required still opens at the most urgent rank present',
-      state.length === 2 && opened('Derive it') === true);
+      state.length === 3 && opened('Derive it') === true && opened('Practise') === true);
     check('ranks below the most urgent present stay collapsed',
       opened('Get oriented') === false);
     check('nothing is hidden by the fallback: the count line still reconciles',
-      drawer.allText().includes('2 of 2 entries')
+      drawer.allText().includes('3 of 3 entries')
       && drawer.allText().includes('0 required now'));
+    /* The working kind names the ACTIVITY, not the material: a solutions PDF
+       placed as `practise` is still worked solutions, and letting the kind win
+       meant that sub-heading could never appear. */
+    const practise = drawer.find('los-purpose-group')
+      .find((node) => node.allText().includes('Practise'));
+    check('an authored format outranks the working kind in the type partition',
+      practise.allText().includes('Worked solutions')
+      && !practise.allText().includes('Exercise sheets'));
     plugin.onunload();
   }
 

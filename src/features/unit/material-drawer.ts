@@ -74,14 +74,12 @@ function normalisePurpose(value: string | null): string {
 /**
  * Stage placements can arrive with a raw working kind (`read`, `practise`,
  * `watch`) instead of a format. `practise`/`practice` always means exercise
- * sheets and `watch` always means video; `read` falls back to whatever format
- * the caller resolved (route format first), and only a wholly absent format
- * lands in the trailing bucket. Nothing is ever dropped for lack of a facet.
+ * The authored `format` decides the type. The working kind (`practise`,
+ * `watch`, `read`) speaks only where no format resolved, because it names the
+ * activity rather than the material. Only a wholly absent format and kind
+ * lands in the trailing bucket — nothing is dropped for lack of a facet.
  */
 function normaliseType(raw: string | null, kind: string): string {
-  const workingKind = (kind ?? '').trim().toLowerCase();
-  if (workingKind === 'practise' || workingKind === 'practice') return 'exercise';
-  if (workingKind === 'watch') return 'video';
   switch ((raw ?? '').trim().toLowerCase()) {
     case 'course-material': return 'course-material';
     case 'exercise':
@@ -104,8 +102,18 @@ function normaliseType(raw: string | null, kind: string): string {
     case 'docs': return 'documentation';
     case 'code': return 'code';
     case 'course': return 'course';
-    default: return '';
+    default: break;
   }
+  // Only now the working kind, and only as a fallback. It describes the
+  // ACTIVITY the stage asks for, not what the material IS: UE2 and UE3 are
+  // placed as `practise` but are authored `format: solutions`, and letting
+  // the kind win typed both as exercise sheets, so "Worked solutions" could
+  // never appear for the one purpose that needs it. Authored facets win;
+  // kind only speaks where no format resolved.
+  const workingKind = (kind ?? '').trim().toLowerCase();
+  if (workingKind === 'practise' || workingKind === 'practice') return 'exercise';
+  if (workingKind === 'watch') return 'video';
+  return '';
 }
 
 const TRIAGE_WEIGHT: Readonly<Record<string, number>> = {
