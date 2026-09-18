@@ -359,6 +359,9 @@ function renderMaterialSynthesis(
       ['Notation', assessment.notation],
       ['Exercise value', assessment.exercise_value],
       ['Limitations', assessment.limitations],
+      // Directly under Limitations, because it is the bound on every negative
+      // sentence above it: what this review actually had in front of it.
+      ['Inspected', assessment.scope_of_absence],
       ['Review note', assessment.reason],
     ];
     for (const [label, value] of details) {

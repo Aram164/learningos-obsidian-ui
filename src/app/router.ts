@@ -12,6 +12,8 @@ import {
   asAtlasDepth,
   asAtlasLens,
   asLibraryCollection,
+  asLibraryFolderLayout,
+  asLibraryFolderPath,
   asLibrarySourceFilters,
   asProjectDetailTab,
 } from '../contracts/route-v1';
@@ -173,6 +175,13 @@ export class ApplicationRouter {
   }
 
   libraryRouteFromState(state: LegacyRouteState = {}): ApplicationRouteV1 {
+    if (state.screen === 'folder') return {
+      name: 'library-folder',
+      path: asLibraryFolderPath(state.folderPath),
+      selected: asNullableText(state.folderSelection),
+      layout: asLibraryFolderLayout(state.folderLayout),
+      query: asText(state.query),
+    };
     if (state.screen === 'group') return {
       name: 'library-group',
       collection: asLibraryCollection(state.collection),
@@ -258,6 +267,17 @@ export class ApplicationRouter {
         type: VIEW_UNIT,
         state: { unitId: route.unitId, stageId: route.stageId || null },
         nav: 'learn',
+      };
+      case 'library-folder': return {
+        type: VIEW_LIBRARY,
+        state: {
+          screen: 'folder',
+          folderPath: asLibraryFolderPath(route.path),
+          folderSelection: route.selected || null,
+          folderLayout: asLibraryFolderLayout(route.layout),
+          query: route.query || '',
+        },
+        nav: 'library',
       };
       case 'library-home': return {
         type: VIEW_LIBRARY,

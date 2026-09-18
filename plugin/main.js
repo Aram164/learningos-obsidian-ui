@@ -977,8 +977,8 @@ function validProjectedRecord(value, validSynthesis) {
 }
 
 // src/contracts/manifest.ts
-var MANIFEST_CONTRACT_VERSION = 10;
-var MANIFEST_SCHEMA_SHA256 = "sha256:1209c4d49ec4ae7c826e9893c66490830f9a838d524a72278d45d33ad096acdd";
+var MANIFEST_CONTRACT_VERSION = 11;
+var MANIFEST_SCHEMA_SHA256 = "sha256:35b4e5765ded09b72d191e68e590ff63768cf43113613725e691703150221a6a";
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -1009,7 +1009,7 @@ function validSynthesisBasis(value) {
   ])) return false;
   const checksums = value.material_checksums;
   const provenance = value.ai_provenance;
-  return natural2(value.unit_revision) && natural2(value.source_map_revision) && sha256(value.source_map_checksum) && sha256(value.route_set_checksum) && isRecord(checksums) && Object.entries(checksums).every(([routeId, checksum]) => identifier2(routeId, "route-") && sha256(checksum)) && value.policy === "tiered-v1" && isRecord(provenance) && exactKeys(provenance, ["request_id", "delivery_id", "provider"]) && nonEmptyText(provenance.request_id) && nonEmptyText(provenance.delivery_id) && ["manual-bundle", "local"].includes(String(provenance.provider));
+  return natural2(value.unit_revision) && natural2(value.source_map_revision) && sha256(value.source_map_checksum) && sha256(value.route_set_checksum) && isRecord(checksums) && Object.entries(checksums).every(([routeId, checksum]) => identifier2(routeId, "route-") && sha256(checksum)) && value.policy === "tiered-v2" && isRecord(provenance) && exactKeys(provenance, ["request_id", "delivery_id", "provider"]) && nonEmptyText(provenance.request_id) && nonEmptyText(provenance.delivery_id) && ["manual-bundle", "local"].includes(String(provenance.provider));
 }
 function validRouteAssessment(value) {
   if (!isRecord(value) || !exactKeys(value, [
@@ -1025,6 +1025,7 @@ function validRouteAssessment(value) {
     "exercise_value",
     "best_for",
     "limitations",
+    "scope_of_absence",
     "reason",
     "evidence"
   ]) || !identifier2(value.route_id, "route-") || !identifier2(value.source_id, "source-") || !nonEmptyText(value.locator) || !["deep-reviewed", "screened", "unevaluated", "unavailable"].includes(String(value.review_status)) || !uniqueStringArray(value.concept_ids, (item) => identifier2(item, "concept-"))) return false;
@@ -1034,7 +1035,8 @@ function validRouteAssessment(value) {
     "notation",
     "exercise_value",
     "best_for",
-    "limitations"
+    "limitations",
+    "scope_of_absence"
   ];
   if ("reason" in value && !nonEmptyText(value.reason)) return false;
   if ("evidence" in value && (!Array.isArray(value.evidence) || !value.evidence.every(validSynthesisEvidence))) return false;
@@ -1065,7 +1067,6 @@ function validConceptGroup(value) {
   ]) && identifier2(value.concept_id, "concept-") && uniqueStringArray(value.local_node_ids, (item) => identifier2(item, "knowledge-")) && uniqueStringArray(value.related_unit_ids, (item) => identifier2(item, "unit-")) && uniqueStringArray(value.bridge_note_ids, (item) => identifier2(item, "note-")) && nonEmptyText(value.narrative);
 }
 var synthesisStaleReasons = [
-  "unit_revision",
   "source_map_revision",
   "source_map_checksum",
   "route_set_checksum",
@@ -2048,7 +2049,7 @@ var SessionEndModal = class extends import_obsidian2.Modal {
       attr: { type: "text", placeholder: "Commit message", "aria-label": "Learning session commit message" }
     });
     const pushRow = root.createDiv({ cls: "los-row" });
-    const push2 = pushRow.createEl("input", { attr: { type: "checkbox", "aria-label": "Push after commit" } });
+    const push3 = pushRow.createEl("input", { attr: { type: "checkbox", "aria-label": "Push after commit" } });
     pushRow.createSpan({ text: "Push after the scoped commit succeeds" });
     const actions = root.createDiv({ cls: "los-actions" });
     button(actions, "Commit session-owned files", async () => {
@@ -2060,7 +2061,7 @@ var SessionEndModal = class extends import_obsidian2.Modal {
         const result = asSessionReview(await this.plugin.mutate(
           () => this.plugin.gateway.endSession(
             message.value.trim(),
-            Boolean(push2.checked)
+            Boolean(push3.checked)
           )
         ));
         new import_obsidian2.Notice(result.pushed ? "Learning session committed and pushed." : "Learning session committed.");
@@ -2127,6 +2128,13 @@ function asLibrarySourceFilters(value) {
 }
 function asLibraryCollection(value) {
   return isLibraryCollection(value) ? value : "sources";
+}
+function asLibraryFolderLayout(value) {
+  return value === "columns" ? "columns" : "list";
+}
+function asLibraryFolderPath(value) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((segment2) => typeof segment2 === "string" && segment2.length > 0).slice(0, 12);
 }
 function asAtlasLens(value) {
   return isAtlasLens(value) ? value : "prerequisites";
@@ -2543,18 +2551,18 @@ function strictPath(graph, focusId) {
   const cycle = findStrictCycle(graph, scope);
   if (cycle) return { ok: false, cycle };
   const depthOf = /* @__PURE__ */ new Map();
-  const resolve2 = (id2) => {
+  const resolve3 = (id2) => {
     const known = depthOf.get(id2);
     if (known !== void 0) return known;
     let deepest = 0;
     for (const edge of graph.prerequisiteEdges.get(id2) ?? []) {
       if (!scope.has(edge.to)) continue;
-      deepest = Math.max(deepest, resolve2(edge.to) + 1);
+      deepest = Math.max(deepest, resolve3(edge.to) + 1);
     }
     depthOf.set(id2, deepest);
     return deepest;
   };
-  for (const id2 of scope) resolve2(id2);
+  for (const id2 of scope) resolve3(id2);
   const layers = [];
   for (const id2 of scope) {
     const index = depthOf.get(id2) ?? 0;
@@ -3116,7 +3124,7 @@ function renderOutline(parent, host, graph, view) {
   const semanticHeading = authoredSemantic.length ? `Semantic \xB7 ${plural(authoredSemantic.length, "authored", "authored")}, ${drawnSemantic.length} drawn by this lens` : "Semantic \xB7 0 authored";
   const list2 = outline.createDiv({ cls: "los-atlas-outline-list" });
   enableButtonGroupKeyboardNavigation(list2, "vertical");
-  for (const [heading, edges, absence, hidden] of [
+  for (const [heading, edges, absence, hidden2] of [
     [
       `Visible prerequisite connections \xB7 ${plural(prerequisites.length, "authored", "authored")}`,
       prerequisites,
@@ -3130,17 +3138,17 @@ function renderOutline(parent, host, graph, view) {
       hiddenSemantic
     ]
   ]) {
-    if (!edges.length && !hidden.length && !absence) continue;
+    if (!edges.length && !hidden2.length && !absence) continue;
     list2.createDiv({ cls: "los-micro los-atlas-outline-group", text: heading });
-    if (!edges.length && !hidden.length) {
+    if (!edges.length && !hidden2.length) {
       list2.createDiv({ cls: "los-atlas-outline-absence los-micro", text: absence });
       continue;
     }
-    const total = edges.length + hidden.length;
+    const total = edges.length + hidden2.length;
     edges.forEach((edge, index) => {
       outlineRow(list2, host, graph, edge, view.focus.id, `${index + 1} of ${total}`);
     });
-    hidden.forEach((edge, index) => {
+    hidden2.forEach((edge, index) => {
       outlineRow(
         list2,
         host,
@@ -3450,8 +3458,8 @@ function renderEndpoint(parent, host, graph, draft, end) {
   const paint = () => {
     results.empty();
     const query = draft.search.trim();
-    const matches = (query ? host.plugin.store.search(query, ["concept"]).map((record6) => asString(record6.id)).filter((id2) => Boolean(id2)) : graph.concepts.map((concept) => concept.id)).filter((id2) => id2 !== draft[end === "from" ? "to" : "from"]).slice(0, 12);
-    if (!matches.length) {
+    const matches2 = (query ? host.plugin.store.search(query, ["concept"]).map((record6) => asString(record6.id)).filter((id2) => Boolean(id2)) : graph.concepts.map((concept) => concept.id)).filter((id2) => id2 !== draft[end === "from" ? "to" : "from"]).slice(0, 12);
+    if (!matches2.length) {
       results.createDiv({
         cls: "los-atlas-absence los-micro",
         text: `Nothing matches \u201C${query}\u201D. Both ends must already be registered concepts; this never creates one.`
@@ -3459,7 +3467,7 @@ function renderEndpoint(parent, host, graph, draft, end) {
       return;
     }
     enableButtonGroupKeyboardNavigation(results, "vertical");
-    for (const id2 of matches) {
+    for (const id2 of matches2) {
       const row3 = results.createEl("button", {
         cls: "los-atlas-editor-result is-clickable",
         attr: { type: "button" },
@@ -6160,7 +6168,7 @@ var RELATED_LABELS = {
   program: "Areas"
 };
 function isLibraryScreen(value) {
-  return value === "home" || value === "group" || value === "source-detail" || value === "topic-pack-detail" || value === "catalogue-detail" || value === "legacy-list";
+  return value === "folder" || value === "home" || value === "group" || value === "source-detail" || value === "topic-pack-detail" || value === "catalogue-detail" || value === "legacy-list";
 }
 function isLibraryCollection2(value) {
   return value === "sources" || value === "topic-packs";
@@ -6173,7 +6181,7 @@ function isSourceFacet(value) {
 function readLibraryViewState(value, currentCollection, currentRecordType) {
   if (!isRecord2(value)) {
     return {
-      screen: "home",
+      screen: "folder",
       collection: currentCollection,
       groupId: null,
       query: "",
@@ -6183,13 +6191,19 @@ function readLibraryViewState(value, currentCollection, currentRecordType) {
       topicPackId: null,
       catalogueId: null,
       recordType: currentRecordType,
-      domain: ""
+      domain: "",
+      // A Library leaf with no persisted state opens on the folder browser:
+      // that is the Library's front door, and `home` is now the flat
+      // all-sources list reached from the sidebar.
+      folderPath: [],
+      folderSelection: null,
+      folderLayout: "list"
     };
   }
   const recordId = asString(value.recordId);
   const screen = isLibraryScreen(
     value.screen
-  ) ? value.screen : recordId ? "legacy-list" : "home";
+  ) ? value.screen : recordId ? "legacy-list" : "folder";
   const collection = isLibraryCollection2(
     value.collection
   ) ? value.collection : currentCollection;
@@ -6212,7 +6226,10 @@ function readLibraryViewState(value, currentCollection, currentRecordType) {
     topicPackId: asString(value.topicPackId),
     catalogueId: asString(value.catalogueId),
     recordType: asString(value.recordType) ?? currentRecordType,
-    domain: asString(value.domain) ?? ""
+    domain: asString(value.domain) ?? "",
+    folderPath: asLibraryFolderPath(value.folderPath),
+    folderSelection: asString(value.folderSelection),
+    folderLayout: asLibraryFolderLayout(value.folderLayout)
   };
 }
 function readThematicGroup(value) {
@@ -7259,6 +7276,12 @@ function renderCollectionSwitch(view, root) {
     }
   });
   enableButtonGroupKeyboardNavigation(switcher);
+  button(
+    switcher,
+    "Folders",
+    () => view.plugin.nav.openLibraryFolder([]),
+    "quiet"
+  );
   for (const [
     id2,
     label
@@ -7392,6 +7415,1328 @@ function renderGroup(view, root) {
   }
 }
 
+// src/infrastructure/material-tree.ts
+var fs = __toESM(require("node:fs"));
+var nodePath = __toESM(require("node:path"));
+var HIDDEN_NAMES = /* @__PURE__ */ new Set([".flat", ".git", ".ds_store", "__pycache__"]);
+function hidden(name) {
+  return name.startsWith(".") || HIDDEN_NAMES.has(foldCase(name));
+}
+function containedRealPath(root, candidate) {
+  try {
+    const realRoot = fs.realpathSync(root);
+    const realCandidate = fs.realpathSync(candidate);
+    const relative3 = nodePath.relative(realRoot, realCandidate);
+    return relative3.startsWith("..") || nodePath.isAbsolute(relative3) ? null : realCandidate;
+  } catch (_) {
+    return null;
+  }
+}
+var MaterialTree = class {
+  constructor(app) {
+    this.app = app;
+  }
+  roots() {
+    const vault = this.app.vault.adapter.getBasePath();
+    const learningRoot = nodePath.dirname(vault);
+    return {
+      learningRoot,
+      materialsRoot: nodePath.resolve(learningRoot, "materials")
+    };
+  }
+  /** The real, contained path for a projected `materials/…` path, or null. */
+  resolve(path) {
+    if (!path) return null;
+    const { learningRoot, materialsRoot } = this.roots();
+    const full = nodePath.resolve(learningRoot, path);
+    const lexical = nodePath.relative(materialsRoot, full);
+    if (lexical.startsWith("..") || nodePath.isAbsolute(lexical)) return null;
+    return containedRealPath(materialsRoot, full);
+  }
+  /** True when the projected path is a directory the browser can descend into. */
+  isDirectory(path) {
+    const real = this.resolve(path);
+    if (!real) return false;
+    try {
+      return fs.statSync(real).isDirectory();
+    } catch (_) {
+      return false;
+    }
+  }
+  /** Immediate visible items, without stat-ing or descending into any of them. */
+  count(path) {
+    const real = this.resolve(path);
+    if (!real) return 0;
+    try {
+      return fs.readdirSync(real).filter((name) => !hidden(name)).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+  /**
+   * One directory level, folders before files, each in the app's fixed
+   * collation — which is numeric, so `VL 02` precedes `VL 11` rather than
+   * sorting between `VL 10` and `VL 12`.
+   *
+   * `readdir` already reports the type, so the only syscalls past it are the
+   * ones that answer a question the caller can see: one `stat` per file for its
+   * size (and per symlink, to learn what it points at), and one `readdir` per
+   * subdirectory for its item count. A `stat` on every plain directory would
+   * buy nothing.
+   */
+  list(path) {
+    const real = this.resolve(path);
+    if (!real) return [];
+    let dirents;
+    try {
+      dirents = fs.readdirSync(real, { withFileTypes: true });
+    } catch (_) {
+      return [];
+    }
+    const entries = [];
+    const parent = path.replace(/\/+$/, "");
+    for (const dirent of dirents) {
+      if (hidden(dirent.name)) continue;
+      const absolute = nodePath.join(real, dirent.name);
+      let isDirectory = dirent.isDirectory();
+      let size = 0;
+      if (dirent.isSymbolicLink() || !isDirectory) {
+        try {
+          const stat = fs.statSync(absolute);
+          isDirectory = stat.isDirectory();
+          size = isDirectory ? 0 : stat.size;
+        } catch (_) {
+          isDirectory = false;
+        }
+      }
+      entries.push({
+        path: `${parent}/${dirent.name}`,
+        name: dirent.name,
+        isDirectory,
+        size,
+        childCount: isDirectory ? this.countAt(absolute) : 0
+      });
+    }
+    return entries.sort((left, right) => {
+      if (left.isDirectory !== right.isDirectory) return left.isDirectory ? -1 : 1;
+      return compareStrings(left.name, right.name);
+    });
+  }
+  /** Item count for an already-resolved absolute directory. */
+  countAt(absolute) {
+    try {
+      return fs.readdirSync(absolute).filter((name) => !hidden(name)).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+};
+function formatBytes(size) {
+  if (!Number.isFinite(size) || size <= 0) return "";
+  const units = ["bytes", "KB", "MB", "GB"];
+  let value = size;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  const rounded = unit === 0 ? Math.round(value) : Math.round(value * 10) / 10;
+  return `${rounded} ${units[unit]}`;
+}
+
+// src/features/library/finder-tree.ts
+var MATERIAL_TYPES = [
+  ["lecture", "Lecture Slides", "presentation"],
+  ["book", "Books", "book"],
+  ["course", "Courses", "graduation-cap"],
+  ["video", "Videos", "monitor-play"],
+  ["paper", "Papers", "newspaper"],
+  ["documentation", "Documentation", "file-code"],
+  ["website", "Websites & Links", "globe"],
+  ["software", "Software & Tools", "wrench"],
+  ["other", "Other", "file-question"]
+];
+var MODULE_BUCKETS = [
+  ["lecture-slides", "Lecture Slides", "presentation"],
+  ["past-exams", "Past Exams & Mocks", "clipboard-list"],
+  ["exercises", "Exercise Sheets", "pen-tool"],
+  ["recordings", "Recordings", "monitor-play"],
+  ["reading", "Books & Reading", "book"],
+  ["courses", "Courses", "graduation-cap"],
+  ["reference", "Documentation & Tools", "file-code"],
+  ["links", "Websites & Links", "globe"],
+  ["other", "Other", "file-question"]
+];
+var MATERIAL_TYPE_BY_ID = new Map(
+  MATERIAL_TYPES.map(([type, label, icon2]) => [type, { label, icon: icon2 }])
+);
+var MODULE_BUCKET_BY_ID = new Map(
+  MODULE_BUCKETS.map(([bucket, label, icon2]) => [bucket, { label, icon: icon2 }])
+);
+var FILE_KINDS = {
+  pdf: ["PDF document", "file-text"],
+  djvu: ["Scanned document", "file-text"],
+  epub: ["E-book", "book"],
+  md: ["Markdown", "file-text"],
+  txt: ["Plain text", "file-text"],
+  tex: ["LaTeX source", "file-code"],
+  html: ["Web page", "globe"],
+  htm: ["Web page", "globe"],
+  ipynb: ["Notebook", "file-code"],
+  py: ["Python source", "file-code"],
+  ts: ["TypeScript source", "file-code"],
+  js: ["JavaScript source", "file-code"],
+  rs: ["Rust source", "file-code"],
+  json: ["JSON data", "file-code"],
+  yaml: ["YAML data", "file-code"],
+  yml: ["YAML data", "file-code"],
+  csv: ["Table", "table-2"],
+  tsv: ["Table", "table-2"],
+  xlsx: ["Spreadsheet", "table-2"],
+  zip: ["Archive", "archive"],
+  tar: ["Archive", "archive"],
+  gz: ["Archive", "archive"],
+  png: ["Image", "image"],
+  jpg: ["Image", "image"],
+  jpeg: ["Image", "image"],
+  svg: ["Image", "image"],
+  gif: ["Image", "image"],
+  mp4: ["Video", "monitor-play"],
+  mkv: ["Video", "monitor-play"],
+  mp3: ["Audio", "monitor-play"]
+};
+var ROOT_SHELVES = {
+  skills: "shelf:skills",
+  packs: "shelf:packs",
+  catalogues: "shelf:catalogues",
+  unfiled: "shelf:unfiled",
+  unregistered: "shelf:unregistered"
+};
+var MATERIAL_BOOKKEEPING = /* @__PURE__ */ new Set([
+  "sources.md",
+  "readme.md",
+  "files.txt",
+  "index.html"
+]);
+var MAX_DEPTH = 12;
+var NO_RECORDS = [];
+function segment(prefix, value) {
+  return `${prefix}:${value}`;
+}
+function parseSegment(value) {
+  const at = value.indexOf(":");
+  return at < 0 ? [value, ""] : [value.slice(0, at), value.slice(at + 1)];
+}
+function titleOf(record6) {
+  if (!record6) return "Unknown";
+  return asText(record6.title) ?? asString(record6.id) ?? "Unknown";
+}
+function byTitle(left, right) {
+  return compareStrings(titleOf(left), titleOf(right));
+}
+function hostOf(url) {
+  try {
+    return new URL(url).host.replace(/^www\./, "");
+  } catch (_) {
+    return url;
+  }
+}
+function fileKind(name) {
+  const dot = name.lastIndexOf(".");
+  const extension = dot > 0 ? foldCase(name.slice(dot + 1)) : "";
+  const known = FILE_KINDS[extension];
+  if (known) return known;
+  return extension ? [`${upperCase(extension)} file`, "file"] : ["Document", "file"];
+}
+function sourceRoles2(source) {
+  const roles = new Set(asStrings(source.roles));
+  const evaluations = Array.isArray(source.evaluations) ? source.evaluations : [];
+  for (const evaluation of evaluations) {
+    if (!evaluation || typeof evaluation !== "object") continue;
+    for (const role of asStrings(evaluation.roles)) {
+      roles.add(role);
+    }
+  }
+  return roles;
+}
+function sourceTypeOf(source) {
+  const type = foldCase(asString(source.source_type) ?? "");
+  return MATERIAL_TYPE_BY_ID.has(type) ? type : "other";
+}
+function bucketFor(source) {
+  const type = sourceTypeOf(source);
+  if (type === "lecture") return "lecture-slides";
+  const roles = sourceRoles2(source);
+  if (roles.has("mock-exam")) return "past-exams";
+  if (roles.has("exercise") || roles.has("practice")) return "exercises";
+  if (type === "video") return "recordings";
+  if (type === "book" || type === "paper") return "reading";
+  if (type === "course") return "courses";
+  if (type === "documentation" || type === "software") return "reference";
+  if (type === "website") return "links";
+  return "other";
+}
+function authorLine(source) {
+  const authors = asStrings(source.authors);
+  const who = authors.length ? authors.length > 2 ? `${authors[0]} et al.` : authors.join(" & ") : asText(source.organization) ?? "";
+  const year = asText(source.year) ?? "";
+  return [who, year].filter(Boolean).join(" \xB7 ");
+}
+function push2(map, key, value) {
+  const current = map.get(key);
+  if (current) current.push(value);
+  else map.set(key, [value]);
+}
+function buildIndex(store) {
+  const groups = store.thematicGroups();
+  const groupById = /* @__PURE__ */ new Map();
+  for (const group of groups) {
+    const id2 = asString(group.id);
+    if (id2) groupById.set(id2, group);
+  }
+  const sourcesByGroup = /* @__PURE__ */ new Map();
+  const sourcesByModule = /* @__PURE__ */ new Map();
+  const typeOf = /* @__PURE__ */ new Map();
+  const bucketOf = /* @__PURE__ */ new Map();
+  const domainsOf = /* @__PURE__ */ new Map();
+  const unfiled = [];
+  const claimedMaterial = /* @__PURE__ */ new Set();
+  const materialParents = /* @__PURE__ */ new Set();
+  for (const source of store.sources().slice().sort(byTitle)) {
+    const id2 = asString(source.id);
+    if (!id2) continue;
+    typeOf.set(id2, sourceTypeOf(source));
+    bucketOf.set(id2, bucketFor(source));
+    const claim = (asString(source.material_path) ?? "").replace(/\/+$/, "");
+    if (claim && source.material_exists === true) {
+      claimedMaterial.add(claim);
+      const parts = claim.split("/");
+      for (let cut = parts.length - 1; cut > 0; cut -= 1) {
+        claimedMaterial.add(parts.slice(0, cut).join("/"));
+      }
+      materialParents.add(parts.slice(0, -1).join("/"));
+    }
+    const own = asStrings(source.thematic_group_ids).filter((groupId) => groupById.has(groupId));
+    domainsOf.set(id2, own.length);
+    if (own.length) {
+      for (const groupId of own) push2(sourcesByGroup, groupId, source);
+    } else {
+      unfiled.push(source);
+    }
+    for (const module2 of store.useModules(id2)) {
+      const moduleId = asString(module2.id);
+      if (moduleId) push2(sourcesByModule, moduleId, source);
+    }
+  }
+  const modulesByGroup = /* @__PURE__ */ new Map();
+  const ungroupedModules = [];
+  for (const module2 of store.modules().slice().sort(byTitle)) {
+    const own = asStrings(module2.thematic_group_ids).filter((groupId) => groupById.has(groupId));
+    if (own.length) {
+      for (const groupId of own) push2(modulesByGroup, groupId, module2);
+    } else {
+      ungroupedModules.push(module2);
+    }
+  }
+  return {
+    groups,
+    groupById,
+    sourcesByGroup,
+    unfiled,
+    modulesByGroup,
+    ungroupedModules,
+    sourcesByModule,
+    typeOf,
+    bucketOf,
+    domainsOf,
+    sourceCount: typeOf.size,
+    claimedMaterial,
+    materialParents: [...materialParents].sort(compareStrings)
+  };
+}
+function unregisteredMaterial(context) {
+  if (context.unregistered) return context.unregistered;
+  const { index, materials } = context;
+  const found = [];
+  for (const parent of index.materialParents) {
+    const where = parent.replace(/^materials\//, "");
+    for (const entry of materials.list(parent)) {
+      if (index.claimedMaterial.has(entry.path)) continue;
+      if (MATERIAL_BOOKKEEPING.has(foldCase(entry.name))) continue;
+      const base = materialEntry(entry);
+      found.push({
+        ...base,
+        detail: [where, base.detail].filter(Boolean).join(" \xB7 ")
+      });
+    }
+  }
+  found.sort((left, right) => compareStrings(
+    left.materialPath ?? left.name,
+    right.materialPath ?? right.name
+  ));
+  context.unregistered = found;
+  return found;
+}
+function createFinderContext(store, materials) {
+  return { store, materials, index: buildIndex(store) };
+}
+function sourcesInGroup(index, groupId) {
+  return index.sourcesByGroup.get(groupId) ?? NO_RECORDS;
+}
+function modulesInGroup(index, groupId) {
+  return index.modulesByGroup.get(groupId) ?? NO_RECORDS;
+}
+function sourcesInModule(index, moduleId) {
+  return index.sourcesByModule.get(moduleId) ?? NO_RECORDS;
+}
+function typeIdOf(index, source) {
+  const id2 = asString(source.id);
+  return (id2 ? index.typeOf.get(id2) : void 0) ?? "other";
+}
+function bucketIdOf(index, source) {
+  const id2 = asString(source.id);
+  return (id2 ? index.bucketOf.get(id2) : void 0) ?? "other";
+}
+function tally(sources, keyOf) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const source of sources) {
+    const key = keyOf(source);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+function folderEntry(options) {
+  return {
+    segment: options.segment,
+    kind: options.kind,
+    name: options.name,
+    icon: options.icon,
+    kindLabel: options.kindLabel,
+    isFolder: true,
+    count: options.count,
+    detail: options.detail ?? "",
+    sourceId: null,
+    materialPath: null,
+    url: null,
+    alsoIn: 0
+  };
+}
+function sourceEntry(context, source) {
+  const { index, materials } = context;
+  const id2 = asString(source.id) ?? "";
+  const materialPath = asString(source.material_path);
+  const url = asString(source.url);
+  const hasLocal = Boolean(materialPath) && source.material_exists === true;
+  const isFolder = hasLocal && materials.isDirectory(materialPath ?? "");
+  const typeLabel2 = MATERIAL_TYPE_BY_ID.get(typeIdOf(index, source))?.label ?? "Other";
+  const [fileLabel, fileIcon] = fileKind(materialPath ?? "");
+  return {
+    segment: segment("source", id2),
+    kind: "source",
+    name: titleOf(source),
+    icon: isFolder ? "folder" : hasLocal ? fileIcon : url ? "globe" : "file-question",
+    kindLabel: isFolder ? `${typeLabel2.replace(/s$/, "")} collection` : hasLocal ? fileLabel : url ? "Web link" : "Registry entry",
+    isFolder,
+    count: isFolder ? materials.count(materialPath ?? "") : null,
+    detail: [
+      authorLine(source),
+      isFolder ? "local collection" : hasLocal ? "local copy" : url ? hostOf(url) : ""
+    ].filter(Boolean).join(" \xB7 "),
+    sourceId: id2,
+    materialPath,
+    url,
+    alsoIn: index.domainsOf.get(id2) ?? 0
+  };
+}
+function materialEntry(entry) {
+  const [kindLabel, iconName] = entry.isDirectory ? ["Folder", "folder"] : fileKind(entry.name);
+  return {
+    segment: segment("at", entry.path),
+    kind: entry.isDirectory ? "directory" : "file",
+    name: entry.name,
+    icon: iconName,
+    kindLabel,
+    isFolder: entry.isDirectory,
+    count: entry.isDirectory ? entry.childCount : null,
+    detail: entry.isDirectory ? "" : formatBytes(entry.size),
+    sourceId: null,
+    materialPath: entry.path,
+    url: null,
+    alsoIn: 0
+  };
+}
+function moduleEntry(context, module2) {
+  const { index } = context;
+  const id2 = asString(module2.id) ?? "";
+  const sources = sourcesInModule(index, id2);
+  return folderEntry({
+    segment: segment("module", id2),
+    kind: "module",
+    name: titleOf(module2),
+    icon: "book-open",
+    kindLabel: asText(module2.kind) === "skill" ? "Skill track" : "Module",
+    count: tally(sources, (source) => bucketIdOf(index, source)).size,
+    detail: [
+      asText(module2.code) ?? "",
+      asText(module2.semester) ?? "",
+      `${sources.length} source${sources.length === 1 ? "" : "s"}`
+    ].filter(Boolean).join(" \xB7 ")
+  });
+}
+function shelfSources(store, shelf) {
+  const entries = Array.isArray(shelf.entries) ? shelf.entries : [];
+  const sources = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const entry of entries) {
+    const id2 = typeof entry === "string" ? entry : entry && typeof entry === "object" ? asString(entry.source) : null;
+    if (!id2 || seen.has(id2)) continue;
+    seen.add(id2);
+    const source = store.get(id2);
+    if (source?.type === "source") sources.push(source);
+  }
+  return sources;
+}
+function folder(options) {
+  return {
+    path: options.path,
+    name: options.name,
+    icon: options.icon,
+    kindLabel: options.kindLabel,
+    description: options.description ?? "",
+    entries: options.entries,
+    missing: false,
+    sourceId: options.sourceId ?? null
+  };
+}
+function unavailable(path) {
+  return {
+    path,
+    name: "Folder unavailable",
+    icon: "file-question",
+    kindLabel: "Folder",
+    description: "This path is not in the current projection. Go back up, or rebuild the views.",
+    entries: [],
+    missing: true,
+    sourceId: null
+  };
+}
+function plural2(count, noun) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+function rootEntries(context) {
+  const { index, store } = context;
+  const entries = [];
+  for (const group of index.groups) {
+    const id2 = asString(group.id);
+    if (!id2) continue;
+    const sources = sourcesInGroup(index, id2);
+    const modules = modulesInGroup(index, id2);
+    entries.push(folderEntry({
+      segment: segment("domain", id2),
+      kind: "domain",
+      name: titleOf(group),
+      icon: "folder",
+      kindLabel: "Domain",
+      count: tally(sources, (source) => typeIdOf(index, source)).size + (modules.length ? 1 : 0),
+      detail: [
+        plural2(sources.length, "source"),
+        modules.length ? plural2(modules.length, "module") : ""
+      ].filter(Boolean).join(" \xB7 ")
+    }));
+  }
+  if (index.ungroupedModules.length) {
+    entries.push(folderEntry({
+      segment: ROOT_SHELVES.skills,
+      kind: "shelf",
+      name: "Skill Tracks",
+      icon: "wrench",
+      kindLabel: "Shelf",
+      count: index.ungroupedModules.length,
+      detail: "modules that carry no domain"
+    }));
+  }
+  const packs = store.topicPacks();
+  if (packs.length) {
+    entries.push(folderEntry({
+      segment: ROOT_SHELVES.packs,
+      kind: "shelf",
+      name: "Curated Packs",
+      icon: "notebook-tabs",
+      kindLabel: "Shelf",
+      count: packs.length,
+      detail: "hand-ordered, purpose-built"
+    }));
+  }
+  const catalogues = store.catalogues();
+  if (catalogues.length) {
+    entries.push(folderEntry({
+      segment: ROOT_SHELVES.catalogues,
+      kind: "shelf",
+      name: "Catalogues",
+      icon: "library-big",
+      kindLabel: "Shelf",
+      count: catalogues.length,
+      detail: "standing shelves across domains"
+    }));
+  }
+  const unregistered = unregisteredMaterial(context);
+  if (unregistered.length) {
+    entries.push(folderEntry({
+      segment: ROOT_SHELVES.unregistered,
+      kind: "shelf",
+      name: "Not in the registry",
+      icon: "hard-drive",
+      kindLabel: "Shelf",
+      count: unregistered.length,
+      detail: "on disk, claimed by no source"
+    }));
+  }
+  if (index.unfiled.length) {
+    entries.push(folderEntry({
+      segment: ROOT_SHELVES.unfiled,
+      kind: "shelf",
+      name: "Unfiled",
+      icon: "file-question",
+      kindLabel: "Shelf",
+      count: index.unfiled.length,
+      detail: "no domain recorded yet"
+    }));
+  }
+  return entries;
+}
+function domainEntries(context, groupId) {
+  const { index } = context;
+  const modules = modulesInGroup(index, groupId);
+  const entries = [];
+  if (modules.length) {
+    entries.push(folderEntry({
+      segment: "modules",
+      kind: "bucket",
+      name: "Modules",
+      icon: "graduation-cap",
+      kindLabel: "Folder",
+      count: modules.length,
+      detail: "what is taught from this domain"
+    }));
+  }
+  const counts = tally(
+    sourcesInGroup(index, groupId),
+    (source) => typeIdOf(index, source)
+  );
+  for (const [type, label, icon2] of MATERIAL_TYPES) {
+    const count = counts.get(type) ?? 0;
+    if (!count) continue;
+    entries.push(folderEntry({
+      segment: segment("type", type),
+      kind: "bucket",
+      name: label,
+      icon: icon2,
+      kindLabel: "Folder",
+      count
+    }));
+  }
+  return entries;
+}
+function moduleBucketEntries(context, moduleId) {
+  const { index } = context;
+  const counts = tally(
+    sourcesInModule(index, moduleId),
+    (source) => bucketIdOf(index, source)
+  );
+  const entries = [];
+  for (const [bucket, label, icon2] of MODULE_BUCKETS) {
+    const count = counts.get(bucket) ?? 0;
+    if (!count) continue;
+    entries.push(folderEntry({
+      segment: segment("bucket", bucket),
+      kind: "bucket",
+      name: label,
+      icon: icon2,
+      kindLabel: "Folder",
+      count
+    }));
+  }
+  return entries;
+}
+function folderAt(context, path) {
+  if (path.length > MAX_DEPTH) return unavailable(path);
+  if (!path.length) {
+    return folder({
+      path,
+      name: "Library",
+      icon: "library",
+      kindLabel: "Library",
+      description: "Everything you possess, one folder per domain. A source may sit in more than one folder \u2014 that is one record seen from two domains, not a copy.",
+      entries: rootEntries(context)
+    });
+  }
+  const [head = "", ...rest] = path;
+  const [prefix, value] = parseSegment(head);
+  if (prefix === "domain") {
+    if (!context.index.groupById.has(value)) return unavailable(path);
+    return domainFolder(context, value, rest, path);
+  }
+  if (prefix === "shelf") return shelfFolder(context, value, rest, path);
+  return unavailable(path);
+}
+function domainFolder(context, groupId, rest, full) {
+  const { index } = context;
+  const group = index.groupById.get(groupId) ?? null;
+  const title = group ? titleOf(group) : groupId;
+  if (!rest.length) {
+    return folder({
+      path: full,
+      name: title,
+      icon: "folder-open",
+      kindLabel: "Domain",
+      description: asText(group?.description) ?? "",
+      entries: domainEntries(context, groupId)
+    });
+  }
+  const [head = "", ...tail] = rest;
+  const [prefix, value] = parseSegment(head);
+  if (head === "modules") {
+    if (!tail.length) {
+      return folder({
+        path: full,
+        name: "Modules",
+        icon: "graduation-cap",
+        kindLabel: "Folder",
+        description: `What ${title} is taught as. Each module holds only the sources actually routed to it.`,
+        entries: modulesInGroup(index, groupId).map((module2) => moduleEntry(context, module2))
+      });
+    }
+    return moduleFolder(context, tail, full);
+  }
+  if (prefix === "type") {
+    const definition = MATERIAL_TYPE_BY_ID.get(value);
+    if (!definition) return unavailable(full);
+    if (!tail.length) {
+      return folder({
+        path: full,
+        name: definition.label,
+        icon: definition.icon,
+        kindLabel: "Folder",
+        description: `${definition.label} in ${title}.`,
+        entries: sourcesInGroup(index, groupId).filter((source) => typeIdOf(index, source) === value).map((source) => sourceEntry(context, source))
+      });
+    }
+    return sourceFolder(context, tail, full);
+  }
+  return unavailable(full);
+}
+function moduleFolder(context, rest, full) {
+  const { index, store } = context;
+  const [head = "", ...tail] = rest;
+  const [prefix, moduleId] = parseSegment(head);
+  if (prefix !== "module") return unavailable(full);
+  const module2 = store.get(moduleId);
+  if (module2?.type !== "module") return unavailable(full);
+  if (!tail.length) {
+    return folder({
+      path: full,
+      name: titleOf(module2),
+      icon: "book-open",
+      kindLabel: "Module",
+      description: "Its own material, split the way a semester is: slides, exams, exercises, then everything it reads from.",
+      entries: moduleBucketEntries(context, moduleId)
+    });
+  }
+  const [next = "", ...deeper] = tail;
+  const [nextPrefix, bucket] = parseSegment(next);
+  if (nextPrefix !== "bucket") return unavailable(full);
+  const definition = MODULE_BUCKET_BY_ID.get(bucket);
+  if (!definition) return unavailable(full);
+  if (!deeper.length) {
+    return folder({
+      path: full,
+      name: definition.label,
+      icon: definition.icon,
+      kindLabel: "Folder",
+      description: `${definition.label} for ${titleOf(module2)}.`,
+      entries: sourcesInModule(index, moduleId).filter((source) => bucketIdOf(index, source) === bucket).map((source) => sourceEntry(context, source))
+    });
+  }
+  return sourceFolder(context, deeper, full);
+}
+function shelfFolder(context, shelf, rest, full) {
+  const { index, store } = context;
+  if (shelf === "skills") {
+    if (!rest.length) {
+      return folder({
+        path: full,
+        name: "Skill Tracks",
+        icon: "wrench",
+        kindLabel: "Shelf",
+        description: "Modules with no thematic group of their own. They are here rather than guessed into a domain; their sources still appear under every domain they are registered in.",
+        entries: index.ungroupedModules.map((module2) => moduleEntry(context, module2))
+      });
+    }
+    return moduleFolder(context, rest, full);
+  }
+  if (shelf === "unfiled") {
+    if (!rest.length) {
+      return folder({
+        path: full,
+        name: "Unfiled",
+        icon: "file-question",
+        kindLabel: "Shelf",
+        description: "Sources with no thematic group recorded. Nothing is lost here \u2014 this folder is what lets the tree hold everything, and it empties as domains are recorded.",
+        entries: index.unfiled.map((source) => sourceEntry(context, source))
+      });
+    }
+    return sourceFolder(context, rest, full);
+  }
+  if (shelf === "unregistered") {
+    if (!rest.length) {
+      return folder({
+        path: full,
+        name: "Not in the registry",
+        icon: "hard-drive",
+        kindLabel: "Shelf",
+        description: "Files sitting beside registered material that no source record claims \u2014 most often a sibling folder, such as the exercise slides next to a lecture deck. They are browsable here so nothing on disk is invisible, but they carry no evaluation, no domain and no module until a source is recorded for them, which is a change only the core can make.",
+        entries: unregisteredMaterial(context)
+      });
+    }
+    const [lastPrefix, path] = parseSegment(rest[rest.length - 1] ?? "");
+    if (lastPrefix !== "at" || !context.materials.isDirectory(path)) {
+      return unavailable(full);
+    }
+    return folder({
+      path: full,
+      name: path.split("/").pop() || path,
+      icon: "folder-open",
+      kindLabel: "Folder",
+      entries: context.materials.list(path).map(materialEntry)
+    });
+  }
+  if (shelf !== "packs" && shelf !== "catalogues") return unavailable(full);
+  const isPacks = shelf === "packs";
+  const prefix = isPacks ? "pack" : "catalogue";
+  const iconName = isPacks ? "notebook-tabs" : "library-big";
+  if (!rest.length) {
+    const shelves = (isPacks ? store.topicPacks() : store.catalogues()).slice().sort(byTitle);
+    return folder({
+      path: full,
+      name: isPacks ? "Curated Packs" : "Catalogues",
+      icon: iconName,
+      kindLabel: "Shelf",
+      description: isPacks ? "Narrow, manually ordered collections. The order is the argument." : "Standing shelves that cut across domains.",
+      entries: shelves.map((record7) => folderEntry({
+        segment: segment(prefix, asString(record7.id) ?? ""),
+        kind: "bucket",
+        name: titleOf(record7),
+        icon: iconName,
+        kindLabel: isPacks ? "Pack" : "Catalogue",
+        count: shelfSources(store, record7).length,
+        detail: asText(record7.purpose) ?? ""
+      }))
+    });
+  }
+  const [head = "", ...tail] = rest;
+  const [headPrefix, id2] = parseSegment(head);
+  if (headPrefix !== prefix) return unavailable(full);
+  const record6 = store.get(id2);
+  if (!record6) return unavailable(full);
+  if (!tail.length) {
+    return folder({
+      path: full,
+      name: titleOf(record6),
+      icon: iconName,
+      kindLabel: isPacks ? "Pack" : "Catalogue",
+      description: asText(record6.purpose) ?? "",
+      entries: shelfSources(store, record6).map((source) => sourceEntry(context, source))
+    });
+  }
+  return sourceFolder(context, tail, full);
+}
+function sourceFolder(context, rest, full) {
+  const { store, materials } = context;
+  const [head = "", ...tail] = rest;
+  const [prefix, sourceId] = parseSegment(head);
+  if (prefix !== "source") return unavailable(full);
+  const source = store.get(sourceId);
+  if (source?.type !== "source") return unavailable(full);
+  if (!tail.length) {
+    const materialPath = asString(source.material_path);
+    if (!materialPath || source.material_exists !== true || !materials.isDirectory(materialPath)) {
+      return unavailable(full);
+    }
+    return folder({
+      path: full,
+      name: titleOf(source),
+      icon: "folder-open",
+      kindLabel: "Local collection",
+      description: authorLine(source),
+      entries: materials.list(materialPath).map(materialEntry),
+      sourceId
+    });
+  }
+  const [lastPrefix, path] = parseSegment(tail[tail.length - 1] ?? "");
+  if (lastPrefix !== "at" || !materials.isDirectory(path)) return unavailable(full);
+  return folder({
+    path: full,
+    name: path.split("/").pop() || path,
+    icon: "folder-open",
+    kindLabel: "Folder",
+    entries: materials.list(path).map(materialEntry),
+    sourceId
+  });
+}
+function reachableSourceIds(context) {
+  const reached = /* @__PURE__ */ new Set();
+  const visited = /* @__PURE__ */ new Set();
+  const walk = (path, depth) => {
+    if (depth > MAX_DEPTH) return;
+    const key = path.join("/");
+    if (visited.has(key)) return;
+    visited.add(key);
+    for (const entry of folderAt(context, path).entries) {
+      if (entry.sourceId) reached.add(entry.sourceId);
+      if (!entry.isFolder) continue;
+      if (entry.kind === "source" || entry.kind === "directory") continue;
+      walk([...path, entry.segment], depth + 1);
+    }
+  };
+  walk([], 0);
+  return reached;
+}
+function totalSourceCount(context) {
+  return context.index.sourceCount;
+}
+function trailFor(context, path) {
+  const trail = [];
+  for (let depth = 0; depth <= path.length; depth += 1) {
+    trail.push(folderAt(context, path.slice(0, depth)));
+  }
+  return trail;
+}
+
+// src/features/library/finder.ts
+var LAYOUTS = [
+  ["list", "List"],
+  ["columns", "Columns"]
+];
+function itemCount(count) {
+  if (count === null) return "";
+  return `${count} item${count === 1 ? "" : "s"}`;
+}
+function filterWords(query) {
+  return foldCase(query.trim()).split(/\s+/).filter(Boolean);
+}
+function matches(entry, words2) {
+  if (!words2.length) return true;
+  const hay = foldCase(
+    [entry.name, entry.detail, entry.kindLabel, entry.sourceId ?? ""].filter(Boolean).join(" ")
+  );
+  return words2.every((word) => hay.includes(word));
+}
+function renderPlace(parent, options) {
+  const row3 = parent.createEl("button", {
+    cls: `los-finder-place is-clickable${options.active ? " is-active" : ""}`,
+    attr: { type: "button" }
+  });
+  if (options.active) row3.setAttribute("aria-current", "true");
+  icon(row3.createSpan({ cls: "los-finder-place-icon" }), options.icon);
+  row3.createSpan({ cls: "los-finder-place-label", text: options.label });
+  row3.addEventListener("click", () => {
+    void options.onOpen();
+  });
+}
+function renderSidebar(view, parent, root) {
+  const sidebar = parent.createDiv({
+    cls: "los-finder-sidebar",
+    attr: { role: "navigation", "aria-label": "Library places" }
+  });
+  const group = (title) => {
+    const wrap = sidebar.createDiv({ cls: "los-finder-places" });
+    wrap.createEl("h3", { cls: "los-finder-places-title", text: title });
+    return wrap.createDiv({ cls: "los-finder-places-list" });
+  };
+  const favourites = group("Favourites");
+  renderPlace(favourites, {
+    label: "Library",
+    icon: "library",
+    active: view.folderPath.length === 0,
+    onOpen: () => view.openFolder([])
+  });
+  renderPlace(favourites, {
+    label: "All sources",
+    icon: "list",
+    active: false,
+    onOpen: () => view.plugin.nav.openLibraryHome("sources")
+  });
+  renderPlace(favourites, {
+    label: "Full text / OCR",
+    icon: "search",
+    active: false,
+    onOpen: () => view.plugin.nav.openFullTextSearch()
+  });
+  const sections = [
+    ["Domains", root.entries.filter((entry) => entry.kind === "domain")],
+    ["Shelves", root.entries.filter((entry) => entry.kind === "shelf")]
+  ];
+  for (const [title, entries] of sections) {
+    if (!entries.length) continue;
+    const list2 = group(title);
+    for (const entry of entries) {
+      renderPlace(list2, {
+        label: entry.name,
+        icon: entry.icon,
+        active: view.folderPath[0] === entry.segment,
+        onOpen: () => view.openFolder([entry.segment])
+      });
+    }
+  }
+}
+function renderPathBar(view, parent, trail) {
+  const bar = parent.createDiv({
+    cls: "los-finder-pathbar",
+    attr: { "aria-label": "Folder path" }
+  });
+  trail.forEach((folder2, depth) => {
+    if (depth > 0) {
+      icon(bar.createSpan({ cls: "los-finder-path-sep" }), "chevron-right");
+    }
+    if (depth === trail.length - 1) {
+      const here = bar.createSpan({
+        cls: "los-finder-path-here",
+        text: folder2.name
+      });
+      here.setAttribute("aria-current", "true");
+      return;
+    }
+    const crumb = bar.createEl("button", {
+      cls: "los-finder-path-crumb is-clickable",
+      text: folder2.name,
+      attr: { type: "button" }
+    });
+    crumb.addEventListener("click", () => {
+      void view.openFolder(folder2.path);
+    });
+  });
+}
+function renderToolbar(view, parent, folder2, shown) {
+  const toolbar = parent.createDiv({ cls: "los-finder-toolbar" });
+  const up = button(
+    toolbar,
+    "Enclosing folder",
+    () => void view.openEnclosingFolder(),
+    "quiet"
+  );
+  up.addClass("los-finder-up");
+  up.setAttribute("aria-label", "Go to the enclosing folder");
+  if (!view.folderPath.length) up.disabled = true;
+  const search = toolbar.createEl("input", {
+    cls: "los-search los-finder-filter",
+    attr: {
+      type: "search",
+      placeholder: `Filter ${folder2.name}\u2026`,
+      "aria-label": `Filter the contents of ${folder2.name}`
+    }
+  });
+  search.value = view.query;
+  search.addEventListener("input", () => {
+    void view.setFolderQuery(search.value);
+  });
+  const layouts = toolbar.createDiv({
+    cls: "los-finder-layouts",
+    attr: { role: "group", "aria-label": "Folder layout" }
+  });
+  enableButtonGroupKeyboardNavigation(layouts);
+  for (const [id2, label] of LAYOUTS) {
+    const active = view.folderLayout === id2;
+    const control = button(
+      layouts,
+      label,
+      () => void view.setFolderLayout(id2),
+      active ? "cta" : "quiet"
+    );
+    control.setAttribute("aria-pressed", String(active));
+  }
+  const total = folder2.entries.length;
+  toolbar.createSpan({
+    cls: "los-finder-count",
+    text: shown === total ? itemCount(total) : `${shown} of ${total} items`
+  });
+}
+function renderRow(view, list2, entry) {
+  const selected = view.folderSelection === entry.segment;
+  const row3 = list2.createEl("button", {
+    cls: `los-finder-row is-clickable${selected ? " is-selected" : ""}`,
+    attr: {
+      type: "button",
+      "data-segment": entry.segment,
+      "aria-label": entry.isFolder ? `${entry.name}, folder` : `${entry.name}, ${entry.kindLabel}`
+    }
+  });
+  if (selected) row3.setAttribute("aria-current", "true");
+  icon(row3.createSpan({ cls: "los-finder-row-icon" }), entry.icon);
+  const name = row3.createDiv({ cls: "los-finder-row-name" });
+  name.createSpan({ cls: "los-finder-row-title", text: entry.name });
+  if (entry.detail) {
+    name.createSpan({ cls: "los-finder-row-detail", text: entry.detail });
+  }
+  row3.createSpan({ cls: "los-finder-row-kind", text: entry.kindLabel });
+  const trailing = row3.createSpan({ cls: "los-finder-row-trailing" });
+  if (entry.alsoIn > 1) {
+    badge(trailing, `in ${entry.alsoIn} domains`, "info");
+  }
+  if (entry.isFolder) {
+    trailing.createSpan({
+      cls: "los-finder-row-count",
+      text: itemCount(entry.count)
+    });
+    icon(trailing.createSpan({ cls: "los-finder-row-chevron" }), "chevron-right");
+  }
+  row3.addEventListener("click", () => {
+    if (selected) void view.activateEntry(entry);
+    else void view.selectFolderEntry(entry.segment);
+  });
+  row3.addEventListener("dblclick", () => {
+    void view.activateEntry(entry);
+  });
+  return row3;
+}
+function renderList(view, parent, entries) {
+  const list2 = parent.createDiv({
+    cls: "los-finder-list",
+    attr: { "aria-label": "Folder contents" }
+  });
+  const header = list2.createDiv({
+    cls: "los-finder-list-header",
+    attr: { "aria-hidden": "true" }
+  });
+  header.createSpan({ text: "Name" });
+  header.createSpan({ text: "Kind" });
+  header.createSpan({ text: "Items" });
+  const focusSelection = view.takeFolderFocus();
+  for (const entry of entries) {
+    const row3 = renderRow(view, list2, entry);
+    if (focusSelection && entry.segment === view.folderSelection) row3.focus();
+  }
+  list2.addEventListener("keydown", (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const index = entries.findIndex(
+      (entry) => entry.segment === view.folderSelection
+    );
+    const move = (next) => {
+      const clamped = Math.max(0, Math.min(entries.length - 1, next));
+      const target = entries[clamped];
+      if (!target) return;
+      event.preventDefault();
+      void view.selectFolderEntry(target.segment);
+    };
+    if (event.key === "ArrowDown") return move(index + 1);
+    if (event.key === "ArrowUp") return move(index < 0 ? 0 : index - 1);
+    if (event.key === "Home") return move(0);
+    if (event.key === "End") return move(entries.length - 1);
+    if (event.key === "ArrowLeft" || event.key === "Backspace") {
+      if (!view.folderPath.length) return;
+      event.preventDefault();
+      void view.openEnclosingFolder();
+      return;
+    }
+    if (event.key === "ArrowRight") {
+      const current = index >= 0 ? entries[index] : void 0;
+      if (!current) return;
+      event.preventDefault();
+      void view.activateEntry(current);
+    }
+  });
+}
+function renderColumns(view, parent, trail, words2) {
+  const columns = parent.createDiv({
+    cls: "los-finder-columns",
+    attr: { "aria-label": "Folder columns" }
+  });
+  trail.forEach((folder2, depth) => {
+    const openedSegment = view.folderPath[depth] ?? null;
+    const isCurrent = depth === trail.length - 1;
+    const entries = isCurrent ? folder2.entries.filter((entry) => matches(entry, words2)) : folder2.entries;
+    const column = columns.createDiv({
+      cls: `los-finder-column${isCurrent ? " is-current" : ""}`
+    });
+    column.createDiv({ cls: "los-finder-column-title", text: folder2.name });
+    if (!entries.length) {
+      column.createDiv({
+        cls: "los-finder-column-empty",
+        text: folder2.missing ? "Unavailable" : "Empty"
+      });
+      return;
+    }
+    for (const entry of entries) {
+      const opened = entry.segment === openedSegment;
+      const selected = isCurrent && view.folderSelection === entry.segment;
+      const row3 = column.createEl("button", {
+        cls: "los-finder-column-row is-clickable" + (opened ? " is-open" : "") + (selected ? " is-selected" : ""),
+        attr: { type: "button" }
+      });
+      if (opened || selected) row3.setAttribute("aria-current", "true");
+      icon(row3.createSpan({ cls: "los-finder-row-icon" }), entry.icon);
+      row3.createSpan({ cls: "los-finder-row-title", text: entry.name });
+      if (entry.isFolder) {
+        icon(row3.createSpan({ cls: "los-finder-row-chevron" }), "chevron-right");
+      }
+      row3.addEventListener("click", () => {
+        if (entry.isFolder) void view.openFolder([...folder2.path, entry.segment]);
+        else void view.openFolder(folder2.path, entry.segment);
+      });
+      row3.addEventListener("dblclick", () => {
+        void view.activateEntry(entry);
+      });
+    }
+  });
+}
+function renderFolderInspector(panel, folder2) {
+  icon(panel.createDiv({ cls: "los-finder-inspector-icon" }), folder2.icon);
+  panel.createEl("h2", { text: folder2.name });
+  panel.createDiv({ cls: "los-finder-inspector-kind", text: folder2.kindLabel });
+  if (folder2.description) {
+    panel.createEl("p", { cls: "los-muted", text: folder2.description });
+  }
+  panel.createEl("p", {
+    cls: "los-finder-inspector-hint",
+    text: `${itemCount(folder2.entries.length)} here. Select one to see what it is and how to open it.`
+  });
+}
+function renderEntryInspector(view, panel, entry) {
+  icon(panel.createDiv({ cls: "los-finder-inspector-icon" }), entry.icon);
+  panel.createEl("h2", { text: entry.name });
+  panel.createDiv({ cls: "los-finder-inspector-kind", text: entry.kindLabel });
+  const facts = [];
+  if (entry.detail) facts.push(["Details", entry.detail]);
+  if (entry.isFolder && entry.count !== null) {
+    facts.push(["Contains", itemCount(entry.count)]);
+  }
+  if (entry.materialPath) facts.push(["Where", entry.materialPath]);
+  if (entry.url) facts.push(["Link", entry.url]);
+  if (entry.sourceId) facts.push(["Registry id", entry.sourceId]);
+  if (facts.length) {
+    const list2 = panel.createEl("dl", { cls: "los-finder-inspector-facts" });
+    for (const [label, value] of facts) {
+      list2.createEl("dt", { text: label });
+      list2.createEl("dd", { text: value });
+    }
+  }
+  if (entry.alsoIn > 1) {
+    panel.createEl("p", {
+      cls: "los-finder-inspector-alias",
+      text: `Filed in ${entry.alsoIn} domains. Those are the same record seen from each of them, not duplicates.`
+    });
+  }
+  const actions = panel.createDiv({ cls: "los-actions" });
+  if (entry.isFolder) {
+    button(actions, "Open folder", () => void view.activateEntry(entry), "cta");
+  } else if (entry.materialPath || entry.url) {
+    button(
+      actions,
+      entry.materialPath ? "Open file" : "Open online",
+      () => void view.activateEntry(entry),
+      "cta"
+    );
+  }
+  if (entry.sourceId) {
+    const sourceId = entry.sourceId;
+    button(
+      actions,
+      "Source record",
+      () => view.plugin.nav.openSourceDetail(sourceId),
+      "info"
+    );
+  }
+  if (entry.materialPath && entry.isFolder) {
+    const materialPath = entry.materialPath;
+    button(
+      actions,
+      "Reveal on disk",
+      () => view.plugin.openMaterialPath(materialPath),
+      "quiet"
+    );
+  }
+  if (entry.url) {
+    const url = entry.url;
+    button(actions, "Copy link", () => view.plugin.copyText(url), "quiet");
+  }
+}
+function renderCoverage(view, parent) {
+  const { total, reached } = view.coverage();
+  const line = parent.createDiv({ cls: "los-finder-coverage" });
+  if (reached >= total) {
+    line.createSpan({
+      text: `All ${total} sources are reachable in these folders.`
+    });
+    return;
+  }
+  line.addClass("is-attention");
+  line.createSpan({
+    text: `${reached} of ${total} sources are reachable \u2014 ${total - reached} cannot be browsed from here.`
+  });
+  button(line, "Rebuild views", () => void view.plugin.generate(), "quiet");
+}
+function renderFinder(view, root) {
+  const context = view.finderContext();
+  const trail = trailFor(context, view.folderPath);
+  const folder2 = trail[trail.length - 1] ?? folderAt(context, []);
+  const words2 = filterWords(view.query);
+  const shell2 = root.createDiv({ cls: "los-finder" });
+  renderSidebar(view, shell2, trail[0] ?? folder2);
+  const main = shell2.createDiv({ cls: "los-finder-main" });
+  renderPathBar(view, main, trail);
+  const entries = folder2.entries.filter((entry) => matches(entry, words2));
+  renderToolbar(view, main, folder2, entries.length);
+  if (folder2.description && !words2.length) {
+    main.createEl("p", {
+      cls: "los-finder-folder-note",
+      text: folder2.description
+    });
+  }
+  const body = main.createDiv({ cls: "los-finder-body" });
+  if (folder2.missing) {
+    empty(
+      body,
+      "Folder unavailable",
+      "This path is not in the current projection. It may have been renamed, or the views may need rebuilding.",
+      "Back to Library",
+      () => void view.openFolder([])
+    );
+    return;
+  }
+  if (view.folderLayout === "columns") {
+    renderColumns(view, body, trail, words2);
+  } else if (!folder2.entries.length) {
+    empty(
+      body,
+      "Nothing filed here yet",
+      // Only a DECLARED folder can be empty — a domain from the taxonomy, or a
+      // module from the curriculum. Both exist whether or not anything has
+      // been routed to them, so this is a documented absence rather than a
+      // missing folder, and saying which one it is beats an unexplained blank.
+      `${folder2.kindLabel} folders exist whether or not material has been routed to them, so this is an absence on the record rather than something gone missing.`
+    );
+  } else if (!entries.length) {
+    empty(
+      body,
+      "Nothing matches that filter",
+      `No item in ${folder2.name} matches \u201C${view.query.trim()}\u201D.`,
+      "Clear filter",
+      () => void view.setFolderQuery("")
+    );
+  } else {
+    renderList(view, body, entries);
+  }
+  const panel = body.createDiv({
+    cls: "los-finder-inspector",
+    attr: { "aria-label": "Selected item" }
+  });
+  const selected = entries.find(
+    (entry) => entry.segment === view.folderSelection
+  );
+  if (selected) renderEntryInspector(view, panel, selected);
+  else renderFolderInspector(panel, folder2);
+  if (!view.folderPath.length) renderCoverage(view, main);
+}
+
 // src/features/library/filters.ts
 function sourceFilterValuesFor(view, source, dimension) {
   if (dimension === "domain") {
@@ -7438,7 +8783,7 @@ function sourceMatchesFilters(view, source, omit = null) {
   return true;
 }
 function sourceFilterTally(view, sources, dimension) {
-  const tally = /* @__PURE__ */ new Map();
+  const tally2 = /* @__PURE__ */ new Map();
   for (const source of sources) {
     if (!view.sourceMatchesFilters(source, dimension)) {
       continue;
@@ -7447,13 +8792,13 @@ function sourceFilterTally(view, sources, dimension) {
       source,
       dimension
     )) {
-      tally.set(
+      tally2.set(
         value,
-        (tally.get(value) ?? 0) + 1
+        (tally2.get(value) ?? 0) + 1
       );
     }
   }
-  return tally;
+  return tally2;
 }
 function sourceFilterLabel(view, dimension, value) {
   if (dimension === "domain") {
@@ -7561,7 +8906,7 @@ function renderSourceBrowser(view, root) {
         }
       }
     );
-    const tally = view.sourceFilterTally(
+    const tally2 = view.sourceFilterTally(
       all,
       dimension
     );
@@ -7574,7 +8919,7 @@ function renderSourceBrowser(view, root) {
         }
       }
     );
-    const ordered = [...tally.entries()].sort(
+    const ordered = [...tally2.entries()].sort(
       (left, right) => {
         const leftLabel = view.sourceFilterLabel(
           dimension,
@@ -7752,6 +9097,29 @@ var LibraryView = class extends import_obsidian8.ItemView {
   recordType = "note";
   domain = "";
   selectedElementId = null;
+  folderPath = [];
+  folderSelection = null;
+  folderLayout = "list";
+  /*
+   * One tree context per render, and one coverage count per projection.
+   *
+   * `createFinderContext` makes a single pass over the registry; the columns
+   * layout asks for one folder per level of depth, so handing out the same
+   * context is what keeps a deep folder as cheap as a shallow one. Coverage is
+   * cached harder — answering it walks every folder and touches the disk once
+   * per source with local material, which must not happen per keystroke in the
+   * filter box.
+   */
+  _finderContext = null;
+  _coverage = null;
+  _coverageSnapshot = null;
+  /*
+   * Two manifests can carry the same snapshot id, so the identity of the loaded
+   * data is part of the cache key — the same lesson `shelfIndex` already
+   * learned, and the same one its suite pins.
+   */
+  _coverageData = null;
+  _focusSelection = false;
   _shelfIndex = null;
   _shelfSnapshot = null;
   _shelfData = null;
@@ -7782,6 +9150,9 @@ var LibraryView = class extends import_obsidian8.ItemView {
     this.catalogueId = parsed.catalogueId;
     this.recordType = parsed.recordType;
     this.domain = parsed.domain;
+    this.folderPath = parsed.folderPath;
+    this.folderSelection = parsed.folderSelection;
+    this.folderLayout = parsed.folderLayout;
   }
   async setState(state = {}) {
     this.applyState(state);
@@ -7799,7 +9170,10 @@ var LibraryView = class extends import_obsidian8.ItemView {
       topicPackId: this.topicPackId,
       catalogueId: this.catalogueId,
       recordType: this.recordType,
-      domain: this.domain
+      domain: this.domain,
+      folderPath: [...this.folderPath],
+      folderSelection: this.folderSelection,
+      folderLayout: this.folderLayout
     };
   }
   async onOpen() {
@@ -7842,6 +9216,7 @@ var LibraryView = class extends import_obsidian8.ItemView {
   }
   render() {
     const root = this.contentEl;
+    this._finderContext = null;
     root.empty();
     root.addClass(
       "los-root",
@@ -7860,6 +9235,10 @@ var LibraryView = class extends import_obsidian8.ItemView {
         "Rebuild views",
         () => this.plugin.generate()
       );
+      return;
+    }
+    if (this.screen === "folder") {
+      this.renderFinder(root);
       return;
     }
     if (this.screen === "group") {
@@ -7993,6 +9372,112 @@ var LibraryView = class extends import_obsidian8.ItemView {
   }
   renderTechnical(detail, record6) {
     renderTechnical(this, detail, record6);
+  }
+  // ------------------------------------------------------- folder browser
+  finderContext() {
+    if (!this._finderContext) {
+      this._finderContext = createFinderContext(
+        this.plugin.store,
+        {
+          isDirectory: (path) => this.plugin.isMaterialFolder(path),
+          list: (path) => this.plugin.listMaterialFolder(path),
+          count: (path) => this.plugin.materialFolderCount(path)
+        }
+      );
+    }
+    return this._finderContext;
+  }
+  coverage() {
+    const snapshot = this.plugin.store.snapshotId;
+    const data = this.plugin.store.data;
+    if (this._coverage && this._coverageSnapshot === snapshot && this._coverageData === data) {
+      return this._coverage;
+    }
+    const context = this.finderContext();
+    const coverage = {
+      total: totalSourceCount(context),
+      reached: reachableSourceIds(context).size
+    };
+    this._coverage = coverage;
+    this._coverageSnapshot = snapshot;
+    this._coverageData = data;
+    return coverage;
+  }
+  takeFolderFocus() {
+    const focus = this._focusSelection;
+    this._focusSelection = false;
+    return focus;
+  }
+  async openFolder(path, selected = null) {
+    this.folderPath = [...path];
+    this.folderSelection = selected;
+    this.query = "";
+    await this.rememberFolder();
+    this.render();
+  }
+  /**
+   * Up one level, selecting the folder just left.
+   *
+   * Carrying the selection back up is what makes repeated "up" feel like a
+   * file manager rather than a reset: you land on the thing you came out of,
+   * with its siblings in view.
+   */
+  async openEnclosingFolder() {
+    if (!this.folderPath.length) return;
+    const leaving = this.folderPath[this.folderPath.length - 1] ?? null;
+    await this.openFolder(this.folderPath.slice(0, -1), leaving);
+  }
+  async selectFolderEntry(segment2) {
+    this.folderSelection = segment2;
+    this._focusSelection = true;
+    await this.rememberFolder();
+    this.render();
+  }
+  async setFolderLayout(layout) {
+    this.folderLayout = layout;
+    await this.rememberFolder();
+    this.render();
+  }
+  async setFolderQuery(query) {
+    this.query = query;
+    await this.rememberFolder();
+    this.render();
+  }
+  /**
+   * Open whatever this entry is.
+   *
+   * A folder navigates. A leaf is handed to the opener that knows its kind:
+   * a projected source goes through `openResource`, which already decides
+   * between a local file, a page destination and a web target; a plain file
+   * under `materials/` goes straight to the system opener.
+   */
+  async activateEntry(entry) {
+    if (entry.isFolder) {
+      await this.openFolder([...this.folderPath, entry.segment]);
+      return;
+    }
+    if (entry.sourceId) {
+      const source = this.plugin.store.get(entry.sourceId);
+      if (source) {
+        this.plugin.openResource(source);
+        return;
+      }
+    }
+    if (entry.materialPath) {
+      this.plugin.openMaterialPath(entry.materialPath);
+    }
+  }
+  async rememberFolder() {
+    return this.plugin.router.remember({
+      name: "library-folder",
+      path: [...this.folderPath],
+      selected: this.folderSelection,
+      layout: this.folderLayout,
+      query: this.query
+    });
+  }
+  renderFinder(root) {
+    renderFinder(this, root);
   }
 };
 
@@ -10100,7 +11585,7 @@ function renderOverview2(view, root, project) {
 }
 
 // src/features/project/list.ts
-function renderList(view, root) {
+function renderList2(view, root) {
   pageHeader(
     root,
     "Projects",
@@ -10393,7 +11878,7 @@ var ProjectView = class extends import_obsidian12.ItemView {
     this.renderList(root);
   }
   renderList(root) {
-    renderList(this, root);
+    renderList2(this, root);
   }
   renderDetail(root) {
     renderDetail(this, root);
@@ -10478,8 +11963,8 @@ var ProjectView = class extends import_obsidian12.ItemView {
 
 // src/views/review-view.ts
 var import_obsidian13 = require("obsidian");
-var fs = __toESM(require("node:fs"));
-var nodePath = __toESM(require("node:path"));
+var fs2 = __toESM(require("node:fs"));
+var nodePath2 = __toESM(require("node:path"));
 
 // src/contracts/gateway-v2.ts
 var GATEWAY_SCHEMA_VERSION = 2;
@@ -11206,11 +12691,11 @@ function clearDraftsOwnedBy(drafts, envelope) {
     const unitId = typeof payload.unit_id === "string" ? payload.unit_id : "";
     if (!unitId) return;
     const draft = drafts.unitNotes[unitId];
-    const matches = draft && draft.text === text5 && String(draft.title || "").trim() === title;
-    if (matches) {
+    const matches2 = draft && draft.text === text5 && String(draft.title || "").trim() === title;
+    if (matches2) {
       delete drafts.unitNotes[unitId];
     }
-    if (!matches || !draft || !draft.recoveredStages) {
+    if (!matches2 || !draft || !draft.recoveredStages) {
       return;
     }
     const stageIds2 = Array.isArray(payload.stage_id) ? payload.stage_id : [];
@@ -11673,21 +13158,21 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
       const app = this.app;
       const base = app.vault.adapter.getBasePath();
       const pluginInfo = this.plugin.manifest;
-      const directory = pluginInfo?.dir || nodePath.join(
+      const directory = pluginInfo?.dir || nodePath2.join(
         ".obsidian",
         "plugins",
         pluginInfo?.id || "learningos-ui"
       );
-      const target = nodePath.join(
+      const target = nodePath2.join(
         base,
         directory,
         "build-info.json"
       );
-      if (!fs.existsSync(target)) {
+      if (!fs2.existsSync(target)) {
         return fallback;
       }
       const parsed = JSON.parse(
-        fs.readFileSync(target, "utf8")
+        fs2.readFileSync(target, "utf8")
       );
       if (!isRecord2(parsed)) {
         return fallback;
@@ -12799,7 +14284,7 @@ var PURPOSE_ORDER = [
   { value: "practice", label: "Practise", sub: "Problems to work, with solutions to check" },
   { value: "implementation", label: "Implement it", sub: "Code it and run it" },
   { value: "advanced-reference", label: "Go deeper", sub: "Beyond this stage \u2014 kept, not required" },
-  { value: "unassessed", label: "Not on the exam", sub: "Interesting, not assessed" }
+  { value: "unassessed", label: "Not yet evaluated", sub: "No one has judged this yet \u2014 not a scope judgment" }
 ];
 var UNASSIGNED_PURPOSE = {
   value: "",
@@ -13867,6 +15352,9 @@ function renderMaterialSynthesis(view, root, synthesis, options) {
       ["Notation", assessment2.notation],
       ["Exercise value", assessment2.exercise_value],
       ["Limitations", assessment2.limitations],
+      // Directly under Limitations, because it is the bound on every negative
+      // sentence above it: what this review actually had in front of it.
+      ["Inspected", assessment2.scope_of_absence],
       ["Review note", assessment2.reason]
     ];
     for (const [label, value] of details) {
@@ -14983,13 +16471,30 @@ var AppNavigator = class {
   }
   openLibrary(recordId = void 0, recordType = void 0) {
     if (recordId === void 0 || recordId === null) {
-      return this.openLibraryHome(recordType === "topic-pack" ? "topic-packs" : "sources");
+      return recordType === "topic-pack" ? this.openLibraryHome("topic-packs") : this.openLibraryFolder([]);
     }
     const record6 = this.store.get(recordId);
     if (record6?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
     if (record6?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
     if (record6?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
     return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record6?.type || "note", query: "" });
+  }
+  /**
+   * Open one folder of the Library's folder browser.
+   *
+   * `path` is the whole address: a folder is a position in a projection rather
+   * than a record, so the route it took to get there is the only durable way
+   * to name it. `selected` survives a trip up one level, which is what makes
+   * "enclosing folder" land on the folder you just left.
+   */
+  openLibraryFolder(path = [], selected = null, layout, query = "") {
+    return this.router.navigate({
+      name: "library-folder",
+      path: asLibraryFolderPath([...path]),
+      selected,
+      ...layout ? { layout } : {},
+      query
+    });
   }
   openLibraryHome(collection = "sources", query = "", filters) {
     return this.router.navigate({
@@ -15161,6 +16666,13 @@ var ApplicationRouter = class {
     return { name: "home" };
   }
   libraryRouteFromState(state = {}) {
+    if (state.screen === "folder") return {
+      name: "library-folder",
+      path: asLibraryFolderPath(state.folderPath),
+      selected: asNullableText(state.folderSelection),
+      layout: asLibraryFolderLayout(state.folderLayout),
+      query: asText2(state.query)
+    };
     if (state.screen === "group") return {
       name: "library-group",
       collection: asLibraryCollection(state.collection),
@@ -15264,6 +16776,18 @@ var ApplicationRouter = class {
           type: VIEW_UNIT,
           state: { unitId: route.unitId, stageId: route.stageId || null },
           nav: "learn"
+        };
+      case "library-folder":
+        return {
+          type: VIEW_LIBRARY,
+          state: {
+            screen: "folder",
+            folderPath: asLibraryFolderPath(route.path),
+            folderSelection: route.selected || null,
+            folderLayout: asLibraryFolderLayout(route.layout),
+            query: route.query || ""
+          },
+          nav: "library"
         };
       case "library-home":
         return {
@@ -15632,10 +17156,10 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:4c1fceb1176bed43829d6bea045bea3e1fb853e10488b2f034c1ed4e79ca1ac2" : "unavailable";
+  return true ? "sha256:e28523a5e3f312da307287e7fb8fda35d3254042c2f1c470a6079ee0288628a1" : "unavailable";
 }
 function runtimeContractVersion() {
-  return true ? 10 : 0;
+  return true ? 11 : 0;
 }
 
 // src/gateway-client.ts
@@ -15751,7 +17275,7 @@ var GatewayClient = class {
    */
   call(args, { expectJson = true, stdin } = {}) {
     this.assertLifecycleActive();
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       this.plugin.runLos(
         args,
         (error, stdout, stderr) => {
@@ -15775,7 +17299,7 @@ var GatewayClient = class {
           }
           const raw = String(stdout ?? "").trim();
           if (!expectJson) {
-            resolve2({ ok: true, stdout: raw });
+            resolve3({ ok: true, stdout: raw });
             return;
           }
           if (!raw) {
@@ -15798,7 +17322,7 @@ var GatewayClient = class {
             ));
             return;
           }
-          resolve2(parsed);
+          resolve3(parsed);
         },
         stdin
       );
@@ -15899,9 +17423,9 @@ var GatewayClient = class {
   }
   /** The raw process result, before anything has been believed about it. */
   runRaw(args, stdin) {
-    return new Promise((resolve2) => {
+    return new Promise((resolve3) => {
       this.plugin.runLos(args, (error, stdout, stderr) => {
-        resolve2({ error, stdout: String(stdout ?? ""), stderr: String(stderr ?? "") });
+        resolve3({ error, stdout: String(stdout ?? ""), stderr: String(stderr ?? "") });
       }, stdin);
     });
   }
@@ -16261,11 +17785,11 @@ Last response: ${result.error.message}`,
       { expectedRevisions }
     );
   }
-  endSession(commitMessage = null, push2 = false) {
+  endSession(commitMessage = null, push3 = false) {
     this.assertMutationAllowed();
     const args = ["session-end"];
     if (commitMessage) args.push("--commit-message", commitMessage);
-    if (push2) args.push("--push");
+    if (push3) args.push("--push");
     return this.call(args);
   }
   /**
@@ -16420,8 +17944,8 @@ var AIActionClient = class {
 
 // src/infrastructure/los-runtime.ts
 var import_node_child_process = require("node:child_process");
-var fs2 = __toESM(require("node:fs"));
-var nodePath2 = __toESM(require("node:path"));
+var fs3 = __toESM(require("node:fs"));
+var nodePath3 = __toESM(require("node:path"));
 var import_node_process = __toESM(require("node:process"));
 var LosRuntime = class {
   constructor(app, configuredPython) {
@@ -16433,20 +17957,20 @@ var LosRuntime = class {
     const configured = this.configuredPython().trim();
     const searchOrder = [
       [configured, "configured in settings"],
-      [nodePath2.join(base, ".venv", "bin", "python"), "project virtual environment"],
-      [nodePath2.join(base, ".venv", "Scripts", "python.exe"), "project virtual environment (Windows)"]
+      [nodePath3.join(base, ".venv", "bin", "python"), "project virtual environment"],
+      [nodePath3.join(base, ".venv", "Scripts", "python.exe"), "project virtual environment (Windows)"]
     ];
     const candidates = searchOrder.filter(([path]) => path);
     const attempted = candidates.map(([path]) => path);
     for (const [path, origin] of candidates) {
-      if (fs2.existsSync(path)) return { path, origin, attempted };
+      if (fs3.existsSync(path)) return { path, origin, attempted };
     }
     const fallback = import_node_process.default.platform === "win32" ? "python" : "python3";
     return { path: fallback, origin: "PATH fallback", attempted: [...attempted, fallback] };
   }
   run(args, callback, stdin) {
     const base = this.app.vault.adapter.getBasePath();
-    const script = nodePath2.join(base, "tools", "los.py");
+    const script = nodePath3.join(base, "tools", "los.py");
     const child = (0, import_node_child_process.execFile)(
       this.resolvePython().path,
       [script, ...args],
@@ -16459,8 +17983,8 @@ var LosRuntime = class {
 
 // src/infrastructure/resource-opener.ts
 var import_electron2 = require("electron");
-var fs3 = __toESM(require("node:fs"));
-var nodePath3 = __toESM(require("node:path"));
+var fs4 = __toESM(require("node:fs"));
+var nodePath4 = __toESM(require("node:path"));
 var import_obsidian22 = require("obsidian");
 var CODE_EXTENSIONS = /* @__PURE__ */ new Set([
   ".c",
@@ -16527,10 +18051,10 @@ function normalizedVaultPath(value) {
 }
 function resolvedWithin(root, candidate) {
   try {
-    const realRoot = fs3.realpathSync(root);
-    const realCandidate = fs3.realpathSync(candidate);
-    const relative2 = nodePath3.relative(realRoot, realCandidate);
-    return relative2.startsWith("..") || nodePath3.isAbsolute(relative2) ? null : realCandidate;
+    const realRoot = fs4.realpathSync(root);
+    const realCandidate = fs4.realpathSync(candidate);
+    const relative3 = nodePath4.relative(realRoot, realCandidate);
+    return relative3.startsWith("..") || nodePath4.isAbsolute(relative3) ? null : realCandidate;
   } catch (_) {
     return null;
   }
@@ -16545,10 +18069,10 @@ var ResourceOpener = class {
       new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return void 0;
     }
-    const candidate = nodePath3.resolve(this.app.vault.adapter.getBasePath(), target);
-    if (fs3.existsSync(candidate)) {
+    const candidate = nodePath4.resolve(this.app.vault.adapter.getBasePath(), target);
+    if (fs4.existsSync(candidate)) {
       try {
-        fs3.realpathSync(candidate);
+        fs4.realpathSync(candidate);
       } catch (_) {
         new import_obsidian22.Notice(`File unavailable: ${target}`);
         return void 0;
@@ -16619,8 +18143,8 @@ var ResourceOpener = class {
     new import_obsidian22.Notice(`Opened \u2014 go to ${destination.label}.`);
   }
   isCodePath(path) {
-    if (!fs3.existsSync(path)) return false;
-    const extension = foldCase(nodePath3.extname(path));
+    if (!fs4.existsSync(path)) return false;
+    const extension = foldCase(nodePath4.extname(path));
     return !extension || CODE_EXTENSIONS.has(extension);
   }
   async openSystemPath(path, successMessage) {
@@ -16645,7 +18169,7 @@ var ResourceOpener = class {
   openPreferredLocalPath(path, systemMessage) {
     let realPath = "";
     try {
-      realPath = fs3.realpathSync(path);
+      realPath = fs4.realpathSync(path);
     } catch (_) {
       new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return Promise.resolve(false);
@@ -16653,13 +18177,13 @@ var ResourceOpener = class {
     return this.isCodePath(realPath) ? this.openCodePath(realPath) : this.openSystemPath(realPath, systemMessage);
   }
   async openExternalPath(path, successMessage = "Opened in the default app.") {
-    if (!path || !fs3.existsSync(path)) {
+    if (!path || !fs4.existsSync(path)) {
       new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     let realPath = "";
     try {
-      realPath = fs3.realpathSync(path);
+      realPath = fs4.realpathSync(path);
     } catch (_) {
       new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
@@ -16668,11 +18192,11 @@ var ResourceOpener = class {
   }
   openMaterialPath(path, destination = null) {
     const vault = this.app.vault.adapter.getBasePath();
-    const learningRoot = nodePath3.dirname(vault);
-    const materialsRoot = nodePath3.resolve(learningRoot, "materials");
-    const fullPath = nodePath3.resolve(learningRoot, path || "");
-    const relative2 = nodePath3.relative(materialsRoot, fullPath);
-    if (!path || relative2.startsWith("..") || nodePath3.isAbsolute(relative2)) {
+    const learningRoot = nodePath4.dirname(vault);
+    const materialsRoot = nodePath4.resolve(learningRoot, "materials");
+    const fullPath = nodePath4.resolve(learningRoot, path || "");
+    const relative3 = nodePath4.relative(materialsRoot, fullPath);
+    if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
       new import_obsidian22.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
       return false;
     }
@@ -16687,16 +18211,16 @@ var ResourceOpener = class {
     );
   }
   openAuthoredPath(path) {
-    const extension = foldCase(nodePath3.extname(path || ""));
+    const extension = foldCase(nodePath4.extname(path || ""));
     if ([".md", ".pdf", ".canvas", ".base"].includes(extension)) return this.openVaultPath(path);
     const base = this.app.vault.adapter.getBasePath();
-    const fullPath = nodePath3.resolve(base, path || "");
-    const relative2 = nodePath3.relative(base, fullPath);
-    if (!path || relative2.startsWith("..") || nodePath3.isAbsolute(relative2)) {
+    const fullPath = nodePath4.resolve(base, path || "");
+    const relative3 = nodePath4.relative(base, fullPath);
+    if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
       new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return false;
     }
-    if (!fs3.existsSync(fullPath)) {
+    if (!fs4.existsSync(fullPath)) {
       new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
@@ -17310,6 +18834,7 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
     this.store = new ManifestStore(this.app);
     this.runtime = new LosRuntime(this.app, () => this.settings.pythonPath);
     this.resources = new ResourceOpener(this.app);
+    this.materials = new MaterialTree(this.app);
     this.gateway = new GatewayClient(this);
     this.aiActions = new AIActionClient(this);
     this.router = new ApplicationRouter(this);
@@ -17674,6 +19199,15 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
   }
   openAuthoredPath(path) {
     return this.resources.openAuthoredPath(path);
+  }
+  isMaterialFolder(path) {
+    return this.materials.isDirectory(path);
+  }
+  listMaterialFolder(path) {
+    return this.materials.list(path);
+  }
+  materialFolderCount(path) {
+    return this.materials.count(path);
   }
   openRecord(record6) {
     if (!record6) return;

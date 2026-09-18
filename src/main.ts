@@ -42,6 +42,7 @@ import {
   type PythonResolution,
 } from './infrastructure/los-runtime';
 import { ResourceOpener } from './infrastructure/resource-opener';
+import { MaterialTree } from './infrastructure/material-tree';
 import type { PageDestination } from './infrastructure/resource-target';
 import { ManifestStore } from './manifest-store';
 import { SessionEndModal } from './settings';
@@ -100,6 +101,7 @@ export class LearningOSUI extends Plugin implements AppSurface {
   declare drafts: DraftStore;
   declare runtime: LosRuntime;
   declare resources: ResourceOpener;
+  declare materials: MaterialTree;
   declare settings: LearningOSSettings;
   declare activeNav: string;
   declare recovery: SettingsGatewayRecoveryStore;
@@ -188,6 +190,7 @@ export class LearningOSUI extends Plugin implements AppSurface {
     this.store = new ManifestStore(this.app);
     this.runtime = new LosRuntime(this.app, () => this.settings.pythonPath);
     this.resources = new ResourceOpener(this.app);
+    this.materials = new MaterialTree(this.app);
     this.gateway = new GatewayClient(this);
     this.aiActions = new AIActionClient(this);
     this.router = new ApplicationRouter(this);
@@ -629,6 +632,15 @@ export class LearningOSUI extends Plugin implements AppSurface {
   }
   openAuthoredPath(path: string) {
     return this.resources.openAuthoredPath(path);
+  }
+  isMaterialFolder(path: string) {
+    return this.materials.isDirectory(path);
+  }
+  listMaterialFolder(path: string) {
+    return this.materials.list(path);
+  }
+  materialFolderCount(path: string) {
+    return this.materials.count(path);
   }
   openRecord(record: ProjectionRecord | null | undefined) {
     if (!record) return;

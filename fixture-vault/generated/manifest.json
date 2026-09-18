@@ -1,9 +1,9 @@
 {
   "_generated": {
-    "contract_version": 10,
+    "contract_version": 11,
     "generated_at": "2099-04-01",
     "generator": "synthetic-fixture-v8",
-    "schema_sha256": "sha256:1209c4d49ec4ae7c826e9893c66490830f9a838d524a72278d45d33ad096acdd",
+    "schema_sha256": "sha256:35b4e5765ded09b72d191e68e590ff63768cf43113613725e691703150221a6a",
     "snapshot_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "source_dirty": false,
     "source_fingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
@@ -2103,7 +2103,7 @@
         "material_checksums": {
           "route-fixture-sad-l04-book": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
         },
-        "policy": "tiered-v1",
+        "policy": "tiered-v2",
         "route_set_checksum": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
         "source_map_checksum": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
         "source_map_revision": 1,

@@ -28,9 +28,82 @@ module.exports = async function run() {
   {
     const { app, plugin } = await boot();
 
+    // The Library's front door is the folder browser: "open the Library" with
+    // no record named means "show me the shelf", and a shelf is a place you
+    // walk. The faceted browser below is still the whole registry in one flat
+    // list, and is now reached by name rather than by default.
     await plugin.nav.openLibrary();
 
     let view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    check(
+      'opening the Library lands in the folder browser',
+      view.screen === 'folder'
+        && view.folderPath.length === 0
+        && view.contentEl.find('los-finder').length === 1
+        && view.contentEl.find('los-finder-row').length > 0
+        && plugin.router.snapshot().current.name === 'library-folder',
+    );
+
+    check(
+      'the folder root offers places and a domain folder per thematic group',
+      view.contentEl.find('los-finder-place').length > 0
+        && view.contentEl.allText().includes('Domains'),
+    );
+
+    // Walking down, and back up onto the folder just left.
+    const domainRow = view.contentEl.find('los-finder-row').find(
+      (row) => (row.getAttribute('data-segment') || '').startsWith('domain:'),
+    );
+    const domainSegment = domainRow.getAttribute('data-segment');
+    domainRow.fire('click');
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+
+    check(
+      'one click selects rather than navigating, and fills the inspector',
+      view.folderPath.length === 0
+        && view.folderSelection === domainSegment
+        && view.contentEl.find('los-finder-inspector').length === 1,
+    );
+
+    check(
+      'the moved selection takes focus, so a second arrow key has somewhere to go',
+      global.document.activeElement
+        && global.document.activeElement.getAttribute('data-segment')
+          === domainSegment,
+    );
+
+    view.contentEl.find('los-finder-row').find(
+      (row) => row.getAttribute('data-segment') === domainSegment,
+    ).fire('click');
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+
+    check(
+      'a click on the selected row opens it',
+      view.folderPath.length === 1
+        && view.folderPath[0] === domainSegment
+        && plugin.router.snapshot().current.name === 'library-folder',
+    );
+
+    await view.openEnclosingFolder();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+
+    check(
+      'the enclosing folder lands back on the folder just left',
+      view.folderPath.length === 0
+        && view.folderSelection === domainSegment,
+    );
+
+    await plugin.nav.openLibraryHome('sources');
+
+    view =
       app.workspace.getLeavesOfType(
         VIEW.library,
       )[0].view;
@@ -409,7 +482,7 @@ module.exports = async function run() {
       },
     });
 
-    await plugin.nav.openLibrary();
+    await plugin.nav.openLibraryHome('sources');
 
     let view =
       app.workspace.getLeavesOfType(

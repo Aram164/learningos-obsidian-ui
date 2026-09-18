@@ -21,6 +21,14 @@ interface PurposeDef {
  * Level 1 of the comparison list, in fixed order so the shape of the screen
  * is learnable. These are the schema `depth` values with learner-facing
  * labels; the data is never renamed, only labelled.
+ *
+ * `unassessed` is labelled for what it is — an unwritten evaluation — and
+ * never for what it might imply. Core's schema is explicit that the value
+ * means the depth is genuinely unknown, "not a judgment of shallowness", and
+ * "must never be inferred by an operator"; exam scope is a different field
+ * entirely, where `unevaluated` is deliberately distinct from `optional`.
+ * This heading once read "Not on the exam", which turned visibility debt into
+ * a verdict and buried 24 stage placements under an invitation to skip them.
  */
 const PURPOSE_ORDER: readonly PurposeDef[] = [
   { value: 'course-aligned', label: 'Follow the course', sub: 'Exactly what this lecture taught' },
@@ -30,7 +38,7 @@ const PURPOSE_ORDER: readonly PurposeDef[] = [
   { value: 'practice', label: 'Practise', sub: 'Problems to work, with solutions to check' },
   { value: 'implementation', label: 'Implement it', sub: 'Code it and run it' },
   { value: 'advanced-reference', label: 'Go deeper', sub: 'Beyond this stage — kept, not required' },
-  { value: 'unassessed', label: 'Not on the exam', sub: 'Interesting, not assessed' },
+  { value: 'unassessed', label: 'Not yet evaluated', sub: 'No one has judged this yet — not a scope judgment' },
 ];
 
 const UNASSIGNED_PURPOSE: PurposeDef = {

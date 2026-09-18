@@ -384,6 +384,39 @@ declare module 'node:fs' {
   export function realpathSync(
     path: string,
   ): string;
+
+  /*
+   * Directory reading, for the Library's folder browser.
+   *
+   * Declared to the shape this app actually calls — the two `readdirSync`
+   * overloads it uses and the three `Stats` members it reads — rather than by
+   * pulling in @types/node, which would also make every other Node API look
+   * available to code that must keep running inside Obsidian's renderer.
+   */
+  export interface Dirent {
+    readonly name: string;
+    isDirectory(): boolean;
+    isSymbolicLink(): boolean;
+  }
+
+  export interface Stats {
+    readonly size: number;
+    isDirectory(): boolean;
+    isFile(): boolean;
+  }
+
+  export function statSync(
+    path: string,
+  ): Stats;
+
+  export function readdirSync(
+    path: string,
+  ): string[];
+
+  export function readdirSync(
+    path: string,
+    options: { withFileTypes: true },
+  ): Dirent[];
 }
 
 declare module 'node:fs/promises' {

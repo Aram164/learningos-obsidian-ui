@@ -31,6 +31,7 @@ import type { ApplicationRouter } from './router';
 import type { ComposerDraft, UnitNoteDraft } from '../application/draft-store';
 import type { GatewayRecoveryState } from '../application/gateway-recovery';
 import type { ProjectionRecord } from '../contracts/manifest';
+import type { MaterialEntry } from '../infrastructure/material-tree';
 import type { PageDestination } from '../infrastructure/resource-target';
 import type { GatewayClient } from '../gateway-client';
 import type { AIActionClient } from '../infrastructure/ai-action-client';
@@ -107,6 +108,20 @@ export interface AppSurface {
   openAuthoredPath(path: string): unknown;
   openMaterialPath(path: string, destination?: PageDestination | null): unknown;
   copyText(value: string): void;
+
+  /*
+   * Browsing `materials/` — the three reads the Library's folder browser needs.
+   *
+   * A source record carries ONE material URI, so the projection cannot say that
+   * `source-aml-ss26-lectures` holds `lecture-slides/` beside
+   * `exercise-slides/`. That distinction exists only on disk, and it is exactly
+   * the one a learner navigates by, so the folder browser descends past the
+   * record. Containment is enforced host-side in `MaterialTree`; a path that
+   * escapes `materials/` reads as empty rather than throwing.
+   */
+  isMaterialFolder(path: string): boolean;
+  listMaterialFolder(path: string): MaterialEntry[];
+  materialFolderCount(path: string): number;
 
   // ------------------------------------------------------------------- drafts
   scheduleDraftSave(): void;
