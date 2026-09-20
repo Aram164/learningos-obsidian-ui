@@ -12,6 +12,9 @@
     "check:source-graph": "node scripts/check-source-graph.mjs",
     "check:code": "npm run typecheck && npm run check:source-graph && npm run test:manifest-store-indexes && npm run test:atlas-graph && npm run test:library-finder && npm run test:trace-context && npm run test:operations",
     "contract:check": "node scripts/check-contract.mjs",
+    "contract:generate": "node scripts/generate-contract.mjs --bundle ../repository/generated/contract-prototype/manifest-v11.bundle.json --meta ../repository/generated/contract-prototype/manifest-v11.meta.json",
+    "typecheck:contract-prototype": "tsc -p tsconfig.contract-prototype.json --noEmit",
+    "contract:diff-prototype": "node scripts/diff-contract-prototype.mjs",
     "test:ui": "node tests/test-dashboard.js && node tests/test-ai-actions.js",
     "test": "npm run build && npm run check:code && npm run typecheck:contracts && npm run contract:check && npm run test:installer && npm run test:modules && npm run test:ui && npm run test:live-app-check && npm run test:ci-policy",
     "check": "npm run test && node scripts/check-host-surface.mjs && node scripts/check-build.mjs",
@@ -30,7 +33,9 @@
     "test:operations": "node tests/test-operations.js"
   },
   "devDependencies": {
-    "typescript": "5.8.3",
-    "esbuild": "^0.25.0"
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "esbuild": "^0.25.0",
+    "typescript": "5.8.3"
   }
 }
