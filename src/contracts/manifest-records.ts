@@ -1,7 +1,7 @@
 /**
  * Closed decoders for the heterogeneous records emitted by Manifest v8.
  *
- * These key sets mirror Core's `system/contracts/manifest-v10.schema.json`.
+ * These key sets mirror Core's `system/contracts/manifest-v12.schema.json`.
  * Keeping the checks here makes the permissive `ProjectionRecord` convenience
  * type safe to use after `assertManifest`: extension fields are available to
  * feature code, but an undeclared producer field cannot cross the read boundary.
@@ -433,7 +433,7 @@ function validNoteRecord(value: unknown): boolean {
   return Boolean(source && exact(source, [
     'id', 'type', 'title', 'path', 'domain', 'summary', 'role', 'state', 'authorship',
     'concepts', 'sources', 'contexts', 'attachments', 'evidence', 'supersedes',
-    'reviewed', 'transcription', 'semantic_review', 'atlas_question',
+    'reviewed', 'transcription', 'semantic_review', 'atlas_question', 'material_analysis',
   ]) && identifier(source.id, 'note-') && source.type === 'note'
     && nonEmpty(source.title) && nonEmpty(source.path) && text(source.domain) && text(source.summary)
     && values(source.role, [
@@ -460,7 +460,50 @@ function validNoteRecord(value: unknown): boolean {
     // Core's own schema guards this with if/then: the block is only valid on a
     // question note. Mirroring it means a manifest that broke the rule upstream
     // is refused here too, rather than rendered as if it were fine.
-    && (source.atlas_question === null || source.role === 'question'));
+    && (source.atlas_question === null || source.role === 'question')
+    && nullable(source.material_analysis, validMaterialAnalysis));
+}
+
+/**
+ * The provenance binding of a durable source-chapter analysis. Only the
+ * resolved resolution claims a current registered source; every other
+ * resolution preserves the prose without impersonating one.
+ */
+function validMaterialAnalysis(value: unknown): boolean {
+  const source = row(value);
+  if (!source || !exact(source, [
+    'resolution', 'material', 'recorded_source_digest', 'inspected_range',
+    'frozen_input_sha256', 'frozen_input_bytes',
+  ], [
+    'source_id', 'live_source_digest', 'anchors', 'model', 'built',
+  ])) return false;
+  const hex64 = (item: unknown): item is string =>
+    text(item) && /^[a-f0-9]{64}$/.test(item);
+  const range = row(source.inspected_range);
+  return values(source.resolution, ['resolved', 'unresolved', 'unavailable', 'stale'] as const)
+    && nonEmpty(source.material)
+    && hex64(source.recorded_source_digest)
+    && Boolean(range && exact(range, ['start', 'end'])
+      && positive(range.start) && positive(range.end))
+    && hex64(source.frozen_input_sha256) && positive(source.frozen_input_bytes)
+    && optional(source, 'source_id', (item) => identifier(item, 'source-'))
+    && optional(source, 'live_source_digest', hex64)
+    && optional(source, 'anchors', (items) => list(items, validAnalysisAnchor))
+    && optional(source, 'model', text)
+    && optional(source, 'built', date)
+    // Core's own schema guards this with if/then: only a resolved binding
+    // names a registered source. Mirrored so a manifest that broke the rule
+    // upstream is refused here too.
+    && (source.resolution === 'resolved'
+      ? typeof source.source_id === 'string'
+      : source.source_id === undefined);
+}
+
+function validAnalysisAnchor(value: unknown): boolean {
+  const source = row(value);
+  return Boolean(source && exact(source, ['topic', 'purpose', 'locator'], ['note'])
+    && nonEmpty(source.topic) && nonEmpty(source.purpose) && nonEmpty(source.locator)
+    && (source.note === undefined || text(source.note)));
 }
 
 /**

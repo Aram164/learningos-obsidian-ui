@@ -448,7 +448,8 @@ function validNoteRecord(value) {
     "reviewed",
     "transcription",
     "semantic_review",
-    "atlas_question"
+    "atlas_question",
+    "material_analysis"
   ]) && identifier(source.id, "note-") && source.type === "note" && nonEmpty(source.title) && nonEmpty(source.path) && text(source.domain) && text(source.summary) && values(source.role, [
     "synthesis",
     "reference",
@@ -475,7 +476,31 @@ function validNoteRecord(value) {
   ])) && nullable(source.semantic_review, (item) => values(item, [
     "unreviewed",
     "user-reviewed"
-  ])) && nullable(source.atlas_question, validAtlasQuestion) && (source.atlas_question === null || source.role === "question"));
+  ])) && nullable(source.atlas_question, validAtlasQuestion) && (source.atlas_question === null || source.role === "question") && nullable(source.material_analysis, validMaterialAnalysis));
+}
+function validMaterialAnalysis(value) {
+  const source = row(value);
+  if (!source || !exact(source, [
+    "resolution",
+    "material",
+    "recorded_source_digest",
+    "inspected_range",
+    "frozen_input_sha256",
+    "frozen_input_bytes"
+  ], [
+    "source_id",
+    "live_source_digest",
+    "anchors",
+    "model",
+    "built"
+  ])) return false;
+  const hex64 = (item) => text(item) && /^[a-f0-9]{64}$/.test(item);
+  const range = row(source.inspected_range);
+  return values(source.resolution, ["resolved", "unresolved", "unavailable", "stale"]) && nonEmpty(source.material) && hex64(source.recorded_source_digest) && Boolean(range && exact(range, ["start", "end"]) && positive(range.start) && positive(range.end)) && hex64(source.frozen_input_sha256) && positive(source.frozen_input_bytes) && optional(source, "source_id", (item) => identifier(item, "source-")) && optional(source, "live_source_digest", hex64) && optional(source, "anchors", (items) => list(items, validAnalysisAnchor)) && optional(source, "model", text) && optional(source, "built", date) && (source.resolution === "resolved" ? typeof source.source_id === "string" : source.source_id === void 0);
+}
+function validAnalysisAnchor(value) {
+  const source = row(value);
+  return Boolean(source && exact(source, ["topic", "purpose", "locator"], ["note"]) && nonEmpty(source.topic) && nonEmpty(source.purpose) && nonEmpty(source.locator) && (source.note === void 0 || text(source.note)));
 }
 function validAtlasQuestion(value) {
   const source = row(value);
@@ -979,8 +1004,8 @@ function validProjectedRecord(value, validSynthesis) {
 }
 
 // src/contracts/manifest.ts
-var MANIFEST_CONTRACT_VERSION = 11;
-var MANIFEST_SCHEMA_SHA256 = "sha256:35b4e5765ded09b72d191e68e590ff63768cf43113613725e691703150221a6a";
+var MANIFEST_CONTRACT_VERSION = 12;
+var MANIFEST_SCHEMA_SHA256 = "sha256:5e124e29c3b77bf54e4bd60718e9cf6b70c9af15986b1012a1e4ee6eeaae7d57";
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -17500,10 +17525,10 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:d23607b9871f07d650806cd4ba7295351bd49286dd36cef3c4171b27e1f06da6" : "unavailable";
+  return true ? "sha256:83e33aed49cbc73d1f0a4649969bf5077f3ac3b702d629137889171bf5b2d293" : "unavailable";
 }
 function runtimeContractVersion() {
-  return true ? 11 : 0;
+  return true ? 12 : 0;
 }
 
 // src/gateway-client.ts
