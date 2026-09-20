@@ -165,8 +165,8 @@ async function testClientEmitsOneDiagnosticStream() {
   assert.equal(events[0].span, operation.spanId);
   assert.equal(events[1].span, events[2].span);
   assert.notEqual(events[1].span, operation.spanId);
-  assert.equal(events[2].attrs.outcome, 'confirmed');
-  assert.equal(events[3].attrs.observed, false);
+  assert.equal(events[2].attributes.outcome, 'confirmed');
+  assert.equal(events[3].attributes.observed, false);
 }
 
 async function main() {

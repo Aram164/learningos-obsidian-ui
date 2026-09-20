@@ -66,13 +66,13 @@ export interface DiagnosticEvent {
   readonly op: string;
   readonly span: string;
   readonly ts: number;
-  readonly attrs: Record<string, string | number | boolean | null>;
+  readonly attributes: Record<string, string | number | boolean | null>;
 }
 
 export function diagnosticEvent(
   context: TraceContext,
   name: string,
-  attrs: Record<string, string | number | boolean | null> = {},
+  attributes: Record<string, string | number | boolean | null> = {},
   spanId?: string,
 ): DiagnosticEvent {
   return {
@@ -82,7 +82,7 @@ export function diagnosticEvent(
     op: context.traceId,
     span: spanId ?? context.spanId,
     ts: Date.now() / 1000,
-    attrs,
+    attributes,
   };
 }
 
@@ -106,7 +106,7 @@ export function storeEnvelope(event: DiagnosticEvent): Record<string, unknown> {
     name: event.name,
     stage: null,
     status: null,
-    attributes: event.attrs,
+    attributes: event.attributes,
   };
 }
 
