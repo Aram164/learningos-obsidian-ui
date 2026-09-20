@@ -164,6 +164,15 @@ export class GatewayClient {
   private chain: Promise<void>;
   readonly recovery: GatewayRecoveryPort;
   pending: number;
+  /**
+   * The operation awaiting its settlement event: a confirmation stashes its
+   * trace here, and the event is emitted only after the caller reconciles
+   * the projection and retires the record (noteSettlementObserved). One slot
+   * is enough — the UI serializes writes, so two confirmations can never be
+   * unreconciled at once. Restart-path settles carry no trace and stash
+   * nothing; their settlement linkage is Phase 3 work.
+   */
+  private pendingObservation: { trace: TraceContext; requestId: string } | null = null;
   constructor(plugin: GatewayHost) {
     this.plugin = plugin;
     // The write lock lives here, not in a view, because the thing being
@@ -687,35 +696,60 @@ export class GatewayClient {
     return this.settle(result, operation);
   }
 
+  /**
+   * Emit the settlement event for a confirmed write the caller has reconciled.
+   *
+   * settle() deliberately emits nothing for a confirmation: a receipt says
+   * Core published, not that this vault observed. The retire act — main.ts
+   * reloading the store and clearing the record, mirrored by harnesses —
+   * calls here, so `observed` reports the reconciliation that actually
+   * happened. A stale or missing stash (restart path, or a confirmation for
+   * a different request) emits nothing rather than joining the wrong stream.
+   */
+  noteSettlementObserved(confirmation: GatewaySuccessV2): void {
+    const pending = this.pendingObservation;
+    this.pendingObservation = null;
+    if (pending === null || confirmation.request_id !== pending.requestId) return;
+    const observed = this.plugin.store.snapshotId;
+    this.diagnose(diagnosticEvent(pending.trace, 'recovery.settled', {
+      outcome: 'confirmed',
+      code: null,
+      snapshot_after: confirmation.snapshot_after,
+      observed_snapshot: observed,
+      observed: observed === confirmation.snapshot_after,
+    }));
+  }
+
   /** Turn one settled outcome into the record state and the caller's answer. */
   async settle(result: GatewayDispatchOutcome, trace?: TraceContext): Promise<GatewaySuccessV2> {
     this.assertLifecycleActive();
     // Without an operation there is no stream to join: restart-path callers
     // settle here with none, and their settlement linkage is Phase 3 work.
-    const settled = (outcome: string, code: string | null): void => {
+    const terminal = (name: string, outcome: string, code: string | null): void => {
       if (trace === undefined) return;
-      const snapshotAfter = result.outcome === 'confirmed'
-        ? result.confirmation.snapshot_after
-        : null;
-      const observed = this.plugin.store.snapshotId;
-      this.diagnose(diagnosticEvent(trace, 'recovery.settled', {
+      this.diagnose(diagnosticEvent(trace, name, {
         outcome,
         code,
-        snapshot_after: snapshotAfter,
-        observed_snapshot: observed,
-        observed: snapshotAfter !== null && observed === snapshotAfter,
+        snapshot_after: null,
+        observed_snapshot: this.plugin.store.snapshotId,
+        observed: false,
       }));
     };
     if (result.outcome === 'confirmed') {
-      // Not cleared here: a receipt is not yet an observation. The record is
-      // retired only after the projection has been reconciled with it.
+      // Not cleared here, and no event either: a receipt is not yet an
+      // observation. The record is retired only after the projection has
+      // been reconciled with it, and the settled event is emitted there.
       await this.recovery.markConfirmed(result.confirmation);
-      settled('confirmed', null);
+      this.pendingObservation = trace === undefined
+        ? null
+        : { trace, requestId: result.confirmation.request_id };
       return result.confirmation;
     }
     if (result.outcome === 'refused') {
       await this.recovery.discardRefused();
-      settled('refused', result.failure.error.code);
+      // A definitive refusal is actually settled: nothing was written and
+      // nothing stays pending, so no observation is owed.
+      terminal('recovery.settled', 'refused', result.failure.error.code);
       throw new GatewayError(
         result.failure.error.message,
         null,
@@ -726,7 +760,9 @@ export class GatewayClient {
       );
     }
     await this.recovery.markBlocked(result.error);
-    settled('blocked', result.error.code);
+    // Blocked is the opposite of settled: the record stays and waits for the
+    // learner, so it joins the stream under its own name.
+    terminal('recovery.blocked', 'blocked', result.error.code);
     throw new GatewayError(
       // The last thing Core said travels with the refusal. The learner cannot
       // act on "unknown", but they can act on the sentence underneath it.

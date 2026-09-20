@@ -5,8 +5,9 @@
  * revision conflict, invalid payload, dead transport, lost response,
  * projection failure, replay) against a throwaway mini repository with
  * curriculum. Every scenario walks the full client path by hand —
- * prepare → dispatch → settle — with one operation per scenario, so the
- * stream (not the porcelain) is what the gate inspects. UI-side diagnostic
+ * prepare → dispatch → settle → reconcile — with one operation per
+ * scenario, so the stream (not the porcelain) is what the gate inspects.
+ * UI-side diagnostic
  * events land in the mini's own trace store — the same production wiring
  * as `main.ts` — beside Core's spans, so the `operations` command resolves
  * the merged stream exactly as Diagnostics renders it.
@@ -103,18 +104,31 @@ async function main() {
     uiEventNames.push(event.name);
     fs.appendFileSync(storeFile, `${JSON.stringify(storeEnvelope(event))}\n`, 'utf8');
   };
-  const freshClient = () => new GatewayClient({
-    runLos,
-    store: { snapshotId: refreshSnapshot() },
-    recovery: new MemoryGatewayRecoveryStore(),
-    notify: () => {},
-    diagnostics,
-  });
+  const freshClient = () => {
+    const store = { snapshotId: refreshSnapshot() };
+    const gateway = new GatewayClient({
+      runLos,
+      store,
+      recovery: new MemoryGatewayRecoveryStore(),
+      notify: () => {},
+      diagnostics,
+    });
+    return { gateway, store };
+  };
   const reported = {};
 
-  // One full client path: prepare → dispatch → settle.
+  // The production tail main.ts runs after a confirmation: reload the
+  // projection, then emit the settled event, so `observed` reports a
+  // reconciliation that actually happened instead of the pre-write store.
+  function reconcile({ gateway, store }, confirmation) {
+    store.snapshotId = refreshSnapshot();
+    gateway.noteSettlementObserved(confirmation);
+  }
+
+  // One full client path: prepare → dispatch → settle → reconcile.
   async function send({ capability, payload, expectedSnapshot, expectedRevisions }) {
-    const gateway = freshClient();
+    const client = freshClient();
+    const { gateway } = client;
     const operation = newOperationContext();
     const envelopeJson = await gateway.prepareCapability(
       capability, payload, expectedSnapshot, expectedRevisions, operation,
@@ -127,6 +141,7 @@ async function main() {
     } catch (error) {
       thrown = error;
     }
+    if (settled) reconcile(client, settled);
     return {
       requestId: JSON.parse(envelopeJson).request_id,
       outcome, settled, thrown,
@@ -199,7 +214,8 @@ async function main() {
   }
   // G6: first response lost, explicit replay settles.
   {
-    const gateway = freshClient();
+    const client = freshClient();
+    const { gateway } = client;
     const operation = newOperationContext();
     const envelopeJson = await gateway.prepareCapability(
       'garden.seed.create', { text: 'lost then found' },
@@ -212,7 +228,7 @@ async function main() {
     const second = await gateway.recoverPreparedEnvelope(operation);
     assert.equal(second.outcome, 'confirmed');
     assert.equal(second.confirmation.replayed, true);
-    await gateway.settle(second, operation);
+    reconcile(client, await gateway.settle(second, operation));
   }
   // G7: commit-time projection failure.
   {
@@ -253,7 +269,8 @@ async function main() {
   }
   // G8: explicit replay of the same envelope bytes.
   {
-    const gateway = freshClient();
+    const client = freshClient();
+    const { gateway } = client;
     const operation = newOperationContext();
     const envelopeJson = await gateway.prepareCapability(
       'garden.seed.create', { text: 'replayed seed' },
@@ -265,7 +282,7 @@ async function main() {
     const second = await gateway.dispatchPreparedEnvelope(envelopeJson, { trace: operation });
     assert.equal(second.outcome, 'confirmed');
     assert.equal(second.confirmation.replayed, true);
-    await gateway.settle(second, operation);
+    reconcile(client, await gateway.settle(second, operation));
   }
 
   console.log(`HARNESS_RESULT ${JSON.stringify({

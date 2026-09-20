@@ -125,7 +125,7 @@ async function testClientKeepsOneOperationAcrossReplay() {
 
 async function testClientEmitsOneDiagnosticStream() {
   const events = [];
-  const gateway = new GatewayClient({
+  const host = {
     runLos: (args, callback, stdin) => {
       const envelope = JSON.parse(stdin);
       callback(null, JSON.stringify({
@@ -146,7 +146,8 @@ async function testClientEmitsOneDiagnosticStream() {
     recovery: new MemoryGatewayRecoveryStore(),
     notify: () => {},
     diagnostics: (event) => events.push(event),
-  });
+  };
+  const gateway = new GatewayClient(host);
   const operation = newOperationContext();
   const envelopeJson = await gateway.prepareCapability(
     'garden.seed.create', { title: 't', text: 'x' },
@@ -154,7 +155,16 @@ async function testClientEmitsOneDiagnosticStream() {
   );
   const result = await gateway.dispatchPreparedEnvelope(envelopeJson, { trace: operation });
   assert.equal(result.outcome, 'confirmed');
-  await gateway.settle(result, operation);
+  const confirmation = await gateway.settle(result, operation);
+  // A receipt is not an observation: settle() stashes the operation but
+  // emits nothing until the caller reconciles the projection.
+  assert.deepEqual(events.map((event) => event.name), [
+    'gateway.envelope.prepared',
+    'gateway.envelope.dispatched',
+    'ui.response.received',
+  ]);
+  host.store.snapshotId = confirmation.snapshot_after;
+  gateway.noteSettlementObserved(confirmation);
   assert.deepEqual(events.map((event) => event.name), [
     'gateway.envelope.prepared',
     'gateway.envelope.dispatched',
@@ -166,7 +176,86 @@ async function testClientEmitsOneDiagnosticStream() {
   assert.equal(events[1].span, events[2].span);
   assert.notEqual(events[1].span, operation.spanId);
   assert.equal(events[2].attributes.outcome, 'confirmed');
-  assert.equal(events[3].attributes.observed, false);
+  assert.equal(events[3].attributes.observed, true);
+  assert.equal(events[3].attributes.snapshot_after, confirmation.snapshot_after);
+}
+
+async function testTerminalEventsCarryCodesNeverMessages() {
+  // Failure-path canary: refusal and transport prose must never reach the
+  // diagnostic stream — events carry the typed code, the message stays with
+  // the thrown error the learner acts on.
+  const canary = 'canary-ui-prose-3d7a91c4e2';
+  const events = [];
+  const host = {
+    runLos: (args, callback, stdin) => {
+      const envelope = JSON.parse(stdin);
+      callback(null, JSON.stringify({
+        schema_version: 2,
+        request_id: envelope.request_id,
+        idempotency_key: envelope.idempotency_key,
+        capability: envelope.capability,
+        ok: false,
+        replayed: false,
+        transaction_id: null,
+        receipt_path: null,
+        snapshot_after: null,
+        result: {},
+        error: {
+          code: 'STALE_SNAPSHOT',
+          message: `the snapshot moved past the approval ${canary}`,
+          retryable: false,
+          details: {},
+        },
+      }), '');
+    },
+    store: { snapshotId: `sha256:${'1'.repeat(64)}` },
+    recovery: new MemoryGatewayRecoveryStore(),
+    notify: () => {},
+    diagnostics: (event) => events.push(event),
+  };
+  const gateway = new GatewayClient(host);
+  const operation = newOperationContext();
+  const envelopeJson = await gateway.prepareCapability(
+    'garden.seed.create', { title: 't', text: 'x' },
+    `sha256:${'1'.repeat(64)}`, {}, operation,
+  );
+  const refused = await gateway.dispatchPreparedEnvelope(envelopeJson, { trace: operation });
+  assert.equal(refused.outcome, 'refused');
+  await assert.rejects(gateway.settle(refused, operation));
+  assert.deepEqual(events.map((event) => event.name), [
+    'gateway.envelope.prepared',
+    'gateway.envelope.dispatched',
+    'ui.response.received',
+    'recovery.settled',
+  ]);
+  assert.equal(events[3].attributes.outcome, 'refused');
+  assert.equal(events[3].attributes.code, 'STALE_SNAPSHOT');
+  assert.ok(!JSON.stringify(events).includes(canary), 'refusal prose leaked into events');
+
+  // Blocked path: an unreadable answer whose stderr carries prose.
+  const blockedEvents = [];
+  const blockedHost = {
+    ...host,
+    runLos: (args, callback) => callback(null, '', `los exploded: ${canary}`),
+    diagnostics: (event) => blockedEvents.push(event),
+  };
+  const blockedGateway = new GatewayClient(blockedHost);
+  const blockedOp = newOperationContext();
+  const blockedJson = await blockedGateway.prepareCapability(
+    'garden.seed.create', { title: 't', text: 'x' },
+    `sha256:${'1'.repeat(64)}`, {}, blockedOp,
+  );
+  const ambiguous = await blockedGateway.dispatchPreparedEnvelope(blockedJson, { trace: blockedOp });
+  assert.equal(ambiguous.outcome, 'ambiguous');
+  assert.ok(ambiguous.error.message.includes(canary), 'fixture must carry the canary');
+  await assert.rejects(blockedGateway.settle(ambiguous, blockedOp));
+  assert.deepEqual(blockedEvents.map((event) => event.name), [
+    'gateway.envelope.prepared',
+    'gateway.envelope.dispatched',
+    'ui.response.received',
+    'recovery.blocked',
+  ]);
+  assert.ok(!JSON.stringify(blockedEvents).includes(canary), 'blocked prose leaked into events');
 }
 
 async function main() {
@@ -174,7 +263,8 @@ async function main() {
   await testRuntimeCarriesParentAsEnv();
   await testClientKeepsOneOperationAcrossReplay();
   await testClientEmitsOneDiagnosticStream();
-  console.log('test-trace-context: ok (4 groups)');
+  await testTerminalEventsCarryCodesNeverMessages();
+  console.log('test-trace-context: ok (5 groups)');
 }
 
 main().then(

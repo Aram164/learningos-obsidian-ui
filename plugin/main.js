@@ -36,6 +36,8 @@ __export(main_exports, {
 });
 module.exports = __toCommonJS(main_exports);
 var import_obsidian23 = require("obsidian");
+var fs5 = __toESM(require("node:fs"));
+var nodePath5 = __toESM(require("node:path"));
 
 // src/contracts/manifest-records.ts
 var row = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
@@ -1117,8 +1119,8 @@ function validMaterialSynthesis(value) {
     "completeness"
   ]) && value.schema_version === 1 && identifier2(value.id, "material-synthesis-") && value.type === "unit-material-synthesis" && identifier2(value.unit_id, "unit-") && value.status === "approved" && validSynthesisBasis(value.basis) && Array.isArray(value.route_assessments) && value.route_assessments.length > 0 && value.route_assessments.every(validRouteAssessment) && Array.isArray(value.comparisons) && value.comparisons.every(validRouteComparison) && Array.isArray(value.concept_groups) && value.concept_groups.every(validConceptGroup) && validSynthesisFreshness(value.freshness) && validSynthesisCompleteness(value.completeness);
 }
-function requireArray(record6, key) {
-  if (!Array.isArray(record6[key])) {
+function requireArray(record7, key) {
+  if (!Array.isArray(record7[key])) {
     throw new TypeError(`Manifest field ${String(key)} must be an array.`);
   }
 }
@@ -1274,8 +1276,8 @@ function assertManifest(value) {
       throw new TypeError("Manifest flat stages must match the closed v8 projection.");
     }
   }
-  for (const record6 of value.records) {
-    if (!validProjectedRecord(record6, validMaterialSynthesis)) {
+  for (const record7 of value.records) {
+    if (!validProjectedRecord(record7, validMaterialSynthesis)) {
       throw new TypeError("Manifest records must match the closed v8 record union.");
     }
   }
@@ -1569,9 +1571,9 @@ function optionalString(value) {
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
-function asLabel(record6, fallback = "Untitled") {
-  if (!record6) return fallback;
-  return asString(record6.title) ?? asString(record6.label) ?? asString(record6.name) ?? asString(record6.id) ?? fallback;
+function asLabel(record7, fallback = "Untitled") {
+  if (!record7) return fallback;
+  return asString(record7.title) ?? asString(record7.label) ?? asString(record7.name) ?? asString(record7.id) ?? fallback;
 }
 
 // src/accessibility/button-group.ts
@@ -1648,15 +1650,15 @@ function statusTone(status) {
   const tone = STATUS_TONES[key];
   return tone ? `los-status los-status--${tone}` : "los-status";
 }
-function chip(parent, record6, onClick) {
+function chip(parent, record7, onClick) {
   const el = parent.createEl("button", {
-    cls: `los-chip los-t-${record6?.type || "record"} is-clickable`,
+    cls: `los-chip los-t-${record7?.type || "record"} is-clickable`,
     attr: { type: "button" }
   });
-  const iconName = ICONS[String(record6?.type || "")] || "circle";
+  const iconName = ICONS[String(record7?.type || "")] || "circle";
   icon(el.createSpan({ cls: "los-chip-icon" }), iconName);
-  el.createSpan({ text: record6?.title || record6?.id || "Unknown" });
-  if (onClick) el.addEventListener("click", () => onClick(record6));
+  el.createSpan({ text: record7?.title || record7?.id || "Unknown" });
+  if (onClick) el.addEventListener("click", () => onClick(record7));
   return el;
 }
 function pageHeader(parent, kicker, title, description = "", headingId = "") {
@@ -2116,8 +2118,8 @@ function isProjectDetailTab(value) {
   return PROJECT_DETAIL_TABS.includes(value);
 }
 function asLibrarySourceFilters(value) {
-  const record6 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
-  const read = (key) => typeof record6[key] === "string" ? record6[key] : "";
+  const record7 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+  const read = (key) => typeof record7[key] === "string" ? record7[key] : "";
   return {
     domain: read("domain"),
     topic: read("topic"),
@@ -2206,8 +2208,8 @@ function compareModules(left, right) {
   if (left.actionable !== right.actionable) return left.actionable ? -1 : 1;
   return compareStrings(left.sortKey, right.sortKey) || compareStrings(left.id, right.id);
 }
-function shortModuleLabel(record6, label) {
-  const code = asString(record6.code);
+function shortModuleLabel(record7, label) {
+  const code = asString(record7.code);
   if (code) return code;
   const words2 = label.split(/\s+/).filter(Boolean);
   return words2.length > 2 ? words2.map((word) => word.charAt(0)).join("").toUpperCase() : label;
@@ -2242,19 +2244,19 @@ function buildAtlasGraph(store) {
   const remember = (id2) => {
     const known = conceptById.get(id2);
     if (known) return known;
-    const record6 = store.get(id2);
-    const label = record6 ? asLabel(record6, id2) : id2;
+    const record7 = store.get(id2);
+    const label = record7 ? asLabel(record7, id2) : id2;
     const concept = {
       id: id2,
       label,
       sortKey: normalizedSortKey(label),
-      record: record6 ?? null
+      record: record7 ?? null
     };
     conceptById.set(id2, concept);
     return concept;
   };
-  for (const record6 of store.of("concept")) {
-    const id2 = asString(record6.id);
+  for (const record7 of store.of("concept")) {
+    const id2 = asString(record7.id);
     if (id2) remember(id2);
   }
   const edges = [];
@@ -2272,8 +2274,8 @@ function buildAtlasGraph(store) {
     remember(edge.from);
     remember(edge.to);
     if (edge.source && !resolvedSources.has(edge.source)) {
-      const record6 = store.get(edge.source);
-      if (record6) resolvedSources.set(edge.source, record6);
+      const record7 = store.get(edge.source);
+      if (record7) resolvedSources.set(edge.source, record7);
     }
     if (edge.layer === "strict") {
       push(prerequisiteEdges, edge.from, edge);
@@ -2300,16 +2302,16 @@ function buildAtlasGraph(store) {
     push(modulesByConcept, conceptId, moduleId);
     push(conceptsByModule, moduleId, conceptId);
   }
-  const modules = store.modules().flatMap((record6) => {
-    const id2 = asString(record6.id);
+  const modules = store.modules().flatMap((record7) => {
+    const id2 = asString(record7.id);
     if (!id2) return [];
-    const label = asLabel(record6, id2);
+    const label = asLabel(record7, id2);
     return [{
       id: id2,
       label,
-      shortLabel: shortModuleLabel(record6, label),
+      shortLabel: shortModuleLabel(record7, label),
       sortKey: normalizedSortKey(label),
-      actionable: record6.is_actionable === true,
+      actionable: record7.is_actionable === true,
       conceptCount: conceptsByModule.get(id2)?.length ?? 0
     }];
   }).sort(compareModules);
@@ -2369,12 +2371,12 @@ function studyOrderSentence(graph, edge) {
 }
 function provenanceOf(graph, edge) {
   if (!edge.source) return { state: "undocumented" };
-  const record6 = graph.resolvedSources.get(edge.source);
-  return record6 ? {
+  const record7 = graph.resolvedSources.get(edge.source);
+  return record7 ? {
     state: "resolved",
     sourceId: edge.source,
-    label: asLabel(record6, edge.source),
-    record: record6
+    label: asLabel(record7, edge.source),
+    record: record7
   } : { state: "unresolved", sourceId: edge.source };
 }
 function evidenceFor(graph, moduleId, conceptId) {
@@ -3254,15 +3256,15 @@ function conceptIds(value) {
 }
 function sourceNamesConcept(source, conceptId) {
   return Array.isArray(source.evaluations) && source.evaluations.some((evaluation) => {
-    const record6 = objectValue(evaluation);
-    return record6 ? conceptIds(record6.concepts).includes(conceptId) : false;
+    const record7 = objectValue(evaluation);
+    return record7 ? conceptIds(record7.concepts).includes(conceptId) : false;
   });
 }
 function byLabel(left, right) {
   return compareStrings(asLabel(left), asLabel(right));
 }
 function buildConceptContext(store, conceptId) {
-  const notes = store.related(conceptId).map((row3) => row3.rec).filter((record6) => record6?.type === "note").sort(byLabel);
+  const notes = store.related(conceptId).map((row3) => row3.rec).filter((record7) => record7?.type === "note").sort(byLabel);
   const sources = store.sources().filter((source) => sourceNamesConcept(source, conceptId)).sort(byLabel);
   return { notes, sources };
 }
@@ -3288,19 +3290,19 @@ function compare(left, right) {
 }
 function collectQuestions(store, graph) {
   const questions = [];
-  for (const record6 of store.of("note")) {
-    const block = asRecord(record6.atlas_question);
+  for (const record7 of store.of("note")) {
+    const block = asRecord(record7.atlas_question);
     if (!block) continue;
-    const noteId = asString(record6.id);
+    const noteId = asString(record7.id);
     const state = asString(block.state);
     const target = readTarget(block.target);
     if (!noteId || !target) continue;
     if (state !== "open" && state !== "resolved") continue;
     questions.push({
       noteId,
-      title: asString(record6.title) ?? noteId,
-      body: asString(record6.summary) ?? "",
-      path: asString(record6.path) ?? "",
+      title: asString(record7.title) ?? noteId,
+      body: asString(record7.summary) ?? "",
+      path: asString(record7.path) ?? "",
       state,
       target,
       answerNotes: asStrings(block.answer_notes),
@@ -3458,7 +3460,7 @@ function renderEndpoint(parent, host, graph, draft, end) {
   const paint = () => {
     results.empty();
     const query = draft.search.trim();
-    const matches2 = (query ? host.plugin.store.search(query, ["concept"]).map((record6) => asString(record6.id)).filter((id2) => Boolean(id2)) : graph.concepts.map((concept) => concept.id)).filter((id2) => id2 !== draft[end === "from" ? "to" : "from"]).slice(0, 12);
+    const matches2 = (query ? host.plugin.store.search(query, ["concept"]).map((record7) => asString(record7.id)).filter((id2) => Boolean(id2)) : graph.concepts.map((concept) => concept.id)).filter((id2) => id2 !== draft[end === "from" ? "to" : "from"]).slice(0, 12);
     if (!matches2.length) {
       results.createDiv({
         cls: "los-atlas-absence los-micro",
@@ -3611,8 +3613,8 @@ var TABS = [
   ["evidence", "Evidence"],
   ["sources", "Sources"]
 ];
-function aliasesOf(record6) {
-  return Array.isArray(record6?.aliases) ? record6.aliases.map((value) => asString(value)).filter((value) => Boolean(value)) : [];
+function aliasesOf(record7) {
+  return Array.isArray(record7?.aliases) ? record7.aliases.map((value) => asString(value)).filter((value) => Boolean(value)) : [];
 }
 function connectionRow(parent, host, graph, edge, conceptId) {
   const other = otherEnd(edge, conceptId);
@@ -4296,8 +4298,8 @@ function renderEntry(parent, host, graph, searchOnly = false) {
   });
   const query = host.query.trim();
   if (query && searchOnly) {
-    const results = host.plugin.store.search(query, ["concept"]).filter((record6) => {
-      const id2 = asString(record6.id);
+    const results = host.plugin.store.search(query, ["concept"]).filter((record7) => {
+      const id2 = asString(record7.id);
       if (!id2) return false;
       if (!host.state.module) return true;
       return (graph.modulesByConcept.get(id2) ?? []).includes(host.state.module);
@@ -4315,8 +4317,8 @@ function renderEntry(parent, host, graph, searchOnly = false) {
     } else {
       const list2 = group.createDiv({ cls: "los-atlas-records" });
       enableButtonGroupKeyboardNavigation(list2, "vertical");
-      for (const record6 of results.slice(0, 20)) {
-        const id2 = asString(record6.id);
+      for (const record7 of results.slice(0, 20)) {
+        const id2 = asString(record7.id);
         if (!id2) continue;
         renderConceptSeed(list2, host, graph, id2);
       }
@@ -5668,33 +5670,33 @@ function renderElsewhere(view, root) {
     view.plugin.store.data?.resume_pointer
   );
   const rows = [];
-  for (const record6 of view.plugin.store.currentSemesterModules()) {
-    const recordId = asString(record6.id);
+  for (const record7 of view.plugin.store.currentSemesterModules()) {
+    const recordId = asString(record7.id);
     if (!recordId || recordId === pointer.module_id) {
       continue;
     }
-    if (record6.is_actionable !== true) {
+    if (record7.is_actionable !== true) {
       continue;
     }
     rows.push({
-      record: record6,
-      type: asString(record6.kind) === "skill" ? "Skill" : "Module",
+      record: record7,
+      type: asString(record7.kind) === "skill" ? "Skill" : "Module",
       open: () => view.plugin.nav.openModule(
         recordId
       )
     });
   }
-  for (const record6 of view.plugin.store.projects()) {
-    const recordId = asString(record6.id);
+  for (const record7 of view.plugin.store.projects()) {
+    const recordId = asString(record7.id);
     if (!recordId) {
       continue;
     }
-    const status = asString(record6.status);
+    const status = asString(record7.status);
     if (status && ["completed", "archived"].includes(status)) {
       continue;
     }
     rows.push({
-      record: record6,
+      record: record7,
       type: "Project",
       open: () => view.plugin.nav.openProject(
         recordId
@@ -6386,7 +6388,7 @@ function readLibraryRecords(value) {
     return [];
   }
   return value.map(readLibraryRecord).filter(
-    (record6) => record6 !== null
+    (record7) => record7 !== null
   );
 }
 function readRelatedRecords(value) {
@@ -6398,9 +6400,9 @@ function readRelatedRecords(value) {
     if (!isRecord2(candidate)) {
       continue;
     }
-    const record6 = readLibraryRecord(candidate.rec);
-    if (record6) {
-      records.push(record6);
+    const record7 = readLibraryRecord(candidate.rec);
+    if (record7) {
+      records.push(record7);
     }
   }
   return records;
@@ -6413,14 +6415,14 @@ function isFileShapedPath(value) {
   const name = path.replace(/\\/g, "/").split("/").pop() ?? "";
   return /^[^./][^/]*\.[^./]+$/.test(name);
 }
-function isDirectMaterialFileTarget(record6) {
-  return record6.material_exists === true && isFileShapedPath(record6.material_path);
+function isDirectMaterialFileTarget(record7) {
+  return record7.material_exists === true && isFileShapedPath(record7.material_path);
 }
 var QUALIFIED_PAGES = /(?:physical\s+PDF|physical|PDF)\s+(?:p{1,2}\.|pages?)\s*(\d{1,4})(?:\s*[-–—]\s*(\d{1,4}))?/i;
-function pageDestination(record6) {
-  const target = typeof record6.material_path === "string" ? record6.material_path : typeof record6.vault_path === "string" ? record6.vault_path : "";
+function pageDestination(record7) {
+  const target = typeof record7.material_path === "string" ? record7.material_path : typeof record7.vault_path === "string" ? record7.vault_path : "";
   if (!/\.pdf$/i.test(target.trim().split(/[?#]/, 1)[0] ?? "")) return null;
-  const locator = typeof record6.locator === "string" ? record6.locator : "";
+  const locator = typeof record7.locator === "string" ? record7.locator : "";
   const match = QUALIFIED_PAGES.exec(locator);
   if (!match) return null;
   const first = Number(match[1]);
@@ -6434,20 +6436,20 @@ function pageDestination(record6) {
     label: last === null ? `physical page ${first}` : `physical pages ${first}\u2013${last}`
   };
 }
-function hasDirectResourceTarget(record6) {
-  if (isDirectMaterialFileTarget(record6)) return true;
-  const vaultPath = typeof record6.vault_path === "string" ? record6.vault_path.trim() : "";
+function hasDirectResourceTarget(record7) {
+  if (isDirectMaterialFileTarget(record7)) return true;
+  const vaultPath = typeof record7.vault_path === "string" ? record7.vault_path.trim() : "";
   if (vaultPath && !vaultPath.toLowerCase().startsWith("material://") && isFileShapedPath(vaultPath)) return true;
-  return safeWebUrl(record6.url) !== null;
+  return safeWebUrl(record7.url) !== null;
 }
 
 // src/features/library/detail.ts
-function renderRecordActions(view, detail, record6) {
+function renderRecordActions(view, detail, record7) {
   const actions = detail.createDiv({
     cls: "los-actions"
   });
-  if (record6.url) {
-    const url = record6.url;
+  if (record7.url) {
+    const url = record7.url;
     button(
       actions,
       "Open online",
@@ -6457,29 +6459,29 @@ function renderRecordActions(view, detail, record6) {
       "info"
     );
   }
-  if (record6.materialPath && record6.materialExists === true) {
+  if (record7.materialPath && record7.materialExists === true) {
     button(
       actions,
-      isFileShapedPath(record6.materialPath) ? "Open local copy" : "Browse local collection",
+      isFileShapedPath(record7.materialPath) ? "Open local copy" : "Browse local collection",
       () => view.plugin.openMaterialPath(
-        record6.materialPath
+        record7.materialPath
       ),
       "info"
     );
   }
-  if (record6.path) {
+  if (record7.path) {
     button(
       actions,
       "Open authored file",
       () => view.plugin.openAuthoredPath(
-        record6.path
+        record7.path
       ),
       "info"
     );
   }
 }
-function renderAttachments(view, detail, record6) {
-  if (!record6.attachments.length) {
+function renderAttachments(view, detail, record7) {
+  if (!record7.attachments.length) {
     return;
   }
   const attachments = section(
@@ -6487,7 +6489,7 @@ function renderAttachments(view, detail, record6) {
     "Attachments",
     "Open the original handwriting, image, or PDF."
   );
-  for (const attachment of record6.attachments) {
+  for (const attachment of record7.attachments) {
     button(
       attachments,
       `Open ${attachment.label}`,
@@ -6498,10 +6500,10 @@ function renderAttachments(view, detail, record6) {
     );
   }
 }
-function renderRelated(view, detail, record6) {
+function renderRelated(view, detail, record7) {
   const related = readRelatedRecords(
     view.plugin.store.related(
-      record6.id
+      record7.id
     )
   );
   const groups = /* @__PURE__ */ new Map();
@@ -6571,7 +6573,7 @@ function renderRelated(view, detail, record6) {
     }
   }
 }
-function renderSourceDetail(view, detail, record6) {
+function renderSourceDetail(view, detail, record7) {
   const facts = section(
     detail,
     "Source facts"
@@ -6579,19 +6581,19 @@ function renderSourceDetail(view, detail, record6) {
   const factRows = [
     [
       "Authors",
-      record6.authors.join(", ")
+      record7.authors.join(", ")
     ],
     [
       "Organization",
-      record6.organization
+      record7.organization
     ],
     [
       "Year",
-      record6.year
+      record7.year
     ],
     [
       "Type",
-      record6.sourceType
+      record7.sourceType
     ]
   ];
   for (const [
@@ -6614,7 +6616,7 @@ function renderSourceDetail(view, detail, record6) {
     });
   }
   const memberships = view.shelfIndex().get(
-    record6.id
+    record7.id
   ) ?? [];
   const placed = section(
     detail,
@@ -6676,7 +6678,7 @@ function renderSourceDetail(view, detail, record6) {
   );
   const units = readLibraryRecords(
     view.plugin.store.useUnits(
-      record6.id
+      record7.id
     )
   );
   if (!units.length) {
@@ -6695,12 +6697,12 @@ function renderSourceDetail(view, detail, record6) {
       )
     );
   }
-  if (record6.evaluations.length) {
+  if (record7.evaluations.length) {
     const evidence2 = section(
       detail,
       "What this source is good for"
     );
-    for (const evaluation of record6.evaluations) {
+    for (const evaluation of record7.evaluations) {
       const card = evidence2.createDiv({
         cls: "los-evidence-card"
       });
@@ -6729,7 +6731,7 @@ function renderSourceDetail(view, detail, record6) {
     }
   }
 }
-function renderTechnical(view, detail, record6) {
+function renderTechnical(view, detail, record7) {
   const technical = disclosure(
     detail,
     "Technical details",
@@ -6744,17 +6746,17 @@ function renderTechnical(view, detail, record6) {
   });
   idRow.createSpan({
     cls: "los-fact-value los-detail-id",
-    text: record6.id
+    text: record7.id
   });
   button(
     technical,
     "Copy ID",
     () => view.plugin.copyText(
-      record6.id
+      record7.id
     ),
     "quiet"
   );
-  if (record6.path) {
+  if (record7.path) {
     const pathRow = technical.createDiv({
       cls: "los-fact-row"
     });
@@ -6764,21 +6766,21 @@ function renderTechnical(view, detail, record6) {
     });
     pathRow.createSpan({
       cls: "los-fact-value",
-      text: record6.path
+      text: record7.path
     });
   }
 }
 
 // src/features/library/collections.ts
-function renderRecordRow(view, list2, record6, isPack = false) {
+function renderRecordRow(view, list2, record7, isPack = false) {
   const row3 = list2.createEl(
     "button",
     {
       cls: "los-route-row is-clickable",
       attr: {
         type: "button",
-        "aria-label": `Open ${record6.title}`,
-        "data-record-id": record6.id
+        "aria-label": `Open ${record7.title}`,
+        "data-record-id": record7.id
       }
     }
   );
@@ -6788,18 +6790,18 @@ function renderRecordRow(view, list2, record6, isPack = false) {
   copy.createEl(
     "strong",
     {
-      text: record6.title
+      text: record7.title
     }
   );
   const meta = isPack ? [
-    record6.purpose,
-    `${record6.entries.length} items`
+    record7.purpose,
+    `${record7.entries.length} items`
   ].filter(Boolean).join(" \xB7 ") : [
-    record6.sourceType,
-    record6.year,
-    record6.organization,
-    record6.materialExists || record6.materialPath ? "local" : null,
-    record6.url ? "online" : null
+    record7.sourceType,
+    record7.year,
+    record7.organization,
+    record7.materialExists || record7.materialPath ? "local" : null,
+    record7.url ? "online" : null
   ].filter(Boolean).join(" \xB7 ");
   if (meta) {
     copy.createDiv({
@@ -6814,17 +6816,17 @@ function renderRecordRow(view, list2, record6, isPack = false) {
   row3.addEventListener(
     "click",
     () => {
-      view.selectedElementId = record6.id;
+      view.selectedElementId = record7.id;
       if (isPack) {
         view.plugin.nav.openTopicPackDetail(
-          record6.id,
+          record7.id,
           view.groupId,
           view.query
         );
         return;
       }
       view.plugin.nav.openSourceDetail(
-        record6.id,
+        record7.id,
         view.groupId,
         view.query,
         view.facet,
@@ -6834,7 +6836,7 @@ function renderRecordRow(view, list2, record6, isPack = false) {
   );
 }
 function renderSourcePage(view, root) {
-  const record6 = readLibraryRecord(
+  const record7 = readLibraryRecord(
     view.resourceId ? view.plugin.store.get(
       view.resourceId
     ) : null
@@ -6846,7 +6848,7 @@ function renderSourcePage(view, root) {
     "quiet"
   );
   back.addClass("los-route-back");
-  if (!record6 || record6.type !== "source") {
+  if (!record7 || record7.type !== "source") {
     empty(
       root,
       "Learning source unavailable",
@@ -6862,28 +6864,28 @@ function renderSourcePage(view, root) {
   pageHeader(
     detail,
     "Learning Source",
-    record6.title,
-    record6.summary
+    record7.title,
+    record7.summary
   );
   view.renderRecordActions(
     detail,
-    record6
+    record7
   );
   view.renderAttachments(
     detail,
-    record6
+    record7
   );
   view.renderSourceDetail(
     detail,
-    record6
+    record7
   );
   view.renderRelated(
     detail,
-    record6
+    record7
   );
   view.renderTechnical(
     detail,
-    record6
+    record7
   );
 }
 function renderTopicPackPage(view, root) {
@@ -7120,7 +7122,7 @@ function renderLegacyList(view, root) {
   );
   if (view.domain) {
     rows = rows.filter(
-      (record6) => record6.domain === view.domain
+      (record7) => record7.domain === view.domain
     );
   }
   rows.sort(
@@ -7140,14 +7142,14 @@ function renderLegacyList(view, root) {
   const list2 = root.createDiv({
     cls: "los-route-list"
   });
-  for (const record6 of rows) {
+  for (const record7 of rows) {
     const row3 = list2.createEl(
       "button",
       {
         cls: "los-route-row is-clickable",
         attr: {
           type: "button",
-          "data-record-id": record6.id
+          "data-record-id": record7.id
         }
       }
     );
@@ -7157,33 +7159,33 @@ function renderLegacyList(view, root) {
     copy.createEl(
       "strong",
       {
-        text: record6.title
+        text: record7.title
       }
     );
     copy.createDiv({
       cls: "los-route-meta",
       text: [
-        record6.role,
-        record6.domain,
-        record6.state
+        record7.role,
+        record7.domain,
+        record7.state
       ].filter(Boolean).join(" \xB7 ")
     });
     row3.createSpan({
       cls: "los-route-open",
-      text: record6.path ? "Open file \u2192" : "Open \u2192"
+      text: record7.path ? "Open file \u2192" : "Open \u2192"
     });
     row3.addEventListener(
       "click",
       () => {
-        view.selectedElementId = record6.id;
-        if (record6.path) {
+        view.selectedElementId = record7.id;
+        if (record7.path) {
           view.plugin.openAuthoredPath(
-            record6.path
+            record7.path
           );
           return;
         }
         view.plugin.nav.openRecord(
-          record6.record
+          record7.record
         );
       }
     );
@@ -7360,19 +7362,19 @@ function renderGroup(view, root) {
   );
   const needle = foldCase(view.query.trim());
   const words2 = needle.split(/\s+/).filter(Boolean);
-  const rows = all.filter((record6) => {
+  const rows = all.filter((record7) => {
     if (!words2.length) {
       return true;
     }
     const hay = foldCase(
       [
-        record6.id,
-        record6.title,
-        record6.purpose,
-        record6.summary,
-        ...record6.aliases,
-        ...record6.authors,
-        record6.organization
+        record7.id,
+        record7.title,
+        record7.purpose,
+        record7.summary,
+        ...record7.aliases,
+        ...record7.authors,
+        record7.organization
       ].filter(Boolean).join(" ")
     );
     return words2.every(
@@ -7406,10 +7408,10 @@ function renderGroup(view, root) {
   const list2 = root.createDiv({
     cls: "los-route-list los-library-route-list"
   });
-  for (const record6 of rows) {
+  for (const record7 of rows) {
     view.renderRecordRow(
       list2,
-      record6,
+      record7,
       true
     );
   }
@@ -7627,9 +7629,9 @@ function parseSegment(value) {
   const at = value.indexOf(":");
   return at < 0 ? [value, ""] : [value.slice(0, at), value.slice(at + 1)];
 }
-function titleOf(record6) {
-  if (!record6) return "Unknown";
-  return asText(record6.title) ?? asString(record6.id) ?? "Unknown";
+function titleOf(record7) {
+  if (!record7) return "Unknown";
+  return asText(record7.title) ?? asString(record7.id) ?? "Unknown";
 }
 function byTitle(left, right) {
   return compareStrings(titleOf(left), titleOf(right));
@@ -8222,30 +8224,30 @@ function shelfFolder(context, shelf, rest, full) {
       icon: iconName,
       kindLabel: "Shelf",
       description: isPacks ? "Narrow, manually ordered collections. The order is the argument." : "Standing shelves that cut across domains.",
-      entries: shelves.map((record7) => folderEntry({
-        segment: segment(prefix, asString(record7.id) ?? ""),
+      entries: shelves.map((record8) => folderEntry({
+        segment: segment(prefix, asString(record8.id) ?? ""),
         kind: "bucket",
-        name: titleOf(record7),
+        name: titleOf(record8),
         icon: iconName,
         kindLabel: isPacks ? "Pack" : "Catalogue",
-        count: shelfSources(store, record7).length,
-        detail: asText(record7.purpose) ?? ""
+        count: shelfSources(store, record8).length,
+        detail: asText(record8.purpose) ?? ""
       }))
     });
   }
   const [head = "", ...tail] = rest;
   const [headPrefix, id2] = parseSegment(head);
   if (headPrefix !== prefix) return unavailable(full);
-  const record6 = store.get(id2);
-  if (!record6) return unavailable(full);
+  const record7 = store.get(id2);
+  if (!record7) return unavailable(full);
   if (!tail.length) {
     return folder({
       path: full,
-      name: titleOf(record6),
+      name: titleOf(record7),
       icon: iconName,
       kindLabel: isPacks ? "Pack" : "Catalogue",
-      description: asText(record6.purpose) ?? "",
-      entries: shelfSources(store, record6).map((source) => sourceEntry(context, source))
+      description: asText(record7.purpose) ?? "",
+      entries: shelfSources(store, record7).map((source) => sourceEntry(context, source))
     });
   }
   return sourceFolder(context, tail, full);
@@ -9340,8 +9342,8 @@ var LibraryView = class extends import_obsidian8.ItemView {
       facet: this.facet
     });
   }
-  renderRecordRow(list2, record6, isPack = false) {
-    renderRecordRow(this, list2, record6, isPack);
+  renderRecordRow(list2, record7, isPack = false) {
+    renderRecordRow(this, list2, record7, isPack);
   }
   renderSourcePage(root) {
     renderSourcePage(this, root);
@@ -9358,20 +9360,20 @@ var LibraryView = class extends import_obsidian8.ItemView {
   renderLegacyList(root) {
     renderLegacyList(this, root);
   }
-  renderRecordActions(detail, record6) {
-    renderRecordActions(this, detail, record6);
+  renderRecordActions(detail, record7) {
+    renderRecordActions(this, detail, record7);
   }
-  renderAttachments(detail, record6) {
-    renderAttachments(this, detail, record6);
+  renderAttachments(detail, record7) {
+    renderAttachments(this, detail, record7);
   }
-  renderRelated(detail, record6) {
-    renderRelated(this, detail, record6);
+  renderRelated(detail, record7) {
+    renderRelated(this, detail, record7);
   }
-  renderSourceDetail(detail, record6) {
-    renderSourceDetail(this, detail, record6);
+  renderSourceDetail(detail, record7) {
+    renderSourceDetail(this, detail, record7);
   }
-  renderTechnical(detail, record6) {
-    renderTechnical(this, detail, record6);
+  renderTechnical(detail, record7) {
+    renderTechnical(this, detail, record7);
   }
   // ------------------------------------------------------- folder browser
   finderContext() {
@@ -9537,29 +9539,29 @@ function readModuleViewState(value) {
     hasTab
   };
 }
-function readThematicGroup2(record6) {
-  if (!record6) {
+function readThematicGroup2(record7) {
+  if (!record7) {
     return null;
   }
-  const id2 = asString(record6.id);
+  const id2 = asString(record7.id);
   if (!id2) {
     return null;
   }
   return {
     id: id2,
-    title: asString(record6.title) ?? asString(record6.label) ?? id2,
-    description: asText(record6.description) ?? ""
+    title: asString(record7.title) ?? asString(record7.label) ?? id2,
+    description: asText(record7.description) ?? ""
   };
 }
 function readComponents(value) {
-  return asRecords(value).map((record6) => {
-    const id2 = asString(record6.id);
+  return asRecords(value).map((record7) => {
+    const id2 = asString(record7.id);
     if (!id2) {
       return null;
     }
     return {
       id: id2,
-      title: asString(record6.short_title) ?? asString(record6.title) ?? id2
+      title: asString(record7.short_title) ?? asString(record7.title) ?? id2
     };
   }).filter(nonNull);
 }
@@ -9570,44 +9572,44 @@ function readExamination(value) {
     notes: asText(examination.notes)
   };
 }
-function readModuleRecord(record6, fallbackId = null) {
-  if (!record6) {
+function readModuleRecord(record7, fallbackId = null) {
+  if (!record7) {
     return null;
   }
-  const id2 = asString(record6.id) ?? fallbackId;
+  const id2 = asString(record7.id) ?? fallbackId;
   if (!id2) {
     return null;
   }
   return {
-    record: record6,
+    record: record7,
     id: id2,
-    areaId: asString(record6.area_id) ?? "",
-    title: asString(record6.title) ?? id2,
-    kind: asString(record6.kind) ?? "Module",
-    code: asText(record6.code) ?? "",
-    semester: asText(record6.semester) ?? "",
-    status: asString(record6.status) ?? "unspecified",
-    institution: asText(record6.institution) ?? "",
-    credits: asText(record6.credits),
-    examination: readExamination(record6.examination),
-    components: readComponents(record6.components),
-    unitOrder: asStrings(record6.unit_order)
+    areaId: asString(record7.area_id) ?? "",
+    title: asString(record7.title) ?? id2,
+    kind: asString(record7.kind) ?? "Module",
+    code: asText(record7.code) ?? "",
+    semester: asText(record7.semester) ?? "",
+    status: asString(record7.status) ?? "unspecified",
+    institution: asText(record7.institution) ?? "",
+    credits: asText(record7.credits),
+    examination: readExamination(record7.examination),
+    components: readComponents(record7.components),
+    unitOrder: asStrings(record7.unit_order)
   };
 }
-function normalizeUnitRecord(record6) {
-  const id2 = asString(record6.id);
+function normalizeUnitRecord(record7) {
+  const id2 = asString(record7.id);
   if (!id2) {
     return null;
   }
-  const title = asString(record6.title) ?? id2;
-  const status = asString(record6.status) ?? "unspecified";
-  const order = asCount(record6.order);
+  const title = asString(record7.title) ?? id2;
+  const status = asString(record7.status) ?? "unspecified";
+  const order = asCount(record7.order);
   const normalized = {
-    ...record6,
+    ...record7,
     id: id2,
     title,
     status,
-    scope: asText(record6.scope) ?? ""
+    scope: asText(record7.scope) ?? ""
   };
   return {
     record: normalized,
@@ -9634,18 +9636,18 @@ function orderModuleUnits(module2, units) {
     }
   );
 }
-function normalizeWorkspaceRecord(record6) {
+function normalizeWorkspaceRecord(record7) {
   return {
-    ...record6,
-    id: asString(record6.id) ?? "",
-    title: asString(record6.title) ?? asString(record6.id) ?? "Workspace",
-    status: asString(record6.status) ?? "unspecified",
-    objective: asText(record6.objective) ?? "",
-    next_action: asText(record6.next_action) ?? "",
-    deadline: asText(record6.deadline) ?? "",
-    standing: record6.standing === true,
-    module_ids: asStrings(record6.module_ids),
-    unit_ids: asStrings(record6.unit_ids)
+    ...record7,
+    id: asString(record7.id) ?? "",
+    title: asString(record7.title) ?? asString(record7.id) ?? "Workspace",
+    status: asString(record7.status) ?? "unspecified",
+    objective: asText(record7.objective) ?? "",
+    next_action: asText(record7.next_action) ?? "",
+    deadline: asText(record7.deadline) ?? "",
+    standing: record7.standing === true,
+    module_ids: asStrings(record7.module_ids),
+    unit_ids: asStrings(record7.unit_ids)
   };
 }
 function readProgress(value) {
@@ -9663,42 +9665,42 @@ function readProgress(value) {
   };
 }
 function readDeadlineModules(value) {
-  return asRecords(value).map((record6) => {
-    const moduleId = asString(record6.module_id);
+  return asRecords(value).map((record7) => {
+    const moduleId = asString(record7.module_id);
     if (!moduleId) {
       return null;
     }
     return {
       moduleId,
-      action: asText(record6.action)
+      action: asText(record7.action)
     };
   }).filter(nonNull);
 }
-function readAcademicDeadline(record6) {
-  const startDate = asString(record6.start_date) ?? "";
-  const endDate = asString(record6.end_date) ?? "";
+function readAcademicDeadline(record7) {
+  const startDate = asString(record7.start_date) ?? "";
+  const endDate = asString(record7.end_date) ?? "";
   return {
-    record: record6,
-    kind: asString(record6.kind) ?? "academic-date",
-    label: asString(record6.label) ?? asString(record6.title) ?? "Academic date",
-    title: asString(record6.title) ?? "",
+    record: record7,
+    kind: asString(record7.kind) ?? "academic-date",
+    label: asString(record7.label) ?? asString(record7.title) ?? "Academic date",
+    title: asString(record7.title) ?? "",
     startDate,
     endDate,
-    time: asText(record6.time),
+    time: asText(record7.time),
     registrationState: asString(
-      record6.registration_state
+      record7.registration_state
     ) ?? "unregistered",
-    directModuleId: asString(record6.module_id),
-    modules: readDeadlineModules(record6.modules)
+    directModuleId: asString(record7.module_id),
+    modules: readDeadlineModules(record7.modules)
   };
 }
 function readSourceEntries(value) {
-  return asRecords(value).map((record6) => ({
-    record: record6,
-    role: asString(record6.role) ?? "unassigned",
-    sourceId: asString(record6.source_id),
-    why: asText(record6.why) ?? "",
-    unitRouteCount: Array.isArray(record6.unit_routes) ? record6.unit_routes.length : 0
+  return asRecords(value).map((record7) => ({
+    record: record7,
+    role: asString(record7.role) ?? "unassigned",
+    sourceId: asString(record7.source_id),
+    why: asText(record7.why) ?? "",
+    unitRouteCount: Array.isArray(record7.unit_routes) ? record7.unit_routes.length : 0
   }));
 }
 
@@ -9798,9 +9800,9 @@ function renderSources2(view, root, module2) {
         chip(
           row3,
           source,
-          (record6) => {
+          (record7) => {
             const id2 = asString(
-              record6.id
+              record7.id
             );
             if (!id2) {
               return;
@@ -9879,7 +9881,7 @@ function renderLogistics(view, root, module2) {
 }
 function deadlinesFor(view, module2) {
   return view.plugin.store.rows("academic_deadlines").map(
-    (record6) => readAcademicDeadline(record6)
+    (record7) => readAcademicDeadline(record7)
   ).filter(
     (row3) => row3.directModuleId === module2.id || row3.modules.some(
       (entry) => entry.moduleId === module2.id
@@ -10091,7 +10093,7 @@ function renderOverview(view, root, module2) {
     text: `${progress.stagesComplete} of ${progress.stagesTotal} stages complete across ${progress.unitsTotal} unit${progress.unitsTotal === 1 ? "" : "s"}`
   });
   const workspaces = view.plugin.store.workspacesForModule(module2.id).map(
-    (record6) => normalizeWorkspaceRecord(record6)
+    (record7) => normalizeWorkspaceRecord(record7)
   );
   for (const workspace of workspaces) {
     workspaceCard(
@@ -10111,7 +10113,7 @@ function renderOverview(view, root, module2) {
   const units = orderModuleUnits(
     module2,
     view.plugin.store.unitsFor(module2.id).map(
-      (record6) => normalizeUnitRecord(record6)
+      (record7) => normalizeUnitRecord(record7)
     ).filter(nonNull)
   );
   const next = units.find(
@@ -10176,7 +10178,7 @@ function renderUnits(view, root, module2) {
     module2.id,
     view.componentId
   ).map(
-    (record6) => normalizeUnitRecord(record6)
+    (record7) => normalizeUnitRecord(record7)
   ).filter(nonNull);
   if (!units.length) {
     empty(
@@ -10264,7 +10266,7 @@ function renderUnits(view, root, module2) {
 function renderGroups(view, root) {
   const semester = view.plugin.store.currentSemester();
   const modules = view.plugin.store.currentSemesterModules().map(
-    (record6) => readModuleRecord(record6)
+    (record7) => readModuleRecord(record7)
   ).filter(nonNull);
   pageHeader(
     root,
@@ -10387,7 +10389,7 @@ function renderGroupList(view, root) {
     }
   );
   const all = view.plugin.store.modulesForGroup(group.id).map(
-    (record6) => readModuleRecord(record6)
+    (record7) => readModuleRecord(record7)
   ).filter(nonNull);
   const needle = foldCase(view.query.trim());
   const rows = all.filter(
@@ -11453,11 +11455,11 @@ function renderDetail(view, root) {
     ...asStrings(project.unit_ids)
   ];
   for (const id2 of linkedIds) {
-    const record6 = view.plugin.store.get(id2);
-    if (!record6) continue;
+    const record7 = view.plugin.store.get(id2);
+    if (!record7) continue;
     chip(
       links,
-      record6,
+      record7,
       (target) => view.plugin.nav.openRecord(target)
     );
   }
@@ -12883,6 +12885,144 @@ function asLegacyArchiveStatus(value) {
   };
 }
 
+// src/contracts/operations.ts
+function record5(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
+function exactKeys5(value, required) {
+  return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => required.includes(key));
+}
+var CANONICAL = ["COMMITTED", "NOT_COMMITTED", "AMBIGUOUS"];
+var RECOVERY = ["none", "verify-observation", "reconcile-exact-request"];
+function asRow(value) {
+  const row3 = record5(value);
+  if (!row3 || !exactKeys5(row3, [
+    "trace_id",
+    "request_id",
+    "capability",
+    "started_at",
+    "duration_ms",
+    "attempts",
+    "replayed",
+    "first_failure_stage",
+    "canonical_outcome",
+    "recovery_requirement",
+    "needs_attention"
+  ])) return null;
+  if (typeof row3.trace_id !== "string" || typeof row3.capability !== "string") return null;
+  if (row3.request_id !== null && typeof row3.request_id !== "string") return null;
+  if (row3.started_at !== null && typeof row3.started_at !== "number") return null;
+  if (row3.duration_ms !== null && typeof row3.duration_ms !== "number") return null;
+  if (typeof row3.attempts !== "number" || typeof row3.replayed !== "boolean") return null;
+  if (row3.first_failure_stage !== null && typeof row3.first_failure_stage !== "string") return null;
+  if (!CANONICAL.includes(String(row3.canonical_outcome))) return null;
+  if (!RECOVERY.includes(String(row3.recovery_requirement))) return null;
+  if (typeof row3.needs_attention !== "boolean") return null;
+  return row3;
+}
+function asOperationsList(value) {
+  const body = record5(value);
+  if (!body || !exactKeys5(body, ["operations"]) || !Array.isArray(body.operations)) return null;
+  const operations = [];
+  for (const item of body.operations) {
+    const row3 = asRow(item);
+    if (!row3) return null;
+    operations.push(row3);
+  }
+  return { operations };
+}
+function asAttempt(value) {
+  const row3 = record5(value);
+  if (!row3 || !exactKeys5(row3, ["span", "status", "replay_of"])) return null;
+  if (typeof row3.span !== "string" || typeof row3.status !== "string") return null;
+  if (row3.replay_of !== null && typeof row3.replay_of !== "string") return null;
+  return row3;
+}
+function asDiagnosis(value) {
+  const body = record5(value);
+  if (!body || !exactKeys5(body, [
+    "first_failure_stage",
+    "execution_outcome",
+    "canonical_outcome",
+    "projection_outcome",
+    "recovery_requirement",
+    "authoritative_evidence",
+    "attempts",
+    "reasons"
+  ])) return null;
+  if (body.first_failure_stage !== null && typeof body.first_failure_stage !== "string") return null;
+  if (typeof body.execution_outcome !== "string") return null;
+  if (!CANONICAL.includes(String(body.canonical_outcome))) return null;
+  if (typeof body.projection_outcome !== "string") return null;
+  if (!RECOVERY.includes(String(body.recovery_requirement))) return null;
+  if (!Array.isArray(body.authoritative_evidence) || !body.authoritative_evidence.every((item) => typeof item === "string")) return null;
+  if (!Array.isArray(body.attempts)) return null;
+  const attempts = [];
+  for (const item of body.attempts) {
+    const attempt = asAttempt(item);
+    if (!attempt) return null;
+    attempts.push(attempt);
+  }
+  if (!Array.isArray(body.reasons) || !body.reasons.every((item) => typeof item === "string")) return null;
+  return { ...body, attempts };
+}
+var TIMELINE_STATES = ["passed", "failed", "skipped", "missing"];
+function asTimelineRow(value) {
+  const row3 = record5(value);
+  if (!row3 || !exactKeys5(row3, ["stage", "state", "detail"])) return null;
+  if (typeof row3.stage !== "string" || !TIMELINE_STATES.includes(String(row3.state))) return null;
+  if (row3.detail !== null && typeof row3.detail !== "string") return null;
+  return row3;
+}
+function asFacts(value) {
+  const facts = record5(value);
+  if (!facts || !exactKeys5(facts, [
+    "transaction_id",
+    "receipt_path",
+    "snapshot_before",
+    "snapshot_after"
+  ])) return null;
+  for (const key of ["transaction_id", "receipt_path", "snapshot_before", "snapshot_after"]) {
+    if (facts[key] !== null && typeof facts[key] !== "string") return null;
+  }
+  return facts;
+}
+function asOperationDetail(value) {
+  const body = record5(value);
+  if (!body || !exactKeys5(body, [
+    "request_id",
+    "capability",
+    "diagnosis",
+    "timeline",
+    "observed_snapshot",
+    "ui_outcome",
+    "facts"
+  ])) return null;
+  if (typeof body.request_id !== "string" || typeof body.capability !== "string") return null;
+  const diagnosis = asDiagnosis(body.diagnosis);
+  if (!diagnosis) return null;
+  if (!Array.isArray(body.timeline)) return null;
+  const timeline = [];
+  for (const item of body.timeline) {
+    const row3 = asTimelineRow(item);
+    if (!row3) return null;
+    timeline.push(row3);
+  }
+  if (body.observed_snapshot !== null && typeof body.observed_snapshot !== "string") return null;
+  if (!["SETTLED", "REFUSED", "BLOCKED"].includes(String(body.ui_outcome))) return null;
+  const facts = asFacts(body.facts);
+  if (!facts) return null;
+  return {
+    request_id: body.request_id,
+    capability: body.capability,
+    diagnosis,
+    timeline,
+    observed_snapshot: body.observed_snapshot,
+    ui_outcome: body.ui_outcome,
+    facts
+  };
+}
+
 // src/views/review-view.ts
 var REVIEW_FILTERS = [
   ["all", "All"],
@@ -13072,6 +13212,11 @@ var ReviewView = class extends import_obsidian13.ItemView {
     return null;
   }
 };
+var OPERATIONS_FILTERS = [
+  ["all", "All"],
+  ["attention", "Needs attention"],
+  ["recoveries", "Recoveries"]
+];
 var DiagnosticsView = class extends import_obsidian13.ItemView {
   plugin;
   report = "";
@@ -13083,6 +13228,15 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
   legacyLoaded = false;
   legacyLoading = false;
   legacyError = "";
+  operations = [];
+  operationsLoaded = false;
+  operationsLoading = false;
+  operationsError = "";
+  operationsFilter = "all";
+  selectedRequest = null;
+  operationDetail = null;
+  operationDetailLoading = false;
+  operationDetailError = "";
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -13138,10 +13292,181 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
       this.render();
     }
   }
+  async loadOperations() {
+    if (this.operationsLoading) return;
+    this.operationsLoading = true;
+    this.operationsError = "";
+    this.render();
+    try {
+      const list2 = asOperationsList(await this.plugin.gateway.operationsList(30));
+      if (!list2) throw new Error("Core returned an invalid operations response.");
+      this.operations = list2.operations;
+      this.operationsLoaded = true;
+    } catch (error) {
+      this.operations = [];
+      this.operationsLoaded = false;
+      this.operationsError = errorMessage(error);
+    } finally {
+      this.operationsLoading = false;
+      this.render();
+    }
+  }
+  async loadOperationDetail(requestId) {
+    this.selectedRequest = requestId;
+    this.operationDetail = null;
+    this.operationDetailError = "";
+    this.operationDetailLoading = true;
+    this.render();
+    try {
+      const detail = asOperationDetail(
+        await this.plugin.gateway.operationsDetail(requestId)
+      );
+      if (!detail) throw new Error("Core returned an invalid operation response.");
+      this.operationDetail = detail;
+    } catch (error) {
+      this.operationDetailError = errorMessage(error);
+    } finally {
+      this.operationDetailLoading = false;
+      this.render();
+    }
+  }
+  /** Recovery panel entry point (4B): open one request's causal detail. */
+  openOperation(requestId) {
+    this.screen = "operations";
+    this.selectedRequest = null;
+    this.operationDetail = null;
+    if (!this.operationsLoaded && !this.operationsLoading) void this.loadOperations();
+    void this.loadOperationDetail(requestId);
+  }
+  filteredOperations() {
+    if (this.operationsFilter === "attention") {
+      return this.operations.filter((row3) => row3.needs_attention);
+    }
+    if (this.operationsFilter === "recoveries") {
+      return this.operations.filter((row3) => row3.replayed || row3.attempts > 1);
+    }
+    return this.operations;
+  }
+  renderOperations(root) {
+    const header = section(
+      root,
+      "Operations",
+      "Recent causal operations, newest first. Diagnosis, not logs: every row answers what happened, what committed, and what remains."
+    );
+    if (this.operationsLoading) {
+      empty(header, "Loading operations", "Waiting for Core\u2019s bounded operations response.");
+      return;
+    }
+    if (this.operationsError) {
+      empty(header, "Operations unavailable", this.operationsError, "Try again", () => void this.loadOperations());
+      return;
+    }
+    if (!this.operationsLoaded) {
+      empty(header, "Operations not loaded", "Load recent operations without opening logs or receipts.", "Load operations", () => void this.loadOperations());
+      return;
+    }
+    filterTabs(root, "Operations filters", OPERATIONS_FILTERS, this.operationsFilter, (value) => {
+      this.operationsFilter = value;
+      this.render();
+    }, (value) => value === "all" ? this.operations.length : value === "attention" ? this.operations.filter((row3) => row3.needs_attention).length : this.operations.filter((row3) => row3.replayed || row3.attempts > 1).length);
+    const rows = this.filteredOperations();
+    if (rows.length === 0) {
+      empty(root, "No operations", this.operationsFilter === "all" ? "No causal operations are on record yet." : "Nothing matches this filter.");
+    }
+    for (const row3 of rows) {
+      const glyph = row3.recovery_requirement !== "none" ? "!" : row3.replayed ? "\u27F3" : row3.canonical_outcome === "COMMITTED" ? "\u2713" : "\u2715";
+      const label = row3.recovery_requirement !== "none" ? "Ambiguous" : row3.replayed ? "Replayed" : row3.canonical_outcome === "COMMITTED" ? "Settled" : "Refused";
+      const time = row3.started_at === null ? "--:--" : new Date(row3.started_at * 1e3).toTimeString().slice(0, 5);
+      const duration = row3.duration_ms === null ? "" : ` \xB7 ${Math.round(row3.duration_ms)} ms`;
+      const item = button(
+        root,
+        `${time}  ${row3.capability}  ${glyph} ${label}${duration}`,
+        () => {
+          if (row3.request_id) void this.loadOperationDetail(row3.request_id);
+        },
+        this.selectedRequest !== null && row3.request_id === this.selectedRequest ? "info" : "quiet"
+      );
+      void item;
+    }
+    const actions = root.createDiv({ cls: "los-actions" });
+    button(actions, "Refresh operations", () => {
+      this.operationsLoaded = false;
+      void this.loadOperations();
+    }, "info");
+    this.renderOperationDetail(root);
+  }
+  renderOperationDetail(root) {
+    if (this.selectedRequest === null) return;
+    const detail = section(root, "Operation detail", this.selectedRequest);
+    if (this.operationDetailLoading) {
+      empty(detail, "Loading operation", "Waiting for Core\u2019s diagnosis.");
+      return;
+    }
+    if (this.operationDetailError) {
+      empty(detail, "Operation unavailable", this.operationDetailError);
+      return;
+    }
+    const current = this.operationDetail;
+    if (!current || current.request_id !== this.selectedRequest) return;
+    const diagnosis = current.diagnosis;
+    const status = detail.createDiv({ cls: "los-diagnostic-status" });
+    status.createSpan({
+      cls: "los-diagnostic-glyph",
+      text: diagnosis.canonical_outcome === "COMMITTED" ? current.ui_outcome === "SETTLED" ? "\u2713" : "!" : diagnosis.canonical_outcome === "AMBIGUOUS" ? "!" : "\u2715"
+    });
+    const copy = status.createDiv();
+    copy.createEl("strong", { text: current.capability });
+    copy.createDiv({ cls: "los-micro", text: `Request ${current.request_id}` });
+    const outcomes = section(detail, "Outcomes", "What the authority plane proves.");
+    const heading = outcomes.createDiv({ cls: "los-health-check-head" });
+    heading.createEl("strong", { text: `Canonical: ${diagnosis.canonical_outcome}` });
+    badge(heading, current.ui_outcome, current.ui_outcome === "SETTLED" ? "status" : "role");
+    factList(outcomes, [
+      ["Canonical outcome", diagnosis.canonical_outcome],
+      ["UI outcome", current.ui_outcome],
+      ["Execution", diagnosis.execution_outcome],
+      ["Projection", diagnosis.projection_outcome],
+      ["Failure stage", diagnosis.first_failure_stage ?? "\u2014"],
+      ["Recovery", diagnosis.recovery_requirement === "none" ? "None \u2014 settled." : diagnosis.recovery_requirement === "verify-observation" ? "Verify the receipt is observed in the projection." : "Exact request must be reconciled."]
+    ]);
+    if (diagnosis.reasons.length > 0) {
+      const why = section(detail, "Why", "The resolver\u2019s reasons, verbatim.");
+      for (const reason of diagnosis.reasons) {
+        why.createEl("p", { text: reason });
+      }
+    }
+    const timeline = section(detail, "Timeline", "Causal stages in execution order.");
+    for (const row3 of current.timeline) {
+      const glyph = row3.state === "passed" ? "\u2713" : row3.state === "failed" ? "!" : "\u2013";
+      timeline.createEl("p", {
+        text: `${glyph} ${row3.stage}${row3.detail ? ` \u2014 ${row3.detail}` : ""}`
+      });
+    }
+    factList(
+      section(detail, "Transaction", "References only; receipts stay canonical."),
+      [
+        ["Transaction", current.facts.transaction_id ?? "\u2014"],
+        ["Receipt", current.facts.receipt_path ?? "\u2014"],
+        ["Snapshot before", current.facts.snapshot_before ?? "\u2014"],
+        ["Snapshot after", current.facts.snapshot_after ?? "\u2014"],
+        ["Snapshot seen", current.observed_snapshot ?? "\u2014"],
+        ["Attempts", String(diagnosis.attempts.length)]
+      ]
+    );
+    if (diagnosis.authoritative_evidence.length > 0) {
+      factList(
+        section(detail, "Authority", "The evidence the verdict rests on."),
+        diagnosis.authoritative_evidence.map(
+          (pointer, index) => [`Evidence ${index + 1}`, pointer]
+        )
+      );
+    }
+  }
   selectScreen(screen) {
     this.screen = screen;
     this.render();
     if (screen === "legacy" && !this.legacyLoaded) void this.loadLegacy();
+    if (screen === "operations" && !this.operationsLoaded) void this.loadOperations();
   }
   buildInfo() {
     const fallback = {
@@ -13212,7 +13537,7 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
     root.addClass("los-root", "los-diagnostics-view");
     pageHeader(root, "More", "Diagnostics");
     const tabs = root.createDiv({ cls: "los-subtabs", attr: { "aria-label": "Diagnostics sections" } });
-    for (const [key, label] of [["health", "Health"], ["legacy", "Legacy Archive"]]) {
+    for (const [key, label] of [["health", "Health"], ["operations", "Operations"], ["legacy", "Legacy Archive"]]) {
       const tab = button(tabs, label, () => this.selectScreen(key), key === this.screen ? "info" : "quiet");
       tab.setAttr("aria-pressed", key === this.screen ? "true" : "false");
     }
@@ -13223,6 +13548,10 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
     this.setIdentityAttributes(root, generated, build, identityMatches);
     if (this.screen === "legacy") {
       this.renderLegacy(root);
+      return;
+    }
+    if (this.screen === "operations") {
+      this.renderOperations(root);
       return;
     }
     const [glyph, title, detail] = this.state();
@@ -13334,6 +13663,21 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
     const rows = gatewayRecoverySummary(state) ?? [];
     factList(panel, rows);
     const actions = root.createDiv({ cls: "los-actions" });
+    if (state.kind === "record") {
+      let requestId = null;
+      try {
+        const envelope = JSON.parse(state.entry.record.envelope_json);
+        if (isRecord2(envelope) && typeof envelope.request_id === "string") {
+          requestId = envelope.request_id;
+        }
+      } catch (_) {
+        requestId = null;
+      }
+      if (requestId !== null) {
+        const target = requestId;
+        button(actions, "Open operation", () => this.openOperation(target), "info");
+      }
+    }
     if (state.kind === "record" && state.entry.record.phase !== "confirmed") {
       button(
         actions,
@@ -13705,18 +14049,18 @@ function readUnitViewState(value) {
     hasStageId
   };
 }
-function readUnitRecord(record6, fallbackId) {
-  if (!record6) {
+function readUnitRecord(record7, fallbackId) {
+  if (!record7) {
     return null;
   }
-  const id2 = asString(record6.id) ?? fallbackId;
-  const moduleId = asString(record6.module_id);
+  const id2 = asString(record7.id) ?? fallbackId;
+  const moduleId = asString(record7.module_id);
   if (!id2 || !moduleId) {
     return null;
   }
   const knowledgeMap = isRecord2(
-    record6.knowledge_map
-  ) ? record6.knowledge_map : null;
+    record7.knowledge_map
+  ) ? record7.knowledge_map : null;
   const knowledgeNodes = asRecords(
     knowledgeMap?.nodes
   ).map((node) => {
@@ -13741,18 +14085,18 @@ function readUnitRecord(record6, fallbackId) {
     (node) => node !== null
   );
   return {
-    record: record6,
+    record: record7,
     id: id2,
     moduleId,
-    componentId: asString(record6.component_id),
-    kind: asString(record6.kind) ?? "unit",
-    title: asString(record6.title) ?? id2,
-    scope: asText(record6.scope) ?? "",
+    componentId: asString(record7.component_id),
+    kind: asString(record7.kind) ?? "unit",
+    title: asString(record7.title) ?? id2,
+    scope: asText(record7.scope) ?? "",
     knowledgeSummary: asText(
       knowledgeMap?.summary
     ) ?? "",
     knowledgeNodes,
-    needsStudyMap: record6.needs_study_map === true
+    needsStudyMap: record7.needs_study_map === true
   };
 }
 function readMaterialOptions(value, unitId, selectionsValue) {
@@ -13802,17 +14146,17 @@ function readMaterialOptions(value, unitId, selectionsValue) {
   }
   return options;
 }
-function readResource(record6) {
-  const label = asString(record6.label) ?? asString(record6.title) ?? asString(record6.source_id) ?? "Resource";
+function readResource(record7) {
+  const label = asString(record7.label) ?? asString(record7.title) ?? asString(record7.source_id) ?? "Resource";
   return {
-    record: record6,
-    id: asString(record6.id),
-    kind: asString(record6.kind) ?? "read",
+    record: record7,
+    id: asString(record7.id),
+    kind: asString(record7.kind) ?? "read",
     label,
-    locator: asText(record6.locator),
-    sourceId: asString(record6.source_id),
-    scopeTriage: asString(record6.scope_triage),
-    canOpen: hasDirectResourceTarget(record6)
+    locator: asText(record7.locator),
+    sourceId: asString(record7.source_id),
+    scopeTriage: asString(record7.scope_triage),
+    canOpen: hasDirectResourceTarget(record7)
   };
 }
 function readStageAttachment(value) {
@@ -13837,55 +14181,55 @@ function readStageAttachment(value) {
     label: asString(value.label) ?? path
   };
 }
-function readStage(record6) {
-  const id2 = asString(record6.id);
+function readStage(record7) {
+  const id2 = asString(record7.id);
   if (!id2) {
     return null;
   }
   const attachments = Array.isArray(
-    record6.attachments
-  ) ? record6.attachments.map(readStageAttachment).filter(
+    record7.attachments
+  ) ? record7.attachments.map(readStageAttachment).filter(
     (attachment) => attachment !== null
   ) : [];
   return {
-    record: record6,
+    record: record7,
     id: id2,
-    title: asString(record6.title) ?? id2,
-    status: asString(record6.status) ?? "active",
-    scopeTriage: asText(record6.scope_triage) ?? "",
-    objective: asText(record6.objective),
-    estimateMinutes: asText(record6.estimate_minutes),
-    examCritical: record6.exam_critical === true,
-    concepts: asStrings(record6.concepts),
+    title: asString(record7.title) ?? id2,
+    status: asString(record7.status) ?? "active",
+    scopeTriage: asText(record7.scope_triage) ?? "",
+    objective: asText(record7.objective),
+    estimateMinutes: asText(record7.estimate_minutes),
+    examCritical: record7.exam_critical === true,
+    concepts: asStrings(record7.concepts),
     resources: asRecords(
-      record6.resources
+      record7.resources
     ).map(readResource),
     doneWhen: asStrings(
-      record6.done_when
+      record7.done_when
     ).filter(
       (criterion) => Boolean(criterion.trim())
     ),
     attachments,
     sourceFeedback: asRecords(
-      record6.source_feedback
+      record7.source_feedback
     )
   };
 }
-function readStudyMap(record6) {
+function readStudyMap(record7) {
   const stages = asRecords(
-    record6.stages
+    record7.stages
   ).map(readStage).filter(
     (stage) => stage !== null
   );
   return {
-    record: record6,
+    record: record7,
     currentStageId: asString(
-      record6.current_stage
+      record7.current_stage
     ),
     stages,
-    detours: asRecords(record6.detours),
+    detours: asRecords(record7.detours),
     planTemplateVersion: asFiniteNumber(
-      record6.plan_template_version
+      record7.plan_template_version
     )
   };
 }
@@ -14016,10 +14360,10 @@ function renderArtifacts(view, root, unit) {
     card.createEl("h3", {
       text: artifactLabel(key)
     });
-    const record6 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
+    const record7 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
     chip(
       card,
-      record6,
+      record7,
       (selected) => view.plugin.nav.openRecord(
         selected
       )
@@ -14027,10 +14371,10 @@ function renderArtifacts(view, root, unit) {
   }
   for (const id2 of artifacts.other) {
     count += 1;
-    const record6 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
+    const record7 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
     chip(
       wrap,
-      record6,
+      record7,
       (selected) => view.plugin.nav.openRecord(
         selected
       )
@@ -14168,14 +14512,14 @@ function materialTypeOf(resource, source) {
   const declared = (asText(resource.record.format) ?? asText(resource.record.material_type) ?? asText(source?.source_type) ?? asText(source?.format) ?? "").toLowerCase();
   return normaliseMaterialType(declared);
 }
-function renderMaterialCautions(parent, record6) {
-  for (const asset of Array.isArray(record6.requires_assets) ? record6.requires_assets : []) {
+function renderMaterialCautions(parent, record7) {
+  for (const asset of Array.isArray(record7.requires_assets) ? record7.requires_assets : []) {
     if (!isRecord2(asset) || typeof asset.name !== "string") continue;
     const part = asText(asset.needed_for);
     const origin = asText(asset.obtain_from);
     parent.createDiv({ cls: "los-micro", text: `${asset.material_uri ? "Required file" : "Not registered locally"}: ${asset.name}` + (part ? ` \u2014 needed for ${part}` : "") + (origin ? `. Obtain from ${origin}.` : ".") });
   }
-  if (Array.isArray(record6.exposes_solutions_for) && record6.exposes_solutions_for.length) {
+  if (Array.isArray(record7.exposes_solutions_for) && record7.exposes_solutions_for.length) {
     parent.createDiv({ cls: "los-micro", text: "Contains related task solutions. Read after your attempt, and report prior exposure before using those tasks as independent evidence." });
   }
 }
@@ -14530,7 +14874,7 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
         resource
       };
     });
-    const owners = this.sourceScope === "unit" ? [unit] : plugin.store.unitsFor(unit.moduleId, unit.componentId).map((record6) => readUnitRecord(record6, asString(record6.id))).filter((record6) => record6 !== null);
+    const owners = this.sourceScope === "unit" ? [unit] : plugin.store.unitsFor(unit.moduleId, unit.componentId).map((record7) => readUnitRecord(record7, asString(record7.id))).filter((record7) => record7 !== null);
     const sourceMap = plugin.store.sourceMap(unit.moduleId);
     return owners.flatMap((owner) => {
       const options = owner.id === unit.id ? materialOptions : readMaterialOptions(sourceMap?.sources, owner.id, owner.record.source_selections);
@@ -14803,18 +15147,18 @@ function renderStage(view, layout, unit, studyMap, stage) {
   }
   const conceptRecords = stage.concepts.flatMap(
     (conceptId) => {
-      const record6 = view.plugin.store.get(conceptId);
-      return record6 ? [record6] : [];
+      const record7 = view.plugin.store.get(conceptId);
+      return record7 ? [record7] : [];
     }
   );
   if (conceptRecords.length) {
     const concepts = center.createDiv({
       cls: "los-stage-concepts"
     });
-    for (const record6 of conceptRecords) {
+    for (const record7 of conceptRecords) {
       chip(
         concepts,
-        record6,
+        record7,
         (target) => view.plugin.nav.openRecord(target)
       );
     }
@@ -15340,8 +15684,8 @@ function renderMaterialSynthesis(view, root, synthesis, options) {
     card.createDiv({ cls: "los-micro", text: assessment2.locator });
     const source = view.plugin.store.get(assessment2.source_id);
     if (source) {
-      chip(card, source, (record6) => {
-        const sourceId = asString(record6.id);
+      chip(card, source, (record7) => {
+        const sourceId = asString(record7.id);
         return sourceId ? view.plugin.nav.openLibrary(sourceId) : void 0;
       });
     }
@@ -15367,7 +15711,7 @@ function renderMaterialSynthesis(view, root, synthesis, options) {
       const concepts = card.createDiv({ cls: "los-material-metadata" });
       for (const conceptId of assessment2.concept_ids) {
         const concept = view.plugin.store.get(conceptId);
-        if (concept) chip(concepts, concept, (record6) => view.plugin.nav.openRecord(record6));
+        if (concept) chip(concepts, concept, (record7) => view.plugin.nav.openRecord(record7));
       }
     }
     const evidenceCount = assessment2.evidence?.length || 0;
@@ -15405,8 +15749,8 @@ function renderMaterialSynthesis(view, root, synthesis, options) {
       row3.createEl("p", { text: group.narrative });
       const related = row3.createDiv({ cls: "los-material-metadata" });
       for (const relatedId of [...group.related_unit_ids, ...group.bridge_note_ids]) {
-        const record6 = view.plugin.store.get(relatedId);
-        if (record6) chip(related, record6, (target) => view.plugin.nav.openRecord(target));
+        const record7 = view.plugin.store.get(relatedId);
+        if (record7) chip(related, record7, (target) => view.plugin.nav.openRecord(target));
       }
     }
   }
@@ -16279,13 +16623,13 @@ var GlobalSearchModal = class extends import_obsidian19.Modal {
   }
   candidates() {
     const rows = [];
-    const add = (record6, kind, subtitle, open) => {
-      if (!record6?.id || !record6?.title) return;
+    const add = (record7, kind, subtitle, open) => {
+      if (!record7?.id || !record7?.title) return;
       rows.push({
-        id: record6.id,
-        title: record6.title,
-        aliases: [...record6.aliases || []],
-        authors: [...record6.authors || []],
+        id: record7.id,
+        title: record7.title,
+        aliases: [...record7.aliases || []],
+        authors: [...record7.authors || []],
         kind,
         subtitle,
         open
@@ -16473,11 +16817,11 @@ var AppNavigator = class {
     if (recordId === void 0 || recordId === null) {
       return recordType === "topic-pack" ? this.openLibraryHome("topic-packs") : this.openLibraryFolder([]);
     }
-    const record6 = this.store.get(recordId);
-    if (record6?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
-    if (record6?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
-    if (record6?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
-    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record6?.type || "note", query: "" });
+    const record7 = this.store.get(recordId);
+    if (record7?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
+    if (record7?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
+    if (record7?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
+    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record7?.type || "note", query: "" });
   }
   /**
    * Open one folder of the Library's folder browser.
@@ -16571,28 +16915,28 @@ var AppNavigator = class {
     const stageId = asString(pointer?.stage_id);
     return unitId ? this.openUnit(unitId, stageId) : this.openHome();
   }
-  openRecord(record6) {
-    if (!record6) return;
-    const recordId = asString(record6.id);
-    if (record6.type === "unit" && recordId) return this.openUnit(recordId);
-    if (record6.type === "module" && recordId) return this.openModule(recordId);
-    if (record6.type === "project" && recordId) return this.openProject(recordId);
-    if (record6.type === "program" && recordId) return this.openProgram(recordId);
-    if (record6.type === "source" && recordId) return this.openSourceDetail(recordId);
-    if (record6.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
-    if (record6.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
-    if (record6.type === "note" || record6.type === "concept") {
-      if (record6.path) return this.resources.openAuthoredPath(record6.path);
-      return this.openLibraryFiltered(record6.type);
+  openRecord(record7) {
+    if (!record7) return;
+    const recordId = asString(record7.id);
+    if (record7.type === "unit" && recordId) return this.openUnit(recordId);
+    if (record7.type === "module" && recordId) return this.openModule(recordId);
+    if (record7.type === "project" && recordId) return this.openProject(recordId);
+    if (record7.type === "program" && recordId) return this.openProgram(recordId);
+    if (record7.type === "source" && recordId) return this.openSourceDetail(recordId);
+    if (record7.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
+    if (record7.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
+    if (record7.type === "note" || record7.type === "concept") {
+      if (record7.path) return this.resources.openAuthoredPath(record7.path);
+      return this.openLibraryFiltered(record7.type);
     }
-    if (record6.type === "workspace") {
-      if (record6.project_id) return this.openProject(record6.project_id);
-      const unit = (record6.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+    if (record7.type === "workspace") {
+      if (record7.project_id) return this.openProject(record7.project_id);
+      const unit = (record7.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       if (unit?.id) return this.openUnit(unit.id);
-      const module2 = (record6.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+      const module2 = (record7.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       return module2?.id ? this.openModule(module2.id) : this.openHome();
     }
-    if (record6.path) return this.resources.openAuthoredPath(record6.path);
+    if (record7.path) return this.resources.openAuthoredPath(record7.path);
   }
   /**
    * Omnisearch's modal is another plugin's DOM, and reaching into it to seed
@@ -16705,12 +17049,12 @@ var ApplicationRouter = class {
     };
     const recordId = asText2(state.recordId);
     if (recordId) {
-      const record6 = this.plugin.store?.get?.(recordId);
-      if (record6?.type === "source" || recordType === "source") {
+      const record7 = this.plugin.store?.get?.(recordId);
+      if (record7?.type === "source" || recordType === "source") {
         return { name: "source-detail", resourceId: recordId };
       }
-      if (record6?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: recordId };
-      if (record6?.type === "collection" || recordType === "collection") {
+      if (record7?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: recordId };
+      if (record7?.type === "collection" || recordType === "collection") {
         return { name: "catalogue-detail", catalogueId: recordId };
       }
     }
@@ -17156,20 +17500,69 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:e28523a5e3f312da307287e7fb8fda35d3254042c2f1c470a6079ee0288628a1" : "unavailable";
+  return true ? "sha256:796828396dc09aa3c904190ebb77c2cd0c22f786b136f40196f2087c21c68fad" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 11 : 0;
 }
 
 // src/gateway-client.ts
-var import_node_crypto = require("node:crypto");
+var import_node_crypto2 = require("node:crypto");
 var import_promises = require("node:fs/promises");
 var import_node_os = require("node:os");
 var import_node_path = require("node:path");
+
+// src/infrastructure/trace-context.ts
+var import_node_crypto = require("node:crypto");
+var TRACE_ID_BYTES = 16;
+var SPAN_ID_BYTES = 8;
+function hex(bytes) {
+  return (0, import_node_crypto.randomBytes)(bytes).toString("hex");
+}
+function newOperationContext(sampled = true) {
+  return { traceId: hex(TRACE_ID_BYTES), spanId: hex(SPAN_ID_BYTES), sampled };
+}
+function childAttemptContext(operation) {
+  return { traceId: operation.traceId, spanId: hex(SPAN_ID_BYTES), sampled: operation.sampled };
+}
+function formatTraceparent(context) {
+  return `00-${context.traceId}-${context.spanId}-${context.sampled ? "01" : "00"}`;
+}
+var ZERO_TRACE = "0".repeat(32);
+var ZERO_SPAN = "0".repeat(16);
+function diagnosticEvent(context, name, attributes = {}, spanId) {
+  return {
+    v: 2,
+    kind: "event",
+    name,
+    op: context.traceId,
+    span: spanId ?? context.spanId,
+    ts: Date.now() / 1e3,
+    attributes
+  };
+}
+function storeEnvelope(event) {
+  return {
+    schema_version: 1,
+    conventions_version: 2,
+    timestamp: event.ts,
+    trace_id: event.op,
+    operation_id: event.op,
+    attempt_id: event.span,
+    span_id: event.span,
+    parent_span_id: null,
+    kind: event.kind,
+    name: event.name,
+    stage: null,
+    status: null,
+    attributes: event.attributes
+  };
+}
+
+// src/gateway-client.ts
 var GATEWAY_RECOVERY_NOTICE = "The Gateway response was interrupted. Replaying the same approved request; no new write will be created.";
 var GATEWAY_RECOVERY_BLOCKED = "LearningOS could not confirm whether the previous write landed, so it will not send another. Your draft was kept. Open Diagnostics \u2192 Gateway recovery to retry the same request.";
-function record5(value) {
+function record6(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
 var requestCounter = 0;
@@ -17187,7 +17580,7 @@ function expandedLocalPath(filePath) {
 }
 async function fileSha256(filePath) {
   const bytes = await (0, import_promises.readFile)(expandedLocalPath(filePath));
-  return `sha256:${(0, import_node_crypto.createHash)("sha256").update(bytes).digest("hex")}`;
+  return `sha256:${(0, import_node_crypto2.createHash)("sha256").update(bytes).digest("hex")}`;
 }
 function gatewayErrorDetails(value) {
   const response = typeof value === "object" && value !== null ? value : {};
@@ -17208,6 +17601,15 @@ var GatewayClient = class {
   chain;
   recovery;
   pending;
+  /**
+   * The operation awaiting its settlement event: a confirmation stashes its
+   * trace here, and the event is emitted only after the caller reconciles
+   * the projection and retires the record (noteSettlementObserved). One slot
+   * is enough — the UI serializes writes, so two confirmations can never be
+   * unreconciled at once. Restart-path settles carry no trace and stash
+   * nothing; their settlement linkage is Phase 3 work.
+   */
+  pendingObservation = null;
   constructor(plugin) {
     this.plugin = plugin;
     this.chain = Promise.resolve();
@@ -17273,7 +17675,7 @@ var GatewayClient = class {
    * learner's text behind a success notice. `expectJson: false` is only for
    * the text-reporting commands (`validate`, `generate`).
    */
-  call(args, { expectJson = true, stdin } = {}) {
+  call(args, { expectJson = true, stdin, traceParent } = {}) {
     this.assertLifecycleActive();
     return new Promise((resolve3, reject) => {
       this.plugin.runLos(
@@ -17324,7 +17726,8 @@ var GatewayClient = class {
           }
           resolve3(parsed);
         },
-        stdin
+        stdin,
+        traceParent
       );
     });
   }
@@ -17384,7 +17787,14 @@ var GatewayClient = class {
    * and the record is durably saved before this returns — so the process that
    * comes next can be interrupted at any point and still be recognisable.
    */
-  async prepareCapability(name, payload, expectedSnapshot, expectedRevisions) {
+  /** Emit one UI-side event; a throwing sink must never break a write. */
+  diagnose(event) {
+    try {
+      this.plugin.diagnostics?.(event);
+    } catch (_) {
+    }
+  }
+  async prepareCapability(name, payload, expectedSnapshot, expectedRevisions, trace) {
     this.assertLifecycleActive();
     const requestId = nextRequestId(name);
     const idempotencyKey = nextIdempotencyKey(requestId);
@@ -17419,14 +17829,21 @@ var GatewayClient = class {
       confirmation: null,
       last_error: null
     });
+    if (trace !== void 0) {
+      this.diagnose(diagnosticEvent(trace, "gateway.envelope.prepared", {
+        request_id: requestId,
+        idempotency_key: envelope.idempotency_key,
+        capability: name
+      }));
+    }
     return envelopeJson;
   }
   /** The raw process result, before anything has been believed about it. */
-  runRaw(args, stdin) {
+  runRaw(args, stdin, traceParent) {
     return new Promise((resolve3) => {
       this.plugin.runLos(args, (error, stdout, stderr) => {
         resolve3({ error, stdout: String(stdout ?? ""), stderr: String(stderr ?? "") });
-      }, stdin);
+      }, stdin, traceParent);
     });
   }
   /**
@@ -17436,16 +17853,27 @@ var GatewayClient = class {
    * — would defeat the point: a rebuilt envelope carries a fresh identity, and
    * Core would treat the retry as a new write.
    */
-  async dispatchPreparedEnvelope(envelopeJson, { replayOnly = false } = {}) {
+  async dispatchPreparedEnvelope(envelopeJson, { replayOnly = false, trace } = {}) {
     this.assertLifecycleActive();
+    const attemptCtx = trace === void 0 ? newOperationContext() : childAttemptContext(trace);
+    const attempt = formatTraceparent(attemptCtx);
+    const received = (result) => {
+      const code = result.outcome === "refused" ? result.failure.error.code : result.outcome === "ambiguous" ? result.error.code : null;
+      this.diagnose(diagnosticEvent(attemptCtx, "ui.response.received", {
+        outcome: result.outcome,
+        code,
+        replayed: result.outcome === "confirmed" ? result.confirmation.replayed : false
+      }, attemptCtx.spanId));
+      return result;
+    };
     let envelope;
     try {
       envelope = JSON.parse(envelopeJson);
     } catch (_) {
-      return {
+      return received({
         outcome: "ambiguous",
         error: { code: "INVALID_REQUEST", message: "the prepared envelope is unreadable" }
-      };
+      });
     }
     const expected = {
       requestId: String(envelope.request_id ?? ""),
@@ -17454,7 +17882,12 @@ var GatewayClient = class {
     };
     const args = ["capability", expected.capability, "--payload-file", "-"];
     if (replayOnly) args.push("--replay-only");
-    const { error, stdout, stderr } = await this.runRaw(args, envelopeJson);
+    this.diagnose(diagnosticEvent(attemptCtx, "gateway.envelope.dispatched", {
+      capability: expected.capability,
+      request_id: expected.requestId,
+      replay_only: replayOnly
+    }, attemptCtx.spanId));
+    const { error, stdout, stderr } = await this.runRaw(args, envelopeJson, attempt);
     this.assertLifecycleActive();
     const raw = stdout.trim();
     let parsed = null;
@@ -17468,20 +17901,20 @@ var GatewayClient = class {
       }
     }
     if (!readable) {
-      return {
+      return received({
         outcome: "ambiguous",
         error: {
           code: "UNREADABLE_RESPONSE",
           message: raw ? `LearningOS answered with unreadable output: ${raw.slice(0, 160)}` : stderr.trim() || error?.message || "LearningOS wrote nothing back."
         }
-      };
+      });
     }
     const failure = asGatewayFailureV2(parsed, expected);
     if (failure) {
-      return isDefinitiveNoCommitCode(failure.error.code) ? { outcome: "refused", failure } : {
+      return received(isDefinitiveNoCommitCode(failure.error.code) ? { outcome: "refused", failure } : {
         outcome: "ambiguous",
         error: { code: failure.error.code, message: failure.error.message }
-      };
+      });
     }
     let confirmation = null;
     try {
@@ -17489,25 +17922,25 @@ var GatewayClient = class {
     } catch (_) {
       confirmation = null;
     }
-    if (confirmation && !error) return { outcome: "confirmed", confirmation };
+    if (confirmation && !error) return received({ outcome: "confirmed", confirmation });
     if (confirmation && error) {
-      return {
+      return received({
         outcome: "ambiguous",
         error: {
           code: "PROCESS_CONTRADICTION",
           message: "LearningOS printed a receipt but the process reported failure."
         }
-      };
+      });
     }
-    const identity = record5(parsed);
+    const identity = record6(parsed);
     const claimsAnother = identity !== null && (typeof identity.request_id === "string" || typeof identity.idempotency_key === "string") && (identity.request_id !== expected.requestId || identity.idempotency_key !== expected.idempotencyKey || identity.capability !== expected.capability);
-    return {
+    return received({
       outcome: "ambiguous",
       error: {
         code: claimsAnother ? "IDENTITY_MISMATCH" : "UNRECOGNISED_RESPONSE",
         message: structuredError(raw) || "LearningOS answered with a response that does not match this request."
       }
-    };
+    });
   }
   /**
    * Phase three: resend what was persisted.
@@ -17516,7 +17949,7 @@ var GatewayClient = class {
    * there is only one code path that can send a retry, and it can only send the
    * stored string.
    */
-  async recoverPreparedEnvelope() {
+  async recoverPreparedEnvelope(trace) {
     this.assertLifecycleActive();
     const entry = this.recovery.replayable();
     if (!entry) {
@@ -17526,7 +17959,10 @@ var GatewayClient = class {
       };
     }
     await this.recovery.markRecovering(entry.record.last_error);
-    const result = await this.dispatchPreparedEnvelope(entry.record.envelope_json);
+    const result = await this.dispatchPreparedEnvelope(
+      entry.record.envelope_json,
+      trace === void 0 ? {} : { trace }
+    );
     if (result.outcome !== "refused") return result;
     return {
       outcome: "ambiguous",
@@ -17544,7 +17980,7 @@ var GatewayClient = class {
    * Receipt V2 are the authority, so startup and Diagnostics retire a stored
    * confirmation only after this read-only lookup returns the exact replay.
    */
-  async verifyConfirmedEnvelope() {
+  async verifyConfirmedEnvelope(trace) {
     this.assertLifecycleActive();
     const entry = this.recovery.replayable();
     if (!entry || entry.record.confirmation === null) {
@@ -17558,7 +17994,7 @@ var GatewayClient = class {
     }
     const result = await this.dispatchPreparedEnvelope(
       entry.record.envelope_json,
-      { replayOnly: true }
+      trace === void 0 ? { replayOnly: true } : { replayOnly: true, trace }
     );
     if (result.outcome === "confirmed" && result.confirmation.replayed) {
       return result;
@@ -17591,29 +18027,66 @@ var GatewayClient = class {
    * and a blocked record deliberately does not retry itself on the next launch.
    */
   async sendCapability(name, payload, expectedSnapshot, expectedRevisions) {
+    const operation = newOperationContext();
     const envelopeJson = await this.prepareCapability(
       name,
       payload,
       expectedSnapshot,
-      expectedRevisions
+      expectedRevisions,
+      operation
     );
-    let result = await this.dispatchPreparedEnvelope(envelopeJson);
+    let result = await this.dispatchPreparedEnvelope(envelopeJson, { trace: operation });
     if (result.outcome === "ambiguous") {
       this.announce(GATEWAY_RECOVERY_NOTICE);
       await this.recovery.markRecovering(result.error);
-      result = await this.recoverPreparedEnvelope();
+      result = await this.recoverPreparedEnvelope(operation);
     }
-    return this.settle(result);
+    return this.settle(result, operation);
+  }
+  /**
+   * Emit the settlement event for a confirmed write the caller has reconciled.
+   *
+   * settle() deliberately emits nothing for a confirmation: a receipt says
+   * Core published, not that this vault observed. The retire act — main.ts
+   * reloading the store and clearing the record, mirrored by harnesses —
+   * calls here, so `observed` reports the reconciliation that actually
+   * happened. A stale or missing stash (restart path, or a confirmation for
+   * a different request) emits nothing rather than joining the wrong stream.
+   */
+  noteSettlementObserved(confirmation) {
+    const pending = this.pendingObservation;
+    this.pendingObservation = null;
+    if (pending === null || confirmation.request_id !== pending.requestId) return;
+    const observed = this.plugin.store.snapshotId;
+    this.diagnose(diagnosticEvent(pending.trace, "recovery.settled", {
+      outcome: "confirmed",
+      code: null,
+      snapshot_after: confirmation.snapshot_after,
+      observed_snapshot: observed,
+      observed: observed === confirmation.snapshot_after
+    }));
   }
   /** Turn one settled outcome into the record state and the caller's answer. */
-  async settle(result) {
+  async settle(result, trace) {
     this.assertLifecycleActive();
+    const terminal = (name, outcome, code) => {
+      if (trace === void 0) return;
+      this.diagnose(diagnosticEvent(trace, name, {
+        outcome,
+        code,
+        snapshot_after: null,
+        observed_snapshot: this.plugin.store.snapshotId,
+        observed: false
+      }));
+    };
     if (result.outcome === "confirmed") {
       await this.recovery.markConfirmed(result.confirmation);
+      this.pendingObservation = trace === void 0 ? null : { trace, requestId: result.confirmation.request_id };
       return result.confirmation;
     }
     if (result.outcome === "refused") {
       await this.recovery.discardRefused();
+      terminal("recovery.settled", "refused", result.failure.error.code);
       throw new GatewayError(
         result.failure.error.message,
         null,
@@ -17624,6 +18097,7 @@ var GatewayClient = class {
       );
     }
     await this.recovery.markBlocked(result.error);
+    terminal("recovery.blocked", "blocked", result.error.code);
     throw new GatewayError(
       // The last thing Core said travels with the refusal. The learner cannot
       // act on "unknown", but they can act on the sentence underneath it.
@@ -17836,9 +18310,9 @@ Last response: ${result.error.message}`,
       "--check"
     ];
     if (replace) args.push("--replace");
-    const result = record5(await this.call(args));
-    const revisions = record5(result?.expected_revisions);
-    if (!result || result.ok !== true || result.mode !== "check" || result.canonical_files_written !== 0 || !record5(result.diff) || result.unit_id !== unitId || result.file_sha256 !== digest || !isSha256(result.snapshot_id) || !revisions || Object.keys(revisions).length !== 2 || !Object.values(revisions).every((v) => Number.isInteger(v) && Number(v) >= 0) || !(unitId in revisions) || !(String(result.study_map_id) in revisions)) {
+    const result = record6(await this.call(args));
+    const revisions = record6(result?.expected_revisions);
+    if (!result || result.ok !== true || result.mode !== "check" || result.canonical_files_written !== 0 || !record6(result.diff) || result.unit_id !== unitId || result.file_sha256 !== digest || !isSha256(result.snapshot_id) || !revisions || Object.keys(revisions).length !== 2 || !Object.values(revisions).every((v) => Number.isInteger(v) && Number(v) >= 0) || !(unitId in revisions) || !(String(result.study_map_id) in revisions)) {
       throw new Error("LearningOS could not provide a complete, bound no-write review. Nothing was imported.");
     }
     return {
@@ -17867,6 +18341,14 @@ Last response: ${result.error.message}`,
    *  exact producer schemas before rendering any field. */
   healthReport() {
     return this.call(["health-report", "--json"]);
+  }
+  /** Recent causal operations, newest first (Diagnostics → Operations). */
+  operationsList(limit = 30) {
+    return this.call(["operations", "--limit", String(limit)]);
+  }
+  /** Full diagnosis plus timeline for one request id. */
+  operationsDetail(requestId) {
+    return this.call(["operations", "--request-id", requestId]);
   }
   legacyArchiveStatus() {
     return this.call(["legacy-archive-status", "--json"]);
@@ -17968,13 +18450,24 @@ var LosRuntime = class {
     const fallback = import_node_process.default.platform === "win32" ? "python" : "python3";
     return { path: fallback, origin: "PATH fallback", attempted: [...attempted, fallback] };
   }
-  run(args, callback, stdin) {
+  /**
+   * Run the CLI. `traceParent` carries one W3C traceparent for this exact
+   * dispatch (research track #2, Phase 1): it travels as child-process
+   * environment, never as CLI arguments or payload, and an absent value
+   * leaves the child environment exactly as before.
+   */
+  run(args, callback, stdin, traceParent) {
     const base = this.app.vault.adapter.getBasePath();
     const script = nodePath3.join(base, "tools", "los.py");
     const child = (0, import_node_child_process.execFile)(
       this.resolvePython().path,
       [script, ...args],
-      { cwd: base, timeout: 18e4, maxBuffer: 8 * 1024 * 1024 },
+      {
+        cwd: base,
+        timeout: 18e4,
+        maxBuffer: 8 * 1024 * 1024,
+        ...traceParent === void 0 ? {} : { env: { ...import_node_process.default.env, TRACEPARENT: traceParent } }
+      },
       callback
     );
     if (stdin !== void 0) child.stdin?.end(stdin);
@@ -18295,11 +18788,11 @@ function emptyStoreIndexes() {
     searchDocuments: []
   };
 }
-function isArchivedRecord(record6, archivedModuleIds) {
-  if (record6.type === "module" && record6.status === "archived") {
+function isArchivedRecord(record7, archivedModuleIds) {
+  if (record7.type === "module" && record7.status === "archived") {
     return true;
   }
-  return typeof record6.module_id === "string" && archivedModuleIds.has(record6.module_id);
+  return typeof record7.module_id === "string" && archivedModuleIds.has(record7.module_id);
 }
 function projectedRows(value) {
   return Array.isArray(value) ? value.filter(
@@ -18357,20 +18850,20 @@ function buildStoreIndexes(manifest, records) {
       materialSynthesisByUnit.set(unitId, synthesis);
     }
   }
-  const searchDocuments = visibleRecords.map((record6) => ({
-    record: record6,
+  const searchDocuments = visibleRecords.map((record7) => ({
+    record: record7,
     strictText: foldCase([
-      record6.id,
-      record6.title,
-      ...record6.aliases || [],
-      ...record6.authors || [],
-      record6.organization,
-      record6.domain
+      record7.id,
+      record7.title,
+      ...record7.aliases || [],
+      ...record7.authors || [],
+      record7.organization,
+      record7.domain
     ].filter(Boolean).join(" ")),
     compactText: foldCase([
-      record6.id,
-      record6.title,
-      ...record6.aliases || []
+      record7.id,
+      record7.title,
+      ...record7.aliases || []
     ].filter(Boolean).join(" ")).replace(/\s+/g, "")
   }));
   return {
@@ -18468,8 +18961,8 @@ var ManifestStore = class {
     }
   }
   get(id2) {
-    const record6 = this.byId.get(id2) || null;
-    return record6 && !this.isArchivedCurriculumRecord(record6) ? record6 : null;
+    const record7 = this.byId.get(id2) || null;
+    return record7 && !this.isArchivedCurriculumRecord(record7) ? record7 : null;
   }
   of(type) {
     return [...this.indexes.rowsByType.get(type) ?? []];
@@ -18483,9 +18976,9 @@ var ManifestStore = class {
     if (!this.data) return [];
     return [...this.indexes.rowsByGroup.get(group) ?? []];
   }
-  isArchivedCurriculumRecord(record6) {
+  isArchivedCurriculumRecord(record7) {
     return isArchivedRecord(
-      record6,
+      record7,
       this.indexes.archivedModuleIds
     );
   }
@@ -18700,13 +19193,13 @@ var ManifestStore = class {
     const words2 = foldCase(String(query || "")).split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
     const documents = this.indexes.searchDocuments.filter(
-      ({ record: record6 }) => !allowed || typeof record6.type === "string" && allowed.has(record6.type)
+      ({ record: record7 }) => !allowed || typeof record7.type === "string" && allowed.has(record7.type)
     );
     if (!words2.length) {
-      return documents.map(({ record: record6 }) => record6);
+      return documents.map(({ record: record7 }) => record7);
     }
     const strict = documents.filter(({ strictText }) => words2.every((word) => strictText.includes(word)));
-    if (strict.length) return strict.map(({ record: record6 }) => record6);
+    if (strict.length) return strict.map(({ record: record7 }) => record7);
     const needle = words2.join("");
     return documents.filter(({ compactText }) => {
       let at = 0;
@@ -18714,11 +19207,11 @@ var ManifestStore = class {
         if (char === needle[at]) at += 1;
       }
       return at === needle.length;
-    }).map(({ record: record6 }) => record6);
+    }).map(({ record: record7 }) => record7);
   }
   related(id2) {
-    const record6 = this.get(id2);
-    if (!record6) return [];
+    const record7 = this.get(id2);
+    if (!record7) return [];
     const ids2 = /* @__PURE__ */ new Set();
     for (const key of [
       "concepts",
@@ -18731,7 +19224,7 @@ var ManifestStore = class {
       "unit_order",
       "related_module_ids"
     ]) {
-      for (const value of asStrings(record6[key])) ids2.add(value);
+      for (const value of asStrings(record7[key])) ids2.add(value);
     }
     for (const table of Object.values(this.data?.backlinks || {})) {
       if (isRecord3(table) && Array.isArray(table[id2])) {
@@ -19038,8 +19531,28 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
    * file would put canonical intent on disk on every write, including the
    * ones that fail, leaving cleanup as a thing that can be forgotten.
    */
-  runLos(args, callback, stdin) {
-    this.runtime.run(args, callback, stdin);
+  runLos(args, callback, stdin, traceParent) {
+    this.runtime.run(args, callback, stdin, traceParent);
+  }
+  /**
+   * Best-effort UI-side span sink (track #2, Phase 4A): appends to the same
+   * disposable trace store Core writes, so one operation reads as one
+   * stream. Never throws, never blocks, never carries payload text — a
+   * failing sink is silently invisible, exactly like Core's.
+   */
+  diagnostics(event) {
+    try {
+      const base = this.app.vault.adapter.getBasePath();
+      const dir = nodePath5.join(base, "operations", "diagnostics");
+      fs5.mkdirSync(dir, { recursive: true });
+      fs5.appendFileSync(
+        nodePath5.join(dir, "traces.jsonl"),
+        `${JSON.stringify(storeEnvelope(event))}
+`,
+        "utf8"
+      );
+    } catch (_) {
+    }
   }
   async reloadStore() {
     const ok = await this.store.load();
@@ -19103,6 +19616,7 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
       new import_obsidian23.Notice("Recovered the prior write; newer canonical changes are also present.");
     }
     await this.recovery.settleConfirmed();
+    this.gateway.noteSettlementObserved(confirmation);
   }
   /** The active destination is a display fact, so the Navigator is the only
    *  thing it redraws — never the working view the learner is reading. */
@@ -19209,28 +19723,28 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
   materialFolderCount(path) {
     return this.materials.count(path);
   }
-  openRecord(record6) {
-    if (!record6) return;
-    const recordId = asString(record6.id);
-    if (record6.type === "unit" && recordId) return this.nav.openUnit(recordId);
-    if (record6.type === "module" && recordId) return this.nav.openModule(recordId);
-    if (record6.type === "project" && recordId) return this.nav.openProject(recordId);
-    if (record6.type === "program" && recordId) return this.nav.openProgram(recordId);
-    if (record6.type === "source" && recordId) return this.nav.openSourceDetail(recordId);
-    if (record6.type === "topic-pack" && recordId) return this.nav.openTopicPackDetail(recordId);
-    if (record6.type === "collection" && recordId) return this.nav.openCatalogueDetail(recordId);
-    if (record6.type === "note" || record6.type === "concept") {
-      if (record6.path) return this.openAuthoredPath(record6.path);
-      return this.nav.openLibraryFiltered(record6.type);
+  openRecord(record7) {
+    if (!record7) return;
+    const recordId = asString(record7.id);
+    if (record7.type === "unit" && recordId) return this.nav.openUnit(recordId);
+    if (record7.type === "module" && recordId) return this.nav.openModule(recordId);
+    if (record7.type === "project" && recordId) return this.nav.openProject(recordId);
+    if (record7.type === "program" && recordId) return this.nav.openProgram(recordId);
+    if (record7.type === "source" && recordId) return this.nav.openSourceDetail(recordId);
+    if (record7.type === "topic-pack" && recordId) return this.nav.openTopicPackDetail(recordId);
+    if (record7.type === "collection" && recordId) return this.nav.openCatalogueDetail(recordId);
+    if (record7.type === "note" || record7.type === "concept") {
+      if (record7.path) return this.openAuthoredPath(record7.path);
+      return this.nav.openLibraryFiltered(record7.type);
     }
-    if (record6.type === "workspace") {
-      if (record6.project_id) return this.nav.openProject(record6.project_id);
-      const unit = (record6.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+    if (record7.type === "workspace") {
+      if (record7.project_id) return this.nav.openProject(record7.project_id);
+      const unit = (record7.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       if (unit?.id) return this.nav.openUnit(unit.id);
-      const module2 = (record6.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+      const module2 = (record7.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       return module2?.id ? this.nav.openModule(module2.id) : this.nav.openHome();
     }
-    if (record6.path) return this.openAuthoredPath(record6.path);
+    if (record7.path) return this.openAuthoredPath(record7.path);
   }
   openResource(resource) {
     return this.resources.openResource(resource, this);

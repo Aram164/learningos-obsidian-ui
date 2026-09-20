@@ -538,6 +538,9 @@ export class LearningOSUI extends Plugin implements AppSurface {
       new Notice('Recovered the prior write; newer canonical changes are also present.');
     }
     await this.recovery.settleConfirmed();
+    // The record retired, so the recovery actually settled: only now may the
+    // stream claim it. Restart paths stashed no trace and emit nothing here.
+    this.gateway.noteSettlementObserved(confirmation);
   }
 
   /** The active destination is a display fact, so the Navigator is the only

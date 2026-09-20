@@ -85,9 +85,10 @@ async function main() {
     callback(result.error, result.stdout, result.stderr);
   };
   const uiEvents = [];
+  const store = { snapshotId: refreshSnapshot() };
   const gateway = new GatewayClient({
     runLos,
-    store: { snapshotId: refreshSnapshot() },
+    store,
     recovery: new MemoryGatewayRecoveryStore(),
     notify: () => {},
     diagnostics: (event) => {
@@ -99,6 +100,10 @@ async function main() {
     'a seed planted while traced end to end', 'Trace probe',
   );
   assert.equal(confirmation.ok, true);
+  // Production tail (main.ts): reload the projection, then settle the
+  // stream — the settled event reports an observation, not the receipt.
+  store.snapshotId = refreshSnapshot();
+  gateway.noteSettlementObserved(confirmation);
   assert.equal(sentParents.length, 1, 'one dispatch earns exactly one parent');
   const context = parseTraceparent(sentParents[0]);
   assert.ok(context, 'the client must send a strictly-shaped traceparent');
