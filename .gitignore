@@ -3,6 +3,6 @@ __pycache__/
 .DS_Store
 fixture-vault/.obsidian/plugins/
 fixture-vault/bases/
-fixture-vault/operations/
+fixture-vault/operations/diagnostics/
 .build/
 plugin/build-info.json
