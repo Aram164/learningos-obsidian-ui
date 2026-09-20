@@ -28,6 +28,14 @@ import {
   type GatewayRecoveryErrorV1,
   type GatewayRecoveryPort,
 } from './application/gateway-recovery';
+import {
+  childAttemptContext,
+  diagnosticEvent,
+  formatTraceparent,
+  newOperationContext,
+  type DiagnosticEvent,
+  type TraceContext,
+} from './infrastructure/trace-context';
 
 type LosCallback = (
   error: Error | null,
@@ -37,7 +45,14 @@ type LosCallback = (
 
 /** Everything the gateway needs from its host: one process runner, one snapshot id. */
 interface GatewayHost {
-  runLos(args: string[], callback: LosCallback, stdin?: string): void;
+  runLos(args: string[], callback: LosCallback, stdin?: string, traceParent?: string): void;
+  /**
+   * Optional diagnostic sink (track #2, Phase 2A): receives UI-side span
+   * events shaped like Core's records. Absent in production, wired by tests
+   * and harnesses. Throwing here must never break a write — the client
+   * guards every call.
+   */
+  diagnostics?(event: DiagnosticEvent): void;
   store: {
     snapshotId: string | null;
   };
@@ -222,7 +237,9 @@ export class GatewayClient {
    */
   call(
     args: string[],
-    { expectJson = true, stdin }: { expectJson?: boolean; stdin?: string } = {},
+    { expectJson = true, stdin, traceParent }: {
+      expectJson?: boolean; stdin?: string; traceParent?: string;
+    } = {},
   ): Promise<GatewayResultV1> {
     this.assertLifecycleActive();
     return new Promise((resolve, reject) => {
@@ -275,6 +292,7 @@ export class GatewayClient {
         resolve(parsed);
         },
         stdin,
+        traceParent,
       );
     });
   }
@@ -357,11 +375,17 @@ export class GatewayClient {
    * and the record is durably saved before this returns — so the process that
    * comes next can be interrupted at any point and still be recognisable.
    */
+  /** Emit one UI-side event; a throwing sink must never break a write. */
+  private diagnose(event: DiagnosticEvent): void {
+    try { this.plugin.diagnostics?.(event); } catch (_) { /* sink is best-effort */ }
+  }
+
   async prepareCapability(
     name: string,
     payload: Record<string, unknown>,
     expectedSnapshot: string,
     expectedRevisions: Readonly<Record<string, number>>,
+    trace?: TraceContext,
   ): Promise<string> {
     this.assertLifecycleActive();
     const requestId = nextRequestId(name);
@@ -407,6 +431,13 @@ export class GatewayClient {
       confirmation: null,
       last_error: null,
     });
+    if (trace !== undefined) {
+      this.diagnose(diagnosticEvent(trace, 'gateway.envelope.prepared', {
+        request_id: requestId,
+        idempotency_key: envelope.idempotency_key,
+        capability: name,
+      }));
+    }
     return envelopeJson;
   }
 
@@ -414,11 +445,12 @@ export class GatewayClient {
   private runRaw(
     args: string[],
     stdin?: string,
+    traceParent?: string,
   ): Promise<{ error: Error | null; stdout: string; stderr: string }> {
     return new Promise((resolve) => {
       this.plugin.runLos(args, (error, stdout, stderr) => {
         resolve({ error, stdout: String(stdout ?? ''), stderr: String(stderr ?? '') });
-      }, stdin);
+      }, stdin, traceParent);
     });
   }
 
@@ -431,17 +463,36 @@ export class GatewayClient {
    */
   async dispatchPreparedEnvelope(
     envelopeJson: string,
-    { replayOnly = false }: { replayOnly?: boolean } = {},
+    { replayOnly = false, trace }: { replayOnly?: boolean; trace?: TraceContext } = {},
   ): Promise<GatewayDispatchOutcome> {
     this.assertLifecycleActive();
+    // One physical dispatch, one attempt span. The operation stays stable
+    // across a send and its in-session replay (same trace id, fresh span
+    // id); a caller without an operation — e.g. recovery after a restart —
+    // mints a fresh one rather than borrowing a stale identity.
+    const attemptCtx = trace === undefined ? newOperationContext() : childAttemptContext(trace);
+    const attempt = formatTraceparent(attemptCtx);
+    const received = (result: GatewayDispatchOutcome): GatewayDispatchOutcome => {
+      const code = result.outcome === 'refused'
+        ? result.failure.error.code
+        : result.outcome === 'ambiguous'
+          ? result.error.code
+          : null;
+      this.diagnose(diagnosticEvent(attemptCtx, 'ui.response.received', {
+        outcome: result.outcome,
+        code,
+        replayed: result.outcome === 'confirmed' ? result.confirmation.replayed : false,
+      }, attemptCtx.spanId));
+      return result;
+    };
     let envelope: { capability?: unknown; request_id?: unknown; idempotency_key?: unknown };
     try {
       envelope = JSON.parse(envelopeJson);
     } catch (_) {
-      return {
+      return received({
         outcome: 'ambiguous',
         error: { code: 'INVALID_REQUEST', message: 'the prepared envelope is unreadable' },
-      };
+      });
     }
     const expected = {
       requestId: String(envelope.request_id ?? ''),
@@ -450,7 +501,12 @@ export class GatewayClient {
     };
     const args = ['capability', expected.capability, '--payload-file', '-'];
     if (replayOnly) args.push('--replay-only');
-    const { error, stdout, stderr } = await this.runRaw(args, envelopeJson);
+    this.diagnose(diagnosticEvent(attemptCtx, 'gateway.envelope.dispatched', {
+      capability: expected.capability,
+      request_id: expected.requestId,
+      replay_only: replayOnly,
+    }, attemptCtx.spanId));
+    const { error, stdout, stderr } = await this.runRaw(args, envelopeJson, attempt);
     this.assertLifecycleActive();
     const raw = stdout.trim();
     let parsed: unknown = null;
@@ -460,7 +516,7 @@ export class GatewayClient {
       catch (_) { readable = false; }
     }
     if (!readable) {
-      return {
+      return received({
         outcome: 'ambiguous',
         error: {
           code: 'UNREADABLE_RESPONSE',
@@ -468,34 +524,34 @@ export class GatewayClient {
             ? `LearningOS answered with unreadable output: ${raw.slice(0, 160)}`
             : (stderr.trim() || error?.message || 'LearningOS wrote nothing back.'),
         },
-      };
+      });
     }
     const failure = asGatewayFailureV2(parsed, expected);
     if (failure) {
       // Only a definitive code retires the record. Everything else — an
       // internal failure, an idempotency conflict, a code this build does not
       // know — leaves the write's fate open, which is the safe reading.
-      return isDefinitiveNoCommitCode(failure.error.code)
+      return received(isDefinitiveNoCommitCode(failure.error.code)
         ? { outcome: 'refused', failure }
         : {
           outcome: 'ambiguous',
           error: { code: failure.error.code, message: failure.error.message },
-        };
+        });
     }
     let confirmation: GatewaySuccessV2 | null = null;
     try { confirmation = asGatewaySuccessV2(parsed, expected); }
     catch (_) { confirmation = null; }
-    if (confirmation && !error) return { outcome: 'confirmed', confirmation };
+    if (confirmation && !error) return received({ outcome: 'confirmed', confirmation });
     if (confirmation && error) {
       // Success-shaped JSON from a process that failed contradicts itself; the
       // receipt cannot be trusted and the write cannot be assumed absent.
-      return {
+      return received({
         outcome: 'ambiguous',
         error: {
           code: 'PROCESS_CONTRADICTION',
           message: 'LearningOS printed a receipt but the process reported failure.',
         },
-      };
+      });
     }
     // Readable, but not a Gateway V2 answer to *this* request. Whatever it is,
     // it does not establish that nothing was written — so the core's own words
@@ -507,14 +563,14 @@ export class GatewayClient {
       && (identity.request_id !== expected.requestId
         || identity.idempotency_key !== expected.idempotencyKey
         || identity.capability !== expected.capability);
-    return {
+    return received({
       outcome: 'ambiguous',
       error: {
         code: claimsAnother ? 'IDENTITY_MISMATCH' : 'UNRECOGNISED_RESPONSE',
         message: structuredError(raw)
           || 'LearningOS answered with a response that does not match this request.',
       },
-    };
+    });
   }
 
   /**
@@ -524,7 +580,7 @@ export class GatewayClient {
    * there is only one code path that can send a retry, and it can only send the
    * stored string.
    */
-  async recoverPreparedEnvelope(): Promise<GatewayDispatchOutcome> {
+  async recoverPreparedEnvelope(trace?: TraceContext): Promise<GatewayDispatchOutcome> {
     this.assertLifecycleActive();
     const entry = this.recovery.replayable();
     if (!entry) {
@@ -534,7 +590,8 @@ export class GatewayClient {
       };
     }
     await this.recovery.markRecovering(entry.record.last_error);
-    const result = await this.dispatchPreparedEnvelope(entry.record.envelope_json);
+    const result = await this.dispatchPreparedEnvelope(
+      entry.record.envelope_json, trace === undefined ? {} : { trace });
     if (result.outcome !== 'refused') return result;
     /*
      * The refusal proves only that *this replay* wrote nothing. It cannot prove
@@ -561,7 +618,7 @@ export class GatewayClient {
    * Receipt V2 are the authority, so startup and Diagnostics retire a stored
    * confirmation only after this read-only lookup returns the exact replay.
    */
-  async verifyConfirmedEnvelope(): Promise<GatewayDispatchOutcome> {
+  async verifyConfirmedEnvelope(trace?: TraceContext): Promise<GatewayDispatchOutcome> {
     this.assertLifecycleActive();
     const entry = this.recovery.replayable();
     if (!entry || entry.record.confirmation === null) {
@@ -575,7 +632,7 @@ export class GatewayClient {
     }
     const result = await this.dispatchPreparedEnvelope(
       entry.record.envelope_json,
-      { replayOnly: true },
+      trace === undefined ? { replayOnly: true } : { replayOnly: true, trace },
     );
     if (result.outcome === 'confirmed' && result.confirmation.replayed) {
       return result;
@@ -614,29 +671,51 @@ export class GatewayClient {
     expectedSnapshot: string,
     expectedRevisions: Readonly<Record<string, number>>,
   ): Promise<GatewaySuccessV2> {
+    // One operation for the send and its in-session replay: the same trace
+    // id reaches Core on every event and both attempts, each attempt with
+    // its own span id.
+    const operation = newOperationContext();
     const envelopeJson = await this.prepareCapability(
-      name, payload, expectedSnapshot, expectedRevisions,
+      name, payload, expectedSnapshot, expectedRevisions, operation,
     );
-    let result = await this.dispatchPreparedEnvelope(envelopeJson);
+    let result = await this.dispatchPreparedEnvelope(envelopeJson, { trace: operation });
     if (result.outcome === 'ambiguous') {
       this.announce(GATEWAY_RECOVERY_NOTICE);
       await this.recovery.markRecovering(result.error);
-      result = await this.recoverPreparedEnvelope();
+      result = await this.recoverPreparedEnvelope(operation);
     }
-    return this.settle(result);
+    return this.settle(result, operation);
   }
 
   /** Turn one settled outcome into the record state and the caller's answer. */
-  async settle(result: GatewayDispatchOutcome): Promise<GatewaySuccessV2> {
+  async settle(result: GatewayDispatchOutcome, trace?: TraceContext): Promise<GatewaySuccessV2> {
     this.assertLifecycleActive();
+    // Without an operation there is no stream to join: restart-path callers
+    // settle here with none, and their settlement linkage is Phase 3 work.
+    const settled = (outcome: string, code: string | null): void => {
+      if (trace === undefined) return;
+      const snapshotAfter = result.outcome === 'confirmed'
+        ? result.confirmation.snapshot_after
+        : null;
+      const observed = this.plugin.store.snapshotId;
+      this.diagnose(diagnosticEvent(trace, 'recovery.settled', {
+        outcome,
+        code,
+        snapshot_after: snapshotAfter,
+        observed_snapshot: observed,
+        observed: snapshotAfter !== null && observed === snapshotAfter,
+      }));
+    };
     if (result.outcome === 'confirmed') {
       // Not cleared here: a receipt is not yet an observation. The record is
       // retired only after the projection has been reconciled with it.
       await this.recovery.markConfirmed(result.confirmation);
+      settled('confirmed', null);
       return result.confirmation;
     }
     if (result.outcome === 'refused') {
       await this.recovery.discardRefused();
+      settled('refused', result.failure.error.code);
       throw new GatewayError(
         result.failure.error.message,
         null,
@@ -647,6 +726,7 @@ export class GatewayClient {
       );
     }
     await this.recovery.markBlocked(result.error);
+    settled('blocked', result.error.code);
     throw new GatewayError(
       // The last thing Core said travels with the refusal. The learner cannot
       // act on "unknown", but they can act on the sentence underneath it.
@@ -944,6 +1024,16 @@ export class GatewayClient {
    *  exact producer schemas before rendering any field. */
   healthReport() {
     return this.call(['health-report', '--json']);
+  }
+
+  /** Recent causal operations, newest first (Diagnostics → Operations). */
+  operationsList(limit = 30) {
+    return this.call(['operations', '--limit', String(limit)]);
+  }
+
+  /** Full diagnosis plus timeline for one request id. */
+  operationsDetail(requestId: string) {
+    return this.call(['operations', '--request-id', requestId]);
   }
 
   legacyArchiveStatus() {

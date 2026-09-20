@@ -409,6 +409,17 @@ declare module 'node:fs' {
     path: string,
   ): Stats;
 
+  export function mkdirSync(
+    path: string,
+    options?: { recursive?: boolean },
+  ): string | undefined;
+
+  export function appendFileSync(
+    path: string,
+    data: string,
+    encoding: 'utf8',
+  ): void;
+
   export function readdirSync(
     path: string,
   ): string[];
@@ -434,6 +445,12 @@ declare module 'node:crypto' {
   export function createHash(
     algorithm: string,
   ): Hash;
+
+  export interface RandomBytes {
+    toString(encoding: 'hex'): string;
+  }
+
+  export function randomBytes(size: number): RandomBytes;
 }
 
 declare module 'node:os' {
@@ -472,6 +489,7 @@ declare module 'node:path' {
 declare module 'node:process' {
   const process: {
     readonly platform: string;
+    readonly env: Record<string, string | undefined>;
   };
 
   export default process;
