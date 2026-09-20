@@ -1,6 +1,15 @@
 /** Persisted application navigation contract, independent of Obsidian leaves. */
 export type LibraryCollectionV1 = "sources" | "topic-packs";
 
+/**
+ * How the folder browser draws one folder.
+ *
+ * `list` is one folder at a time with a Kind column; `columns` keeps every
+ * ancestor on screen, which is what makes a six-level tree walkable without
+ * losing the branch you came down.
+ */
+export type LibraryFolderLayoutV1 = "list" | "columns";
+
 export interface LibrarySourceFiltersV1 {
   domain: string;
   topic: string;
@@ -52,6 +61,20 @@ export type ApplicationRouteV1 =
       collection: LibraryCollectionV1;
       query?: string;
       filters?: LibrarySourceFiltersV1;
+    }
+  /**
+   * One folder of the Library's folder browser.
+   *
+   * `path` is the whole address rather than a single id, because a folder here
+   * has no record of its own to point at — it is a position in a projection,
+   * and the only durable way to name a position is the route you took to it.
+   */
+  | {
+      name: "library-folder";
+      path: string[];
+      selected?: string | null;
+      layout?: LibraryFolderLayoutV1;
+      query?: string;
     }
   | {
       name: "library-group";
@@ -192,6 +215,29 @@ export function asLibrarySourceFilters(
 /** Coerce a loose collection value; anything unrecognised falls back to sources. */
 export function asLibraryCollection(value: unknown): LibraryCollectionV1 {
   return isLibraryCollection(value) ? value : "sources";
+}
+
+/** Coerce a loose layout value; anything unrecognised falls back to the list. */
+export function asLibraryFolderLayout(value: unknown): LibraryFolderLayoutV1 {
+  return value === "columns" ? "columns" : "list";
+}
+
+/**
+ * Coerce a loose folder path.
+ *
+ * Persisted state, a hand-edited workspace file and a stale deep link all
+ * arrive here, so this drops anything that is not a non-empty string and
+ * bounds the depth: resolution refuses a path longer than the taxonomy can
+ * produce, and an unbounded array from disk should not reach it at all. An
+ * empty result is the Library root, which always exists — so a corrupt path
+ * degrades to "you are at the top" rather than to a broken view.
+ */
+export function asLibraryFolderPath(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((segment): segment is string =>
+      typeof segment === "string" && segment.length > 0)
+    .slice(0, 12);
 }
 
 /**

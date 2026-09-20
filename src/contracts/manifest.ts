@@ -14,7 +14,7 @@
  * The module and type names are deliberately stable. Contract version is data:
  * a bump changes this constant and the mirrored lock, not every import path.
  */
-export const MANIFEST_CONTRACT_VERSION = 9 as const;
+export const MANIFEST_CONTRACT_VERSION = 11 as const;
 import {
   validAcademicDeadline,
   validAiActions,
@@ -42,7 +42,7 @@ import {
   validTopicPack,
 } from './manifest-records';
 
-export const MANIFEST_SCHEMA_SHA256 = 'sha256:09f1b5d492a32d387cc942fe6c9ae5a17b48e5e3b02f325320c3070667642ddb' as const;
+export const MANIFEST_SCHEMA_SHA256 = 'sha256:35b4e5765ded09b72d191e68e590ff63768cf43113613725e691703150221a6a' as const;
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -298,6 +298,7 @@ export interface MaterialRouteAssessment extends JsonRecord {
   exercise_value?: string;
   best_for?: string;
   limitations?: string;
+  scope_of_absence?: string;
   reason?: string;
   evidence?: readonly MaterialSynthesisEvidence[];
 }
@@ -328,7 +329,7 @@ export interface MaterialSynthesisBasis extends JsonRecord {
   source_map_checksum: string;
   route_set_checksum: string;
   material_checksums: Readonly<Record<string, string>>;
-  policy: 'tiered-v1';
+  policy: 'tiered-v2';
   ai_provenance: {
     request_id: string;
     delivery_id: string;
@@ -350,8 +351,11 @@ export interface UnitMaterialSynthesisV1 extends JsonRecord {
   completeness: MaterialSynthesisCompleteness;
 }
 
+// `unit_revision` was removed in v11: publishing a dossier guards the unit
+// artifact, so the commit bumped its revision after the basis had already been
+// derived, and every dossier reported a stale basis from the moment it was
+// written. The revision is still recorded as provenance, never compared.
 export type MaterialSynthesisStaleReason =
-  | 'unit_revision'
   | 'source_map_revision'
   | 'source_map_checksum'
   | 'route_set_checksum'
@@ -522,7 +526,7 @@ function validSynthesisBasis(value: unknown): value is MaterialSynthesisBasis {
     && isRecord(checksums)
     && Object.entries(checksums).every(([routeId, checksum]) =>
       identifier(routeId, "route-") && sha256(checksum))
-    && value.policy === "tiered-v1"
+    && value.policy === "tiered-v2"
     && isRecord(provenance)
     && exactKeys(provenance, ["request_id", "delivery_id", "provider"])
     && nonEmptyText(provenance.request_id)
@@ -535,7 +539,7 @@ function validRouteAssessment(value: unknown): value is MaterialRouteAssessment 
     "route_id", "source_id", "locator", "review_status", "concept_ids",
   ], [
     "contribution", "assumptions", "notation", "exercise_value", "best_for",
-    "limitations", "reason", "evidence",
+    "limitations", "scope_of_absence", "reason", "evidence",
   ]) || !identifier(value.route_id, "route-")
     || !identifier(value.source_id, "source-")
     || !nonEmptyText(value.locator)
@@ -544,8 +548,12 @@ function validRouteAssessment(value: unknown): value is MaterialRouteAssessment 
     || !uniqueStringArray(value.concept_ids, (item): item is string =>
       identifier(item, "concept-"))) return false;
 
+  // `scope_of_absence` rides with the other deep-review fields: a deep review
+  // must state the pages it had in front of it, and a screened row must not
+  // pretend to. Every negative claim in the prose is bounded by it.
   const detailed = [
     "contribution", "assumptions", "notation", "exercise_value", "best_for", "limitations",
+    "scope_of_absence",
   ] as const;
   if ("reason" in value && !nonEmptyText(value.reason)) return false;
   if ("evidence" in value && (!Array.isArray(value.evidence)
@@ -596,7 +604,6 @@ function validConceptGroup(value: unknown): value is MaterialConceptGroup {
 }
 
 const synthesisStaleReasons: readonly MaterialSynthesisStaleReason[] = [
-  "unit_revision",
   "source_map_revision",
   "source_map_checksum",
   "route_set_checksum",

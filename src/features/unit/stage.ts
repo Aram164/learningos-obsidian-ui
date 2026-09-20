@@ -253,9 +253,12 @@ export function renderStage(
      * DESIGN.md principle 8 holds throughout — `Complete stage` is the only
      * filled action on this screen, so `Compare all` is a plain control and the
      * current-work card carries `Open` alone. */
+    const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
+    const materialOptions = readMaterialOptions(sourceMap?.sources, unit.id, unit.record.source_selections);
     const resourceRenderer = {
       emptyDetail: 'Use the unit scope and ask AI for a proposal.',
       sourceRecord: (sourceId: string) => view.plugin.store.get(sourceId),
+      routeRecord: (routeId: string) => materialOptions.find(option => option.routeId === routeId)?.record ?? null,
       openSource: (source: ProjectionRecord) => {
         const sourceId = projectedString(source.id);
         return sourceId ? view.plugin.nav.openLibrary(sourceId) : undefined;
@@ -338,13 +341,6 @@ export function renderStage(
      * separately so it is clear which one is the stage's and which the
      * unit's. */
     {
-      const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
-      const materialOptions = readMaterialOptions(
-        sourceMap?.sources,
-        unit.id,
-        unit.record.source_selections,
-      );
-
       const catalogue = center.createDiv({
         cls: 'los-section los-stage-materials',
       });

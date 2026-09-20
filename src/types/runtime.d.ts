@@ -261,6 +261,13 @@ declare module 'obsidian' {
 
     openFile(
       file: TAbstractFile,
+      /**
+       * Optional view state. `eState.page` positions Obsidian's own PDF view;
+       * a view that does not understand the key ignores it, so an unsupported
+       * destination still opens the file (audit synthetic-learner-2026-09-12,
+       * F07).
+       */
+      state?: { eState?: Record<string, unknown> },
     ): Promise<void> | void;
   }
 
@@ -377,6 +384,50 @@ declare module 'node:fs' {
   export function realpathSync(
     path: string,
   ): string;
+
+  /*
+   * Directory reading, for the Library's folder browser.
+   *
+   * Declared to the shape this app actually calls — the two `readdirSync`
+   * overloads it uses and the three `Stats` members it reads — rather than by
+   * pulling in @types/node, which would also make every other Node API look
+   * available to code that must keep running inside Obsidian's renderer.
+   */
+  export interface Dirent {
+    readonly name: string;
+    isDirectory(): boolean;
+    isSymbolicLink(): boolean;
+  }
+
+  export interface Stats {
+    readonly size: number;
+    isDirectory(): boolean;
+    isFile(): boolean;
+  }
+
+  export function statSync(
+    path: string,
+  ): Stats;
+
+  export function mkdirSync(
+    path: string,
+    options?: { recursive?: boolean },
+  ): string | undefined;
+
+  export function appendFileSync(
+    path: string,
+    data: string,
+    encoding: 'utf8',
+  ): void;
+
+  export function readdirSync(
+    path: string,
+  ): string[];
+
+  export function readdirSync(
+    path: string,
+    options: { withFileTypes: true },
+  ): Dirent[];
 }
 
 declare module 'node:fs/promises' {
@@ -394,6 +445,12 @@ declare module 'node:crypto' {
   export function createHash(
     algorithm: string,
   ): Hash;
+
+  export interface RandomBytes {
+    toString(encoding: 'hex'): string;
+  }
+
+  export function randomBytes(size: number): RandomBytes;
 }
 
 declare module 'node:os' {
@@ -432,6 +489,7 @@ declare module 'node:path' {
 declare module 'node:process' {
   const process: {
     readonly platform: string;
+    readonly env: Record<string, string | undefined>;
   };
 
   export default process;

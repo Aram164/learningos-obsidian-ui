@@ -31,6 +31,8 @@ import type { ApplicationRouter } from './router';
 import type { ComposerDraft, UnitNoteDraft } from '../application/draft-store';
 import type { GatewayRecoveryState } from '../application/gateway-recovery';
 import type { ProjectionRecord } from '../contracts/manifest';
+import type { MaterialEntry } from '../infrastructure/material-tree';
+import type { PageDestination } from '../infrastructure/resource-target';
 import type { GatewayClient } from '../gateway-client';
 import type { AIActionClient } from '../infrastructure/ai-action-client';
 import type { PythonResolution } from '../infrastructure/los-runtime';
@@ -94,10 +96,32 @@ export interface AppSurface {
 
   // ------------------------------------------ opening things outside the app
   openResource(resource: ProjectionRecord): unknown;
-  openVaultPath(path: string): unknown;
+  /*
+   * A stage can name where in a document its work is. The destination has to
+   * survive the whole call path or it is not carried at all: these two
+   * delegates accepted and forwarded only `path`, so the page option and the
+   * external-viewer instruction were dropped on the real plugin route while
+   * ResourceOpener's own tests passed (review
+   * workbench/audits/repair-review-2026-09-13, R2).
+   */
+  openVaultPath(path: string, destination?: PageDestination | null): unknown;
   openAuthoredPath(path: string): unknown;
-  openMaterialPath(path: string): unknown;
+  openMaterialPath(path: string, destination?: PageDestination | null): unknown;
   copyText(value: string): void;
+
+  /*
+   * Browsing `materials/` — the three reads the Library's folder browser needs.
+   *
+   * A source record carries ONE material URI, so the projection cannot say that
+   * `source-aml-ss26-lectures` holds `lecture-slides/` beside
+   * `exercise-slides/`. That distinction exists only on disk, and it is exactly
+   * the one a learner navigates by, so the folder browser descends past the
+   * record. Containment is enforced host-side in `MaterialTree`; a path that
+   * escapes `materials/` reads as empty rather than throwing.
+   */
+  isMaterialFolder(path: string): boolean;
+  listMaterialFolder(path: string): MaterialEntry[];
+  materialFolderCount(path: string): number;
 
   // ------------------------------------------------------------------- drafts
   scheduleDraftSave(): void;

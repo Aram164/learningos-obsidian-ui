@@ -126,12 +126,13 @@ maintenance is never mixed with study destinations.
   unreachable or uncountable.
 
 - **Choose learning material**: the comparison drawer behind *Compare all*.
-  It carries the complete stage menu grouped by triage, and — where the unit
-  has authored routes — a need lens (Derivation / Intuition / Practice) over
-  the producer's own `depth` and `format`, one recommended source, and every
-  remaining source as an alternative. **The lens changes what is offered
-  first, never what exists**: filtering the catalogue down to the lens would
-  make a material unreachable at the moment the learner went looking for it.
+  It partitions the complete menu purpose-first (`depth`) and material-type
+  second (`format`) — section → inline sub-heading → cards — with source as a
+  chip on each card. Purpose and type filters narrow; a Group-by segmented
+  control offers Type → purpose and the retired Source grouping as structure
+  alternatives, never as the default. **Grouping organises; it never hides**:
+  unclassified entries keep a trailing bucket, the count line always
+  reconciles with the total, and a narrowed list opens every section.
   Selection stays `unit.source-selection.set` with its snapshot guard, and it
   changes the current route only — it never deletes or hides a source record.
   The menu stays on the page instead when there is no stage to open a drawer

@@ -32,9 +32,11 @@ import {
   asAtlasDepth,
   asAtlasLens,
   asLibraryCollection,
+  asLibraryFolderPath,
   asProjectDetailTab,
   type AtlasDepthV1,
   type AtlasLensV1,
+  type LibraryFolderLayoutV1,
   type LibrarySourceFiltersV1,
 } from '../contracts/route-v1';
 import type { ResourceOpener } from '../infrastructure/resource-opener';
@@ -122,13 +124,41 @@ export class AppNavigator {
     recordType: string | undefined = undefined,
   ) {
     if (recordId === undefined || recordId === null) {
-      return this.openLibraryHome(recordType === 'topic-pack' ? 'topic-packs' : 'sources');
+      // No record asked for means "open the Library", and the Library's front
+      // door is the folder browser. A caller that wants the flat all-sources
+      // list asks for it by name through `openLibraryHome`.
+      return recordType === 'topic-pack'
+        ? this.openLibraryHome('topic-packs')
+        : this.openLibraryFolder([]);
     }
     const record = this.store.get(recordId);
     if (record?.type === 'source' || recordType === 'source') return this.openSourceDetail(recordId);
     if (record?.type === 'topic-pack' || recordType === 'topic-pack') return this.openTopicPackDetail(recordId);
     if (record?.type === 'collection' || recordType === 'collection') return this.openCatalogueDetail(recordId);
     return this.router.navigate({ name: 'legacy-library-list', recordType: recordType || record?.type || 'note', query: '' });
+  }
+
+  /**
+   * Open one folder of the Library's folder browser.
+   *
+   * `path` is the whole address: a folder is a position in a projection rather
+   * than a record, so the route it took to get there is the only durable way
+   * to name it. `selected` survives a trip up one level, which is what makes
+   * "enclosing folder" land on the folder you just left.
+   */
+  openLibraryFolder(
+    path: readonly string[] = [],
+    selected: string | null = null,
+    layout?: LibraryFolderLayoutV1,
+    query = '',
+  ) {
+    return this.router.navigate({
+      name: 'library-folder',
+      path: asLibraryFolderPath([...path]),
+      selected,
+      ...(layout ? { layout } : {}),
+      query,
+    });
   }
 
   openLibraryHome(

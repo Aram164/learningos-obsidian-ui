@@ -370,11 +370,6 @@ function openMapImport(
   unit: UnitRecordView,
   replacing: boolean,
 ): void {
-  const currentMap = view.plugin.store.mapForUnit(unit.id);
-  const expectedRevisions = view.plugin.store.artifactGuard(
-    unit.id,
-    typeof currentMap?.id === 'string' ? currentMap.id : null,
-  );
   const actions = parent.createDiv({
     cls: 'los-actions',
   });
@@ -400,13 +395,15 @@ function openMapImport(
             },
           ),
         ),
-        submit: (file, replace) => view.plugin.mutate(
-          () => view.plugin.gateway.importUnitMap(
-            unit.id,
-            file,
-            replace,
-            expectedRevisions,
-          ),
+        // Read-only: it writes nothing, so it does not go through the write
+        // queue and needs no snapshot guard of its own.
+        check: (file, replace) => view.plugin.gateway.checkUnitMapImport(
+          unit.id,
+          file,
+          replace,
+        ),
+        submit: (review) => view.plugin.mutate(
+          () => view.plugin.gateway.importUnitMap(review),
         ),
       },
     ).open(),

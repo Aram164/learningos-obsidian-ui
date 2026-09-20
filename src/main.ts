@@ -3,6 +3,8 @@ import {
   Notice,
   type WorkspaceLeaf,
 } from 'obsidian';
+import * as fs from 'node:fs';
+import * as nodePath from 'node:path';
 
 import { detachApplication, registerApplication } from './app/registration';
 import { AppNavigator } from './app/navigator';
@@ -37,11 +39,17 @@ import {
 } from './gateway-client';
 import { AIActionClient } from './infrastructure/ai-action-client';
 import {
+  storeEnvelope,
+  type DiagnosticEvent,
+} from './infrastructure/trace-context';
+import {
   LosRuntime,
   type LosCallback,
   type PythonResolution,
 } from './infrastructure/los-runtime';
 import { ResourceOpener } from './infrastructure/resource-opener';
+import { MaterialTree } from './infrastructure/material-tree';
+import type { PageDestination } from './infrastructure/resource-target';
 import { ManifestStore } from './manifest-store';
 import { SessionEndModal } from './settings';
 import type { ProjectionRecord } from './contracts/manifest';
@@ -99,6 +107,7 @@ export class LearningOSUI extends Plugin implements AppSurface {
   declare drafts: DraftStore;
   declare runtime: LosRuntime;
   declare resources: ResourceOpener;
+  declare materials: MaterialTree;
   declare settings: LearningOSSettings;
   declare activeNav: string;
   declare recovery: SettingsGatewayRecoveryStore;
@@ -187,6 +196,7 @@ export class LearningOSUI extends Plugin implements AppSurface {
     this.store = new ManifestStore(this.app);
     this.runtime = new LosRuntime(this.app, () => this.settings.pythonPath);
     this.resources = new ResourceOpener(this.app);
+    this.materials = new MaterialTree(this.app);
     this.gateway = new GatewayClient(this);
     this.aiActions = new AIActionClient(this);
     this.router = new ApplicationRouter(this);
@@ -434,8 +444,27 @@ export class LearningOSUI extends Plugin implements AppSurface {
    * file would put canonical intent on disk on every write, including the
    * ones that fail, leaving cleanup as a thing that can be forgotten.
    */
-  runLos(args: string[], callback: LosCallback, stdin?: string): void {
-    this.runtime.run(args, callback, stdin);
+  runLos(args: string[], callback: LosCallback, stdin?: string, traceParent?: string): void {
+    this.runtime.run(args, callback, stdin, traceParent);
+  }
+
+  /**
+   * Best-effort UI-side span sink (track #2, Phase 4A): appends to the same
+   * disposable trace store Core writes, so one operation reads as one
+   * stream. Never throws, never blocks, never carries payload text — a
+   * failing sink is silently invisible, exactly like Core's.
+   */
+  diagnostics(event: DiagnosticEvent): void {
+    try {
+      const base = this.app.vault.adapter.getBasePath();
+      const dir = nodePath.join(base, 'operations', 'diagnostics');
+      fs.mkdirSync(dir, { recursive: true });
+      fs.appendFileSync(
+        nodePath.join(dir, 'traces.jsonl'),
+        `${JSON.stringify(storeEnvelope(event))}\n`,
+        'utf8',
+      );
+    } catch (_) { /* diagnostics must never break the app */ }
   }
 
   async reloadStore() {
@@ -509,6 +538,9 @@ export class LearningOSUI extends Plugin implements AppSurface {
       new Notice('Recovered the prior write; newer canonical changes are also present.');
     }
     await this.recovery.settleConfirmed();
+    // The record retired, so the recovery actually settled: only now may the
+    // stream claim it. Restart paths stashed no trace and emit nothing here.
+    this.gateway.noteSettlementObserved(confirmation);
   }
 
   /** The active destination is a display fact, so the Navigator is the only
@@ -614,8 +646,8 @@ export class LearningOSUI extends Plugin implements AppSurface {
     }
   }
 
-  async openVaultPath(path: string) {
-    return this.resources.openVaultPath(path);
+  async openVaultPath(path: string, destination: PageDestination | null = null) {
+    return this.resources.openVaultPath(path, destination);
   }
   async openExternalPath(
     path: string,
@@ -623,11 +655,20 @@ export class LearningOSUI extends Plugin implements AppSurface {
   ): Promise<boolean> {
     return this.resources.openExternalPath(path, successMessage);
   }
-  openMaterialPath(path: string) {
-    return this.resources.openMaterialPath(path);
+  openMaterialPath(path: string, destination: PageDestination | null = null) {
+    return this.resources.openMaterialPath(path, destination);
   }
   openAuthoredPath(path: string) {
     return this.resources.openAuthoredPath(path);
+  }
+  isMaterialFolder(path: string) {
+    return this.materials.isDirectory(path);
+  }
+  listMaterialFolder(path: string) {
+    return this.materials.list(path);
+  }
+  materialFolderCount(path: string) {
+    return this.materials.count(path);
   }
   openRecord(record: ProjectionRecord | null | undefined) {
     if (!record) return;

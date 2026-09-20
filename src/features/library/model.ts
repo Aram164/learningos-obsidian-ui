@@ -1,7 +1,10 @@
 import type { ProjectionRecord } from '../../contracts/manifest';
 import {
+  asLibraryFolderLayout,
+  asLibraryFolderPath,
   asLibrarySourceFilters,
   type LibraryCollectionV1,
+  type LibraryFolderLayoutV1,
   type LibrarySourceFiltersV1,
 } from '../../contracts/route-v1';
 import type { AppSurface } from '../../app/surface';
@@ -59,6 +62,7 @@ export type SourceFacet =
   (typeof LEGACY_SOURCE_FACETS)[number];
 
 export type LibraryScreen =
+  | 'folder'
   | 'home'
   | 'group'
   | 'source-detail'
@@ -78,6 +82,9 @@ export interface LibraryViewState {
   readonly catalogueId: string | null;
   readonly recordType: string;
   readonly domain: string;
+  readonly folderPath: string[];
+  readonly folderSelection: string | null;
+  readonly folderLayout: LibraryFolderLayoutV1;
 }
 
 export interface ParsedLibraryViewState
@@ -164,6 +171,9 @@ export type LibraryPlugin = Pick<
   AppSurface,
   | 'copyText'
   | 'generate'
+  | 'listMaterialFolder'
+  | 'materialFolderCount'
+  | 'isMaterialFolder'
   | 'openAuthoredPath'
   | 'openMaterialPath'
   | 'openResource'
@@ -175,6 +185,7 @@ export type LibraryPlugin = Pick<
     | 'back'
     | 'openCatalogueDetail'
     | 'openFullTextSearch'
+    | 'openLibraryFolder'
     | 'openLibraryGroup'
     | 'openLibraryHome'
     | 'openRecord'
@@ -188,7 +199,8 @@ export function isLibraryScreen(
   value: unknown,
 ): value is LibraryScreen {
   return (
-    value === 'home'
+    value === 'folder'
+    || value === 'home'
     || value === 'group'
     || value === 'source-detail'
     || value === 'topic-pack-detail'
@@ -221,7 +233,7 @@ export function readLibraryViewState(
 ): ParsedLibraryViewState {
   if (!isRecord(value)) {
     return {
-      screen: 'home',
+      screen: 'folder',
       collection: currentCollection,
       groupId: null,
       query: '',
@@ -232,6 +244,12 @@ export function readLibraryViewState(
       catalogueId: null,
       recordType: currentRecordType,
       domain: '',
+      // A Library leaf with no persisted state opens on the folder browser:
+      // that is the Library's front door, and `home` is now the flat
+      // all-sources list reached from the sidebar.
+      folderPath: [],
+      folderSelection: null,
+      folderLayout: 'list',
     };
   }
 
@@ -244,7 +262,7 @@ export function readLibraryViewState(
     ? value.screen
     : recordId
       ? 'legacy-list'
-      : 'home';
+      : 'folder';
 
   const collection = isLibraryCollection(
     value.collection,
@@ -297,6 +315,12 @@ export function readLibraryViewState(
     domain:
       projectedString(value.domain)
       ?? '',
+    folderPath:
+      asLibraryFolderPath(value.folderPath),
+    folderSelection:
+      projectedString(value.folderSelection),
+    folderLayout:
+      asLibraryFolderLayout(value.folderLayout),
   };
 }
 

@@ -44,6 +44,7 @@ export const STYLESHEET_MODULES = [
   '23-unit-surface.css',
   '24-projects-workstreams.css',
   '25-palettes.css',
+  '26-library-finder.css',
 ];
 
 /*

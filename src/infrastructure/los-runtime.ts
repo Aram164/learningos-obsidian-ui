@@ -47,13 +47,26 @@ export class LosRuntime {
     return { path: fallback, origin: 'PATH fallback', attempted: [...attempted, fallback] };
   }
 
-  run(args: string[], callback: LosCallback, stdin?: string): void {
+  /**
+   * Run the CLI. `traceParent` carries one W3C traceparent for this exact
+   * dispatch (research track #2, Phase 1): it travels as child-process
+   * environment, never as CLI arguments or payload, and an absent value
+   * leaves the child environment exactly as before.
+   */
+  run(args: string[], callback: LosCallback, stdin?: string, traceParent?: string): void {
     const base = this.app.vault.adapter.getBasePath();
     const script = nodePath.join(base, 'tools', 'los.py');
     const child = execFile(
       this.resolvePython().path,
       [script, ...args],
-      { cwd: base, timeout: 180000, maxBuffer: 8 * 1024 * 1024 },
+      {
+        cwd: base,
+        timeout: 180000,
+        maxBuffer: 8 * 1024 * 1024,
+        ...(traceParent === undefined
+          ? {}
+          : { env: { ...process.env, TRACEPARENT: traceParent } }),
+      },
       callback,
     );
     if (stdin !== undefined) child.stdin?.end(stdin);

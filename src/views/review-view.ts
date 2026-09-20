@@ -26,6 +26,12 @@ import {
   type LegacyArchiveDispositionV1,
   type LegacyArchiveLockV1,
 } from '../contracts/legacy-archive';
+import {
+  asOperationDetail,
+  asOperationsList,
+  type OperationDetailV1,
+  type OperationRowV1,
+} from '../contracts/operations';
 
 type ReviewAction = [string, () => unknown];
 
@@ -397,10 +403,18 @@ export class ReviewView extends ItemView {
  * under More, never on Home. A green/red badge is not enough for a layer that
  * can be stale, warning, erroring, or talking to no core at all.
  */
+type OperationsFilter = 'all' | 'attention' | 'recoveries';
+
+const OPERATIONS_FILTERS: ReadonlyArray<readonly [OperationsFilter, string]> = [
+  ['all', 'All'],
+  ['attention', 'Needs attention'],
+  ['recoveries', 'Recoveries'],
+];
+
 export class DiagnosticsView extends ItemView {
   private readonly plugin: DiagnosticsPlugin;
   private report = '';
-  private screen: 'health' | 'legacy' = 'health';
+  private screen: 'health' | 'operations' | 'legacy' = 'health';
   private health: HealthReportV1 | null = null;
   private healthLoading = false;
   private healthError = '';
@@ -408,6 +422,15 @@ export class DiagnosticsView extends ItemView {
   private legacyLoaded = false;
   private legacyLoading = false;
   private legacyError = '';
+  private operations: readonly OperationRowV1[] = [];
+  private operationsLoaded = false;
+  private operationsLoading = false;
+  private operationsError = '';
+  private operationsFilter: OperationsFilter = 'all';
+  private selectedRequest: string | null = null;
+  private operationDetail: OperationDetailV1 | null = null;
+  private operationDetailLoading = false;
+  private operationDetailError = '';
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -464,10 +487,205 @@ export class DiagnosticsView extends ItemView {
     }
   }
 
-  private selectScreen(screen: 'health' | 'legacy'): void {
+  private async loadOperations(): Promise<void> {
+    if (this.operationsLoading) return;
+    this.operationsLoading = true;
+    this.operationsError = '';
+    this.render();
+    try {
+      const list = asOperationsList(await this.plugin.gateway.operationsList(30));
+      if (!list) throw new Error('Core returned an invalid operations response.');
+      this.operations = list.operations;
+      this.operationsLoaded = true;
+    } catch (error: unknown) {
+      this.operations = [];
+      this.operationsLoaded = false;
+      this.operationsError = errorMessage(error);
+    } finally {
+      this.operationsLoading = false;
+      this.render();
+    }
+  }
+
+  private async loadOperationDetail(requestId: string): Promise<void> {
+    this.selectedRequest = requestId;
+    this.operationDetail = null;
+    this.operationDetailError = '';
+    this.operationDetailLoading = true;
+    this.render();
+    try {
+      const detail = asOperationDetail(
+        await this.plugin.gateway.operationsDetail(requestId),
+      );
+      if (!detail) throw new Error('Core returned an invalid operation response.');
+      this.operationDetail = detail;
+    } catch (error: unknown) {
+      this.operationDetailError = errorMessage(error);
+    } finally {
+      this.operationDetailLoading = false;
+      this.render();
+    }
+  }
+
+  /** Recovery panel entry point (4B): open one request's causal detail. */
+  openOperation(requestId: string): void {
+    this.screen = 'operations';
+    this.selectedRequest = null;
+    this.operationDetail = null;
+    if (!this.operationsLoaded && !this.operationsLoading) void this.loadOperations();
+    void this.loadOperationDetail(requestId);
+  }
+
+  private filteredOperations(): readonly OperationRowV1[] {
+    if (this.operationsFilter === 'attention') {
+      return this.operations.filter((row) => row.needs_attention);
+    }
+    if (this.operationsFilter === 'recoveries') {
+      return this.operations.filter((row) => row.replayed || row.attempts > 1);
+    }
+    return this.operations;
+  }
+
+  private renderOperations(root: HTMLElement): void {
+    const header = section(
+      root,
+      'Operations',
+      'Recent causal operations, newest first. Diagnosis, not logs: every row answers what happened, what committed, and what remains.',
+    );
+    if (this.operationsLoading) {
+      empty(header, 'Loading operations', 'Waiting for Core’s bounded operations response.');
+      return;
+    }
+    if (this.operationsError) {
+      empty(header, 'Operations unavailable', this.operationsError, 'Try again', () => void this.loadOperations());
+      return;
+    }
+    if (!this.operationsLoaded) {
+      empty(header, 'Operations not loaded', 'Load recent operations without opening logs or receipts.', 'Load operations', () => void this.loadOperations());
+      return;
+    }
+    filterTabs(root, 'Operations filters', OPERATIONS_FILTERS, this.operationsFilter, (value) => {
+      this.operationsFilter = value;
+      this.render();
+    }, (value) => value === 'all'
+      ? this.operations.length
+      : value === 'attention'
+        ? this.operations.filter((row) => row.needs_attention).length
+        : this.operations.filter((row) => row.replayed || row.attempts > 1).length);
+    const rows = this.filteredOperations();
+    if (rows.length === 0) {
+      empty(root, 'No operations', this.operationsFilter === 'all'
+        ? 'No causal operations are on record yet.'
+        : 'Nothing matches this filter.');
+    }
+    for (const row of rows) {
+      const glyph = row.recovery_requirement !== 'none'
+        ? '!'
+        : row.replayed ? '⟳' : row.canonical_outcome === 'COMMITTED' ? '✓' : '✕';
+      const label = row.recovery_requirement !== 'none'
+        ? 'Ambiguous'
+        : row.replayed ? 'Replayed' : row.canonical_outcome === 'COMMITTED' ? 'Settled' : 'Refused';
+      const time = row.started_at === null
+        ? '--:--'
+        : new Date(row.started_at * 1000).toTimeString().slice(0, 5);
+      const duration = row.duration_ms === null ? '' : ` · ${Math.round(row.duration_ms)} ms`;
+      const item = button(
+        root,
+        `${time}  ${row.capability}  ${glyph} ${label}${duration}`,
+        () => {
+          if (row.request_id) void this.loadOperationDetail(row.request_id);
+        },
+        this.selectedRequest !== null && row.request_id === this.selectedRequest ? 'info' : 'quiet',
+      );
+      void item;
+    }
+    const actions = root.createDiv({ cls: 'los-actions' });
+    button(actions, 'Refresh operations', () => {
+      this.operationsLoaded = false;
+      void this.loadOperations();
+    }, 'info');
+    this.renderOperationDetail(root);
+  }
+
+  private renderOperationDetail(root: HTMLElement): void {
+    if (this.selectedRequest === null) return;
+    const detail = section(root, 'Operation detail', this.selectedRequest);
+    if (this.operationDetailLoading) {
+      empty(detail, 'Loading operation', 'Waiting for Core’s diagnosis.');
+      return;
+    }
+    if (this.operationDetailError) {
+      empty(detail, 'Operation unavailable', this.operationDetailError);
+      return;
+    }
+    const current = this.operationDetail;
+    if (!current || current.request_id !== this.selectedRequest) return;
+    const diagnosis = current.diagnosis;
+    const status = detail.createDiv({ cls: 'los-diagnostic-status' });
+    status.createSpan({
+      cls: 'los-diagnostic-glyph',
+      text: diagnosis.canonical_outcome === 'COMMITTED'
+        ? (current.ui_outcome === 'SETTLED' ? '✓' : '!')
+        : diagnosis.canonical_outcome === 'AMBIGUOUS' ? '!' : '✕',
+    });
+    const copy = status.createDiv();
+    copy.createEl('strong', { text: current.capability });
+    copy.createDiv({ cls: 'los-micro', text: `Request ${current.request_id}` });
+    const outcomes = section(detail, 'Outcomes', 'What the authority plane proves.');
+    const heading = outcomes.createDiv({ cls: 'los-health-check-head' });
+    heading.createEl('strong', { text: `Canonical: ${diagnosis.canonical_outcome}` });
+    badge(heading, current.ui_outcome, current.ui_outcome === 'SETTLED' ? 'status' : 'role');
+    factList(outcomes, [
+      ['Canonical outcome', diagnosis.canonical_outcome],
+      ['UI outcome', current.ui_outcome],
+      ['Execution', diagnosis.execution_outcome],
+      ['Projection', diagnosis.projection_outcome],
+      ['Failure stage', diagnosis.first_failure_stage ?? '—'],
+      ['Recovery', diagnosis.recovery_requirement === 'none'
+        ? 'None — settled.'
+        : diagnosis.recovery_requirement === 'verify-observation'
+          ? 'Verify the receipt is observed in the projection.'
+          : 'Exact request must be reconciled.'],
+    ]);
+    if (diagnosis.reasons.length > 0) {
+      const why = section(detail, 'Why', 'The resolver’s reasons, verbatim.');
+      for (const reason of diagnosis.reasons) {
+        why.createEl('p', { text: reason });
+      }
+    }
+    const timeline = section(detail, 'Timeline', 'Causal stages in execution order.');
+    for (const row of current.timeline) {
+      const glyph = row.state === 'passed' ? '✓' : row.state === 'failed' ? '!' : '–';
+      timeline.createEl('p', {
+        text: `${glyph} ${row.stage}${row.detail ? ` — ${row.detail}` : ''}`,
+      });
+    }
+    factList(
+      section(detail, 'Transaction', 'References only; receipts stay canonical.'),
+      [
+        ['Transaction', current.facts.transaction_id ?? '—'],
+        ['Receipt', current.facts.receipt_path ?? '—'],
+        ['Snapshot before', current.facts.snapshot_before ?? '—'],
+        ['Snapshot after', current.facts.snapshot_after ?? '—'],
+        ['Snapshot seen', current.observed_snapshot ?? '—'],
+        ['Attempts', String(diagnosis.attempts.length)],
+      ],
+    );
+    if (diagnosis.authoritative_evidence.length > 0) {
+      factList(
+        section(detail, 'Authority', 'The evidence the verdict rests on.'),
+        diagnosis.authoritative_evidence.map(
+          (pointer, index): readonly [string, unknown] => [`Evidence ${index + 1}`, pointer],
+        ),
+      );
+    }
+  }
+
+  private selectScreen(screen: 'health' | 'operations' | 'legacy'): void {
     this.screen = screen;
     this.render();
     if (screen === 'legacy' && !this.legacyLoaded) void this.loadLegacy();
+    if (screen === 'operations' && !this.operationsLoaded) void this.loadOperations();
   }
 
   buildInfo(): BuildInfo {
@@ -574,7 +792,7 @@ export class DiagnosticsView extends ItemView {
     root.addClass('los-root', 'los-diagnostics-view');
     pageHeader(root, 'More', 'Diagnostics');
     const tabs = root.createDiv({ cls: 'los-subtabs', attr: { 'aria-label': 'Diagnostics sections' } });
-    for (const [key, label] of [['health', 'Health'], ['legacy', 'Legacy Archive']] as const) {
+    for (const [key, label] of [['health', 'Health'], ['operations', 'Operations'], ['legacy', 'Legacy Archive']] as const) {
       const tab = button(tabs, label, () => this.selectScreen(key), key === this.screen ? 'info' : 'quiet');
       tab.setAttr('aria-pressed', key === this.screen ? 'true' : 'false');
     }
@@ -595,6 +813,10 @@ export class DiagnosticsView extends ItemView {
 
     if (this.screen === 'legacy') {
       this.renderLegacy(root);
+      return;
+    }
+    if (this.screen === 'operations') {
+      this.renderOperations(root);
       return;
     }
     const [glyph, title, detail] = this.state();
@@ -733,6 +955,22 @@ export class DiagnosticsView extends ItemView {
     const rows = gatewayRecoverySummary(state) ?? [];
     factList(panel, rows);
     const actions = root.createDiv({ cls: 'los-actions' });
+    if (state.kind === 'record') {
+      // The recovery record owns the exact envelope bytes; its request id is
+      // the direct path to the full causal explanation. Unparseable bytes
+      // hide the button rather than opening a wrong operation.
+      let requestId: string | null = null;
+      try {
+        const envelope: unknown = JSON.parse(state.entry.record.envelope_json);
+        if (isRecord(envelope) && typeof envelope.request_id === 'string') {
+          requestId = envelope.request_id;
+        }
+      } catch (_) { requestId = null; }
+      if (requestId !== null) {
+        const target = requestId;
+        button(actions, 'Open operation', () => this.openOperation(target), 'info');
+      }
+    }
     if (state.kind === 'record' && state.entry.record.phase !== 'confirmed') {
       button(
         actions,

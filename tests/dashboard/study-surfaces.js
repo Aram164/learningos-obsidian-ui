@@ -410,17 +410,49 @@ module.exports = async function run() {
     check('same-route stage placements preserve separate instructions and direct targets',
       firstVideo.allText().includes('first stage instruction') && secondVideo.allText().includes('second stage instruction')
       && opened[0].url === 'https://example.org/video-first' && opened[1].url === 'https://example.org/video-second');
+    check("the urgency toggle is available where placements carry urgency ranks",
+      drawer.find('los-source-required')[0].disabled === false);
+    drawer.find('los-source-required')[0].checked = true;
+    drawer.find('los-source-required')[0].fire('change');
+    check("only-required narrows to rank-1 placements while keeping the total visible",
+      drawer.find('los-source-entry').length === 2
+      && drawer.allText().includes('2 of 5 entries')
+      && drawer.allText().includes('required now'));
+    drawer.find('los-source-required')[0].checked = false;
+    drawer.find('los-source-required')[0].fire('change');
+    check('clearing the toggle restores every placement',
+      drawer.find('los-source-entry').length === 5 && drawer.allText().includes('5 of 5 entries'));
     const scope = drawer.find('los-source-scope')[0];
     const search = drawer.find('los-source-search')[0];
     const purpose = drawer.find('los-source-purpose')[0];
     scope.value = 'unit'; scope.fire('change');
-    check('unit scope renders all routes grouped by source',
+    check('unit scope partitions routes purpose-first with type sub-headings',
       drawer.find('los-source-entry').length === 2
-      && drawer.find('los-source-group').length === 1
-      && drawer.find('los-source-group')[0].tag === 'details');
+      && drawer.find('los-purpose-group').length === 2
+      && drawer.find('los-purpose-group')[0].tag === 'details'
+      && drawer.find('los-type-subhead').length === 2
+      && drawer.find('los-source-group').length === 0);
+    const purposeHeadings = drawer.find('los-purpose-heading').map((node) => node.allText());
+    check('purpose sections follow the fixed learnable order',
+      purposeHeadings.length === 2
+      && purposeHeadings[0].includes('Build intuition')
+      && purposeHeadings[1].includes('Derive it'));
+    check('the jump bar names every purpose with live counts and mutes the empty ones',
+      drawer.find('los-jump-chip').length === 9
+      && drawer.allText().includes('Build intuition 1')
+      && drawer.find('los-jump-chip').filter((node) => node.disabled).length === 7);
+    drawer.find('los-jump-chip').find((node) => node.allText().includes('Derive it')).fire('click');
+    check('a jump chip opens its section',
+      drawer.find('los-purpose-group')[1].getAttribute('open') !== null);
+    check('route cards carry the source chip without repeating purpose and type',
+      drawer.find('los-chip').length >= 2
+      && !drawer.allText().includes('book · derivation'));
+    /* Purpose and type now live in the section and sub-heading ('Derive it',
+     * not the raw schema value), so the pin follows the learner-facing label
+     * while angles, locators and scope wording stay verbatim. */
     check('full descriptions and exact locators remain readable before choosing',
       ['Scope authority for the current unit.', 'Derives the geometry and connects scaling and validation.',
-        'derivation', 'current', 'lecture-slides/VL_02.pdf', 'Argues the geometry informally']
+        'Derive it', 'current', 'lecture-slides/VL_02.pdf', 'Argues the geometry informally']
         .every(line => drawer.allText().includes(line)));
     search.focus(); search.value = 'Dom'; search.fire('input');
     search.value = 'Domingos'; search.fire('input');
@@ -446,6 +478,26 @@ module.exports = async function run() {
     purpose.value = 'intuition'; purpose.fire('change');
     check('purpose filters show honest filtered totals', drawer.find('los-source-entry').length === 1
       && drawer.allText().includes('1 of 2 entries') && drawer.allText().includes('Domingos perspective'));
+    purpose.value = 'all'; purpose.fire('change');
+    const materialType = drawer.find('los-source-type')[0];
+    materialType.value = 'book'; materialType.fire('change');
+    check('type filters narrow across sections with honest totals',
+      drawer.find('los-source-entry').length === 1
+      && drawer.allText().includes('1 of 2 entries')
+      && drawer.allText().includes('Current L02 lecture deck'));
+    materialType.value = 'all'; materialType.fire('change');
+    check("the urgency toggle is unavailable where routes carry no urgency rank",
+      drawer.find('los-source-required')[0].disabled === true);
+    drawer.findText('los-btn', 'Source').fire('click');
+    check('group-by source preserves the retired structure on demand',
+      drawer.find('los-source-group').length === 1
+      && drawer.find('los-purpose-group').length === 0
+      && drawer.find('los-source-entry').length === 2);
+    drawer.findText('los-btn', 'Purpose → type').fire('click');
+    check('group-by purpose restores the default partition',
+      drawer.find('los-purpose-group').length === 2
+      && drawer.find('los-source-entry').length === 2);
+    purpose.value = 'intuition'; purpose.fire('change');
     check('browsing and filtering never change canonical selection', !calls.envelope('unit.source-selection.set'));
 
     /* D4: the surface moved, the governed write did not. */
@@ -461,6 +513,92 @@ module.exports = async function run() {
       && selection?.payload.action === 'select'
       && selection?.payload.purpose === 'Why similarity deteriorates in high dimensions.'
       && selection?.expected_snapshot === FIXTURE_SNAPSHOT);
+    plugin.onunload();
+  }
+
+  /* The L07 shape: stage-sad-l07-geometric is authored `helpful-now` with nothing
+     required of the learner at all. A literal required-now expand rule opened none
+     of its fifteen materials, and a drawer showing only headings reads as empty —
+     the one thing this surface must never do. The rule degrades down TRIAGE_ORDER
+     instead, so the most urgent rank actually present is what opens. */
+  heading('the drawer on a stage with nothing required now');
+  {
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        const sourceMap = manifest.module_source_maps.find(
+          (row) => row.module_id === 'module-fixture-m2');
+        sourceMap.sources[0].unit_routes = [
+          {
+            id: 'route-optional-derivation', unit_id: 'unit-fixture-sad-l04',
+            title: 'Waiting-time derivation', format: 'book',
+            angle: 'Derives the waiting time formally.',
+            covers: ['knowledge-fixture-conditioning'],
+            depth: 'derivation', scope: 'complementary',
+            locator: 'ch 4', source_id: 'source-fixture-book',
+          },
+          {
+            id: 'route-optional-orientation', unit_id: 'unit-fixture-sad-l04',
+            title: 'Waiting-time picture', format: 'video',
+            angle: 'The same waiting time, drawn.',
+            covers: ['knowledge-fixture-conditioning'],
+            depth: 'orientation', scope: 'complementary',
+            locator: 'clip', source_id: 'source-fixture-book',
+          },
+          {
+            id: 'route-optional-solutions', unit_id: 'unit-fixture-sad-l04',
+            title: 'Waiting-time worked answers', format: 'solutions',
+            angle: 'The answers, worked in full.',
+            covers: ['knowledge-fixture-conditioning'],
+            depth: 'practice', scope: 'complementary',
+            locator: 'pp. 20-24', source_id: 'source-fixture-book',
+          },
+        ];
+        const stage = manifest.study_maps.find((row) => row.unit_id === 'unit-fixture-sad-l04')
+          .stages.find((row) => row.id === 'stage-fixture-conditioning');
+        stage.scope_triage = 'helpful-now';
+        stage.resources = [
+          {
+            id: 'resource-optional-helpful', route_id: 'route-optional-derivation',
+            source_id: 'source-fixture-book', kind: 'read',
+            label: 'Waiting-time derivation', locator: 'ch 4', scope_triage: 'helpful-now',
+          },
+          {
+            id: 'resource-optional-reference', route_id: 'route-optional-orientation',
+            source_id: 'source-fixture-book', kind: 'watch',
+            label: 'Waiting-time picture', locator: 'clip', scope_triage: 'reference-only',
+          },
+          {
+            id: 'resource-optional-solutions', route_id: 'route-optional-solutions',
+            source_id: 'source-fixture-book', kind: 'practise',
+            label: 'Waiting-time worked answers', locator: 'pp. 20-24',
+            scope_triage: 'helpful-now',
+          },
+        ];
+      },
+    });
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    view.contentEl.findText('los-btn', 'Compare all').fire('click');
+    await frame();
+    const drawer = stub.Modal.last.contentEl;
+    const state = drawer.find('los-purpose-group')
+      .map((node) => [node.allText(), node.getAttribute('open') !== null]);
+    const opened = (label) => state.find(([text]) => text.includes(label))?.[1];
+    check('a stage with nothing required still opens at the most urgent rank present',
+      state.length === 3 && opened('Derive it') === true && opened('Practise') === true);
+    check('ranks below the most urgent present stay collapsed',
+      opened('Get oriented') === false);
+    check('nothing is hidden by the fallback: the count line still reconciles',
+      drawer.allText().includes('3 of 3 entries')
+      && drawer.allText().includes('0 required now'));
+    /* The working kind names the ACTIVITY, not the material: a solutions PDF
+       placed as `practise` is still worked solutions, and letting the kind win
+       meant that sub-heading could never appear. */
+    const practise = drawer.find('los-purpose-group')
+      .find((node) => node.allText().includes('Practise'));
+    check('an authored format outranks the working kind in the type partition',
+      practise.allText().includes('Worked solutions')
+      && !practise.allText().includes('Exercise sheets'));
     plugin.onunload();
   }
 
@@ -696,6 +834,73 @@ module.exports = async function run() {
       && prompt.includes(FIXTURE_SNAPSHOT));
     check('active file is supplementary only', prompt.includes('knowledge/notes/supplementary.md')
       && prompt.includes('supplementary context only'));
+    plugin.onunload();
+  }
+
+  heading('the assigned page survives the whole plugin route');
+  {
+    /*
+     * The delegate probe the review ran, kept as a test.
+     *
+     * `ResourceOpener` accepted a destination and its own tests passed, while
+     * `main.ts` accepted and forwarded only `path` — so on the real plugin
+     * route the page option and the external-viewer instruction were dropped
+     * before they reached any opener. Calling ResourceOpener directly cannot
+     * see that, which is the point of going through the built plugin here
+     * (review workbench/audits/repair-review-2026-09-13, R2).
+     */
+    const { app, plugin } = await boot();
+    const seen = [];
+    // The real opener still derives the destination; only the two boundaries
+    // the delegates reach are recorded, exactly as the review probed them.
+    const real = plugin.resources;
+    plugin.resources = {
+      openResource: (record, ports) => real.openResource(record, ports),
+      openVaultPath: (path, destination) => { seen.push(['vault', path, destination]); },
+      openMaterialPath: (path, destination) => { seen.push(['material', path, destination]); },
+      openExternalPath: (path, message) => { seen.push(['external', path, message]); },
+      openAuthoredPath: (path) => { seen.push(['authored', path]); },
+    };
+
+    const destination = { page: 20, label: 'physical pages 20\u201322' };
+    await plugin.openVaultPath('knowledge/attachments/deck.pdf', destination);
+    plugin.openMaterialPath('materials/lecture.pdf', destination);
+    check('both plugin delegates forward the destination, not just the path',
+      JSON.stringify(seen) === JSON.stringify([
+        ['vault', 'knowledge/attachments/deck.pdf', destination],
+        ['material', 'materials/lecture.pdf', destination],
+      ]));
+
+    seen.length = 0;
+    plugin.openResource({
+      material_path: 'materials/sad/08_normal_distribution.pdf',
+      material_exists: true,
+      locator: 'lecture-slides/08_normal_distribution.pdf, PDF pp. 20-22',
+    });
+    check('openResource derives the destination and hands it on',
+      seen.length === 1 && seen[0][0] === 'material'
+      && seen[0][2] && seen[0][2].page === 20);
+
+    seen.length = 0;
+    plugin.openResource({
+      material_path: 'materials/sad/UE6.pdf',
+      material_exists: true,
+      locator: 'exercise-slides/UE6.pdf, slides 5-20',
+    });
+    check('an unqualified locator hands on no destination rather than a guess',
+      seen.length === 1 && seen[0][2] === null);
+
+    /* The mixed-numbering case F07 named: Analysis Chapter 01 declares both
+     * numberings, and the printed page came first. */
+    seen.length = 0;
+    plugin.openResource({
+      material_path: 'materials/analysis/skript.pdf',
+      material_exists: true,
+      locator: 'unser skript.pdf Kapitel 1, printed p. 1 (PDF p. 11)\u2013printed p. 6 (PDF p. 16)',
+    });
+    check('a printed page beside a physical one never becomes the destination',
+      seen.length === 1 && seen[0][2] && seen[0][2].page === 11);
+
     plugin.onunload();
   }
 };

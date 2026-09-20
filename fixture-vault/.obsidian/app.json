@@ -9,6 +9,11 @@
     "archive/",
     ".venv/",
     ".trash/",
-    "migration/"
+    "migration/",
+    "generated/",
+    "system/",
+    "sources/",
+    "records/",
+    "curriculum/quarantine/"
   ]
 }

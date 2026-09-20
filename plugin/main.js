@@ -36,6 +36,8 @@ __export(main_exports, {
 });
 module.exports = __toCommonJS(main_exports);
 var import_obsidian23 = require("obsidian");
+var fs5 = __toESM(require("node:fs"));
+var nodePath5 = __toESM(require("node:path"));
 
 // src/contracts/manifest-records.ts
 var row = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
@@ -842,6 +844,10 @@ function validProjectedUnit(value) {
     "related_module_ids"
   ]) && identifier(source.id, "unit-") && source.type === "unit" && identifier(source.module_id, "module-") && optional(source, "component_id", text) && text(source.kind) && text(source.title) && natural(source.order) && text(source.scope) && text(source.status) && natural(source.revision) && text(source.path) && typeof source.needs_study_map === "boolean" && text(source.notes_text) && nullable(source.notes_updated, text) && strings(source.project_ids, true) && validUnitArtifacts(source.artifacts) && strings(source.workspace_ids) && list(source.source_selections, validSourceSelection) && list(source.scope_sources, validScopeSource) && list(source.note_sections, validUnitNoteSection) && optional(source, "knowledge_map", validKnowledgeMap) && optional(source, "current_study_map", text) && optional(source, "working_note", text) && optional(source, "parent_unit_id", text) && optional(source, "child_unit_ids", strings) && optional(source, "related_module_ids", strings));
 }
+function validRequiredAsset(value) {
+  const source = row(value);
+  return Boolean(source && exact(source, ["name"], ["material_uri", "needed_for", "obtain_from"]) && nonEmpty(source.name) && optional(source, "material_uri", (v) => text(v) && String(v).startsWith("material://")) && optional(source, "needed_for", nonEmpty) && optional(source, "obtain_from", nonEmpty));
+}
 function validProjectedRoute(value) {
   const source = row(value);
   return Boolean(source && exact(source, [
@@ -861,8 +867,10 @@ function validProjectedRoute(value) {
     "vault_path",
     "material_uri",
     "material_path",
-    "material_exists"
-  ]) && identifier(source.id, "route-") && identifier(source.unit_id, "unit-") && identifier(source.source_id, "source-") && nonEmpty(source.title) && nonEmpty(source.format) && nonEmpty(source.angle) && Array.isArray(source.covers) && source.covers.length > 0 && ids(source.covers, "knowledge-") && nonEmpty(source.depth) && nonEmpty(source.scope) && optional(source, "angle_detail", nonEmpty) && optional(source, "locator", text) && optional(source, "url", uri) && optional(source, "vault_path", text) && optional(source, "material_uri", text) && optional(source, "material_path", text) && optional(source, "material_exists", (item) => typeof item === "boolean"));
+    "material_exists",
+    "requires_assets",
+    "exposes_solutions_for"
+  ]) && identifier(source.id, "route-") && identifier(source.unit_id, "unit-") && identifier(source.source_id, "source-") && nonEmpty(source.title) && nonEmpty(source.format) && nonEmpty(source.angle) && Array.isArray(source.covers) && source.covers.length > 0 && ids(source.covers, "knowledge-") && nonEmpty(source.depth) && nonEmpty(source.scope) && optional(source, "angle_detail", nonEmpty) && optional(source, "locator", text) && optional(source, "url", uri) && optional(source, "vault_path", text) && optional(source, "material_uri", text) && optional(source, "material_path", text) && optional(source, "material_exists", (item) => typeof item === "boolean") && optional(source, "requires_assets", (v) => Array.isArray(v) && v.length > 0 && list(v, validRequiredAsset)) && optional(source, "exposes_solutions_for", (v) => ids(v, "route-")));
 }
 function validSourceMapEntry(value) {
   const source = row(value);
@@ -971,8 +979,8 @@ function validProjectedRecord(value, validSynthesis) {
 }
 
 // src/contracts/manifest.ts
-var MANIFEST_CONTRACT_VERSION = 9;
-var MANIFEST_SCHEMA_SHA256 = "sha256:09f1b5d492a32d387cc942fe6c9ae5a17b48e5e3b02f325320c3070667642ddb";
+var MANIFEST_CONTRACT_VERSION = 11;
+var MANIFEST_SCHEMA_SHA256 = "sha256:35b4e5765ded09b72d191e68e590ff63768cf43113613725e691703150221a6a";
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -1003,7 +1011,7 @@ function validSynthesisBasis(value) {
   ])) return false;
   const checksums = value.material_checksums;
   const provenance = value.ai_provenance;
-  return natural2(value.unit_revision) && natural2(value.source_map_revision) && sha256(value.source_map_checksum) && sha256(value.route_set_checksum) && isRecord(checksums) && Object.entries(checksums).every(([routeId, checksum]) => identifier2(routeId, "route-") && sha256(checksum)) && value.policy === "tiered-v1" && isRecord(provenance) && exactKeys(provenance, ["request_id", "delivery_id", "provider"]) && nonEmptyText(provenance.request_id) && nonEmptyText(provenance.delivery_id) && ["manual-bundle", "local"].includes(String(provenance.provider));
+  return natural2(value.unit_revision) && natural2(value.source_map_revision) && sha256(value.source_map_checksum) && sha256(value.route_set_checksum) && isRecord(checksums) && Object.entries(checksums).every(([routeId, checksum]) => identifier2(routeId, "route-") && sha256(checksum)) && value.policy === "tiered-v2" && isRecord(provenance) && exactKeys(provenance, ["request_id", "delivery_id", "provider"]) && nonEmptyText(provenance.request_id) && nonEmptyText(provenance.delivery_id) && ["manual-bundle", "local"].includes(String(provenance.provider));
 }
 function validRouteAssessment(value) {
   if (!isRecord(value) || !exactKeys(value, [
@@ -1019,6 +1027,7 @@ function validRouteAssessment(value) {
     "exercise_value",
     "best_for",
     "limitations",
+    "scope_of_absence",
     "reason",
     "evidence"
   ]) || !identifier2(value.route_id, "route-") || !identifier2(value.source_id, "source-") || !nonEmptyText(value.locator) || !["deep-reviewed", "screened", "unevaluated", "unavailable"].includes(String(value.review_status)) || !uniqueStringArray(value.concept_ids, (item) => identifier2(item, "concept-"))) return false;
@@ -1028,7 +1037,8 @@ function validRouteAssessment(value) {
     "notation",
     "exercise_value",
     "best_for",
-    "limitations"
+    "limitations",
+    "scope_of_absence"
   ];
   if ("reason" in value && !nonEmptyText(value.reason)) return false;
   if ("evidence" in value && (!Array.isArray(value.evidence) || !value.evidence.every(validSynthesisEvidence))) return false;
@@ -1059,7 +1069,6 @@ function validConceptGroup(value) {
   ]) && identifier2(value.concept_id, "concept-") && uniqueStringArray(value.local_node_ids, (item) => identifier2(item, "knowledge-")) && uniqueStringArray(value.related_unit_ids, (item) => identifier2(item, "unit-")) && uniqueStringArray(value.bridge_note_ids, (item) => identifier2(item, "note-")) && nonEmptyText(value.narrative);
 }
 var synthesisStaleReasons = [
-  "unit_revision",
   "source_map_revision",
   "source_map_checksum",
   "route_set_checksum",
@@ -1110,8 +1119,8 @@ function validMaterialSynthesis(value) {
     "completeness"
   ]) && value.schema_version === 1 && identifier2(value.id, "material-synthesis-") && value.type === "unit-material-synthesis" && identifier2(value.unit_id, "unit-") && value.status === "approved" && validSynthesisBasis(value.basis) && Array.isArray(value.route_assessments) && value.route_assessments.length > 0 && value.route_assessments.every(validRouteAssessment) && Array.isArray(value.comparisons) && value.comparisons.every(validRouteComparison) && Array.isArray(value.concept_groups) && value.concept_groups.every(validConceptGroup) && validSynthesisFreshness(value.freshness) && validSynthesisCompleteness(value.completeness);
 }
-function requireArray(record6, key) {
-  if (!Array.isArray(record6[key])) {
+function requireArray(record7, key) {
+  if (!Array.isArray(record7[key])) {
     throw new TypeError(`Manifest field ${String(key)} must be an array.`);
   }
 }
@@ -1267,8 +1276,8 @@ function assertManifest(value) {
       throw new TypeError("Manifest flat stages must match the closed v8 projection.");
     }
   }
-  for (const record6 of value.records) {
-    if (!validProjectedRecord(record6, validMaterialSynthesis)) {
+  for (const record7 of value.records) {
+    if (!validProjectedRecord(record7, validMaterialSynthesis)) {
       throw new TypeError("Manifest records must match the closed v8 record union.");
     }
   }
@@ -1562,9 +1571,9 @@ function optionalString(value) {
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
-function asLabel(record6, fallback = "Untitled") {
-  if (!record6) return fallback;
-  return asString(record6.title) ?? asString(record6.label) ?? asString(record6.name) ?? asString(record6.id) ?? fallback;
+function asLabel(record7, fallback = "Untitled") {
+  if (!record7) return fallback;
+  return asString(record7.title) ?? asString(record7.label) ?? asString(record7.name) ?? asString(record7.id) ?? fallback;
 }
 
 // src/accessibility/button-group.ts
@@ -1641,15 +1650,15 @@ function statusTone(status) {
   const tone = STATUS_TONES[key];
   return tone ? `los-status los-status--${tone}` : "los-status";
 }
-function chip(parent, record6, onClick) {
+function chip(parent, record7, onClick) {
   const el = parent.createEl("button", {
-    cls: `los-chip los-t-${record6?.type || "record"} is-clickable`,
+    cls: `los-chip los-t-${record7?.type || "record"} is-clickable`,
     attr: { type: "button" }
   });
-  const iconName = ICONS[String(record6?.type || "")] || "circle";
+  const iconName = ICONS[String(record7?.type || "")] || "circle";
   icon(el.createSpan({ cls: "los-chip-icon" }), iconName);
-  el.createSpan({ text: record6?.title || record6?.id || "Unknown" });
-  if (onClick) el.addEventListener("click", () => onClick(record6));
+  el.createSpan({ text: record7?.title || record7?.id || "Unknown" });
+  if (onClick) el.addEventListener("click", () => onClick(record7));
   return el;
 }
 function pageHeader(parent, kicker, title, description = "", headingId = "") {
@@ -2042,7 +2051,7 @@ var SessionEndModal = class extends import_obsidian2.Modal {
       attr: { type: "text", placeholder: "Commit message", "aria-label": "Learning session commit message" }
     });
     const pushRow = root.createDiv({ cls: "los-row" });
-    const push2 = pushRow.createEl("input", { attr: { type: "checkbox", "aria-label": "Push after commit" } });
+    const push3 = pushRow.createEl("input", { attr: { type: "checkbox", "aria-label": "Push after commit" } });
     pushRow.createSpan({ text: "Push after the scoped commit succeeds" });
     const actions = root.createDiv({ cls: "los-actions" });
     button(actions, "Commit session-owned files", async () => {
@@ -2054,7 +2063,7 @@ var SessionEndModal = class extends import_obsidian2.Modal {
         const result = asSessionReview(await this.plugin.mutate(
           () => this.plugin.gateway.endSession(
             message.value.trim(),
-            Boolean(push2.checked)
+            Boolean(push3.checked)
           )
         ));
         new import_obsidian2.Notice(result.pushed ? "Learning session committed and pushed." : "Learning session committed.");
@@ -2109,8 +2118,8 @@ function isProjectDetailTab(value) {
   return PROJECT_DETAIL_TABS.includes(value);
 }
 function asLibrarySourceFilters(value) {
-  const record6 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
-  const read = (key) => typeof record6[key] === "string" ? record6[key] : "";
+  const record7 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+  const read = (key) => typeof record7[key] === "string" ? record7[key] : "";
   return {
     domain: read("domain"),
     topic: read("topic"),
@@ -2121,6 +2130,13 @@ function asLibrarySourceFilters(value) {
 }
 function asLibraryCollection(value) {
   return isLibraryCollection(value) ? value : "sources";
+}
+function asLibraryFolderLayout(value) {
+  return value === "columns" ? "columns" : "list";
+}
+function asLibraryFolderPath(value) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((segment2) => typeof segment2 === "string" && segment2.length > 0).slice(0, 12);
 }
 function asAtlasLens(value) {
   return isAtlasLens(value) ? value : "prerequisites";
@@ -2192,8 +2208,8 @@ function compareModules(left, right) {
   if (left.actionable !== right.actionable) return left.actionable ? -1 : 1;
   return compareStrings(left.sortKey, right.sortKey) || compareStrings(left.id, right.id);
 }
-function shortModuleLabel(record6, label) {
-  const code = asString(record6.code);
+function shortModuleLabel(record7, label) {
+  const code = asString(record7.code);
   if (code) return code;
   const words2 = label.split(/\s+/).filter(Boolean);
   return words2.length > 2 ? words2.map((word) => word.charAt(0)).join("").toUpperCase() : label;
@@ -2228,19 +2244,19 @@ function buildAtlasGraph(store) {
   const remember = (id2) => {
     const known = conceptById.get(id2);
     if (known) return known;
-    const record6 = store.get(id2);
-    const label = record6 ? asLabel(record6, id2) : id2;
+    const record7 = store.get(id2);
+    const label = record7 ? asLabel(record7, id2) : id2;
     const concept = {
       id: id2,
       label,
       sortKey: normalizedSortKey(label),
-      record: record6 ?? null
+      record: record7 ?? null
     };
     conceptById.set(id2, concept);
     return concept;
   };
-  for (const record6 of store.of("concept")) {
-    const id2 = asString(record6.id);
+  for (const record7 of store.of("concept")) {
+    const id2 = asString(record7.id);
     if (id2) remember(id2);
   }
   const edges = [];
@@ -2258,8 +2274,8 @@ function buildAtlasGraph(store) {
     remember(edge.from);
     remember(edge.to);
     if (edge.source && !resolvedSources.has(edge.source)) {
-      const record6 = store.get(edge.source);
-      if (record6) resolvedSources.set(edge.source, record6);
+      const record7 = store.get(edge.source);
+      if (record7) resolvedSources.set(edge.source, record7);
     }
     if (edge.layer === "strict") {
       push(prerequisiteEdges, edge.from, edge);
@@ -2286,16 +2302,16 @@ function buildAtlasGraph(store) {
     push(modulesByConcept, conceptId, moduleId);
     push(conceptsByModule, moduleId, conceptId);
   }
-  const modules = store.modules().flatMap((record6) => {
-    const id2 = asString(record6.id);
+  const modules = store.modules().flatMap((record7) => {
+    const id2 = asString(record7.id);
     if (!id2) return [];
-    const label = asLabel(record6, id2);
+    const label = asLabel(record7, id2);
     return [{
       id: id2,
       label,
-      shortLabel: shortModuleLabel(record6, label),
+      shortLabel: shortModuleLabel(record7, label),
       sortKey: normalizedSortKey(label),
-      actionable: record6.is_actionable === true,
+      actionable: record7.is_actionable === true,
       conceptCount: conceptsByModule.get(id2)?.length ?? 0
     }];
   }).sort(compareModules);
@@ -2355,12 +2371,12 @@ function studyOrderSentence(graph, edge) {
 }
 function provenanceOf(graph, edge) {
   if (!edge.source) return { state: "undocumented" };
-  const record6 = graph.resolvedSources.get(edge.source);
-  return record6 ? {
+  const record7 = graph.resolvedSources.get(edge.source);
+  return record7 ? {
     state: "resolved",
     sourceId: edge.source,
-    label: asLabel(record6, edge.source),
-    record: record6
+    label: asLabel(record7, edge.source),
+    record: record7
   } : { state: "unresolved", sourceId: edge.source };
 }
 function evidenceFor(graph, moduleId, conceptId) {
@@ -2537,18 +2553,18 @@ function strictPath(graph, focusId) {
   const cycle = findStrictCycle(graph, scope);
   if (cycle) return { ok: false, cycle };
   const depthOf = /* @__PURE__ */ new Map();
-  const resolve2 = (id2) => {
+  const resolve3 = (id2) => {
     const known = depthOf.get(id2);
     if (known !== void 0) return known;
     let deepest = 0;
     for (const edge of graph.prerequisiteEdges.get(id2) ?? []) {
       if (!scope.has(edge.to)) continue;
-      deepest = Math.max(deepest, resolve2(edge.to) + 1);
+      deepest = Math.max(deepest, resolve3(edge.to) + 1);
     }
     depthOf.set(id2, deepest);
     return deepest;
   };
-  for (const id2 of scope) resolve2(id2);
+  for (const id2 of scope) resolve3(id2);
   const layers = [];
   for (const id2 of scope) {
     const index = depthOf.get(id2) ?? 0;
@@ -3110,7 +3126,7 @@ function renderOutline(parent, host, graph, view) {
   const semanticHeading = authoredSemantic.length ? `Semantic \xB7 ${plural(authoredSemantic.length, "authored", "authored")}, ${drawnSemantic.length} drawn by this lens` : "Semantic \xB7 0 authored";
   const list2 = outline.createDiv({ cls: "los-atlas-outline-list" });
   enableButtonGroupKeyboardNavigation(list2, "vertical");
-  for (const [heading, edges, absence, hidden] of [
+  for (const [heading, edges, absence, hidden2] of [
     [
       `Visible prerequisite connections \xB7 ${plural(prerequisites.length, "authored", "authored")}`,
       prerequisites,
@@ -3124,17 +3140,17 @@ function renderOutline(parent, host, graph, view) {
       hiddenSemantic
     ]
   ]) {
-    if (!edges.length && !hidden.length && !absence) continue;
+    if (!edges.length && !hidden2.length && !absence) continue;
     list2.createDiv({ cls: "los-micro los-atlas-outline-group", text: heading });
-    if (!edges.length && !hidden.length) {
+    if (!edges.length && !hidden2.length) {
       list2.createDiv({ cls: "los-atlas-outline-absence los-micro", text: absence });
       continue;
     }
-    const total = edges.length + hidden.length;
+    const total = edges.length + hidden2.length;
     edges.forEach((edge, index) => {
       outlineRow(list2, host, graph, edge, view.focus.id, `${index + 1} of ${total}`);
     });
-    hidden.forEach((edge, index) => {
+    hidden2.forEach((edge, index) => {
       outlineRow(
         list2,
         host,
@@ -3240,15 +3256,15 @@ function conceptIds(value) {
 }
 function sourceNamesConcept(source, conceptId) {
   return Array.isArray(source.evaluations) && source.evaluations.some((evaluation) => {
-    const record6 = objectValue(evaluation);
-    return record6 ? conceptIds(record6.concepts).includes(conceptId) : false;
+    const record7 = objectValue(evaluation);
+    return record7 ? conceptIds(record7.concepts).includes(conceptId) : false;
   });
 }
 function byLabel(left, right) {
   return compareStrings(asLabel(left), asLabel(right));
 }
 function buildConceptContext(store, conceptId) {
-  const notes = store.related(conceptId).map((row3) => row3.rec).filter((record6) => record6?.type === "note").sort(byLabel);
+  const notes = store.related(conceptId).map((row3) => row3.rec).filter((record7) => record7?.type === "note").sort(byLabel);
   const sources = store.sources().filter((source) => sourceNamesConcept(source, conceptId)).sort(byLabel);
   return { notes, sources };
 }
@@ -3274,19 +3290,19 @@ function compare(left, right) {
 }
 function collectQuestions(store, graph) {
   const questions = [];
-  for (const record6 of store.of("note")) {
-    const block = asRecord(record6.atlas_question);
+  for (const record7 of store.of("note")) {
+    const block = asRecord(record7.atlas_question);
     if (!block) continue;
-    const noteId = asString(record6.id);
+    const noteId = asString(record7.id);
     const state = asString(block.state);
     const target = readTarget(block.target);
     if (!noteId || !target) continue;
     if (state !== "open" && state !== "resolved") continue;
     questions.push({
       noteId,
-      title: asString(record6.title) ?? noteId,
-      body: asString(record6.summary) ?? "",
-      path: asString(record6.path) ?? "",
+      title: asString(record7.title) ?? noteId,
+      body: asString(record7.summary) ?? "",
+      path: asString(record7.path) ?? "",
       state,
       target,
       answerNotes: asStrings(block.answer_notes),
@@ -3444,8 +3460,8 @@ function renderEndpoint(parent, host, graph, draft, end) {
   const paint = () => {
     results.empty();
     const query = draft.search.trim();
-    const matches = (query ? host.plugin.store.search(query, ["concept"]).map((record6) => asString(record6.id)).filter((id2) => Boolean(id2)) : graph.concepts.map((concept) => concept.id)).filter((id2) => id2 !== draft[end === "from" ? "to" : "from"]).slice(0, 12);
-    if (!matches.length) {
+    const matches2 = (query ? host.plugin.store.search(query, ["concept"]).map((record7) => asString(record7.id)).filter((id2) => Boolean(id2)) : graph.concepts.map((concept) => concept.id)).filter((id2) => id2 !== draft[end === "from" ? "to" : "from"]).slice(0, 12);
+    if (!matches2.length) {
       results.createDiv({
         cls: "los-atlas-absence los-micro",
         text: `Nothing matches \u201C${query}\u201D. Both ends must already be registered concepts; this never creates one.`
@@ -3453,7 +3469,7 @@ function renderEndpoint(parent, host, graph, draft, end) {
       return;
     }
     enableButtonGroupKeyboardNavigation(results, "vertical");
-    for (const id2 of matches) {
+    for (const id2 of matches2) {
       const row3 = results.createEl("button", {
         cls: "los-atlas-editor-result is-clickable",
         attr: { type: "button" },
@@ -3597,8 +3613,8 @@ var TABS = [
   ["evidence", "Evidence"],
   ["sources", "Sources"]
 ];
-function aliasesOf(record6) {
-  return Array.isArray(record6?.aliases) ? record6.aliases.map((value) => asString(value)).filter((value) => Boolean(value)) : [];
+function aliasesOf(record7) {
+  return Array.isArray(record7?.aliases) ? record7.aliases.map((value) => asString(value)).filter((value) => Boolean(value)) : [];
 }
 function connectionRow(parent, host, graph, edge, conceptId) {
   const other = otherEnd(edge, conceptId);
@@ -4282,8 +4298,8 @@ function renderEntry(parent, host, graph, searchOnly = false) {
   });
   const query = host.query.trim();
   if (query && searchOnly) {
-    const results = host.plugin.store.search(query, ["concept"]).filter((record6) => {
-      const id2 = asString(record6.id);
+    const results = host.plugin.store.search(query, ["concept"]).filter((record7) => {
+      const id2 = asString(record7.id);
       if (!id2) return false;
       if (!host.state.module) return true;
       return (graph.modulesByConcept.get(id2) ?? []).includes(host.state.module);
@@ -4301,8 +4317,8 @@ function renderEntry(parent, host, graph, searchOnly = false) {
     } else {
       const list2 = group.createDiv({ cls: "los-atlas-records" });
       enableButtonGroupKeyboardNavigation(list2, "vertical");
-      for (const record6 of results.slice(0, 20)) {
-        const id2 = asString(record6.id);
+      for (const record7 of results.slice(0, 20)) {
+        const id2 = asString(record7.id);
         if (!id2) continue;
         renderConceptSeed(list2, host, graph, id2);
       }
@@ -5654,33 +5670,33 @@ function renderElsewhere(view, root) {
     view.plugin.store.data?.resume_pointer
   );
   const rows = [];
-  for (const record6 of view.plugin.store.currentSemesterModules()) {
-    const recordId = asString(record6.id);
+  for (const record7 of view.plugin.store.currentSemesterModules()) {
+    const recordId = asString(record7.id);
     if (!recordId || recordId === pointer.module_id) {
       continue;
     }
-    if (record6.is_actionable !== true) {
+    if (record7.is_actionable !== true) {
       continue;
     }
     rows.push({
-      record: record6,
-      type: asString(record6.kind) === "skill" ? "Skill" : "Module",
+      record: record7,
+      type: asString(record7.kind) === "skill" ? "Skill" : "Module",
       open: () => view.plugin.nav.openModule(
         recordId
       )
     });
   }
-  for (const record6 of view.plugin.store.projects()) {
-    const recordId = asString(record6.id);
+  for (const record7 of view.plugin.store.projects()) {
+    const recordId = asString(record7.id);
     if (!recordId) {
       continue;
     }
-    const status = asString(record6.status);
+    const status = asString(record7.status);
     if (status && ["completed", "archived"].includes(status)) {
       continue;
     }
     rows.push({
-      record: record6,
+      record: record7,
       type: "Project",
       open: () => view.plugin.nav.openProject(
         recordId
@@ -6154,7 +6170,7 @@ var RELATED_LABELS = {
   program: "Areas"
 };
 function isLibraryScreen(value) {
-  return value === "home" || value === "group" || value === "source-detail" || value === "topic-pack-detail" || value === "catalogue-detail" || value === "legacy-list";
+  return value === "folder" || value === "home" || value === "group" || value === "source-detail" || value === "topic-pack-detail" || value === "catalogue-detail" || value === "legacy-list";
 }
 function isLibraryCollection2(value) {
   return value === "sources" || value === "topic-packs";
@@ -6167,7 +6183,7 @@ function isSourceFacet(value) {
 function readLibraryViewState(value, currentCollection, currentRecordType) {
   if (!isRecord2(value)) {
     return {
-      screen: "home",
+      screen: "folder",
       collection: currentCollection,
       groupId: null,
       query: "",
@@ -6177,13 +6193,19 @@ function readLibraryViewState(value, currentCollection, currentRecordType) {
       topicPackId: null,
       catalogueId: null,
       recordType: currentRecordType,
-      domain: ""
+      domain: "",
+      // A Library leaf with no persisted state opens on the folder browser:
+      // that is the Library's front door, and `home` is now the flat
+      // all-sources list reached from the sidebar.
+      folderPath: [],
+      folderSelection: null,
+      folderLayout: "list"
     };
   }
   const recordId = asString(value.recordId);
   const screen = isLibraryScreen(
     value.screen
-  ) ? value.screen : recordId ? "legacy-list" : "home";
+  ) ? value.screen : recordId ? "legacy-list" : "folder";
   const collection = isLibraryCollection2(
     value.collection
   ) ? value.collection : currentCollection;
@@ -6206,7 +6228,10 @@ function readLibraryViewState(value, currentCollection, currentRecordType) {
     topicPackId: asString(value.topicPackId),
     catalogueId: asString(value.catalogueId),
     recordType: asString(value.recordType) ?? currentRecordType,
-    domain: asString(value.domain) ?? ""
+    domain: asString(value.domain) ?? "",
+    folderPath: asLibraryFolderPath(value.folderPath),
+    folderSelection: asString(value.folderSelection),
+    folderLayout: asLibraryFolderLayout(value.folderLayout)
   };
 }
 function readThematicGroup(value) {
@@ -6363,7 +6388,7 @@ function readLibraryRecords(value) {
     return [];
   }
   return value.map(readLibraryRecord).filter(
-    (record6) => record6 !== null
+    (record7) => record7 !== null
   );
 }
 function readRelatedRecords(value) {
@@ -6375,9 +6400,9 @@ function readRelatedRecords(value) {
     if (!isRecord2(candidate)) {
       continue;
     }
-    const record6 = readLibraryRecord(candidate.rec);
-    if (record6) {
-      records.push(record6);
+    const record7 = readLibraryRecord(candidate.rec);
+    if (record7) {
+      records.push(record7);
     }
   }
   return records;
@@ -6390,23 +6415,41 @@ function isFileShapedPath(value) {
   const name = path.replace(/\\/g, "/").split("/").pop() ?? "";
   return /^[^./][^/]*\.[^./]+$/.test(name);
 }
-function isDirectMaterialFileTarget(record6) {
-  return record6.material_exists === true && isFileShapedPath(record6.material_path);
+function isDirectMaterialFileTarget(record7) {
+  return record7.material_exists === true && isFileShapedPath(record7.material_path);
 }
-function hasDirectResourceTarget(record6) {
-  if (isDirectMaterialFileTarget(record6)) return true;
-  const vaultPath = typeof record6.vault_path === "string" ? record6.vault_path.trim() : "";
+var QUALIFIED_PAGES = /(?:physical\s+PDF|physical|PDF)\s+(?:p{1,2}\.|pages?)\s*(\d{1,4})(?:\s*[-–—]\s*(\d{1,4}))?/i;
+function pageDestination(record7) {
+  const target = typeof record7.material_path === "string" ? record7.material_path : typeof record7.vault_path === "string" ? record7.vault_path : "";
+  if (!/\.pdf$/i.test(target.trim().split(/[?#]/, 1)[0] ?? "")) return null;
+  const locator = typeof record7.locator === "string" ? record7.locator : "";
+  const match = QUALIFIED_PAGES.exec(locator);
+  if (!match) return null;
+  const first = Number(match[1]);
+  const last = match[2] ? Number(match[2]) : null;
+  if (!Number.isInteger(first) || first < 1) return null;
+  if (last !== null && (!Number.isInteger(last) || last <= first)) {
+    return { page: first, label: `physical page ${first}` };
+  }
+  return {
+    page: first,
+    label: last === null ? `physical page ${first}` : `physical pages ${first}\u2013${last}`
+  };
+}
+function hasDirectResourceTarget(record7) {
+  if (isDirectMaterialFileTarget(record7)) return true;
+  const vaultPath = typeof record7.vault_path === "string" ? record7.vault_path.trim() : "";
   if (vaultPath && !vaultPath.toLowerCase().startsWith("material://") && isFileShapedPath(vaultPath)) return true;
-  return safeWebUrl(record6.url) !== null;
+  return safeWebUrl(record7.url) !== null;
 }
 
 // src/features/library/detail.ts
-function renderRecordActions(view, detail, record6) {
+function renderRecordActions(view, detail, record7) {
   const actions = detail.createDiv({
     cls: "los-actions"
   });
-  if (record6.url) {
-    const url = record6.url;
+  if (record7.url) {
+    const url = record7.url;
     button(
       actions,
       "Open online",
@@ -6416,29 +6459,29 @@ function renderRecordActions(view, detail, record6) {
       "info"
     );
   }
-  if (record6.materialPath && record6.materialExists === true) {
+  if (record7.materialPath && record7.materialExists === true) {
     button(
       actions,
-      isFileShapedPath(record6.materialPath) ? "Open local copy" : "Browse local collection",
+      isFileShapedPath(record7.materialPath) ? "Open local copy" : "Browse local collection",
       () => view.plugin.openMaterialPath(
-        record6.materialPath
+        record7.materialPath
       ),
       "info"
     );
   }
-  if (record6.path) {
+  if (record7.path) {
     button(
       actions,
       "Open authored file",
       () => view.plugin.openAuthoredPath(
-        record6.path
+        record7.path
       ),
       "info"
     );
   }
 }
-function renderAttachments(view, detail, record6) {
-  if (!record6.attachments.length) {
+function renderAttachments(view, detail, record7) {
+  if (!record7.attachments.length) {
     return;
   }
   const attachments = section(
@@ -6446,7 +6489,7 @@ function renderAttachments(view, detail, record6) {
     "Attachments",
     "Open the original handwriting, image, or PDF."
   );
-  for (const attachment of record6.attachments) {
+  for (const attachment of record7.attachments) {
     button(
       attachments,
       `Open ${attachment.label}`,
@@ -6457,10 +6500,10 @@ function renderAttachments(view, detail, record6) {
     );
   }
 }
-function renderRelated(view, detail, record6) {
+function renderRelated(view, detail, record7) {
   const related = readRelatedRecords(
     view.plugin.store.related(
-      record6.id
+      record7.id
     )
   );
   const groups = /* @__PURE__ */ new Map();
@@ -6530,7 +6573,7 @@ function renderRelated(view, detail, record6) {
     }
   }
 }
-function renderSourceDetail(view, detail, record6) {
+function renderSourceDetail(view, detail, record7) {
   const facts = section(
     detail,
     "Source facts"
@@ -6538,19 +6581,19 @@ function renderSourceDetail(view, detail, record6) {
   const factRows = [
     [
       "Authors",
-      record6.authors.join(", ")
+      record7.authors.join(", ")
     ],
     [
       "Organization",
-      record6.organization
+      record7.organization
     ],
     [
       "Year",
-      record6.year
+      record7.year
     ],
     [
       "Type",
-      record6.sourceType
+      record7.sourceType
     ]
   ];
   for (const [
@@ -6573,7 +6616,7 @@ function renderSourceDetail(view, detail, record6) {
     });
   }
   const memberships = view.shelfIndex().get(
-    record6.id
+    record7.id
   ) ?? [];
   const placed = section(
     detail,
@@ -6635,7 +6678,7 @@ function renderSourceDetail(view, detail, record6) {
   );
   const units = readLibraryRecords(
     view.plugin.store.useUnits(
-      record6.id
+      record7.id
     )
   );
   if (!units.length) {
@@ -6654,12 +6697,12 @@ function renderSourceDetail(view, detail, record6) {
       )
     );
   }
-  if (record6.evaluations.length) {
+  if (record7.evaluations.length) {
     const evidence2 = section(
       detail,
       "What this source is good for"
     );
-    for (const evaluation of record6.evaluations) {
+    for (const evaluation of record7.evaluations) {
       const card = evidence2.createDiv({
         cls: "los-evidence-card"
       });
@@ -6688,7 +6731,7 @@ function renderSourceDetail(view, detail, record6) {
     }
   }
 }
-function renderTechnical(view, detail, record6) {
+function renderTechnical(view, detail, record7) {
   const technical = disclosure(
     detail,
     "Technical details",
@@ -6703,17 +6746,17 @@ function renderTechnical(view, detail, record6) {
   });
   idRow.createSpan({
     cls: "los-fact-value los-detail-id",
-    text: record6.id
+    text: record7.id
   });
   button(
     technical,
     "Copy ID",
     () => view.plugin.copyText(
-      record6.id
+      record7.id
     ),
     "quiet"
   );
-  if (record6.path) {
+  if (record7.path) {
     const pathRow = technical.createDiv({
       cls: "los-fact-row"
     });
@@ -6723,21 +6766,21 @@ function renderTechnical(view, detail, record6) {
     });
     pathRow.createSpan({
       cls: "los-fact-value",
-      text: record6.path
+      text: record7.path
     });
   }
 }
 
 // src/features/library/collections.ts
-function renderRecordRow(view, list2, record6, isPack = false) {
+function renderRecordRow(view, list2, record7, isPack = false) {
   const row3 = list2.createEl(
     "button",
     {
       cls: "los-route-row is-clickable",
       attr: {
         type: "button",
-        "aria-label": `Open ${record6.title}`,
-        "data-record-id": record6.id
+        "aria-label": `Open ${record7.title}`,
+        "data-record-id": record7.id
       }
     }
   );
@@ -6747,18 +6790,18 @@ function renderRecordRow(view, list2, record6, isPack = false) {
   copy.createEl(
     "strong",
     {
-      text: record6.title
+      text: record7.title
     }
   );
   const meta = isPack ? [
-    record6.purpose,
-    `${record6.entries.length} items`
+    record7.purpose,
+    `${record7.entries.length} items`
   ].filter(Boolean).join(" \xB7 ") : [
-    record6.sourceType,
-    record6.year,
-    record6.organization,
-    record6.materialExists || record6.materialPath ? "local" : null,
-    record6.url ? "online" : null
+    record7.sourceType,
+    record7.year,
+    record7.organization,
+    record7.materialExists || record7.materialPath ? "local" : null,
+    record7.url ? "online" : null
   ].filter(Boolean).join(" \xB7 ");
   if (meta) {
     copy.createDiv({
@@ -6773,17 +6816,17 @@ function renderRecordRow(view, list2, record6, isPack = false) {
   row3.addEventListener(
     "click",
     () => {
-      view.selectedElementId = record6.id;
+      view.selectedElementId = record7.id;
       if (isPack) {
         view.plugin.nav.openTopicPackDetail(
-          record6.id,
+          record7.id,
           view.groupId,
           view.query
         );
         return;
       }
       view.plugin.nav.openSourceDetail(
-        record6.id,
+        record7.id,
         view.groupId,
         view.query,
         view.facet,
@@ -6793,7 +6836,7 @@ function renderRecordRow(view, list2, record6, isPack = false) {
   );
 }
 function renderSourcePage(view, root) {
-  const record6 = readLibraryRecord(
+  const record7 = readLibraryRecord(
     view.resourceId ? view.plugin.store.get(
       view.resourceId
     ) : null
@@ -6805,7 +6848,7 @@ function renderSourcePage(view, root) {
     "quiet"
   );
   back.addClass("los-route-back");
-  if (!record6 || record6.type !== "source") {
+  if (!record7 || record7.type !== "source") {
     empty(
       root,
       "Learning source unavailable",
@@ -6821,28 +6864,28 @@ function renderSourcePage(view, root) {
   pageHeader(
     detail,
     "Learning Source",
-    record6.title,
-    record6.summary
+    record7.title,
+    record7.summary
   );
   view.renderRecordActions(
     detail,
-    record6
+    record7
   );
   view.renderAttachments(
     detail,
-    record6
+    record7
   );
   view.renderSourceDetail(
     detail,
-    record6
+    record7
   );
   view.renderRelated(
     detail,
-    record6
+    record7
   );
   view.renderTechnical(
     detail,
-    record6
+    record7
   );
 }
 function renderTopicPackPage(view, root) {
@@ -7079,7 +7122,7 @@ function renderLegacyList(view, root) {
   );
   if (view.domain) {
     rows = rows.filter(
-      (record6) => record6.domain === view.domain
+      (record7) => record7.domain === view.domain
     );
   }
   rows.sort(
@@ -7099,14 +7142,14 @@ function renderLegacyList(view, root) {
   const list2 = root.createDiv({
     cls: "los-route-list"
   });
-  for (const record6 of rows) {
+  for (const record7 of rows) {
     const row3 = list2.createEl(
       "button",
       {
         cls: "los-route-row is-clickable",
         attr: {
           type: "button",
-          "data-record-id": record6.id
+          "data-record-id": record7.id
         }
       }
     );
@@ -7116,33 +7159,33 @@ function renderLegacyList(view, root) {
     copy.createEl(
       "strong",
       {
-        text: record6.title
+        text: record7.title
       }
     );
     copy.createDiv({
       cls: "los-route-meta",
       text: [
-        record6.role,
-        record6.domain,
-        record6.state
+        record7.role,
+        record7.domain,
+        record7.state
       ].filter(Boolean).join(" \xB7 ")
     });
     row3.createSpan({
       cls: "los-route-open",
-      text: record6.path ? "Open file \u2192" : "Open \u2192"
+      text: record7.path ? "Open file \u2192" : "Open \u2192"
     });
     row3.addEventListener(
       "click",
       () => {
-        view.selectedElementId = record6.id;
-        if (record6.path) {
+        view.selectedElementId = record7.id;
+        if (record7.path) {
           view.plugin.openAuthoredPath(
-            record6.path
+            record7.path
           );
           return;
         }
         view.plugin.nav.openRecord(
-          record6.record
+          record7.record
         );
       }
     );
@@ -7235,6 +7278,12 @@ function renderCollectionSwitch(view, root) {
     }
   });
   enableButtonGroupKeyboardNavigation(switcher);
+  button(
+    switcher,
+    "Folders",
+    () => view.plugin.nav.openLibraryFolder([]),
+    "quiet"
+  );
   for (const [
     id2,
     label
@@ -7313,19 +7362,19 @@ function renderGroup(view, root) {
   );
   const needle = foldCase(view.query.trim());
   const words2 = needle.split(/\s+/).filter(Boolean);
-  const rows = all.filter((record6) => {
+  const rows = all.filter((record7) => {
     if (!words2.length) {
       return true;
     }
     const hay = foldCase(
       [
-        record6.id,
-        record6.title,
-        record6.purpose,
-        record6.summary,
-        ...record6.aliases,
-        ...record6.authors,
-        record6.organization
+        record7.id,
+        record7.title,
+        record7.purpose,
+        record7.summary,
+        ...record7.aliases,
+        ...record7.authors,
+        record7.organization
       ].filter(Boolean).join(" ")
     );
     return words2.every(
@@ -7359,13 +7408,1335 @@ function renderGroup(view, root) {
   const list2 = root.createDiv({
     cls: "los-route-list los-library-route-list"
   });
-  for (const record6 of rows) {
+  for (const record7 of rows) {
     view.renderRecordRow(
       list2,
-      record6,
+      record7,
       true
     );
   }
+}
+
+// src/infrastructure/material-tree.ts
+var fs = __toESM(require("node:fs"));
+var nodePath = __toESM(require("node:path"));
+var HIDDEN_NAMES = /* @__PURE__ */ new Set([".flat", ".git", ".ds_store", "__pycache__"]);
+function hidden(name) {
+  return name.startsWith(".") || HIDDEN_NAMES.has(foldCase(name));
+}
+function containedRealPath(root, candidate) {
+  try {
+    const realRoot = fs.realpathSync(root);
+    const realCandidate = fs.realpathSync(candidate);
+    const relative3 = nodePath.relative(realRoot, realCandidate);
+    return relative3.startsWith("..") || nodePath.isAbsolute(relative3) ? null : realCandidate;
+  } catch (_) {
+    return null;
+  }
+}
+var MaterialTree = class {
+  constructor(app) {
+    this.app = app;
+  }
+  roots() {
+    const vault = this.app.vault.adapter.getBasePath();
+    const learningRoot = nodePath.dirname(vault);
+    return {
+      learningRoot,
+      materialsRoot: nodePath.resolve(learningRoot, "materials")
+    };
+  }
+  /** The real, contained path for a projected `materials/…` path, or null. */
+  resolve(path) {
+    if (!path) return null;
+    const { learningRoot, materialsRoot } = this.roots();
+    const full = nodePath.resolve(learningRoot, path);
+    const lexical = nodePath.relative(materialsRoot, full);
+    if (lexical.startsWith("..") || nodePath.isAbsolute(lexical)) return null;
+    return containedRealPath(materialsRoot, full);
+  }
+  /** True when the projected path is a directory the browser can descend into. */
+  isDirectory(path) {
+    const real = this.resolve(path);
+    if (!real) return false;
+    try {
+      return fs.statSync(real).isDirectory();
+    } catch (_) {
+      return false;
+    }
+  }
+  /** Immediate visible items, without stat-ing or descending into any of them. */
+  count(path) {
+    const real = this.resolve(path);
+    if (!real) return 0;
+    try {
+      return fs.readdirSync(real).filter((name) => !hidden(name)).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+  /**
+   * One directory level, folders before files, each in the app's fixed
+   * collation — which is numeric, so `VL 02` precedes `VL 11` rather than
+   * sorting between `VL 10` and `VL 12`.
+   *
+   * `readdir` already reports the type, so the only syscalls past it are the
+   * ones that answer a question the caller can see: one `stat` per file for its
+   * size (and per symlink, to learn what it points at), and one `readdir` per
+   * subdirectory for its item count. A `stat` on every plain directory would
+   * buy nothing.
+   */
+  list(path) {
+    const real = this.resolve(path);
+    if (!real) return [];
+    let dirents;
+    try {
+      dirents = fs.readdirSync(real, { withFileTypes: true });
+    } catch (_) {
+      return [];
+    }
+    const entries = [];
+    const parent = path.replace(/\/+$/, "");
+    for (const dirent of dirents) {
+      if (hidden(dirent.name)) continue;
+      const absolute = nodePath.join(real, dirent.name);
+      let isDirectory = dirent.isDirectory();
+      let size = 0;
+      if (dirent.isSymbolicLink() || !isDirectory) {
+        try {
+          const stat = fs.statSync(absolute);
+          isDirectory = stat.isDirectory();
+          size = isDirectory ? 0 : stat.size;
+        } catch (_) {
+          isDirectory = false;
+        }
+      }
+      entries.push({
+        path: `${parent}/${dirent.name}`,
+        name: dirent.name,
+        isDirectory,
+        size,
+        childCount: isDirectory ? this.countAt(absolute) : 0
+      });
+    }
+    return entries.sort((left, right) => {
+      if (left.isDirectory !== right.isDirectory) return left.isDirectory ? -1 : 1;
+      return compareStrings(left.name, right.name);
+    });
+  }
+  /** Item count for an already-resolved absolute directory. */
+  countAt(absolute) {
+    try {
+      return fs.readdirSync(absolute).filter((name) => !hidden(name)).length;
+    } catch (_) {
+      return 0;
+    }
+  }
+};
+function formatBytes(size) {
+  if (!Number.isFinite(size) || size <= 0) return "";
+  const units = ["bytes", "KB", "MB", "GB"];
+  let value = size;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit += 1;
+  }
+  const rounded = unit === 0 ? Math.round(value) : Math.round(value * 10) / 10;
+  return `${rounded} ${units[unit]}`;
+}
+
+// src/features/library/finder-tree.ts
+var MATERIAL_TYPES = [
+  ["lecture", "Lecture Slides", "presentation"],
+  ["book", "Books", "book"],
+  ["course", "Courses", "graduation-cap"],
+  ["video", "Videos", "monitor-play"],
+  ["paper", "Papers", "newspaper"],
+  ["documentation", "Documentation", "file-code"],
+  ["website", "Websites & Links", "globe"],
+  ["software", "Software & Tools", "wrench"],
+  ["other", "Other", "file-question"]
+];
+var MODULE_BUCKETS = [
+  ["lecture-slides", "Lecture Slides", "presentation"],
+  ["past-exams", "Past Exams & Mocks", "clipboard-list"],
+  ["exercises", "Exercise Sheets", "pen-tool"],
+  ["recordings", "Recordings", "monitor-play"],
+  ["reading", "Books & Reading", "book"],
+  ["courses", "Courses", "graduation-cap"],
+  ["reference", "Documentation & Tools", "file-code"],
+  ["links", "Websites & Links", "globe"],
+  ["other", "Other", "file-question"]
+];
+var MATERIAL_TYPE_BY_ID = new Map(
+  MATERIAL_TYPES.map(([type, label, icon2]) => [type, { label, icon: icon2 }])
+);
+var MODULE_BUCKET_BY_ID = new Map(
+  MODULE_BUCKETS.map(([bucket, label, icon2]) => [bucket, { label, icon: icon2 }])
+);
+var FILE_KINDS = {
+  pdf: ["PDF document", "file-text"],
+  djvu: ["Scanned document", "file-text"],
+  epub: ["E-book", "book"],
+  md: ["Markdown", "file-text"],
+  txt: ["Plain text", "file-text"],
+  tex: ["LaTeX source", "file-code"],
+  html: ["Web page", "globe"],
+  htm: ["Web page", "globe"],
+  ipynb: ["Notebook", "file-code"],
+  py: ["Python source", "file-code"],
+  ts: ["TypeScript source", "file-code"],
+  js: ["JavaScript source", "file-code"],
+  rs: ["Rust source", "file-code"],
+  json: ["JSON data", "file-code"],
+  yaml: ["YAML data", "file-code"],
+  yml: ["YAML data", "file-code"],
+  csv: ["Table", "table-2"],
+  tsv: ["Table", "table-2"],
+  xlsx: ["Spreadsheet", "table-2"],
+  zip: ["Archive", "archive"],
+  tar: ["Archive", "archive"],
+  gz: ["Archive", "archive"],
+  png: ["Image", "image"],
+  jpg: ["Image", "image"],
+  jpeg: ["Image", "image"],
+  svg: ["Image", "image"],
+  gif: ["Image", "image"],
+  mp4: ["Video", "monitor-play"],
+  mkv: ["Video", "monitor-play"],
+  mp3: ["Audio", "monitor-play"]
+};
+var ROOT_SHELVES = {
+  skills: "shelf:skills",
+  packs: "shelf:packs",
+  catalogues: "shelf:catalogues",
+  unfiled: "shelf:unfiled",
+  unregistered: "shelf:unregistered"
+};
+var MATERIAL_BOOKKEEPING = /* @__PURE__ */ new Set([
+  "sources.md",
+  "readme.md",
+  "files.txt",
+  "index.html"
+]);
+var MAX_DEPTH = 12;
+var NO_RECORDS = [];
+function segment(prefix, value) {
+  return `${prefix}:${value}`;
+}
+function parseSegment(value) {
+  const at = value.indexOf(":");
+  return at < 0 ? [value, ""] : [value.slice(0, at), value.slice(at + 1)];
+}
+function titleOf(record7) {
+  if (!record7) return "Unknown";
+  return asText(record7.title) ?? asString(record7.id) ?? "Unknown";
+}
+function byTitle(left, right) {
+  return compareStrings(titleOf(left), titleOf(right));
+}
+function hostOf(url) {
+  try {
+    return new URL(url).host.replace(/^www\./, "");
+  } catch (_) {
+    return url;
+  }
+}
+function fileKind(name) {
+  const dot = name.lastIndexOf(".");
+  const extension = dot > 0 ? foldCase(name.slice(dot + 1)) : "";
+  const known = FILE_KINDS[extension];
+  if (known) return known;
+  return extension ? [`${upperCase(extension)} file`, "file"] : ["Document", "file"];
+}
+function sourceRoles2(source) {
+  const roles = new Set(asStrings(source.roles));
+  const evaluations = Array.isArray(source.evaluations) ? source.evaluations : [];
+  for (const evaluation of evaluations) {
+    if (!evaluation || typeof evaluation !== "object") continue;
+    for (const role of asStrings(evaluation.roles)) {
+      roles.add(role);
+    }
+  }
+  return roles;
+}
+function sourceTypeOf(source) {
+  const type = foldCase(asString(source.source_type) ?? "");
+  return MATERIAL_TYPE_BY_ID.has(type) ? type : "other";
+}
+function bucketFor(source) {
+  const type = sourceTypeOf(source);
+  if (type === "lecture") return "lecture-slides";
+  const roles = sourceRoles2(source);
+  if (roles.has("mock-exam")) return "past-exams";
+  if (roles.has("exercise") || roles.has("practice")) return "exercises";
+  if (type === "video") return "recordings";
+  if (type === "book" || type === "paper") return "reading";
+  if (type === "course") return "courses";
+  if (type === "documentation" || type === "software") return "reference";
+  if (type === "website") return "links";
+  return "other";
+}
+function authorLine(source) {
+  const authors = asStrings(source.authors);
+  const who = authors.length ? authors.length > 2 ? `${authors[0]} et al.` : authors.join(" & ") : asText(source.organization) ?? "";
+  const year = asText(source.year) ?? "";
+  return [who, year].filter(Boolean).join(" \xB7 ");
+}
+function push2(map, key, value) {
+  const current = map.get(key);
+  if (current) current.push(value);
+  else map.set(key, [value]);
+}
+function buildIndex(store) {
+  const groups = store.thematicGroups();
+  const groupById = /* @__PURE__ */ new Map();
+  for (const group of groups) {
+    const id2 = asString(group.id);
+    if (id2) groupById.set(id2, group);
+  }
+  const sourcesByGroup = /* @__PURE__ */ new Map();
+  const sourcesByModule = /* @__PURE__ */ new Map();
+  const typeOf = /* @__PURE__ */ new Map();
+  const bucketOf = /* @__PURE__ */ new Map();
+  const domainsOf = /* @__PURE__ */ new Map();
+  const unfiled = [];
+  const claimedMaterial = /* @__PURE__ */ new Set();
+  const materialParents = /* @__PURE__ */ new Set();
+  for (const source of store.sources().slice().sort(byTitle)) {
+    const id2 = asString(source.id);
+    if (!id2) continue;
+    typeOf.set(id2, sourceTypeOf(source));
+    bucketOf.set(id2, bucketFor(source));
+    const claim = (asString(source.material_path) ?? "").replace(/\/+$/, "");
+    if (claim && source.material_exists === true) {
+      claimedMaterial.add(claim);
+      const parts = claim.split("/");
+      for (let cut = parts.length - 1; cut > 0; cut -= 1) {
+        claimedMaterial.add(parts.slice(0, cut).join("/"));
+      }
+      materialParents.add(parts.slice(0, -1).join("/"));
+    }
+    const own = asStrings(source.thematic_group_ids).filter((groupId) => groupById.has(groupId));
+    domainsOf.set(id2, own.length);
+    if (own.length) {
+      for (const groupId of own) push2(sourcesByGroup, groupId, source);
+    } else {
+      unfiled.push(source);
+    }
+    for (const module2 of store.useModules(id2)) {
+      const moduleId = asString(module2.id);
+      if (moduleId) push2(sourcesByModule, moduleId, source);
+    }
+  }
+  const modulesByGroup = /* @__PURE__ */ new Map();
+  const ungroupedModules = [];
+  for (const module2 of store.modules().slice().sort(byTitle)) {
+    const own = asStrings(module2.thematic_group_ids).filter((groupId) => groupById.has(groupId));
+    if (own.length) {
+      for (const groupId of own) push2(modulesByGroup, groupId, module2);
+    } else {
+      ungroupedModules.push(module2);
+    }
+  }
+  return {
+    groups,
+    groupById,
+    sourcesByGroup,
+    unfiled,
+    modulesByGroup,
+    ungroupedModules,
+    sourcesByModule,
+    typeOf,
+    bucketOf,
+    domainsOf,
+    sourceCount: typeOf.size,
+    claimedMaterial,
+    materialParents: [...materialParents].sort(compareStrings)
+  };
+}
+function unregisteredMaterial(context) {
+  if (context.unregistered) return context.unregistered;
+  const { index, materials } = context;
+  const found = [];
+  for (const parent of index.materialParents) {
+    const where = parent.replace(/^materials\//, "");
+    for (const entry of materials.list(parent)) {
+      if (index.claimedMaterial.has(entry.path)) continue;
+      if (MATERIAL_BOOKKEEPING.has(foldCase(entry.name))) continue;
+      const base = materialEntry(entry);
+      found.push({
+        ...base,
+        detail: [where, base.detail].filter(Boolean).join(" \xB7 ")
+      });
+    }
+  }
+  found.sort((left, right) => compareStrings(
+    left.materialPath ?? left.name,
+    right.materialPath ?? right.name
+  ));
+  context.unregistered = found;
+  return found;
+}
+function createFinderContext(store, materials) {
+  return { store, materials, index: buildIndex(store) };
+}
+function sourcesInGroup(index, groupId) {
+  return index.sourcesByGroup.get(groupId) ?? NO_RECORDS;
+}
+function modulesInGroup(index, groupId) {
+  return index.modulesByGroup.get(groupId) ?? NO_RECORDS;
+}
+function sourcesInModule(index, moduleId) {
+  return index.sourcesByModule.get(moduleId) ?? NO_RECORDS;
+}
+function typeIdOf(index, source) {
+  const id2 = asString(source.id);
+  return (id2 ? index.typeOf.get(id2) : void 0) ?? "other";
+}
+function bucketIdOf(index, source) {
+  const id2 = asString(source.id);
+  return (id2 ? index.bucketOf.get(id2) : void 0) ?? "other";
+}
+function tally(sources, keyOf) {
+  const counts = /* @__PURE__ */ new Map();
+  for (const source of sources) {
+    const key = keyOf(source);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+function folderEntry(options) {
+  return {
+    segment: options.segment,
+    kind: options.kind,
+    name: options.name,
+    icon: options.icon,
+    kindLabel: options.kindLabel,
+    isFolder: true,
+    count: options.count,
+    detail: options.detail ?? "",
+    sourceId: null,
+    materialPath: null,
+    url: null,
+    alsoIn: 0
+  };
+}
+function sourceEntry(context, source) {
+  const { index, materials } = context;
+  const id2 = asString(source.id) ?? "";
+  const materialPath = asString(source.material_path);
+  const url = asString(source.url);
+  const hasLocal = Boolean(materialPath) && source.material_exists === true;
+  const isFolder = hasLocal && materials.isDirectory(materialPath ?? "");
+  const typeLabel2 = MATERIAL_TYPE_BY_ID.get(typeIdOf(index, source))?.label ?? "Other";
+  const [fileLabel, fileIcon] = fileKind(materialPath ?? "");
+  return {
+    segment: segment("source", id2),
+    kind: "source",
+    name: titleOf(source),
+    icon: isFolder ? "folder" : hasLocal ? fileIcon : url ? "globe" : "file-question",
+    kindLabel: isFolder ? `${typeLabel2.replace(/s$/, "")} collection` : hasLocal ? fileLabel : url ? "Web link" : "Registry entry",
+    isFolder,
+    count: isFolder ? materials.count(materialPath ?? "") : null,
+    detail: [
+      authorLine(source),
+      isFolder ? "local collection" : hasLocal ? "local copy" : url ? hostOf(url) : ""
+    ].filter(Boolean).join(" \xB7 "),
+    sourceId: id2,
+    materialPath,
+    url,
+    alsoIn: index.domainsOf.get(id2) ?? 0
+  };
+}
+function materialEntry(entry) {
+  const [kindLabel, iconName] = entry.isDirectory ? ["Folder", "folder"] : fileKind(entry.name);
+  return {
+    segment: segment("at", entry.path),
+    kind: entry.isDirectory ? "directory" : "file",
+    name: entry.name,
+    icon: iconName,
+    kindLabel,
+    isFolder: entry.isDirectory,
+    count: entry.isDirectory ? entry.childCount : null,
+    detail: entry.isDirectory ? "" : formatBytes(entry.size),
+    sourceId: null,
+    materialPath: entry.path,
+    url: null,
+    alsoIn: 0
+  };
+}
+function moduleEntry(context, module2) {
+  const { index } = context;
+  const id2 = asString(module2.id) ?? "";
+  const sources = sourcesInModule(index, id2);
+  return folderEntry({
+    segment: segment("module", id2),
+    kind: "module",
+    name: titleOf(module2),
+    icon: "book-open",
+    kindLabel: asText(module2.kind) === "skill" ? "Skill track" : "Module",
+    count: tally(sources, (source) => bucketIdOf(index, source)).size,
+    detail: [
+      asText(module2.code) ?? "",
+      asText(module2.semester) ?? "",
+      `${sources.length} source${sources.length === 1 ? "" : "s"}`
+    ].filter(Boolean).join(" \xB7 ")
+  });
+}
+function shelfSources(store, shelf) {
+  const entries = Array.isArray(shelf.entries) ? shelf.entries : [];
+  const sources = [];
+  const seen = /* @__PURE__ */ new Set();
+  for (const entry of entries) {
+    const id2 = typeof entry === "string" ? entry : entry && typeof entry === "object" ? asString(entry.source) : null;
+    if (!id2 || seen.has(id2)) continue;
+    seen.add(id2);
+    const source = store.get(id2);
+    if (source?.type === "source") sources.push(source);
+  }
+  return sources;
+}
+function folder(options) {
+  return {
+    path: options.path,
+    name: options.name,
+    icon: options.icon,
+    kindLabel: options.kindLabel,
+    description: options.description ?? "",
+    entries: options.entries,
+    missing: false,
+    sourceId: options.sourceId ?? null
+  };
+}
+function unavailable(path) {
+  return {
+    path,
+    name: "Folder unavailable",
+    icon: "file-question",
+    kindLabel: "Folder",
+    description: "This path is not in the current projection. Go back up, or rebuild the views.",
+    entries: [],
+    missing: true,
+    sourceId: null
+  };
+}
+function plural2(count, noun) {
+  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+}
+function rootEntries(context) {
+  const { index, store } = context;
+  const entries = [];
+  for (const group of index.groups) {
+    const id2 = asString(group.id);
+    if (!id2) continue;
+    const sources = sourcesInGroup(index, id2);
+    const modules = modulesInGroup(index, id2);
+    entries.push(folderEntry({
+      segment: segment("domain", id2),
+      kind: "domain",
+      name: titleOf(group),
+      icon: "folder",
+      kindLabel: "Domain",
+      count: tally(sources, (source) => typeIdOf(index, source)).size + (modules.length ? 1 : 0),
+      detail: [
+        plural2(sources.length, "source"),
+        modules.length ? plural2(modules.length, "module") : ""
+      ].filter(Boolean).join(" \xB7 ")
+    }));
+  }
+  if (index.ungroupedModules.length) {
+    entries.push(folderEntry({
+      segment: ROOT_SHELVES.skills,
+      kind: "shelf",
+      name: "Skill Tracks",
+      icon: "wrench",
+      kindLabel: "Shelf",
+      count: index.ungroupedModules.length,
+      detail: "modules that carry no domain"
+    }));
+  }
+  const packs = store.topicPacks();
+  if (packs.length) {
+    entries.push(folderEntry({
+      segment: ROOT_SHELVES.packs,
+      kind: "shelf",
+      name: "Curated Packs",
+      icon: "notebook-tabs",
+      kindLabel: "Shelf",
+      count: packs.length,
+      detail: "hand-ordered, purpose-built"
+    }));
+  }
+  const catalogues = store.catalogues();
+  if (catalogues.length) {
+    entries.push(folderEntry({
+      segment: ROOT_SHELVES.catalogues,
+      kind: "shelf",
+      name: "Catalogues",
+      icon: "library-big",
+      kindLabel: "Shelf",
+      count: catalogues.length,
+      detail: "standing shelves across domains"
+    }));
+  }
+  const unregistered = unregisteredMaterial(context);
+  if (unregistered.length) {
+    entries.push(folderEntry({
+      segment: ROOT_SHELVES.unregistered,
+      kind: "shelf",
+      name: "Not in the registry",
+      icon: "hard-drive",
+      kindLabel: "Shelf",
+      count: unregistered.length,
+      detail: "on disk, claimed by no source"
+    }));
+  }
+  if (index.unfiled.length) {
+    entries.push(folderEntry({
+      segment: ROOT_SHELVES.unfiled,
+      kind: "shelf",
+      name: "Unfiled",
+      icon: "file-question",
+      kindLabel: "Shelf",
+      count: index.unfiled.length,
+      detail: "no domain recorded yet"
+    }));
+  }
+  return entries;
+}
+function domainEntries(context, groupId) {
+  const { index } = context;
+  const modules = modulesInGroup(index, groupId);
+  const entries = [];
+  if (modules.length) {
+    entries.push(folderEntry({
+      segment: "modules",
+      kind: "bucket",
+      name: "Modules",
+      icon: "graduation-cap",
+      kindLabel: "Folder",
+      count: modules.length,
+      detail: "what is taught from this domain"
+    }));
+  }
+  const counts = tally(
+    sourcesInGroup(index, groupId),
+    (source) => typeIdOf(index, source)
+  );
+  for (const [type, label, icon2] of MATERIAL_TYPES) {
+    const count = counts.get(type) ?? 0;
+    if (!count) continue;
+    entries.push(folderEntry({
+      segment: segment("type", type),
+      kind: "bucket",
+      name: label,
+      icon: icon2,
+      kindLabel: "Folder",
+      count
+    }));
+  }
+  return entries;
+}
+function moduleBucketEntries(context, moduleId) {
+  const { index } = context;
+  const counts = tally(
+    sourcesInModule(index, moduleId),
+    (source) => bucketIdOf(index, source)
+  );
+  const entries = [];
+  for (const [bucket, label, icon2] of MODULE_BUCKETS) {
+    const count = counts.get(bucket) ?? 0;
+    if (!count) continue;
+    entries.push(folderEntry({
+      segment: segment("bucket", bucket),
+      kind: "bucket",
+      name: label,
+      icon: icon2,
+      kindLabel: "Folder",
+      count
+    }));
+  }
+  return entries;
+}
+function folderAt(context, path) {
+  if (path.length > MAX_DEPTH) return unavailable(path);
+  if (!path.length) {
+    return folder({
+      path,
+      name: "Library",
+      icon: "library",
+      kindLabel: "Library",
+      description: "Everything you possess, one folder per domain. A source may sit in more than one folder \u2014 that is one record seen from two domains, not a copy.",
+      entries: rootEntries(context)
+    });
+  }
+  const [head = "", ...rest] = path;
+  const [prefix, value] = parseSegment(head);
+  if (prefix === "domain") {
+    if (!context.index.groupById.has(value)) return unavailable(path);
+    return domainFolder(context, value, rest, path);
+  }
+  if (prefix === "shelf") return shelfFolder(context, value, rest, path);
+  return unavailable(path);
+}
+function domainFolder(context, groupId, rest, full) {
+  const { index } = context;
+  const group = index.groupById.get(groupId) ?? null;
+  const title = group ? titleOf(group) : groupId;
+  if (!rest.length) {
+    return folder({
+      path: full,
+      name: title,
+      icon: "folder-open",
+      kindLabel: "Domain",
+      description: asText(group?.description) ?? "",
+      entries: domainEntries(context, groupId)
+    });
+  }
+  const [head = "", ...tail] = rest;
+  const [prefix, value] = parseSegment(head);
+  if (head === "modules") {
+    if (!tail.length) {
+      return folder({
+        path: full,
+        name: "Modules",
+        icon: "graduation-cap",
+        kindLabel: "Folder",
+        description: `What ${title} is taught as. Each module holds only the sources actually routed to it.`,
+        entries: modulesInGroup(index, groupId).map((module2) => moduleEntry(context, module2))
+      });
+    }
+    return moduleFolder(context, tail, full);
+  }
+  if (prefix === "type") {
+    const definition = MATERIAL_TYPE_BY_ID.get(value);
+    if (!definition) return unavailable(full);
+    if (!tail.length) {
+      return folder({
+        path: full,
+        name: definition.label,
+        icon: definition.icon,
+        kindLabel: "Folder",
+        description: `${definition.label} in ${title}.`,
+        entries: sourcesInGroup(index, groupId).filter((source) => typeIdOf(index, source) === value).map((source) => sourceEntry(context, source))
+      });
+    }
+    return sourceFolder(context, tail, full);
+  }
+  return unavailable(full);
+}
+function moduleFolder(context, rest, full) {
+  const { index, store } = context;
+  const [head = "", ...tail] = rest;
+  const [prefix, moduleId] = parseSegment(head);
+  if (prefix !== "module") return unavailable(full);
+  const module2 = store.get(moduleId);
+  if (module2?.type !== "module") return unavailable(full);
+  if (!tail.length) {
+    return folder({
+      path: full,
+      name: titleOf(module2),
+      icon: "book-open",
+      kindLabel: "Module",
+      description: "Its own material, split the way a semester is: slides, exams, exercises, then everything it reads from.",
+      entries: moduleBucketEntries(context, moduleId)
+    });
+  }
+  const [next = "", ...deeper] = tail;
+  const [nextPrefix, bucket] = parseSegment(next);
+  if (nextPrefix !== "bucket") return unavailable(full);
+  const definition = MODULE_BUCKET_BY_ID.get(bucket);
+  if (!definition) return unavailable(full);
+  if (!deeper.length) {
+    return folder({
+      path: full,
+      name: definition.label,
+      icon: definition.icon,
+      kindLabel: "Folder",
+      description: `${definition.label} for ${titleOf(module2)}.`,
+      entries: sourcesInModule(index, moduleId).filter((source) => bucketIdOf(index, source) === bucket).map((source) => sourceEntry(context, source))
+    });
+  }
+  return sourceFolder(context, deeper, full);
+}
+function shelfFolder(context, shelf, rest, full) {
+  const { index, store } = context;
+  if (shelf === "skills") {
+    if (!rest.length) {
+      return folder({
+        path: full,
+        name: "Skill Tracks",
+        icon: "wrench",
+        kindLabel: "Shelf",
+        description: "Modules with no thematic group of their own. They are here rather than guessed into a domain; their sources still appear under every domain they are registered in.",
+        entries: index.ungroupedModules.map((module2) => moduleEntry(context, module2))
+      });
+    }
+    return moduleFolder(context, rest, full);
+  }
+  if (shelf === "unfiled") {
+    if (!rest.length) {
+      return folder({
+        path: full,
+        name: "Unfiled",
+        icon: "file-question",
+        kindLabel: "Shelf",
+        description: "Sources with no thematic group recorded. Nothing is lost here \u2014 this folder is what lets the tree hold everything, and it empties as domains are recorded.",
+        entries: index.unfiled.map((source) => sourceEntry(context, source))
+      });
+    }
+    return sourceFolder(context, rest, full);
+  }
+  if (shelf === "unregistered") {
+    if (!rest.length) {
+      return folder({
+        path: full,
+        name: "Not in the registry",
+        icon: "hard-drive",
+        kindLabel: "Shelf",
+        description: "Files sitting beside registered material that no source record claims \u2014 most often a sibling folder, such as the exercise slides next to a lecture deck. They are browsable here so nothing on disk is invisible, but they carry no evaluation, no domain and no module until a source is recorded for them, which is a change only the core can make.",
+        entries: unregisteredMaterial(context)
+      });
+    }
+    const [lastPrefix, path] = parseSegment(rest[rest.length - 1] ?? "");
+    if (lastPrefix !== "at" || !context.materials.isDirectory(path)) {
+      return unavailable(full);
+    }
+    return folder({
+      path: full,
+      name: path.split("/").pop() || path,
+      icon: "folder-open",
+      kindLabel: "Folder",
+      entries: context.materials.list(path).map(materialEntry)
+    });
+  }
+  if (shelf !== "packs" && shelf !== "catalogues") return unavailable(full);
+  const isPacks = shelf === "packs";
+  const prefix = isPacks ? "pack" : "catalogue";
+  const iconName = isPacks ? "notebook-tabs" : "library-big";
+  if (!rest.length) {
+    const shelves = (isPacks ? store.topicPacks() : store.catalogues()).slice().sort(byTitle);
+    return folder({
+      path: full,
+      name: isPacks ? "Curated Packs" : "Catalogues",
+      icon: iconName,
+      kindLabel: "Shelf",
+      description: isPacks ? "Narrow, manually ordered collections. The order is the argument." : "Standing shelves that cut across domains.",
+      entries: shelves.map((record8) => folderEntry({
+        segment: segment(prefix, asString(record8.id) ?? ""),
+        kind: "bucket",
+        name: titleOf(record8),
+        icon: iconName,
+        kindLabel: isPacks ? "Pack" : "Catalogue",
+        count: shelfSources(store, record8).length,
+        detail: asText(record8.purpose) ?? ""
+      }))
+    });
+  }
+  const [head = "", ...tail] = rest;
+  const [headPrefix, id2] = parseSegment(head);
+  if (headPrefix !== prefix) return unavailable(full);
+  const record7 = store.get(id2);
+  if (!record7) return unavailable(full);
+  if (!tail.length) {
+    return folder({
+      path: full,
+      name: titleOf(record7),
+      icon: iconName,
+      kindLabel: isPacks ? "Pack" : "Catalogue",
+      description: asText(record7.purpose) ?? "",
+      entries: shelfSources(store, record7).map((source) => sourceEntry(context, source))
+    });
+  }
+  return sourceFolder(context, tail, full);
+}
+function sourceFolder(context, rest, full) {
+  const { store, materials } = context;
+  const [head = "", ...tail] = rest;
+  const [prefix, sourceId] = parseSegment(head);
+  if (prefix !== "source") return unavailable(full);
+  const source = store.get(sourceId);
+  if (source?.type !== "source") return unavailable(full);
+  if (!tail.length) {
+    const materialPath = asString(source.material_path);
+    if (!materialPath || source.material_exists !== true || !materials.isDirectory(materialPath)) {
+      return unavailable(full);
+    }
+    return folder({
+      path: full,
+      name: titleOf(source),
+      icon: "folder-open",
+      kindLabel: "Local collection",
+      description: authorLine(source),
+      entries: materials.list(materialPath).map(materialEntry),
+      sourceId
+    });
+  }
+  const [lastPrefix, path] = parseSegment(tail[tail.length - 1] ?? "");
+  if (lastPrefix !== "at" || !materials.isDirectory(path)) return unavailable(full);
+  return folder({
+    path: full,
+    name: path.split("/").pop() || path,
+    icon: "folder-open",
+    kindLabel: "Folder",
+    entries: materials.list(path).map(materialEntry),
+    sourceId
+  });
+}
+function reachableSourceIds(context) {
+  const reached = /* @__PURE__ */ new Set();
+  const visited = /* @__PURE__ */ new Set();
+  const walk = (path, depth) => {
+    if (depth > MAX_DEPTH) return;
+    const key = path.join("/");
+    if (visited.has(key)) return;
+    visited.add(key);
+    for (const entry of folderAt(context, path).entries) {
+      if (entry.sourceId) reached.add(entry.sourceId);
+      if (!entry.isFolder) continue;
+      if (entry.kind === "source" || entry.kind === "directory") continue;
+      walk([...path, entry.segment], depth + 1);
+    }
+  };
+  walk([], 0);
+  return reached;
+}
+function totalSourceCount(context) {
+  return context.index.sourceCount;
+}
+function trailFor(context, path) {
+  const trail = [];
+  for (let depth = 0; depth <= path.length; depth += 1) {
+    trail.push(folderAt(context, path.slice(0, depth)));
+  }
+  return trail;
+}
+
+// src/features/library/finder.ts
+var LAYOUTS = [
+  ["list", "List"],
+  ["columns", "Columns"]
+];
+function itemCount(count) {
+  if (count === null) return "";
+  return `${count} item${count === 1 ? "" : "s"}`;
+}
+function filterWords(query) {
+  return foldCase(query.trim()).split(/\s+/).filter(Boolean);
+}
+function matches(entry, words2) {
+  if (!words2.length) return true;
+  const hay = foldCase(
+    [entry.name, entry.detail, entry.kindLabel, entry.sourceId ?? ""].filter(Boolean).join(" ")
+  );
+  return words2.every((word) => hay.includes(word));
+}
+function renderPlace(parent, options) {
+  const row3 = parent.createEl("button", {
+    cls: `los-finder-place is-clickable${options.active ? " is-active" : ""}`,
+    attr: { type: "button" }
+  });
+  if (options.active) row3.setAttribute("aria-current", "true");
+  icon(row3.createSpan({ cls: "los-finder-place-icon" }), options.icon);
+  row3.createSpan({ cls: "los-finder-place-label", text: options.label });
+  row3.addEventListener("click", () => {
+    void options.onOpen();
+  });
+}
+function renderSidebar(view, parent, root) {
+  const sidebar = parent.createDiv({
+    cls: "los-finder-sidebar",
+    attr: { role: "navigation", "aria-label": "Library places" }
+  });
+  const group = (title) => {
+    const wrap = sidebar.createDiv({ cls: "los-finder-places" });
+    wrap.createEl("h3", { cls: "los-finder-places-title", text: title });
+    return wrap.createDiv({ cls: "los-finder-places-list" });
+  };
+  const favourites = group("Favourites");
+  renderPlace(favourites, {
+    label: "Library",
+    icon: "library",
+    active: view.folderPath.length === 0,
+    onOpen: () => view.openFolder([])
+  });
+  renderPlace(favourites, {
+    label: "All sources",
+    icon: "list",
+    active: false,
+    onOpen: () => view.plugin.nav.openLibraryHome("sources")
+  });
+  renderPlace(favourites, {
+    label: "Full text / OCR",
+    icon: "search",
+    active: false,
+    onOpen: () => view.plugin.nav.openFullTextSearch()
+  });
+  const sections = [
+    ["Domains", root.entries.filter((entry) => entry.kind === "domain")],
+    ["Shelves", root.entries.filter((entry) => entry.kind === "shelf")]
+  ];
+  for (const [title, entries] of sections) {
+    if (!entries.length) continue;
+    const list2 = group(title);
+    for (const entry of entries) {
+      renderPlace(list2, {
+        label: entry.name,
+        icon: entry.icon,
+        active: view.folderPath[0] === entry.segment,
+        onOpen: () => view.openFolder([entry.segment])
+      });
+    }
+  }
+}
+function renderPathBar(view, parent, trail) {
+  const bar = parent.createDiv({
+    cls: "los-finder-pathbar",
+    attr: { "aria-label": "Folder path" }
+  });
+  trail.forEach((folder2, depth) => {
+    if (depth > 0) {
+      icon(bar.createSpan({ cls: "los-finder-path-sep" }), "chevron-right");
+    }
+    if (depth === trail.length - 1) {
+      const here = bar.createSpan({
+        cls: "los-finder-path-here",
+        text: folder2.name
+      });
+      here.setAttribute("aria-current", "true");
+      return;
+    }
+    const crumb = bar.createEl("button", {
+      cls: "los-finder-path-crumb is-clickable",
+      text: folder2.name,
+      attr: { type: "button" }
+    });
+    crumb.addEventListener("click", () => {
+      void view.openFolder(folder2.path);
+    });
+  });
+}
+function renderToolbar(view, parent, folder2, shown) {
+  const toolbar = parent.createDiv({ cls: "los-finder-toolbar" });
+  const up = button(
+    toolbar,
+    "Enclosing folder",
+    () => void view.openEnclosingFolder(),
+    "quiet"
+  );
+  up.addClass("los-finder-up");
+  up.setAttribute("aria-label", "Go to the enclosing folder");
+  if (!view.folderPath.length) up.disabled = true;
+  const search = toolbar.createEl("input", {
+    cls: "los-search los-finder-filter",
+    attr: {
+      type: "search",
+      placeholder: `Filter ${folder2.name}\u2026`,
+      "aria-label": `Filter the contents of ${folder2.name}`
+    }
+  });
+  search.value = view.query;
+  search.addEventListener("input", () => {
+    void view.setFolderQuery(search.value);
+  });
+  const layouts = toolbar.createDiv({
+    cls: "los-finder-layouts",
+    attr: { role: "group", "aria-label": "Folder layout" }
+  });
+  enableButtonGroupKeyboardNavigation(layouts);
+  for (const [id2, label] of LAYOUTS) {
+    const active = view.folderLayout === id2;
+    const control = button(
+      layouts,
+      label,
+      () => void view.setFolderLayout(id2),
+      active ? "cta" : "quiet"
+    );
+    control.setAttribute("aria-pressed", String(active));
+  }
+  const total = folder2.entries.length;
+  toolbar.createSpan({
+    cls: "los-finder-count",
+    text: shown === total ? itemCount(total) : `${shown} of ${total} items`
+  });
+}
+function renderRow(view, list2, entry) {
+  const selected = view.folderSelection === entry.segment;
+  const row3 = list2.createEl("button", {
+    cls: `los-finder-row is-clickable${selected ? " is-selected" : ""}`,
+    attr: {
+      type: "button",
+      "data-segment": entry.segment,
+      "aria-label": entry.isFolder ? `${entry.name}, folder` : `${entry.name}, ${entry.kindLabel}`
+    }
+  });
+  if (selected) row3.setAttribute("aria-current", "true");
+  icon(row3.createSpan({ cls: "los-finder-row-icon" }), entry.icon);
+  const name = row3.createDiv({ cls: "los-finder-row-name" });
+  name.createSpan({ cls: "los-finder-row-title", text: entry.name });
+  if (entry.detail) {
+    name.createSpan({ cls: "los-finder-row-detail", text: entry.detail });
+  }
+  row3.createSpan({ cls: "los-finder-row-kind", text: entry.kindLabel });
+  const trailing = row3.createSpan({ cls: "los-finder-row-trailing" });
+  if (entry.alsoIn > 1) {
+    badge(trailing, `in ${entry.alsoIn} domains`, "info");
+  }
+  if (entry.isFolder) {
+    trailing.createSpan({
+      cls: "los-finder-row-count",
+      text: itemCount(entry.count)
+    });
+    icon(trailing.createSpan({ cls: "los-finder-row-chevron" }), "chevron-right");
+  }
+  row3.addEventListener("click", () => {
+    if (selected) void view.activateEntry(entry);
+    else void view.selectFolderEntry(entry.segment);
+  });
+  row3.addEventListener("dblclick", () => {
+    void view.activateEntry(entry);
+  });
+  return row3;
+}
+function renderList(view, parent, entries) {
+  const list2 = parent.createDiv({
+    cls: "los-finder-list",
+    attr: { "aria-label": "Folder contents" }
+  });
+  const header = list2.createDiv({
+    cls: "los-finder-list-header",
+    attr: { "aria-hidden": "true" }
+  });
+  header.createSpan({ text: "Name" });
+  header.createSpan({ text: "Kind" });
+  header.createSpan({ text: "Items" });
+  const focusSelection = view.takeFolderFocus();
+  for (const entry of entries) {
+    const row3 = renderRow(view, list2, entry);
+    if (focusSelection && entry.segment === view.folderSelection) row3.focus();
+  }
+  list2.addEventListener("keydown", (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+    const index = entries.findIndex(
+      (entry) => entry.segment === view.folderSelection
+    );
+    const move = (next) => {
+      const clamped = Math.max(0, Math.min(entries.length - 1, next));
+      const target = entries[clamped];
+      if (!target) return;
+      event.preventDefault();
+      void view.selectFolderEntry(target.segment);
+    };
+    if (event.key === "ArrowDown") return move(index + 1);
+    if (event.key === "ArrowUp") return move(index < 0 ? 0 : index - 1);
+    if (event.key === "Home") return move(0);
+    if (event.key === "End") return move(entries.length - 1);
+    if (event.key === "ArrowLeft" || event.key === "Backspace") {
+      if (!view.folderPath.length) return;
+      event.preventDefault();
+      void view.openEnclosingFolder();
+      return;
+    }
+    if (event.key === "ArrowRight") {
+      const current = index >= 0 ? entries[index] : void 0;
+      if (!current) return;
+      event.preventDefault();
+      void view.activateEntry(current);
+    }
+  });
+}
+function renderColumns(view, parent, trail, words2) {
+  const columns = parent.createDiv({
+    cls: "los-finder-columns",
+    attr: { "aria-label": "Folder columns" }
+  });
+  trail.forEach((folder2, depth) => {
+    const openedSegment = view.folderPath[depth] ?? null;
+    const isCurrent = depth === trail.length - 1;
+    const entries = isCurrent ? folder2.entries.filter((entry) => matches(entry, words2)) : folder2.entries;
+    const column = columns.createDiv({
+      cls: `los-finder-column${isCurrent ? " is-current" : ""}`
+    });
+    column.createDiv({ cls: "los-finder-column-title", text: folder2.name });
+    if (!entries.length) {
+      column.createDiv({
+        cls: "los-finder-column-empty",
+        text: folder2.missing ? "Unavailable" : "Empty"
+      });
+      return;
+    }
+    for (const entry of entries) {
+      const opened = entry.segment === openedSegment;
+      const selected = isCurrent && view.folderSelection === entry.segment;
+      const row3 = column.createEl("button", {
+        cls: "los-finder-column-row is-clickable" + (opened ? " is-open" : "") + (selected ? " is-selected" : ""),
+        attr: { type: "button" }
+      });
+      if (opened || selected) row3.setAttribute("aria-current", "true");
+      icon(row3.createSpan({ cls: "los-finder-row-icon" }), entry.icon);
+      row3.createSpan({ cls: "los-finder-row-title", text: entry.name });
+      if (entry.isFolder) {
+        icon(row3.createSpan({ cls: "los-finder-row-chevron" }), "chevron-right");
+      }
+      row3.addEventListener("click", () => {
+        if (entry.isFolder) void view.openFolder([...folder2.path, entry.segment]);
+        else void view.openFolder(folder2.path, entry.segment);
+      });
+      row3.addEventListener("dblclick", () => {
+        void view.activateEntry(entry);
+      });
+    }
+  });
+}
+function renderFolderInspector(panel, folder2) {
+  icon(panel.createDiv({ cls: "los-finder-inspector-icon" }), folder2.icon);
+  panel.createEl("h2", { text: folder2.name });
+  panel.createDiv({ cls: "los-finder-inspector-kind", text: folder2.kindLabel });
+  if (folder2.description) {
+    panel.createEl("p", { cls: "los-muted", text: folder2.description });
+  }
+  panel.createEl("p", {
+    cls: "los-finder-inspector-hint",
+    text: `${itemCount(folder2.entries.length)} here. Select one to see what it is and how to open it.`
+  });
+}
+function renderEntryInspector(view, panel, entry) {
+  icon(panel.createDiv({ cls: "los-finder-inspector-icon" }), entry.icon);
+  panel.createEl("h2", { text: entry.name });
+  panel.createDiv({ cls: "los-finder-inspector-kind", text: entry.kindLabel });
+  const facts = [];
+  if (entry.detail) facts.push(["Details", entry.detail]);
+  if (entry.isFolder && entry.count !== null) {
+    facts.push(["Contains", itemCount(entry.count)]);
+  }
+  if (entry.materialPath) facts.push(["Where", entry.materialPath]);
+  if (entry.url) facts.push(["Link", entry.url]);
+  if (entry.sourceId) facts.push(["Registry id", entry.sourceId]);
+  if (facts.length) {
+    const list2 = panel.createEl("dl", { cls: "los-finder-inspector-facts" });
+    for (const [label, value] of facts) {
+      list2.createEl("dt", { text: label });
+      list2.createEl("dd", { text: value });
+    }
+  }
+  if (entry.alsoIn > 1) {
+    panel.createEl("p", {
+      cls: "los-finder-inspector-alias",
+      text: `Filed in ${entry.alsoIn} domains. Those are the same record seen from each of them, not duplicates.`
+    });
+  }
+  const actions = panel.createDiv({ cls: "los-actions" });
+  if (entry.isFolder) {
+    button(actions, "Open folder", () => void view.activateEntry(entry), "cta");
+  } else if (entry.materialPath || entry.url) {
+    button(
+      actions,
+      entry.materialPath ? "Open file" : "Open online",
+      () => void view.activateEntry(entry),
+      "cta"
+    );
+  }
+  if (entry.sourceId) {
+    const sourceId = entry.sourceId;
+    button(
+      actions,
+      "Source record",
+      () => view.plugin.nav.openSourceDetail(sourceId),
+      "info"
+    );
+  }
+  if (entry.materialPath && entry.isFolder) {
+    const materialPath = entry.materialPath;
+    button(
+      actions,
+      "Reveal on disk",
+      () => view.plugin.openMaterialPath(materialPath),
+      "quiet"
+    );
+  }
+  if (entry.url) {
+    const url = entry.url;
+    button(actions, "Copy link", () => view.plugin.copyText(url), "quiet");
+  }
+}
+function renderCoverage(view, parent) {
+  const { total, reached } = view.coverage();
+  const line = parent.createDiv({ cls: "los-finder-coverage" });
+  if (reached >= total) {
+    line.createSpan({
+      text: `All ${total} sources are reachable in these folders.`
+    });
+    return;
+  }
+  line.addClass("is-attention");
+  line.createSpan({
+    text: `${reached} of ${total} sources are reachable \u2014 ${total - reached} cannot be browsed from here.`
+  });
+  button(line, "Rebuild views", () => void view.plugin.generate(), "quiet");
+}
+function renderFinder(view, root) {
+  const context = view.finderContext();
+  const trail = trailFor(context, view.folderPath);
+  const folder2 = trail[trail.length - 1] ?? folderAt(context, []);
+  const words2 = filterWords(view.query);
+  const shell2 = root.createDiv({ cls: "los-finder" });
+  renderSidebar(view, shell2, trail[0] ?? folder2);
+  const main = shell2.createDiv({ cls: "los-finder-main" });
+  renderPathBar(view, main, trail);
+  const entries = folder2.entries.filter((entry) => matches(entry, words2));
+  renderToolbar(view, main, folder2, entries.length);
+  if (folder2.description && !words2.length) {
+    main.createEl("p", {
+      cls: "los-finder-folder-note",
+      text: folder2.description
+    });
+  }
+  const body = main.createDiv({ cls: "los-finder-body" });
+  if (folder2.missing) {
+    empty(
+      body,
+      "Folder unavailable",
+      "This path is not in the current projection. It may have been renamed, or the views may need rebuilding.",
+      "Back to Library",
+      () => void view.openFolder([])
+    );
+    return;
+  }
+  if (view.folderLayout === "columns") {
+    renderColumns(view, body, trail, words2);
+  } else if (!folder2.entries.length) {
+    empty(
+      body,
+      "Nothing filed here yet",
+      // Only a DECLARED folder can be empty — a domain from the taxonomy, or a
+      // module from the curriculum. Both exist whether or not anything has
+      // been routed to them, so this is a documented absence rather than a
+      // missing folder, and saying which one it is beats an unexplained blank.
+      `${folder2.kindLabel} folders exist whether or not material has been routed to them, so this is an absence on the record rather than something gone missing.`
+    );
+  } else if (!entries.length) {
+    empty(
+      body,
+      "Nothing matches that filter",
+      `No item in ${folder2.name} matches \u201C${view.query.trim()}\u201D.`,
+      "Clear filter",
+      () => void view.setFolderQuery("")
+    );
+  } else {
+    renderList(view, body, entries);
+  }
+  const panel = body.createDiv({
+    cls: "los-finder-inspector",
+    attr: { "aria-label": "Selected item" }
+  });
+  const selected = entries.find(
+    (entry) => entry.segment === view.folderSelection
+  );
+  if (selected) renderEntryInspector(view, panel, selected);
+  else renderFolderInspector(panel, folder2);
+  if (!view.folderPath.length) renderCoverage(view, main);
 }
 
 // src/features/library/filters.ts
@@ -7414,7 +8785,7 @@ function sourceMatchesFilters(view, source, omit = null) {
   return true;
 }
 function sourceFilterTally(view, sources, dimension) {
-  const tally = /* @__PURE__ */ new Map();
+  const tally2 = /* @__PURE__ */ new Map();
   for (const source of sources) {
     if (!view.sourceMatchesFilters(source, dimension)) {
       continue;
@@ -7423,13 +8794,13 @@ function sourceFilterTally(view, sources, dimension) {
       source,
       dimension
     )) {
-      tally.set(
+      tally2.set(
         value,
-        (tally.get(value) ?? 0) + 1
+        (tally2.get(value) ?? 0) + 1
       );
     }
   }
-  return tally;
+  return tally2;
 }
 function sourceFilterLabel(view, dimension, value) {
   if (dimension === "domain") {
@@ -7537,7 +8908,7 @@ function renderSourceBrowser(view, root) {
         }
       }
     );
-    const tally = view.sourceFilterTally(
+    const tally2 = view.sourceFilterTally(
       all,
       dimension
     );
@@ -7550,7 +8921,7 @@ function renderSourceBrowser(view, root) {
         }
       }
     );
-    const ordered = [...tally.entries()].sort(
+    const ordered = [...tally2.entries()].sort(
       (left, right) => {
         const leftLabel = view.sourceFilterLabel(
           dimension,
@@ -7728,6 +9099,29 @@ var LibraryView = class extends import_obsidian8.ItemView {
   recordType = "note";
   domain = "";
   selectedElementId = null;
+  folderPath = [];
+  folderSelection = null;
+  folderLayout = "list";
+  /*
+   * One tree context per render, and one coverage count per projection.
+   *
+   * `createFinderContext` makes a single pass over the registry; the columns
+   * layout asks for one folder per level of depth, so handing out the same
+   * context is what keeps a deep folder as cheap as a shallow one. Coverage is
+   * cached harder — answering it walks every folder and touches the disk once
+   * per source with local material, which must not happen per keystroke in the
+   * filter box.
+   */
+  _finderContext = null;
+  _coverage = null;
+  _coverageSnapshot = null;
+  /*
+   * Two manifests can carry the same snapshot id, so the identity of the loaded
+   * data is part of the cache key — the same lesson `shelfIndex` already
+   * learned, and the same one its suite pins.
+   */
+  _coverageData = null;
+  _focusSelection = false;
   _shelfIndex = null;
   _shelfSnapshot = null;
   _shelfData = null;
@@ -7758,6 +9152,9 @@ var LibraryView = class extends import_obsidian8.ItemView {
     this.catalogueId = parsed.catalogueId;
     this.recordType = parsed.recordType;
     this.domain = parsed.domain;
+    this.folderPath = parsed.folderPath;
+    this.folderSelection = parsed.folderSelection;
+    this.folderLayout = parsed.folderLayout;
   }
   async setState(state = {}) {
     this.applyState(state);
@@ -7775,7 +9172,10 @@ var LibraryView = class extends import_obsidian8.ItemView {
       topicPackId: this.topicPackId,
       catalogueId: this.catalogueId,
       recordType: this.recordType,
-      domain: this.domain
+      domain: this.domain,
+      folderPath: [...this.folderPath],
+      folderSelection: this.folderSelection,
+      folderLayout: this.folderLayout
     };
   }
   async onOpen() {
@@ -7818,6 +9218,7 @@ var LibraryView = class extends import_obsidian8.ItemView {
   }
   render() {
     const root = this.contentEl;
+    this._finderContext = null;
     root.empty();
     root.addClass(
       "los-root",
@@ -7836,6 +9237,10 @@ var LibraryView = class extends import_obsidian8.ItemView {
         "Rebuild views",
         () => this.plugin.generate()
       );
+      return;
+    }
+    if (this.screen === "folder") {
+      this.renderFinder(root);
       return;
     }
     if (this.screen === "group") {
@@ -7937,8 +9342,8 @@ var LibraryView = class extends import_obsidian8.ItemView {
       facet: this.facet
     });
   }
-  renderRecordRow(list2, record6, isPack = false) {
-    renderRecordRow(this, list2, record6, isPack);
+  renderRecordRow(list2, record7, isPack = false) {
+    renderRecordRow(this, list2, record7, isPack);
   }
   renderSourcePage(root) {
     renderSourcePage(this, root);
@@ -7955,20 +9360,126 @@ var LibraryView = class extends import_obsidian8.ItemView {
   renderLegacyList(root) {
     renderLegacyList(this, root);
   }
-  renderRecordActions(detail, record6) {
-    renderRecordActions(this, detail, record6);
+  renderRecordActions(detail, record7) {
+    renderRecordActions(this, detail, record7);
   }
-  renderAttachments(detail, record6) {
-    renderAttachments(this, detail, record6);
+  renderAttachments(detail, record7) {
+    renderAttachments(this, detail, record7);
   }
-  renderRelated(detail, record6) {
-    renderRelated(this, detail, record6);
+  renderRelated(detail, record7) {
+    renderRelated(this, detail, record7);
   }
-  renderSourceDetail(detail, record6) {
-    renderSourceDetail(this, detail, record6);
+  renderSourceDetail(detail, record7) {
+    renderSourceDetail(this, detail, record7);
   }
-  renderTechnical(detail, record6) {
-    renderTechnical(this, detail, record6);
+  renderTechnical(detail, record7) {
+    renderTechnical(this, detail, record7);
+  }
+  // ------------------------------------------------------- folder browser
+  finderContext() {
+    if (!this._finderContext) {
+      this._finderContext = createFinderContext(
+        this.plugin.store,
+        {
+          isDirectory: (path) => this.plugin.isMaterialFolder(path),
+          list: (path) => this.plugin.listMaterialFolder(path),
+          count: (path) => this.plugin.materialFolderCount(path)
+        }
+      );
+    }
+    return this._finderContext;
+  }
+  coverage() {
+    const snapshot = this.plugin.store.snapshotId;
+    const data = this.plugin.store.data;
+    if (this._coverage && this._coverageSnapshot === snapshot && this._coverageData === data) {
+      return this._coverage;
+    }
+    const context = this.finderContext();
+    const coverage = {
+      total: totalSourceCount(context),
+      reached: reachableSourceIds(context).size
+    };
+    this._coverage = coverage;
+    this._coverageSnapshot = snapshot;
+    this._coverageData = data;
+    return coverage;
+  }
+  takeFolderFocus() {
+    const focus = this._focusSelection;
+    this._focusSelection = false;
+    return focus;
+  }
+  async openFolder(path, selected = null) {
+    this.folderPath = [...path];
+    this.folderSelection = selected;
+    this.query = "";
+    await this.rememberFolder();
+    this.render();
+  }
+  /**
+   * Up one level, selecting the folder just left.
+   *
+   * Carrying the selection back up is what makes repeated "up" feel like a
+   * file manager rather than a reset: you land on the thing you came out of,
+   * with its siblings in view.
+   */
+  async openEnclosingFolder() {
+    if (!this.folderPath.length) return;
+    const leaving = this.folderPath[this.folderPath.length - 1] ?? null;
+    await this.openFolder(this.folderPath.slice(0, -1), leaving);
+  }
+  async selectFolderEntry(segment2) {
+    this.folderSelection = segment2;
+    this._focusSelection = true;
+    await this.rememberFolder();
+    this.render();
+  }
+  async setFolderLayout(layout) {
+    this.folderLayout = layout;
+    await this.rememberFolder();
+    this.render();
+  }
+  async setFolderQuery(query) {
+    this.query = query;
+    await this.rememberFolder();
+    this.render();
+  }
+  /**
+   * Open whatever this entry is.
+   *
+   * A folder navigates. A leaf is handed to the opener that knows its kind:
+   * a projected source goes through `openResource`, which already decides
+   * between a local file, a page destination and a web target; a plain file
+   * under `materials/` goes straight to the system opener.
+   */
+  async activateEntry(entry) {
+    if (entry.isFolder) {
+      await this.openFolder([...this.folderPath, entry.segment]);
+      return;
+    }
+    if (entry.sourceId) {
+      const source = this.plugin.store.get(entry.sourceId);
+      if (source) {
+        this.plugin.openResource(source);
+        return;
+      }
+    }
+    if (entry.materialPath) {
+      this.plugin.openMaterialPath(entry.materialPath);
+    }
+  }
+  async rememberFolder() {
+    return this.plugin.router.remember({
+      name: "library-folder",
+      path: [...this.folderPath],
+      selected: this.folderSelection,
+      layout: this.folderLayout,
+      query: this.query
+    });
+  }
+  renderFinder(root) {
+    renderFinder(this, root);
   }
 };
 
@@ -8028,29 +9539,29 @@ function readModuleViewState(value) {
     hasTab
   };
 }
-function readThematicGroup2(record6) {
-  if (!record6) {
+function readThematicGroup2(record7) {
+  if (!record7) {
     return null;
   }
-  const id2 = asString(record6.id);
+  const id2 = asString(record7.id);
   if (!id2) {
     return null;
   }
   return {
     id: id2,
-    title: asString(record6.title) ?? asString(record6.label) ?? id2,
-    description: asText(record6.description) ?? ""
+    title: asString(record7.title) ?? asString(record7.label) ?? id2,
+    description: asText(record7.description) ?? ""
   };
 }
 function readComponents(value) {
-  return asRecords(value).map((record6) => {
-    const id2 = asString(record6.id);
+  return asRecords(value).map((record7) => {
+    const id2 = asString(record7.id);
     if (!id2) {
       return null;
     }
     return {
       id: id2,
-      title: asString(record6.short_title) ?? asString(record6.title) ?? id2
+      title: asString(record7.short_title) ?? asString(record7.title) ?? id2
     };
   }).filter(nonNull);
 }
@@ -8061,44 +9572,44 @@ function readExamination(value) {
     notes: asText(examination.notes)
   };
 }
-function readModuleRecord(record6, fallbackId = null) {
-  if (!record6) {
+function readModuleRecord(record7, fallbackId = null) {
+  if (!record7) {
     return null;
   }
-  const id2 = asString(record6.id) ?? fallbackId;
+  const id2 = asString(record7.id) ?? fallbackId;
   if (!id2) {
     return null;
   }
   return {
-    record: record6,
+    record: record7,
     id: id2,
-    areaId: asString(record6.area_id) ?? "",
-    title: asString(record6.title) ?? id2,
-    kind: asString(record6.kind) ?? "Module",
-    code: asText(record6.code) ?? "",
-    semester: asText(record6.semester) ?? "",
-    status: asString(record6.status) ?? "unspecified",
-    institution: asText(record6.institution) ?? "",
-    credits: asText(record6.credits),
-    examination: readExamination(record6.examination),
-    components: readComponents(record6.components),
-    unitOrder: asStrings(record6.unit_order)
+    areaId: asString(record7.area_id) ?? "",
+    title: asString(record7.title) ?? id2,
+    kind: asString(record7.kind) ?? "Module",
+    code: asText(record7.code) ?? "",
+    semester: asText(record7.semester) ?? "",
+    status: asString(record7.status) ?? "unspecified",
+    institution: asText(record7.institution) ?? "",
+    credits: asText(record7.credits),
+    examination: readExamination(record7.examination),
+    components: readComponents(record7.components),
+    unitOrder: asStrings(record7.unit_order)
   };
 }
-function normalizeUnitRecord(record6) {
-  const id2 = asString(record6.id);
+function normalizeUnitRecord(record7) {
+  const id2 = asString(record7.id);
   if (!id2) {
     return null;
   }
-  const title = asString(record6.title) ?? id2;
-  const status = asString(record6.status) ?? "unspecified";
-  const order = asCount(record6.order);
+  const title = asString(record7.title) ?? id2;
+  const status = asString(record7.status) ?? "unspecified";
+  const order = asCount(record7.order);
   const normalized = {
-    ...record6,
+    ...record7,
     id: id2,
     title,
     status,
-    scope: asText(record6.scope) ?? ""
+    scope: asText(record7.scope) ?? ""
   };
   return {
     record: normalized,
@@ -8125,18 +9636,18 @@ function orderModuleUnits(module2, units) {
     }
   );
 }
-function normalizeWorkspaceRecord(record6) {
+function normalizeWorkspaceRecord(record7) {
   return {
-    ...record6,
-    id: asString(record6.id) ?? "",
-    title: asString(record6.title) ?? asString(record6.id) ?? "Workspace",
-    status: asString(record6.status) ?? "unspecified",
-    objective: asText(record6.objective) ?? "",
-    next_action: asText(record6.next_action) ?? "",
-    deadline: asText(record6.deadline) ?? "",
-    standing: record6.standing === true,
-    module_ids: asStrings(record6.module_ids),
-    unit_ids: asStrings(record6.unit_ids)
+    ...record7,
+    id: asString(record7.id) ?? "",
+    title: asString(record7.title) ?? asString(record7.id) ?? "Workspace",
+    status: asString(record7.status) ?? "unspecified",
+    objective: asText(record7.objective) ?? "",
+    next_action: asText(record7.next_action) ?? "",
+    deadline: asText(record7.deadline) ?? "",
+    standing: record7.standing === true,
+    module_ids: asStrings(record7.module_ids),
+    unit_ids: asStrings(record7.unit_ids)
   };
 }
 function readProgress(value) {
@@ -8154,42 +9665,42 @@ function readProgress(value) {
   };
 }
 function readDeadlineModules(value) {
-  return asRecords(value).map((record6) => {
-    const moduleId = asString(record6.module_id);
+  return asRecords(value).map((record7) => {
+    const moduleId = asString(record7.module_id);
     if (!moduleId) {
       return null;
     }
     return {
       moduleId,
-      action: asText(record6.action)
+      action: asText(record7.action)
     };
   }).filter(nonNull);
 }
-function readAcademicDeadline(record6) {
-  const startDate = asString(record6.start_date) ?? "";
-  const endDate = asString(record6.end_date) ?? "";
+function readAcademicDeadline(record7) {
+  const startDate = asString(record7.start_date) ?? "";
+  const endDate = asString(record7.end_date) ?? "";
   return {
-    record: record6,
-    kind: asString(record6.kind) ?? "academic-date",
-    label: asString(record6.label) ?? asString(record6.title) ?? "Academic date",
-    title: asString(record6.title) ?? "",
+    record: record7,
+    kind: asString(record7.kind) ?? "academic-date",
+    label: asString(record7.label) ?? asString(record7.title) ?? "Academic date",
+    title: asString(record7.title) ?? "",
     startDate,
     endDate,
-    time: asText(record6.time),
+    time: asText(record7.time),
     registrationState: asString(
-      record6.registration_state
+      record7.registration_state
     ) ?? "unregistered",
-    directModuleId: asString(record6.module_id),
-    modules: readDeadlineModules(record6.modules)
+    directModuleId: asString(record7.module_id),
+    modules: readDeadlineModules(record7.modules)
   };
 }
 function readSourceEntries(value) {
-  return asRecords(value).map((record6) => ({
-    record: record6,
-    role: asString(record6.role) ?? "unassigned",
-    sourceId: asString(record6.source_id),
-    why: asText(record6.why) ?? "",
-    unitRouteCount: Array.isArray(record6.unit_routes) ? record6.unit_routes.length : 0
+  return asRecords(value).map((record7) => ({
+    record: record7,
+    role: asString(record7.role) ?? "unassigned",
+    sourceId: asString(record7.source_id),
+    why: asText(record7.why) ?? "",
+    unitRouteCount: Array.isArray(record7.unit_routes) ? record7.unit_routes.length : 0
   }));
 }
 
@@ -8289,9 +9800,9 @@ function renderSources2(view, root, module2) {
         chip(
           row3,
           source,
-          (record6) => {
+          (record7) => {
             const id2 = asString(
-              record6.id
+              record7.id
             );
             if (!id2) {
               return;
@@ -8370,7 +9881,7 @@ function renderLogistics(view, root, module2) {
 }
 function deadlinesFor(view, module2) {
   return view.plugin.store.rows("academic_deadlines").map(
-    (record6) => readAcademicDeadline(record6)
+    (record7) => readAcademicDeadline(record7)
   ).filter(
     (row3) => row3.directModuleId === module2.id || row3.modules.some(
       (entry) => entry.moduleId === module2.id
@@ -8582,7 +10093,7 @@ function renderOverview(view, root, module2) {
     text: `${progress.stagesComplete} of ${progress.stagesTotal} stages complete across ${progress.unitsTotal} unit${progress.unitsTotal === 1 ? "" : "s"}`
   });
   const workspaces = view.plugin.store.workspacesForModule(module2.id).map(
-    (record6) => normalizeWorkspaceRecord(record6)
+    (record7) => normalizeWorkspaceRecord(record7)
   );
   for (const workspace of workspaces) {
     workspaceCard(
@@ -8602,7 +10113,7 @@ function renderOverview(view, root, module2) {
   const units = orderModuleUnits(
     module2,
     view.plugin.store.unitsFor(module2.id).map(
-      (record6) => normalizeUnitRecord(record6)
+      (record7) => normalizeUnitRecord(record7)
     ).filter(nonNull)
   );
   const next = units.find(
@@ -8667,7 +10178,7 @@ function renderUnits(view, root, module2) {
     module2.id,
     view.componentId
   ).map(
-    (record6) => normalizeUnitRecord(record6)
+    (record7) => normalizeUnitRecord(record7)
   ).filter(nonNull);
   if (!units.length) {
     empty(
@@ -8755,7 +10266,7 @@ function renderUnits(view, root, module2) {
 function renderGroups(view, root) {
   const semester = view.plugin.store.currentSemester();
   const modules = view.plugin.store.currentSemesterModules().map(
-    (record6) => readModuleRecord(record6)
+    (record7) => readModuleRecord(record7)
   ).filter(nonNull);
   pageHeader(
     root,
@@ -8878,7 +10389,7 @@ function renderGroupList(view, root) {
     }
   );
   const all = view.plugin.store.modulesForGroup(group.id).map(
-    (record6) => readModuleRecord(record6)
+    (record7) => readModuleRecord(record7)
   ).filter(nonNull);
   const needle = foldCase(view.query.trim());
   const rows = all.filter(
@@ -9944,11 +11455,11 @@ function renderDetail(view, root) {
     ...asStrings(project.unit_ids)
   ];
   for (const id2 of linkedIds) {
-    const record6 = view.plugin.store.get(id2);
-    if (!record6) continue;
+    const record7 = view.plugin.store.get(id2);
+    if (!record7) continue;
     chip(
       links,
-      record6,
+      record7,
       (target) => view.plugin.nav.openRecord(target)
     );
   }
@@ -10076,7 +11587,7 @@ function renderOverview2(view, root, project) {
 }
 
 // src/features/project/list.ts
-function renderList(view, root) {
+function renderList2(view, root) {
   pageHeader(
     root,
     "Projects",
@@ -10369,7 +11880,7 @@ var ProjectView = class extends import_obsidian12.ItemView {
     this.renderList(root);
   }
   renderList(root) {
-    renderList(this, root);
+    renderList2(this, root);
   }
   renderDetail(root) {
     renderDetail(this, root);
@@ -10454,8 +11965,8 @@ var ProjectView = class extends import_obsidian12.ItemView {
 
 // src/views/review-view.ts
 var import_obsidian13 = require("obsidian");
-var fs = __toESM(require("node:fs"));
-var nodePath = __toESM(require("node:path"));
+var fs2 = __toESM(require("node:fs"));
+var nodePath2 = __toESM(require("node:path"));
 
 // src/contracts/gateway-v2.ts
 var GATEWAY_SCHEMA_VERSION = 2;
@@ -10484,6 +11995,49 @@ function exactKeys2(value, keys) {
 }
 function isSha256(value) {
   return typeof value === "string" && /^sha256:[0-9a-f]{64}$/.test(value);
+}
+var UI_GESTURE_CAPABILITIES = [
+  // The learner's own study record, admitted from any channel in Core.
+  "atlas.question.save",
+  "capture.create",
+  "detour.create",
+  "detour.resolve",
+  "garden.seed.create",
+  "source.feedback.record",
+  "stage.attachment.add",
+  "stage.progress.update",
+  "unit.note.append",
+  "unit.source-selection.set",
+  /*
+   * Canonical changes this app may authorize, and only this app: Core admits
+   * these to a gesture over `channel: "ui"` alone. Each is applied from a
+   * screen that shows the exact change first, and that deliberate Save or
+   * Apply is the explicit approval their contracts always required — ADR-017
+   * designed the Atlas for exactly this, and a readable refusal was still a
+   * refusal of a current architecture decision (review
+   * workbench/audits/repair-review-2026-09-13, D1).
+   *
+   * A capability reaching this list must have a screen that renders the
+   * concrete change before the control that sends it. Adding one here because
+   * "the app needs it" reintroduces the thing the allowlist exists to stop.
+   */
+  "concept.relations.change",
+  "review.apply",
+  "review.prepare",
+  "unit.map.import"
+];
+var UI_GESTURE_SET = new Set(UI_GESTURE_CAPABILITIES);
+function isGestureCapability(capability) {
+  return UI_GESTURE_SET.has(capability);
+}
+var GESTURE_UNAVAILABLE_RECOVERY = {
+  "module.plan.import": "A module plan is applied from a reviewed file after its preflight, through an operator request. Nothing was changed.",
+  "route.patch": "Material details change through the reviewed route-patch preflight and an operator request. Nothing was changed.",
+  "note.revise": "Rewriting a note body is a semantic edit: it needs an explicit request and a reviewable diff. Your text is kept here; nothing was changed.",
+  "stage.note.write": "Stage notes are a retired surface. Save the note against the unit instead; nothing was changed."
+};
+function gestureUnavailableMessage(capability) {
+  return GESTURE_UNAVAILABLE_RECOVERY[capability] ?? `LearningOS does not accept ${capability} from a direct action in this app, because it writes canonical content. It needs a reviewed operator request. Nothing was changed.`;
 }
 var REQUEST_SCOPED_ARTIFACT_PREFIXES = {
   "capture.create": "capture-request",
@@ -11139,15 +12693,15 @@ function clearDraftsOwnedBy(drafts, envelope) {
     const unitId = typeof payload.unit_id === "string" ? payload.unit_id : "";
     if (!unitId) return;
     const draft = drafts.unitNotes[unitId];
-    const matches = draft && draft.text === text5 && String(draft.title || "").trim() === title;
-    if (matches) {
+    const matches2 = draft && draft.text === text5 && String(draft.title || "").trim() === title;
+    if (matches2) {
       delete drafts.unitNotes[unitId];
     }
-    if (!matches || !draft || !draft.recoveredStages) {
+    if (!matches2 || !draft || !draft.recoveredStages) {
       return;
     }
-    const stageIds = Array.isArray(payload.stage_id) ? payload.stage_id : [];
-    for (const stageId of stageIds) {
+    const stageIds2 = Array.isArray(payload.stage_id) ? payload.stage_id : [];
+    for (const stageId of stageIds2) {
       if (typeof stageId === "string") {
         const provenanceText = draft.recoveredStages[stageId];
         if (provenanceText !== void 0) {
@@ -11328,6 +12882,144 @@ function asLegacyArchiveStatus(value) {
     type: "legacy-archive-status",
     available: status.available,
     lock
+  };
+}
+
+// src/contracts/operations.ts
+function record5(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
+function exactKeys5(value, required) {
+  return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => required.includes(key));
+}
+var CANONICAL = ["COMMITTED", "NOT_COMMITTED", "AMBIGUOUS"];
+var RECOVERY = ["none", "verify-observation", "reconcile-exact-request"];
+function asRow(value) {
+  const row3 = record5(value);
+  if (!row3 || !exactKeys5(row3, [
+    "trace_id",
+    "request_id",
+    "capability",
+    "started_at",
+    "duration_ms",
+    "attempts",
+    "replayed",
+    "first_failure_stage",
+    "canonical_outcome",
+    "recovery_requirement",
+    "needs_attention"
+  ])) return null;
+  if (typeof row3.trace_id !== "string" || typeof row3.capability !== "string") return null;
+  if (row3.request_id !== null && typeof row3.request_id !== "string") return null;
+  if (row3.started_at !== null && typeof row3.started_at !== "number") return null;
+  if (row3.duration_ms !== null && typeof row3.duration_ms !== "number") return null;
+  if (typeof row3.attempts !== "number" || typeof row3.replayed !== "boolean") return null;
+  if (row3.first_failure_stage !== null && typeof row3.first_failure_stage !== "string") return null;
+  if (!CANONICAL.includes(String(row3.canonical_outcome))) return null;
+  if (!RECOVERY.includes(String(row3.recovery_requirement))) return null;
+  if (typeof row3.needs_attention !== "boolean") return null;
+  return row3;
+}
+function asOperationsList(value) {
+  const body = record5(value);
+  if (!body || !exactKeys5(body, ["operations"]) || !Array.isArray(body.operations)) return null;
+  const operations = [];
+  for (const item of body.operations) {
+    const row3 = asRow(item);
+    if (!row3) return null;
+    operations.push(row3);
+  }
+  return { operations };
+}
+function asAttempt(value) {
+  const row3 = record5(value);
+  if (!row3 || !exactKeys5(row3, ["span", "status", "replay_of"])) return null;
+  if (typeof row3.span !== "string" || typeof row3.status !== "string") return null;
+  if (row3.replay_of !== null && typeof row3.replay_of !== "string") return null;
+  return row3;
+}
+function asDiagnosis(value) {
+  const body = record5(value);
+  if (!body || !exactKeys5(body, [
+    "first_failure_stage",
+    "execution_outcome",
+    "canonical_outcome",
+    "projection_outcome",
+    "recovery_requirement",
+    "authoritative_evidence",
+    "attempts",
+    "reasons"
+  ])) return null;
+  if (body.first_failure_stage !== null && typeof body.first_failure_stage !== "string") return null;
+  if (typeof body.execution_outcome !== "string") return null;
+  if (!CANONICAL.includes(String(body.canonical_outcome))) return null;
+  if (typeof body.projection_outcome !== "string") return null;
+  if (!RECOVERY.includes(String(body.recovery_requirement))) return null;
+  if (!Array.isArray(body.authoritative_evidence) || !body.authoritative_evidence.every((item) => typeof item === "string")) return null;
+  if (!Array.isArray(body.attempts)) return null;
+  const attempts = [];
+  for (const item of body.attempts) {
+    const attempt = asAttempt(item);
+    if (!attempt) return null;
+    attempts.push(attempt);
+  }
+  if (!Array.isArray(body.reasons) || !body.reasons.every((item) => typeof item === "string")) return null;
+  return { ...body, attempts };
+}
+var TIMELINE_STATES = ["passed", "failed", "skipped", "missing"];
+function asTimelineRow(value) {
+  const row3 = record5(value);
+  if (!row3 || !exactKeys5(row3, ["stage", "state", "detail"])) return null;
+  if (typeof row3.stage !== "string" || !TIMELINE_STATES.includes(String(row3.state))) return null;
+  if (row3.detail !== null && typeof row3.detail !== "string") return null;
+  return row3;
+}
+function asFacts(value) {
+  const facts = record5(value);
+  if (!facts || !exactKeys5(facts, [
+    "transaction_id",
+    "receipt_path",
+    "snapshot_before",
+    "snapshot_after"
+  ])) return null;
+  for (const key of ["transaction_id", "receipt_path", "snapshot_before", "snapshot_after"]) {
+    if (facts[key] !== null && typeof facts[key] !== "string") return null;
+  }
+  return facts;
+}
+function asOperationDetail(value) {
+  const body = record5(value);
+  if (!body || !exactKeys5(body, [
+    "request_id",
+    "capability",
+    "diagnosis",
+    "timeline",
+    "observed_snapshot",
+    "ui_outcome",
+    "facts"
+  ])) return null;
+  if (typeof body.request_id !== "string" || typeof body.capability !== "string") return null;
+  const diagnosis = asDiagnosis(body.diagnosis);
+  if (!diagnosis) return null;
+  if (!Array.isArray(body.timeline)) return null;
+  const timeline = [];
+  for (const item of body.timeline) {
+    const row3 = asTimelineRow(item);
+    if (!row3) return null;
+    timeline.push(row3);
+  }
+  if (body.observed_snapshot !== null && typeof body.observed_snapshot !== "string") return null;
+  if (!["SETTLED", "REFUSED", "BLOCKED"].includes(String(body.ui_outcome))) return null;
+  const facts = asFacts(body.facts);
+  if (!facts) return null;
+  return {
+    request_id: body.request_id,
+    capability: body.capability,
+    diagnosis,
+    timeline,
+    observed_snapshot: body.observed_snapshot,
+    ui_outcome: body.ui_outcome,
+    facts
   };
 }
 
@@ -11520,6 +13212,11 @@ var ReviewView = class extends import_obsidian13.ItemView {
     return null;
   }
 };
+var OPERATIONS_FILTERS = [
+  ["all", "All"],
+  ["attention", "Needs attention"],
+  ["recoveries", "Recoveries"]
+];
 var DiagnosticsView = class extends import_obsidian13.ItemView {
   plugin;
   report = "";
@@ -11531,6 +13228,15 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
   legacyLoaded = false;
   legacyLoading = false;
   legacyError = "";
+  operations = [];
+  operationsLoaded = false;
+  operationsLoading = false;
+  operationsError = "";
+  operationsFilter = "all";
+  selectedRequest = null;
+  operationDetail = null;
+  operationDetailLoading = false;
+  operationDetailError = "";
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -11586,10 +13292,181 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
       this.render();
     }
   }
+  async loadOperations() {
+    if (this.operationsLoading) return;
+    this.operationsLoading = true;
+    this.operationsError = "";
+    this.render();
+    try {
+      const list2 = asOperationsList(await this.plugin.gateway.operationsList(30));
+      if (!list2) throw new Error("Core returned an invalid operations response.");
+      this.operations = list2.operations;
+      this.operationsLoaded = true;
+    } catch (error) {
+      this.operations = [];
+      this.operationsLoaded = false;
+      this.operationsError = errorMessage(error);
+    } finally {
+      this.operationsLoading = false;
+      this.render();
+    }
+  }
+  async loadOperationDetail(requestId) {
+    this.selectedRequest = requestId;
+    this.operationDetail = null;
+    this.operationDetailError = "";
+    this.operationDetailLoading = true;
+    this.render();
+    try {
+      const detail = asOperationDetail(
+        await this.plugin.gateway.operationsDetail(requestId)
+      );
+      if (!detail) throw new Error("Core returned an invalid operation response.");
+      this.operationDetail = detail;
+    } catch (error) {
+      this.operationDetailError = errorMessage(error);
+    } finally {
+      this.operationDetailLoading = false;
+      this.render();
+    }
+  }
+  /** Recovery panel entry point (4B): open one request's causal detail. */
+  openOperation(requestId) {
+    this.screen = "operations";
+    this.selectedRequest = null;
+    this.operationDetail = null;
+    if (!this.operationsLoaded && !this.operationsLoading) void this.loadOperations();
+    void this.loadOperationDetail(requestId);
+  }
+  filteredOperations() {
+    if (this.operationsFilter === "attention") {
+      return this.operations.filter((row3) => row3.needs_attention);
+    }
+    if (this.operationsFilter === "recoveries") {
+      return this.operations.filter((row3) => row3.replayed || row3.attempts > 1);
+    }
+    return this.operations;
+  }
+  renderOperations(root) {
+    const header = section(
+      root,
+      "Operations",
+      "Recent causal operations, newest first. Diagnosis, not logs: every row answers what happened, what committed, and what remains."
+    );
+    if (this.operationsLoading) {
+      empty(header, "Loading operations", "Waiting for Core\u2019s bounded operations response.");
+      return;
+    }
+    if (this.operationsError) {
+      empty(header, "Operations unavailable", this.operationsError, "Try again", () => void this.loadOperations());
+      return;
+    }
+    if (!this.operationsLoaded) {
+      empty(header, "Operations not loaded", "Load recent operations without opening logs or receipts.", "Load operations", () => void this.loadOperations());
+      return;
+    }
+    filterTabs(root, "Operations filters", OPERATIONS_FILTERS, this.operationsFilter, (value) => {
+      this.operationsFilter = value;
+      this.render();
+    }, (value) => value === "all" ? this.operations.length : value === "attention" ? this.operations.filter((row3) => row3.needs_attention).length : this.operations.filter((row3) => row3.replayed || row3.attempts > 1).length);
+    const rows = this.filteredOperations();
+    if (rows.length === 0) {
+      empty(root, "No operations", this.operationsFilter === "all" ? "No causal operations are on record yet." : "Nothing matches this filter.");
+    }
+    for (const row3 of rows) {
+      const glyph = row3.recovery_requirement !== "none" ? "!" : row3.replayed ? "\u27F3" : row3.canonical_outcome === "COMMITTED" ? "\u2713" : "\u2715";
+      const label = row3.recovery_requirement !== "none" ? "Ambiguous" : row3.replayed ? "Replayed" : row3.canonical_outcome === "COMMITTED" ? "Settled" : "Refused";
+      const time = row3.started_at === null ? "--:--" : new Date(row3.started_at * 1e3).toTimeString().slice(0, 5);
+      const duration = row3.duration_ms === null ? "" : ` \xB7 ${Math.round(row3.duration_ms)} ms`;
+      const item = button(
+        root,
+        `${time}  ${row3.capability}  ${glyph} ${label}${duration}`,
+        () => {
+          if (row3.request_id) void this.loadOperationDetail(row3.request_id);
+        },
+        this.selectedRequest !== null && row3.request_id === this.selectedRequest ? "info" : "quiet"
+      );
+      void item;
+    }
+    const actions = root.createDiv({ cls: "los-actions" });
+    button(actions, "Refresh operations", () => {
+      this.operationsLoaded = false;
+      void this.loadOperations();
+    }, "info");
+    this.renderOperationDetail(root);
+  }
+  renderOperationDetail(root) {
+    if (this.selectedRequest === null) return;
+    const detail = section(root, "Operation detail", this.selectedRequest);
+    if (this.operationDetailLoading) {
+      empty(detail, "Loading operation", "Waiting for Core\u2019s diagnosis.");
+      return;
+    }
+    if (this.operationDetailError) {
+      empty(detail, "Operation unavailable", this.operationDetailError);
+      return;
+    }
+    const current = this.operationDetail;
+    if (!current || current.request_id !== this.selectedRequest) return;
+    const diagnosis = current.diagnosis;
+    const status = detail.createDiv({ cls: "los-diagnostic-status" });
+    status.createSpan({
+      cls: "los-diagnostic-glyph",
+      text: diagnosis.canonical_outcome === "COMMITTED" ? current.ui_outcome === "SETTLED" ? "\u2713" : "!" : diagnosis.canonical_outcome === "AMBIGUOUS" ? "!" : "\u2715"
+    });
+    const copy = status.createDiv();
+    copy.createEl("strong", { text: current.capability });
+    copy.createDiv({ cls: "los-micro", text: `Request ${current.request_id}` });
+    const outcomes = section(detail, "Outcomes", "What the authority plane proves.");
+    const heading = outcomes.createDiv({ cls: "los-health-check-head" });
+    heading.createEl("strong", { text: `Canonical: ${diagnosis.canonical_outcome}` });
+    badge(heading, current.ui_outcome, current.ui_outcome === "SETTLED" ? "status" : "role");
+    factList(outcomes, [
+      ["Canonical outcome", diagnosis.canonical_outcome],
+      ["UI outcome", current.ui_outcome],
+      ["Execution", diagnosis.execution_outcome],
+      ["Projection", diagnosis.projection_outcome],
+      ["Failure stage", diagnosis.first_failure_stage ?? "\u2014"],
+      ["Recovery", diagnosis.recovery_requirement === "none" ? "None \u2014 settled." : diagnosis.recovery_requirement === "verify-observation" ? "Verify the receipt is observed in the projection." : "Exact request must be reconciled."]
+    ]);
+    if (diagnosis.reasons.length > 0) {
+      const why = section(detail, "Why", "The resolver\u2019s reasons, verbatim.");
+      for (const reason of diagnosis.reasons) {
+        why.createEl("p", { text: reason });
+      }
+    }
+    const timeline = section(detail, "Timeline", "Causal stages in execution order.");
+    for (const row3 of current.timeline) {
+      const glyph = row3.state === "passed" ? "\u2713" : row3.state === "failed" ? "!" : "\u2013";
+      timeline.createEl("p", {
+        text: `${glyph} ${row3.stage}${row3.detail ? ` \u2014 ${row3.detail}` : ""}`
+      });
+    }
+    factList(
+      section(detail, "Transaction", "References only; receipts stay canonical."),
+      [
+        ["Transaction", current.facts.transaction_id ?? "\u2014"],
+        ["Receipt", current.facts.receipt_path ?? "\u2014"],
+        ["Snapshot before", current.facts.snapshot_before ?? "\u2014"],
+        ["Snapshot after", current.facts.snapshot_after ?? "\u2014"],
+        ["Snapshot seen", current.observed_snapshot ?? "\u2014"],
+        ["Attempts", String(diagnosis.attempts.length)]
+      ]
+    );
+    if (diagnosis.authoritative_evidence.length > 0) {
+      factList(
+        section(detail, "Authority", "The evidence the verdict rests on."),
+        diagnosis.authoritative_evidence.map(
+          (pointer, index) => [`Evidence ${index + 1}`, pointer]
+        )
+      );
+    }
+  }
   selectScreen(screen) {
     this.screen = screen;
     this.render();
     if (screen === "legacy" && !this.legacyLoaded) void this.loadLegacy();
+    if (screen === "operations" && !this.operationsLoaded) void this.loadOperations();
   }
   buildInfo() {
     const fallback = {
@@ -11606,21 +13483,21 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
       const app = this.app;
       const base = app.vault.adapter.getBasePath();
       const pluginInfo = this.plugin.manifest;
-      const directory = pluginInfo?.dir || nodePath.join(
+      const directory = pluginInfo?.dir || nodePath2.join(
         ".obsidian",
         "plugins",
         pluginInfo?.id || "learningos-ui"
       );
-      const target = nodePath.join(
+      const target = nodePath2.join(
         base,
         directory,
         "build-info.json"
       );
-      if (!fs.existsSync(target)) {
+      if (!fs2.existsSync(target)) {
         return fallback;
       }
       const parsed = JSON.parse(
-        fs.readFileSync(target, "utf8")
+        fs2.readFileSync(target, "utf8")
       );
       if (!isRecord2(parsed)) {
         return fallback;
@@ -11660,7 +13537,7 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
     root.addClass("los-root", "los-diagnostics-view");
     pageHeader(root, "More", "Diagnostics");
     const tabs = root.createDiv({ cls: "los-subtabs", attr: { "aria-label": "Diagnostics sections" } });
-    for (const [key, label] of [["health", "Health"], ["legacy", "Legacy Archive"]]) {
+    for (const [key, label] of [["health", "Health"], ["operations", "Operations"], ["legacy", "Legacy Archive"]]) {
       const tab = button(tabs, label, () => this.selectScreen(key), key === this.screen ? "info" : "quiet");
       tab.setAttr("aria-pressed", key === this.screen ? "true" : "false");
     }
@@ -11671,6 +13548,10 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
     this.setIdentityAttributes(root, generated, build, identityMatches);
     if (this.screen === "legacy") {
       this.renderLegacy(root);
+      return;
+    }
+    if (this.screen === "operations") {
+      this.renderOperations(root);
       return;
     }
     const [glyph, title, detail] = this.state();
@@ -11782,6 +13663,21 @@ var DiagnosticsView = class extends import_obsidian13.ItemView {
     const rows = gatewayRecoverySummary(state) ?? [];
     factList(panel, rows);
     const actions = root.createDiv({ cls: "los-actions" });
+    if (state.kind === "record") {
+      let requestId = null;
+      try {
+        const envelope = JSON.parse(state.entry.record.envelope_json);
+        if (isRecord2(envelope) && typeof envelope.request_id === "string") {
+          requestId = envelope.request_id;
+        }
+      } catch (_) {
+        requestId = null;
+      }
+      if (requestId !== null) {
+        const target = requestId;
+        button(actions, "Open operation", () => this.openOperation(target), "info");
+      }
+    }
     if (state.kind === "record" && state.entry.record.phase !== "confirmed") {
       button(
         actions,
@@ -12153,18 +14049,18 @@ function readUnitViewState(value) {
     hasStageId
   };
 }
-function readUnitRecord(record6, fallbackId) {
-  if (!record6) {
+function readUnitRecord(record7, fallbackId) {
+  if (!record7) {
     return null;
   }
-  const id2 = asString(record6.id) ?? fallbackId;
-  const moduleId = asString(record6.module_id);
+  const id2 = asString(record7.id) ?? fallbackId;
+  const moduleId = asString(record7.module_id);
   if (!id2 || !moduleId) {
     return null;
   }
   const knowledgeMap = isRecord2(
-    record6.knowledge_map
-  ) ? record6.knowledge_map : null;
+    record7.knowledge_map
+  ) ? record7.knowledge_map : null;
   const knowledgeNodes = asRecords(
     knowledgeMap?.nodes
   ).map((node) => {
@@ -12189,18 +14085,18 @@ function readUnitRecord(record6, fallbackId) {
     (node) => node !== null
   );
   return {
-    record: record6,
+    record: record7,
     id: id2,
     moduleId,
-    componentId: asString(record6.component_id),
-    kind: asString(record6.kind) ?? "unit",
-    title: asString(record6.title) ?? id2,
-    scope: asText(record6.scope) ?? "",
+    componentId: asString(record7.component_id),
+    kind: asString(record7.kind) ?? "unit",
+    title: asString(record7.title) ?? id2,
+    scope: asText(record7.scope) ?? "",
     knowledgeSummary: asText(
       knowledgeMap?.summary
     ) ?? "",
     knowledgeNodes,
-    needsStudyMap: record6.needs_study_map === true
+    needsStudyMap: record7.needs_study_map === true
   };
 }
 function readMaterialOptions(value, unitId, selectionsValue) {
@@ -12250,17 +14146,17 @@ function readMaterialOptions(value, unitId, selectionsValue) {
   }
   return options;
 }
-function readResource(record6) {
-  const label = asString(record6.label) ?? asString(record6.title) ?? asString(record6.source_id) ?? "Resource";
+function readResource(record7) {
+  const label = asString(record7.label) ?? asString(record7.title) ?? asString(record7.source_id) ?? "Resource";
   return {
-    record: record6,
-    id: asString(record6.id),
-    kind: asString(record6.kind) ?? "read",
+    record: record7,
+    id: asString(record7.id),
+    kind: asString(record7.kind) ?? "read",
     label,
-    locator: asText(record6.locator),
-    sourceId: asString(record6.source_id),
-    scopeTriage: asString(record6.scope_triage),
-    canOpen: hasDirectResourceTarget(record6)
+    locator: asText(record7.locator),
+    sourceId: asString(record7.source_id),
+    scopeTriage: asString(record7.scope_triage),
+    canOpen: hasDirectResourceTarget(record7)
   };
 }
 function readStageAttachment(value) {
@@ -12285,55 +14181,55 @@ function readStageAttachment(value) {
     label: asString(value.label) ?? path
   };
 }
-function readStage(record6) {
-  const id2 = asString(record6.id);
+function readStage(record7) {
+  const id2 = asString(record7.id);
   if (!id2) {
     return null;
   }
   const attachments = Array.isArray(
-    record6.attachments
-  ) ? record6.attachments.map(readStageAttachment).filter(
+    record7.attachments
+  ) ? record7.attachments.map(readStageAttachment).filter(
     (attachment) => attachment !== null
   ) : [];
   return {
-    record: record6,
+    record: record7,
     id: id2,
-    title: asString(record6.title) ?? id2,
-    status: asString(record6.status) ?? "active",
-    scopeTriage: asText(record6.scope_triage) ?? "",
-    objective: asText(record6.objective),
-    estimateMinutes: asText(record6.estimate_minutes),
-    examCritical: record6.exam_critical === true,
-    concepts: asStrings(record6.concepts),
+    title: asString(record7.title) ?? id2,
+    status: asString(record7.status) ?? "active",
+    scopeTriage: asText(record7.scope_triage) ?? "",
+    objective: asText(record7.objective),
+    estimateMinutes: asText(record7.estimate_minutes),
+    examCritical: record7.exam_critical === true,
+    concepts: asStrings(record7.concepts),
     resources: asRecords(
-      record6.resources
+      record7.resources
     ).map(readResource),
     doneWhen: asStrings(
-      record6.done_when
+      record7.done_when
     ).filter(
       (criterion) => Boolean(criterion.trim())
     ),
     attachments,
     sourceFeedback: asRecords(
-      record6.source_feedback
+      record7.source_feedback
     )
   };
 }
-function readStudyMap(record6) {
+function readStudyMap(record7) {
   const stages = asRecords(
-    record6.stages
+    record7.stages
   ).map(readStage).filter(
     (stage) => stage !== null
   );
   return {
-    record: record6,
+    record: record7,
     currentStageId: asString(
-      record6.current_stage
+      record7.current_stage
     ),
     stages,
-    detours: asRecords(record6.detours),
+    detours: asRecords(record7.detours),
     planTemplateVersion: asFiniteNumber(
-      record6.plan_template_version
+      record7.plan_template_version
     )
   };
 }
@@ -12464,10 +14360,10 @@ function renderArtifacts(view, root, unit) {
     card.createEl("h3", {
       text: artifactLabel(key)
     });
-    const record6 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
+    const record7 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
     chip(
       card,
-      record6,
+      record7,
       (selected) => view.plugin.nav.openRecord(
         selected
       )
@@ -12475,10 +14371,10 @@ function renderArtifacts(view, root, unit) {
   }
   for (const id2 of artifacts.other) {
     count += 1;
-    const record6 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
+    const record7 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
     chip(
       wrap,
-      record6,
+      record7,
       (selected) => view.plugin.nav.openRecord(
         selected
       )
@@ -12530,13 +14426,59 @@ function currentWorkResource(resources) {
   ) ?? null;
 }
 var MATERIAL_TYPE_ICON = {
-  video: "play",
-  article: "file-text",
+  "course-material": "presentation",
+  exercise: "pencil-line",
+  solutions: "clipboard-check",
+  exam: "graduation-cap",
   book: "book-open",
-  exercise: "pencil-line"
+  paper: "newspaper",
+  video: "play",
+  website: "globe",
+  documentation: "file-text",
+  code: "code",
+  course: "library",
+  article: "file-text"
 };
+function normaliseMaterialType(declared) {
+  switch (declared) {
+    case "course-material":
+      return "course-material";
+    case "exercise":
+    case "practice":
+    case "practise":
+    case "problem-set":
+    case "homework":
+    case "quiz":
+      return "exercise";
+    case "solutions":
+      return "solutions";
+    case "exam":
+      return "exam";
+    case "book":
+    case "textbook":
+      return "book";
+    case "paper":
+      return "paper";
+    case "video":
+      return "video";
+    case "website":
+    case "web":
+    case "web-page":
+    case "webpage":
+      return "website";
+    case "documentation":
+    case "docs":
+      return "documentation";
+    case "code":
+      return "code";
+    case "course":
+      return "course";
+    default:
+      return "article";
+  }
+}
 function materialTypeIcon(type) {
-  return MATERIAL_TYPE_ICON[type] ?? MATERIAL_TYPE_ICON.article;
+  return MATERIAL_TYPE_ICON[normaliseMaterialType((type ?? "").toLowerCase())];
 }
 var angleDetailSequence = 0;
 function whyThisOne(copy, detailText, fillFoot) {
@@ -12568,10 +14510,18 @@ function materialTypeOf(resource, source) {
   if (resource.kind === "practise") return "exercise";
   if (resource.kind === "watch") return "video";
   const declared = (asText(resource.record.format) ?? asText(resource.record.material_type) ?? asText(source?.source_type) ?? asText(source?.format) ?? "").toLowerCase();
-  if (declared === "exercise" || declared === "practice" || declared === "practise" || declared === "problem-set" || declared === "homework" || declared === "quiz") return "exercise";
-  if (declared === "video") return "video";
-  if (declared === "book" || declared === "textbook") return "book";
-  return "article";
+  return normaliseMaterialType(declared);
+}
+function renderMaterialCautions(parent, record7) {
+  for (const asset of Array.isArray(record7.requires_assets) ? record7.requires_assets : []) {
+    if (!isRecord2(asset) || typeof asset.name !== "string") continue;
+    const part = asText(asset.needed_for);
+    const origin = asText(asset.obtain_from);
+    parent.createDiv({ cls: "los-micro", text: `${asset.material_uri ? "Required file" : "Not registered locally"}: ${asset.name}` + (part ? ` \u2014 needed for ${part}` : "") + (origin ? `. Obtain from ${origin}.` : ".") });
+  }
+  if (Array.isArray(record7.exposes_solutions_for) && record7.exposes_solutions_for.length) {
+    parent.createDiv({ cls: "los-micro", text: "Contains related task solutions. Read after your attempt, and report prior exposure before using those tasks as independent evidence." });
+  }
 }
 function renderResourceRow(parent, resource, source, renderer, extras = {}) {
   const materialType = materialTypeOf(resource, source);
@@ -12588,6 +14538,9 @@ function renderResourceRow(parent, resource, source, renderer, extras = {}) {
     cls: `los-resource-priority los-resource-priority-${resource.scopeTriage || "unranked"}`,
     text: isTriageRank(resource.scopeTriage) ? TRIAGE_HEADING[resource.scopeTriage] : resource.scopeTriage || "Primary \xB7 unranked"
   });
+  if (extras.sourceInMeta && source && !extras.hideSourceChip) {
+    chip(metadata, source, renderer.openSource);
+  }
   if (resource.locator) {
     metadata.createSpan({
       cls: "los-micro los-resource-locator",
@@ -12604,7 +14557,9 @@ function renderResourceRow(parent, resource, source, renderer, extras = {}) {
       text: angle
     });
   }
-  const showChip = source && !extras.hideSourceChip ? source : null;
+  const routeId = asText(resource.record.route_id);
+  renderMaterialCautions(copy, (routeId ? renderer.routeRecord?.(routeId) : null) ?? resource.record);
+  const showChip = source && !extras.hideSourceChip && !extras.sourceInMeta ? source : null;
   const angleDetail = asText(resource.record.angle_detail);
   if (angleDetail) {
     whyThisOne(copy, angleDetail, (foot) => {
@@ -12665,6 +14620,103 @@ function renderSourceGroups(root, entries, sourceTitle, renderEntry2, open = fal
 }
 
 // src/features/unit/material-drawer.ts
+var PURPOSE_ORDER = [
+  { value: "course-aligned", label: "Follow the course", sub: "Exactly what this lecture taught" },
+  { value: "orientation", label: "Get oriented", sub: "The shape of the idea before the detail" },
+  { value: "intuition", label: "Build intuition", sub: "Why it works, in pictures and words" },
+  { value: "derivation", label: "Derive it", sub: "The formal argument, step by step" },
+  { value: "practice", label: "Practise", sub: "Problems to work, with solutions to check" },
+  { value: "implementation", label: "Implement it", sub: "Code it and run it" },
+  { value: "advanced-reference", label: "Go deeper", sub: "Beyond this stage \u2014 kept, not required" },
+  { value: "unassessed", label: "Not yet evaluated", sub: "No one has judged this yet \u2014 not a scope judgment" }
+];
+var UNASSIGNED_PURPOSE = {
+  value: "",
+  label: "Purpose not yet assigned",
+  sub: "Shown last; never dropped"
+};
+var TYPE_ORDER = [
+  { value: "course-material", label: "Lecture material" },
+  { value: "exercise", label: "Exercise sheets" },
+  { value: "solutions", label: "Worked solutions" },
+  { value: "exam", label: "Past exams" },
+  { value: "book", label: "Textbooks" },
+  { value: "paper", label: "Papers" },
+  { value: "video", label: "Videos" },
+  { value: "website", label: "Web pages" },
+  { value: "documentation", label: "Documentation" },
+  { value: "code", label: "Code" },
+  { value: "course", label: "Courses" }
+];
+var OTHER_TYPE = { value: "", label: "Other material" };
+function normalisePurpose(value) {
+  const candidate = (value ?? "").trim().toLowerCase();
+  return PURPOSE_ORDER.some((def) => def.value === candidate) ? candidate : "";
+}
+function normaliseType(raw, kind) {
+  switch ((raw ?? "").trim().toLowerCase()) {
+    case "course-material":
+      return "course-material";
+    case "exercise":
+    case "practice":
+    case "practise":
+    case "problem-set":
+    case "homework":
+    case "quiz":
+      return "exercise";
+    case "solutions":
+      return "solutions";
+    case "exam":
+      return "exam";
+    case "book":
+    case "textbook":
+      return "book";
+    case "paper":
+      return "paper";
+    case "video":
+      return "video";
+    case "website":
+    case "web":
+    case "web-page":
+    case "webpage":
+      return "website";
+    case "documentation":
+    case "docs":
+      return "documentation";
+    case "code":
+      return "code";
+    case "course":
+      return "course";
+    default:
+      break;
+  }
+  const workingKind = (kind ?? "").trim().toLowerCase();
+  if (workingKind === "practise" || workingKind === "practice") return "exercise";
+  if (workingKind === "watch") return "video";
+  return "";
+}
+var TRIAGE_WEIGHT = {
+  "required-now": 1,
+  "helpful-now": 2,
+  deferred: 3,
+  "reference-only": 4
+};
+function purposeLabel(value) {
+  if (!value) return UNASSIGNED_PURPOSE.label;
+  return PURPOSE_ORDER.find((def) => def.value === value)?.label ?? UNASSIGNED_PURPOSE.label;
+}
+function typeLabel(value) {
+  if (!value) return OTHER_TYPE.label;
+  return TYPE_ORDER.find((def) => def.value === value)?.label ?? OTHER_TYPE.label;
+}
+function entryWeight(entry) {
+  return TRIAGE_WEIGHT[entry.triage ?? ""] ?? (entry.required ? 1 : 5);
+}
+function openWeight(entries) {
+  const ranked = entries.filter((entry) => entry.hasUrgency);
+  if (!ranked.length) return null;
+  return ranked.reduce((best, entry) => Math.min(best, entryWeight(entry)), Number.POSITIVE_INFINITY);
+}
 var MaterialComparisonModal = class extends import_obsidian15.Modal {
   constructor(app, options) {
     super(app);
@@ -12672,9 +14724,13 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
   }
   sourceScope = "stage";
   purpose = "all";
+  materialType = "all";
+  requiredOnly = false;
+  groupBy = "purpose";
   query = "";
   restoreAccessibility = null;
   results = null;
+  groupNodes = /* @__PURE__ */ new Map();
   onOpen() {
     const { plugin, unit, stage } = this.options;
     plugin.router.openOverlay({ kind: "material-comparison", unitId: unit.id, stageId: stage.id });
@@ -12697,16 +14753,33 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
     const widerLabel = unit.componentId === "component-m2-sad" ? "All SaD" : `All ${asString(component?.title) ?? "module sources"}`;
     for (const [value, text5] of [["stage", "This stage"], ["unit", "This lecture"], ["component", widerLabel]]) scope.createEl("option", { text: text5, attr: { value } });
     scope.value = this.sourceScope;
-    scope.addEventListener("change", () => {
-      this.sourceScope = scope.value;
-      this.updateResults();
-    });
-    const purposeLabel = controls.createEl("label", { text: "Purpose" });
-    const purpose = purposeLabel.createEl("select", { cls: "los-source-purpose", attr: { "aria-label": "Learning purpose" } });
-    for (const [value, text5] of [["all", "All purposes"], ["derivation", "Derivation"], ["intuition", "Intuition"], ["practice", "Practice"]]) purpose.createEl("option", { text: text5, attr: { value } });
+    const purposeLabelEl = controls.createEl("label", { text: "Purpose" });
+    const purpose = purposeLabelEl.createEl("select", { cls: "los-source-purpose", attr: { "aria-label": "Learning purpose" } });
+    purpose.createEl("option", { text: "All purposes", attr: { value: "all" } });
+    for (const def of PURPOSE_ORDER) purpose.createEl("option", { text: def.label, attr: { value: def.value } });
     purpose.value = this.purpose;
     purpose.addEventListener("change", () => {
       this.purpose = purpose.value;
+      this.updateResults();
+    });
+    const typeLabelEl = controls.createEl("label", { text: "Type" });
+    const materialType = typeLabelEl.createEl("select", { cls: "los-source-type", attr: { "aria-label": "Material type" } });
+    materialType.createEl("option", { text: "All types", attr: { value: "all" } });
+    for (const def of TYPE_ORDER) materialType.createEl("option", { text: def.label, attr: { value: def.value } });
+    materialType.createEl("option", { text: OTHER_TYPE.label, attr: { value: "" } });
+    materialType.value = this.materialType;
+    materialType.addEventListener("change", () => {
+      this.materialType = materialType.value;
+      this.updateResults();
+    });
+    const requiredLabel = controls.createEl("label", { cls: "los-source-required-label" });
+    const required = requiredLabel.createEl("input", { cls: "los-source-required", attr: { type: "checkbox", "aria-label": "Only what's required now" } });
+    requiredLabel.createSpan({ text: "Only what's required now" });
+    required.checked = this.requiredOnly;
+    required.disabled = this.sourceScope !== "stage";
+    required.title = "Urgency ranks only exist on stage placements";
+    required.addEventListener("change", () => {
+      this.requiredOnly = required.checked;
       this.updateResults();
     });
     const searchLabel = controls.createEl("label", { text: "Search" });
@@ -12715,14 +14788,44 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
       this.query = search.value;
       this.updateResults();
     });
+    const groupRow = controls.createDiv({ cls: "los-source-groupby" });
+    groupRow.setAttrs({ role: "group", "aria-label": "Group materials by" });
+    const groupButtons = /* @__PURE__ */ new Map();
+    for (const [value, text5] of [["purpose", "Purpose \u2192 type"], ["type", "Type \u2192 purpose"], ["source", "Source"]]) {
+      const control = button(groupRow, text5, () => {
+        this.groupBy = value;
+        for (const [other, otherButton] of groupButtons) {
+          otherButton.toggleClass("is-active", other === value);
+          otherButton.setAttr("aria-pressed", String(other === value));
+        }
+        this.updateResults();
+      }, "quiet");
+      control.addClass("los-groupby-btn");
+      control.toggleClass("is-active", value === this.groupBy);
+      control.setAttr("aria-pressed", String(value === this.groupBy));
+      groupButtons.set(value, control);
+    }
     button(controls, "Reset filters", () => {
       this.purpose = "all";
+      this.materialType = "all";
+      this.requiredOnly = false;
       this.query = "";
       purpose.value = "all";
+      materialType.value = "all";
+      required.checked = false;
       search.value = "";
       this.updateResults();
       search.focus();
     }, "quiet");
+    scope.addEventListener("change", () => {
+      this.sourceScope = scope.value;
+      if (this.sourceScope !== "stage") {
+        this.requiredOnly = false;
+        required.checked = false;
+      }
+      required.disabled = this.sourceScope !== "stage";
+      this.updateResults();
+    });
     this.results = root.createDiv({ cls: "los-source-results" });
     this.updateResults();
     root.createEl("p", { cls: "los-micro los-material-drawer-note", text: "Browsing never deletes or hides the complete source record. Choosing material is a separate action." });
@@ -12750,51 +14853,192 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
     if (this.sourceScope === "stage") return resources.map((resource) => {
       const routeId = asString(resource.record.route_id);
       const route = routeId ? materialOptions.find((option) => option.routeId === routeId) : void 0;
+      const rawFormat = asString(resource.record.format) ?? route?.format ?? resource.kind;
+      const depth = route?.depth ?? asString(resource.record.depth) ?? "";
+      const triage = asString(resource.record.scope_triage);
       return {
         sourceId: resource.sourceId ?? route?.sourceId ?? null,
         title: resource.label,
         locator: resource.locator,
+        angle: asText(resource.record.angle) ?? "",
+        purpose: normalisePurpose(depth),
+        type: normaliseType(rawFormat, resource.kind),
+        depth,
+        format: rawFormat,
+        triage,
+        hasUrgency: true,
+        // An unranked pre-v2 placement counts as primary work, never as
+        // deprioritised — the same rule the stage screen already follows.
+        required: !triage || triage === "required-now",
         owner: unit,
-        resource,
-        depth: asString(resource.record.depth) ?? route?.depth ?? "",
-        format: resource.kind === "practise" ? "practice" : asString(resource.record.format) ?? route?.format ?? resource.kind,
-        angle: asText(resource.record.angle) ?? ""
+        resource
       };
     });
-    const owners = this.sourceScope === "unit" ? [unit] : plugin.store.unitsFor(unit.moduleId, unit.componentId).map((record6) => readUnitRecord(record6, asString(record6.id))).filter((record6) => record6 !== null);
+    const owners = this.sourceScope === "unit" ? [unit] : plugin.store.unitsFor(unit.moduleId, unit.componentId).map((record7) => readUnitRecord(record7, asString(record7.id))).filter((record7) => record7 !== null);
     const sourceMap = plugin.store.sourceMap(unit.moduleId);
     return owners.flatMap((owner) => {
       const options = owner.id === unit.id ? materialOptions : readMaterialOptions(sourceMap?.sources, owner.id, owner.record.source_selections);
-      return options.map((option) => ({ ...option, owner, option }));
+      return options.map((option) => ({
+        ...option,
+        sourceId: option.sourceId,
+        title: option.title,
+        locator: option.locator,
+        angle: option.angle,
+        purpose: normalisePurpose(option.depth),
+        type: normaliseType(option.format, ""),
+        triage: null,
+        hasUrgency: false,
+        required: false,
+        owner,
+        option
+      }));
     });
   }
   updateResults() {
     const root = this.results;
     if (!root) return;
     root.empty();
+    this.groupNodes.clear();
     const all = this.entries();
     const query = foldCase(this.query.trim());
+    const narrowedByFilter = this.purpose !== "all" || this.materialType !== "all" || this.requiredOnly;
     const entries = all.filter((entry) => {
-      const purpose = this.purpose === "all" || entry.depth.toLowerCase().includes(this.purpose) || this.purpose === "practice" && ["practice", "practise", "exercise", "problem-set", "homework", "quiz"].includes(entry.format);
-      return purpose && (!query || [this.sourceTitle(entry.sourceId), entry.title, entry.locator ?? "", entry.angle].some((text5) => foldCase(text5).includes(query)));
+      if (this.purpose !== "all" && entry.purpose !== this.purpose) return false;
+      if (this.materialType !== "all" && entry.type !== this.materialType) return false;
+      if (this.requiredOnly && !entry.required) return false;
+      if (!query) return true;
+      return [
+        this.sourceTitle(entry.sourceId),
+        entry.title,
+        entry.locator ?? "",
+        entry.angle,
+        purposeLabel(entry.purpose),
+        typeLabel(entry.type)
+      ].some((text5) => foldCase(text5).includes(query));
     });
-    const groups = groupBySource(entries).size;
-    root.createDiv({ cls: "los-source-counts", attr: { role: "status", "aria-live": "polite" }, text: `${entries.length} of ${all.length} entries \xB7 ${groups} source groups` });
-    if (!entries.length) empty(root, "No materials match", "Change scope or reset the filters to see the complete list.");
-    const narrowed = Boolean(query) || this.purpose !== "all" || groups === 1;
-    renderSourceGroups(root, entries, (id2) => this.sourceTitle(id2), (parent, entry) => this.renderEntry(parent, entry), narrowed);
+    const hasUrgency = entries.some((entry) => entry.hasUrgency) || all.some((entry) => entry.hasUrgency);
+    const required = entries.filter((entry) => entry.required).length;
+    if (this.groupBy === "source") {
+      const groups = groupBySource(entries).size;
+      root.createDiv({ cls: "los-source-counts", attr: { role: "status", "aria-live": "polite" }, text: `${entries.length} of ${all.length} entries \xB7 ${groups} source groups` });
+      if (!entries.length) {
+        empty(root, "No materials match", "Change scope or reset the filters to see the complete list.");
+        return;
+      }
+      const narrowed2 = Boolean(query) || narrowedByFilter || groups === 1;
+      renderSourceGroups(root, entries, (id2) => this.sourceTitle(id2), (parent, entry) => this.renderEntry(parent, entry), narrowed2);
+      return;
+    }
+    const primaryIsPurpose = this.groupBy === "purpose";
+    const primaryKeys = primaryIsPurpose ? [...PURPOSE_ORDER.map((def) => def.value), ""] : [...TYPE_ORDER.map((def) => def.value), ""];
+    const primaryCount = primaryKeys.filter((key) => entries.some((entry) => primaryIsPurpose ? entry.purpose === key : entry.type === key)).length;
+    const kindWord = primaryIsPurpose ? "purposes" : "types";
+    const counts = `${entries.length} of ${all.length} entries \xB7 ${primaryCount} ${kindWord}` + (hasUrgency ? ` \xB7 ${required} required now` : "");
+    root.createDiv({ cls: "los-source-counts", attr: { role: "status", "aria-live": "polite" }, text: counts });
+    if (!entries.length) {
+      empty(root, "No materials match", "Change scope or reset the filters to see the complete list.");
+      return;
+    }
+    this.renderJumpBar(root, entries, primaryIsPurpose);
+    const narrowed = Boolean(query) || narrowedByFilter || primaryCount === 1;
+    const openAt = openWeight(entries);
+    if (primaryIsPurpose) this.renderPurposeSections(root, entries, narrowed, hasUrgency, openAt);
+    else this.renderTypeSections(root, entries, narrowed, hasUrgency, openAt);
+  }
+  /**
+   * The primary navigation of the modal at wide scopes: one chip per purpose
+   * (or type) with its live count. Empty groups stay visible but muted and
+   * inert, so a collapsed section can never be mistaken for a missing one.
+   * The bar sticks to the top of the scroll area.
+   */
+  renderJumpBar(root, entries, primaryIsPurpose) {
+    const bar = root.createDiv({ cls: "los-jump-bar" });
+    bar.setAttrs({ role: "group", "aria-label": primaryIsPurpose ? "Jump to purpose" : "Jump to material type" });
+    const defs = primaryIsPurpose ? [...PURPOSE_ORDER, UNASSIGNED_PURPOSE] : [...TYPE_ORDER, OTHER_TYPE];
+    for (const def of defs) {
+      const count = entries.filter((entry) => primaryIsPurpose ? entry.purpose === def.value : entry.type === def.value).length;
+      const jump = bar.createEl("button", {
+        cls: `los-jump-chip${count ? "" : " is-muted"}`,
+        text: `${def.label} ${count}`,
+        attr: { type: "button" }
+      });
+      if (!count) {
+        jump.disabled = true;
+        continue;
+      }
+      jump.setAttr("aria-label", `Jump to ${def.label}, ${count} ${count === 1 ? "entry" : "entries"}`);
+      jump.addEventListener("click", () => {
+        const target = this.groupNodes.get(def.value);
+        if (target) {
+          target.setAttr("open", "");
+          if (typeof target.scrollIntoView === "function") target.scrollIntoView({ block: "start" });
+        }
+      });
+    }
+  }
+  sectionCounts(group, hasUrgency) {
+    const required = group.filter((entry) => entry.required).length;
+    const entries = `${group.length} ${group.length === 1 ? "entry" : "entries"}`;
+    return hasUrgency ? `${entries} \xB7 ${required} required now` : entries;
+  }
+  /**
+   * Purpose first, material type second. The type level is a lightweight
+   * inline sub-heading with a count — never a second accordion. This surface
+   * has a documented history of nested disclosures, and one click is the
+   * maximum between opening the modal and reading any card.
+   */
+  renderPurposeSections(root, entries, open, hasUrgency, openAt) {
+    for (const def of [...PURPOSE_ORDER, UNASSIGNED_PURPOSE]) {
+      const group = entries.filter((entry) => entry.purpose === def.value);
+      if (!group.length) continue;
+      const details = root.createEl("details", { cls: "los-disclosure los-purpose-group" });
+      details.setAttr("data-los-group", def.value);
+      this.groupNodes.set(def.value, details);
+      if (open || openAt !== null && group.some((entry) => entryWeight(entry) === openAt)) details.setAttr("open", "");
+      const summary = details.createEl("summary", { cls: "los-purpose-summary" });
+      summary.createEl("h2", { cls: "los-purpose-heading", text: `${def.label} \xB7 ${this.sectionCounts(group, hasUrgency)}` });
+      summary.createDiv({ cls: "los-purpose-sub", text: def.sub });
+      const body = details.createDiv({ cls: "los-disclosure-body" });
+      for (const typeDef of [...TYPE_ORDER, OTHER_TYPE]) {
+        const cards = group.filter((entry) => entry.type === typeDef.value);
+        if (!cards.length) continue;
+        const sub = body.createDiv({ cls: "los-type-subgroup" });
+        sub.createEl("h3", { cls: "los-type-subhead", text: `${typeDef.label} (${cards.length})` });
+        for (const entry of this.byUrgency(cards)) this.renderEntry(sub, entry);
+      }
+    }
+  }
+  /** Type first, purpose second — the mirror of the default partition. */
+  renderTypeSections(root, entries, open, hasUrgency, openAt) {
+    for (const def of [...TYPE_ORDER, OTHER_TYPE]) {
+      const group = entries.filter((entry) => entry.type === def.value);
+      if (!group.length) continue;
+      const details = root.createEl("details", { cls: "los-disclosure los-purpose-group" });
+      details.setAttr("data-los-group", def.value);
+      this.groupNodes.set(def.value, details);
+      if (open || openAt !== null && group.some((entry) => entryWeight(entry) === openAt)) details.setAttr("open", "");
+      const summary = details.createEl("summary", { cls: "los-purpose-summary" });
+      summary.createEl("h2", { cls: "los-purpose-heading", text: `${def.label} \xB7 ${this.sectionCounts(group, hasUrgency)}` });
+      const body = details.createDiv({ cls: "los-disclosure-body" });
+      for (const purposeDef of [...PURPOSE_ORDER, UNASSIGNED_PURPOSE]) {
+        const cards = group.filter((entry) => entry.purpose === purposeDef.value);
+        if (!cards.length) continue;
+        const sub = body.createDiv({ cls: "los-type-subgroup" });
+        sub.createEl("h3", { cls: "los-type-subhead", text: `${purposeDef.label} (${cards.length})` });
+        for (const entry of this.byUrgency(cards)) this.renderEntry(sub, entry);
+      }
+    }
+  }
+  /** Urgency is the sort key inside a sub-group; ties keep authored order. */
+  byUrgency(cards) {
+    return [...cards].sort((left, right) => entryWeight(left) - entryWeight(right));
   }
   /**
    * One material, one card — the same card the stage screen shows.
    *
-   * This used to be a disclosure whose summary printed the title, status and
-   * locator, wrapping a full `renderStageResources` section that printed a
-   * heading, a count of one, a paragraph of standing advice, a triage bucket
-   * heading, and then a card repeating the title, status and locator again.
-   * Reaching a PDF took three expansions to read the same two facts four
-   * times. The group heading already names the source, so the card carries
-   * only what the group has not said, and the long rationale stays behind the
-   * card's own "Why this one".
+   * The group heading already names the purpose and the sub-heading the
+   * material type, so neither is repeated in the card's meta row; the source
+   * chip is restored onto the card now that no group heading names it.
    */
   renderEntry(parent, entry) {
     const badges = entry.owner.id === this.options.unit.id ? [] : [entry.owner.title];
@@ -12803,7 +15047,7 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
       const source = sourceId ? this.options.renderer.sourceRecord?.(sourceId) ?? null : null;
       const row3 = renderResourceRow(parent, entry.resource, source, this.options.renderer, {
         badges,
-        hideSourceChip: true
+        sourceInMeta: true
       });
       row3.addClass("los-source-entry");
       return;
@@ -12819,18 +15063,17 @@ var MaterialComparisonModal = class extends import_obsidian15.Modal {
     const option = entry.option;
     const own = entry.owner.id === this.options.unit.id;
     const row3 = parent.createDiv({ cls: "los-resource-row los-source-entry los-triage-unranked" });
-    icon(row3.createSpan(), materialTypeIcon(option.format));
+    icon(row3.createSpan(), materialTypeIcon(entry.type || option.format));
     const copy = row3.createDiv({ cls: "los-resource-copy" });
     copy.createEl("strong", { text: entry.title });
     const metadata = copy.createDiv({ cls: "los-resource-row-meta" });
-    metadata.createSpan({
-      cls: "los-resource-priority los-resource-priority-unranked",
-      text: `${option.format} \xB7 ${option.depth}`
-    });
+    const source = entry.sourceId ? this.options.renderer.sourceRecord?.(entry.sourceId) ?? null : null;
+    if (source) chip(metadata, source, this.options.renderer.openSource);
     if (entry.locator) metadata.createSpan({ cls: "los-micro los-resource-locator", text: entry.locator });
     for (const badge2 of badges) metadata.createSpan({ cls: "los-micro los-resource-badge", text: badge2 });
     if (option.selected) metadata.createSpan({ cls: "los-micro los-resource-chosen", text: "Chosen for this lecture" });
     if (option.angle) copy.createDiv({ cls: "los-resource-angle", text: option.angle });
+    renderMaterialCautions(copy, option.record);
     const labels = option.covers.map((id2) => entry.owner.knowledgeNodes.find((node) => node.id === id2)?.title).filter((title) => Boolean(title));
     const rationale = [asText(option.record.angle_detail), labels.length ? `Covers: ${labels.join(" \xB7 ")}` : ""].filter(Boolean).join("\n\n");
     if (rationale) whyThisOne(copy, rationale);
@@ -12904,18 +15147,18 @@ function renderStage(view, layout, unit, studyMap, stage) {
   }
   const conceptRecords = stage.concepts.flatMap(
     (conceptId) => {
-      const record6 = view.plugin.store.get(conceptId);
-      return record6 ? [record6] : [];
+      const record7 = view.plugin.store.get(conceptId);
+      return record7 ? [record7] : [];
     }
   );
   if (conceptRecords.length) {
     const concepts = center.createDiv({
       cls: "los-stage-concepts"
     });
-    for (const record6 of conceptRecords) {
+    for (const record7 of conceptRecords) {
       chip(
         concepts,
-        record6,
+        record7,
         (target) => view.plugin.nav.openRecord(target)
       );
     }
@@ -12996,9 +15239,12 @@ function renderStage(view, layout, unit, studyMap, stage) {
       });
     }
   }
+  const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
+  const materialOptions = readMaterialOptions(sourceMap?.sources, unit.id, unit.record.source_selections);
   const resourceRenderer = {
     emptyDetail: "Use the unit scope and ask AI for a proposal.",
     sourceRecord: (sourceId) => view.plugin.store.get(sourceId),
+    routeRecord: (routeId) => materialOptions.find((option) => option.routeId === routeId)?.record ?? null,
     openSource: (source) => {
       const sourceId = asString(source.id);
       return sourceId ? view.plugin.nav.openLibrary(sourceId) : void 0;
@@ -13057,12 +15303,6 @@ function renderStage(view, layout, unit, studyMap, stage) {
     );
   }
   {
-    const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
-    const materialOptions = readMaterialOptions(
-      sourceMap?.sources,
-      unit.id,
-      unit.record.source_selections
-    );
     const catalogue = center.createDiv({
       cls: "los-section los-stage-materials"
     });
@@ -13293,6 +15533,7 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
         text: option.angle
       });
       const fullDetail = asText(option.record.angle_detail);
+      renderMaterialCautions(copy, option.record);
       if (option.locator) {
         copy.createDiv({
           cls: "los-micro",
@@ -13443,8 +15684,8 @@ function renderMaterialSynthesis(view, root, synthesis, options) {
     card.createDiv({ cls: "los-micro", text: assessment2.locator });
     const source = view.plugin.store.get(assessment2.source_id);
     if (source) {
-      chip(card, source, (record6) => {
-        const sourceId = asString(record6.id);
+      chip(card, source, (record7) => {
+        const sourceId = asString(record7.id);
         return sourceId ? view.plugin.nav.openLibrary(sourceId) : void 0;
       });
     }
@@ -13455,6 +15696,9 @@ function renderMaterialSynthesis(view, root, synthesis, options) {
       ["Notation", assessment2.notation],
       ["Exercise value", assessment2.exercise_value],
       ["Limitations", assessment2.limitations],
+      // Directly under Limitations, because it is the bound on every negative
+      // sentence above it: what this review actually had in front of it.
+      ["Inspected", assessment2.scope_of_absence],
       ["Review note", assessment2.reason]
     ];
     for (const [label, value] of details) {
@@ -13467,7 +15711,7 @@ function renderMaterialSynthesis(view, root, synthesis, options) {
       const concepts = card.createDiv({ cls: "los-material-metadata" });
       for (const conceptId of assessment2.concept_ids) {
         const concept = view.plugin.store.get(conceptId);
-        if (concept) chip(concepts, concept, (record6) => view.plugin.nav.openRecord(record6));
+        if (concept) chip(concepts, concept, (record7) => view.plugin.nav.openRecord(record7));
       }
     }
     const evidenceCount = assessment2.evidence?.length || 0;
@@ -13505,8 +15749,8 @@ function renderMaterialSynthesis(view, root, synthesis, options) {
       row3.createEl("p", { text: group.narrative });
       const related = row3.createDiv({ cls: "los-material-metadata" });
       for (const relatedId of [...group.related_unit_ids, ...group.bridge_note_ids]) {
-        const record6 = view.plugin.store.get(relatedId);
-        if (record6) chip(related, record6, (target) => view.plugin.nav.openRecord(target));
+        const record7 = view.plugin.store.get(relatedId);
+        if (record7) chip(related, record7, (target) => view.plugin.nav.openRecord(target));
       }
     }
   }
@@ -13581,12 +15825,77 @@ function renderLearningRouteRail(parent, options) {
 
 // src/features/unit/map-import.ts
 var import_obsidian17 = require("obsidian");
+function stageIds(value) {
+  return Array.isArray(value) ? value.map((row3) => asString(row3)).filter((row3) => Boolean(row3)) : [];
+}
+function renderImportDiff(root, answer) {
+  root.empty();
+  const payload = isRecord2(answer) ? answer : null;
+  const diff = payload && isRecord2(payload.diff) ? payload.diff : null;
+  if (!diff || !Array.isArray(diff.stages_after) || !Array.isArray(diff.content_changes) || !Array.isArray(diff.map_changes) || !diff.stages_after.every((v) => typeof v === "string" && v.length > 0) || payload?.canonical_files_written !== 0) {
+    root.createDiv({
+      cls: "los-muted",
+      text: "LearningOS answered in a shape this version cannot read. Do not import on the strength of an unread check."
+    });
+    return false;
+  }
+  const added = stageIds(diff.stages_added);
+  const retired = stageIds(diff.stages_retired);
+  const preserved = stageIds(diff.preserved_stage_state);
+  const after = stageIds(diff.stages_after);
+  const replacement = diff.replacement === true;
+  root.createDiv({
+    cls: "los-kicker",
+    text: replacement ? "This replaces the current map" : "This creates the first map"
+  });
+  const list2 = root.createEl("ul", { cls: "los-map-import-diff" });
+  const line = (text5) => list2.createEl("li", { text: text5 });
+  line(`${after.length} stage${after.length === 1 ? "" : "s"} after the import.`);
+  if (added.length) line(`Adds: ${added.join(", ")}.`);
+  if (retired.length) line(`Retires: ${retired.join(", ")}.`);
+  if (!added.length && !retired.length && replacement) {
+    line("No stage is added or retired.");
+  }
+  if (diff.relative_order_changed === true) {
+    const reason = asString(diff.intentional_reorder_reason);
+    line(`Relative order of surviving stages changes${reason ? `: ${reason}` : ""}.`);
+  }
+  if (preserved.length) {
+    line(`Recorded work carried forward on ${preserved.length} stage${preserved.length === 1 ? "" : "s"}.`);
+  }
+  const resume = asString(diff.resume_stage);
+  if (resume) line(`Resumes at ${resume}.`);
+  const reset = asString(diff.state_reset_reason);
+  if (reset) line(`Recorded stage state is reset: ${reset}.`);
+  const evidence2 = stageIds(diff.retired_stage_evidence);
+  if (evidence2.length) {
+    line(`Evidence exists on retired stage${evidence2.length === 1 ? "" : "s"}: ${evidence2.join(", ")}.`);
+  }
+  for (const value of [...diff.content_changes, ...diff.map_changes]) {
+    if (!isRecord2(value) || "stage_id" in value && typeof value.stage_id !== "string" || typeof value.field !== "string" || !("before" in value) || !("after" in value)) return false;
+    const change = root.createEl("details");
+    change.createEl("summary", { text: `${value.stage_id ?? "Map"}: ${value.field.replaceAll("_", " ")}` });
+    change.createEl("div", { text: "Before" });
+    change.createEl("pre", { text: JSON.stringify(value.before, null, 2) });
+    change.createEl("div", { text: "After" });
+    change.createEl("pre", { text: JSON.stringify(value.after, null, 2) });
+  }
+  const written = payload?.canonical_files_written;
+  root.createDiv({
+    cls: "los-micro los-muted",
+    text: written === 0 ? "Checked only \u2014 nothing was written." : "LearningOS did not confirm this was a no-write check."
+  });
+  return true;
+}
 var UnitMapImportModal = class extends import_obsidian17.Modal {
   constructor(app, options) {
     super(app);
     this.options = options;
   }
   restoreAccessibility = null;
+  /** The exact bytes a rendered preflight approved, or null before one ran. */
+  checked = null;
+  reviewGeneration = 0;
   onOpen() {
     const { replacing, unitTitle } = this.options;
     const root = this.contentEl;
@@ -13598,7 +15907,7 @@ var UnitMapImportModal = class extends import_obsidian17.Modal {
     heading.id = "los-map-import-heading";
     root.createEl("p", {
       cls: "los-muted",
-      text: replacing ? `${unitTitle} already has a current map. Importing archives the old one in Git and makes this the current map.` : `Apply a reviewed study map to ${unitTitle}. The coverage audit stays where the SOP puts it; this applies its result.`
+      text: replacing ? `${unitTitle} already has a current map. Review the changes and the recorded work carried forward before replacing it.` : `Apply a reviewed study map to ${unitTitle}. The coverage audit stays where the SOP puts it; this applies its result.`
     });
     this.restoreAccessibility = makeModalAccessible(root, {
       close: () => this.close(),
@@ -13615,23 +15924,66 @@ var UnitMapImportModal = class extends import_obsidian17.Modal {
     const file = field.createEl("input", { attr: { type: "text" } });
     file.placeholder = "path to the audited study-map YAML";
     const status = root.createDiv({ cls: "los-draft-status", attr: { "aria-live": "polite" } });
+    const preview = root.createDiv({
+      cls: "los-map-import-preview",
+      attr: { "aria-live": "polite" }
+    });
     const actions = root.createDiv({ cls: "los-actions los-map-import-actions" });
     const submit = button(actions, replacing ? "Replace map" : "Import map", async () => {
       const path = file.value.trim();
-      if (!path) {
-        status.setText("Name the reviewed file first.");
+      if (!path || !this.checked || path !== this.checked.file) {
+        status.setText("Check the file first; the import applies the diff you were shown.");
         return;
       }
       submit.disabled = true;
       status.setText("Importing\u2026");
       try {
-        await this.options.submit(path, replacing);
+        await this.options.submit(this.checked);
         this.close();
       } catch (error) {
-        submit.disabled = false;
+        this.checked = null;
+        submit.disabled = true;
         status.setText(errorMessage(error));
       }
     }, "cta");
+    submit.disabled = true;
+    const check = button(actions, "Check", async () => {
+      const path = file.value.trim();
+      if (!path) {
+        status.setText("Name the reviewed file first.");
+        return;
+      }
+      const generation = ++this.reviewGeneration;
+      this.checked = null;
+      submit.disabled = true;
+      check.disabled = true;
+      status.setText("Checking \u2014 nothing is written\u2026");
+      try {
+        const answer = await this.options.check(path, replacing);
+        if (generation !== this.reviewGeneration || path !== file.value.trim()) return;
+        if (answer.file !== path || answer.unitId !== this.options.unitId || answer.replace !== replacing || !renderImportDiff(preview, answer.result)) {
+          throw new Error("This review could not be read completely. Check again before importing.");
+        }
+        this.checked = answer;
+        submit.disabled = false;
+        status.setText("Checked. Review the change below, then import.");
+      } catch (error) {
+        if (generation !== this.reviewGeneration) return;
+        this.checked = null;
+        submit.disabled = true;
+        preview.empty();
+        status.setText(errorMessage(error));
+      } finally {
+        check.disabled = false;
+      }
+    });
+    file.addEventListener("input", () => {
+      this.reviewGeneration += 1;
+      this.checked = null;
+      submit.disabled = true;
+      preview.empty();
+      status.setText("File changed \u2014 check it again before importing.");
+    });
     button(actions, "Cancel", () => this.close(), "quiet");
     void this.describeStandard(standard);
     file.focus();
@@ -13655,6 +16007,8 @@ var UnitMapImportModal = class extends import_obsidian17.Modal {
     }
   }
   onClose() {
+    this.reviewGeneration += 1;
+    this.checked = null;
     this.restoreAccessibility?.();
     this.restoreAccessibility = null;
     this.contentEl.empty();
@@ -13841,13 +16195,13 @@ function render(view) {
     );
     return;
   }
-  const stageIds = new Set(
+  const stageIds2 = new Set(
     studyMap.stages.map(
       (stage2) => stage2.id
     )
   );
-  if (!view.stageId || !stageIds.has(view.stageId)) {
-    view.stageId = studyMap.currentStageId && stageIds.has(
+  if (!view.stageId || !stageIds2.has(view.stageId)) {
+    view.stageId = studyMap.currentStageId && stageIds2.has(
       studyMap.currentStageId
     ) ? studyMap.currentStageId : firstStage.id;
     view.plugin.setSelectedStage(
@@ -13898,11 +16252,6 @@ function render(view) {
   );
 }
 function openMapImport(view, parent, unit, replacing) {
-  const currentMap = view.plugin.store.mapForUnit(unit.id);
-  const expectedRevisions = view.plugin.store.artifactGuard(
-    unit.id,
-    typeof currentMap?.id === "string" ? currentMap.id : null
-  );
   const actions = parent.createDiv({
     cls: "los-actions"
   });
@@ -13925,13 +16274,15 @@ function openMapImport(view, parent, unit, replacing) {
             }
           )
         ),
-        submit: (file, replace) => view.plugin.mutate(
-          () => view.plugin.gateway.importUnitMap(
-            unit.id,
-            file,
-            replace,
-            expectedRevisions
-          )
+        // Read-only: it writes nothing, so it does not go through the write
+        // queue and needs no snapshot guard of its own.
+        check: (file, replace) => view.plugin.gateway.checkUnitMapImport(
+          unit.id,
+          file,
+          replace
+        ),
+        submit: (review) => view.plugin.mutate(
+          () => view.plugin.gateway.importUnitMap(review)
         )
       }
     ).open(),
@@ -14272,13 +16623,13 @@ var GlobalSearchModal = class extends import_obsidian19.Modal {
   }
   candidates() {
     const rows = [];
-    const add = (record6, kind, subtitle, open) => {
-      if (!record6?.id || !record6?.title) return;
+    const add = (record7, kind, subtitle, open) => {
+      if (!record7?.id || !record7?.title) return;
       rows.push({
-        id: record6.id,
-        title: record6.title,
-        aliases: [...record6.aliases || []],
-        authors: [...record6.authors || []],
+        id: record7.id,
+        title: record7.title,
+        aliases: [...record7.aliases || []],
+        authors: [...record7.authors || []],
         kind,
         subtitle,
         open
@@ -14464,13 +16815,30 @@ var AppNavigator = class {
   }
   openLibrary(recordId = void 0, recordType = void 0) {
     if (recordId === void 0 || recordId === null) {
-      return this.openLibraryHome(recordType === "topic-pack" ? "topic-packs" : "sources");
+      return recordType === "topic-pack" ? this.openLibraryHome("topic-packs") : this.openLibraryFolder([]);
     }
-    const record6 = this.store.get(recordId);
-    if (record6?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
-    if (record6?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
-    if (record6?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
-    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record6?.type || "note", query: "" });
+    const record7 = this.store.get(recordId);
+    if (record7?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
+    if (record7?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
+    if (record7?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
+    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record7?.type || "note", query: "" });
+  }
+  /**
+   * Open one folder of the Library's folder browser.
+   *
+   * `path` is the whole address: a folder is a position in a projection rather
+   * than a record, so the route it took to get there is the only durable way
+   * to name it. `selected` survives a trip up one level, which is what makes
+   * "enclosing folder" land on the folder you just left.
+   */
+  openLibraryFolder(path = [], selected = null, layout, query = "") {
+    return this.router.navigate({
+      name: "library-folder",
+      path: asLibraryFolderPath([...path]),
+      selected,
+      ...layout ? { layout } : {},
+      query
+    });
   }
   openLibraryHome(collection = "sources", query = "", filters) {
     return this.router.navigate({
@@ -14547,28 +16915,28 @@ var AppNavigator = class {
     const stageId = asString(pointer?.stage_id);
     return unitId ? this.openUnit(unitId, stageId) : this.openHome();
   }
-  openRecord(record6) {
-    if (!record6) return;
-    const recordId = asString(record6.id);
-    if (record6.type === "unit" && recordId) return this.openUnit(recordId);
-    if (record6.type === "module" && recordId) return this.openModule(recordId);
-    if (record6.type === "project" && recordId) return this.openProject(recordId);
-    if (record6.type === "program" && recordId) return this.openProgram(recordId);
-    if (record6.type === "source" && recordId) return this.openSourceDetail(recordId);
-    if (record6.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
-    if (record6.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
-    if (record6.type === "note" || record6.type === "concept") {
-      if (record6.path) return this.resources.openAuthoredPath(record6.path);
-      return this.openLibraryFiltered(record6.type);
+  openRecord(record7) {
+    if (!record7) return;
+    const recordId = asString(record7.id);
+    if (record7.type === "unit" && recordId) return this.openUnit(recordId);
+    if (record7.type === "module" && recordId) return this.openModule(recordId);
+    if (record7.type === "project" && recordId) return this.openProject(recordId);
+    if (record7.type === "program" && recordId) return this.openProgram(recordId);
+    if (record7.type === "source" && recordId) return this.openSourceDetail(recordId);
+    if (record7.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
+    if (record7.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
+    if (record7.type === "note" || record7.type === "concept") {
+      if (record7.path) return this.resources.openAuthoredPath(record7.path);
+      return this.openLibraryFiltered(record7.type);
     }
-    if (record6.type === "workspace") {
-      if (record6.project_id) return this.openProject(record6.project_id);
-      const unit = (record6.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+    if (record7.type === "workspace") {
+      if (record7.project_id) return this.openProject(record7.project_id);
+      const unit = (record7.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       if (unit?.id) return this.openUnit(unit.id);
-      const module2 = (record6.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+      const module2 = (record7.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       return module2?.id ? this.openModule(module2.id) : this.openHome();
     }
-    if (record6.path) return this.resources.openAuthoredPath(record6.path);
+    if (record7.path) return this.resources.openAuthoredPath(record7.path);
   }
   /**
    * Omnisearch's modal is another plugin's DOM, and reaching into it to seed
@@ -14642,6 +17010,13 @@ var ApplicationRouter = class {
     return { name: "home" };
   }
   libraryRouteFromState(state = {}) {
+    if (state.screen === "folder") return {
+      name: "library-folder",
+      path: asLibraryFolderPath(state.folderPath),
+      selected: asNullableText(state.folderSelection),
+      layout: asLibraryFolderLayout(state.folderLayout),
+      query: asText2(state.query)
+    };
     if (state.screen === "group") return {
       name: "library-group",
       collection: asLibraryCollection(state.collection),
@@ -14674,12 +17049,12 @@ var ApplicationRouter = class {
     };
     const recordId = asText2(state.recordId);
     if (recordId) {
-      const record6 = this.plugin.store?.get?.(recordId);
-      if (record6?.type === "source" || recordType === "source") {
+      const record7 = this.plugin.store?.get?.(recordId);
+      if (record7?.type === "source" || recordType === "source") {
         return { name: "source-detail", resourceId: recordId };
       }
-      if (record6?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: recordId };
-      if (record6?.type === "collection" || recordType === "collection") {
+      if (record7?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: recordId };
+      if (record7?.type === "collection" || recordType === "collection") {
         return { name: "catalogue-detail", catalogueId: recordId };
       }
     }
@@ -14745,6 +17120,18 @@ var ApplicationRouter = class {
           type: VIEW_UNIT,
           state: { unitId: route.unitId, stageId: route.stageId || null },
           nav: "learn"
+        };
+      case "library-folder":
+        return {
+          type: VIEW_LIBRARY,
+          state: {
+            screen: "folder",
+            folderPath: asLibraryFolderPath(route.path),
+            folderSelection: route.selected || null,
+            folderLayout: asLibraryFolderLayout(route.layout),
+            query: route.query || ""
+          },
+          nav: "library"
         };
       case "library-home":
         return {
@@ -15113,20 +17500,69 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:d59e5c8d2e3193558745cd4dba24f13777e2d9b24084ab47b05f189b1613e5c3" : "unavailable";
+  return true ? "sha256:796828396dc09aa3c904190ebb77c2cd0c22f786b136f40196f2087c21c68fad" : "unavailable";
 }
 function runtimeContractVersion() {
-  return true ? 9 : 0;
+  return true ? 11 : 0;
 }
 
 // src/gateway-client.ts
-var import_node_crypto = require("node:crypto");
+var import_node_crypto2 = require("node:crypto");
 var import_promises = require("node:fs/promises");
 var import_node_os = require("node:os");
 var import_node_path = require("node:path");
+
+// src/infrastructure/trace-context.ts
+var import_node_crypto = require("node:crypto");
+var TRACE_ID_BYTES = 16;
+var SPAN_ID_BYTES = 8;
+function hex(bytes) {
+  return (0, import_node_crypto.randomBytes)(bytes).toString("hex");
+}
+function newOperationContext(sampled = true) {
+  return { traceId: hex(TRACE_ID_BYTES), spanId: hex(SPAN_ID_BYTES), sampled };
+}
+function childAttemptContext(operation) {
+  return { traceId: operation.traceId, spanId: hex(SPAN_ID_BYTES), sampled: operation.sampled };
+}
+function formatTraceparent(context) {
+  return `00-${context.traceId}-${context.spanId}-${context.sampled ? "01" : "00"}`;
+}
+var ZERO_TRACE = "0".repeat(32);
+var ZERO_SPAN = "0".repeat(16);
+function diagnosticEvent(context, name, attributes = {}, spanId) {
+  return {
+    v: 2,
+    kind: "event",
+    name,
+    op: context.traceId,
+    span: spanId ?? context.spanId,
+    ts: Date.now() / 1e3,
+    attributes
+  };
+}
+function storeEnvelope(event) {
+  return {
+    schema_version: 1,
+    conventions_version: 2,
+    timestamp: event.ts,
+    trace_id: event.op,
+    operation_id: event.op,
+    attempt_id: event.span,
+    span_id: event.span,
+    parent_span_id: null,
+    kind: event.kind,
+    name: event.name,
+    stage: null,
+    status: null,
+    attributes: event.attributes
+  };
+}
+
+// src/gateway-client.ts
 var GATEWAY_RECOVERY_NOTICE = "The Gateway response was interrupted. Replaying the same approved request; no new write will be created.";
 var GATEWAY_RECOVERY_BLOCKED = "LearningOS could not confirm whether the previous write landed, so it will not send another. Your draft was kept. Open Diagnostics \u2192 Gateway recovery to retry the same request.";
-function record5(value) {
+function record6(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
 var requestCounter = 0;
@@ -15144,7 +17580,7 @@ function expandedLocalPath(filePath) {
 }
 async function fileSha256(filePath) {
   const bytes = await (0, import_promises.readFile)(expandedLocalPath(filePath));
-  return `sha256:${(0, import_node_crypto.createHash)("sha256").update(bytes).digest("hex")}`;
+  return `sha256:${(0, import_node_crypto2.createHash)("sha256").update(bytes).digest("hex")}`;
 }
 function gatewayErrorDetails(value) {
   const response = typeof value === "object" && value !== null ? value : {};
@@ -15165,6 +17601,15 @@ var GatewayClient = class {
   chain;
   recovery;
   pending;
+  /**
+   * The operation awaiting its settlement event: a confirmation stashes its
+   * trace here, and the event is emitted only after the caller reconciles
+   * the projection and retires the record (noteSettlementObserved). One slot
+   * is enough — the UI serializes writes, so two confirmations can never be
+   * unreconciled at once. Restart-path settles carry no trace and stash
+   * nothing; their settlement linkage is Phase 3 work.
+   */
+  pendingObservation = null;
   constructor(plugin) {
     this.plugin = plugin;
     this.chain = Promise.resolve();
@@ -15230,9 +17675,9 @@ var GatewayClient = class {
    * learner's text behind a success notice. `expectJson: false` is only for
    * the text-reporting commands (`validate`, `generate`).
    */
-  call(args, { expectJson = true, stdin } = {}) {
+  call(args, { expectJson = true, stdin, traceParent } = {}) {
     this.assertLifecycleActive();
-    return new Promise((resolve2, reject) => {
+    return new Promise((resolve3, reject) => {
       this.plugin.runLos(
         args,
         (error, stdout, stderr) => {
@@ -15256,7 +17701,7 @@ var GatewayClient = class {
           }
           const raw = String(stdout ?? "").trim();
           if (!expectJson) {
-            resolve2({ ok: true, stdout: raw });
+            resolve3({ ok: true, stdout: raw });
             return;
           }
           if (!raw) {
@@ -15279,9 +17724,10 @@ var GatewayClient = class {
             ));
             return;
           }
-          resolve2(parsed);
+          resolve3(parsed);
         },
-        stdin
+        stdin,
+        traceParent
       );
     });
   }
@@ -15294,6 +17740,13 @@ var GatewayClient = class {
    * flag order to get wrong. The named methods below are porcelain over this.
    */
   capability(name, payload, options = {}) {
+    if (!isGestureCapability(name)) {
+      throw new GatewayError(
+        gestureUnavailableMessage(name),
+        null,
+        { code: "UNCONFIRMED", retryable: false }
+      );
+    }
     const expectedSnapshot = options.expectedSnapshot || this.snapshotId();
     if (!isSha256(expectedSnapshot)) {
       throw new GatewayError(
@@ -15334,7 +17787,14 @@ var GatewayClient = class {
    * and the record is durably saved before this returns — so the process that
    * comes next can be interrupted at any point and still be recognisable.
    */
-  async prepareCapability(name, payload, expectedSnapshot, expectedRevisions) {
+  /** Emit one UI-side event; a throwing sink must never break a write. */
+  diagnose(event) {
+    try {
+      this.plugin.diagnostics?.(event);
+    } catch (_) {
+    }
+  }
+  async prepareCapability(name, payload, expectedSnapshot, expectedRevisions, trace) {
     this.assertLifecycleActive();
     const requestId = nextRequestId(name);
     const idempotencyKey = nextIdempotencyKey(requestId);
@@ -15369,14 +17829,21 @@ var GatewayClient = class {
       confirmation: null,
       last_error: null
     });
+    if (trace !== void 0) {
+      this.diagnose(diagnosticEvent(trace, "gateway.envelope.prepared", {
+        request_id: requestId,
+        idempotency_key: envelope.idempotency_key,
+        capability: name
+      }));
+    }
     return envelopeJson;
   }
   /** The raw process result, before anything has been believed about it. */
-  runRaw(args, stdin) {
-    return new Promise((resolve2) => {
+  runRaw(args, stdin, traceParent) {
+    return new Promise((resolve3) => {
       this.plugin.runLos(args, (error, stdout, stderr) => {
-        resolve2({ error, stdout: String(stdout ?? ""), stderr: String(stderr ?? "") });
-      }, stdin);
+        resolve3({ error, stdout: String(stdout ?? ""), stderr: String(stderr ?? "") });
+      }, stdin, traceParent);
     });
   }
   /**
@@ -15386,16 +17853,27 @@ var GatewayClient = class {
    * — would defeat the point: a rebuilt envelope carries a fresh identity, and
    * Core would treat the retry as a new write.
    */
-  async dispatchPreparedEnvelope(envelopeJson, { replayOnly = false } = {}) {
+  async dispatchPreparedEnvelope(envelopeJson, { replayOnly = false, trace } = {}) {
     this.assertLifecycleActive();
+    const attemptCtx = trace === void 0 ? newOperationContext() : childAttemptContext(trace);
+    const attempt = formatTraceparent(attemptCtx);
+    const received = (result) => {
+      const code = result.outcome === "refused" ? result.failure.error.code : result.outcome === "ambiguous" ? result.error.code : null;
+      this.diagnose(diagnosticEvent(attemptCtx, "ui.response.received", {
+        outcome: result.outcome,
+        code,
+        replayed: result.outcome === "confirmed" ? result.confirmation.replayed : false
+      }, attemptCtx.spanId));
+      return result;
+    };
     let envelope;
     try {
       envelope = JSON.parse(envelopeJson);
     } catch (_) {
-      return {
+      return received({
         outcome: "ambiguous",
         error: { code: "INVALID_REQUEST", message: "the prepared envelope is unreadable" }
-      };
+      });
     }
     const expected = {
       requestId: String(envelope.request_id ?? ""),
@@ -15404,7 +17882,12 @@ var GatewayClient = class {
     };
     const args = ["capability", expected.capability, "--payload-file", "-"];
     if (replayOnly) args.push("--replay-only");
-    const { error, stdout, stderr } = await this.runRaw(args, envelopeJson);
+    this.diagnose(diagnosticEvent(attemptCtx, "gateway.envelope.dispatched", {
+      capability: expected.capability,
+      request_id: expected.requestId,
+      replay_only: replayOnly
+    }, attemptCtx.spanId));
+    const { error, stdout, stderr } = await this.runRaw(args, envelopeJson, attempt);
     this.assertLifecycleActive();
     const raw = stdout.trim();
     let parsed = null;
@@ -15418,20 +17901,20 @@ var GatewayClient = class {
       }
     }
     if (!readable) {
-      return {
+      return received({
         outcome: "ambiguous",
         error: {
           code: "UNREADABLE_RESPONSE",
           message: raw ? `LearningOS answered with unreadable output: ${raw.slice(0, 160)}` : stderr.trim() || error?.message || "LearningOS wrote nothing back."
         }
-      };
+      });
     }
     const failure = asGatewayFailureV2(parsed, expected);
     if (failure) {
-      return isDefinitiveNoCommitCode(failure.error.code) ? { outcome: "refused", failure } : {
+      return received(isDefinitiveNoCommitCode(failure.error.code) ? { outcome: "refused", failure } : {
         outcome: "ambiguous",
         error: { code: failure.error.code, message: failure.error.message }
-      };
+      });
     }
     let confirmation = null;
     try {
@@ -15439,25 +17922,25 @@ var GatewayClient = class {
     } catch (_) {
       confirmation = null;
     }
-    if (confirmation && !error) return { outcome: "confirmed", confirmation };
+    if (confirmation && !error) return received({ outcome: "confirmed", confirmation });
     if (confirmation && error) {
-      return {
+      return received({
         outcome: "ambiguous",
         error: {
           code: "PROCESS_CONTRADICTION",
           message: "LearningOS printed a receipt but the process reported failure."
         }
-      };
+      });
     }
-    const identity = record5(parsed);
+    const identity = record6(parsed);
     const claimsAnother = identity !== null && (typeof identity.request_id === "string" || typeof identity.idempotency_key === "string") && (identity.request_id !== expected.requestId || identity.idempotency_key !== expected.idempotencyKey || identity.capability !== expected.capability);
-    return {
+    return received({
       outcome: "ambiguous",
       error: {
         code: claimsAnother ? "IDENTITY_MISMATCH" : "UNRECOGNISED_RESPONSE",
         message: structuredError(raw) || "LearningOS answered with a response that does not match this request."
       }
-    };
+    });
   }
   /**
    * Phase three: resend what was persisted.
@@ -15466,7 +17949,7 @@ var GatewayClient = class {
    * there is only one code path that can send a retry, and it can only send the
    * stored string.
    */
-  async recoverPreparedEnvelope() {
+  async recoverPreparedEnvelope(trace) {
     this.assertLifecycleActive();
     const entry = this.recovery.replayable();
     if (!entry) {
@@ -15476,7 +17959,10 @@ var GatewayClient = class {
       };
     }
     await this.recovery.markRecovering(entry.record.last_error);
-    const result = await this.dispatchPreparedEnvelope(entry.record.envelope_json);
+    const result = await this.dispatchPreparedEnvelope(
+      entry.record.envelope_json,
+      trace === void 0 ? {} : { trace }
+    );
     if (result.outcome !== "refused") return result;
     return {
       outcome: "ambiguous",
@@ -15494,7 +17980,7 @@ var GatewayClient = class {
    * Receipt V2 are the authority, so startup and Diagnostics retire a stored
    * confirmation only after this read-only lookup returns the exact replay.
    */
-  async verifyConfirmedEnvelope() {
+  async verifyConfirmedEnvelope(trace) {
     this.assertLifecycleActive();
     const entry = this.recovery.replayable();
     if (!entry || entry.record.confirmation === null) {
@@ -15508,7 +17994,7 @@ var GatewayClient = class {
     }
     const result = await this.dispatchPreparedEnvelope(
       entry.record.envelope_json,
-      { replayOnly: true }
+      trace === void 0 ? { replayOnly: true } : { replayOnly: true, trace }
     );
     if (result.outcome === "confirmed" && result.confirmation.replayed) {
       return result;
@@ -15541,29 +18027,66 @@ var GatewayClient = class {
    * and a blocked record deliberately does not retry itself on the next launch.
    */
   async sendCapability(name, payload, expectedSnapshot, expectedRevisions) {
+    const operation = newOperationContext();
     const envelopeJson = await this.prepareCapability(
       name,
       payload,
       expectedSnapshot,
-      expectedRevisions
+      expectedRevisions,
+      operation
     );
-    let result = await this.dispatchPreparedEnvelope(envelopeJson);
+    let result = await this.dispatchPreparedEnvelope(envelopeJson, { trace: operation });
     if (result.outcome === "ambiguous") {
       this.announce(GATEWAY_RECOVERY_NOTICE);
       await this.recovery.markRecovering(result.error);
-      result = await this.recoverPreparedEnvelope();
+      result = await this.recoverPreparedEnvelope(operation);
     }
-    return this.settle(result);
+    return this.settle(result, operation);
+  }
+  /**
+   * Emit the settlement event for a confirmed write the caller has reconciled.
+   *
+   * settle() deliberately emits nothing for a confirmation: a receipt says
+   * Core published, not that this vault observed. The retire act — main.ts
+   * reloading the store and clearing the record, mirrored by harnesses —
+   * calls here, so `observed` reports the reconciliation that actually
+   * happened. A stale or missing stash (restart path, or a confirmation for
+   * a different request) emits nothing rather than joining the wrong stream.
+   */
+  noteSettlementObserved(confirmation) {
+    const pending = this.pendingObservation;
+    this.pendingObservation = null;
+    if (pending === null || confirmation.request_id !== pending.requestId) return;
+    const observed = this.plugin.store.snapshotId;
+    this.diagnose(diagnosticEvent(pending.trace, "recovery.settled", {
+      outcome: "confirmed",
+      code: null,
+      snapshot_after: confirmation.snapshot_after,
+      observed_snapshot: observed,
+      observed: observed === confirmation.snapshot_after
+    }));
   }
   /** Turn one settled outcome into the record state and the caller's answer. */
-  async settle(result) {
+  async settle(result, trace) {
     this.assertLifecycleActive();
+    const terminal = (name, outcome, code) => {
+      if (trace === void 0) return;
+      this.diagnose(diagnosticEvent(trace, name, {
+        outcome,
+        code,
+        snapshot_after: null,
+        observed_snapshot: this.plugin.store.snapshotId,
+        observed: false
+      }));
+    };
     if (result.outcome === "confirmed") {
       await this.recovery.markConfirmed(result.confirmation);
+      this.pendingObservation = trace === void 0 ? null : { trace, requestId: result.confirmation.request_id };
       return result.confirmation;
     }
     if (result.outcome === "refused") {
       await this.recovery.discardRefused();
+      terminal("recovery.settled", "refused", result.failure.error.code);
       throw new GatewayError(
         result.failure.error.message,
         null,
@@ -15574,6 +18097,7 @@ var GatewayClient = class {
       );
     }
     await this.recovery.markBlocked(result.error);
+    terminal("recovery.blocked", "blocked", result.error.code);
     throw new GatewayError(
       // The last thing Core said travels with the refusal. The learner cannot
       // act on "unknown", but they can act on the sentence underneath it.
@@ -15611,12 +18135,12 @@ Last response: ${result.error.message}`,
   async saveUnitNote(unitId, {
     title = "",
     text: text5,
-    stageIds = [],
+    stageIds: stageIds2 = [],
     filePaths = []
   }, expectedRevisions = {}) {
     const payload = { unit_id: unitId, text: text5 };
     if (String(title).trim()) payload.title = String(title).trim();
-    if (stageIds.length) payload.stage_id = [...stageIds];
+    if (stageIds2.length) payload.stage_id = [...stageIds2];
     if (filePaths.length) {
       payload.attachment = [...filePaths];
       payload.attachment_sha256 = await Promise.all(filePaths.map(fileSha256));
@@ -15735,11 +18259,11 @@ Last response: ${result.error.message}`,
       { expectedRevisions }
     );
   }
-  endSession(commitMessage = null, push2 = false) {
+  endSession(commitMessage = null, push3 = false) {
     this.assertMutationAllowed();
     const args = ["session-end"];
     if (commitMessage) args.push("--commit-message", commitMessage);
-    if (push2) args.push("--push");
+    if (push3) args.push("--push");
     return this.call(args);
   }
   /**
@@ -15750,13 +18274,56 @@ Last response: ${result.error.message}`,
    * stays where the SOP put it — this applies a reviewed result; it does not
    * skip the review.
    */
-  async importUnitMap(unitId, file, replace = false, expectedRevisions = {}) {
+  async importUnitMap(review) {
+    if (!isSha256(review.fileSha256) || !isSha256(review.expectedSnapshot)) {
+      throw new Error("Check this map again before importing; its review has no valid binding.");
+    }
+    if (await fileSha256(review.file) !== review.fileSha256) {
+      throw new Error("The map file changed after review. Check it again before importing.");
+    }
     return this.capability("unit.map.import", {
-      unit_id: unitId,
+      unit_id: review.unitId,
+      file: review.file,
+      file_sha256: review.fileSha256,
+      ...review.replace ? { replace: true } : {}
+    }, { expectedRevisions: review.expectedRevisions, expectedSnapshot: review.expectedSnapshot });
+  }
+  /**
+   * The no-write preflight that has to run before an import is approved.
+   *
+   * Core's `--check` prints the concrete replacement diff and writes nothing.
+   * Naming a file is not approval to import it — the learner approves *this
+   * diff*, which is what makes the Import control an explicit review rather
+   * than a file picker with consequences (review
+   * `workbench/audits/repair-review-2026-09-13`, D1). No snapshot guard:
+   * nothing is written, so there is nothing to guard against.
+   */
+  async checkUnitMapImport(unitId, file, replace = false) {
+    const digest = await fileSha256(file);
+    const args = [
+      "unit-map-import",
+      unitId,
+      "--file",
       file,
-      file_sha256: await fileSha256(file),
-      ...replace ? { replace: true } : {}
-    }, { expectedRevisions });
+      "--file-sha256",
+      digest,
+      "--check"
+    ];
+    if (replace) args.push("--replace");
+    const result = record6(await this.call(args));
+    const revisions = record6(result?.expected_revisions);
+    if (!result || result.ok !== true || result.mode !== "check" || result.canonical_files_written !== 0 || !record6(result.diff) || result.unit_id !== unitId || result.file_sha256 !== digest || !isSha256(result.snapshot_id) || !revisions || Object.keys(revisions).length !== 2 || !Object.values(revisions).every((v) => Number.isInteger(v) && Number(v) >= 0) || !(unitId in revisions) || !(String(result.study_map_id) in revisions)) {
+      throw new Error("LearningOS could not provide a complete, bound no-write review. Nothing was imported.");
+    }
+    return {
+      unitId,
+      file,
+      replace,
+      fileSha256: digest,
+      expectedSnapshot: result.snapshot_id,
+      expectedRevisions: revisions,
+      result
+    };
   }
   /**
    * The declared read-only `plan.template` query. Core generates and validates
@@ -15774,6 +18341,14 @@ Last response: ${result.error.message}`,
    *  exact producer schemas before rendering any field. */
   healthReport() {
     return this.call(["health-report", "--json"]);
+  }
+  /** Recent causal operations, newest first (Diagnostics → Operations). */
+  operationsList(limit = 30) {
+    return this.call(["operations", "--limit", String(limit)]);
+  }
+  /** Full diagnosis plus timeline for one request id. */
+  operationsDetail(requestId) {
+    return this.call(["operations", "--request-id", requestId]);
   }
   legacyArchiveStatus() {
     return this.call(["legacy-archive-status", "--json"]);
@@ -15851,8 +18426,8 @@ var AIActionClient = class {
 
 // src/infrastructure/los-runtime.ts
 var import_node_child_process = require("node:child_process");
-var fs2 = __toESM(require("node:fs"));
-var nodePath2 = __toESM(require("node:path"));
+var fs3 = __toESM(require("node:fs"));
+var nodePath3 = __toESM(require("node:path"));
 var import_node_process = __toESM(require("node:process"));
 var LosRuntime = class {
   constructor(app, configuredPython) {
@@ -15864,24 +18439,35 @@ var LosRuntime = class {
     const configured = this.configuredPython().trim();
     const searchOrder = [
       [configured, "configured in settings"],
-      [nodePath2.join(base, ".venv", "bin", "python"), "project virtual environment"],
-      [nodePath2.join(base, ".venv", "Scripts", "python.exe"), "project virtual environment (Windows)"]
+      [nodePath3.join(base, ".venv", "bin", "python"), "project virtual environment"],
+      [nodePath3.join(base, ".venv", "Scripts", "python.exe"), "project virtual environment (Windows)"]
     ];
     const candidates = searchOrder.filter(([path]) => path);
     const attempted = candidates.map(([path]) => path);
     for (const [path, origin] of candidates) {
-      if (fs2.existsSync(path)) return { path, origin, attempted };
+      if (fs3.existsSync(path)) return { path, origin, attempted };
     }
     const fallback = import_node_process.default.platform === "win32" ? "python" : "python3";
     return { path: fallback, origin: "PATH fallback", attempted: [...attempted, fallback] };
   }
-  run(args, callback, stdin) {
+  /**
+   * Run the CLI. `traceParent` carries one W3C traceparent for this exact
+   * dispatch (research track #2, Phase 1): it travels as child-process
+   * environment, never as CLI arguments or payload, and an absent value
+   * leaves the child environment exactly as before.
+   */
+  run(args, callback, stdin, traceParent) {
     const base = this.app.vault.adapter.getBasePath();
-    const script = nodePath2.join(base, "tools", "los.py");
+    const script = nodePath3.join(base, "tools", "los.py");
     const child = (0, import_node_child_process.execFile)(
       this.resolvePython().path,
       [script, ...args],
-      { cwd: base, timeout: 18e4, maxBuffer: 8 * 1024 * 1024 },
+      {
+        cwd: base,
+        timeout: 18e4,
+        maxBuffer: 8 * 1024 * 1024,
+        ...traceParent === void 0 ? {} : { env: { ...import_node_process.default.env, TRACEPARENT: traceParent } }
+      },
       callback
     );
     if (stdin !== void 0) child.stdin?.end(stdin);
@@ -15890,8 +18476,8 @@ var LosRuntime = class {
 
 // src/infrastructure/resource-opener.ts
 var import_electron2 = require("electron");
-var fs3 = __toESM(require("node:fs"));
-var nodePath3 = __toESM(require("node:path"));
+var fs4 = __toESM(require("node:fs"));
+var nodePath4 = __toESM(require("node:path"));
 var import_obsidian22 = require("obsidian");
 var CODE_EXTENSIONS = /* @__PURE__ */ new Set([
   ".c",
@@ -15958,10 +18544,10 @@ function normalizedVaultPath(value) {
 }
 function resolvedWithin(root, candidate) {
   try {
-    const realRoot = fs3.realpathSync(root);
-    const realCandidate = fs3.realpathSync(candidate);
-    const relative2 = nodePath3.relative(realRoot, realCandidate);
-    return relative2.startsWith("..") || nodePath3.isAbsolute(relative2) ? null : realCandidate;
+    const realRoot = fs4.realpathSync(root);
+    const realCandidate = fs4.realpathSync(candidate);
+    const relative3 = nodePath4.relative(realRoot, realCandidate);
+    return relative3.startsWith("..") || nodePath4.isAbsolute(relative3) ? null : realCandidate;
   } catch (_) {
     return null;
   }
@@ -15970,16 +18556,16 @@ var ResourceOpener = class {
   constructor(app) {
     this.app = app;
   }
-  async openVaultPath(path) {
+  async openVaultPath(path, destination = null) {
     const target = normalizedVaultPath(path);
     if (!target || target.startsWith("/") || target.split("/").includes("..")) {
       new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return void 0;
     }
-    const candidate = nodePath3.resolve(this.app.vault.adapter.getBasePath(), target);
-    if (fs3.existsSync(candidate)) {
+    const candidate = nodePath4.resolve(this.app.vault.adapter.getBasePath(), target);
+    if (fs4.existsSync(candidate)) {
       try {
-        fs3.realpathSync(candidate);
+        fs4.realpathSync(candidate);
       } catch (_) {
         new import_obsidian22.Notice(`File unavailable: ${target}`);
         return void 0;
@@ -16005,15 +18591,53 @@ var ResourceOpener = class {
     if (existing) {
       this.app.workspace.revealLeaf(existing);
       this.app.workspace.setActiveLeaf?.(existing, { focus: true });
+      if (destination) {
+        await this.repositionLeaf(existing, file, destination);
+      }
       return existing;
     }
     const leaf = this.app.workspace.getLeaf(true);
-    await leaf.openFile(file);
+    await leaf.openFile(file, destination ? { eState: { page: destination.page } } : void 0);
+    if (destination) this.announceDestination(leaf, destination);
     return leaf;
   }
+  /**
+   * Move an open document to the assigned location, or say where to go.
+   *
+   * `setEphemeralState` is how Obsidian's own viewer is repositioned without
+   * reloading the file; re-opening it through the leaf is the fallback. Either
+   * way the claim made to the learner matches what actually happened: a viewer
+   * that cannot be positioned gets an instruction, never an announcement that
+   * it landed somewhere.
+   */
+  async repositionLeaf(leaf, file, destination) {
+    const view = leaf.view;
+    if (typeof view?.setEphemeralState === "function") {
+      try {
+        view.setEphemeralState({ page: destination.page });
+      } catch (_) {
+        new import_obsidian22.Notice(`Go to ${destination.label}.`);
+        return;
+      }
+      new import_obsidian22.Notice(`Page requested \u2014 go to ${destination.label} if the viewer did not move.`);
+      return;
+    }
+    try {
+      await leaf.openFile(file, { eState: { page: destination.page } });
+    } catch (_) {
+      new import_obsidian22.Notice(`Go to ${destination.label}.`);
+      return;
+    }
+    this.announceDestination(leaf, destination);
+  }
+  /** Only a viewer that can be positioned is told it landed there. */
+  announceDestination(leaf, destination) {
+    void leaf;
+    new import_obsidian22.Notice(`Opened \u2014 go to ${destination.label}.`);
+  }
   isCodePath(path) {
-    if (!fs3.existsSync(path)) return false;
-    const extension = foldCase(nodePath3.extname(path));
+    if (!fs4.existsSync(path)) return false;
+    const extension = foldCase(nodePath4.extname(path));
     return !extension || CODE_EXTENSIONS.has(extension);
   }
   async openSystemPath(path, successMessage) {
@@ -16038,7 +18662,7 @@ var ResourceOpener = class {
   openPreferredLocalPath(path, systemMessage) {
     let realPath = "";
     try {
-      realPath = fs3.realpathSync(path);
+      realPath = fs4.realpathSync(path);
     } catch (_) {
       new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return Promise.resolve(false);
@@ -16046,26 +18670,26 @@ var ResourceOpener = class {
     return this.isCodePath(realPath) ? this.openCodePath(realPath) : this.openSystemPath(realPath, systemMessage);
   }
   async openExternalPath(path, successMessage = "Opened in the default app.") {
-    if (!path || !fs3.existsSync(path)) {
+    if (!path || !fs4.existsSync(path)) {
       new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     let realPath = "";
     try {
-      realPath = fs3.realpathSync(path);
+      realPath = fs4.realpathSync(path);
     } catch (_) {
       new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     return this.openSystemPath(realPath, successMessage);
   }
-  openMaterialPath(path) {
+  openMaterialPath(path, destination = null) {
     const vault = this.app.vault.adapter.getBasePath();
-    const learningRoot = nodePath3.dirname(vault);
-    const materialsRoot = nodePath3.resolve(learningRoot, "materials");
-    const fullPath = nodePath3.resolve(learningRoot, path || "");
-    const relative2 = nodePath3.relative(materialsRoot, fullPath);
-    if (!path || relative2.startsWith("..") || nodePath3.isAbsolute(relative2)) {
+    const learningRoot = nodePath4.dirname(vault);
+    const materialsRoot = nodePath4.resolve(learningRoot, "materials");
+    const fullPath = nodePath4.resolve(learningRoot, path || "");
+    const relative3 = nodePath4.relative(materialsRoot, fullPath);
+    if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
       new import_obsidian22.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
       return false;
     }
@@ -16074,19 +18698,22 @@ var ResourceOpener = class {
       new import_obsidian22.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
       return false;
     }
-    return this.openExternalPath(realPath, "Opened the local material in its default app.");
+    return this.openExternalPath(
+      realPath,
+      destination ? `Opened the local material in its default app \u2014 go to ${destination.label}.` : "Opened the local material in its default app."
+    );
   }
   openAuthoredPath(path) {
-    const extension = foldCase(nodePath3.extname(path || ""));
+    const extension = foldCase(nodePath4.extname(path || ""));
     if ([".md", ".pdf", ".canvas", ".base"].includes(extension)) return this.openVaultPath(path);
     const base = this.app.vault.adapter.getBasePath();
-    const fullPath = nodePath3.resolve(base, path || "");
-    const relative2 = nodePath3.relative(base, fullPath);
-    if (!path || relative2.startsWith("..") || nodePath3.isAbsolute(relative2)) {
+    const fullPath = nodePath4.resolve(base, path || "");
+    const relative3 = nodePath4.relative(base, fullPath);
+    if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
       new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return false;
     }
-    if (!fs3.existsSync(fullPath)) {
+    if (!fs4.existsSync(fullPath)) {
       new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
@@ -16102,14 +18729,15 @@ var ResourceOpener = class {
   }
   openResource(resource, ports = this) {
     const materialPath = typeof resource.material_path === "string" ? resource.material_path : "";
+    const destination = pageDestination(resource);
     if (isDirectMaterialFileTarget(resource)) {
-      return ports.openMaterialPath(materialPath);
+      return ports.openMaterialPath(materialPath, destination);
     }
     const vaultPath = typeof resource.vault_path === "string" ? resource.vault_path : "";
     if (vaultPath.trim()) {
       if (vaultPath.trim().toLowerCase().startsWith("material://")) {
       } else if (isFileShapedPath(vaultPath)) {
-        return ports.openVaultPath(vaultPath);
+        return ports.openVaultPath(vaultPath, destination);
       }
     }
     if (resource.url) {
@@ -16160,11 +18788,11 @@ function emptyStoreIndexes() {
     searchDocuments: []
   };
 }
-function isArchivedRecord(record6, archivedModuleIds) {
-  if (record6.type === "module" && record6.status === "archived") {
+function isArchivedRecord(record7, archivedModuleIds) {
+  if (record7.type === "module" && record7.status === "archived") {
     return true;
   }
-  return typeof record6.module_id === "string" && archivedModuleIds.has(record6.module_id);
+  return typeof record7.module_id === "string" && archivedModuleIds.has(record7.module_id);
 }
 function projectedRows(value) {
   return Array.isArray(value) ? value.filter(
@@ -16222,20 +18850,20 @@ function buildStoreIndexes(manifest, records) {
       materialSynthesisByUnit.set(unitId, synthesis);
     }
   }
-  const searchDocuments = visibleRecords.map((record6) => ({
-    record: record6,
+  const searchDocuments = visibleRecords.map((record7) => ({
+    record: record7,
     strictText: foldCase([
-      record6.id,
-      record6.title,
-      ...record6.aliases || [],
-      ...record6.authors || [],
-      record6.organization,
-      record6.domain
+      record7.id,
+      record7.title,
+      ...record7.aliases || [],
+      ...record7.authors || [],
+      record7.organization,
+      record7.domain
     ].filter(Boolean).join(" ")),
     compactText: foldCase([
-      record6.id,
-      record6.title,
-      ...record6.aliases || []
+      record7.id,
+      record7.title,
+      ...record7.aliases || []
     ].filter(Boolean).join(" ")).replace(/\s+/g, "")
   }));
   return {
@@ -16333,8 +18961,8 @@ var ManifestStore = class {
     }
   }
   get(id2) {
-    const record6 = this.byId.get(id2) || null;
-    return record6 && !this.isArchivedCurriculumRecord(record6) ? record6 : null;
+    const record7 = this.byId.get(id2) || null;
+    return record7 && !this.isArchivedCurriculumRecord(record7) ? record7 : null;
   }
   of(type) {
     return [...this.indexes.rowsByType.get(type) ?? []];
@@ -16348,9 +18976,9 @@ var ManifestStore = class {
     if (!this.data) return [];
     return [...this.indexes.rowsByGroup.get(group) ?? []];
   }
-  isArchivedCurriculumRecord(record6) {
+  isArchivedCurriculumRecord(record7) {
     return isArchivedRecord(
-      record6,
+      record7,
       this.indexes.archivedModuleIds
     );
   }
@@ -16565,13 +19193,13 @@ var ManifestStore = class {
     const words2 = foldCase(String(query || "")).split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
     const documents = this.indexes.searchDocuments.filter(
-      ({ record: record6 }) => !allowed || typeof record6.type === "string" && allowed.has(record6.type)
+      ({ record: record7 }) => !allowed || typeof record7.type === "string" && allowed.has(record7.type)
     );
     if (!words2.length) {
-      return documents.map(({ record: record6 }) => record6);
+      return documents.map(({ record: record7 }) => record7);
     }
     const strict = documents.filter(({ strictText }) => words2.every((word) => strictText.includes(word)));
-    if (strict.length) return strict.map(({ record: record6 }) => record6);
+    if (strict.length) return strict.map(({ record: record7 }) => record7);
     const needle = words2.join("");
     return documents.filter(({ compactText }) => {
       let at = 0;
@@ -16579,11 +19207,11 @@ var ManifestStore = class {
         if (char === needle[at]) at += 1;
       }
       return at === needle.length;
-    }).map(({ record: record6 }) => record6);
+    }).map(({ record: record7 }) => record7);
   }
   related(id2) {
-    const record6 = this.get(id2);
-    if (!record6) return [];
+    const record7 = this.get(id2);
+    if (!record7) return [];
     const ids2 = /* @__PURE__ */ new Set();
     for (const key of [
       "concepts",
@@ -16596,7 +19224,7 @@ var ManifestStore = class {
       "unit_order",
       "related_module_ids"
     ]) {
-      for (const value of asStrings(record6[key])) ids2.add(value);
+      for (const value of asStrings(record7[key])) ids2.add(value);
     }
     for (const table of Object.values(this.data?.backlinks || {})) {
       if (isRecord3(table) && Array.isArray(table[id2])) {
@@ -16699,6 +19327,7 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
     this.store = new ManifestStore(this.app);
     this.runtime = new LosRuntime(this.app, () => this.settings.pythonPath);
     this.resources = new ResourceOpener(this.app);
+    this.materials = new MaterialTree(this.app);
     this.gateway = new GatewayClient(this);
     this.aiActions = new AIActionClient(this);
     this.router = new ApplicationRouter(this);
@@ -16902,8 +19531,28 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
    * file would put canonical intent on disk on every write, including the
    * ones that fail, leaving cleanup as a thing that can be forgotten.
    */
-  runLos(args, callback, stdin) {
-    this.runtime.run(args, callback, stdin);
+  runLos(args, callback, stdin, traceParent) {
+    this.runtime.run(args, callback, stdin, traceParent);
+  }
+  /**
+   * Best-effort UI-side span sink (track #2, Phase 4A): appends to the same
+   * disposable trace store Core writes, so one operation reads as one
+   * stream. Never throws, never blocks, never carries payload text — a
+   * failing sink is silently invisible, exactly like Core's.
+   */
+  diagnostics(event) {
+    try {
+      const base = this.app.vault.adapter.getBasePath();
+      const dir = nodePath5.join(base, "operations", "diagnostics");
+      fs5.mkdirSync(dir, { recursive: true });
+      fs5.appendFileSync(
+        nodePath5.join(dir, "traces.jsonl"),
+        `${JSON.stringify(storeEnvelope(event))}
+`,
+        "utf8"
+      );
+    } catch (_) {
+    }
   }
   async reloadStore() {
     const ok = await this.store.load();
@@ -16967,6 +19616,7 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
       new import_obsidian23.Notice("Recovered the prior write; newer canonical changes are also present.");
     }
     await this.recovery.settleConfirmed();
+    this.gateway.noteSettlementObserved(confirmation);
   }
   /** The active destination is a display fact, so the Navigator is the only
    *  thing it redraws — never the working view the learner is reading. */
@@ -17052,40 +19702,49 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
       return null;
     }
   }
-  async openVaultPath(path) {
-    return this.resources.openVaultPath(path);
+  async openVaultPath(path, destination = null) {
+    return this.resources.openVaultPath(path, destination);
   }
   async openExternalPath(path, successMessage = "Opened in the default app.") {
     return this.resources.openExternalPath(path, successMessage);
   }
-  openMaterialPath(path) {
-    return this.resources.openMaterialPath(path);
+  openMaterialPath(path, destination = null) {
+    return this.resources.openMaterialPath(path, destination);
   }
   openAuthoredPath(path) {
     return this.resources.openAuthoredPath(path);
   }
-  openRecord(record6) {
-    if (!record6) return;
-    const recordId = asString(record6.id);
-    if (record6.type === "unit" && recordId) return this.nav.openUnit(recordId);
-    if (record6.type === "module" && recordId) return this.nav.openModule(recordId);
-    if (record6.type === "project" && recordId) return this.nav.openProject(recordId);
-    if (record6.type === "program" && recordId) return this.nav.openProgram(recordId);
-    if (record6.type === "source" && recordId) return this.nav.openSourceDetail(recordId);
-    if (record6.type === "topic-pack" && recordId) return this.nav.openTopicPackDetail(recordId);
-    if (record6.type === "collection" && recordId) return this.nav.openCatalogueDetail(recordId);
-    if (record6.type === "note" || record6.type === "concept") {
-      if (record6.path) return this.openAuthoredPath(record6.path);
-      return this.nav.openLibraryFiltered(record6.type);
+  isMaterialFolder(path) {
+    return this.materials.isDirectory(path);
+  }
+  listMaterialFolder(path) {
+    return this.materials.list(path);
+  }
+  materialFolderCount(path) {
+    return this.materials.count(path);
+  }
+  openRecord(record7) {
+    if (!record7) return;
+    const recordId = asString(record7.id);
+    if (record7.type === "unit" && recordId) return this.nav.openUnit(recordId);
+    if (record7.type === "module" && recordId) return this.nav.openModule(recordId);
+    if (record7.type === "project" && recordId) return this.nav.openProject(recordId);
+    if (record7.type === "program" && recordId) return this.nav.openProgram(recordId);
+    if (record7.type === "source" && recordId) return this.nav.openSourceDetail(recordId);
+    if (record7.type === "topic-pack" && recordId) return this.nav.openTopicPackDetail(recordId);
+    if (record7.type === "collection" && recordId) return this.nav.openCatalogueDetail(recordId);
+    if (record7.type === "note" || record7.type === "concept") {
+      if (record7.path) return this.openAuthoredPath(record7.path);
+      return this.nav.openLibraryFiltered(record7.type);
     }
-    if (record6.type === "workspace") {
-      if (record6.project_id) return this.nav.openProject(record6.project_id);
-      const unit = (record6.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+    if (record7.type === "workspace") {
+      if (record7.project_id) return this.nav.openProject(record7.project_id);
+      const unit = (record7.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       if (unit?.id) return this.nav.openUnit(unit.id);
-      const module2 = (record6.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+      const module2 = (record7.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       return module2?.id ? this.nav.openModule(module2.id) : this.nav.openHome();
     }
-    if (record6.path) return this.openAuthoredPath(record6.path);
+    if (record7.path) return this.openAuthoredPath(record7.path);
   }
   openResource(resource) {
     return this.resources.openResource(resource, this);

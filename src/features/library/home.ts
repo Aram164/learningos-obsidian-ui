@@ -147,6 +147,16 @@ export function renderCollectionSwitch(
     });
     enableButtonGroupKeyboardNavigation(switcher);
 
+    // The folder browser is the Library's front door, so every flat collection
+    // keeps a way back to it. It is not a `LibraryCollectionV1`: collections
+    // are lists of records, and a folder tree is a position in one.
+    button(
+      switcher,
+      'Folders',
+      () => view.plugin.nav.openLibraryFolder([]),
+      'quiet',
+    );
+
     for (
       const [
         id,
