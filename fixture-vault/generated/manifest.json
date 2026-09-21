@@ -1,9 +1,9 @@
 {
   "_generated": {
-    "contract_version": 12,
+    "contract_version": 13,
     "generated_at": "2099-04-01",
     "generator": "synthetic-fixture-v8",
-    "schema_sha256": "sha256:5e124e29c3b77bf54e4bd60718e9cf6b70c9af15986b1012a1e4ee6eeaae7d57",
+    "schema_sha256": "sha256:5de9c6818f0b5c925b382ecf209fe15cadc169b8662419e88be322916821df18",
     "snapshot_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "source_dirty": false,
     "source_fingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
@@ -2153,7 +2153,24 @@
           "reason": "The route was screened for scope; a deep evidence review has not been approved.",
           "review_status": "screened",
           "route_id": "route-fixture-sad-l04-book",
-          "source_id": "source-fixture-book"
+          "source_id": "source-fixture-book",
+          "analysis_refs": [
+            {
+              "note_id": "note-fixture-probability",
+              "note_revision": 0,
+              "note_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "anchor": {
+                "topic": "Conditional probability",
+                "purpose": "intuition",
+                "locator": "fixture chapter p.1"
+              },
+              "material": "source-fixture-book/chapter.pdf",
+              "inspected_range": {
+                "start": 1,
+                "end": 3
+              }
+            }
+          ]
         }
       ],
       "schema_version": 1,

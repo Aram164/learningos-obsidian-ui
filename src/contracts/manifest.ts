@@ -14,7 +14,7 @@
  * The module and type names are deliberately stable. Contract version is data:
  * a bump changes this constant and the mirrored lock, not every import path.
  */
-export const MANIFEST_CONTRACT_VERSION = 12 as const;
+export const MANIFEST_CONTRACT_VERSION = 13 as const;
 import {
   validAcademicDeadline,
   validAiActions,
@@ -42,7 +42,7 @@ import {
   validTopicPack,
 } from './manifest-records';
 
-export const MANIFEST_SCHEMA_SHA256 = 'sha256:5e124e29c3b77bf54e4bd60718e9cf6b70c9af15986b1012a1e4ee6eeaae7d57' as const;
+export const MANIFEST_SCHEMA_SHA256 = 'sha256:5de9c6818f0b5c925b382ecf209fe15cadc169b8662419e88be322916821df18' as const;
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -286,6 +286,21 @@ export interface MaterialSynthesisEvidence extends JsonRecord {
   note?: string;
 }
 
+export interface MaterialSynthesisAnalysisAnchor extends JsonRecord {
+  topic: string;
+  purpose: string;
+  locator: string;
+}
+
+export interface MaterialSynthesisAnalysisRef extends JsonRecord {
+  note_id: string;
+  note_revision: number;
+  note_digest: string;
+  anchor: MaterialSynthesisAnalysisAnchor;
+  material: string;
+  inspected_range: { start: number; end: number };
+}
+
 export interface MaterialRouteAssessment extends JsonRecord {
   route_id: string;
   source_id: string;
@@ -301,6 +316,7 @@ export interface MaterialRouteAssessment extends JsonRecord {
   scope_of_absence?: string;
   reason?: string;
   evidence?: readonly MaterialSynthesisEvidence[];
+  analysis_refs?: readonly MaterialSynthesisAnalysisRef[];
 }
 
 export interface MaterialRouteComparison extends JsonRecord {
@@ -361,7 +377,8 @@ export type MaterialSynthesisStaleReason =
   | 'route_set_checksum'
   | 'material_checksums'
   | 'policy'
-  | 'current-basis-unavailable';
+  | 'current-basis-unavailable'
+  | 'analysis-refs-stale';
 
 export interface MaterialSynthesisFreshness extends JsonRecord {
   status: 'current' | 'stale';
@@ -507,6 +524,28 @@ function validSynthesisEvidence(value: unknown): value is MaterialSynthesisEvide
     && (!("note" in value) || nonEmptyText(value.note));
 }
 
+function validAnalysisAnchor(value: unknown): value is MaterialSynthesisAnalysisAnchor {
+  if (!isRecord(value) || !exactKeys(value, ["topic", "purpose", "locator"])) return false;
+  return nonEmptyText(value.topic)
+    && nonEmptyText(value.purpose)
+    && nonEmptyText(value.locator);
+}
+
+function validAnalysisRef(value: unknown): value is MaterialSynthesisAnalysisRef {
+  if (!isRecord(value) || !exactKeys(value,
+    ["note_id", "note_revision", "note_digest", "anchor", "material",
+     "inspected_range"])) return false;
+  const range = value.inspected_range;
+  return identifier(value.note_id, "note-")
+    && natural(value.note_revision)
+    && sha256(value.note_digest)
+    && validAnalysisAnchor(value.anchor)
+    && nonEmptyText(value.material)
+    && isRecord(range) && exactKeys(range, ["start", "end"])
+    && natural(range.start) && (range.start as number) >= 1
+    && natural(range.end) && (range.end as number) >= 1;
+}
+
 function validSynthesisBasis(value: unknown): value is MaterialSynthesisBasis {
   if (!isRecord(value) || !exactKeys(value, [
     "unit_revision",
@@ -539,7 +578,7 @@ function validRouteAssessment(value: unknown): value is MaterialRouteAssessment 
     "route_id", "source_id", "locator", "review_status", "concept_ids",
   ], [
     "contribution", "assumptions", "notation", "exercise_value", "best_for",
-    "limitations", "scope_of_absence", "reason", "evidence",
+    "limitations", "scope_of_absence", "reason", "evidence", "analysis_refs",
   ]) || !identifier(value.route_id, "route-")
     || !identifier(value.source_id, "source-")
     || !nonEmptyText(value.locator)
@@ -558,6 +597,8 @@ function validRouteAssessment(value: unknown): value is MaterialRouteAssessment 
   if ("reason" in value && !nonEmptyText(value.reason)) return false;
   if ("evidence" in value && (!Array.isArray(value.evidence)
     || !value.evidence.every(validSynthesisEvidence))) return false;
+  if ("analysis_refs" in value && (!Array.isArray(value.analysis_refs)
+    || !value.analysis_refs.every(validAnalysisRef))) return false;
   if (value.review_status === "deep-reviewed") {
     return detailed.every((key) => nonEmptyText(value[key]))
       && Array.isArray(value.evidence)
@@ -610,6 +651,7 @@ const synthesisStaleReasons: readonly MaterialSynthesisStaleReason[] = [
   "material_checksums",
   "policy",
   "current-basis-unavailable",
+  "analysis-refs-stale",
 ];
 
 function validSynthesisFreshness(value: unknown): value is MaterialSynthesisFreshness {

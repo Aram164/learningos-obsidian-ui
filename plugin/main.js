@@ -1004,8 +1004,8 @@ function validProjectedRecord(value, validSynthesis) {
 }
 
 // src/contracts/manifest.ts
-var MANIFEST_CONTRACT_VERSION = 12;
-var MANIFEST_SCHEMA_SHA256 = "sha256:5e124e29c3b77bf54e4bd60718e9cf6b70c9af15986b1012a1e4ee6eeaae7d57";
+var MANIFEST_CONTRACT_VERSION = 13;
+var MANIFEST_SCHEMA_SHA256 = "sha256:5de9c6818f0b5c925b382ecf209fe15cadc169b8662419e88be322916821df18";
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -1023,6 +1023,25 @@ function uniqueStringArray(value, predicate) {
 function validSynthesisEvidence(value) {
   if (!isRecord(value) || !exactKeys(value, ["locator", "checksum"], ["note"])) return false;
   return nonEmptyText(value.locator) && sha256(value.checksum) && (!("note" in value) || nonEmptyText(value.note));
+}
+function validAnalysisAnchor2(value) {
+  if (!isRecord(value) || !exactKeys(value, ["topic", "purpose", "locator"])) return false;
+  return nonEmptyText(value.topic) && nonEmptyText(value.purpose) && nonEmptyText(value.locator);
+}
+function validAnalysisRef(value) {
+  if (!isRecord(value) || !exactKeys(
+    value,
+    [
+      "note_id",
+      "note_revision",
+      "note_digest",
+      "anchor",
+      "material",
+      "inspected_range"
+    ]
+  )) return false;
+  const range = value.inspected_range;
+  return identifier2(value.note_id, "note-") && natural2(value.note_revision) && sha256(value.note_digest) && validAnalysisAnchor2(value.anchor) && nonEmptyText(value.material) && isRecord(range) && exactKeys(range, ["start", "end"]) && natural2(range.start) && range.start >= 1 && natural2(range.end) && range.end >= 1;
 }
 function validSynthesisBasis(value) {
   if (!isRecord(value) || !exactKeys(value, [
@@ -1054,7 +1073,8 @@ function validRouteAssessment(value) {
     "limitations",
     "scope_of_absence",
     "reason",
-    "evidence"
+    "evidence",
+    "analysis_refs"
   ]) || !identifier2(value.route_id, "route-") || !identifier2(value.source_id, "source-") || !nonEmptyText(value.locator) || !["deep-reviewed", "screened", "unevaluated", "unavailable"].includes(String(value.review_status)) || !uniqueStringArray(value.concept_ids, (item) => identifier2(item, "concept-"))) return false;
   const detailed = [
     "contribution",
@@ -1067,6 +1087,7 @@ function validRouteAssessment(value) {
   ];
   if ("reason" in value && !nonEmptyText(value.reason)) return false;
   if ("evidence" in value && (!Array.isArray(value.evidence) || !value.evidence.every(validSynthesisEvidence))) return false;
+  if ("analysis_refs" in value && (!Array.isArray(value.analysis_refs) || !value.analysis_refs.every(validAnalysisRef))) return false;
   if (value.review_status === "deep-reviewed") {
     return detailed.every((key) => nonEmptyText(value[key])) && Array.isArray(value.evidence) && value.evidence.length > 0;
   }
@@ -1099,7 +1120,8 @@ var synthesisStaleReasons = [
   "route_set_checksum",
   "material_checksums",
   "policy",
-  "current-basis-unavailable"
+  "current-basis-unavailable",
+  "analysis-refs-stale"
 ];
 function validSynthesisFreshness(value) {
   return isRecord(value) && exactKeys(value, ["status", "reasons"]) && ["current", "stale"].includes(String(value.status)) && uniqueStringArray(value.reasons, (reason) => typeof reason === "string" && synthesisStaleReasons.includes(reason));
@@ -17525,10 +17547,10 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:00bae314086a638948a92f18890955a31a83934ed9a317f3221bdfc898461c52" : "unavailable";
+  return true ? "sha256:03214ec840affbdb4ba23e5aaaf284fb8cea9543b672fc7910a31905ec0b7324" : "unavailable";
 }
 function runtimeContractVersion() {
-  return true ? 12 : 0;
+  return true ? 13 : 0;
 }
 
 // src/gateway-client.ts

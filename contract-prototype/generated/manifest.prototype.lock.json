@@ -4,11 +4,11 @@
     "Prototype twin of contracts/manifest-v<N>.lock.json, rendered from the",
     "Core bundle metadata instead of hand-mirrored."
   ],
-  "contract_version": 12,
+  "contract_version": 13,
   "mirrors": "../repository/system/contracts/manifest-contract.yaml",
-  "schema_path": "system/contracts/manifest-v12.schema.json",
-  "schema_sha256": "sha256:5e124e29c3b77bf54e4bd60718e9cf6b70c9af15986b1012a1e4ee6eeaae7d57",
-  "closure_sha256": "sha256:17f7cc6b68198d44b9ee708a7db5944c02b7238caeab18bf1bc2a09321bbfe19",
+  "schema_path": "system/contracts/manifest-v13.schema.json",
+  "schema_sha256": "sha256:5de9c6818f0b5c925b382ecf209fe15cadc169b8662419e88be322916821df18",
+  "closure_sha256": "sha256:0aa2ec94871d4fee7489724e53208515084f13965118feeeab01bb85f4065d54",
   "top_level_keys": [
     "_generated",
     "academic_deadlines",

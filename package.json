@@ -12,7 +12,7 @@
     "check:source-graph": "node scripts/check-source-graph.mjs",
     "check:code": "npm run typecheck && npm run check:source-graph && npm run test:manifest-store-indexes && npm run test:atlas-graph && npm run test:library-finder && npm run test:trace-context && npm run test:operations",
     "contract:check": "node scripts/check-contract.mjs",
-    "contract:generate": "node scripts/generate-contract.mjs --bundle ../repository/generated/contract-prototype/manifest-v12.bundle.json --meta ../repository/generated/contract-prototype/manifest-v12.meta.json",
+    "contract:generate": "node scripts/generate-contract.mjs --bundle ../repository/generated/contract-prototype/manifest-v13.bundle.json --meta ../repository/generated/contract-prototype/manifest-v13.meta.json",
     "typecheck:contract-prototype": "tsc -p tsconfig.contract-prototype.json --noEmit",
     "contract:diff-prototype": "node scripts/diff-contract-prototype.mjs",
     "test:ui": "node tests/test-dashboard.js && node tests/test-ai-actions.js",
