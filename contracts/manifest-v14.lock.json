@@ -3,16 +3,13 @@
     "MIRROR, not original. The manifest contract is declared by Core in",
     "system/contracts/manifest-contract.yaml and enforced by Core itself.",
     "",
-    "v13 adds optional analysis_refs to route assessments: references to durable",
-    "source-analysis notes (note id, pinned note revision, exact anchor, inspected",
-    "material identity and range) so an assessment reuses note prose instead of",
-    "copying it. Freshness reasons gain analysis-refs-stale when a referenced",
-    "note moves past its approval. Absent on every assessment without references."
+    "v14 fixes the versioned schema's title ('manifest v9' since v9) so it names",
+    "the declared version. No shape change: same keys, new schema bytes and hash."
   ],
-  "contract_version": 13,
+  "contract_version": 14,
   "mirrors": "../repository/system/contracts/manifest-contract.yaml",
-  "schema_path": "system/contracts/manifest-v13.schema.json",
-  "schema_sha256": "sha256:5de9c6818f0b5c925b382ecf209fe15cadc169b8662419e88be322916821df18",
+  "schema_path": "system/contracts/manifest-v14.schema.json",
+  "schema_sha256": "sha256:0444c70f2e264a0a9548fe1bbd585a058cc366aa3837508f8544487edd1d735f",
   "top_level_keys": [
     "_generated",
     "academic_deadlines",

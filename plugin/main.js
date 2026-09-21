@@ -1004,8 +1004,8 @@ function validProjectedRecord(value, validSynthesis) {
 }
 
 // src/contracts/manifest.ts
-var MANIFEST_CONTRACT_VERSION = 13;
-var MANIFEST_SCHEMA_SHA256 = "sha256:5de9c6818f0b5c925b382ecf209fe15cadc169b8662419e88be322916821df18";
+var MANIFEST_CONTRACT_VERSION = 14;
+var MANIFEST_SCHEMA_SHA256 = "sha256:0444c70f2e264a0a9548fe1bbd585a058cc366aa3837508f8544487edd1d735f";
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -1257,75 +1257,75 @@ function assertManifest(value) {
     requireArray(value, key);
   }
   if (!validAiActions(value.ai_actions)) {
-    throw new TypeError("Manifest ai_actions must match the closed v8 projection.");
+    throw new TypeError(`Manifest ai_actions must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!value.academic_deadlines.every(validAcademicDeadline)) {
-    throw new TypeError("Manifest academic deadlines must match the closed v8 projection.");
+    throw new TypeError(`Manifest academic deadlines must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!value.garden_entries.every(validGardenEntry)) {
-    throw new TypeError("Manifest Garden rows must match the closed v8 projection.");
+    throw new TypeError(`Manifest Garden rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!value.relations.every(validRelation)) {
-    throw new TypeError("Manifest relations must match the closed v8 projection.");
+    throw new TypeError(`Manifest relations must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!value.review_items.every(validReviewItem)) {
-    throw new TypeError("Manifest review rows must match the closed v8 projection.");
+    throw new TypeError(`Manifest review rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!value.semesters.every(validSemester)) {
-    throw new TypeError("Manifest semesters must match the closed v8 projection.");
+    throw new TypeError(`Manifest semesters must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!value.thematic_groups.every(validThematicGroup)) {
-    throw new TypeError("Manifest thematic groups must match the closed v8 projection.");
+    throw new TypeError(`Manifest thematic groups must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!value.topic_packs.every(validTopicPack)) {
-    throw new TypeError("Manifest topic packs must match the closed v8 projection.");
+    throw new TypeError(`Manifest topic packs must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!value.topics.every(validTopic)) {
-    throw new TypeError("Manifest topics must match the closed v8 projection.");
+    throw new TypeError(`Manifest topics must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   for (const module2 of value.modules) {
     if (!validModuleRecord(module2)) {
-      throw new TypeError("Manifest module rows must match the closed v8 projection.");
+      throw new TypeError(`Manifest module rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const program of value.programs) {
     if (!validProgramRecord(program)) {
-      throw new TypeError("Manifest program rows must match the closed v8 projection.");
+      throw new TypeError(`Manifest program rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const project of value.projects) {
     if (!validProjectRecord(project)) {
-      throw new TypeError("Manifest project rows must match the closed v8 projection.");
+      throw new TypeError(`Manifest project rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const relationship of value.project_relationships) {
     if (!validProjectRelationship(relationship)) {
-      throw new TypeError("Manifest project relationships must match the closed v8 projection.");
+      throw new TypeError(`Manifest project relationships must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const sourceMap of value.module_source_maps) {
     if (!validModuleSourceMap(sourceMap)) {
-      throw new TypeError("Manifest module source maps must match the closed v8 projection.");
+      throw new TypeError(`Manifest module source maps must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const unit of value.units) {
     if (!validProjectedUnit(unit)) {
-      throw new TypeError("Manifest unit rows must match the closed v8 projection.");
+      throw new TypeError(`Manifest unit rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const studyMap of value.study_maps) {
     if (!validStudyMap(studyMap)) {
-      throw new TypeError("Manifest study maps must match the closed v8 projection.");
+      throw new TypeError(`Manifest study maps must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const stage of value.stages) {
     if (!validFlatStage(stage)) {
-      throw new TypeError("Manifest flat stages must match the closed v8 projection.");
+      throw new TypeError(`Manifest flat stages must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const record7 of value.records) {
     if (!validProjectedRecord(record7, validMaterialSynthesis)) {
-      throw new TypeError("Manifest records must match the closed v8 record union.");
+      throw new TypeError(`Manifest records must match the closed v${MANIFEST_CONTRACT_VERSION} record union.`);
     }
   }
   for (const key of ["ai_actions", "artifact_revisions", "backlinks", "counts", "indexes", "progress", "project_aliases", "resume_pointer"]) {
@@ -1337,19 +1337,19 @@ function assertManifest(value) {
     throw new TypeError("Manifest artifact revisions must map to non-negative integers.");
   }
   if (!validBacklinks(value.backlinks)) {
-    throw new TypeError("Manifest backlinks must match the closed v8 projection.");
+    throw new TypeError(`Manifest backlinks must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!validCounts(value.counts)) {
-    throw new TypeError("Manifest counts must match the closed v8 projection.");
+    throw new TypeError(`Manifest counts must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!validProgress(value.progress)) {
-    throw new TypeError("Manifest progress must match the closed v8 projection.");
+    throw new TypeError(`Manifest progress must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!validStringMap(value.project_aliases)) {
     throw new TypeError("Manifest project aliases must map to strings.");
   }
   if (!validResumePointer(value.resume_pointer)) {
-    throw new TypeError("Manifest resume pointer must match the closed v8 projection.");
+    throw new TypeError(`Manifest resume pointer must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   const edges = value.module_concept_edges;
   if (!Array.isArray(edges)) {
@@ -17547,10 +17547,10 @@ var UnitNoteModal = class extends import_obsidian21.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:03214ec840affbdb4ba23e5aaaf284fb8cea9543b672fc7910a31905ec0b7324" : "unavailable";
+  return true ? "sha256:6c33c274090af06cdbe5f607381c44f0b87fbc5fdae0e65b1c033d04a0d629ce" : "unavailable";
 }
 function runtimeContractVersion() {
-  return true ? 13 : 0;
+  return true ? 14 : 0;
 }
 
 // src/gateway-client.ts

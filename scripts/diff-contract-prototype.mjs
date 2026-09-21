@@ -78,7 +78,7 @@ try {
   const bundleDir = path.join(scratch, 'bundle');
   const emitDir = path.join(scratch, 'emit');
   run(python, ['tools/contract_bundle.py', 'build',
-    '--schema', 'system/contracts/manifest-v11.schema.json',
+    '--schema', 'system/contracts/manifest-v14.schema.json',
     '--out', bundleDir], coreRoot);
   const built = fs.readdirSync(bundleDir).filter((name) => name.endsWith('.bundle.json'));
   if (built.length !== 1) fail(`expected one bundle in ${bundleDir}.`);

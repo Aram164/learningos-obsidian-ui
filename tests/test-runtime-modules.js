@@ -337,7 +337,7 @@ function routerPlugin(settings = {}) {
     assert.match(store.error, new RegExp(`requires contract ${CONTRACT}`));
   });
 
-  await test('ManifestStore rejects a v8 manifest with a different schema byte hash', async () => {
+  await test('ManifestStore rejects a manifest with a different schema byte hash', async () => {
     const store = new ManifestStore(manifestApp((text) => {
       const manifest = JSON.parse(text);
       manifest._generated.schema_sha256 = `sha256:${'0'.repeat(64)}`;
@@ -403,7 +403,7 @@ function routerPlugin(settings = {}) {
     });
   });
 
-  await test('ManifestStore resolves approved material synthesis only through the v8 index', async () => {
+  await test('ManifestStore resolves approved material synthesis only through the unit index', async () => {
     const store = new ManifestStore(manifestApp());
     assert.equal(await store.load(), true);
     const synthesis = store.materialSynthesisForUnit('unit-fixture-sad-l04');
@@ -435,17 +435,17 @@ function routerPlugin(settings = {}) {
     assert.match(store.error, /UnitMaterialSynthesisV1/);
   });
 
-  await test('ManifestStore rejects extension fields in closed v8 record rows', async () => {
+  await test('ManifestStore rejects extension fields in closed record rows', async () => {
     const store = new ManifestStore(manifestApp((text) => {
       const manifest = JSON.parse(text);
       manifest.records[0].invented_projection_field = true;
       return JSON.stringify(manifest);
     }));
     assert.equal(await store.load(), false);
-    assert.match(store.error, /closed v8 record union/);
+    assert.match(store.error, /closed v\d+ record union/);
   });
 
-  await test('ManifestStore rejects malformed secondary v8 surfaces before exposing data', async () => {
+  await test('ManifestStore rejects malformed secondary surfaces before exposing data', async () => {
     const corruptions = [
       ['academic deadlines', (manifest) => manifest.academic_deadlines.push(42)],
       ['artifact revisions', (manifest) => { manifest.artifact_revisions.bad = 'oops'; }],
@@ -512,7 +512,7 @@ function routerPlugin(settings = {}) {
     assert.equal(destination, 'home');
   });
 
-  await test('ManifestStore excludes prospective and boundary rows from normal v8', async () => {
+  await test('ManifestStore excludes prospective and boundary rows from the normal projection', async () => {
     const store = new ManifestStore(manifestApp((text) => {
       const manifest = JSON.parse(text);
       manifest.programs.push({
@@ -523,7 +523,7 @@ function routerPlugin(settings = {}) {
       return JSON.stringify(manifest);
     }));
     assert.equal(await store.load(), false);
-    assert.match(store.error, /closed v8 projection/);
+    assert.match(store.error, /closed v\d+ projection/);
   });
 
   await test('bounded health, archive, and prospective-planning decoders fail closed', async () => {

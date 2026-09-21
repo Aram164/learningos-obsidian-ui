@@ -5,8 +5,12 @@ const path = require('node:path');
 const { createSourceModuleLoader } = require('./source-module-loader');
 
 const root = path.dirname(__dirname);
+// Symbolic contract version for this isolated unit: validation is stubbed and
+// the store only checks the fixture's version against the mocked constant, so
+// the value must match itself, never the live manifest contract.
+const FIXTURE_CONTRACT_VERSION = 999;
 const load = createSourceModuleLoader(root, {
-  './constants': { CONTRACT_VERSION: 8 },
+  './constants': { CONTRACT_VERSION: FIXTURE_CONTRACT_VERSION },
   // Contract decoding has its own exhaustive suite. This unit isolates the
   // store's post-validation indexing and atomic publication behavior.
   './contracts/manifest': { assertManifest: () => undefined },
@@ -91,7 +95,7 @@ function fixtureManifest() {
   };
 
   return {
-    _generated: { contract_version: 8, snapshot_id: 'snapshot-test' },
+    _generated: { contract_version: FIXTURE_CONTRACT_VERSION, snapshot_id: 'snapshot-test' },
     records: [
       activeModule,
       archivedModule,

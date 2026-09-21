@@ -14,7 +14,7 @@
  * The module and type names are deliberately stable. Contract version is data:
  * a bump changes this constant and the mirrored lock, not every import path.
  */
-export const MANIFEST_CONTRACT_VERSION = 13 as const;
+export const MANIFEST_CONTRACT_VERSION = 14 as const;
 import {
   validAcademicDeadline,
   validAiActions,
@@ -42,7 +42,7 @@ import {
   validTopicPack,
 } from './manifest-records';
 
-export const MANIFEST_SCHEMA_SHA256 = 'sha256:5de9c6818f0b5c925b382ecf209fe15cadc169b8662419e88be322916821df18' as const;
+export const MANIFEST_SCHEMA_SHA256 = 'sha256:0444c70f2e264a0a9548fe1bbd585a058cc366aa3837508f8544487edd1d735f' as const;
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -788,75 +788,75 @@ export function assertManifest(value: unknown): asserts value is Manifest {
   }
 
   if (!validAiActions(value.ai_actions)) {
-    throw new TypeError("Manifest ai_actions must match the closed v8 projection.");
+    throw new TypeError(`Manifest ai_actions must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!(value.academic_deadlines as unknown[]).every(validAcademicDeadline)) {
-    throw new TypeError("Manifest academic deadlines must match the closed v8 projection.");
+    throw new TypeError(`Manifest academic deadlines must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!(value.garden_entries as unknown[]).every(validGardenEntry)) {
-    throw new TypeError("Manifest Garden rows must match the closed v8 projection.");
+    throw new TypeError(`Manifest Garden rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!(value.relations as unknown[]).every(validRelation)) {
-    throw new TypeError("Manifest relations must match the closed v8 projection.");
+    throw new TypeError(`Manifest relations must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!(value.review_items as unknown[]).every(validReviewItem)) {
-    throw new TypeError("Manifest review rows must match the closed v8 projection.");
+    throw new TypeError(`Manifest review rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!(value.semesters as unknown[]).every(validSemester)) {
-    throw new TypeError("Manifest semesters must match the closed v8 projection.");
+    throw new TypeError(`Manifest semesters must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!(value.thematic_groups as unknown[]).every(validThematicGroup)) {
-    throw new TypeError("Manifest thematic groups must match the closed v8 projection.");
+    throw new TypeError(`Manifest thematic groups must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!(value.topic_packs as unknown[]).every(validTopicPack)) {
-    throw new TypeError("Manifest topic packs must match the closed v8 projection.");
+    throw new TypeError(`Manifest topic packs must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!(value.topics as unknown[]).every(validTopic)) {
-    throw new TypeError("Manifest topics must match the closed v8 projection.");
+    throw new TypeError(`Manifest topics must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   for (const module of value.modules as unknown[]) {
     if (!validModuleRecord(module)) {
-      throw new TypeError("Manifest module rows must match the closed v8 projection.");
+      throw new TypeError(`Manifest module rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const program of value.programs as unknown[]) {
     if (!validProgramRecord(program)) {
-      throw new TypeError("Manifest program rows must match the closed v8 projection.");
+      throw new TypeError(`Manifest program rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const project of value.projects as unknown[]) {
     if (!validProjectRecord(project)) {
-      throw new TypeError("Manifest project rows must match the closed v8 projection.");
+      throw new TypeError(`Manifest project rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const relationship of value.project_relationships as unknown[]) {
     if (!validProjectRelationship(relationship)) {
-      throw new TypeError("Manifest project relationships must match the closed v8 projection.");
+      throw new TypeError(`Manifest project relationships must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const sourceMap of value.module_source_maps as unknown[]) {
     if (!validModuleSourceMap(sourceMap)) {
-      throw new TypeError("Manifest module source maps must match the closed v8 projection.");
+      throw new TypeError(`Manifest module source maps must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const unit of value.units as unknown[]) {
     if (!validProjectedUnit(unit)) {
-      throw new TypeError("Manifest unit rows must match the closed v8 projection.");
+      throw new TypeError(`Manifest unit rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const studyMap of value.study_maps as unknown[]) {
     if (!validStudyMap(studyMap)) {
-      throw new TypeError("Manifest study maps must match the closed v8 projection.");
+      throw new TypeError(`Manifest study maps must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const stage of value.stages as unknown[]) {
     if (!validFlatStage(stage)) {
-      throw new TypeError("Manifest flat stages must match the closed v8 projection.");
+      throw new TypeError(`Manifest flat stages must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
   for (const record of value.records as unknown[]) {
     if (!validProjectedRecord(record, validMaterialSynthesis)) {
-      throw new TypeError("Manifest records must match the closed v8 record union.");
+      throw new TypeError(`Manifest records must match the closed v${MANIFEST_CONTRACT_VERSION} record union.`);
     }
   }
 
@@ -870,19 +870,19 @@ export function assertManifest(value: unknown): asserts value is Manifest {
     throw new TypeError("Manifest artifact revisions must map to non-negative integers.");
   }
   if (!validBacklinks(value.backlinks)) {
-    throw new TypeError("Manifest backlinks must match the closed v8 projection.");
+    throw new TypeError(`Manifest backlinks must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!validCounts(value.counts)) {
-    throw new TypeError("Manifest counts must match the closed v8 projection.");
+    throw new TypeError(`Manifest counts must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!validProgress(value.progress)) {
-    throw new TypeError("Manifest progress must match the closed v8 projection.");
+    throw new TypeError(`Manifest progress must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
   if (!validStringMap(value.project_aliases)) {
     throw new TypeError("Manifest project aliases must map to strings.");
   }
   if (!validResumePointer(value.resume_pointer)) {
-    throw new TypeError("Manifest resume pointer must match the closed v8 projection.");
+    throw new TypeError(`Manifest resume pointer must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
 
   const edges = value.module_concept_edges;

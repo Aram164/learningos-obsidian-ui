@@ -1,7 +1,7 @@
 /**
- * Closed decoders for the heterogeneous records emitted by Manifest v8.
+ * Closed decoders for the heterogeneous records emitted by the Manifest.
  *
- * These key sets mirror Core's `system/contracts/manifest-v13.schema.json`.
+ * These key sets mirror Core's `system/contracts/manifest-v14.schema.json`.
  * Keeping the checks here makes the permissive `ProjectionRecord` convenience
  * type safe to use after `assertManifest`: extension fields are available to
  * feature code, but an undeclared producer field cannot cross the read boundary.
