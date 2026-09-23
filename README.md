@@ -14,16 +14,25 @@ second source of truth.
 3. Read the lecture knowledge map, compare the complete material menu by
    format and explanatory angle, and choose what fits the current gap. A
    personal study map is optional; when one exists, its exact resources,
-   done-when criteria, feedback and detours stay stage-scoped. One session note
-   is added at unit level after the relevant stages.
+   done-when criteria, feedback and detours stay stage-scoped. The stage shows
+   one Current work card; **Compare all** opens its materials by need (required
+   now / if stuck / for reference) and the rest of the lecture and course, and
+   a local file's bounded excerpt is read from Core only on request. One session
+   note is added at unit level after the relevant stages.
 4. Review Ultimate Reference, Exercise Bank, Mock Exam and other durable
    artifacts through stable unit references.
 5. Prepare shelving, review destinations/rationale/diffs, and apply only
    selected proposal IDs through the guarded gateway.
 6. End the learning session deliberately: review the exact gateway ledger,
    then optionally commit and push only those files.
+7. Read the **Atlas**: Core's ability map, one separate group at a time, its
+   directed preparation graph and its reviewed bridges. Drafting a worked
+   attempt or a possible connection saves a UI-owned draft; only **Confirm &
+   record** in Review sends it (`learner.ability-observation.append` or
+   `ability.candidate.append`, `ui` channel only). Completing a stage records
+   progress, never ability evidence.
 
-The current primary navigation is **Home · Modules · Learn · Projects · Library · Garden · Review**, with structural Search available from the navigator and command palette. Modules and Library use explicit full-page application routes; Library separates Learning Sources from purpose-built Topic Packs. Future Master's Planning remains a policy-only boundary. Job learning uses the same projected module, unit, study-map, note, search, and AI surfaces as every other learning area, with a small visual badge for `program-job`.
+The current primary navigation is **Home · Modules · Learn · Projects · Library · Atlas · Garden · Review** (Review shows its live count), with structural Search available from the navigator and command palette. Modules and Library use explicit full-page application routes; Library separates Learning Sources from purpose-built Topic Packs. Future Master's Planning remains a policy-only boundary. Job learning uses the same projected module, unit, study-map, note, search, and AI surfaces as every other learning area, with a small visual badge for `program-job`.
 
 [`ARCHITECTURE.md`](ARCHITECTURE.md) is the concise source map: runtime flow,
 directory ownership, dependency direction, compatibility surfaces, artifacts,

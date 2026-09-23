@@ -6,6 +6,7 @@ const { result } = require('./dashboard/support');
 const suites = [
   require('./dashboard/contract-home-search'),
   require('./dashboard/navigation-review-atlas'),
+  require('./dashboard/abilities-review'),
   require('./dashboard/library-capture'),
   require('./dashboard/study-surfaces'),
   require('./dashboard/shelving-resilience'),

@@ -113,7 +113,7 @@ export function renderMaterialOverview(
   }
 
   if (synthesis) {
-    renderMaterialSynthesis(view, root, synthesis, options);
+    renderMaterialSynthesis(view, root, synthesis, options, unit.moduleId);
   }
 
   if (!options.length || !includeMenu) return;
@@ -271,6 +271,7 @@ function renderMaterialSynthesis(
   root: HTMLElement,
   synthesis: UnitMaterialSynthesisV1,
   options: MaterialOptionView[],
+  moduleId: string,
 ): void {
   const block = section(
     root,
@@ -412,10 +413,37 @@ function renderMaterialSynthesis(
         text: projectedString(concept?.title) || group.concept_id,
       });
       row.createEl('p', { text: group.narrative });
-      const related = row.createDiv({ cls: 'los-material-metadata' });
+      /* The session stays inside its module. A related unit or bridge note
+       * that belongs to another module is a cross-module relationship, and
+       * those are read in the Atlas, where both ends and the path between them
+       * are on screen; here it is only counted, with the way there. */
+      const local: ProjectionRecord[] = [];
+      let elsewhere = 0;
       for (const relatedId of [...group.related_unit_ids, ...group.bridge_note_ids]) {
         const record = view.plugin.store.get(relatedId);
-        if (record) chip(related, record, (target) => view.plugin.nav.openRecord(target));
+        if (!record) continue;
+        const recordModule = projectedString(record.module_id);
+        if (recordModule && recordModule !== moduleId) elsewhere += 1;
+        else local.push(record);
+      }
+      if (local.length) {
+        const related = row.createDiv({ cls: 'los-material-metadata' });
+        for (const record of local) {
+          chip(related, record, (target) => view.plugin.nav.openRecord(target));
+        }
+      }
+      if (elsewhere) {
+        const beyond = row.createDiv({ cls: 'los-synthesis-beyond' });
+        beyond.createSpan({
+          cls: 'los-micro',
+          text: `${elsewhere} connection${elsewhere === 1 ? '' : 's'} in other modules`,
+        });
+        button(
+          beyond,
+          'Open in Atlas',
+          () => view.plugin.nav.openAtlas({ concept: group.concept_id }),
+          'quiet',
+        );
       }
     }
   }

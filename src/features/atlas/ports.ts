@@ -28,6 +28,7 @@ export type AtlasPlugin = Pick<
 > & {
   readonly nav: Pick<
     AppNavigator,
+    | 'openAbilities'
     | 'openAtlas'
     | 'openModule'
     | 'openRecord'

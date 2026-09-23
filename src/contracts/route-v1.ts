@@ -35,6 +35,9 @@ export type AtlasLensV1 =
 /** How far the focused graph reaches. Depth 1 is the default. */
 export type AtlasDepthV1 = 1 | 2;
 
+/** How the Ability map draws its groups: the directed plane, or a list. */
+export type AbilityLayoutV1 = "plane" | "list";
+
 export type ProjectDetailTabV1 =
   | "overview"
   | "structure"
@@ -46,7 +49,7 @@ export type ApplicationRouteV1 =
   | { name: "home" }
   | { name: "learn"; programId: string }
   | { name: "capture" }
-  | { name: "review" }
+  | { name: "review"; item?: string | null }
   | { name: "garden" }
   | { name: "diagnostics" }
   | { name: "program"; programId: string }
@@ -109,6 +112,18 @@ export type ApplicationRouteV1 =
       module?: string | null;
       lens?: AtlasLensV1;
       depth?: AtlasDepthV1;
+    }
+  /**
+   * The Ability map (Atlas). `group` and `ability` name what is selected;
+   * `detail` opens the full ability page. The search text is working state
+   * and never enters the route.
+   */
+  | {
+      name: "abilities";
+      group?: string | null;
+      ability?: string | null;
+      layout?: AbilityLayoutV1;
+      detail?: boolean;
     }
   | { name: "shelving"; unitId?: string | null }
   | { name: "boundary"; boundaryId: string };
@@ -255,6 +270,11 @@ export function asAtlasLens(value: unknown): AtlasLensV1 {
 export function asAtlasDepth(value: unknown): AtlasDepthV1 {
   const numeric = typeof value === "string" ? Number(value) : value;
   return isAtlasDepth(numeric) ? numeric : 1;
+}
+
+/** Coerce a loose layout value; anything unrecognised falls back to the plane. */
+export function asAbilityLayout(value: unknown): AbilityLayoutV1 {
+  return value === "list" ? "list" : "plane";
 }
 
 /** Coerce a loose project tab value; anything unrecognised falls back to overview. */

@@ -3,6 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join, sep } from 'node:path';
 import type { PlanProfile } from './contracts/plan-template';
+import type {
+  AbilityCandidatePayloadV1,
+  AbilityObservationPayloadV1,
+} from './contracts/ability-writes';
 import type { JsonRecord, ProjectionRecord } from './contracts/manifest';
 import {
   GatewayError, exitCodeOf, structuredError,
@@ -118,6 +122,24 @@ function nextRequestId(capability: string): string {
 
 function nextIdempotencyKey(requestId: string): string {
   return `idem-${requestId}`;
+}
+
+/** A request identity fixed before its payload, for payloads that must name it. */
+export interface GatewayIdentity {
+  readonly requestId: string;
+  readonly idempotencyKey: string;
+}
+
+/**
+ * Mint the identity a write will be sent under, ahead of the envelope.
+ *
+ * Most writes never need this: `prepareCapability` mints its own. A confirmed
+ * ability claim does, because its payload has to point at its own
+ * confirmation, and in this app the confirmation is the request itself.
+ */
+export function newGatewayIdentity(capability: string): GatewayIdentity {
+  const requestId = nextRequestId(capability);
+  return { requestId, idempotencyKey: nextIdempotencyKey(requestId) };
 }
 
 function expandedLocalPath(filePath: string): string {
@@ -320,6 +342,7 @@ export class GatewayClient {
     options: {
       expectedSnapshot?: string;
       expectedRevisions?: Readonly<Record<string, number>>;
+      identity?: GatewayIdentity;
     } = {},
   ): Promise<GatewaySuccessV2> {
     // Every envelope this client sends claims `direct-user-gesture`, because
@@ -374,6 +397,7 @@ export class GatewayClient {
       payload,
       expectedSnapshot,
       expectedRevisions,
+      options.identity,
     );
   }
 
@@ -395,10 +419,11 @@ export class GatewayClient {
     expectedSnapshot: string,
     expectedRevisions: Readonly<Record<string, number>>,
     trace?: TraceContext,
+    identity?: GatewayIdentity,
   ): Promise<string> {
     this.assertLifecycleActive();
-    const requestId = nextRequestId(name);
-    const idempotencyKey = nextIdempotencyKey(requestId);
+    const requestId = identity?.requestId ?? nextRequestId(name);
+    const idempotencyKey = identity?.idempotencyKey ?? nextIdempotencyKey(requestId);
     // Order matters, and it is the whole defect this method once had. A
     // request-scoped guard can only be built once the idempotency key exists,
     // and Core hashes the approval subject over `expected_revisions` — so the
@@ -679,13 +704,14 @@ export class GatewayClient {
     payload: Record<string, unknown>,
     expectedSnapshot: string,
     expectedRevisions: Readonly<Record<string, number>>,
+    identity?: GatewayIdentity,
   ): Promise<GatewaySuccessV2> {
     // One operation for the send and its in-session replay: the same trace
     // id reaches Core on every event and both attempts, each attempt with
     // its own span id.
     const operation = newOperationContext();
     const envelopeJson = await this.prepareCapability(
-      name, payload, expectedSnapshot, expectedRevisions, operation,
+      name, payload, expectedSnapshot, expectedRevisions, operation, identity,
     );
     let result = await this.dispatchPreparedEnvelope(envelopeJson, { trace: operation });
     if (result.outcome === 'ambiguous') {
@@ -1054,6 +1080,68 @@ export class GatewayClient {
     if (ids.unitId) args.push('--unit-id', ids.unitId);
     if (ids.moduleId) args.push('--module-id', ids.moduleId);
     return this.call(args);
+  }
+
+  /**
+   * Core's ability horizon, or one ability expanded.
+   *
+   * Read-only and snapshot-bound: a focused read passes the horizon's own
+   * snapshot, so an expansion can never mix with a horizon from different
+   * records — Core refuses it (exit 3) and the caller reloads instead. The UI
+   * never derives a state; stage progress is not evidence and is never sent.
+   */
+  abilityContext(
+    options: { abilityId?: string; limit?: number; expectedSnapshot?: string | null } = {},
+  ) {
+    const args = ['ability-context'];
+    if (options.abilityId) args.push(options.abilityId);
+    if (options.limit) args.push('--limit', String(options.limit));
+    if (options.expectedSnapshot) args.push('--expected-snapshot', options.expectedSnapshot);
+    return this.call(args);
+  }
+
+  /**
+   * One exact route's identity, locator and availability. `extract` asks Core
+   * for a bounded local excerpt; remote material is never fetched.
+   */
+  materialSpan(
+    unitId: string,
+    routeId: string,
+    options: { extract?: boolean; expectedSnapshot?: string | null } = {},
+  ) {
+    const args = ['material-span', unitId, routeId];
+    if (options.extract) args.push('--extract');
+    if (options.expectedSnapshot) args.push('--expected-snapshot', options.expectedSnapshot);
+    return this.call(args);
+  }
+
+  /**
+   * Record a claim Aram confirmed in Review. The payload's confirmation
+   * pointer names `identity`, which is why the identity is minted first.
+   */
+  recordAbilityObservation(
+    payload: AbilityObservationPayloadV1,
+    identity: GatewayIdentity,
+    expectedRevisions: Readonly<Record<string, number>> = {},
+  ) {
+    return this.capability(
+      'learner.ability-observation.append',
+      { ...payload },
+      { expectedRevisions, identity },
+    );
+  }
+
+  /** Record a tentative connection. It carries nothing until reviewed. */
+  recordAbilityCandidate(
+    payload: AbilityCandidatePayloadV1,
+    identity: GatewayIdentity,
+    expectedRevisions: Readonly<Record<string, number>> = {},
+  ) {
+    return this.capability(
+      'ability.candidate.append',
+      { ...payload },
+      { expectedRevisions, identity },
+    );
   }
 
   /** Versioned read-only status surfaces. Their feature layers decode the

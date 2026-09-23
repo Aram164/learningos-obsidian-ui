@@ -4743,3 +4743,1146 @@ body[data-los-palette="carbon"] .los-root {
     display: none;
   }
 }
+/* ── Ability map (Figma A1 40:1117 · A2 40:1203) ─────────────────────────────
+ * The Atlas destination. One ability group at a time: a rail of separate
+ * groups, the group's directed preparation graph, and — once something is
+ * selected — an inspector beside it. Reviewed bridges sit in their own bands
+ * under the graph so they can never be read as preparation arrows. State is
+ * always a word on the node; the colour only repeats it. Every colour here is
+ * a --los-* token. */
+
+.los-ability-view {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-3);
+}
+.los-ability-view > * { min-width: 0; }
+
+/* Breadcrumb on the left, the context stamp on the right. */
+.los-ability-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--los-2) var(--los-4);
+}
+.los-ability-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--los-1);
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-root .los-ability-crumb {
+  min-height: 24px;
+  padding: 0 2px;
+  border: 0;
+  background: transparent;
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-root .los-ability-crumb.is-clickable:hover {
+  background: transparent;
+  color: var(--los-accent-strong);
+  text-decoration: underline;
+}
+.los-ability-crumb.is-current { color: var(--los-ink-soft); }
+.los-ability-crumb-sep { color: var(--los-ink-faint); }
+
+/* When the map was read, from which records, and whether it is still current. */
+.los-context-stamp {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--los-1) var(--los-2);
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-context-dot {
+  flex: 0 0 auto;
+  width: 7px;
+  height: 7px;
+  border-radius: var(--los-r-pill);
+  background: var(--los-ink-faint);
+}
+.los-context-dot.is-fresh { background: var(--los-success); }
+.los-context-dot.is-stale { background: var(--los-warning); }
+.los-context-dot.is-pending { background: var(--los-info); }
+
+.los-ability-title h1 { margin: 0; }
+.los-ability-title p {
+  margin: var(--los-1) 0 0;
+  color: var(--los-ink-soft);
+}
+
+/* Plane | List on the left; find and the concept atlas on the right. */
+.los-ability-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--los-2) var(--los-3);
+}
+.los-ability-toolbar-left,
+.los-ability-toolbar-right {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--los-2);
+  min-width: 0;
+}
+.los-ability-toolbar .los-filter-tabs {
+  width: auto;
+  margin: 0;
+  padding: 2px;
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-3);
+}
+.los-root .los-ability-search {
+  width: min(260px, 100%);
+  min-height: 32px;
+  padding: var(--los-1) var(--los-2);
+  background: var(--los-surface-raised);
+}
+.los-root .los-ability-concept-link {
+  color: var(--los-accent-strong);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.los-ability-search-results {
+  padding: var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+}
+.los-ability-search-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: var(--los-2);
+}
+.los-root .los-ability-search-hit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--los-3);
+  width: 100%;
+  border-color: transparent;
+}
+.los-root .los-ability-search-hit:hover { border-color: var(--los-rule); }
+.los-ability-search-title { font-weight: 600; }
+
+/* ── The plane: groups | graph, or graph | inspector ── */
+.los-ability-plane {
+  display: grid;
+  grid-template-columns: minmax(190px, 232px) minmax(0, 1fr);
+  align-items: stretch;
+  gap: var(--los-3);
+  padding: var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-lg);
+  background: var(--los-paper-2);
+}
+.los-ability-plane.has-inspector {
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 320px);
+}
+.los-ability-plane.is-unread { display: block; }
+.los-ability-loading {
+  padding: var(--los-5);
+  color: var(--los-ink-soft);
+  text-align: center;
+}
+
+.los-root .los-ability-eyebrow,
+.los-root h2.los-ability-eyebrow {
+  margin: 0;
+  color: var(--los-ink-soft);
+  font-size: 11px !important;
+  font-weight: 700;
+  letter-spacing: .04em;
+  line-height: 1.4;
+  text-transform: uppercase;
+}
+.los-root .los-ability-eyebrow.is-accent { color: var(--los-accent-strong); }
+
+.los-ability-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-2);
+  min-width: 0;
+  padding: var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-3);
+}
+.los-ability-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-2);
+  margin-top: var(--los-1);
+}
+.los-root .los-ability-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--los-1);
+  width: 100%;
+  min-height: 64px;
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+  color: var(--los-ink);
+}
+.los-root .los-ability-group:hover {
+  border-color: var(--los-rule-strong);
+  background: var(--los-surface-raised);
+}
+.los-root .los-ability-group.is-selected {
+  border-color: var(--los-accent);
+  box-shadow: inset 3px 0 0 var(--los-accent);
+}
+.los-ability-group-title { font-weight: 650; }
+.los-ability-group-meta {
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-ability-group-note {
+  margin: var(--los-2) 0 0;
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+
+/* ── The directed preparation graph ── */
+.los-ability-graph {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--los-4) var(--los-5);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+}
+.los-ability-graph-head {
+  margin-bottom: var(--los-4);
+  padding-bottom: var(--los-3);
+  border-bottom: 1px solid var(--los-rule);
+}
+.los-ability-graph-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--los-2);
+}
+.los-root .los-ability-graph-title h2 {
+  margin: 0;
+  font-size: 20px !important;
+}
+.los-ability-graph-head p {
+  margin: var(--los-1) 0 0;
+  color: var(--los-ink-soft);
+  font-size: 13px;
+}
+.los-ability-canvas-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: var(--los-2);
+}
+.los-ability-canvas {
+  position: relative;
+  flex: 0 0 auto;
+}
+.los-ability-column-head {
+  position: absolute;
+  top: 0;
+  overflow: hidden;
+  color: var(--los-ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.los-ability-edges {
+  position: absolute;
+  top: 0;
+  left: 0;
+  overflow: visible;
+  pointer-events: none;
+}
+.los-ability-edge {
+  fill: none;
+  stroke: var(--los-rule-strong);
+  stroke-width: 1.5;
+}
+.los-ability-edge.is-alternative { stroke: var(--los-ink-faint); }
+.los-ability-arrow {
+  fill: none;
+  stroke: var(--los-accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.los-ability-join {
+  fill: var(--los-accent);
+  stroke: var(--los-surface-raised);
+  stroke-width: 1.5;
+}
+
+/* A node is a button placed from the model's coordinates. The left rule
+ * repeats the state named in its words. */
+.los-root .los-ability-node {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--los-1);
+  overflow: hidden;
+  padding: var(--los-2) var(--los-3) var(--los-2) calc(var(--los-3) + 2px);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-3);
+  box-shadow: inset 3px 0 0 var(--los-accent);
+  color: var(--los-ink);
+}
+.los-root .los-ability-node.los-ability-state-supported { box-shadow: inset 3px 0 0 var(--los-success); }
+.los-root .los-ability-node.los-ability-state-nearby { box-shadow: inset 3px 0 0 var(--los-info); }
+.los-root .los-ability-node.los-ability-state-unmapped { box-shadow: inset 3px 0 0 var(--los-rule-strong); }
+.los-root .los-ability-node:hover {
+  border-color: var(--los-rule-strong);
+  background: var(--los-surface-raised);
+}
+.los-root .los-ability-node.is-selected {
+  border-color: var(--los-accent);
+  background: var(--los-selected);
+}
+.los-root .los-ability-node.is-bridged {
+  border-color: var(--los-info);
+  background: var(--los-info-wash);
+}
+.los-ability-node-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-weight: 650;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.los-ability-node-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px var(--los-2);
+  color: var(--los-ink-soft);
+  font-size: 11px;
+}
+.los-ability-node-state { font-weight: 700; }
+.los-ability-node-state.is-supported { color: var(--los-success-strong); }
+.los-ability-node-state.is-nearby { color: var(--los-info-strong); }
+.los-ability-node-state.is-uncertain { color: var(--los-warning-strong); }
+.los-ability-node-state.is-unmapped { color: var(--los-ink-soft); }
+.los-ability-node-bridges {
+  position: absolute;
+  top: var(--los-1);
+  right: var(--los-2);
+  color: var(--los-info);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+/* Bridges live in bands under the graph: a filled band for a reviewed bridge,
+ * a dashed outline for a candidate, amber when its source is not current. */
+.los-root .los-ability-bridge {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: var(--los-2);
+  overflow: hidden;
+  padding: 0 var(--los-3);
+  border: 1px solid transparent;
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-3);
+  color: var(--los-accent-strong);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.los-root .los-ability-bridge:hover {
+  border-color: var(--los-rule-strong);
+  background: var(--los-selected);
+}
+.los-root .los-ability-bridge.is-candidate {
+  border: 1px dashed var(--los-rule-strong);
+  background: transparent;
+  color: var(--los-ink-soft);
+}
+.los-root .los-ability-bridge.is-not-current {
+  background: var(--los-warning-wash);
+  color: var(--los-warning-strong);
+}
+.los-root .los-ability-bridge.is-selected {
+  border-color: var(--los-accent);
+  background: var(--los-selected);
+}
+.los-ability-bridge-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.los-ability-graph-foot {
+  margin-top: var(--los-4);
+  padding-top: var(--los-3);
+  border-top: 1px solid var(--los-rule);
+}
+.los-ability-graph-foot p {
+  margin: 0 0 var(--los-2);
+  color: var(--los-ink-soft);
+  font-size: 13px;
+}
+.los-ability-truncated { margin: 0; }
+
+/* ── The inspector ── */
+.los-ability-inspector {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+}
+.los-root .los-ability-inspector > h2 {
+  margin: var(--los-2) 0 var(--los-3);
+  font-size: 20px !important;
+}
+.los-ability-status {
+  padding: var(--los-2) var(--los-3);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-3);
+}
+.los-ability-status strong { font-size: 12px; }
+.los-ability-status.is-uncertain strong { color: var(--los-warning-strong); }
+.los-ability-status.is-supported { background: var(--los-success-wash); }
+.los-ability-status.is-supported strong { color: var(--los-success-strong); }
+.los-ability-status.is-nearby { background: var(--los-info-wash); }
+.los-ability-status.is-nearby strong { color: var(--los-info-strong); }
+.los-ability-status.is-unmapped strong { color: var(--los-ink-soft); }
+.los-ability-status .los-micro { margin-top: 2px; }
+.los-ability-inspector-section {
+  margin-top: var(--los-3);
+  padding-top: var(--los-3);
+  border-top: 1px solid var(--los-rule);
+}
+.los-root .los-ability-inspector-section h3 {
+  margin: 0 0 var(--los-2);
+  font-size: 13px !important;
+}
+.los-ability-inspector-section p {
+  margin: 0 0 var(--los-1);
+  color: var(--los-ink-soft);
+  font-size: 13px;
+}
+.los-ability-draft-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--los-1);
+  margin-top: var(--los-2);
+  padding: var(--los-1) var(--los-2);
+  border-radius: var(--los-r-sm);
+  background: var(--los-accent-wash);
+  color: var(--los-accent-strong);
+  font-size: 12px;
+}
+.los-ability-inspector-foot {
+  margin-top: auto;
+  padding-top: var(--los-3);
+  border-top: 1px solid var(--los-rule);
+}
+.los-root .los-ability-detail-link {
+  padding-left: 0;
+  color: var(--los-accent-strong);
+  font-size: 13px;
+  font-weight: 650;
+}
+.los-root .los-ability-detail-link:hover {
+  background: transparent;
+  color: var(--los-accent);
+  text-decoration: underline;
+}
+
+/* ── List layout ── */
+.los-ability-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-4);
+}
+.los-ability-list-group {
+  padding: var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-lg);
+  background: var(--los-paper-2);
+}
+.los-ability-list-group > h2 { margin: 0; }
+.los-ability-list-rows {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--los-3);
+  border-top: 1px solid var(--los-rule);
+}
+.los-root .los-ability-list-row {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) minmax(84px, auto) minmax(0, 1fr);
+  align-items: center;
+  gap: var(--los-3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--los-2);
+  border: 0;
+  border-bottom: 1px solid var(--los-rule);
+  border-radius: 0;
+}
+.los-ability-list-title { font-weight: 650; }
+.los-ability-list-meta {
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-ability-list-state {
+  font-size: 12px;
+  font-weight: 700;
+}
+.los-ability-list-state.is-supported { color: var(--los-success-strong); }
+.los-ability-list-state.is-nearby { color: var(--los-info-strong); }
+.los-ability-list-state.is-uncertain { color: var(--los-warning-strong); }
+.los-ability-list-state.is-unmapped { color: var(--los-ink-soft); }
+
+/* ── Full ability detail ── */
+.los-ability-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-3);
+  width: min(940px, 100%);
+}
+.los-ability-detail-head,
+.los-ability-detail-section {
+  padding: var(--los-4) var(--los-5);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-lg);
+  background: var(--los-surface-raised);
+}
+.los-ability-detail-section { background: var(--los-paper-2); }
+.los-ability-detail-head h1 { margin: var(--los-2) 0 var(--los-3); }
+.los-ability-detail-head > .los-micro { margin: var(--los-2) 0 0; }
+.los-ability-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: var(--los-3);
+}
+.los-ability-detail-section > h2 { margin: 0 0 var(--los-1); }
+.los-ability-detail-section > .los-micro { margin: 0 0 var(--los-3); }
+.los-root .los-ability-detail-section h3 {
+  margin: var(--los-3) 0 var(--los-1);
+  font-size: 13px !important;
+}
+.los-ability-claim {
+  margin: var(--los-2) 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.los-ability-detail-list {
+  margin: var(--los-1) 0 var(--los-2);
+  padding-left: var(--los-5);
+}
+.los-ability-detail-list li { margin: 2px 0; }
+.los-ability-route {
+  margin-top: var(--los-2);
+  padding: var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+}
+.los-root .los-ability-route h3 { margin-top: 0; }
+.los-ability-route p {
+  margin: var(--los-1) 0;
+  color: var(--los-ink-soft);
+  font-size: 13px;
+}
+.los-ability-route > .los-btn { margin-top: var(--los-2); }
+.los-ability-route.is-bridge { box-shadow: inset 3px 0 0 var(--los-info); }
+.los-ability-route.is-bridge:not(.is-current) { box-shadow: inset 3px 0 0 var(--los-warning); }
+.los-ability-route.is-tentative {
+  border-style: dashed;
+  background: transparent;
+}
+.los-ability-inline-state.is-supported { color: var(--los-success-strong); }
+.los-ability-inline-state.is-uncertain { color: var(--los-ink-soft); }
+.los-ability-evidence {
+  margin-top: var(--los-2);
+  padding: var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+  box-shadow: inset 3px 0 0 var(--los-rule-strong);
+}
+.los-ability-evidence.is-correct { box-shadow: inset 3px 0 0 var(--los-success); }
+.los-ability-evidence.is-partial { box-shadow: inset 3px 0 0 var(--los-info); }
+.los-ability-evidence.is-incorrect,
+.los-ability-evidence.is-abandoned { box-shadow: inset 3px 0 0 var(--los-warning); }
+.los-ability-evidence.is-corrected { background: var(--los-paper-3); }
+.los-ability-evidence p { margin: var(--los-1) 0; }
+.los-ability-evidence-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--los-2);
+}
+.los-ability-evidence-refs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--los-1);
+  margin-top: var(--los-1);
+}
+.los-ability-pointer {
+  color: var(--los-ink-soft);
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.los-root .los-ability-source-link {
+  font-family: var(--font-monospace);
+  overflow-wrap: anywhere;
+}
+.los-ability-draft-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--los-2);
+  padding: var(--los-2) 0;
+  border-top: 1px solid var(--los-rule);
+}
+.los-ability-concepts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-2);
+}
+
+/* ── Draft dialogs: a draft for Review, never a record ── */
+.modal.los-modal--ability-draft,
+.modal:has(.los-ability-draft) {
+  box-sizing: border-box;
+  width: min(640px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  overflow: hidden;
+}
+.los-root.los-ability-draft {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  max-height: calc(100vh - 32px);
+  padding: var(--los-5);
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+.los-ability-draft h2 { margin: var(--los-1) 0 var(--los-2); }
+.los-ability-draft-counts {
+  margin: var(--los-3) 0;
+  padding: var(--los-2) var(--los-3);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-3);
+}
+.los-ability-draft-counts p { margin: var(--los-1) 0 0; }
+.los-ability-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-3);
+  margin-top: var(--los-3);
+}
+.los-ability-form-field {
+  display: grid;
+  gap: 6px;
+}
+.los-ability-form-field.is-hidden { display: none; }
+.los-ability-form-label {
+  color: var(--los-ink);
+  font-size: 12px;
+  font-weight: 700;
+}
+.los-ability-form-hint { margin: 0; }
+.los-root .los-ability-form-input,
+.los-root .los-ability-form-select,
+.los-root .los-ability-form-textarea {
+  width: 100%;
+  min-height: 36px;
+  padding: var(--los-2);
+}
+.los-root .los-ability-form-textarea {
+  min-height: 76px;
+  resize: vertical;
+}
+.los-ability-form-group {
+  display: grid;
+  gap: var(--los-2);
+  padding: var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+}
+.los-ability-form-check {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--los-2);
+  font-size: 13px;
+}
+.los-ability-form-check input { margin-top: 2px; }
+.los-ability-form-note { margin: 0; }
+.los-ability-draft-actions { margin-top: var(--los-4); }
+
+@media (max-width: 980px) {
+  .los-ability-plane,
+  .los-ability-plane.has-inspector { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 720px) {
+  .los-ability-graph,
+  .los-ability-detail-head,
+  .los-ability-detail-section { padding: var(--los-3); }
+  .los-root .los-ability-list-row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .los-root.los-ability-draft { padding: var(--los-4); }
+}
+/* ── Review (Figma 11:334) ───────────────────────────────────────────────────
+ * A short selection list on the left and exactly one item on the right: its
+ * claim, its evidence, what confirming it would do, and the actions. The list
+ * is built from Core's projected decisions, Core-reported ability conflicts
+ * and Aram's own ability drafts — never from example entries. */
+
+.los-review-view .los-review-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--los-1) var(--los-4);
+  width: min(1180px, 100%);
+  margin: 0 0 var(--los-3);
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+}
+.los-review-summary .los-review-count {
+  color: var(--los-ink);
+  font-size: 14px;
+}
+
+.los-review-split {
+  display: grid;
+  grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--los-3);
+  width: min(1180px, 100%);
+}
+.los-review-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-2);
+  min-width: 0;
+  padding: var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-lg);
+  background: var(--los-surface-raised);
+}
+.los-root h2.los-review-list-head {
+  margin: var(--los-1) var(--los-1) var(--los-1);
+  color: var(--los-ink-soft);
+  font-size: 11px !important;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.los-review-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-2);
+}
+.los-root .los-review-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-height: 60px;
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+  color: var(--los-ink);
+}
+.los-root .los-review-item:hover {
+  border-color: var(--los-rule-strong);
+  background: var(--los-paper-3);
+}
+.los-root .los-review-item.is-selected {
+  border-color: var(--los-accent);
+  background: var(--los-selected);
+  box-shadow: inset 3px 0 0 var(--los-accent);
+}
+.los-review-item-title { font-weight: 650; }
+.los-review-item-context {
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-review-pane .los-review-queue-note {
+  width: auto;
+  margin: var(--los-2) var(--los-1) 0;
+}
+
+.los-review-detail {
+  position: relative;
+  min-width: 0;
+  padding: var(--los-4) var(--los-5);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-lg);
+  background: var(--los-paper-2);
+}
+.los-review-eyebrow {
+  padding-right: 120px;
+  color: var(--los-accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.los-root .los-review-detail > h2 {
+  margin: var(--los-2) 0 var(--los-2);
+  font-size: 22px !important;
+}
+.los-review-draft-badge {
+  position: absolute;
+  top: var(--los-4);
+  right: var(--los-5);
+}
+.los-review-lede {
+  margin: 0 0 var(--los-2);
+  color: var(--los-ink-soft);
+}
+.los-review-rule {
+  height: 1px;
+  margin: var(--los-3) 0;
+  background: var(--los-rule);
+}
+.los-review-part { margin: var(--los-3) 0; }
+.los-root .los-review-part > h3 {
+  margin: 0 0 var(--los-2);
+  font-size: 13px !important;
+}
+.los-review-part > p { margin: 0 0 var(--los-1); }
+.los-review-claim {
+  padding: var(--los-3);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-3);
+  font-weight: 650;
+}
+.los-review-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-1) var(--los-3);
+  margin-top: var(--los-2);
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-review-conditions {
+  margin: var(--los-1) 0;
+  padding-left: var(--los-5);
+  color: var(--los-ink-soft);
+}
+.los-review-pointer-text {
+  color: var(--los-ink-soft);
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.los-review-pointer { overflow-wrap: anywhere; }
+.los-review-problems {
+  margin: var(--los-3) 0;
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-warning);
+  border-radius: var(--los-r-md);
+  background: var(--los-warning-wash);
+  color: var(--los-warning-strong);
+}
+.los-review-problems ul {
+  margin: var(--los-1) 0 0;
+  padding-left: var(--los-5);
+}
+.los-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: var(--los-4);
+  padding-top: var(--los-3);
+  border-top: 1px solid var(--los-rule);
+}
+
+/* The live Review count in the navigator: the same queue Review lists. */
+.los-nav-count {
+  margin-left: auto;
+  color: var(--los-ink-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.los-root .los-app-nav-item.is-active .los-nav-count { color: var(--los-accent-strong); }
+
+@media (max-width: 820px) {
+  .los-review-split { grid-template-columns: minmax(0, 1fr); }
+  .los-review-detail { padding: var(--los-3); }
+  .los-review-draft-badge { position: static; margin-bottom: var(--los-2); }
+  .los-review-eyebrow { padding-right: 0; }
+}
+/* ── Compare materials (Figma B1a 70:985) and the material card (B1) ─────────
+ * "Compare all" opens a short list of needs on the left — required now, if
+ * stuck, for reference, then the lecture's and the course's full menus — and
+ * one group's cards on the right. The counts on the left reconcile with the
+ * stage total, so choosing a group never hides a source. A card states its
+ * purpose, kind and exact locator, where the material is, "Why this one" on
+ * request, and — only when asked — the exact span Core read. */
+
+/* Two columns need more room than the old single-list drawer asked for. */
+.modal.los-modal--material-drawer,
+.modal:has(.los-material-drawer) {
+  width: min(980px, calc(100vw - 32px));
+}
+
+.los-compare-head {
+  margin-bottom: var(--los-4);
+  padding-bottom: var(--los-3);
+  border-bottom: 1px solid var(--los-rule);
+}
+.los-root .los-compare-head h1 {
+  margin: 0;
+  font-size: 22px !important;
+}
+.los-compare-head p { margin: var(--los-1) 0 0; }
+
+.los-compare-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--los-4);
+}
+.los-compare-groups {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-2);
+  padding: var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-3);
+}
+.los-root h2.los-compare-eyebrow {
+  margin: var(--los-1) 0 0;
+  color: var(--los-ink-soft);
+  font-size: 11px !important;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.los-root h2.los-compare-eyebrow ~ h2.los-compare-eyebrow { margin-top: var(--los-3); }
+.los-compare-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-2);
+}
+.los-root .los-compare-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-height: 56px;
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+  color: var(--los-ink);
+}
+.los-root .los-compare-group:hover {
+  border-color: var(--los-rule-strong);
+  background: var(--los-surface-raised);
+}
+.los-root .los-compare-group.is-selected {
+  border-color: var(--los-accent);
+  box-shadow: inset 3px 0 0 var(--los-accent);
+}
+.los-root .los-compare-group.is-empty {
+  border-style: dashed;
+  background: transparent;
+}
+.los-compare-group-title { font-weight: 650; }
+.los-compare-group-count {
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-compare-reconcile { margin: var(--los-2) 0 0; }
+
+.los-compare-body {
+  min-width: 0;
+  padding: var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+}
+.los-compare-body > h2 { margin: 0; }
+.los-compare-body > .los-micro { margin: var(--los-1) 0 var(--los-3); }
+.los-compare-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-3);
+}
+.los-compare-search-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-1);
+  margin-bottom: var(--los-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+.los-root .los-compare-search-label input {
+  width: 100%;
+  font-weight: 400;
+}
+
+/* A card in the comparison is its own bordered surface; the old list rules
+ * for source entries (indent, rule between rows, triage edge) do not apply. */
+.los-compare-cards .los-material-card,
+.los-compare-cards .los-source-entry + .los-source-entry {
+  margin-left: 0;
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+}
+.los-compare-cards .los-type-subgroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-2);
+}
+.los-compare-cards .los-type-subgroup + .los-type-subgroup { margin-top: var(--los-2); }
+
+/* ── The card itself ── */
+.los-material-card-icon {
+  display: inline-flex;
+  color: var(--los-ink-soft);
+}
+.los-material-purpose {
+  color: var(--los-accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.los-root .los-material-title {
+  color: var(--los-ink);
+  font-size: 15px;
+  font-weight: 650;
+}
+.los-material-kind {
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-material-card.los-triage-deferred .los-material-title,
+.los-material-card.los-triage-reference-only .los-material-title { font-weight: 600; }
+
+/* Where the material is: said in words before anything is opened. */
+.los-material-availability {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--los-1) var(--los-2);
+  margin-top: var(--los-2);
+}
+.los-material-availability-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 1px var(--los-2);
+  border-radius: var(--los-r-pill);
+  background: var(--los-success-wash);
+  color: var(--los-success-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+.los-material-availability.is-remote .los-material-availability-label {
+  background: var(--los-info-wash);
+  color: var(--los-info-strong);
+}
+.los-material-availability.is-local-missing .los-material-availability-label,
+.los-material-availability.is-none .los-material-availability-label {
+  background: var(--los-warning-wash);
+  color: var(--los-warning-strong);
+}
+
+/* The exact span, read only on request. */
+.los-span-panel {
+  margin-top: var(--los-2);
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-3);
+}
+.los-span-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--los-1) var(--los-2);
+}
+.los-span-file + .los-span-file {
+  margin-top: var(--los-2);
+  padding-top: var(--los-2);
+  border-top: 1px solid var(--los-rule);
+}
+.los-span-excerpt {
+  max-height: 240px;
+  margin: var(--los-2) 0 0;
+  padding: var(--los-2) var(--los-3);
+  overflow: auto;
+  border-radius: var(--los-r-sm);
+  background: var(--los-surface-raised);
+  color: var(--los-ink);
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.los-span-error { color: var(--los-warning-strong); }
+.los-span-url {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* A concept bridge that leaves the module is counted in the session and read
+ * in the Atlas. */
+.los-synthesis-beyond {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--los-1) var(--los-2);
+  margin-top: var(--los-2);
+}
+
+@media (max-width: 720px) {
+  .los-compare-layout { grid-template-columns: minmax(0, 1fr); }
+  .los-compare-groups { position: static; }
+  .los-compare-body { padding: var(--los-3); }
+}

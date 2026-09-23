@@ -29,6 +29,8 @@ import type { UnitNoteModal } from './unit-note-modal';
 import type { AppNavigator } from './navigator';
 import type { ApplicationRouter } from './router';
 import type { ComposerDraft, UnitNoteDraft } from '../application/draft-store';
+import type { AbilityDraft } from '../application/ability-drafts';
+import type { AbilityHorizon } from '../application/ability-horizon';
 import type { GatewayRecoveryState } from '../application/gateway-recovery';
 import type { ProjectionRecord } from '../contracts/manifest';
 import type { MaterialEntry } from '../infrastructure/material-tree';
@@ -56,6 +58,11 @@ export interface AppSurface {
    */
   readonly nav: AppNavigator;
   readonly settings: LearningOSSettings;
+  /**
+   * Core's ability horizon for the projection on screen, shared by the Atlas,
+   * Review and the navigator so they cannot disagree. Read-only.
+   */
+  readonly abilityHorizon: AbilityHorizon;
   /**
    * Obsidian's own plugin manifest — read for the version in Diagnostics.
    * Optional at both levels because that is how the host declares it
@@ -168,4 +175,12 @@ export interface AppSurface {
   getGardenDraft(): ComposerDraft;
   setGardenDraft(title: string, text: string): void;
   clearGardenDraft(match?: ComposerDraft | null): void;
+  /*
+   * Ability claims and possible connections drafted but not yet confirmed.
+   * UI-owned: a draft is never a learner attempt, and only Review's
+   * "Confirm & record" turns one into a Core record.
+   */
+  listAbilityDrafts(): AbilityDraft[];
+  saveAbilityDraft(draft: AbilityDraft): void;
+  discardAbilityDraft(id: string, updatedAt?: string | null): void;
 }

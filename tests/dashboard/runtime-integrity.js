@@ -189,11 +189,15 @@ module.exports = async function run() {
      * projection says is absent never gets an Open button. */
     view.contentEl.findText('los-btn', 'Compare all').fire('click');
     const drawer = stub.Modal.last.contentEl;
-    const scope = drawer.find('los-source-scope')[0]; scope.value = 'unit'; scope.fire('change');
+    drawer.find('los-compare-group')
+      .find((node) => node.getAttribute('data-compare-group') === 'lecture').fire('click');
     const missing = drawer.find('los-source-entry').find((card) => card.allText().includes('Missing projected lecture'));
     check('a projected missing file never renders a broken Open button',
       Boolean(missing) && !missing.findText('los-btn', 'Open'),
       `screen=${drawer.allText()}`);
+    check('a projected missing file says so and is never inspected',
+      missing.find('los-material-availability')[0]?.allText().includes('Local copy missing')
+      && !missing.findText('los-btn', 'Inspect span'));
 
     plugin.onunload();
   }
@@ -229,7 +233,14 @@ module.exports = async function run() {
     /* This resource is not the one the stage promotes, so it is reached
      * through the drawer. The fallback rule itself is untouched. */
     view.contentEl.findText('los-btn', 'Compare all').fire('click');
-    const fallback = stub.Modal.last.contentEl.findText('los-btn', 'Open source');
+    const drawer = stub.Modal.last.contentEl;
+    let fallback = null;
+    for (const key of ['required', 'stuck', 'reference']) {
+      drawer.find('los-compare-group')
+        .find((node) => node.getAttribute('data-compare-group') === key).fire('click');
+      fallback = drawer.findText('los-btn', 'Open source');
+      if (fallback) break;
+    }
     check('a locator-only resource can fall back to its openable source',
       Boolean(fallback));
     fallback?.fire('click');

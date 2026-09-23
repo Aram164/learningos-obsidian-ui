@@ -45,6 +45,9 @@ export const STYLESHEET_MODULES = [
   '24-projects-workstreams.css',
   '25-palettes.css',
   '26-library-finder.css',
+  '27-ability-map.css',
+  '28-review-split.css',
+  '29-material-compare.css',
 ];
 
 /*

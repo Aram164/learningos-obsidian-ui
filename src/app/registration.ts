@@ -1,6 +1,7 @@
 import type { Plugin, WorkspaceLeaf } from 'obsidian';
 import {
   LEGACY_VIEW_TYPES,
+  VIEW_ABILITIES,
   VIEW_ATLAS,
   VIEW_BOUNDARY,
   VIEW_DIAGNOSTICS,
@@ -18,6 +19,7 @@ import {
 import type { AppSurface } from './surface';
 import { applyPalette, clearPalette } from './palette';
 import { LearningOSSettingsTab } from '../settings';
+import { AbilitiesView } from '../views/abilities-view';
 import { AtlasView } from '../views/atlas-view';
 import { BoundaryView } from '../views/boundary-view';
 import { GardenView } from '../views/garden-view';
@@ -40,6 +42,7 @@ export const APPLICATION_VIEW_TYPES = [
   VIEW_UNIT,
   VIEW_LIBRARY,
   VIEW_ATLAS,
+  VIEW_ABILITIES,
   VIEW_SHELVING,
   VIEW_BOUNDARY,
   VIEW_REVIEW,
@@ -66,6 +69,7 @@ export function registerApplication(plugin: ApplicationPlugin): void {
   plugin.registerView(VIEW_UNIT, (leaf: WorkspaceLeaf) => new UnitView(leaf, plugin));
   plugin.registerView(VIEW_LIBRARY, (leaf: WorkspaceLeaf) => new LibraryView(leaf, plugin));
   plugin.registerView(VIEW_ATLAS, (leaf: WorkspaceLeaf) => new AtlasView(leaf, plugin));
+  plugin.registerView(VIEW_ABILITIES, (leaf: WorkspaceLeaf) => new AbilitiesView(leaf, plugin));
   plugin.registerView(VIEW_SHELVING, (leaf: WorkspaceLeaf) => new ShelvingView(leaf, plugin));
   plugin.registerView(VIEW_BOUNDARY, (leaf: WorkspaceLeaf) => new BoundaryView(leaf, plugin));
   plugin.registerView(VIEW_REVIEW, (leaf: WorkspaceLeaf) => new ReviewView(leaf, plugin));
@@ -80,6 +84,7 @@ export function registerApplication(plugin: ApplicationPlugin): void {
   plugin.addCommand({ id: 'open-projects', name: 'Open Projects', callback: () => plugin.nav.openProjects() });
   plugin.addCommand({ id: 'open-library', name: 'Open Library', callback: () => plugin.nav.openLibrary() });
   plugin.addCommand({ id: 'open-global-search', name: 'Search LearningOS', callback: () => plugin.nav.openGlobalSearch() });
+  plugin.addCommand({ id: 'open-ability-map', name: 'Open Atlas (ability map)', callback: () => plugin.nav.openAbilities() });
   plugin.addCommand({ id: 'open-atlas', name: 'Open Concept Atlas', callback: () => plugin.nav.openAtlas() });
   plugin.addCommand({ id: 'open-garden', name: 'Open Garden', callback: () => plugin.nav.openGarden() });
   plugin.addCommand({ id: 'open-review', name: 'Open Review', callback: () => plugin.nav.openReview() });

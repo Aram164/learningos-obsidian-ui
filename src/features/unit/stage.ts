@@ -16,12 +16,12 @@ import {
 } from './model';
 import {
   currentWorkResource,
-  renderResourceRow,
   triageSummary,
   type StageResourceView,
 } from '../stage-resources';
 import { readMaterialOptions } from './model';
 import { MaterialComparisonModal } from './material-drawer';
+import { renderPlacementCard, routeForResource } from './material-card';
 
 export function renderStage(
   view: UnitStageHost,
@@ -301,19 +301,29 @@ export function renderStage(
     if (requiredCount) {
       workHeading.createSpan({
         cls: 'los-micro los-current-work-count',
-        text: `${requiredCount} required now`,
+        text: `${requiredCount} required`,
       });
     }
 
+    /* Figma B1: one prominent source — its purpose, exact locator, whether it
+     * is on this computer, and "Why this one" on request. Its exact span is
+     * read only when asked, and a remote or missing copy says so. */
     if (current) {
       const card = work.createDiv({ cls: 'los-current-work-card' });
-      renderResourceRow(
+      renderPlacementCard(
         card,
         current,
+        routeForResource(current, materialOptions),
         current.sourceId
           ? view.plugin.store.get(current.sourceId)
           : null,
-        resourceRenderer,
+        {
+          plugin: view.plugin,
+          unitId: unit.id,
+          renderer: resourceRenderer,
+          refresh: () => view.render(),
+        },
+        { prominent: true },
       );
     } else if (stage.resources.length) {
       empty(
@@ -414,16 +424,20 @@ export function renderActionBar(
      * is read at the moment it applies. Derived from the criteria the producer
      * authored — the interface never invents a finishing condition, and says
      * nothing at all when the stage declares none. */
-    if (stage.doneWhen.length) {
-      bar.createSpan({
-        cls: 'los-micro los-unit-actionbar-rule',
-        text: stage.doneWhen.length === 1
-          ? 'Finish only when the criterion above is true.'
-          : stage.doneWhen.length === 2
-            ? 'Finish only when both criteria are true.'
-            : `Finish only when all ${stage.doneWhen.length} criteria are true.`,
-      });
-    }
+    /* Completing a stage is study progress. It never records a learner
+     * attempt or ability evidence — that happens only when a claim is
+     * confirmed in Review — so the rule says so where it is read. */
+    const rule = stage.doneWhen.length === 1
+      ? 'Finish only when the criterion above is true.'
+      : stage.doneWhen.length === 2
+        ? 'Finish only when both criteria are true.'
+        : stage.doneWhen.length
+          ? `Finish only when all ${stage.doneWhen.length} criteria are true.`
+          : '';
+    bar.createSpan({
+      cls: 'los-micro los-unit-actionbar-rule',
+      text: `${rule ? `${rule} ` : ''}Completing it records progress, not a learner attempt.`,
+    });
 
     /* 14:600 — the primary action and one overflow, left-aligned at the foot
      * of the stage card. It is `cta` rather than `success` because Figma's

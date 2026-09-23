@@ -7,6 +7,7 @@ export const VIEW_PROJECT = 'learningos-project';
 export const VIEW_UNIT = 'learningos-unit';
 export const VIEW_LIBRARY = 'learningos-library';
 export const VIEW_ATLAS = 'learningos-atlas';
+export const VIEW_ABILITIES = 'learningos-abilities';
 export const VIEW_SHELVING = 'learningos-shelving';
 export const VIEW_BOUNDARY = 'learningos-boundary';
 export const VIEW_REVIEW = 'learningos-review';

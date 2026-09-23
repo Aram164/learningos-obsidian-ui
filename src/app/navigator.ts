@@ -29,11 +29,13 @@ import type { DraftStore } from '../application/draft-store';
 import { LEARN_AREAS } from '../constants';
 import type { ProjectionRecord } from '../contracts/manifest';
 import {
+  asAbilityLayout,
   asAtlasDepth,
   asAtlasLens,
   asLibraryCollection,
   asLibraryFolderPath,
   asProjectDetailTab,
+  type AbilityLayoutV1,
   type AtlasDepthV1,
   type AtlasLensV1,
   type LibraryFolderLayoutV1,
@@ -50,6 +52,14 @@ export interface AtlasTarget {
   readonly module?: string | null;
   readonly lens?: AtlasLensV1;
   readonly depth?: AtlasDepthV1;
+}
+
+/** Where the Ability map should open. */
+export interface AbilityTarget {
+  readonly group?: string | null;
+  readonly ability?: string | null;
+  readonly layout?: AbilityLayoutV1;
+  readonly detail?: boolean;
 }
 
 export class AppNavigator {
@@ -74,7 +84,10 @@ export class AppNavigator {
   }
 
   openCapture() { return this.router.navigate({ name: 'capture' }); }
-  openReview() { return this.router.navigate({ name: 'review' }); }
+  /** Review, optionally with one item already selected. */
+  openReview(item: string | null = null) {
+    return this.router.navigate({ name: 'review', item });
+  }
   openGarden() { return this.router.navigate({ name: 'garden' }); }
   openDiagnostics() { return this.router.navigate({ name: 'diagnostics' }); }
 
@@ -246,6 +259,30 @@ export class AppNavigator {
         depth: asAtlasDepth(target.depth),
       },
       { pushHistory: !changingAtlasState },
+    );
+  }
+
+  /**
+   * Open the Ability map — the Atlas destination.
+   *
+   * Moving the selection inside the map changes attention, not place, so it
+   * replaces the current entry; opening the full detail is a place Back should
+   * return from, so it pushes one.
+   */
+  openAbilities(target: AbilityTarget = {}) {
+    const current = this.router.snapshot().current;
+    const inMap = current?.name === 'abilities';
+    const detail = target.detail === true && Boolean(target.ability);
+    const enteringDetail = detail && !(inMap && current.detail === true);
+    return this.router.navigate(
+      {
+        name: 'abilities',
+        group: target.group ?? null,
+        ability: target.ability ?? null,
+        layout: asAbilityLayout(target.layout),
+        detail,
+      },
+      { pushHistory: !inMap || enteringDetail },
     );
   }
 

@@ -1,5 +1,5 @@
 import {
-  LEARN_AREAS, VIEW_ATLAS, VIEW_BOUNDARY, VIEW_DIAGNOSTICS, VIEW_GARDEN,
+  LEARN_AREAS, VIEW_ABILITIES, VIEW_ATLAS, VIEW_BOUNDARY, VIEW_DIAGNOSTICS, VIEW_GARDEN,
   VIEW_HOME, VIEW_LIBRARY, VIEW_MODULE, VIEW_NAV, VIEW_PROGRAM, VIEW_PROJECT,
   VIEW_REVIEW, VIEW_SHELVING, VIEW_UNIT,
 } from '../constants';
@@ -9,6 +9,7 @@ import type {
   OverlayStateV1,
 } from '../contracts/route-v1';
 import {
+  asAbilityLayout,
   asAtlasDepth,
   asAtlasLens,
   asLibraryCollection,
@@ -166,9 +167,16 @@ export class ApplicationRouter {
       lens: asAtlasLens(state.lens),
       depth: asAtlasDepth(state.depth),
     };
+    if (type === VIEW_ABILITIES) return {
+      name: 'abilities',
+      group: asNullableText(state.group),
+      ability: asNullableText(state.ability),
+      layout: asAbilityLayout(state.layout),
+      detail: state.detail === true,
+    };
     if (type === VIEW_SHELVING) return { name: 'shelving', unitId: asNullableText(state.unitId) };
     if (type === VIEW_BOUNDARY) return { name: 'boundary', boundaryId: asText(state.boundaryId) };
-    if (type === VIEW_REVIEW) return { name: 'review' };
+    if (type === VIEW_REVIEW) return { name: 'review', item: asNullableText(state.item) };
     if (type === VIEW_GARDEN) return { name: 'garden' };
     if (type === VIEW_DIAGNOSTICS) return { name: 'diagnostics' };
     return { name: 'home' };
@@ -237,7 +245,7 @@ export class ApplicationRouter {
       case 'home': return { type: VIEW_HOME, state: {}, nav: 'home', pin: true };
       case 'learn': return { type: VIEW_PROGRAM, state: { programId: route.programId }, nav: 'learn' };
       case 'capture': return { type: VIEW_PROGRAM, state: { programId: 'inbox' }, nav: 'capture' };
-      case 'review': return { type: VIEW_REVIEW, state: {}, nav: 'review' };
+      case 'review': return { type: VIEW_REVIEW, state: { item: route.item || null }, nav: 'review' };
       case 'garden': return { type: VIEW_GARDEN, state: {}, nav: 'garden' };
       case 'diagnostics': return { type: VIEW_DIAGNOSTICS, state: {}, nav: 'diagnostics' };
       case 'program': return {
@@ -342,6 +350,16 @@ export class ApplicationRouter {
           depth: asAtlasDepth(route.depth),
         },
         nav: 'atlas',
+      };
+      case 'abilities': return {
+        type: VIEW_ABILITIES,
+        state: {
+          group: route.group || null,
+          ability: route.ability || null,
+          layout: asAbilityLayout(route.layout),
+          detail: route.detail === true && Boolean(route.ability),
+        },
+        nav: 'abilities',
       };
       case 'shelving': return { type: VIEW_SHELVING, state: { unitId: route.unitId || null }, nav: 'review' };
       case 'boundary': return {

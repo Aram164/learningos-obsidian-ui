@@ -61,8 +61,8 @@ export const TRIAGE_HEADING: Readonly<Record<TriageRank, string>> = {
 
 /**
  * The one-line account of everything this stage points at, in the learner's
- * words rather than the schema's: "1 required · 1 if stuck · 3 preserved for
- * depth/reference".
+ * words rather than the schema's: "2 required now · 7 if stuck · 2 for
+ * reference" (Figma B1) — the same three groups "Compare all" opens on.
  *
  * Every count is derived from the triage the producer authored. None of it is
  * a quota, and nothing is ever dropped from the total — the summary exists so
@@ -81,9 +81,9 @@ export function triageSummary(
   const preserved = count('deferred') + count('reference-only');
 
   const parts: string[] = [];
-  if (required) parts.push(`${required} required`);
+  if (required) parts.push(`${required} required now`);
   if (stuck) parts.push(`${stuck} if stuck`);
-  if (preserved) parts.push(`${preserved} preserved for depth/reference`);
+  if (preserved) parts.push(`${preserved} for reference`);
   return parts.join(' · ');
 }
 

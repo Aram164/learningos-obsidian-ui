@@ -35,7 +35,7 @@ __export(main_exports, {
   default: () => main_default
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian23 = require("obsidian");
+var import_obsidian27 = require("obsidian");
 var fs5 = __toESM(require("node:fs"));
 var nodePath5 = __toESM(require("node:path"));
 
@@ -64,11 +64,11 @@ function exact(value, required, optional2 = []) {
 function values(value, allowed) {
   return text(value) && allowed.includes(value);
 }
-function list(value, predicate, unique = false) {
-  return Array.isArray(value) && value.every(predicate) && (!unique || new Set(value).size === value.length);
+function list(value, predicate, unique2 = false) {
+  return Array.isArray(value) && value.every(predicate) && (!unique2 || new Set(value).size === value.length);
 }
-var strings = (value, unique = false) => list(value, text, unique);
-var ids = (value, prefix, unique = true) => list(value, (item) => identifier(item, prefix), unique);
+var strings = (value, unique2 = false) => list(value, text, unique2);
+var ids = (value, prefix, unique2 = true) => list(value, (item) => identifier(item, prefix), unique2);
 var optional = (source, key, predicate) => !(key in source) || predicate(source[key]);
 var nullable = (value, predicate) => value === null || predicate(value);
 function validStringMap(value) {
@@ -1102,8 +1102,8 @@ function validRouteComparison(value) {
     "concept_ids",
     "evidence"
   ]) || !identifier2(value.left_route_id, "route-") || !identifier2(value.right_route_id, "route-") || !["duplicates", "overlaps", "complements", "extends", "contrasts", "alternate-notation"].includes(String(value.relation)) || !nonEmptyText(value.narrative) || !uniqueStringArray(value.concept_ids, (item) => identifier2(item, "concept-"))) return false;
-  const evidence2 = value.evidence;
-  return isRecord(evidence2) && exactKeys(evidence2, ["left", "right"]) && Array.isArray(evidence2.left) && evidence2.left.length > 0 && evidence2.left.every(validSynthesisEvidence) && Array.isArray(evidence2.right) && evidence2.right.length > 0 && evidence2.right.every(validSynthesisEvidence);
+  const evidence3 = value.evidence;
+  return isRecord(evidence3) && exactKeys(evidence3, ["left", "right"]) && Array.isArray(evidence3.left) && evidence3.left.length > 0 && evidence3.left.every(validSynthesisEvidence) && Array.isArray(evidence3.right) && evidence3.right.length > 0 && evidence3.right.every(validSynthesisEvidence);
 }
 function validConceptGroup(value) {
   return isRecord(value) && exactKeys(value, [
@@ -1166,8 +1166,8 @@ function validMaterialSynthesis(value) {
     "completeness"
   ]) && value.schema_version === 1 && identifier2(value.id, "material-synthesis-") && value.type === "unit-material-synthesis" && identifier2(value.unit_id, "unit-") && value.status === "approved" && validSynthesisBasis(value.basis) && Array.isArray(value.route_assessments) && value.route_assessments.length > 0 && value.route_assessments.every(validRouteAssessment) && Array.isArray(value.comparisons) && value.comparisons.every(validRouteComparison) && Array.isArray(value.concept_groups) && value.concept_groups.every(validConceptGroup) && validSynthesisFreshness(value.freshness) && validSynthesisCompleteness(value.completeness);
 }
-function requireArray(record7, key) {
-  if (!Array.isArray(record7[key])) {
+function requireArray(record10, key) {
+  if (!Array.isArray(record10[key])) {
     throw new TypeError(`Manifest field ${String(key)} must be an array.`);
   }
 }
@@ -1323,8 +1323,8 @@ function assertManifest(value) {
       throw new TypeError(`Manifest flat stages must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
     }
   }
-  for (const record7 of value.records) {
-    if (!validProjectedRecord(record7, validMaterialSynthesis)) {
+  for (const record10 of value.records) {
+    if (!validProjectedRecord(record10, validMaterialSynthesis)) {
       throw new TypeError(`Manifest records must match the closed v${MANIFEST_CONTRACT_VERSION} record union.`);
     }
   }
@@ -1464,6 +1464,7 @@ var VIEW_PROJECT = "learningos-project";
 var VIEW_UNIT = "learningos-unit";
 var VIEW_LIBRARY = "learningos-library";
 var VIEW_ATLAS = "learningos-atlas";
+var VIEW_ABILITIES = "learningos-abilities";
 var VIEW_SHELVING = "learningos-shelving";
 var VIEW_BOUNDARY = "learningos-boundary";
 var VIEW_REVIEW = "learningos-review";
@@ -1591,8 +1592,8 @@ function asTrimmedString(value) {
 }
 function asText(value) {
   if (typeof value !== "string" && typeof value !== "number") return null;
-  const text5 = String(value);
-  return text5.length > 0 ? text5 : null;
+  const text8 = String(value);
+  return text8.length > 0 ? text8 : null;
 }
 function asBoolean(value) {
   return value === true || value === 1 || value === "true";
@@ -1618,9 +1619,9 @@ function optionalString(value) {
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
 }
-function asLabel(record7, fallback = "Untitled") {
-  if (!record7) return fallback;
-  return asString(record7.title) ?? asString(record7.label) ?? asString(record7.name) ?? asString(record7.id) ?? fallback;
+function asLabel(record10, fallback = "Untitled") {
+  if (!record10) return fallback;
+  return asString(record10.title) ?? asString(record10.label) ?? asString(record10.name) ?? asString(record10.id) ?? fallback;
 }
 
 // src/accessibility/button-group.ts
@@ -1677,8 +1678,8 @@ function button(parent, label, onClick, variant = "") {
   });
   return el;
 }
-function badge(parent, text5, variant = "") {
-  return parent.createSpan({ cls: `los-badge ${variant ? `los-badge--${variant}` : ""}`, text: text5 });
+function badge(parent, text8, variant = "") {
+  return parent.createSpan({ cls: `los-badge ${variant ? `los-badge--${variant}` : ""}`, text: text8 });
 }
 var STATUS_TONES = {
   active: "active",
@@ -1697,24 +1698,24 @@ function statusTone(status) {
   const tone = STATUS_TONES[key];
   return tone ? `los-status los-status--${tone}` : "los-status";
 }
-function chip(parent, record7, onClick) {
+function chip(parent, record10, onClick) {
   const el = parent.createEl("button", {
-    cls: `los-chip los-t-${record7?.type || "record"} is-clickable`,
+    cls: `los-chip los-t-${record10?.type || "record"} is-clickable`,
     attr: { type: "button" }
   });
-  const iconName = ICONS[String(record7?.type || "")] || "circle";
+  const iconName = ICONS[String(record10?.type || "")] || "circle";
   icon(el.createSpan({ cls: "los-chip-icon" }), iconName);
-  el.createSpan({ text: record7?.title || record7?.id || "Unknown" });
-  if (onClick) el.addEventListener("click", () => onClick(record7));
+  el.createSpan({ text: record10?.title || record10?.id || "Unknown" });
+  if (onClick) el.addEventListener("click", () => onClick(record10));
   return el;
 }
 function pageHeader(parent, kicker, title, description = "", headingId = "") {
-  const header = parent.createDiv({ cls: "los-page-header" });
-  if (kicker) header.createDiv({ cls: "los-kicker", text: kicker });
-  const heading = header.createEl("h1", { text: title });
+  const header2 = parent.createDiv({ cls: "los-page-header" });
+  if (kicker) header2.createDiv({ cls: "los-kicker", text: kicker });
+  const heading = header2.createEl("h1", { text: title });
   if (headingId) heading.setAttribute("id", headingId);
-  if (description) header.createEl("p", { text: description });
-  return header;
+  if (description) header2.createEl("p", { text: description });
+  return header2;
 }
 function section(parent, title, description = "") {
   const wrap = parent.createDiv({ cls: "los-section" });
@@ -1723,24 +1724,24 @@ function section(parent, title, description = "") {
   return wrap;
 }
 function factList(parent, facts) {
-  const list2 = parent.createDiv({ cls: "los-fact-list" });
+  const list4 = parent.createDiv({ cls: "los-fact-list" });
   for (const [label, value] of facts) {
     if (value === null || value === void 0 || value === "") continue;
-    const row3 = list2.createDiv({ cls: "los-fact-row" });
-    row3.createDiv({ cls: "los-fact-label", text: label });
-    row3.createDiv({ cls: "los-fact-value", text: String(value) });
+    const row4 = list4.createDiv({ cls: "los-fact-row" });
+    row4.createDiv({ cls: "los-fact-label", text: label });
+    row4.createDiv({ cls: "los-fact-value", text: String(value) });
   }
-  return list2;
+  return list4;
 }
 function filterTabs(parent, ariaLabel, tabs, active, choose, countOf = null) {
-  const row3 = parent.createDiv({ cls: "los-filter-tabs" });
-  row3.setAttrs({ role: "group", "aria-label": ariaLabel });
-  enableButtonGroupKeyboardNavigation(row3);
+  const row4 = parent.createDiv({ cls: "los-filter-tabs" });
+  row4.setAttrs({ role: "group", "aria-label": ariaLabel });
+  enableButtonGroupKeyboardNavigation(row4);
   for (const [value, label] of tabs) {
-    const count = countOf ? countOf(value) : 0;
+    const count2 = countOf ? countOf(value) : 0;
     const control = button(
-      row3,
-      count ? `${label} ${count}` : label,
+      row4,
+      count2 ? `${label} ${count2}` : label,
       () => choose(value),
       "quiet"
     );
@@ -1748,7 +1749,7 @@ function filterTabs(parent, ariaLabel, tabs, active, choose, countOf = null) {
     control.toggleClass("is-active", value === active);
     control.setAttrs({ "aria-pressed": String(value === active) });
   }
-  return row3;
+  return row4;
 }
 function disclosure(parent, summaryText, cls = "") {
   const details = parent.createEl("details", { cls: `los-disclosure ${cls}`.trim() });
@@ -1833,7 +1834,7 @@ function unitCard(parent, plugin, unit) {
   if (map) {
     const stages = asRecords(map.stages);
     const done = stages.filter(
-      (row3) => row3.status === "complete"
+      (row4) => row4.status === "complete"
     ).length;
     card.createDiv({ cls: "los-progress-copy", text: `${done} of ${stages.length} stages complete` });
   } else {
@@ -1850,8 +1851,8 @@ var GatewayError = class extends Error {
   exitCode;
   gatewayCode;
   retryable;
-  constructor(message, exitCode = null, details = {}) {
-    super(message);
+  constructor(message2, exitCode = null, details = {}) {
+    super(message2);
     this.name = "GatewayError";
     this.exitCode = exitCode;
     this.gatewayCode = details.code || null;
@@ -1875,8 +1876,8 @@ function structuredError(stdout) {
     const parsed = JSON.parse(raw);
     const error = parsed?.error;
     if (typeof error === "string") return error.trim();
-    const message = error?.message;
-    return typeof message === "string" ? message.trim() : "";
+    const message2 = error?.message;
+    return typeof message2 === "string" ? message2.trim() : "";
   } catch (_) {
     return "";
   }
@@ -2048,7 +2049,7 @@ var LearningOSSettingsTab = class extends import_obsidian2.PluginSettingTab {
         await this.plugin.persistSettings();
       });
     });
-    new import_obsidian2.Setting(root).setName("Python interpreter").setDesc("Leave blank to auto-detect: the project virtual environment, then the system Python.").addText((text5) => text5.setValue(this.plugin.settings.pythonPath || "").onChange(async (value) => {
+    new import_obsidian2.Setting(root).setName("Python interpreter").setDesc("Leave blank to auto-detect: the project virtual environment, then the system Python.").addText((text8) => text8.setValue(this.plugin.settings.pythonPath || "").onChange(async (value) => {
       this.plugin.settings.pythonPath = value.trim();
       await this.plugin.persistSettings();
     }));
@@ -2066,10 +2067,10 @@ var SessionEndModal = class extends import_obsidian2.Modal {
   plugin;
   review;
   restoreAccessibility = null;
-  constructor(app, plugin, review) {
+  constructor(app, plugin, review2) {
     super(app);
     this.plugin = plugin;
-    this.review = review;
+    this.review = review2;
   }
   onOpen() {
     const root = this.contentEl;
@@ -2093,7 +2094,7 @@ var SessionEndModal = class extends import_obsidian2.Modal {
     const unrelated = section(root, "Unrelated changes (excluded)");
     if (!(this.review.unrelated_changes || []).length) unrelated.createEl("p", { text: "None." });
     for (const file of this.review.unrelated_changes || []) unrelated.createEl("code", { text: file });
-    const message = root.createEl("input", {
+    const message2 = root.createEl("input", {
       cls: "los-search",
       attr: { type: "text", placeholder: "Commit message", "aria-label": "Learning session commit message" }
     });
@@ -2102,14 +2103,14 @@ var SessionEndModal = class extends import_obsidian2.Modal {
     pushRow.createSpan({ text: "Push after the scoped commit succeeds" });
     const actions = root.createDiv({ cls: "los-actions" });
     button(actions, "Commit session-owned files", async () => {
-      if (!message.value.trim()) {
+      if (!message2.value.trim()) {
         new import_obsidian2.Notice("Enter a commit message first.");
         return;
       }
       try {
         const result = asSessionReview(await this.plugin.mutate(
           () => this.plugin.gateway.endSession(
-            message.value.trim(),
+            message2.value.trim(),
             Boolean(push3.checked)
           )
         ));
@@ -2120,7 +2121,7 @@ var SessionEndModal = class extends import_obsidian2.Modal {
       }
     }, "cta");
     button(actions, "Close without committing", () => this.close(), "quiet");
-    message.focus();
+    message2.focus();
   }
   onClose() {
     this.restoreAccessibility?.();
@@ -2129,8 +2130,8 @@ var SessionEndModal = class extends import_obsidian2.Modal {
   }
 };
 
-// src/views/atlas-view.ts
-var import_obsidian3 = require("obsidian");
+// src/views/abilities-view.ts
+var import_obsidian4 = require("obsidian");
 
 // src/contracts/route-v1.ts
 var LIBRARY_COLLECTIONS = [
@@ -2165,8 +2166,8 @@ function isProjectDetailTab(value) {
   return PROJECT_DETAIL_TABS.includes(value);
 }
 function asLibrarySourceFilters(value) {
-  const record7 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
-  const read = (key) => typeof record7[key] === "string" ? record7[key] : "";
+  const record10 = typeof value === "object" && value !== null && !Array.isArray(value) ? value : {};
+  const read = (key) => typeof record10[key] === "string" ? record10[key] : "";
   return {
     domain: read("domain"),
     topic: read("topic"),
@@ -2192,6 +2193,9 @@ function asAtlasDepth(value) {
   const numeric = typeof value === "string" ? Number(value) : value;
   return isAtlasDepth(numeric) ? numeric : 1;
 }
+function asAbilityLayout(value) {
+  return value === "list" ? "list" : "plane";
+}
 function asProjectDetailTab(value) {
   return isProjectDetailTab(value) ? value : "overview";
 }
@@ -2211,6 +2215,1919 @@ function foldCase(value) {
 function upperCase(value) {
   return value.toLocaleUpperCase("en");
 }
+
+// src/features/abilities/model.ts
+var PLANE = {
+  nodeWidth: 220,
+  nodeHeight: 76,
+  columnGap: 76,
+  rowGap: 44,
+  pad: 8,
+  bandHeight: 34,
+  bandGap: 8,
+  bandTop: 20
+};
+var STATE_LABEL = {
+  supported: "Supported",
+  nearby: "Nearby",
+  uncertain: "Uncertain",
+  unmapped: "Unmapped"
+};
+function bridgeSymbol(kind) {
+  return kind === "equivalence" ? "\u2194" : "\u2192";
+}
+function bridgeKey(bridge2) {
+  return `${bridge2.from}--${bridge2.kind}--${bridge2.to}`;
+}
+function routeMembers(route2) {
+  return [.../* @__PURE__ */ new Set([...route2.supported, ...route2.missing_or_uncertain])];
+}
+function unique(values2) {
+  return [...new Set(values2)];
+}
+function byTitle(rows) {
+  return (left, right) => {
+    const a = rows.get(left)?.title ?? left;
+    const b = rows.get(right)?.title ?? right;
+    return compareStrings(a, b) || compareStrings(left, right);
+  };
+}
+function slugTitle(id2) {
+  const words2 = id2.replace(/^concept-/, "").split("-").filter(Boolean).join(" ");
+  return words2 ? words2.charAt(0).toUpperCase() + words2.slice(1) : id2;
+}
+function groupTitle(rows, labels) {
+  const score = /* @__PURE__ */ new Map();
+  for (const row4 of rows) {
+    row4.concept_ids.forEach((conceptId, position) => {
+      const entry = score.get(conceptId) ?? { count: 0, position: 0 };
+      entry.count += 1;
+      entry.position += position;
+      score.set(conceptId, entry);
+    });
+  }
+  const best = [...score.entries()].sort(([leftId, left], [rightId, right]) => right.count - left.count || left.position - right.position || compareStrings(leftId, rightId))[0];
+  if (!best) return rows[0]?.title ?? "Abilities";
+  return labels.concept(best[0]) ?? slugTitle(best[0]);
+}
+function components(ids2, links) {
+  const parent = new Map(ids2.map((id2) => [id2, id2]));
+  const find = (id2) => {
+    let root = id2;
+    while (parent.get(root) !== root) root = parent.get(root) ?? root;
+    let walk = id2;
+    while (parent.get(walk) !== root) {
+      const next = parent.get(walk) ?? root;
+      parent.set(walk, root);
+      walk = next;
+    }
+    return root;
+  };
+  for (const [left, right] of links) {
+    if (!parent.has(left) || !parent.has(right)) continue;
+    const a = find(left);
+    const b = find(right);
+    if (a !== b) parent.set(a < b ? b : a, a < b ? a : b);
+  }
+  const groups = /* @__PURE__ */ new Map();
+  for (const id2 of ids2) {
+    const root = find(id2);
+    const members = groups.get(root);
+    if (members) members.push(id2);
+    else groups.set(root, [id2]);
+  }
+  return [...groups.values()].map((members) => members.sort());
+}
+function columnsOf(ids2, prerequisites) {
+  const memo = /* @__PURE__ */ new Map();
+  const visiting = /* @__PURE__ */ new Set();
+  const depth = (id2) => {
+    const known = memo.get(id2);
+    if (known !== void 0) return known;
+    if (visiting.has(id2)) return 0;
+    visiting.add(id2);
+    const sources = prerequisites.get(id2) ?? [];
+    const value = sources.length ? 1 + Math.max(...sources.map(depth)) : 0;
+    visiting.delete(id2);
+    memo.set(id2, value);
+    return value;
+  };
+  for (const id2 of ids2) depth(id2);
+  return memo;
+}
+function ancestorsOf(ids2, prerequisites) {
+  const memo = /* @__PURE__ */ new Map();
+  const visiting = /* @__PURE__ */ new Set();
+  const walk = (id2) => {
+    const known = memo.get(id2);
+    if (known) return known;
+    if (visiting.has(id2)) return /* @__PURE__ */ new Set();
+    visiting.add(id2);
+    const found = /* @__PURE__ */ new Set();
+    for (const source of prerequisites.get(id2) ?? []) {
+      found.add(source);
+      for (const deeper of walk(source)) found.add(deeper);
+    }
+    visiting.delete(id2);
+    memo.set(id2, found);
+    return found;
+  };
+  for (const id2 of ids2) walk(id2);
+  return memo;
+}
+function mean(values2) {
+  return values2.reduce((sum, value) => sum + value, 0) / Math.max(values2.length, 1);
+}
+function stack(wanted, step) {
+  let blocks = wanted.map((entry) => ({ ids: [entry.id], want: [entry.y], top: entry.y }));
+  let merged = true;
+  while (merged) {
+    merged = false;
+    for (let index = 0; index < blocks.length - 1; index += 1) {
+      const upper = blocks[index];
+      const lower = blocks[index + 1];
+      if (!upper || !lower) continue;
+      if (upper.top + upper.ids.length * step > lower.top + 0.5) {
+        const ids2 = [...upper.ids, ...lower.ids];
+        const want = [...upper.want, ...lower.want];
+        const top = mean(want.map((value, position) => value - position * step));
+        blocks.splice(index, 2, { ids: ids2, want, top });
+        merged = true;
+        break;
+      }
+    }
+  }
+  const placed = /* @__PURE__ */ new Map();
+  for (const block2 of blocks) {
+    block2.ids.forEach((id2, position) => placed.set(id2, block2.top + position * step));
+  }
+  return placed;
+}
+function annotate(columnIds, edges) {
+  const outgoing = edges.filter((edge) => columnIds.includes(edge.from));
+  if (!outgoing.length) return null;
+  if (outgoing.every((edge) => edge.alternative)) return "either";
+  if (outgoing.some((edge) => edge.alternative)) return null;
+  const perTarget = /* @__PURE__ */ new Map();
+  for (const edge of outgoing) perTarget.set(edge.to, (perTarget.get(edge.to) ?? 0) + 1);
+  const joins = [...perTarget.values()];
+  if (joins.every((value) => value === 2)) return "both";
+  if (joins.every((value) => value >= 2)) return "all";
+  return null;
+}
+function annotationLabel(annotation) {
+  if (annotation === "both") return "both";
+  if (annotation === "all") return "all needed";
+  if (annotation === "either") return "either route";
+  return "";
+}
+function columnLabel(index, count2) {
+  if (count2 <= 1) return "Abilities";
+  if (index === 0) return "Foundations";
+  if (index === count2 - 1) return "Extension";
+  return `Step ${index + 1}`;
+}
+function nodeMeta(role, modules) {
+  const courses = modules.join(" \xB7 ");
+  if (role === "foundation") {
+    return modules.length > 1 ? `Shared foundation \xB7 ${courses}` : `Foundation${courses ? ` \xB7 ${courses}` : ""}`;
+  }
+  if (role === "extension") {
+    return modules.length === 1 ? `${courses} extension` : `Extension${courses ? ` \xB7 ${courses}` : ""}`;
+  }
+  return courses || "No module named";
+}
+function buildGroup(memberIds, rows, bridges2, candidates, labels) {
+  const members = new Set(memberIds);
+  const prerequisites = /* @__PURE__ */ new Map();
+  const routes = /* @__PURE__ */ new Map();
+  for (const id2 of memberIds) {
+    const row4 = rows.get(id2);
+    const routeSets = (row4?.preparation_routes ?? []).map((route2) => routeMembers(route2).filter((member) => members.has(member)));
+    routes.set(id2, routeSets);
+    prerequisites.set(id2, unique(routeSets.flat()));
+  }
+  const dependents = new Map(memberIds.map((id2) => [id2, []]));
+  for (const [id2, sources] of prerequisites) {
+    for (const source of sources) dependents.get(source)?.push(id2);
+  }
+  const column = columnsOf(memberIds, prerequisites);
+  const ancestors = ancestorsOf(memberIds, prerequisites);
+  const edges = [];
+  for (const id2 of memberIds) {
+    const sources = prerequisites.get(id2) ?? [];
+    const routeSets = routes.get(id2) ?? [];
+    for (const source of sources) {
+      const implied = sources.some((other) => other !== source && (ancestors.get(other)?.has(source) ?? false));
+      if (implied) continue;
+      const alternative = routeSets.length > 1 && routeSets.some((set) => !set.includes(source));
+      edges.push({ from: source, to: id2, alternative });
+    }
+  }
+  const columnCount = memberIds.length ? Math.max(...memberIds.map((id2) => column.get(id2) ?? 0)) + 1 : 0;
+  const titleOrder = byTitle(rows);
+  const byColumn = Array.from({ length: columnCount }, () => []);
+  for (const id2 of memberIds) byColumn[column.get(id2) ?? 0]?.push(id2);
+  const order = /* @__PURE__ */ new Map();
+  const assign = (ids2) => ids2.forEach((id2, index) => order.set(id2, index));
+  const sourcesOf = (id2) => edges.filter((edge) => edge.to === id2).map((edge) => edge.from);
+  const targetsOf = (id2) => edges.filter((edge) => edge.from === id2).map((edge) => edge.to);
+  byColumn[0]?.sort(titleOrder);
+  if (byColumn[0]) assign(byColumn[0]);
+  for (let index = 1; index < columnCount; index += 1) {
+    const ids2 = byColumn[index] ?? [];
+    const centre = (id2) => mean(sourcesOf(id2).map((source) => order.get(source) ?? 0));
+    ids2.sort((left, right) => centre(left) - centre(right) || titleOrder(left, right));
+    assign(ids2);
+  }
+  for (let index = columnCount - 2; index >= 0; index -= 1) {
+    const ids2 = byColumn[index] ?? [];
+    const centre = (id2) => {
+      const targets = targetsOf(id2);
+      return targets.length ? mean(targets.map((target) => order.get(target) ?? 0)) : order.get(id2) ?? 0;
+    };
+    ids2.sort((left, right) => centre(left) - centre(right) || (order.get(left) ?? 0) - (order.get(right) ?? 0));
+    assign(ids2);
+  }
+  const step = PLANE.nodeHeight + PLANE.rowGap;
+  const y = /* @__PURE__ */ new Map();
+  for (let index = 0; index < columnCount; index += 1) {
+    const ids2 = byColumn[index] ?? [];
+    const wanted = ids2.map((id2, position) => {
+      const sources = sourcesOf(id2).filter((source) => y.has(source));
+      return {
+        id: id2,
+        y: sources.length && index > 0 ? mean(sources.map((source) => y.get(source) ?? 0)) : position * step
+      };
+    });
+    const placed = stack(wanted, step);
+    for (const [id2, value] of placed) y.set(id2, value);
+  }
+  const top = Math.min(0, ...[...y.values()]);
+  const columnX = (index) => PLANE.pad + index * (PLANE.nodeWidth + PLANE.columnGap);
+  const moduleLabels = (row4) => unique((row4?.module_ids ?? []).map((id2) => labels.module(id2)));
+  const bridgeCountOf = (id2) => bridges2.filter((bridge2) => bridge2.from === id2 || bridge2.to === id2).length;
+  const nodes = [];
+  for (let index = 0; index < columnCount; index += 1) {
+    for (const id2 of byColumn[index] ?? []) {
+      const row4 = rows.get(id2);
+      if (!row4) continue;
+      const hasSources = (prerequisites.get(id2) ?? []).length > 0;
+      const hasTargets = (dependents.get(id2) ?? []).length > 0;
+      const role = hasSources ? hasTargets ? "step" : "extension" : hasTargets ? "foundation" : "standalone";
+      const modules = moduleLabels(row4);
+      nodes.push({
+        id: id2,
+        row: row4,
+        column: index,
+        order: order.get(id2) ?? 0,
+        x: columnX(index),
+        y: PLANE.pad + (y.get(id2) ?? 0) - top,
+        role,
+        prerequisites: prerequisites.get(id2) ?? [],
+        dependents: dependents.get(id2) ?? [],
+        modules,
+        meta: nodeMeta(role, modules),
+        bridgeCount: bridgeCountOf(id2)
+      });
+    }
+  }
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+  const lanes = [];
+  for (let index = 1; index < columnCount; index += 1) {
+    const targets = (byColumn[index] ?? []).filter((id2) => sourcesOf(id2).length);
+    const bySources = /* @__PURE__ */ new Map();
+    for (const target of targets) {
+      const incoming = edges.filter((edge) => edge.to === target);
+      const sources = incoming.map((edge) => edge.from).sort();
+      const alternative = incoming.every((edge) => edge.alternative);
+      const key = `${sources.join("|")}#${alternative}`;
+      const lane = bySources.get(key);
+      if (lane) lane.targets.push(target);
+      else bySources.set(key, { sources, targets: [target], alternative });
+    }
+    const gutterStart = columnX(index - 1) + PLANE.nodeWidth;
+    const gutter = PLANE.columnGap;
+    const entries = [...bySources.values()];
+    entries.forEach((lane, position) => {
+      lanes.push({
+        x: Math.round(gutterStart + (position + 1) * gutter / (entries.length + 1)),
+        sources: lane.sources,
+        targets: lane.targets,
+        alternative: lane.alternative
+      });
+    });
+  }
+  const columns = Array.from({ length: columnCount }, (_unused, index) => ({
+    index,
+    label: columnLabel(index, columnCount),
+    annotation: columnCount > 1 ? annotate(byColumn[index] ?? [], edges) : null,
+    x: columnX(index),
+    nodeIds: byColumn[index] ?? []
+  }));
+  const groupBridges = bridges2.filter((bridge2) => members.has(bridge2.from) && members.has(bridge2.to)).map((bridge2) => {
+    const a = nodeById.get(bridge2.from)?.column ?? 0;
+    const b = nodeById.get(bridge2.to)?.column ?? 0;
+    return { bridge: bridge2, fromColumn: Math.min(a, b), toColumn: Math.max(a, b) };
+  }).sort((left, right) => left.fromColumn - right.fromColumn || left.toColumn - right.toColumn || compareStrings(bridgeKey(left.bridge), bridgeKey(right.bridge)));
+  const bandEnds = [];
+  const placedBridges = groupBridges.map((entry) => {
+    let band = bandEnds.findIndex((end) => end < entry.fromColumn);
+    if (band < 0) {
+      band = bandEnds.length;
+      bandEnds.push(entry.toColumn);
+    } else {
+      bandEnds[band] = entry.toColumn;
+    }
+    return { key: bridgeKey(entry.bridge), ...entry, band };
+  });
+  const graphHeight = nodes.length ? Math.max(...nodes.map((node) => node.y + PLANE.nodeHeight)) + PLANE.pad : PLANE.nodeHeight + 2 * PLANE.pad;
+  const bandsHeight = bandEnds.length ? PLANE.bandTop + bandEnds.length * (PLANE.bandHeight + PLANE.bandGap) : 0;
+  const width = columnCount ? PLANE.pad * 2 + columnCount * PLANE.nodeWidth + (columnCount - 1) * PLANE.columnGap : PLANE.nodeWidth + 2 * PLANE.pad;
+  const groupRows = memberIds.map((id2) => rows.get(id2)).filter((row4) => Boolean(row4));
+  return {
+    key: [...memberIds].sort()[0] ?? "group",
+    title: groupTitle(groupRows, labels),
+    nodes,
+    edges,
+    lanes,
+    columns,
+    bridges: placedBridges,
+    candidates: candidates.filter((row4) => members.has(row4.from) && members.has(row4.to)),
+    reviewedBridgeCount: placedBridges.filter((entry) => entry.bridge.review.state === "reviewed").length,
+    width,
+    graphHeight,
+    height: graphHeight + bandsHeight,
+    hasEvidence: groupRows.some((row4) => row4.evidence.length > 0)
+  };
+}
+function buildAbilityPlane(brief, labels) {
+  const rows = new Map(brief.abilities.map((row4) => [row4.id, row4]));
+  const ids2 = [...rows.keys()].sort();
+  const links = [];
+  for (const row4 of brief.abilities) {
+    for (const route2 of row4.preparation_routes) {
+      for (const member of routeMembers(route2)) links.push([member, row4.id]);
+    }
+  }
+  for (const bridge2 of brief.bridges) links.push([bridge2.from, bridge2.to]);
+  const groups = components(ids2, links).map((members) => buildGroup(members, rows, brief.bridges, brief.candidate_connections, labels)).sort((left, right) => right.nodes.length - left.nodes.length || compareStrings(left.title, right.title) || compareStrings(left.key, right.key));
+  const groupOfAbility = /* @__PURE__ */ new Map();
+  for (const group of groups) {
+    for (const node of group.nodes) groupOfAbility.set(node.id, group.key);
+  }
+  return {
+    groups,
+    groupOfAbility,
+    rowOf: rows,
+    crossGroupCandidates: brief.candidate_connections.filter((row4) => groupOfAbility.get(row4.from) !== groupOfAbility.get(row4.to)),
+    bridges: brief.bridges
+  };
+}
+function joinAnd(items) {
+  if (items.length <= 1) return items[0] ?? "";
+  return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+}
+function preparationSentence(row4, titleOf2) {
+  const sets = row4.preparation_routes.map(routeMembers).filter((set) => set.length);
+  const first = sets[0];
+  if (!first) return null;
+  const common = first.filter((id2) => sets.every((set) => set.includes(id2)));
+  const rest = sets.map((set) => set.filter((id2) => !common.includes(id2))).filter((set) => set.length);
+  const phrase = (ids2) => joinAnd(ids2.map(titleOf2));
+  if (!rest.length) return `${phrase(common)}.`;
+  const alternatives = rest.map(phrase).join(" or ");
+  return common.length ? `${phrase(common)}, then ${alternatives}.` : `${alternatives}.`;
+}
+function searchAbilities(plane, query, labels) {
+  const words2 = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words2.length) return [];
+  const hits = [];
+  for (const group of plane.groups) {
+    for (const node of group.nodes) {
+      const haystack = [
+        node.row.title,
+        group.title,
+        ...node.modules,
+        ...node.row.concept_ids.map((id2) => labels.concept(id2) ?? id2)
+      ].join(" ").toLowerCase();
+      if (words2.every((word) => haystack.includes(word))) hits.push(node.id);
+    }
+  }
+  return hits;
+}
+function sentence(reason) {
+  const trimmed = reason.trim();
+  return trimmed ? trimmed.charAt(0).toUpperCase() + trimmed.slice(1) : trimmed;
+}
+function shortModuleLabel(title, code, fallback) {
+  const bracket = title?.match(/\(([A-Za-z][A-Za-z0-9&]{1,7})\)\s*$/)?.[1];
+  if (bracket && bracket === bracket.toUpperCase()) return bracket;
+  if (code) return code;
+  if (bracket) return bracket;
+  const words2 = (title ?? "").split(/\s+/).filter((word) => /^[A-Za-z]/.test(word));
+  if (words2.length > 2) return words2.map((word) => word.charAt(0)).join("").toUpperCase();
+  return title || fallback;
+}
+
+// src/features/abilities/labels.ts
+function projectionLabels(store) {
+  return {
+    concept: (id2) => asString(store.get(id2)?.title),
+    module: (id2) => {
+      const record10 = store.get(id2);
+      return shortModuleLabel(
+        asString(record10?.title),
+        asString(record10?.code),
+        id2.replace(/^module-/, "")
+      );
+    }
+  };
+}
+function recordsDate(generatedAt) {
+  const match = typeof generatedAt === "string" ? generatedAt.match(/^(\d{4})-(\d{2})-(\d{2})/) : null;
+  if (!match) return null;
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = months[Number(match[2]) - 1];
+  return month ? `${Number(match[3])} ${month}` : null;
+}
+function clockTime(date3) {
+  return `${String(date3.getHours()).padStart(2, "0")}:${String(date3.getMinutes()).padStart(2, "0")}`;
+}
+
+// src/contracts/ability-writes.ts
+var APP_CONFIRMATION_PREFIX = "conversation://learningos-app/";
+function appConfirmationRef(idempotencyKey) {
+  return `${APP_CONFIRMATION_PREFIX}${idempotencyKey}`;
+}
+var WORK_REF_PREFIXES = [
+  "conversation://",
+  "note://",
+  "project://",
+  "curriculum/"
+];
+var DISCOVERY_REF_PREFIXES = [
+  "conversation://",
+  "note://",
+  "project://"
+];
+function hasAcceptedPrefix(value, prefixes) {
+  const trimmed = value.trim();
+  if (/\s/.test(trimmed) || !prefixes.some((prefix) => trimmed.startsWith(prefix) && trimmed.length > prefix.length)) return false;
+  if (trimmed.startsWith("curriculum/")) {
+    const path = trimmed.split("#", 1)[0] ?? "";
+    return !path.includes("\\") && path.split("/").every((part2) => part2 !== "" && part2 !== "." && part2 !== "..");
+  }
+  return true;
+}
+
+// src/features/abilities/claims.ts
+var RESULT_LABEL = {
+  correct: "Correct",
+  partial: "Partial",
+  incorrect: "Incorrect",
+  abandoned: "Abandoned"
+};
+function isUnassisted(assistance) {
+  return assistance.trim().toLowerCase() === "none";
+}
+function unresolvedConditions(draft, ability) {
+  return (ability?.conditions ?? []).filter((condition) => !draft.conditionsMet.includes(condition) && !draft.conditionsNotMet.includes(condition));
+}
+function composedClaim(draft, ability) {
+  const parts = [];
+  if (draft.result) parts.push(`${RESULT_LABEL[draft.result]} attempt`);
+  const assistance = draft.assistance.trim();
+  if (assistance) parts.push(isUnassisted(assistance) ? "no assistance" : assistance);
+  const conditions = ability?.conditions ?? [];
+  if (conditions.length && conditions.every((condition) => draft.conditionsMet.includes(condition))) {
+    parts.push("every stated condition met");
+  } else {
+    for (const condition of draft.conditionsNotMet) parts.push(`not met: ${condition}`);
+    for (const condition of unresolvedConditions(draft, ability)) parts.push(`not sure: ${condition}`);
+  }
+  return parts.join(" \xB7 ");
+}
+function claimProblems(draft, context) {
+  const problems = [];
+  if (!context.ability) {
+    problems.push("This ability is not in the current ability map, so there is nothing to record against.");
+  } else if (context.ability.review.state !== "reviewed") {
+    problems.push("This ability is still a candidate; evidence needs a reviewed ability.");
+  } else if (context.ability.lifecycle === "retired") {
+    problems.push("This ability is retired; its earlier work remains readable, but it cannot receive new evidence.");
+  }
+  if (!draft.workspace || !context.workspaces.includes(draft.workspace)) {
+    problems.push("Choose the active workspace this work belongs to.");
+  }
+  if (!draft.result) problems.push("Choose what the attempt produced.");
+  if (!draft.activity.trim()) problems.push("Say what you did \u2014 the activity.");
+  if (!draft.assistance.trim()) problems.push("Say what help you had, or \u201Cnone\u201D.");
+  if (!hasAcceptedPrefix(draft.workRef, WORK_REF_PREFIXES)) {
+    problems.push("Point at the work itself: a curriculum/ path, or a note://, conversation:// or project:// pointer.");
+  }
+  if (!draft.claim.trim()) problems.push("Write the claim you are confirming.");
+  const overlap = draft.conditionsMet.filter((condition) => draft.conditionsNotMet.includes(condition));
+  if (overlap.length) problems.push("A condition cannot be both met and not met.");
+  return problems;
+}
+function observationPayload(draft, idempotencyKey) {
+  if (!draft.result) throw new Error("A claim without a result cannot be recorded.");
+  return {
+    workspace: draft.workspace,
+    ability: draft.abilityId,
+    claim: draft.claim.trim(),
+    work_ref: draft.workRef.trim(),
+    confirmation_ref: appConfirmationRef(idempotencyKey),
+    activity: draft.activity.trim(),
+    result: draft.result,
+    assistance: draft.assistance.trim(),
+    condition: [...draft.conditionsMet],
+    condition_not_met: [...draft.conditionsNotMet],
+    evidence_tag: [...draft.evidenceTags],
+    ...draft.supersedes ? { supersedes: draft.supersedes } : {}
+  };
+}
+function connectionProblems(draft, brief) {
+  const problems = [];
+  const known = new Set((brief?.abilities ?? []).filter((row4) => row4.lifecycle === "active").map((row4) => row4.id));
+  if (!known.has(draft.fromAbility) || !known.has(draft.toAbility)) {
+    problems.push("Both abilities must be active in the current ability map.");
+  }
+  if (draft.fromAbility === draft.toAbility) problems.push("Choose two different abilities.");
+  if (!draft.carries.trim()) problems.push("Say what you think carries over.");
+  if (!draft.changes.trim()) problems.push("Say what still differs.");
+  if (draft.sourceRef.trim() && !hasAcceptedPrefix(draft.sourceRef, DISCOVERY_REF_PREFIXES)) {
+    problems.push("Where you noticed it must be a note://, conversation:// or project:// pointer \u2014 or left empty.");
+  }
+  return problems;
+}
+function candidatePayload(draft, idempotencyKey) {
+  return {
+    from_ability: draft.fromAbility,
+    to_ability: draft.toAbility,
+    kind: draft.connection,
+    carries: draft.carries.trim(),
+    changes: draft.changes.trim(),
+    condition: draft.conditions.map((condition) => condition.trim()).filter(Boolean),
+    // Noticed in the app unless Aram named another discovery: the request
+    // that records it is then its own provenance.
+    source_ref: draft.sourceRef.trim() || appConfirmationRef(idempotencyKey)
+  };
+}
+
+// src/features/abilities/draft-modals.ts
+var import_obsidian3 = require("obsidian");
+
+// src/application/ability-drafts.ts
+var RESULTS = /* @__PURE__ */ new Set(["", "correct", "incorrect", "partial", "abandoned"]);
+var KINDS = /* @__PURE__ */ new Set(["equivalence", "extension", "connection"]);
+function record(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
+function str(value) {
+  return typeof value === "string" ? value : null;
+}
+function strs(value) {
+  return Array.isArray(value) && value.every((item) => typeof item === "string") ? [...value] : null;
+}
+var draftSequence = 0;
+function newAbilityDraftId(kind) {
+  draftSequence += 1;
+  return `ability-${kind}-draft-${Date.now().toString(36)}-${draftSequence}`;
+}
+function asAbilityDraft(value) {
+  const item = record(value);
+  if (!item) return null;
+  const id2 = str(item.id);
+  const createdAt = str(item.createdAt);
+  const updatedAt = str(item.updatedAt);
+  if (!id2 || !createdAt || !updatedAt) return null;
+  if (item.kind === "claim") {
+    const abilityId = str(item.abilityId);
+    const met = strs(item.conditionsMet);
+    const notMet = strs(item.conditionsNotMet);
+    const tags = strs(item.evidenceTags);
+    const fields = ["abilityTitle", "workspace", "activity", "assistance", "workRef", "claim"].map((key) => str(item[key]));
+    if (!abilityId || !met || !notMet || !tags || fields.some((field2) => field2 === null) || !RESULTS.has(String(item.result))) return null;
+    const [abilityTitle, workspace, activity, assistance, workRef, claim] = fields;
+    return {
+      kind: "claim",
+      id: id2,
+      abilityId,
+      abilityTitle: abilityTitle ?? abilityId,
+      workspace: workspace ?? "",
+      activity: activity ?? "",
+      result: item.result,
+      assistance: assistance ?? "",
+      conditionsMet: met,
+      conditionsNotMet: notMet,
+      evidenceTags: tags,
+      workRef: workRef ?? "",
+      claim: claim ?? "",
+      supersedes: str(item.supersedes) || null,
+      createdAt,
+      updatedAt
+    };
+  }
+  if (item.kind === "connection") {
+    const from = str(item.fromAbility);
+    const to = str(item.toAbility);
+    const conditions = strs(item.conditions);
+    const fields = ["fromTitle", "toTitle", "carries", "changes", "sourceRef"].map((key) => str(item[key]));
+    if (!from || !to || !conditions || fields.some((field2) => field2 === null) || !KINDS.has(String(item.connection))) return null;
+    const [fromTitle, toTitle, carries, changes, sourceRef] = fields;
+    return {
+      kind: "connection",
+      id: id2,
+      fromAbility: from,
+      fromTitle: fromTitle ?? from,
+      toAbility: to,
+      toTitle: toTitle ?? to,
+      connection: item.connection,
+      carries: carries ?? "",
+      changes: changes ?? "",
+      conditions,
+      sourceRef: sourceRef ?? "",
+      createdAt,
+      updatedAt
+    };
+  }
+  return null;
+}
+
+// src/features/abilities/draft-modals.ts
+var RESULTS2 = ["correct", "partial", "incorrect", "abandoned"];
+var CONNECTION_KINDS = [
+  ["connection", "Related \u2014 they connect"],
+  ["extension", "Extension \u2014 one builds on the other"],
+  ["equivalence", "Equivalent \u2014 the same ability in another course"]
+];
+var fieldSequence = 0;
+function field(parent, label, hint = "") {
+  fieldSequence += 1;
+  const id2 = `los-ability-field-${fieldSequence}`;
+  const wrap = parent.createDiv({ cls: "los-ability-form-field" });
+  wrap.createEl("label", { cls: "los-ability-form-label", text: label, attr: { for: id2 } });
+  if (hint) wrap.createDiv({ cls: "los-micro los-ability-form-hint", text: hint });
+  return { wrap, id: id2 };
+}
+function textInput(parent, label, value, placeholder = "", hint = "") {
+  const { wrap, id: id2 } = field(parent, label, hint);
+  const input = wrap.createEl("input", {
+    cls: "los-ability-form-input",
+    attr: { type: "text", id: id2, placeholder, value }
+  });
+  input.value = value;
+  return input;
+}
+function textArea(parent, label, value, placeholder = "", hint = "") {
+  const { wrap, id: id2 } = field(parent, label, hint);
+  const area = wrap.createEl("textarea", {
+    cls: "los-ability-form-textarea",
+    attr: { id: id2, placeholder, rows: "3" }
+  });
+  area.value = value;
+  return area;
+}
+function select(parent, label, options, value, hint = "") {
+  const { wrap, id: id2 } = field(parent, label, hint);
+  const control = wrap.createEl("select", { cls: "los-ability-form-select", attr: { id: id2 } });
+  for (const [optionValue, optionLabel] of options) {
+    control.createEl("option", { text: optionLabel, attr: { value: optionValue } });
+  }
+  control.value = value;
+  return control;
+}
+function now() {
+  return (/* @__PURE__ */ new Date()).toISOString();
+}
+var AbilityClaimDraftModal = class extends import_obsidian3.Modal {
+  constructor(app, options) {
+    super(app);
+    this.options = options;
+  }
+  restore = null;
+  onOpen() {
+    const { ability, definition: definition2, existing } = this.options;
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-ability-draft");
+    root.createDiv({ cls: "los-kicker", text: existing ? "Edit draft \xB7 not recorded" : "Draft a worked attempt" });
+    const heading = root.createEl("h2", { text: ability.title, attr: { id: "los-ability-draft-heading" } });
+    root.createEl("p", {
+      cls: "los-micro",
+      text: "This saves a draft for Review. Nothing is recorded until you confirm the exact claim there, and completing a stage never records one."
+    });
+    if (definition2?.claim) {
+      const counts = root.createDiv({ cls: "los-ability-draft-counts" });
+      counts.createDiv({ cls: "los-micro", text: "What counts" });
+      counts.createEl("p", { text: definition2.claim });
+    }
+    const form = root.createDiv({ cls: "los-ability-form" });
+    const workspace = select(
+      form,
+      "Workspace",
+      this.options.workspaces.map((row4) => [row4.id, row4.title]),
+      existing?.workspace || this.options.workspaces[0]?.id || "",
+      this.options.workspaces.length ? "The active workspace this work belongs to." : "No active workspace covers this ability\u2019s modules, so it cannot be recorded yet."
+    );
+    const activity = textInput(form, "What you did", existing?.activity ?? "", "e.g. worked the \xDCbung 10 backprop exercise");
+    const result = select(
+      form,
+      "What the attempt produced",
+      [["", "Choose\u2026"], ...RESULTS2.map((value) => [value, RESULT_LABEL[value]])],
+      existing?.result ?? ""
+    );
+    const assistance = textInput(
+      form,
+      "Help you had",
+      existing?.assistance ?? "",
+      "none \u2014 or e.g. one hint on \u03C3\u2032(z)",
+      "Only \u201Cnone\u201D counts as independent work."
+    );
+    const conditionBoxes = /* @__PURE__ */ new Map();
+    if (definition2?.conditions.length) {
+      const block2 = form.createDiv({ cls: "los-ability-form-group" });
+      block2.createDiv({ cls: "los-ability-form-label", text: "Conditions" });
+      for (const condition of definition2.conditions) {
+        const state = existing?.conditionsMet.includes(condition) ? "met" : existing?.conditionsNotMet.includes(condition) ? "not-met" : "";
+        conditionBoxes.set(condition, select(block2, condition, [
+          ["", "Not sure"],
+          ["met", "Met"],
+          ["not-met", "Not met"]
+        ], state));
+      }
+    }
+    const criteriaBoxes = /* @__PURE__ */ new Map();
+    if (definition2?.evidence_spec.length) {
+      const block2 = form.createDiv({ cls: "los-ability-form-group" });
+      block2.createDiv({ cls: "los-ability-form-label", text: "What the attempt shows" });
+      for (const criterion of definition2.evidence_spec) {
+        const row4 = block2.createEl("label", { cls: "los-ability-form-check" });
+        const box = row4.createEl("input", { attr: { type: "checkbox", "aria-label": criterion } });
+        box.checked = existing?.evidenceTags.includes(criterion) ?? false;
+        row4.createSpan({ text: criterion });
+        criteriaBoxes.set(criterion, box);
+      }
+    }
+    const pointerOptions = [
+      ...this.options.workPointers.map((option) => [option.value, option.label]),
+      ["", "Another pointer\u2026"]
+    ];
+    const knownPointer = this.options.workPointers.some((option) => option.value === existing?.workRef);
+    const pointer2 = select(
+      form,
+      "Where the work is",
+      pointerOptions,
+      existing ? knownPointer ? existing.workRef : "" : this.options.workPointers[0]?.value ?? ""
+    );
+    const otherPointer = textInput(
+      form,
+      "Other pointer",
+      existing && !knownPointer ? existing.workRef : "",
+      "curriculum/\u2026, note://\u2026, conversation://\u2026 or project://\u2026"
+    );
+    const syncPointer = () => {
+      otherPointer.parentElement?.toggleClass?.("is-hidden", pointer2.value !== "");
+    };
+    pointer2.addEventListener("change", syncPointer);
+    syncPointer();
+    const claim = textArea(
+      form,
+      "Claim you will confirm",
+      existing?.claim ?? "",
+      "Filled from the fields above; edit it to say exactly what you did.",
+      "Review shows this sentence with the fields under it before anything is recorded."
+    );
+    const supersedes = existing?.supersedes ?? this.options.supersedes ?? null;
+    if (supersedes) {
+      form.createDiv({
+        cls: "los-micro los-ability-form-note",
+        text: `Corrects ${supersedes}. The earlier record stays visible; this one supersedes it.`
+      });
+    }
+    const collect = () => {
+      const met = [...conditionBoxes].filter(([, box]) => box.value === "met").map(([condition]) => condition);
+      const notMet = [...conditionBoxes].filter(([, box]) => box.value === "not-met").map(([condition]) => condition);
+      const stamp = now();
+      return {
+        kind: "claim",
+        id: existing?.id ?? newAbilityDraftId("claim"),
+        abilityId: ability.id,
+        abilityTitle: ability.title,
+        workspace: workspace.value,
+        activity: activity.value,
+        result: RESULTS2.includes(result.value) ? result.value : "",
+        assistance: assistance.value,
+        conditionsMet: met,
+        conditionsNotMet: notMet,
+        evidenceTags: [...criteriaBoxes].filter(([, box]) => box.checked).map(([criterion]) => criterion),
+        workRef: pointer2.value || otherPointer.value.trim(),
+        claim: claim.value,
+        supersedes,
+        createdAt: existing?.createdAt ?? stamp,
+        updatedAt: stamp
+      };
+    };
+    let claimEdited = Boolean(existing?.claim);
+    const refreshClaim = () => {
+      if (claimEdited) return;
+      claim.value = composedClaim(collect(), definition2);
+    };
+    refreshClaim();
+    for (const control of [result, assistance, ...conditionBoxes.values()]) {
+      control.addEventListener("change", refreshClaim);
+      control.addEventListener("input", refreshClaim);
+    }
+    claim.addEventListener("input", () => {
+      claimEdited = true;
+    });
+    const actions = root.createDiv({ cls: "los-actions los-ability-draft-actions" });
+    button(actions, existing ? "Save changes" : "Save draft", () => {
+      const draft = collect();
+      this.options.save(draft);
+      new import_obsidian3.Notice("Draft saved. Nothing is recorded until you confirm it in Review.");
+      this.close();
+      this.options.onSaved?.(draft);
+    }, "cta");
+    button(actions, "Cancel", () => this.close(), "quiet");
+    this.restore = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--ability-draft",
+      labelledBy: "los-ability-draft-heading",
+      initialFocus: () => activity
+    });
+    heading.setAttribute("tabindex", "-1");
+  }
+  onClose() {
+    this.restore?.();
+    this.restore = null;
+    this.contentEl.empty();
+  }
+};
+var AbilityConnectionDraftModal = class extends import_obsidian3.Modal {
+  constructor(app, options) {
+    super(app);
+    this.options = options;
+  }
+  restore = null;
+  onOpen() {
+    const { from, candidates, existing } = this.options;
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-ability-draft");
+    root.createDiv({ cls: "los-kicker", text: existing ? "Edit draft \xB7 not recorded" : "Note a possible connection" });
+    const heading = root.createEl("h2", { text: from.title, attr: { id: "los-ability-connection-heading" } });
+    root.createEl("p", {
+      cls: "los-micro",
+      text: "A tentative connection carries no evidence and changes no state. It waits for an operator review before it could become a bridge."
+    });
+    const form = root.createDiv({ cls: "los-ability-form" });
+    const others = candidates.filter((row4) => row4.id !== from.id);
+    const target = select(
+      form,
+      "Connects to",
+      others.map((row4) => [row4.id, row4.title]),
+      existing?.toAbility ?? others[0]?.id ?? ""
+    );
+    const kind = select(form, "Kind", CONNECTION_KINDS, existing?.connection ?? "connection");
+    const carries = textArea(form, "What carries over", existing?.carries ?? "", "e.g. the same local chain-rule step on one graph");
+    const changes = textArea(form, "What still differs", existing?.changes ?? "", "e.g. AML continues to every layer; SaD stops at one");
+    const conditions = textArea(
+      form,
+      "Under which conditions (one per line)",
+      (existing?.conditions ?? []).join("\n"),
+      "e.g. specified differentiable graph and loss"
+    );
+    const source = textInput(
+      form,
+      "Where you noticed it (optional)",
+      existing?.sourceRef ?? "",
+      "note://\u2026, conversation://\u2026 or project://\u2026",
+      "Left empty, the app request that records it is named as where it was noticed."
+    );
+    const actions = root.createDiv({ cls: "los-actions los-ability-draft-actions" });
+    button(actions, existing ? "Save changes" : "Save draft", () => {
+      const stamp = now();
+      const to = others.find((row4) => row4.id === target.value) ?? null;
+      const draft = {
+        kind: "connection",
+        id: existing?.id ?? newAbilityDraftId("connection"),
+        fromAbility: from.id,
+        fromTitle: from.title,
+        toAbility: to?.id ?? target.value,
+        toTitle: to?.title ?? target.value,
+        connection: CONNECTION_KINDS.find(([value]) => value === kind.value)?.[0] ?? "connection",
+        carries: carries.value,
+        changes: changes.value,
+        conditions: conditions.value.split("\n").map((line) => line.trim()).filter(Boolean),
+        sourceRef: source.value.trim(),
+        createdAt: existing?.createdAt ?? stamp,
+        updatedAt: stamp
+      };
+      this.options.save(draft);
+      new import_obsidian3.Notice("Draft saved. Nothing is recorded until you confirm it in Review.");
+      this.close();
+      this.options.onSaved?.(draft);
+    }, "cta");
+    button(actions, "Cancel", () => this.close(), "quiet");
+    this.restore = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--ability-draft",
+      labelledBy: "los-ability-connection-heading",
+      initialFocus: () => target
+    });
+    heading.setAttribute("tabindex", "-1");
+  }
+  onClose() {
+    this.restore?.();
+    this.restore = null;
+    this.contentEl.empty();
+  }
+};
+
+// src/features/abilities/expansion.ts
+function renderExpansionState(parent, host, abilityId) {
+  const horizon2 = host.plugin.abilityHorizon;
+  const error = horizon2.expansionError(abilityId);
+  if (error) {
+    parent.createEl("p", { cls: "los-micro", text: `Could not expand this ability: ${error}` });
+    button(parent, "Try again", () => {
+      horizon2.retryExpansion(abilityId);
+      host.render();
+    }, "tertiary");
+    return;
+  }
+  const expansion = horizon2.expansion(abilityId);
+  if (expansion && !("ability" in expansion)) {
+    parent.createEl("p", { cls: "los-micro", text: sentence(expansion.reason) });
+    return;
+  }
+  parent.createEl("p", { cls: "los-micro", text: "Reading this ability\u2019s conditions from Core\u2026" });
+}
+
+// src/features/abilities/detail.ts
+function abilityWorkspaces(store, row4) {
+  const seen = /* @__PURE__ */ new Map();
+  for (const moduleId of row4.module_ids) {
+    for (const workspace of store.workspacesForModule(moduleId)) {
+      const id2 = asString(workspace.id);
+      if (!id2 || workspace.archived === true || asString(workspace.status) !== "active") continue;
+      seen.set(id2, asLabel(workspace, id2));
+    }
+  }
+  return [...seen].map(([id2, title]) => ({ id: id2, title }));
+}
+function abilityWorkPointers(store, focus) {
+  const options = [];
+  for (const encounter2 of focus?.encounters ?? []) {
+    const stage = store.stage(encounter2.stage_id);
+    const unit = store.get(encounter2.unit_id);
+    const place = `${asLabel(unit, encounter2.unit_id)} \xB7 ${encounter2.title ?? encounter2.stage_id}`;
+    const note = asString(stage?.working_note);
+    if (note && note.startsWith("curriculum/")) {
+      options.push({ value: note, label: `${place} \u2014 stage note` });
+    }
+    for (const attachment of Array.isArray(stage?.attachments) ? stage.attachments : []) {
+      const path = typeof attachment === "string" ? attachment : asString(attachment?.path);
+      if (path && path.startsWith("curriculum/")) {
+        options.push({ value: path, label: `${place} \u2014 ${path.split("/").pop() ?? path}` });
+      }
+    }
+  }
+  return options;
+}
+function openDraft(host, row4, focus, supersedes = null) {
+  new AbilityClaimDraftModal(host.app, {
+    ability: row4,
+    definition: focus?.ability ?? null,
+    workspaces: abilityWorkspaces(host.plugin.store, row4),
+    workPointers: abilityWorkPointers(host.plugin.store, focus),
+    existing: null,
+    supersedes,
+    save: (draft) => host.plugin.saveAbilityDraft(draft),
+    onSaved: () => host.render()
+  }).open();
+}
+function openConnection(host, row4, brief) {
+  new AbilityConnectionDraftModal(host.app, {
+    from: row4,
+    candidates: brief.abilities,
+    existing: null,
+    save: (draft) => host.plugin.saveAbilityDraft(draft),
+    onSaved: () => host.render()
+  }).open();
+}
+function block(parent, title, lede = "") {
+  const wrap = parent.createEl("section", { cls: "los-ability-detail-section" });
+  wrap.createEl("h2", { text: title });
+  if (lede) wrap.createEl("p", { cls: "los-micro", text: lede });
+  return wrap;
+}
+function list2(parent, items) {
+  const target = parent.createEl("ul", { cls: "los-ability-detail-list" });
+  for (const item of items) target.createEl("li", { text: item });
+}
+function openPath(host, pointer2) {
+  const path = pointer2.split("#")[0] ?? pointer2;
+  if (path.startsWith("curriculum/") || path.startsWith("knowledge/") || path.startsWith("work/")) {
+    host.plugin.openAuthoredPath(path);
+  }
+}
+function pointer(parent, host, value) {
+  const path = value.split("#")[0] ?? value;
+  if (/^(curriculum|knowledge|work)\//.test(path)) {
+    button(parent, value, () => openPath(host, value), "tertiary").addClass("los-ability-source-link");
+  } else {
+    parent.createSpan({ cls: "los-ability-pointer", text: value });
+  }
+}
+function renderEvidenceRow(parent, host, item, correctedBy, onCorrect) {
+  const row4 = parent.createDiv({ cls: `los-ability-evidence is-${item.result}${correctedBy.has(item.id) ? " is-corrected" : ""}` });
+  const head = row4.createDiv({ cls: "los-ability-evidence-head" });
+  head.createEl("strong", { text: `${RESULT_LABEL[item.result]}${correctedBy.has(item.id) ? " \xB7 corrected" : ""}` });
+  head.createSpan({ cls: "los-micro", text: [item.timestamp?.slice(0, 16).replace("T", " "), item.activity].filter(Boolean).join(" \xB7 ") });
+  if (item.claim) row4.createEl("p", { text: item.claim });
+  const facts = [];
+  if (item.assistance !== null) facts.push(`Assistance: ${item.assistance || "\u2014"}`);
+  if (item.conditions.length) facts.push(`Met: ${item.conditions.join("; ")}`);
+  if (item.conditions_not_met.length) facts.push(`Not met: ${item.conditions_not_met.join("; ")}`);
+  if (item.evidence_tags.length) facts.push(`Shows: ${item.evidence_tags.join("; ")}`);
+  for (const fact of facts) row4.createDiv({ cls: "los-micro", text: fact });
+  const refs = row4.createDiv({ cls: "los-ability-evidence-refs" });
+  refs.createSpan({ cls: "los-micro", text: "Work: " });
+  pointer(refs, host, item.work_ref);
+  if (item.confirmation_ref) {
+    const confirmation = row4.createDiv({ cls: "los-ability-evidence-refs" });
+    confirmation.createSpan({ cls: "los-micro", text: "Confirmed: " });
+    confirmation.createSpan({ cls: "los-ability-pointer", text: item.confirmation_ref });
+  }
+  if (item.supersedes) row4.createDiv({ cls: "los-micro", text: `Corrects ${item.supersedes}; that record stays visible.` });
+  const corrector = correctedBy.get(item.id);
+  if (corrector) {
+    row4.createDiv({ cls: "los-micro", text: `Corrected by ${corrector}.` });
+  } else {
+    button(row4, "Draft a correction", () => onCorrect(item.id), "tertiary");
+  }
+}
+function renderAbilityDetail(root, host, brief, plane, abilityId) {
+  const row4 = plane.rowOf.get(abilityId);
+  if (!row4) return;
+  const horizon2 = host.plugin.abilityHorizon;
+  horizon2.ensureExpansion(abilityId);
+  const expansion = horizon2.expansion(abilityId);
+  const focus = expansion && "ability" in expansion ? expansion : null;
+  const labels = projectionLabels(host.plugin.store);
+  const titleOf2 = (id2) => plane.rowOf.get(id2)?.title ?? id2;
+  const modules = row4.module_ids.map((id2) => labels.module(id2));
+  const page = root.createDiv({ cls: "los-ability-detail" });
+  const header2 = page.createDiv({ cls: "los-ability-detail-head" });
+  const eyebrow = ["Ability", ...modules];
+  if (focus?.ability.lifecycle === "retired") {
+    eyebrow.push("retired identity");
+  } else if (focus?.ability.review.state === "reviewed") {
+    eyebrow.push(`reviewed${focus.ability.review.reviewed_on ? ` ${focus.ability.review.reviewed_on}` : ""}`);
+  } else if (focus) {
+    eyebrow.push("candidate identity");
+  }
+  header2.createDiv({ cls: "los-ability-eyebrow is-accent", text: eyebrow.join(" \xB7 ") });
+  header2.createEl("h1", { text: row4.title });
+  const status = header2.createDiv({ cls: `los-ability-status is-${row4.state}` });
+  status.createEl("strong", {
+    text: row4.evidence.length || row4.state !== "uncertain" ? STATE_LABEL[row4.state] : `${STATE_LABEL[row4.state]} \xB7 no attempt recorded`
+  });
+  for (const reason of row4.reasons) status.createDiv({ cls: "los-micro", text: sentence(reason) });
+  const actions = header2.createDiv({ cls: "los-actions los-ability-detail-actions" });
+  const canRecord = focus?.ability.review.state === "reviewed" && focus.ability.lifecycle === "active";
+  const draftButton = button(actions, "Draft a worked attempt", () => openDraft(host, row4, focus), "cta");
+  draftButton.disabled = !canRecord;
+  if (!canRecord) {
+    draftButton.setAttr("title", focus?.ability.lifecycle === "retired" ? "Retired identities keep their history but cannot receive new evidence." : focus ? "Only a reviewed ability can hold evidence." : "Waiting for this ability\u2019s conditions from Core.");
+  }
+  button(actions, "Note a possible connection", () => openConnection(host, row4, brief), "quiet").disabled = row4.lifecycle === "retired";
+  button(actions, "Back to map", () => host.go({ detail: false }), "tertiary");
+  header2.createEl("p", {
+    cls: "los-micro",
+    text: "Drafts wait in Review; nothing is recorded until you confirm the exact record there. Completing a stage never records ability evidence."
+  });
+  const drafts = host.plugin.listAbilityDrafts().filter((draft) => draft.kind === "claim" ? draft.abilityId === abilityId : draft.fromAbility === abilityId || draft.toAbility === abilityId);
+  if (drafts.length) {
+    const pending = block(page, "Drafts \xB7 not recorded", "Confirm, edit or drop each one in Review.");
+    for (const draft of drafts) {
+      const line = pending.createDiv({ cls: "los-ability-draft-row" });
+      line.createSpan({
+        text: draft.kind === "claim" ? `Worked attempt \xB7 ${draft.result ? RESULT_LABEL[draft.result] : "result not chosen"} \xB7 ${draft.claim || "no claim yet"}` : `Possible ${draft.connection}: ${draft.fromTitle} ${bridgeSymbol(draft.connection)} ${draft.toTitle}`
+      });
+      button(line, "Open in Review", () => host.plugin.nav.openReview(draft.id), "tertiary");
+    }
+  }
+  const counts = block(page, "What counts");
+  if (focus) {
+    counts.createEl("p", { cls: "los-ability-claim", text: focus.ability.claim });
+    if (focus.ability.conditions.length) {
+      counts.createEl("h3", { text: "Conditions" });
+      list2(counts, focus.ability.conditions);
+    }
+    counts.createEl("h3", { text: "The attempt must show" });
+    list2(counts, focus.ability.evidence_spec);
+    if (focus.ability.source) {
+      const source = counts.createDiv({ cls: "los-ability-evidence-refs" });
+      source.createSpan({ cls: "los-micro", text: "Defined from: " });
+      pointer(source, host, focus.ability.source);
+    }
+  } else {
+    renderExpansionState(counts, host, abilityId);
+  }
+  const routes = block(
+    page,
+    "Preparation routes",
+    row4.preparation_routes.length > 1 ? "Any one route prepares this ability; every ability inside a route is needed." : ""
+  );
+  if (!row4.preparation_routes.length) {
+    routes.createEl("p", { text: "No reviewed preparation route. This ability is where its group starts." });
+  }
+  row4.preparation_routes.forEach((route2, index) => {
+    const card = routes.createDiv({ cls: "los-ability-route" });
+    card.createEl("h3", { text: row4.preparation_routes.length > 1 ? `Route ${index + 1}` : "Route" });
+    card.createEl("p", { text: route2.reason });
+    const members = card.createEl("ul", { cls: "los-ability-detail-list" });
+    for (const member of routeMembers(route2)) {
+      const item = members.createEl("li");
+      const supported = route2.supported.includes(member);
+      item.createSpan({ text: titleOf2(member) });
+      item.createSpan({
+        cls: `los-ability-inline-state is-${supported ? "supported" : "uncertain"}`,
+        text: supported ? " \xB7 supported" : " \xB7 missing or uncertain"
+      });
+    }
+    if (route2.remaining_work.length) {
+      card.createDiv({ cls: "los-micro", text: `Remaining: ${route2.remaining_work.map(titleOf2).join(", ")}` });
+    }
+    if (route2.source) {
+      const source = card.createDiv({ cls: "los-ability-evidence-refs" });
+      source.createSpan({ cls: "los-micro", text: "Source: " });
+      pointer(source, host, route2.source);
+    }
+  });
+  const ledger = block(page, "Evidence", "Every recorded attempt, corrections included. Conflicting work stays visible.");
+  const rows = focus?.ability.evidence ?? row4.evidence;
+  if (!rows.length) {
+    ledger.createEl("p", { text: "No learner attempt has been recorded. Confirmed work can change this state." });
+  } else {
+    const correctedBy = /* @__PURE__ */ new Map();
+    for (const item of rows) if (item.supersedes) correctedBy.set(item.supersedes, item.id);
+    for (const item of [...rows].reverse()) {
+      renderEvidenceRow(ledger, host, item, correctedBy, (id2) => openDraft(host, row4, focus, id2));
+    }
+  }
+  for (const transfer2 of row4.transfer) {
+    const card = ledger.createDiv({ cls: "los-ability-route" });
+    card.createEl("strong", { text: `Supported through a reviewed equivalence from ${titleOf2(transfer2.from)}` });
+    card.createEl("p", { text: `Carries: ${transfer2.carries}` });
+    card.createEl("p", { text: `Still differs: ${transfer2.changes}` });
+  }
+  const bridges2 = block(page, "Bridges", "Reviewed bridges carry evidence only inside their conditions and while their source is current.");
+  const bridgeRows = focus?.bridges ?? brief.bridges.filter((bridge2) => bridge2.from === abilityId || bridge2.to === abilityId);
+  if (!bridgeRows.length) bridges2.createEl("p", { cls: "los-micro", text: "No bridge names this ability." });
+  for (const bridge2 of bridgeRows) {
+    const card = bridges2.createDiv({ cls: `los-ability-route is-bridge is-${bridge2.freshness}` });
+    card.createEl("h3", {
+      text: `${bridge2.review.state === "reviewed" ? "Reviewed" : "Candidate"} ${bridge2.kind}: ${titleOf2(bridge2.from)} ${bridgeSymbol(bridge2.kind)} ${titleOf2(bridge2.to)}`
+    });
+    card.createDiv({
+      cls: "los-micro",
+      text: bridge2.freshness === "current" ? "Source current." : `Source ${bridge2.freshness} \u2014 this bridge carries nothing now.`
+    });
+    card.createEl("p", { text: `Carries: ${bridge2.carries}` });
+    card.createEl("p", { text: `Still differs: ${bridge2.changes}` });
+    if (bridge2.conditions.length) card.createDiv({ cls: "los-micro", text: `Only under: ${bridge2.conditions.join("; ")}` });
+    const source = card.createDiv({ cls: "los-ability-evidence-refs" });
+    source.createSpan({ cls: "los-micro", text: "Source: " });
+    pointer(source, host, bridge2.source);
+  }
+  const tentative = focus?.candidate_connections ?? brief.candidate_connections.filter((row22) => row22.from === abilityId || row22.to === abilityId);
+  const candidates = block(page, "Tentative connections", "Noticed, not reviewed. They carry no evidence and change no state.");
+  if (!tentative.length) candidates.createEl("p", { cls: "los-micro", text: "None recorded." });
+  for (const connection of tentative) {
+    const card = candidates.createDiv({ cls: "los-ability-route is-tentative" });
+    card.createEl("h3", { text: `Tentative ${connection.kind}: ${titleOf2(connection.from)} ${bridgeSymbol(connection.kind)} ${titleOf2(connection.to)}` });
+    card.createEl("p", { text: `Carries: ${connection.carries}` });
+    card.createEl("p", { text: `Still differs: ${connection.changes}` });
+    card.createDiv({ cls: "los-micro", text: `Noticed: ${connection.source_ref} \xB7 ${connection.created_at.slice(0, 10)}` });
+  }
+  const encounters = block(
+    page,
+    "Where courses teach it",
+    "A stage\u2019s status is study progress. Completing a stage never establishes this ability."
+  );
+  if (!focus) {
+    renderExpansionState(encounters, host, abilityId);
+  } else if (!focus.encounters.length) {
+    encounters.createEl("p", { cls: "los-micro", text: "No stage lists this ability yet." });
+  } else {
+    for (const encounter2 of focus.encounters) {
+      const card = encounters.createDiv({ cls: "los-ability-route" });
+      const unit = host.plugin.store.get(encounter2.unit_id);
+      card.createEl("h3", { text: `${labels.module(encounter2.module_id)} \xB7 ${asLabel(unit, encounter2.unit_id)} \xB7 ${encounter2.title ?? encounter2.stage_id}` });
+      if (encounter2.objective) card.createEl("p", { text: encounter2.objective });
+      card.createDiv({ cls: "los-micro", text: `Stage progress: ${encounter2.status ?? "unknown"} \u2014 not evidence.` });
+      const mapped = encounter2.materials.filter((material) => material.locator);
+      if (mapped.length) {
+        card.createDiv({
+          cls: "los-micro",
+          text: `${mapped.length} ${mapped.length === 1 ? "material" : "materials"} placed, e.g. ${mapped.slice(0, 2).map((material) => material.locator).join("; ")}`
+        });
+      }
+      button(card, "Open stage", () => host.plugin.nav.openUnit(encounter2.unit_id, encounter2.stage_id), "quiet");
+    }
+  }
+  if (focus?.related_encounters.length) {
+    const related = block(
+      page,
+      "Connected stages in other courses",
+      "Stages that teach an ability this one depends on or is bridged to. Cross-course links live here in the Atlas, not in a study session."
+    );
+    for (const encounter2 of focus.related_encounters) {
+      const card = related.createDiv({ cls: "los-ability-route" });
+      const unit = host.plugin.store.get(encounter2.unit_id);
+      card.createEl("h3", { text: `${labels.module(encounter2.module_id)} \xB7 ${asLabel(unit, encounter2.unit_id)} \xB7 ${encounter2.title ?? encounter2.stage_id}` });
+      card.createDiv({ cls: "los-micro", text: `Teaches: ${encounter2.ability_ids.map(titleOf2).join(", ")}` });
+      button(card, "Open stage", () => host.plugin.nav.openUnit(encounter2.unit_id, encounter2.stage_id), "quiet");
+    }
+    if (focus.related_encounters_total > focus.related_encounters.length) {
+      related.createDiv({
+        cls: "los-micro",
+        text: `Showing ${focus.related_encounters.length} of ${focus.related_encounters_total}.`
+      });
+    }
+  }
+  if (focus?.shared_concept_candidates.length) {
+    const shared = block(page, "Shares a concept tag with", "A shared tag is a lead to look at, never credit.");
+    list2(shared, focus.shared_concept_candidates.map(titleOf2));
+  }
+  const concepts = asStrings(row4.concept_ids);
+  if (concepts.length) {
+    const tags = block(page, "Concepts");
+    const line = tags.createDiv({ cls: "los-ability-concepts" });
+    for (const conceptId of concepts) {
+      button(
+        line,
+        labels.concept(conceptId) ?? conceptId,
+        () => host.plugin.nav.openAtlas({ concept: conceptId }),
+        "quiet"
+      );
+    }
+  }
+  if (!focus && horizon2.expansionError(abilityId)) {
+    empty(page, "Part of this ability could not be read", horizon2.expansionError(abilityId) ?? "");
+  }
+}
+
+// src/features/abilities/plane.ts
+var SVG = "http://www.w3.org/2000/svg";
+var HEAD = 30;
+var LAYOUTS = [
+  ["plane", "Plane"],
+  ["list", "List"]
+];
+function renderAbilityMap(root, host) {
+  root.empty();
+  root.addClass("los-root", "los-ability-view");
+  const { plugin } = host;
+  if (!plugin.store.ready) {
+    root.createEl("h1", { text: "Ability map" });
+    empty(
+      root,
+      "The interface contract could not be loaded",
+      plugin.store.error,
+      "Rebuild views",
+      () => plugin.generate()
+    );
+    return;
+  }
+  const horizon2 = plugin.abilityHorizon;
+  horizon2.ensure();
+  const brief = horizon2.current();
+  const labels = projectionLabels(plugin.store);
+  const plane = brief ? buildAbilityPlane(brief, labels) : null;
+  const selected = host.state.ability && plane?.rowOf.has(host.state.ability) ? host.state.ability : null;
+  renderTopBar(root, host, plane, selected);
+  if (brief && plane && selected && host.state.detail) {
+    renderAbilityDetail(root, host, brief, plane, selected);
+    return;
+  }
+  const title = root.createDiv({ cls: "los-ability-title" });
+  title.createEl("h1", { text: "Ability map" });
+  title.createEl("p", {
+    text: selected ? "Select an ability to see its conditions, routes and evidence." : "Explore one ability group at a time. Preparation routes are directed; reviewed bridges stay distinct."
+  });
+  renderToolbar(root, host, plane);
+  if (!brief || !plane) {
+    renderUnread(root, host);
+    return;
+  }
+  if (!brief.abilities.length) {
+    empty(
+      root,
+      "No abilities are mapped yet",
+      "Reviewed ability identities appear here once Core records them. An empty map says nothing about what you know."
+    );
+    return;
+  }
+  if (host.query.trim()) renderSearchResults(root, host, plane, labels);
+  if (host.state.layout === "list") {
+    renderList(root, host, plane, brief);
+    return;
+  }
+  renderPlane(root, host, plane, brief, selected);
+}
+function renderTopBar(root, host, plane, selected) {
+  const bar = root.createDiv({ cls: "los-ability-topbar" });
+  const crumbs = bar.createEl("nav", { cls: "los-ability-crumbs", attr: { "aria-label": "Breadcrumb" } });
+  const atlas = crumbs.createEl("button", {
+    cls: "los-ability-crumb is-clickable",
+    text: "Atlas",
+    attr: { type: "button" }
+  });
+  atlas.addEventListener("click", () => host.go({ ability: null, detail: false }));
+  crumbs.createSpan({ cls: "los-ability-crumb-sep", text: "\u203A", attr: { "aria-hidden": "true" } });
+  const row4 = selected ? plane?.rowOf.get(selected) : null;
+  if (host.state.detail && row4) {
+    const back = crumbs.createEl("button", {
+      cls: "los-ability-crumb is-clickable",
+      text: host.state.layout === "list" ? "List" : "Plane",
+      attr: { type: "button" }
+    });
+    back.addEventListener("click", () => host.go({ detail: false }));
+    crumbs.createSpan({ cls: "los-ability-crumb-sep", text: "\u203A", attr: { "aria-hidden": "true" } });
+    crumbs.createSpan({ cls: "los-ability-crumb is-current", text: row4.title });
+  } else {
+    crumbs.createSpan({
+      cls: "los-ability-crumb is-current",
+      text: host.state.layout === "list" ? "List" : "Plane"
+    });
+  }
+  renderStamp(bar, host);
+}
+function renderStamp(parent, host) {
+  const horizon2 = host.plugin.abilityHorizon;
+  const stamp = parent.createDiv({ cls: "los-context-stamp", attr: { role: "status" } });
+  const dot = stamp.createSpan({ cls: "los-context-dot", attr: { "aria-hidden": "true" } });
+  const records = recordsDate(host.plugin.store.data?._generated?.generated_at);
+  const read = horizon2.readTime;
+  if (horizon2.loading && !read) {
+    dot.addClass("is-pending");
+    stamp.createSpan({ text: "Reading the ability map from Core\u2026" });
+    return;
+  }
+  if (!read) {
+    dot.addClass("is-stale");
+    stamp.createSpan({ text: horizon2.error ? "Ability map unavailable" : "Ability map not read yet" });
+    return;
+  }
+  const base = `Read ${clockTime(read)}${records ? ` from records of ${records}` : ""}`;
+  if (horizon2.recordsAhead) {
+    dot.addClass("is-stale");
+    stamp.createSpan({ text: `${base} \xB7 records changed since the projection` });
+    const rebuild = button(stamp, "Rebuild", () => host.plugin.generate(), "tertiary");
+    rebuild.addClass("los-context-action");
+    return;
+  }
+  dot.addClass("is-fresh");
+  stamp.createSpan({ text: `${base} \xB7 current` });
+}
+function renderToolbar(root, host, plane) {
+  const bar = root.createDiv({ cls: "los-ability-toolbar" });
+  const left = bar.createDiv({ cls: "los-ability-toolbar-left" });
+  const switcher = filterTabs(
+    left,
+    "Ability map layout",
+    LAYOUTS,
+    host.state.layout,
+    (value) => host.go({ layout: value, detail: false })
+  );
+  switcher.addClass("los-ability-layout-switch");
+  const right = bar.createDiv({ cls: "los-ability-toolbar-right" });
+  const label = right.createEl("label", {
+    cls: "los-sr-only",
+    text: "Find an ability",
+    attr: { for: "los-ability-search" }
+  });
+  label.setAttribute("for", "los-ability-search");
+  const search = right.createEl("input", {
+    cls: "los-ability-search",
+    attr: {
+      id: "los-ability-search",
+      type: "search",
+      placeholder: "Find an ability",
+      value: host.query
+    }
+  });
+  search.value = host.query;
+  search.disabled = !plane;
+  search.addEventListener("input", () => {
+    host.query = search.value;
+    host.render();
+    const replacement = (root.ownerDocument ?? globalThis.document)?.getElementById?.("los-ability-search");
+    if (replacement && typeof replacement.focus === "function") {
+      replacement.focus();
+      const end = replacement.value.length;
+      try {
+        replacement.setSelectionRange?.(end, end);
+      } catch {
+      }
+    }
+  });
+  button(right, "Concept atlas", () => host.plugin.nav.openAtlas(), "tertiary").addClass("los-ability-concept-link");
+}
+function renderUnread(root, host) {
+  const horizon2 = host.plugin.abilityHorizon;
+  const panel = root.createDiv({ cls: "los-ability-plane is-unread" });
+  if (horizon2.error) {
+    empty(
+      panel,
+      "The ability map could not be read",
+      horizon2.error,
+      "Read again",
+      () => void horizon2.refresh()
+    );
+    return;
+  }
+  panel.createDiv({
+    cls: "los-ability-loading",
+    text: "Reading abilities, preparation routes and bridges from Core\u2026"
+  });
+}
+function renderSearchResults(root, host, plane, labels) {
+  const hits = searchAbilities(plane, host.query, labels);
+  const box = root.createDiv({ cls: "los-ability-search-results", attr: { "aria-live": "polite" } });
+  if (!hits.length) {
+    box.createDiv({ cls: "los-micro", text: `No ability matches \u201C${host.query.trim()}\u201D.` });
+    return;
+  }
+  box.createDiv({ cls: "los-micro", text: `${hits.length} ${hits.length === 1 ? "ability matches" : "abilities match"}` });
+  const list4 = box.createDiv({ cls: "los-ability-search-list", attr: { role: "group", "aria-label": "Matching abilities" } });
+  enableButtonGroupKeyboardNavigation(list4, "vertical");
+  for (const id2 of hits.slice(0, 12)) {
+    const row4 = plane.rowOf.get(id2);
+    if (!row4) continue;
+    const hit = list4.createEl("button", {
+      cls: "los-ability-search-hit is-clickable",
+      attr: { type: "button" }
+    });
+    hit.createSpan({ cls: "los-ability-search-title", text: row4.title });
+    hit.createSpan({ cls: "los-micro", text: STATE_LABEL[row4.state] });
+    hit.addEventListener("click", () => {
+      host.query = "";
+      host.go({ group: plane.groupOfAbility.get(id2) ?? null, ability: id2, detail: false });
+    });
+  }
+}
+function pickGroup(host, plane, selected) {
+  const fromAbility = selected ? plane.groupOfAbility.get(selected) : null;
+  const key = fromAbility ?? host.state.group;
+  return plane.groups.find((group) => group.key === key) ?? plane.groups[0] ?? null;
+}
+function renderPlane(root, host, plane, brief, selected) {
+  const group = pickGroup(host, plane, selected);
+  const bridge2 = host.bridgeKey ? plane.bridges.find((row4) => bridgeKey(row4) === host.bridgeKey) ?? null : null;
+  const inspecting = Boolean(selected || bridge2);
+  const surface = root.createDiv({ cls: `los-ability-plane${inspecting ? " has-inspector" : ""}` });
+  if (!inspecting) renderGroups(surface, host, plane, group);
+  if (group) renderGraph(surface, host, plane, group, selected, inspecting);
+  if (bridge2) renderBridgeInspector(surface, host, plane, bridge2);
+  else if (selected) renderInspector(surface, host, plane, brief, selected);
+  if (brief.truncated) {
+    root.createDiv({
+      cls: "los-micro los-ability-truncated",
+      text: `Showing ${brief.abilities.length} of ${brief.total} abilities \u2014 Core bounds one read. Search or open an ability to expand the rest.`
+    });
+  }
+}
+function renderGroups(surface, host, plane, current) {
+  const rail = surface.createDiv({ cls: "los-ability-groups" });
+  rail.createEl("h2", { cls: "los-ability-eyebrow", text: "Ability groups" });
+  const list4 = rail.createDiv({
+    cls: "los-ability-group-list",
+    attr: { role: "group", "aria-label": "Ability groups" }
+  });
+  enableButtonGroupKeyboardNavigation(list4, "vertical");
+  for (const group of plane.groups) {
+    const active = group.key === current?.key;
+    const card = list4.createEl("button", {
+      cls: `los-ability-group is-clickable${active ? " is-selected" : ""}`,
+      attr: { type: "button", "aria-pressed": String(active), "data-ability-group": group.key }
+    });
+    card.createSpan({ cls: "los-ability-group-title", text: group.title });
+    const bridges2 = group.reviewedBridgeCount;
+    card.createSpan({
+      cls: "los-ability-group-meta",
+      text: `${group.nodes.length} ${group.nodes.length === 1 ? "ability" : "abilities"} \xB7 ${bridges2} reviewed ${bridges2 === 1 ? "bridge" : "bridges"}`
+    });
+    card.addEventListener("click", () => {
+      host.bridgeKey = null;
+      host.go({ group: group.key, ability: null, detail: false });
+    });
+  }
+  rail.createEl("p", {
+    cls: "los-ability-group-note",
+    text: plane.groups.length > 1 ? "Groups are separate; no path joins them." : "Every mapped ability belongs to this one group."
+  });
+  if (plane.crossGroupCandidates.length) {
+    rail.createEl("p", {
+      cls: "los-ability-group-note",
+      text: `${plane.crossGroupCandidates.length} tentative ${plane.crossGroupCandidates.length === 1 ? "connection crosses" : "connections cross"} groups. Tentative connections carry nothing and never join groups.`
+    });
+  }
+}
+function nodeLabel(node, plane) {
+  const titleOf2 = (id2) => plane.rowOf.get(id2)?.title ?? id2;
+  const parts = [`${node.row.title}. ${STATE_LABEL[node.row.state]}. ${node.meta}.`];
+  const preparation = preparationSentence(node.row, titleOf2);
+  if (preparation) parts.push(`Prepared by: ${preparation}`);
+  if (node.bridgeCount) parts.push(`${node.bridgeCount} reviewed or candidate ${node.bridgeCount === 1 ? "bridge" : "bridges"}.`);
+  return parts.join(" ");
+}
+function renderGraph(surface, host, plane, group, selected, inspecting) {
+  const panel = surface.createDiv({ cls: "los-ability-graph" });
+  const head = panel.createDiv({ cls: "los-ability-graph-head" });
+  const titleRow = head.createDiv({ cls: "los-ability-graph-title" });
+  titleRow.createEl("h2", { text: group.title });
+  if (inspecting) {
+    button(titleRow, "All groups", () => {
+      host.bridgeKey = null;
+      host.go({ ability: null, detail: false });
+    }, "tertiary").addClass("los-ability-back");
+  }
+  head.createEl("p", {
+    text: inspecting ? "Select any ability. Preparation moves left to right." : "Preparation flows left to right. Select an ability to inspect its evidence."
+  });
+  const scroll = panel.createDiv({ cls: "los-ability-canvas-scroll" });
+  const canvas = scroll.createDiv({ cls: "los-ability-canvas" });
+  const height = HEAD + group.height;
+  canvas.setAttr("style", `width:${group.width}px;height:${height}px`);
+  for (const column of group.columns) {
+    const heading = canvas.createDiv({ cls: "los-ability-column-head" });
+    heading.setAttr("style", `left:${column.x}px;width:${PLANE.nodeWidth}px`);
+    const annotation = annotationLabel(column.annotation);
+    heading.setText(annotation ? `${column.label} \xB7 ${annotation}` : column.label);
+  }
+  drawEdges(canvas, group, height);
+  const nodes = canvas.createDiv({
+    cls: "los-ability-nodes",
+    attr: { role: "group", "aria-label": `${group.title}: abilities in preparation order` }
+  });
+  enableButtonGroupKeyboardNavigation(nodes, "both");
+  const highlighted = /* @__PURE__ */ new Set();
+  const bridge2 = host.bridgeKey ? group.bridges.find((row4) => row4.key === host.bridgeKey)?.bridge ?? null : null;
+  if (bridge2) {
+    highlighted.add(bridge2.from);
+    highlighted.add(bridge2.to);
+  }
+  for (const node of group.nodes) {
+    const active = node.id === selected;
+    const card = nodes.createEl("button", {
+      cls: `los-ability-node is-clickable los-ability-state-${node.row.state}${active ? " is-selected" : ""}${highlighted.has(node.id) ? " is-bridged" : ""}`,
+      attr: {
+        type: "button",
+        "data-ability": node.id,
+        "aria-pressed": String(active),
+        "aria-label": nodeLabel(node, plane)
+      }
+    });
+    card.setAttr("style", `left:${node.x}px;top:${HEAD + node.y}px;width:${PLANE.nodeWidth}px;height:${PLANE.nodeHeight}px`);
+    card.createSpan({ cls: "los-ability-node-title", text: node.row.title });
+    const meta = card.createSpan({ cls: "los-ability-node-meta" });
+    meta.createSpan({ text: active ? `Selected \xB7 ${node.meta}` : node.meta });
+    if (node.row.state !== "uncertain" || node.row.evidence.length) {
+      meta.createSpan({ cls: `los-ability-node-state is-${node.row.state}`, text: STATE_LABEL[node.row.state] });
+    }
+    if (node.bridgeCount) {
+      card.createSpan({
+        cls: "los-ability-node-bridges",
+        text: `\u2194 ${node.bridgeCount}`,
+        attr: { "aria-hidden": "true" }
+      });
+    }
+    card.addEventListener("click", () => {
+      host.bridgeKey = null;
+      host.go({ group: group.key, ability: node.id, detail: false });
+    });
+  }
+  for (const entry of group.bridges) {
+    const from = group.columns[entry.fromColumn]?.x ?? PLANE.pad;
+    const toColumn = group.columns[entry.toColumn];
+    const right = (toColumn?.x ?? from) + PLANE.nodeWidth;
+    const top = HEAD + group.graphHeight + PLANE.bandTop + entry.band * (PLANE.bandHeight + PLANE.bandGap);
+    const reviewed = entry.bridge.review.state === "reviewed";
+    const band = canvas.createEl("button", {
+      cls: `los-ability-bridge is-clickable is-${entry.bridge.kind}${reviewed ? " is-reviewed" : " is-candidate"}${entry.bridge.freshness === "current" ? "" : " is-not-current"}${host.bridgeKey === entry.key ? " is-selected" : ""}`,
+      attr: { type: "button", "data-bridge": entry.key }
+    });
+    band.setAttr("style", `left:${from}px;top:${top}px;width:${right - from}px;height:${PLANE.bandHeight}px`);
+    const fromTitle = plane.rowOf.get(entry.bridge.from)?.title ?? entry.bridge.from;
+    const toTitle = plane.rowOf.get(entry.bridge.to)?.title ?? entry.bridge.to;
+    const status = reviewed ? entry.bridge.freshness === "current" ? "Reviewed" : "Reviewed \xB7 source changed" : "Candidate";
+    band.createSpan({
+      cls: "los-ability-bridge-label",
+      text: `${bridgeSymbol(entry.bridge.kind)}  ${status} ${entry.bridge.kind} bridge`
+    });
+    band.setAttr(
+      "aria-label",
+      `${status} ${entry.bridge.kind} bridge from ${fromTitle} to ${toTitle}. Open its conditions.`
+    );
+    band.addEventListener("click", () => {
+      host.bridgeKey = host.bridgeKey === entry.key ? null : entry.key;
+      host.render();
+    });
+  }
+  const outline = panel.createEl("ul", { cls: "los-sr-only los-ability-edge-outline" });
+  for (const edge of group.edges) {
+    outline.createEl("li", {
+      text: `${plane.rowOf.get(edge.from)?.title ?? edge.from} prepares ${plane.rowOf.get(edge.to)?.title ?? edge.to}${edge.alternative ? " (one of several routes)" : ""}`
+    });
+  }
+  const foot = panel.createDiv({ cls: "los-ability-graph-foot" });
+  if (!group.hasEvidence) {
+    foot.createEl("p", { text: "No learner attempt recorded. Ability states stay uncertain until confirmed work exists." });
+  }
+  if (group.bridges.length) {
+    foot.createEl("p", { text: "A bridge carries evidence only within its reviewed conditions and while its source is current." });
+  }
+  if (group.candidates.length) {
+    foot.createEl("p", {
+      text: `${group.candidates.length} tentative ${group.candidates.length === 1 ? "connection is" : "connections are"} recorded here. They carry nothing until reviewed into a bridge.`
+    });
+  }
+  if (inspecting && !selected) {
+    foot.createEl("p", { text: "Choose another group from the Atlas map." });
+  }
+}
+function drawEdges(canvas, group, height) {
+  const doc = canvas.ownerDocument;
+  if (!doc || typeof doc.createElementNS !== "function") return;
+  const svg = doc.createElementNS(SVG, "svg");
+  svg.setAttribute("class", "los-ability-edges");
+  svg.setAttribute("aria-hidden", "true");
+  svg.setAttribute("width", String(group.width));
+  svg.setAttribute("height", String(height));
+  svg.setAttribute("viewBox", `0 0 ${group.width} ${height}`);
+  const nodes = new Map(group.nodes.map((node) => [node.id, node]));
+  const centre = (node) => HEAD + node.y + PLANE.nodeHeight / 2;
+  const line = (d, cls) => {
+    const path = doc.createElementNS(SVG, "path");
+    path.setAttribute("d", d);
+    path.setAttribute("class", cls);
+    svg.append(path);
+  };
+  for (const lane of group.lanes) {
+    const sources = lane.sources.map((id2) => nodes.get(id2)).filter((node) => Boolean(node));
+    const targets = lane.targets.map((id2) => nodes.get(id2)).filter((node) => Boolean(node));
+    if (!sources.length || !targets.length) continue;
+    const ys = [...sources.map(centre), ...targets.map(centre)];
+    const kind = lane.alternative ? " is-alternative" : "";
+    for (const source of sources) {
+      line(`M ${source.x + PLANE.nodeWidth} ${centre(source)} H ${lane.x}`, `los-ability-edge${kind}`);
+    }
+    line(`M ${lane.x} ${Math.min(...ys)} V ${Math.max(...ys)}`, `los-ability-edge${kind}`);
+    for (const target of targets) {
+      const y = centre(target);
+      line(`M ${lane.x} ${y} H ${target.x - 7}`, `los-ability-edge${kind}`);
+      line(`M ${target.x - 8} ${y - 5} L ${target.x - 1} ${y} L ${target.x - 8} ${y + 5}`, "los-ability-arrow");
+      const dot = doc.createElementNS(SVG, "circle");
+      dot.setAttribute("cx", String(lane.x));
+      dot.setAttribute("cy", String(y));
+      dot.setAttribute("r", "4.5");
+      dot.setAttribute("class", `los-ability-join${kind}`);
+      svg.append(dot);
+    }
+  }
+  canvas.prepend(svg);
+}
+function draftsFor(host, abilityId) {
+  return host.plugin.listAbilityDrafts().filter((draft) => draft.kind === "claim" ? draft.abilityId === abilityId : draft.fromAbility === abilityId || draft.toAbility === abilityId).length;
+}
+function renderInspector(surface, host, plane, brief, abilityId) {
+  const row4 = plane.rowOf.get(abilityId);
+  if (!row4) return;
+  const horizon2 = host.plugin.abilityHorizon;
+  horizon2.ensureExpansion(abilityId);
+  const expansion = horizon2.expansion(abilityId);
+  const focus = expansion && "ability" in expansion ? expansion : null;
+  const labels = projectionLabels(host.plugin.store);
+  const titleOf2 = (id2) => plane.rowOf.get(id2)?.title ?? id2;
+  const panel = surface.createEl("aside", {
+    cls: "los-ability-inspector",
+    attr: { "aria-label": `Selected ability: ${row4.title}` }
+  });
+  const modules = row4.module_ids.map((id2) => labels.module(id2)).join(" \xB7 ");
+  panel.createDiv({ cls: "los-ability-eyebrow is-accent", text: `Selected ability${modules ? ` \xB7 ${modules}` : ""}` });
+  panel.createEl("h2", { text: row4.title });
+  renderStatus(panel, row4);
+  const counts = section2(panel, "What counts");
+  if (focus) {
+    counts.createEl("p", { text: focus.ability.claim });
+    if (focus.ability.conditions.length) {
+      counts.createEl("p", {
+        cls: "los-micro",
+        text: `Under: ${focus.ability.conditions.join("; ")}.`
+      });
+    }
+  } else {
+    renderExpansionState(counts, host, abilityId);
+  }
+  const preparation = section2(panel, "Preparation");
+  const sentenceText = preparationSentence(row4, titleOf2);
+  preparation.createEl("p", {
+    text: sentenceText ?? "No reviewed preparation route. This is where the group starts."
+  });
+  const nearest = row4.preparation_routes.find((route2) => route2.supported.length);
+  if (nearest) {
+    preparation.createEl("p", {
+      cls: "los-micro",
+      text: `Remaining on the closest route: ${nearest.remaining_work.map(titleOf2).join(", ")}.`
+    });
+  }
+  const evidence3 = section2(panel, "Evidence");
+  if (!row4.evidence.length) {
+    evidence3.createEl("p", { text: "No learner attempt has been recorded. Confirmed work can change this state." });
+  } else {
+    evidence3.createEl("p", {
+      text: `${row4.evidence.length} recorded ${row4.evidence.length === 1 ? "attempt" : "attempts"} shown here; the full ledger is in the detail.`
+    });
+    for (const item of row4.evidence) {
+      evidence3.createDiv({ cls: "los-micro", text: `${item.result} \xB7 ${item.work_ref}` });
+    }
+  }
+  if (row4.transfer.length) {
+    for (const transfer2 of row4.transfer) {
+      evidence3.createDiv({
+        cls: "los-micro",
+        text: `Supported through a reviewed equivalence from ${titleOf2(transfer2.from)}.`
+      });
+    }
+  }
+  const pending = draftsFor(host, abilityId);
+  if (pending) {
+    const drafts = evidence3.createDiv({ cls: "los-ability-draft-note" });
+    drafts.createSpan({ text: `${pending} ${pending === 1 ? "draft" : "drafts"} \xB7 not recorded. ` });
+    button(drafts, "Open Review", () => host.plugin.nav.openReview(), "tertiary");
+  }
+  void brief;
+  const footer = panel.createDiv({ cls: "los-ability-inspector-foot" });
+  const open = button(footer, "Open full ability detail \u2192", () => host.go({ detail: true }), "tertiary");
+  open.addClass("los-ability-detail-link");
+}
+function renderStatus(parent, row4) {
+  const status = parent.createDiv({ cls: `los-ability-status is-${row4.state}` });
+  const headline2 = row4.evidence.length || row4.state !== "uncertain" ? STATE_LABEL[row4.state] : `${STATE_LABEL[row4.state]} \xB7 no attempt recorded`;
+  status.createEl("strong", { text: headline2 });
+  for (const reason of row4.reasons) status.createDiv({ cls: "los-micro", text: sentence(reason) });
+}
+function section2(parent, title) {
+  const block2 = parent.createDiv({ cls: "los-ability-inspector-section" });
+  block2.createEl("h3", { text: title });
+  return block2;
+}
+function renderBridgeInspector(surface, host, plane, bridge2) {
+  const titleOf2 = (id2) => plane.rowOf.get(id2)?.title ?? id2;
+  const panel = surface.createEl("aside", {
+    cls: "los-ability-inspector",
+    attr: { "aria-label": "Selected bridge" }
+  });
+  const reviewed = bridge2.review.state === "reviewed";
+  panel.createDiv({
+    cls: "los-ability-eyebrow is-accent",
+    text: `${reviewed ? "Reviewed" : "Candidate"} ${bridge2.kind} bridge`
+  });
+  panel.createEl("h2", { text: `${titleOf2(bridge2.from)} ${bridgeSymbol(bridge2.kind)} ${titleOf2(bridge2.to)}` });
+  const freshness = panel.createDiv({ cls: `los-ability-status is-${bridge2.freshness === "current" ? "nearby" : "uncertain"}` });
+  freshness.createEl("strong", {
+    text: bridge2.freshness === "current" ? "Source current" : bridge2.freshness === "stale" ? "Source changed \u2014 carries nothing until re-reviewed" : bridge2.freshness === "not-reviewed" ? "Not reviewed \u2014 carries nothing" : "Source unavailable \u2014 carries nothing"
+  });
+  const carries = section2(panel, "Carries over");
+  carries.createEl("p", { text: bridge2.carries });
+  const changes = section2(panel, "Still differs");
+  changes.createEl("p", { text: bridge2.changes });
+  const conditions = section2(panel, "Only under");
+  if (bridge2.conditions.length) {
+    const list4 = conditions.createEl("ul");
+    for (const condition of bridge2.conditions) list4.createEl("li", { text: condition });
+  } else {
+    conditions.createEl("p", { cls: "los-micro", text: "No conditions stated." });
+  }
+  const source = section2(panel, "Source");
+  const path = bridge2.source.split("#")[0] ?? bridge2.source;
+  button(source, bridge2.source, () => host.plugin.openAuthoredPath(path), "tertiary").addClass("los-ability-source-link");
+  if (bridge2.review.reviewed_by || bridge2.review.reviewed_on) {
+    source.createDiv({
+      cls: "los-micro",
+      text: `Reviewed${bridge2.review.reviewed_by ? ` by ${bridge2.review.reviewed_by}` : ""}${bridge2.review.reviewed_on ? ` on ${bridge2.review.reviewed_on}` : ""}.`
+    });
+  }
+  const footer = panel.createDiv({ cls: "los-ability-inspector-foot" });
+  button(footer, "Close bridge", () => {
+    host.bridgeKey = null;
+    host.render();
+  }, "tertiary");
+}
+function renderList(root, host, plane, brief) {
+  const table = root.createDiv({ cls: "los-ability-list" });
+  for (const group of plane.groups) {
+    const block2 = table.createDiv({ cls: "los-ability-list-group" });
+    block2.createEl("h2", { text: group.title });
+    block2.createDiv({
+      cls: "los-micro",
+      text: `${group.nodes.length} ${group.nodes.length === 1 ? "ability" : "abilities"} \xB7 ${group.reviewedBridgeCount} reviewed ${group.reviewedBridgeCount === 1 ? "bridge" : "bridges"}`
+    });
+    const rows = block2.createDiv({
+      cls: "los-ability-list-rows",
+      attr: { role: "group", "aria-label": `${group.title} abilities` }
+    });
+    enableButtonGroupKeyboardNavigation(rows, "vertical");
+    for (const node of group.nodes) {
+      const row4 = rows.createEl("button", {
+        cls: "los-ability-list-row is-clickable",
+        attr: { type: "button", "data-ability": node.id }
+      });
+      row4.createSpan({ cls: "los-ability-list-title", text: node.row.title });
+      row4.createSpan({ cls: "los-ability-list-meta", text: node.meta });
+      row4.createSpan({ cls: `los-ability-list-state is-${node.row.state}`, text: STATE_LABEL[node.row.state] });
+      row4.createSpan({
+        cls: "los-ability-list-meta",
+        text: `${node.row.preparation_routes.length} ${node.row.preparation_routes.length === 1 ? "route" : "routes"} \xB7 ${node.bridgeCount} ${node.bridgeCount === 1 ? "bridge" : "bridges"}`
+      });
+      row4.addEventListener("click", () => host.go({ group: group.key, ability: node.id, detail: true }));
+    }
+  }
+  if (brief.truncated) {
+    table.createDiv({
+      cls: "los-micro",
+      text: `Showing ${brief.abilities.length} of ${brief.total} abilities.`
+    });
+  }
+}
+
+// src/views/abilities-view.ts
+var AbilitiesView = class extends import_obsidian4.ItemView {
+  plugin;
+  route = { group: null, ability: null, layout: "plane", detail: false };
+  query = "";
+  bridgeKey = null;
+  constructor(leaf, plugin) {
+    super(leaf);
+    this.plugin = plugin;
+  }
+  getViewType() {
+    return VIEW_ABILITIES;
+  }
+  getDisplayText() {
+    return "LearningOS \xB7 Atlas";
+  }
+  getIcon() {
+    return "map";
+  }
+  get state() {
+    return this.route;
+  }
+  adopt(state) {
+    const ability = typeof state.ability === "string" && state.ability ? state.ability : null;
+    if (ability !== this.route.ability) this.bridgeKey = null;
+    this.route = {
+      group: typeof state.group === "string" && state.group ? state.group : null,
+      ability,
+      layout: asAbilityLayout(state.layout),
+      detail: state.detail === true && ability !== null
+    };
+  }
+  async setState(state = {}) {
+    this.adopt(state);
+    this.render();
+  }
+  getState() {
+    return { ...this.route };
+  }
+  async onOpen() {
+    this.adopt(this.leaf.getViewState().state ?? {});
+    this.render();
+  }
+  go(target) {
+    const next = { ...this.route, ...target };
+    void this.plugin.nav.openAbilities({
+      group: next.group,
+      ability: next.ability,
+      layout: next.layout,
+      detail: next.detail
+    });
+  }
+  render() {
+    renderAbilityMap(this.contentEl, this);
+  }
+};
+
+// src/views/atlas-view.ts
+var import_obsidian5 = require("obsidian");
 
 // src/features/atlas/graph.ts
 var STRICT_RELATION_TYPES = ["builds-on", "requires"];
@@ -2255,8 +4172,8 @@ function compareModules(left, right) {
   if (left.actionable !== right.actionable) return left.actionable ? -1 : 1;
   return compareStrings(left.sortKey, right.sortKey) || compareStrings(left.id, right.id);
 }
-function shortModuleLabel(record7, label) {
-  const code = asString(record7.code);
+function shortModuleLabel2(record10, label) {
+  const code = asString(record10.code);
   if (code) return code;
   const words2 = label.split(/\s+/).filter(Boolean);
   return words2.length > 2 ? words2.map((word) => word.charAt(0)).join("").toUpperCase() : label;
@@ -2291,19 +4208,19 @@ function buildAtlasGraph(store) {
   const remember = (id2) => {
     const known = conceptById.get(id2);
     if (known) return known;
-    const record7 = store.get(id2);
-    const label = record7 ? asLabel(record7, id2) : id2;
+    const record10 = store.get(id2);
+    const label = record10 ? asLabel(record10, id2) : id2;
     const concept = {
       id: id2,
       label,
       sortKey: normalizedSortKey(label),
-      record: record7 ?? null
+      record: record10 ?? null
     };
     conceptById.set(id2, concept);
     return concept;
   };
-  for (const record7 of store.of("concept")) {
-    const id2 = asString(record7.id);
+  for (const record10 of store.of("concept")) {
+    const id2 = asString(record10.id);
     if (id2) remember(id2);
   }
   const edges = [];
@@ -2321,8 +4238,8 @@ function buildAtlasGraph(store) {
     remember(edge.from);
     remember(edge.to);
     if (edge.source && !resolvedSources.has(edge.source)) {
-      const record7 = store.get(edge.source);
-      if (record7) resolvedSources.set(edge.source, record7);
+      const record10 = store.get(edge.source);
+      if (record10) resolvedSources.set(edge.source, record10);
     }
     if (edge.layer === "strict") {
       push(prerequisiteEdges, edge.from, edge);
@@ -2349,16 +4266,16 @@ function buildAtlasGraph(store) {
     push(modulesByConcept, conceptId, moduleId);
     push(conceptsByModule, moduleId, conceptId);
   }
-  const modules = store.modules().flatMap((record7) => {
-    const id2 = asString(record7.id);
+  const modules = store.modules().flatMap((record10) => {
+    const id2 = asString(record10.id);
     if (!id2) return [];
-    const label = asLabel(record7, id2);
+    const label = asLabel(record10, id2);
     return [{
       id: id2,
       label,
-      shortLabel: shortModuleLabel(record7, label),
+      shortLabel: shortModuleLabel2(record10, label),
       sortKey: normalizedSortKey(label),
-      actionable: record7.is_actionable === true,
+      actionable: record10.is_actionable === true,
       conceptCount: conceptsByModule.get(id2)?.length ?? 0
     }];
   }).sort(compareModules);
@@ -2368,24 +4285,24 @@ function buildAtlasGraph(store) {
     [prerequisiteEdges, (edge) => edge.to],
     [dependentEdges, (edge) => edge.from]
   ]) {
-    for (const list2 of index.values()) {
-      list2.sort((left, right) => order(farEnd(left), farEnd(right)) || compareStrings(left.type, right.type) || compareStrings(left.id, right.id));
+    for (const list4 of index.values()) {
+      list4.sort((left, right) => order(farEnd(left), farEnd(right)) || compareStrings(left.type, right.type) || compareStrings(left.id, right.id));
     }
   }
   for (const index of [semanticEdges, unrecognizedEdges]) {
-    for (const [conceptId, list2] of index) {
-      list2.sort((left, right) => {
+    for (const [conceptId, list4] of index) {
+      list4.sort((left, right) => {
         const leftFar = left.from === conceptId ? left.to : left.from;
         const rightFar = right.from === conceptId ? right.to : right.from;
         return compareStrings(left.type, right.type) || order(leftFar, rightFar) || compareStrings(left.id, right.id);
       });
     }
   }
-  for (const list2 of modulesByConcept.values()) {
-    list2.sort((left, right) => compareStrings(left, right));
+  for (const list4 of modulesByConcept.values()) {
+    list4.sort((left, right) => compareStrings(left, right));
   }
-  for (const list2 of conceptsByModule.values()) {
-    list2.sort(order);
+  for (const list4 of conceptsByModule.values()) {
+    list4.sort(order);
   }
   return {
     concepts,
@@ -2418,12 +4335,12 @@ function studyOrderSentence(graph, edge) {
 }
 function provenanceOf(graph, edge) {
   if (!edge.source) return { state: "undocumented" };
-  const record7 = graph.resolvedSources.get(edge.source);
-  return record7 ? {
+  const record10 = graph.resolvedSources.get(edge.source);
+  return record10 ? {
     state: "resolved",
     sourceId: edge.source,
-    label: asLabel(record7, edge.source),
-    record: record7
+    label: asLabel(record10, edge.source),
+    record: record10
   } : { state: "unresolved", sourceId: edge.source };
 }
 function evidenceFor(graph, moduleId, conceptId) {
@@ -2566,19 +4483,19 @@ function findStrictCycle(graph, scope) {
   const prerequisitesOf = (id2) => (graph.prerequisiteEdges.get(id2) ?? []).map((edge) => edge.to).filter(within);
   for (const root of roots) {
     if (state.has(root)) continue;
-    const stack = [
+    const stack2 = [
       { id: root, queue: prerequisitesOf(root), at: 0 }
     ];
     state.set(root, "open");
     trail.push(root);
-    while (stack.length) {
-      const frame = stack[stack.length - 1];
+    while (stack2.length) {
+      const frame = stack2[stack2.length - 1];
       if (!frame) break;
       const next = frame.queue[frame.at];
       frame.at += 1;
       if (next === void 0) {
         state.set(frame.id, "closed");
-        stack.pop();
+        stack2.pop();
         trail.pop();
         continue;
       }
@@ -2589,7 +4506,7 @@ function findStrictCycle(graph, scope) {
       }
       state.set(next, "open");
       trail.push(next);
-      stack.push({ id: next, queue: prerequisitesOf(next), at: 0 });
+      stack2.push({ id: next, queue: prerequisitesOf(next), at: 0 });
     }
   }
   return null;
@@ -2762,8 +4679,8 @@ function summarize(graph) {
 }
 
 // src/features/atlas/narrative.ts
-function plural(count, singular, many = `${singular}s`) {
-  return `${count} ${count === 1 ? singular : many}`;
+function plural(count2, singular, many = `${singular}s`) {
+  return `${count2} ${count2 === 1 ? singular : many}`;
 }
 function focusQuestion(lens, label) {
   switch (lens) {
@@ -2851,13 +4768,13 @@ function provenanceLine(graph, edge, conceptId) {
 
 // src/features/atlas/edge-layer.ts
 var sequence = 0;
-var SVG = "http://www.w3.org/2000/svg";
+var SVG2 = "http://www.w3.org/2000/svg";
 function mountEdges(canvas, host, graph, edges) {
   const doc = canvas.ownerDocument;
   if (!doc?.createElementNS || typeof canvas.getBoundingClientRect !== "function") return;
   const win = doc.defaultView;
   if (!win) return;
-  const svg = doc.createElementNS(SVG, "svg");
+  const svg = doc.createElementNS(SVG2, "svg");
   svg.setAttribute("class", "los-atlas-edge-layer");
   svg.setAttribute("aria-hidden", "true");
   canvas.prepend(svg);
@@ -2871,8 +4788,8 @@ function mountEdges(canvas, host, graph, edges) {
     const base = canvas.getBoundingClientRect();
     svg.setAttribute("width", String(canvas.scrollWidth));
     svg.setAttribute("height", String(canvas.scrollHeight));
-    const defs = doc.createElementNS(SVG, "defs");
-    const marker = doc.createElementNS(SVG, "marker");
+    const defs = doc.createElementNS(SVG2, "defs");
+    const marker = doc.createElementNS(SVG2, "marker");
     for (const [key, value] of Object.entries({
       id: markerId,
       viewBox: "0 0 10 10",
@@ -2882,7 +4799,7 @@ function mountEdges(canvas, host, graph, edges) {
       markerHeight: "7",
       orient: "auto-start-reverse"
     })) marker.setAttribute(key, value);
-    const arrow = doc.createElementNS(SVG, "path");
+    const arrow = doc.createElementNS(SVG2, "path");
     arrow.setAttribute("d", "M 0 0 L 10 5 L 0 10 z");
     arrow.setAttribute("class", "los-atlas-arrowhead");
     marker.append(arrow);
@@ -2902,7 +4819,7 @@ function mountEdges(canvas, host, graph, edges) {
       const bend = Math.max(20, Math.abs(x2 - x1) / 2) * (rightward ? 1 : -1);
       const d = `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`;
       for (const hit of [false, true]) {
-        const path = doc.createElementNS(SVG, "path");
+        const path = doc.createElementNS(SVG2, "path");
         path.setAttribute("d", d);
         path.setAttribute("data-relation-id", edge.id);
         path.setAttribute("data-from", edge.studyFrom);
@@ -2910,7 +4827,7 @@ function mountEdges(canvas, host, graph, edges) {
         path.setAttribute("class", hit ? "los-atlas-edge-hit" : `los-atlas-edge los-atlas-edge--${edge.type}${host.edgeId === edge.id ? " is-selected" : ""}`);
         if (!hit) path.setAttribute("marker-end", `url(#${markerId})`);
         else {
-          const title = doc.createElementNS(SVG, "title");
+          const title = doc.createElementNS(SVG2, "title");
           title.textContent = canonicalSentence(graph, edge);
           path.append(title);
           path.addEventListener("click", () => host.inspectEdge(edge.id));
@@ -2949,7 +4866,7 @@ function nodeAttachment(graph, view, node) {
   const toward = edges.filter((edge) => otherEnd(edge, node.concept.id) !== node.concept.id);
   const nearest = toward.find((edge) => {
     const other = otherEnd(edge, node.concept.id);
-    const otherNode = view.nodes.find((row3) => row3.concept.id === other);
+    const otherNode = view.nodes.find((row4) => row4.concept.id === other);
     return (otherNode?.distance ?? Number.MAX_SAFE_INTEGER) < node.distance;
   }) ?? toward[0];
   if (node.direction === "related") {
@@ -3017,15 +4934,15 @@ function renderRemainder(parent, host, view, concepts, noun) {
     host.render();
   });
   if (!host.remainderOpen) return;
-  const list2 = card.createDiv({ cls: "los-atlas-remainder-list" });
-  enableButtonGroupKeyboardNavigation(list2, "vertical");
+  const list4 = card.createDiv({ cls: "los-atlas-remainder-list" });
+  enableButtonGroupKeyboardNavigation(list4, "vertical");
   for (const concept of concepts) {
-    const row3 = list2.createEl("button", {
+    const row4 = list4.createEl("button", {
       cls: "los-atlas-remainder-item is-clickable",
       attr: { type: "button" },
       text: concept.label
     });
-    row3.addEventListener("click", () => host.go({ concept: concept.id }));
+    row4.addEventListener("click", () => host.go({ concept: concept.id }));
   }
 }
 function renderFocusedGraph(parent, host, graph, view) {
@@ -3080,9 +4997,9 @@ function renderFocusedGraph(parent, host, graph, view) {
       text: "Semantic context \xB7 excluded from path order"
     });
     if (related.length) {
-      const row3 = band.createDiv({ cls: "los-atlas-semantic-row" });
-      enableButtonGroupKeyboardNavigation(row3, "horizontal");
-      for (const node of related) renderNode(row3, host, graph, view, node);
+      const row4 = band.createDiv({ cls: "los-atlas-semantic-row" });
+      enableButtonGroupKeyboardNavigation(row4, "horizontal");
+      for (const node of related) renderNode(row4, host, graph, view, node);
     }
     band.createDiv({
       cls: "los-micro",
@@ -3110,7 +5027,7 @@ function renderLegend(parent) {
   const legend = parent.createDiv({ cls: "los-atlas-legend" });
   legend.createDiv({ cls: "los-micro los-atlas-legend-kicker", text: "Legend" });
   const items = legend.createDiv({ cls: "los-atlas-legend-items" });
-  for (const [key, text5] of [
+  for (const [key, text8] of [
     ["requires", "requires"],
     ["builds-on", "builds on"],
     ["semantic", "semantic \u2014 never in a path"],
@@ -3119,7 +5036,7 @@ function renderLegend(parent) {
   ]) {
     const item = items.createDiv({ cls: "los-atlas-legend-item" });
     item.createSpan({ cls: `los-atlas-legend-mark los-atlas-legend-mark--${key}` }).setAttrs({ "aria-hidden": "true" });
-    item.createSpan({ text: text5 });
+    item.createSpan({ text: text8 });
   }
   legend.createDiv({
     cls: "los-micro",
@@ -3127,27 +5044,27 @@ function renderLegend(parent) {
   });
 }
 function outlineRow(parent, host, graph, edge, focusId, position, hiddenByLens = false) {
-  const row3 = parent.createEl("button", {
+  const row4 = parent.createEl("button", {
     cls: "los-atlas-outline-row is-clickable",
     attr: { type: "button" }
   });
-  row3.addClass(`los-atlas-outline-row--${edge.layer}`);
-  if (hiddenByLens) row3.addClass("los-atlas-outline-row--hidden-by-lens");
-  row3.setAttribute("data-relation-id", edge.id);
+  row4.addClass(`los-atlas-outline-row--${edge.layer}`);
+  if (hiddenByLens) row4.addClass("los-atlas-outline-row--hidden-by-lens");
+  row4.setAttribute("data-relation-id", edge.id);
   const state = hiddenByLens ? " \xB7 hidden by the selected lens" : "";
-  row3.createDiv({
+  row4.createDiv({
     cls: "los-atlas-outline-title",
     text: `${position} \xB7 ${relationSentences(graph, edge).join(" ")}${state}`
   });
-  row3.createDiv({
+  row4.createDiv({
     cls: "los-micro",
     text: provenanceLine(graph, edge, focusId)
   });
-  row3.createSpan({ cls: "los-atlas-outline-action los-micro", text: "Inspect connection" });
-  row3.setAttrs({
+  row4.createSpan({ cls: "los-atlas-outline-action los-micro", text: "Inspect connection" });
+  row4.setAttrs({
     "aria-label": `${relationSentences(graph, edge).join(" ")}${state}. ${provenanceLine(graph, edge, focusId)}. Inspect connection.`
   });
-  row3.addEventListener("click", () => host.inspectEdge(edge.id));
+  row4.addEventListener("click", () => host.inspectEdge(edge.id));
 }
 function renderOutline(parent, host, graph, view) {
   const outline = parent.createDiv({ cls: "los-atlas-outline" });
@@ -3171,8 +5088,8 @@ function renderOutline(parent, host, graph, view) {
   const drawnSemanticIds = new Set(drawnSemantic.map((edge) => edge.id));
   const hiddenSemantic = authoredSemantic.filter((edge) => !drawnSemanticIds.has(edge.id));
   const semanticHeading = authoredSemantic.length ? `Semantic \xB7 ${plural(authoredSemantic.length, "authored", "authored")}, ${drawnSemantic.length} drawn by this lens` : "Semantic \xB7 0 authored";
-  const list2 = outline.createDiv({ cls: "los-atlas-outline-list" });
-  enableButtonGroupKeyboardNavigation(list2, "vertical");
+  const list4 = outline.createDiv({ cls: "los-atlas-outline-list" });
+  enableButtonGroupKeyboardNavigation(list4, "vertical");
   for (const [heading, edges, absence, hidden2] of [
     [
       `Visible prerequisite connections \xB7 ${plural(prerequisites.length, "authored", "authored")}`,
@@ -3188,18 +5105,18 @@ function renderOutline(parent, host, graph, view) {
     ]
   ]) {
     if (!edges.length && !hidden2.length && !absence) continue;
-    list2.createDiv({ cls: "los-micro los-atlas-outline-group", text: heading });
+    list4.createDiv({ cls: "los-micro los-atlas-outline-group", text: heading });
     if (!edges.length && !hidden2.length) {
-      list2.createDiv({ cls: "los-atlas-outline-absence los-micro", text: absence });
+      list4.createDiv({ cls: "los-atlas-outline-absence los-micro", text: absence });
       continue;
     }
     const total = edges.length + hidden2.length;
     edges.forEach((edge, index) => {
-      outlineRow(list2, host, graph, edge, view.focus.id, `${index + 1} of ${total}`);
+      outlineRow(list4, host, graph, edge, view.focus.id, `${index + 1} of ${total}`);
     });
     hidden2.forEach((edge, index) => {
       outlineRow(
-        list2,
+        list4,
         host,
         graph,
         edge,
@@ -3276,14 +5193,14 @@ function renderPath(parent, host, graph, focusId) {
     cls: "los-micro",
     text: `${plural(path.total, "concept")} in ${plural(path.layers.length, "step")}, ordered by the strict layer alone. Semantic relations are not in this order and never were.`
   });
-  const list2 = canvas.createDiv({ cls: "los-atlas-outline-list" });
-  enableButtonGroupKeyboardNavigation(list2, "vertical");
-  list2.createDiv({
+  const list4 = canvas.createDiv({ cls: "los-atlas-outline-list" });
+  enableButtonGroupKeyboardNavigation(list4, "vertical");
+  list4.createDiv({
     cls: "los-micro los-atlas-outline-group",
     text: `Every step as text \xB7 ${plural(path.edges.length, "authored relation")}`
   });
   path.edges.forEach((edge, index) => {
-    outlineRow(list2, host, graph, edge, edge.from, `${index + 1} of ${path.edges.length}`);
+    outlineRow(list4, host, graph, edge, edge.from, `${index + 1} of ${path.edges.length}`);
   });
 }
 function layerBadge(parent, edge) {
@@ -3303,15 +5220,15 @@ function conceptIds(value) {
 }
 function sourceNamesConcept(source, conceptId) {
   return Array.isArray(source.evaluations) && source.evaluations.some((evaluation) => {
-    const record7 = objectValue(evaluation);
-    return record7 ? conceptIds(record7.concepts).includes(conceptId) : false;
+    const record10 = objectValue(evaluation);
+    return record10 ? conceptIds(record10.concepts).includes(conceptId) : false;
   });
 }
 function byLabel(left, right) {
   return compareStrings(asLabel(left), asLabel(right));
 }
 function buildConceptContext(store, conceptId) {
-  const notes = store.related(conceptId).map((row3) => row3.rec).filter((record7) => record7?.type === "note").sort(byLabel);
+  const notes = store.related(conceptId).map((row4) => row4.rec).filter((record10) => record10?.type === "note").sort(byLabel);
   const sources = store.sources().filter((source) => sourceNamesConcept(source, conceptId)).sort(byLabel);
   return { notes, sources };
 }
@@ -3337,22 +5254,22 @@ function compare(left, right) {
 }
 function collectQuestions(store, graph) {
   const questions = [];
-  for (const record7 of store.of("note")) {
-    const block = asRecord(record7.atlas_question);
-    if (!block) continue;
-    const noteId = asString(record7.id);
-    const state = asString(block.state);
-    const target = readTarget(block.target);
+  for (const record10 of store.of("note")) {
+    const block2 = asRecord(record10.atlas_question);
+    if (!block2) continue;
+    const noteId = asString(record10.id);
+    const state = asString(block2.state);
+    const target = readTarget(block2.target);
     if (!noteId || !target) continue;
     if (state !== "open" && state !== "resolved") continue;
     questions.push({
       noteId,
-      title: asString(record7.title) ?? noteId,
-      body: asString(record7.summary) ?? "",
-      path: asString(record7.path) ?? "",
+      title: asString(record10.title) ?? noteId,
+      body: asString(record10.summary) ?? "",
+      path: asString(record10.path) ?? "",
       state,
       target,
-      answerNotes: asStrings(block.answer_notes),
+      answerNotes: asStrings(block2.answer_notes),
       targetPresent: present(graph, target)
     });
   }
@@ -3385,9 +5302,9 @@ var RELATION_TYPES = [
   ...SEMANTIC_RELATION_TYPES
 ];
 function rowOf(edge) {
-  const row3 = { from: edge.from, type: edge.type, to: edge.to };
+  const row4 = { from: edge.from, type: edge.type, to: edge.to };
   return {
-    ...row3,
+    ...row4,
     ...edge.context ? { context: edge.context } : {},
     ...edge.source ? { source: edge.source } : {}
   };
@@ -3448,19 +5365,19 @@ function draftRefusal(graph, draft) {
   if (!graph.conceptById.has(draft.to) || !graph.conceptById.has(draft.from)) {
     return "Both ends must be concepts that already exist.";
   }
-  const row3 = draftRow(draft);
-  const identity = `${row3.from}--${row3.type}--${row3.to}`;
+  const row4 = draftRow(draft);
+  const identity = `${row4.from}--${row4.type}--${row4.to}`;
   const replaced = draft.original ? `${draft.original.from}--${draft.original.type}--${draft.original.to}` : null;
   const existing = graph.relationByIdentity.get(identity);
   if (existing && identity !== replaced) {
     return "That connection is already authored.";
   }
-  if (relationLayer(row3.type) === "strict") {
-    const seen = /* @__PURE__ */ new Set([row3.from]);
-    const frontier = [row3.to];
+  if (relationLayer(row4.type) === "strict") {
+    const seen = /* @__PURE__ */ new Set([row4.from]);
+    const frontier = [row4.to];
     while (frontier.length) {
       const id2 = frontier.pop();
-      if (id2 === row3.from) return "That would make a loop of prerequisites.";
+      if (id2 === row4.from) return "That would make a loop of prerequisites.";
       if (seen.has(id2)) continue;
       seen.add(id2);
       for (const edge of graph.prerequisiteEdges.get(id2) ?? []) {
@@ -3469,20 +5386,20 @@ function draftRefusal(graph, draft) {
       }
     }
   }
-  if (row3.source && !graph.conceptById.has(row3.source) && !graph.resolvedSources.has(row3.source) && !/^(note|source)-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row3.source)) {
+  if (row4.source && !graph.conceptById.has(row4.source) && !graph.resolvedSources.has(row4.source) && !/^(note|source)-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row4.source)) {
     return "A source must be an existing note or source identifier.";
   }
   return null;
 }
 function renderEndpoint(parent, host, graph, draft, end) {
-  const field = parent.createDiv({ cls: "los-atlas-editor-endpoint" });
-  field.createDiv({
+  const field2 = parent.createDiv({ cls: "los-atlas-editor-endpoint" });
+  field2.createDiv({
     cls: "los-micro",
     text: end === "from" ? "Subject" : "Object"
   });
   const chosen = draft[end];
   const control = button(
-    field,
+    field2,
     chosen ? conceptLabel(graph, chosen) : "Choose a concept",
     () => {
       draft.picking = draft.picking === end ? null : end;
@@ -3494,7 +5411,7 @@ function renderEndpoint(parent, host, graph, draft, end) {
   control.addClass("los-atlas-editor-endpoint-button");
   control.setAttrs({ "aria-expanded": String(draft.picking === end) });
   if (draft.picking !== end) return;
-  const picker = field.createDiv({ cls: "los-atlas-editor-picker" });
+  const picker = field2.createDiv({ cls: "los-atlas-editor-picker" });
   const input = picker.createEl("input", {
     cls: "los-atlas-editor-search",
     attr: {
@@ -3507,7 +5424,7 @@ function renderEndpoint(parent, host, graph, draft, end) {
   const paint = () => {
     results.empty();
     const query = draft.search.trim();
-    const matches2 = (query ? host.plugin.store.search(query, ["concept"]).map((record7) => asString(record7.id)).filter((id2) => Boolean(id2)) : graph.concepts.map((concept) => concept.id)).filter((id2) => id2 !== draft[end === "from" ? "to" : "from"]).slice(0, 12);
+    const matches2 = (query ? host.plugin.store.search(query, ["concept"]).map((record10) => asString(record10.id)).filter((id2) => Boolean(id2)) : graph.concepts.map((concept) => concept.id)).filter((id2) => id2 !== draft[end === "from" ? "to" : "from"]).slice(0, 12);
     if (!matches2.length) {
       results.createDiv({
         cls: "los-atlas-absence los-micro",
@@ -3517,12 +5434,12 @@ function renderEndpoint(parent, host, graph, draft, end) {
     }
     enableButtonGroupKeyboardNavigation(results, "vertical");
     for (const id2 of matches2) {
-      const row3 = results.createEl("button", {
+      const row4 = results.createEl("button", {
         cls: "los-atlas-editor-result is-clickable",
         attr: { type: "button" },
         text: conceptLabel(graph, id2)
       });
-      row3.addEventListener("click", () => {
+      row4.addEventListener("click", () => {
         if (end === "from") draft.from = id2;
         else draft.to = id2;
         draft.picking = null;
@@ -3627,8 +5544,8 @@ function renderRelationEditor(parent, host, graph, draft) {
     actions,
     draft.mode === "add" ? "Save this connection" : "Save the change",
     () => {
-      const row3 = draftRow(draft);
-      void host.changeRelations([draft.mode === "add" ? { action: "add", new: row3 } : { action: "replace", old: draft.original, new: row3 }]);
+      const row4 = draftRow(draft);
+      void host.changeRelations([draft.mode === "add" ? { action: "add", new: row4 } : { action: "replace", old: draft.original, new: row4 }]);
     }
   );
   save.addClass("los-atlas-editor-save");
@@ -3660,15 +5577,15 @@ var TABS = [
   ["evidence", "Evidence"],
   ["sources", "Sources"]
 ];
-function aliasesOf(record7) {
-  return Array.isArray(record7?.aliases) ? record7.aliases.map((value) => asString(value)).filter((value) => Boolean(value)) : [];
+function aliasesOf(record10) {
+  return Array.isArray(record10?.aliases) ? record10.aliases.map((value) => asString(value)).filter((value) => Boolean(value)) : [];
 }
 function connectionRow(parent, host, graph, edge, conceptId) {
   const other = otherEnd(edge, conceptId);
-  const row3 = parent.createDiv({ cls: "los-atlas-connection" });
-  row3.setAttribute("data-relation-id", edge.id);
-  row3.toggleClass("is-selected", host.edgeId === edge.id);
-  const copy = row3.createDiv({ cls: "los-atlas-connection-copy" });
+  const row4 = parent.createDiv({ cls: "los-atlas-connection" });
+  row4.setAttribute("data-relation-id", edge.id);
+  row4.toggleClass("is-selected", host.edgeId === edge.id);
+  const copy = row4.createDiv({ cls: "los-atlas-connection-copy" });
   const headline2 = copy.createDiv({ cls: "los-atlas-connection-title" });
   headline2.createSpan({ text: edgeHeadline(graph, edge, conceptId) });
   layerBadge(headline2, edge);
@@ -3706,7 +5623,7 @@ function connectionRow(parent, host, graph, edge, conceptId) {
   if (edge.context) {
     copy.createDiv({ cls: "los-atlas-connection-context", text: edge.context });
   }
-  const action = row3.createDiv({ cls: "los-atlas-connection-action" });
+  const action = row4.createDiv({ cls: "los-atlas-connection-action" });
   button(action, "Focus", () => host.go({ concept: other }), "quiet");
 }
 function renderConnections(parent, host, graph, conceptId) {
@@ -3785,29 +5702,29 @@ function renderConnections(parent, host, graph, conceptId) {
     text: "These are your connections. Select one to change or remove it, or connect two concepts from the graph \u2014 no AI is involved either way."
   });
 }
-function renderEvidenceItem(parent, host, evidence2) {
-  const unit = host.plugin.store.get(evidence2.unit_id);
-  const unitLabel = unit ? asLabel(unit) : evidence2.unit_id;
+function renderEvidenceItem(parent, host, evidence3) {
+  const unit = host.plugin.store.get(evidence3.unit_id);
+  const unitLabel = unit ? asLabel(unit) : evidence3.unit_id;
   const item = parent.createEl("button", {
     cls: "los-item is-clickable",
     attr: { type: "button" }
   });
   item.addEventListener(
     "click",
-    evidence2.kind === "stage-concept" ? () => host.plugin.nav.openUnit(evidence2.unit_id, evidence2.stage_id) : () => host.plugin.nav.openUnit(evidence2.unit_id)
+    evidence3.kind === "stage-concept" ? () => host.plugin.nav.openUnit(evidence3.unit_id, evidence3.stage_id) : () => host.plugin.nav.openUnit(evidence3.unit_id)
   );
   const copy = item.createDiv({ cls: "los-item-copy" });
   copy.createDiv({ cls: "los-item-title", text: unitLabel });
-  if (evidence2.kind === "stage-concept") {
-    const stage = host.plugin.store.get(evidence2.stage_id) ?? host.plugin.store.stage(evidence2.stage_id);
+  if (evidence3.kind === "stage-concept") {
+    const stage = host.plugin.store.get(evidence3.stage_id) ?? host.plugin.store.stage(evidence3.stage_id);
     copy.createDiv({
       cls: "los-micro",
-      text: stage ? `Stage tag \xB7 ${asLabel(stage)}` : `Stage tag \xB7 ${evidence2.stage_id}`
+      text: stage ? `Stage tag \xB7 ${asLabel(stage)}` : `Stage tag \xB7 ${evidence3.stage_id}`
     });
   } else {
     copy.createDiv({
       cls: "los-micro",
-      text: `Reviewed knowledge-map node \xB7 ${evidence2.node_id}`
+      text: `Reviewed knowledge-map node \xB7 ${evidence3.node_id}`
     });
   }
 }
@@ -3839,8 +5756,8 @@ function renderEvidence(parent, host, graph, conceptId) {
     if (module2.actionable) {
       head.createSpan({ cls: "los-micro", text: "current" });
     }
-    for (const evidence2 of evidenceFor(graph, module2.id, conceptId)) {
-      renderEvidenceItem(group, host, evidence2);
+    for (const evidence3 of evidenceFor(graph, module2.id, conceptId)) {
+      renderEvidenceItem(group, host, evidence3);
     }
   }
 }
@@ -3863,27 +5780,27 @@ function renderSources(parent, host, graph, conceptId) {
   }
   for (const edge of edges) {
     const provenance = provenanceOf(graph, edge);
-    const row3 = parent.createDiv({ cls: "los-atlas-provenance-row" });
-    row3.addClass(`los-atlas-provenance--${provenance.state}`);
-    row3.createDiv({
+    const row4 = parent.createDiv({ cls: "los-atlas-provenance-row" });
+    row4.addClass(`los-atlas-provenance--${provenance.state}`);
+    row4.createDiv({
       cls: "los-atlas-connection-title",
       text: edgeHeadline(graph, edge, conceptId)
     });
-    row3.createDiv({ cls: "los-micro", text: provenanceSentence(provenance) });
+    row4.createDiv({ cls: "los-micro", text: provenanceSentence(provenance) });
     if (provenance.state === "resolved") {
       button(
-        row3,
+        row4,
         "Open source",
         () => host.plugin.nav.openRecord(provenance.record),
         "quiet"
       );
     } else if (provenance.state === "undocumented") {
-      row3.createDiv({
+      row4.createDiv({
         cls: "los-micro",
         text: "The schema permits a relation with no source. It is undocumented, not invalid."
       });
     } else {
-      row3.createDiv({
+      row4.createDiv({
         cls: "los-micro los-atlas-unresolved",
         text: "The identifier is reported exactly as authored. Nothing is substituted for it."
       });
@@ -3937,11 +5854,11 @@ function renderQuestionNote(parent, host, questions, absence) {
     band.createDiv({ cls: "los-atlas-absence los-micro", text: absence });
     return;
   }
-  const list2 = band.createDiv({ cls: "los-atlas-question-list" });
+  const list4 = band.createDiv({ cls: "los-atlas-question-list" });
   for (const question of questions) {
-    const row3 = list2.createDiv({ cls: "los-atlas-question-row" });
-    row3.toggleClass("is-resolved", question.state === "resolved");
-    const open2 = row3.createEl("button", {
+    const row4 = list4.createDiv({ cls: "los-atlas-question-row" });
+    row4.toggleClass("is-resolved", question.state === "resolved");
+    const open2 = row4.createEl("button", {
       cls: "los-atlas-question-open is-clickable",
       attr: { type: "button" }
     });
@@ -3954,7 +5871,7 @@ function renderQuestionNote(parent, host, questions, absence) {
       "aria-label": `${question.title}. ${question.state}. Open the note.`
     });
     open2.addEventListener("click", () => host.plugin.openVaultPath(question.path));
-    const actions = row3.createDiv({ cls: "los-actions" });
+    const actions = row4.createDiv({ cls: "los-actions" });
     const resolving = question.state === "open";
     const control = button(
       actions,
@@ -4009,7 +5926,7 @@ function renderSummary(parent, host, graph, view) {
     text: "Evidence records what exists, not what was understood."
   });
 }
-function renderInspector(parent, host, graph, view) {
+function renderInspector2(parent, host, graph, view) {
   const panel = parent.createEl("aside", { cls: "los-atlas-inspector" });
   const headingId = "los-atlas-inspector-heading";
   panel.setAttrs({ role: "complementary", "aria-labelledby": headingId });
@@ -4069,16 +5986,16 @@ function renderInspector(parent, host, graph, view) {
 
 // src/features/atlas/lenses.ts
 function conceptRow(parent, host, graph, conceptId, detail) {
-  const row3 = parent.createEl("button", {
+  const row4 = parent.createEl("button", {
     cls: "los-atlas-record is-clickable",
     attr: { type: "button" }
   });
-  row3.createDiv({
+  row4.createDiv({
     cls: "los-atlas-record-title",
     text: conceptLabel(graph, conceptId)
   });
-  row3.createDiv({ cls: "los-micro", text: detail });
-  row3.addEventListener("click", () => host.go({
+  row4.createDiv({ cls: "los-micro", text: detail });
+  row4.addEventListener("click", () => host.go({
     concept: conceptId,
     lens: "prerequisites"
   }));
@@ -4086,7 +6003,7 @@ function conceptRow(parent, host, graph, conceptId, detail) {
 function renderBridges(parent, host, graph) {
   const all = bridges(graph);
   const moduleFilter = host.state.module;
-  const rows = moduleFilter ? all.filter((bridge) => bridge.modules.some((module2) => module2.id === moduleFilter)) : all;
+  const rows = moduleFilter ? all.filter((bridge2) => bridge2.modules.some((module2) => module2.id === moduleFilter)) : all;
   const panel = parent.createDiv({ cls: "los-atlas-lens-panel" });
   const summary = summarize(graph);
   panel.createDiv({
@@ -4105,11 +6022,11 @@ function renderBridges(parent, host, graph) {
     );
     return;
   }
-  const list2 = panel.createDiv({ cls: "los-atlas-records" });
-  enableButtonGroupKeyboardNavigation(list2, "vertical");
-  for (const bridge of rows) {
-    const detail = bridge.modules.map((module2) => `${module2.label} (${plural(evidenceFor(graph, module2.id, bridge.concept.id).length, "tag")})`).join(" \xB7 ");
-    conceptRow(list2, host, graph, bridge.concept.id, detail);
+  const list4 = panel.createDiv({ cls: "los-atlas-records" });
+  enableButtonGroupKeyboardNavigation(list4, "vertical");
+  for (const bridge2 of rows) {
+    const detail = bridge2.modules.map((module2) => `${module2.label} (${plural(evidenceFor(graph, module2.id, bridge2.concept.id).length, "tag")})`).join(" \xB7 ");
+    conceptRow(list4, host, graph, bridge2.concept.id, detail);
   }
 }
 function renderDiagnosticEntry(parent, host, graph, entry) {
@@ -4127,43 +6044,43 @@ function renderDiagnosticEntry(parent, host, graph, entry) {
     body.createDiv({ cls: "los-micro", text: "Nothing in this state right now." });
     return;
   }
-  const list2 = body.createDiv({ cls: "los-atlas-records" });
-  enableButtonGroupKeyboardNavigation(list2, "vertical");
+  const list4 = body.createDiv({ cls: "los-atlas-records" });
+  enableButtonGroupKeyboardNavigation(list4, "vertical");
   for (const conceptId of entry.conceptIds) {
-    conceptRow(list2, host, graph, conceptId, moduleTrail(graph, conceptId));
+    conceptRow(list4, host, graph, conceptId, moduleTrail(graph, conceptId));
   }
   for (const edgeId of entry.edgeIds) {
     const edge = graph.relationByIdentity.get(edgeId);
     if (!edge) continue;
-    const row3 = list2.createEl("button", {
+    const row4 = list4.createEl("button", {
       cls: "los-atlas-record is-clickable",
       attr: { type: "button" }
     });
-    row3.createDiv({
+    row4.createDiv({
       cls: "los-atlas-record-title",
       text: `${conceptLabel(graph, edge.from)} \u2014 ${edgeHeadline(graph, edge, edge.from)}`
     });
-    row3.createDiv({
+    row4.createDiv({
       cls: "los-micro",
       text: provenanceSentence(provenanceOf(graph, edge))
     });
-    row3.addEventListener("click", () => host.go({
+    row4.addEventListener("click", () => host.go({
       concept: edge.from,
       lens: "prerequisites"
     }));
   }
   for (const moduleId of entry.moduleIds) {
-    const module2 = graph.modules.find((row4) => row4.id === moduleId);
-    const row3 = list2.createEl("button", {
+    const module2 = graph.modules.find((row5) => row5.id === moduleId);
+    const row4 = list4.createEl("button", {
       cls: "los-atlas-record is-clickable",
       attr: { type: "button" }
     });
-    row3.createDiv({
+    row4.createDiv({
       cls: "los-atlas-record-title",
       text: module2?.label ?? moduleId
     });
-    row3.createDiv({ cls: "los-micro", text: "No concept evidence published" });
-    row3.addEventListener("click", () => host.plugin.nav.openModule(moduleId));
+    row4.createDiv({ cls: "los-micro", text: "No concept evidence published" });
+    row4.addEventListener("click", () => host.plugin.nav.openModule(moduleId));
   }
 }
 function renderDiagnostics(parent, host, graph) {
@@ -4178,9 +6095,9 @@ function renderDiagnostics(parent, host, graph) {
     text: "Each row below opens the records it counts. No authored evidence is not the same as not relevant, and nothing here is a judgment about a concept."
   });
   const entries = diagnostics(graph);
-  const list2 = panel.createDiv({ cls: "los-atlas-diagnostics" });
+  const list4 = panel.createDiv({ cls: "los-atlas-diagnostics" });
   for (const entry of entries) {
-    renderDiagnosticEntry(list2, host, graph, entry);
+    renderDiagnosticEntry(list4, host, graph, entry);
   }
   const actions = panel.createDiv({ cls: "los-actions" });
   button(
@@ -4220,13 +6137,13 @@ function restoreCaret(input, caret) {
   }
 }
 function renderSearch(parent, host, update) {
-  const field = parent.createDiv({ cls: "los-atlas-search" });
-  const label = field.createEl("label", {
+  const field2 = parent.createDiv({ cls: "los-atlas-search" });
+  const label = field2.createEl("label", {
     cls: "los-micro",
     text: "Search concepts"
   });
   label.setAttribute("for", "los-atlas-search-input");
-  const input = field.createEl("input", {
+  const input = field2.createEl("input", {
     cls: "los-atlas-search-input",
     attr: {
       type: "search",
@@ -4246,12 +6163,12 @@ function renderModuleFilter(parent, host, graph) {
   if (!publishing.length) return;
   const wrap = parent.createDiv({ cls: "los-atlas-modules" });
   wrap.createDiv({ cls: "los-micro", text: "Modules" });
-  const row3 = wrap.createDiv({ cls: "los-atlas-module-chips" });
-  row3.setAttrs({ role: "group", "aria-label": "Filter by module" });
-  enableButtonGroupKeyboardNavigation(row3, "horizontal");
+  const row4 = wrap.createDiv({ cls: "los-atlas-module-chips" });
+  row4.setAttrs({ role: "group", "aria-label": "Filter by module" });
+  enableButtonGroupKeyboardNavigation(row4, "horizontal");
   for (const module2 of publishing) {
     const active = host.state.module === module2.id;
-    const chip2 = row3.createEl("button", {
+    const chip2 = row4.createEl("button", {
       cls: "los-atlas-module-chip is-clickable",
       attr: { type: "button" },
       text: `${module2.shortLabel} ${module2.conceptCount}`
@@ -4308,14 +6225,14 @@ function renderLensBar(parent, host, graph) {
   const group = corpus.createDiv({ cls: "los-atlas-corpus-lenses" });
   group.setAttrs({ role: "group", "aria-label": "Corpus lenses" });
   enableButtonGroupKeyboardNavigation(group, "horizontal");
-  for (const [lens, label, count] of [
+  for (const [lens, label, count2] of [
     ["bridges", "Cross-module bridges", bridges(graph).length],
     ["diagnostics", "Diagnostics", diagnostics(graph).filter((entry) => entry.count > 0).length]
   ]) {
     const active = host.state.lens === lens;
     const control = button(
       group,
-      `${label} ${count}`,
+      `${label} ${count2}`,
       () => host.go({ lens: active ? "prerequisites" : lens }),
       "quiet"
     );
@@ -4345,8 +6262,8 @@ function renderEntry(parent, host, graph, searchOnly = false) {
   });
   const query = host.query.trim();
   if (query && searchOnly) {
-    const results = host.plugin.store.search(query, ["concept"]).filter((record7) => {
-      const id2 = asString(record7.id);
+    const results = host.plugin.store.search(query, ["concept"]).filter((record10) => {
+      const id2 = asString(record10.id);
       if (!id2) return false;
       if (!host.state.module) return true;
       return (graph.modulesByConcept.get(id2) ?? []).includes(host.state.module);
@@ -4362,12 +6279,12 @@ function renderEntry(parent, host, graph, searchOnly = false) {
         text: `Nothing matches \u201C${query}\u201D. Search returns concepts only \u2014 modules and notes become filters and evidence after a concept is chosen, never competing results.`
       });
     } else {
-      const list2 = group.createDiv({ cls: "los-atlas-records" });
-      enableButtonGroupKeyboardNavigation(list2, "vertical");
-      for (const record7 of results.slice(0, 20)) {
-        const id2 = asString(record7.id);
+      const list4 = group.createDiv({ cls: "los-atlas-records" });
+      enableButtonGroupKeyboardNavigation(list4, "vertical");
+      for (const record10 of results.slice(0, 20)) {
+        const id2 = asString(record10.id);
         if (!id2) continue;
-        renderConceptSeed(list2, host, graph, id2);
+        renderConceptSeed(list4, host, graph, id2);
       }
     }
   }
@@ -4384,9 +6301,9 @@ function renderEntry(parent, host, graph, searchOnly = false) {
       text: "Nothing visited yet in this vault. Search above, or start from one of the corpus lenses."
     });
   } else {
-    const list2 = recentGroup.createDiv({ cls: "los-atlas-records" });
-    enableButtonGroupKeyboardNavigation(list2, "vertical");
-    for (const id2 of recents) renderConceptSeed(list2, host, graph, id2);
+    const list4 = recentGroup.createDiv({ cls: "los-atlas-records" });
+    enableButtonGroupKeyboardNavigation(list4, "vertical");
+    for (const id2 of recents) renderConceptSeed(list4, host, graph, id2);
   }
   renderOpenQuestions(entry, host, graph);
   renderConnectAction(entry, host, null);
@@ -4409,13 +6326,13 @@ function renderEntry(parent, host, graph, searchOnly = false) {
       "What the relation registry has not yet been told, with every count opening its records."
     ]
   ]) {
-    const row3 = seeds.createEl("button", {
+    const row4 = seeds.createEl("button", {
       cls: "los-atlas-record is-clickable",
       attr: { type: "button" }
     });
-    row3.createDiv({ cls: "los-atlas-record-title", text: title });
-    row3.createDiv({ cls: "los-micro", text: detail });
-    row3.addEventListener("click", () => host.go({ lens }));
+    row4.createDiv({ cls: "los-atlas-record-title", text: title });
+    row4.createDiv({ cls: "los-micro", text: detail });
+    row4.addEventListener("click", () => host.go({ lens }));
   }
 }
 function renderOpenQuestions(parent, host, graph) {
@@ -4426,9 +6343,9 @@ function renderOpenQuestions(parent, host, graph) {
     cls: "los-micro los-atlas-group-head",
     text: `My open questions \xB7 ${plural(open.length, "question")}`
   });
-  const list2 = group.createDiv({ cls: "los-atlas-records" });
-  enableButtonGroupKeyboardNavigation(list2, "vertical");
-  for (const question of open) renderQuestionRow(list2, host, graph, question);
+  const list4 = group.createDiv({ cls: "los-atlas-records" });
+  enableButtonGroupKeyboardNavigation(list4, "vertical");
+  for (const question of open) renderQuestionRow(list4, host, graph, question);
   group.createDiv({
     cls: "los-micro",
     text: "Recording a question says you have one. It does not add a connection, remove one, or claim anything about what you understand."
@@ -4436,20 +6353,20 @@ function renderOpenQuestions(parent, host, graph) {
 }
 function renderQuestionRow(parent, host, graph, question) {
   const destination = question.targetPresent ? questionDestination(question.target) : null;
-  const row3 = destination ? parent.createEl("button", {
+  const row4 = destination ? parent.createEl("button", {
     cls: "los-atlas-record los-atlas-question-row is-clickable",
     attr: { type: "button" }
   }) : parent.createDiv({ cls: "los-atlas-record los-atlas-question-row is-orphaned" });
-  row3.createDiv({ cls: "los-atlas-record-title", text: question.title });
-  row3.createDiv({
+  row4.createDiv({ cls: "los-atlas-record-title", text: question.title });
+  row4.createDiv({
     cls: "los-micro",
     text: question.targetPresent ? `${question.target.kind === "relation" ? "On the connection" : "On"} ${targetSentence(graph, question.target)}` : `Recorded on ${targetSentence(graph, question.target)} \u2014 no longer authored`
   });
   if (destination) {
-    row3.setAttrs({
+    row4.setAttrs({
       "aria-label": `${question.title}. ${targetSentence(graph, question.target)}.`
     });
-    row3.addEventListener("click", () => host.go({ concept: destination }));
+    row4.addEventListener("click", () => host.go({ concept: destination }));
   }
 }
 function renderConnectAction(parent, host, focusId) {
@@ -4470,16 +6387,16 @@ function renderConceptSeed(parent, host, graph, conceptId) {
   const concept = conceptOf(graph, conceptId);
   const prerequisites = graph.prerequisiteEdges.get(conceptId)?.length ?? 0;
   const dependents = graph.dependentEdges.get(conceptId)?.length ?? 0;
-  const row3 = parent.createEl("button", {
+  const row4 = parent.createEl("button", {
     cls: "los-atlas-record is-clickable",
     attr: { type: "button" }
   });
-  row3.createDiv({ cls: "los-atlas-record-title", text: concept.label });
-  row3.createDiv({
+  row4.createDiv({ cls: "los-atlas-record-title", text: concept.label });
+  row4.createDiv({
     cls: "los-micro",
     text: `${moduleTrail(graph, conceptId)} \xB7 ${plural(prerequisites, "prerequisite")} \xB7 ${plural(dependents, "dependent")}`
   });
-  row3.addEventListener("click", () => host.go({ concept: conceptId }));
+  row4.addEventListener("click", () => host.go({ concept: conceptId }));
 }
 function renderAtlas(root, host) {
   const caret = capturedCaret();
@@ -4497,11 +6414,17 @@ function renderAtlas(root, host) {
     return;
   }
   const graph = buildAtlasGraph(host.plugin.store);
-  pageHeader(
+  const header2 = pageHeader(
     root,
     "Reach",
     "Concept atlas",
     "One concept at a time: what it requires, what builds on it, and the authored relation that says so."
+  );
+  button(
+    header2.createDiv({ cls: "los-actions los-atlas-ability-link" }),
+    "Ability map",
+    () => host.plugin.nav.openAbilities(),
+    "quiet"
   );
   const controls = root.createDiv({ cls: "los-atlas-controls" });
   let results;
@@ -4560,12 +6483,12 @@ function renderAtlas(root, host) {
     renderFocusedGraph(main, host, graph, view);
   }
   if (host.state.lens !== "path") renderOutline(main, host, graph, view);
-  renderInspector(body, host, graph, view);
+  renderInspector2(body, host, graph, view);
 }
 
 // src/views/atlas-view.ts
 var RELATION_REGISTRY = "registry-concept-relations";
-var AtlasView = class extends import_obsidian3.ItemView {
+var AtlasView = class extends import_obsidian5.ItemView {
   plugin;
   concept = null;
   module = null;
@@ -4696,8 +6619,8 @@ var AtlasView = class extends import_obsidian3.ItemView {
         operations,
         this.plugin.store.artifactGuard(RELATION_REGISTRY)
       ),
-      (message) => {
-        if (this.editor) this.editor.error = message;
+      (message2) => {
+        if (this.editor) this.editor.error = message2;
       }
     );
     if (!applied) return;
@@ -4714,11 +6637,11 @@ var AtlasView = class extends import_obsidian3.ItemView {
    */
   async write(action, onRefusal) {
     if (this.mutationPending) {
-      new import_obsidian3.Notice("A LearningOS write is already running.");
+      new import_obsidian5.Notice("A LearningOS write is already running.");
       return false;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian3.Notice("Queued behind the running LearningOS write.");
+      new import_obsidian5.Notice("Queued behind the running LearningOS write.");
     }
     this.mutationPending = true;
     try {
@@ -4726,9 +6649,9 @@ var AtlasView = class extends import_obsidian3.ItemView {
       this.render();
       return true;
     } catch (error) {
-      const message = errorMessage(error);
-      onRefusal?.(message);
-      new import_obsidian3.Notice(message);
+      const message2 = errorMessage(error);
+      onRefusal?.(message2);
+      new import_obsidian5.Notice(message2);
       this.render();
       return false;
     } finally {
@@ -4742,7 +6665,7 @@ var AtlasView = class extends import_obsidian3.ItemView {
 };
 
 // src/views/boundary-view.ts
-var import_obsidian4 = require("obsidian");
+var import_obsidian6 = require("obsidian");
 
 // src/contracts/masters-planning.ts
 var row2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
@@ -4761,8 +6684,8 @@ function exact2(value, required, optional2 = []) {
   const allowed = /* @__PURE__ */ new Set([...required, ...optional2]);
   return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => allowed.has(key));
 }
-function stringList(value, pattern = text2, unique = false) {
-  return Array.isArray(value) && value.every(pattern) && (!unique || new Set(value).size === value.length);
+function stringList(value, pattern = text2, unique2 = false) {
+  return Array.isArray(value) && value.every(pattern) && (!unique2 || new Set(value).size === value.length);
 }
 var planningStates = [
   "longlist",
@@ -4864,24 +6787,24 @@ function catalog(value) {
   }
   const sources = [];
   for (const valueCandidate of source.candidate_sources) {
-    const candidate = row2(valueCandidate);
-    const facts = factState(candidate?.fact_state);
-    if (!candidate || !exact2(candidate, [
+    const candidate2 = row2(valueCandidate);
+    const facts = factState(candidate2?.fact_state);
+    if (!candidate2 || !exact2(candidate2, [
       "id",
       "title",
       "planning_state",
       "privacy_class",
       "provenance",
       "fact_state"
-    ], ["canonical_source_id"]) || !id(candidate.id, "candidate-source-") || !text2(candidate.title) || !planningStates.includes(candidate.planning_state) || candidate.privacy_class !== "academic-only" || !stringList(candidate.provenance) || candidate.provenance.length === 0 || !facts || "canonical_source_id" in candidate && !id(candidate.canonical_source_id, "source-")) return null;
+    ], ["canonical_source_id"]) || !id(candidate2.id, "candidate-source-") || !text2(candidate2.title) || !planningStates.includes(candidate2.planning_state) || candidate2.privacy_class !== "academic-only" || !stringList(candidate2.provenance) || candidate2.provenance.length === 0 || !facts || "canonical_source_id" in candidate2 && !id(candidate2.canonical_source_id, "source-")) return null;
     sources.push({
-      id: candidate.id,
-      title: candidate.title,
-      planning_state: candidate.planning_state,
+      id: candidate2.id,
+      title: candidate2.title,
+      planning_state: candidate2.planning_state,
       privacy_class: "academic-only",
-      provenance: candidate.provenance,
+      provenance: candidate2.provenance,
       fact_state: facts,
-      ..."canonical_source_id" in candidate ? { canonical_source_id: candidate.canonical_source_id } : {}
+      ..."canonical_source_id" in candidate2 ? { canonical_source_id: candidate2.canonical_source_id } : {}
     });
   }
   return {
@@ -5063,7 +6986,7 @@ function asMastersPlanningDashboard(value, knownConceptIds = /* @__PURE__ */ new
 }
 
 // src/views/boundary-view.ts
-var BoundaryView = class extends import_obsidian4.ItemView {
+var BoundaryView = class extends import_obsidian6.ItemView {
   plugin;
   boundaryId = null;
   mastersDashboard = null;
@@ -5192,8 +7115,8 @@ var BoundaryView = class extends import_obsidian4.ItemView {
       modules.createDiv({ cls: "los-micro", text: "No candidate modules in this revision." });
     }
     for (const module2 of catalog2.candidate_modules) {
-      const row3 = modules.createDiv({ cls: "los-masters-row" });
-      const heading = row3.createDiv({ cls: "los-masters-row-head" });
+      const row4 = modules.createDiv({ cls: "los-masters-row" });
+      const heading = row4.createDiv({ cls: "los-masters-row-head" });
       heading.createEl("strong", { text: module2.title });
       badge(heading, module2.planning_state, "role");
       badge(
@@ -5202,10 +7125,10 @@ var BoundaryView = class extends import_obsidian4.ItemView {
         module2.fact_state.status === "verified-current" ? "status" : "role"
       );
       if (module2.fact_state.as_of) {
-        row3.createDiv({ cls: "los-micro", text: `Facts checked as of ${module2.fact_state.as_of}` });
+        row4.createDiv({ cls: "los-micro", text: `Facts checked as of ${module2.fact_state.as_of}` });
       }
       if (module2.unresolved_references.length) {
-        row3.createDiv({
+        row4.createDiv({
           cls: "los-micro",
           text: `${module2.unresolved_references.length} unresolved reference${module2.unresolved_references.length === 1 ? "" : "s"}`
         });
@@ -5216,8 +7139,8 @@ var BoundaryView = class extends import_obsidian4.ItemView {
       sources.createDiv({ cls: "los-micro", text: "No candidate sources in this revision." });
     }
     for (const source of catalog2.candidate_sources) {
-      const row3 = sources.createDiv({ cls: "los-masters-row" });
-      const heading = row3.createDiv({ cls: "los-masters-row-head" });
+      const row4 = sources.createDiv({ cls: "los-masters-row" });
+      const heading = row4.createDiv({ cls: "los-masters-row-head" });
       heading.createEl("strong", { text: source.title });
       badge(heading, source.planning_state, "role");
       badge(
@@ -5231,8 +7154,8 @@ var BoundaryView = class extends import_obsidian4.ItemView {
       const reviewed = section(root, "Approved source assessments");
       const sourceTitle = new Map(catalog2.candidate_sources.map((source) => [source.id, source.title]));
       for (const assessment2 of assessments) {
-        const row3 = reviewed.createDiv({ cls: "los-masters-row" });
-        const heading = row3.createDiv({ cls: "los-masters-row-head" });
+        const row4 = reviewed.createDiv({ cls: "los-masters-row" });
+        const heading = row4.createDiv({ cls: "los-masters-row-head" });
         heading.createEl("strong", {
           text: sourceTitle.get(assessment2.candidate_source_id) || assessment2.candidate_source_id
         });
@@ -5243,9 +7166,9 @@ var BoundaryView = class extends import_obsidian4.ItemView {
           assessment2.review_status === "deep-reviewed" ? "status" : "role"
         );
         const summary2 = assessment2.contribution || assessment2.reason;
-        if (summary2) row3.createEl("p", { text: summary2 });
+        if (summary2) row4.createEl("p", { text: summary2 });
         if (assessment2.concept_ids.length) {
-          row3.createDiv({
+          row4.createDiv({
             cls: "los-micro",
             text: `Concepts: ${assessment2.concept_ids.join(", ")}`
           });
@@ -5257,28 +7180,28 @@ var BoundaryView = class extends import_obsidian4.ItemView {
       const comparisons = section(root, "Approved source comparisons");
       const sourceTitle = new Map(catalog2.candidate_sources.map((source) => [source.id, source.title]));
       for (const pair of pairs) {
-        const row3 = comparisons.createDiv({ cls: "los-masters-row" });
-        const heading = row3.createDiv({ cls: "los-masters-row-head" });
+        const row4 = comparisons.createDiv({ cls: "los-masters-row" });
+        const heading = row4.createDiv({ cls: "los-masters-row-head" });
         heading.createEl("strong", {
           text: `${sourceTitle.get(pair.left_candidate_source_id) || pair.left_candidate_source_id} \u2194 ${sourceTitle.get(pair.right_candidate_source_id) || pair.right_candidate_source_id}`
         });
         badge(heading, pair.relation.replaceAll("-", " "), "role");
-        row3.createEl("p", { text: pair.narrative });
-        row3.createDiv({
+        row4.createEl("p", { text: pair.narrative });
+        row4.createDiv({
           cls: "los-micro",
           text: `Concepts: ${pair.concept_ids.join(", ")}`
         });
-        const evidence2 = row3.createDiv({ cls: "los-masters-evidence" });
+        const evidence3 = row4.createDiv({ cls: "los-masters-evidence" });
         const leftTitle = sourceTitle.get(pair.left_candidate_source_id) || pair.left_candidate_source_id;
         const rightTitle = sourceTitle.get(pair.right_candidate_source_id) || pair.right_candidate_source_id;
         for (const [side, title] of [
           [pair.evidence.left, leftTitle],
           [pair.evidence.right, rightTitle]
         ]) {
-          const list2 = evidence2.createDiv({ cls: "los-masters-evidence-side" });
-          list2.createEl("strong", { text: `${title} evidence` });
+          const list4 = evidence3.createDiv({ cls: "los-masters-evidence-side" });
+          list4.createEl("strong", { text: `${title} evidence` });
           for (const item of side) {
-            list2.createDiv({
+            list4.createDiv({
               cls: "los-micro",
               text: item.note ? `${item.locator} \u2014 ${item.note}` : item.locator
             });
@@ -5290,18 +7213,18 @@ var BoundaryView = class extends import_obsidian4.ItemView {
 };
 
 // src/views/garden-view.ts
-var import_obsidian6 = require("obsidian");
+var import_obsidian8 = require("obsidian");
 
 // src/features/ai-actions/action-button.ts
-var import_obsidian5 = require("obsidian");
+var import_obsidian7 = require("obsidian");
 function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const wrap = parent.createDiv({ cls: "los-ai-action-row" });
   const providers = plugin.aiActions.providers();
   const available = providers.filter(
-    (row3) => Boolean(row3.available)
+    (row4) => Boolean(row4.available)
   );
   let provider = available.some(
-    (row3) => row3.id === plugin.settings.preferredAiProvider
+    (row4) => row4.id === plugin.settings.preferredAiProvider
   ) ? plugin.settings.preferredAiProvider : available[0]?.id || "manual-bundle";
   if (provider !== plugin.settings.preferredAiProvider) {
     plugin.settings.preferredAiProvider = provider;
@@ -5310,7 +7233,7 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const targetId = target.id;
   const launch = button(wrap, "Refine with AI", async () => {
     if (!targetId) {
-      new import_obsidian5.Notice("This Garden item has no projected identity. Refresh LearningOS and try again.");
+      new import_obsidian7.Notice("This Garden item has no projected identity. Refresh LearningOS and try again.");
       return;
     }
     launch.setAttr("disabled", "disabled");
@@ -5321,10 +7244,10 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
         provider
       );
       const bundlePath = result.bundle_path || result.request?.bundle_path;
-      new import_obsidian5.Notice(bundlePath ? `AI request prepared: ${bundlePath}` : "AI request prepared.");
+      new import_obsidian7.Notice(bundlePath ? `AI request prepared: ${bundlePath}` : "AI request prepared.");
       onChanged?.(result);
     } catch (error) {
-      new import_obsidian5.Notice(errorMessage(error));
+      new import_obsidian7.Notice(errorMessage(error));
       launch.removeAttribute?.("disabled");
       launch.setText("Refine with AI");
     }
@@ -5341,7 +7264,7 @@ var GARDEN_FILTERS = [
   ["review-due", "Review due"],
   ["harvest-candidate", "Candidates"]
 ];
-var GardenView = class extends import_obsidian6.ItemView {
+var GardenView = class extends import_obsidian8.ItemView {
   plugin;
   planting = false;
   filter = "all";
@@ -5437,11 +7360,11 @@ var GardenView = class extends import_obsidian6.ItemView {
         entries.length ? "Choose another Garden filter." : "Plant one above. A seed needs no module, topic, destination, or AI."
       );
     } else {
-      const list2 = root.createDiv({
+      const list4 = root.createDiv({
         cls: "los-garden-list"
       });
       for (const target of visible) {
-        this.card(list2, target);
+        this.card(list4, target);
       }
     }
     const tools = disclosure(
@@ -5537,10 +7460,10 @@ var GardenView = class extends import_obsidian6.ItemView {
     if (this.planting) {
       return;
     }
-    const text5 = this.seedText;
+    const text8 = this.seedText;
     const title = this.seedTitle.trim();
-    if (!text5.trim()) {
-      new import_obsidian6.Notice(
+    if (!text8.trim()) {
+      new import_obsidian8.Notice(
         "Write something before adding the seed."
       );
       return;
@@ -5550,14 +7473,14 @@ var GardenView = class extends import_obsidian6.ItemView {
     try {
       await this.plugin.mutate(
         () => this.plugin.gateway.createGardenSeed(
-          text5,
+          text8,
           title
         )
       );
-      this.plugin.clearGardenDraft({ title, text: text5 });
-      new import_obsidian6.Notice("Garden seed added.");
+      this.plugin.clearGardenDraft({ title, text: text8 });
+      new import_obsidian8.Notice("Garden seed added.");
     } catch (error) {
-      new import_obsidian6.Notice(errorMessage(error));
+      new import_obsidian8.Notice(errorMessage(error));
     } finally {
       this.planting = false;
       this.render();
@@ -5639,12 +7562,12 @@ var GardenView = class extends import_obsidian6.ItemView {
               await this.plugin.aiActions.applyApprovedDelivery(
                 deliveryId
               );
-              new import_obsidian6.Notice(
+              new import_obsidian8.Notice(
                 "Approved AI delivery applied and projection refreshed."
               );
               this.render();
             } catch (error) {
-              new import_obsidian6.Notice(
+              new import_obsidian8.Notice(
                 errorMessage(error)
               );
             }
@@ -5697,8 +7620,8 @@ function readResumePointer(value) {
   };
 }
 function firstProjectedModuleId(value) {
-  for (const candidate of asRecords(value)) {
-    const moduleId = asString(candidate.module_id);
+  for (const candidate2 of asRecords(value)) {
+    const moduleId = asString(candidate2.module_id);
     if (moduleId) {
       return moduleId;
     }
@@ -5713,37 +7636,37 @@ function renderElsewhere(view, root) {
     "Continue elsewhere",
     "Other active modules and projects, kept secondary to the current session."
   );
-  const pointer = readResumePointer(
+  const pointer2 = readResumePointer(
     view.plugin.store.data?.resume_pointer
   );
   const rows = [];
-  for (const record7 of view.plugin.store.currentSemesterModules()) {
-    const recordId = asString(record7.id);
-    if (!recordId || recordId === pointer.module_id) {
+  for (const record10 of view.plugin.store.currentSemesterModules()) {
+    const recordId = asString(record10.id);
+    if (!recordId || recordId === pointer2.module_id) {
       continue;
     }
-    if (record7.is_actionable !== true) {
+    if (record10.is_actionable !== true) {
       continue;
     }
     rows.push({
-      record: record7,
-      type: asString(record7.kind) === "skill" ? "Skill" : "Module",
+      record: record10,
+      type: asString(record10.kind) === "skill" ? "Skill" : "Module",
       open: () => view.plugin.nav.openModule(
         recordId
       )
     });
   }
-  for (const record7 of view.plugin.store.projects()) {
-    const recordId = asString(record7.id);
+  for (const record10 of view.plugin.store.projects()) {
+    const recordId = asString(record10.id);
     if (!recordId) {
       continue;
     }
-    const status = asString(record7.status);
+    const status = asString(record10.status);
     if (status && ["completed", "archived"].includes(status)) {
       continue;
     }
     rows.push({
-      record: record7,
+      record: record10,
       type: "Project",
       open: () => view.plugin.nav.openProject(
         recordId
@@ -5759,31 +7682,31 @@ function renderElsewhere(view, root) {
     );
     return;
   }
-  const list2 = sectionEl.createDiv({
+  const list4 = sectionEl.createDiv({
     cls: "los-home-list"
   });
-  for (const row3 of visibleRows) {
-    const nextAction = row3.type === "Project" ? "" : view.moduleNextAction(
-      row3.record
+  for (const row4 of visibleRows) {
+    const nextAction = row4.type === "Project" ? "" : view.moduleNextAction(
+      row4.record
     );
     view.renderHomeRow(
-      list2,
+      list4,
       {
         title: asLabel(
-          row3.record
+          row4.record
         ),
-        detail: `${row3.type}${nextAction ? ` \xB7 ${nextAction}` : ""}`,
+        detail: `${row4.type}${nextAction ? ` \xB7 ${nextAction}` : ""}`,
         actionLabel: "Open",
-        action: row3.open
+        action: row4.open
       }
     );
   }
 }
 function renderHomeRow(parent, item) {
-  const row3 = parent.createDiv({
+  const row4 = parent.createDiv({
     cls: "los-home-row"
   });
-  const copy = row3.createDiv({
+  const copy = row4.createDiv({
     cls: "los-home-row-copy"
   });
   copy.createEl("strong", {
@@ -5797,13 +7720,13 @@ function renderHomeRow(parent, item) {
   }
   if (item.actionLabel && item.action) {
     button(
-      row3,
+      row4,
       item.actionLabel,
       item.action,
       "tertiary"
     );
   }
-  return row3;
+  return row4;
 }
 function nextWorkspaceDate(view, workspace) {
   const directDeadline = asString(workspace.deadline);
@@ -5816,17 +7739,17 @@ function nextWorkspaceDate(view, workspace) {
     )
   );
   const dates = [];
-  for (const row3 of view.plugin.store.rows(
+  for (const row4 of view.plugin.store.rows(
     "academic_deadlines"
   )) {
-    const kind = asString(row3.kind);
-    const moduleId = asString(row3.module_id);
-    const startDate = asString(row3.start_date);
+    const kind = asString(row4.kind);
+    const moduleId = asString(row4.module_id);
+    const startDate = asString(row4.start_date);
     if (kind === "exam" && moduleId && startDate && moduleIds.has(moduleId)) {
       dates.push(startDate);
     }
     if (kind === "registration-window" && startDate && asRecords(
-      row3.modules
+      row4.modules
     ).some(
       (module2) => {
         const nestedModuleId = asString(
@@ -5848,10 +7771,10 @@ function moduleNextAction(view, module2) {
     return "";
   }
   const workspace = view.plugin.store.of("workspace").filter(
-    (row3) => {
-      const status = asString(row3.status);
-      return row3.archived !== true && status !== "complete" && asStrings(
-        row3.module_ids
+    (row4) => {
+      const status = asString(row4.status);
+      return row4.archived !== true && status !== "complete" && asStrings(
+        row4.module_ids
       ).includes(moduleId);
     }
   ).sort(
@@ -5879,11 +7802,11 @@ function moduleNextAction(view, module2) {
       map.current_stage
     );
     const stage = (currentStageId ? stages.find(
-      (row3) => asString(row3.id) === currentStageId
+      (row4) => asString(row4.id) === currentStageId
     ) : void 0) ?? stages.find(
-      (row3) => asString(row3.status) === "active"
+      (row4) => asString(row4.status) === "active"
     ) ?? stages.find(
-      (row3) => asString(row3.status) !== "complete"
+      (row4) => asString(row4.status) !== "complete"
     );
     const stageTitle = stage ? asString(stage.title) : null;
     if (stageTitle) {
@@ -5895,20 +7818,20 @@ function moduleNextAction(view, module2) {
 
 // src/features/home/focus.ts
 function renderContinue(view, root) {
-  const pointer = readResumePointer(
+  const pointer2 = readResumePointer(
     view.plugin.store.data?.resume_pointer
   );
-  const unit = pointer.unit_id ? view.plugin.store.get(pointer.unit_id) : null;
-  const map = pointer.study_map_id ? view.plugin.store.get(
-    pointer.study_map_id
+  const unit = pointer2.unit_id ? view.plugin.store.get(pointer2.unit_id) : null;
+  const map = pointer2.study_map_id ? view.plugin.store.get(
+    pointer2.study_map_id
   ) : null;
-  const stage = pointer.stage_id ? view.plugin.store.stage(
-    pointer.stage_id
+  const stage = pointer2.stage_id ? view.plugin.store.stage(
+    pointer2.stage_id
   ) : null;
   const wrap = root.createDiv({
     cls: "los-continue"
   });
-  if (!unit || !stage || !pointer.unit_id || !pointer.stage_id) {
+  if (!unit || !stage || !pointer2.unit_id || !pointer2.stage_id) {
     empty(
       wrap,
       "Nothing to resume yet",
@@ -5939,7 +7862,7 @@ function renderContinue(view, root) {
   });
   const stages = asRecords(map?.stages);
   const position = stages.findIndex(
-    (row3) => asString(row3.id) === pointer.stage_id
+    (row4) => asString(row4.id) === pointer2.stage_id
   );
   const meta = copy.createDiv({
     cls: "los-continue-meta"
@@ -5968,8 +7891,8 @@ function renderContinue(view, root) {
     actions,
     "Continue session",
     () => view.plugin.nav.openUnit(
-      pointer.unit_id,
-      pointer.stage_id
+      pointer2.unit_id,
+      pointer2.stage_id
     ),
     "cta"
   );
@@ -5983,9 +7906,9 @@ function renderToday(view, root) {
   const items = [];
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const upcoming = view.plugin.store.rows("academic_deadlines").filter(
-    (row3) => {
-      const boundary = asString(row3.end_date) ?? asString(
-        row3.start_date
+    (row4) => {
+      const boundary = asString(row4.end_date) ?? asString(
+        row4.start_date
       ) ?? "";
       return boundary >= today;
     }
@@ -6042,7 +7965,7 @@ function renderToday(view, root) {
       );
     }
     const details = [...categories.entries()].map(
-      ([category, count]) => `${count} ${category.replaceAll("-", " ")}`
+      ([category, count2]) => `${count2} ${category.replaceAll("-", " ")}`
     );
     items.push({
       title: `${reviewCount} decision${reviewCount === 1 ? "" : "s"} waiting`,
@@ -6059,20 +7982,20 @@ function renderToday(view, root) {
     );
     return;
   }
-  const list2 = sectionEl.createDiv({
+  const list4 = sectionEl.createDiv({
     cls: "los-home-list"
   });
   for (const item of items.slice(0, 4)) {
     view.renderHomeRow(
-      list2,
+      list4,
       item
     );
   }
 }
 
 // src/views/home-view.ts
-var import_obsidian7 = require("obsidian");
-var HomeView = class extends import_obsidian7.ItemView {
+var import_obsidian9 = require("obsidian");
+var HomeView = class extends import_obsidian9.ItemView {
   plugin;
   constructor(leaf, plugin) {
     super(leaf);
@@ -6122,14 +8045,14 @@ var HomeView = class extends import_obsidian7.ItemView {
       );
       return;
     }
-    const header = pageHeader(
+    const header2 = pageHeader(
       root,
       "Home",
       this.greeting(),
       "Resume what matters without rebuilding the context first."
     );
-    header.addClass("los-home-header");
-    const actions = header.createDiv({
+    header2.addClass("los-home-header");
+    const actions = header2.createDiv({
       cls: "los-actions los-home-header-actions"
     });
     const search = button(
@@ -6351,12 +8274,12 @@ function readUsefulSection(value) {
   if (!isRecord2(value)) {
     return null;
   }
-  const section2 = asText(value.section);
-  if (!section2) {
+  const section3 = asText(value.section);
+  if (!section3) {
     return null;
   }
   return {
-    section: section2,
+    section: section3,
     note: asText(value.note)
   };
 }
@@ -6374,7 +8297,7 @@ function readEvaluation(value) {
   const usefulSections = Array.isArray(
     value.useful_sections
   ) ? value.useful_sections.map(readUsefulSection).filter(
-    (section2) => section2 !== null
+    (section3) => section3 !== null
   ) : [];
   if (!roles.length && !level && !audience.length && !prerequisites.length && !strengths.length && !weaknesses.length && !usefulSections.length) {
     return null;
@@ -6435,7 +8358,7 @@ function readLibraryRecords(value) {
     return [];
   }
   return value.map(readLibraryRecord).filter(
-    (record7) => record7 !== null
+    (record10) => record10 !== null
   );
 }
 function readRelatedRecords(value) {
@@ -6443,13 +8366,13 @@ function readRelatedRecords(value) {
     return [];
   }
   const records = [];
-  for (const candidate of value) {
-    if (!isRecord2(candidate)) {
+  for (const candidate2 of value) {
+    if (!isRecord2(candidate2)) {
       continue;
     }
-    const record7 = readLibraryRecord(candidate.rec);
-    if (record7) {
-      records.push(record7);
+    const record10 = readLibraryRecord(candidate2.rec);
+    if (record10) {
+      records.push(record10);
     }
   }
   return records;
@@ -6462,14 +8385,14 @@ function isFileShapedPath(value) {
   const name = path.replace(/\\/g, "/").split("/").pop() ?? "";
   return /^[^./][^/]*\.[^./]+$/.test(name);
 }
-function isDirectMaterialFileTarget(record7) {
-  return record7.material_exists === true && isFileShapedPath(record7.material_path);
+function isDirectMaterialFileTarget(record10) {
+  return record10.material_exists === true && isFileShapedPath(record10.material_path);
 }
 var QUALIFIED_PAGES = /(?:physical\s+PDF|physical|PDF)\s+(?:p{1,2}\.|pages?)\s*(\d{1,4})(?:\s*[-–—]\s*(\d{1,4}))?/i;
-function pageDestination(record7) {
-  const target = typeof record7.material_path === "string" ? record7.material_path : typeof record7.vault_path === "string" ? record7.vault_path : "";
+function pageDestination(record10) {
+  const target = typeof record10.material_path === "string" ? record10.material_path : typeof record10.vault_path === "string" ? record10.vault_path : "";
   if (!/\.pdf$/i.test(target.trim().split(/[?#]/, 1)[0] ?? "")) return null;
-  const locator = typeof record7.locator === "string" ? record7.locator : "";
+  const locator = typeof record10.locator === "string" ? record10.locator : "";
   const match = QUALIFIED_PAGES.exec(locator);
   if (!match) return null;
   const first = Number(match[1]);
@@ -6483,20 +8406,20 @@ function pageDestination(record7) {
     label: last === null ? `physical page ${first}` : `physical pages ${first}\u2013${last}`
   };
 }
-function hasDirectResourceTarget(record7) {
-  if (isDirectMaterialFileTarget(record7)) return true;
-  const vaultPath = typeof record7.vault_path === "string" ? record7.vault_path.trim() : "";
+function hasDirectResourceTarget(record10) {
+  if (isDirectMaterialFileTarget(record10)) return true;
+  const vaultPath = typeof record10.vault_path === "string" ? record10.vault_path.trim() : "";
   if (vaultPath && !vaultPath.toLowerCase().startsWith("material://") && isFileShapedPath(vaultPath)) return true;
-  return safeWebUrl(record7.url) !== null;
+  return safeWebUrl(record10.url) !== null;
 }
 
 // src/features/library/detail.ts
-function renderRecordActions(view, detail, record7) {
+function renderRecordActions(view, detail, record10) {
   const actions = detail.createDiv({
     cls: "los-actions"
   });
-  if (record7.url) {
-    const url = record7.url;
+  if (record10.url) {
+    const url = record10.url;
     button(
       actions,
       "Open online",
@@ -6506,29 +8429,29 @@ function renderRecordActions(view, detail, record7) {
       "info"
     );
   }
-  if (record7.materialPath && record7.materialExists === true) {
+  if (record10.materialPath && record10.materialExists === true) {
     button(
       actions,
-      isFileShapedPath(record7.materialPath) ? "Open local copy" : "Browse local collection",
+      isFileShapedPath(record10.materialPath) ? "Open local copy" : "Browse local collection",
       () => view.plugin.openMaterialPath(
-        record7.materialPath
+        record10.materialPath
       ),
       "info"
     );
   }
-  if (record7.path) {
+  if (record10.path) {
     button(
       actions,
       "Open authored file",
       () => view.plugin.openAuthoredPath(
-        record7.path
+        record10.path
       ),
       "info"
     );
   }
 }
-function renderAttachments(view, detail, record7) {
-  if (!record7.attachments.length) {
+function renderAttachments(view, detail, record10) {
+  if (!record10.attachments.length) {
     return;
   }
   const attachments = section(
@@ -6536,7 +8459,7 @@ function renderAttachments(view, detail, record7) {
     "Attachments",
     "Open the original handwriting, image, or PDF."
   );
-  for (const attachment of record7.attachments) {
+  for (const attachment of record10.attachments) {
     button(
       attachments,
       `Open ${attachment.label}`,
@@ -6547,10 +8470,10 @@ function renderAttachments(view, detail, record7) {
     );
   }
 }
-function renderRelated(view, detail, record7) {
+function renderRelated(view, detail, record10) {
   const related = readRelatedRecords(
     view.plugin.store.related(
-      record7.id
+      record10.id
     )
   );
   const groups = /* @__PURE__ */ new Map();
@@ -6620,7 +8543,7 @@ function renderRelated(view, detail, record7) {
     }
   }
 }
-function renderSourceDetail(view, detail, record7) {
+function renderSourceDetail(view, detail, record10) {
   const facts = section(
     detail,
     "Source facts"
@@ -6628,19 +8551,19 @@ function renderSourceDetail(view, detail, record7) {
   const factRows = [
     [
       "Authors",
-      record7.authors.join(", ")
+      record10.authors.join(", ")
     ],
     [
       "Organization",
-      record7.organization
+      record10.organization
     ],
     [
       "Year",
-      record7.year
+      record10.year
     ],
     [
       "Type",
-      record7.sourceType
+      record10.sourceType
     ]
   ];
   for (const [
@@ -6650,20 +8573,20 @@ function renderSourceDetail(view, detail, record7) {
     if (!value) {
       continue;
     }
-    const row3 = facts.createDiv({
+    const row4 = facts.createDiv({
       cls: "los-fact-row"
     });
-    row3.createSpan({
+    row4.createSpan({
       cls: "los-fact-label",
       text: label
     });
-    row3.createSpan({
+    row4.createSpan({
       cls: "los-fact-value",
       text: value
     });
   }
   const memberships = view.shelfIndex().get(
-    record7.id
+    record10.id
   ) ?? [];
   const placed = section(
     detail,
@@ -6725,7 +8648,7 @@ function renderSourceDetail(view, detail, record7) {
   );
   const units = readLibraryRecords(
     view.plugin.store.useUnits(
-      record7.id
+      record10.id
     )
   );
   if (!units.length) {
@@ -6744,13 +8667,13 @@ function renderSourceDetail(view, detail, record7) {
       )
     );
   }
-  if (record7.evaluations.length) {
-    const evidence2 = section(
+  if (record10.evaluations.length) {
+    const evidence3 = section(
       detail,
       "What this source is good for"
     );
-    for (const evaluation of record7.evaluations) {
-      const card = evidence2.createDiv({
+    for (const evaluation of record10.evaluations) {
+      const card = evidence3.createDiv({
         cls: "los-evidence-card"
       });
       if (evaluation.roles.length || evaluation.level) {
@@ -6765,9 +8688,9 @@ function renderSourceDetail(view, detail, record7) {
         ["Written for", evaluation.audience]
       ]) {
         if (!values2.length) continue;
-        const block = card.createDiv({ cls: "los-row" });
-        block.createEl("strong", { text: `${label}: ` });
-        block.createSpan({ text: values2.join(" \xB7 ") });
+        const block2 = card.createDiv({ cls: "los-row" });
+        block2.createEl("strong", { text: `${label}: ` });
+        block2.createSpan({ text: values2.join(" \xB7 ") });
       }
       for (const selection of evaluation.usefulSections) {
         card.createDiv({
@@ -6778,7 +8701,7 @@ function renderSourceDetail(view, detail, record7) {
     }
   }
 }
-function renderTechnical(view, detail, record7) {
+function renderTechnical(view, detail, record10) {
   const technical = disclosure(
     detail,
     "Technical details",
@@ -6793,17 +8716,17 @@ function renderTechnical(view, detail, record7) {
   });
   idRow.createSpan({
     cls: "los-fact-value los-detail-id",
-    text: record7.id
+    text: record10.id
   });
   button(
     technical,
     "Copy ID",
     () => view.plugin.copyText(
-      record7.id
+      record10.id
     ),
     "quiet"
   );
-  if (record7.path) {
+  if (record10.path) {
     const pathRow = technical.createDiv({
       cls: "los-fact-row"
     });
@@ -6813,42 +8736,42 @@ function renderTechnical(view, detail, record7) {
     });
     pathRow.createSpan({
       cls: "los-fact-value",
-      text: record7.path
+      text: record10.path
     });
   }
 }
 
 // src/features/library/collections.ts
-function renderRecordRow(view, list2, record7, isPack = false) {
-  const row3 = list2.createEl(
+function renderRecordRow(view, list4, record10, isPack = false) {
+  const row4 = list4.createEl(
     "button",
     {
       cls: "los-route-row is-clickable",
       attr: {
         type: "button",
-        "aria-label": `Open ${record7.title}`,
-        "data-record-id": record7.id
+        "aria-label": `Open ${record10.title}`,
+        "data-record-id": record10.id
       }
     }
   );
-  const copy = row3.createDiv({
+  const copy = row4.createDiv({
     cls: "los-route-row-copy"
   });
   copy.createEl(
     "strong",
     {
-      text: record7.title
+      text: record10.title
     }
   );
   const meta = isPack ? [
-    record7.purpose,
-    `${record7.entries.length} items`
+    record10.purpose,
+    `${record10.entries.length} items`
   ].filter(Boolean).join(" \xB7 ") : [
-    record7.sourceType,
-    record7.year,
-    record7.organization,
-    record7.materialExists || record7.materialPath ? "local" : null,
-    record7.url ? "online" : null
+    record10.sourceType,
+    record10.year,
+    record10.organization,
+    record10.materialExists || record10.materialPath ? "local" : null,
+    record10.url ? "online" : null
   ].filter(Boolean).join(" \xB7 ");
   if (meta) {
     copy.createDiv({
@@ -6856,24 +8779,24 @@ function renderRecordRow(view, list2, record7, isPack = false) {
       text: meta
     });
   }
-  row3.createSpan({
+  row4.createSpan({
     cls: "los-route-open",
     text: "Open \u2192"
   });
-  row3.addEventListener(
+  row4.addEventListener(
     "click",
     () => {
-      view.selectedElementId = record7.id;
+      view.selectedElementId = record10.id;
       if (isPack) {
         view.plugin.nav.openTopicPackDetail(
-          record7.id,
+          record10.id,
           view.groupId,
           view.query
         );
         return;
       }
       view.plugin.nav.openSourceDetail(
-        record7.id,
+        record10.id,
         view.groupId,
         view.query,
         view.facet,
@@ -6883,7 +8806,7 @@ function renderRecordRow(view, list2, record7, isPack = false) {
   );
 }
 function renderSourcePage(view, root) {
-  const record7 = readLibraryRecord(
+  const record10 = readLibraryRecord(
     view.resourceId ? view.plugin.store.get(
       view.resourceId
     ) : null
@@ -6895,7 +8818,7 @@ function renderSourcePage(view, root) {
     "quiet"
   );
   back.addClass("los-route-back");
-  if (!record7 || record7.type !== "source") {
+  if (!record10 || record10.type !== "source") {
     empty(
       root,
       "Learning source unavailable",
@@ -6911,28 +8834,28 @@ function renderSourcePage(view, root) {
   pageHeader(
     detail,
     "Learning Source",
-    record7.title,
-    record7.summary
+    record10.title,
+    record10.summary
   );
   view.renderRecordActions(
     detail,
-    record7
+    record10
   );
   view.renderAttachments(
     detail,
-    record7
+    record10
   );
   view.renderSourceDetail(
     detail,
-    record7
+    record10
   );
   view.renderRelated(
     detail,
-    record7
+    record10
   );
   view.renderTechnical(
     detail,
-    record7
+    record10
   );
 }
 function renderTopicPackPage(view, root) {
@@ -7068,14 +8991,14 @@ function renderOrderedCollection(view, detail, collection, title) {
           entry.sourceId
         )
       );
-      const row3 = wrap.createDiv({
+      const row4 = wrap.createDiv({
         cls: "los-pack-entry"
       });
-      row3.createSpan({
+      row4.createSpan({
         cls: "los-pack-order",
         text: String(index + 1)
       });
-      const copy = row3.createDiv({
+      const copy = row4.createDiv({
         cls: "los-route-row-copy"
       });
       const open = copy.createEl(
@@ -7169,7 +9092,7 @@ function renderLegacyList(view, root) {
   );
   if (view.domain) {
     rows = rows.filter(
-      (record7) => record7.domain === view.domain
+      (record10) => record10.domain === view.domain
     );
   }
   rows.sort(
@@ -7186,53 +9109,53 @@ function renderLegacyList(view, root) {
     );
     return;
   }
-  const list2 = root.createDiv({
+  const list4 = root.createDiv({
     cls: "los-route-list"
   });
-  for (const record7 of rows) {
-    const row3 = list2.createEl(
+  for (const record10 of rows) {
+    const row4 = list4.createEl(
       "button",
       {
         cls: "los-route-row is-clickable",
         attr: {
           type: "button",
-          "data-record-id": record7.id
+          "data-record-id": record10.id
         }
       }
     );
-    const copy = row3.createDiv({
+    const copy = row4.createDiv({
       cls: "los-route-row-copy"
     });
     copy.createEl(
       "strong",
       {
-        text: record7.title
+        text: record10.title
       }
     );
     copy.createDiv({
       cls: "los-route-meta",
       text: [
-        record7.role,
-        record7.domain,
-        record7.state
+        record10.role,
+        record10.domain,
+        record10.state
       ].filter(Boolean).join(" \xB7 ")
     });
-    row3.createSpan({
+    row4.createSpan({
       cls: "los-route-open",
-      text: record7.path ? "Open file \u2192" : "Open \u2192"
+      text: record10.path ? "Open file \u2192" : "Open \u2192"
     });
-    row3.addEventListener(
+    row4.addEventListener(
       "click",
       () => {
-        view.selectedElementId = record7.id;
-        if (record7.path) {
+        view.selectedElementId = record10.id;
+        if (record10.path) {
           view.plugin.openAuthoredPath(
-            record7.path
+            record10.path
           );
           return;
         }
         view.plugin.nav.openRecord(
-          record7.record
+          record10.record
         );
       }
     );
@@ -7267,7 +9190,7 @@ function renderHome(view, root) {
     cls: "los-group-grid los-library-group-grid"
   });
   for (const group of groups) {
-    const count = view.collection === "topic-packs" ? view.plugin.store.topicPacksForGroup(group.id).length : view.plugin.store.sourcesForGroup(group.id).length;
+    const count2 = view.collection === "topic-packs" ? view.plugin.store.topicPacksForGroup(group.id).length : view.plugin.store.sourcesForGroup(group.id).length;
     const card = grid.createEl(
       "button",
       {
@@ -7287,10 +9210,10 @@ function renderHome(view, root) {
         text: group.title
       }
     );
-    const countLabel = view.collection === "topic-packs" ? `pack${count === 1 ? "" : "s"}` : `source${count === 1 ? "" : "s"}`;
+    const countLabel = view.collection === "topic-packs" ? `pack${count2 === 1 ? "" : "s"}` : `source${count2 === 1 ? "" : "s"}`;
     head.createSpan({
       cls: "los-group-count",
-      text: `${count} ${countLabel}`
+      text: `${count2} ${countLabel}`
     });
     if (group.description) {
       card.createEl(
@@ -7409,19 +9332,19 @@ function renderGroup(view, root) {
   );
   const needle = foldCase(view.query.trim());
   const words2 = needle.split(/\s+/).filter(Boolean);
-  const rows = all.filter((record7) => {
+  const rows = all.filter((record10) => {
     if (!words2.length) {
       return true;
     }
     const hay = foldCase(
       [
-        record7.id,
-        record7.title,
-        record7.purpose,
-        record7.summary,
-        ...record7.aliases,
-        ...record7.authors,
-        record7.organization
+        record10.id,
+        record10.title,
+        record10.purpose,
+        record10.summary,
+        ...record10.aliases,
+        ...record10.authors,
+        record10.organization
       ].filter(Boolean).join(" ")
     );
     return words2.every(
@@ -7452,13 +9375,13 @@ function renderGroup(view, root) {
     );
     return;
   }
-  const list2 = root.createDiv({
+  const list4 = root.createDiv({
     cls: "los-route-list los-library-route-list"
   });
-  for (const record7 of rows) {
+  for (const record10 of rows) {
     view.renderRecordRow(
-      list2,
-      record7,
+      list4,
+      record10,
       true
     );
   }
@@ -7471,10 +9394,10 @@ var HIDDEN_NAMES = /* @__PURE__ */ new Set([".flat", ".git", ".ds_store", "__pyc
 function hidden(name) {
   return name.startsWith(".") || HIDDEN_NAMES.has(foldCase(name));
 }
-function containedRealPath(root, candidate) {
+function containedRealPath(root, candidate2) {
   try {
     const realRoot = fs.realpathSync(root);
-    const realCandidate = fs.realpathSync(candidate);
+    const realCandidate = fs.realpathSync(candidate2);
     const relative3 = nodePath.relative(realRoot, realCandidate);
     return relative3.startsWith("..") || nodePath.isAbsolute(relative3) ? null : realCandidate;
   } catch (_) {
@@ -7676,11 +9599,11 @@ function parseSegment(value) {
   const at = value.indexOf(":");
   return at < 0 ? [value, ""] : [value.slice(0, at), value.slice(at + 1)];
 }
-function titleOf(record7) {
-  if (!record7) return "Unknown";
-  return asText(record7.title) ?? asString(record7.id) ?? "Unknown";
+function titleOf(record10) {
+  if (!record10) return "Unknown";
+  return asText(record10.title) ?? asString(record10.id) ?? "Unknown";
 }
-function byTitle(left, right) {
+function byTitle2(left, right) {
   return compareStrings(titleOf(left), titleOf(right));
 }
 function hostOf(url) {
@@ -7751,7 +9674,7 @@ function buildIndex(store) {
   const unfiled = [];
   const claimedMaterial = /* @__PURE__ */ new Set();
   const materialParents = /* @__PURE__ */ new Set();
-  for (const source of store.sources().slice().sort(byTitle)) {
+  for (const source of store.sources().slice().sort(byTitle2)) {
     const id2 = asString(source.id);
     if (!id2) continue;
     typeOf.set(id2, sourceTypeOf(source));
@@ -7779,7 +9702,7 @@ function buildIndex(store) {
   }
   const modulesByGroup = /* @__PURE__ */ new Map();
   const ungroupedModules = [];
-  for (const module2 of store.modules().slice().sort(byTitle)) {
+  for (const module2 of store.modules().slice().sort(byTitle2)) {
     const own = asStrings(module2.thematic_group_ids).filter((groupId) => groupById.has(groupId));
     if (own.length) {
       for (const groupId of own) push2(modulesByGroup, groupId, module2);
@@ -7877,14 +9800,14 @@ function sourceEntry(context, source) {
   const url = asString(source.url);
   const hasLocal = Boolean(materialPath) && source.material_exists === true;
   const isFolder = hasLocal && materials.isDirectory(materialPath ?? "");
-  const typeLabel2 = MATERIAL_TYPE_BY_ID.get(typeIdOf(index, source))?.label ?? "Other";
+  const typeLabel = MATERIAL_TYPE_BY_ID.get(typeIdOf(index, source))?.label ?? "Other";
   const [fileLabel, fileIcon] = fileKind(materialPath ?? "");
   return {
     segment: segment("source", id2),
     kind: "source",
     name: titleOf(source),
     icon: isFolder ? "folder" : hasLocal ? fileIcon : url ? "globe" : "file-question",
-    kindLabel: isFolder ? `${typeLabel2.replace(/s$/, "")} collection` : hasLocal ? fileLabel : url ? "Web link" : "Registry entry",
+    kindLabel: isFolder ? `${typeLabel.replace(/s$/, "")} collection` : hasLocal ? fileLabel : url ? "Web link" : "Registry entry",
     isFolder,
     count: isFolder ? materials.count(materialPath ?? "") : null,
     detail: [
@@ -7969,8 +9892,8 @@ function unavailable(path) {
     sourceId: null
   };
 }
-function plural2(count, noun) {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+function plural2(count2, noun) {
+  return `${count2} ${noun}${count2 === 1 ? "" : "s"}`;
 }
 function rootEntries(context) {
   const { index, store } = context;
@@ -8073,15 +9996,15 @@ function domainEntries(context, groupId) {
     (source) => typeIdOf(index, source)
   );
   for (const [type, label, icon2] of MATERIAL_TYPES) {
-    const count = counts.get(type) ?? 0;
-    if (!count) continue;
+    const count2 = counts.get(type) ?? 0;
+    if (!count2) continue;
     entries.push(folderEntry({
       segment: segment("type", type),
       kind: "bucket",
       name: label,
       icon: icon2,
       kindLabel: "Folder",
-      count
+      count: count2
     }));
   }
   return entries;
@@ -8094,15 +10017,15 @@ function moduleBucketEntries(context, moduleId) {
   );
   const entries = [];
   for (const [bucket, label, icon2] of MODULE_BUCKETS) {
-    const count = counts.get(bucket) ?? 0;
-    if (!count) continue;
+    const count2 = counts.get(bucket) ?? 0;
+    if (!count2) continue;
     entries.push(folderEntry({
       segment: segment("bucket", bucket),
       kind: "bucket",
       name: label,
       icon: icon2,
       kindLabel: "Folder",
-      count
+      count: count2
     }));
   }
   return entries;
@@ -8158,15 +10081,15 @@ function domainFolder(context, groupId, rest, full) {
     return moduleFolder(context, tail, full);
   }
   if (prefix === "type") {
-    const definition = MATERIAL_TYPE_BY_ID.get(value);
-    if (!definition) return unavailable(full);
+    const definition2 = MATERIAL_TYPE_BY_ID.get(value);
+    if (!definition2) return unavailable(full);
     if (!tail.length) {
       return folder({
         path: full,
-        name: definition.label,
-        icon: definition.icon,
+        name: definition2.label,
+        icon: definition2.icon,
         kindLabel: "Folder",
-        description: `${definition.label} in ${title}.`,
+        description: `${definition2.label} in ${title}.`,
         entries: sourcesInGroup(index, groupId).filter((source) => typeIdOf(index, source) === value).map((source) => sourceEntry(context, source))
       });
     }
@@ -8194,15 +10117,15 @@ function moduleFolder(context, rest, full) {
   const [next = "", ...deeper] = tail;
   const [nextPrefix, bucket] = parseSegment(next);
   if (nextPrefix !== "bucket") return unavailable(full);
-  const definition = MODULE_BUCKET_BY_ID.get(bucket);
-  if (!definition) return unavailable(full);
+  const definition2 = MODULE_BUCKET_BY_ID.get(bucket);
+  if (!definition2) return unavailable(full);
   if (!deeper.length) {
     return folder({
       path: full,
-      name: definition.label,
-      icon: definition.icon,
+      name: definition2.label,
+      icon: definition2.icon,
       kindLabel: "Folder",
-      description: `${definition.label} for ${titleOf(module2)}.`,
+      description: `${definition2.label} for ${titleOf(module2)}.`,
       entries: sourcesInModule(index, moduleId).filter((source) => bucketIdOf(index, source) === bucket).map((source) => sourceEntry(context, source))
     });
   }
@@ -8264,37 +10187,37 @@ function shelfFolder(context, shelf, rest, full) {
   const prefix = isPacks ? "pack" : "catalogue";
   const iconName = isPacks ? "notebook-tabs" : "library-big";
   if (!rest.length) {
-    const shelves = (isPacks ? store.topicPacks() : store.catalogues()).slice().sort(byTitle);
+    const shelves = (isPacks ? store.topicPacks() : store.catalogues()).slice().sort(byTitle2);
     return folder({
       path: full,
       name: isPacks ? "Curated Packs" : "Catalogues",
       icon: iconName,
       kindLabel: "Shelf",
       description: isPacks ? "Narrow, manually ordered collections. The order is the argument." : "Standing shelves that cut across domains.",
-      entries: shelves.map((record8) => folderEntry({
-        segment: segment(prefix, asString(record8.id) ?? ""),
+      entries: shelves.map((record11) => folderEntry({
+        segment: segment(prefix, asString(record11.id) ?? ""),
         kind: "bucket",
-        name: titleOf(record8),
+        name: titleOf(record11),
         icon: iconName,
         kindLabel: isPacks ? "Pack" : "Catalogue",
-        count: shelfSources(store, record8).length,
-        detail: asText(record8.purpose) ?? ""
+        count: shelfSources(store, record11).length,
+        detail: asText(record11.purpose) ?? ""
       }))
     });
   }
   const [head = "", ...tail] = rest;
   const [headPrefix, id2] = parseSegment(head);
   if (headPrefix !== prefix) return unavailable(full);
-  const record7 = store.get(id2);
-  if (!record7) return unavailable(full);
+  const record10 = store.get(id2);
+  if (!record10) return unavailable(full);
   if (!tail.length) {
     return folder({
       path: full,
-      name: titleOf(record7),
+      name: titleOf(record10),
       icon: iconName,
       kindLabel: isPacks ? "Pack" : "Catalogue",
-      description: asText(record7.purpose) ?? "",
-      entries: shelfSources(store, record7).map((source) => sourceEntry(context, source))
+      description: asText(record10.purpose) ?? "",
+      entries: shelfSources(store, record10).map((source) => sourceEntry(context, source))
     });
   }
   return sourceFolder(context, tail, full);
@@ -8362,13 +10285,13 @@ function trailFor(context, path) {
 }
 
 // src/features/library/finder.ts
-var LAYOUTS = [
+var LAYOUTS2 = [
   ["list", "List"],
   ["columns", "Columns"]
 ];
-function itemCount(count) {
-  if (count === null) return "";
-  return `${count} item${count === 1 ? "" : "s"}`;
+function itemCount(count2) {
+  if (count2 === null) return "";
+  return `${count2} item${count2 === 1 ? "" : "s"}`;
 }
 function filterWords(query) {
   return foldCase(query.trim()).split(/\s+/).filter(Boolean);
@@ -8381,14 +10304,14 @@ function matches(entry, words2) {
   return words2.every((word) => hay.includes(word));
 }
 function renderPlace(parent, options) {
-  const row3 = parent.createEl("button", {
+  const row4 = parent.createEl("button", {
     cls: `los-finder-place is-clickable${options.active ? " is-active" : ""}`,
     attr: { type: "button" }
   });
-  if (options.active) row3.setAttribute("aria-current", "true");
-  icon(row3.createSpan({ cls: "los-finder-place-icon" }), options.icon);
-  row3.createSpan({ cls: "los-finder-place-label", text: options.label });
-  row3.addEventListener("click", () => {
+  if (options.active) row4.setAttribute("aria-current", "true");
+  icon(row4.createSpan({ cls: "los-finder-place-icon" }), options.icon);
+  row4.createSpan({ cls: "los-finder-place-label", text: options.label });
+  row4.addEventListener("click", () => {
     void options.onOpen();
   });
 }
@@ -8427,9 +10350,9 @@ function renderSidebar(view, parent, root) {
   ];
   for (const [title, entries] of sections) {
     if (!entries.length) continue;
-    const list2 = group(title);
+    const list4 = group(title);
     for (const entry of entries) {
-      renderPlace(list2, {
+      renderPlace(list4, {
         label: entry.name,
         icon: entry.icon,
         active: view.folderPath[0] === entry.segment,
@@ -8465,7 +10388,7 @@ function renderPathBar(view, parent, trail) {
     });
   });
 }
-function renderToolbar(view, parent, folder2, shown) {
+function renderToolbar2(view, parent, folder2, shown) {
   const toolbar = parent.createDiv({ cls: "los-finder-toolbar" });
   const up = button(
     toolbar,
@@ -8493,7 +10416,7 @@ function renderToolbar(view, parent, folder2, shown) {
     attr: { role: "group", "aria-label": "Folder layout" }
   });
   enableButtonGroupKeyboardNavigation(layouts);
-  for (const [id2, label] of LAYOUTS) {
+  for (const [id2, label] of LAYOUTS2) {
     const active = view.folderLayout === id2;
     const control = button(
       layouts,
@@ -8509,9 +10432,9 @@ function renderToolbar(view, parent, folder2, shown) {
     text: shown === total ? itemCount(total) : `${shown} of ${total} items`
   });
 }
-function renderRow(view, list2, entry) {
+function renderRow(view, list4, entry) {
   const selected = view.folderSelection === entry.segment;
-  const row3 = list2.createEl("button", {
+  const row4 = list4.createEl("button", {
     cls: `los-finder-row is-clickable${selected ? " is-selected" : ""}`,
     attr: {
       type: "button",
@@ -8519,15 +10442,15 @@ function renderRow(view, list2, entry) {
       "aria-label": entry.isFolder ? `${entry.name}, folder` : `${entry.name}, ${entry.kindLabel}`
     }
   });
-  if (selected) row3.setAttribute("aria-current", "true");
-  icon(row3.createSpan({ cls: "los-finder-row-icon" }), entry.icon);
-  const name = row3.createDiv({ cls: "los-finder-row-name" });
+  if (selected) row4.setAttribute("aria-current", "true");
+  icon(row4.createSpan({ cls: "los-finder-row-icon" }), entry.icon);
+  const name = row4.createDiv({ cls: "los-finder-row-name" });
   name.createSpan({ cls: "los-finder-row-title", text: entry.name });
   if (entry.detail) {
     name.createSpan({ cls: "los-finder-row-detail", text: entry.detail });
   }
-  row3.createSpan({ cls: "los-finder-row-kind", text: entry.kindLabel });
-  const trailing = row3.createSpan({ cls: "los-finder-row-trailing" });
+  row4.createSpan({ cls: "los-finder-row-kind", text: entry.kindLabel });
+  const trailing = row4.createSpan({ cls: "los-finder-row-trailing" });
   if (entry.alsoIn > 1) {
     badge(trailing, `in ${entry.alsoIn} domains`, "info");
   }
@@ -8538,33 +10461,33 @@ function renderRow(view, list2, entry) {
     });
     icon(trailing.createSpan({ cls: "los-finder-row-chevron" }), "chevron-right");
   }
-  row3.addEventListener("click", () => {
+  row4.addEventListener("click", () => {
     if (selected) void view.activateEntry(entry);
     else void view.selectFolderEntry(entry.segment);
   });
-  row3.addEventListener("dblclick", () => {
+  row4.addEventListener("dblclick", () => {
     void view.activateEntry(entry);
   });
-  return row3;
+  return row4;
 }
-function renderList(view, parent, entries) {
-  const list2 = parent.createDiv({
+function renderList2(view, parent, entries) {
+  const list4 = parent.createDiv({
     cls: "los-finder-list",
     attr: { "aria-label": "Folder contents" }
   });
-  const header = list2.createDiv({
+  const header2 = list4.createDiv({
     cls: "los-finder-list-header",
     attr: { "aria-hidden": "true" }
   });
-  header.createSpan({ text: "Name" });
-  header.createSpan({ text: "Kind" });
-  header.createSpan({ text: "Items" });
+  header2.createSpan({ text: "Name" });
+  header2.createSpan({ text: "Kind" });
+  header2.createSpan({ text: "Items" });
   const focusSelection = view.takeFolderFocus();
   for (const entry of entries) {
-    const row3 = renderRow(view, list2, entry);
-    if (focusSelection && entry.segment === view.folderSelection) row3.focus();
+    const row4 = renderRow(view, list4, entry);
+    if (focusSelection && entry.segment === view.folderSelection) row4.focus();
   }
-  list2.addEventListener("keydown", (event) => {
+  list4.addEventListener("keydown", (event) => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     const index = entries.findIndex(
       (entry) => entry.segment === view.folderSelection
@@ -8617,21 +10540,21 @@ function renderColumns(view, parent, trail, words2) {
     for (const entry of entries) {
       const opened = entry.segment === openedSegment;
       const selected = isCurrent && view.folderSelection === entry.segment;
-      const row3 = column.createEl("button", {
+      const row4 = column.createEl("button", {
         cls: "los-finder-column-row is-clickable" + (opened ? " is-open" : "") + (selected ? " is-selected" : ""),
         attr: { type: "button" }
       });
-      if (opened || selected) row3.setAttribute("aria-current", "true");
-      icon(row3.createSpan({ cls: "los-finder-row-icon" }), entry.icon);
-      row3.createSpan({ cls: "los-finder-row-title", text: entry.name });
+      if (opened || selected) row4.setAttribute("aria-current", "true");
+      icon(row4.createSpan({ cls: "los-finder-row-icon" }), entry.icon);
+      row4.createSpan({ cls: "los-finder-row-title", text: entry.name });
       if (entry.isFolder) {
-        icon(row3.createSpan({ cls: "los-finder-row-chevron" }), "chevron-right");
+        icon(row4.createSpan({ cls: "los-finder-row-chevron" }), "chevron-right");
       }
-      row3.addEventListener("click", () => {
+      row4.addEventListener("click", () => {
         if (entry.isFolder) void view.openFolder([...folder2.path, entry.segment]);
         else void view.openFolder(folder2.path, entry.segment);
       });
-      row3.addEventListener("dblclick", () => {
+      row4.addEventListener("dblclick", () => {
         void view.activateEntry(entry);
       });
     }
@@ -8662,10 +10585,10 @@ function renderEntryInspector(view, panel, entry) {
   if (entry.url) facts.push(["Link", entry.url]);
   if (entry.sourceId) facts.push(["Registry id", entry.sourceId]);
   if (facts.length) {
-    const list2 = panel.createEl("dl", { cls: "los-finder-inspector-facts" });
+    const list4 = panel.createEl("dl", { cls: "los-finder-inspector-facts" });
     for (const [label, value] of facts) {
-      list2.createEl("dt", { text: label });
-      list2.createEl("dd", { text: value });
+      list4.createEl("dt", { text: label });
+      list4.createEl("dd", { text: value });
     }
   }
   if (entry.alsoIn > 1) {
@@ -8733,7 +10656,7 @@ function renderFinder(view, root) {
   const main = shell2.createDiv({ cls: "los-finder-main" });
   renderPathBar(view, main, trail);
   const entries = folder2.entries.filter((entry) => matches(entry, words2));
-  renderToolbar(view, main, folder2, entries.length);
+  renderToolbar2(view, main, folder2, entries.length);
   if (folder2.description && !words2.length) {
     main.createEl("p", {
       cls: "los-finder-folder-note",
@@ -8772,7 +10695,7 @@ function renderFinder(view, root) {
       () => void view.setFolderQuery("")
     );
   } else {
-    renderList(view, body, entries);
+    renderList2(view, body, entries);
   }
   const panel = body.createDiv({
     cls: "los-finder-inspector",
@@ -8856,7 +10779,7 @@ function sourceFilterLabel(view, dimension, value) {
   }
   if (dimension === "topic") {
     const topic = view.plugin.store.topics().find(
-      (row3) => asString(row3.id) === value
+      (row4) => asString(row4.id) === value
     );
     return topic ? asString(topic.title) ?? value : value;
   }
@@ -8945,7 +10868,7 @@ function renderSourceBrowser(view, root) {
         text: label
       }
     );
-    const select = control.createEl(
+    const select2 = control.createEl(
       "select",
       {
         cls: "los-library-facet-select",
@@ -8959,7 +10882,7 @@ function renderSourceBrowser(view, root) {
       all,
       dimension
     );
-    select.createEl(
+    select2.createEl(
       "option",
       {
         text: `All ${label.toLocaleLowerCase()}`,
@@ -8986,28 +10909,28 @@ function renderSourceBrowser(view, root) {
     );
     for (const [
       value,
-      count
+      count2
     ] of ordered) {
-      select.createEl(
+      select2.createEl(
         "option",
         {
           text: `${view.sourceFilterLabel(
             dimension,
             value
-          )} (${count})`,
+          )} (${count2})`,
           attr: {
             value
           }
         }
       );
     }
-    select.value = view.filters[dimension];
-    select.addEventListener(
+    select2.value = view.filters[dimension];
+    select2.addEventListener(
       "change",
       () => {
         void view.setSourceFilter(
           dimension,
-          select.value
+          select2.value
         );
       }
     );
@@ -9118,12 +11041,12 @@ function renderSourceBrowser(view, root) {
     );
     return;
   }
-  const list2 = browser.createDiv({
+  const list4 = browser.createDiv({
     cls: "los-route-list los-library-route-list"
   });
   for (const source of rows) {
     view.renderRecordRow(
-      list2,
+      list4,
       source,
       false
     );
@@ -9131,8 +11054,8 @@ function renderSourceBrowser(view, root) {
 }
 
 // src/views/library-view.ts
-var import_obsidian8 = require("obsidian");
-var LibraryView = class extends import_obsidian8.ItemView {
+var import_obsidian10 = require("obsidian");
+var LibraryView = class extends import_obsidian10.ItemView {
   plugin;
   screen = "home";
   collection = "sources";
@@ -9389,8 +11312,8 @@ var LibraryView = class extends import_obsidian8.ItemView {
       facet: this.facet
     });
   }
-  renderRecordRow(list2, record7, isPack = false) {
-    renderRecordRow(this, list2, record7, isPack);
+  renderRecordRow(list4, record10, isPack = false) {
+    renderRecordRow(this, list4, record10, isPack);
   }
   renderSourcePage(root) {
     renderSourcePage(this, root);
@@ -9407,20 +11330,20 @@ var LibraryView = class extends import_obsidian8.ItemView {
   renderLegacyList(root) {
     renderLegacyList(this, root);
   }
-  renderRecordActions(detail, record7) {
-    renderRecordActions(this, detail, record7);
+  renderRecordActions(detail, record10) {
+    renderRecordActions(this, detail, record10);
   }
-  renderAttachments(detail, record7) {
-    renderAttachments(this, detail, record7);
+  renderAttachments(detail, record10) {
+    renderAttachments(this, detail, record10);
   }
-  renderRelated(detail, record7) {
-    renderRelated(this, detail, record7);
+  renderRelated(detail, record10) {
+    renderRelated(this, detail, record10);
   }
-  renderSourceDetail(detail, record7) {
-    renderSourceDetail(this, detail, record7);
+  renderSourceDetail(detail, record10) {
+    renderSourceDetail(this, detail, record10);
   }
-  renderTechnical(detail, record7) {
-    renderTechnical(this, detail, record7);
+  renderTechnical(detail, record10) {
+    renderTechnical(this, detail, record10);
   }
   // ------------------------------------------------------- folder browser
   finderContext() {
@@ -9586,29 +11509,29 @@ function readModuleViewState(value) {
     hasTab
   };
 }
-function readThematicGroup2(record7) {
-  if (!record7) {
+function readThematicGroup2(record10) {
+  if (!record10) {
     return null;
   }
-  const id2 = asString(record7.id);
+  const id2 = asString(record10.id);
   if (!id2) {
     return null;
   }
   return {
     id: id2,
-    title: asString(record7.title) ?? asString(record7.label) ?? id2,
-    description: asText(record7.description) ?? ""
+    title: asString(record10.title) ?? asString(record10.label) ?? id2,
+    description: asText(record10.description) ?? ""
   };
 }
 function readComponents(value) {
-  return asRecords(value).map((record7) => {
-    const id2 = asString(record7.id);
+  return asRecords(value).map((record10) => {
+    const id2 = asString(record10.id);
     if (!id2) {
       return null;
     }
     return {
       id: id2,
-      title: asString(record7.short_title) ?? asString(record7.title) ?? id2
+      title: asString(record10.short_title) ?? asString(record10.title) ?? id2
     };
   }).filter(nonNull);
 }
@@ -9619,44 +11542,44 @@ function readExamination(value) {
     notes: asText(examination.notes)
   };
 }
-function readModuleRecord(record7, fallbackId = null) {
-  if (!record7) {
+function readModuleRecord(record10, fallbackId = null) {
+  if (!record10) {
     return null;
   }
-  const id2 = asString(record7.id) ?? fallbackId;
+  const id2 = asString(record10.id) ?? fallbackId;
   if (!id2) {
     return null;
   }
   return {
-    record: record7,
+    record: record10,
     id: id2,
-    areaId: asString(record7.area_id) ?? "",
-    title: asString(record7.title) ?? id2,
-    kind: asString(record7.kind) ?? "Module",
-    code: asText(record7.code) ?? "",
-    semester: asText(record7.semester) ?? "",
-    status: asString(record7.status) ?? "unspecified",
-    institution: asText(record7.institution) ?? "",
-    credits: asText(record7.credits),
-    examination: readExamination(record7.examination),
-    components: readComponents(record7.components),
-    unitOrder: asStrings(record7.unit_order)
+    areaId: asString(record10.area_id) ?? "",
+    title: asString(record10.title) ?? id2,
+    kind: asString(record10.kind) ?? "Module",
+    code: asText(record10.code) ?? "",
+    semester: asText(record10.semester) ?? "",
+    status: asString(record10.status) ?? "unspecified",
+    institution: asText(record10.institution) ?? "",
+    credits: asText(record10.credits),
+    examination: readExamination(record10.examination),
+    components: readComponents(record10.components),
+    unitOrder: asStrings(record10.unit_order)
   };
 }
-function normalizeUnitRecord(record7) {
-  const id2 = asString(record7.id);
+function normalizeUnitRecord(record10) {
+  const id2 = asString(record10.id);
   if (!id2) {
     return null;
   }
-  const title = asString(record7.title) ?? id2;
-  const status = asString(record7.status) ?? "unspecified";
-  const order = asCount(record7.order);
+  const title = asString(record10.title) ?? id2;
+  const status = asString(record10.status) ?? "unspecified";
+  const order = asCount(record10.order);
   const normalized = {
-    ...record7,
+    ...record10,
     id: id2,
     title,
     status,
-    scope: asText(record7.scope) ?? ""
+    scope: asText(record10.scope) ?? ""
   };
   return {
     record: normalized,
@@ -9683,18 +11606,18 @@ function orderModuleUnits(module2, units) {
     }
   );
 }
-function normalizeWorkspaceRecord(record7) {
+function normalizeWorkspaceRecord(record10) {
   return {
-    ...record7,
-    id: asString(record7.id) ?? "",
-    title: asString(record7.title) ?? asString(record7.id) ?? "Workspace",
-    status: asString(record7.status) ?? "unspecified",
-    objective: asText(record7.objective) ?? "",
-    next_action: asText(record7.next_action) ?? "",
-    deadline: asText(record7.deadline) ?? "",
-    standing: record7.standing === true,
-    module_ids: asStrings(record7.module_ids),
-    unit_ids: asStrings(record7.unit_ids)
+    ...record10,
+    id: asString(record10.id) ?? "",
+    title: asString(record10.title) ?? asString(record10.id) ?? "Workspace",
+    status: asString(record10.status) ?? "unspecified",
+    objective: asText(record10.objective) ?? "",
+    next_action: asText(record10.next_action) ?? "",
+    deadline: asText(record10.deadline) ?? "",
+    standing: record10.standing === true,
+    module_ids: asStrings(record10.module_ids),
+    unit_ids: asStrings(record10.unit_ids)
   };
 }
 function readProgress(value) {
@@ -9712,42 +11635,42 @@ function readProgress(value) {
   };
 }
 function readDeadlineModules(value) {
-  return asRecords(value).map((record7) => {
-    const moduleId = asString(record7.module_id);
+  return asRecords(value).map((record10) => {
+    const moduleId = asString(record10.module_id);
     if (!moduleId) {
       return null;
     }
     return {
       moduleId,
-      action: asText(record7.action)
+      action: asText(record10.action)
     };
   }).filter(nonNull);
 }
-function readAcademicDeadline(record7) {
-  const startDate = asString(record7.start_date) ?? "";
-  const endDate = asString(record7.end_date) ?? "";
+function readAcademicDeadline(record10) {
+  const startDate = asString(record10.start_date) ?? "";
+  const endDate = asString(record10.end_date) ?? "";
   return {
-    record: record7,
-    kind: asString(record7.kind) ?? "academic-date",
-    label: asString(record7.label) ?? asString(record7.title) ?? "Academic date",
-    title: asString(record7.title) ?? "",
+    record: record10,
+    kind: asString(record10.kind) ?? "academic-date",
+    label: asString(record10.label) ?? asString(record10.title) ?? "Academic date",
+    title: asString(record10.title) ?? "",
     startDate,
     endDate,
-    time: asText(record7.time),
+    time: asText(record10.time),
     registrationState: asString(
-      record7.registration_state
+      record10.registration_state
     ) ?? "unregistered",
-    directModuleId: asString(record7.module_id),
-    modules: readDeadlineModules(record7.modules)
+    directModuleId: asString(record10.module_id),
+    modules: readDeadlineModules(record10.modules)
   };
 }
 function readSourceEntries(value) {
-  return asRecords(value).map((record7) => ({
-    record: record7,
-    role: asString(record7.role) ?? "unassigned",
-    sourceId: asString(record7.source_id),
-    why: asText(record7.why) ?? "",
-    unitRouteCount: Array.isArray(record7.unit_routes) ? record7.unit_routes.length : 0
+  return asRecords(value).map((record10) => ({
+    record: record10,
+    role: asString(record10.role) ?? "unassigned",
+    sourceId: asString(record10.source_id),
+    why: asText(record10.why) ?? "",
+    unitRouteCount: Array.isArray(record10.unit_routes) ? record10.unit_routes.length : 0
   }));
 }
 
@@ -9837,7 +11760,7 @@ function renderSources2(view, root, module2) {
       text: role.replaceAll("-", " ")
     });
     for (const entry of roleEntries) {
-      const row3 = group.createDiv({
+      const row4 = group.createDiv({
         cls: "los-row"
       });
       const source = entry.sourceId ? view.plugin.store.get(
@@ -9845,11 +11768,11 @@ function renderSources2(view, root, module2) {
       ) : null;
       if (source) {
         chip(
-          row3,
+          row4,
           source,
-          (record7) => {
+          (record10) => {
             const id2 = asString(
-              record7.id
+              record10.id
             );
             if (!id2) {
               return;
@@ -9858,11 +11781,11 @@ function renderSources2(view, root, module2) {
           }
         );
       }
-      row3.createEl("p", {
+      row4.createEl("p", {
         text: entry.why
       });
       if (entry.unitRouteCount) {
-        row3.createDiv({
+        row4.createDiv({
           cls: "los-micro",
           text: `${entry.unitRouteCount} routed unit(s)`
         });
@@ -9928,9 +11851,9 @@ function renderLogistics(view, root, module2) {
 }
 function deadlinesFor(view, module2) {
   return view.plugin.store.rows("academic_deadlines").map(
-    (record7) => readAcademicDeadline(record7)
+    (record10) => readAcademicDeadline(record10)
   ).filter(
-    (row3) => row3.directModuleId === module2.id || row3.modules.some(
+    (row4) => row4.directModuleId === module2.id || row4.modules.some(
       (entry) => entry.moduleId === module2.id
     )
   ).sort(
@@ -9952,10 +11875,10 @@ function renderAcademicDates(view, root, module2) {
   );
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const ahead = rows.filter(
-    (row3) => (row3.endDate || row3.startDate) >= today
+    (row4) => (row4.endDate || row4.startDate) >= today
   );
   const past = rows.filter(
-    (row3) => (row3.endDate || row3.startDate) < today
+    (row4) => (row4.endDate || row4.startDate) < today
   );
   if (ahead.length) {
     view.renderDeadlineRows(
@@ -9984,14 +11907,14 @@ function renderAcademicDates(view, root, module2) {
   }
 }
 function renderDeadlineRows(wrap, module2, rows) {
-  const list2 = wrap.createDiv({
+  const list4 = wrap.createDiv({
     cls: "los-date-list"
   });
-  for (const row3 of rows) {
-    const card = list2.createDiv({
-      cls: `los-date-row los-deadline-${row3.kind}`
+  for (const row4 of rows) {
+    const card = list4.createDiv({
+      cls: `los-date-row los-deadline-${row4.kind}`
     });
-    const date3 = row3.endDate && row3.endDate !== row3.startDate ? `${row3.startDate} \u2192 ${row3.endDate}` : row3.startDate;
+    const date3 = row4.endDate && row4.endDate !== row4.startDate ? `${row4.startDate} \u2192 ${row4.endDate}` : row4.startDate;
     card.createDiv({
       cls: "los-date-when",
       text: date3
@@ -10000,10 +11923,10 @@ function renderDeadlineRows(wrap, module2, rows) {
       cls: "los-date-copy"
     });
     copy.createEl("strong", {
-      text: row3.label
+      text: row4.label
     });
-    if (row3.kind === "registration-window") {
-      const entry = row3.modules.find(
+    if (row4.kind === "registration-window") {
+      const entry = row4.modules.find(
         (item) => item.moduleId === module2.id
       );
       if (entry?.action) {
@@ -10015,20 +11938,20 @@ function renderDeadlineRows(wrap, module2, rows) {
     } else {
       copy.createDiv({
         cls: "los-micro",
-        text: row3.title || module2.title
+        text: row4.title || module2.title
       });
       const facts = copy.createDiv({
         cls: "los-row"
       });
       badge(
         facts,
-        row3.registrationState,
-        row3.registrationState || "needs-map"
+        row4.registrationState,
+        row4.registrationState || "needs-map"
       );
-      if (row3.time) {
+      if (row4.time) {
         facts.createSpan({
           cls: "los-micro",
-          text: row3.time
+          text: row4.time
         });
       }
     }
@@ -10060,15 +11983,15 @@ function renderModuleDetail(view, root) {
     return;
   }
   const tab = view.tab ?? view.defaultTab(module2);
-  const header = pageHeader(
+  const header2 = pageHeader(
     root,
     module2.kind,
     module2.title
   );
   if (module2.areaId === "program-job") {
-    badge(header, "Job", "role");
+    badge(header2, "Job", "role");
   }
-  header.createDiv({
+  header2.createDiv({
     cls: "los-module-facts",
     text: view.headline(module2)
   });
@@ -10116,8 +12039,8 @@ function renderModuleDetail(view, root) {
 function headline(view, module2) {
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const nextDate = view.deadlinesFor(module2).filter(
-    (row3) => (row3.endDate || row3.startDate) >= today
-  ).map((row3) => row3.startDate)[0];
+    (row4) => (row4.endDate || row4.startDate) >= today
+  ).map((row4) => row4.startDate)[0];
   return [
     semesterLabel(module2.semester),
     module2.credits ? `${module2.credits} LP` : "",
@@ -10140,7 +12063,7 @@ function renderOverview(view, root, module2) {
     text: `${progress.stagesComplete} of ${progress.stagesTotal} stages complete across ${progress.unitsTotal} unit${progress.unitsTotal === 1 ? "" : "s"}`
   });
   const workspaces = view.plugin.store.workspacesForModule(module2.id).map(
-    (record7) => normalizeWorkspaceRecord(record7)
+    (record10) => normalizeWorkspaceRecord(record10)
   );
   for (const workspace of workspaces) {
     workspaceCard(
@@ -10160,7 +12083,7 @@ function renderOverview(view, root, module2) {
   const units = orderModuleUnits(
     module2,
     view.plugin.store.unitsFor(module2.id).map(
-      (record7) => normalizeUnitRecord(record7)
+      (record10) => normalizeUnitRecord(record10)
     ).filter(nonNull)
   );
   const next = units.find(
@@ -10176,7 +12099,7 @@ function renderOverview(view, root, module2) {
   }
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const ahead = view.deadlinesFor(module2).filter(
-    (row3) => (row3.endDate || row3.startDate) >= today
+    (row4) => (row4.endDate || row4.startDate) >= today
   );
   if (ahead.length) {
     view.renderDeadlineRows(
@@ -10225,7 +12148,7 @@ function renderUnits(view, root, module2) {
     module2.id,
     view.componentId
   ).map(
-    (record7) => normalizeUnitRecord(record7)
+    (record10) => normalizeUnitRecord(record10)
   ).filter(nonNull);
   if (!units.length) {
     empty(
@@ -10250,7 +12173,7 @@ function renderUnits(view, root, module2) {
       (unit) => unit.status === "active"
     ).length} in progress`
   });
-  const list2 = root.createDiv({
+  const list4 = root.createDiv({
     cls: "los-record-list los-module-unit-list"
   });
   for (const unit of ordered) {
@@ -10265,14 +12188,14 @@ function renderUnits(view, root, module2) {
     const currentStage = currentStageId ? stages.find(
       (stage) => stage.id === currentStageId
     ) : null;
-    const row3 = list2.createEl("button", {
+    const row4 = list4.createEl("button", {
       cls: "los-record-row is-clickable",
       attr: {
         type: "button",
         "aria-label": `Open unit: ${unit.title}`
       }
     });
-    const copy = row3.createDiv({
+    const copy = row4.createDiv({
       cls: "los-record-copy"
     });
     copy.createEl("strong", {
@@ -10288,18 +12211,18 @@ function renderUnits(view, root, module2) {
       text: meta
     });
     if (map) {
-      row3.createSpan({
+      row4.createSpan({
         cls: "los-record-action",
         text: "Open \u2192"
       });
     } else {
       badge(
-        row3,
+        row4,
         "No map",
         "needs-map"
       );
     }
-    row3.addEventListener(
+    row4.addEventListener(
       "click",
       () => {
         view.selectedElementId = unit.id;
@@ -10310,10 +12233,10 @@ function renderUnits(view, root, module2) {
 }
 
 // src/features/module/navigation.ts
-function renderGroups(view, root) {
+function renderGroups2(view, root) {
   const semester = view.plugin.store.currentSemester();
   const modules = view.plugin.store.currentSemesterModules().map(
-    (record7) => readModuleRecord(record7)
+    (record10) => readModuleRecord(record10)
   ).filter(nonNull);
   pageHeader(
     root,
@@ -10338,14 +12261,14 @@ function renderGroups(view, root) {
   summary.createSpan({
     text: `${modules.length} enrolled module${modules.length === 1 ? "" : "s"}`
   });
-  const list2 = root.createDiv({
+  const list4 = root.createDiv({
     cls: "los-route-list los-semester-module-list"
   });
   for (const module2 of modules) {
     const progress = readProgress(
       view.plugin.store.progress(module2.id)
     );
-    const row3 = list2.createEl(
+    const row4 = list4.createEl(
       "button",
       {
         cls: "los-route-row los-semester-module-row is-clickable",
@@ -10356,7 +12279,7 @@ function renderGroups(view, root) {
         }
       }
     );
-    const copy = row3.createDiv({
+    const copy = row4.createDiv({
       cls: "los-route-row-copy"
     });
     copy.createEl("strong", {
@@ -10370,11 +12293,11 @@ function renderGroups(view, root) {
       cls: "los-route-meta",
       text: facts.join(" \xB7 ")
     });
-    row3.createSpan({
+    row4.createSpan({
       cls: "los-route-open",
       text: "Open \u2192"
     });
-    row3.addEventListener(
+    row4.addEventListener(
       "click",
       () => {
         view.selectedElementId = module2.id;
@@ -10436,7 +12359,7 @@ function renderGroupList(view, root) {
     }
   );
   const all = view.plugin.store.modulesForGroup(group.id).map(
-    (record7) => readModuleRecord(record7)
+    (record10) => readModuleRecord(record10)
   ).filter(nonNull);
   const needle = foldCase(view.query.trim());
   const rows = all.filter(
@@ -10478,11 +12401,11 @@ function renderGroupList(view, root) {
     );
     return;
   }
-  const list2 = root.createDiv({
+  const list4 = root.createDiv({
     cls: "los-route-list"
   });
   for (const module2 of rows) {
-    const row3 = list2.createEl(
+    const row4 = list4.createEl(
       "button",
       {
         cls: "los-route-row is-clickable",
@@ -10493,7 +12416,7 @@ function renderGroupList(view, root) {
         }
       }
     );
-    const copy = row3.createDiv({
+    const copy = row4.createDiv({
       cls: "los-route-row-copy"
     });
     copy.createEl("strong", {
@@ -10511,11 +12434,11 @@ function renderGroupList(view, root) {
         text: meta
       });
     }
-    row3.createSpan({
+    row4.createSpan({
       cls: "los-route-open",
       text: "Open \u2192"
     });
-    row3.addEventListener(
+    row4.addEventListener(
       "click",
       () => {
         view.selectedElementId = module2.id;
@@ -10526,8 +12449,8 @@ function renderGroupList(view, root) {
 }
 
 // src/views/module-view.ts
-var import_obsidian9 = require("obsidian");
-var ModuleView = class extends import_obsidian9.ItemView {
+var import_obsidian11 = require("obsidian");
+var ModuleView = class extends import_obsidian11.ItemView {
   plugin;
   screen;
   groupId;
@@ -10609,7 +12532,7 @@ var ModuleView = class extends import_obsidian9.ItemView {
     this.renderGroups(root);
   }
   renderGroups(root) {
-    renderGroups(this, root);
+    renderGroups2(this, root);
   }
   renderGroupList(root) {
     renderGroupList(this, root);
@@ -10651,8 +12574,71 @@ var ModuleView = class extends import_obsidian9.ItemView {
 };
 
 // src/views/nav-view.ts
-var import_obsidian10 = require("obsidian");
-var NavView = class extends import_obsidian10.ItemView {
+var import_obsidian12 = require("obsidian");
+
+// src/features/review/queue.ts
+function text3(value) {
+  return typeof value === "string" ? value : "";
+}
+function hasConflictingWork(row4) {
+  return row4.reasons.some((reason) => /conflicting/i.test(reason));
+}
+function categoryLabel(category) {
+  const words2 = category.replace(/-/g, " ").trim();
+  return words2 ? words2.charAt(0).toUpperCase() + words2.slice(1) : "Review";
+}
+function buildReviewQueue(sources) {
+  const entries = [];
+  for (const draft of sources.drafts) {
+    if (draft.kind === "claim") {
+      entries.push({
+        kind: "claim-draft",
+        key: draft.id,
+        draft,
+        title: "Worked attempt",
+        context: `${draft.abilityTitle} \xB7 draft, not recorded`
+      });
+    } else {
+      entries.push({
+        kind: "connection-draft",
+        key: draft.id,
+        draft,
+        title: "Possible connection",
+        context: `${draft.fromTitle} ${draft.connection === "equivalence" ? "\u2194" : "\u2192"} ${draft.toTitle} \xB7 draft`
+      });
+    }
+  }
+  for (const row4 of sources.horizon?.abilities ?? []) {
+    if (!hasConflictingWork(row4)) continue;
+    entries.push({
+      kind: "ability-conflict",
+      key: `ability-conflict:${row4.id}`,
+      row: row4,
+      title: "Conflicting attempts",
+      context: row4.title
+    });
+  }
+  sources.items.forEach((item, index) => {
+    const id2 = text3(item.id) || `review-item-${index}`;
+    const category = text3(item.category) || "review";
+    entries.push({
+      kind: "core",
+      key: id2,
+      item,
+      category,
+      title: text3(item.title) || id2,
+      context: [categoryLabel(category), text3(item.context)].filter(Boolean).join(" \xB7 "),
+      reason: text3(item.reason)
+    });
+  });
+  return entries;
+}
+function reviewQueueCount(sources) {
+  return buildReviewQueue(sources).length;
+}
+
+// src/views/nav-view.ts
+var NavView = class extends import_obsidian12.ItemView {
   plugin;
   constructor(leaf, plugin) {
     super(leaf);
@@ -10670,16 +12656,29 @@ var NavView = class extends import_obsidian10.ItemView {
   async onOpen() {
     this.render();
   }
-  nav(parent, iconName, label, key, action) {
+  nav(parent, iconName, label, key, action, count2 = null) {
     const active = this.plugin.activeNav === key;
-    const row3 = parent.createEl("button", {
+    const row4 = parent.createEl("button", {
       cls: `los-app-nav-item is-clickable${active ? " is-active" : ""}`,
       attr: { type: "button", "aria-current": active ? "page" : "false" }
     });
-    icon(row3.createSpan(), iconName);
-    row3.createSpan({ text: label });
-    row3.addEventListener("click", action);
-    return row3;
+    icon(row4.createSpan(), iconName);
+    row4.createSpan({ text: label });
+    if (count2) {
+      row4.createSpan({ cls: "los-nav-count", text: String(count2) });
+      row4.setAttr("aria-label", `${label}, ${count2} waiting`);
+    }
+    row4.addEventListener("click", action);
+    return row4;
+  }
+  /** Review's live count: the same queue Review lists, never a second tally. */
+  reviewCount() {
+    if (!this.plugin.store?.ready) return 0;
+    return reviewQueueCount({
+      items: this.plugin.store.reviewItems(),
+      drafts: this.plugin.listAbilityDrafts(),
+      horizon: this.plugin.abilityHorizon.current()
+    });
   }
   render() {
     const root = this.contentEl;
@@ -10701,8 +12700,16 @@ var NavView = class extends import_obsidian10.ItemView {
     this.nav(primary, "graduation-cap", "Learn", "learn", () => this.plugin.nav.openLearn());
     this.nav(primary, "briefcase-business", "Projects", "projects", () => this.plugin.nav.openProjects());
     this.nav(primary, "library", "Library", "library", () => this.plugin.nav.openLibrary());
+    this.nav(primary, "map", "Atlas", "abilities", () => this.plugin.nav.openAbilities());
     this.nav(primary, "sprout", "Garden", "garden", () => this.plugin.nav.openGarden());
-    this.nav(primary, "check-check", "Review", "review", () => this.plugin.nav.openReview());
+    this.nav(
+      primary,
+      "check-check",
+      "Review",
+      "review",
+      () => this.plugin.nav.openReview(),
+      this.reviewCount()
+    );
     const more = root.createEl("details", { cls: "los-nav-more" });
     if (this.plugin.settings.navMoreOpen) more.setAttr("open", "open");
     more.createEl("summary", { cls: "los-nav-more-trigger", text: "More" });
@@ -10713,7 +12720,7 @@ var NavView = class extends import_obsidian10.ItemView {
     const secondary = more.createDiv({ cls: "los-nav-secondary" });
     enableButtonGroupKeyboardNavigation(secondary, "vertical");
     this.nav(secondary, "plus", "Capture", "capture", () => this.plugin.nav.openCapture());
-    this.nav(secondary, "map", "Concept atlas", "atlas", () => this.plugin.nav.openAtlas());
+    this.nav(secondary, "network", "Concept atlas", "atlas", () => this.plugin.nav.openAtlas());
     this.nav(
       secondary,
       "shield",
@@ -10727,7 +12734,7 @@ var NavView = class extends import_obsidian10.ItemView {
 };
 
 // src/views/program-view.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 var COORDINATION_HEADINGS = [
   "Priorities",
   "Commitments",
@@ -10739,18 +12746,18 @@ function readProgramSemesters(value) {
     return [];
   }
   const semesters = [];
-  for (const candidate of value) {
-    if (!isRecord2(candidate) || typeof candidate.title !== "string" || typeof candidate.status !== "string") {
+  for (const candidate2 of value) {
+    if (!isRecord2(candidate2) || typeof candidate2.title !== "string" || typeof candidate2.status !== "string") {
       continue;
     }
     semesters.push({
-      title: candidate.title,
-      status: candidate.status
+      title: candidate2.title,
+      status: candidate2.status
     });
   }
   return semesters;
 }
-var ProgramView = class extends import_obsidian11.ItemView {
+var ProgramView = class extends import_obsidian13.ItemView {
   plugin;
   programId = null;
   constructor(leaf, plugin) {
@@ -10878,7 +12885,7 @@ var ProgramView = class extends import_obsidian11.ItemView {
     context.createSpan({
       text: `${modules.length} commitment${modules.length === 1 ? "" : "s"} \xB7 ${currentSemester?.status ?? projectedExcerpt(program.status, 40)}`
     });
-    const list2 = root.createDiv({
+    const list4 = root.createDiv({
       cls: "los-learning-list"
     });
     if (!modules.length) {
@@ -10899,10 +12906,10 @@ var ProgramView = class extends import_obsidian11.ItemView {
       }
     }
     for (const module2 of modules) {
-      const row3 = list2.createDiv({
+      const row4 = list4.createDiv({
         cls: "los-learning-row"
       });
-      const copy = row3.createDiv({
+      const copy = row4.createDiv({
         cls: "los-learning-copy"
       });
       const title = button(
@@ -10931,7 +12938,7 @@ var ProgramView = class extends import_obsidian11.ItemView {
         module2.credits ? `${projectedExcerpt(module2.credits, 20)} LP` : "",
         examination
       ].filter(Boolean).join(" \xB7 ");
-      const metaRow = row3.createDiv({ cls: "los-learning-meta los-micro" });
+      const metaRow = row4.createDiv({ cls: "los-learning-meta los-micro" });
       if (status) metaRow.createSpan({ cls: statusTone(module2.status), text: status });
       if (status && rest) metaRow.createSpan({ text: " \xB7 " });
       if (rest) metaRow.createSpan({ text: rest });
@@ -10939,14 +12946,14 @@ var ProgramView = class extends import_obsidian11.ItemView {
     if (Boolean(program.semester_bound)) {
       const semesters2 = disclosure(root, "Semesters");
       for (const semester of readProgramSemesters(program.semesters)) {
-        const row3 = semesters2.createDiv({
+        const row4 = semesters2.createDiv({
           cls: "los-row"
         });
-        row3.createEl("strong", {
+        row4.createEl("strong", {
           text: semester.title
         });
         badge(
-          row3,
+          row4,
           semester.status,
           semester.status
         );
@@ -10970,7 +12977,7 @@ var ProgramView = class extends import_obsidian11.ItemView {
           1600
         )
       ]
-    ).filter((row3) => Boolean(row3[1]));
+    ).filter((row4) => Boolean(row4[1]));
     if (!rows.length) {
       return;
     }
@@ -10980,13 +12987,13 @@ var ProgramView = class extends import_obsidian11.ItemView {
       "los-coordination-details"
     );
     for (const [heading, body] of rows) {
-      const row3 = panel.createDiv({
+      const row4 = panel.createDiv({
         cls: "los-coordination-row"
       });
-      row3.createEl("strong", {
+      row4.createEl("strong", {
         text: heading
       });
-      row3.createEl("p", {
+      row4.createEl("p", {
         text: body
       });
     }
@@ -11001,7 +13008,7 @@ var ProgramView = class extends import_obsidian11.ItemView {
       cls: "los-card-grid"
     });
     const units = this.plugin.store.units().filter(
-      (row3) => row3.needs_study_map === true
+      (row4) => row4.needs_study_map === true
     );
     for (const unit of units) {
       unitCard(grid, this.plugin, unit);
@@ -11014,10 +13021,10 @@ var ProgramView = class extends import_obsidian11.ItemView {
       "Capture",
       "You capture; the operator files."
     );
-    const count = this.plugin.store.data?.counts?.inbox_items || 0;
+    const count2 = this.plugin.store.data?.counts?.inbox_items || 0;
     const wrap = section(
       root,
-      `${count} item${count === 1 ? "" : "s"} awaiting routing`
+      `${count2} item${count2 === 1 ? "" : "s"} awaiting routing`
     );
     const form = wrap.createDiv({
       cls: "los-capture-grid"
@@ -11056,9 +13063,9 @@ var ProgramView = class extends import_obsidian11.ItemView {
       textPanel,
       "Capture text",
       () => {
-        const text5 = editor.value.trim();
-        if (!text5) {
-          new import_obsidian11.Notice(
+        const text8 = editor.value.trim();
+        if (!text8) {
+          new import_obsidian13.Notice(
             "Enter some text before capturing."
           );
           editor.focus();
@@ -11066,7 +13073,7 @@ var ProgramView = class extends import_obsidian11.ItemView {
         }
         const captured = {
           title: title.value.trim(),
-          text: text5
+          text: text8
         };
         this.capture(
           () => this.plugin.gateway.captureText(
@@ -11139,7 +13146,7 @@ var ProgramView = class extends import_obsidian11.ItemView {
       () => {
         const localPath = localFilePath(picker.files?.[0]);
         if (!localPath) {
-          new import_obsidian11.Notice(
+          new import_obsidian13.Notice(
             "Choose a local file first."
           );
           return;
@@ -11170,7 +13177,7 @@ var ProgramView = class extends import_obsidian11.ItemView {
   }
   async capture(action, clear = null) {
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian11.Notice(
+      new import_obsidian13.Notice(
         "Queued behind the running LearningOS write."
       );
     }
@@ -11187,12 +13194,12 @@ var ProgramView = class extends import_obsidian11.ItemView {
         }
       );
       clear?.();
-      new import_obsidian11.Notice(
+      new import_obsidian13.Notice(
         "Captured to the LearningOS inbox."
       );
       this.render();
     } catch (error) {
-      new import_obsidian11.Notice(errorMessage(error));
+      new import_obsidian13.Notice(errorMessage(error));
     }
   }
 };
@@ -11217,10 +13224,10 @@ function renderFiles(view, root, project) {
     const path = asString(file.path);
     const label = asString(file.label) ?? path ?? asString(file.id) ?? "Untitled file";
     const kind = asString(file.kind) ?? "file";
-    const row3 = wrap.createDiv({
+    const row4 = wrap.createDiv({
       cls: "los-record-row los-project-file"
     });
-    const copy = row3.createDiv({
+    const copy = row4.createDiv({
       cls: "los-record-copy los-project-link-copy"
     });
     copy.createEl("strong", {
@@ -11232,7 +13239,7 @@ function renderFiles(view, root, project) {
     });
     if (path) {
       button(
-        row3,
+        row4,
         "Open",
         () => view.plugin.openAuthoredPath(
           path
@@ -11259,10 +13266,10 @@ function renderDecisions(root, project) {
   }
   for (const decision of decisions) {
     const status = asString(decision.status) ?? "open";
-    const row3 = wrap.createDiv({
+    const row4 = wrap.createDiv({
       cls: "los-record-row los-project-decision"
     });
-    const copy = row3.createDiv({
+    const copy = row4.createDiv({
       cls: "los-record-copy"
     });
     copy.createEl("strong", {
@@ -11273,7 +13280,7 @@ function renderDecisions(root, project) {
       text: asText(decision.summary) ?? ""
     });
     badge(
-      row3,
+      row4,
       status,
       status
     );
@@ -11384,7 +13391,7 @@ function renderStructure(root, project) {
   const tree = wrap.createDiv({
     cls: "los-record-list los-project-structure"
   });
-  const renderNode2 = (parent, row3, depth = 0) => {
+  const renderNode2 = (parent, row4, depth = 0) => {
     const item = parent.createDiv({
       cls: `los-record-row los-project-structure-row los-project-node-depth-${Math.min(depth, 4)}`
     });
@@ -11392,23 +13399,23 @@ function renderStructure(root, project) {
       cls: "los-record-copy"
     });
     copy.createEl("strong", {
-      text: asLabel(row3)
+      text: asLabel(row4)
     });
-    const status = asString(row3.status);
+    const status = asString(row4.status);
     if (status) {
       copy.createDiv({
         cls: "los-record-meta",
-        text: `${asString(row3.kind) ?? "step"} \xB7 ${status}`
+        text: `${asString(row4.kind) ?? "step"} \xB7 ${status}`
       });
     }
-    const summary = asString(row3.summary);
+    const summary = asString(row4.summary);
     if (summary) {
       copy.createDiv({
         cls: "los-record-summary",
         text: summary
       });
     }
-    const children = asRecords(row3.children);
+    const children = asRecords(row4.children);
     if (children.length) {
       for (const child of children) {
         renderNode2(
@@ -11419,10 +13426,10 @@ function renderStructure(root, project) {
       }
     }
   };
-  for (const row3 of structure.nodes) {
+  for (const row4 of structure.nodes) {
     renderNode2(
       tree,
-      row3
+      row4
     );
   }
 }
@@ -11502,11 +13509,11 @@ function renderDetail(view, root) {
     ...asStrings(project.unit_ids)
   ];
   for (const id2 of linkedIds) {
-    const record7 = view.plugin.store.get(id2);
-    if (!record7) continue;
+    const record10 = view.plugin.store.get(id2);
+    if (!record10) continue;
     chip(
       links,
-      record7,
+      record10,
       (target) => view.plugin.nav.openRecord(target)
     );
   }
@@ -11585,14 +13592,14 @@ function renderOverview2(view, root, project) {
     ]
   ];
   for (const [label, value] of metadata) {
-    const row3 = meta.createDiv({
+    const row4 = meta.createDiv({
       cls: "los-project-meta"
     });
-    row3.createDiv({
+    row4.createDiv({
       cls: "los-kicker",
       text: label
     });
-    row3.createEl("strong", {
+    row4.createEl("strong", {
       text: value
     });
   }
@@ -11610,7 +13617,7 @@ function renderOverview2(view, root, project) {
   const unitRows = asStrings(project.unit_ids).map(
     (id2) => view.plugin.store.get(id2)
   ).filter(
-    (row3) => row3 !== null
+    (row4) => row4 !== null
   );
   if (!unitRows.length) {
     empty(
@@ -11634,7 +13641,7 @@ function renderOverview2(view, root, project) {
 }
 
 // src/features/project/list.ts
-function renderList2(view, root) {
+function renderList3(view, root) {
   pageHeader(
     root,
     "Projects",
@@ -11705,18 +13712,18 @@ function renderList2(view, root) {
       const projectType = asString(
         project.project_type
       ) ?? "project";
-      const row3 = results.createEl("button", {
+      const row4 = results.createEl("button", {
         cls: "los-record-row los-project-row is-clickable",
         attr: {
           type: "button",
           "aria-label": `Open project: ${title}`
         }
       });
-      row3.setAttr(
+      row4.setAttr(
         "data-record-id",
         projectId
       );
-      const copy = row3.createDiv({
+      const copy = row4.createDiv({
         cls: "los-record-copy"
       });
       copy.createEl("strong", {
@@ -11735,11 +13742,11 @@ function renderList2(view, root) {
           project.linked_module_ids
         )} linked modules`
       });
-      row3.createSpan({
+      row4.createSpan({
         cls: "los-record-action",
         text: "Open \u2192"
       });
-      row3.addEventListener(
+      row4.addEventListener(
         "click",
         () => {
           view.selectedElementId = projectId;
@@ -11766,8 +13773,8 @@ function renderList2(view, root) {
 }
 
 // src/views/project-view.ts
-var import_obsidian12 = require("obsidian");
-var ProjectLinkReasonModal = class extends import_obsidian12.Modal {
+var import_obsidian14 = require("obsidian");
+var ProjectLinkReasonModal = class extends import_obsidian14.Modal {
   plugin;
   relationship;
   restoreAccessibility = null;
@@ -11865,7 +13872,7 @@ var ProjectLinkReasonModal = class extends import_obsidian12.Modal {
     this.contentEl.empty();
   }
 };
-var ProjectView = class extends import_obsidian12.ItemView {
+var ProjectView = class extends import_obsidian14.ItemView {
   plugin;
   screen = "list";
   projectId = null;
@@ -11927,7 +13934,7 @@ var ProjectView = class extends import_obsidian12.ItemView {
     this.renderList(root);
   }
   renderList(root) {
-    renderList2(this, root);
+    renderList3(this, root);
   }
   renderDetail(root) {
     renderDetail(this, root);
@@ -11963,10 +13970,10 @@ var ProjectView = class extends import_obsidian12.ItemView {
       const target = this.plugin.store.get(
         relationship.toId
       );
-      const row3 = wrap.createDiv({
+      const row4 = wrap.createDiv({
         cls: "los-record-row los-project-link"
       });
-      const copy = row3.createDiv({
+      const copy = row4.createDiv({
         cls: "los-record-copy los-project-link-copy"
       });
       copy.createEl("strong", {
@@ -11976,7 +13983,7 @@ var ProjectView = class extends import_obsidian12.ItemView {
         cls: "los-record-meta",
         text: `${relationship.toType} \xB7 ${relationship.relationType}`
       });
-      const actions = row3.createDiv({
+      const actions = row4.createDiv({
         cls: "los-actions"
       });
       if (target) {
@@ -12011,9 +14018,18 @@ var ProjectView = class extends import_obsidian12.ItemView {
 };
 
 // src/views/review-view.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian16 = require("obsidian");
 var fs2 = __toESM(require("node:fs"));
 var nodePath2 = __toESM(require("node:path"));
+
+// src/features/review/detail.ts
+var import_obsidian15 = require("obsidian");
+
+// src/gateway-client.ts
+var import_node_crypto2 = require("node:crypto");
+var import_promises = require("node:fs/promises");
+var import_node_os = require("node:os");
+var import_node_path = require("node:path");
 
 // src/contracts/gateway-v2.ts
 var GATEWAY_SCHEMA_VERSION = 2;
@@ -12031,7 +14047,7 @@ var DEFINITIVE_NO_COMMIT_CODES = [
 function isDefinitiveNoCommitCode(code) {
   return typeof code === "string" && DEFINITIVE_NO_COMMIT_CODES.includes(code);
 }
-function record(value) {
+function record2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
 function nonEmpty2(value) {
@@ -12071,7 +14087,14 @@ var UI_GESTURE_CAPABILITIES = [
   "concept.relations.change",
   "review.apply",
   "review.prepare",
-  "unit.map.import"
+  "unit.map.import",
+  /*
+   * Added 2026-09-23 (Aram): the two append-only ability records, sent only
+   * from Review, where the exact claim or connection is on screen above
+   * "Confirm & record". Core admits both over `ui` only.
+   */
+  "ability.candidate.append",
+  "learner.ability-observation.append"
 ];
 var UI_GESTURE_SET = new Set(UI_GESTURE_CAPABILITIES);
 function isGestureCapability(capability) {
@@ -12126,7 +14149,7 @@ function gatewayApprovalSubject(capability, expectedSnapshot, expectedRevisions,
 }
 function canonical(value) {
   if (Array.isArray(value)) return value.map(canonical);
-  const object = record(value);
+  const object = record2(value);
   if (!object) return value;
   return Object.fromEntries(
     Object.keys(object).sort(unicodeCodePointCompare).map((key) => [key, canonical(object[key])])
@@ -12151,8 +14174,8 @@ async function gatewaySubjectSha256(subject) {
   return `sha256:${[...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 }
 function asGatewaySuccessV2(value, expected) {
-  const response = record(value);
-  const result = record(response?.result);
+  const response = record2(value);
+  const result = record2(response?.result);
   const responseKeys = [
     "schema_version",
     "request_id",
@@ -12178,7 +14201,7 @@ function asGatewaySuccessV2(value, expected) {
   return response;
 }
 function asGatewayFailureV2(value, expected) {
-  const response = record(value);
+  const response = record2(value);
   if (!response) return null;
   const responseKeys = [
     "schema_version",
@@ -12193,15 +14216,15 @@ function asGatewayFailureV2(value, expected) {
     "result",
     "error"
   ];
-  const error = record(response.error);
-  const refused = exactKeys2(response, responseKeys) && response.schema_version === GATEWAY_SCHEMA_VERSION && response.request_id === expected.requestId && response.idempotency_key === expected.idempotencyKey && response.capability === expected.capability && response.ok === false && typeof response.replayed === "boolean" && response.transaction_id === null && response.receipt_path === null && response.snapshot_after === null && record(response.result) !== null && error !== null && exactKeys2(error, ["code", "message", "retryable", "details"]) && nonEmpty2(error.code) && nonEmpty2(error.message) && typeof error.retryable === "boolean" && record(error.details) !== null;
+  const error = record2(response.error);
+  const refused = exactKeys2(response, responseKeys) && response.schema_version === GATEWAY_SCHEMA_VERSION && response.request_id === expected.requestId && response.idempotency_key === expected.idempotencyKey && response.capability === expected.capability && response.ok === false && typeof response.replayed === "boolean" && response.transaction_id === null && response.receipt_path === null && response.snapshot_after === null && record2(response.result) !== null && error !== null && exactKeys2(error, ["code", "message", "retryable", "details"]) && nonEmpty2(error.code) && nonEmpty2(error.message) && typeof error.retryable === "boolean" && record2(error.details) !== null;
   return refused ? response : null;
 }
 function asGatewayRequestV2(value) {
-  const envelope = record(value);
+  const envelope = record2(value);
   if (!envelope) return null;
-  const approval = record(envelope.approval);
-  const revisions = record(envelope.expected_revisions);
+  const approval = record2(envelope.approval);
+  const revisions = record2(envelope.expected_revisions);
   const valid = exactKeys2(envelope, [
     "schema_version",
     "request_id",
@@ -12214,7 +14237,7 @@ function asGatewayRequestV2(value) {
     "payload"
   ]) && envelope.schema_version === GATEWAY_SCHEMA_VERSION && nonEmpty2(envelope.request_id) && nonEmpty2(envelope.idempotency_key) && nonEmpty2(envelope.capability) && envelope.channel === "ui" && isSha256(envelope.expected_snapshot) && revisions !== null && Object.entries(revisions).every(
     ([id2, revision]) => nonEmpty2(id2) && Number.isInteger(revision) && revision >= 0
-  ) && approval !== null && exactKeys2(approval, ["kind", "subject_sha256"]) && approval.kind === "direct-user-gesture" && isSha256(approval.subject_sha256) && record(envelope.payload) !== null;
+  ) && approval !== null && exactKeys2(approval, ["kind", "subject_sha256"]) && approval.kind === "direct-user-gesture" && isSha256(approval.subject_sha256) && record2(envelope.payload) !== null;
   return valid ? envelope : null;
 }
 
@@ -12226,7 +14249,8 @@ function emptyUiDrafts() {
     selectedStages: {},
     inbox: { title: "", text: "" },
     garden: { title: "", text: "" },
-    doneWhen: {}
+    doneWhen: {},
+    abilityDrafts: {}
   };
 }
 function normalizeUiDrafts(value) {
@@ -12237,16 +14261,17 @@ function normalizeUiDrafts(value) {
     selectedStages: value?.selectedStages ?? empty2.selectedStages,
     inbox: value?.inbox ?? empty2.inbox,
     garden: value?.garden ?? empty2.garden,
-    doneWhen: value?.doneWhen ?? empty2.doneWhen
+    doneWhen: value?.doneWhen ?? empty2.doneWhen,
+    abilityDrafts: value?.abilityDrafts && typeof value.abilityDrafts === "object" && !Array.isArray(value.abilityDrafts) ? value.abilityDrafts : empty2.abilityDrafts
   };
 }
 function criterionKeys(criteria) {
   const seen = /* @__PURE__ */ new Map();
   return criteria.map((criterion) => {
-    const text5 = String(criterion ?? "").replace(/\s+/g, " ").trim();
+    const text8 = String(criterion ?? "").replace(/\s+/g, " ").trim();
     let hash = 2166136261;
-    for (let index = 0; index < text5.length; index += 1) {
-      hash ^= text5.charCodeAt(index);
+    for (let index = 0; index < text8.length; index += 1) {
+      hash ^= text8.charCodeAt(index);
       hash = Math.imul(hash, 16777619) >>> 0;
     }
     const base = hash.toString(16).padStart(8, "0");
@@ -12282,10 +14307,10 @@ var DraftStore = class {
     const entry = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
     return { text: entry?.text ?? savedText, dirty: entry != null && entry.text !== savedText };
   }
-  setStage(unitId, stageId, text5, savedText = "") {
+  setStage(unitId, stageId, text8, savedText = "") {
     const key = this.stageKey(unitId, stageId);
-    if (text5 === savedText) delete this.settings.uiDrafts.stages[key];
-    else this.settings.uiDrafts.stages[key] = { text: text5 };
+    if (text8 === savedText) delete this.settings.uiDrafts.stages[key];
+    else this.settings.uiDrafts.stages[key] = { text: text8 };
     this.scheduleSave();
   }
   clearStage(unitId, stageId) {
@@ -12307,9 +14332,9 @@ var DraftStore = class {
         recoveredStages[stageId] = entry.text;
       }
     }
-    const recoveredText = recovered.map((row3) => `### ${row3.title}
+    const recoveredText = recovered.map((row4) => `### ${row4.title}
 
-${row3.text.trim()}`).join("\n\n");
+${row4.text.trim()}`).join("\n\n");
     return {
       title: saved?.title || (recovered.length ? "Recovered stage drafts" : ""),
       text: [String(saved?.text || "").trim(), recoveredText].filter(Boolean).join("\n\n"),
@@ -12318,11 +14343,11 @@ ${row3.text.trim()}`).join("\n\n");
       expectedRevisions: saved?.expectedRevisions ?? {}
     };
   }
-  setUnitNote(unitId, title, text5, expectedRevisions = {}, recoveredStages = {}) {
-    if (!title.trim() && !text5.trim()) delete this.settings.uiDrafts.unitNotes[unitId];
+  setUnitNote(unitId, title, text8, expectedRevisions = {}, recoveredStages = {}) {
+    if (!title.trim() && !text8.trim()) delete this.settings.uiDrafts.unitNotes[unitId];
     else this.settings.uiDrafts.unitNotes[unitId] = {
       title,
-      text: text5,
+      text: text8,
       expectedRevisions: { ...expectedRevisions },
       recoveredStages: { ...recoveredStages }
     };
@@ -12414,8 +14439,8 @@ ${row3.text.trim()}`).join("\n\n");
   getInbox() {
     return { ...this.settings.uiDrafts.inbox };
   }
-  setInbox(title, text5) {
-    this.settings.uiDrafts.inbox = { title, text: text5 };
+  setInbox(title, text8) {
+    this.settings.uiDrafts.inbox = { title, text: text8 };
     this.scheduleSave();
   }
   /**
@@ -12432,14 +14457,37 @@ ${row3.text.trim()}`).join("\n\n");
   getGarden() {
     return { ...this.settings.uiDrafts.garden };
   }
-  setGarden(title, text5) {
-    this.settings.uiDrafts.garden = { title, text: text5 };
+  setGarden(title, text8) {
+    this.settings.uiDrafts.garden = { title, text: text8 };
     this.scheduleSave();
   }
   clearGarden(match = null) {
     const draft = this.settings.uiDrafts.garden;
     if (match && !sameComposerDraft(draft, match)) return;
     this.settings.uiDrafts.garden = { title: "", text: "" };
+    this.scheduleSave();
+  }
+  /** Every readable ability draft, oldest first. */
+  listAbilityDrafts() {
+    return Object.values(this.settings.uiDrafts.abilityDrafts ?? {}).map((value) => asAbilityDraft(value)).filter((draft) => draft !== null).sort((left, right) => compareStrings(left.createdAt, right.createdAt) || compareStrings(left.id, right.id));
+  }
+  getAbilityDraft(id2) {
+    return asAbilityDraft(this.settings.uiDrafts.abilityDrafts?.[id2]);
+  }
+  saveAbilityDraft(draft) {
+    this.settings.uiDrafts.abilityDrafts ??= {};
+    this.settings.uiDrafts.abilityDrafts[draft.id] = { ...draft };
+    this.scheduleSave();
+  }
+  /**
+   * Drop one draft. `updatedAt` makes this safe after an awaited write: the
+   * draft goes only if it is still the version that was confirmed, so an edit
+   * made while the write ran is kept.
+   */
+  discardAbilityDraft(id2, updatedAt = null) {
+    const current = this.getAbilityDraft(id2);
+    if (updatedAt && current && current.updatedAt !== updatedAt) return;
+    delete this.settings.uiDrafts.abilityDrafts?.[id2];
     this.scheduleSave();
   }
 };
@@ -12459,7 +14507,7 @@ var RECORD_KEYS = [
   "confirmation",
   "last_error"
 ];
-function record2(value) {
+function record3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
 function exactKeys3(value, keys) {
@@ -12470,27 +14518,27 @@ function nonEmpty3(value) {
 }
 async function validateGatewayRecoveryRecord(value) {
   const refuse = (error) => ({ ok: false, error });
-  const candidate = record2(value);
-  if (!candidate) return refuse("the recovery record is not an object");
-  if (!exactKeys3(candidate, RECORD_KEYS)) {
+  const candidate2 = record3(value);
+  if (!candidate2) return refuse("the recovery record is not an object");
+  if (!exactKeys3(candidate2, RECORD_KEYS)) {
     return refuse(`the recovery record must carry exactly ${RECORD_KEYS.join(", ")}`);
   }
-  if (candidate.schema_version !== 1) {
-    return refuse(`unsupported recovery schema_version ${JSON.stringify(candidate.schema_version)}`);
+  if (candidate2.schema_version !== 1) {
+    return refuse(`unsupported recovery schema_version ${JSON.stringify(candidate2.schema_version)}`);
   }
-  if (!PHASES.includes(candidate.phase)) {
-    return refuse(`unknown recovery phase ${JSON.stringify(candidate.phase)}`);
+  if (!PHASES.includes(candidate2.phase)) {
+    return refuse(`unknown recovery phase ${JSON.stringify(candidate2.phase)}`);
   }
-  const phase = candidate.phase;
-  if (!nonEmpty3(candidate.created_at) || !Number.isFinite(Date.parse(candidate.created_at))) {
+  const phase = candidate2.phase;
+  if (!nonEmpty3(candidate2.created_at) || !Number.isFinite(Date.parse(candidate2.created_at))) {
     return refuse("the recovery record has no readable creation timestamp");
   }
-  if (typeof candidate.envelope_json !== "string" || !candidate.envelope_json) {
+  if (typeof candidate2.envelope_json !== "string" || !candidate2.envelope_json) {
     return refuse("the recovery record carries no persisted envelope");
   }
   let parsed = null;
   try {
-    parsed = JSON.parse(candidate.envelope_json);
+    parsed = JSON.parse(candidate2.envelope_json);
   } catch (_) {
     return refuse("the persisted envelope is not readable JSON");
   }
@@ -12506,9 +14554,9 @@ async function validateGatewayRecoveryRecord(value) {
     return refuse("the persisted envelope no longer matches the approval it carries");
   }
   let confirmation = null;
-  if (candidate.confirmation !== null) {
+  if (candidate2.confirmation !== null) {
     try {
-      confirmation = asGatewaySuccessV2(candidate.confirmation, {
+      confirmation = asGatewaySuccessV2(candidate2.confirmation, {
         requestId: envelope.request_id,
         idempotencyKey: envelope.idempotency_key,
         capability: envelope.capability
@@ -12524,8 +14572,8 @@ async function validateGatewayRecoveryRecord(value) {
     return refuse(`a ${phase} recovery record cannot already carry a receipt`);
   }
   let lastError = null;
-  if (candidate.last_error !== null) {
-    const failure = record2(candidate.last_error);
+  if (candidate2.last_error !== null) {
+    const failure = record3(candidate2.last_error);
     if (!failure || !exactKeys3(failure, ["code", "message"]) || !nonEmpty3(failure.code) || typeof failure.message !== "string") {
       return refuse("the recorded error is not a {code, message} pair");
     }
@@ -12537,8 +14585,8 @@ async function validateGatewayRecoveryRecord(value) {
       record: {
         schema_version: 1,
         phase,
-        created_at: candidate.created_at,
-        envelope_json: candidate.envelope_json,
+        created_at: candidate2.created_at,
+        envelope_json: candidate2.envelope_json,
         confirmation,
         last_error: lastError
       },
@@ -12720,18 +14768,18 @@ var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
 };
 function clearDraftsOwnedBy(drafts, envelope) {
   const payload = envelope.payload;
-  const text5 = typeof payload.text === "string" ? payload.text : null;
+  const text8 = typeof payload.text === "string" ? payload.text : null;
   const title = typeof payload.title === "string" ? payload.title : "";
   if (envelope.capability === "capture.create") {
-    if (text5 === null) return;
-    if (sameComposerDraft(drafts.inbox, { title, text: text5 })) {
+    if (text8 === null) return;
+    if (sameComposerDraft(drafts.inbox, { title, text: text8 })) {
       drafts.inbox = { title: "", text: "" };
     }
     return;
   }
   if (envelope.capability === "garden.seed.create") {
-    if (text5 === null) return;
-    if (sameComposerDraft(drafts.garden, { title, text: text5 })) {
+    if (text8 === null) return;
+    if (sameComposerDraft(drafts.garden, { title, text: text8 })) {
       drafts.garden = { title: "", text: "" };
     }
     return;
@@ -12740,7 +14788,7 @@ function clearDraftsOwnedBy(drafts, envelope) {
     const unitId = typeof payload.unit_id === "string" ? payload.unit_id : "";
     if (!unitId) return;
     const draft = drafts.unitNotes[unitId];
-    const matches2 = draft && draft.text === text5 && String(draft.title || "").trim() === title;
+    const matches2 = draft && draft.text === text8 && String(draft.title || "").trim() === title;
     if (matches2) {
       delete drafts.unitNotes[unitId];
     }
@@ -12786,4778 +14834,6 @@ function gatewayRecoverySummary(state) {
     ["Last error", stored.last_error ? `${stored.last_error.code}: ${stored.last_error.message}` : "none"]
   ];
 }
-
-// src/contracts/health-report.ts
-function record3(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
-}
-function exactKeys4(value, required, optional2 = []) {
-  const allowed = /* @__PURE__ */ new Set([...required, ...optional2]);
-  return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => allowed.has(key));
-}
-function text3(value) {
-  return typeof value === "string" && value.trim().length > 0;
-}
-function dateTime3(value) {
-  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
-}
-function asHealthReport(value) {
-  const report = record3(value);
-  if (!report || !exactKeys4(
-    report,
-    ["schema_version", "type", "generated_at", "status", "checks"]
-  ) || report.schema_version !== 1 || report.type !== "health-report" || !dateTime3(report.generated_at) || !["healthy", "attention-required"].includes(String(report.status)) || !Array.isArray(report.checks)) return null;
-  const checks = [];
-  for (const valueCheck of report.checks) {
-    const check = record3(valueCheck);
-    if (!check || !exactKeys4(
-      check,
-      ["id", "status", "summary", "owner", "remedy"],
-      ["details"]
-    ) || !text3(check.id) || !["ok", "warning", "error", "unknown"].includes(String(check.status)) || !text3(check.summary) || !text3(check.owner) || !text3(check.remedy) || "details" in check && record3(check.details) === null) return null;
-    checks.push({
-      id: check.id,
-      status: check.status,
-      summary: check.summary,
-      owner: check.owner,
-      remedy: check.remedy,
-      ...check.details ? { details: check.details } : {}
-    });
-  }
-  const aggregate = checks.every((check) => check.status === "ok") ? "healthy" : "attention-required";
-  if (report.status !== aggregate) return null;
-  return {
-    schema_version: 1,
-    type: "health-report",
-    generated_at: report.generated_at,
-    status: report.status,
-    checks
-  };
-}
-
-// src/contracts/legacy-archive.ts
-function record4(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
-}
-function exact3(value, required, optional2 = []) {
-  const allowed = /* @__PURE__ */ new Set([...required, ...optional2]);
-  return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => allowed.has(key));
-}
-var sha2563 = (value) => typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
-var text4 = (value) => typeof value === "string" && value.trim().length > 0;
-var dateTime4 = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
-var natural4 = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0;
-var relativePath = (value) => text4(value) && !value.startsWith("/") && !value.split("/").includes("..");
-function asLegacyArchiveLock(value) {
-  const lock = record4(value);
-  if (!lock || !exact3(lock, [
-    "schema_version",
-    "id",
-    "type",
-    "created_at",
-    "entries",
-    "excluded",
-    "verification"
-  ]) || lock.schema_version !== 1 || lock.id !== "legacy-archive-lock" || lock.type !== "legacy-archive-lock" || !dateTime4(lock.created_at) || !Array.isArray(lock.entries)) return null;
-  const dispositions = [
-    "canonicalized",
-    "byte-preserved",
-    "superseded-system",
-    "historical-only",
-    "unresolved"
-  ];
-  const entries = [];
-  for (const valueEntry of lock.entries) {
-    const entry = record4(valueEntry);
-    if (!entry || !exact3(entry, [
-      "relative_path",
-      "size",
-      "sha256",
-      "category",
-      "disposition",
-      "canonical_targets"
-    ]) || !relativePath(entry.relative_path) || !natural4(entry.size) || !sha2563(entry.sha256) || !text4(entry.category) || !dispositions.includes(entry.disposition) || !Array.isArray(entry.canonical_targets)) return null;
-    const targets = [];
-    for (const valueTarget of entry.canonical_targets) {
-      const target = record4(valueTarget);
-      if (!target || !exact3(
-        target,
-        ["path", "exists", "checksum_matches"],
-        ["sha256"]
-      ) || !relativePath(target.path) || typeof target.exists !== "boolean" || !(typeof target.checksum_matches === "boolean" || target.checksum_matches === null) || "sha256" in target && target.sha256 !== null && !sha2563(target.sha256)) return null;
-      targets.push({
-        path: target.path,
-        exists: target.exists,
-        checksum_matches: target.checksum_matches,
-        ..."sha256" in target ? { sha256: target.sha256 } : {}
-      });
-    }
-    entries.push({
-      relative_path: entry.relative_path,
-      size: entry.size,
-      sha256: entry.sha256,
-      category: entry.category,
-      disposition: entry.disposition,
-      canonical_targets: targets
-    });
-  }
-  const excluded = record4(lock.excluded);
-  const verification = record4(lock.verification);
-  if (!excluded || !exact3(excluded, ["count", "status"]) || !natural4(excluded.count) || excluded.status !== "sealed-not-inspected" || !verification || !exact3(verification, ["verified_at", "status"], ["issues"]) || !dateTime4(verification.verified_at) || !["verified", "attention-required"].includes(String(verification.status)) || "issues" in verification && (!Array.isArray(verification.issues) || !verification.issues.every(text4))) return null;
-  return {
-    schema_version: 1,
-    id: "legacy-archive-lock",
-    type: "legacy-archive-lock",
-    created_at: lock.created_at,
-    entries,
-    excluded: { count: excluded.count, status: "sealed-not-inspected" },
-    verification: {
-      verified_at: verification.verified_at,
-      status: verification.status,
-      ...Array.isArray(verification.issues) ? { issues: verification.issues } : {}
-    }
-  };
-}
-function asLegacyArchiveStatus(value) {
-  const status = record4(value);
-  if (!status || !exact3(status, ["schema_version", "type", "available", "lock"]) || status.schema_version !== 1 || status.type !== "legacy-archive-status" || typeof status.available !== "boolean") return null;
-  const lock = status.lock === null ? null : asLegacyArchiveLock(status.lock);
-  if (status.lock !== null && lock === null) return null;
-  if (status.available !== (lock !== null)) return null;
-  return {
-    schema_version: 1,
-    type: "legacy-archive-status",
-    available: status.available,
-    lock
-  };
-}
-
-// src/contracts/operations.ts
-function record5(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
-}
-function exactKeys5(value, required) {
-  return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => required.includes(key));
-}
-var CANONICAL = ["COMMITTED", "NOT_COMMITTED", "AMBIGUOUS"];
-var RECOVERY = ["none", "verify-observation", "reconcile-exact-request"];
-function asRow(value) {
-  const row3 = record5(value);
-  if (!row3 || !exactKeys5(row3, [
-    "trace_id",
-    "request_id",
-    "capability",
-    "started_at",
-    "duration_ms",
-    "attempts",
-    "replayed",
-    "first_failure_stage",
-    "canonical_outcome",
-    "recovery_requirement",
-    "needs_attention"
-  ])) return null;
-  if (typeof row3.trace_id !== "string" || typeof row3.capability !== "string") return null;
-  if (row3.request_id !== null && typeof row3.request_id !== "string") return null;
-  if (row3.started_at !== null && typeof row3.started_at !== "number") return null;
-  if (row3.duration_ms !== null && typeof row3.duration_ms !== "number") return null;
-  if (typeof row3.attempts !== "number" || typeof row3.replayed !== "boolean") return null;
-  if (row3.first_failure_stage !== null && typeof row3.first_failure_stage !== "string") return null;
-  if (!CANONICAL.includes(String(row3.canonical_outcome))) return null;
-  if (!RECOVERY.includes(String(row3.recovery_requirement))) return null;
-  if (typeof row3.needs_attention !== "boolean") return null;
-  return row3;
-}
-function asOperationsList(value) {
-  const body = record5(value);
-  if (!body || !exactKeys5(body, ["operations"]) || !Array.isArray(body.operations)) return null;
-  const operations = [];
-  for (const item of body.operations) {
-    const row3 = asRow(item);
-    if (!row3) return null;
-    operations.push(row3);
-  }
-  return { operations };
-}
-function asAttempt(value) {
-  const row3 = record5(value);
-  if (!row3 || !exactKeys5(row3, ["span", "status", "replay_of"])) return null;
-  if (typeof row3.span !== "string" || typeof row3.status !== "string") return null;
-  if (row3.replay_of !== null && typeof row3.replay_of !== "string") return null;
-  return row3;
-}
-function asDiagnosis(value) {
-  const body = record5(value);
-  if (!body || !exactKeys5(body, [
-    "first_failure_stage",
-    "execution_outcome",
-    "canonical_outcome",
-    "projection_outcome",
-    "recovery_requirement",
-    "authoritative_evidence",
-    "attempts",
-    "reasons"
-  ])) return null;
-  if (body.first_failure_stage !== null && typeof body.first_failure_stage !== "string") return null;
-  if (typeof body.execution_outcome !== "string") return null;
-  if (!CANONICAL.includes(String(body.canonical_outcome))) return null;
-  if (typeof body.projection_outcome !== "string") return null;
-  if (!RECOVERY.includes(String(body.recovery_requirement))) return null;
-  if (!Array.isArray(body.authoritative_evidence) || !body.authoritative_evidence.every((item) => typeof item === "string")) return null;
-  if (!Array.isArray(body.attempts)) return null;
-  const attempts = [];
-  for (const item of body.attempts) {
-    const attempt = asAttempt(item);
-    if (!attempt) return null;
-    attempts.push(attempt);
-  }
-  if (!Array.isArray(body.reasons) || !body.reasons.every((item) => typeof item === "string")) return null;
-  return { ...body, attempts };
-}
-var TIMELINE_STATES = ["passed", "failed", "skipped", "missing"];
-function asTimelineRow(value) {
-  const row3 = record5(value);
-  if (!row3 || !exactKeys5(row3, ["stage", "state", "detail"])) return null;
-  if (typeof row3.stage !== "string" || !TIMELINE_STATES.includes(String(row3.state))) return null;
-  if (row3.detail !== null && typeof row3.detail !== "string") return null;
-  return row3;
-}
-function asFacts(value) {
-  const facts = record5(value);
-  if (!facts || !exactKeys5(facts, [
-    "transaction_id",
-    "receipt_path",
-    "snapshot_before",
-    "snapshot_after"
-  ])) return null;
-  for (const key of ["transaction_id", "receipt_path", "snapshot_before", "snapshot_after"]) {
-    if (facts[key] !== null && typeof facts[key] !== "string") return null;
-  }
-  return facts;
-}
-function asOperationDetail(value) {
-  const body = record5(value);
-  if (!body || !exactKeys5(body, [
-    "request_id",
-    "capability",
-    "diagnosis",
-    "timeline",
-    "observed_snapshot",
-    "ui_outcome",
-    "facts"
-  ])) return null;
-  if (typeof body.request_id !== "string" || typeof body.capability !== "string") return null;
-  const diagnosis = asDiagnosis(body.diagnosis);
-  if (!diagnosis) return null;
-  if (!Array.isArray(body.timeline)) return null;
-  const timeline = [];
-  for (const item of body.timeline) {
-    const row3 = asTimelineRow(item);
-    if (!row3) return null;
-    timeline.push(row3);
-  }
-  if (body.observed_snapshot !== null && typeof body.observed_snapshot !== "string") return null;
-  if (!["SETTLED", "REFUSED", "BLOCKED"].includes(String(body.ui_outcome))) return null;
-  const facts = asFacts(body.facts);
-  if (!facts) return null;
-  return {
-    request_id: body.request_id,
-    capability: body.capability,
-    diagnosis,
-    timeline,
-    observed_snapshot: body.observed_snapshot,
-    ui_outcome: body.ui_outcome,
-    facts
-  };
-}
-
-// src/views/review-view.ts
-var REVIEW_FILTERS = [
-  ["all", "All"],
-  ["inbox", "Inbox"],
-  ["shelving", "Shelving"],
-  ["planning", "Planning"],
-  ["garden", "Garden"]
-];
-var ReviewView = class extends import_obsidian13.ItemView {
-  plugin;
-  filter = "all";
-  constructor(leaf, plugin) {
-    super(leaf);
-    this.plugin = plugin;
-  }
-  getViewType() {
-    return VIEW_REVIEW;
-  }
-  getDisplayText() {
-    return "LearningOS \xB7 Review";
-  }
-  getIcon() {
-    return "check-check";
-  }
-  async onOpen() {
-    this.render();
-  }
-  render() {
-    const root = this.contentEl;
-    root.empty();
-    root.addClass(
-      "los-root",
-      "los-review-view"
-    );
-    if (!this.plugin.store.ready) {
-      pageHeader(
-        root,
-        "LearningOS",
-        "Projection unavailable"
-      );
-      empty(
-        root,
-        "The interface contract could not be loaded",
-        this.plugin.store.error,
-        "Rebuild views",
-        () => this.plugin.generate()
-      );
-      return;
-    }
-    const items = this.plugin.store.reviewItems();
-    const header = pageHeader(
-      root,
-      "Review \xB7 Decisions",
-      "Review",
-      "Everything here is waiting on a decision from you."
-    );
-    badge(
-      header,
-      `${items.length} decision${items.length === 1 ? "" : "s"} waiting`,
-      "role"
-    ).addClass("los-review-count-badge");
-    filterTabs(
-      root,
-      "Review categories",
-      REVIEW_FILTERS,
-      this.filter,
-      (value) => {
-        this.filter = value;
-        this.render();
-      },
-      (value) => value === "all" ? items.length : items.filter(
-        (item) => item.category === value
-      ).length
-    );
-    root.createDiv({
-      cls: "los-micro los-review-queue-note",
-      text: "Only items that require a decision appear here. Garden stays quiet until Core marks a seed review-due."
-    });
-    const visible = this.filter === "all" ? items : items.filter(
-      (item) => item.category === this.filter
-    );
-    const list2 = root.createDiv({
-      cls: "los-review-list"
-    });
-    if (!visible.length) {
-      empty(
-        list2,
-        items.length ? "Nothing in this category" : "Nothing waiting",
-        items.length ? "Choose another Review filter." : "Core has not projected any current Review decisions."
-      );
-    } else {
-      for (const item of visible) {
-        this.decision(list2, item);
-      }
-    }
-  }
-  decision(parent, item) {
-    const id2 = typeof item.id === "string" ? item.id : "review-item";
-    const category = typeof item.category === "string" ? item.category : "review";
-    const title = typeof item.title === "string" ? item.title : id2;
-    const context = typeof item.context === "string" ? item.context : "";
-    const reason = typeof item.reason === "string" ? item.reason : "";
-    const row3 = parent.createDiv({
-      cls: "los-review-decision-row",
-      attr: {
-        "data-review-id": id2
-      }
-    });
-    const copy = row3.createDiv({
-      cls: "los-review-decision-copy"
-    });
-    const top = copy.createDiv({
-      cls: "los-review-decision-top"
-    });
-    badge(
-      top,
-      category.replace(/-/g, " "),
-      "role"
-    );
-    top.createEl("h2", {
-      text: title
-    });
-    if (context) {
-      copy.createDiv({
-        cls: "los-micro los-review-context",
-        text: context
-      });
-    }
-    if (reason) {
-      copy.createEl("p", {
-        cls: "los-review-reason",
-        text: reason
-      });
-    }
-    const action = this.actionFor(item);
-    if (action) {
-      button(
-        row3,
-        action[0],
-        action[1],
-        "quiet"
-      );
-    } else {
-      row3.createSpan({
-        cls: "los-micro los-review-clear",
-        text: "No supported action"
-      });
-    }
-    return row3;
-  }
-  actionFor(item) {
-    const target = isRecord2(item.target) ? item.target : null;
-    if (!target) {
-      return null;
-    }
-    const kind = typeof target.kind === "string" ? target.kind : "";
-    if (kind === "study-map" && typeof target.unit_id === "string") {
-      return [
-        "Review proposal",
-        () => this.plugin.nav.openShelving(
-          target.unit_id
-        )
-      ];
-    }
-    if (kind === "inbox-item" && typeof target.path === "string") {
-      return [
-        "Route",
-        () => this.plugin.openVaultPath(
-          target.path
-        )
-      ];
-    }
-    if (kind === "unit" && typeof target.id === "string") {
-      return [
-        "Open unit",
-        () => this.plugin.nav.openUnit(
-          target.id
-        )
-      ];
-    }
-    if (kind === "garden-note" || kind === "garden-seed") {
-      return [
-        "Review seed",
-        () => this.plugin.nav.openGarden()
-      ];
-    }
-    return null;
-  }
-};
-var OPERATIONS_FILTERS = [
-  ["all", "All"],
-  ["attention", "Needs attention"],
-  ["recoveries", "Recoveries"]
-];
-var DiagnosticsView = class extends import_obsidian13.ItemView {
-  plugin;
-  report = "";
-  screen = "health";
-  health = null;
-  healthLoading = false;
-  healthError = "";
-  legacy = null;
-  legacyLoaded = false;
-  legacyLoading = false;
-  legacyError = "";
-  operations = [];
-  operationsLoaded = false;
-  operationsLoading = false;
-  operationsError = "";
-  operationsFilter = "all";
-  selectedRequest = null;
-  operationDetail = null;
-  operationDetailLoading = false;
-  operationDetailError = "";
-  constructor(leaf, plugin) {
-    super(leaf);
-    this.plugin = plugin;
-  }
-  getViewType() {
-    return VIEW_DIAGNOSTICS;
-  }
-  getDisplayText() {
-    return "LearningOS \xB7 Diagnostics";
-  }
-  getIcon() {
-    return "activity";
-  }
-  async onOpen() {
-    this.render();
-    void this.loadHealth();
-  }
-  async loadHealth() {
-    if (this.healthLoading) return;
-    this.healthLoading = true;
-    this.healthError = "";
-    this.render();
-    try {
-      const report = asHealthReport(await this.plugin.gateway.healthReport());
-      if (!report) throw new Error("Core returned an invalid health-report response.");
-      this.health = report;
-    } catch (error) {
-      this.health = null;
-      this.healthError = errorMessage(error);
-    } finally {
-      this.healthLoading = false;
-      this.render();
-    }
-  }
-  async loadLegacy() {
-    if (this.legacyLoading) return;
-    this.legacyLoading = true;
-    this.legacyError = "";
-    this.render();
-    try {
-      const status = asLegacyArchiveStatus(
-        await this.plugin.gateway.legacyArchiveStatus()
-      );
-      if (!status) throw new Error("Core returned an invalid Legacy Archive status response.");
-      this.legacy = status.lock;
-      this.legacyLoaded = true;
-    } catch (error) {
-      this.legacy = null;
-      this.legacyLoaded = false;
-      this.legacyError = errorMessage(error);
-    } finally {
-      this.legacyLoading = false;
-      this.render();
-    }
-  }
-  async loadOperations() {
-    if (this.operationsLoading) return;
-    this.operationsLoading = true;
-    this.operationsError = "";
-    this.render();
-    try {
-      const list2 = asOperationsList(await this.plugin.gateway.operationsList(30));
-      if (!list2) throw new Error("Core returned an invalid operations response.");
-      this.operations = list2.operations;
-      this.operationsLoaded = true;
-    } catch (error) {
-      this.operations = [];
-      this.operationsLoaded = false;
-      this.operationsError = errorMessage(error);
-    } finally {
-      this.operationsLoading = false;
-      this.render();
-    }
-  }
-  async loadOperationDetail(requestId) {
-    this.selectedRequest = requestId;
-    this.operationDetail = null;
-    this.operationDetailError = "";
-    this.operationDetailLoading = true;
-    this.render();
-    try {
-      const detail = asOperationDetail(
-        await this.plugin.gateway.operationsDetail(requestId)
-      );
-      if (!detail) throw new Error("Core returned an invalid operation response.");
-      this.operationDetail = detail;
-    } catch (error) {
-      this.operationDetailError = errorMessage(error);
-    } finally {
-      this.operationDetailLoading = false;
-      this.render();
-    }
-  }
-  /** Recovery panel entry point (4B): open one request's causal detail. */
-  openOperation(requestId) {
-    this.screen = "operations";
-    this.selectedRequest = null;
-    this.operationDetail = null;
-    if (!this.operationsLoaded && !this.operationsLoading) void this.loadOperations();
-    void this.loadOperationDetail(requestId);
-  }
-  filteredOperations() {
-    if (this.operationsFilter === "attention") {
-      return this.operations.filter((row3) => row3.needs_attention);
-    }
-    if (this.operationsFilter === "recoveries") {
-      return this.operations.filter((row3) => row3.replayed || row3.attempts > 1);
-    }
-    return this.operations;
-  }
-  renderOperations(root) {
-    const header = section(
-      root,
-      "Operations",
-      "Recent causal operations, newest first. Diagnosis, not logs: every row answers what happened, what committed, and what remains."
-    );
-    if (this.operationsLoading) {
-      empty(header, "Loading operations", "Waiting for Core\u2019s bounded operations response.");
-      return;
-    }
-    if (this.operationsError) {
-      empty(header, "Operations unavailable", this.operationsError, "Try again", () => void this.loadOperations());
-      return;
-    }
-    if (!this.operationsLoaded) {
-      empty(header, "Operations not loaded", "Load recent operations without opening logs or receipts.", "Load operations", () => void this.loadOperations());
-      return;
-    }
-    filterTabs(root, "Operations filters", OPERATIONS_FILTERS, this.operationsFilter, (value) => {
-      this.operationsFilter = value;
-      this.render();
-    }, (value) => value === "all" ? this.operations.length : value === "attention" ? this.operations.filter((row3) => row3.needs_attention).length : this.operations.filter((row3) => row3.replayed || row3.attempts > 1).length);
-    const rows = this.filteredOperations();
-    if (rows.length === 0) {
-      empty(root, "No operations", this.operationsFilter === "all" ? "No causal operations are on record yet." : "Nothing matches this filter.");
-    }
-    for (const row3 of rows) {
-      const glyph = row3.recovery_requirement !== "none" ? "!" : row3.replayed ? "\u27F3" : row3.canonical_outcome === "COMMITTED" ? "\u2713" : "\u2715";
-      const label = row3.recovery_requirement !== "none" ? "Ambiguous" : row3.replayed ? "Replayed" : row3.canonical_outcome === "COMMITTED" ? "Settled" : "Refused";
-      const time = row3.started_at === null ? "--:--" : new Date(row3.started_at * 1e3).toTimeString().slice(0, 5);
-      const duration = row3.duration_ms === null ? "" : ` \xB7 ${Math.round(row3.duration_ms)} ms`;
-      const item = button(
-        root,
-        `${time}  ${row3.capability}  ${glyph} ${label}${duration}`,
-        () => {
-          if (row3.request_id) void this.loadOperationDetail(row3.request_id);
-        },
-        this.selectedRequest !== null && row3.request_id === this.selectedRequest ? "info" : "quiet"
-      );
-      void item;
-    }
-    const actions = root.createDiv({ cls: "los-actions" });
-    button(actions, "Refresh operations", () => {
-      this.operationsLoaded = false;
-      void this.loadOperations();
-    }, "info");
-    this.renderOperationDetail(root);
-  }
-  renderOperationDetail(root) {
-    if (this.selectedRequest === null) return;
-    const detail = section(root, "Operation detail", this.selectedRequest);
-    if (this.operationDetailLoading) {
-      empty(detail, "Loading operation", "Waiting for Core\u2019s diagnosis.");
-      return;
-    }
-    if (this.operationDetailError) {
-      empty(detail, "Operation unavailable", this.operationDetailError);
-      return;
-    }
-    const current = this.operationDetail;
-    if (!current || current.request_id !== this.selectedRequest) return;
-    const diagnosis = current.diagnosis;
-    const status = detail.createDiv({ cls: "los-diagnostic-status" });
-    status.createSpan({
-      cls: "los-diagnostic-glyph",
-      text: diagnosis.canonical_outcome === "COMMITTED" ? current.ui_outcome === "SETTLED" ? "\u2713" : "!" : diagnosis.canonical_outcome === "AMBIGUOUS" ? "!" : "\u2715"
-    });
-    const copy = status.createDiv();
-    copy.createEl("strong", { text: current.capability });
-    copy.createDiv({ cls: "los-micro", text: `Request ${current.request_id}` });
-    const outcomes = section(detail, "Outcomes", "What the authority plane proves.");
-    const heading = outcomes.createDiv({ cls: "los-health-check-head" });
-    heading.createEl("strong", { text: `Canonical: ${diagnosis.canonical_outcome}` });
-    badge(heading, current.ui_outcome, current.ui_outcome === "SETTLED" ? "status" : "role");
-    factList(outcomes, [
-      ["Canonical outcome", diagnosis.canonical_outcome],
-      ["UI outcome", current.ui_outcome],
-      ["Execution", diagnosis.execution_outcome],
-      ["Projection", diagnosis.projection_outcome],
-      ["Failure stage", diagnosis.first_failure_stage ?? "\u2014"],
-      ["Recovery", diagnosis.recovery_requirement === "none" ? "None \u2014 settled." : diagnosis.recovery_requirement === "verify-observation" ? "Verify the receipt is observed in the projection." : "Exact request must be reconciled."]
-    ]);
-    if (diagnosis.reasons.length > 0) {
-      const why = section(detail, "Why", "The resolver\u2019s reasons, verbatim.");
-      for (const reason of diagnosis.reasons) {
-        why.createEl("p", { text: reason });
-      }
-    }
-    const timeline = section(detail, "Timeline", "Causal stages in execution order.");
-    for (const row3 of current.timeline) {
-      const glyph = row3.state === "passed" ? "\u2713" : row3.state === "failed" ? "!" : "\u2013";
-      timeline.createEl("p", {
-        text: `${glyph} ${row3.stage}${row3.detail ? ` \u2014 ${row3.detail}` : ""}`
-      });
-    }
-    factList(
-      section(detail, "Transaction", "References only; receipts stay canonical."),
-      [
-        ["Transaction", current.facts.transaction_id ?? "\u2014"],
-        ["Receipt", current.facts.receipt_path ?? "\u2014"],
-        ["Snapshot before", current.facts.snapshot_before ?? "\u2014"],
-        ["Snapshot after", current.facts.snapshot_after ?? "\u2014"],
-        ["Snapshot seen", current.observed_snapshot ?? "\u2014"],
-        ["Attempts", String(diagnosis.attempts.length)]
-      ]
-    );
-    if (diagnosis.authoritative_evidence.length > 0) {
-      factList(
-        section(detail, "Authority", "The evidence the verdict rests on."),
-        diagnosis.authoritative_evidence.map(
-          (pointer, index) => [`Evidence ${index + 1}`, pointer]
-        )
-      );
-    }
-  }
-  selectScreen(screen) {
-    this.screen = screen;
-    this.render();
-    if (screen === "legacy" && !this.legacyLoaded) void this.loadLegacy();
-    if (screen === "operations" && !this.operationsLoaded) void this.loadOperations();
-  }
-  buildInfo() {
-    const fallback = {
-      ui_version: this.plugin.uiVersion(),
-      manifest_contract_version: MANIFEST_CONTRACT_VERSION,
-      source_revision: "unavailable",
-      source_dirty: null,
-      source_committed_at: "unavailable",
-      source_fingerprint: "unavailable",
-      bundle_sha256: "unavailable",
-      node_version: "unavailable"
-    };
-    try {
-      const app = this.app;
-      const base = app.vault.adapter.getBasePath();
-      const pluginInfo = this.plugin.manifest;
-      const directory = pluginInfo?.dir || nodePath2.join(
-        ".obsidian",
-        "plugins",
-        pluginInfo?.id || "learningos-ui"
-      );
-      const target = nodePath2.join(
-        base,
-        directory,
-        "build-info.json"
-      );
-      if (!fs2.existsSync(target)) {
-        return fallback;
-      }
-      const parsed = JSON.parse(
-        fs2.readFileSync(target, "utf8")
-      );
-      if (!isRecord2(parsed)) {
-        return fallback;
-      }
-      return {
-        ui_version: typeof parsed.ui_version === "string" ? parsed.ui_version : fallback.ui_version,
-        manifest_contract_version: typeof parsed.manifest_contract_version === "number" ? parsed.manifest_contract_version : fallback.manifest_contract_version,
-        source_revision: typeof parsed.source_revision === "string" ? parsed.source_revision : fallback.source_revision,
-        // A missing flag stays null: an older build-info predates the field,
-        // and reading that absence as "clean" is the exact false reassurance
-        // this row exists to remove.
-        source_dirty: typeof parsed.source_dirty === "boolean" ? parsed.source_dirty : fallback.source_dirty,
-        source_committed_at: typeof parsed.source_committed_at === "string" ? parsed.source_committed_at : fallback.source_committed_at,
-        source_fingerprint: typeof parsed.source_fingerprint === "string" ? parsed.source_fingerprint : fallback.source_fingerprint,
-        bundle_sha256: typeof parsed.bundle_sha256 === "string" ? parsed.bundle_sha256 : fallback.bundle_sha256,
-        node_version: typeof parsed.node_version === "string" ? parsed.node_version : fallback.node_version
-      };
-    } catch (_) {
-      return fallback;
-    }
-  }
-  state() {
-    if (this.healthLoading) return ["\u2026", "Checking LearningOS health", "Waiting for the bounded Core health report."];
-    if (this.health?.status === "healthy") {
-      return ["\u2713", "Healthy", `Core verified ${this.health.checks.length} registered checks at ${this.health.generated_at}.`];
-    }
-    if (this.health?.status === "attention-required") {
-      const count = this.health.checks.filter((check) => check.status !== "ok").length;
-      return ["!", "Attention required", `${count} check${count === 1 ? "" : "s"} need an owner or remedy.`];
-    }
-    if (this.healthError) return ["?", "Health unavailable", this.healthError];
-    return ["?", "Health not checked", "Run the bounded health report before trusting a green state."];
-  }
-  render() {
-    const root = this.contentEl;
-    root.empty();
-    root.addClass("los-root", "los-diagnostics-view");
-    pageHeader(root, "More", "Diagnostics");
-    const tabs = root.createDiv({ cls: "los-subtabs", attr: { "aria-label": "Diagnostics sections" } });
-    for (const [key, label] of [["health", "Health"], ["operations", "Operations"], ["legacy", "Legacy Archive"]]) {
-      const tab = button(tabs, label, () => this.selectScreen(key), key === this.screen ? "info" : "quiet");
-      tab.setAttr("aria-pressed", key === this.screen ? "true" : "false");
-    }
-    const generated = this.plugin.store.data?._generated ?? {};
-    const build = this.buildInfo();
-    const runtime = this.plugin.runtimeBuildIdentity();
-    const identityMatches = runtime.fingerprint !== "unavailable" && runtime.fingerprint === build.source_fingerprint && runtime.contractVersion === build.manifest_contract_version;
-    this.setIdentityAttributes(root, generated, build, identityMatches);
-    if (this.screen === "legacy") {
-      this.renderLegacy(root);
-      return;
-    }
-    if (this.screen === "operations") {
-      this.renderOperations(root);
-      return;
-    }
-    const [glyph, title, detail] = this.state();
-    const status = root.createDiv({ cls: "los-diagnostic-status" });
-    status.createSpan({ cls: "los-diagnostic-glyph", text: glyph });
-    const copy = status.createDiv();
-    copy.createEl("strong", { text: title });
-    copy.createDiv({ cls: "los-micro", text: detail });
-    if (this.health) {
-      const checks = section(root, "Health checks", `Generated ${this.health.generated_at}`);
-      for (const check of this.health.checks) {
-        const row3 = checks.createDiv({ cls: "los-health-check" });
-        const heading = row3.createDiv({ cls: "los-health-check-head" });
-        heading.createEl("strong", { text: check.summary });
-        badge(heading, check.status, check.status === "ok" ? "status" : "role");
-        factList(row3, [
-          ["Check", check.id],
-          ["Owner", check.owner],
-          ["Remedy", check.remedy]
-        ]);
-      }
-    }
-    const facts = section(root, "Contract and versions");
-    const factRows = [
-      ["Manifest contract", generated.contract_version ?? "unknown"],
-      ["Manifest schema", generated.schema_sha256 ?? "unknown"],
-      ["UI expects contract", MANIFEST_CONTRACT_VERSION],
-      ["UI version", this.plugin.uiVersion()],
-      ["UI source revision", build.source_revision],
-      // The projection states its own staleness; before this the interface
-      // stated nothing about its own, and a vault quietly ran a build 32
-      // commits behind its source for a day.
-      ["UI built from", build.source_dirty === null ? `${build.source_committed_at} (working tree unknown)` : build.source_dirty ? `${build.source_committed_at} + uncommitted sources` : build.source_committed_at],
-      ["UI source fingerprint (installed)", build.source_fingerprint],
-      ["UI source fingerprint (running)", runtime.fingerprint],
-      ["Running code matches installed build-info", identityMatches ? "yes" : "NO \u2014 reload learningos-ui"],
-      ["UI bundle fingerprint", build.bundle_sha256],
-      ["Build Node", build.node_version],
-      ["Generator", generated.generator || "unknown"],
-      ["Projection built", generated.generated_at || "unknown"],
-      ["Snapshot", generated.snapshot_id || "unknown"],
-      ["Source revision", generated.source_revision || "unknown"],
-      ["Python interpreter", this.plugin.resolvePython().path],
-      ["Interpreter source", this.plugin.resolvePython().origin]
-    ];
-    factList(facts, factRows);
-    this.renderGatewayRecovery(root);
-    const actions = root.createDiv({ cls: "los-actions" });
-    button(actions, "Refresh health", () => void this.loadHealth(), "info");
-    button(actions, "Validate and rebuild", () => this.plugin.generate(), "success");
-    button(actions, "Test the interpreter", () => this.testInterpreter(), "info");
-    button(actions, "Copy build identity", () => this.plugin.copyText(JSON.stringify(build, null, 2)), "quiet");
-    if (this.report) root.createEl("pre", { cls: "los-diagnostic-report", text: this.report });
-    const policy = section(root, "About LearningOS");
-    policy.createEl("p", { text: OWNERSHIP_STATEMENT });
-  }
-  /**
-   * The visible facts above, as stable machine-readable attributes.
-   *
-   * The live-app checker used to *echo back* the SHAs its caller passed on the
-   * command line and call that verification, so any wrong pair could be
-   * attested as correct. These attributes are what it extracts and compares
-   * against instead — read from the running app rather than from its own
-   * arguments. Nothing here is payload text or a local path, exactly like the
-   * visible facts.
-   *
-   * Set before the tab branch, so the checker can read identity whichever
-   * Diagnostics tab the operator happens to be on. A flag that is not a real
-   * boolean reports `unknown` rather than stringifying itself, because the
-   * checker treats unknown as "not proven clean" and must never be handed a
-   * `"null"` it would have to interpret.
-   */
-  setIdentityAttributes(root, generated, build, identityMatches) {
-    const flag = (value) => typeof value === "boolean" ? String(value) : "unknown";
-    root.setAttr("data-los-manifest-contract", String(generated.contract_version ?? "unknown"));
-    root.setAttr("data-los-runtime-fingerprint-matches", identityMatches ? "yes" : "no");
-    root.setAttr("data-los-core-revision", String(generated.source_revision || "unknown"));
-    root.setAttr("data-los-ui-revision", String(build.source_revision || "unknown"));
-    root.setAttr("data-los-ui-plugin-version", String(build.ui_version || "unknown"));
-    root.setAttr("data-los-core-dirty", flag(generated.source_dirty));
-    root.setAttr("data-los-ui-dirty", flag(build.source_dirty));
-    root.setAttr(
-      "data-los-gateway-recovery-clear",
-      this.plugin.gatewayRecoveryState().kind === "clear" ? "yes" : "no"
-    );
-  }
-  /**
-   * The one place an unresolved write is visible and actionable.
-   *
-   * Metadata only: no payload text and no file paths, because this screen is
-   * the one a learner is most likely to screenshot when asking for help.
-   *
-   * There is deliberately no discard, delete, reset or "start over". Every one
-   * of those would let a learner resolve an ambiguity by declaring it resolved,
-   * which is precisely the judgement nobody at this screen can make — the write
-   * either landed or it did not, and only Core can say which.
-   */
-  renderGatewayRecovery(root) {
-    const state = this.plugin.gatewayRecoveryState();
-    const panel = section(
-      root,
-      "Gateway recovery",
-      "One unresolved canonical write, if there is one."
-    );
-    if (state.kind === "clear") {
-      panel.createEl("p", { text: "No unresolved Gateway write." });
-      return;
-    }
-    const rows = gatewayRecoverySummary(state) ?? [];
-    factList(panel, rows);
-    const actions = root.createDiv({ cls: "los-actions" });
-    if (state.kind === "record") {
-      let requestId = null;
-      try {
-        const envelope = JSON.parse(state.entry.record.envelope_json);
-        if (isRecord2(envelope) && typeof envelope.request_id === "string") {
-          requestId = envelope.request_id;
-        }
-      } catch (_) {
-        requestId = null;
-      }
-      if (requestId !== null) {
-        const target = requestId;
-        button(actions, "Open operation", () => this.openOperation(target), "info");
-      }
-    }
-    if (state.kind === "record" && state.entry.record.phase !== "confirmed") {
-      button(
-        actions,
-        "Retry exact request",
-        () => void this.plugin.retryRecoveredWrite(),
-        "info"
-      );
-    } else if (state.kind === "record") {
-      button(
-        actions,
-        "Finish confirmed write",
-        () => void this.plugin.retryRecoveredWrite(),
-        "info"
-      );
-    }
-    button(
-      actions,
-      "Copy recovery summary",
-      () => this.plugin.copyText(
-        rows.map(([label, value]) => `${label}: ${value}`).join("\n")
-      ),
-      "quiet"
-    );
-  }
-  renderLegacy(root) {
-    const header = section(
-      root,
-      "Legacy Archive",
-      "Read-only disposition and verification status. Archived records never become normal manifest content here."
-    );
-    if (this.legacyLoading) {
-      empty(header, "Checking archive lock", "Waiting for Core\u2019s bounded archive-status response.");
-      return;
-    }
-    if (this.legacyError) {
-      empty(header, "Legacy Archive unavailable", this.legacyError, "Try again", () => void this.loadLegacy());
-      return;
-    }
-    if (!this.legacyLoaded) {
-      empty(header, "Archive status not loaded", "Load the reviewed archive lock without opening archived content.", "Load archive status", () => void this.loadLegacy());
-      return;
-    }
-    if (!this.legacy) {
-      empty(header, "No approved archive lock", "Core reports that no reviewed Legacy Archive disposition lock is available. Archived content remains sealed.");
-      const actions2 = root.createDiv({ cls: "los-actions" });
-      button(actions2, "Refresh archive status", () => void this.loadLegacy(), "info");
-      return;
-    }
-    const lock = this.legacy;
-    const status = root.createDiv({ cls: "los-diagnostic-status" });
-    status.createSpan({
-      cls: "los-diagnostic-glyph",
-      text: lock.verification.status === "verified" ? "\u2713" : "!"
-    });
-    const copy = status.createDiv();
-    copy.createEl("strong", {
-      text: lock.verification.status === "verified" ? "Archive lock verified" : "Archive lock needs attention"
-    });
-    copy.createDiv({
-      cls: "los-micro",
-      text: `Verified ${lock.verification.verified_at}. ${lock.excluded.count} excluded item${lock.excluded.count === 1 ? "" : "s"} remain sealed and were not inspected.`
-    });
-    const dispositions = [
-      "canonicalized",
-      "byte-preserved",
-      "superseded-system",
-      "historical-only",
-      "unresolved"
-    ];
-    const counts = Object.fromEntries(dispositions.map((disposition) => [
-      disposition,
-      lock.entries.filter((entry) => entry.disposition === disposition).length
-    ]));
-    const facts = section(root, "Disposition summary");
-    factList(facts, [
-      ["Reviewed entries", lock.entries.length],
-      ["Canonicalized", counts.canonicalized],
-      ["Byte preserved", counts["byte-preserved"]],
-      ["Superseded system", counts["superseded-system"]],
-      ["Historical only", counts["historical-only"]],
-      ["Unresolved", counts.unresolved],
-      ["Excluded", `${lock.excluded.count} \xB7 sealed, not inspected`]
-    ]);
-    if (lock.verification.issues?.length) {
-      const issues = section(root, "Issues");
-      for (const issue of lock.verification.issues) {
-        issues.createDiv({ cls: "los-health-check", text: issue });
-      }
-    }
-    const actions = root.createDiv({ cls: "los-actions" });
-    button(actions, "Refresh archive status", () => void this.loadLegacy(), "info");
-  }
-  async testInterpreter() {
-    const resolved = this.plugin.resolvePython();
-    try {
-      const result = await this.plugin.gateway.call(["status", "--json"]);
-      this.report = `${resolved.path} (${resolved.origin})
-Core answered: ${JSON.stringify(result).slice(0, 400)}`;
-    } catch (error) {
-      this.report = `${resolved.path} (${resolved.origin})
-Failed: ${errorMessage(error)}
-Tried: ${resolved.attempted.join(", ")}`;
-    }
-    this.render();
-  }
-};
-
-// src/views/shelving-view.ts
-var import_obsidian14 = require("obsidian");
-function readShelvingProposal(value) {
-  if (!isRecord2(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
-    return null;
-  }
-  const items = [];
-  for (const candidate of value.items) {
-    if (!isRecord2(candidate) || typeof candidate.id !== "string" || typeof candidate.title !== "string") {
-      continue;
-    }
-    const item = {
-      id: candidate.id,
-      title: candidate.title,
-      destination: optionalString(candidate.destination),
-      rationale: optionalString(candidate.rationale),
-      diff: optionalString(candidate.diff),
-      selected: typeof candidate.selected === "boolean" ? candidate.selected : void 0
-    };
-    items.push(item);
-  }
-  return {
-    state: "proposed",
-    summary: optionalString(value.summary),
-    items
-  };
-}
-var ShelvingView = class extends import_obsidian14.ItemView {
-  plugin;
-  unitId = null;
-  proposal = null;
-  selected = /* @__PURE__ */ new Set();
-  selectionScope = null;
-  expectedRevisions = {};
-  constructor(leaf, plugin) {
-    super(leaf);
-    this.plugin = plugin;
-  }
-  getViewType() {
-    return VIEW_SHELVING;
-  }
-  getDisplayText() {
-    return "LearningOS \xB7 Shelving";
-  }
-  async setState(state = {}) {
-    if (typeof state.unitId === "string") {
-      this.unitId = state.unitId;
-    }
-    await this.loadProposal();
-    this.render();
-  }
-  getState() {
-    return { unitId: this.unitId };
-  }
-  async onOpen() {
-    const unitId = this.leaf.getViewState().state?.unitId;
-    if (typeof unitId === "string") {
-      this.unitId = unitId;
-    }
-    await this.loadProposal();
-    this.render();
-  }
-  async loadProposal() {
-    if (!this.unitId) {
-      this.proposal = null;
-      return;
-    }
-    const map = this.plugin.store.mapForUnit(this.unitId);
-    this.proposal = readShelvingProposal(map?.shelving);
-  }
-  selectionKey(unitId, map, proposal) {
-    const mapId = typeof map?.id === "string" ? map.id : "";
-    const revision = map?.revision == null ? "" : String(map.revision);
-    const proposalIds = proposal?.items.map((item) => item.id).join("") ?? "";
-    return JSON.stringify([
-      unitId,
-      mapId,
-      revision,
-      proposalIds
-    ]);
-  }
-  syncSelection(unitId, map, proposal) {
-    const scope = this.selectionKey(
-      unitId,
-      map,
-      proposal
-    );
-    if (scope === this.selectionScope) {
-      return;
-    }
-    this.selectionScope = scope;
-    this.selected.clear();
-    if (!proposal) {
-      return;
-    }
-    for (const item of proposal.items) {
-      if (item.selected !== false) {
-        this.selected.add(item.id);
-      }
-    }
-  }
-  render() {
-    const root = this.contentEl;
-    root.empty();
-    root.addClass("los-root", "los-shelving-view");
-    const unit = this.unitId ? this.plugin.store.get(this.unitId) : null;
-    pageHeader(
-      root,
-      "Approval gate",
-      "Shelving",
-      unit ? `${unit.title}: review durable changes before the gateway applies them.` : "Choose a unit that is ready to shelve."
-    );
-    if (!unit) {
-      this.renderQueue(root);
-      return;
-    }
-    if (!unit.id) {
-      empty(root, "Unit unavailable", "The projection returned a unit without an identity.");
-      return;
-    }
-    const map = this.plugin.store.mapForUnit(unit.id);
-    this.expectedRevisions = this.plugin.store.artifactGuard(
-      unit.id,
-      typeof map?.id === "string" ? map.id : null
-    );
-    const proposal = this.proposal ?? readShelvingProposal(map?.shelving);
-    if (!proposal?.items?.length) {
-      this.syncSelection(
-        unit.id,
-        map,
-        null
-      );
-      const wrap = section(root, "No proposal yet");
-      empty(
-        wrap,
-        "Prepare a deterministic proposal",
-        "The gateway derives candidates from this unit. AI may explain them, but cannot apply canonical changes.",
-        "Prepare proposal",
-        () => this.prepare()
-      );
-      button(wrap, "Ask AI to explain shelving criteria", () => this.plugin.askAiScoped(
-        "Explain which stage notes might be durable. Do not write or apply canonical changes.",
-        { moduleId: unit.module_id, unitId: unit.id }
-      ), "quiet");
-      return;
-    }
-    this.syncSelection(
-      unit.id,
-      map,
-      proposal
-    );
-    const summary = section(root, "Proposed changes", proposal.summary || "Select only changes you want to apply.");
-    for (const item of proposal.items) {
-      const row3 = summary.createDiv({ cls: "los-proposal-row" });
-      const toggle = row3.createEl("input", { attr: { type: "checkbox", "aria-label": `Select ${item.title}` } });
-      toggle.checked = this.selected.has(item.id);
-      toggle.addEventListener("change", () => {
-        if (toggle.checked) this.selected.add(item.id);
-        else this.selected.delete(item.id);
-      });
-      const copy = row3.createDiv();
-      copy.createEl("h3", { text: item.title });
-      if (item.destination) copy.createDiv({ cls: "los-detail-id", text: item.destination });
-      if (item.rationale) copy.createEl("p", { text: item.rationale });
-      if (item.diff) copy.createEl("pre", { cls: "los-proposal-diff", text: item.diff });
-    }
-    const guard = root.createDiv({ cls: "los-validation-preview" });
-    guard.createEl("strong", { text: "Apply is explicit and selected-only." });
-    guard.createEl("p", { text: "The core validates and regenerates atomically; broad AI writes are never accepted." });
-    const actions = root.createDiv({ cls: "los-actions" });
-    button(actions, "Approve selected changes", () => this.apply(), "success");
-    button(actions, "Ask AI to review proposal", () => this.plugin.askAiScoped(
-      `Review these shelving proposal IDs: ${[...this.selected].join(", ")}. Do not apply changes.`,
-      { moduleId: unit.module_id, unitId: unit.id }
-    ), "warm");
-  }
-  renderQueue(root) {
-    const wrap = section(root, "Ready to shelve");
-    const rows = this.plugin.store.units().filter(
-      (row3) => row3.status === "ready-to-shelve"
-    );
-    if (!rows.length) empty(wrap, "No unit is waiting", "Keep working from any active unit.");
-    for (const unit of rows) unitCard(wrap, this.plugin, unit);
-  }
-  async prepare() {
-    const unitId = this.unitId;
-    if (!unitId) {
-      new import_obsidian14.Notice("Choose a unit before preparing shelving.");
-      return;
-    }
-    try {
-      await this.plugin.mutate(
-        () => this.plugin.gateway.prepareShelving(unitId, this.expectedRevisions)
-      );
-      await this.loadProposal();
-      this.render();
-    } catch (error) {
-      new import_obsidian14.Notice(errorMessage(error));
-    }
-  }
-  async apply() {
-    const unitId = this.unitId;
-    if (!unitId) {
-      new import_obsidian14.Notice("Choose a unit before applying shelving.");
-      return;
-    }
-    if (!this.selected.size) {
-      new import_obsidian14.Notice("Select at least one proposal.");
-      return;
-    }
-    try {
-      await this.plugin.mutate(
-        () => this.plugin.gateway.applyShelving(
-          unitId,
-          [...this.selected],
-          this.expectedRevisions
-        )
-      );
-      this.proposal = null;
-      this.selected.clear();
-      this.selectionScope = null;
-      this.render();
-    } catch (error) {
-      new import_obsidian14.Notice(errorMessage(error));
-    }
-  }
-};
-
-// src/features/unit/model.ts
-var ARTIFACT_LABELS = [
-  [
-    "ultimate_reference",
-    "Ultimate Reference"
-  ],
-  [
-    "exercise_bank",
-    "Exercise Bank"
-  ],
-  [
-    "mock_exam",
-    "Mock Exam"
-  ]
-];
-function errorMessage3(error) {
-  return error instanceof Error ? error.message : String(error);
-}
-function readUnitViewState(value) {
-  if (!isRecord2(value)) {
-    return {
-      hasStageId: false
-    };
-  }
-  const hasStageId = Object.prototype.hasOwnProperty.call(
-    value,
-    "stageId"
-  );
-  const unitId = asString(value.unitId) ?? void 0;
-  const stageId = !hasStageId ? void 0 : value.stageId === null ? null : asString(value.stageId);
-  return {
-    unitId,
-    stageId,
-    hasStageId
-  };
-}
-function readUnitRecord(record7, fallbackId) {
-  if (!record7) {
-    return null;
-  }
-  const id2 = asString(record7.id) ?? fallbackId;
-  const moduleId = asString(record7.module_id);
-  if (!id2 || !moduleId) {
-    return null;
-  }
-  const knowledgeMap = isRecord2(
-    record7.knowledge_map
-  ) ? record7.knowledge_map : null;
-  const knowledgeNodes = asRecords(
-    knowledgeMap?.nodes
-  ).map((node) => {
-    const nodeId = asString(node.id);
-    const title = asString(node.title);
-    const summary = asText(node.summary);
-    if (!nodeId || !title || !summary) {
-      return null;
-    }
-    return {
-      id: nodeId,
-      title,
-      summary,
-      buildsOn: asStrings(
-        node.builds_on
-      ),
-      conceptIds: asStrings(
-        node.concept_ids
-      )
-    };
-  }).filter(
-    (node) => node !== null
-  );
-  return {
-    record: record7,
-    id: id2,
-    moduleId,
-    componentId: asString(record7.component_id),
-    kind: asString(record7.kind) ?? "unit",
-    title: asString(record7.title) ?? id2,
-    scope: asText(record7.scope) ?? "",
-    knowledgeSummary: asText(
-      knowledgeMap?.summary
-    ) ?? "",
-    knowledgeNodes,
-    needsStudyMap: record7.needs_study_map === true
-  };
-}
-function readMaterialOptions(value, unitId, selectionsValue) {
-  const options = [];
-  const selectionKeys = new Set(
-    asRecords(selectionsValue).flatMap((selection) => {
-      const routeId = asString(selection.route_id);
-      const sourceId = asString(selection.source_id);
-      const locator = asText(selection.locator);
-      return routeId && sourceId && locator ? [`${routeId}\0${sourceId}\0${locator}`] : [];
-    })
-  );
-  for (const entry of asRecords(value)) {
-    for (const route of asRecords(entry.unit_routes)) {
-      if (asString(route.unit_id) !== unitId) {
-        continue;
-      }
-      const title = asString(route.title);
-      const format = asString(route.format);
-      const angle = asText(route.angle);
-      const routeId = asString(route.id);
-      if (!routeId || !title || !format || !angle) {
-        continue;
-      }
-      const sourceId = asString(route.source_id) ?? asString(entry.source_id);
-      const locator = asText(route.locator);
-      options.push({
-        record: route,
-        title,
-        format,
-        angle,
-        covers: asStrings(route.covers),
-        depth: asString(route.depth) ?? "course-aligned",
-        scope: asString(route.scope) ?? "complementary",
-        locator,
-        sourceId,
-        routeId,
-        canOpen: hasDirectResourceTarget(route),
-        canChoose: Boolean(sourceId && locator),
-        selected: Boolean(
-          sourceId && locator && selectionKeys.has(
-            `${routeId}\0${sourceId}\0${locator}`
-          )
-        )
-      });
-    }
-  }
-  return options;
-}
-function readResource(record7) {
-  const label = asString(record7.label) ?? asString(record7.title) ?? asString(record7.source_id) ?? "Resource";
-  return {
-    record: record7,
-    id: asString(record7.id),
-    kind: asString(record7.kind) ?? "read",
-    label,
-    locator: asText(record7.locator),
-    sourceId: asString(record7.source_id),
-    scopeTriage: asString(record7.scope_triage),
-    canOpen: hasDirectResourceTarget(record7)
-  };
-}
-function readStageAttachment(value) {
-  if (typeof value === "string") {
-    if (!value.length) {
-      return null;
-    }
-    return {
-      path: value,
-      label: value.split("/").pop() || value
-    };
-  }
-  if (!isRecord2(value)) {
-    return null;
-  }
-  const path = asString(value.path) ?? asString(value.vault_path);
-  if (!path) {
-    return null;
-  }
-  return {
-    path,
-    label: asString(value.label) ?? path
-  };
-}
-function readStage(record7) {
-  const id2 = asString(record7.id);
-  if (!id2) {
-    return null;
-  }
-  const attachments = Array.isArray(
-    record7.attachments
-  ) ? record7.attachments.map(readStageAttachment).filter(
-    (attachment) => attachment !== null
-  ) : [];
-  return {
-    record: record7,
-    id: id2,
-    title: asString(record7.title) ?? id2,
-    status: asString(record7.status) ?? "active",
-    scopeTriage: asText(record7.scope_triage) ?? "",
-    objective: asText(record7.objective),
-    estimateMinutes: asText(record7.estimate_minutes),
-    examCritical: record7.exam_critical === true,
-    concepts: asStrings(record7.concepts),
-    resources: asRecords(
-      record7.resources
-    ).map(readResource),
-    doneWhen: asStrings(
-      record7.done_when
-    ).filter(
-      (criterion) => Boolean(criterion.trim())
-    ),
-    attachments,
-    sourceFeedback: asRecords(
-      record7.source_feedback
-    )
-  };
-}
-function readStudyMap(record7) {
-  const stages = asRecords(
-    record7.stages
-  ).map(readStage).filter(
-    (stage) => stage !== null
-  );
-  return {
-    record: record7,
-    currentStageId: asString(
-      record7.current_stage
-    ),
-    stages,
-    detours: asRecords(record7.detours),
-    planTemplateVersion: asFiniteNumber(
-      record7.plan_template_version
-    )
-  };
-}
-function readArtifacts(value) {
-  if (!isRecord2(value)) {
-    return {
-      named: [],
-      other: []
-    };
-  }
-  const named = [];
-  for (const [key] of ARTIFACT_LABELS) {
-    const id2 = asString(value[key]);
-    if (id2) {
-      named.push([key, id2]);
-    }
-  }
-  return {
-    named,
-    other: asStrings(value.other)
-  };
-}
-function artifactLabel(key) {
-  return ARTIFACT_LABELS.find(
-    ([candidate]) => candidate === key
-  )?.[1] ?? key;
-}
-function fallbackRecord(id2) {
-  return {
-    id: id2,
-    type: "record",
-    title: id2
-  };
-}
-
-// src/features/unit/context.ts
-function renderStageContext(view, center, unit, studyMap, stage) {
-  const expectedRevisions = view.plugin.store.artifactGuard(
-    unit.id,
-    typeof studyMap.record.id === "string" ? studyMap.record.id : null
-  );
-  const detours = studyMap.detours.filter(
-    (row3) => asString(
-      row3.spawned_by_stage
-    ) === stage.id && asString(
-      row3.status
-    ) !== "resolved" && asString(
-      row3.id
-    ) !== null
-  );
-  if (!stage.attachments.length && !detours.length && !stage.sourceFeedback.length) {
-    return;
-  }
-  const detail = disclosure(
-    center,
-    "Stage context"
-  );
-  for (const attachment of stage.attachments) {
-    button(
-      detail,
-      attachment.label,
-      () => view.plugin.openAuthoredPath(
-        attachment.path
-      ),
-      "quiet"
-    );
-  }
-  for (const detour of detours) {
-    const detourId = asString(detour.id);
-    if (!detourId) {
-      continue;
-    }
-    const title = asString(detour.title) ?? "Prerequisite detour";
-    const classification = asString(
-      detour.classification
-    ) ?? "required-now";
-    const row3 = detail.createDiv({
-      cls: "los-detour-row"
-    });
-    row3.createEl("strong", {
-      text: "Open prerequisite detour"
-    });
-    row3.createEl("p", {
-      text: `${title} \xB7 ${classification} \xB7 returns here`
-    });
-    button(
-      row3,
-      "Resolve and return",
-      () => view.mutate(
-        () => view.plugin.gateway.resolveDetour(
-          unit.id,
-          detourId,
-          "Resolved from the unit workspace.",
-          expectedRevisions
-        )
-      ),
-      "quiet"
-    );
-  }
-  for (const feedback of stage.sourceFeedback) {
-    const sourceId = asString(
-      feedback.source_id
-    ) ?? "Unknown source";
-    const value = asText(
-      feedback.feedback
-    ) ?? "Feedback recorded";
-    detail.createDiv({
-      cls: "los-row",
-      text: `${sourceId} \xB7 ${value}`
-    });
-  }
-}
-function renderArtifacts(view, root, unit) {
-  const wrap = section(
-    root,
-    "Unit artifacts",
-    "Durable notes remain globally canonical; this unit owns stable references."
-  );
-  const artifacts = readArtifacts(
-    unit.record.artifacts
-  );
-  let count = 0;
-  for (const [key, id2] of artifacts.named) {
-    count += 1;
-    const card = wrap.createDiv({
-      cls: "los-artifact-card"
-    });
-    card.createEl("h3", {
-      text: artifactLabel(key)
-    });
-    const record7 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
-    chip(
-      card,
-      record7,
-      (selected) => view.plugin.nav.openRecord(
-        selected
-      )
-    );
-  }
-  for (const id2 of artifacts.other) {
-    count += 1;
-    const record7 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
-    chip(
-      wrap,
-      record7,
-      (selected) => view.plugin.nav.openRecord(
-        selected
-      )
-    );
-  }
-  if (!count) {
-    empty(
-      wrap,
-      "No durable artifact linked yet",
-      "Working notes stay with the stage until shelving is approved."
-    );
-  }
-}
-
-// src/features/stage-resources.ts
-var TRIAGE_ORDER = [
-  "required-now",
-  "helpful-now",
-  "deferred",
-  "reference-only"
-];
-function isTriageRank(value) {
-  return Boolean(value) && TRIAGE_ORDER.includes(value);
-}
-var TRIAGE_HEADING = {
-  "required-now": "Do this",
-  "helpful-now": "If you get stuck",
-  deferred: "Depth \u2014 not now",
-  "reference-only": "Reference \u2014 preserved, not reading for this stage"
-};
-function triageSummary(resources) {
-  const count = (rank) => resources.filter(
-    (resource) => resource.scopeTriage === rank
-  ).length;
-  const required = count("required-now") + resources.filter((resource) => !resource.scopeTriage).length;
-  const stuck = count("helpful-now");
-  const preserved = count("deferred") + count("reference-only");
-  const parts = [];
-  if (required) parts.push(`${required} required`);
-  if (stuck) parts.push(`${stuck} if stuck`);
-  if (preserved) parts.push(`${preserved} preserved for depth/reference`);
-  return parts.join(" \xB7 ");
-}
-function currentWorkResource(resources) {
-  return resources.find(
-    (resource) => resource.scopeTriage === "required-now"
-  ) ?? resources.find(
-    (resource) => !resource.scopeTriage
-  ) ?? null;
-}
-var MATERIAL_TYPE_ICON = {
-  "course-material": "presentation",
-  exercise: "pencil-line",
-  solutions: "clipboard-check",
-  exam: "graduation-cap",
-  book: "book-open",
-  paper: "newspaper",
-  video: "play",
-  website: "globe",
-  documentation: "file-text",
-  code: "code",
-  course: "library",
-  article: "file-text"
-};
-function normaliseMaterialType(declared) {
-  switch (declared) {
-    case "course-material":
-      return "course-material";
-    case "exercise":
-    case "practice":
-    case "practise":
-    case "problem-set":
-    case "homework":
-    case "quiz":
-      return "exercise";
-    case "solutions":
-      return "solutions";
-    case "exam":
-      return "exam";
-    case "book":
-    case "textbook":
-      return "book";
-    case "paper":
-      return "paper";
-    case "video":
-      return "video";
-    case "website":
-    case "web":
-    case "web-page":
-    case "webpage":
-      return "website";
-    case "documentation":
-    case "docs":
-      return "documentation";
-    case "code":
-      return "code";
-    case "course":
-      return "course";
-    default:
-      return "article";
-  }
-}
-function materialTypeIcon(type) {
-  return MATERIAL_TYPE_ICON[normaliseMaterialType((type ?? "").toLowerCase())];
-}
-var angleDetailSequence = 0;
-function whyThisOne(copy, detailText, fillFoot) {
-  const detailId = `los-resource-angle-detail-${++angleDetailSequence}`;
-  const detail = copy.createDiv({
-    cls: "los-resource-angle-detail",
-    text: detailText,
-    attr: { hidden: "", id: detailId }
-  });
-  const foot = copy.createDiv({ cls: "los-resource-foot" });
-  fillFoot?.(foot);
-  let expanded = false;
-  const toggle = button(
-    foot,
-    "\u25B8 Why this one",
-    () => {
-      expanded = !expanded;
-      toggle.setText(`${expanded ? "\u25BE" : "\u25B8"} Why this one`);
-      toggle.setAttr("aria-expanded", String(expanded));
-      if (expanded) detail.removeAttribute("hidden");
-      else detail.setAttr("hidden", "");
-    },
-    "quiet"
-  );
-  toggle.addClass("los-resource-angle-trigger");
-  toggle.setAttrs({ "aria-controls": detailId, "aria-expanded": "false" });
-}
-function materialTypeOf(resource, source) {
-  if (resource.kind === "practise") return "exercise";
-  if (resource.kind === "watch") return "video";
-  const declared = (asText(resource.record.format) ?? asText(resource.record.material_type) ?? asText(source?.source_type) ?? asText(source?.format) ?? "").toLowerCase();
-  return normaliseMaterialType(declared);
-}
-function renderMaterialCautions(parent, record7) {
-  for (const asset of Array.isArray(record7.requires_assets) ? record7.requires_assets : []) {
-    if (!isRecord2(asset) || typeof asset.name !== "string") continue;
-    const part = asText(asset.needed_for);
-    const origin = asText(asset.obtain_from);
-    parent.createDiv({ cls: "los-micro", text: `${asset.material_uri ? "Required file" : "Not registered locally"}: ${asset.name}` + (part ? ` \u2014 needed for ${part}` : "") + (origin ? `. Obtain from ${origin}.` : ".") });
-  }
-  if (Array.isArray(record7.exposes_solutions_for) && record7.exposes_solutions_for.length) {
-    parent.createDiv({ cls: "los-micro", text: "Contains related task solutions. Read after your attempt, and report prior exposure before using those tasks as independent evidence." });
-  }
-}
-function renderResourceRow(parent, resource, source, renderer, extras = {}) {
-  const materialType = materialTypeOf(resource, source);
-  const row3 = parent.createDiv({
-    cls: `los-resource-row los-triage-${resource.scopeTriage || "unranked"}`
-  });
-  icon(row3.createSpan(), MATERIAL_TYPE_ICON[materialType]);
-  const copy = row3.createDiv({ cls: "los-resource-copy" });
-  copy.createEl("strong", { text: resource.label });
-  const metadata = copy.createDiv({
-    cls: "los-resource-row-meta"
-  });
-  metadata.createSpan({
-    cls: `los-resource-priority los-resource-priority-${resource.scopeTriage || "unranked"}`,
-    text: isTriageRank(resource.scopeTriage) ? TRIAGE_HEADING[resource.scopeTriage] : resource.scopeTriage || "Primary \xB7 unranked"
-  });
-  if (extras.sourceInMeta && source && !extras.hideSourceChip) {
-    chip(metadata, source, renderer.openSource);
-  }
-  if (resource.locator) {
-    metadata.createSpan({
-      cls: "los-micro los-resource-locator",
-      text: resource.locator
-    });
-  }
-  for (const badge2 of extras.badges ?? []) {
-    metadata.createSpan({ cls: "los-micro los-resource-badge", text: badge2 });
-  }
-  const angle = asText(resource.record.angle);
-  if (angle) {
-    copy.createDiv({
-      cls: "los-resource-angle",
-      text: angle
-    });
-  }
-  const routeId = asText(resource.record.route_id);
-  renderMaterialCautions(copy, (routeId ? renderer.routeRecord?.(routeId) : null) ?? resource.record);
-  const showChip = source && !extras.hideSourceChip && !extras.sourceInMeta ? source : null;
-  const angleDetail = asText(resource.record.angle_detail);
-  if (angleDetail) {
-    whyThisOne(copy, angleDetail, (foot) => {
-      if (showChip) chip(foot, showChip, renderer.openSource);
-    });
-  } else if (showChip) {
-    chip(copy, showChip, renderer.openSource);
-  }
-  const actions = row3.createDiv({ cls: "los-actions los-resource-actions" });
-  if (resource.canOpen && renderer.openResource) {
-    button(actions, "Open", () => renderer.openResource?.(resource), "quiet");
-  } else if (source && hasDirectResourceTarget(source) && renderer.openSourceResource) {
-    button(
-      actions,
-      "Open source",
-      () => renderer.openSourceResource?.(source),
-      "quiet"
-    );
-  }
-  if (resource.sourceId && renderer.rateResource) {
-    const sourceId = resource.sourceId;
-    const resourceId = resource.id;
-    const rate = (verdict) => renderer.rateResource?.(
-      sourceId,
-      resourceId,
-      verdict
-    );
-    overflowMenu(actions, [
-      ["Helpful", () => rate("helpful")],
-      ["Too advanced", () => rate("too-advanced")],
-      ["Useful for review", () => rate("useful-for-review")]
-    ], resourceId ? `Rate ${resource.label}` : `Rate ${resource.label} (whole source)`);
-  }
-  return row3;
-}
-
-// src/features/unit/material-drawer.ts
-var import_obsidian15 = require("obsidian");
-
-// src/features/unit/source-browser.ts
-function groupBySource(entries) {
-  const groups = /* @__PURE__ */ new Map();
-  for (const entry of entries) {
-    const group = groups.get(entry.sourceId) ?? [];
-    group.push(entry);
-    groups.set(entry.sourceId, group);
-  }
-  return groups;
-}
-function renderSourceGroups(root, entries, sourceTitle, renderEntry2, open = false) {
-  for (const [id2, group] of groupBySource(entries)) {
-    const details = root.createEl("details", { cls: "los-disclosure los-source-group" });
-    if (open) details.setAttr("open", "");
-    details.createEl("summary", { text: `${sourceTitle(id2)} \xB7 ${group.length} ${group.length === 1 ? "entry" : "entries"}` });
-    const body = details.createDiv({ cls: "los-disclosure-body" });
-    for (const entry of group) renderEntry2(body, entry);
-  }
-}
-
-// src/features/unit/material-drawer.ts
-var PURPOSE_ORDER = [
-  { value: "course-aligned", label: "Follow the course", sub: "Exactly what this lecture taught" },
-  { value: "orientation", label: "Get oriented", sub: "The shape of the idea before the detail" },
-  { value: "intuition", label: "Build intuition", sub: "Why it works, in pictures and words" },
-  { value: "derivation", label: "Derive it", sub: "The formal argument, step by step" },
-  { value: "practice", label: "Practise", sub: "Problems to work, with solutions to check" },
-  { value: "implementation", label: "Implement it", sub: "Code it and run it" },
-  { value: "advanced-reference", label: "Go deeper", sub: "Beyond this stage \u2014 kept, not required" },
-  { value: "unassessed", label: "Not yet evaluated", sub: "No one has judged this yet \u2014 not a scope judgment" }
-];
-var UNASSIGNED_PURPOSE = {
-  value: "",
-  label: "Purpose not yet assigned",
-  sub: "Shown last; never dropped"
-};
-var TYPE_ORDER = [
-  { value: "course-material", label: "Lecture material" },
-  { value: "exercise", label: "Exercise sheets" },
-  { value: "solutions", label: "Worked solutions" },
-  { value: "exam", label: "Past exams" },
-  { value: "book", label: "Textbooks" },
-  { value: "paper", label: "Papers" },
-  { value: "video", label: "Videos" },
-  { value: "website", label: "Web pages" },
-  { value: "documentation", label: "Documentation" },
-  { value: "code", label: "Code" },
-  { value: "course", label: "Courses" }
-];
-var OTHER_TYPE = { value: "", label: "Other material" };
-function normalisePurpose(value) {
-  const candidate = (value ?? "").trim().toLowerCase();
-  return PURPOSE_ORDER.some((def) => def.value === candidate) ? candidate : "";
-}
-function normaliseType(raw, kind) {
-  switch ((raw ?? "").trim().toLowerCase()) {
-    case "course-material":
-      return "course-material";
-    case "exercise":
-    case "practice":
-    case "practise":
-    case "problem-set":
-    case "homework":
-    case "quiz":
-      return "exercise";
-    case "solutions":
-      return "solutions";
-    case "exam":
-      return "exam";
-    case "book":
-    case "textbook":
-      return "book";
-    case "paper":
-      return "paper";
-    case "video":
-      return "video";
-    case "website":
-    case "web":
-    case "web-page":
-    case "webpage":
-      return "website";
-    case "documentation":
-    case "docs":
-      return "documentation";
-    case "code":
-      return "code";
-    case "course":
-      return "course";
-    default:
-      break;
-  }
-  const workingKind = (kind ?? "").trim().toLowerCase();
-  if (workingKind === "practise" || workingKind === "practice") return "exercise";
-  if (workingKind === "watch") return "video";
-  return "";
-}
-var TRIAGE_WEIGHT = {
-  "required-now": 1,
-  "helpful-now": 2,
-  deferred: 3,
-  "reference-only": 4
-};
-function purposeLabel(value) {
-  if (!value) return UNASSIGNED_PURPOSE.label;
-  return PURPOSE_ORDER.find((def) => def.value === value)?.label ?? UNASSIGNED_PURPOSE.label;
-}
-function typeLabel(value) {
-  if (!value) return OTHER_TYPE.label;
-  return TYPE_ORDER.find((def) => def.value === value)?.label ?? OTHER_TYPE.label;
-}
-function entryWeight(entry) {
-  return TRIAGE_WEIGHT[entry.triage ?? ""] ?? (entry.required ? 1 : 5);
-}
-function openWeight(entries) {
-  const ranked = entries.filter((entry) => entry.hasUrgency);
-  if (!ranked.length) return null;
-  return ranked.reduce((best, entry) => Math.min(best, entryWeight(entry)), Number.POSITIVE_INFINITY);
-}
-var MaterialComparisonModal = class extends import_obsidian15.Modal {
-  constructor(app, options) {
-    super(app);
-    this.options = options;
-  }
-  sourceScope = "stage";
-  purpose = "all";
-  materialType = "all";
-  requiredOnly = false;
-  groupBy = "purpose";
-  query = "";
-  restoreAccessibility = null;
-  results = null;
-  groupNodes = /* @__PURE__ */ new Map();
-  onOpen() {
-    const { plugin, unit, stage } = this.options;
-    plugin.router.openOverlay({ kind: "material-comparison", unitId: unit.id, stageId: stage.id });
-    const root = this.contentEl;
-    root.empty();
-    root.addClass("los-root", "los-material-drawer");
-    const header = pageHeader(
-      root,
-      "Source comparison",
-      "Choose learning material",
-      "Browse by source. Open an entry for its full description and exact work.",
-      "los-material-drawer-heading"
-    );
-    const heading = Array.from(header.children).find((child) => child.getAttribute("id") === "los-material-drawer-heading");
-    heading?.setAttribute("tabindex", "-1");
-    const controls = root.createDiv({ cls: "los-source-controls" });
-    const scopeLabel = controls.createEl("label", { text: "Show" });
-    const scope = scopeLabel.createEl("select", { cls: "los-source-scope", attr: { "aria-label": "Source scope" } });
-    const component = unit.componentId ? plugin.store.get(unit.componentId) : null;
-    const widerLabel = unit.componentId === "component-m2-sad" ? "All SaD" : `All ${asString(component?.title) ?? "module sources"}`;
-    for (const [value, text5] of [["stage", "This stage"], ["unit", "This lecture"], ["component", widerLabel]]) scope.createEl("option", { text: text5, attr: { value } });
-    scope.value = this.sourceScope;
-    const purposeLabelEl = controls.createEl("label", { text: "Purpose" });
-    const purpose = purposeLabelEl.createEl("select", { cls: "los-source-purpose", attr: { "aria-label": "Learning purpose" } });
-    purpose.createEl("option", { text: "All purposes", attr: { value: "all" } });
-    for (const def of PURPOSE_ORDER) purpose.createEl("option", { text: def.label, attr: { value: def.value } });
-    purpose.value = this.purpose;
-    purpose.addEventListener("change", () => {
-      this.purpose = purpose.value;
-      this.updateResults();
-    });
-    const typeLabelEl = controls.createEl("label", { text: "Type" });
-    const materialType = typeLabelEl.createEl("select", { cls: "los-source-type", attr: { "aria-label": "Material type" } });
-    materialType.createEl("option", { text: "All types", attr: { value: "all" } });
-    for (const def of TYPE_ORDER) materialType.createEl("option", { text: def.label, attr: { value: def.value } });
-    materialType.createEl("option", { text: OTHER_TYPE.label, attr: { value: "" } });
-    materialType.value = this.materialType;
-    materialType.addEventListener("change", () => {
-      this.materialType = materialType.value;
-      this.updateResults();
-    });
-    const requiredLabel = controls.createEl("label", { cls: "los-source-required-label" });
-    const required = requiredLabel.createEl("input", { cls: "los-source-required", attr: { type: "checkbox", "aria-label": "Only what's required now" } });
-    requiredLabel.createSpan({ text: "Only what's required now" });
-    required.checked = this.requiredOnly;
-    required.disabled = this.sourceScope !== "stage";
-    required.title = "Urgency ranks only exist on stage placements";
-    required.addEventListener("change", () => {
-      this.requiredOnly = required.checked;
-      this.updateResults();
-    });
-    const searchLabel = controls.createEl("label", { text: "Search" });
-    const search = searchLabel.createEl("input", { cls: "los-source-search", attr: { type: "search", placeholder: "Source, chapter or lecture", "aria-label": "Search sources" } });
-    search.addEventListener("input", () => {
-      this.query = search.value;
-      this.updateResults();
-    });
-    const groupRow = controls.createDiv({ cls: "los-source-groupby" });
-    groupRow.setAttrs({ role: "group", "aria-label": "Group materials by" });
-    const groupButtons = /* @__PURE__ */ new Map();
-    for (const [value, text5] of [["purpose", "Purpose \u2192 type"], ["type", "Type \u2192 purpose"], ["source", "Source"]]) {
-      const control = button(groupRow, text5, () => {
-        this.groupBy = value;
-        for (const [other, otherButton] of groupButtons) {
-          otherButton.toggleClass("is-active", other === value);
-          otherButton.setAttr("aria-pressed", String(other === value));
-        }
-        this.updateResults();
-      }, "quiet");
-      control.addClass("los-groupby-btn");
-      control.toggleClass("is-active", value === this.groupBy);
-      control.setAttr("aria-pressed", String(value === this.groupBy));
-      groupButtons.set(value, control);
-    }
-    button(controls, "Reset filters", () => {
-      this.purpose = "all";
-      this.materialType = "all";
-      this.requiredOnly = false;
-      this.query = "";
-      purpose.value = "all";
-      materialType.value = "all";
-      required.checked = false;
-      search.value = "";
-      this.updateResults();
-      search.focus();
-    }, "quiet");
-    scope.addEventListener("change", () => {
-      this.sourceScope = scope.value;
-      if (this.sourceScope !== "stage") {
-        this.requiredOnly = false;
-        required.checked = false;
-      }
-      required.disabled = this.sourceScope !== "stage";
-      this.updateResults();
-    });
-    this.results = root.createDiv({ cls: "los-source-results" });
-    this.updateResults();
-    root.createEl("p", { cls: "los-micro los-material-drawer-note", text: "Browsing never deletes or hides the complete source record. Choosing material is a separate action." });
-    const close = button(root.createDiv({ cls: "los-actions" }), "Close", () => this.close(), "quiet");
-    this.restoreAccessibility = makeModalAccessible(root, {
-      close: () => this.close(),
-      hostClass: "los-modal--material-drawer",
-      labelledBy: "los-material-drawer-heading",
-      initialFocus: () => heading ?? search
-    });
-    (heading ?? close).focus();
-  }
-  onClose() {
-    this.options.plugin.router.clearOverlay();
-    this.restoreAccessibility?.();
-    this.restoreAccessibility = null;
-    this.contentEl.empty();
-    this.results = null;
-  }
-  sourceTitle(id2) {
-    return id2 ? asString(this.options.plugin.store.get(id2)?.title) ?? id2 : "Source not yet identified";
-  }
-  entries() {
-    const { plugin, unit, resources, materialOptions } = this.options;
-    if (this.sourceScope === "stage") return resources.map((resource) => {
-      const routeId = asString(resource.record.route_id);
-      const route = routeId ? materialOptions.find((option) => option.routeId === routeId) : void 0;
-      const rawFormat = asString(resource.record.format) ?? route?.format ?? resource.kind;
-      const depth = route?.depth ?? asString(resource.record.depth) ?? "";
-      const triage = asString(resource.record.scope_triage);
-      return {
-        sourceId: resource.sourceId ?? route?.sourceId ?? null,
-        title: resource.label,
-        locator: resource.locator,
-        angle: asText(resource.record.angle) ?? "",
-        purpose: normalisePurpose(depth),
-        type: normaliseType(rawFormat, resource.kind),
-        depth,
-        format: rawFormat,
-        triage,
-        hasUrgency: true,
-        // An unranked pre-v2 placement counts as primary work, never as
-        // deprioritised — the same rule the stage screen already follows.
-        required: !triage || triage === "required-now",
-        owner: unit,
-        resource
-      };
-    });
-    const owners = this.sourceScope === "unit" ? [unit] : plugin.store.unitsFor(unit.moduleId, unit.componentId).map((record7) => readUnitRecord(record7, asString(record7.id))).filter((record7) => record7 !== null);
-    const sourceMap = plugin.store.sourceMap(unit.moduleId);
-    return owners.flatMap((owner) => {
-      const options = owner.id === unit.id ? materialOptions : readMaterialOptions(sourceMap?.sources, owner.id, owner.record.source_selections);
-      return options.map((option) => ({
-        ...option,
-        sourceId: option.sourceId,
-        title: option.title,
-        locator: option.locator,
-        angle: option.angle,
-        purpose: normalisePurpose(option.depth),
-        type: normaliseType(option.format, ""),
-        triage: null,
-        hasUrgency: false,
-        required: false,
-        owner,
-        option
-      }));
-    });
-  }
-  updateResults() {
-    const root = this.results;
-    if (!root) return;
-    root.empty();
-    this.groupNodes.clear();
-    const all = this.entries();
-    const query = foldCase(this.query.trim());
-    const narrowedByFilter = this.purpose !== "all" || this.materialType !== "all" || this.requiredOnly;
-    const entries = all.filter((entry) => {
-      if (this.purpose !== "all" && entry.purpose !== this.purpose) return false;
-      if (this.materialType !== "all" && entry.type !== this.materialType) return false;
-      if (this.requiredOnly && !entry.required) return false;
-      if (!query) return true;
-      return [
-        this.sourceTitle(entry.sourceId),
-        entry.title,
-        entry.locator ?? "",
-        entry.angle,
-        purposeLabel(entry.purpose),
-        typeLabel(entry.type)
-      ].some((text5) => foldCase(text5).includes(query));
-    });
-    const hasUrgency = entries.some((entry) => entry.hasUrgency) || all.some((entry) => entry.hasUrgency);
-    const required = entries.filter((entry) => entry.required).length;
-    if (this.groupBy === "source") {
-      const groups = groupBySource(entries).size;
-      root.createDiv({ cls: "los-source-counts", attr: { role: "status", "aria-live": "polite" }, text: `${entries.length} of ${all.length} entries \xB7 ${groups} source groups` });
-      if (!entries.length) {
-        empty(root, "No materials match", "Change scope or reset the filters to see the complete list.");
-        return;
-      }
-      const narrowed2 = Boolean(query) || narrowedByFilter || groups === 1;
-      renderSourceGroups(root, entries, (id2) => this.sourceTitle(id2), (parent, entry) => this.renderEntry(parent, entry), narrowed2);
-      return;
-    }
-    const primaryIsPurpose = this.groupBy === "purpose";
-    const primaryKeys = primaryIsPurpose ? [...PURPOSE_ORDER.map((def) => def.value), ""] : [...TYPE_ORDER.map((def) => def.value), ""];
-    const primaryCount = primaryKeys.filter((key) => entries.some((entry) => primaryIsPurpose ? entry.purpose === key : entry.type === key)).length;
-    const kindWord = primaryIsPurpose ? "purposes" : "types";
-    const counts = `${entries.length} of ${all.length} entries \xB7 ${primaryCount} ${kindWord}` + (hasUrgency ? ` \xB7 ${required} required now` : "");
-    root.createDiv({ cls: "los-source-counts", attr: { role: "status", "aria-live": "polite" }, text: counts });
-    if (!entries.length) {
-      empty(root, "No materials match", "Change scope or reset the filters to see the complete list.");
-      return;
-    }
-    this.renderJumpBar(root, entries, primaryIsPurpose);
-    const narrowed = Boolean(query) || narrowedByFilter || primaryCount === 1;
-    const openAt = openWeight(entries);
-    if (primaryIsPurpose) this.renderPurposeSections(root, entries, narrowed, hasUrgency, openAt);
-    else this.renderTypeSections(root, entries, narrowed, hasUrgency, openAt);
-  }
-  /**
-   * The primary navigation of the modal at wide scopes: one chip per purpose
-   * (or type) with its live count. Empty groups stay visible but muted and
-   * inert, so a collapsed section can never be mistaken for a missing one.
-   * The bar sticks to the top of the scroll area.
-   */
-  renderJumpBar(root, entries, primaryIsPurpose) {
-    const bar = root.createDiv({ cls: "los-jump-bar" });
-    bar.setAttrs({ role: "group", "aria-label": primaryIsPurpose ? "Jump to purpose" : "Jump to material type" });
-    const defs = primaryIsPurpose ? [...PURPOSE_ORDER, UNASSIGNED_PURPOSE] : [...TYPE_ORDER, OTHER_TYPE];
-    for (const def of defs) {
-      const count = entries.filter((entry) => primaryIsPurpose ? entry.purpose === def.value : entry.type === def.value).length;
-      const jump = bar.createEl("button", {
-        cls: `los-jump-chip${count ? "" : " is-muted"}`,
-        text: `${def.label} ${count}`,
-        attr: { type: "button" }
-      });
-      if (!count) {
-        jump.disabled = true;
-        continue;
-      }
-      jump.setAttr("aria-label", `Jump to ${def.label}, ${count} ${count === 1 ? "entry" : "entries"}`);
-      jump.addEventListener("click", () => {
-        const target = this.groupNodes.get(def.value);
-        if (target) {
-          target.setAttr("open", "");
-          if (typeof target.scrollIntoView === "function") target.scrollIntoView({ block: "start" });
-        }
-      });
-    }
-  }
-  sectionCounts(group, hasUrgency) {
-    const required = group.filter((entry) => entry.required).length;
-    const entries = `${group.length} ${group.length === 1 ? "entry" : "entries"}`;
-    return hasUrgency ? `${entries} \xB7 ${required} required now` : entries;
-  }
-  /**
-   * Purpose first, material type second. The type level is a lightweight
-   * inline sub-heading with a count — never a second accordion. This surface
-   * has a documented history of nested disclosures, and one click is the
-   * maximum between opening the modal and reading any card.
-   */
-  renderPurposeSections(root, entries, open, hasUrgency, openAt) {
-    for (const def of [...PURPOSE_ORDER, UNASSIGNED_PURPOSE]) {
-      const group = entries.filter((entry) => entry.purpose === def.value);
-      if (!group.length) continue;
-      const details = root.createEl("details", { cls: "los-disclosure los-purpose-group" });
-      details.setAttr("data-los-group", def.value);
-      this.groupNodes.set(def.value, details);
-      if (open || openAt !== null && group.some((entry) => entryWeight(entry) === openAt)) details.setAttr("open", "");
-      const summary = details.createEl("summary", { cls: "los-purpose-summary" });
-      summary.createEl("h2", { cls: "los-purpose-heading", text: `${def.label} \xB7 ${this.sectionCounts(group, hasUrgency)}` });
-      summary.createDiv({ cls: "los-purpose-sub", text: def.sub });
-      const body = details.createDiv({ cls: "los-disclosure-body" });
-      for (const typeDef of [...TYPE_ORDER, OTHER_TYPE]) {
-        const cards = group.filter((entry) => entry.type === typeDef.value);
-        if (!cards.length) continue;
-        const sub = body.createDiv({ cls: "los-type-subgroup" });
-        sub.createEl("h3", { cls: "los-type-subhead", text: `${typeDef.label} (${cards.length})` });
-        for (const entry of this.byUrgency(cards)) this.renderEntry(sub, entry);
-      }
-    }
-  }
-  /** Type first, purpose second — the mirror of the default partition. */
-  renderTypeSections(root, entries, open, hasUrgency, openAt) {
-    for (const def of [...TYPE_ORDER, OTHER_TYPE]) {
-      const group = entries.filter((entry) => entry.type === def.value);
-      if (!group.length) continue;
-      const details = root.createEl("details", { cls: "los-disclosure los-purpose-group" });
-      details.setAttr("data-los-group", def.value);
-      this.groupNodes.set(def.value, details);
-      if (open || openAt !== null && group.some((entry) => entryWeight(entry) === openAt)) details.setAttr("open", "");
-      const summary = details.createEl("summary", { cls: "los-purpose-summary" });
-      summary.createEl("h2", { cls: "los-purpose-heading", text: `${def.label} \xB7 ${this.sectionCounts(group, hasUrgency)}` });
-      const body = details.createDiv({ cls: "los-disclosure-body" });
-      for (const purposeDef of [...PURPOSE_ORDER, UNASSIGNED_PURPOSE]) {
-        const cards = group.filter((entry) => entry.purpose === purposeDef.value);
-        if (!cards.length) continue;
-        const sub = body.createDiv({ cls: "los-type-subgroup" });
-        sub.createEl("h3", { cls: "los-type-subhead", text: `${purposeDef.label} (${cards.length})` });
-        for (const entry of this.byUrgency(cards)) this.renderEntry(sub, entry);
-      }
-    }
-  }
-  /** Urgency is the sort key inside a sub-group; ties keep authored order. */
-  byUrgency(cards) {
-    return [...cards].sort((left, right) => entryWeight(left) - entryWeight(right));
-  }
-  /**
-   * One material, one card — the same card the stage screen shows.
-   *
-   * The group heading already names the purpose and the sub-heading the
-   * material type, so neither is repeated in the card's meta row; the source
-   * chip is restored onto the card now that no group heading names it.
-   */
-  renderEntry(parent, entry) {
-    const badges = entry.owner.id === this.options.unit.id ? [] : [entry.owner.title];
-    if (entry.resource) {
-      const sourceId = entry.resource.sourceId;
-      const source = sourceId ? this.options.renderer.sourceRecord?.(sourceId) ?? null : null;
-      const row3 = renderResourceRow(parent, entry.resource, source, this.options.renderer, {
-        badges,
-        sourceInMeta: true
-      });
-      row3.addClass("los-source-entry");
-      return;
-    }
-    this.renderRouteEntry(parent, entry, badges);
-  }
-  /**
-   * A route the owning unit offers, rendered in the resource card's shape so
-   * stage placements and wider-scope routes read as one system rather than as
-   * two surfaces that happen to sit in the same dialog.
-   */
-  renderRouteEntry(parent, entry, badges) {
-    const option = entry.option;
-    const own = entry.owner.id === this.options.unit.id;
-    const row3 = parent.createDiv({ cls: "los-resource-row los-source-entry los-triage-unranked" });
-    icon(row3.createSpan(), materialTypeIcon(entry.type || option.format));
-    const copy = row3.createDiv({ cls: "los-resource-copy" });
-    copy.createEl("strong", { text: entry.title });
-    const metadata = copy.createDiv({ cls: "los-resource-row-meta" });
-    const source = entry.sourceId ? this.options.renderer.sourceRecord?.(entry.sourceId) ?? null : null;
-    if (source) chip(metadata, source, this.options.renderer.openSource);
-    if (entry.locator) metadata.createSpan({ cls: "los-micro los-resource-locator", text: entry.locator });
-    for (const badge2 of badges) metadata.createSpan({ cls: "los-micro los-resource-badge", text: badge2 });
-    if (option.selected) metadata.createSpan({ cls: "los-micro los-resource-chosen", text: "Chosen for this lecture" });
-    if (option.angle) copy.createDiv({ cls: "los-resource-angle", text: option.angle });
-    renderMaterialCautions(copy, option.record);
-    const labels = option.covers.map((id2) => entry.owner.knowledgeNodes.find((node) => node.id === id2)?.title).filter((title) => Boolean(title));
-    const rationale = [asText(option.record.angle_detail), labels.length ? `Covers: ${labels.join(" \xB7 ")}` : ""].filter(Boolean).join("\n\n");
-    if (rationale) whyThisOne(copy, rationale);
-    const actions = row3.createDiv({ cls: "los-actions los-resource-actions" });
-    if (option.canOpen) button(actions, "Open", () => this.options.plugin.openResource(option.record), "quiet");
-    if (own) this.renderChoose(actions, option);
-    else {
-      button(actions, "Go to lecture", () => {
-        this.close();
-        this.options.plugin.nav.openUnit(entry.owner.id);
-      }, "quiet");
-    }
-  }
-  renderChoose(actions, option) {
-    if (!option.canChoose || !option.sourceId || !option.locator) return;
-    const { plugin, unit, expectedRevisions, onChanged } = this.options;
-    const choice = button(actions, option.selected ? "Remove choice" : "Choose", () => {
-      void plugin.mutate(() => plugin.gateway.sourceSelection(unit.id, option.routeId, option.sourceId ?? "", option.locator ?? "", option.angle, !option.selected, expectedRevisions)).then(() => {
-        new import_obsidian15.Notice(option.selected ? "Material choice removed." : "Material chosen for this lecture.");
-        onChanged();
-        this.close();
-      }).catch((error) => {
-        new import_obsidian15.Notice(error instanceof Error ? error.message : String(error));
-      });
-    }, "choice");
-    choice.setAttr("aria-pressed", String(option.selected));
-  }
-};
-
-// src/features/unit/stage.ts
-function renderStage(view, layout, unit, studyMap, stage) {
-  const expectedRevisions = view.plugin.store.artifactGuard(
-    unit.id,
-    typeof studyMap.record.id === "string" ? studyMap.record.id : null
-  );
-  const center = layout.createDiv({
-    cls: "los-stage-workspace"
-  });
-  const top = center.createDiv({
-    cls: "los-stage-heading"
-  });
-  const stageIndex = studyMap.stages.findIndex(
-    (candidate) => candidate.id === stage.id
-  );
-  const stagePosition = Math.max(stageIndex, 0) + 1;
-  const stageState = stage.status === "complete" ? "Complete" : stage.status === "skipped" ? "Skipped" : stage.id === studyMap.currentStageId ? "Current" : "Selected";
-  const headingRow = top.createDiv({
-    cls: "los-stage-heading-row"
-  });
-  const headingCopy = headingRow.createDiv({
-    cls: "los-stage-heading-copy"
-  });
-  const eyebrow = [
-    `Stage ${stagePosition} of ${studyMap.stages.length}`,
-    stage.examCritical ? "exam-critical" : "",
-    stageState.toLowerCase(),
-    stage.estimateMinutes ? `${stage.estimateMinutes} min` : ""
-  ].filter(Boolean);
-  headingCopy.createDiv({
-    cls: "los-kicker",
-    text: eyebrow.join(" \xB7 ")
-  });
-  headingCopy.createEl("h2", {
-    text: stage.title
-  });
-  if (stage.objective) {
-    headingCopy.createEl("p", {
-      cls: "los-stage-objective",
-      text: stage.objective
-    });
-  }
-  const conceptRecords = stage.concepts.flatMap(
-    (conceptId) => {
-      const record7 = view.plugin.store.get(conceptId);
-      return record7 ? [record7] : [];
-    }
-  );
-  if (conceptRecords.length) {
-    const concepts = center.createDiv({
-      cls: "los-stage-concepts"
-    });
-    for (const record7 of conceptRecords) {
-      chip(
-        concepts,
-        record7,
-        (target) => view.plugin.nav.openRecord(target)
-      );
-    }
-  }
-  if (stage.doneWhen.length) {
-    const marks = view.plugin.getDoneWhen(
-      unit.id,
-      stage.id,
-      stage.doneWhen
-    );
-    const checkedCount = stage.doneWhen.reduce(
-      (count, _criterion, index) => count + (marks[index] ? 1 : 0),
-      0
-    );
-    const done = center.createDiv({
-      cls: "los-section los-stage-section"
-    });
-    const doneHeading = done.createDiv({
-      cls: "los-stage-section-heading"
-    });
-    doneHeading.createEl("h2", {
-      text: "Done when"
-    });
-    doneHeading.createSpan({
-      cls: "los-micro",
-      text: `${checkedCount} of ${stage.doneWhen.length}`
-    });
-    const list2 = done.createDiv({
-      cls: "los-donewhen-list"
-    });
-    for (const [index, criterion] of stage.doneWhen.entries()) {
-      const row3 = list2.createEl(
-        "label",
-        {
-          cls: "los-donewhen-row"
-        }
-      );
-      const box = row3.createEl(
-        "input",
-        {
-          attr: {
-            type: "checkbox",
-            "aria-label": criterion
-          }
-        }
-      );
-      const checked = Boolean(marks[index]);
-      if (checked) {
-        box.setAttr(
-          "checked",
-          "checked"
-        );
-      }
-      box.checked = checked;
-      box.addEventListener(
-        "change",
-        () => {
-          const nextChecked = Boolean(box.checked);
-          view.plugin.setDoneWhen(
-            unit.id,
-            stage.id,
-            index,
-            nextChecked,
-            stage.doneWhen
-          );
-          row3.toggleClass(
-            "is-checked",
-            nextChecked
-          );
-        }
-      );
-      row3.toggleClass(
-        "is-checked",
-        checked
-      );
-      row3.createSpan({
-        text: criterion
-      });
-    }
-  }
-  const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
-  const materialOptions = readMaterialOptions(sourceMap?.sources, unit.id, unit.record.source_selections);
-  const resourceRenderer = {
-    emptyDetail: "Use the unit scope and ask AI for a proposal.",
-    sourceRecord: (sourceId) => view.plugin.store.get(sourceId),
-    routeRecord: (routeId) => materialOptions.find((option) => option.routeId === routeId)?.record ?? null,
-    openSource: (source) => {
-      const sourceId = asString(source.id);
-      return sourceId ? view.plugin.nav.openLibrary(sourceId) : void 0;
-    },
-    openSourceResource: (source) => view.plugin.openResource(source),
-    openResource: (resource) => view.plugin.openResource(resource.record),
-    // ADR-009: when an id exists, feedback lands on the exact resource;
-    // otherwise it deliberately describes the whole source.
-    rateResource: (sourceId, resourceId, verdict) => view.mutate(
-      () => view.plugin.gateway.feedback(
-        unit.id,
-        stage.id,
-        sourceId,
-        verdict,
-        resourceId,
-        expectedRevisions
-      )
-    )
-  };
-  const current = currentWorkResource(stage.resources);
-  const requiredCount = stage.resources.filter(
-    (resource) => resource.scopeTriage === "required-now" || !resource.scopeTriage
-  ).length;
-  const work = center.createDiv({
-    cls: "los-section los-stage-section los-current-work"
-  });
-  const workHeading = work.createDiv({
-    cls: "los-stage-section-heading"
-  });
-  workHeading.createEl("h2", { text: "Current work" });
-  if (requiredCount) {
-    workHeading.createSpan({
-      cls: "los-micro los-current-work-count",
-      text: `${requiredCount} required now`
-    });
-  }
-  if (current) {
-    const card = work.createDiv({ cls: "los-current-work-card" });
-    renderResourceRow(
-      card,
-      current,
-      current.sourceId ? view.plugin.store.get(current.sourceId) : null,
-      resourceRenderer
-    );
-  } else if (stage.resources.length) {
-    empty(
-      work,
-      "Nothing is marked required for this stage",
-      "The materials below are preserved for depth and reference. Open the comparison to choose where to start."
-    );
-  } else {
-    empty(
-      work,
-      "No source action selected",
-      "Use the unit scope and ask AI for a proposal."
-    );
-  }
-  {
-    const catalogue = center.createDiv({
-      cls: "los-section los-stage-materials"
-    });
-    const catalogueCopy = catalogue.createDiv({
-      cls: "los-stage-materials-copy"
-    });
-    catalogueCopy.createEl("h2", {
-      text: stage.resources.length ? `${stage.resources.length} ${stage.resources.length === 1 ? "material" : "materials"} on this stage` : "No material is placed on this stage"
-    });
-    catalogueCopy.createSpan({
-      cls: "los-micro los-stage-materials-summary",
-      text: stage.resources.length ? `${triageSummary(stage.resources)} \xB7 ${materialOptions.length} on the unit` : `The unit's complete menu still lists ${materialOptions.length} ${materialOptions.length === 1 ? "route" : "routes"}.`
-    });
-    const catalogueActions = catalogue.createDiv({
-      cls: "los-actions los-stage-materials-actions"
-    });
-    button(
-      catalogueActions,
-      "Compare all",
-      () => {
-        new MaterialComparisonModal(view.app, {
-          plugin: view.plugin,
-          unit,
-          stage,
-          resources: stage.resources,
-          materialOptions,
-          expectedRevisions,
-          renderer: resourceRenderer,
-          onChanged: () => view.render()
-        }).open();
-      }
-    );
-  }
-  view.renderStageContext(
-    center,
-    unit,
-    studyMap,
-    stage
-  );
-  view.renderActionBar(
-    center,
-    unit,
-    stage,
-    expectedRevisions
-  );
-}
-function renderActionBar(view, root, unit, stage, expectedRevisions) {
-  const bar = root.createDiv({
-    cls: "los-unit-actionbar"
-  });
-  if (stage.doneWhen.length) {
-    bar.createSpan({
-      cls: "los-micro los-unit-actionbar-rule",
-      text: stage.doneWhen.length === 1 ? "Finish only when the criterion above is true." : stage.doneWhen.length === 2 ? "Finish only when both criteria are true." : `Finish only when all ${stage.doneWhen.length} criteria are true.`
-    });
-  }
-  button(
-    bar,
-    "Complete stage",
-    () => view.mutate(
-      () => view.plugin.gateway.progress(
-        unit.id,
-        stage.id,
-        "complete",
-        expectedRevisions
-      ),
-      () => view.plugin.clearDoneWhen(
-        unit.id,
-        stage.id
-      )
-    ),
-    "cta"
-  );
-  const menuItems = [
-    stage.status !== "active" && [
-      "Revisit stage",
-      () => view.mutate(
-        () => view.plugin.gateway.progress(
-          unit.id,
-          stage.id,
-          "revisit",
-          expectedRevisions
-        )
-      )
-    ],
-    [
-      "Pause unit",
-      () => view.mutate(
-        () => view.plugin.gateway.progress(
-          unit.id,
-          stage.id,
-          "paused",
-          expectedRevisions
-        )
-      )
-    ],
-    [
-      "Skip stage",
-      () => view.mutate(
-        () => view.plugin.gateway.progress(
-          unit.id,
-          stage.id,
-          "skipped",
-          expectedRevisions
-        )
-      )
-    ],
-    [
-      "Report prerequisite gap",
-      () => view.mutate(
-        () => view.plugin.gateway.detour(
-          unit.id,
-          stage.id,
-          "Prerequisite gap",
-          "required-now",
-          expectedRevisions
-        )
-      )
-    ],
-    [
-      "Prepare shelving",
-      () => view.plugin.nav.openShelving(
-        unit.id
-      )
-    ],
-    view.plugin.settings.showAiRecommendation && [
-      "Ask AI with stage context",
-      () => {
-        const project = view.plugin.store.projectForUnit(
-          unit.record
-        );
-        const projectId = asString(project?.id) ?? void 0;
-        return view.plugin.askAiScoped(
-          "Help with this stage. Treat the active file as supplementary context only.",
-          {
-            moduleId: unit.moduleId,
-            projectId,
-            unitId: unit.id,
-            stageId: stage.id
-          }
-        );
-      }
-    ]
-  ];
-  overflowMenu(
-    bar,
-    menuItems,
-    "More unit actions"
-  );
-}
-
-// src/features/unit/materials.ts
-var import_obsidian16 = require("obsidian");
-function materialTypeOf2(format) {
-  if (format === "video") return "video";
-  if (format === "exercise" || format === "code" || format === "notebook" || format === "quiz" || format === "homework" || format === "problem-set") return "exercise";
-  if (format === "book" || format === "textbook") return "book";
-  return "article";
-}
-function optionIcon(materialType) {
-  if (materialType === "video") return "play";
-  if (materialType === "exercise") return "pencil-line";
-  if (materialType === "article") return "file-text";
-  return "book-open";
-}
-function renderMaterialOverview(view, root, unit, options, synthesis, includeMenu = true) {
-  const studyMap = view.plugin.store.mapForUnit(unit.id);
-  const expectedRevisions = view.plugin.store.artifactGuard(
-    unit.id,
-    typeof studyMap?.id === "string" ? studyMap.id : null
-  );
-  const titleById = new Map(
-    unit.knowledgeNodes.map(
-      (node) => [node.id, node.title]
-    )
-  );
-  if (unit.knowledgeNodes.length) {
-    const map = section(
-      root,
-      "Lecture knowledge map",
-      unit.knowledgeSummary
-    );
-    const nodes = map.createDiv({ cls: "los-knowledge-grid" });
-    for (const node of unit.knowledgeNodes) {
-      const card = nodes.createDiv({ cls: "los-knowledge-node" });
-      card.createEl("h3", { text: node.title });
-      card.createEl("p", { text: node.summary });
-      const dependencies = node.buildsOn.map((id2) => titleById.get(id2)).filter((title) => Boolean(title));
-      if (dependencies.length) {
-        card.createDiv({
-          cls: "los-micro",
-          text: `Builds on: ${dependencies.join(", ")}`
-        });
-      }
-    }
-  }
-  if (synthesis) {
-    renderMaterialSynthesis(view, root, synthesis, options);
-  }
-  if (!options.length || !includeMenu) return;
-  const materials = section(
-    root,
-    "Choose your learning material",
-    "This is a complete menu, not a sequence. Pick the explanation angle and depth that fit your current need."
-  );
-  for (const [sourceId, entries] of groupBySource(options)) {
-    const source = sourceId ? view.plugin.store.get(sourceId) : null;
-    const group = materials.createEl("details", { cls: "los-disclosure los-source-group" });
-    group.createEl("summary", { text: `${asString(source?.title) ?? sourceId ?? "Source not yet identified"} \xB7 ${entries.length} entries` });
-    for (const option of entries) {
-      const materialType = materialTypeOf2(option.format);
-      const row3 = group.createDiv({
-        cls: "los-material-option los-source-entry"
-      });
-      icon(
-        row3.createSpan({
-          cls: "los-material-icon"
-        }),
-        optionIcon(materialType)
-      );
-      const copy = row3.createDiv({
-        cls: "los-material-copy"
-      });
-      copy.createEl("h4", {
-        text: option.title
-      });
-      copy.createEl("p", {
-        text: option.angle
-      });
-      const fullDetail = asText(option.record.angle_detail);
-      renderMaterialCautions(copy, option.record);
-      if (option.locator) {
-        copy.createDiv({
-          cls: "los-micro",
-          text: option.locator
-        });
-      }
-      const metadata = copy.createDiv({
-        cls: "los-material-metadata"
-      });
-      badge(
-        metadata,
-        option.format.replaceAll("-", " "),
-        "role"
-      );
-      badge(
-        metadata,
-        option.depth.replaceAll("-", " "),
-        "role"
-      );
-      badge(
-        metadata,
-        option.scope.replaceAll("-", " "),
-        option.scope === "current" ? "status" : "role"
-      );
-      for (const knowledgeId of option.covers) {
-        const label = titleById.get(knowledgeId);
-        if (label) {
-          metadata.createSpan({
-            cls: "los-knowledge-chip",
-            text: label
-          });
-        }
-      }
-      if (fullDetail) whyThisOne(copy, fullDetail);
-      if (option.canOpen || option.canChoose) {
-        const actions = row3.createDiv({
-          cls: "los-actions los-material-actions"
-        });
-        if (option.canChoose && option.sourceId && option.locator) {
-          const choice = button(
-            actions,
-            option.selected ? "Remove choice" : "Choose",
-            () => {
-              void view.plugin.mutate(
-                () => view.plugin.gateway.sourceSelection(
-                  unit.id,
-                  option.routeId,
-                  option.sourceId ?? "",
-                  option.locator ?? "",
-                  option.angle,
-                  !option.selected,
-                  expectedRevisions
-                )
-              ).then(
-                () => new import_obsidian16.Notice(
-                  option.selected ? "Material choice removed." : "Material chosen for this lecture."
-                )
-              ).catch(
-                (error) => new import_obsidian16.Notice(
-                  error instanceof Error ? error.message : String(error)
-                )
-              );
-            },
-            "choice"
-          );
-          choice.setAttr(
-            "aria-pressed",
-            option.selected ? "true" : "false"
-          );
-        }
-        if (option.canOpen) {
-          button(
-            actions,
-            "Open",
-            () => view.plugin.openResource(
-              option.record
-            ),
-            "info"
-          );
-        }
-      }
-    }
-  }
-}
-function renderMaterialSynthesis(view, root, synthesis, options) {
-  const block = section(
-    root,
-    "Approved material synthesis",
-    "Evidence-backed comparison of the exact material routes approved for this unit."
-  );
-  block.addClass("los-material-synthesis");
-  const routeTitles = new Map(options.map((option) => [option.routeId, option.title]));
-  const head = block.createDiv({ cls: "los-material-synthesis-head" });
-  badge(head, "approved", "status");
-  const policy = asString(synthesis.basis.policy);
-  if (policy) badge(head, policy.replaceAll("-", " "), "role");
-  head.createSpan({
-    cls: "los-micro",
-    text: `${synthesis.route_assessments.length} assessed route${synthesis.route_assessments.length === 1 ? "" : "s"} \xB7 unit r${synthesis.basis.unit_revision} \xB7 source map r${synthesis.basis.source_map_revision}`
-  });
-  const projectionStatus = block.createDiv({
-    cls: `los-synthesis-status${synthesis.freshness.status === "stale" ? " is-stale" : ""}`,
-    attr: { role: "status" }
-  });
-  const statusHead = projectionStatus.createDiv({ cls: "los-material-synthesis-head" });
-  badge(
-    statusHead,
-    synthesis.freshness.status === "current" ? "current basis" : "stale basis",
-    synthesis.freshness.status === "current" ? "status" : "role"
-  );
-  badge(
-    statusHead,
-    synthesis.completeness.complete ? "complete route coverage" : "incomplete route coverage",
-    synthesis.completeness.complete ? "status" : "role"
-  );
-  projectionStatus.createDiv({
-    cls: "los-micro",
-    text: `${synthesis.completeness.assessed_route_count}/${synthesis.completeness.current_route_count} current routes assessed \xB7 ${synthesis.completeness.deep_reviewed_count} deep reviewed \xB7 ${synthesis.completeness.screened_count} screened \xB7 ${synthesis.completeness.unevaluated_count} unevaluated \xB7 ${synthesis.completeness.unavailable_count} unavailable`
-  });
-  if (synthesis.freshness.status === "stale") {
-    projectionStatus.createEl("p", {
-      text: "This approved dossier is retained below for reference, but its current basis no longer matches: " + synthesis.freshness.reasons.map((reason) => reason.replaceAll("_", " ")).join(", ") + "."
-    });
-  }
-  if (!synthesis.completeness.complete) {
-    const routeIssues = [
-      synthesis.completeness.missing_route_ids.length ? `Missing: ${synthesis.completeness.missing_route_ids.join(", ")}` : "",
-      synthesis.completeness.orphaned_route_ids.length ? `Orphaned: ${synthesis.completeness.orphaned_route_ids.join(", ")}` : "",
-      synthesis.completeness.duplicate_route_ids.length ? `Duplicated: ${synthesis.completeness.duplicate_route_ids.join(", ")}` : ""
-    ].filter(Boolean);
-    projectionStatus.createDiv({
-      cls: "los-micro",
-      text: routeIssues.length ? routeIssues.join(" \xB7 ") : "Route coverage is not complete."
-    });
-  }
-  const assessments = block.createDiv({ cls: "los-synthesis-grid" });
-  for (const assessment2 of synthesis.route_assessments) {
-    const card = assessments.createDiv({ cls: "los-synthesis-card" });
-    const heading = card.createDiv({ cls: "los-synthesis-card-head" });
-    heading.createEl("h3", {
-      text: routeTitles.get(assessment2.route_id) || assessment2.locator
-    });
-    badge(
-      heading,
-      assessment2.review_status.replaceAll("-", " "),
-      assessment2.review_status === "deep-reviewed" ? "status" : "role"
-    );
-    card.createDiv({ cls: "los-micro", text: assessment2.locator });
-    const source = view.plugin.store.get(assessment2.source_id);
-    if (source) {
-      chip(card, source, (record7) => {
-        const sourceId = asString(record7.id);
-        return sourceId ? view.plugin.nav.openLibrary(sourceId) : void 0;
-      });
-    }
-    const details = [
-      ["Contribution", assessment2.contribution],
-      ["Best for", assessment2.best_for],
-      ["Assumptions", assessment2.assumptions],
-      ["Notation", assessment2.notation],
-      ["Exercise value", assessment2.exercise_value],
-      ["Limitations", assessment2.limitations],
-      // Directly under Limitations, because it is the bound on every negative
-      // sentence above it: what this review actually had in front of it.
-      ["Inspected", assessment2.scope_of_absence],
-      ["Review note", assessment2.reason]
-    ];
-    for (const [label, value] of details) {
-      if (!value) continue;
-      const row3 = card.createDiv({ cls: "los-synthesis-detail" });
-      row3.createSpan({ cls: "los-micro", text: label });
-      row3.createEl("p", { text: value });
-    }
-    if (assessment2.concept_ids.length) {
-      const concepts = card.createDiv({ cls: "los-material-metadata" });
-      for (const conceptId of assessment2.concept_ids) {
-        const concept = view.plugin.store.get(conceptId);
-        if (concept) chip(concepts, concept, (record7) => view.plugin.nav.openRecord(record7));
-      }
-    }
-    const evidenceCount = assessment2.evidence?.length || 0;
-    if (evidenceCount) {
-      card.createDiv({
-        cls: "los-micro",
-        text: `${evidenceCount} pinned evidence locator${evidenceCount === 1 ? "" : "s"}`
-      });
-    }
-  }
-  if (synthesis.comparisons.length) {
-    const comparisons = block.createDiv({ cls: "los-synthesis-comparisons" });
-    comparisons.createEl("h3", { text: "Route comparisons" });
-    for (const comparison2 of synthesis.comparisons) {
-      const row3 = comparisons.createDiv({ cls: "los-synthesis-comparison" });
-      const labels = [
-        routeTitles.get(comparison2.left_route_id) || comparison2.left_route_id,
-        routeTitles.get(comparison2.right_route_id) || comparison2.right_route_id
-      ];
-      const heading = row3.createDiv({ cls: "los-synthesis-comparison-head" });
-      heading.createEl("strong", { text: labels.join(" \u2194 ") });
-      badge(heading, comparison2.relation.replaceAll("-", " "), "role");
-      row3.createEl("p", { text: comparison2.narrative });
-    }
-  }
-  if (synthesis.concept_groups.length) {
-    const bridges2 = block.createDiv({ cls: "los-synthesis-comparisons" });
-    bridges2.createEl("h3", { text: "Concept bridges" });
-    for (const group of synthesis.concept_groups) {
-      const row3 = bridges2.createDiv({ cls: "los-synthesis-comparison" });
-      const concept = view.plugin.store.get(group.concept_id);
-      row3.createEl("strong", {
-        text: asString(concept?.title) || group.concept_id
-      });
-      row3.createEl("p", { text: group.narrative });
-      const related = row3.createDiv({ cls: "los-material-metadata" });
-      for (const relatedId of [...group.related_unit_ids, ...group.bridge_note_ids]) {
-        const record7 = view.plugin.store.get(relatedId);
-        if (record7) chip(related, record7, (target) => view.plugin.nav.openRecord(target));
-      }
-    }
-  }
-}
-
-// src/features/learning-route.ts
-function renderLearningProgress(parent, completedValue, totalValue, ariaLabel, showCopy = true) {
-  const total = Math.max(0, totalValue);
-  const completed = Math.min(Math.max(0, completedValue), total);
-  const percent = total ? Math.round(completed / total * 100) : 0;
-  if (showCopy) {
-    const copy = parent.createDiv({ cls: "los-stage-progress-copy" });
-    copy.createSpan({ text: `${completed} of ${total} complete` });
-    copy.createSpan({ cls: "los-micro", text: `${percent}%` });
-  }
-  const progress = parent.createDiv({
-    cls: "los-stage-progress",
-    attr: {
-      role: "progressbar",
-      "aria-label": ariaLabel,
-      "aria-valuemin": "0",
-      "aria-valuemax": "100",
-      "aria-valuenow": String(percent)
-    }
-  });
-  const value = progress.createDiv({ cls: "los-stage-progress-value" });
-  value.style.width = `${percent}%`;
-  return progress;
-}
-function renderLearningRouteRail(parent, options) {
-  const rail = parent.createEl("nav", { cls: "los-stage-rail" });
-  rail.setAttr("aria-label", options.ariaLabel);
-  const summary = rail.createDiv({ cls: "los-stage-rail-summary" });
-  summary.createEl("h2", { text: options.title });
-  if (options.showProgress !== false) {
-    renderLearningProgress(
-      summary,
-      options.completed,
-      options.items.length,
-      options.progressLabel
-    );
-  } else {
-    summary.addClass("is-label-only");
-    if (options.titleMeta) {
-      summary.createSpan({ cls: "los-micro", text: options.titleMeta });
-    }
-  }
-  const list2 = rail.createDiv({ cls: "los-stage-list", attr: { role: "list" } });
-  const selectedIndex = options.items.findIndex((item) => item.id === options.selectedId);
-  for (const [index, item] of options.items.entries()) {
-    const selected = item.id === options.selectedId;
-    const row3 = list2.createEl("button", {
-      cls: `los-stage-row los-s-${item.state} ${selected ? "is-selected" : index > selectedIndex ? "is-upcoming" : "is-before"} is-clickable`,
-      attr: {
-        type: "button",
-        role: "listitem",
-        "aria-label": `Open stage ${item.number}: ${item.title}`,
-        "aria-posinset": String(index + 1),
-        "aria-setsize": String(options.items.length),
-        "aria-current": selected ? "step" : "false",
-        "aria-pressed": String(selected)
-      }
-    });
-    row3.createSpan({ cls: "los-stage-marker", attr: { "aria-hidden": "true" } });
-    const copy = row3.createSpan({ cls: "los-stage-copy" });
-    copy.createSpan({ cls: "los-stage-title", text: `${item.number} \xB7 ${item.title}` });
-    if (item.marker) copy.createSpan({ cls: "los-micro", text: item.marker });
-    row3.addEventListener("click", () => options.select(item.id));
-  }
-  return rail;
-}
-
-// src/features/unit/map-import.ts
-var import_obsidian17 = require("obsidian");
-function stageIds(value) {
-  return Array.isArray(value) ? value.map((row3) => asString(row3)).filter((row3) => Boolean(row3)) : [];
-}
-function renderImportDiff(root, answer) {
-  root.empty();
-  const payload = isRecord2(answer) ? answer : null;
-  const diff = payload && isRecord2(payload.diff) ? payload.diff : null;
-  if (!diff || !Array.isArray(diff.stages_after) || !Array.isArray(diff.content_changes) || !Array.isArray(diff.map_changes) || !diff.stages_after.every((v) => typeof v === "string" && v.length > 0) || payload?.canonical_files_written !== 0) {
-    root.createDiv({
-      cls: "los-muted",
-      text: "LearningOS answered in a shape this version cannot read. Do not import on the strength of an unread check."
-    });
-    return false;
-  }
-  const added = stageIds(diff.stages_added);
-  const retired = stageIds(diff.stages_retired);
-  const preserved = stageIds(diff.preserved_stage_state);
-  const after = stageIds(diff.stages_after);
-  const replacement = diff.replacement === true;
-  root.createDiv({
-    cls: "los-kicker",
-    text: replacement ? "This replaces the current map" : "This creates the first map"
-  });
-  const list2 = root.createEl("ul", { cls: "los-map-import-diff" });
-  const line = (text5) => list2.createEl("li", { text: text5 });
-  line(`${after.length} stage${after.length === 1 ? "" : "s"} after the import.`);
-  if (added.length) line(`Adds: ${added.join(", ")}.`);
-  if (retired.length) line(`Retires: ${retired.join(", ")}.`);
-  if (!added.length && !retired.length && replacement) {
-    line("No stage is added or retired.");
-  }
-  if (diff.relative_order_changed === true) {
-    const reason = asString(diff.intentional_reorder_reason);
-    line(`Relative order of surviving stages changes${reason ? `: ${reason}` : ""}.`);
-  }
-  if (preserved.length) {
-    line(`Recorded work carried forward on ${preserved.length} stage${preserved.length === 1 ? "" : "s"}.`);
-  }
-  const resume = asString(diff.resume_stage);
-  if (resume) line(`Resumes at ${resume}.`);
-  const reset = asString(diff.state_reset_reason);
-  if (reset) line(`Recorded stage state is reset: ${reset}.`);
-  const evidence2 = stageIds(diff.retired_stage_evidence);
-  if (evidence2.length) {
-    line(`Evidence exists on retired stage${evidence2.length === 1 ? "" : "s"}: ${evidence2.join(", ")}.`);
-  }
-  for (const value of [...diff.content_changes, ...diff.map_changes]) {
-    if (!isRecord2(value) || "stage_id" in value && typeof value.stage_id !== "string" || typeof value.field !== "string" || !("before" in value) || !("after" in value)) return false;
-    const change = root.createEl("details");
-    change.createEl("summary", { text: `${value.stage_id ?? "Map"}: ${value.field.replaceAll("_", " ")}` });
-    change.createEl("div", { text: "Before" });
-    change.createEl("pre", { text: JSON.stringify(value.before, null, 2) });
-    change.createEl("div", { text: "After" });
-    change.createEl("pre", { text: JSON.stringify(value.after, null, 2) });
-  }
-  const written = payload?.canonical_files_written;
-  root.createDiv({
-    cls: "los-micro los-muted",
-    text: written === 0 ? "Checked only \u2014 nothing was written." : "LearningOS did not confirm this was a no-write check."
-  });
-  return true;
-}
-var UnitMapImportModal = class extends import_obsidian17.Modal {
-  constructor(app, options) {
-    super(app);
-    this.options = options;
-  }
-  restoreAccessibility = null;
-  /** The exact bytes a rendered preflight approved, or null before one ran. */
-  checked = null;
-  reviewGeneration = 0;
-  onOpen() {
-    const { replacing, unitTitle } = this.options;
-    const root = this.contentEl;
-    root.empty();
-    root.addClass("los-root", "los-map-import-modal");
-    const heading = root.createEl("h2", {
-      text: replacing ? "Replace study map" : "Import study map"
-    });
-    heading.id = "los-map-import-heading";
-    root.createEl("p", {
-      cls: "los-muted",
-      text: replacing ? `${unitTitle} already has a current map. Review the changes and the recorded work carried forward before replacing it.` : `Apply a reviewed study map to ${unitTitle}. The coverage audit stays where the SOP puts it; this applies its result.`
-    });
-    this.restoreAccessibility = makeModalAccessible(root, {
-      close: () => this.close(),
-      hostClass: "los-modal--map-import",
-      labelledBy: heading.id
-    });
-    const standard = root.createDiv({
-      cls: "los-muted los-plan-standard",
-      attr: { "aria-live": "polite" }
-    });
-    standard.setText("Reading the plan template from LearningOS\u2026");
-    const field = root.createDiv({ cls: "los-map-import-field" });
-    field.createEl("label", { text: "Reviewed map file" });
-    const file = field.createEl("input", { attr: { type: "text" } });
-    file.placeholder = "path to the audited study-map YAML";
-    const status = root.createDiv({ cls: "los-draft-status", attr: { "aria-live": "polite" } });
-    const preview = root.createDiv({
-      cls: "los-map-import-preview",
-      attr: { "aria-live": "polite" }
-    });
-    const actions = root.createDiv({ cls: "los-actions los-map-import-actions" });
-    const submit = button(actions, replacing ? "Replace map" : "Import map", async () => {
-      const path = file.value.trim();
-      if (!path || !this.checked || path !== this.checked.file) {
-        status.setText("Check the file first; the import applies the diff you were shown.");
-        return;
-      }
-      submit.disabled = true;
-      status.setText("Importing\u2026");
-      try {
-        await this.options.submit(this.checked);
-        this.close();
-      } catch (error) {
-        this.checked = null;
-        submit.disabled = true;
-        status.setText(errorMessage(error));
-      }
-    }, "cta");
-    submit.disabled = true;
-    const check = button(actions, "Check", async () => {
-      const path = file.value.trim();
-      if (!path) {
-        status.setText("Name the reviewed file first.");
-        return;
-      }
-      const generation = ++this.reviewGeneration;
-      this.checked = null;
-      submit.disabled = true;
-      check.disabled = true;
-      status.setText("Checking \u2014 nothing is written\u2026");
-      try {
-        const answer = await this.options.check(path, replacing);
-        if (generation !== this.reviewGeneration || path !== file.value.trim()) return;
-        if (answer.file !== path || answer.unitId !== this.options.unitId || answer.replace !== replacing || !renderImportDiff(preview, answer.result)) {
-          throw new Error("This review could not be read completely. Check again before importing.");
-        }
-        this.checked = answer;
-        submit.disabled = false;
-        status.setText("Checked. Review the change below, then import.");
-      } catch (error) {
-        if (generation !== this.reviewGeneration) return;
-        this.checked = null;
-        submit.disabled = true;
-        preview.empty();
-        status.setText(errorMessage(error));
-      } finally {
-        check.disabled = false;
-      }
-    });
-    file.addEventListener("input", () => {
-      this.reviewGeneration += 1;
-      this.checked = null;
-      submit.disabled = true;
-      preview.empty();
-      status.setText("File changed \u2014 check it again before importing.");
-    });
-    button(actions, "Cancel", () => this.close(), "quiet");
-    void this.describeStandard(standard);
-    file.focus();
-  }
-  async describeStandard(standard) {
-    if (!this.options.template) {
-      standard.setText(
-        "This host cannot read the plan template; LearningOS still enforces it on import."
-      );
-      return;
-    }
-    try {
-      const template = await this.options.template();
-      standard.setText(
-        `The file must declare plan_template_version ${template.planTemplateVersion}, carry stages numbered from one, and satisfy ${template.schema}. LearningOS refuses the whole import otherwise.`
-      );
-    } catch (error) {
-      standard.setText(
-        `Could not read the plan template: ${errorMessage(error)}. LearningOS still enforces it on import.`
-      );
-    }
-  }
-  onClose() {
-    this.reviewGeneration += 1;
-    this.checked = null;
-    this.restoreAccessibility?.();
-    this.restoreAccessibility = null;
-    this.contentEl.empty();
-  }
-};
-
-// src/contracts/plan-template.ts
-var PLAN_TEMPLATE_CONTRACT = "plan-template-v1";
-
-// src/features/plan-template.ts
-function horizon(value) {
-  return value === "now" || value === "next" ? value : "later";
-}
-function asPlanTemplate(result) {
-  if (result.ok !== true || result.contract !== PLAN_TEMPLATE_CONTRACT) {
-    throw new Error("LearningOS did not answer the plan-template contract.");
-  }
-  const profile = result.profile === "curriculum" ? result.profile : null;
-  const version = asFiniteNumber(result.plan_template_version);
-  const plan = asRecordOrEmpty(result.plan);
-  if (!profile || version === null || version < 1) {
-    throw new Error("The plan template answer named no profile or template version.");
-  }
-  return {
-    profile,
-    planTemplateVersion: version,
-    schema: asTrimmedString(result.schema),
-    title: asTrimmedString(plan.title),
-    cadence: asTrimmedString(plan.cadence),
-    outcome: asTrimmedString(plan.outcome),
-    horizon: horizon(plan.horizon)
-  };
-}
-
-// src/features/unit/shell.ts
-function render(view) {
-  const root = view.contentEl;
-  root.empty();
-  root.addClass(
-    "los-root",
-    "los-unit-view"
-  );
-  const routeUnitId = view.unitId;
-  const projectedUnit = routeUnitId ? view.plugin.store.get(
-    routeUnitId
-  ) : null;
-  const unit = readUnitRecord(
-    projectedUnit,
-    routeUnitId
-  );
-  if (!unit) {
-    empty(
-      root,
-      "Unit unavailable",
-      "Return to its module."
-    );
-    return;
-  }
-  const module2 = view.plugin.store.get(
-    unit.moduleId
-  );
-  const project = view.plugin.store.projectForUnit(
-    unit.record
-  );
-  const ownerLabel = asLabel(
-    project,
-    asLabel(
-      module2,
-      unit.moduleId
-    )
-  );
-  const header = pageHeader(
-    root,
-    `${ownerLabel} \xB7 ${unit.kind}`,
-    unit.title,
-    unit.scope
-  );
-  const headerActions = header.createDiv({
-    cls: "los-actions"
-  });
-  if (project) {
-    button(
-      headerActions,
-      "Back to project",
-      () => view.plugin.nav.back(),
-      "quiet"
-    );
-  } else {
-    button(
-      headerActions,
-      "Back to module",
-      () => view.plugin.nav.openModule(
-        unit.moduleId
-      ),
-      "quiet"
-    );
-  }
-  button(
-    headerActions,
-    "End session",
-    () => view.plugin.reviewSessionEnd(),
-    "info"
-  );
-  const sourceMap = view.plugin.store.sourceMap(
-    unit.moduleId
-  );
-  const materialOptions = readMaterialOptions(
-    sourceMap?.sources,
-    unit.id,
-    unit.record.source_selections
-  );
-  const materialSynthesis = view.plugin.store.materialSynthesisForUnit(
-    unit.id
-  );
-  const hasMaterialOverview = unit.knowledgeNodes.length > 0 || materialOptions.length > 0 || materialSynthesis !== null;
-  const renderMaterials = (includeMenu = true) => {
-    if (!hasMaterialOverview) return;
-    renderMaterialOverview(
-      view,
-      root,
-      unit,
-      materialOptions,
-      materialSynthesis,
-      includeMenu
-    );
-  };
-  const projectedStudyMap = view.plugin.store.mapForUnit(
-    unit.id
-  );
-  if (!projectedStudyMap) {
-    renderMaterials();
-    const owed = unit.needsStudyMap;
-    const missing = section(
-      root,
-      owed ? "Study map required" : "Personal study path (optional)"
-    );
-    const projectId = asString(project?.id) ?? void 0;
-    const componentId = unit.componentId ?? void 0;
-    empty(
-      missing,
-      owed ? "This unit has no ordered study map" : "No personal path selected",
-      owed ? hasMaterialOverview ? "The material menu above says what may be used. A map says in what order and against what proof, and it is what makes progress trackable. AI may propose one; the core imports it only after review." : "AI may propose a scoped map; the core imports it only after review." : "This unit is complete, archived, or belongs to a module you are no longer studying. Create a path only if you want progress tracking anyway.",
-      owed ? "Create map with AI" : "Build optional path with AI",
-      () => view.plugin.askAiScoped(
-        owed ? "Propose one study-map JSON document for this unit, ordered over the materials in its overview. Do not replace or summarize the overview, and do not write files; include exact source actions and done-when criteria." : "Propose an optional personal study-map JSON document using only materials I choose from this unit material overview. Do not replace or summarize the overview, and do not write files; include exact source actions and done-when criteria.",
-        {
-          moduleId: unit.moduleId,
-          projectId,
-          unitId: unit.id,
-          componentId
-        }
-      )
-    );
-    openMapImport(
-      view,
-      missing,
-      unit,
-      false
-    );
-    view.renderArtifacts(
-      root,
-      unit
-    );
-    return;
-  }
-  const studyMap = readStudyMap(
-    projectedStudyMap
-  );
-  const firstStage = studyMap.stages[0];
-  if (!firstStage) {
-    renderMaterials();
-    const bare = section(
-      root,
-      "Study map needs stages"
-    );
-    empty(
-      bare,
-      "This study map has no stages yet",
-      "Stage authoring belongs to the core \u2014 import a map or add stages there, then rebuild views."
-    );
-    view.renderArtifacts(
-      root,
-      unit
-    );
-    return;
-  }
-  const stageIds2 = new Set(
-    studyMap.stages.map(
-      (stage2) => stage2.id
-    )
-  );
-  if (!view.stageId || !stageIds2.has(view.stageId)) {
-    view.stageId = studyMap.currentStageId && stageIds2.has(
-      studyMap.currentStageId
-    ) ? studyMap.currentStageId : firstStage.id;
-    view.plugin.setSelectedStage(
-      unit.id,
-      view.stageId
-    );
-  }
-  const stage = studyMap.stages.find(
-    (candidate) => candidate.id === view.stageId
-  ) ?? firstStage;
-  const layout = root.createDiv({
-    cls: "los-unit-layout"
-  });
-  view.renderRail(
-    layout,
-    unit,
-    studyMap,
-    stage
-  );
-  view.renderStage(
-    layout,
-    unit,
-    studyMap,
-    stage
-  );
-  renderMaterials(false);
-  const more = disclosure(
-    root,
-    "Unit artifacts and evidence",
-    "los-unit-extras"
-  );
-  const provenance = more.createDiv({
-    cls: "los-map-provenance"
-  });
-  provenance.createSpan({
-    cls: "los-micro",
-    text: studyMap.planTemplateVersion === null ? "This study map predates plan template v1. It stays readable; a replacement is imported from the current template." : `Study map on plan template v${studyMap.planTemplateVersion}.`
-  });
-  openMapImport(
-    view,
-    provenance,
-    unit,
-    true
-  );
-  view.renderArtifacts(
-    more,
-    unit
-  );
-}
-function openMapImport(view, parent, unit, replacing) {
-  const actions = parent.createDiv({
-    cls: "los-actions"
-  });
-  button(
-    actions,
-    replacing ? "Replace with reviewed map" : "Import reviewed map",
-    () => new UnitMapImportModal(
-      view.app,
-      {
-        unitId: unit.id,
-        unitTitle: unit.title,
-        replacing,
-        template: async () => asPlanTemplate(
-          await view.plugin.gateway.planTemplate(
-            "curriculum",
-            unit.title,
-            {
-              unitId: unit.id,
-              moduleId: unit.moduleId
-            }
-          )
-        ),
-        // Read-only: it writes nothing, so it does not go through the write
-        // queue and needs no snapshot guard of its own.
-        check: (file, replace) => view.plugin.gateway.checkUnitMapImport(
-          unit.id,
-          file,
-          replace
-        ),
-        submit: (review) => view.plugin.mutate(
-          () => view.plugin.gateway.importUnitMap(review)
-        )
-      }
-    ).open(),
-    replacing ? "quiet" : "cta"
-  );
-}
-function renderRail(view, layout, unit, studyMap, current) {
-  const completedCount = studyMap.stages.filter(
-    (stage) => stage.status === "complete"
-  ).length;
-  const currentIndex = studyMap.stages.findIndex(
-    (stage) => stage.id === current.id
-  );
-  const rail = renderLearningRouteRail(layout, {
-    title: "Stages",
-    ariaLabel: "Ordered learning stages",
-    progressLabel: "Overall learning route progress",
-    showProgress: false,
-    titleMeta: `${completedCount} of ${studyMap.stages.length} complete`,
-    completed: completedCount,
-    selectedId: current.id,
-    items: studyMap.stages.map((stage, index) => ({
-      id: stage.id,
-      number: index + 1,
-      title: stage.title,
-      state: stage.status,
-      marker: stage.status === "complete" ? "Complete" : stage.status === "skipped" ? "Skipped" : index === currentIndex ? `Done when \xB7 ${stage.doneWhen.length} criteria` : index > currentIndex ? "Not started" : ""
-    })),
-    select: (stageId) => {
-      void view.selectStage(stageId);
-    }
-  });
-  const stageRecords = studyMap.stages.map(
-    (stage) => stage.record
-  );
-  const add = button(
-    rail,
-    "Add note",
-    () => view.plugin.openUnitNote(
-      unit.record,
-      studyMap.record
-    ),
-    "quiet"
-  );
-  add.addClass(
-    "los-add-unit-note"
-  );
-  const draft = view.plugin.getUnitNoteDraft(
-    unit.id,
-    stageRecords
-  );
-  if (typeof draft.text === "string" && draft.text.trim()) {
-    rail.createDiv({
-      cls: "los-micro los-unit-note-draft",
-      text: "Unsaved unit-note draft kept locally."
-    });
-  }
-}
-
-// src/views/unit-view.ts
-var import_obsidian18 = require("obsidian");
-var UnitView = class extends import_obsidian18.ItemView {
-  plugin;
-  unitId;
-  stageId;
-  mutationPending = false;
-  constructor(leaf, plugin) {
-    super(leaf);
-    this.plugin = plugin;
-    this.unitId = null;
-    this.stageId = null;
-  }
-  getViewType() {
-    return VIEW_UNIT;
-  }
-  getDisplayText() {
-    return "LearningOS \xB7 Unit";
-  }
-  async setState(state = {}) {
-    const parsed = readUnitViewState(state);
-    const nextUnitId = parsed.unitId ?? this.unitId;
-    if (nextUnitId !== this.unitId) {
-      this.stageId = null;
-    }
-    this.unitId = nextUnitId;
-    const requestedStageId = parsed.hasStageId ? parsed.stageId ?? null : null;
-    const selectedStageId = this.unitId ? this.plugin.getSelectedStage(
-      this.unitId
-    ) : null;
-    this.stageId = selectedStageId ?? requestedStageId ?? this.stageId;
-    this.render();
-  }
-  getState() {
-    return {
-      unitId: this.unitId,
-      stageId: this.stageId
-    };
-  }
-  async onOpen() {
-    const state = readUnitViewState(
-      this.leaf.getViewState().state
-    );
-    this.unitId = state.unitId ?? this.unitId;
-    const selectedStageId = this.unitId ? this.plugin.getSelectedStage(
-      this.unitId
-    ) : null;
-    this.stageId = selectedStageId ?? (state.hasStageId ? state.stageId ?? null : null) ?? this.stageId;
-    this.render();
-  }
-  render() {
-    render(this);
-  }
-  renderRail(layout, unit, studyMap, current) {
-    renderRail(this, layout, unit, studyMap, current);
-  }
-  renderStage(layout, unit, studyMap, stage) {
-    renderStage(this, layout, unit, studyMap, stage);
-  }
-  /**
-   * One primary action and one menu. The primary is filled; nothing else on
-   * this screen may be.
-   */
-  renderActionBar(root, unit, stage, expectedRevisions) {
-    renderActionBar(this, root, unit, stage, expectedRevisions);
-  }
-  renderStageContext(center, unit, studyMap, stage) {
-    renderStageContext(this, center, unit, studyMap, stage);
-  }
-  renderArtifacts(root, unit) {
-    renderArtifacts(this, root, unit);
-  }
-  /**
-   * Every write goes through the plugin-wide queue, so two clicks in two views
-   * can no longer race the same `--expected-snapshot`.
-   */
-  async mutate(action, onConfirmed = null) {
-    if (this.mutationPending) {
-      new import_obsidian18.Notice(
-        "A LearningOS write is already running."
-      );
-      return;
-    }
-    if (this.plugin.gateway.isBusy) {
-      new import_obsidian18.Notice(
-        "Queued behind the running LearningOS write."
-      );
-    }
-    this.mutationPending = true;
-    try {
-      await this.plugin.mutate(
-        action
-      );
-      onConfirmed?.();
-      this.render();
-    } catch (error) {
-      new import_obsidian18.Notice(
-        errorMessage3(error)
-      );
-    } finally {
-      this.mutationPending = false;
-    }
-  }
-  async selectStage(stageId) {
-    const unitId = this.unitId;
-    if (!unitId) {
-      new import_obsidian18.Notice(
-        "This unit is no longer available."
-      );
-      return;
-    }
-    this.stageId = stageId;
-    this.plugin.setSelectedStage(
-      unitId,
-      stageId
-    );
-    await this.leaf.setViewState({
-      type: VIEW_UNIT,
-      active: true,
-      state: {
-        unitId,
-        stageId
-      }
-    });
-  }
-};
-
-// src/app/registration.ts
-var APPLICATION_VIEW_TYPES = [
-  VIEW_HOME,
-  VIEW_NAV,
-  VIEW_PROGRAM,
-  VIEW_MODULE,
-  VIEW_PROJECT,
-  VIEW_UNIT,
-  VIEW_LIBRARY,
-  VIEW_ATLAS,
-  VIEW_SHELVING,
-  VIEW_BOUNDARY,
-  VIEW_REVIEW,
-  VIEW_GARDEN,
-  VIEW_DIAGNOSTICS
-];
-function detachLegacyViews(plugin) {
-  for (const type of LEGACY_VIEW_TYPES) plugin.app.workspace.detachLeavesOfType(type);
-}
-function registerApplication(plugin) {
-  detachLegacyViews(plugin);
-  plugin.registerView(VIEW_HOME, (leaf) => new HomeView(leaf, plugin));
-  plugin.registerView(VIEW_NAV, (leaf) => new NavView(leaf, plugin));
-  plugin.registerView(VIEW_PROGRAM, (leaf) => new ProgramView(leaf, plugin));
-  plugin.registerView(VIEW_MODULE, (leaf) => new ModuleView(leaf, plugin));
-  plugin.registerView(VIEW_PROJECT, (leaf) => new ProjectView(leaf, plugin));
-  plugin.registerView(VIEW_UNIT, (leaf) => new UnitView(leaf, plugin));
-  plugin.registerView(VIEW_LIBRARY, (leaf) => new LibraryView(leaf, plugin));
-  plugin.registerView(VIEW_ATLAS, (leaf) => new AtlasView(leaf, plugin));
-  plugin.registerView(VIEW_SHELVING, (leaf) => new ShelvingView(leaf, plugin));
-  plugin.registerView(VIEW_BOUNDARY, (leaf) => new BoundaryView(leaf, plugin));
-  plugin.registerView(VIEW_REVIEW, (leaf) => new ReviewView(leaf, plugin));
-  plugin.registerView(VIEW_GARDEN, (leaf) => new GardenView(leaf, plugin));
-  plugin.registerView(VIEW_DIAGNOSTICS, (leaf) => new DiagnosticsView(leaf, plugin));
-  plugin.addSettingTab(new LearningOSSettingsTab(plugin.app, plugin));
-  plugin.addRibbonIcon("route", "Open LearningOS", () => plugin.nav.openHome());
-  plugin.addCommand({ id: "open-home", name: "Open Home", callback: () => plugin.nav.openHome() });
-  plugin.addCommand({ id: "open-current-stage", name: "Open current stage", callback: () => plugin.nav.openResume() });
-  plugin.addCommand({ id: "open-modules", name: "Open Modules", callback: () => plugin.nav.openModules() });
-  plugin.addCommand({ id: "open-projects", name: "Open Projects", callback: () => plugin.nav.openProjects() });
-  plugin.addCommand({ id: "open-library", name: "Open Library", callback: () => plugin.nav.openLibrary() });
-  plugin.addCommand({ id: "open-global-search", name: "Search LearningOS", callback: () => plugin.nav.openGlobalSearch() });
-  plugin.addCommand({ id: "open-atlas", name: "Open Concept Atlas", callback: () => plugin.nav.openAtlas() });
-  plugin.addCommand({ id: "open-garden", name: "Open Garden", callback: () => plugin.nav.openGarden() });
-  plugin.addCommand({ id: "open-review", name: "Open Review", callback: () => plugin.nav.openReview() });
-  plugin.addCommand({ id: "open-diagnostics", name: "Open Diagnostics", callback: () => plugin.nav.openDiagnostics() });
-  plugin.addCommand({ id: "rebuild-projection", name: "Validate and rebuild projection", callback: () => plugin.generate() });
-  plugin.addCommand({ id: "end-learning-session", name: "End learning session safely", callback: () => plugin.reviewSessionEnd() });
-  applyPalette(document.body, plugin.settings.palette);
-  plugin.app.workspace.onLayoutReady(async () => {
-    applyPalette(document.body, plugin.settings.palette);
-    detachLegacyViews(plugin);
-    await plugin.router.openNavigator();
-    plugin.app.workspace.leftSplit?.setSize?.(280);
-    if (plugin.settings.collapseSidebars) plugin.app.workspace.rightSplit?.collapse();
-    if (plugin.settings.openHomeOnStartup) await plugin.router.restore();
-  });
-}
-function detachApplication(plugin) {
-  clearPalette(document.body);
-  for (const type of APPLICATION_VIEW_TYPES) plugin.app.workspace.detachLeavesOfType(type);
-}
-
-// src/app/navigator.ts
-var import_obsidian20 = require("obsidian");
-
-// src/app/global-search.ts
-var import_obsidian19 = require("obsidian");
-var GlobalSearchModal = class extends import_obsidian19.Modal {
-  plugin;
-  query;
-  filter;
-  input;
-  tabButtons = [];
-  results;
-  restoreAccessibility = null;
-  constructor(app, plugin, initialQuery = "") {
-    super(app);
-    this.plugin = plugin;
-    this.query = String(initialQuery || "");
-    this.filter = "all";
-  }
-  onOpen() {
-    const root = this.contentEl;
-    root.empty();
-    root.addClass("los-root", "los-global-search");
-    this.plugin.router.openOverlay({ kind: "global-search", query: this.query, filter: this.filter });
-    const header = root.createDiv({ cls: "los-search-header" });
-    const copy = header.createDiv();
-    copy.createDiv({ cls: "los-kicker", text: "Search LearningOS" });
-    copy.createEl("h2", {
-      text: "Find a module, unit, source, or project",
-      attr: { id: "los-global-search-heading" }
-    });
-    this.restoreAccessibility = makeModalAccessible(root, {
-      close: () => this.close(),
-      hostClass: "los-modal--global-search",
-      initialFocus: () => this.input ?? null,
-      labelledBy: "los-global-search-heading"
-    });
-    button(header, "Close", () => this.close(), "quiet").setAttribute("aria-label", "Close global search");
-    this.input = root.createEl("input", {
-      cls: "los-search los-global-search-input",
-      attr: {
-        type: "search",
-        placeholder: "Search titles, aliases, authors, and IDs",
-        "aria-label": "Search LearningOS",
-        autocomplete: "off"
-      }
-    });
-    this.input.value = this.query;
-    this.input.addEventListener("input", () => {
-      this.query = this.input.value;
-      this.plugin.router.updateOverlay({ query: this.query });
-      this.renderResults();
-    });
-    const tabs = root.createDiv({ cls: "los-search-tabs", attr: { role: "group", "aria-label": "Search result type" } });
-    enableButtonGroupKeyboardNavigation(tabs);
-    this.tabButtons = [];
-    for (const [id2, label] of [
-      ["all", "All"],
-      ["learning", "Modules & units"],
-      ["sources", "Learning sources"],
-      ["projects", "Projects"]
-    ]) {
-      const tab = button(tabs, label, () => {
-        this.filter = id2;
-        this.plugin.router.updateOverlay({ filter: id2 });
-        this.renderTabs();
-        this.renderResults();
-      }, "tertiary");
-      tab.addClass("los-search-tab");
-      tab.setAttrs({ "data-filter": id2, "aria-pressed": String(this.filter === id2) });
-      this.tabButtons.push(tab);
-    }
-    this.results = root.createDiv({ cls: "los-search-results", attr: { "aria-live": "polite" } });
-    this.renderTabs();
-    this.renderResults();
-  }
-  onClose() {
-    this.plugin.router.clearOverlay();
-    this.restoreAccessibility?.();
-    this.restoreAccessibility = null;
-    this.contentEl.empty();
-  }
-  renderTabs() {
-    for (const tab of this.tabButtons || []) {
-      const active = tab.getAttribute("data-filter") === this.filter;
-      tab.toggleClass("is-active", active);
-      tab.setAttribute("aria-pressed", String(active));
-    }
-  }
-  candidates() {
-    const rows = [];
-    const add = (record7, kind, subtitle, open) => {
-      if (!record7?.id || !record7?.title) return;
-      rows.push({
-        id: record7.id,
-        title: record7.title,
-        aliases: [...record7.aliases || []],
-        authors: [...record7.authors || []],
-        kind,
-        subtitle,
-        open
-      });
-    };
-    for (const module2 of this.plugin.store.modules()) {
-      if (!module2.id) continue;
-      const area = module2.area_id ? this.plugin.store.get(module2.area_id)?.title || module2.code || "Module" : module2.code || "Module";
-      add(module2, "learning", `Module \xB7 ${area}`, () => this.plugin.openModule(module2.id));
-    }
-    for (const project of this.plugin.store.projects()) {
-      if (!project.id) continue;
-      add(
-        project,
-        "projects",
-        `Project \xB7 ${project.project_type || project.status || "active"}`,
-        () => this.plugin.openProject(project.id)
-      );
-    }
-    for (const unit of this.plugin.store.units()) {
-      if (!unit.id || !unit.module_id) continue;
-      const module2 = this.plugin.store.get(unit.module_id);
-      add(unit, "learning", `Unit \xB7 ${module2?.title || unit.module_id}`, () => this.plugin.openUnit(unit.id));
-    }
-    for (const source of this.plugin.store.sources()) {
-      if (!source.id) continue;
-      const byline = (source.authors || []).join(", ") || source.organization || source.kind || "Learning source";
-      add(source, "sources", `Learning source \xB7 ${byline}`, () => this.plugin.openLibrary(source.id, "source"));
-    }
-    for (const pack of this.plugin.store.topicPacks()) {
-      if (!pack.id) continue;
-      add(
-        pack,
-        "sources",
-        `Topic Pack \xB7 ${(pack.entries || []).length} items`,
-        () => this.plugin.openTopicPackDetail(pack.id)
-      );
-    }
-    for (const workspace of this.plugin.store.of("workspace")) {
-      const linkedProject = workspace.project_id ? this.plugin.store.get(workspace.project_id) : null;
-      if (!linkedProject) continue;
-      if (!linkedProject.id) continue;
-      add(workspace, "projects", `Project workspace \xB7 ${linkedProject.title || linkedProject.id}`, () => this.plugin.openProject(linkedProject.id));
-    }
-    return rows;
-  }
-  matches(candidate) {
-    const words2 = foldCase(this.query).trim().split(/\s+/).filter(Boolean);
-    if (!words2.length) return true;
-    const haystack = foldCase([
-      candidate.id,
-      candidate.title,
-      candidate.subtitle,
-      ...candidate.aliases,
-      ...candidate.authors
-    ].filter(Boolean).join(" "));
-    return words2.every(
-      (word) => haystack.includes(word)
-    );
-  }
-  rankedCandidates() {
-    const needle = foldCase(this.query).trim();
-    return this.candidates().filter((candidate) => this.filter === "all" || candidate.kind === this.filter).filter((candidate) => this.matches(candidate)).sort((left, right) => {
-      const leftTitle = foldCase(left.title);
-      const rightTitle = foldCase(right.title);
-      const leftRank = !needle ? 2 : leftTitle === needle ? 0 : leftTitle.startsWith(needle) ? 1 : 2;
-      const rightRank = !needle ? 2 : rightTitle === needle ? 0 : rightTitle.startsWith(needle) ? 1 : 2;
-      return leftRank - rightRank || compareStrings(left.title, right.title);
-    });
-  }
-  renderResults() {
-    if (!this.results) return;
-    this.results.empty();
-    const rows = this.rankedCandidates();
-    const summary = this.results.createDiv({ cls: "los-search-summary" });
-    summary.createSpan({ text: this.query.trim() ? `${rows.length} result${rows.length === 1 ? "" : "s"}` : "Quick access" });
-    summary.createSpan({ cls: "los-micro", text: "Manifest identities only" });
-    if (!rows.length) {
-      empty(
-        this.results,
-        "No structural results",
-        `Nothing in the current LearningOS projection matches \u201C${this.query.trim()}\u201D.`,
-        "Clear search",
-        () => {
-          this.query = "";
-          this.input.value = "";
-          this.plugin.router.updateOverlay({ query: "" });
-          this.renderResults();
-          this.input.focus();
-        }
-      );
-      return;
-    }
-    const list2 = this.results.createDiv({ cls: "los-search-result-list" });
-    for (const row3 of rows.slice(0, 24)) {
-      const result = list2.createEl("button", {
-        cls: "los-search-result is-clickable",
-        attr: { type: "button", "aria-label": `Open ${row3.title}` }
-      });
-      const copy = result.createDiv({ cls: "los-search-result-copy" });
-      copy.createEl("strong", { text: row3.title });
-      copy.createDiv({ cls: "los-micro", text: row3.subtitle });
-      result.createSpan({ cls: "los-search-open", text: "Open \u2192" });
-      result.addEventListener("click", () => {
-        this.close();
-        row3.open();
-      });
-    }
-    if (rows.length > 24) {
-      this.results.createDiv({ cls: "los-micro", text: `${rows.length - 24} more results. Refine the query to narrow the list.` });
-    }
-  }
-};
-
-// src/app/navigator.ts
-var AppNavigator = class {
-  constructor(app, router, store, settings, drafts, resources) {
-    this.app = app;
-    this.router = router;
-    this.store = store;
-    this.settings = settings;
-    this.drafts = drafts;
-    this.resources = resources;
-  }
-  async openNavigator() {
-    return this.router.openNavigator();
-  }
-  async openHome() {
-    return this.router.navigate({ name: "home" });
-  }
-  /** Learn is one destination; the areas are sub-areas inside it. */
-  openLearn(programId = null) {
-    const area = programId || this.settings.learnArea || LEARN_AREAS[0][0];
-    this.settings.learnArea = area;
-    this.drafts.scheduleSave();
-    return this.router.navigate({ name: "learn", programId: area });
-  }
-  openCapture() {
-    return this.router.navigate({ name: "capture" });
-  }
-  openReview() {
-    return this.router.navigate({ name: "review" });
-  }
-  openGarden() {
-    return this.router.navigate({ name: "garden" });
-  }
-  openDiagnostics() {
-    return this.router.navigate({ name: "diagnostics" });
-  }
-  openGlobalSearch(query = "") {
-    const modal = new GlobalSearchModal(this.app, this, query);
-    modal.open();
-    return modal;
-  }
-  openProgram(programId) {
-    return this.router.navigate({ name: "program", programId });
-  }
-  openModules() {
-    return this.router.navigate({ name: "module-groups" });
-  }
-  openProjects(query = "") {
-    return this.router.navigate({ name: "project-list", query });
-  }
-  openProject(projectId, tab = "structure") {
-    const current = this.router.snapshot().current;
-    const changingTab = current?.name === "project-detail" && current.projectId === projectId;
-    return this.router.navigate(
-      { name: "project-detail", projectId, tab: asProjectDetailTab(tab) },
-      { pushHistory: !changingTab }
-    );
-  }
-  openModuleDetail(moduleId, componentId = null, tab = null) {
-    return this.router.navigate({ name: "module-detail", moduleId, componentId, tab });
-  }
-  /** Compatibility alias used by Learn, Home and existing deep links. */
-  openModule(moduleId, componentId = null) {
-    return this.openModuleDetail(moduleId, componentId);
-  }
-  openUnit(unitId, stageId = null) {
-    const selectedStage = stageId || this.drafts.getSelectedStage(unitId);
-    if (selectedStage) this.drafts.setSelectedStage(unitId, selectedStage);
-    return this.router.navigate({ name: "unit", unitId, stageId: selectedStage });
-  }
-  openLibrary(recordId = void 0, recordType = void 0) {
-    if (recordId === void 0 || recordId === null) {
-      return recordType === "topic-pack" ? this.openLibraryHome("topic-packs") : this.openLibraryFolder([]);
-    }
-    const record7 = this.store.get(recordId);
-    if (record7?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
-    if (record7?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
-    if (record7?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
-    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record7?.type || "note", query: "" });
-  }
-  /**
-   * Open one folder of the Library's folder browser.
-   *
-   * `path` is the whole address: a folder is a position in a projection rather
-   * than a record, so the route it took to get there is the only durable way
-   * to name it. `selected` survives a trip up one level, which is what makes
-   * "enclosing folder" land on the folder you just left.
-   */
-  openLibraryFolder(path = [], selected = null, layout, query = "") {
-    return this.router.navigate({
-      name: "library-folder",
-      path: asLibraryFolderPath([...path]),
-      selected,
-      ...layout ? { layout } : {},
-      query
-    });
-  }
-  openLibraryHome(collection = "sources", query = "", filters) {
-    return this.router.navigate({
-      name: "library-home",
-      collection: asLibraryCollection(collection),
-      query,
-      ...filters ? { filters } : {}
-    });
-  }
-  openLibraryGroup(collection, groupId, query = "", facet = "all", filters) {
-    return this.router.navigate({
-      name: "library-group",
-      collection: asLibraryCollection(collection),
-      groupId,
-      query,
-      facet,
-      ...filters ? { filters } : {}
-    });
-  }
-  openSourceDetail(resourceId, fromGroupId = null, query = "", facet = "all", filters) {
-    return this.router.navigate({
-      name: "source-detail",
-      resourceId,
-      fromGroupId,
-      query,
-      facet,
-      ...filters ? { filters } : {}
-    });
-  }
-  openTopicPackDetail(topicPackId, fromGroupId = null, query = "") {
-    return this.router.navigate({ name: "topic-pack-detail", topicPackId, fromGroupId, query });
-  }
-  openCatalogueDetail(catalogueId) {
-    return this.router.navigate({ name: "catalogue-detail", catalogueId });
-  }
-  /** Hidden compatibility surface used by Atlas and pre-migration deep links. */
-  openLibraryFiltered(recordType, domain = "") {
-    return this.router.navigate({ name: "legacy-library-list", recordType, domain, query: "" });
-  }
-  /**
-   * Open the Atlas (ADR-016).
-   *
-   * A named target rather than positional arguments: `lens` and `depth` join
-   * `concept` and `module`, and four bare positions at one call site is how a
-   * concept ends up in the depth slot. Unknown values are coerced by the route
-   * contract rather than rejected here.
-   */
-  openAtlas(target = {}) {
-    const current = this.router.snapshot().current;
-    const changingAtlasState = current?.name === "atlas";
-    return this.router.navigate(
-      {
-        name: "atlas",
-        concept: target.concept ?? null,
-        module: target.module ?? null,
-        lens: asAtlasLens(target.lens),
-        depth: asAtlasDepth(target.depth)
-      },
-      { pushHistory: !changingAtlasState }
-    );
-  }
-  openShelving(unitId = null) {
-    return this.router.navigate({ name: "shelving", unitId });
-  }
-  openBoundary(boundaryId) {
-    return this.router.navigate({ name: "boundary", boundaryId });
-  }
-  back() {
-    return this.router.back();
-  }
-  openResume() {
-    const pointer = this.store.data?.resume_pointer;
-    const unitId = asString(pointer?.unit_id);
-    const stageId = asString(pointer?.stage_id);
-    return unitId ? this.openUnit(unitId, stageId) : this.openHome();
-  }
-  openRecord(record7) {
-    if (!record7) return;
-    const recordId = asString(record7.id);
-    if (record7.type === "unit" && recordId) return this.openUnit(recordId);
-    if (record7.type === "module" && recordId) return this.openModule(recordId);
-    if (record7.type === "project" && recordId) return this.openProject(recordId);
-    if (record7.type === "program" && recordId) return this.openProgram(recordId);
-    if (record7.type === "source" && recordId) return this.openSourceDetail(recordId);
-    if (record7.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
-    if (record7.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
-    if (record7.type === "note" || record7.type === "concept") {
-      if (record7.path) return this.resources.openAuthoredPath(record7.path);
-      return this.openLibraryFiltered(record7.type);
-    }
-    if (record7.type === "workspace") {
-      if (record7.project_id) return this.openProject(record7.project_id);
-      const unit = (record7.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
-      if (unit?.id) return this.openUnit(unit.id);
-      const module2 = (record7.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
-      return module2?.id ? this.openModule(module2.id) : this.openHome();
-    }
-    if (record7.path) return this.resources.openAuthoredPath(record7.path);
-  }
-  /**
-   * Omnisearch's modal is another plugin's DOM, and reaching into it to seed
-   * a query was the one place this interface depended on internals it does
-   * not own: a private input-field selector, polled for up to a second, then
-   * fed a synthetic keystroke event. Any Omnisearch DOM change could break
-   * that silently, and no test here could catch it.
-   *
-   * Only the registered public command remains. The convenience loss is
-   * small and explicit: Omnisearch opens without automatic query prefill.
-   * LearningOS's own structural Library search is unaffected either way.
-   */
-  openFullTextSearch() {
-    const ok = this.app.commands?.executeCommandById?.("omnisearch:show-modal");
-    if (!ok) new import_obsidian20.Notice("Omnisearch is unavailable; structural Library search still works.");
-  }
-};
-
-// src/app/router.ts
-function asLegacyState(value) {
-  return value && typeof value === "object" ? value : {};
-}
-function asText2(value, fallback = "") {
-  return typeof value === "string" && value ? value : fallback;
-}
-function asNullableText(value) {
-  return typeof value === "string" && value ? value : null;
-}
-var ApplicationRouter = class {
-  plugin;
-  navigation;
-  overlay;
-  constructor(plugin) {
-    this.plugin = plugin;
-    const saved = plugin.settings.navigation;
-    this.navigation = saved?.version === 1 && saved.current ? saved : { version: 1, current: this.fromLegacy(plugin.settings.lastView), history: [] };
-    this.overlay = null;
-  }
-  fromLegacy(legacy) {
-    const input = legacy && typeof legacy === "object" ? legacy : {};
-    const type = asText2(input.type);
-    const state = asLegacyState(input.state);
-    if (type === VIEW_PROGRAM) {
-      return state.programId === "inbox" ? { name: "capture" } : { name: "learn", programId: asText2(state.programId, LEARN_AREAS[0][0]) };
-    }
-    if (type === VIEW_MODULE) {
-      if (state.screen === "groups") return { name: "module-groups" };
-      if (state.screen === "list") return { name: "module-list", groupId: asText2(state.groupId), query: asText2(state.query) };
-      return {
-        name: "module-detail",
-        moduleId: asText2(state.moduleId),
-        componentId: asNullableText(state.componentId),
-        tab: asNullableText(state.tab)
-      };
-    }
-    if (type === VIEW_UNIT) return { name: "unit", unitId: asText2(state.unitId), stageId: asNullableText(state.stageId) };
-    if (type === VIEW_PROJECT) return state.projectId ? { name: "project-detail", projectId: asText2(state.projectId), tab: asProjectDetailTab(state.tab) } : { name: "project-list", query: asText2(state.query) };
-    if (type === VIEW_LIBRARY) return this.libraryRouteFromState(state);
-    if (type === VIEW_ATLAS) return {
-      name: "atlas",
-      concept: asNullableText(state.concept),
-      module: asNullableText(state.module),
-      lens: asAtlasLens(state.lens),
-      depth: asAtlasDepth(state.depth)
-    };
-    if (type === VIEW_SHELVING) return { name: "shelving", unitId: asNullableText(state.unitId) };
-    if (type === VIEW_BOUNDARY) return { name: "boundary", boundaryId: asText2(state.boundaryId) };
-    if (type === VIEW_REVIEW) return { name: "review" };
-    if (type === VIEW_GARDEN) return { name: "garden" };
-    if (type === VIEW_DIAGNOSTICS) return { name: "diagnostics" };
-    return { name: "home" };
-  }
-  libraryRouteFromState(state = {}) {
-    if (state.screen === "folder") return {
-      name: "library-folder",
-      path: asLibraryFolderPath(state.folderPath),
-      selected: asNullableText(state.folderSelection),
-      layout: asLibraryFolderLayout(state.folderLayout),
-      query: asText2(state.query)
-    };
-    if (state.screen === "group") return {
-      name: "library-group",
-      collection: asLibraryCollection(state.collection),
-      groupId: asText2(state.groupId),
-      query: asText2(state.query),
-      facet: asText2(state.facet, "all"),
-      filters: asLibrarySourceFilters(state.filters)
-    };
-    if (state.screen === "source-detail") return {
-      name: "source-detail",
-      resourceId: asText2(state.resourceId),
-      fromGroupId: asNullableText(state.fromGroupId),
-      query: asText2(state.query),
-      facet: asText2(state.facet, "all"),
-      filters: asLibrarySourceFilters(state.filters)
-    };
-    if (state.screen === "topic-pack-detail") return {
-      name: "topic-pack-detail",
-      topicPackId: asText2(state.topicPackId),
-      fromGroupId: asNullableText(state.fromGroupId),
-      query: asText2(state.query)
-    };
-    if (state.screen === "catalogue-detail") return { name: "catalogue-detail", catalogueId: asText2(state.catalogueId) };
-    const recordType = asText2(state.recordType);
-    if (state.screen === "legacy-list") return {
-      name: "legacy-library-list",
-      recordType: recordType || "note",
-      query: asText2(state.query),
-      domain: asText2(state.domain)
-    };
-    const recordId = asText2(state.recordId);
-    if (recordId) {
-      const record7 = this.plugin.store?.get?.(recordId);
-      if (record7?.type === "source" || recordType === "source") {
-        return { name: "source-detail", resourceId: recordId };
-      }
-      if (record7?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: recordId };
-      if (record7?.type === "collection" || recordType === "collection") {
-        return { name: "catalogue-detail", catalogueId: recordId };
-      }
-    }
-    if (recordType && !["source", "topic-pack"].includes(recordType)) {
-      return { name: "legacy-library-list", recordType, query: asText2(state.query), domain: asText2(state.domain) };
-    }
-    return {
-      name: "library-home",
-      collection: recordType === "topic-pack" ? "topic-packs" : "sources",
-      query: asText2(state.query),
-      filters: asLibrarySourceFilters(state.filters)
-    };
-  }
-  descriptor(route) {
-    switch (route?.name) {
-      case "home":
-        return { type: VIEW_HOME, state: {}, nav: "home", pin: true };
-      case "learn":
-        return { type: VIEW_PROGRAM, state: { programId: route.programId }, nav: "learn" };
-      case "capture":
-        return { type: VIEW_PROGRAM, state: { programId: "inbox" }, nav: "capture" };
-      case "review":
-        return { type: VIEW_REVIEW, state: {}, nav: "review" };
-      case "garden":
-        return { type: VIEW_GARDEN, state: {}, nav: "garden" };
-      case "diagnostics":
-        return { type: VIEW_DIAGNOSTICS, state: {}, nav: "diagnostics" };
-      case "program":
-        return {
-          type: VIEW_PROGRAM,
-          state: { programId: route.programId },
-          nav: route.programId === "queue-needs-map" ? "review" : "learn"
-        };
-      case "module-groups":
-        return { type: VIEW_MODULE, state: { screen: "groups" }, nav: "modules" };
-      case "module-list":
-        return {
-          type: VIEW_MODULE,
-          state: { screen: "list", groupId: route.groupId, query: route.query || "" },
-          nav: "modules"
-        };
-      case "module-detail":
-        return {
-          type: VIEW_MODULE,
-          state: {
-            screen: "detail",
-            moduleId: route.moduleId,
-            componentId: route.componentId || null,
-            tab: route.tab || null
-          },
-          nav: "modules"
-        };
-      case "project-list":
-        return { type: VIEW_PROJECT, state: { screen: "list", query: route.query || "" }, nav: "projects" };
-      case "project-detail":
-        return {
-          type: VIEW_PROJECT,
-          state: { screen: "detail", projectId: route.projectId, tab: route.tab || "structure" },
-          nav: "projects"
-        };
-      case "unit":
-        return {
-          type: VIEW_UNIT,
-          state: { unitId: route.unitId, stageId: route.stageId || null },
-          nav: "learn"
-        };
-      case "library-folder":
-        return {
-          type: VIEW_LIBRARY,
-          state: {
-            screen: "folder",
-            folderPath: asLibraryFolderPath(route.path),
-            folderSelection: route.selected || null,
-            folderLayout: asLibraryFolderLayout(route.layout),
-            query: route.query || ""
-          },
-          nav: "library"
-        };
-      case "library-home":
-        return {
-          type: VIEW_LIBRARY,
-          state: {
-            screen: "home",
-            collection: route.collection || "sources",
-            query: route.query || "",
-            filters: route.filters || asLibrarySourceFilters(null)
-          },
-          nav: "library"
-        };
-      case "library-group":
-        return {
-          type: VIEW_LIBRARY,
-          state: {
-            screen: "group",
-            collection: route.collection || "sources",
-            groupId: route.groupId,
-            query: route.query || "",
-            facet: route.facet || "all",
-            filters: route.filters || asLibrarySourceFilters(null)
-          },
-          nav: "library"
-        };
-      case "source-detail":
-        return {
-          type: VIEW_LIBRARY,
-          state: {
-            screen: "source-detail",
-            resourceId: route.resourceId,
-            fromGroupId: route.fromGroupId || null,
-            query: route.query || "",
-            facet: route.facet || "all",
-            filters: route.filters || asLibrarySourceFilters(null)
-          },
-          nav: "library"
-        };
-      case "topic-pack-detail":
-        return {
-          type: VIEW_LIBRARY,
-          state: {
-            screen: "topic-pack-detail",
-            topicPackId: route.topicPackId,
-            fromGroupId: route.fromGroupId || null,
-            query: route.query || ""
-          },
-          nav: "library"
-        };
-      case "catalogue-detail":
-        return {
-          type: VIEW_LIBRARY,
-          state: { screen: "catalogue-detail", catalogueId: route.catalogueId },
-          nav: "library"
-        };
-      case "legacy-library-list":
-        return {
-          type: VIEW_LIBRARY,
-          state: { screen: "legacy-list", recordType: route.recordType, query: route.query || "", domain: route.domain || "" },
-          nav: "library"
-        };
-      case "library": {
-        const compatible = this.libraryRouteFromState(route);
-        return this.descriptor(compatible);
-      }
-      case "atlas":
-        return {
-          type: VIEW_ATLAS,
-          state: {
-            concept: route.concept || null,
-            module: route.module || null,
-            lens: asAtlasLens(route.lens),
-            depth: asAtlasDepth(route.depth)
-          },
-          nav: "atlas"
-        };
-      case "shelving":
-        return { type: VIEW_SHELVING, state: { unitId: route.unitId || null }, nav: "review" };
-      case "boundary":
-        return {
-          type: VIEW_BOUNDARY,
-          state: { boundaryId: route.boundaryId },
-          nav: "masters"
-        };
-      default:
-        return { type: VIEW_HOME, state: {}, nav: "home", pin: true };
-    }
-  }
-  sameRoute(left, right) {
-    return JSON.stringify(left) === JSON.stringify(right);
-  }
-  async openLeaf(type, state = {}, side = "main") {
-    let leaf = this.plugin.app.workspace.getLeavesOfType(type)[0];
-    if (!leaf) {
-      leaf = side === "left" ? this.plugin.app.workspace.getLeftLeaf?.(false) ?? this.plugin.app.workspace.getLeaf(true) : this.plugin.app.workspace.getLeaf(true);
-    }
-    await leaf.setViewState({ type, active: true, state });
-    this.plugin.app.workspace.revealLeaf(leaf);
-    this.plugin.app.workspace.setActiveLeaf?.(leaf, { focus: true });
-    return leaf;
-  }
-  async openNavigator() {
-    return this.openLeaf(VIEW_NAV, {}, "left");
-  }
-  async persist() {
-    this.plugin.settings.navigation = this.navigation;
-    delete this.plugin.settings.lastView;
-    await this.plugin.persistSettings();
-  }
-  openOverlay(overlay) {
-    this.overlay = { ...overlay };
-    return this.overlay;
-  }
-  updateOverlay(patch) {
-    if (!this.overlay) return null;
-    this.overlay = { ...this.overlay, ...patch };
-    return this.overlay;
-  }
-  clearOverlay() {
-    this.overlay = null;
-  }
-  /** Replace restorable route state without opening a leaf or adding history. */
-  async remember(route) {
-    this.navigation.current = route;
-    await this.persist();
-    return route;
-  }
-  async navigate(route, options = {}) {
-    if (!options.preserveOverlay) this.clearOverlay();
-    const descriptor = this.descriptor(route);
-    const remember = options.remember !== false;
-    const pushHistory = options.pushHistory !== false;
-    const prior = this.navigation.current;
-    if (remember && pushHistory && prior && !this.sameRoute(prior, route)) {
-      const activeView = this.plugin.app.workspace.active?.view;
-      const currentScroll = Number(options.scrollTop ?? activeView?.contentEl?.scrollTop ?? 0);
-      const selectedElementId = options.selectedElementId || activeView?.selectedElementId || void 0;
-      this.navigation.history.push({ route: prior, scrollTop: currentScroll, selectedElementId });
-      this.navigation.history = this.navigation.history.slice(-50);
-    }
-    if (remember) {
-      this.navigation.current = route;
-      await this.persist();
-    }
-    this.plugin.setActiveNav(descriptor.nav);
-    const leaf = await this.openLeaf(descriptor.type, descriptor.state);
-    if (Number.isFinite(options.restoreScrollTop) && leaf?.view?.contentEl) {
-      leaf.view.contentEl.scrollTop = Number(options.restoreScrollTop);
-    }
-    if (options.restoreSelectedElementId && leaf?.view) {
-      leaf.view.selectedElementId = options.restoreSelectedElementId;
-    }
-    if (descriptor.pin && this.plugin.settings.pinHome) leaf.setPinned?.(true);
-    return leaf;
-  }
-  async restore() {
-    this.clearOverlay();
-    const route = this.navigation.current || { name: "home" };
-    if (route.name !== "home" && this.plugin.settings.pinHome) {
-      const home = await this.navigate({ name: "home" }, { remember: false, pushHistory: false });
-      home.setPinned?.(true);
-    }
-    return this.navigate(route, { remember: true, pushHistory: false });
-  }
-  async back() {
-    const entry = this.navigation.history.pop();
-    if (!entry) return this.navigate({ name: "home" }, { pushHistory: false });
-    this.navigation.current = entry.route;
-    await this.persist();
-    return this.navigate(entry.route, {
-      remember: false,
-      pushHistory: false,
-      restoreScrollTop: entry.scrollTop || 0,
-      restoreSelectedElementId: entry.selectedElementId
-    });
-  }
-  snapshot() {
-    return JSON.parse(JSON.stringify({ ...this.navigation, overlay: this.overlay }));
-  }
-};
-
-// src/app/unit-note-modal.ts
-var import_obsidian21 = require("obsidian");
-var UnitNoteModal = class extends import_obsidian21.Modal {
-  plugin;
-  unit;
-  studyMap;
-  files = [];
-  recoveredStages = {};
-  referencedStageIds = [];
-  expectedRevisions = {};
-  titleInput;
-  editor;
-  fileInput;
-  fileSummary;
-  restoreAccessibility = null;
-  /* Suppresses a second Save on this modal. The gateway's own lock already
-   * serialises writes across the app, so `gateway.isBusy` says "someone else
-   * is writing" — which is a reason to wait, never a reason to drop authored
-   * text on the floor. */
-  saving = false;
-  constructor(app, plugin, unit, studyMap) {
-    super(app);
-    this.plugin = plugin;
-    this.unit = unit;
-    this.studyMap = studyMap;
-    this.files = [];
-  }
-  onOpen() {
-    const root = this.contentEl;
-    root.empty();
-    root.addClass("los-root", "los-unit-note-modal");
-    const unitId = this.unit.id;
-    if (!unitId) {
-      empty(root, "Unit unavailable", "The projection returned a unit without an identity.");
-      return;
-    }
-    this.expectedRevisions = this.plugin.store.artifactGuard(
-      unitId,
-      typeof this.studyMap?.id === "string" ? this.studyMap.id : null
-    );
-    const stages = asRecords(this.studyMap?.stages);
-    const draft = this.plugin.getUnitNoteDraft(unitId, stages);
-    if (Object.keys(draft.expectedRevisions).length) {
-      this.expectedRevisions = draft.expectedRevisions;
-    }
-    const recoveredStageIds = Array.isArray(
-      draft.recoveredStageIds
-    ) ? draft.recoveredStageIds.filter(
-      (id2) => typeof id2 === "string"
-    ) : [];
-    this.recoveredStages = draft.recoveredStages || {};
-    this.referencedStageIds = [
-      .../* @__PURE__ */ new Set([
-        ...this.unrecordedCompletedStages(stages),
-        ...recoveredStageIds
-      ])
-    ];
-    pageHeader(
-      root,
-      "Learning session",
-      "Add note",
-      "Attach one note after the stages you worked through. It belongs to the unit, not to one selected stage.",
-      "los-unit-note-heading"
-    );
-    this.restoreAccessibility = makeModalAccessible(root, {
-      close: () => this.close(),
-      hostClass: "los-modal--unit-note",
-      initialFocus: () => this.editor ?? null,
-      labelledBy: "los-unit-note-heading"
-    });
-    const context = root.createDiv({ cls: "los-unit-note-context" });
-    context.createDiv({ cls: "los-kicker", text: "Stages covered" });
-    if (this.referencedStageIds.length) {
-      const names = this.referencedStageIds.map(
-        (id2) => stages.find(
-          (stage) => stage.id === id2
-        )?.title || id2
-      );
-      context.createDiv({ text: names.join(" \xB7 ") });
-    } else {
-      context.createDiv({ cls: "los-micro", text: "No newly completed stage is required. You may still record a unit-level observation." });
-    }
-    this.titleInput = root.createEl("input", {
-      cls: "los-search los-unit-note-title",
-      attr: { type: "text", placeholder: "Optional note title", "aria-label": "Unit note title" }
-    });
-    this.titleInput.value = draft.title || "";
-    this.editor = root.createEl("textarea", {
-      cls: "los-note-editor los-unit-note-editor",
-      attr: { placeholder: "What should remain after this learning session?", "aria-label": "Unit learning-session note" }
-    });
-    this.editor.value = draft.text || "";
-    const attachments = root.createDiv({ cls: "los-unit-note-attachments" });
-    attachments.createDiv({ cls: "los-kicker", text: "Attachments" });
-    this.fileInput = attachments.createEl("input", {
-      cls: "los-file-input",
-      attr: { type: "file", multiple: "multiple", "aria-label": "Choose unit note attachments" }
-    });
-    this.fileSummary = attachments.createDiv({ cls: "los-micro", text: "Optional: handwriting, image, or PDF." });
-    this.fileInput.addEventListener("change", () => {
-      this.files = [...this.fileInput.files || []];
-      this.fileSummary.setText(this.files.length ? `${this.files.length} attachment${this.files.length === 1 ? "" : "s"} selected for this save.` : "Optional: handwriting, image, or PDF.");
-    });
-    const status = root.createDiv({ cls: "los-draft-status", attr: { "aria-live": "polite" } });
-    const actions = root.createDiv({ cls: "los-actions los-unit-note-actions" });
-    button(actions, "Cancel", () => this.close(), "quiet");
-    const saveButton = button(actions, "Save note", () => this.save(), "cta");
-    const persist = () => {
-      this.plugin.setUnitNoteDraft(
-        unitId,
-        this.titleInput.value,
-        this.editor.value,
-        this.expectedRevisions,
-        draft.recoveredStages
-      );
-      const hasNote = Boolean(this.editor.value.trim());
-      status.setText(hasNote ? "Draft kept locally until the core confirms the save." : "Write a note to enable saving.");
-      status.toggleClass("is-dirty", hasNote);
-      saveButton.disabled = !hasNote;
-      saveButton.setAttribute("aria-disabled", String(!hasNote));
-    };
-    this.titleInput.addEventListener("input", persist);
-    this.editor.addEventListener("input", persist);
-    persist();
-  }
-  unrecordedCompletedStages(stages) {
-    const already = new Set(
-      asRecords(this.unit.note_sections).flatMap(
-        (section2) => Array.isArray(section2.stage_ids) ? section2.stage_ids.filter(
-          (id2) => typeof id2 === "string"
-        ) : []
-      )
-    );
-    return stages.filter(
-      (stage) => ["complete", "skipped"].includes(String(stage.status)) && typeof stage.id === "string" && !already.has(stage.id)
-    ).map((stage) => String(stage.id));
-  }
-  async save() {
-    const text5 = String(this.editor?.value || "");
-    if (!text5.trim()) {
-      new import_obsidian21.Notice("Write a note before saving.");
-      this.editor?.focus();
-      return;
-    }
-    if (this.saving) {
-      new import_obsidian21.Notice("This note is already being saved.");
-      return;
-    }
-    if (this.plugin.gateway.isBusy) {
-      new import_obsidian21.Notice("Queued behind the running LearningOS write.");
-    }
-    const unitId = this.unit.id;
-    if (!unitId) {
-      new import_obsidian21.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
-      return;
-    }
-    const filePaths = this.files.map((file) => localFilePath(file)).filter((value) => Boolean(value));
-    if (filePaths.length !== this.files.length) {
-      new import_obsidian21.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
-      return;
-    }
-    this.saving = true;
-    try {
-      const sent = { title: this.titleInput?.value || "", text: text5 };
-      await this.plugin.mutate(() => this.plugin.gateway.saveUnitNote(unitId, {
-        ...sent,
-        stageIds: this.referencedStageIds,
-        filePaths
-      }, this.expectedRevisions));
-      this.plugin.clearUnitNoteDraft(unitId, this.recoveredStages, sent);
-      new import_obsidian21.Notice("Learning-session note saved.");
-      this.close();
-    } catch (error) {
-      new import_obsidian21.Notice(errorMessage(error));
-    } finally {
-      this.saving = false;
-    }
-  }
-  onClose() {
-    this.restoreAccessibility?.();
-    this.restoreAccessibility = null;
-    this.contentEl.empty();
-  }
-};
-
-// src/build-identity.ts
-function runtimeSourceFingerprint() {
-  return true ? "sha256:6c33c274090af06cdbe5f607381c44f0b87fbc5fdae0e65b1c033d04a0d629ce" : "unavailable";
-}
-function runtimeContractVersion() {
-  return true ? 14 : 0;
-}
-
-// src/gateway-client.ts
-var import_node_crypto2 = require("node:crypto");
-var import_promises = require("node:fs/promises");
-var import_node_os = require("node:os");
-var import_node_path = require("node:path");
 
 // src/infrastructure/trace-context.ts
 var import_node_crypto = require("node:crypto");
@@ -17609,7 +14885,7 @@ function storeEnvelope(event) {
 // src/gateway-client.ts
 var GATEWAY_RECOVERY_NOTICE = "The Gateway response was interrupted. Replaying the same approved request; no new write will be created.";
 var GATEWAY_RECOVERY_BLOCKED = "LearningOS could not confirm whether the previous write landed, so it will not send another. Your draft was kept. Open Diagnostics \u2192 Gateway recovery to retry the same request.";
-function record6(value) {
+function record4(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
 var requestCounter = 0;
@@ -17619,6 +14895,10 @@ function nextRequestId(capability) {
 }
 function nextIdempotencyKey(requestId) {
   return `idem-${requestId}`;
+}
+function newGatewayIdentity(capability) {
+  const requestId = nextRequestId(capability);
+  return { requestId, idempotencyKey: nextIdempotencyKey(requestId) };
 }
 function expandedLocalPath(filePath) {
   if (filePath === "~") return (0, import_node_os.homedir)();
@@ -17663,9 +14943,9 @@ var GatewayClient = class {
     this.pending = 0;
     this.recovery = plugin.recovery ?? new MemoryGatewayRecoveryStore();
   }
-  announce(message) {
+  announce(message2) {
     if (!this.lifecycleActive()) return;
-    this.plugin.notify?.(message);
+    this.plugin.notify?.(message2);
   }
   lifecycleActive() {
     return this.plugin.isLifecycleActive?.() ?? true;
@@ -17824,7 +15104,8 @@ var GatewayClient = class {
       name,
       payload,
       expectedSnapshot,
-      expectedRevisions
+      expectedRevisions,
+      options.identity
     );
   }
   /**
@@ -17841,10 +15122,10 @@ var GatewayClient = class {
     } catch (_) {
     }
   }
-  async prepareCapability(name, payload, expectedSnapshot, expectedRevisions, trace) {
+  async prepareCapability(name, payload, expectedSnapshot, expectedRevisions, trace, identity) {
     this.assertLifecycleActive();
-    const requestId = nextRequestId(name);
-    const idempotencyKey = nextIdempotencyKey(requestId);
+    const requestId = identity?.requestId ?? nextRequestId(name);
+    const idempotencyKey = identity?.idempotencyKey ?? nextIdempotencyKey(requestId);
     const effectiveRevisions = isRequestScopedCapability(name) ? { [requestArtifactId(name, idempotencyKey)]: 0 } : expectedRevisions;
     const subject = gatewayApprovalSubject(
       name,
@@ -17979,7 +15260,7 @@ var GatewayClient = class {
         }
       });
     }
-    const identity = record6(parsed);
+    const identity = record4(parsed);
     const claimsAnother = identity !== null && (typeof identity.request_id === "string" || typeof identity.idempotency_key === "string") && (identity.request_id !== expected.requestId || identity.idempotency_key !== expected.idempotencyKey || identity.capability !== expected.capability);
     return received({
       outcome: "ambiguous",
@@ -18073,14 +15354,15 @@ var GatewayClient = class {
    * blocks: looping in the background is how an interrupted write becomes many,
    * and a blocked record deliberately does not retry itself on the next launch.
    */
-  async sendCapability(name, payload, expectedSnapshot, expectedRevisions) {
+  async sendCapability(name, payload, expectedSnapshot, expectedRevisions, identity) {
     const operation = newOperationContext();
     const envelopeJson = await this.prepareCapability(
       name,
       payload,
       expectedSnapshot,
       expectedRevisions,
-      operation
+      operation,
+      identity
     );
     let result = await this.dispatchPreparedEnvelope(envelopeJson, { trace: operation });
     if (result.outcome === "ambiguous") {
@@ -18172,20 +15454,20 @@ Last response: ${result.error.message}`,
     return ["--expected-snapshot", this.snapshotId()];
   }
   // ---- porcelain: each is one declared capability, nothing more ----------
-  saveNote(unitId, stageId, text5, expectedRevisions = {}) {
+  saveNote(unitId, stageId, text8, expectedRevisions = {}) {
     return this.capability(
       "stage.note.write",
-      { unit_id: unitId, stage_id: stageId, text: text5, replace: true },
+      { unit_id: unitId, stage_id: stageId, text: text8, replace: true },
       { expectedRevisions }
     );
   }
   async saveUnitNote(unitId, {
     title = "",
-    text: text5,
+    text: text8,
     stageIds: stageIds2 = [],
     filePaths = []
   }, expectedRevisions = {}) {
-    const payload = { unit_id: unitId, text: text5 };
+    const payload = { unit_id: unitId, text: text8 };
     if (String(title).trim()) payload.title = String(title).trim();
     if (stageIds2.length) payload.stage_id = [...stageIds2];
     if (filePaths.length) {
@@ -18246,8 +15528,8 @@ Last response: ${result.error.message}`,
     if (label) payload.label = label;
     return this.capability("stage.attachment.add", payload, { expectedRevisions });
   }
-  captureText(text5, title = "") {
-    const payload = { text: text5 };
+  captureText(text8, title = "") {
+    const payload = { text: text8 };
     if (title) payload.title = title;
     return this.capability("capture.create", payload);
   }
@@ -18257,8 +15539,8 @@ Last response: ${result.error.message}`,
       file_sha256: await fileSha256(filePath)
     });
   }
-  createGardenSeed(text5, title = "") {
-    const payload = { text: text5 };
+  createGardenSeed(text8, title = "") {
+    const payload = { text: text8 };
     if (title.trim()) payload.title = title.trim();
     return this.capability(
       "garden.seed.create",
@@ -18321,19 +15603,19 @@ Last response: ${result.error.message}`,
    * stays where the SOP put it — this applies a reviewed result; it does not
    * skip the review.
    */
-  async importUnitMap(review) {
-    if (!isSha256(review.fileSha256) || !isSha256(review.expectedSnapshot)) {
+  async importUnitMap(review2) {
+    if (!isSha256(review2.fileSha256) || !isSha256(review2.expectedSnapshot)) {
       throw new Error("Check this map again before importing; its review has no valid binding.");
     }
-    if (await fileSha256(review.file) !== review.fileSha256) {
+    if (await fileSha256(review2.file) !== review2.fileSha256) {
       throw new Error("The map file changed after review. Check it again before importing.");
     }
     return this.capability("unit.map.import", {
-      unit_id: review.unitId,
-      file: review.file,
-      file_sha256: review.fileSha256,
-      ...review.replace ? { replace: true } : {}
-    }, { expectedRevisions: review.expectedRevisions, expectedSnapshot: review.expectedSnapshot });
+      unit_id: review2.unitId,
+      file: review2.file,
+      file_sha256: review2.fileSha256,
+      ...review2.replace ? { replace: true } : {}
+    }, { expectedRevisions: review2.expectedRevisions, expectedSnapshot: review2.expectedSnapshot });
   }
   /**
    * The no-write preflight that has to run before an import is approved.
@@ -18357,9 +15639,9 @@ Last response: ${result.error.message}`,
       "--check"
     ];
     if (replace) args.push("--replace");
-    const result = record6(await this.call(args));
-    const revisions = record6(result?.expected_revisions);
-    if (!result || result.ok !== true || result.mode !== "check" || result.canonical_files_written !== 0 || !record6(result.diff) || result.unit_id !== unitId || result.file_sha256 !== digest || !isSha256(result.snapshot_id) || !revisions || Object.keys(revisions).length !== 2 || !Object.values(revisions).every((v) => Number.isInteger(v) && Number(v) >= 0) || !(unitId in revisions) || !(String(result.study_map_id) in revisions)) {
+    const result = record4(await this.call(args));
+    const revisions = record4(result?.expected_revisions);
+    if (!result || result.ok !== true || result.mode !== "check" || result.canonical_files_written !== 0 || !record4(result.diff) || result.unit_id !== unitId || result.file_sha256 !== digest || !isSha256(result.snapshot_id) || !revisions || Object.keys(revisions).length !== 2 || !Object.values(revisions).every((v) => Number.isInteger(v) && Number(v) >= 0) || !(unitId in revisions) || !(String(result.study_map_id) in revisions)) {
       throw new Error("LearningOS could not provide a complete, bound no-write review. Nothing was imported.");
     }
     return {
@@ -18383,6 +15665,50 @@ Last response: ${result.error.message}`,
     if (ids2.unitId) args.push("--unit-id", ids2.unitId);
     if (ids2.moduleId) args.push("--module-id", ids2.moduleId);
     return this.call(args);
+  }
+  /**
+   * Core's ability horizon, or one ability expanded.
+   *
+   * Read-only and snapshot-bound: a focused read passes the horizon's own
+   * snapshot, so an expansion can never mix with a horizon from different
+   * records — Core refuses it (exit 3) and the caller reloads instead. The UI
+   * never derives a state; stage progress is not evidence and is never sent.
+   */
+  abilityContext(options = {}) {
+    const args = ["ability-context"];
+    if (options.abilityId) args.push(options.abilityId);
+    if (options.limit) args.push("--limit", String(options.limit));
+    if (options.expectedSnapshot) args.push("--expected-snapshot", options.expectedSnapshot);
+    return this.call(args);
+  }
+  /**
+   * One exact route's identity, locator and availability. `extract` asks Core
+   * for a bounded local excerpt; remote material is never fetched.
+   */
+  materialSpan(unitId, routeId, options = {}) {
+    const args = ["material-span", unitId, routeId];
+    if (options.extract) args.push("--extract");
+    if (options.expectedSnapshot) args.push("--expected-snapshot", options.expectedSnapshot);
+    return this.call(args);
+  }
+  /**
+   * Record a claim Aram confirmed in Review. The payload's confirmation
+   * pointer names `identity`, which is why the identity is minted first.
+   */
+  recordAbilityObservation(payload, identity, expectedRevisions = {}) {
+    return this.capability(
+      "learner.ability-observation.append",
+      { ...payload },
+      { expectedRevisions, identity }
+    );
+  }
+  /** Record a tentative connection. It carries nothing until reviewed. */
+  recordAbilityCandidate(payload, identity, expectedRevisions = {}) {
+    return this.capability(
+      "ability.candidate.append",
+      { ...payload },
+      { expectedRevisions, identity }
+    );
   }
   /** Versioned read-only status surfaces. Their feature layers decode the
    *  exact producer schemas before rendering any field. */
@@ -18413,7 +15739,7 @@ function explicitAiContext(plugin, context = {}) {
   const stage = context.stageId ? plugin.store.stage(context.stageId) : null;
   const stageResources = Array.isArray(stage?.resources) ? stage.resources : [];
   const unitSelections = Array.isArray(unit?.source_selections) ? unit.source_selections.filter(
-    (row3) => typeof row3 === "object" && row3 !== null && !Array.isArray(row3)
+    (row4) => typeof row4 === "object" && row4 !== null && !Array.isArray(row4)
   ) : [];
   const resources = stageResources.length ? stageResources : unitSelections;
   return {
@@ -18422,12 +15748,5528 @@ function explicitAiContext(plugin, context = {}) {
     component_id: context.componentId || unit?.component_id || null,
     unit_id: unit?.id || context.unitId || null,
     stage_id: stage?.id || context.stageId || null,
-    selected_source_ids: [...new Set(resources.map((row3) => row3.source_id).filter((value) => typeof value === "string" && value.length > 0))],
-    selected_materials: resources.map((row3) => row3.material_uri || row3.vault_path || row3.url || row3.material_path || row3.locator).filter((value) => typeof value === "string" && value.length > 0),
+    selected_source_ids: [...new Set(resources.map((row4) => row4.source_id).filter((value) => typeof value === "string" && value.length > 0))],
+    selected_materials: resources.map((row4) => row4.material_uri || row4.vault_path || row4.url || row4.material_path || row4.locator).filter((value) => typeof value === "string" && value.length > 0),
     manifest_snapshot: plugin.store.snapshotId,
     active_file_supplement: plugin.app.workspace.getActiveFile?.()?.path || null
   };
 }
+
+// src/features/review/detail.ts
+function part(parent, title) {
+  const block2 = parent.createDiv({ cls: "los-review-part" });
+  block2.createEl("h3", { text: title });
+  return block2;
+}
+function rule(parent) {
+  parent.createDiv({ cls: "los-review-rule", attr: { "aria-hidden": "true" } });
+}
+function definitionFor(host, abilityId) {
+  const expansion = host.plugin.abilityHorizon.expansion(abilityId);
+  return expansion && "ability" in expansion ? expansion.ability : null;
+}
+function rowFor(host, abilityId) {
+  return host.plugin.abilityHorizon.current()?.abilities.find((row4) => row4.id === abilityId) ?? null;
+}
+function ensureAbility(host, abilityId) {
+  host.plugin.abilityHorizon.ensure();
+  if (host.plugin.abilityHorizon.current()) host.plugin.abilityHorizon.ensureExpansion(abilityId);
+}
+function problemList(parent, problems) {
+  if (!problems.length) return;
+  const box = parent.createDiv({ cls: "los-review-problems", attr: { role: "note" } });
+  box.createEl("strong", { text: "Before it can be recorded" });
+  const list4 = box.createEl("ul");
+  for (const problem of problems) list4.createEl("li", { text: problem });
+}
+async function send(host, action, done) {
+  if (host.sending) return false;
+  host.sending = true;
+  host.render();
+  try {
+    await host.plugin.mutate(action);
+    new import_obsidian15.Notice(done);
+    return true;
+  } catch (error) {
+    new import_obsidian15.Notice(errorMessage(error));
+    return false;
+  } finally {
+    host.sending = false;
+    host.render();
+  }
+}
+function editClaim(host, draft) {
+  const row4 = rowFor(host, draft.abilityId) ?? {
+    id: draft.abilityId,
+    title: draft.abilityTitle,
+    lifecycle: "active",
+    state: "uncertain",
+    reasons: [],
+    concept_ids: [],
+    module_ids: [],
+    preparation_routes: [],
+    transfer: [],
+    evidence: []
+  };
+  const expansion = host.plugin.abilityHorizon.expansion(draft.abilityId);
+  const focus = expansion && "ability" in expansion ? expansion : null;
+  new AbilityClaimDraftModal(host.app, {
+    ability: row4,
+    definition: focus?.ability ?? null,
+    workspaces: abilityWorkspaces(host.plugin.store, row4),
+    workPointers: abilityWorkPointers(host.plugin.store, focus),
+    existing: draft,
+    save: (next) => host.plugin.saveAbilityDraft(next),
+    onSaved: () => host.render()
+  }).open();
+}
+function editConnection(host, draft) {
+  const brief = host.plugin.abilityHorizon.current();
+  const from = brief?.abilities.find((row4) => row4.id === draft.fromAbility);
+  if (!brief || !from) {
+    new import_obsidian15.Notice("The ability map is not loaded, so this connection cannot be edited yet.");
+    return;
+  }
+  new AbilityConnectionDraftModal(host.app, {
+    from,
+    candidates: brief.abilities,
+    existing: draft,
+    save: (next) => host.plugin.saveAbilityDraft(next),
+    onSaved: () => host.render()
+  }).open();
+}
+function drop(host, id2) {
+  host.plugin.discardAbilityDraft(id2);
+  host.select(null);
+  new import_obsidian15.Notice("Draft dropped. Nothing was recorded.");
+}
+function renderClaimDraft(parent, host, draft) {
+  ensureAbility(host, draft.abilityId);
+  const definition2 = definitionFor(host, draft.abilityId);
+  const row4 = rowFor(host, draft.abilityId);
+  const workspaces = row4 ? abilityWorkspaces(host.plugin.store, row4) : [];
+  const horizonReady = Boolean(host.plugin.abilityHorizon.current());
+  const loading = horizonReady && !definition2 && !host.plugin.abilityHorizon.expansionError(draft.abilityId);
+  parent.createDiv({ cls: "los-review-eyebrow", text: `Worked attempt \xB7 draft${draft.supersedes ? " \xB7 correction" : ""}` });
+  parent.createEl("h2", { text: draft.abilityTitle });
+  if (draft.activity.trim()) parent.createEl("p", { cls: "los-review-lede", text: draft.activity });
+  rule(parent);
+  const claim = part(parent, "Claim to record");
+  claim.createDiv({ cls: "los-review-claim", text: draft.claim.trim() || "No claim written yet." });
+  const facts = claim.createDiv({ cls: "los-review-facts" });
+  facts.createSpan({ text: draft.result ? `Result: ${RESULT_LABEL[draft.result]}` : "Result: not chosen" });
+  facts.createSpan({
+    text: `Assistance: ${draft.assistance.trim() ? draft.assistance.trim() : "not stated"}${draft.assistance.trim() && !isUnassisted(draft.assistance) ? " \u2014 not independent work" : ""}`
+  });
+  const shows = part(parent, "What the attempt shows");
+  if (draft.evidenceTags.length) {
+    const list4 = shows.createEl("ul");
+    for (const tag of draft.evidenceTags) list4.createEl("li", { text: tag });
+  } else {
+    shows.createEl("p", { cls: "los-micro", text: "No evidence criterion marked." });
+  }
+  const missing = definition2?.evidence_spec.filter((tag) => !draft.evidenceTags.includes(tag)) ?? [];
+  if (missing.length && draft.result === "correct") {
+    shows.createEl("p", {
+      cls: "los-micro",
+      text: `Core counts a correct attempt as support only when it shows every criterion; missing: ${missing.join("; ")}.`
+    });
+  }
+  const conditions = [
+    ...draft.conditionsMet.map((condition) => `Met: ${condition}`),
+    ...draft.conditionsNotMet.map((condition) => `Not met: ${condition}`)
+  ];
+  if (conditions.length) {
+    const list4 = shows.createEl("ul", { cls: "los-review-conditions" });
+    for (const condition of conditions) list4.createEl("li", { text: condition });
+  }
+  const unanswered = unresolvedConditions(draft, definition2);
+  if (unanswered.length) {
+    shows.createEl("p", {
+      cls: "los-review-problems",
+      text: `Not sure: ${unanswered.join("; ")}. Core will record this attempt, but it cannot support this ability while a stated condition is unanswered.`
+    });
+  }
+  const evidence3 = part(parent, "Evidence");
+  const work = draft.workRef.trim();
+  if (work.startsWith("curriculum/")) {
+    button(evidence3, `${work} \u2192`, () => host.plugin.openAuthoredPath(work.split("#")[0] ?? work), "tertiary").addClass("los-review-pointer");
+  } else {
+    evidence3.createDiv({ cls: "los-review-pointer-text", text: work || "No work pointer yet." });
+  }
+  rule(parent);
+  const effect = part(parent, "After confirmation");
+  const workspace = workspaces.find((row22) => row22.id === draft.workspace);
+  effect.createEl("p", {
+    text: `Records one learner-confirmed observation for this ability in ${workspace?.title ?? (draft.workspace || "no workspace")}. Core recomputes the ability\u2019s state from it. Stage completion stays a separate action.`
+  });
+  if (draft.supersedes) {
+    effect.createEl("p", { cls: "los-micro", text: `Supersedes ${draft.supersedes}; that record stays visible.` });
+  }
+  effect.createEl("p", {
+    cls: "los-micro",
+    text: "The confirmation pointer is this app request (conversation://learningos-app/\u2026), so the receipt is the confirmation."
+  });
+  const problems = loading ? [] : claimProblems(draft, {
+    ability: definition2,
+    workspaces: workspaces.map((row22) => row22.id)
+  });
+  if (!horizonReady) {
+    parent.createEl("p", { cls: "los-micro", text: host.plugin.abilityHorizon.error ?? "Reading the ability map from Core\u2026" });
+  } else if (loading) {
+    parent.createEl("p", { cls: "los-micro", text: "Reading this ability\u2019s conditions from Core\u2026" });
+  }
+  problemList(parent, problems);
+  rule(parent);
+  const actions = parent.createDiv({ cls: "los-actions los-review-actions" });
+  const confirm = button(actions, host.sending ? "Recording\u2026" : "Confirm & record", () => {
+    const current = host.plugin.listAbilityDrafts().find((row22) => row22.id === draft.id);
+    if (!current || current.kind !== "claim" || current.updatedAt !== draft.updatedAt) {
+      new import_obsidian15.Notice("The draft changed; review it again before confirming.");
+      host.render();
+      return;
+    }
+    const identity = newGatewayIdentity("learner.ability-observation.append");
+    const payload = observationPayload(current, identity.idempotencyKey);
+    const guard = host.plugin.store.artifactGuard(current.workspace);
+    void send(
+      host,
+      () => host.plugin.gateway.recordAbilityObservation(payload, identity, guard),
+      "Recorded. Core recomputed this ability\u2019s state."
+    ).then((recorded) => {
+      if (!recorded) return;
+      host.plugin.discardAbilityDraft(current.id, current.updatedAt);
+      host.select(null);
+      void host.plugin.abilityHorizon.refresh();
+    });
+  }, "cta");
+  confirm.disabled = host.sending || loading || !horizonReady || problems.length > 0;
+  button(actions, "Edit", () => editClaim(host, draft), "quiet").disabled = host.sending;
+  button(actions, "Not this", () => drop(host, draft.id), "tertiary").disabled = host.sending;
+}
+function renderConnectionDraft(parent, host, draft) {
+  host.plugin.abilityHorizon.ensure();
+  const brief = host.plugin.abilityHorizon.current();
+  parent.createDiv({ cls: "los-review-eyebrow", text: "Possible connection \xB7 draft" });
+  parent.createEl("h2", { text: `${draft.fromTitle} ${bridgeSymbol(draft.connection)} ${draft.toTitle}` });
+  parent.createEl("p", { cls: "los-review-lede", text: `A tentative ${draft.connection} you noticed.` });
+  rule(parent);
+  const claim = part(parent, "Connection to record");
+  claim.createDiv({ cls: "los-review-claim", text: draft.carries.trim() || "Nothing written about what carries over." });
+  const differs = part(parent, "What still differs");
+  differs.createEl("p", { text: draft.changes.trim() || "Not written yet." });
+  if (draft.conditions.length) {
+    const list4 = differs.createEl("ul", { cls: "los-review-conditions" });
+    for (const condition of draft.conditions) list4.createEl("li", { text: `Only under: ${condition}` });
+  }
+  const evidence3 = part(parent, "Evidence");
+  evidence3.createDiv({
+    cls: "los-review-pointer-text",
+    text: draft.sourceRef.trim() || "Noticed in this app \u2014 the request that records it is named as the source."
+  });
+  rule(parent);
+  const effect = part(parent, "After confirmation");
+  effect.createEl("p", {
+    text: "Records a tentative connection. It carries no evidence and changes no ability state or readiness; only an operator review can turn it into a bridge."
+  });
+  const problems = brief ? connectionProblems(draft, brief) : [];
+  if (!brief) {
+    parent.createEl("p", { cls: "los-micro", text: host.plugin.abilityHorizon.error ?? "Reading the ability map from Core\u2026" });
+  }
+  problemList(parent, problems);
+  rule(parent);
+  const actions = parent.createDiv({ cls: "los-actions los-review-actions" });
+  const confirm = button(actions, host.sending ? "Recording\u2026" : "Confirm & record", () => {
+    const current = host.plugin.listAbilityDrafts().find((row4) => row4.id === draft.id);
+    if (!current || current.kind !== "connection" || current.updatedAt !== draft.updatedAt) {
+      new import_obsidian15.Notice("The draft changed; review it again before confirming.");
+      host.render();
+      return;
+    }
+    const identity = newGatewayIdentity("ability.candidate.append");
+    const payload = candidatePayload(current, identity.idempotencyKey);
+    const guard = host.plugin.store.artifactGuard("ability-candidates");
+    void send(
+      host,
+      () => host.plugin.gateway.recordAbilityCandidate(payload, identity, guard),
+      "Recorded as a tentative connection. It carries nothing until reviewed."
+    ).then((recorded) => {
+      if (!recorded) return;
+      host.plugin.discardAbilityDraft(current.id, current.updatedAt);
+      host.select(null);
+      void host.plugin.abilityHorizon.refresh();
+    });
+  }, "cta");
+  confirm.disabled = host.sending || !brief || problems.length > 0;
+  button(actions, "Edit", () => editConnection(host, draft), "quiet").disabled = host.sending;
+  button(actions, "Not this", () => drop(host, draft.id), "tertiary").disabled = host.sending;
+}
+function renderConflict(parent, host, row4) {
+  parent.createDiv({ cls: "los-review-eyebrow", text: "Conflicting attempts \xB7 Core" });
+  parent.createEl("h2", { text: row4.title });
+  rule(parent);
+  const claim = part(parent, "What Core says");
+  for (const reason of row4.reasons) claim.createEl("p", { text: sentence(reason) });
+  const evidence3 = part(parent, "Evidence");
+  if (!row4.evidence.length) evidence3.createEl("p", { cls: "los-micro", text: "The ledger is in the ability detail." });
+  for (const item of row4.evidence) {
+    evidence3.createDiv({ cls: "los-review-pointer-text", text: `${RESULT_LABEL[item.result]} \xB7 ${item.work_ref}` });
+  }
+  rule(parent);
+  const effect = part(parent, "Effect");
+  effect.createEl("p", {
+    text: "The ability stays uncertain while later work disagrees. A correction supersedes one record and keeps it visible; new confirmed work is judged on its own."
+  });
+  rule(parent);
+  const actions = parent.createDiv({ cls: "los-actions los-review-actions" });
+  button(actions, "Open the ability", () => host.plugin.nav.openAbilities({ ability: row4.id, detail: true }), "quiet");
+}
+function coreAction(host, target) {
+  if (!target) return null;
+  const kind = asString(target.kind) ?? "";
+  const unitId = asString(target.unit_id);
+  const id2 = asString(target.id);
+  const path = asString(target.path);
+  if (kind === "study-map" && unitId) return ["Review proposal", () => host.plugin.nav.openShelving(unitId)];
+  if (kind === "inbox-item" && path) return ["Route", () => host.plugin.openVaultPath(path)];
+  if (kind === "unit" && id2) return ["Open unit", () => host.plugin.nav.openUnit(id2)];
+  if (kind === "garden-note" || kind === "garden-seed") return ["Review seed", () => host.plugin.nav.openGarden()];
+  return null;
+}
+var CORE_EFFECT = {
+  planning: "Opening the unit shows its material and the reviewed-map import. Nothing changes until a reviewed map is imported.",
+  inbox: "Opens the capture so you can route it. Nothing is filed for you.",
+  shelving: "Opens the shelving review. Only the proposal items you select are applied.",
+  garden: "Opens the Garden. A seed changes only through its own reviewed actions."
+};
+function renderCore(parent, host, entry) {
+  parent.createDiv({ cls: "los-review-eyebrow", text: `${categoryLabel(entry.category)} \xB7 Core decision` });
+  parent.createEl("h2", { text: entry.title });
+  const context = asString(entry.item.context);
+  if (context) parent.createEl("p", { cls: "los-review-lede", text: context });
+  rule(parent);
+  const claim = part(parent, "Decision");
+  claim.createDiv({ cls: "los-review-claim", text: entry.reason || "Core recorded no reason." });
+  const evidence3 = part(parent, "Evidence");
+  const target = isRecord2(entry.item.target) ? entry.item.target : null;
+  const targetId = asString(target?.unit_id) ?? asString(target?.id);
+  const record10 = targetId ? host.plugin.store.get(targetId) : null;
+  if (record10) chip(evidence3, record10);
+  const path = asString(target?.path);
+  if (path) evidence3.createDiv({ cls: "los-review-pointer-text", text: path });
+  const proposals = Array.isArray(target?.proposal_ids) ? target?.proposal_ids.length ?? 0 : 0;
+  if (proposals) evidence3.createDiv({ cls: "los-micro", text: `${proposals} proposed ${proposals === 1 ? "item" : "items"}` });
+  if (!record10 && !path) evidence3.createEl("p", { cls: "los-micro", text: "The target is named in the decision above." });
+  rule(parent);
+  const effect = part(parent, "Effect");
+  effect.createEl("p", { text: CORE_EFFECT[entry.category] ?? "Opens the place where this decision is made." });
+  rule(parent);
+  const actions = parent.createDiv({ cls: "los-actions los-review-actions" });
+  const action = coreAction(host, target);
+  if (action) button(actions, action[0], action[1], "quiet");
+  else actions.createSpan({ cls: "los-micro", text: "No supported action" });
+}
+function renderReviewEntry(parent, host, entry) {
+  const pane = parent.createEl("section", {
+    cls: `los-review-detail is-${entry.kind}`,
+    attr: { "aria-label": entry.title, "data-review-id": entry.key }
+  });
+  if (entry.kind === "claim-draft") renderClaimDraft(pane, host, entry.draft);
+  else if (entry.kind === "connection-draft") renderConnectionDraft(pane, host, entry.draft);
+  else if (entry.kind === "ability-conflict") renderConflict(pane, host, entry.row);
+  else renderCore(pane, host, entry);
+  if (entry.kind === "claim-draft" || entry.kind === "connection-draft") {
+    badge(pane, "Not recorded", "role").addClass("los-review-draft-badge");
+  }
+}
+
+// src/contracts/health-report.ts
+function record5(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
+function exactKeys4(value, required, optional2 = []) {
+  const allowed = /* @__PURE__ */ new Set([...required, ...optional2]);
+  return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => allowed.has(key));
+}
+function text4(value) {
+  return typeof value === "string" && value.trim().length > 0;
+}
+function dateTime3(value) {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
+}
+function asHealthReport(value) {
+  const report = record5(value);
+  if (!report || !exactKeys4(
+    report,
+    ["schema_version", "type", "generated_at", "status", "checks"]
+  ) || report.schema_version !== 1 || report.type !== "health-report" || !dateTime3(report.generated_at) || !["healthy", "attention-required"].includes(String(report.status)) || !Array.isArray(report.checks)) return null;
+  const checks = [];
+  for (const valueCheck of report.checks) {
+    const check = record5(valueCheck);
+    if (!check || !exactKeys4(
+      check,
+      ["id", "status", "summary", "owner", "remedy"],
+      ["details"]
+    ) || !text4(check.id) || !["ok", "warning", "error", "unknown"].includes(String(check.status)) || !text4(check.summary) || !text4(check.owner) || !text4(check.remedy) || "details" in check && record5(check.details) === null) return null;
+    checks.push({
+      id: check.id,
+      status: check.status,
+      summary: check.summary,
+      owner: check.owner,
+      remedy: check.remedy,
+      ...check.details ? { details: check.details } : {}
+    });
+  }
+  const aggregate = checks.every((check) => check.status === "ok") ? "healthy" : "attention-required";
+  if (report.status !== aggregate) return null;
+  return {
+    schema_version: 1,
+    type: "health-report",
+    generated_at: report.generated_at,
+    status: report.status,
+    checks
+  };
+}
+
+// src/contracts/legacy-archive.ts
+function record6(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
+function exact3(value, required, optional2 = []) {
+  const allowed = /* @__PURE__ */ new Set([...required, ...optional2]);
+  return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => allowed.has(key));
+}
+var sha2563 = (value) => typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
+var text5 = (value) => typeof value === "string" && value.trim().length > 0;
+var dateTime4 = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
+var natural4 = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0;
+var relativePath = (value) => text5(value) && !value.startsWith("/") && !value.split("/").includes("..");
+function asLegacyArchiveLock(value) {
+  const lock = record6(value);
+  if (!lock || !exact3(lock, [
+    "schema_version",
+    "id",
+    "type",
+    "created_at",
+    "entries",
+    "excluded",
+    "verification"
+  ]) || lock.schema_version !== 1 || lock.id !== "legacy-archive-lock" || lock.type !== "legacy-archive-lock" || !dateTime4(lock.created_at) || !Array.isArray(lock.entries)) return null;
+  const dispositions = [
+    "canonicalized",
+    "byte-preserved",
+    "superseded-system",
+    "historical-only",
+    "unresolved"
+  ];
+  const entries = [];
+  for (const valueEntry of lock.entries) {
+    const entry = record6(valueEntry);
+    if (!entry || !exact3(entry, [
+      "relative_path",
+      "size",
+      "sha256",
+      "category",
+      "disposition",
+      "canonical_targets"
+    ]) || !relativePath(entry.relative_path) || !natural4(entry.size) || !sha2563(entry.sha256) || !text5(entry.category) || !dispositions.includes(entry.disposition) || !Array.isArray(entry.canonical_targets)) return null;
+    const targets = [];
+    for (const valueTarget of entry.canonical_targets) {
+      const target = record6(valueTarget);
+      if (!target || !exact3(
+        target,
+        ["path", "exists", "checksum_matches"],
+        ["sha256"]
+      ) || !relativePath(target.path) || typeof target.exists !== "boolean" || !(typeof target.checksum_matches === "boolean" || target.checksum_matches === null) || "sha256" in target && target.sha256 !== null && !sha2563(target.sha256)) return null;
+      targets.push({
+        path: target.path,
+        exists: target.exists,
+        checksum_matches: target.checksum_matches,
+        ..."sha256" in target ? { sha256: target.sha256 } : {}
+      });
+    }
+    entries.push({
+      relative_path: entry.relative_path,
+      size: entry.size,
+      sha256: entry.sha256,
+      category: entry.category,
+      disposition: entry.disposition,
+      canonical_targets: targets
+    });
+  }
+  const excluded = record6(lock.excluded);
+  const verification = record6(lock.verification);
+  if (!excluded || !exact3(excluded, ["count", "status"]) || !natural4(excluded.count) || excluded.status !== "sealed-not-inspected" || !verification || !exact3(verification, ["verified_at", "status"], ["issues"]) || !dateTime4(verification.verified_at) || !["verified", "attention-required"].includes(String(verification.status)) || "issues" in verification && (!Array.isArray(verification.issues) || !verification.issues.every(text5))) return null;
+  return {
+    schema_version: 1,
+    id: "legacy-archive-lock",
+    type: "legacy-archive-lock",
+    created_at: lock.created_at,
+    entries,
+    excluded: { count: excluded.count, status: "sealed-not-inspected" },
+    verification: {
+      verified_at: verification.verified_at,
+      status: verification.status,
+      ...Array.isArray(verification.issues) ? { issues: verification.issues } : {}
+    }
+  };
+}
+function asLegacyArchiveStatus(value) {
+  const status = record6(value);
+  if (!status || !exact3(status, ["schema_version", "type", "available", "lock"]) || status.schema_version !== 1 || status.type !== "legacy-archive-status" || typeof status.available !== "boolean") return null;
+  const lock = status.lock === null ? null : asLegacyArchiveLock(status.lock);
+  if (status.lock !== null && lock === null) return null;
+  if (status.available !== (lock !== null)) return null;
+  return {
+    schema_version: 1,
+    type: "legacy-archive-status",
+    available: status.available,
+    lock
+  };
+}
+
+// src/contracts/operations.ts
+function record7(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
+function exactKeys5(value, required) {
+  return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => required.includes(key));
+}
+var CANONICAL = ["COMMITTED", "NOT_COMMITTED", "AMBIGUOUS"];
+var RECOVERY = ["none", "verify-observation", "reconcile-exact-request"];
+function asRow(value) {
+  const row4 = record7(value);
+  if (!row4 || !exactKeys5(row4, [
+    "trace_id",
+    "request_id",
+    "capability",
+    "started_at",
+    "duration_ms",
+    "attempts",
+    "replayed",
+    "first_failure_stage",
+    "canonical_outcome",
+    "recovery_requirement",
+    "needs_attention"
+  ])) return null;
+  if (typeof row4.trace_id !== "string" || typeof row4.capability !== "string") return null;
+  if (row4.request_id !== null && typeof row4.request_id !== "string") return null;
+  if (row4.started_at !== null && typeof row4.started_at !== "number") return null;
+  if (row4.duration_ms !== null && typeof row4.duration_ms !== "number") return null;
+  if (typeof row4.attempts !== "number" || typeof row4.replayed !== "boolean") return null;
+  if (row4.first_failure_stage !== null && typeof row4.first_failure_stage !== "string") return null;
+  if (!CANONICAL.includes(String(row4.canonical_outcome))) return null;
+  if (!RECOVERY.includes(String(row4.recovery_requirement))) return null;
+  if (typeof row4.needs_attention !== "boolean") return null;
+  return row4;
+}
+function asOperationsList(value) {
+  const body = record7(value);
+  if (!body || !exactKeys5(body, ["operations"]) || !Array.isArray(body.operations)) return null;
+  const operations = [];
+  for (const item of body.operations) {
+    const row4 = asRow(item);
+    if (!row4) return null;
+    operations.push(row4);
+  }
+  return { operations };
+}
+function asAttempt(value) {
+  const row4 = record7(value);
+  if (!row4 || !exactKeys5(row4, ["span", "status", "replay_of"])) return null;
+  if (typeof row4.span !== "string" || typeof row4.status !== "string") return null;
+  if (row4.replay_of !== null && typeof row4.replay_of !== "string") return null;
+  return row4;
+}
+function asDiagnosis(value) {
+  const body = record7(value);
+  if (!body || !exactKeys5(body, [
+    "first_failure_stage",
+    "execution_outcome",
+    "canonical_outcome",
+    "projection_outcome",
+    "recovery_requirement",
+    "authoritative_evidence",
+    "attempts",
+    "reasons"
+  ])) return null;
+  if (body.first_failure_stage !== null && typeof body.first_failure_stage !== "string") return null;
+  if (typeof body.execution_outcome !== "string") return null;
+  if (!CANONICAL.includes(String(body.canonical_outcome))) return null;
+  if (typeof body.projection_outcome !== "string") return null;
+  if (!RECOVERY.includes(String(body.recovery_requirement))) return null;
+  if (!Array.isArray(body.authoritative_evidence) || !body.authoritative_evidence.every((item) => typeof item === "string")) return null;
+  if (!Array.isArray(body.attempts)) return null;
+  const attempts = [];
+  for (const item of body.attempts) {
+    const attempt = asAttempt(item);
+    if (!attempt) return null;
+    attempts.push(attempt);
+  }
+  if (!Array.isArray(body.reasons) || !body.reasons.every((item) => typeof item === "string")) return null;
+  return { ...body, attempts };
+}
+var TIMELINE_STATES = ["passed", "failed", "skipped", "missing"];
+function asTimelineRow(value) {
+  const row4 = record7(value);
+  if (!row4 || !exactKeys5(row4, ["stage", "state", "detail"])) return null;
+  if (typeof row4.stage !== "string" || !TIMELINE_STATES.includes(String(row4.state))) return null;
+  if (row4.detail !== null && typeof row4.detail !== "string") return null;
+  return row4;
+}
+function asFacts(value) {
+  const facts = record7(value);
+  if (!facts || !exactKeys5(facts, [
+    "transaction_id",
+    "receipt_path",
+    "snapshot_before",
+    "snapshot_after"
+  ])) return null;
+  for (const key of ["transaction_id", "receipt_path", "snapshot_before", "snapshot_after"]) {
+    if (facts[key] !== null && typeof facts[key] !== "string") return null;
+  }
+  return facts;
+}
+function asOperationDetail(value) {
+  const body = record7(value);
+  if (!body || !exactKeys5(body, [
+    "request_id",
+    "capability",
+    "diagnosis",
+    "timeline",
+    "observed_snapshot",
+    "ui_outcome",
+    "facts"
+  ])) return null;
+  if (typeof body.request_id !== "string" || typeof body.capability !== "string") return null;
+  const diagnosis = asDiagnosis(body.diagnosis);
+  if (!diagnosis) return null;
+  if (!Array.isArray(body.timeline)) return null;
+  const timeline = [];
+  for (const item of body.timeline) {
+    const row4 = asTimelineRow(item);
+    if (!row4) return null;
+    timeline.push(row4);
+  }
+  if (body.observed_snapshot !== null && typeof body.observed_snapshot !== "string") return null;
+  if (!["SETTLED", "REFUSED", "BLOCKED"].includes(String(body.ui_outcome))) return null;
+  const facts = asFacts(body.facts);
+  if (!facts) return null;
+  return {
+    request_id: body.request_id,
+    capability: body.capability,
+    diagnosis,
+    timeline,
+    observed_snapshot: body.observed_snapshot,
+    ui_outcome: body.ui_outcome,
+    facts
+  };
+}
+
+// src/views/review-view.ts
+var ReviewView = class extends import_obsidian16.ItemView {
+  plugin;
+  selectedKey = null;
+  sending = false;
+  constructor(leaf, plugin) {
+    super(leaf);
+    this.plugin = plugin;
+  }
+  getViewType() {
+    return VIEW_REVIEW;
+  }
+  getDisplayText() {
+    return "LearningOS \xB7 Review";
+  }
+  getIcon() {
+    return "check-check";
+  }
+  get selected() {
+    return this.selectedKey;
+  }
+  select(key) {
+    this.selectedKey = key;
+    this.render();
+  }
+  async setState(state = {}) {
+    if (typeof state.item === "string" && state.item) this.selectedKey = state.item;
+    this.render();
+  }
+  getState() {
+    return { item: this.selectedKey };
+  }
+  async onOpen() {
+    const state = this.leaf.getViewState().state ?? {};
+    if (typeof state.item === "string" && state.item) this.selectedKey = state.item;
+    this.render();
+  }
+  render() {
+    const root = this.contentEl;
+    root.empty();
+    root.addClass(
+      "los-root",
+      "los-review-view"
+    );
+    if (!this.plugin.store.ready) {
+      pageHeader(
+        root,
+        "LearningOS",
+        "Projection unavailable"
+      );
+      empty(
+        root,
+        "The interface contract could not be loaded",
+        this.plugin.store.error,
+        "Rebuild views",
+        () => this.plugin.generate()
+      );
+      return;
+    }
+    const horizon2 = this.plugin.abilityHorizon;
+    horizon2.ensure();
+    const brief = horizon2.current();
+    const entries = buildReviewQueue({
+      items: this.plugin.store.reviewItems(),
+      drafts: this.plugin.listAbilityDrafts(),
+      horizon: brief
+    });
+    pageHeader(
+      root,
+      "Review",
+      "Review",
+      "Select one item to see its claim, evidence and effect."
+    );
+    const summary = root.createDiv({
+      cls: "los-review-summary",
+      attr: { role: "status" }
+    });
+    summary.createEl("strong", {
+      cls: "los-review-count",
+      text: entries.length ? `${entries.length} ${entries.length === 1 ? "item needs" : "items need"} your decision` : "Nothing waiting"
+    });
+    summary.createSpan({
+      cls: "los-micro",
+      text: brief ? brief.abilities.some((row4) => row4.evidence.length) ? `${brief.abilities.filter((row4) => row4.evidence.length).length} abilities have recorded work` : "No learner attempt recorded" : horizon2.error ? "Ability records unavailable" : "Reading ability records\u2026"
+    });
+    if (!entries.length) {
+      empty(
+        root,
+        "Nothing waiting",
+        "Core has projected no decision, no ability reports conflicting work, and you have no ability drafts."
+      );
+      root.createDiv({
+        cls: "los-micro los-review-queue-note",
+        text: "Only items that require a decision appear here. Garden stays quiet until Core marks a seed review-due."
+      });
+      return;
+    }
+    const selected = entries.find((entry) => entry.key === this.selectedKey) ?? entries[0] ?? null;
+    const split = root.createDiv({ cls: "los-review-split" });
+    const listPane = split.createDiv({ cls: "los-review-pane" });
+    listPane.createEl("h2", {
+      cls: "los-review-list-head",
+      text: "Needs your decision"
+    });
+    const list4 = listPane.createDiv({
+      cls: "los-review-items",
+      attr: { role: "group", "aria-label": "Review items" }
+    });
+    enableButtonGroupKeyboardNavigation(list4, "vertical");
+    for (const entry of entries) {
+      const active = entry.key === selected?.key;
+      const row4 = list4.createEl("button", {
+        cls: `los-review-item is-clickable is-${entry.kind}${active ? " is-selected" : ""}`,
+        attr: {
+          type: "button",
+          "data-review-id": entry.key,
+          "aria-pressed": String(active)
+        }
+      });
+      row4.createSpan({ cls: "los-review-item-title", text: entry.title });
+      row4.createSpan({ cls: "los-review-item-context", text: entry.context });
+      row4.addEventListener("click", () => this.select(entry.key));
+    }
+    listPane.createDiv({
+      cls: "los-micro los-review-queue-note",
+      text: "Choose another item to inspect its details. Garden stays quiet until Core marks a seed review-due."
+    });
+    if (selected) renderReviewEntry(split, this, selected);
+  }
+};
+var OPERATIONS_FILTERS = [
+  ["all", "All"],
+  ["attention", "Needs attention"],
+  ["recoveries", "Recoveries"]
+];
+var DiagnosticsView = class extends import_obsidian16.ItemView {
+  plugin;
+  report = "";
+  screen = "health";
+  health = null;
+  healthLoading = false;
+  healthError = "";
+  legacy = null;
+  legacyLoaded = false;
+  legacyLoading = false;
+  legacyError = "";
+  operations = [];
+  operationsLoaded = false;
+  operationsLoading = false;
+  operationsError = "";
+  operationsFilter = "all";
+  selectedRequest = null;
+  operationDetail = null;
+  operationDetailLoading = false;
+  operationDetailError = "";
+  constructor(leaf, plugin) {
+    super(leaf);
+    this.plugin = plugin;
+  }
+  getViewType() {
+    return VIEW_DIAGNOSTICS;
+  }
+  getDisplayText() {
+    return "LearningOS \xB7 Diagnostics";
+  }
+  getIcon() {
+    return "activity";
+  }
+  async onOpen() {
+    this.render();
+    void this.loadHealth();
+  }
+  async loadHealth() {
+    if (this.healthLoading) return;
+    this.healthLoading = true;
+    this.healthError = "";
+    this.render();
+    try {
+      const report = asHealthReport(await this.plugin.gateway.healthReport());
+      if (!report) throw new Error("Core returned an invalid health-report response.");
+      this.health = report;
+    } catch (error) {
+      this.health = null;
+      this.healthError = errorMessage(error);
+    } finally {
+      this.healthLoading = false;
+      this.render();
+    }
+  }
+  async loadLegacy() {
+    if (this.legacyLoading) return;
+    this.legacyLoading = true;
+    this.legacyError = "";
+    this.render();
+    try {
+      const status = asLegacyArchiveStatus(
+        await this.plugin.gateway.legacyArchiveStatus()
+      );
+      if (!status) throw new Error("Core returned an invalid Legacy Archive status response.");
+      this.legacy = status.lock;
+      this.legacyLoaded = true;
+    } catch (error) {
+      this.legacy = null;
+      this.legacyLoaded = false;
+      this.legacyError = errorMessage(error);
+    } finally {
+      this.legacyLoading = false;
+      this.render();
+    }
+  }
+  async loadOperations() {
+    if (this.operationsLoading) return;
+    this.operationsLoading = true;
+    this.operationsError = "";
+    this.render();
+    try {
+      const list4 = asOperationsList(await this.plugin.gateway.operationsList(30));
+      if (!list4) throw new Error("Core returned an invalid operations response.");
+      this.operations = list4.operations;
+      this.operationsLoaded = true;
+    } catch (error) {
+      this.operations = [];
+      this.operationsLoaded = false;
+      this.operationsError = errorMessage(error);
+    } finally {
+      this.operationsLoading = false;
+      this.render();
+    }
+  }
+  async loadOperationDetail(requestId) {
+    this.selectedRequest = requestId;
+    this.operationDetail = null;
+    this.operationDetailError = "";
+    this.operationDetailLoading = true;
+    this.render();
+    try {
+      const detail = asOperationDetail(
+        await this.plugin.gateway.operationsDetail(requestId)
+      );
+      if (!detail) throw new Error("Core returned an invalid operation response.");
+      this.operationDetail = detail;
+    } catch (error) {
+      this.operationDetailError = errorMessage(error);
+    } finally {
+      this.operationDetailLoading = false;
+      this.render();
+    }
+  }
+  /** Recovery panel entry point (4B): open one request's causal detail. */
+  openOperation(requestId) {
+    this.screen = "operations";
+    this.selectedRequest = null;
+    this.operationDetail = null;
+    if (!this.operationsLoaded && !this.operationsLoading) void this.loadOperations();
+    void this.loadOperationDetail(requestId);
+  }
+  filteredOperations() {
+    if (this.operationsFilter === "attention") {
+      return this.operations.filter((row4) => row4.needs_attention);
+    }
+    if (this.operationsFilter === "recoveries") {
+      return this.operations.filter((row4) => row4.replayed || row4.attempts > 1);
+    }
+    return this.operations;
+  }
+  renderOperations(root) {
+    const header2 = section(
+      root,
+      "Operations",
+      "Recent causal operations, newest first. Diagnosis, not logs: every row answers what happened, what committed, and what remains."
+    );
+    if (this.operationsLoading) {
+      empty(header2, "Loading operations", "Waiting for Core\u2019s bounded operations response.");
+      return;
+    }
+    if (this.operationsError) {
+      empty(header2, "Operations unavailable", this.operationsError, "Try again", () => void this.loadOperations());
+      return;
+    }
+    if (!this.operationsLoaded) {
+      empty(header2, "Operations not loaded", "Load recent operations without opening logs or receipts.", "Load operations", () => void this.loadOperations());
+      return;
+    }
+    filterTabs(root, "Operations filters", OPERATIONS_FILTERS, this.operationsFilter, (value) => {
+      this.operationsFilter = value;
+      this.render();
+    }, (value) => value === "all" ? this.operations.length : value === "attention" ? this.operations.filter((row4) => row4.needs_attention).length : this.operations.filter((row4) => row4.replayed || row4.attempts > 1).length);
+    const rows = this.filteredOperations();
+    if (rows.length === 0) {
+      empty(root, "No operations", this.operationsFilter === "all" ? "No causal operations are on record yet." : "Nothing matches this filter.");
+    }
+    for (const row4 of rows) {
+      const glyph = row4.recovery_requirement !== "none" ? "!" : row4.replayed ? "\u27F3" : row4.canonical_outcome === "COMMITTED" ? "\u2713" : "\u2715";
+      const label = row4.recovery_requirement !== "none" ? "Ambiguous" : row4.replayed ? "Replayed" : row4.canonical_outcome === "COMMITTED" ? "Settled" : "Refused";
+      const time = row4.started_at === null ? "--:--" : new Date(row4.started_at * 1e3).toTimeString().slice(0, 5);
+      const duration = row4.duration_ms === null ? "" : ` \xB7 ${Math.round(row4.duration_ms)} ms`;
+      const item = button(
+        root,
+        `${time}  ${row4.capability}  ${glyph} ${label}${duration}`,
+        () => {
+          if (row4.request_id) void this.loadOperationDetail(row4.request_id);
+        },
+        this.selectedRequest !== null && row4.request_id === this.selectedRequest ? "info" : "quiet"
+      );
+      void item;
+    }
+    const actions = root.createDiv({ cls: "los-actions" });
+    button(actions, "Refresh operations", () => {
+      this.operationsLoaded = false;
+      void this.loadOperations();
+    }, "info");
+    this.renderOperationDetail(root);
+  }
+  renderOperationDetail(root) {
+    if (this.selectedRequest === null) return;
+    const detail = section(root, "Operation detail", this.selectedRequest);
+    if (this.operationDetailLoading) {
+      empty(detail, "Loading operation", "Waiting for Core\u2019s diagnosis.");
+      return;
+    }
+    if (this.operationDetailError) {
+      empty(detail, "Operation unavailable", this.operationDetailError);
+      return;
+    }
+    const current = this.operationDetail;
+    if (!current || current.request_id !== this.selectedRequest) return;
+    const diagnosis = current.diagnosis;
+    const status = detail.createDiv({ cls: "los-diagnostic-status" });
+    status.createSpan({
+      cls: "los-diagnostic-glyph",
+      text: diagnosis.canonical_outcome === "COMMITTED" ? current.ui_outcome === "SETTLED" ? "\u2713" : "!" : diagnosis.canonical_outcome === "AMBIGUOUS" ? "!" : "\u2715"
+    });
+    const copy = status.createDiv();
+    copy.createEl("strong", { text: current.capability });
+    copy.createDiv({ cls: "los-micro", text: `Request ${current.request_id}` });
+    const outcomes = section(detail, "Outcomes", "What the authority plane proves.");
+    const heading = outcomes.createDiv({ cls: "los-health-check-head" });
+    heading.createEl("strong", { text: `Canonical: ${diagnosis.canonical_outcome}` });
+    badge(heading, current.ui_outcome, current.ui_outcome === "SETTLED" ? "status" : "role");
+    factList(outcomes, [
+      ["Canonical outcome", diagnosis.canonical_outcome],
+      ["UI outcome", current.ui_outcome],
+      ["Execution", diagnosis.execution_outcome],
+      ["Projection", diagnosis.projection_outcome],
+      ["Failure stage", diagnosis.first_failure_stage ?? "\u2014"],
+      ["Recovery", diagnosis.recovery_requirement === "none" ? "None \u2014 settled." : diagnosis.recovery_requirement === "verify-observation" ? "Verify the receipt is observed in the projection." : "Exact request must be reconciled."]
+    ]);
+    if (diagnosis.reasons.length > 0) {
+      const why = section(detail, "Why", "The resolver\u2019s reasons, verbatim.");
+      for (const reason of diagnosis.reasons) {
+        why.createEl("p", { text: reason });
+      }
+    }
+    const timeline = section(detail, "Timeline", "Causal stages in execution order.");
+    for (const row4 of current.timeline) {
+      const glyph = row4.state === "passed" ? "\u2713" : row4.state === "failed" ? "!" : "\u2013";
+      timeline.createEl("p", {
+        text: `${glyph} ${row4.stage}${row4.detail ? ` \u2014 ${row4.detail}` : ""}`
+      });
+    }
+    factList(
+      section(detail, "Transaction", "References only; receipts stay canonical."),
+      [
+        ["Transaction", current.facts.transaction_id ?? "\u2014"],
+        ["Receipt", current.facts.receipt_path ?? "\u2014"],
+        ["Snapshot before", current.facts.snapshot_before ?? "\u2014"],
+        ["Snapshot after", current.facts.snapshot_after ?? "\u2014"],
+        ["Snapshot seen", current.observed_snapshot ?? "\u2014"],
+        ["Attempts", String(diagnosis.attempts.length)]
+      ]
+    );
+    if (diagnosis.authoritative_evidence.length > 0) {
+      factList(
+        section(detail, "Authority", "The evidence the verdict rests on."),
+        diagnosis.authoritative_evidence.map(
+          (pointer2, index) => [`Evidence ${index + 1}`, pointer2]
+        )
+      );
+    }
+  }
+  selectScreen(screen) {
+    this.screen = screen;
+    this.render();
+    if (screen === "legacy" && !this.legacyLoaded) void this.loadLegacy();
+    if (screen === "operations" && !this.operationsLoaded) void this.loadOperations();
+  }
+  buildInfo() {
+    const fallback = {
+      ui_version: this.plugin.uiVersion(),
+      manifest_contract_version: MANIFEST_CONTRACT_VERSION,
+      source_revision: "unavailable",
+      source_dirty: null,
+      source_committed_at: "unavailable",
+      source_fingerprint: "unavailable",
+      bundle_sha256: "unavailable",
+      node_version: "unavailable"
+    };
+    try {
+      const app = this.app;
+      const base = app.vault.adapter.getBasePath();
+      const pluginInfo = this.plugin.manifest;
+      const directory = pluginInfo?.dir || nodePath2.join(
+        ".obsidian",
+        "plugins",
+        pluginInfo?.id || "learningos-ui"
+      );
+      const target = nodePath2.join(
+        base,
+        directory,
+        "build-info.json"
+      );
+      if (!fs2.existsSync(target)) {
+        return fallback;
+      }
+      const parsed = JSON.parse(
+        fs2.readFileSync(target, "utf8")
+      );
+      if (!isRecord2(parsed)) {
+        return fallback;
+      }
+      return {
+        ui_version: typeof parsed.ui_version === "string" ? parsed.ui_version : fallback.ui_version,
+        manifest_contract_version: typeof parsed.manifest_contract_version === "number" ? parsed.manifest_contract_version : fallback.manifest_contract_version,
+        source_revision: typeof parsed.source_revision === "string" ? parsed.source_revision : fallback.source_revision,
+        // A missing flag stays null: an older build-info predates the field,
+        // and reading that absence as "clean" is the exact false reassurance
+        // this row exists to remove.
+        source_dirty: typeof parsed.source_dirty === "boolean" ? parsed.source_dirty : fallback.source_dirty,
+        source_committed_at: typeof parsed.source_committed_at === "string" ? parsed.source_committed_at : fallback.source_committed_at,
+        source_fingerprint: typeof parsed.source_fingerprint === "string" ? parsed.source_fingerprint : fallback.source_fingerprint,
+        bundle_sha256: typeof parsed.bundle_sha256 === "string" ? parsed.bundle_sha256 : fallback.bundle_sha256,
+        node_version: typeof parsed.node_version === "string" ? parsed.node_version : fallback.node_version
+      };
+    } catch (_) {
+      return fallback;
+    }
+  }
+  state() {
+    if (this.healthLoading) return ["\u2026", "Checking LearningOS health", "Waiting for the bounded Core health report."];
+    if (this.health?.status === "healthy") {
+      return ["\u2713", "Healthy", `Core verified ${this.health.checks.length} registered checks at ${this.health.generated_at}.`];
+    }
+    if (this.health?.status === "attention-required") {
+      const count2 = this.health.checks.filter((check) => check.status !== "ok").length;
+      return ["!", "Attention required", `${count2} check${count2 === 1 ? "" : "s"} need an owner or remedy.`];
+    }
+    if (this.healthError) return ["?", "Health unavailable", this.healthError];
+    return ["?", "Health not checked", "Run the bounded health report before trusting a green state."];
+  }
+  render() {
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-diagnostics-view");
+    pageHeader(root, "More", "Diagnostics");
+    const tabs = root.createDiv({ cls: "los-subtabs", attr: { "aria-label": "Diagnostics sections" } });
+    for (const [key, label] of [["health", "Health"], ["operations", "Operations"], ["legacy", "Legacy Archive"]]) {
+      const tab = button(tabs, label, () => this.selectScreen(key), key === this.screen ? "info" : "quiet");
+      tab.setAttr("aria-pressed", key === this.screen ? "true" : "false");
+    }
+    const generated = this.plugin.store.data?._generated ?? {};
+    const build = this.buildInfo();
+    const runtime = this.plugin.runtimeBuildIdentity();
+    const identityMatches = runtime.fingerprint !== "unavailable" && runtime.fingerprint === build.source_fingerprint && runtime.contractVersion === build.manifest_contract_version;
+    this.setIdentityAttributes(root, generated, build, identityMatches);
+    if (this.screen === "legacy") {
+      this.renderLegacy(root);
+      return;
+    }
+    if (this.screen === "operations") {
+      this.renderOperations(root);
+      return;
+    }
+    const [glyph, title, detail] = this.state();
+    const status = root.createDiv({ cls: "los-diagnostic-status" });
+    status.createSpan({ cls: "los-diagnostic-glyph", text: glyph });
+    const copy = status.createDiv();
+    copy.createEl("strong", { text: title });
+    copy.createDiv({ cls: "los-micro", text: detail });
+    if (this.health) {
+      const checks = section(root, "Health checks", `Generated ${this.health.generated_at}`);
+      for (const check of this.health.checks) {
+        const row4 = checks.createDiv({ cls: "los-health-check" });
+        const heading = row4.createDiv({ cls: "los-health-check-head" });
+        heading.createEl("strong", { text: check.summary });
+        badge(heading, check.status, check.status === "ok" ? "status" : "role");
+        factList(row4, [
+          ["Check", check.id],
+          ["Owner", check.owner],
+          ["Remedy", check.remedy]
+        ]);
+      }
+    }
+    const facts = section(root, "Contract and versions");
+    const factRows = [
+      ["Manifest contract", generated.contract_version ?? "unknown"],
+      ["Manifest schema", generated.schema_sha256 ?? "unknown"],
+      ["UI expects contract", MANIFEST_CONTRACT_VERSION],
+      ["UI version", this.plugin.uiVersion()],
+      ["UI source revision", build.source_revision],
+      // The projection states its own staleness; before this the interface
+      // stated nothing about its own, and a vault quietly ran a build 32
+      // commits behind its source for a day.
+      ["UI built from", build.source_dirty === null ? `${build.source_committed_at} (working tree unknown)` : build.source_dirty ? `${build.source_committed_at} + uncommitted sources` : build.source_committed_at],
+      ["UI source fingerprint (installed)", build.source_fingerprint],
+      ["UI source fingerprint (running)", runtime.fingerprint],
+      ["Running code matches installed build-info", identityMatches ? "yes" : "NO \u2014 reload learningos-ui"],
+      ["UI bundle fingerprint", build.bundle_sha256],
+      ["Build Node", build.node_version],
+      ["Generator", generated.generator || "unknown"],
+      ["Projection built", generated.generated_at || "unknown"],
+      ["Snapshot", generated.snapshot_id || "unknown"],
+      ["Source revision", generated.source_revision || "unknown"],
+      ["Python interpreter", this.plugin.resolvePython().path],
+      ["Interpreter source", this.plugin.resolvePython().origin]
+    ];
+    factList(facts, factRows);
+    this.renderGatewayRecovery(root);
+    const actions = root.createDiv({ cls: "los-actions" });
+    button(actions, "Refresh health", () => void this.loadHealth(), "info");
+    button(actions, "Validate and rebuild", () => this.plugin.generate(), "success");
+    button(actions, "Test the interpreter", () => this.testInterpreter(), "info");
+    button(actions, "Copy build identity", () => this.plugin.copyText(JSON.stringify(build, null, 2)), "quiet");
+    if (this.report) root.createEl("pre", { cls: "los-diagnostic-report", text: this.report });
+    const policy = section(root, "About LearningOS");
+    policy.createEl("p", { text: OWNERSHIP_STATEMENT });
+  }
+  /**
+   * The visible facts above, as stable machine-readable attributes.
+   *
+   * The live-app checker used to *echo back* the SHAs its caller passed on the
+   * command line and call that verification, so any wrong pair could be
+   * attested as correct. These attributes are what it extracts and compares
+   * against instead — read from the running app rather than from its own
+   * arguments. Nothing here is payload text or a local path, exactly like the
+   * visible facts.
+   *
+   * Set before the tab branch, so the checker can read identity whichever
+   * Diagnostics tab the operator happens to be on. A flag that is not a real
+   * boolean reports `unknown` rather than stringifying itself, because the
+   * checker treats unknown as "not proven clean" and must never be handed a
+   * `"null"` it would have to interpret.
+   */
+  setIdentityAttributes(root, generated, build, identityMatches) {
+    const flag = (value) => typeof value === "boolean" ? String(value) : "unknown";
+    root.setAttr("data-los-manifest-contract", String(generated.contract_version ?? "unknown"));
+    root.setAttr("data-los-runtime-fingerprint-matches", identityMatches ? "yes" : "no");
+    root.setAttr("data-los-core-revision", String(generated.source_revision || "unknown"));
+    root.setAttr("data-los-ui-revision", String(build.source_revision || "unknown"));
+    root.setAttr("data-los-ui-plugin-version", String(build.ui_version || "unknown"));
+    root.setAttr("data-los-core-dirty", flag(generated.source_dirty));
+    root.setAttr("data-los-ui-dirty", flag(build.source_dirty));
+    root.setAttr(
+      "data-los-gateway-recovery-clear",
+      this.plugin.gatewayRecoveryState().kind === "clear" ? "yes" : "no"
+    );
+  }
+  /**
+   * The one place an unresolved write is visible and actionable.
+   *
+   * Metadata only: no payload text and no file paths, because this screen is
+   * the one a learner is most likely to screenshot when asking for help.
+   *
+   * There is deliberately no discard, delete, reset or "start over". Every one
+   * of those would let a learner resolve an ambiguity by declaring it resolved,
+   * which is precisely the judgement nobody at this screen can make — the write
+   * either landed or it did not, and only Core can say which.
+   */
+  renderGatewayRecovery(root) {
+    const state = this.plugin.gatewayRecoveryState();
+    const panel = section(
+      root,
+      "Gateway recovery",
+      "One unresolved canonical write, if there is one."
+    );
+    if (state.kind === "clear") {
+      panel.createEl("p", { text: "No unresolved Gateway write." });
+      return;
+    }
+    const rows = gatewayRecoverySummary(state) ?? [];
+    factList(panel, rows);
+    const actions = root.createDiv({ cls: "los-actions" });
+    if (state.kind === "record") {
+      let requestId = null;
+      try {
+        const envelope = JSON.parse(state.entry.record.envelope_json);
+        if (isRecord2(envelope) && typeof envelope.request_id === "string") {
+          requestId = envelope.request_id;
+        }
+      } catch (_) {
+        requestId = null;
+      }
+      if (requestId !== null) {
+        const target = requestId;
+        button(actions, "Open operation", () => this.openOperation(target), "info");
+      }
+    }
+    if (state.kind === "record" && state.entry.record.phase !== "confirmed") {
+      button(
+        actions,
+        "Retry exact request",
+        () => void this.plugin.retryRecoveredWrite(),
+        "info"
+      );
+    } else if (state.kind === "record") {
+      button(
+        actions,
+        "Finish confirmed write",
+        () => void this.plugin.retryRecoveredWrite(),
+        "info"
+      );
+    }
+    button(
+      actions,
+      "Copy recovery summary",
+      () => this.plugin.copyText(
+        rows.map(([label, value]) => `${label}: ${value}`).join("\n")
+      ),
+      "quiet"
+    );
+  }
+  renderLegacy(root) {
+    const header2 = section(
+      root,
+      "Legacy Archive",
+      "Read-only disposition and verification status. Archived records never become normal manifest content here."
+    );
+    if (this.legacyLoading) {
+      empty(header2, "Checking archive lock", "Waiting for Core\u2019s bounded archive-status response.");
+      return;
+    }
+    if (this.legacyError) {
+      empty(header2, "Legacy Archive unavailable", this.legacyError, "Try again", () => void this.loadLegacy());
+      return;
+    }
+    if (!this.legacyLoaded) {
+      empty(header2, "Archive status not loaded", "Load the reviewed archive lock without opening archived content.", "Load archive status", () => void this.loadLegacy());
+      return;
+    }
+    if (!this.legacy) {
+      empty(header2, "No approved archive lock", "Core reports that no reviewed Legacy Archive disposition lock is available. Archived content remains sealed.");
+      const actions2 = root.createDiv({ cls: "los-actions" });
+      button(actions2, "Refresh archive status", () => void this.loadLegacy(), "info");
+      return;
+    }
+    const lock = this.legacy;
+    const status = root.createDiv({ cls: "los-diagnostic-status" });
+    status.createSpan({
+      cls: "los-diagnostic-glyph",
+      text: lock.verification.status === "verified" ? "\u2713" : "!"
+    });
+    const copy = status.createDiv();
+    copy.createEl("strong", {
+      text: lock.verification.status === "verified" ? "Archive lock verified" : "Archive lock needs attention"
+    });
+    copy.createDiv({
+      cls: "los-micro",
+      text: `Verified ${lock.verification.verified_at}. ${lock.excluded.count} excluded item${lock.excluded.count === 1 ? "" : "s"} remain sealed and were not inspected.`
+    });
+    const dispositions = [
+      "canonicalized",
+      "byte-preserved",
+      "superseded-system",
+      "historical-only",
+      "unresolved"
+    ];
+    const counts = Object.fromEntries(dispositions.map((disposition) => [
+      disposition,
+      lock.entries.filter((entry) => entry.disposition === disposition).length
+    ]));
+    const facts = section(root, "Disposition summary");
+    factList(facts, [
+      ["Reviewed entries", lock.entries.length],
+      ["Canonicalized", counts.canonicalized],
+      ["Byte preserved", counts["byte-preserved"]],
+      ["Superseded system", counts["superseded-system"]],
+      ["Historical only", counts["historical-only"]],
+      ["Unresolved", counts.unresolved],
+      ["Excluded", `${lock.excluded.count} \xB7 sealed, not inspected`]
+    ]);
+    if (lock.verification.issues?.length) {
+      const issues = section(root, "Issues");
+      for (const issue of lock.verification.issues) {
+        issues.createDiv({ cls: "los-health-check", text: issue });
+      }
+    }
+    const actions = root.createDiv({ cls: "los-actions" });
+    button(actions, "Refresh archive status", () => void this.loadLegacy(), "info");
+  }
+  async testInterpreter() {
+    const resolved = this.plugin.resolvePython();
+    try {
+      const result = await this.plugin.gateway.call(["status", "--json"]);
+      this.report = `${resolved.path} (${resolved.origin})
+Core answered: ${JSON.stringify(result).slice(0, 400)}`;
+    } catch (error) {
+      this.report = `${resolved.path} (${resolved.origin})
+Failed: ${errorMessage(error)}
+Tried: ${resolved.attempted.join(", ")}`;
+    }
+    this.render();
+  }
+};
+
+// src/views/shelving-view.ts
+var import_obsidian17 = require("obsidian");
+function readShelvingProposal(value) {
+  if (!isRecord2(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
+    return null;
+  }
+  const items = [];
+  for (const candidate2 of value.items) {
+    if (!isRecord2(candidate2) || typeof candidate2.id !== "string" || typeof candidate2.title !== "string") {
+      continue;
+    }
+    const item = {
+      id: candidate2.id,
+      title: candidate2.title,
+      destination: optionalString(candidate2.destination),
+      rationale: optionalString(candidate2.rationale),
+      diff: optionalString(candidate2.diff),
+      selected: typeof candidate2.selected === "boolean" ? candidate2.selected : void 0
+    };
+    items.push(item);
+  }
+  return {
+    state: "proposed",
+    summary: optionalString(value.summary),
+    items
+  };
+}
+var ShelvingView = class extends import_obsidian17.ItemView {
+  plugin;
+  unitId = null;
+  proposal = null;
+  selected = /* @__PURE__ */ new Set();
+  selectionScope = null;
+  expectedRevisions = {};
+  constructor(leaf, plugin) {
+    super(leaf);
+    this.plugin = plugin;
+  }
+  getViewType() {
+    return VIEW_SHELVING;
+  }
+  getDisplayText() {
+    return "LearningOS \xB7 Shelving";
+  }
+  async setState(state = {}) {
+    if (typeof state.unitId === "string") {
+      this.unitId = state.unitId;
+    }
+    await this.loadProposal();
+    this.render();
+  }
+  getState() {
+    return { unitId: this.unitId };
+  }
+  async onOpen() {
+    const unitId = this.leaf.getViewState().state?.unitId;
+    if (typeof unitId === "string") {
+      this.unitId = unitId;
+    }
+    await this.loadProposal();
+    this.render();
+  }
+  async loadProposal() {
+    if (!this.unitId) {
+      this.proposal = null;
+      return;
+    }
+    const map = this.plugin.store.mapForUnit(this.unitId);
+    this.proposal = readShelvingProposal(map?.shelving);
+  }
+  selectionKey(unitId, map, proposal) {
+    const mapId = typeof map?.id === "string" ? map.id : "";
+    const revision = map?.revision == null ? "" : String(map.revision);
+    const proposalIds = proposal?.items.map((item) => item.id).join("") ?? "";
+    return JSON.stringify([
+      unitId,
+      mapId,
+      revision,
+      proposalIds
+    ]);
+  }
+  syncSelection(unitId, map, proposal) {
+    const scope = this.selectionKey(
+      unitId,
+      map,
+      proposal
+    );
+    if (scope === this.selectionScope) {
+      return;
+    }
+    this.selectionScope = scope;
+    this.selected.clear();
+    if (!proposal) {
+      return;
+    }
+    for (const item of proposal.items) {
+      if (item.selected !== false) {
+        this.selected.add(item.id);
+      }
+    }
+  }
+  render() {
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-shelving-view");
+    const unit = this.unitId ? this.plugin.store.get(this.unitId) : null;
+    pageHeader(
+      root,
+      "Approval gate",
+      "Shelving",
+      unit ? `${unit.title}: review durable changes before the gateway applies them.` : "Choose a unit that is ready to shelve."
+    );
+    if (!unit) {
+      this.renderQueue(root);
+      return;
+    }
+    if (!unit.id) {
+      empty(root, "Unit unavailable", "The projection returned a unit without an identity.");
+      return;
+    }
+    const map = this.plugin.store.mapForUnit(unit.id);
+    this.expectedRevisions = this.plugin.store.artifactGuard(
+      unit.id,
+      typeof map?.id === "string" ? map.id : null
+    );
+    const proposal = this.proposal ?? readShelvingProposal(map?.shelving);
+    if (!proposal?.items?.length) {
+      this.syncSelection(
+        unit.id,
+        map,
+        null
+      );
+      const wrap = section(root, "No proposal yet");
+      empty(
+        wrap,
+        "Prepare a deterministic proposal",
+        "The gateway derives candidates from this unit. AI may explain them, but cannot apply canonical changes.",
+        "Prepare proposal",
+        () => this.prepare()
+      );
+      button(wrap, "Ask AI to explain shelving criteria", () => this.plugin.askAiScoped(
+        "Explain which stage notes might be durable. Do not write or apply canonical changes.",
+        { moduleId: unit.module_id, unitId: unit.id }
+      ), "quiet");
+      return;
+    }
+    this.syncSelection(
+      unit.id,
+      map,
+      proposal
+    );
+    const summary = section(root, "Proposed changes", proposal.summary || "Select only changes you want to apply.");
+    for (const item of proposal.items) {
+      const row4 = summary.createDiv({ cls: "los-proposal-row" });
+      const toggle = row4.createEl("input", { attr: { type: "checkbox", "aria-label": `Select ${item.title}` } });
+      toggle.checked = this.selected.has(item.id);
+      toggle.addEventListener("change", () => {
+        if (toggle.checked) this.selected.add(item.id);
+        else this.selected.delete(item.id);
+      });
+      const copy = row4.createDiv();
+      copy.createEl("h3", { text: item.title });
+      if (item.destination) copy.createDiv({ cls: "los-detail-id", text: item.destination });
+      if (item.rationale) copy.createEl("p", { text: item.rationale });
+      if (item.diff) copy.createEl("pre", { cls: "los-proposal-diff", text: item.diff });
+    }
+    const guard = root.createDiv({ cls: "los-validation-preview" });
+    guard.createEl("strong", { text: "Apply is explicit and selected-only." });
+    guard.createEl("p", { text: "The core validates and regenerates atomically; broad AI writes are never accepted." });
+    const actions = root.createDiv({ cls: "los-actions" });
+    button(actions, "Approve selected changes", () => this.apply(), "success");
+    button(actions, "Ask AI to review proposal", () => this.plugin.askAiScoped(
+      `Review these shelving proposal IDs: ${[...this.selected].join(", ")}. Do not apply changes.`,
+      { moduleId: unit.module_id, unitId: unit.id }
+    ), "warm");
+  }
+  renderQueue(root) {
+    const wrap = section(root, "Ready to shelve");
+    const rows = this.plugin.store.units().filter(
+      (row4) => row4.status === "ready-to-shelve"
+    );
+    if (!rows.length) empty(wrap, "No unit is waiting", "Keep working from any active unit.");
+    for (const unit of rows) unitCard(wrap, this.plugin, unit);
+  }
+  async prepare() {
+    const unitId = this.unitId;
+    if (!unitId) {
+      new import_obsidian17.Notice("Choose a unit before preparing shelving.");
+      return;
+    }
+    try {
+      await this.plugin.mutate(
+        () => this.plugin.gateway.prepareShelving(unitId, this.expectedRevisions)
+      );
+      await this.loadProposal();
+      this.render();
+    } catch (error) {
+      new import_obsidian17.Notice(errorMessage(error));
+    }
+  }
+  async apply() {
+    const unitId = this.unitId;
+    if (!unitId) {
+      new import_obsidian17.Notice("Choose a unit before applying shelving.");
+      return;
+    }
+    if (!this.selected.size) {
+      new import_obsidian17.Notice("Select at least one proposal.");
+      return;
+    }
+    try {
+      await this.plugin.mutate(
+        () => this.plugin.gateway.applyShelving(
+          unitId,
+          [...this.selected],
+          this.expectedRevisions
+        )
+      );
+      this.proposal = null;
+      this.selected.clear();
+      this.selectionScope = null;
+      this.render();
+    } catch (error) {
+      new import_obsidian17.Notice(errorMessage(error));
+    }
+  }
+};
+
+// src/features/unit/model.ts
+var ARTIFACT_LABELS = [
+  [
+    "ultimate_reference",
+    "Ultimate Reference"
+  ],
+  [
+    "exercise_bank",
+    "Exercise Bank"
+  ],
+  [
+    "mock_exam",
+    "Mock Exam"
+  ]
+];
+function errorMessage3(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function readUnitViewState(value) {
+  if (!isRecord2(value)) {
+    return {
+      hasStageId: false
+    };
+  }
+  const hasStageId = Object.prototype.hasOwnProperty.call(
+    value,
+    "stageId"
+  );
+  const unitId = asString(value.unitId) ?? void 0;
+  const stageId = !hasStageId ? void 0 : value.stageId === null ? null : asString(value.stageId);
+  return {
+    unitId,
+    stageId,
+    hasStageId
+  };
+}
+function readUnitRecord(record10, fallbackId) {
+  if (!record10) {
+    return null;
+  }
+  const id2 = asString(record10.id) ?? fallbackId;
+  const moduleId = asString(record10.module_id);
+  if (!id2 || !moduleId) {
+    return null;
+  }
+  const knowledgeMap = isRecord2(
+    record10.knowledge_map
+  ) ? record10.knowledge_map : null;
+  const knowledgeNodes = asRecords(
+    knowledgeMap?.nodes
+  ).map((node) => {
+    const nodeId = asString(node.id);
+    const title = asString(node.title);
+    const summary = asText(node.summary);
+    if (!nodeId || !title || !summary) {
+      return null;
+    }
+    return {
+      id: nodeId,
+      title,
+      summary,
+      buildsOn: asStrings(
+        node.builds_on
+      ),
+      conceptIds: asStrings(
+        node.concept_ids
+      )
+    };
+  }).filter(
+    (node) => node !== null
+  );
+  return {
+    record: record10,
+    id: id2,
+    moduleId,
+    componentId: asString(record10.component_id),
+    kind: asString(record10.kind) ?? "unit",
+    title: asString(record10.title) ?? id2,
+    scope: asText(record10.scope) ?? "",
+    knowledgeSummary: asText(
+      knowledgeMap?.summary
+    ) ?? "",
+    knowledgeNodes,
+    needsStudyMap: record10.needs_study_map === true
+  };
+}
+function readMaterialOptions(value, unitId, selectionsValue) {
+  const options = [];
+  const selectionKeys = new Set(
+    asRecords(selectionsValue).flatMap((selection) => {
+      const routeId = asString(selection.route_id);
+      const sourceId = asString(selection.source_id);
+      const locator = asText(selection.locator);
+      return routeId && sourceId && locator ? [`${routeId}\0${sourceId}\0${locator}`] : [];
+    })
+  );
+  for (const entry of asRecords(value)) {
+    for (const route2 of asRecords(entry.unit_routes)) {
+      if (asString(route2.unit_id) !== unitId) {
+        continue;
+      }
+      const title = asString(route2.title);
+      const format = asString(route2.format);
+      const angle = asText(route2.angle);
+      const routeId = asString(route2.id);
+      if (!routeId || !title || !format || !angle) {
+        continue;
+      }
+      const sourceId = asString(route2.source_id) ?? asString(entry.source_id);
+      const locator = asText(route2.locator);
+      options.push({
+        record: route2,
+        title,
+        format,
+        angle,
+        covers: asStrings(route2.covers),
+        depth: asString(route2.depth) ?? "course-aligned",
+        scope: asString(route2.scope) ?? "complementary",
+        locator,
+        sourceId,
+        routeId,
+        canOpen: hasDirectResourceTarget(route2),
+        canChoose: Boolean(sourceId && locator),
+        selected: Boolean(
+          sourceId && locator && selectionKeys.has(
+            `${routeId}\0${sourceId}\0${locator}`
+          )
+        )
+      });
+    }
+  }
+  return options;
+}
+function readResource(record10) {
+  const label = asString(record10.label) ?? asString(record10.title) ?? asString(record10.source_id) ?? "Resource";
+  return {
+    record: record10,
+    id: asString(record10.id),
+    kind: asString(record10.kind) ?? "read",
+    label,
+    locator: asText(record10.locator),
+    sourceId: asString(record10.source_id),
+    scopeTriage: asString(record10.scope_triage),
+    canOpen: hasDirectResourceTarget(record10)
+  };
+}
+function readStageAttachment(value) {
+  if (typeof value === "string") {
+    if (!value.length) {
+      return null;
+    }
+    return {
+      path: value,
+      label: value.split("/").pop() || value
+    };
+  }
+  if (!isRecord2(value)) {
+    return null;
+  }
+  const path = asString(value.path) ?? asString(value.vault_path);
+  if (!path) {
+    return null;
+  }
+  return {
+    path,
+    label: asString(value.label) ?? path
+  };
+}
+function readStage(record10) {
+  const id2 = asString(record10.id);
+  if (!id2) {
+    return null;
+  }
+  const attachments = Array.isArray(
+    record10.attachments
+  ) ? record10.attachments.map(readStageAttachment).filter(
+    (attachment) => attachment !== null
+  ) : [];
+  return {
+    record: record10,
+    id: id2,
+    title: asString(record10.title) ?? id2,
+    status: asString(record10.status) ?? "active",
+    scopeTriage: asText(record10.scope_triage) ?? "",
+    objective: asText(record10.objective),
+    estimateMinutes: asText(record10.estimate_minutes),
+    examCritical: record10.exam_critical === true,
+    concepts: asStrings(record10.concepts),
+    resources: asRecords(
+      record10.resources
+    ).map(readResource),
+    doneWhen: asStrings(
+      record10.done_when
+    ).filter(
+      (criterion) => Boolean(criterion.trim())
+    ),
+    attachments,
+    sourceFeedback: asRecords(
+      record10.source_feedback
+    )
+  };
+}
+function readStudyMap(record10) {
+  const stages = asRecords(
+    record10.stages
+  ).map(readStage).filter(
+    (stage) => stage !== null
+  );
+  return {
+    record: record10,
+    currentStageId: asString(
+      record10.current_stage
+    ),
+    stages,
+    detours: asRecords(record10.detours),
+    planTemplateVersion: asFiniteNumber(
+      record10.plan_template_version
+    )
+  };
+}
+function readArtifacts(value) {
+  if (!isRecord2(value)) {
+    return {
+      named: [],
+      other: []
+    };
+  }
+  const named = [];
+  for (const [key] of ARTIFACT_LABELS) {
+    const id2 = asString(value[key]);
+    if (id2) {
+      named.push([key, id2]);
+    }
+  }
+  return {
+    named,
+    other: asStrings(value.other)
+  };
+}
+function artifactLabel(key) {
+  return ARTIFACT_LABELS.find(
+    ([candidate2]) => candidate2 === key
+  )?.[1] ?? key;
+}
+function fallbackRecord(id2) {
+  return {
+    id: id2,
+    type: "record",
+    title: id2
+  };
+}
+
+// src/features/unit/context.ts
+function renderStageContext(view, center, unit, studyMap, stage) {
+  const expectedRevisions = view.plugin.store.artifactGuard(
+    unit.id,
+    typeof studyMap.record.id === "string" ? studyMap.record.id : null
+  );
+  const detours = studyMap.detours.filter(
+    (row4) => asString(
+      row4.spawned_by_stage
+    ) === stage.id && asString(
+      row4.status
+    ) !== "resolved" && asString(
+      row4.id
+    ) !== null
+  );
+  if (!stage.attachments.length && !detours.length && !stage.sourceFeedback.length) {
+    return;
+  }
+  const detail = disclosure(
+    center,
+    "Stage context"
+  );
+  for (const attachment of stage.attachments) {
+    button(
+      detail,
+      attachment.label,
+      () => view.plugin.openAuthoredPath(
+        attachment.path
+      ),
+      "quiet"
+    );
+  }
+  for (const detour of detours) {
+    const detourId = asString(detour.id);
+    if (!detourId) {
+      continue;
+    }
+    const title = asString(detour.title) ?? "Prerequisite detour";
+    const classification = asString(
+      detour.classification
+    ) ?? "required-now";
+    const row4 = detail.createDiv({
+      cls: "los-detour-row"
+    });
+    row4.createEl("strong", {
+      text: "Open prerequisite detour"
+    });
+    row4.createEl("p", {
+      text: `${title} \xB7 ${classification} \xB7 returns here`
+    });
+    button(
+      row4,
+      "Resolve and return",
+      () => view.mutate(
+        () => view.plugin.gateway.resolveDetour(
+          unit.id,
+          detourId,
+          "Resolved from the unit workspace.",
+          expectedRevisions
+        )
+      ),
+      "quiet"
+    );
+  }
+  for (const feedback of stage.sourceFeedback) {
+    const sourceId = asString(
+      feedback.source_id
+    ) ?? "Unknown source";
+    const value = asText(
+      feedback.feedback
+    ) ?? "Feedback recorded";
+    detail.createDiv({
+      cls: "los-row",
+      text: `${sourceId} \xB7 ${value}`
+    });
+  }
+}
+function renderArtifacts(view, root, unit) {
+  const wrap = section(
+    root,
+    "Unit artifacts",
+    "Durable notes remain globally canonical; this unit owns stable references."
+  );
+  const artifacts = readArtifacts(
+    unit.record.artifacts
+  );
+  let count2 = 0;
+  for (const [key, id2] of artifacts.named) {
+    count2 += 1;
+    const card = wrap.createDiv({
+      cls: "los-artifact-card"
+    });
+    card.createEl("h3", {
+      text: artifactLabel(key)
+    });
+    const record10 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
+    chip(
+      card,
+      record10,
+      (selected) => view.plugin.nav.openRecord(
+        selected
+      )
+    );
+  }
+  for (const id2 of artifacts.other) {
+    count2 += 1;
+    const record10 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
+    chip(
+      wrap,
+      record10,
+      (selected) => view.plugin.nav.openRecord(
+        selected
+      )
+    );
+  }
+  if (!count2) {
+    empty(
+      wrap,
+      "No durable artifact linked yet",
+      "Working notes stay with the stage until shelving is approved."
+    );
+  }
+}
+
+// src/features/stage-resources.ts
+var TRIAGE_HEADING = {
+  "required-now": "Do this",
+  "helpful-now": "If you get stuck",
+  deferred: "Depth \u2014 not now",
+  "reference-only": "Reference \u2014 preserved, not reading for this stage"
+};
+function triageSummary(resources) {
+  const count2 = (rank) => resources.filter(
+    (resource) => resource.scopeTriage === rank
+  ).length;
+  const required = count2("required-now") + resources.filter((resource) => !resource.scopeTriage).length;
+  const stuck = count2("helpful-now");
+  const preserved = count2("deferred") + count2("reference-only");
+  const parts = [];
+  if (required) parts.push(`${required} required now`);
+  if (stuck) parts.push(`${stuck} if stuck`);
+  if (preserved) parts.push(`${preserved} for reference`);
+  return parts.join(" \xB7 ");
+}
+function currentWorkResource(resources) {
+  return resources.find(
+    (resource) => resource.scopeTriage === "required-now"
+  ) ?? resources.find(
+    (resource) => !resource.scopeTriage
+  ) ?? null;
+}
+var MATERIAL_TYPE_ICON = {
+  "course-material": "presentation",
+  exercise: "pencil-line",
+  solutions: "clipboard-check",
+  exam: "graduation-cap",
+  book: "book-open",
+  paper: "newspaper",
+  video: "play",
+  website: "globe",
+  documentation: "file-text",
+  code: "code",
+  course: "library",
+  article: "file-text"
+};
+function normaliseMaterialType(declared) {
+  switch (declared) {
+    case "course-material":
+      return "course-material";
+    case "exercise":
+    case "practice":
+    case "practise":
+    case "problem-set":
+    case "homework":
+    case "quiz":
+      return "exercise";
+    case "solutions":
+      return "solutions";
+    case "exam":
+      return "exam";
+    case "book":
+    case "textbook":
+      return "book";
+    case "paper":
+      return "paper";
+    case "video":
+      return "video";
+    case "website":
+    case "web":
+    case "web-page":
+    case "webpage":
+      return "website";
+    case "documentation":
+    case "docs":
+      return "documentation";
+    case "code":
+      return "code";
+    case "course":
+      return "course";
+    default:
+      return "article";
+  }
+}
+function materialTypeIcon(type) {
+  return MATERIAL_TYPE_ICON[normaliseMaterialType((type ?? "").toLowerCase())];
+}
+var angleDetailSequence = 0;
+function whyThisOne(copy, detailText, fillFoot) {
+  const detailId = `los-resource-angle-detail-${++angleDetailSequence}`;
+  const detail = copy.createDiv({
+    cls: "los-resource-angle-detail",
+    text: detailText,
+    attr: { hidden: "", id: detailId }
+  });
+  const foot = copy.createDiv({ cls: "los-resource-foot" });
+  fillFoot?.(foot);
+  let expanded = false;
+  const toggle = button(
+    foot,
+    "\u25B8 Why this one",
+    () => {
+      expanded = !expanded;
+      toggle.setText(`${expanded ? "\u25BE" : "\u25B8"} Why this one`);
+      toggle.setAttr("aria-expanded", String(expanded));
+      if (expanded) detail.removeAttribute("hidden");
+      else detail.setAttr("hidden", "");
+    },
+    "quiet"
+  );
+  toggle.addClass("los-resource-angle-trigger");
+  toggle.setAttrs({ "aria-controls": detailId, "aria-expanded": "false" });
+}
+function renderMaterialCautions(parent, record10) {
+  for (const asset of Array.isArray(record10.requires_assets) ? record10.requires_assets : []) {
+    if (!isRecord2(asset) || typeof asset.name !== "string") continue;
+    const part2 = asText(asset.needed_for);
+    const origin = asText(asset.obtain_from);
+    parent.createDiv({ cls: "los-micro", text: `${asset.material_uri ? "Required file" : "Not registered locally"}: ${asset.name}` + (part2 ? ` \u2014 needed for ${part2}` : "") + (origin ? `. Obtain from ${origin}.` : ".") });
+  }
+  if (Array.isArray(record10.exposes_solutions_for) && record10.exposes_solutions_for.length) {
+    parent.createDiv({ cls: "los-micro", text: "Contains related task solutions. Read after your attempt, and report prior exposure before using those tasks as independent evidence." });
+  }
+}
+
+// src/features/unit/material-drawer.ts
+var import_obsidian19 = require("obsidian");
+
+// src/features/unit/material-card.ts
+var import_obsidian18 = require("obsidian");
+
+// src/contracts/material-span.ts
+var MATERIAL_SPAN_CONTRACT = "material-span-v1";
+var AVAILABILITY = /* @__PURE__ */ new Set([
+  "local-observed",
+  "local-unavailable",
+  "remote-unobserved",
+  "unavailable"
+]);
+function record8(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
+function text6(value) {
+  return typeof value === "string" && value.length > 0 ? value : null;
+}
+function spanFile(value) {
+  const item = record8(value);
+  if (!item) return null;
+  const uri2 = text6(item.material_uri);
+  const digest = text6(item.file_sha256);
+  const extraction = text6(item.extraction);
+  if (!uri2 || !digest || !extraction) return null;
+  const pages = Array.isArray(item.pages) ? item.pages.filter((page) => Number.isInteger(page)) : [];
+  return {
+    material_uri: uri2,
+    format: text6(item.format) ?? "unknown",
+    file_sha256: digest,
+    extraction,
+    excerpt: typeof item.excerpt === "string" ? item.excerpt : null,
+    excerpt_truncated: item.excerpt_truncated === true,
+    pages,
+    page_total: Number.isInteger(item.page_total) ? item.page_total : null,
+    reason: text6(item.reason)
+  };
+}
+function asMaterialSpan(value) {
+  const response = record8(value);
+  if (!response || response.contract !== MATERIAL_SPAN_CONTRACT || response.schema_version !== 1 || typeof response.snapshot_id !== "string" || !/^sha256:[a-f0-9]{64}$/.test(response.snapshot_id) || !AVAILABILITY.has(String(response.availability)) || !Array.isArray(response.spans)) return null;
+  const unitId = text6(response.unit_id);
+  const moduleId = text6(response.module_id);
+  const routeId = text6(response.route_id);
+  if (!unitId || !moduleId || !routeId) return null;
+  const files = [];
+  for (const entry of response.spans) {
+    const decoded = spanFile(entry);
+    if (!decoded) return null;
+    files.push(decoded);
+  }
+  const analysis = record8(response.analysis_refs);
+  const notesTotal = analysis && Number.isInteger(analysis.analysis_notes_total) ? analysis.analysis_notes_total : 0;
+  return {
+    snapshot_id: response.snapshot_id,
+    unit_id: unitId,
+    module_id: moduleId,
+    route_id: routeId,
+    source_id: text6(response.source_id),
+    locator: text6(response.locator),
+    url: text6(response.url),
+    availability: response.availability,
+    files,
+    analysis_notes_total: notesTotal
+  };
+}
+
+// src/features/unit/material-card.ts
+var PURPOSES = [
+  { value: "course-aligned", label: "Follow the course", sub: "Exactly what this lecture taught" },
+  { value: "orientation", label: "Get oriented", sub: "The shape of the idea before the detail" },
+  { value: "intuition", label: "Build intuition", sub: "Why it works, in pictures and words" },
+  { value: "derivation", label: "Derive it", sub: "The formal argument, step by step" },
+  { value: "practice", label: "Practise", sub: "Problems to work, with solutions to check" },
+  { value: "implementation", label: "Implement it", sub: "Code it and run it" },
+  { value: "advanced-reference", label: "Go deeper", sub: "Beyond this stage \u2014 kept, not required" },
+  { value: "unassessed", label: "Not yet evaluated", sub: "No one has judged this yet \u2014 not a scope judgment" }
+];
+var UNASSIGNED_PURPOSE = {
+  value: "",
+  label: "Purpose not yet assigned",
+  sub: "Shown last; never dropped"
+};
+function normalisePurpose(value) {
+  const candidate2 = (value ?? "").trim().toLowerCase();
+  return PURPOSES.some((def) => def.value === candidate2) ? candidate2 : "";
+}
+function purposeLabel(value) {
+  const normal = normalisePurpose(value);
+  return PURPOSES.find((def) => def.value === normal)?.label ?? UNASSIGNED_PURPOSE.label;
+}
+function routeForResource(resource, options) {
+  const routeId = asString(resource.record.route_id);
+  if (routeId) return options.find((option) => option.routeId === routeId) ?? null;
+  if (!resource.sourceId || !resource.locator) return null;
+  const matches2 = options.filter((option) => option.sourceId === resource.sourceId && option.locator === resource.locator);
+  return matches2.length === 1 ? matches2[0] ?? null : null;
+}
+function projectedAvailability(record10) {
+  const local = asString(record10.material_uri) ?? asString(record10.material_path);
+  if (local) {
+    return record10.material_exists === false ? { kind: "local-missing", label: "Local copy missing", detail: "Registered locally, but the file is not on this computer." } : { kind: "local", label: "Local file", detail: "On this computer; a bounded excerpt can be inspected." };
+  }
+  const vault = asString(record10.vault_path);
+  if (vault && !vault.toLowerCase().startsWith("material://")) {
+    return { kind: "local", label: "In the vault", detail: "A file inside this vault." };
+  }
+  if (safeWebUrl(record10.url)) {
+    return { kind: "remote", label: "Remote", detail: "Opens in your browser. LearningOS never fetches it." };
+  }
+  return { kind: "none", label: "Not available", detail: "No local copy and no link is registered for this material." };
+}
+function hasOwnTarget(record10) {
+  return Boolean(asString(record10.material_uri) ?? asString(record10.material_path) ?? asString(record10.vault_path) ?? asString(record10.url));
+}
+var TYPE_LABEL = {
+  "course-material": "Course",
+  exercise: "Exercise",
+  practice: "Exercise",
+  practise: "Exercise",
+  solutions: "Solutions",
+  exam: "Past exam",
+  book: "Book",
+  textbook: "Book",
+  paper: "Paper",
+  video: "Video",
+  website: "Web page",
+  documentation: "Documentation",
+  code: "Code",
+  course: "Course",
+  article: "Article"
+};
+function materialKind(record10, route2, workingKind) {
+  const declared = (asString(record10.format) ?? route2?.format ?? "").toLowerCase();
+  const base = TYPE_LABEL[declared] ?? (workingKind === "practise" ? "Exercise" : workingKind === "watch" ? "Video" : "Material");
+  const file = asString(record10.material_uri) ?? asString(record10.material_path) ?? asString(route2?.record.material_uri) ?? "";
+  const extension = file.match(/\.([a-z0-9]{2,5})$/i)?.[1]?.toUpperCase();
+  if (!extension || base === "Video" || base === "Web page") return base;
+  return `${base} ${extension}`;
+}
+var spans = /* @__PURE__ */ new Map();
+function spanKey(snapshot, unitId, routeId) {
+  return `${snapshot ?? "none"}|${unitId}|${routeId}`;
+}
+function inspect(deps, routeId) {
+  const snapshot = deps.plugin.store.snapshotId;
+  const key = spanKey(snapshot, deps.unitId, routeId);
+  if (spans.get(key)?.status === "loading") return;
+  spans.set(key, { status: "loading" });
+  if (spans.size > 40) spans.delete(spans.keys().next().value);
+  deps.refresh();
+  void deps.plugin.gateway.materialSpan(deps.unitId, routeId, {
+    extract: true,
+    expectedSnapshot: snapshot
+  }).then((value) => {
+    const span = asMaterialSpan(value);
+    spans.set(key, span ? { status: "ready", span } : { status: "error", message: "Core answered in a shape this build cannot read.", stale: false });
+  }, (error) => {
+    const stale = error instanceof GatewayError && error.exitCode === 3;
+    spans.set(key, {
+      status: "error",
+      message: stale ? "The records changed since this projection was built. Rebuild it, then inspect again." : errorMessage(error),
+      stale
+    });
+  }).finally(() => deps.refresh());
+}
+function renderSpan(parent, deps, routeId) {
+  const state = spans.get(spanKey(deps.plugin.store.snapshotId, deps.unitId, routeId));
+  if (!state) return;
+  const box = parent.createDiv({ cls: "los-span-panel", attr: { role: "region", "aria-label": "Material excerpt" } });
+  if (state.status === "loading") {
+    box.createDiv({ cls: "los-micro", text: "Reading a bounded material excerpt from Core\u2026" });
+    return;
+  }
+  if (state.status === "error") {
+    box.createDiv({ cls: "los-micro los-span-error", text: state.message });
+    if (state.stale && deps.plugin.generate) {
+      button(box, "Rebuild projection", () => deps.plugin.generate?.(), "tertiary");
+    }
+    return;
+  }
+  const span = state.span;
+  const head = box.createDiv({ cls: "los-span-head" });
+  head.createEl("strong", { text: SPAN_AVAILABILITY[span.availability] });
+  if (span.locator) head.createSpan({ cls: "los-micro", text: span.locator });
+  if (span.availability === "remote-unobserved") {
+    box.createDiv({ cls: "los-micro", text: "Remote material is never fetched implicitly. Open it in your browser to read it." });
+    if (span.url) box.createDiv({ cls: "los-span-url", text: span.url });
+    return;
+  }
+  if (span.availability === "local-unavailable") {
+    box.createDiv({ cls: "los-micro", text: "The file is registered but not on this computer, so nothing could be read." });
+    return;
+  }
+  if (span.availability === "unavailable") {
+    box.createDiv({ cls: "los-micro", text: "No local copy and no link are registered for this route." });
+    return;
+  }
+  for (const file of span.files) {
+    const entry = box.createDiv({ cls: "los-span-file" });
+    const facts = [
+      file.format.toUpperCase(),
+      file.pages.length ? `pages ${file.pages[0]}\u2013${file.pages[file.pages.length - 1]}${file.page_total ? ` of ${file.page_total}` : ""}` : "",
+      `sha256 ${file.file_sha256.replace(/^sha256:/, "").slice(0, 12)}\u2026`
+    ].filter(Boolean);
+    entry.createDiv({ cls: "los-micro", text: facts.join(" \xB7 ") });
+    if (file.extraction === "unreadable") {
+      entry.createDiv({ cls: "los-micro los-span-error", text: `Unreadable: ${file.reason ?? "no reason given"}` });
+      continue;
+    }
+    if (file.excerpt) {
+      entry.createEl("pre", { cls: "los-span-excerpt", text: file.excerpt });
+      const pagesTruncated = file.extraction === "truncated" || file.extraction === "range-truncated";
+      if (file.excerpt_truncated || pagesTruncated) {
+        entry.createDiv({ cls: "los-micro", text: pagesTruncated && file.pages.length && file.page_total ? `Preview covers pages ${file.pages[0]}\u2013${file.pages[file.pages.length - 1]} of ${file.page_total}; open the file for the remaining pages.` : "Excerpt bounded by Core; open the file for the rest." });
+      }
+    }
+  }
+  if (span.analysis_notes_total) {
+    box.createDiv({ cls: "los-micro", text: `${span.analysis_notes_total} analysis ${span.analysis_notes_total === 1 ? "note reads" : "notes read"} this route.` });
+  }
+}
+var SPAN_AVAILABILITY = {
+  "local-observed": "Local file read just now",
+  "local-unavailable": "Local copy missing",
+  "remote-unobserved": "Remote \u2014 not fetched",
+  unavailable: "Not available"
+};
+function renderAvailability(parent, availability, route2, deps) {
+  const line = parent.createDiv({ cls: `los-material-availability is-${availability.kind}` });
+  line.createSpan({ cls: "los-material-availability-label", text: availability.label });
+  line.createSpan({ cls: "los-micro", text: availability.detail });
+  if (availability.kind === "local" && route2) {
+    const state = spans.get(spanKey(deps.plugin.store.snapshotId, deps.unitId, route2.routeId));
+    const control = button(line, state?.status === "ready" ? "Inspect again" : "Inspect span", () => inspect(deps, route2.routeId), "tertiary");
+    control.addClass("los-span-trigger");
+    control.disabled = state?.status === "loading";
+  } else if (availability.kind === "local" && !route2) {
+    line.createSpan({ cls: "los-micro", text: "No single registered route, so its span cannot be inspected." });
+  }
+}
+function renderPlacementCard(parent, resource, route2, source, deps, options = {}) {
+  const card = parent.createDiv({
+    cls: `los-resource-row los-material-card los-triage-${resource.scopeTriage || "unranked"}${options.prominent ? " is-prominent" : ""}`
+  });
+  icon(card.createSpan({ cls: "los-material-card-icon" }), materialTypeIcon(asString(resource.record.format) ?? route2?.format ?? resource.kind));
+  const copy = card.createDiv({ cls: "los-resource-copy" });
+  copy.createDiv({ cls: "los-material-purpose", text: purposeLabel(route2?.depth ?? asString(resource.record.depth)) });
+  copy.createEl("strong", { cls: "los-material-title", text: resource.label });
+  const meta = copy.createDiv({ cls: "los-resource-row-meta" });
+  meta.createSpan({ cls: "los-material-kind", text: materialKind(resource.record, route2, resource.kind) });
+  if (resource.locator) meta.createSpan({ cls: "los-micro los-resource-locator", text: resource.locator });
+  meta.createSpan({
+    cls: `los-resource-priority los-resource-priority-${resource.scopeTriage || "unranked"}`,
+    text: resource.scopeTriage && resource.scopeTriage in TRIAGE_HEADING ? TRIAGE_HEADING[resource.scopeTriage] : "Primary \xB7 unranked"
+  });
+  for (const badge2 of options.badges ?? []) meta.createSpan({ cls: "los-micro los-resource-badge", text: badge2 });
+  if (source) chip(meta, source, deps.renderer.openSource);
+  const angle = asText(resource.record.angle) ?? route2?.angle ?? null;
+  if (angle) copy.createDiv({ cls: "los-resource-angle", text: angle });
+  renderMaterialCautions(copy, route2?.record ?? resource.record);
+  renderAvailability(copy, projectedAvailability(route2 && !hasOwnTarget(resource.record) ? route2.record : resource.record), route2, deps);
+  if (route2) renderSpan(copy, deps, route2.routeId);
+  const detail = asText(resource.record.angle_detail) ?? asText(route2?.record.angle_detail);
+  if (detail) whyThisOne(copy, detail);
+  const actions = card.createDiv({ cls: "los-actions los-resource-actions" });
+  if (resource.canOpen && deps.renderer.openResource) {
+    button(actions, "Open", () => deps.renderer.openResource?.(resource), "quiet");
+  } else if (route2?.canOpen) {
+    button(actions, "Open", () => deps.plugin.openResource(route2.record), "quiet");
+  } else if (source && hasDirectResourceTarget(source) && deps.renderer.openSourceResource) {
+    button(actions, "Open source", () => deps.renderer.openSourceResource?.(source), "quiet");
+  }
+  if (resource.sourceId && deps.renderer.rateResource) {
+    const sourceId = resource.sourceId;
+    const resourceId = resource.id;
+    const rate = (verdict) => deps.renderer.rateResource?.(sourceId, resourceId, verdict);
+    overflowMenu(actions, [
+      ["Helpful", () => rate("helpful")],
+      ["Too advanced", () => rate("too-advanced")],
+      ["Useful for review", () => rate("useful-for-review")]
+    ], resourceId ? `Rate ${resource.label}` : `Rate ${resource.label} (whole source)`);
+  }
+  options.actions?.(actions);
+  return card;
+}
+function renderRouteCard(parent, option, source, deps, options = {}) {
+  const card = parent.createDiv({ cls: "los-resource-row los-material-card los-source-entry los-triage-unranked" });
+  icon(card.createSpan({ cls: "los-material-card-icon" }), materialTypeIcon(option.format));
+  const copy = card.createDiv({ cls: "los-resource-copy" });
+  copy.createDiv({ cls: "los-material-purpose", text: purposeLabel(option.depth) });
+  copy.createEl("strong", { cls: "los-material-title", text: option.title });
+  const meta = copy.createDiv({ cls: "los-resource-row-meta" });
+  meta.createSpan({ cls: "los-material-kind", text: materialKind(option.record, option, "") });
+  if (option.locator) meta.createSpan({ cls: "los-micro los-resource-locator", text: option.locator });
+  for (const badge2 of options.badges ?? []) meta.createSpan({ cls: "los-micro los-resource-badge", text: badge2 });
+  if (option.selected) meta.createSpan({ cls: "los-micro los-resource-chosen", text: "Chosen for this lecture" });
+  if (source) chip(meta, source, deps.renderer.openSource);
+  if (option.angle) copy.createDiv({ cls: "los-resource-angle", text: option.angle });
+  renderMaterialCautions(copy, option.record);
+  renderAvailability(copy, projectedAvailability(option.record), option, deps);
+  renderSpan(copy, deps, option.routeId);
+  const coverage = options.coverage?.length ? `Covers: ${options.coverage.join(" \xB7 ")}` : "";
+  const rationale = [asText(option.record.angle_detail), coverage].filter(Boolean).join("\n\n");
+  if (rationale) whyThisOne(copy, rationale);
+  const actions = card.createDiv({ cls: "los-actions los-resource-actions" });
+  if (option.canOpen) button(actions, "Open", () => deps.plugin.openResource(option.record), "quiet");
+  options.actions?.(actions);
+  return card;
+}
+
+// src/features/unit/material-drawer.ts
+var STAGE_GROUPS = [
+  { key: "required", label: "Required now", description: "What this stage needs you to work through to finish it." },
+  { key: "stuck", label: "If stuck", description: "Another explanation when the required work does not land." },
+  { key: "reference", label: "For reference", description: "Kept for depth and reference \u2014 not reading for this stage." }
+];
+function triageGroup(resource) {
+  const rank = resource.scopeTriage;
+  if (!rank || rank === "required-now") return "required";
+  if (rank === "helpful-now") return "stuck";
+  return "reference";
+}
+var MaterialComparisonModal = class extends import_obsidian19.Modal {
+  constructor(app, options) {
+    super(app);
+    this.options = options;
+  }
+  group = "required";
+  query = "";
+  restoreAccessibility = null;
+  body = null;
+  rail = null;
+  get deps() {
+    return {
+      plugin: this.options.plugin,
+      unitId: this.options.unit.id,
+      renderer: this.options.renderer,
+      refresh: () => this.renderBody()
+    };
+  }
+  stageEntries(key) {
+    return this.options.resources.filter((resource) => triageGroup(resource) === key);
+  }
+  courseRoutes() {
+    const { plugin, unit } = this.options;
+    const sourceMap = plugin.store.sourceMap(unit.moduleId);
+    return plugin.store.unitsFor(unit.moduleId, unit.componentId).map((record10) => readUnitRecord(record10, asString(record10.id))).filter((owner) => owner !== null && owner.id !== unit.id).flatMap((owner) => readMaterialOptions(sourceMap?.sources, owner.id, owner.record.source_selections).map((option) => ({ owner, option })));
+  }
+  courseLabel() {
+    const { plugin, unit } = this.options;
+    const component = unit.componentId ? plugin.store.get(unit.componentId) : null;
+    const module2 = plugin.store.get(unit.moduleId);
+    return asString(component?.title) ?? asString(module2?.title) ?? "this course";
+  }
+  onOpen() {
+    const { plugin, unit, stage, resources } = this.options;
+    plugin.router.openOverlay({ kind: "material-comparison", unitId: unit.id, stageId: stage.id });
+    const first = STAGE_GROUPS.find((def) => this.stageEntries(def.key).length);
+    this.group = first?.key ?? (this.options.materialOptions.length ? "lecture" : "required");
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-material-drawer");
+    const header2 = root.createDiv({ cls: "los-compare-head" });
+    const heading = header2.createEl("h1", {
+      text: "Compare materials",
+      attr: { id: "los-material-drawer-heading", tabindex: "-1" }
+    });
+    header2.createEl("p", {
+      cls: "los-micro",
+      text: `${stage.title} \xB7 ${unit.title} \xB7 ${resources.length} ${resources.length === 1 ? "source" : "sources"} on this stage`
+    });
+    const layout = root.createDiv({ cls: "los-compare-layout" });
+    this.rail = layout.createDiv({ cls: "los-compare-groups" });
+    this.body = layout.createDiv({ cls: "los-compare-body" });
+    this.renderRail();
+    this.renderBody();
+    root.createEl("p", {
+      cls: "los-micro los-material-drawer-note",
+      text: "Browsing never deletes or hides the complete source record. Choosing material is a separate action."
+    });
+    const close = button(root.createDiv({ cls: "los-actions" }), "Close", () => this.close(), "quiet");
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--material-drawer",
+      labelledBy: "los-material-drawer-heading",
+      initialFocus: () => heading
+    });
+    (heading ?? close).focus();
+  }
+  onClose() {
+    this.options.plugin.router.clearOverlay();
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+    this.body = null;
+    this.rail = null;
+  }
+  count(key) {
+    if (key === "lecture") return this.options.materialOptions.length;
+    if (key === "course") return this.courseRoutes().length;
+    return this.stageEntries(key).length;
+  }
+  renderRail() {
+    const rail = this.rail;
+    if (!rail) return;
+    rail.empty();
+    rail.createEl("h2", { cls: "los-compare-eyebrow", text: "What you need" });
+    const stageList = rail.createDiv({ cls: "los-compare-group-list", attr: { role: "group", "aria-label": "Stage materials by need" } });
+    enableButtonGroupKeyboardNavigation(stageList, "vertical");
+    for (const def of STAGE_GROUPS) this.railButton(stageList, def.key, def.label);
+    rail.createEl("h2", { cls: "los-compare-eyebrow", text: "Beyond this stage" });
+    const wider = rail.createDiv({ cls: "los-compare-group-list", attr: { role: "group", "aria-label": "Wider material" } });
+    enableButtonGroupKeyboardNavigation(wider, "vertical");
+    this.railButton(wider, "lecture", "This lecture\u2019s full menu");
+    this.railButton(wider, "course", `All of ${this.courseLabel()}`);
+    const total = this.options.resources.length;
+    const split = STAGE_GROUPS.map((def) => this.count(def.key));
+    rail.createEl("p", {
+      cls: "los-micro los-compare-reconcile",
+      text: `${split.join(" + ")} = ${total} on this stage. Choose a group to reveal its materials; source details stay in each card.`
+    });
+  }
+  railButton(parent, key, label) {
+    const count2 = this.count(key);
+    const active = this.group === key;
+    const control = parent.createEl("button", {
+      cls: `los-compare-group is-clickable${active ? " is-selected" : ""}${count2 ? "" : " is-empty"}`,
+      attr: { type: "button", "aria-pressed": String(active), "data-compare-group": key }
+    });
+    control.createSpan({ cls: "los-compare-group-title", text: label });
+    control.createSpan({
+      cls: "los-compare-group-count",
+      text: `${count2} ${key === "lecture" || key === "course" ? count2 === 1 ? "route" : "routes" : count2 === 1 ? "material" : "materials"}`
+    });
+    control.addEventListener("click", () => {
+      this.group = key;
+      this.query = "";
+      this.renderRail();
+      this.renderBody();
+    });
+  }
+  matches(texts) {
+    const query = foldCase(this.query.trim());
+    if (!query) return true;
+    return texts.some((text8) => text8 && foldCase(text8).includes(query));
+  }
+  renderBody() {
+    const body = this.body;
+    if (!body) return;
+    body.empty();
+    const def = STAGE_GROUPS.find((row4) => row4.key === this.group);
+    if (def) {
+      this.renderStageGroup(body, def);
+      return;
+    }
+    this.renderRouteGroup(body);
+  }
+  renderStageGroup(body, def) {
+    const entries = this.stageEntries(def.key);
+    body.createEl("h2", { text: def.label });
+    body.createEl("p", { cls: "los-micro", text: def.description });
+    if (!entries.length) {
+      empty(
+        body,
+        `Nothing on this stage is ${def.label.toLowerCase()}`,
+        "The other groups on the left hold every material this stage names."
+      );
+      return;
+    }
+    const list4 = body.createDiv({ cls: "los-compare-cards", attr: { "aria-live": "polite" } });
+    for (const resource of entries) {
+      const route2 = routeForResource(resource, this.options.materialOptions);
+      const source = resource.sourceId ? this.options.renderer.sourceRecord?.(resource.sourceId) ?? null : null;
+      renderPlacementCard(list4, resource, route2, source, this.deps).addClass("los-source-entry");
+    }
+  }
+  renderRouteGroup(body) {
+    const lecture = this.group === "lecture";
+    body.createEl("h2", { text: lecture ? "This lecture\u2019s full menu" : `All of ${this.courseLabel()}` });
+    body.createEl("p", {
+      cls: "los-micro",
+      text: lecture ? "Every route this lecture offers, by purpose. Choosing one records your selection; the others stay listed." : "Routes from the other lectures of this course. Choose them from their own lecture."
+    });
+    const label = body.createEl("label", { cls: "los-compare-search-label", text: "Search" });
+    const search = label.createEl("input", {
+      cls: "los-source-search",
+      attr: { type: "search", placeholder: "Source, chapter or lecture", "aria-label": "Search materials", value: this.query }
+    });
+    search.value = this.query;
+    const results = body.createDiv({ cls: "los-compare-cards", attr: { "aria-live": "polite" } });
+    const draw = () => {
+      results.empty();
+      const rows = lecture ? this.options.materialOptions.map((option) => ({ owner: this.options.unit, option })) : this.courseRoutes();
+      const visible = rows.filter(({ owner, option }) => this.matches([
+        option.title,
+        option.locator,
+        option.angle,
+        owner.title,
+        option.sourceId ? asString(this.options.plugin.store.get(option.sourceId)?.title) : null
+      ]));
+      results.createDiv({
+        cls: "los-source-counts",
+        attr: { role: "status" },
+        text: `${visible.length} of ${rows.length} ${rows.length === 1 ? "route" : "routes"}`
+      });
+      if (!visible.length) {
+        empty(results, "No material matches", "Clear the search to see the complete list.");
+        return;
+      }
+      for (const purpose of [...PURPOSES, UNASSIGNED_PURPOSE]) {
+        const group = visible.filter(({ option }) => normalisePurpose(option.depth) === purpose.value);
+        if (!group.length) continue;
+        const section3 = results.createDiv({ cls: "los-type-subgroup" });
+        section3.createEl("h3", { cls: "los-type-subhead", text: `${purpose.label} (${group.length})` });
+        for (const { owner, option } of group) {
+          const source = option.sourceId ? this.options.renderer.sourceRecord?.(option.sourceId) ?? null : null;
+          renderRouteCard(section3, option, source, { ...this.deps, unitId: owner.id }, {
+            badges: owner.id === this.options.unit.id ? [] : [owner.title],
+            coverage: option.covers.map((id2) => owner.knowledgeNodes.find((node) => node.id === id2)?.title).filter((title) => Boolean(title)),
+            actions: (actions) => {
+              if (owner.id === this.options.unit.id) this.renderChoose(actions, option);
+              else {
+                button(actions, "Go to lecture", () => {
+                  this.close();
+                  this.options.plugin.nav.openUnit(owner.id);
+                }, "quiet");
+              }
+            }
+          });
+        }
+      }
+    };
+    search.addEventListener("input", () => {
+      this.query = search.value;
+      draw();
+    });
+    draw();
+  }
+  renderChoose(actions, option) {
+    if (!option.canChoose || !option.sourceId || !option.locator) return;
+    const { plugin, unit, expectedRevisions, onChanged } = this.options;
+    const choice = button(actions, option.selected ? "Remove choice" : "Choose", () => {
+      void plugin.mutate(() => plugin.gateway.sourceSelection(unit.id, option.routeId, option.sourceId ?? "", option.locator ?? "", asText(option.angle) ?? option.angle, !option.selected, expectedRevisions)).then(() => {
+        new import_obsidian19.Notice(option.selected ? "Material choice removed." : "Material chosen for this lecture.");
+        onChanged();
+        this.close();
+      }).catch((error) => {
+        new import_obsidian19.Notice(error instanceof Error ? error.message : String(error));
+      });
+    }, "choice");
+    choice.setAttr("aria-pressed", String(option.selected));
+  }
+};
+
+// src/features/unit/stage.ts
+function renderStage(view, layout, unit, studyMap, stage) {
+  const expectedRevisions = view.plugin.store.artifactGuard(
+    unit.id,
+    typeof studyMap.record.id === "string" ? studyMap.record.id : null
+  );
+  const center = layout.createDiv({
+    cls: "los-stage-workspace"
+  });
+  const top = center.createDiv({
+    cls: "los-stage-heading"
+  });
+  const stageIndex = studyMap.stages.findIndex(
+    (candidate2) => candidate2.id === stage.id
+  );
+  const stagePosition = Math.max(stageIndex, 0) + 1;
+  const stageState = stage.status === "complete" ? "Complete" : stage.status === "skipped" ? "Skipped" : stage.id === studyMap.currentStageId ? "Current" : "Selected";
+  const headingRow = top.createDiv({
+    cls: "los-stage-heading-row"
+  });
+  const headingCopy = headingRow.createDiv({
+    cls: "los-stage-heading-copy"
+  });
+  const eyebrow = [
+    `Stage ${stagePosition} of ${studyMap.stages.length}`,
+    stage.examCritical ? "exam-critical" : "",
+    stageState.toLowerCase(),
+    stage.estimateMinutes ? `${stage.estimateMinutes} min` : ""
+  ].filter(Boolean);
+  headingCopy.createDiv({
+    cls: "los-kicker",
+    text: eyebrow.join(" \xB7 ")
+  });
+  headingCopy.createEl("h2", {
+    text: stage.title
+  });
+  if (stage.objective) {
+    headingCopy.createEl("p", {
+      cls: "los-stage-objective",
+      text: stage.objective
+    });
+  }
+  const conceptRecords = stage.concepts.flatMap(
+    (conceptId) => {
+      const record10 = view.plugin.store.get(conceptId);
+      return record10 ? [record10] : [];
+    }
+  );
+  if (conceptRecords.length) {
+    const concepts = center.createDiv({
+      cls: "los-stage-concepts"
+    });
+    for (const record10 of conceptRecords) {
+      chip(
+        concepts,
+        record10,
+        (target) => view.plugin.nav.openRecord(target)
+      );
+    }
+  }
+  if (stage.doneWhen.length) {
+    const marks = view.plugin.getDoneWhen(
+      unit.id,
+      stage.id,
+      stage.doneWhen
+    );
+    const checkedCount = stage.doneWhen.reduce(
+      (count2, _criterion, index) => count2 + (marks[index] ? 1 : 0),
+      0
+    );
+    const done = center.createDiv({
+      cls: "los-section los-stage-section"
+    });
+    const doneHeading = done.createDiv({
+      cls: "los-stage-section-heading"
+    });
+    doneHeading.createEl("h2", {
+      text: "Done when"
+    });
+    doneHeading.createSpan({
+      cls: "los-micro",
+      text: `${checkedCount} of ${stage.doneWhen.length}`
+    });
+    const list4 = done.createDiv({
+      cls: "los-donewhen-list"
+    });
+    for (const [index, criterion] of stage.doneWhen.entries()) {
+      const row4 = list4.createEl(
+        "label",
+        {
+          cls: "los-donewhen-row"
+        }
+      );
+      const box = row4.createEl(
+        "input",
+        {
+          attr: {
+            type: "checkbox",
+            "aria-label": criterion
+          }
+        }
+      );
+      const checked = Boolean(marks[index]);
+      if (checked) {
+        box.setAttr(
+          "checked",
+          "checked"
+        );
+      }
+      box.checked = checked;
+      box.addEventListener(
+        "change",
+        () => {
+          const nextChecked = Boolean(box.checked);
+          view.plugin.setDoneWhen(
+            unit.id,
+            stage.id,
+            index,
+            nextChecked,
+            stage.doneWhen
+          );
+          row4.toggleClass(
+            "is-checked",
+            nextChecked
+          );
+        }
+      );
+      row4.toggleClass(
+        "is-checked",
+        checked
+      );
+      row4.createSpan({
+        text: criterion
+      });
+    }
+  }
+  const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
+  const materialOptions = readMaterialOptions(sourceMap?.sources, unit.id, unit.record.source_selections);
+  const resourceRenderer = {
+    emptyDetail: "Use the unit scope and ask AI for a proposal.",
+    sourceRecord: (sourceId) => view.plugin.store.get(sourceId),
+    routeRecord: (routeId) => materialOptions.find((option) => option.routeId === routeId)?.record ?? null,
+    openSource: (source) => {
+      const sourceId = asString(source.id);
+      return sourceId ? view.plugin.nav.openLibrary(sourceId) : void 0;
+    },
+    openSourceResource: (source) => view.plugin.openResource(source),
+    openResource: (resource) => view.plugin.openResource(resource.record),
+    // ADR-009: when an id exists, feedback lands on the exact resource;
+    // otherwise it deliberately describes the whole source.
+    rateResource: (sourceId, resourceId, verdict) => view.mutate(
+      () => view.plugin.gateway.feedback(
+        unit.id,
+        stage.id,
+        sourceId,
+        verdict,
+        resourceId,
+        expectedRevisions
+      )
+    )
+  };
+  const current = currentWorkResource(stage.resources);
+  const requiredCount = stage.resources.filter(
+    (resource) => resource.scopeTriage === "required-now" || !resource.scopeTriage
+  ).length;
+  const work = center.createDiv({
+    cls: "los-section los-stage-section los-current-work"
+  });
+  const workHeading = work.createDiv({
+    cls: "los-stage-section-heading"
+  });
+  workHeading.createEl("h2", { text: "Current work" });
+  if (requiredCount) {
+    workHeading.createSpan({
+      cls: "los-micro los-current-work-count",
+      text: `${requiredCount} required`
+    });
+  }
+  if (current) {
+    const card = work.createDiv({ cls: "los-current-work-card" });
+    renderPlacementCard(
+      card,
+      current,
+      routeForResource(current, materialOptions),
+      current.sourceId ? view.plugin.store.get(current.sourceId) : null,
+      {
+        plugin: view.plugin,
+        unitId: unit.id,
+        renderer: resourceRenderer,
+        refresh: () => view.render()
+      },
+      { prominent: true }
+    );
+  } else if (stage.resources.length) {
+    empty(
+      work,
+      "Nothing is marked required for this stage",
+      "The materials below are preserved for depth and reference. Open the comparison to choose where to start."
+    );
+  } else {
+    empty(
+      work,
+      "No source action selected",
+      "Use the unit scope and ask AI for a proposal."
+    );
+  }
+  {
+    const catalogue = center.createDiv({
+      cls: "los-section los-stage-materials"
+    });
+    const catalogueCopy = catalogue.createDiv({
+      cls: "los-stage-materials-copy"
+    });
+    catalogueCopy.createEl("h2", {
+      text: stage.resources.length ? `${stage.resources.length} ${stage.resources.length === 1 ? "material" : "materials"} on this stage` : "No material is placed on this stage"
+    });
+    catalogueCopy.createSpan({
+      cls: "los-micro los-stage-materials-summary",
+      text: stage.resources.length ? `${triageSummary(stage.resources)} \xB7 ${materialOptions.length} on the unit` : `The unit's complete menu still lists ${materialOptions.length} ${materialOptions.length === 1 ? "route" : "routes"}.`
+    });
+    const catalogueActions = catalogue.createDiv({
+      cls: "los-actions los-stage-materials-actions"
+    });
+    button(
+      catalogueActions,
+      "Compare all",
+      () => {
+        new MaterialComparisonModal(view.app, {
+          plugin: view.plugin,
+          unit,
+          stage,
+          resources: stage.resources,
+          materialOptions,
+          expectedRevisions,
+          renderer: resourceRenderer,
+          onChanged: () => view.render()
+        }).open();
+      }
+    );
+  }
+  view.renderStageContext(
+    center,
+    unit,
+    studyMap,
+    stage
+  );
+  view.renderActionBar(
+    center,
+    unit,
+    stage,
+    expectedRevisions
+  );
+}
+function renderActionBar(view, root, unit, stage, expectedRevisions) {
+  const bar = root.createDiv({
+    cls: "los-unit-actionbar"
+  });
+  const rule2 = stage.doneWhen.length === 1 ? "Finish only when the criterion above is true." : stage.doneWhen.length === 2 ? "Finish only when both criteria are true." : stage.doneWhen.length ? `Finish only when all ${stage.doneWhen.length} criteria are true.` : "";
+  bar.createSpan({
+    cls: "los-micro los-unit-actionbar-rule",
+    text: `${rule2 ? `${rule2} ` : ""}Completing it records progress, not a learner attempt.`
+  });
+  button(
+    bar,
+    "Complete stage",
+    () => view.mutate(
+      () => view.plugin.gateway.progress(
+        unit.id,
+        stage.id,
+        "complete",
+        expectedRevisions
+      ),
+      () => view.plugin.clearDoneWhen(
+        unit.id,
+        stage.id
+      )
+    ),
+    "cta"
+  );
+  const menuItems = [
+    stage.status !== "active" && [
+      "Revisit stage",
+      () => view.mutate(
+        () => view.plugin.gateway.progress(
+          unit.id,
+          stage.id,
+          "revisit",
+          expectedRevisions
+        )
+      )
+    ],
+    [
+      "Pause unit",
+      () => view.mutate(
+        () => view.plugin.gateway.progress(
+          unit.id,
+          stage.id,
+          "paused",
+          expectedRevisions
+        )
+      )
+    ],
+    [
+      "Skip stage",
+      () => view.mutate(
+        () => view.plugin.gateway.progress(
+          unit.id,
+          stage.id,
+          "skipped",
+          expectedRevisions
+        )
+      )
+    ],
+    [
+      "Report prerequisite gap",
+      () => view.mutate(
+        () => view.plugin.gateway.detour(
+          unit.id,
+          stage.id,
+          "Prerequisite gap",
+          "required-now",
+          expectedRevisions
+        )
+      )
+    ],
+    [
+      "Prepare shelving",
+      () => view.plugin.nav.openShelving(
+        unit.id
+      )
+    ],
+    view.plugin.settings.showAiRecommendation && [
+      "Ask AI with stage context",
+      () => {
+        const project = view.plugin.store.projectForUnit(
+          unit.record
+        );
+        const projectId = asString(project?.id) ?? void 0;
+        return view.plugin.askAiScoped(
+          "Help with this stage. Treat the active file as supplementary context only.",
+          {
+            moduleId: unit.moduleId,
+            projectId,
+            unitId: unit.id,
+            stageId: stage.id
+          }
+        );
+      }
+    ]
+  ];
+  overflowMenu(
+    bar,
+    menuItems,
+    "More unit actions"
+  );
+}
+
+// src/features/unit/source-browser.ts
+function groupBySource(entries) {
+  const groups = /* @__PURE__ */ new Map();
+  for (const entry of entries) {
+    const group = groups.get(entry.sourceId) ?? [];
+    group.push(entry);
+    groups.set(entry.sourceId, group);
+  }
+  return groups;
+}
+
+// src/features/unit/materials.ts
+var import_obsidian20 = require("obsidian");
+function materialTypeOf(format) {
+  if (format === "video") return "video";
+  if (format === "exercise" || format === "code" || format === "notebook" || format === "quiz" || format === "homework" || format === "problem-set") return "exercise";
+  if (format === "book" || format === "textbook") return "book";
+  return "article";
+}
+function optionIcon(materialType) {
+  if (materialType === "video") return "play";
+  if (materialType === "exercise") return "pencil-line";
+  if (materialType === "article") return "file-text";
+  return "book-open";
+}
+function renderMaterialOverview(view, root, unit, options, synthesis, includeMenu = true) {
+  const studyMap = view.plugin.store.mapForUnit(unit.id);
+  const expectedRevisions = view.plugin.store.artifactGuard(
+    unit.id,
+    typeof studyMap?.id === "string" ? studyMap.id : null
+  );
+  const titleById = new Map(
+    unit.knowledgeNodes.map(
+      (node) => [node.id, node.title]
+    )
+  );
+  if (unit.knowledgeNodes.length) {
+    const map = section(
+      root,
+      "Lecture knowledge map",
+      unit.knowledgeSummary
+    );
+    const nodes = map.createDiv({ cls: "los-knowledge-grid" });
+    for (const node of unit.knowledgeNodes) {
+      const card = nodes.createDiv({ cls: "los-knowledge-node" });
+      card.createEl("h3", { text: node.title });
+      card.createEl("p", { text: node.summary });
+      const dependencies = node.buildsOn.map((id2) => titleById.get(id2)).filter((title) => Boolean(title));
+      if (dependencies.length) {
+        card.createDiv({
+          cls: "los-micro",
+          text: `Builds on: ${dependencies.join(", ")}`
+        });
+      }
+    }
+  }
+  if (synthesis) {
+    renderMaterialSynthesis(view, root, synthesis, options, unit.moduleId);
+  }
+  if (!options.length || !includeMenu) return;
+  const materials = section(
+    root,
+    "Choose your learning material",
+    "This is a complete menu, not a sequence. Pick the explanation angle and depth that fit your current need."
+  );
+  for (const [sourceId, entries] of groupBySource(options)) {
+    const source = sourceId ? view.plugin.store.get(sourceId) : null;
+    const group = materials.createEl("details", { cls: "los-disclosure los-source-group" });
+    group.createEl("summary", { text: `${asString(source?.title) ?? sourceId ?? "Source not yet identified"} \xB7 ${entries.length} entries` });
+    for (const option of entries) {
+      const materialType = materialTypeOf(option.format);
+      const row4 = group.createDiv({
+        cls: "los-material-option los-source-entry"
+      });
+      icon(
+        row4.createSpan({
+          cls: "los-material-icon"
+        }),
+        optionIcon(materialType)
+      );
+      const copy = row4.createDiv({
+        cls: "los-material-copy"
+      });
+      copy.createEl("h4", {
+        text: option.title
+      });
+      copy.createEl("p", {
+        text: option.angle
+      });
+      const fullDetail = asText(option.record.angle_detail);
+      renderMaterialCautions(copy, option.record);
+      if (option.locator) {
+        copy.createDiv({
+          cls: "los-micro",
+          text: option.locator
+        });
+      }
+      const metadata = copy.createDiv({
+        cls: "los-material-metadata"
+      });
+      badge(
+        metadata,
+        option.format.replaceAll("-", " "),
+        "role"
+      );
+      badge(
+        metadata,
+        option.depth.replaceAll("-", " "),
+        "role"
+      );
+      badge(
+        metadata,
+        option.scope.replaceAll("-", " "),
+        option.scope === "current" ? "status" : "role"
+      );
+      for (const knowledgeId of option.covers) {
+        const label = titleById.get(knowledgeId);
+        if (label) {
+          metadata.createSpan({
+            cls: "los-knowledge-chip",
+            text: label
+          });
+        }
+      }
+      if (fullDetail) whyThisOne(copy, fullDetail);
+      if (option.canOpen || option.canChoose) {
+        const actions = row4.createDiv({
+          cls: "los-actions los-material-actions"
+        });
+        if (option.canChoose && option.sourceId && option.locator) {
+          const choice = button(
+            actions,
+            option.selected ? "Remove choice" : "Choose",
+            () => {
+              void view.plugin.mutate(
+                () => view.plugin.gateway.sourceSelection(
+                  unit.id,
+                  option.routeId,
+                  option.sourceId ?? "",
+                  option.locator ?? "",
+                  option.angle,
+                  !option.selected,
+                  expectedRevisions
+                )
+              ).then(
+                () => new import_obsidian20.Notice(
+                  option.selected ? "Material choice removed." : "Material chosen for this lecture."
+                )
+              ).catch(
+                (error) => new import_obsidian20.Notice(
+                  error instanceof Error ? error.message : String(error)
+                )
+              );
+            },
+            "choice"
+          );
+          choice.setAttr(
+            "aria-pressed",
+            option.selected ? "true" : "false"
+          );
+        }
+        if (option.canOpen) {
+          button(
+            actions,
+            "Open",
+            () => view.plugin.openResource(
+              option.record
+            ),
+            "info"
+          );
+        }
+      }
+    }
+  }
+}
+function renderMaterialSynthesis(view, root, synthesis, options, moduleId) {
+  const block2 = section(
+    root,
+    "Approved material synthesis",
+    "Evidence-backed comparison of the exact material routes approved for this unit."
+  );
+  block2.addClass("los-material-synthesis");
+  const routeTitles = new Map(options.map((option) => [option.routeId, option.title]));
+  const head = block2.createDiv({ cls: "los-material-synthesis-head" });
+  badge(head, "approved", "status");
+  const policy = asString(synthesis.basis.policy);
+  if (policy) badge(head, policy.replaceAll("-", " "), "role");
+  head.createSpan({
+    cls: "los-micro",
+    text: `${synthesis.route_assessments.length} assessed route${synthesis.route_assessments.length === 1 ? "" : "s"} \xB7 unit r${synthesis.basis.unit_revision} \xB7 source map r${synthesis.basis.source_map_revision}`
+  });
+  const projectionStatus = block2.createDiv({
+    cls: `los-synthesis-status${synthesis.freshness.status === "stale" ? " is-stale" : ""}`,
+    attr: { role: "status" }
+  });
+  const statusHead = projectionStatus.createDiv({ cls: "los-material-synthesis-head" });
+  badge(
+    statusHead,
+    synthesis.freshness.status === "current" ? "current basis" : "stale basis",
+    synthesis.freshness.status === "current" ? "status" : "role"
+  );
+  badge(
+    statusHead,
+    synthesis.completeness.complete ? "complete route coverage" : "incomplete route coverage",
+    synthesis.completeness.complete ? "status" : "role"
+  );
+  projectionStatus.createDiv({
+    cls: "los-micro",
+    text: `${synthesis.completeness.assessed_route_count}/${synthesis.completeness.current_route_count} current routes assessed \xB7 ${synthesis.completeness.deep_reviewed_count} deep reviewed \xB7 ${synthesis.completeness.screened_count} screened \xB7 ${synthesis.completeness.unevaluated_count} unevaluated \xB7 ${synthesis.completeness.unavailable_count} unavailable`
+  });
+  if (synthesis.freshness.status === "stale") {
+    projectionStatus.createEl("p", {
+      text: "This approved dossier is retained below for reference, but its current basis no longer matches: " + synthesis.freshness.reasons.map((reason) => reason.replaceAll("_", " ")).join(", ") + "."
+    });
+  }
+  if (!synthesis.completeness.complete) {
+    const routeIssues = [
+      synthesis.completeness.missing_route_ids.length ? `Missing: ${synthesis.completeness.missing_route_ids.join(", ")}` : "",
+      synthesis.completeness.orphaned_route_ids.length ? `Orphaned: ${synthesis.completeness.orphaned_route_ids.join(", ")}` : "",
+      synthesis.completeness.duplicate_route_ids.length ? `Duplicated: ${synthesis.completeness.duplicate_route_ids.join(", ")}` : ""
+    ].filter(Boolean);
+    projectionStatus.createDiv({
+      cls: "los-micro",
+      text: routeIssues.length ? routeIssues.join(" \xB7 ") : "Route coverage is not complete."
+    });
+  }
+  const assessments = block2.createDiv({ cls: "los-synthesis-grid" });
+  for (const assessment2 of synthesis.route_assessments) {
+    const card = assessments.createDiv({ cls: "los-synthesis-card" });
+    const heading = card.createDiv({ cls: "los-synthesis-card-head" });
+    heading.createEl("h3", {
+      text: routeTitles.get(assessment2.route_id) || assessment2.locator
+    });
+    badge(
+      heading,
+      assessment2.review_status.replaceAll("-", " "),
+      assessment2.review_status === "deep-reviewed" ? "status" : "role"
+    );
+    card.createDiv({ cls: "los-micro", text: assessment2.locator });
+    const source = view.plugin.store.get(assessment2.source_id);
+    if (source) {
+      chip(card, source, (record10) => {
+        const sourceId = asString(record10.id);
+        return sourceId ? view.plugin.nav.openLibrary(sourceId) : void 0;
+      });
+    }
+    const details = [
+      ["Contribution", assessment2.contribution],
+      ["Best for", assessment2.best_for],
+      ["Assumptions", assessment2.assumptions],
+      ["Notation", assessment2.notation],
+      ["Exercise value", assessment2.exercise_value],
+      ["Limitations", assessment2.limitations],
+      // Directly under Limitations, because it is the bound on every negative
+      // sentence above it: what this review actually had in front of it.
+      ["Inspected", assessment2.scope_of_absence],
+      ["Review note", assessment2.reason]
+    ];
+    for (const [label, value] of details) {
+      if (!value) continue;
+      const row4 = card.createDiv({ cls: "los-synthesis-detail" });
+      row4.createSpan({ cls: "los-micro", text: label });
+      row4.createEl("p", { text: value });
+    }
+    if (assessment2.concept_ids.length) {
+      const concepts = card.createDiv({ cls: "los-material-metadata" });
+      for (const conceptId of assessment2.concept_ids) {
+        const concept = view.plugin.store.get(conceptId);
+        if (concept) chip(concepts, concept, (record10) => view.plugin.nav.openRecord(record10));
+      }
+    }
+    const evidenceCount = assessment2.evidence?.length || 0;
+    if (evidenceCount) {
+      card.createDiv({
+        cls: "los-micro",
+        text: `${evidenceCount} pinned evidence locator${evidenceCount === 1 ? "" : "s"}`
+      });
+    }
+  }
+  if (synthesis.comparisons.length) {
+    const comparisons = block2.createDiv({ cls: "los-synthesis-comparisons" });
+    comparisons.createEl("h3", { text: "Route comparisons" });
+    for (const comparison2 of synthesis.comparisons) {
+      const row4 = comparisons.createDiv({ cls: "los-synthesis-comparison" });
+      const labels = [
+        routeTitles.get(comparison2.left_route_id) || comparison2.left_route_id,
+        routeTitles.get(comparison2.right_route_id) || comparison2.right_route_id
+      ];
+      const heading = row4.createDiv({ cls: "los-synthesis-comparison-head" });
+      heading.createEl("strong", { text: labels.join(" \u2194 ") });
+      badge(heading, comparison2.relation.replaceAll("-", " "), "role");
+      row4.createEl("p", { text: comparison2.narrative });
+    }
+  }
+  if (synthesis.concept_groups.length) {
+    const bridges2 = block2.createDiv({ cls: "los-synthesis-comparisons" });
+    bridges2.createEl("h3", { text: "Concept bridges" });
+    for (const group of synthesis.concept_groups) {
+      const row4 = bridges2.createDiv({ cls: "los-synthesis-comparison" });
+      const concept = view.plugin.store.get(group.concept_id);
+      row4.createEl("strong", {
+        text: asString(concept?.title) || group.concept_id
+      });
+      row4.createEl("p", { text: group.narrative });
+      const local = [];
+      let elsewhere = 0;
+      for (const relatedId of [...group.related_unit_ids, ...group.bridge_note_ids]) {
+        const record10 = view.plugin.store.get(relatedId);
+        if (!record10) continue;
+        const recordModule = asString(record10.module_id);
+        if (recordModule && recordModule !== moduleId) elsewhere += 1;
+        else local.push(record10);
+      }
+      if (local.length) {
+        const related = row4.createDiv({ cls: "los-material-metadata" });
+        for (const record10 of local) {
+          chip(related, record10, (target) => view.plugin.nav.openRecord(target));
+        }
+      }
+      if (elsewhere) {
+        const beyond = row4.createDiv({ cls: "los-synthesis-beyond" });
+        beyond.createSpan({
+          cls: "los-micro",
+          text: `${elsewhere} connection${elsewhere === 1 ? "" : "s"} in other modules`
+        });
+        button(
+          beyond,
+          "Open in Atlas",
+          () => view.plugin.nav.openAtlas({ concept: group.concept_id }),
+          "quiet"
+        );
+      }
+    }
+  }
+}
+
+// src/features/learning-route.ts
+function renderLearningProgress(parent, completedValue, totalValue, ariaLabel, showCopy = true) {
+  const total = Math.max(0, totalValue);
+  const completed = Math.min(Math.max(0, completedValue), total);
+  const percent = total ? Math.round(completed / total * 100) : 0;
+  if (showCopy) {
+    const copy = parent.createDiv({ cls: "los-stage-progress-copy" });
+    copy.createSpan({ text: `${completed} of ${total} complete` });
+    copy.createSpan({ cls: "los-micro", text: `${percent}%` });
+  }
+  const progress = parent.createDiv({
+    cls: "los-stage-progress",
+    attr: {
+      role: "progressbar",
+      "aria-label": ariaLabel,
+      "aria-valuemin": "0",
+      "aria-valuemax": "100",
+      "aria-valuenow": String(percent)
+    }
+  });
+  const value = progress.createDiv({ cls: "los-stage-progress-value" });
+  value.style.width = `${percent}%`;
+  return progress;
+}
+function renderLearningRouteRail(parent, options) {
+  const rail = parent.createEl("nav", { cls: "los-stage-rail" });
+  rail.setAttr("aria-label", options.ariaLabel);
+  const summary = rail.createDiv({ cls: "los-stage-rail-summary" });
+  summary.createEl("h2", { text: options.title });
+  if (options.showProgress !== false) {
+    renderLearningProgress(
+      summary,
+      options.completed,
+      options.items.length,
+      options.progressLabel
+    );
+  } else {
+    summary.addClass("is-label-only");
+    if (options.titleMeta) {
+      summary.createSpan({ cls: "los-micro", text: options.titleMeta });
+    }
+  }
+  const list4 = rail.createDiv({ cls: "los-stage-list", attr: { role: "list" } });
+  const selectedIndex = options.items.findIndex((item) => item.id === options.selectedId);
+  for (const [index, item] of options.items.entries()) {
+    const selected = item.id === options.selectedId;
+    const row4 = list4.createEl("button", {
+      cls: `los-stage-row los-s-${item.state} ${selected ? "is-selected" : index > selectedIndex ? "is-upcoming" : "is-before"} is-clickable`,
+      attr: {
+        type: "button",
+        role: "listitem",
+        "aria-label": `Open stage ${item.number}: ${item.title}`,
+        "aria-posinset": String(index + 1),
+        "aria-setsize": String(options.items.length),
+        "aria-current": selected ? "step" : "false",
+        "aria-pressed": String(selected)
+      }
+    });
+    row4.createSpan({ cls: "los-stage-marker", attr: { "aria-hidden": "true" } });
+    const copy = row4.createSpan({ cls: "los-stage-copy" });
+    copy.createSpan({ cls: "los-stage-title", text: `${item.number} \xB7 ${item.title}` });
+    if (item.marker) copy.createSpan({ cls: "los-micro", text: item.marker });
+    row4.addEventListener("click", () => options.select(item.id));
+  }
+  return rail;
+}
+
+// src/features/unit/map-import.ts
+var import_obsidian21 = require("obsidian");
+function stageIds(value) {
+  return Array.isArray(value) ? value.map((row4) => asString(row4)).filter((row4) => Boolean(row4)) : [];
+}
+function renderImportDiff(root, answer) {
+  root.empty();
+  const payload = isRecord2(answer) ? answer : null;
+  const diff = payload && isRecord2(payload.diff) ? payload.diff : null;
+  if (!diff || !Array.isArray(diff.stages_after) || !Array.isArray(diff.content_changes) || !Array.isArray(diff.map_changes) || !diff.stages_after.every((v) => typeof v === "string" && v.length > 0) || payload?.canonical_files_written !== 0) {
+    root.createDiv({
+      cls: "los-muted",
+      text: "LearningOS answered in a shape this version cannot read. Do not import on the strength of an unread check."
+    });
+    return false;
+  }
+  const added = stageIds(diff.stages_added);
+  const retired = stageIds(diff.stages_retired);
+  const preserved = stageIds(diff.preserved_stage_state);
+  const after = stageIds(diff.stages_after);
+  const replacement = diff.replacement === true;
+  root.createDiv({
+    cls: "los-kicker",
+    text: replacement ? "This replaces the current map" : "This creates the first map"
+  });
+  const list4 = root.createEl("ul", { cls: "los-map-import-diff" });
+  const line = (text8) => list4.createEl("li", { text: text8 });
+  line(`${after.length} stage${after.length === 1 ? "" : "s"} after the import.`);
+  if (added.length) line(`Adds: ${added.join(", ")}.`);
+  if (retired.length) line(`Retires: ${retired.join(", ")}.`);
+  if (!added.length && !retired.length && replacement) {
+    line("No stage is added or retired.");
+  }
+  if (diff.relative_order_changed === true) {
+    const reason = asString(diff.intentional_reorder_reason);
+    line(`Relative order of surviving stages changes${reason ? `: ${reason}` : ""}.`);
+  }
+  if (preserved.length) {
+    line(`Recorded work carried forward on ${preserved.length} stage${preserved.length === 1 ? "" : "s"}.`);
+  }
+  const resume = asString(diff.resume_stage);
+  if (resume) line(`Resumes at ${resume}.`);
+  const reset = asString(diff.state_reset_reason);
+  if (reset) line(`Recorded stage state is reset: ${reset}.`);
+  const evidence3 = stageIds(diff.retired_stage_evidence);
+  if (evidence3.length) {
+    line(`Evidence exists on retired stage${evidence3.length === 1 ? "" : "s"}: ${evidence3.join(", ")}.`);
+  }
+  for (const value of [...diff.content_changes, ...diff.map_changes]) {
+    if (!isRecord2(value) || "stage_id" in value && typeof value.stage_id !== "string" || typeof value.field !== "string" || !("before" in value) || !("after" in value)) return false;
+    const change = root.createEl("details");
+    change.createEl("summary", { text: `${value.stage_id ?? "Map"}: ${value.field.replaceAll("_", " ")}` });
+    change.createEl("div", { text: "Before" });
+    change.createEl("pre", { text: JSON.stringify(value.before, null, 2) });
+    change.createEl("div", { text: "After" });
+    change.createEl("pre", { text: JSON.stringify(value.after, null, 2) });
+  }
+  const written = payload?.canonical_files_written;
+  root.createDiv({
+    cls: "los-micro los-muted",
+    text: written === 0 ? "Checked only \u2014 nothing was written." : "LearningOS did not confirm this was a no-write check."
+  });
+  return true;
+}
+var UnitMapImportModal = class extends import_obsidian21.Modal {
+  constructor(app, options) {
+    super(app);
+    this.options = options;
+  }
+  restoreAccessibility = null;
+  /** The exact bytes a rendered preflight approved, or null before one ran. */
+  checked = null;
+  reviewGeneration = 0;
+  onOpen() {
+    const { replacing, unitTitle } = this.options;
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-map-import-modal");
+    const heading = root.createEl("h2", {
+      text: replacing ? "Replace study map" : "Import study map"
+    });
+    heading.id = "los-map-import-heading";
+    root.createEl("p", {
+      cls: "los-muted",
+      text: replacing ? `${unitTitle} already has a current map. Review the changes and the recorded work carried forward before replacing it.` : `Apply a reviewed study map to ${unitTitle}. The coverage audit stays where the SOP puts it; this applies its result.`
+    });
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--map-import",
+      labelledBy: heading.id
+    });
+    const standard = root.createDiv({
+      cls: "los-muted los-plan-standard",
+      attr: { "aria-live": "polite" }
+    });
+    standard.setText("Reading the plan template from LearningOS\u2026");
+    const field2 = root.createDiv({ cls: "los-map-import-field" });
+    field2.createEl("label", { text: "Reviewed map file" });
+    const file = field2.createEl("input", { attr: { type: "text" } });
+    file.placeholder = "path to the audited study-map YAML";
+    const status = root.createDiv({ cls: "los-draft-status", attr: { "aria-live": "polite" } });
+    const preview = root.createDiv({
+      cls: "los-map-import-preview",
+      attr: { "aria-live": "polite" }
+    });
+    const actions = root.createDiv({ cls: "los-actions los-map-import-actions" });
+    const submit = button(actions, replacing ? "Replace map" : "Import map", async () => {
+      const path = file.value.trim();
+      if (!path || !this.checked || path !== this.checked.file) {
+        status.setText("Check the file first; the import applies the diff you were shown.");
+        return;
+      }
+      submit.disabled = true;
+      status.setText("Importing\u2026");
+      try {
+        await this.options.submit(this.checked);
+        this.close();
+      } catch (error) {
+        this.checked = null;
+        submit.disabled = true;
+        status.setText(errorMessage(error));
+      }
+    }, "cta");
+    submit.disabled = true;
+    const check = button(actions, "Check", async () => {
+      const path = file.value.trim();
+      if (!path) {
+        status.setText("Name the reviewed file first.");
+        return;
+      }
+      const generation = ++this.reviewGeneration;
+      this.checked = null;
+      submit.disabled = true;
+      check.disabled = true;
+      status.setText("Checking \u2014 nothing is written\u2026");
+      try {
+        const answer = await this.options.check(path, replacing);
+        if (generation !== this.reviewGeneration || path !== file.value.trim()) return;
+        if (answer.file !== path || answer.unitId !== this.options.unitId || answer.replace !== replacing || !renderImportDiff(preview, answer.result)) {
+          throw new Error("This review could not be read completely. Check again before importing.");
+        }
+        this.checked = answer;
+        submit.disabled = false;
+        status.setText("Checked. Review the change below, then import.");
+      } catch (error) {
+        if (generation !== this.reviewGeneration) return;
+        this.checked = null;
+        submit.disabled = true;
+        preview.empty();
+        status.setText(errorMessage(error));
+      } finally {
+        check.disabled = false;
+      }
+    });
+    file.addEventListener("input", () => {
+      this.reviewGeneration += 1;
+      this.checked = null;
+      submit.disabled = true;
+      preview.empty();
+      status.setText("File changed \u2014 check it again before importing.");
+    });
+    button(actions, "Cancel", () => this.close(), "quiet");
+    void this.describeStandard(standard);
+    file.focus();
+  }
+  async describeStandard(standard) {
+    if (!this.options.template) {
+      standard.setText(
+        "This host cannot read the plan template; LearningOS still enforces it on import."
+      );
+      return;
+    }
+    try {
+      const template = await this.options.template();
+      standard.setText(
+        `The file must declare plan_template_version ${template.planTemplateVersion}, carry stages numbered from one, and satisfy ${template.schema}. LearningOS refuses the whole import otherwise.`
+      );
+    } catch (error) {
+      standard.setText(
+        `Could not read the plan template: ${errorMessage(error)}. LearningOS still enforces it on import.`
+      );
+    }
+  }
+  onClose() {
+    this.reviewGeneration += 1;
+    this.checked = null;
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+  }
+};
+
+// src/contracts/plan-template.ts
+var PLAN_TEMPLATE_CONTRACT = "plan-template-v1";
+
+// src/features/plan-template.ts
+function horizon(value) {
+  return value === "now" || value === "next" ? value : "later";
+}
+function asPlanTemplate(result) {
+  if (result.ok !== true || result.contract !== PLAN_TEMPLATE_CONTRACT) {
+    throw new Error("LearningOS did not answer the plan-template contract.");
+  }
+  const profile = result.profile === "curriculum" ? result.profile : null;
+  const version = asFiniteNumber(result.plan_template_version);
+  const plan = asRecordOrEmpty(result.plan);
+  if (!profile || version === null || version < 1) {
+    throw new Error("The plan template answer named no profile or template version.");
+  }
+  return {
+    profile,
+    planTemplateVersion: version,
+    schema: asTrimmedString(result.schema),
+    title: asTrimmedString(plan.title),
+    cadence: asTrimmedString(plan.cadence),
+    outcome: asTrimmedString(plan.outcome),
+    horizon: horizon(plan.horizon)
+  };
+}
+
+// src/features/unit/shell.ts
+function render(view) {
+  const root = view.contentEl;
+  root.empty();
+  root.addClass(
+    "los-root",
+    "los-unit-view"
+  );
+  const routeUnitId = view.unitId;
+  const projectedUnit = routeUnitId ? view.plugin.store.get(
+    routeUnitId
+  ) : null;
+  const unit = readUnitRecord(
+    projectedUnit,
+    routeUnitId
+  );
+  if (!unit) {
+    empty(
+      root,
+      "Unit unavailable",
+      "Return to its module."
+    );
+    return;
+  }
+  const module2 = view.plugin.store.get(
+    unit.moduleId
+  );
+  const project = view.plugin.store.projectForUnit(
+    unit.record
+  );
+  const ownerLabel = asLabel(
+    project,
+    asLabel(
+      module2,
+      unit.moduleId
+    )
+  );
+  const header2 = pageHeader(
+    root,
+    `${ownerLabel} \xB7 ${unit.kind}`,
+    unit.title,
+    unit.scope
+  );
+  const headerActions = header2.createDiv({
+    cls: "los-actions"
+  });
+  if (project) {
+    button(
+      headerActions,
+      "Back to project",
+      () => view.plugin.nav.back(),
+      "quiet"
+    );
+  } else {
+    button(
+      headerActions,
+      "Back to module",
+      () => view.plugin.nav.openModule(
+        unit.moduleId
+      ),
+      "quiet"
+    );
+  }
+  button(
+    headerActions,
+    "End session",
+    () => view.plugin.reviewSessionEnd(),
+    "info"
+  );
+  const sourceMap = view.plugin.store.sourceMap(
+    unit.moduleId
+  );
+  const materialOptions = readMaterialOptions(
+    sourceMap?.sources,
+    unit.id,
+    unit.record.source_selections
+  );
+  const materialSynthesis = view.plugin.store.materialSynthesisForUnit(
+    unit.id
+  );
+  const hasMaterialOverview = unit.knowledgeNodes.length > 0 || materialOptions.length > 0 || materialSynthesis !== null;
+  const renderMaterials = (includeMenu = true) => {
+    if (!hasMaterialOverview) return;
+    renderMaterialOverview(
+      view,
+      root,
+      unit,
+      materialOptions,
+      materialSynthesis,
+      includeMenu
+    );
+  };
+  const projectedStudyMap = view.plugin.store.mapForUnit(
+    unit.id
+  );
+  if (!projectedStudyMap) {
+    renderMaterials();
+    const owed = unit.needsStudyMap;
+    const missing = section(
+      root,
+      owed ? "Study map required" : "Personal study path (optional)"
+    );
+    const projectId = asString(project?.id) ?? void 0;
+    const componentId = unit.componentId ?? void 0;
+    empty(
+      missing,
+      owed ? "This unit has no ordered study map" : "No personal path selected",
+      owed ? hasMaterialOverview ? "The material menu above says what may be used. A map says in what order and against what proof, and it is what makes progress trackable. AI may propose one; the core imports it only after review." : "AI may propose a scoped map; the core imports it only after review." : "This unit is complete, archived, or belongs to a module you are no longer studying. Create a path only if you want progress tracking anyway.",
+      owed ? "Create map with AI" : "Build optional path with AI",
+      () => view.plugin.askAiScoped(
+        owed ? "Propose one study-map JSON document for this unit, ordered over the materials in its overview. Do not replace or summarize the overview, and do not write files; include exact source actions and done-when criteria." : "Propose an optional personal study-map JSON document using only materials I choose from this unit material overview. Do not replace or summarize the overview, and do not write files; include exact source actions and done-when criteria.",
+        {
+          moduleId: unit.moduleId,
+          projectId,
+          unitId: unit.id,
+          componentId
+        }
+      )
+    );
+    openMapImport(
+      view,
+      missing,
+      unit,
+      false
+    );
+    view.renderArtifacts(
+      root,
+      unit
+    );
+    return;
+  }
+  const studyMap = readStudyMap(
+    projectedStudyMap
+  );
+  const firstStage = studyMap.stages[0];
+  if (!firstStage) {
+    renderMaterials();
+    const bare = section(
+      root,
+      "Study map needs stages"
+    );
+    empty(
+      bare,
+      "This study map has no stages yet",
+      "Stage authoring belongs to the core \u2014 import a map or add stages there, then rebuild views."
+    );
+    view.renderArtifacts(
+      root,
+      unit
+    );
+    return;
+  }
+  const stageIds2 = new Set(
+    studyMap.stages.map(
+      (stage2) => stage2.id
+    )
+  );
+  if (!view.stageId || !stageIds2.has(view.stageId)) {
+    view.stageId = studyMap.currentStageId && stageIds2.has(
+      studyMap.currentStageId
+    ) ? studyMap.currentStageId : firstStage.id;
+    view.plugin.setSelectedStage(
+      unit.id,
+      view.stageId
+    );
+  }
+  const stage = studyMap.stages.find(
+    (candidate2) => candidate2.id === view.stageId
+  ) ?? firstStage;
+  const layout = root.createDiv({
+    cls: "los-unit-layout"
+  });
+  view.renderRail(
+    layout,
+    unit,
+    studyMap,
+    stage
+  );
+  view.renderStage(
+    layout,
+    unit,
+    studyMap,
+    stage
+  );
+  renderMaterials(false);
+  const more = disclosure(
+    root,
+    "Unit artifacts and evidence",
+    "los-unit-extras"
+  );
+  const provenance = more.createDiv({
+    cls: "los-map-provenance"
+  });
+  provenance.createSpan({
+    cls: "los-micro",
+    text: studyMap.planTemplateVersion === null ? "This study map predates plan template v1. It stays readable; a replacement is imported from the current template." : `Study map on plan template v${studyMap.planTemplateVersion}.`
+  });
+  openMapImport(
+    view,
+    provenance,
+    unit,
+    true
+  );
+  view.renderArtifacts(
+    more,
+    unit
+  );
+}
+function openMapImport(view, parent, unit, replacing) {
+  const actions = parent.createDiv({
+    cls: "los-actions"
+  });
+  button(
+    actions,
+    replacing ? "Replace with reviewed map" : "Import reviewed map",
+    () => new UnitMapImportModal(
+      view.app,
+      {
+        unitId: unit.id,
+        unitTitle: unit.title,
+        replacing,
+        template: async () => asPlanTemplate(
+          await view.plugin.gateway.planTemplate(
+            "curriculum",
+            unit.title,
+            {
+              unitId: unit.id,
+              moduleId: unit.moduleId
+            }
+          )
+        ),
+        // Read-only: it writes nothing, so it does not go through the write
+        // queue and needs no snapshot guard of its own.
+        check: (file, replace) => view.plugin.gateway.checkUnitMapImport(
+          unit.id,
+          file,
+          replace
+        ),
+        submit: (review2) => view.plugin.mutate(
+          () => view.plugin.gateway.importUnitMap(review2)
+        )
+      }
+    ).open(),
+    replacing ? "quiet" : "cta"
+  );
+}
+function renderRail(view, layout, unit, studyMap, current) {
+  const completedCount = studyMap.stages.filter(
+    (stage) => stage.status === "complete"
+  ).length;
+  const currentIndex = studyMap.stages.findIndex(
+    (stage) => stage.id === current.id
+  );
+  const rail = renderLearningRouteRail(layout, {
+    title: "Stages",
+    ariaLabel: "Ordered learning stages",
+    progressLabel: "Overall learning route progress",
+    showProgress: false,
+    titleMeta: `${completedCount} of ${studyMap.stages.length} complete`,
+    completed: completedCount,
+    selectedId: current.id,
+    items: studyMap.stages.map((stage, index) => ({
+      id: stage.id,
+      number: index + 1,
+      title: stage.title,
+      state: stage.status,
+      marker: stage.status === "complete" ? "Complete" : stage.status === "skipped" ? "Skipped" : index === currentIndex ? `Done when \xB7 ${stage.doneWhen.length} criteria` : index > currentIndex ? "Not started" : ""
+    })),
+    select: (stageId) => {
+      void view.selectStage(stageId);
+    }
+  });
+  const stageRecords = studyMap.stages.map(
+    (stage) => stage.record
+  );
+  const add = button(
+    rail,
+    "Add note",
+    () => view.plugin.openUnitNote(
+      unit.record,
+      studyMap.record
+    ),
+    "quiet"
+  );
+  add.addClass(
+    "los-add-unit-note"
+  );
+  const draft = view.plugin.getUnitNoteDraft(
+    unit.id,
+    stageRecords
+  );
+  if (typeof draft.text === "string" && draft.text.trim()) {
+    rail.createDiv({
+      cls: "los-micro los-unit-note-draft",
+      text: "Unsaved unit-note draft kept locally."
+    });
+  }
+}
+
+// src/views/unit-view.ts
+var import_obsidian22 = require("obsidian");
+var UnitView = class extends import_obsidian22.ItemView {
+  plugin;
+  unitId;
+  stageId;
+  mutationPending = false;
+  constructor(leaf, plugin) {
+    super(leaf);
+    this.plugin = plugin;
+    this.unitId = null;
+    this.stageId = null;
+  }
+  getViewType() {
+    return VIEW_UNIT;
+  }
+  getDisplayText() {
+    return "LearningOS \xB7 Unit";
+  }
+  async setState(state = {}) {
+    const parsed = readUnitViewState(state);
+    const nextUnitId = parsed.unitId ?? this.unitId;
+    if (nextUnitId !== this.unitId) {
+      this.stageId = null;
+    }
+    this.unitId = nextUnitId;
+    const requestedStageId = parsed.hasStageId ? parsed.stageId ?? null : null;
+    const selectedStageId = this.unitId ? this.plugin.getSelectedStage(
+      this.unitId
+    ) : null;
+    this.stageId = selectedStageId ?? requestedStageId ?? this.stageId;
+    this.render();
+  }
+  getState() {
+    return {
+      unitId: this.unitId,
+      stageId: this.stageId
+    };
+  }
+  async onOpen() {
+    const state = readUnitViewState(
+      this.leaf.getViewState().state
+    );
+    this.unitId = state.unitId ?? this.unitId;
+    const selectedStageId = this.unitId ? this.plugin.getSelectedStage(
+      this.unitId
+    ) : null;
+    this.stageId = selectedStageId ?? (state.hasStageId ? state.stageId ?? null : null) ?? this.stageId;
+    this.render();
+  }
+  render() {
+    render(this);
+  }
+  renderRail(layout, unit, studyMap, current) {
+    renderRail(this, layout, unit, studyMap, current);
+  }
+  renderStage(layout, unit, studyMap, stage) {
+    renderStage(this, layout, unit, studyMap, stage);
+  }
+  /**
+   * One primary action and one menu. The primary is filled; nothing else on
+   * this screen may be.
+   */
+  renderActionBar(root, unit, stage, expectedRevisions) {
+    renderActionBar(this, root, unit, stage, expectedRevisions);
+  }
+  renderStageContext(center, unit, studyMap, stage) {
+    renderStageContext(this, center, unit, studyMap, stage);
+  }
+  renderArtifacts(root, unit) {
+    renderArtifacts(this, root, unit);
+  }
+  /**
+   * Every write goes through the plugin-wide queue, so two clicks in two views
+   * can no longer race the same `--expected-snapshot`.
+   */
+  async mutate(action, onConfirmed = null) {
+    if (this.mutationPending) {
+      new import_obsidian22.Notice(
+        "A LearningOS write is already running."
+      );
+      return;
+    }
+    if (this.plugin.gateway.isBusy) {
+      new import_obsidian22.Notice(
+        "Queued behind the running LearningOS write."
+      );
+    }
+    this.mutationPending = true;
+    try {
+      await this.plugin.mutate(
+        action
+      );
+      onConfirmed?.();
+      this.render();
+    } catch (error) {
+      new import_obsidian22.Notice(
+        errorMessage3(error)
+      );
+    } finally {
+      this.mutationPending = false;
+    }
+  }
+  async selectStage(stageId) {
+    const unitId = this.unitId;
+    if (!unitId) {
+      new import_obsidian22.Notice(
+        "This unit is no longer available."
+      );
+      return;
+    }
+    this.stageId = stageId;
+    this.plugin.setSelectedStage(
+      unitId,
+      stageId
+    );
+    await this.leaf.setViewState({
+      type: VIEW_UNIT,
+      active: true,
+      state: {
+        unitId,
+        stageId
+      }
+    });
+  }
+};
+
+// src/app/registration.ts
+var APPLICATION_VIEW_TYPES = [
+  VIEW_HOME,
+  VIEW_NAV,
+  VIEW_PROGRAM,
+  VIEW_MODULE,
+  VIEW_PROJECT,
+  VIEW_UNIT,
+  VIEW_LIBRARY,
+  VIEW_ATLAS,
+  VIEW_ABILITIES,
+  VIEW_SHELVING,
+  VIEW_BOUNDARY,
+  VIEW_REVIEW,
+  VIEW_GARDEN,
+  VIEW_DIAGNOSTICS
+];
+function detachLegacyViews(plugin) {
+  for (const type of LEGACY_VIEW_TYPES) plugin.app.workspace.detachLeavesOfType(type);
+}
+function registerApplication(plugin) {
+  detachLegacyViews(plugin);
+  plugin.registerView(VIEW_HOME, (leaf) => new HomeView(leaf, plugin));
+  plugin.registerView(VIEW_NAV, (leaf) => new NavView(leaf, plugin));
+  plugin.registerView(VIEW_PROGRAM, (leaf) => new ProgramView(leaf, plugin));
+  plugin.registerView(VIEW_MODULE, (leaf) => new ModuleView(leaf, plugin));
+  plugin.registerView(VIEW_PROJECT, (leaf) => new ProjectView(leaf, plugin));
+  plugin.registerView(VIEW_UNIT, (leaf) => new UnitView(leaf, plugin));
+  plugin.registerView(VIEW_LIBRARY, (leaf) => new LibraryView(leaf, plugin));
+  plugin.registerView(VIEW_ATLAS, (leaf) => new AtlasView(leaf, plugin));
+  plugin.registerView(VIEW_ABILITIES, (leaf) => new AbilitiesView(leaf, plugin));
+  plugin.registerView(VIEW_SHELVING, (leaf) => new ShelvingView(leaf, plugin));
+  plugin.registerView(VIEW_BOUNDARY, (leaf) => new BoundaryView(leaf, plugin));
+  plugin.registerView(VIEW_REVIEW, (leaf) => new ReviewView(leaf, plugin));
+  plugin.registerView(VIEW_GARDEN, (leaf) => new GardenView(leaf, plugin));
+  plugin.registerView(VIEW_DIAGNOSTICS, (leaf) => new DiagnosticsView(leaf, plugin));
+  plugin.addSettingTab(new LearningOSSettingsTab(plugin.app, plugin));
+  plugin.addRibbonIcon("route", "Open LearningOS", () => plugin.nav.openHome());
+  plugin.addCommand({ id: "open-home", name: "Open Home", callback: () => plugin.nav.openHome() });
+  plugin.addCommand({ id: "open-current-stage", name: "Open current stage", callback: () => plugin.nav.openResume() });
+  plugin.addCommand({ id: "open-modules", name: "Open Modules", callback: () => plugin.nav.openModules() });
+  plugin.addCommand({ id: "open-projects", name: "Open Projects", callback: () => plugin.nav.openProjects() });
+  plugin.addCommand({ id: "open-library", name: "Open Library", callback: () => plugin.nav.openLibrary() });
+  plugin.addCommand({ id: "open-global-search", name: "Search LearningOS", callback: () => plugin.nav.openGlobalSearch() });
+  plugin.addCommand({ id: "open-ability-map", name: "Open Atlas (ability map)", callback: () => plugin.nav.openAbilities() });
+  plugin.addCommand({ id: "open-atlas", name: "Open Concept Atlas", callback: () => plugin.nav.openAtlas() });
+  plugin.addCommand({ id: "open-garden", name: "Open Garden", callback: () => plugin.nav.openGarden() });
+  plugin.addCommand({ id: "open-review", name: "Open Review", callback: () => plugin.nav.openReview() });
+  plugin.addCommand({ id: "open-diagnostics", name: "Open Diagnostics", callback: () => plugin.nav.openDiagnostics() });
+  plugin.addCommand({ id: "rebuild-projection", name: "Validate and rebuild projection", callback: () => plugin.generate() });
+  plugin.addCommand({ id: "end-learning-session", name: "End learning session safely", callback: () => plugin.reviewSessionEnd() });
+  applyPalette(document.body, plugin.settings.palette);
+  plugin.app.workspace.onLayoutReady(async () => {
+    applyPalette(document.body, plugin.settings.palette);
+    detachLegacyViews(plugin);
+    await plugin.router.openNavigator();
+    plugin.app.workspace.leftSplit?.setSize?.(280);
+    if (plugin.settings.collapseSidebars) plugin.app.workspace.rightSplit?.collapse();
+    if (plugin.settings.openHomeOnStartup) await plugin.router.restore();
+  });
+}
+function detachApplication(plugin) {
+  clearPalette(document.body);
+  for (const type of APPLICATION_VIEW_TYPES) plugin.app.workspace.detachLeavesOfType(type);
+}
+
+// src/app/navigator.ts
+var import_obsidian24 = require("obsidian");
+
+// src/app/global-search.ts
+var import_obsidian23 = require("obsidian");
+var GlobalSearchModal = class extends import_obsidian23.Modal {
+  plugin;
+  query;
+  filter;
+  input;
+  tabButtons = [];
+  results;
+  restoreAccessibility = null;
+  constructor(app, plugin, initialQuery = "") {
+    super(app);
+    this.plugin = plugin;
+    this.query = String(initialQuery || "");
+    this.filter = "all";
+  }
+  onOpen() {
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-global-search");
+    this.plugin.router.openOverlay({ kind: "global-search", query: this.query, filter: this.filter });
+    const header2 = root.createDiv({ cls: "los-search-header" });
+    const copy = header2.createDiv();
+    copy.createDiv({ cls: "los-kicker", text: "Search LearningOS" });
+    copy.createEl("h2", {
+      text: "Find a module, unit, source, or project",
+      attr: { id: "los-global-search-heading" }
+    });
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--global-search",
+      initialFocus: () => this.input ?? null,
+      labelledBy: "los-global-search-heading"
+    });
+    button(header2, "Close", () => this.close(), "quiet").setAttribute("aria-label", "Close global search");
+    this.input = root.createEl("input", {
+      cls: "los-search los-global-search-input",
+      attr: {
+        type: "search",
+        placeholder: "Search titles, aliases, authors, and IDs",
+        "aria-label": "Search LearningOS",
+        autocomplete: "off"
+      }
+    });
+    this.input.value = this.query;
+    this.input.addEventListener("input", () => {
+      this.query = this.input.value;
+      this.plugin.router.updateOverlay({ query: this.query });
+      this.renderResults();
+    });
+    const tabs = root.createDiv({ cls: "los-search-tabs", attr: { role: "group", "aria-label": "Search result type" } });
+    enableButtonGroupKeyboardNavigation(tabs);
+    this.tabButtons = [];
+    for (const [id2, label] of [
+      ["all", "All"],
+      ["learning", "Modules & units"],
+      ["sources", "Learning sources"],
+      ["projects", "Projects"]
+    ]) {
+      const tab = button(tabs, label, () => {
+        this.filter = id2;
+        this.plugin.router.updateOverlay({ filter: id2 });
+        this.renderTabs();
+        this.renderResults();
+      }, "tertiary");
+      tab.addClass("los-search-tab");
+      tab.setAttrs({ "data-filter": id2, "aria-pressed": String(this.filter === id2) });
+      this.tabButtons.push(tab);
+    }
+    this.results = root.createDiv({ cls: "los-search-results", attr: { "aria-live": "polite" } });
+    this.renderTabs();
+    this.renderResults();
+  }
+  onClose() {
+    this.plugin.router.clearOverlay();
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+  }
+  renderTabs() {
+    for (const tab of this.tabButtons || []) {
+      const active = tab.getAttribute("data-filter") === this.filter;
+      tab.toggleClass("is-active", active);
+      tab.setAttribute("aria-pressed", String(active));
+    }
+  }
+  candidates() {
+    const rows = [];
+    const add = (record10, kind, subtitle, open) => {
+      if (!record10?.id || !record10?.title) return;
+      rows.push({
+        id: record10.id,
+        title: record10.title,
+        aliases: [...record10.aliases || []],
+        authors: [...record10.authors || []],
+        kind,
+        subtitle,
+        open
+      });
+    };
+    for (const module2 of this.plugin.store.modules()) {
+      if (!module2.id) continue;
+      const area = module2.area_id ? this.plugin.store.get(module2.area_id)?.title || module2.code || "Module" : module2.code || "Module";
+      add(module2, "learning", `Module \xB7 ${area}`, () => this.plugin.openModule(module2.id));
+    }
+    for (const project of this.plugin.store.projects()) {
+      if (!project.id) continue;
+      add(
+        project,
+        "projects",
+        `Project \xB7 ${project.project_type || project.status || "active"}`,
+        () => this.plugin.openProject(project.id)
+      );
+    }
+    for (const unit of this.plugin.store.units()) {
+      if (!unit.id || !unit.module_id) continue;
+      const module2 = this.plugin.store.get(unit.module_id);
+      add(unit, "learning", `Unit \xB7 ${module2?.title || unit.module_id}`, () => this.plugin.openUnit(unit.id));
+    }
+    for (const source of this.plugin.store.sources()) {
+      if (!source.id) continue;
+      const byline = (source.authors || []).join(", ") || source.organization || source.kind || "Learning source";
+      add(source, "sources", `Learning source \xB7 ${byline}`, () => this.plugin.openLibrary(source.id, "source"));
+    }
+    for (const pack of this.plugin.store.topicPacks()) {
+      if (!pack.id) continue;
+      add(
+        pack,
+        "sources",
+        `Topic Pack \xB7 ${(pack.entries || []).length} items`,
+        () => this.plugin.openTopicPackDetail(pack.id)
+      );
+    }
+    for (const workspace of this.plugin.store.of("workspace")) {
+      const linkedProject = workspace.project_id ? this.plugin.store.get(workspace.project_id) : null;
+      if (!linkedProject) continue;
+      if (!linkedProject.id) continue;
+      add(workspace, "projects", `Project workspace \xB7 ${linkedProject.title || linkedProject.id}`, () => this.plugin.openProject(linkedProject.id));
+    }
+    return rows;
+  }
+  matches(candidate2) {
+    const words2 = foldCase(this.query).trim().split(/\s+/).filter(Boolean);
+    if (!words2.length) return true;
+    const haystack = foldCase([
+      candidate2.id,
+      candidate2.title,
+      candidate2.subtitle,
+      ...candidate2.aliases,
+      ...candidate2.authors
+    ].filter(Boolean).join(" "));
+    return words2.every(
+      (word) => haystack.includes(word)
+    );
+  }
+  rankedCandidates() {
+    const needle = foldCase(this.query).trim();
+    return this.candidates().filter((candidate2) => this.filter === "all" || candidate2.kind === this.filter).filter((candidate2) => this.matches(candidate2)).sort((left, right) => {
+      const leftTitle = foldCase(left.title);
+      const rightTitle = foldCase(right.title);
+      const leftRank = !needle ? 2 : leftTitle === needle ? 0 : leftTitle.startsWith(needle) ? 1 : 2;
+      const rightRank = !needle ? 2 : rightTitle === needle ? 0 : rightTitle.startsWith(needle) ? 1 : 2;
+      return leftRank - rightRank || compareStrings(left.title, right.title);
+    });
+  }
+  renderResults() {
+    if (!this.results) return;
+    this.results.empty();
+    const rows = this.rankedCandidates();
+    const summary = this.results.createDiv({ cls: "los-search-summary" });
+    summary.createSpan({ text: this.query.trim() ? `${rows.length} result${rows.length === 1 ? "" : "s"}` : "Quick access" });
+    summary.createSpan({ cls: "los-micro", text: "Manifest identities only" });
+    if (!rows.length) {
+      empty(
+        this.results,
+        "No structural results",
+        `Nothing in the current LearningOS projection matches \u201C${this.query.trim()}\u201D.`,
+        "Clear search",
+        () => {
+          this.query = "";
+          this.input.value = "";
+          this.plugin.router.updateOverlay({ query: "" });
+          this.renderResults();
+          this.input.focus();
+        }
+      );
+      return;
+    }
+    const list4 = this.results.createDiv({ cls: "los-search-result-list" });
+    for (const row4 of rows.slice(0, 24)) {
+      const result = list4.createEl("button", {
+        cls: "los-search-result is-clickable",
+        attr: { type: "button", "aria-label": `Open ${row4.title}` }
+      });
+      const copy = result.createDiv({ cls: "los-search-result-copy" });
+      copy.createEl("strong", { text: row4.title });
+      copy.createDiv({ cls: "los-micro", text: row4.subtitle });
+      result.createSpan({ cls: "los-search-open", text: "Open \u2192" });
+      result.addEventListener("click", () => {
+        this.close();
+        row4.open();
+      });
+    }
+    if (rows.length > 24) {
+      this.results.createDiv({ cls: "los-micro", text: `${rows.length - 24} more results. Refine the query to narrow the list.` });
+    }
+  }
+};
+
+// src/app/navigator.ts
+var AppNavigator = class {
+  constructor(app, router, store, settings, drafts, resources) {
+    this.app = app;
+    this.router = router;
+    this.store = store;
+    this.settings = settings;
+    this.drafts = drafts;
+    this.resources = resources;
+  }
+  async openNavigator() {
+    return this.router.openNavigator();
+  }
+  async openHome() {
+    return this.router.navigate({ name: "home" });
+  }
+  /** Learn is one destination; the areas are sub-areas inside it. */
+  openLearn(programId = null) {
+    const area = programId || this.settings.learnArea || LEARN_AREAS[0][0];
+    this.settings.learnArea = area;
+    this.drafts.scheduleSave();
+    return this.router.navigate({ name: "learn", programId: area });
+  }
+  openCapture() {
+    return this.router.navigate({ name: "capture" });
+  }
+  /** Review, optionally with one item already selected. */
+  openReview(item = null) {
+    return this.router.navigate({ name: "review", item });
+  }
+  openGarden() {
+    return this.router.navigate({ name: "garden" });
+  }
+  openDiagnostics() {
+    return this.router.navigate({ name: "diagnostics" });
+  }
+  openGlobalSearch(query = "") {
+    const modal = new GlobalSearchModal(this.app, this, query);
+    modal.open();
+    return modal;
+  }
+  openProgram(programId) {
+    return this.router.navigate({ name: "program", programId });
+  }
+  openModules() {
+    return this.router.navigate({ name: "module-groups" });
+  }
+  openProjects(query = "") {
+    return this.router.navigate({ name: "project-list", query });
+  }
+  openProject(projectId, tab = "structure") {
+    const current = this.router.snapshot().current;
+    const changingTab = current?.name === "project-detail" && current.projectId === projectId;
+    return this.router.navigate(
+      { name: "project-detail", projectId, tab: asProjectDetailTab(tab) },
+      { pushHistory: !changingTab }
+    );
+  }
+  openModuleDetail(moduleId, componentId = null, tab = null) {
+    return this.router.navigate({ name: "module-detail", moduleId, componentId, tab });
+  }
+  /** Compatibility alias used by Learn, Home and existing deep links. */
+  openModule(moduleId, componentId = null) {
+    return this.openModuleDetail(moduleId, componentId);
+  }
+  openUnit(unitId, stageId = null) {
+    const selectedStage = stageId || this.drafts.getSelectedStage(unitId);
+    if (selectedStage) this.drafts.setSelectedStage(unitId, selectedStage);
+    return this.router.navigate({ name: "unit", unitId, stageId: selectedStage });
+  }
+  openLibrary(recordId = void 0, recordType = void 0) {
+    if (recordId === void 0 || recordId === null) {
+      return recordType === "topic-pack" ? this.openLibraryHome("topic-packs") : this.openLibraryFolder([]);
+    }
+    const record10 = this.store.get(recordId);
+    if (record10?.type === "source" || recordType === "source") return this.openSourceDetail(recordId);
+    if (record10?.type === "topic-pack" || recordType === "topic-pack") return this.openTopicPackDetail(recordId);
+    if (record10?.type === "collection" || recordType === "collection") return this.openCatalogueDetail(recordId);
+    return this.router.navigate({ name: "legacy-library-list", recordType: recordType || record10?.type || "note", query: "" });
+  }
+  /**
+   * Open one folder of the Library's folder browser.
+   *
+   * `path` is the whole address: a folder is a position in a projection rather
+   * than a record, so the route it took to get there is the only durable way
+   * to name it. `selected` survives a trip up one level, which is what makes
+   * "enclosing folder" land on the folder you just left.
+   */
+  openLibraryFolder(path = [], selected = null, layout, query = "") {
+    return this.router.navigate({
+      name: "library-folder",
+      path: asLibraryFolderPath([...path]),
+      selected,
+      ...layout ? { layout } : {},
+      query
+    });
+  }
+  openLibraryHome(collection = "sources", query = "", filters) {
+    return this.router.navigate({
+      name: "library-home",
+      collection: asLibraryCollection(collection),
+      query,
+      ...filters ? { filters } : {}
+    });
+  }
+  openLibraryGroup(collection, groupId, query = "", facet = "all", filters) {
+    return this.router.navigate({
+      name: "library-group",
+      collection: asLibraryCollection(collection),
+      groupId,
+      query,
+      facet,
+      ...filters ? { filters } : {}
+    });
+  }
+  openSourceDetail(resourceId, fromGroupId = null, query = "", facet = "all", filters) {
+    return this.router.navigate({
+      name: "source-detail",
+      resourceId,
+      fromGroupId,
+      query,
+      facet,
+      ...filters ? { filters } : {}
+    });
+  }
+  openTopicPackDetail(topicPackId, fromGroupId = null, query = "") {
+    return this.router.navigate({ name: "topic-pack-detail", topicPackId, fromGroupId, query });
+  }
+  openCatalogueDetail(catalogueId) {
+    return this.router.navigate({ name: "catalogue-detail", catalogueId });
+  }
+  /** Hidden compatibility surface used by Atlas and pre-migration deep links. */
+  openLibraryFiltered(recordType, domain = "") {
+    return this.router.navigate({ name: "legacy-library-list", recordType, domain, query: "" });
+  }
+  /**
+   * Open the Atlas (ADR-016).
+   *
+   * A named target rather than positional arguments: `lens` and `depth` join
+   * `concept` and `module`, and four bare positions at one call site is how a
+   * concept ends up in the depth slot. Unknown values are coerced by the route
+   * contract rather than rejected here.
+   */
+  openAtlas(target = {}) {
+    const current = this.router.snapshot().current;
+    const changingAtlasState = current?.name === "atlas";
+    return this.router.navigate(
+      {
+        name: "atlas",
+        concept: target.concept ?? null,
+        module: target.module ?? null,
+        lens: asAtlasLens(target.lens),
+        depth: asAtlasDepth(target.depth)
+      },
+      { pushHistory: !changingAtlasState }
+    );
+  }
+  /**
+   * Open the Ability map — the Atlas destination.
+   *
+   * Moving the selection inside the map changes attention, not place, so it
+   * replaces the current entry; opening the full detail is a place Back should
+   * return from, so it pushes one.
+   */
+  openAbilities(target = {}) {
+    const current = this.router.snapshot().current;
+    const inMap = current?.name === "abilities";
+    const detail = target.detail === true && Boolean(target.ability);
+    const enteringDetail = detail && !(inMap && current.detail === true);
+    return this.router.navigate(
+      {
+        name: "abilities",
+        group: target.group ?? null,
+        ability: target.ability ?? null,
+        layout: asAbilityLayout(target.layout),
+        detail
+      },
+      { pushHistory: !inMap || enteringDetail }
+    );
+  }
+  openShelving(unitId = null) {
+    return this.router.navigate({ name: "shelving", unitId });
+  }
+  openBoundary(boundaryId) {
+    return this.router.navigate({ name: "boundary", boundaryId });
+  }
+  back() {
+    return this.router.back();
+  }
+  openResume() {
+    const pointer2 = this.store.data?.resume_pointer;
+    const unitId = asString(pointer2?.unit_id);
+    const stageId = asString(pointer2?.stage_id);
+    return unitId ? this.openUnit(unitId, stageId) : this.openHome();
+  }
+  openRecord(record10) {
+    if (!record10) return;
+    const recordId = asString(record10.id);
+    if (record10.type === "unit" && recordId) return this.openUnit(recordId);
+    if (record10.type === "module" && recordId) return this.openModule(recordId);
+    if (record10.type === "project" && recordId) return this.openProject(recordId);
+    if (record10.type === "program" && recordId) return this.openProgram(recordId);
+    if (record10.type === "source" && recordId) return this.openSourceDetail(recordId);
+    if (record10.type === "topic-pack" && recordId) return this.openTopicPackDetail(recordId);
+    if (record10.type === "collection" && recordId) return this.openCatalogueDetail(recordId);
+    if (record10.type === "note" || record10.type === "concept") {
+      if (record10.path) return this.resources.openAuthoredPath(record10.path);
+      return this.openLibraryFiltered(record10.type);
+    }
+    if (record10.type === "workspace") {
+      if (record10.project_id) return this.openProject(record10.project_id);
+      const unit = (record10.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+      if (unit?.id) return this.openUnit(unit.id);
+      const module2 = (record10.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+      return module2?.id ? this.openModule(module2.id) : this.openHome();
+    }
+    if (record10.path) return this.resources.openAuthoredPath(record10.path);
+  }
+  /**
+   * Omnisearch's modal is another plugin's DOM, and reaching into it to seed
+   * a query was the one place this interface depended on internals it does
+   * not own: a private input-field selector, polled for up to a second, then
+   * fed a synthetic keystroke event. Any Omnisearch DOM change could break
+   * that silently, and no test here could catch it.
+   *
+   * Only the registered public command remains. The convenience loss is
+   * small and explicit: Omnisearch opens without automatic query prefill.
+   * LearningOS's own structural Library search is unaffected either way.
+   */
+  openFullTextSearch() {
+    const ok = this.app.commands?.executeCommandById?.("omnisearch:show-modal");
+    if (!ok) new import_obsidian24.Notice("Omnisearch is unavailable; structural Library search still works.");
+  }
+};
+
+// src/app/router.ts
+function asLegacyState(value) {
+  return value && typeof value === "object" ? value : {};
+}
+function asText2(value, fallback = "") {
+  return typeof value === "string" && value ? value : fallback;
+}
+function asNullableText(value) {
+  return typeof value === "string" && value ? value : null;
+}
+var ApplicationRouter = class {
+  plugin;
+  navigation;
+  overlay;
+  constructor(plugin) {
+    this.plugin = plugin;
+    const saved = plugin.settings.navigation;
+    this.navigation = saved?.version === 1 && saved.current ? saved : { version: 1, current: this.fromLegacy(plugin.settings.lastView), history: [] };
+    this.overlay = null;
+  }
+  fromLegacy(legacy) {
+    const input = legacy && typeof legacy === "object" ? legacy : {};
+    const type = asText2(input.type);
+    const state = asLegacyState(input.state);
+    if (type === VIEW_PROGRAM) {
+      return state.programId === "inbox" ? { name: "capture" } : { name: "learn", programId: asText2(state.programId, LEARN_AREAS[0][0]) };
+    }
+    if (type === VIEW_MODULE) {
+      if (state.screen === "groups") return { name: "module-groups" };
+      if (state.screen === "list") return { name: "module-list", groupId: asText2(state.groupId), query: asText2(state.query) };
+      return {
+        name: "module-detail",
+        moduleId: asText2(state.moduleId),
+        componentId: asNullableText(state.componentId),
+        tab: asNullableText(state.tab)
+      };
+    }
+    if (type === VIEW_UNIT) return { name: "unit", unitId: asText2(state.unitId), stageId: asNullableText(state.stageId) };
+    if (type === VIEW_PROJECT) return state.projectId ? { name: "project-detail", projectId: asText2(state.projectId), tab: asProjectDetailTab(state.tab) } : { name: "project-list", query: asText2(state.query) };
+    if (type === VIEW_LIBRARY) return this.libraryRouteFromState(state);
+    if (type === VIEW_ATLAS) return {
+      name: "atlas",
+      concept: asNullableText(state.concept),
+      module: asNullableText(state.module),
+      lens: asAtlasLens(state.lens),
+      depth: asAtlasDepth(state.depth)
+    };
+    if (type === VIEW_ABILITIES) return {
+      name: "abilities",
+      group: asNullableText(state.group),
+      ability: asNullableText(state.ability),
+      layout: asAbilityLayout(state.layout),
+      detail: state.detail === true
+    };
+    if (type === VIEW_SHELVING) return { name: "shelving", unitId: asNullableText(state.unitId) };
+    if (type === VIEW_BOUNDARY) return { name: "boundary", boundaryId: asText2(state.boundaryId) };
+    if (type === VIEW_REVIEW) return { name: "review", item: asNullableText(state.item) };
+    if (type === VIEW_GARDEN) return { name: "garden" };
+    if (type === VIEW_DIAGNOSTICS) return { name: "diagnostics" };
+    return { name: "home" };
+  }
+  libraryRouteFromState(state = {}) {
+    if (state.screen === "folder") return {
+      name: "library-folder",
+      path: asLibraryFolderPath(state.folderPath),
+      selected: asNullableText(state.folderSelection),
+      layout: asLibraryFolderLayout(state.folderLayout),
+      query: asText2(state.query)
+    };
+    if (state.screen === "group") return {
+      name: "library-group",
+      collection: asLibraryCollection(state.collection),
+      groupId: asText2(state.groupId),
+      query: asText2(state.query),
+      facet: asText2(state.facet, "all"),
+      filters: asLibrarySourceFilters(state.filters)
+    };
+    if (state.screen === "source-detail") return {
+      name: "source-detail",
+      resourceId: asText2(state.resourceId),
+      fromGroupId: asNullableText(state.fromGroupId),
+      query: asText2(state.query),
+      facet: asText2(state.facet, "all"),
+      filters: asLibrarySourceFilters(state.filters)
+    };
+    if (state.screen === "topic-pack-detail") return {
+      name: "topic-pack-detail",
+      topicPackId: asText2(state.topicPackId),
+      fromGroupId: asNullableText(state.fromGroupId),
+      query: asText2(state.query)
+    };
+    if (state.screen === "catalogue-detail") return { name: "catalogue-detail", catalogueId: asText2(state.catalogueId) };
+    const recordType = asText2(state.recordType);
+    if (state.screen === "legacy-list") return {
+      name: "legacy-library-list",
+      recordType: recordType || "note",
+      query: asText2(state.query),
+      domain: asText2(state.domain)
+    };
+    const recordId = asText2(state.recordId);
+    if (recordId) {
+      const record10 = this.plugin.store?.get?.(recordId);
+      if (record10?.type === "source" || recordType === "source") {
+        return { name: "source-detail", resourceId: recordId };
+      }
+      if (record10?.type === "topic-pack") return { name: "topic-pack-detail", topicPackId: recordId };
+      if (record10?.type === "collection" || recordType === "collection") {
+        return { name: "catalogue-detail", catalogueId: recordId };
+      }
+    }
+    if (recordType && !["source", "topic-pack"].includes(recordType)) {
+      return { name: "legacy-library-list", recordType, query: asText2(state.query), domain: asText2(state.domain) };
+    }
+    return {
+      name: "library-home",
+      collection: recordType === "topic-pack" ? "topic-packs" : "sources",
+      query: asText2(state.query),
+      filters: asLibrarySourceFilters(state.filters)
+    };
+  }
+  descriptor(route2) {
+    switch (route2?.name) {
+      case "home":
+        return { type: VIEW_HOME, state: {}, nav: "home", pin: true };
+      case "learn":
+        return { type: VIEW_PROGRAM, state: { programId: route2.programId }, nav: "learn" };
+      case "capture":
+        return { type: VIEW_PROGRAM, state: { programId: "inbox" }, nav: "capture" };
+      case "review":
+        return { type: VIEW_REVIEW, state: { item: route2.item || null }, nav: "review" };
+      case "garden":
+        return { type: VIEW_GARDEN, state: {}, nav: "garden" };
+      case "diagnostics":
+        return { type: VIEW_DIAGNOSTICS, state: {}, nav: "diagnostics" };
+      case "program":
+        return {
+          type: VIEW_PROGRAM,
+          state: { programId: route2.programId },
+          nav: route2.programId === "queue-needs-map" ? "review" : "learn"
+        };
+      case "module-groups":
+        return { type: VIEW_MODULE, state: { screen: "groups" }, nav: "modules" };
+      case "module-list":
+        return {
+          type: VIEW_MODULE,
+          state: { screen: "list", groupId: route2.groupId, query: route2.query || "" },
+          nav: "modules"
+        };
+      case "module-detail":
+        return {
+          type: VIEW_MODULE,
+          state: {
+            screen: "detail",
+            moduleId: route2.moduleId,
+            componentId: route2.componentId || null,
+            tab: route2.tab || null
+          },
+          nav: "modules"
+        };
+      case "project-list":
+        return { type: VIEW_PROJECT, state: { screen: "list", query: route2.query || "" }, nav: "projects" };
+      case "project-detail":
+        return {
+          type: VIEW_PROJECT,
+          state: { screen: "detail", projectId: route2.projectId, tab: route2.tab || "structure" },
+          nav: "projects"
+        };
+      case "unit":
+        return {
+          type: VIEW_UNIT,
+          state: { unitId: route2.unitId, stageId: route2.stageId || null },
+          nav: "learn"
+        };
+      case "library-folder":
+        return {
+          type: VIEW_LIBRARY,
+          state: {
+            screen: "folder",
+            folderPath: asLibraryFolderPath(route2.path),
+            folderSelection: route2.selected || null,
+            folderLayout: asLibraryFolderLayout(route2.layout),
+            query: route2.query || ""
+          },
+          nav: "library"
+        };
+      case "library-home":
+        return {
+          type: VIEW_LIBRARY,
+          state: {
+            screen: "home",
+            collection: route2.collection || "sources",
+            query: route2.query || "",
+            filters: route2.filters || asLibrarySourceFilters(null)
+          },
+          nav: "library"
+        };
+      case "library-group":
+        return {
+          type: VIEW_LIBRARY,
+          state: {
+            screen: "group",
+            collection: route2.collection || "sources",
+            groupId: route2.groupId,
+            query: route2.query || "",
+            facet: route2.facet || "all",
+            filters: route2.filters || asLibrarySourceFilters(null)
+          },
+          nav: "library"
+        };
+      case "source-detail":
+        return {
+          type: VIEW_LIBRARY,
+          state: {
+            screen: "source-detail",
+            resourceId: route2.resourceId,
+            fromGroupId: route2.fromGroupId || null,
+            query: route2.query || "",
+            facet: route2.facet || "all",
+            filters: route2.filters || asLibrarySourceFilters(null)
+          },
+          nav: "library"
+        };
+      case "topic-pack-detail":
+        return {
+          type: VIEW_LIBRARY,
+          state: {
+            screen: "topic-pack-detail",
+            topicPackId: route2.topicPackId,
+            fromGroupId: route2.fromGroupId || null,
+            query: route2.query || ""
+          },
+          nav: "library"
+        };
+      case "catalogue-detail":
+        return {
+          type: VIEW_LIBRARY,
+          state: { screen: "catalogue-detail", catalogueId: route2.catalogueId },
+          nav: "library"
+        };
+      case "legacy-library-list":
+        return {
+          type: VIEW_LIBRARY,
+          state: { screen: "legacy-list", recordType: route2.recordType, query: route2.query || "", domain: route2.domain || "" },
+          nav: "library"
+        };
+      case "library": {
+        const compatible = this.libraryRouteFromState(route2);
+        return this.descriptor(compatible);
+      }
+      case "atlas":
+        return {
+          type: VIEW_ATLAS,
+          state: {
+            concept: route2.concept || null,
+            module: route2.module || null,
+            lens: asAtlasLens(route2.lens),
+            depth: asAtlasDepth(route2.depth)
+          },
+          nav: "atlas"
+        };
+      case "abilities":
+        return {
+          type: VIEW_ABILITIES,
+          state: {
+            group: route2.group || null,
+            ability: route2.ability || null,
+            layout: asAbilityLayout(route2.layout),
+            detail: route2.detail === true && Boolean(route2.ability)
+          },
+          nav: "abilities"
+        };
+      case "shelving":
+        return { type: VIEW_SHELVING, state: { unitId: route2.unitId || null }, nav: "review" };
+      case "boundary":
+        return {
+          type: VIEW_BOUNDARY,
+          state: { boundaryId: route2.boundaryId },
+          nav: "masters"
+        };
+      default:
+        return { type: VIEW_HOME, state: {}, nav: "home", pin: true };
+    }
+  }
+  sameRoute(left, right) {
+    return JSON.stringify(left) === JSON.stringify(right);
+  }
+  async openLeaf(type, state = {}, side = "main") {
+    let leaf = this.plugin.app.workspace.getLeavesOfType(type)[0];
+    if (!leaf) {
+      leaf = side === "left" ? this.plugin.app.workspace.getLeftLeaf?.(false) ?? this.plugin.app.workspace.getLeaf(true) : this.plugin.app.workspace.getLeaf(true);
+    }
+    await leaf.setViewState({ type, active: true, state });
+    this.plugin.app.workspace.revealLeaf(leaf);
+    this.plugin.app.workspace.setActiveLeaf?.(leaf, { focus: true });
+    return leaf;
+  }
+  async openNavigator() {
+    return this.openLeaf(VIEW_NAV, {}, "left");
+  }
+  async persist() {
+    this.plugin.settings.navigation = this.navigation;
+    delete this.plugin.settings.lastView;
+    await this.plugin.persistSettings();
+  }
+  openOverlay(overlay) {
+    this.overlay = { ...overlay };
+    return this.overlay;
+  }
+  updateOverlay(patch) {
+    if (!this.overlay) return null;
+    this.overlay = { ...this.overlay, ...patch };
+    return this.overlay;
+  }
+  clearOverlay() {
+    this.overlay = null;
+  }
+  /** Replace restorable route state without opening a leaf or adding history. */
+  async remember(route2) {
+    this.navigation.current = route2;
+    await this.persist();
+    return route2;
+  }
+  async navigate(route2, options = {}) {
+    if (!options.preserveOverlay) this.clearOverlay();
+    const descriptor = this.descriptor(route2);
+    const remember = options.remember !== false;
+    const pushHistory = options.pushHistory !== false;
+    const prior = this.navigation.current;
+    if (remember && pushHistory && prior && !this.sameRoute(prior, route2)) {
+      const activeView = this.plugin.app.workspace.active?.view;
+      const currentScroll = Number(options.scrollTop ?? activeView?.contentEl?.scrollTop ?? 0);
+      const selectedElementId = options.selectedElementId || activeView?.selectedElementId || void 0;
+      this.navigation.history.push({ route: prior, scrollTop: currentScroll, selectedElementId });
+      this.navigation.history = this.navigation.history.slice(-50);
+    }
+    if (remember) {
+      this.navigation.current = route2;
+      await this.persist();
+    }
+    this.plugin.setActiveNav(descriptor.nav);
+    const leaf = await this.openLeaf(descriptor.type, descriptor.state);
+    if (Number.isFinite(options.restoreScrollTop) && leaf?.view?.contentEl) {
+      leaf.view.contentEl.scrollTop = Number(options.restoreScrollTop);
+    }
+    if (options.restoreSelectedElementId && leaf?.view) {
+      leaf.view.selectedElementId = options.restoreSelectedElementId;
+    }
+    if (descriptor.pin && this.plugin.settings.pinHome) leaf.setPinned?.(true);
+    return leaf;
+  }
+  async restore() {
+    this.clearOverlay();
+    const route2 = this.navigation.current || { name: "home" };
+    if (route2.name !== "home" && this.plugin.settings.pinHome) {
+      const home = await this.navigate({ name: "home" }, { remember: false, pushHistory: false });
+      home.setPinned?.(true);
+    }
+    return this.navigate(route2, { remember: true, pushHistory: false });
+  }
+  async back() {
+    const entry = this.navigation.history.pop();
+    if (!entry) return this.navigate({ name: "home" }, { pushHistory: false });
+    this.navigation.current = entry.route;
+    await this.persist();
+    return this.navigate(entry.route, {
+      remember: false,
+      pushHistory: false,
+      restoreScrollTop: entry.scrollTop || 0,
+      restoreSelectedElementId: entry.selectedElementId
+    });
+  }
+  snapshot() {
+    return JSON.parse(JSON.stringify({ ...this.navigation, overlay: this.overlay }));
+  }
+};
+
+// src/app/unit-note-modal.ts
+var import_obsidian25 = require("obsidian");
+var UnitNoteModal = class extends import_obsidian25.Modal {
+  plugin;
+  unit;
+  studyMap;
+  files = [];
+  recoveredStages = {};
+  referencedStageIds = [];
+  expectedRevisions = {};
+  titleInput;
+  editor;
+  fileInput;
+  fileSummary;
+  restoreAccessibility = null;
+  /* Suppresses a second Save on this modal. The gateway's own lock already
+   * serialises writes across the app, so `gateway.isBusy` says "someone else
+   * is writing" — which is a reason to wait, never a reason to drop authored
+   * text on the floor. */
+  saving = false;
+  constructor(app, plugin, unit, studyMap) {
+    super(app);
+    this.plugin = plugin;
+    this.unit = unit;
+    this.studyMap = studyMap;
+    this.files = [];
+  }
+  onOpen() {
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-unit-note-modal");
+    const unitId = this.unit.id;
+    if (!unitId) {
+      empty(root, "Unit unavailable", "The projection returned a unit without an identity.");
+      return;
+    }
+    this.expectedRevisions = this.plugin.store.artifactGuard(
+      unitId,
+      typeof this.studyMap?.id === "string" ? this.studyMap.id : null
+    );
+    const stages = asRecords(this.studyMap?.stages);
+    const draft = this.plugin.getUnitNoteDraft(unitId, stages);
+    if (Object.keys(draft.expectedRevisions).length) {
+      this.expectedRevisions = draft.expectedRevisions;
+    }
+    const recoveredStageIds = Array.isArray(
+      draft.recoveredStageIds
+    ) ? draft.recoveredStageIds.filter(
+      (id2) => typeof id2 === "string"
+    ) : [];
+    this.recoveredStages = draft.recoveredStages || {};
+    this.referencedStageIds = [
+      .../* @__PURE__ */ new Set([
+        ...this.unrecordedCompletedStages(stages),
+        ...recoveredStageIds
+      ])
+    ];
+    pageHeader(
+      root,
+      "Learning session",
+      "Add note",
+      "Attach one note after the stages you worked through. It belongs to the unit, not to one selected stage.",
+      "los-unit-note-heading"
+    );
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--unit-note",
+      initialFocus: () => this.editor ?? null,
+      labelledBy: "los-unit-note-heading"
+    });
+    const context = root.createDiv({ cls: "los-unit-note-context" });
+    context.createDiv({ cls: "los-kicker", text: "Stages covered" });
+    if (this.referencedStageIds.length) {
+      const names = this.referencedStageIds.map(
+        (id2) => stages.find(
+          (stage) => stage.id === id2
+        )?.title || id2
+      );
+      context.createDiv({ text: names.join(" \xB7 ") });
+    } else {
+      context.createDiv({ cls: "los-micro", text: "No newly completed stage is required. You may still record a unit-level observation." });
+    }
+    this.titleInput = root.createEl("input", {
+      cls: "los-search los-unit-note-title",
+      attr: { type: "text", placeholder: "Optional note title", "aria-label": "Unit note title" }
+    });
+    this.titleInput.value = draft.title || "";
+    this.editor = root.createEl("textarea", {
+      cls: "los-note-editor los-unit-note-editor",
+      attr: { placeholder: "What should remain after this learning session?", "aria-label": "Unit learning-session note" }
+    });
+    this.editor.value = draft.text || "";
+    const attachments = root.createDiv({ cls: "los-unit-note-attachments" });
+    attachments.createDiv({ cls: "los-kicker", text: "Attachments" });
+    this.fileInput = attachments.createEl("input", {
+      cls: "los-file-input",
+      attr: { type: "file", multiple: "multiple", "aria-label": "Choose unit note attachments" }
+    });
+    this.fileSummary = attachments.createDiv({ cls: "los-micro", text: "Optional: handwriting, image, or PDF." });
+    this.fileInput.addEventListener("change", () => {
+      this.files = [...this.fileInput.files || []];
+      this.fileSummary.setText(this.files.length ? `${this.files.length} attachment${this.files.length === 1 ? "" : "s"} selected for this save.` : "Optional: handwriting, image, or PDF.");
+    });
+    const status = root.createDiv({ cls: "los-draft-status", attr: { "aria-live": "polite" } });
+    const actions = root.createDiv({ cls: "los-actions los-unit-note-actions" });
+    button(actions, "Cancel", () => this.close(), "quiet");
+    const saveButton = button(actions, "Save note", () => this.save(), "cta");
+    const persist = () => {
+      this.plugin.setUnitNoteDraft(
+        unitId,
+        this.titleInput.value,
+        this.editor.value,
+        this.expectedRevisions,
+        draft.recoveredStages
+      );
+      const hasNote = Boolean(this.editor.value.trim());
+      status.setText(hasNote ? "Draft kept locally until the core confirms the save." : "Write a note to enable saving.");
+      status.toggleClass("is-dirty", hasNote);
+      saveButton.disabled = !hasNote;
+      saveButton.setAttribute("aria-disabled", String(!hasNote));
+    };
+    this.titleInput.addEventListener("input", persist);
+    this.editor.addEventListener("input", persist);
+    persist();
+  }
+  unrecordedCompletedStages(stages) {
+    const already = new Set(
+      asRecords(this.unit.note_sections).flatMap(
+        (section3) => Array.isArray(section3.stage_ids) ? section3.stage_ids.filter(
+          (id2) => typeof id2 === "string"
+        ) : []
+      )
+    );
+    return stages.filter(
+      (stage) => ["complete", "skipped"].includes(String(stage.status)) && typeof stage.id === "string" && !already.has(stage.id)
+    ).map((stage) => String(stage.id));
+  }
+  async save() {
+    const text8 = String(this.editor?.value || "");
+    if (!text8.trim()) {
+      new import_obsidian25.Notice("Write a note before saving.");
+      this.editor?.focus();
+      return;
+    }
+    if (this.saving) {
+      new import_obsidian25.Notice("This note is already being saved.");
+      return;
+    }
+    if (this.plugin.gateway.isBusy) {
+      new import_obsidian25.Notice("Queued behind the running LearningOS write.");
+    }
+    const unitId = this.unit.id;
+    if (!unitId) {
+      new import_obsidian25.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
+      return;
+    }
+    const filePaths = this.files.map((file) => localFilePath(file)).filter((value) => Boolean(value));
+    if (filePaths.length !== this.files.length) {
+      new import_obsidian25.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
+      return;
+    }
+    this.saving = true;
+    try {
+      const sent = { title: this.titleInput?.value || "", text: text8 };
+      await this.plugin.mutate(() => this.plugin.gateway.saveUnitNote(unitId, {
+        ...sent,
+        stageIds: this.referencedStageIds,
+        filePaths
+      }, this.expectedRevisions));
+      this.plugin.clearUnitNoteDraft(unitId, this.recoveredStages, sent);
+      new import_obsidian25.Notice("Learning-session note saved.");
+      this.close();
+    } catch (error) {
+      new import_obsidian25.Notice(errorMessage(error));
+    } finally {
+      this.saving = false;
+    }
+  }
+  onClose() {
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+  }
+};
+
+// src/build-identity.ts
+function runtimeSourceFingerprint() {
+  return true ? "sha256:9a46b48f03df86e915712ffd8e5eeb623564d28154c1e444aac265360930ca78" : "unavailable";
+}
+function runtimeContractVersion() {
+  return true ? 14 : 0;
+}
+
+// src/contracts/ability-context.ts
+var ABILITY_CONTEXT_CONTRACT = "ability-context-v1";
+var STATES = /* @__PURE__ */ new Set(["supported", "nearby", "uncertain", "unmapped"]);
+var RESULTS3 = /* @__PURE__ */ new Set(["correct", "incorrect", "partial", "abandoned"]);
+var KINDS2 = /* @__PURE__ */ new Set(["equivalence", "extension", "connection"]);
+var FRESHNESS = /* @__PURE__ */ new Set(["current", "stale", "unavailable", "not-reviewed"]);
+function record9(value) {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+}
+function text7(value) {
+  return typeof value === "string" && value.trim().length > 0 ? value : null;
+}
+function strings2(value) {
+  if (!Array.isArray(value)) return null;
+  return value.every((item) => typeof item === "string") ? value : null;
+}
+function optionalStrings(value) {
+  return value === void 0 ? [] : strings2(value);
+}
+function count(value) {
+  return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
+}
+function header(value) {
+  const response = record9(value);
+  if (!response || response.contract !== ABILITY_CONTEXT_CONTRACT || response.schema_version !== 1 || typeof response.snapshot_id !== "string" || !/^sha256:[a-f0-9]{64}$/.test(response.snapshot_id)) return null;
+  return response;
+}
+function route(value) {
+  const row4 = record9(value);
+  const reason = row4 ? text7(row4.reason) : null;
+  const supported = row4 ? strings2(row4.supported) : null;
+  const missing = row4 ? strings2(row4.missing_or_uncertain) : null;
+  const remaining = row4 ? optionalStrings(row4.remaining_work) : null;
+  if (!row4 || !reason || !supported || !missing || !remaining) return null;
+  return {
+    reason,
+    source: text7(row4.source),
+    supported,
+    missing_or_uncertain: missing,
+    remaining_work: remaining
+  };
+}
+function transfer(value) {
+  const row4 = record9(value);
+  if (!row4) return null;
+  const from = text7(row4.from);
+  const source = text7(row4.source);
+  const carries = text7(row4.carries);
+  const changes = text7(row4.changes);
+  return from && source && carries && changes ? { from, source, carries, changes } : null;
+}
+function evidence2(value) {
+  const row4 = record9(value);
+  if (!row4) return null;
+  const id2 = text7(row4.id);
+  const workRef = text7(row4.work_ref);
+  if (!id2 || !workRef || !RESULTS3.has(String(row4.result))) return null;
+  const origin = record9(row4.origin);
+  const conditions = optionalStrings(row4.conditions);
+  const notMet = optionalStrings(row4.conditions_not_met);
+  const tags = optionalStrings(row4.evidence_tags);
+  if (!conditions || !notMet || !tags) return null;
+  return {
+    id: id2,
+    result: row4.result,
+    work_ref: workRef,
+    claim: text7(row4.claim),
+    activity: text7(row4.activity),
+    timestamp: text7(row4.timestamp),
+    assistance: typeof row4.assistance === "string" ? row4.assistance : null,
+    conditions,
+    conditions_not_met: notMet,
+    evidence_tags: tags,
+    confirmation_ref: text7(row4.confirmation_ref),
+    supersedes: text7(row4.supersedes),
+    origin_path: origin ? text7(origin.path) : null,
+    workspace_id: origin ? text7(origin.workspace_id) : null
+  };
+}
+function list3(value, decode) {
+  if (value === void 0) return [];
+  if (!Array.isArray(value)) return null;
+  const out = [];
+  for (const item of value) {
+    const decoded = decode(item);
+    if (decoded === null) return null;
+    out.push(decoded);
+  }
+  return out;
+}
+function row3(value) {
+  const item = record9(value);
+  if (!item) return null;
+  const id2 = text7(item.id);
+  const title = text7(item.title);
+  const reasons = strings2(item.reasons);
+  const concepts = strings2(item.concept_ids);
+  const modules = optionalStrings(item.module_ids);
+  const routes = list3(item.preparation_routes, route);
+  const transfers = list3(item.transfer, transfer);
+  const rows = list3(item.evidence, evidence2);
+  const lifecycle = item.lifecycle === void 0 ? "active" : item.lifecycle;
+  if (!id2 || !title || !STATES.has(String(item.state)) || !reasons || !concepts || !modules || !routes || !transfers || !rows || lifecycle !== "active" && lifecycle !== "retired") return null;
+  return {
+    id: id2,
+    title,
+    lifecycle,
+    state: item.state,
+    reasons,
+    concept_ids: concepts,
+    module_ids: modules,
+    preparation_routes: routes,
+    transfer: transfers,
+    evidence: rows
+  };
+}
+function review(value) {
+  const item = record9(value);
+  if (!item || item.state !== "candidate" && item.state !== "reviewed") return null;
+  return {
+    state: item.state,
+    reviewed_by: text7(item.reviewed_by),
+    reviewed_on: text7(item.reviewed_on)
+  };
+}
+function bridge(value) {
+  const item = record9(value);
+  if (!item) return null;
+  const from = text7(item.from);
+  const to = text7(item.to);
+  const carries = text7(item.carries);
+  const changes = text7(item.changes);
+  const source = text7(item.source);
+  const conditions = optionalStrings(item.conditions);
+  const reviewed = review(item.review);
+  const freshness = record9(item.source_freshness);
+  const status = freshness && FRESHNESS.has(String(freshness.status)) ? freshness.status : null;
+  if (!from || !to || !carries || !changes || !source || !conditions || !reviewed || !KINDS2.has(String(item.kind))) return null;
+  return {
+    from,
+    to,
+    kind: item.kind,
+    carries,
+    changes,
+    conditions,
+    source,
+    source_sha256: text7(item.source_sha256),
+    review: reviewed,
+    // A bridge Core did not observe is not current. Absence reads as unknown,
+    // which is the one state that can never carry evidence.
+    freshness: status ?? (reviewed.state === "reviewed" ? "unavailable" : "not-reviewed")
+  };
+}
+function candidate(value) {
+  const item = record9(value);
+  if (!item) return null;
+  const id2 = text7(item.id);
+  const from = text7(item.from);
+  const to = text7(item.to);
+  const carries = text7(item.carries);
+  const changes = text7(item.changes);
+  const sourceRef = text7(item.source_ref);
+  const created = text7(item.created_at);
+  const conditions = optionalStrings(item.conditions);
+  if (!id2 || !from || !to || !carries || !changes || !sourceRef || !created || !conditions || !KINDS2.has(String(item.kind))) return null;
+  return {
+    id: id2,
+    from,
+    to,
+    kind: item.kind,
+    carries,
+    changes,
+    conditions,
+    source_ref: sourceRef,
+    created_at: created
+  };
+}
+function encounterMaterial(value) {
+  const item = record9(value);
+  if (!item) return null;
+  return {
+    route_id: text7(item.route_id),
+    source_id: text7(item.source_id),
+    locator: text7(item.locator),
+    match_state: text7(item.match_state) ?? "unmapped"
+  };
+}
+function encounter(value) {
+  const item = record9(value);
+  if (!item) return null;
+  const moduleId = text7(item.module_id);
+  const unitId = text7(item.unit_id);
+  const stageId = text7(item.stage_id);
+  const materials = list3(item.materials, encounterMaterial);
+  if (!moduleId || !unitId || !stageId || !materials) return null;
+  return {
+    module_id: moduleId,
+    unit_id: unitId,
+    study_map_id: text7(item.study_map_id),
+    stage_id: stageId,
+    title: text7(item.title),
+    objective: text7(item.objective),
+    status: text7(item.status),
+    materials
+  };
+}
+function relatedEncounter(value) {
+  const item = record9(value);
+  if (!item) return null;
+  const moduleId = text7(item.module_id);
+  const unitId = text7(item.unit_id);
+  const stageId = text7(item.stage_id);
+  const abilities = strings2(item.ability_ids);
+  const routes = optionalStrings(item.route_ids);
+  if (!moduleId || !unitId || !stageId || !abilities || !routes) return null;
+  return {
+    module_id: moduleId,
+    unit_id: unitId,
+    stage_id: stageId,
+    title: text7(item.title),
+    objective: text7(item.objective),
+    ability_ids: abilities,
+    route_ids: routes,
+    route_total: count(item.route_total) ?? routes.length,
+    routes_truncated: item.routes_truncated === true
+  };
+}
+function asAbilityBrief(value) {
+  const response = header(value);
+  if (!response || response.focus !== void 0) return null;
+  const abilities = list3(response.abilities, row3);
+  const bridges2 = list3(response.bridges, bridge);
+  const candidates = list3(response.candidate_connections, candidate);
+  const total = count(response.total);
+  if (!abilities || !bridges2 || !candidates || total === null) return null;
+  return {
+    snapshot_id: response.snapshot_id,
+    abilities,
+    total,
+    truncated: response.truncated === true,
+    bridges: bridges2,
+    candidate_connections: candidates,
+    candidate_connection_count: count(response.candidate_connection_count) ?? candidates.length
+  };
+}
+function definition(value) {
+  const base = row3(value);
+  const item = record9(value);
+  if (!base || !item) return null;
+  const claim = text7(item.claim);
+  const conditions = strings2(item.conditions);
+  const spec = strings2(item.evidence_spec);
+  const reviewed = review(item.review);
+  if (!claim || !conditions || !spec || !reviewed) return null;
+  return {
+    ...base,
+    claim,
+    source: text7(item.source),
+    conditions,
+    evidence_spec: spec,
+    review: reviewed
+  };
+}
+function asAbilityFocus(value) {
+  const response = header(value);
+  if (!response) return null;
+  const focus = text7(response.focus);
+  const ability = definition(response.ability);
+  const bridges2 = list3(response.bridges, bridge);
+  const encounters = list3(response.encounters, encounter);
+  const related = list3(response.related_encounters, relatedEncounter);
+  const candidates = list3(response.candidate_connections, candidate);
+  const shared = optionalStrings(response.shared_concept_candidates);
+  if (!focus || !ability || ability.id !== focus || !bridges2 || !encounters || !related || !candidates || !shared) return null;
+  return {
+    snapshot_id: response.snapshot_id,
+    focus,
+    ability,
+    bridges: bridges2,
+    encounters,
+    related_encounters: related,
+    related_encounters_total: count(response.related_encounters_total) ?? related.length,
+    candidate_connections: candidates,
+    shared_concept_candidates: shared
+  };
+}
+function asAbilityUnmapped(value) {
+  const response = header(value);
+  if (!response || response.state !== "unmapped" || response.ability !== void 0) return null;
+  const focus = text7(response.focus);
+  const reason = text7(response.reason);
+  return focus && reason ? { snapshot_id: response.snapshot_id, focus, reason } : null;
+}
+
+// src/application/ability-horizon.ts
+var ABILITY_HORIZON_LIMIT = 50;
+function message(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function snapshotRefused(error) {
+  return error instanceof GatewayError && error.exitCode === 3;
+}
+var AbilityHorizon = class {
+  constructor(host) {
+    this.host = host;
+  }
+  brief = null;
+  briefFor = null;
+  readAt = null;
+  pending = null;
+  failure = null;
+  failureFor = null;
+  expansions = /* @__PURE__ */ new Map();
+  expansionPending = /* @__PURE__ */ new Map();
+  expansionFailures = /* @__PURE__ */ new Map();
+  get projection() {
+    return this.host.store.snapshotId;
+  }
+  /** The horizon for the projection on screen, or null. Never starts a read. */
+  current() {
+    return this.brief && this.briefFor === this.projection ? this.brief : null;
+  }
+  get loading() {
+    return this.pending !== null;
+  }
+  /** Why the last read for this projection failed, or null. */
+  get error() {
+    return this.failureFor === this.projection ? this.failure : null;
+  }
+  /** When the horizon on screen was read. */
+  get readTime() {
+    return this.current() ? this.readAt : null;
+  }
+  /**
+   * Core's records moved on since the projection on screen was built — the
+   * map may be behind them until the projection is rebuilt.
+   */
+  get recordsAhead() {
+    const brief = this.current();
+    return Boolean(brief && this.projection && brief.snapshot_id !== this.projection);
+  }
+  /** Start a read when none is current. A failed read waits for `refresh`. */
+  ensure() {
+    if (this.current() || this.pending || this.error) return;
+    void this.read();
+  }
+  /** Read again now, whatever is cached. */
+  async refresh() {
+    this.failure = null;
+    this.failureFor = null;
+    this.drop();
+    await this.read();
+  }
+  drop() {
+    this.brief = null;
+    this.briefFor = null;
+    this.expansions.clear();
+    this.expansionFailures.clear();
+  }
+  read() {
+    if (this.pending) return this.pending;
+    const projection = this.projection;
+    const run = (async () => {
+      try {
+        const value = await this.host.gateway.abilityContext({ limit: ABILITY_HORIZON_LIMIT });
+        const brief = asAbilityBrief(value);
+        if (!brief) {
+          throw new Error("Core answered the ability horizon in a shape this build cannot read. Nothing was changed.");
+        }
+        this.expansions.clear();
+        this.expansionFailures.clear();
+        this.brief = brief;
+        this.briefFor = projection;
+        this.readAt = /* @__PURE__ */ new Date();
+        this.failure = null;
+        this.failureFor = null;
+      } catch (error) {
+        this.failure = message(error);
+        this.failureFor = projection;
+      } finally {
+        this.pending = null;
+        this.host.horizonChanged();
+      }
+    })();
+    this.pending = run;
+    return run;
+  }
+  /** One ability expanded under the horizon's snapshot, or null while unread. */
+  expansion(abilityId) {
+    return this.current() ? this.expansions.get(abilityId) ?? null : null;
+  }
+  expansionError(abilityId) {
+    return this.current() ? this.expansionFailures.get(abilityId) ?? null : null;
+  }
+  expanding(abilityId) {
+    return this.expansionPending.has(abilityId);
+  }
+  /** Start one focused read if the horizon is current and it is not cached. */
+  ensureExpansion(abilityId) {
+    const brief = this.current();
+    if (!brief || this.expansions.has(abilityId) || this.expansionPending.has(abilityId) || this.expansionFailures.has(abilityId)) return;
+    const run = (async () => {
+      try {
+        const value = await this.host.gateway.abilityContext({
+          abilityId,
+          expectedSnapshot: brief.snapshot_id
+        });
+        const expanded = asAbilityFocus(value) ?? asAbilityUnmapped(value);
+        if (!expanded) {
+          throw new Error("Core answered this ability in a shape this build cannot read. Nothing was changed.");
+        }
+        if (this.brief === brief) this.expansions.set(abilityId, expanded);
+      } catch (error) {
+        if (snapshotRefused(error)) {
+          this.expansionPending.delete(abilityId);
+          await this.refresh();
+          return;
+        }
+        if (this.brief === brief) this.expansionFailures.set(abilityId, message(error));
+      } finally {
+        this.expansionPending.delete(abilityId);
+        this.host.horizonChanged();
+      }
+    })();
+    this.expansionPending.set(abilityId, run);
+  }
+  /** Forget one failed expansion so the next render may try again. */
+  retryExpansion(abilityId) {
+    this.expansionFailures.delete(abilityId);
+    this.ensureExpansion(abilityId);
+  }
+};
 
 // src/infrastructure/ai-action-client.ts
 var AIActionClient = class {
@@ -18525,7 +21367,7 @@ var LosRuntime = class {
 var import_electron2 = require("electron");
 var fs4 = __toESM(require("node:fs"));
 var nodePath4 = __toESM(require("node:path"));
-var import_obsidian22 = require("obsidian");
+var import_obsidian26 = require("obsidian");
 var CODE_EXTENSIONS = /* @__PURE__ */ new Set([
   ".c",
   ".cc",
@@ -18589,10 +21431,10 @@ function normalizedVaultPath(value) {
   }
   return path;
 }
-function resolvedWithin(root, candidate) {
+function resolvedWithin(root, candidate2) {
   try {
     const realRoot = fs4.realpathSync(root);
-    const realCandidate = fs4.realpathSync(candidate);
+    const realCandidate = fs4.realpathSync(candidate2);
     const relative3 = nodePath4.relative(realRoot, realCandidate);
     return relative3.startsWith("..") || nodePath4.isAbsolute(relative3) ? null : realCandidate;
   } catch (_) {
@@ -18606,29 +21448,29 @@ var ResourceOpener = class {
   async openVaultPath(path, destination = null) {
     const target = normalizedVaultPath(path);
     if (!target || target.startsWith("/") || target.split("/").includes("..")) {
-      new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return void 0;
     }
-    const candidate = nodePath4.resolve(this.app.vault.adapter.getBasePath(), target);
-    if (fs4.existsSync(candidate)) {
+    const candidate2 = nodePath4.resolve(this.app.vault.adapter.getBasePath(), target);
+    if (fs4.existsSync(candidate2)) {
       try {
-        fs4.realpathSync(candidate);
+        fs4.realpathSync(candidate2);
       } catch (_) {
-        new import_obsidian22.Notice(`File unavailable: ${target}`);
+        new import_obsidian26.Notice(`File unavailable: ${target}`);
         return void 0;
       }
       const realPath = resolvedWithin(
         this.app.vault.adapter.getBasePath(),
-        candidate
+        candidate2
       );
       if (!realPath) {
-        new import_obsidian22.Notice(`Unsafe vault symlink refused: ${target}`);
+        new import_obsidian26.Notice(`Unsafe vault symlink refused: ${target}`);
         return void 0;
       }
     }
     const file = this.app.vault.getAbstractFileByPath(target);
     if (!file) {
-      new import_obsidian22.Notice(`File unavailable: ${target}`);
+      new import_obsidian26.Notice(`File unavailable: ${target}`);
       return void 0;
     }
     let existing = null;
@@ -18663,16 +21505,16 @@ var ResourceOpener = class {
       try {
         view.setEphemeralState({ page: destination.page });
       } catch (_) {
-        new import_obsidian22.Notice(`Go to ${destination.label}.`);
+        new import_obsidian26.Notice(`Go to ${destination.label}.`);
         return;
       }
-      new import_obsidian22.Notice(`Page requested \u2014 go to ${destination.label} if the viewer did not move.`);
+      new import_obsidian26.Notice(`Page requested \u2014 go to ${destination.label} if the viewer did not move.`);
       return;
     }
     try {
       await leaf.openFile(file, { eState: { page: destination.page } });
     } catch (_) {
-      new import_obsidian22.Notice(`Go to ${destination.label}.`);
+      new import_obsidian26.Notice(`Go to ${destination.label}.`);
       return;
     }
     this.announceDestination(leaf, destination);
@@ -18680,7 +21522,7 @@ var ResourceOpener = class {
   /** Only a viewer that can be positioned is told it landed there. */
   announceDestination(leaf, destination) {
     void leaf;
-    new import_obsidian22.Notice(`Opened \u2014 go to ${destination.label}.`);
+    new import_obsidian26.Notice(`Opened \u2014 go to ${destination.label}.`);
   }
   isCodePath(path) {
     if (!fs4.existsSync(path)) return false;
@@ -18690,19 +21532,19 @@ var ResourceOpener = class {
   async openSystemPath(path, successMessage) {
     const error = await import_electron2.shell.openPath(path);
     if (error) {
-      new import_obsidian22.Notice(`Could not open file: ${error}`);
+      new import_obsidian26.Notice(`Could not open file: ${error}`);
       return false;
     }
-    new import_obsidian22.Notice(successMessage);
+    new import_obsidian26.Notice(successMessage);
     return true;
   }
   async openCodePath(path) {
     try {
       await import_electron2.shell.openExternal(visualStudioCodeUrl(path));
-      new import_obsidian22.Notice("Opened in Visual Studio Code.");
+      new import_obsidian26.Notice("Opened in Visual Studio Code.");
       return true;
     } catch (_) {
-      new import_obsidian22.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
+      new import_obsidian26.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
       return this.openSystemPath(path, "Opened in the system app.");
     }
   }
@@ -18711,21 +21553,21 @@ var ResourceOpener = class {
     try {
       realPath = fs4.realpathSync(path);
     } catch (_) {
-      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`File unavailable: ${path || "unknown path"}`);
       return Promise.resolve(false);
     }
     return this.isCodePath(realPath) ? this.openCodePath(realPath) : this.openSystemPath(realPath, systemMessage);
   }
   async openExternalPath(path, successMessage = "Opened in the default app.") {
     if (!path || !fs4.existsSync(path)) {
-      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     let realPath = "";
     try {
       realPath = fs4.realpathSync(path);
     } catch (_) {
-      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     return this.openSystemPath(realPath, successMessage);
@@ -18737,12 +21579,12 @@ var ResourceOpener = class {
     const fullPath = nodePath4.resolve(learningRoot, path || "");
     const relative3 = nodePath4.relative(materialsRoot, fullPath);
     if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
-      new import_obsidian22.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
       return false;
     }
     const realPath = resolvedWithin(materialsRoot, fullPath);
     if (!realPath) {
-      new import_obsidian22.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openExternalPath(
@@ -18757,16 +21599,16 @@ var ResourceOpener = class {
     const fullPath = nodePath4.resolve(base, path || "");
     const relative3 = nodePath4.relative(base, fullPath);
     if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
-      new import_obsidian22.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return false;
     }
     if (!fs4.existsSync(fullPath)) {
-      new import_obsidian22.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     const realPath = resolvedWithin(base, fullPath);
     if (!realPath) {
-      new import_obsidian22.Notice(`Unsafe vault symlink refused: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`Unsafe vault symlink refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openPreferredLocalPath(
@@ -18790,29 +21632,29 @@ var ResourceOpener = class {
     if (resource.url) {
       const url = safeWebUrl(resource.url);
       if (!url) {
-        new import_obsidian22.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
+        new import_obsidian26.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
         return false;
       }
       return Promise.resolve(import_electron2.shell.openExternal(url.href)).catch(() => {
-        new import_obsidian22.Notice("Could not open the link in your browser.");
+        new import_obsidian26.Notice("Could not open the link in your browser.");
         return false;
       });
     }
     if (materialPath.trim()) {
-      new import_obsidian22.Notice(resource.material_exists === false ? `File unavailable: ${materialPath.trim()}` : "Choose an exact file from this material collection.");
+      new import_obsidian26.Notice(resource.material_exists === false ? `File unavailable: ${materialPath.trim()}` : "Choose an exact file from this material collection.");
     } else if (vaultPath.trim().toLowerCase().startsWith("material://")) {
-      new import_obsidian22.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
+      new import_obsidian26.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
     } else if (vaultPath.trim()) {
-      new import_obsidian22.Notice("Choose an exact file from this vault collection.");
+      new import_obsidian26.Notice("Choose an exact file from this vault collection.");
     }
     return false;
   }
   copyText(value) {
     try {
       void navigator.clipboard.writeText(value);
-      new import_obsidian22.Notice(`Copied ${value}`);
+      new import_obsidian26.Notice(`Copied ${value}`);
     } catch (_) {
-      new import_obsidian22.Notice(value);
+      new import_obsidian26.Notice(value);
     }
   }
 };
@@ -18835,15 +21677,15 @@ function emptyStoreIndexes() {
     searchDocuments: []
   };
 }
-function isArchivedRecord(record7, archivedModuleIds) {
-  if (record7.type === "module" && record7.status === "archived") {
+function isArchivedRecord(record10, archivedModuleIds) {
+  if (record10.type === "module" && record10.status === "archived") {
     return true;
   }
-  return typeof record7.module_id === "string" && archivedModuleIds.has(record7.module_id);
+  return typeof record10.module_id === "string" && archivedModuleIds.has(record10.module_id);
 }
 function projectedRows(value) {
   return Array.isArray(value) ? value.filter(
-    (row3) => isRecord3(row3)
+    (row4) => isRecord3(row4)
   ) : [];
 }
 function buildStoreIndexes(manifest, records) {
@@ -18856,19 +21698,19 @@ function buildStoreIndexes(manifest, records) {
     rowsByGroup.set(
       group,
       projectedRows(value).filter(
-        (row3) => !isArchivedRecord(row3, archivedModuleIds)
+        (row4) => !isArchivedRecord(row4, archivedModuleIds)
       )
     );
   }
   const visibleRecords = records.filter(
-    (row3) => !isArchivedRecord(row3, archivedModuleIds)
+    (row4) => !isArchivedRecord(row4, archivedModuleIds)
   );
   const rowsByType = /* @__PURE__ */ new Map();
-  for (const row3 of visibleRecords) {
-    if (typeof row3.type !== "string") continue;
-    const rows = rowsByType.get(row3.type);
-    if (rows) rows.push(row3);
-    else rowsByType.set(row3.type, [row3]);
+  for (const row4 of visibleRecords) {
+    if (typeof row4.type !== "string") continue;
+    const rows = rowsByType.get(row4.type);
+    if (rows) rows.push(row4);
+    else rowsByType.set(row4.type, [row4]);
   }
   const sourceMapByModule = /* @__PURE__ */ new Map();
   for (const sourceMap of rowsByGroup.get("module_source_maps") ?? []) {
@@ -18897,20 +21739,20 @@ function buildStoreIndexes(manifest, records) {
       materialSynthesisByUnit.set(unitId, synthesis);
     }
   }
-  const searchDocuments = visibleRecords.map((record7) => ({
-    record: record7,
+  const searchDocuments = visibleRecords.map((record10) => ({
+    record: record10,
     strictText: foldCase([
-      record7.id,
-      record7.title,
-      ...record7.aliases || [],
-      ...record7.authors || [],
-      record7.organization,
-      record7.domain
+      record10.id,
+      record10.title,
+      ...record10.aliases || [],
+      ...record10.authors || [],
+      record10.organization,
+      record10.domain
     ].filter(Boolean).join(" ")),
     compactText: foldCase([
-      record7.id,
-      record7.title,
-      ...record7.aliases || []
+      record10.id,
+      record10.title,
+      ...record10.aliases || []
     ].filter(Boolean).join(" ")).replace(/\s+/g, "")
   }));
   return {
@@ -18962,10 +21804,10 @@ var ManifestStore = class {
       assertManifest(parsed);
       const manifest = parsed;
       const records = (manifest.records || []).filter(
-        (row3) => row3 && typeof row3 === "object"
+        (row4) => row4 && typeof row4 === "object"
       );
       const byId = new Map(
-        records.flatMap((row3) => typeof row3.id === "string" ? [[row3.id, row3]] : [])
+        records.flatMap((row4) => typeof row4.id === "string" ? [[row4.id, row4]] : [])
       );
       const indexedGroups = [
         "programs",
@@ -18979,9 +21821,9 @@ var ManifestStore = class {
         "unit_material_syntheses"
       ];
       for (const group of indexedGroups) {
-        for (const row3 of manifest[group]) {
-          if (typeof row3?.id === "string") {
-            byId.set(row3.id, row3);
+        for (const row4 of manifest[group]) {
+          if (typeof row4?.id === "string") {
+            byId.set(row4.id, row4);
           }
         }
       }
@@ -19008,8 +21850,8 @@ var ManifestStore = class {
     }
   }
   get(id2) {
-    const record7 = this.byId.get(id2) || null;
-    return record7 && !this.isArchivedCurriculumRecord(record7) ? record7 : null;
+    const record10 = this.byId.get(id2) || null;
+    return record10 && !this.isArchivedCurriculumRecord(record10) ? record10 : null;
   }
   of(type) {
     return [...this.indexes.rowsByType.get(type) ?? []];
@@ -19023,9 +21865,9 @@ var ManifestStore = class {
     if (!this.data) return [];
     return [...this.indexes.rowsByGroup.get(group) ?? []];
   }
-  isArchivedCurriculumRecord(record7) {
+  isArchivedCurriculumRecord(record10) {
     return isArchivedRecord(
-      record7,
+      record10,
       this.indexes.archivedModuleIds
     );
   }
@@ -19036,7 +21878,7 @@ var ManifestStore = class {
     return this.rows("modules");
   }
   currentSemester() {
-    return this.rows("semesters").filter((row3) => row3.status === "current").sort((a, b) => Number(a.order || 0) - Number(b.order || 0))[0] || null;
+    return this.rows("semesters").filter((row4) => row4.status === "current").sort((a, b) => Number(a.order || 0) - Number(b.order || 0))[0] || null;
   }
   /**
    * Modules is a semester surface, not a second subject catalogue.
@@ -19053,11 +21895,11 @@ var ManifestStore = class {
       semesterIds.add(semester.id);
       semesterIds.add(semester.id.replace(/^semester-/, ""));
     }
-    return this.modules().filter((row3) => {
-      if (row3.kind !== "academic") return false;
-      if (["completed", "archived", "dropped"].includes(String(row3.status || ""))) return false;
-      if (!semesterIds.size) return row3.status === "enrolled";
-      return semesterIds.has(String(row3.semester || ""));
+    return this.modules().filter((row4) => {
+      if (row4.kind !== "academic") return false;
+      if (["completed", "archived", "dropped"].includes(String(row4.status || ""))) return false;
+      if (!semesterIds.size) return row4.status === "enrolled";
+      return semesterIds.has(String(row4.semester || ""));
     }).sort((a, b) => compareStrings(String(a.title || a.id || ""), String(b.title || b.id || "")));
   }
   projects() {
@@ -19065,14 +21907,14 @@ var ManifestStore = class {
   }
   projectRelationships(projectId = null) {
     const rows = [...this.data?.project_relationships || []];
-    return projectId ? rows.filter((row3) => row3.from_project_id === projectId) : rows;
+    return projectId ? rows.filter((row4) => row4.from_project_id === projectId) : rows;
   }
   resolveProjectAlias(id2) {
     return this.data?.project_aliases?.[id2] || id2;
   }
   projectForUnit(unit) {
     const ids2 = Array.isArray(unit?.project_ids) ? unit.project_ids : [];
-    return ids2.map((id2) => this.get(id2)).find((row3) => row3?.type === "project") || null;
+    return ids2.map((id2) => this.get(id2)).find((row4) => row4?.type === "project") || null;
   }
   thematicGroups() {
     return this.rows("thematic_groups").slice().sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || compareStrings(String(a.title || ""), String(b.title || "")));
@@ -19085,16 +21927,16 @@ var ManifestStore = class {
     return rows.length ? rows : this.of("topic-pack");
   }
   catalogues() {
-    return this.of("collection").filter((row3) => row3.collection_kind !== "topic-pack");
+    return this.of("collection").filter((row4) => row4.collection_kind !== "topic-pack");
   }
   modulesForGroup(groupId) {
-    return this.modules().filter((row3) => (row3.thematic_group_ids || []).includes(groupId));
+    return this.modules().filter((row4) => (row4.thematic_group_ids || []).includes(groupId));
   }
   sourcesForGroup(groupId) {
-    return this.sources().filter((row3) => (row3.thematic_group_ids || []).includes(groupId));
+    return this.sources().filter((row4) => (row4.thematic_group_ids || []).includes(groupId));
   }
   topicPacksForGroup(groupId) {
-    return this.topicPacks().filter((row3) => (row3.thematic_group_ids || []).includes(groupId));
+    return this.topicPacks().filter((row4) => (row4.thematic_group_ids || []).includes(groupId));
   }
   /** ADR-015: the Module x Concept crossing, evidence included. */
   moduleConceptEdges() {
@@ -19114,16 +21956,16 @@ var ManifestStore = class {
    * `context` and `source` stay nullable, because null is their meaning.
    */
   relations() {
-    return this.rows("relations").flatMap((row3) => {
-      const from = projectedText(row3.from);
-      const type = projectedText(row3.type);
-      const to = projectedText(row3.to);
+    return this.rows("relations").flatMap((row4) => {
+      const from = projectedText(row4.from);
+      const type = projectedText(row4.type);
+      const to = projectedText(row4.to);
       return from && type && to ? [{
         from,
         type,
         to,
-        context: projectedText(row3.context),
-        source: projectedText(row3.source)
+        context: projectedText(row4.context),
+        source: projectedText(row4.source)
       }] : [];
     });
   }
@@ -19150,25 +21992,25 @@ var ManifestStore = class {
   }
   aiAction(actionId) {
     const available = this.data?.ai_actions?.available;
-    return this.rows("ai_actions_available").find((row3) => row3.id === actionId) || (Array.isArray(available) ? available : []).find((row3) => row3?.id === actionId) || null;
+    return this.rows("ai_actions_available").find((row4) => row4.id === actionId) || (Array.isArray(available) ? available : []).find((row4) => row4?.id === actionId) || null;
   }
   aiProviders() {
     const rows = this.data?.ai_actions?.provider_adapters;
-    return Array.isArray(rows) ? rows.filter((row3) => row3 && typeof row3 === "object") : [];
+    return Array.isArray(rows) ? rows.filter((row4) => row4 && typeof row4 === "object") : [];
   }
   aiRequestsForTarget(targetId) {
     const rows = this.data?.ai_actions?.requests;
-    return (Array.isArray(rows) ? rows : []).filter((row3) => row3?.target?.id === targetId);
+    return (Array.isArray(rows) ? rows : []).filter((row4) => row4?.target?.id === targetId);
   }
   latestAiRequest(targetId) {
     return this.aiRequestsForTarget(targetId).slice().sort((a, b) => compareStrings(String(b.created_at || ""), String(a.created_at || "")))[0] || null;
   }
   modulesFor(programId) {
-    return this.modules().filter((row3) => row3.area_id === programId);
+    return this.modules().filter((row4) => row4.area_id === programId);
   }
   unitsFor(moduleId, componentId = null) {
-    const rows = this.units().filter((row3) => row3.module_id === moduleId);
-    return componentId ? rows.filter((row3) => row3.component_id === componentId) : rows;
+    const rows = this.units().filter((row4) => row4.module_id === moduleId);
+    return componentId ? rows.filter((row4) => row4.component_id === componentId) : rows;
   }
   mapForUnit(unitId) {
     const mapId = this.data?.indexes?.unit_to_study_map?.[unitId];
@@ -19215,7 +22057,7 @@ var ManifestStore = class {
       (id2) => typeof id2 === "string"
     ) : [];
     return ids2.map((id2) => this.get(id2)).filter(
-      (row3) => row3 !== null
+      (row4) => row4 !== null
     );
   }
   useModules(sourceId) {
@@ -19224,7 +22066,7 @@ var ManifestStore = class {
       (id2) => typeof id2 === "string"
     ) : [];
     return ids2.map((id2) => this.get(id2)).filter(
-      (row3) => row3 !== null && row3.type === "module"
+      (row4) => row4 !== null && row4.type === "module"
     );
   }
   useUnits(sourceId) {
@@ -19233,20 +22075,20 @@ var ManifestStore = class {
       (id2) => typeof id2 === "string"
     ) : [];
     return ids2.map((id2) => this.get(id2)).filter(
-      (row3) => row3 !== null
+      (row4) => row4 !== null
     );
   }
   search(query, types = null) {
     const words2 = foldCase(String(query || "")).split(/\s+/).filter(Boolean);
     const allowed = types ? new Set(types) : null;
     const documents = this.indexes.searchDocuments.filter(
-      ({ record: record7 }) => !allowed || typeof record7.type === "string" && allowed.has(record7.type)
+      ({ record: record10 }) => !allowed || typeof record10.type === "string" && allowed.has(record10.type)
     );
     if (!words2.length) {
-      return documents.map(({ record: record7 }) => record7);
+      return documents.map(({ record: record10 }) => record10);
     }
     const strict = documents.filter(({ strictText }) => words2.every((word) => strictText.includes(word)));
-    if (strict.length) return strict.map(({ record: record7 }) => record7);
+    if (strict.length) return strict.map(({ record: record10 }) => record10);
     const needle = words2.join("");
     return documents.filter(({ compactText }) => {
       let at = 0;
@@ -19254,11 +22096,11 @@ var ManifestStore = class {
         if (char === needle[at]) at += 1;
       }
       return at === needle.length;
-    }).map(({ record: record7 }) => record7);
+    }).map(({ record: record10 }) => record10);
   }
   related(id2) {
-    const record7 = this.get(id2);
-    if (!record7) return [];
+    const record10 = this.get(id2);
+    if (!record10) return [];
     const ids2 = /* @__PURE__ */ new Set();
     for (const key of [
       "concepts",
@@ -19271,7 +22113,7 @@ var ManifestStore = class {
       "unit_order",
       "related_module_ids"
     ]) {
-      for (const value of asStrings(record7[key])) ids2.add(value);
+      for (const value of asStrings(record10[key])) ids2.add(value);
     }
     for (const table of Object.values(this.data?.backlinks || {})) {
       if (isRecord3(table) && Array.isArray(table[id2])) {
@@ -19285,7 +22127,7 @@ var ManifestStore = class {
       if (relationship.from_project_id === id2) ids2.add(relationship.to_id);
       if (relationship.to_id === id2) ids2.add(relationship.from_project_id);
     }
-    return [...ids2].map((value) => ({ rec: this.get(value) })).filter((row3) => row3.rec);
+    return [...ids2].map((value) => ({ rec: this.get(value) })).filter((row4) => row4.rec);
   }
 };
 
@@ -19306,7 +22148,7 @@ function settingsCoordinator(vaultRoot) {
 function cloneSettings(settings) {
   return JSON.parse(JSON.stringify(settings));
 }
-var LearningOSUI = class extends import_obsidian23.Plugin {
+var LearningOSUI = class extends import_obsidian27.Plugin {
   lastAiPrompt = "";
   /** Set when startup found an unusable record; the app registers read-only. */
   recoveryBlocked = false;
@@ -19376,6 +22218,11 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
     this.resources = new ResourceOpener(this.app);
     this.materials = new MaterialTree(this.app);
     this.gateway = new GatewayClient(this);
+    this.abilityHorizon = new AbilityHorizon({
+      gateway: this.gateway,
+      store: this.store,
+      horizonChanged: () => this.redrawAbilitySurfaces()
+    });
     this.aiActions = new AIActionClient(this);
     this.router = new ApplicationRouter(this);
     this.nav = new AppNavigator(
@@ -19391,9 +22238,9 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
     await this.resumeInterruptedWrite(recoveryState);
   }
   /** Every Notice the gateway and recovery paths raise goes through here. */
-  notify(message) {
+  notify(message2) {
     if (!this.isLifecycleActive()) return;
-    new import_obsidian23.Notice(message);
+    new import_obsidian27.Notice(message2);
   }
   /**
    * Finish, or refuse to finish, whatever the last session left in flight.
@@ -19470,8 +22317,8 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
   getUnitNoteDraft(unitId, stages = []) {
     return this.drafts.getUnitNote(unitId, stages);
   }
-  setUnitNoteDraft(unitId, title, text5, expectedRevisions = {}, recoveredStages = {}) {
-    this.drafts.setUnitNote(unitId, title, text5, expectedRevisions, recoveredStages);
+  setUnitNoteDraft(unitId, title, text8, expectedRevisions = {}, recoveredStages = {}) {
+    this.drafts.setUnitNote(unitId, title, text8, expectedRevisions, recoveredStages);
   }
   clearUnitNoteDraft(unitId, recoveredStages = {}, match = null) {
     this.drafts.clearUnitNote(unitId, recoveredStages, match);
@@ -19502,8 +22349,8 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
   getInboxDraft() {
     return this.drafts.getInbox();
   }
-  setInboxDraft(title, text5) {
-    this.drafts.setInbox(title, text5);
+  setInboxDraft(title, text8) {
+    this.drafts.setInbox(title, text8);
   }
   clearInboxDraft(match = null) {
     this.drafts.clearInbox(match);
@@ -19511,11 +22358,29 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
   getGardenDraft() {
     return this.drafts.getGarden();
   }
-  setGardenDraft(title, text5) {
-    this.drafts.setGarden(title, text5);
+  setGardenDraft(title, text8) {
+    this.drafts.setGarden(title, text8);
   }
   clearGardenDraft(match = null) {
     this.drafts.clearGarden(match);
+  }
+  listAbilityDrafts() {
+    return this.drafts.listAbilityDrafts();
+  }
+  saveAbilityDraft(draft) {
+    this.drafts.saveAbilityDraft(draft);
+    this.redrawAbilitySurfaces();
+  }
+  discardAbilityDraft(id2, updatedAt = null) {
+    this.drafts.discardAbilityDraft(id2, updatedAt);
+    this.redrawAbilitySurfaces();
+  }
+  /** The surfaces that read the ability horizon or the ability drafts. */
+  redrawAbilitySurfaces() {
+    if (!this.isLifecycleActive()) return;
+    for (const type of [VIEW_ABILITIES, VIEW_REVIEW, VIEW_NAV]) {
+      for (const leaf of this.app.workspace.getLeavesOfType(type)) leaf.view?.render?.();
+    }
   }
   /** Metadata about an unresolved write, for Diagnostics. Never payload text. */
   gatewayRecoveryState() {
@@ -19528,11 +22393,11 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
    */
   async retryRecoveredWrite() {
     if (!this.recovery.unresolved) {
-      new import_obsidian23.Notice("There is no unresolved Gateway write.");
+      new import_obsidian27.Notice("There is no unresolved Gateway write.");
       return;
     }
     if (this.recovery.state.kind === "malformed") {
-      new import_obsidian23.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
+      new import_obsidian27.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
       return;
     }
     try {
@@ -19543,10 +22408,10 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
         await this.finishConfirmedWrite(confirmation);
       });
       this.recoveryBlocked = this.recovery.unresolved;
-      new import_obsidian23.Notice("The recovered Gateway write is settled.");
+      new import_obsidian27.Notice("The recovered Gateway write is settled.");
     } catch (error) {
       this.recoveryBlocked = this.recovery.unresolved;
-      new import_obsidian23.Notice(errorMessage4(error));
+      new import_obsidian27.Notice(errorMessage4(error));
     }
   }
   /**
@@ -19635,7 +22500,7 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
     let rebuildSucceeded = false;
     let rebuildError = null;
     if (observed !== confirmation.snapshot_after) {
-      new import_obsidian23.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
+      new import_obsidian27.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
       try {
         await this.gateway.call(["generate"], { expectJson: false });
         rebuildSucceeded = true;
@@ -19660,7 +22525,7 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
       );
     }
     if (observed !== confirmation.snapshot_after) {
-      new import_obsidian23.Notice("Recovered the prior write; newer canonical changes are also present.");
+      new import_obsidian27.Notice("Recovered the prior write; newer canonical changes are also present.");
     }
     await this.recovery.settleConfirmed();
     this.gateway.noteSettlementObserved(confirmation);
@@ -19722,7 +22587,7 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
    * draft stays intact for one deliberate reconciliation and retry.
    */
   async refreshAfterConflict() {
-    new import_obsidian23.Notice("Canonical files changed since this view loaded \u2014 refreshing them. Your draft was kept; review it before retrying.");
+    new import_obsidian27.Notice("Canonical files changed since this view loaded \u2014 refreshing them. Your draft was kept; review it before retrying.");
     await this.gateway.call(["generate"], { expectJson: false });
     await this.reloadStore();
   }
@@ -19732,20 +22597,20 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
         await this.gateway.call(["validate"], { expectJson: false });
         await this.gateway.call(["generate"], { expectJson: false });
       });
-      new import_obsidian23.Notice("LearningOS projection rebuilt.");
+      new import_obsidian27.Notice("LearningOS projection rebuilt.");
     } catch (error) {
-      new import_obsidian23.Notice(errorMessage4(error));
+      new import_obsidian27.Notice(errorMessage4(error));
     }
   }
   async reviewSessionEnd() {
     try {
-      const review = asSessionReview(await this.mutate(
+      const review2 = asSessionReview(await this.mutate(
         () => this.gateway.endSession()
       ));
-      new SessionEndModal(this.app, this, review).open();
-      return review;
+      new SessionEndModal(this.app, this, review2).open();
+      return review2;
     } catch (error) {
-      new import_obsidian23.Notice(errorMessage4(error));
+      new import_obsidian27.Notice(errorMessage4(error));
       return null;
     }
   }
@@ -19770,28 +22635,28 @@ var LearningOSUI = class extends import_obsidian23.Plugin {
   materialFolderCount(path) {
     return this.materials.count(path);
   }
-  openRecord(record7) {
-    if (!record7) return;
-    const recordId = asString(record7.id);
-    if (record7.type === "unit" && recordId) return this.nav.openUnit(recordId);
-    if (record7.type === "module" && recordId) return this.nav.openModule(recordId);
-    if (record7.type === "project" && recordId) return this.nav.openProject(recordId);
-    if (record7.type === "program" && recordId) return this.nav.openProgram(recordId);
-    if (record7.type === "source" && recordId) return this.nav.openSourceDetail(recordId);
-    if (record7.type === "topic-pack" && recordId) return this.nav.openTopicPackDetail(recordId);
-    if (record7.type === "collection" && recordId) return this.nav.openCatalogueDetail(recordId);
-    if (record7.type === "note" || record7.type === "concept") {
-      if (record7.path) return this.openAuthoredPath(record7.path);
-      return this.nav.openLibraryFiltered(record7.type);
+  openRecord(record10) {
+    if (!record10) return;
+    const recordId = asString(record10.id);
+    if (record10.type === "unit" && recordId) return this.nav.openUnit(recordId);
+    if (record10.type === "module" && recordId) return this.nav.openModule(recordId);
+    if (record10.type === "project" && recordId) return this.nav.openProject(recordId);
+    if (record10.type === "program" && recordId) return this.nav.openProgram(recordId);
+    if (record10.type === "source" && recordId) return this.nav.openSourceDetail(recordId);
+    if (record10.type === "topic-pack" && recordId) return this.nav.openTopicPackDetail(recordId);
+    if (record10.type === "collection" && recordId) return this.nav.openCatalogueDetail(recordId);
+    if (record10.type === "note" || record10.type === "concept") {
+      if (record10.path) return this.openAuthoredPath(record10.path);
+      return this.nav.openLibraryFiltered(record10.type);
     }
-    if (record7.type === "workspace") {
-      if (record7.project_id) return this.nav.openProject(record7.project_id);
-      const unit = (record7.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+    if (record10.type === "workspace") {
+      if (record10.project_id) return this.nav.openProject(record10.project_id);
+      const unit = (record10.unit_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       if (unit?.id) return this.nav.openUnit(unit.id);
-      const module2 = (record7.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
+      const module2 = (record10.module_ids || []).map((id2) => this.store.get(id2)).find(Boolean);
       return module2?.id ? this.nav.openModule(module2.id) : this.nav.openHome();
     }
-    if (record7.path) return this.openAuthoredPath(record7.path);
+    if (record10.path) return this.openAuthoredPath(record10.path);
   }
   openResource(resource) {
     return this.resources.openResource(resource, this);
@@ -19812,7 +22677,7 @@ The active file is supplementary context only. Use only action-specific Learning
     if (agent?.sendToChat) await agent.sendToChat(prompt);
     else {
       this.copyText(prompt);
-      new import_obsidian23.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
+      new import_obsidian27.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
     }
     return prompt;
   }

@@ -28,10 +28,18 @@ module.exports = async function run() {
     const { app, plugin, calls } = await boot();
     const nav = app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
     const text = nav.allText();
-    /* Seven permanent destinations from the approved application IA. */
-    check('seven permanent destinations, no more',
-      nav.find('los-nav-primary')[0].find('los-app-nav-item').length === 7
-      && ['Home', 'Modules', 'Learn', 'Projects', 'Library', 'Garden', 'Review'].every((label) => text.includes(label)));
+    /* Eight permanent destinations from the approved application IA. The
+     * Atlas joined them on 2026-09-23: it opens on the ability map, and the
+     * concept atlas stays under More. */
+    check('eight permanent destinations, no more',
+      nav.find('los-nav-primary')[0].find('los-app-nav-item').length === 8
+      && ['Home', 'Modules', 'Learn', 'Projects', 'Library', 'Atlas', 'Garden', 'Review']
+        .every((label) => text.includes(label)));
+    check('Review carries its live count: the same queue Review lists',
+      nav.findText('los-app-nav-item', 'Review').find('los-nav-count')[0]?.allText()
+        === String(plugin.store.reviewItems().length)
+      && nav.findText('los-app-nav-item', 'Review').getAttribute('aria-label')
+        === `Review, ${plugin.store.reviewItems().length} waiting`);
     check('the application navigator opens at the compact design width',
       fs.readFileSync(path.join(ROOT, 'src', 'app', 'registration.ts'), 'utf8')
         .includes('leftSplit?.setSize?.(280)'));
@@ -52,12 +60,15 @@ module.exports = async function run() {
     await plugin.nav.openReview();
     const reviewRoot = app.workspace.getLeavesOfType(VIEW.review)[0].view.contentEl;
     const review = reviewRoot.allText();
-    check('Review renders Core-owned decision records rather than reconstructing queues',
-      reviewRoot.find('los-review-decision-row').length === plugin.store.reviewItems().length
-      && review.includes('Plan Analysis exam prep')
+    /* Figma B2 (11:334): a short selection list and one open item. The
+     * five entries in the frame are illustrative; the list is Core's. */
+    check('Review lists Core-owned decision records rather than reconstructing queues',
+      reviewRoot.find('los-review-item').length === plugin.store.reviewItems().length
+      && reviewRoot.findText('los-review-item', 'Plan Analysis exam prep') !== null
+      && reviewRoot.find('los-review-detail').length === 1
       && review.includes('This unit needs a study map')
-      && reviewRoot.find('los-review-count-badge').length === 1
-      && reviewRoot.find('los-filter-tabs').length === 1);
+      && reviewRoot.find('los-review-count').length === 1
+      && reviewRoot.find('los-filter-tabs').length === 0);
     await plugin.nav.openDiagnostics();
     await tick(); await tick();
     const diagnosticsRoot = app.workspace.getLeavesOfType(VIEW.diagnostics)[0].view.contentEl;
@@ -196,77 +207,70 @@ module.exports = async function run() {
 
     await plugin.nav.openReview();
 
-    const review =
-      app.workspace.getLeavesOfType(
-        VIEW.review,
-      )[0].view.contentEl;
-
-    const reviewText = review.allText();
+    const reviewView = app.workspace.getLeavesOfType(VIEW.review)[0].view;
+    const review = () => reviewView.contentEl;
+    const rows = () => review().find('los-review-item');
+    const detail = () => review().find('los-review-detail')[0];
 
     check(
       'Review renders one stable row per Core review_items record',
-      review.find('los-review-decision-row').length === 3
+      rows().length === 3
         && [
           'review-inbox-fixture',
           'review-shelving-fixture',
           'review-planning-fixture',
-        ].every(
-          (id) =>
-            review.find('los-review-decision-row')
-              .some(
-                (row) =>
-                  row.getAttribute('data-review-id') === id,
-              ),
-        ),
+        ].every((id) => rows().some((row) => row.getAttribute('data-review-id') === id)),
     );
+
+    check(
+      'one item is open at a time, with its decision, evidence, effect and action',
+      review().find('los-review-detail').length === 1
+        && detail().getAttribute('data-review-id') === 'review-inbox-fixture'
+        && rows()[0].getAttribute('aria-pressed') === 'true'
+        && rows().filter((row) => row.getAttribute('aria-pressed') === 'true').length === 1
+        && ['Decision', 'Evidence', 'Effect'].every((title) =>
+          detail().find('los-review-part').some((part) => part.allText().startsWith(title)))
+        && detail().find('los-review-actions').length === 1,
+    );
+
+    const shown = {};
+    for (const [id, action] of [
+      ['review-inbox-fixture', 'Route'],
+      ['review-shelving-fixture', 'Review proposal'],
+      ['review-planning-fixture', 'Open unit'],
+    ]) {
+      rows().find((row) => row.getAttribute('data-review-id') === id).fire('click');
+      shown[id] = detail().allText();
+      detail().findText('los-btn', action).fire('click');
+    }
 
     check(
       'Core-authored reasons are rendered rather than UI heuristics',
-      reviewText.includes(
-        'This capture still needs a human placement decision.',
-      )
-        && reviewText.includes(
-          'A shelving proposal is ready for explicit approval.',
-        )
-        && reviewText.includes(
-          'This unit needs a study map before structured study can continue.',
-        )
-        && review.find('los-review-count-badge').length === 1
-        && review.find('los-filter-tabs').length === 1,
+      shown['review-inbox-fixture'].includes('This capture still needs a human placement decision.')
+        && shown['review-shelving-fixture'].includes('A shelving proposal is ready for explicit approval.')
+        && shown['review-planning-fixture'].includes(
+          'This unit needs a study map before structured study can continue.')
+        && !shown['review-inbox-fixture'].includes('A shelving proposal is ready')
+        && review().find('los-review-count')[0].allText().includes('3 items need your decision'),
     );
-
-    review.findText(
-      'los-btn',
-      'Route',
-    ).fire('click');
-
-    review.findText(
-      'los-btn',
-      'Review proposal',
-    ).fire('click');
-
-    review.findText(
-      'los-btn',
-      'Open unit',
-    ).fire('click');
 
     check(
       'Review actions follow each Core-projected target exactly',
-      opened.includes(
-        'path:work/inbox/question.md',
-      )
-        && opened.includes(
-          'shelving:unit-fixture-thesis-landscape',
-        )
-        && opened.includes(
-          'unit:unit-fixture-analysis',
-        ),
+      opened.includes('path:work/inbox/question.md')
+        && opened.includes('shelving:unit-fixture-thesis-landscape')
+        && opened.includes('unit:unit-fixture-analysis'),
+    );
+
+    check(
+      'the open item is the leaf state, so a restored Review reopens it',
+      reviewView.getState().item === 'review-planning-fixture'
+        && detail().getAttribute('data-review-id') === 'review-planning-fixture',
     );
 
     check(
       'Garden is not synthesized into the Review queue',
-      review.allText().includes('Garden stays quiet')
-        && review.find('los-review-decision-row').length === 3,
+      review().allText().includes('Garden stays quiet')
+        && rows().length === 3,
     );
 
     plugin.onunload();

@@ -1,0 +1,188 @@
+/* ── Review (Figma 11:334) ───────────────────────────────────────────────────
+ * A short selection list on the left and exactly one item on the right: its
+ * claim, its evidence, what confirming it would do, and the actions. The list
+ * is built from Core's projected decisions, Core-reported ability conflicts
+ * and Aram's own ability drafts — never from example entries. */
+
+.los-review-view .los-review-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--los-1) var(--los-4);
+  width: min(1180px, 100%);
+  margin: 0 0 var(--los-3);
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+}
+.los-review-summary .los-review-count {
+  color: var(--los-ink);
+  font-size: 14px;
+}
+
+.los-review-split {
+  display: grid;
+  grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--los-3);
+  width: min(1180px, 100%);
+}
+.los-review-pane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-2);
+  min-width: 0;
+  padding: var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-lg);
+  background: var(--los-surface-raised);
+}
+.los-root h2.los-review-list-head {
+  margin: var(--los-1) var(--los-1) var(--los-1);
+  color: var(--los-ink-soft);
+  font-size: 11px !important;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.los-review-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-2);
+}
+.los-root .los-review-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-height: 60px;
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+  color: var(--los-ink);
+}
+.los-root .los-review-item:hover {
+  border-color: var(--los-rule-strong);
+  background: var(--los-paper-3);
+}
+.los-root .los-review-item.is-selected {
+  border-color: var(--los-accent);
+  background: var(--los-selected);
+  box-shadow: inset 3px 0 0 var(--los-accent);
+}
+.los-review-item-title { font-weight: 650; }
+.los-review-item-context {
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-review-pane .los-review-queue-note {
+  width: auto;
+  margin: var(--los-2) var(--los-1) 0;
+}
+
+.los-review-detail {
+  position: relative;
+  min-width: 0;
+  padding: var(--los-4) var(--los-5);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-lg);
+  background: var(--los-paper-2);
+}
+.los-review-eyebrow {
+  padding-right: 120px;
+  color: var(--los-accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.los-root .los-review-detail > h2 {
+  margin: var(--los-2) 0 var(--los-2);
+  font-size: 22px !important;
+}
+.los-review-draft-badge {
+  position: absolute;
+  top: var(--los-4);
+  right: var(--los-5);
+}
+.los-review-lede {
+  margin: 0 0 var(--los-2);
+  color: var(--los-ink-soft);
+}
+.los-review-rule {
+  height: 1px;
+  margin: var(--los-3) 0;
+  background: var(--los-rule);
+}
+.los-review-part { margin: var(--los-3) 0; }
+.los-root .los-review-part > h3 {
+  margin: 0 0 var(--los-2);
+  font-size: 13px !important;
+}
+.los-review-part > p { margin: 0 0 var(--los-1); }
+.los-review-claim {
+  padding: var(--los-3);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-3);
+  font-weight: 650;
+}
+.los-review-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--los-1) var(--los-3);
+  margin-top: var(--los-2);
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-review-conditions {
+  margin: var(--los-1) 0;
+  padding-left: var(--los-5);
+  color: var(--los-ink-soft);
+}
+.los-review-pointer-text {
+  color: var(--los-ink-soft);
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.los-review-pointer { overflow-wrap: anywhere; }
+.los-review-problems {
+  margin: var(--los-3) 0;
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-warning);
+  border-radius: var(--los-r-md);
+  background: var(--los-warning-wash);
+  color: var(--los-warning-strong);
+}
+.los-review-problems ul {
+  margin: var(--los-1) 0 0;
+  padding-left: var(--los-5);
+}
+.los-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-top: var(--los-4);
+  padding-top: var(--los-3);
+  border-top: 1px solid var(--los-rule);
+}
+
+/* The live Review count in the navigator: the same queue Review lists. */
+.los-nav-count {
+  margin-left: auto;
+  color: var(--los-ink-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.los-root .los-app-nav-item.is-active .los-nav-count { color: var(--los-accent-strong); }
+
+@media (max-width: 820px) {
+  .los-review-split { grid-template-columns: minmax(0, 1fr); }
+  .los-review-detail { padding: var(--los-3); }
+  .los-review-draft-badge { position: static; margin-bottom: var(--los-2); }
+  .los-review-eyebrow { padding-right: 0; }
+}

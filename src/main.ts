@@ -17,6 +17,8 @@ import {
   type ComposerDraft,
   type UnitNoteDraft,
 } from './application/draft-store';
+import type { AbilityDraft } from './application/ability-drafts';
+import { AbilityHorizon } from './application/ability-horizon';
 import {
   SettingsGatewayRecoveryStore,
   type GatewayRecoveryState,
@@ -29,7 +31,7 @@ import {
 } from './contracts/gateway-v1';
 import type { GatewaySuccessV2 } from './contracts/gateway-v2';
 import {
-  DEFAULT_SETTINGS, VIEW_NAV,
+  DEFAULT_SETTINGS, VIEW_ABILITIES, VIEW_NAV, VIEW_REVIEW,
 } from './constants';
 import {
   GATEWAY_RECOVERY_BLOCKED,
@@ -111,6 +113,7 @@ export class LearningOSUI extends Plugin implements AppSurface {
   declare settings: LearningOSSettings;
   declare activeNav: string;
   declare recovery: SettingsGatewayRecoveryStore;
+  declare abilityHorizon: AbilityHorizon;
 
   lastAiPrompt = '';
   /** Set when startup found an unusable record; the app registers read-only. */
@@ -198,6 +201,11 @@ export class LearningOSUI extends Plugin implements AppSurface {
     this.resources = new ResourceOpener(this.app);
     this.materials = new MaterialTree(this.app);
     this.gateway = new GatewayClient(this);
+    this.abilityHorizon = new AbilityHorizon({
+      gateway: this.gateway,
+      store: this.store,
+      horizonChanged: () => this.redrawAbilitySurfaces(),
+    });
     this.aiActions = new AIActionClient(this);
     this.router = new ApplicationRouter(this);
     this.nav = new AppNavigator(
@@ -376,6 +384,24 @@ export class LearningOSUI extends Plugin implements AppSurface {
   }
   clearGardenDraft(match: ComposerDraft | null = null): void {
     this.drafts.clearGarden(match);
+  }
+  listAbilityDrafts(): AbilityDraft[] {
+    return this.drafts.listAbilityDrafts();
+  }
+  saveAbilityDraft(draft: AbilityDraft): void {
+    this.drafts.saveAbilityDraft(draft);
+    this.redrawAbilitySurfaces();
+  }
+  discardAbilityDraft(id: string, updatedAt: string | null = null): void {
+    this.drafts.discardAbilityDraft(id, updatedAt);
+    this.redrawAbilitySurfaces();
+  }
+  /** The surfaces that read the ability horizon or the ability drafts. */
+  private redrawAbilitySurfaces(): void {
+    if (!this.isLifecycleActive()) return;
+    for (const type of [VIEW_ABILITIES, VIEW_REVIEW, VIEW_NAV]) {
+      for (const leaf of this.app.workspace.getLeavesOfType(type)) leaf.view?.render?.();
+    }
   }
   /** Metadata about an unresolved write, for Diagnostics. Never payload text. */
   gatewayRecoveryState(): GatewayRecoveryState {

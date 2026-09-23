@@ -1,5 +1,7 @@
 import type { ProjectionRecord } from '../contracts/manifest';
 import { asLabel, asString } from '../projection/readers';
+import { asAbilityDraft, type AbilityDraft } from './ability-drafts';
+import { compareStrings } from '../sorting';
 
 export interface RecoveredStageDraft {
   readonly id: string;
@@ -48,6 +50,12 @@ export interface LearningOSUiDrafts {
    * then upgraded in place against the criteria on screen.
    */
   doneWhen: Record<string, Record<string, boolean> | boolean[]>;
+  /**
+   * Ability claims and possible connections Aram drafted but has not yet
+   * confirmed in Review. Stored loosely and validated on every read, so one
+   * damaged entry is dropped instead of breaking Review.
+   */
+  abilityDrafts: Record<string, unknown>;
 }
 
 export interface DraftSettingsHost {
@@ -62,6 +70,7 @@ export function emptyUiDrafts(): LearningOSUiDrafts {
     inbox: { title: '', text: '' },
     garden: { title: '', text: '' },
     doneWhen: {},
+    abilityDrafts: {},
   };
 }
 
@@ -74,6 +83,11 @@ export function normalizeUiDrafts(value: Partial<LearningOSUiDrafts> | null | un
     inbox: value?.inbox ?? empty.inbox,
     garden: value?.garden ?? empty.garden,
     doneWhen: value?.doneWhen ?? empty.doneWhen,
+    abilityDrafts: value?.abilityDrafts
+      && typeof value.abilityDrafts === 'object'
+      && !Array.isArray(value.abilityDrafts)
+      ? value.abilityDrafts
+      : empty.abilityDrafts,
   };
 }
 
@@ -343,6 +357,37 @@ export class DraftStore {
     const draft = this.settings.uiDrafts.garden;
     if (match && !sameComposerDraft(draft, match)) return;
     this.settings.uiDrafts.garden = { title: '', text: '' };
+    this.scheduleSave();
+  }
+
+  /** Every readable ability draft, oldest first. */
+  listAbilityDrafts(): AbilityDraft[] {
+    return Object.values(this.settings.uiDrafts.abilityDrafts ?? {})
+      .map((value) => asAbilityDraft(value))
+      .filter((draft): draft is AbilityDraft => draft !== null)
+      .sort((left, right) => compareStrings(left.createdAt, right.createdAt)
+        || compareStrings(left.id, right.id));
+  }
+
+  getAbilityDraft(id: string): AbilityDraft | null {
+    return asAbilityDraft(this.settings.uiDrafts.abilityDrafts?.[id]);
+  }
+
+  saveAbilityDraft(draft: AbilityDraft): void {
+    this.settings.uiDrafts.abilityDrafts ??= {};
+    this.settings.uiDrafts.abilityDrafts[draft.id] = { ...draft };
+    this.scheduleSave();
+  }
+
+  /**
+   * Drop one draft. `updatedAt` makes this safe after an awaited write: the
+   * draft goes only if it is still the version that was confirmed, so an edit
+   * made while the write ran is kept.
+   */
+  discardAbilityDraft(id: string, updatedAt: string | null = null): void {
+    const current = this.getAbilityDraft(id);
+    if (updatedAt && current && current.updatedAt !== updatedAt) return;
+    delete this.settings.uiDrafts.abilityDrafts?.[id];
     this.scheduleSave();
   }
 }

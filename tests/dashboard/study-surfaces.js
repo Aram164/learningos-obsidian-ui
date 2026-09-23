@@ -192,6 +192,14 @@ module.exports = async function run() {
       text.includes('Current work') && text.includes('Compare all'));
     check('the completion rule is stated beside the completion action',
       text.includes('Finish only when the criterion above is true.'));
+    check('completing a stage is stated as progress, never as a learner attempt',
+      text.includes('Completing it records progress, not a learner attempt.'));
+    const currentCard = element.find('los-current-work-card')[0].find('los-material-card')[0];
+    check('Current work is one prominent card with purpose, locator and availability',
+      Boolean(currentCard?.classes.has('is-prominent'))
+      && currentCard.find('los-material-purpose').length === 1
+      && currentCard.find('los-material-availability')[0].allText().includes('Remote')
+      && element.find('los-current-work-count')[0]?.allText().endsWith('required'));
     check('Add note follows the final stage in the rail', element.find('los-stage-rail')[0].findText('los-btn', 'Add note'));
     check('existing unit note sections are projected', plugin.store.get('unit-fixture-sad-l04').note_sections[0].title === 'Foundations session');
     check('durable unit artifact remains a reference', text.includes('Ultimate Reference') && text.includes('Fixture probability reference'));
@@ -219,36 +227,51 @@ module.exports = async function run() {
       element.find('los-resource-actions').every((row) =>
         row.children.filter((child) => child.classes.has('los-btn')).length <= 1));
 
-    /* The comparison drawer (Figma 05 · 36:12). "Compare all" is where the
-     * complete catalogue went, so this is where the guarantees that used to be
-     * checked on the page are checked now. */
+    /* "Compare all" (Figma B1a, 70:985): the stage's placements by need, one
+     * group at a time, then the lecture's full menu and the rest of the
+     * course. Showing one group may never make a material unreachable or
+     * uncounted, so every group is opened here and the cards are counted
+     * across them. */
     element.findText('los-btn', 'Compare all').fire('click');
     await frame();
     const drawer = stub.Modal.last.contentEl;
-    const drawerText = drawer.allText();
+    const drawerGroup = (key) => drawer.find('los-compare-group')
+      .find((node) => node.getAttribute('data-compare-group') === key);
     check('the drawer is a named dialog carrying the honesty note',
       drawer.getAttribute('role') === 'dialog'
       && drawer.getAttribute('aria-labelledby') === 'los-material-drawer-heading'
-      && drawerText.includes('Choose learning material')
-      && drawerText.includes('never deletes or hides the complete source record'));
+      && drawer.allText().includes('Compare materials')
+      && drawer.allText().includes('never deletes or hides the complete source record'));
+    check('the rail partitions the stage by need and reconciles with its total',
+      ['required', 'stuck', 'reference', 'lecture', 'course'].every((key) => Boolean(drawerGroup(key)))
+      && drawer.find('los-compare-reconcile')[0].allText().startsWith('2 + 0 + 1 = 3 on this stage')
+      && drawerGroup('required').getAttribute('aria-pressed') === 'true'
+      && drawerGroup('stuck').classes.has('is-empty'));
+    const placements = [];
+    for (const key of ['required', 'stuck', 'reference']) {
+      drawerGroup(key).fire('click');
+      placements.push(...drawer.find('los-compare-body')[0].find('los-resource-row').map((card) => [key, card]));
+    }
     check('every material the page counted is reachable in the drawer',
-      drawer.find('los-resource-row').length === 3);
+      placements.length === 3);
 
     /* ADR-008/009 integration. The Core has carried resource rank and resource
      * identity since contract v2/v3; until the UI read them, a required stage
      * still showed the deck, the depth paper and the preserved bibliography at
      * one weight, and every verdict still landed on the whole source. */
     check('resource triage tiers are visible, not just stored',
-      drawerText.includes('Do this') && drawerText.includes('Depth — not now')
-      && drawer.find('los-triage-required-now').length >= 1
-      && drawer.find('los-triage-deferred').length >= 1);
-    check('unranked resources stay visible with their primary classification',
-      drawer.find('los-triage-unranked').length === 1
-      && drawerText.includes('Do this'));
+      placements.some(([key, card]) => key === 'required'
+        && card.classes.has('los-triage-required-now') && card.allText().includes('Do this'))
+      && placements.some(([key, card]) => key === 'reference'
+        && card.classes.has('los-triage-deferred') && card.allText().includes('Depth — not now')));
+    check('unranked resources stay visible and count as required',
+      placements.filter(([key, card]) => key === 'required' && card.classes.has('los-triage-unranked')).length === 1
+      && placements.find(([, card]) => card.classes.has('los-triage-unranked'))[1].allText().includes('Primary · unranked'));
     check('resource feedback collapses into a rate menu instead of three buttons',
-      drawer.find('los-resource-row').some((row) => row.find('los-overflow').length === 1)
-      && drawer.find('los-resource-actions').every((row) =>
-        row.children.filter((child) => child.classes.has('los-btn')).length <= 1));
+      placements.some(([, card]) => card.find('los-overflow').length === 1)
+      && placements.every(([, card]) => card.find('los-resource-actions').every((row) =>
+        row.children.filter((child) => child.classes.has('los-btn')).length <= 1)));
+    stub.Modal.last.close();
     check('done-when criteria are interactive checkboxes',
       element.find('los-donewhen-row').length >= 1
       && element.find('los-donewhen-row')[0].children[0].getAttribute('type') === 'checkbox');
@@ -323,6 +346,13 @@ module.exports = async function run() {
     const detour = calls.envelope('detour.create')?.payload;
     check('gap action creates a scoped detour',
       detour?.stage_id === 'stage-fixture-conditioning' && detour?.classification === 'required-now');
+    element = view.contentEl;
+    element.findText('los-btn', 'Complete stage').fire('click');
+    await waitFor(() => Boolean(calls.envelope('stage.progress.update')) && !plugin.gateway.isBusy);
+    check('completing the stage sends stage progress and no ability evidence',
+      calls.envelope('stage.progress.update')?.payload.stage_id === 'stage-fixture-conditioning'
+      && !calls.envelopes.some((envelope) => envelope.capability.startsWith('learner.')
+        || envelope.capability.startsWith('ability.')));
     await plugin.reviewSessionEnd();
     check('session closure first requests an exact change review',
       calls.some((args) => args.length === 1 && args[0] === 'session-end')
@@ -346,6 +376,9 @@ module.exports = async function run() {
             covers: ['knowledge-fixture-conditioning'],
             depth: 'derivation', scope: 'current',
             locator: 'lecture-slides/VL_02.pdf', source_id: 'source-fixture-book',
+            material_uri: 'material://source-fixture-book/lecture-slides/VL_02.pdf',
+            material_path: 'materials/source-fixture-book/lecture-slides/VL_02.pdf',
+            material_exists: true,
           },
           {
             id: 'route-drawer-intuition', unit_id: 'unit-fixture-sad-l04',
@@ -356,8 +389,17 @@ module.exports = async function run() {
             depth: 'intuition', scope: 'complementary',
             locator: 'papers/domingos.pdf', source_id: 'source-fixture-book',
           },
+          {
+            id: 'route-drawer-remote', unit_id: 'unit-fixture-sad-l04',
+            title: 'Recorded remote lecture', format: 'video',
+            angle: 'The same conditioning argument, recorded.',
+            covers: ['knowledge-fixture-conditioning'],
+            depth: 'orientation', scope: 'complementary',
+            locator: 'Lecture recording', source_id: 'source-fixture-book',
+            url: 'https://example.org/fixture-remote-lecture',
+          },
         ];
-        const foreign = { ...sourceMap.sources[0].unit_routes[0], id: 'route-foreign', unit_id: 'unit-fixture-sad-l02', title: 'Foreign lecture entry', covers: ['knowledge-foreign-only'] };
+        const foreign = { ...sourceMap.sources[0].unit_routes[1], id: 'route-foreign', unit_id: 'unit-fixture-sad-l02', title: 'Foreign lecture entry', covers: ['knowledge-foreign-only'] };
         sourceMap.sources[0].unit_routes.push(foreign, { ...foreign, id: 'route-analysis-hidden', unit_id: 'unit-fixture-analysis', title: 'Analysis must stay outside SaD' });
         const owner = manifest.units.find(row => row.id === 'unit-fixture-sad-l02');
         owner.source_selections = [{ route_id: foreign.id, source_id: foreign.source_id, locator: foreign.locator, purpose: "Existing learner choice" }];
@@ -368,7 +410,6 @@ module.exports = async function run() {
           kind: 'watch', label: `${name} exact video`, locator: `Lecture ${index + 1}`,
           url: `https://example.org/video-${name}`, angle: `${name} stage instruction`, scope_triage: 'reference-only',
         })));
-
       },
     });
     await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
@@ -377,131 +418,121 @@ module.exports = async function run() {
     if (!view.contentEl.findText('los-btn', 'Compare all')) throw new Error(view.contentEl.allText() + ' STORE ' + plugin.store.error);
     view.contentEl.findText('los-btn', 'Compare all').fire('click');
     await frame();
-    let drawer = stub.Modal.last.contentEl;
+    const drawer = stub.Modal.last.contentEl;
+    const group = (key) => drawer.find('los-compare-group')
+      .find((node) => node.getAttribute('data-compare-group') === key);
+    const cards = () => drawer.find('los-compare-body')[0].find('los-source-entry');
     /* F05 (2026-09-05 audit): focusing Close sent the learner to the end of a
      * long list, so the drawer opened showing its bottom rather than its
      * heading and recommendation. */
     check('the drawer opens at its heading, not at the foot of the list',
-      global.document.activeElement
-        === drawer.find('los-page-header')[0].children.find(
-          (child) => child.getAttribute('id') === 'los-material-drawer-heading'));
+      global.document.activeElement?.getAttribute('id') === 'los-material-drawer-heading');
     check('source browsing preserves the host modal keyboard scope',
       typeof stub.Modal.last.scope.handleKey === 'function');
-    check('stage scope preserves all original placements',
-      drawer.find('los-source-entry').length === 5 && drawer.allText().includes('5 of 5 entries'));
-    // Regression: an entry used to be a disclosure wrapping a whole stage
-    // section, so reaching one material took three expansions and printed its
-    // title, status and locator four times over. One group click, one card.
-    const entryCards = drawer.find('los-source-entry');
-    check('a material is a card, not a second disclosure inside its group',
-      entryCards.every((card) => card.tag !== 'details' && card.find('los-disclosure').length === 0));
-    check('the stage-section boilerplate is not reprinted per material',
-      !drawer.allText().includes('Every material stays visible, grouped by what this stage asks of it')
-      && !drawer.allText().includes('1 material'));
-    const firstCard = entryCards.find((card) => card.allText().includes('first exact video'));
+    check('every group states a count that reconciles with the stage and the lecture',
+      drawer.find('los-compare-reconcile')[0].allText().startsWith('2 + 0 + 3 = 5 on this stage')
+      && group('required').allText().includes('2 materials')
+      && group('reference').allText().includes('3 materials')
+      && group('lecture').allText().includes('3 routes')
+      && group('course').allText().includes('1 route'));
+    const reachable = [];
+    for (const key of ['required', 'stuck', 'reference']) {
+      group(key).fire('click');
+      reachable.push(...cards());
+    }
+    check('every placement is reachable through its group, one group at a time',
+      reachable.length === 5
+      && group('reference').getAttribute('aria-pressed') === 'true'
+      && group('required').getAttribute('aria-pressed') === 'false');
+    const firstCard = cards().find((card) => card.allText().includes('first exact video'));
     check('a card states its title once',
       firstCard.allText().split('first exact video').length - 1 === 1);
     const opened = [];
     plugin.openResource = record => opened.push(record);
-    const firstVideo = drawer.find('los-source-entry').find(row => row.allText().includes('first exact video'));
-    const secondVideo = drawer.find('los-source-entry').find(row => row.allText().includes('second exact video'));
+    const firstVideo = cards().find(row => row.allText().includes('first exact video'));
+    const secondVideo = cards().find(row => row.allText().includes('second exact video'));
     firstVideo.findText('los-btn', 'Open').fire('click');
     secondVideo.findText('los-btn', 'Open').fire('click');
     check('same-route stage placements preserve separate instructions and direct targets',
       firstVideo.allText().includes('first stage instruction') && secondVideo.allText().includes('second stage instruction')
       && opened[0].url === 'https://example.org/video-first' && opened[1].url === 'https://example.org/video-second');
-    check("the urgency toggle is available where placements carry urgency ranks",
-      drawer.find('los-source-required')[0].disabled === false);
-    drawer.find('los-source-required')[0].checked = true;
-    drawer.find('los-source-required')[0].fire('change');
-    check("only-required narrows to rank-1 placements while keeping the total visible",
-      drawer.find('los-source-entry').length === 2
-      && drawer.allText().includes('2 of 5 entries')
-      && drawer.allText().includes('required now'));
-    drawer.find('los-source-required')[0].checked = false;
-    drawer.find('los-source-required')[0].fire('change');
-    check('clearing the toggle restores every placement',
-      drawer.find('los-source-entry').length === 5 && drawer.allText().includes('5 of 5 entries'));
-    const scope = drawer.find('los-source-scope')[0];
+    check('a placement names its purpose, exact locator and where it is, in words',
+      firstVideo.find('los-material-purpose')[0].allText() === 'Derive it'
+      && firstVideo.allText().includes('Lecture 1')
+      && firstVideo.find('los-material-availability')[0].allText().includes('Remote')
+      && firstVideo.allText().includes('LearningOS never fetches it'));
+
+    group('lecture').fire('click');
+    const lecture = () => drawer.find('los-compare-body')[0];
+    const deck = () => cards().find((card) => card.allText().includes('Current L02 lecture deck'));
+    check('the lecture menu is partitioned purpose-first, in the fixed learnable order',
+      cards().length === 3
+      && lecture().find('los-type-subhead').map((node) => node.allText()).join('|')
+        === 'Get oriented (1)|Build intuition (1)|Derive it (1)'
+      && lecture().allText().includes('3 of 3 routes'));
+    check('route cards carry the source chip, the exact locator and the angle',
+      cards().every((card) => card.find('los-chip').length >= 1)
+      && deck().allText().includes('lecture-slides/VL_02.pdf')
+      && deck().allText().includes('Scope authority for the current unit.'));
+    const why = deck().findText('los-btn', 'Why this one');
+    check('"Why this one" is on demand and keeps coverage with the rationale',
+      Boolean(why)
+      && deck().find('los-resource-angle-detail')[0].hasAttribute('hidden')
+      && deck().find('los-resource-angle-detail')[0].allText().includes('Derives the geometry and connects scaling and validation.'));
+    why.fire('click');
+    check('"Why this one" opens in place',
+      !deck().find('los-resource-angle-detail')[0].hasAttribute('hidden'));
+    const remote = cards().find((card) => card.allText().includes('Recorded remote lecture'));
+    check('remote material is said to be remote and is never inspected',
+      remote.find('los-material-availability')[0].allText().includes('Remote')
+      && !remote.findText('los-btn', 'Inspect span'));
+    check('material with no copy and no link says so',
+      cards().find((card) => card.allText().includes('Domingos perspective'))
+        .find('los-material-availability')[0].allText().includes('Not available'));
+    check('a local span is inspectable, and nothing is read before it is asked for',
+      Boolean(deck().findText('los-btn', 'Inspect span'))
+      && deck().find('los-material-availability')[0].allText().includes('Local file')
+      && !calls.some((args) => args[0] === 'material-span'));
+    deck().findText('los-btn', 'Inspect span').fire('click');
+    await waitFor(() => deck()?.find('los-span-excerpt').length === 1);
+    const span = deck().find('los-span-panel')[0];
+    check('the material excerpt comes from Core, snapshot-bound and bounded',
+      calls.some((args) => args.join(' ')
+        === `material-span unit-fixture-sad-l04 route-drawer-deck --extract --expected-snapshot ${FIXTURE_SNAPSHOT}`)
+      && span.allText().includes('Local file read just now')
+      && span.find('los-span-excerpt')[0].allText().includes('Conditioning on an event')
+      && span.allText().includes('pages 1–2 of 12')
+      && span.allText().includes('Preview covers pages 1–2 of 12')
+      && span.allText().includes('2 analysis notes read this route.')
+      && Boolean(deck().findText('los-btn', 'Inspect again')));
+
     const search = drawer.find('los-source-search')[0];
-    const purpose = drawer.find('los-source-purpose')[0];
-    scope.value = 'unit'; scope.fire('change');
-    check('unit scope partitions routes purpose-first with type sub-headings',
-      drawer.find('los-source-entry').length === 2
-      && drawer.find('los-purpose-group').length === 2
-      && drawer.find('los-purpose-group')[0].tag === 'details'
-      && drawer.find('los-type-subhead').length === 2
-      && drawer.find('los-source-group').length === 0);
-    const purposeHeadings = drawer.find('los-purpose-heading').map((node) => node.allText());
-    check('purpose sections follow the fixed learnable order',
-      purposeHeadings.length === 2
-      && purposeHeadings[0].includes('Build intuition')
-      && purposeHeadings[1].includes('Derive it'));
-    check('the jump bar names every purpose with live counts and mutes the empty ones',
-      drawer.find('los-jump-chip').length === 9
-      && drawer.allText().includes('Build intuition 1')
-      && drawer.find('los-jump-chip').filter((node) => node.disabled).length === 7);
-    drawer.find('los-jump-chip').find((node) => node.allText().includes('Derive it')).fire('click');
-    check('a jump chip opens its section',
-      drawer.find('los-purpose-group')[1].getAttribute('open') !== null);
-    check('route cards carry the source chip without repeating purpose and type',
-      drawer.find('los-chip').length >= 2
-      && !drawer.allText().includes('book · derivation'));
-    /* Purpose and type now live in the section and sub-heading ('Derive it',
-     * not the raw schema value), so the pin follows the learner-facing label
-     * while angles, locators and scope wording stay verbatim. */
-    check('full descriptions and exact locators remain readable before choosing',
-      ['Scope authority for the current unit.', 'Derives the geometry and connects scaling and validation.',
-        'Derive it', 'current', 'lecture-slides/VL_02.pdf', 'Argues the geometry informally']
-        .every(line => drawer.allText().includes(line)));
     search.focus(); search.value = 'Dom'; search.fire('input');
     search.value = 'Domingos'; search.fire('input');
     check('multi-character search preserves its input node and focus',
       drawer.find('los-source-search')[0] === search && global.document.activeElement === search
-      && drawer.find('los-source-entry').length === 1 && drawer.allText().includes('1 of 2 entries'));
+      && cards().length === 1 && drawer.allText().includes('1 of 3 routes'));
     search.value = plugin.store.get('source-fixture-book').title; search.fire('input');
-    check('search also matches the parent source title', drawer.find('los-source-entry').length === 2);
+    check('search also matches the parent source title', cards().length === 3);
     search.value = 'does not exist'; search.fire('input');
-    check('no-result state retains visible totals and reset', drawer.allText().includes('0 of 2 entries')
-      && drawer.allText().includes('No materials match') && drawer.findText('los-btn', 'Reset filters'));
-    drawer.findText('los-btn', 'Reset filters').fire('click');
-    check('reset recovers the entire current scope', scope.value === 'unit' && drawer.find('los-source-entry').length === 2);
-    scope.value = 'component'; scope.fire('change');
-    check('component scope excludes Analysis while including the other SaD lecture',
-      drawer.find('los-source-entry').length === 3 && !drawer.allText().includes('Analysis must stay outside SaD'));
-    const foreignRow = drawer.find('los-source-entry').find(row => row.allText().includes('Foreign lecture entry'));
-    check('foreign rows use their own choices and coverage without offering cross-unit mutation',
-      foreignRow.allText().includes('Chosen for this lecture') && foreignRow.allText().includes('Foreign coverage name')
+    check('no-result state keeps the totals and says how to recover',
+      drawer.allText().includes('0 of 3 routes') && drawer.allText().includes('No material matches')
+      && drawer.allText().includes('Clear the search'));
+    group('lecture').fire('click');
+    check('choosing the group again clears the search and recovers every route', cards().length === 3);
+
+    group('course').fire('click');
+    const foreignRow = cards().find(row => row.allText().includes('Foreign lecture entry'));
+    check('the rest of the course is one click away, without cross-unit mutation',
+      cards().length === 1 && !drawer.allText().includes('Analysis must stay outside SaD')
+      && foreignRow.allText().includes('Chosen for this lecture') && foreignRow.allText().includes('Foreign coverage name')
       && foreignRow.findText('los-btn', 'Go to lecture') && !foreignRow.findText('los-btn', 'Choose')
       && !foreignRow.findText('los-btn', 'Remove choice'));
-    scope.value = 'unit'; scope.fire('change');
-    purpose.value = 'intuition'; purpose.fire('change');
-    check('purpose filters show honest filtered totals', drawer.find('los-source-entry').length === 1
-      && drawer.allText().includes('1 of 2 entries') && drawer.allText().includes('Domingos perspective'));
-    purpose.value = 'all'; purpose.fire('change');
-    const materialType = drawer.find('los-source-type')[0];
-    materialType.value = 'book'; materialType.fire('change');
-    check('type filters narrow across sections with honest totals',
-      drawer.find('los-source-entry').length === 1
-      && drawer.allText().includes('1 of 2 entries')
-      && drawer.allText().includes('Current L02 lecture deck'));
-    materialType.value = 'all'; materialType.fire('change');
-    check("the urgency toggle is unavailable where routes carry no urgency rank",
-      drawer.find('los-source-required')[0].disabled === true);
-    drawer.findText('los-btn', 'Source').fire('click');
-    check('group-by source preserves the retired structure on demand',
-      drawer.find('los-source-group').length === 1
-      && drawer.find('los-purpose-group').length === 0
-      && drawer.find('los-source-entry').length === 2);
-    drawer.findText('los-btn', 'Purpose → type').fire('click');
-    check('group-by purpose restores the default partition',
-      drawer.find('los-purpose-group').length === 2
-      && drawer.find('los-source-entry').length === 2);
-    purpose.value = 'intuition'; purpose.fire('change');
     check('browsing and filtering never change canonical selection', !calls.envelope('unit.source-selection.set'));
 
     /* D4: the surface moved, the governed write did not. */
-    drawer.findText('los-btn', 'Choose').fire('click');
+    group('lecture').fire('click');
+    cards().find((card) => card.allText().includes('Domingos perspective')).findText('los-btn', 'Choose').fire('click');
     await waitFor(() => Boolean(calls.envelope('unit.source-selection.set'))
       && !plugin.gateway.isBusy);
     const selection = calls.envelope('unit.source-selection.set');
@@ -517,10 +548,9 @@ module.exports = async function run() {
   }
 
   /* The L07 shape: stage-sad-l07-geometric is authored `helpful-now` with nothing
-     required of the learner at all. A literal required-now expand rule opened none
-     of its fifteen materials, and a drawer showing only headings reads as empty —
-     the one thing this surface must never do. The rule degrades down TRIAGE_ORDER
-     instead, so the most urgent rank actually present is what opens. */
+     required of the learner at all. A drawer that opened on an empty "Required
+     now" group would read as empty — the one thing this surface must never do —
+     so it opens on the most urgent group actually present. */
   heading('the drawer on a stage with nothing required now');
   {
     const { app, plugin } = await boot({
@@ -581,24 +611,26 @@ module.exports = async function run() {
     view.contentEl.findText('los-btn', 'Compare all').fire('click');
     await frame();
     const drawer = stub.Modal.last.contentEl;
-    const state = drawer.find('los-purpose-group')
-      .map((node) => [node.allText(), node.getAttribute('open') !== null]);
-    const opened = (label) => state.find(([text]) => text.includes(label))?.[1];
-    check('a stage with nothing required still opens at the most urgent rank present',
-      state.length === 3 && opened('Derive it') === true && opened('Practise') === true);
-    check('ranks below the most urgent present stay collapsed',
-      opened('Get oriented') === false);
+    const group = (key) => drawer.find('los-compare-group')
+      .find((node) => node.getAttribute('data-compare-group') === key);
+    const cards = () => drawer.find('los-compare-body')[0].find('los-source-entry');
+    check('a stage with nothing required still opens at the most urgent group present',
+      group('stuck').getAttribute('aria-pressed') === 'true'
+      && cards().length === 2
+      && group('required').classes.has('is-empty'));
     check('nothing is hidden by the fallback: the count line still reconciles',
-      drawer.allText().includes('3 of 3 entries')
-      && drawer.allText().includes('0 required now'));
+      drawer.find('los-compare-reconcile')[0].allText().startsWith('0 + 2 + 1 = 3 on this stage'));
+    group('required').fire('click');
+    check('an empty group says where the materials are instead of reading as empty',
+      cards().length === 0 && drawer.allText().includes('Nothing on this stage is required now'));
+    group('stuck').fire('click');
     /* The working kind names the ACTIVITY, not the material: a solutions PDF
        placed as `practise` is still worked solutions, and letting the kind win
-       meant that sub-heading could never appear. */
-    const practise = drawer.find('los-purpose-group')
-      .find((node) => node.allText().includes('Practise'));
-    check('an authored format outranks the working kind in the type partition',
-      practise.allText().includes('Worked solutions')
-      && !practise.allText().includes('Exercise sheets'));
+       would call it an exercise sheet. */
+    const answers = cards().find((card) => card.allText().includes('Waiting-time worked answers'));
+    check('an authored format outranks the working kind on the card',
+      answers.find('los-material-kind')[0].allText() === 'Solutions'
+      && answers.find('los-material-purpose')[0].allText() === 'Practise');
     plugin.onunload();
   }
 
@@ -771,10 +803,13 @@ module.exports = async function run() {
       && (() => {
         view.contentEl.findText('los-btn', 'Compare all').fire('click');
         const drawer = stub.Modal.last.contentEl;
-        const scope = drawer.find('los-source-scope')[0]; scope.value = 'unit'; scope.fire('change');
-        return drawer.allText().includes(
+        drawer.find('los-compare-group')
+          .find((node) => node.getAttribute('data-compare-group') === 'lecture').fire('click');
+        const shown = drawer.allText().includes(
           'Works the conditioning rule through a medical-test example.',
         );
+        stub.Modal.last.close();
+        return shown;
       })());
     check('approved material synthesis stays distinct from the option menu',
       text.includes('Approved material synthesis')
@@ -811,6 +846,38 @@ module.exports = async function run() {
       && text.includes('source map revision, material checksums')
       && text.includes('Missing: route-fixture-new-current')
       && text.includes('The route was screened for scope'));
+    plugin.onunload();
+  }
+
+  /* Cross-module relationships live in the Atlas (2026-09-23): a concept
+   * bridge to another module is counted in the session with the way there,
+   * never listed as a second navigation surface inside the lecture. */
+  heading('the session keeps cross-module relationships in the Atlas');
+  {
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        manifest.unit_material_syntheses[0].concept_groups[0].related_unit_ids = [
+          'unit-fixture-sad-l02', 'unit-fixture-aml-l03', 'unit-fixture-aml-l04',
+        ];
+      },
+    });
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const root = app.workspace.getLeavesOfType(VIEW.unit)[0].view.contentEl;
+    const row = root.find('los-synthesis-comparison')
+      .find((node) => node.allText().includes('The screened route connects the lecture'));
+    const elsewhere = ['unit-fixture-aml-l03', 'unit-fixture-aml-l04']
+      .map((id) => plugin.store.get(id).title);
+    check('same-module relations stay chips; other modules are only counted',
+      Boolean(row)
+      && row.find('los-chip').some((chip) => chip.allText().includes(plugin.store.get('unit-fixture-sad-l02').title))
+      && row.find('los-chip').some((chip) => chip.allText().includes(plugin.store.get('note-fixture-probability').title))
+      && elsewhere.every((title) => !row.allText().includes(title))
+      && row.find('los-synthesis-beyond')[0]?.allText().includes('2 connections in other modules'));
+    row.findText('los-btn', 'Open in Atlas').fire('click');
+    await frame();
+    const current = plugin.router.snapshot().current;
+    check('the count opens the Atlas on that concept',
+      current?.name === 'atlas' && current?.concept === 'concept-bedingte-wahrscheinlichkeit');
     plugin.onunload();
   }
 

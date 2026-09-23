@@ -175,6 +175,13 @@ export const UI_GESTURE_CAPABILITIES: readonly string[] = [
   'review.apply',
   'review.prepare',
   'unit.map.import',
+  /*
+   * Added 2026-09-23 (Aram): the two append-only ability records, sent only
+   * from Review, where the exact claim or connection is on screen above
+   * "Confirm & record". Core admits both over `ui` only.
+   */
+  'ability.candidate.append',
+  'learner.ability-observation.append',
 ];
 
 const UI_GESTURE_SET: ReadonlySet<string> = new Set(UI_GESTURE_CAPABILITIES);

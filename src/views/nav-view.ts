@@ -4,6 +4,7 @@ import { VIEW_NAV } from '../constants';
 import type { AppSurface } from '../app/surface';
 import type { AppNavigator } from '../app/navigator';
 import { enableButtonGroupKeyboardNavigation } from '../accessibility/button-group';
+import { reviewQueueCount } from '../features/review/queue';
 
 interface NavSettings {
   navMoreOpen: boolean;
@@ -11,11 +12,15 @@ interface NavSettings {
 
 type NavPlugin = Pick<
   AppSurface,
+  | 'abilityHorizon'
   | 'generate'
+  | 'listAbilityDrafts'
   | 'scheduleDraftSave'
+  | 'store'
 > & {
   readonly nav: Pick<
     AppNavigator,
+    | 'openAbilities'
     | 'openAtlas'
     | 'openBoundary'
     | 'openCapture'
@@ -35,11 +40,12 @@ type NavPlugin = Pick<
 };
 
 /**
- * Seven permanent destinations, nothing else. Areas (Bachelor's / Skills /
+ * Eight permanent destinations, nothing else. Areas (Bachelor's / Skills /
  * Thesis) are sub-areas of Learn; the decision queues (Shelving / Garden /
- * Inbox) are Review; atlas, boundaries, diagnostics and maintenance live under
- * More. The sidebar's job is to make the next step obvious, not to prove the
- * system is large.
+ * Inbox / ability drafts) are Review, which carries its live count; the Atlas
+ * opens on the ability map (Figma v4, 2026-09-23). Boundaries, diagnostics
+ * and maintenance live under More. The sidebar's job is to make the next step
+ * obvious, not to prove the system is large.
  */
 export class NavView extends ItemView {
   private readonly plugin: NavPlugin;
@@ -62,6 +68,7 @@ export class NavView extends ItemView {
     label: string,
     key: string,
     action: (event: MouseEvent) => unknown,
+    count: number | null = null,
   ): HTMLButtonElement {
     const active = this.plugin.activeNav === key;
     const row = parent.createEl('button', {
@@ -70,8 +77,22 @@ export class NavView extends ItemView {
     });
     icon(row.createSpan(), iconName);
     row.createSpan({ text: label });
+    if (count) {
+      row.createSpan({ cls: 'los-nav-count', text: String(count) });
+      row.setAttr('aria-label', `${label}, ${count} waiting`);
+    }
     row.addEventListener('click', action);
     return row;
+  }
+
+  /** Review's live count: the same queue Review lists, never a second tally. */
+  private reviewCount(): number {
+    if (!this.plugin.store?.ready) return 0;
+    return reviewQueueCount({
+      items: this.plugin.store.reviewItems(),
+      drafts: this.plugin.listAbilityDrafts(),
+      horizon: this.plugin.abilityHorizon.current(),
+    });
   }
 
   render() {
@@ -93,8 +114,10 @@ export class NavView extends ItemView {
     this.nav(primary, 'graduation-cap', 'Learn', 'learn', () => this.plugin.nav.openLearn());
     this.nav(primary, 'briefcase-business', 'Projects', 'projects', () => this.plugin.nav.openProjects());
     this.nav(primary, 'library', 'Library', 'library', () => this.plugin.nav.openLibrary());
+    this.nav(primary, 'map', 'Atlas', 'abilities', () => this.plugin.nav.openAbilities());
     this.nav(primary, 'sprout', 'Garden', 'garden', () => this.plugin.nav.openGarden());
-    this.nav(primary, 'check-check', 'Review', 'review', () => this.plugin.nav.openReview());
+    this.nav(primary, 'check-check', 'Review', 'review', () => this.plugin.nav.openReview(),
+      this.reviewCount());
 
     const more = root.createEl('details', { cls: 'los-nav-more' });
     if (this.plugin.settings.navMoreOpen) more.setAttr('open', 'open');
@@ -106,7 +129,7 @@ export class NavView extends ItemView {
     const secondary = more.createDiv({ cls: 'los-nav-secondary' });
     enableButtonGroupKeyboardNavigation(secondary, 'vertical');
     this.nav(secondary, 'plus', 'Capture', 'capture', () => this.plugin.nav.openCapture());
-    this.nav(secondary, 'map', 'Concept atlas', 'atlas', () => this.plugin.nav.openAtlas());
+    this.nav(secondary, 'network', 'Concept atlas', 'atlas', () => this.plugin.nav.openAtlas());
     this.nav(secondary, 'shield', 'Future Master’s Planning', 'masters',
       () => this.plugin.nav.openBoundary('program-masters-planning'));
     this.nav(secondary, 'activity', 'Diagnostics', 'diagnostics', () => this.plugin.nav.openDiagnostics());

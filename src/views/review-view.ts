@@ -11,10 +11,12 @@ import {
   pageHeader,
   section,
 } from '../components';
+import { enableButtonGroupKeyboardNavigation } from '../accessibility/button-group';
+import { buildReviewQueue } from '../features/review/queue';
+import { renderReviewEntry } from '../features/review/detail';
+import type { ReviewHost, ReviewPlugin } from '../features/review/ports';
 import { CONTRACT_VERSION, VIEW_DIAGNOSTICS, VIEW_REVIEW } from '../constants';
-import type { ProjectionRecord } from '../contracts/manifest';
 import type { AppSurface } from '../app/surface';
-import type { AppNavigator } from '../app/navigator';
 import { errorMessage, isRecord } from '../projection/readers';
 import { gatewayRecoverySummary } from '../application/gateway-recovery';
 import {
@@ -32,8 +34,6 @@ import {
   type OperationDetailV1,
   type OperationRowV1,
 } from '../contracts/operations';
-
-type ReviewAction = [string, () => unknown];
 
 interface BuildInfo {
   ui_version: string;
@@ -79,47 +79,19 @@ type DiagnosticsPlugin = Pick<
   | 'uiVersion'
 >;
 
-type ReviewPlugin = Pick<
-  AppSurface,
-  | 'generate'
-  | 'openVaultPath'
-  | 'store'
-> & {
-  readonly nav: Pick<
-    AppNavigator,
-    | 'openGarden'
-    | 'openShelving'
-    | 'openUnit'
-  >;
-};
-
-type ReviewFilter =
-  | 'all'
-  | 'inbox'
-  | 'shelving'
-  | 'planning'
-  | 'garden';
-
-const REVIEW_FILTERS: ReadonlyArray<
-  readonly [ReviewFilter, string]
-> = [
-  ['all', 'All'],
-  ['inbox', 'Inbox'],
-  ['shelving', 'Shelving'],
-  ['planning', 'Planning'],
-  ['garden', 'Garden'],
-];
-
 /**
- * Review renders decisions already identified by Core.
+ * Review: one short selection list, and one item open at a time (Figma B2).
  *
- * It never reconstructs a queue from counts, unit status, Garden age, or file
- * layout. Membership, reason, target, and stable identity all come from
- * `review_items`.
+ * The list is Core's `review_items`, Core's own ability conflicts, and Aram's
+ * unconfirmed ability drafts — nothing reconstructed from counts, status,
+ * age or layout, and never an example. The open item shows its claim, its
+ * evidence, what confirming it would do, and the actions it supports. Only a
+ * draft's "Confirm & record" writes, and it sends exactly the record shown.
  */
-export class ReviewView extends ItemView {
-  private readonly plugin: ReviewPlugin;
-  private filter: ReviewFilter = 'all';
+export class ReviewView extends ItemView implements ReviewHost {
+  readonly plugin: ReviewPlugin;
+  private selectedKey: string | null = null;
+  sending = false;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -141,7 +113,27 @@ export class ReviewView extends ItemView {
     return 'check-check';
   }
 
+  get selected(): string | null {
+    return this.selectedKey;
+  }
+
+  select(key: string | null): void {
+    this.selectedKey = key;
+    this.render();
+  }
+
+  async setState(state: { item?: unknown } = {}): Promise<void> {
+    if (typeof state.item === 'string' && state.item) this.selectedKey = state.item;
+    this.render();
+  }
+
+  getState(): Record<string, unknown> {
+    return { item: this.selectedKey };
+  }
+
   async onOpen(): Promise<void> {
+    const state = this.leaf.getViewState().state ?? {};
+    if (typeof state.item === 'string' && state.item) this.selectedKey = state.item;
     this.render();
   }
 
@@ -172,229 +164,95 @@ export class ReviewView extends ItemView {
       return;
     }
 
-    const items =
-      this.plugin.store.reviewItems();
+    const horizon = this.plugin.abilityHorizon;
+    horizon.ensure();
+    const brief = horizon.current();
+    const entries = buildReviewQueue({
+      items: this.plugin.store.reviewItems(),
+      drafts: this.plugin.listAbilityDrafts(),
+      horizon: brief,
+    });
 
-    const header = pageHeader(
+    pageHeader(
       root,
-      'Review · Decisions',
       'Review',
-      'Everything here is waiting on a decision from you.',
+      'Review',
+      'Select one item to see its claim, evidence and effect.',
     );
 
-    badge(
-      header,
-      `${items.length} decision${items.length === 1 ? '' : 's'} waiting`,
-      'role',
-    ).addClass('los-review-count-badge');
+    const summary = root.createDiv({
+      cls: 'los-review-summary',
+      attr: { role: 'status' },
+    });
+    summary.createEl('strong', {
+      cls: 'los-review-count',
+      text: entries.length
+        ? `${entries.length} ${entries.length === 1 ? 'item needs' : 'items need'} your decision`
+        : 'Nothing waiting',
+    });
+    summary.createSpan({
+      cls: 'los-micro',
+      text: brief
+        ? (brief.abilities.some((row) => row.evidence.length)
+          ? `${brief.abilities.filter((row) => row.evidence.length).length} abilities have recorded work`
+          : 'No learner attempt recorded')
+        : horizon.error
+          ? 'Ability records unavailable'
+          : 'Reading ability records…',
+    });
 
-    filterTabs(
-      root,
-      'Review categories',
-      REVIEW_FILTERS,
-      this.filter,
-      (value) => {
-        this.filter = value;
-        this.render();
-      },
-      (value) => (
-        value === 'all'
-          ? items.length
-          : items.filter(
-            (item) => item.category === value,
-          ).length
-      ),
-    );
+    if (!entries.length) {
+      empty(
+        root,
+        'Nothing waiting',
+        'Core has projected no decision, no ability reports conflicting work, and you have no ability drafts.',
+      );
+      root.createDiv({
+        cls: 'los-micro los-review-queue-note',
+        text:
+          'Only items that require a decision appear here. '
+          + 'Garden stays quiet until Core marks a seed review-due.',
+      });
+      return;
+    }
 
-    root.createDiv({
+    const selected = entries.find((entry) => entry.key === this.selectedKey)
+      ?? entries[0]
+      ?? null;
+
+    const split = root.createDiv({ cls: 'los-review-split' });
+    const listPane = split.createDiv({ cls: 'los-review-pane' });
+    listPane.createEl('h2', {
+      cls: 'los-review-list-head',
+      text: 'Needs your decision',
+    });
+    const list = listPane.createDiv({
+      cls: 'los-review-items',
+      attr: { role: 'group', 'aria-label': 'Review items' },
+    });
+    enableButtonGroupKeyboardNavigation(list, 'vertical');
+    for (const entry of entries) {
+      const active = entry.key === selected?.key;
+      const row = list.createEl('button', {
+        cls: `los-review-item is-clickable is-${entry.kind}${active ? ' is-selected' : ''}`,
+        attr: {
+          type: 'button',
+          'data-review-id': entry.key,
+          'aria-pressed': String(active),
+        },
+      });
+      row.createSpan({ cls: 'los-review-item-title', text: entry.title });
+      row.createSpan({ cls: 'los-review-item-context', text: entry.context });
+      row.addEventListener('click', () => this.select(entry.key));
+    }
+    listPane.createDiv({
       cls: 'los-micro los-review-queue-note',
       text:
-        'Only items that require a decision appear here. '
+        'Choose another item to inspect its details. '
         + 'Garden stays quiet until Core marks a seed review-due.',
     });
 
-    const visible = this.filter === 'all'
-      ? items
-      : items.filter(
-        (item) => item.category === this.filter,
-      );
-
-    const list = root.createDiv({
-      cls: 'los-review-list',
-    });
-
-    if (!visible.length) {
-      empty(
-        list,
-        items.length
-          ? 'Nothing in this category'
-          : 'Nothing waiting',
-        items.length
-          ? 'Choose another Review filter.'
-          : 'Core has not projected any current Review decisions.',
-      );
-    } else {
-      for (const item of visible) {
-        this.decision(list, item);
-      }
-    }
-  }
-
-  decision(
-    parent: HTMLElement,
-    item: ProjectionRecord,
-  ): HTMLElement {
-    const id =
-      typeof item.id === 'string'
-        ? item.id
-        : 'review-item';
-
-    const category =
-      typeof item.category === 'string'
-        ? item.category
-        : 'review';
-
-    const title =
-      typeof item.title === 'string'
-        ? item.title
-        : id;
-
-    const context =
-      typeof item.context === 'string'
-        ? item.context
-        : '';
-
-    const reason =
-      typeof item.reason === 'string'
-        ? item.reason
-        : '';
-
-    const row = parent.createDiv({
-      cls: 'los-review-decision-row',
-      attr: {
-        'data-review-id': id,
-      },
-    });
-
-    const copy = row.createDiv({
-      cls: 'los-review-decision-copy',
-    });
-
-    const top = copy.createDiv({
-      cls: 'los-review-decision-top',
-    });
-
-    badge(
-      top,
-      category.replace(/-/g, ' '),
-      'role',
-    );
-
-    top.createEl('h2', {
-      text: title,
-    });
-
-    if (context) {
-      copy.createDiv({
-        cls: 'los-micro los-review-context',
-        text: context,
-      });
-    }
-
-    if (reason) {
-      copy.createEl('p', {
-        cls: 'los-review-reason',
-        text: reason,
-      });
-    }
-
-    const action =
-      this.actionFor(item);
-
-    if (action) {
-      button(
-        row,
-        action[0],
-        action[1],
-        'quiet',
-      );
-    } else {
-      row.createSpan({
-        cls: 'los-micro los-review-clear',
-        text: 'No supported action',
-      });
-    }
-
-    return row;
-  }
-
-  actionFor(
-    item: ProjectionRecord,
-  ): ReviewAction | null {
-    const target =
-      isRecord(item.target)
-        ? item.target
-        : null;
-
-    if (!target) {
-      return null;
-    }
-
-    const kind =
-      typeof target.kind === 'string'
-        ? target.kind
-        : '';
-
-    if (
-      kind === 'study-map'
-      && typeof target.unit_id === 'string'
-    ) {
-      return [
-        'Review proposal',
-        () =>
-          this.plugin.nav.openShelving(
-            target.unit_id as string,
-          ),
-      ];
-    }
-
-    if (
-      kind === 'inbox-item'
-      && typeof target.path === 'string'
-    ) {
-      return [
-        'Route',
-        () =>
-          this.plugin.openVaultPath(
-            target.path as string,
-          ),
-      ];
-    }
-
-    if (
-      kind === 'unit'
-      && typeof target.id === 'string'
-    ) {
-      return [
-        'Open unit',
-        () =>
-          this.plugin.nav.openUnit(
-            target.id as string,
-          ),
-      ];
-    }
-
-    if (
-      kind === 'garden-note'
-      || kind === 'garden-seed'
-    ) {
-      return [
-        'Review seed',
-        () => this.plugin.nav.openGarden(),
-      ];
-    }
-
-    return null;
+    if (selected) renderReviewEntry(split, this, selected);
   }
 }
 

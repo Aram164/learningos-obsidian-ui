@@ -529,12 +529,16 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
 
   const graph = buildAtlasGraph(host.plugin.store);
 
-  pageHeader(
+  const header = pageHeader(
     root,
     'Reach',
     'Concept atlas',
     'One concept at a time: what it requires, what builds on it, and the authored relation that says so.',
   );
+  // The Atlas destination opens on the Ability map; concepts are one step
+  // away from it and it is one step back from here.
+  button(header.createDiv({ cls: 'los-actions los-atlas-ability-link' }), 'Ability map',
+    () => host.plugin.nav.openAbilities(), 'quiet');
 
   const controls = root.createDiv({ cls: 'los-atlas-controls' });
   let results: HTMLElement;

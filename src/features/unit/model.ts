@@ -147,6 +147,7 @@ export type UnitPlugin = Pick<
   readonly nav: Pick<
     AppNavigator,
     | 'back'
+    | 'openAtlas'
     | 'openLibrary'
     | 'openModule'
     | 'openRecord'

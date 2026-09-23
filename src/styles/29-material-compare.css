@@ -1,0 +1,240 @@
+/* ── Compare materials (Figma B1a 70:985) and the material card (B1) ─────────
+ * "Compare all" opens a short list of needs on the left — required now, if
+ * stuck, for reference, then the lecture's and the course's full menus — and
+ * one group's cards on the right. The counts on the left reconcile with the
+ * stage total, so choosing a group never hides a source. A card states its
+ * purpose, kind and exact locator, where the material is, "Why this one" on
+ * request, and — only when asked — the exact span Core read. */
+
+/* Two columns need more room than the old single-list drawer asked for. */
+.modal.los-modal--material-drawer,
+.modal:has(.los-material-drawer) {
+  width: min(980px, calc(100vw - 32px));
+}
+
+.los-compare-head {
+  margin-bottom: var(--los-4);
+  padding-bottom: var(--los-3);
+  border-bottom: 1px solid var(--los-rule);
+}
+.los-root .los-compare-head h1 {
+  margin: 0;
+  font-size: 22px !important;
+}
+.los-compare-head p { margin: var(--los-1) 0 0; }
+
+.los-compare-layout {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  align-items: start;
+  gap: var(--los-4);
+}
+.los-compare-groups {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-2);
+  padding: var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-3);
+}
+.los-root h2.los-compare-eyebrow {
+  margin: var(--los-1) 0 0;
+  color: var(--los-ink-soft);
+  font-size: 11px !important;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.los-root h2.los-compare-eyebrow ~ h2.los-compare-eyebrow { margin-top: var(--los-3); }
+.los-compare-group-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-2);
+}
+.los-root .los-compare-group {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  min-height: 56px;
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+  color: var(--los-ink);
+}
+.los-root .los-compare-group:hover {
+  border-color: var(--los-rule-strong);
+  background: var(--los-surface-raised);
+}
+.los-root .los-compare-group.is-selected {
+  border-color: var(--los-accent);
+  box-shadow: inset 3px 0 0 var(--los-accent);
+}
+.los-root .los-compare-group.is-empty {
+  border-style: dashed;
+  background: transparent;
+}
+.los-compare-group-title { font-weight: 650; }
+.los-compare-group-count {
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-compare-reconcile { margin: var(--los-2) 0 0; }
+
+.los-compare-body {
+  min-width: 0;
+  padding: var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+}
+.los-compare-body > h2 { margin: 0; }
+.los-compare-body > .los-micro { margin: var(--los-1) 0 var(--los-3); }
+.los-compare-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-3);
+}
+.los-compare-search-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-1);
+  margin-bottom: var(--los-3);
+  font-size: 12px;
+  font-weight: 700;
+}
+.los-root .los-compare-search-label input {
+  width: 100%;
+  font-weight: 400;
+}
+
+/* A card in the comparison is its own bordered surface; the old list rules
+ * for source entries (indent, rule between rows, triage edge) do not apply. */
+.los-compare-cards .los-material-card,
+.los-compare-cards .los-source-entry + .los-source-entry {
+  margin-left: 0;
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+}
+.los-compare-cards .los-type-subgroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--los-2);
+}
+.los-compare-cards .los-type-subgroup + .los-type-subgroup { margin-top: var(--los-2); }
+
+/* ── The card itself ── */
+.los-material-card-icon {
+  display: inline-flex;
+  color: var(--los-ink-soft);
+}
+.los-material-purpose {
+  color: var(--los-accent-strong);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.los-root .los-material-title {
+  color: var(--los-ink);
+  font-size: 15px;
+  font-weight: 650;
+}
+.los-material-kind {
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-material-card.los-triage-deferred .los-material-title,
+.los-material-card.los-triage-reference-only .los-material-title { font-weight: 600; }
+
+/* Where the material is: said in words before anything is opened. */
+.los-material-availability {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--los-1) var(--los-2);
+  margin-top: var(--los-2);
+}
+.los-material-availability-label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 22px;
+  padding: 1px var(--los-2);
+  border-radius: var(--los-r-pill);
+  background: var(--los-success-wash);
+  color: var(--los-success-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+.los-material-availability.is-remote .los-material-availability-label {
+  background: var(--los-info-wash);
+  color: var(--los-info-strong);
+}
+.los-material-availability.is-local-missing .los-material-availability-label,
+.los-material-availability.is-none .los-material-availability-label {
+  background: var(--los-warning-wash);
+  color: var(--los-warning-strong);
+}
+
+/* The exact span, read only on request. */
+.los-span-panel {
+  margin-top: var(--los-2);
+  padding: var(--los-2) var(--los-3);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-3);
+}
+.los-span-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--los-1) var(--los-2);
+}
+.los-span-file + .los-span-file {
+  margin-top: var(--los-2);
+  padding-top: var(--los-2);
+  border-top: 1px solid var(--los-rule);
+}
+.los-span-excerpt {
+  max-height: 240px;
+  margin: var(--los-2) 0 0;
+  padding: var(--los-2) var(--los-3);
+  overflow: auto;
+  border-radius: var(--los-r-sm);
+  background: var(--los-surface-raised);
+  color: var(--los-ink);
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.los-span-error { color: var(--los-warning-strong); }
+.los-span-url {
+  font-family: var(--font-monospace);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* A concept bridge that leaves the module is counted in the session and read
+ * in the Atlas. */
+.los-synthesis-beyond {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--los-1) var(--los-2);
+  margin-top: var(--los-2);
+}
+
+@media (max-width: 720px) {
+  .los-compare-layout { grid-template-columns: minmax(0, 1fr); }
+  .los-compare-groups { position: static; }
+  .los-compare-body { padding: var(--los-3); }
+}

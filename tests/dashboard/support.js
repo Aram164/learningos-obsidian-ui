@@ -6,6 +6,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const os = require('os');
 const { makeApp, Notice, stub } = require('../harness');
+const { answerAbilityRead } = require('../ability-fixtures');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const FIXTURE = path.join(ROOT, 'fixture-vault');
@@ -36,7 +37,7 @@ const VIEW = {
   module: 'learningos-module', project: 'learningos-project', unit: 'learningos-unit', library: 'learningos-library',
   atlas: 'learningos-atlas', shelving: 'learningos-shelving', boundary: 'learningos-boundary',
   review: 'learningos-review', diagnostics: 'learningos-diagnostics',
-  garden: 'learningos-garden',
+  garden: 'learningos-garden', abilities: 'learningos-abilities',
 };
 const tick = () => new Promise((resolve) => setImmediate(resolve));
 const frame = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -327,6 +328,12 @@ async function build(options = {}) {
     }
     if (args[0] === 'masters-planning-dashboard') {
       return callback(null, JSON.stringify(MASTERS_PLANNING_FIXTURE), '');
+    }
+    /* Read-only ability horizon and material spans: Core-shaped synthetic
+     * answers (tests/ability-fixtures.js). A test varies one field through
+     * `patchBrief` / `patchFocus` rather than forking the fixture. */
+    if (args[0] === 'ability-context' || args[0] === 'material-span') {
+      return callback(null, JSON.stringify(answerAbilityRead(args, options)), '');
     }
     if (envelope?.capability === 'review.prepare') return callback(null, JSON.stringify(
       gatewayConfirmation(envelope, {

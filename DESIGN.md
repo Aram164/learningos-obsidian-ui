@@ -81,8 +81,10 @@ The interface carries usability while the core carries meaning.
 
 ## Navigation
 
-Seven permanent destinations: **Home, Modules, Learn, Projects, Library,
-Garden, Review.** Modules begins with explicit thematic groups and opens
+Eight permanent destinations: **Home, Modules, Learn, Projects, Library,
+Atlas, Garden, Review.** (Amended 2026-09-23: the Atlas joined them and opens on
+the ability map; Review carries a live count, which is the length of the same
+queue Review lists and never a second tally.) Modules begins with explicit thematic groups and opens
 full-page lists/details. Bachelor's, Skills, Job, and Thesis & projects remain
 sub-areas inside Learn. Capture, Concept atlas, the Future Master's Planning
 boundary, Diagnostics, and *Rebuild projection* live under **More** —
@@ -125,16 +127,41 @@ maintenance is never mixed with study destinations.
   depth/reference"* — because collapsing a list may never make a source
   unreachable or uncountable.
 
-- **Choose learning material**: the comparison drawer behind *Compare all*.
-  It partitions the complete menu purpose-first (`depth`) and material-type
-  second (`format`) — section → inline sub-heading → cards — with source as a
-  chip on each card. Purpose and type filters narrow; a Group-by segmented
-  control offers Type → purpose and the retired Source grouping as structure
-  alternatives, never as the default. **Grouping organises; it never hides**:
-  unclassified entries keep a trailing bucket, the count line always
-  reconciles with the total, and a narrowed list opens every section.
-  Selection stays `unit.source-selection.set` with its snapshot guard, and it
-  changes the current route only — it never deletes or hides a source record.
+  **Current work is one material card** (amended 2026-09-23, Figma B1 · 11:291).
+  The card states the material's purpose, its title, its kind and exact
+  locator, and where it is — in words: *Local file*, *In the vault*, *Remote*,
+  *Local copy missing* or *Not available* — before anything is opened.
+  *Why this one* (the authored rationale, with coverage on route cards) opens
+  only on request. A local copy's bounded excerpt is read from Core
+  (`material.span --extract`, snapshot-bound) only when the learner asks for
+  it; remote material is never fetched, and a missing copy says so. A
+  locator-only placement still reaches its openable source (*Open source*).
+  The heading counts *N required*, and the completion rule ends with
+  *Completing it records progress, not a learner attempt*: stage completion is
+  study progress and never ability evidence.
+
+  **The session stays inside its module.** A concept bridge whose related unit
+  belongs to another module is not listed in the lecture; it is counted
+  (*"2 connections in other modules"*) with *Open in Atlas*, where both ends and
+  the path between them are on screen.
+
+- **Compare materials**: the drawer behind *Compare all* (rewritten 2026-09-23,
+  Figma B1a · 70:985; supersedes the purpose/type filter drawer). A short rail
+  on the left, one group's cards on the right. *What you need* partitions the
+  stage's own placements by the producer's triage — **Required now**, **If
+  stuck**, **For reference** (an unranked pre-v2 row counts as required, never
+  as deprioritised) — and the rail states the reconciliation outright
+  (*"2 + 0 + 3 = 5 on this stage"*), so showing one group never hides or
+  uncounts a material. It opens on the most urgent group actually present; an
+  empty group says where the materials are. *Beyond this stage* keeps **This
+  lecture's full menu** (purpose-first sub-headings in the fixed learnable
+  order, with search) and **All of** the course (other lectures' routes, with
+  *Go to lecture* and never a cross-unit choice) one click away. Every card is
+  the Current-work card shape: purpose, exact locator, availability in words,
+  *Why this one* on demand, the bounded excerpt on request. Selection stays
+  `unit.source-selection.set` with its snapshot guard, and it changes the
+  current route only — it never deletes or hides a source record. Cross-course
+  relationships are not offered here: they live in the Atlas.
   The menu stays on the page instead when there is no stage to open a drawer
   from (no study map, or a map with no stages), because there it is the whole
   account of what the lecture offers.
@@ -149,7 +176,40 @@ maintenance is never mixed with study destinations.
   human gate that happens first. A map that predates the creation template says
   so under *Unit artifacts and evidence*, next to the action that replaces it.
 - **Review**: every decision queue in one destination — ready to shelve, inbox,
-  units needing a map, the Garden.
+  units needing a map, the Garden. Amended 2026-09-23 (Figma B2 · 11:334): a
+  short selection list and **one open item at a time**, showing its claim or
+  decision, its evidence, its effect, and the actions it supports. The queue
+  is Core's `review_items` exactly as projected, Core's own ability conflicts
+  (an ability whose reasons say later work is conflicting), and the learner's
+  unconfirmed ability drafts, labelled *draft, not recorded* — nothing is
+  synthesized from counts, status, layout or age, and the Figma entries are
+  illustrative only. The open item is the leaf state, so a restored Review
+  reopens it. **Confirm & record** is the only control that writes an ability
+  record, and it sends exactly the record on screen: `learner.ability-observation.append`
+  for a worked attempt, `ability.candidate.append` for a tentative connection,
+  both admitted over the `ui` channel only, with
+  `confirmation_ref = conversation://learningos-app/<idempotency key>` (the
+  Review gesture's own request). It is disabled until Core's shape checks are
+  met (reviewed ability, active workspace, result, activity, assistance, work
+  pointer, claim); Core checks everything again and its refusal keeps the
+  draft.
+- **Atlas** (ability map, Figma A1 · 40:1117 and A2 · 40:1203): Core's bounded,
+  snapshot-bound `ability.context` horizon, drawn and never derived. Abilities
+  fall into **separate groups** — the connected pieces of preparation routes
+  and bridges; a tentative connection carries nothing and never joins two
+  groups — chosen one at a time from a rail. Inside a group the **directed
+  preparation graph** runs left to right (foundations → steps → extensions),
+  transitively reduced so an implied arrow is not drawn twice, with the same
+  edges as a text outline for assistive technology. **Reviewed bridges are
+  bands under the graph**, labelled with kind, review state and source
+  freshness, never drawn as preparation arrows. State is always a word on the
+  node (*Supported*, *Nearby*, *Uncertain*, *Unmapped*); colour only repeats
+  it. Selecting a node opens the **inspector** beside the graph (what counts,
+  preparation in one sentence, recorded evidence); *Open full ability detail*
+  shows conditions, the evidence the attempt must show, every route, bridges,
+  tentative connections and the stages where it is met. *Draft a worked
+  attempt* and *Note a possible connection* save UI-owned drafts only; the
+  Atlas sends no write. The concept atlas stays under More.
 - **Diagnostics**: contract versions, projection freshness (`✓ current`,
   `● stale`, `? core unavailable`), resolved Python interpreter and its
   attempted paths. Under More, never on Home.
@@ -236,5 +296,7 @@ and reduced-motion removes hover transitions.
 - direct canonical parsing/writing in UI code;
 - AI identity inferred from the active file;
 - scalar mastery or universal source ratings;
+- ability evidence inferred from stage completion, shared concept tags or
+  tentative connections;
 - inaccessible click-only containers for primary actions;
 - hardcoded colour, layout that requires a wide window, or a plugin-only fact.
