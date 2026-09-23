@@ -11,6 +11,7 @@ import type { AppSurface } from '../../app/surface';
 import type { AppNavigator } from '../../app/navigator';
 import {
   asBoolean as projectedFlag,
+  asCount as projectedCount,
   asString as projectedString,
   asStrings as projectedStrings,
   asText as projectedText,
@@ -137,6 +138,12 @@ export interface EvaluationView {
   readonly usefulSections: UsefulSectionView[];
 }
 
+export interface ExaminationView {
+  readonly evaluated: boolean;
+  readonly approvedAnalysisCount: number;
+  readonly metadataPlaced: boolean;
+}
+
 export interface LibraryRecordView {
   readonly record: ProjectionRecord;
   readonly id: string;
@@ -159,6 +166,7 @@ export interface LibraryRecordView {
   readonly entries: CollectionEntryView[];
   readonly attachments: AttachmentView[];
   readonly evaluations: EvaluationView[];
+  readonly examination: ExaminationView | null;
 }
 
 export interface ShelfMembership {
@@ -532,6 +540,20 @@ export function readEvaluations(
     );
 }
 
+export function readExamination(
+  value: unknown,
+): ExaminationView | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+
+  return {
+    evaluated: projectedFlag(value.evaluated),
+    approvedAnalysisCount: projectedCount(value.approved_analysis_count),
+    metadataPlaced: projectedFlag(value.metadata_placed),
+  };
+}
+
 export function readLibraryRecord(
   value: unknown,
 ): LibraryRecordView | null {
@@ -597,6 +619,8 @@ export function readLibraryRecord(
       readAttachments(value.attachments),
     evaluations:
       readEvaluations(value.evaluations),
+    examination:
+      readExamination(value.examination),
   };
 }
 

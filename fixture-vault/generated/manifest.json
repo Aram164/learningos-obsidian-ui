@@ -1,9 +1,9 @@
 {
   "_generated": {
-    "contract_version": 14,
+    "contract_version": 15,
     "generated_at": "2099-04-01",
     "generator": "synthetic-fixture-v8",
-    "schema_sha256": "sha256:0444c70f2e264a0a9548fe1bbd585a058cc366aa3837508f8544487edd1d735f",
+    "schema_sha256": "sha256:c487c6ed2e05c05425c6b41bd291e566b16a7e1ee3af667ae00763608d7e121f",
     "snapshot_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "source_dirty": false,
     "source_fingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
@@ -841,6 +841,12 @@
           ]
         }
       ],
+      "discovery": null,
+      "examination": {
+        "approved_analysis_count": 0,
+        "evaluated": true,
+        "metadata_placed": false
+      },
       "id": "source-fixture-book",
       "identifiers": {},
       "material": null,
@@ -898,6 +904,12 @@
           ]
         }
       ],
+      "discovery": null,
+      "examination": {
+        "approved_analysis_count": 0,
+        "evaluated": true,
+        "metadata_placed": false
+      },
       "id": "source-fixture-islp",
       "identifiers": {},
       "material": null,
@@ -923,6 +935,12 @@
     {
       "authors": [],
       "evaluations": [],
+      "discovery": null,
+      "examination": {
+        "approved_analysis_count": 0,
+        "evaluated": false,
+        "metadata_placed": false
+      },
       "id": "source-fixture-video",
       "identifiers": {},
       "material": null,

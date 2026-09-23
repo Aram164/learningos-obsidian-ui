@@ -14,7 +14,7 @@
  * The module and type names are deliberately stable. Contract version is data:
  * a bump changes this constant and the mirrored lock, not every import path.
  */
-export const MANIFEST_CONTRACT_VERSION = 14 as const;
+export const MANIFEST_CONTRACT_VERSION = 15 as const;
 import {
   validAcademicDeadline,
   validAiActions,
@@ -42,7 +42,7 @@ import {
   validTopicPack,
 } from './manifest-records';
 
-export const MANIFEST_SCHEMA_SHA256 = 'sha256:0444c70f2e264a0a9548fe1bbd585a058cc366aa3837508f8544487edd1d735f' as const;
+export const MANIFEST_SCHEMA_SHA256 = 'sha256:c487c6ed2e05c05425c6b41bd291e566b16a7e1ee3af667ae00763608d7e121f' as const;
 
 export type JsonRecord = Record<string, unknown>;
 

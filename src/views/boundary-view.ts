@@ -1,15 +1,33 @@
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
-import { badge, empty, pageHeader, section } from '../components';
+import { badge, button, disclosure, empty, pageHeader, section } from '../components';
 import { VIEW_BOUNDARY } from '../constants';
+import { compareStrings, foldCase } from '../sorting';
 import type { AppSurface } from '../app/surface';
 import {
   asMastersPlanningDashboard,
+  type CandidateSourceV1,
   type MastersPlanningDashboardV1,
 } from '../contracts/masters-planning';
 
+const MASTER_LIST_LABELS: Readonly<Record<string, string>> = {
+  ALGO: 'Algorithms',
+  BENCHMARKING: 'Benchmarking',
+  DATAENG: 'Data engineering',
+  MATH: 'Mathematics',
+  ML: 'Machine learning',
+  RUNTIME: 'Runtime and systems',
+};
+
+function sourceLists(source: CandidateSourceV1): string[] {
+  return [...new Set(source.provenance.flatMap((ref) => {
+    const key = /MASTERS-([A-Z]+)-RESOURCES\.md#L\d+$/.exec(ref)?.[1];
+    return key ? [MASTER_LIST_LABELS[key] ?? key] : [];
+  }))];
+}
+
 type BoundaryPlugin = Pick<
   AppSurface,
-  'store' | 'gateway'
+  'store' | 'gateway' | 'openResource'
 >;
 
 interface BoundaryViewState {
@@ -180,13 +198,57 @@ export class BoundaryView extends ItemView {
     if (!catalog.candidate_sources.length) {
       sources.createDiv({ cls: 'los-micro', text: 'No candidate sources in this revision.' });
     }
-    for (const source of catalog.candidate_sources) {
-      const row = sources.createDiv({ cls: 'los-masters-row' });
-      const heading = row.createDiv({ cls: 'los-masters-row-head' });
-      heading.createEl('strong', { text: source.title });
-      badge(heading, source.planning_state, 'role');
-      badge(heading, source.fact_state.status.replaceAll('-', ' '),
-        source.fact_state.status === 'verified-current' ? 'status' : 'role');
+    if (catalog.candidate_sources.length) {
+      sources.createDiv({
+        cls: 'los-micro',
+        text: 'Grouped by the original resource list. These are provisional records; titles and links have not been examined.',
+      });
+      const search = sources.createEl('input', {
+        cls: 'los-masters-search',
+        attr: { type: 'search', placeholder: 'Find a title, type, or list',
+          'aria-label': 'Search prospective sources' },
+      });
+      const results = sources.createDiv();
+      const renderSources = () => {
+        results.empty();
+        const query = foldCase(search.value.trim());
+        const groups = new Map<string, CandidateSourceV1[]>();
+        for (const source of catalog.candidate_sources) {
+          const lists = sourceLists(source);
+          if (query && ![source.title, source.type ?? '', ...lists]
+            .some((part) => foldCase(part).includes(query))) continue;
+          const primary = lists[0] ?? 'Other original lists';
+          groups.set(primary, [...(groups.get(primary) ?? []), source]);
+        }
+        const count = [...groups.values()].reduce((total, rows) => total + rows.length, 0);
+        results.createDiv({ cls: 'los-micro', text: `${count} matching source${count === 1 ? '' : 's'}` });
+        for (const [name, entries] of [...groups].sort(([a], [b]) => compareStrings(a, b))) {
+          const group = disclosure(results, `${name} (${entries.length})`, 'los-masters-group');
+          if (query) group.parentElement?.setAttribute('open', '');
+          for (const source of entries) {
+            const row = group.createDiv({ cls: 'los-masters-row' });
+            const heading = row.createDiv({ cls: 'los-masters-row-head' });
+            heading.createEl('strong', { text: source.title });
+            badge(heading, source.planning_state, 'role');
+            badge(heading, source.fact_state.status.replaceAll('-', ' '),
+              source.fact_state.status === 'verified-current' ? 'status' : 'role');
+            if (source.type) badge(heading, source.type, 'level');
+            const lists = sourceLists(source);
+            if (lists.length > 1) row.createDiv({ cls: 'los-micro', text: `Also listed in ${lists.slice(1).join(', ')}` });
+            if (source.possible_use) row.createEl('p', { text: source.possible_use });
+            if (source.url) {
+              const address = source.url;
+              button(row, 'Open online', () => this.plugin.openResource({ url: address }), 'info');
+            }
+            for (const [label, address] of Object.entries(source.identifiers ?? {})) {
+              button(row, source.child_titles?.[label] ?? label,
+                () => this.plugin.openResource({ url: address }), 'info');
+            }
+          }
+        }
+      };
+      search.addEventListener('input', renderSources);
+      renderSources();
     }
 
     const assessments = this.mastersDashboard.comparisons

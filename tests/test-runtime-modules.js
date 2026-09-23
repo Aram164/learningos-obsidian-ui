@@ -328,6 +328,70 @@ function routerPlugin(settings = {}) {
     assert.ok(store.records.length > 0);
   });
 
+  await test('ManifestStore exposes projected examination on every source row', async () => {
+    const store = new ManifestStore(manifestApp());
+    assert.equal(await store.load(), true);
+    const sources = store.records.filter((record) => record.type === 'source');
+    assert.ok(sources.length > 0);
+    for (const source of sources) {
+      assert.equal(typeof source.examination.evaluated, 'boolean');
+      assert.ok(Number.isInteger(source.examination.approved_analysis_count));
+      assert.equal(typeof source.examination.metadata_placed, 'boolean');
+    }
+    const unevaluated = sources.find((source) => source.id === 'source-fixture-video');
+    assert.deepEqual(unevaluated.examination, { approved_analysis_count: 0, evaluated: false, metadata_placed: false });
+  });
+
+  await test('ManifestStore rejects a source row without examination', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      for (const record of manifest.records) {
+        if (record.type === 'source') delete record.examination;
+      }
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), false);
+    assert.equal(store.data, null);
+  });
+
+  await test('ManifestStore exposes bounded source discovery and rejects dangling provenance', async () => {
+    const discovery = {
+      observed: '2026-09-23',
+      basis: [{ kind: 'list-entry', ref: 'legacy/LEARNING-RESOURCES.md#L114' }],
+      possible_use: 'A possible lecture series.',
+    };
+    const withDiscovery = manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest.records.find((record) => record.id === 'source-fixture-video').discovery = discovery;
+      return JSON.stringify(manifest);
+    });
+    const store = new ManifestStore(withDiscovery);
+    assert.equal(await store.load(), true);
+    assert.equal(store.records.find((record) => record.id === 'source-fixture-video')
+      ?.discovery?.possible_use, 'A possible lecture series.');
+    const bad = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest.records.find((record) => record.id === 'source-fixture-video').discovery = {
+        ...discovery, basis: [{ kind: 'list-entry', ref: 'uncited' }],
+      };
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await bad.load(), false);
+  });
+
+  await test('readLibraryRecord carries examination for the placed-from-metadata badge', async () => {
+    const { readLibraryRecord } = load('src/features/library/model.ts');
+    const placed = readLibraryRecord({
+      id: 'source-placed', type: 'source', examination: { evaluated: false, approved_analysis_count: 0, metadata_placed: true },
+    });
+    assert.deepEqual(placed.examination, { evaluated: false, approvedAnalysisCount: 0, metadataPlaced: true });
+    const examined = readLibraryRecord({
+      id: 'source-read', type: 'source', examination: { evaluated: true, approved_analysis_count: 2, metadata_placed: false },
+    });
+    assert.deepEqual(examined.examination, { evaluated: true, approvedAnalysisCount: 2, metadataPlaced: false });
+    assert.equal(readLibraryRecord({ id: 'source-old', type: 'source' }).examination, null);
+  });
+
   await test('ManifestStore rejects an old contract before exposing data', async () => {
     const store = new ManifestStore(manifestApp((text) =>
       text.replace(`"contract_version": ${CONTRACT}`, '"contract_version": 1')));
@@ -760,6 +824,32 @@ function routerPlugin(settings = {}) {
       catalog: {
         ...masters.catalog,
         candidate_modules: [{ ...masters.catalog.candidate_modules[0], provenance: [] }],
+      },
+    }), null);
+    const linked = {
+      ...masters.catalog.candidate_sources[0],
+      url: 'https://example.invalid/cs000/',
+      identifiers: { 'lec-01': 'https://example.invalid/cs000/lec01' },
+      child_titles: { 'lec-01': 'Lecture 1' },
+      possible_use: 'Possibly the attention block.',
+      type: 'course',
+    };
+    assert.equal(asMastersPlanningDashboard({
+      ...masters,
+      catalog: { ...masters.catalog, candidate_sources: [linked] },
+    })?.catalog?.candidate_sources[0]?.child_titles?.['lec-01'], 'Lecture 1');
+    assert.equal(asMastersPlanningDashboard({
+      ...masters,
+      catalog: {
+        ...masters.catalog,
+        candidate_sources: [{ ...linked, type: 'seminar' }],
+      },
+    }), null);
+    assert.equal(asMastersPlanningDashboard({
+      ...masters,
+      catalog: {
+        ...masters.catalog,
+        candidate_sources: [{ ...linked, possible_use: 'x'.repeat(201) }],
       },
     }), null);
   });

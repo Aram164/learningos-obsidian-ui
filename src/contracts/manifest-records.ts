@@ -1,7 +1,7 @@
 /**
  * Closed decoders for the heterogeneous records emitted by the Manifest.
  *
- * These key sets mirror Core's `system/contracts/manifest-v14.schema.json`.
+ * These key sets mirror Core's `system/contracts/manifest-v15.schema.json`.
  * Keeping the checks here makes the permissive `ProjectionRecord` convenience
  * type safe to use after `assertManifest`: extension fields are available to
  * feature code, but an undeclared producer field cannot cross the read boundary.
@@ -564,12 +564,43 @@ function validSourceEvaluation(value: unknown): boolean {
     && list(source.useful_sections, validUsefulSection));
 }
 
+function validSourceExamination(value: unknown): boolean {
+  const source = row(value);
+  return Boolean(source && exact(source, ['evaluated', 'approved_analysis_count', 'metadata_placed'])
+    && typeof source.evaluated === 'boolean'
+    && natural(source.approved_analysis_count)
+    && typeof source.metadata_placed === 'boolean');
+}
+
+function validSourceDiscovery(value: unknown): boolean {
+  const source = row(value);
+  const provenance = (item: unknown) => text(item)
+    && /^(https?:\/\/\S+|\S+#L[0-9]+)$/.test(item);
+  return Boolean(source && exact(source, ['observed', 'basis', 'possible_use'],
+    ['origins', 'child_titles'])
+    && date(source.observed)
+    && Array.isArray(source.basis) && source.basis.length > 0
+    && list(source.basis, (item) => {
+      const basis = row(item);
+      return Boolean(basis && exact(basis, ['kind', 'ref'])
+        && values(basis.kind, ['list-entry', 'landing-page', 'catalogue-entry',
+          'playlist-metadata', 'table-of-contents'] as const)
+        && provenance(basis.ref));
+    })
+    && nonEmpty(source.possible_use) && source.possible_use.length <= 200
+    && optional(source, 'origins', (items) => list(items, provenance))
+    && optional(source, 'child_titles', (item) => {
+      const titles = row(item);
+      return Boolean(titles && Object.values(titles).every(nonEmpty));
+    }));
+}
+
 function validSourceRecord(value: unknown): boolean {
   const source = row(value);
   return Boolean(source && exact(source, [
     'id', 'type', 'title', 'revision', 'path', 'source_type', 'thematic_group_ids',
     'topics', 'url', 'material', 'material_path', 'material_exists', 'authors',
-    'organization', 'year', 'identifiers', 'roles', 'evaluations',
+    'organization', 'year', 'identifiers', 'roles', 'evaluations', 'discovery', 'examination',
   ]) && identifier(source.id, 'source-') && source.type === 'source'
     && nonEmpty(source.title) && natural(source.revision) && nonEmpty(source.path)
     && values(source.source_type, [
@@ -583,7 +614,9 @@ function validSourceRecord(value: unknown): boolean {
     && strings(source.authors) && nullable(source.organization, text)
     && nullable(source.year, (item) => natural(item) && item >= 1800 && item <= 2100)
     && validStringMap(source.identifiers) && strings(source.roles, true)
-    && list(source.evaluations, validSourceEvaluation));
+    && list(source.evaluations, validSourceEvaluation)
+    && nullable(source.discovery, validSourceDiscovery)
+    && validSourceExamination(source.examination));
 }
 
 function validCollectionEntry(value: unknown): boolean {

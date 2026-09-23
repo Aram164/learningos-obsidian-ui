@@ -14,6 +14,7 @@ import {
   readRelatedRecords,
 } from './model';
 import { isFileShapedPath } from '../../infrastructure/resource-target';
+import { isRecord } from '../../projection/readers';
 
 export function renderRecordActions(
   view: LibraryDetailHost,
@@ -268,6 +269,42 @@ export function renderSourceDetail(
         cls: 'los-fact-value',
         text: value,
       });
+    }
+
+    if (
+      record.examination
+      && !record.examination.evaluated
+      && record.examination.approvedAnalysisCount === 0
+    ) {
+      /* Discovery provenance distinguishes metadata placement from older
+       * unevaluated sources without asserting that either has been read. */
+      const placed = facts.createDiv({ cls: 'los-chip-row' });
+      badge(placed, record.examination.metadataPlaced
+        ? 'Placed from metadata · not examined' : 'Not examined', 'status');
+    }
+
+    const discovery = isRecord(record.record.discovery) ? record.record.discovery : null;
+    if (discovery) {
+      const provenance = section(detail, 'Provisional placement',
+        'Recorded from list or page metadata; assess the material when it is selected for study.');
+      if (typeof discovery.possible_use === 'string') {
+        provenance.createEl('p', { text: discovery.possible_use });
+      }
+      if (typeof discovery.observed === 'string') {
+        provenance.createDiv({ cls: 'los-micro', text: `Recorded ${discovery.observed}` });
+      }
+    }
+
+    const identifiers = isRecord(record.record.identifiers) ? record.record.identifiers : {};
+    const titles = discovery && isRecord(discovery.child_titles) ? discovery.child_titles : {};
+    const knownLinks = Object.entries(identifiers).filter(([, value]) =>
+      typeof value === 'string' && /^https?:\/\//i.test(value));
+    if (knownLinks.length) {
+      const links = disclosure(detail, `Known links (${knownLinks.length})`);
+      for (const [label, address] of knownLinks) {
+        const title = typeof titles[label] === 'string' ? titles[label] : label;
+        button(links, title, () => view.plugin.openResource({ url: address as string }), 'info');
+      }
     }
 
     const memberships =

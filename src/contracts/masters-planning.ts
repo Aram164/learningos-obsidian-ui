@@ -23,6 +23,10 @@ export interface CandidateModuleV1 {
   readonly promoted_module_id?: string;
 }
 
+export type CandidateSourceTypeV1 =
+  | 'book' | 'paper' | 'lecture' | 'course' | 'video' | 'website'
+  | 'documentation' | 'software' | 'conversation' | 'other';
+
 export interface CandidateSourceV1 {
   readonly id: string;
   readonly title: string;
@@ -31,6 +35,11 @@ export interface CandidateSourceV1 {
   readonly provenance: readonly string[];
   readonly fact_state: FactStateV1;
   readonly canonical_source_id?: string;
+  readonly url?: string;
+  readonly identifiers?: { readonly [label: string]: string };
+  readonly child_titles?: { readonly [label: string]: string };
+  readonly possible_use?: string;
+  readonly type?: CandidateSourceTypeV1;
 }
 
 export interface MasterPlanningCatalogV1 {
@@ -149,6 +158,14 @@ function stringList(
   return Array.isArray(value) && value.every(pattern)
     && (!unique || new Set(value).size === value.length);
 }
+function stringMap(value: unknown): value is { [label: string]: string } {
+  const source = row(value);
+  return Boolean(source && Object.values(source).every(text));
+}
+const sourceTypes: readonly CandidateSourceTypeV1[] = [
+  'book', 'paper', 'lecture', 'course', 'video', 'website',
+  'documentation', 'software', 'conversation', 'other',
+];
 
 const planningStates: readonly PlanningStateV1[] = [
   'longlist', 'shortlist', 'selected', 'rejected', 'promoted',
@@ -241,13 +258,21 @@ function catalog(value: unknown): MasterPlanningCatalogV1 | null {
     const facts = factState(candidate?.fact_state);
     if (!candidate || !exact(candidate, [
       'id', 'title', 'planning_state', 'privacy_class', 'provenance', 'fact_state',
-    ], ['canonical_source_id']) || !id(candidate.id, 'candidate-source-')
+    ], ['canonical_source_id', 'url', 'identifiers', 'child_titles', 'possible_use', 'type'])
+      || !id(candidate.id, 'candidate-source-')
       || !text(candidate.title)
       || !planningStates.includes(candidate.planning_state as PlanningStateV1)
       || candidate.privacy_class !== 'academic-only' || !stringList(candidate.provenance)
       || candidate.provenance.length === 0
       || !facts || ('canonical_source_id' in candidate
-        && !id(candidate.canonical_source_id, 'source-'))) return null;
+        && !id(candidate.canonical_source_id, 'source-'))
+      || ('url' in candidate && !text(candidate.url))
+      || ('identifiers' in candidate && !stringMap(candidate.identifiers))
+      || ('child_titles' in candidate && !stringMap(candidate.child_titles))
+      || ('possible_use' in candidate
+        && (!text(candidate.possible_use) || candidate.possible_use.length > 200))
+      || ('type' in candidate
+        && !sourceTypes.includes(candidate.type as CandidateSourceTypeV1))) return null;
     sources.push({
       id: candidate.id,
       title: candidate.title,
@@ -258,6 +283,17 @@ function catalog(value: unknown): MasterPlanningCatalogV1 | null {
       ...('canonical_source_id' in candidate
         ? { canonical_source_id: candidate.canonical_source_id as string }
         : {}),
+      ...('url' in candidate ? { url: candidate.url as string } : {}),
+      ...('identifiers' in candidate
+        ? { identifiers: candidate.identifiers as { [label: string]: string } }
+        : {}),
+      ...('child_titles' in candidate
+        ? { child_titles: candidate.child_titles as { [label: string]: string } }
+        : {}),
+      ...('possible_use' in candidate
+        ? { possible_use: candidate.possible_use as string }
+        : {}),
+      ...('type' in candidate ? { type: candidate.type as CandidateSourceTypeV1 } : {}),
     });
   }
   return {

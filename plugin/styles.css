@@ -1778,6 +1778,11 @@
   gap: var(--los-2);
 }
 .los-masters-counts { color: var(--los-ink-soft); font-size: 12px; }
+.los-masters-search {
+  width: min(100%, 34rem);
+  margin: var(--los-3) 0;
+}
+.los-masters-group { margin-top: var(--los-2); }
 .los-masters-row {
   padding: var(--los-3) 0;
   border-bottom: 1px solid var(--los-line);

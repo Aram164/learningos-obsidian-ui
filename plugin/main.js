@@ -547,6 +547,31 @@ function validSourceEvaluation(value) {
     "reference"
   ])) && strings(source.audience) && strings(source.prerequisites) && strings(source.strengths) && strings(source.weaknesses) && nullable(source.reviewed, date) && ids(source.concepts, "concept-") && list(source.useful_sections, validUsefulSection));
 }
+function validSourceExamination(value) {
+  const source = row(value);
+  return Boolean(source && exact(source, ["evaluated", "approved_analysis_count", "metadata_placed"]) && typeof source.evaluated === "boolean" && natural(source.approved_analysis_count) && typeof source.metadata_placed === "boolean");
+}
+function validSourceDiscovery(value) {
+  const source = row(value);
+  const provenance = (item) => text(item) && /^(https?:\/\/\S+|\S+#L[0-9]+)$/.test(item);
+  return Boolean(source && exact(
+    source,
+    ["observed", "basis", "possible_use"],
+    ["origins", "child_titles"]
+  ) && date(source.observed) && Array.isArray(source.basis) && source.basis.length > 0 && list(source.basis, (item) => {
+    const basis = row(item);
+    return Boolean(basis && exact(basis, ["kind", "ref"]) && values(basis.kind, [
+      "list-entry",
+      "landing-page",
+      "catalogue-entry",
+      "playlist-metadata",
+      "table-of-contents"
+    ]) && provenance(basis.ref));
+  }) && nonEmpty(source.possible_use) && source.possible_use.length <= 200 && optional(source, "origins", (items) => list(items, provenance)) && optional(source, "child_titles", (item) => {
+    const titles = row(item);
+    return Boolean(titles && Object.values(titles).every(nonEmpty));
+  }));
+}
 function validSourceRecord(value) {
   const source = row(value);
   return Boolean(source && exact(source, [
@@ -567,7 +592,9 @@ function validSourceRecord(value) {
     "year",
     "identifiers",
     "roles",
-    "evaluations"
+    "evaluations",
+    "discovery",
+    "examination"
   ]) && identifier(source.id, "source-") && source.type === "source" && nonEmpty(source.title) && natural(source.revision) && nonEmpty(source.path) && values(source.source_type, [
     "book",
     "paper",
@@ -579,7 +606,7 @@ function validSourceRecord(value) {
     "software",
     "conversation",
     "other"
-  ]) && ids(source.thematic_group_ids, "thematic-group-") && ids(source.topics, "topic-") && nullable(source.url, uri) && nullable(source.material, (item) => text(item) && /^material:\/\/.+/.test(item)) && nullable(source.material_path, text) && typeof source.material_exists === "boolean" && strings(source.authors) && nullable(source.organization, text) && nullable(source.year, (item) => natural(item) && item >= 1800 && item <= 2100) && validStringMap(source.identifiers) && strings(source.roles, true) && list(source.evaluations, validSourceEvaluation));
+  ]) && ids(source.thematic_group_ids, "thematic-group-") && ids(source.topics, "topic-") && nullable(source.url, uri) && nullable(source.material, (item) => text(item) && /^material:\/\/.+/.test(item)) && nullable(source.material_path, text) && typeof source.material_exists === "boolean" && strings(source.authors) && nullable(source.organization, text) && nullable(source.year, (item) => natural(item) && item >= 1800 && item <= 2100) && validStringMap(source.identifiers) && strings(source.roles, true) && list(source.evaluations, validSourceEvaluation) && nullable(source.discovery, validSourceDiscovery) && validSourceExamination(source.examination));
 }
 function validCollectionEntry(value) {
   const source = row(value);
@@ -1004,8 +1031,8 @@ function validProjectedRecord(value, validSynthesis) {
 }
 
 // src/contracts/manifest.ts
-var MANIFEST_CONTRACT_VERSION = 14;
-var MANIFEST_SCHEMA_SHA256 = "sha256:0444c70f2e264a0a9548fe1bbd585a058cc366aa3837508f8544487edd1d735f";
+var MANIFEST_CONTRACT_VERSION = 15;
+var MANIFEST_SCHEMA_SHA256 = "sha256:c487c6ed2e05c05425c6b41bd291e566b16a7e1ee3af667ae00763608d7e121f";
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -6687,6 +6714,22 @@ function exact2(value, required, optional2 = []) {
 function stringList(value, pattern = text2, unique2 = false) {
   return Array.isArray(value) && value.every(pattern) && (!unique2 || new Set(value).size === value.length);
 }
+function stringMap(value) {
+  const source = row2(value);
+  return Boolean(source && Object.values(source).every(text2));
+}
+var sourceTypes = [
+  "book",
+  "paper",
+  "lecture",
+  "course",
+  "video",
+  "website",
+  "documentation",
+  "software",
+  "conversation",
+  "other"
+];
 var planningStates = [
   "longlist",
   "shortlist",
@@ -6796,7 +6839,7 @@ function catalog(value) {
       "privacy_class",
       "provenance",
       "fact_state"
-    ], ["canonical_source_id"]) || !id(candidate2.id, "candidate-source-") || !text2(candidate2.title) || !planningStates.includes(candidate2.planning_state) || candidate2.privacy_class !== "academic-only" || !stringList(candidate2.provenance) || candidate2.provenance.length === 0 || !facts || "canonical_source_id" in candidate2 && !id(candidate2.canonical_source_id, "source-")) return null;
+    ], ["canonical_source_id", "url", "identifiers", "child_titles", "possible_use", "type"]) || !id(candidate2.id, "candidate-source-") || !text2(candidate2.title) || !planningStates.includes(candidate2.planning_state) || candidate2.privacy_class !== "academic-only" || !stringList(candidate2.provenance) || candidate2.provenance.length === 0 || !facts || "canonical_source_id" in candidate2 && !id(candidate2.canonical_source_id, "source-") || "url" in candidate2 && !text2(candidate2.url) || "identifiers" in candidate2 && !stringMap(candidate2.identifiers) || "child_titles" in candidate2 && !stringMap(candidate2.child_titles) || "possible_use" in candidate2 && (!text2(candidate2.possible_use) || candidate2.possible_use.length > 200) || "type" in candidate2 && !sourceTypes.includes(candidate2.type)) return null;
     sources.push({
       id: candidate2.id,
       title: candidate2.title,
@@ -6804,7 +6847,12 @@ function catalog(value) {
       privacy_class: "academic-only",
       provenance: candidate2.provenance,
       fact_state: facts,
-      ..."canonical_source_id" in candidate2 ? { canonical_source_id: candidate2.canonical_source_id } : {}
+      ..."canonical_source_id" in candidate2 ? { canonical_source_id: candidate2.canonical_source_id } : {},
+      ..."url" in candidate2 ? { url: candidate2.url } : {},
+      ..."identifiers" in candidate2 ? { identifiers: candidate2.identifiers } : {},
+      ..."child_titles" in candidate2 ? { child_titles: candidate2.child_titles } : {},
+      ..."possible_use" in candidate2 ? { possible_use: candidate2.possible_use } : {},
+      ..."type" in candidate2 ? { type: candidate2.type } : {}
     });
   }
   return {
@@ -6986,6 +7034,20 @@ function asMastersPlanningDashboard(value, knownConceptIds = /* @__PURE__ */ new
 }
 
 // src/views/boundary-view.ts
+var MASTER_LIST_LABELS = {
+  ALGO: "Algorithms",
+  BENCHMARKING: "Benchmarking",
+  DATAENG: "Data engineering",
+  MATH: "Mathematics",
+  ML: "Machine learning",
+  RUNTIME: "Runtime and systems"
+};
+function sourceLists(source) {
+  return [...new Set(source.provenance.flatMap((ref) => {
+    const key = /MASTERS-([A-Z]+)-RESOURCES\.md#L\d+$/.exec(ref)?.[1];
+    return key ? [MASTER_LIST_LABELS[key] ?? key] : [];
+  }))];
+}
 var BoundaryView = class extends import_obsidian6.ItemView {
   plugin;
   boundaryId = null;
@@ -7138,16 +7200,66 @@ var BoundaryView = class extends import_obsidian6.ItemView {
     if (!catalog2.candidate_sources.length) {
       sources.createDiv({ cls: "los-micro", text: "No candidate sources in this revision." });
     }
-    for (const source of catalog2.candidate_sources) {
-      const row4 = sources.createDiv({ cls: "los-masters-row" });
-      const heading = row4.createDiv({ cls: "los-masters-row-head" });
-      heading.createEl("strong", { text: source.title });
-      badge(heading, source.planning_state, "role");
-      badge(
-        heading,
-        source.fact_state.status.replaceAll("-", " "),
-        source.fact_state.status === "verified-current" ? "status" : "role"
-      );
+    if (catalog2.candidate_sources.length) {
+      sources.createDiv({
+        cls: "los-micro",
+        text: "Grouped by the original resource list. These are provisional records; titles and links have not been examined."
+      });
+      const search = sources.createEl("input", {
+        cls: "los-masters-search",
+        attr: {
+          type: "search",
+          placeholder: "Find a title, type, or list",
+          "aria-label": "Search prospective sources"
+        }
+      });
+      const results = sources.createDiv();
+      const renderSources3 = () => {
+        results.empty();
+        const query = foldCase(search.value.trim());
+        const groups = /* @__PURE__ */ new Map();
+        for (const source of catalog2.candidate_sources) {
+          const lists = sourceLists(source);
+          if (query && ![source.title, source.type ?? "", ...lists].some((part2) => foldCase(part2).includes(query))) continue;
+          const primary = lists[0] ?? "Other original lists";
+          groups.set(primary, [...groups.get(primary) ?? [], source]);
+        }
+        const count2 = [...groups.values()].reduce((total, rows) => total + rows.length, 0);
+        results.createDiv({ cls: "los-micro", text: `${count2} matching source${count2 === 1 ? "" : "s"}` });
+        for (const [name, entries] of [...groups].sort(([a], [b]) => compareStrings(a, b))) {
+          const group = disclosure(results, `${name} (${entries.length})`, "los-masters-group");
+          if (query) group.parentElement?.setAttribute("open", "");
+          for (const source of entries) {
+            const row4 = group.createDiv({ cls: "los-masters-row" });
+            const heading = row4.createDiv({ cls: "los-masters-row-head" });
+            heading.createEl("strong", { text: source.title });
+            badge(heading, source.planning_state, "role");
+            badge(
+              heading,
+              source.fact_state.status.replaceAll("-", " "),
+              source.fact_state.status === "verified-current" ? "status" : "role"
+            );
+            if (source.type) badge(heading, source.type, "level");
+            const lists = sourceLists(source);
+            if (lists.length > 1) row4.createDiv({ cls: "los-micro", text: `Also listed in ${lists.slice(1).join(", ")}` });
+            if (source.possible_use) row4.createEl("p", { text: source.possible_use });
+            if (source.url) {
+              const address = source.url;
+              button(row4, "Open online", () => this.plugin.openResource({ url: address }), "info");
+            }
+            for (const [label, address] of Object.entries(source.identifiers ?? {})) {
+              button(
+                row4,
+                source.child_titles?.[label] ?? label,
+                () => this.plugin.openResource({ url: address }),
+                "info"
+              );
+            }
+          }
+        }
+      };
+      search.addEventListener("input", renderSources3);
+      renderSources3();
     }
     const assessments = this.mastersDashboard.comparisons.flatMap((comparison2) => comparison2.source_assessments);
     if (assessments.length) {
@@ -8321,6 +8433,16 @@ function readEvaluations(value) {
     (evaluation) => evaluation !== null
   );
 }
+function readExamination(value) {
+  if (!isRecord2(value)) {
+    return null;
+  }
+  return {
+    evaluated: asBoolean(value.evaluated),
+    approvedAnalysisCount: asCount(value.approved_analysis_count),
+    metadataPlaced: asBoolean(value.metadata_placed)
+  };
+}
 function readLibraryRecord(value) {
   if (!isRecord2(value)) {
     return null;
@@ -8350,7 +8472,8 @@ function readLibraryRecord(value) {
     authors: asStrings(value.authors),
     entries: readCollectionEntries(value.entries),
     attachments: readAttachments(value.attachments),
-    evaluations: readEvaluations(value.evaluations)
+    evaluations: readEvaluations(value.evaluations),
+    examination: readExamination(value.examination)
   };
 }
 function readLibraryRecords(value) {
@@ -8584,6 +8707,34 @@ function renderSourceDetail(view, detail, record10) {
       cls: "los-fact-value",
       text: value
     });
+  }
+  if (record10.examination && !record10.examination.evaluated && record10.examination.approvedAnalysisCount === 0) {
+    const placed2 = facts.createDiv({ cls: "los-chip-row" });
+    badge(placed2, record10.examination.metadataPlaced ? "Placed from metadata \xB7 not examined" : "Not examined", "status");
+  }
+  const discovery = isRecord2(record10.record.discovery) ? record10.record.discovery : null;
+  if (discovery) {
+    const provenance = section(
+      detail,
+      "Provisional placement",
+      "Recorded from list or page metadata; assess the material when it is selected for study."
+    );
+    if (typeof discovery.possible_use === "string") {
+      provenance.createEl("p", { text: discovery.possible_use });
+    }
+    if (typeof discovery.observed === "string") {
+      provenance.createDiv({ cls: "los-micro", text: `Recorded ${discovery.observed}` });
+    }
+  }
+  const identifiers = isRecord2(record10.record.identifiers) ? record10.record.identifiers : {};
+  const titles = discovery && isRecord2(discovery.child_titles) ? discovery.child_titles : {};
+  const knownLinks = Object.entries(identifiers).filter(([, value]) => typeof value === "string" && /^https?:\/\//i.test(value));
+  if (knownLinks.length) {
+    const links = disclosure(detail, `Known links (${knownLinks.length})`);
+    for (const [label, address] of knownLinks) {
+      const title = typeof titles[label] === "string" ? titles[label] : label;
+      button(links, title, () => view.plugin.openResource({ url: address }), "info");
+    }
   }
   const memberships = view.shelfIndex().get(
     record10.id
@@ -11535,7 +11686,7 @@ function readComponents(value) {
     };
   }).filter(nonNull);
 }
-function readExamination(value) {
+function readExamination2(value) {
   const examination = isRecord2(value) ? value : {};
   return {
     type: asString(examination.type),
@@ -11561,7 +11712,7 @@ function readModuleRecord(record10, fallbackId = null) {
     status: asString(record10.status) ?? "unspecified",
     institution: asText(record10.institution) ?? "",
     credits: asText(record10.credits),
-    examination: readExamination(record10.examination),
+    examination: readExamination2(record10.examination),
     components: readComponents(record10.components),
     unitOrder: asStrings(record10.unit_order)
   };
@@ -20832,10 +20983,10 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:9a46b48f03df86e915712ffd8e5eeb623564d28154c1e444aac265360930ca78" : "unavailable";
+  return true ? "sha256:4d388684713b5f5be9b19b420ef9809a394747dfa1356295768f3a68428d6609" : "unavailable";
 }
 function runtimeContractVersion() {
-  return true ? 14 : 0;
+  return true ? 15 : 0;
 }
 
 // src/contracts/ability-context.ts

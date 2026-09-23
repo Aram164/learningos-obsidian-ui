@@ -3,13 +3,14 @@
     "MIRROR, not original. The manifest contract is declared by Core in",
     "system/contracts/manifest-contract.yaml and enforced by Core itself.",
     "",
-    "v14 fixes the versioned schema's title ('manifest v9' since v9) so it names",
-    "the declared version. No shape change: same keys, new schema bytes and hash."
+    "v15 adds bounded discovery provenance and examination",
+    "({evaluated, approved_analysis_count, metadata_placed}) to every source",
+    "so agents can inspect the provisional shelf and Library can label it."
   ],
-  "contract_version": 14,
+  "contract_version": 15,
   "mirrors": "../repository/system/contracts/manifest-contract.yaml",
-  "schema_path": "system/contracts/manifest-v14.schema.json",
-  "schema_sha256": "sha256:0444c70f2e264a0a9548fe1bbd585a058cc366aa3837508f8544487edd1d735f",
+  "schema_path": "system/contracts/manifest-v15.schema.json",
+  "schema_sha256": "sha256:c487c6ed2e05c05425c6b41bd291e566b16a7e1ee3af667ae00763608d7e121f",
   "top_level_keys": [
     "_generated",
     "academic_deadlines",

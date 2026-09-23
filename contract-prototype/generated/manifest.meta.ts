@@ -1,4 +1,4 @@
 // GENERATED — do not edit. Regenerate with `npm run contract:generate`.
-export const MANIFEST_CONTRACT_VERSION = 14 as const;
-export const MANIFEST_SCHEMA_SHA256 = 'sha256:0444c70f2e264a0a9548fe1bbd585a058cc366aa3837508f8544487edd1d735f' as const;
-export const MANIFEST_CLOSURE_SHA256 = 'sha256:3950d7d814136940c291e250eb3a0a9935e21636b6eb12dbb167a80987b0287f' as const;
+export const MANIFEST_CONTRACT_VERSION = 15 as const;
+export const MANIFEST_SCHEMA_SHA256 = 'sha256:c487c6ed2e05c05425c6b41bd291e566b16a7e1ee3af667ae00763608d7e121f' as const;
+export const MANIFEST_CLOSURE_SHA256 = 'sha256:828c688c2e81549d8c9b10484444f7fe88a4b690a2744d7f76ecba5cf83e19e1' as const;
