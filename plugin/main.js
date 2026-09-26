@@ -15002,6 +15002,7 @@ function childAttemptContext(operation) {
 function formatTraceparent(context) {
   return `00-${context.traceId}-${context.spanId}-${context.sampled ? "01" : "00"}`;
 }
+var TRACEPARENT_RE = /^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/;
 var ZERO_TRACE = "0".repeat(32);
 var ZERO_SPAN = "0".repeat(16);
 function diagnosticEvent(context, name, attributes = {}, spanId) {
@@ -15031,6 +15032,21 @@ function storeEnvelope(event) {
     status: null,
     attributes: event.attributes
   };
+}
+var TRACE_OWNERSHIP_ENV = "LOS_TRACE_OWNED";
+function ownershipMarkerForTraceparent(traceParent) {
+  return parseTraceparent(traceParent)?.traceId ?? null;
+}
+function parseTraceparent(value) {
+  if (typeof value !== "string") return null;
+  const match = TRACEPARENT_RE.exec(value.trim());
+  if (!match) return null;
+  const traceId = match[1];
+  const spanId = match[2];
+  const flags = match[3];
+  if (traceId === void 0 || spanId === void 0 || flags === void 0) return null;
+  if (traceId === ZERO_TRACE || spanId === ZERO_SPAN) return null;
+  return { traceId, spanId, sampled: (parseInt(flags, 16) & 1) === 1 };
 }
 
 // src/gateway-client.ts
@@ -20983,7 +20999,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:4d388684713b5f5be9b19b420ef9809a394747dfa1356295768f3a68428d6609" : "unavailable";
+  return true ? "sha256:e1a23a9b86576eedde7974eef2f263b5a1373f40f80616ba904e1f463b858beb" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
@@ -21494,11 +21510,15 @@ var LosRuntime = class {
    * Run the CLI. `traceParent` carries one W3C traceparent for this exact
    * dispatch (research track #2, Phase 1): it travels as child-process
    * environment, never as CLI arguments or payload, and an absent value
-   * leaves the child environment exactly as before.
+   * leaves the child environment exactly as before. A present value also
+   * carries the LearningOS-ownership marker, so Core adopts this
+   * dispatch's operation as its own instead of minting a second one
+   * (JF-04, Option A).
    */
   run(args, callback, stdin, traceParent) {
     const base = this.app.vault.adapter.getBasePath();
     const script = nodePath3.join(base, "tools", "los.py");
+    const owned = traceParent === void 0 ? null : ownershipMarkerForTraceparent(traceParent);
     const child = (0, import_node_child_process.execFile)(
       this.resolvePython().path,
       [script, ...args],
@@ -21506,7 +21526,13 @@ var LosRuntime = class {
         cwd: base,
         timeout: 18e4,
         maxBuffer: 8 * 1024 * 1024,
-        ...traceParent === void 0 ? {} : { env: { ...import_node_process.default.env, TRACEPARENT: traceParent } }
+        ...traceParent === void 0 ? {} : {
+          env: {
+            ...import_node_process.default.env,
+            TRACEPARENT: traceParent,
+            ...owned === null ? {} : { [TRACE_OWNERSHIP_ENV]: owned }
+          }
+        }
       },
       callback
     );
