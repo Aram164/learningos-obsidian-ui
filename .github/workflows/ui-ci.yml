@@ -11,7 +11,10 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # The paired gate runs Core's complete suite: 11-20 minutes on hosted
+    # runners (Core's own validate runs, 2026-09-26). The former 10-minute
+    # cap cancelled every main run from 2026-09-21 on, mid-pytest.
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: obsidian-ui
@@ -62,8 +65,14 @@ jobs:
         working-directory: repository
         run: pip install -e ".[dev]"
 
+      # `live_install` tests need state no checkout can carry: the
+      # maintainer's gitignored data, or the wrapper root above repository/.
+      # Deselected by name exactly as Core's validate.yml does; the live
+      # installation's own `make system-check` still runs them.
       - name: paired release gate (make system-check)
         working-directory: repository
+        env:
+          PYTEST_ADDOPTS: '-m "not live_install"'
         run: make system-check
 
       - name: Exercise the fixture installer path

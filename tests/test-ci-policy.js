@@ -39,6 +39,11 @@ test('UI CI policy', () => {
         'GitHub expressions must cross into run-shell steps through env, never interpolation',
     );
     assert.match(yml, /RESOLVED_CORE_REF:\s*\$\{\{ steps\.producer-ref\.outputs\.ref \}\}/);
+    // The paired gate is Core's complete suite: live_install tests cannot pass
+    // in any checkout, and the suite outlasts short caps (11-20 min hosted).
+    assert.match(yml, /PYTEST_ADDOPTS: '-m "not live_install"'/);
+    const timeout = Number(yml.match(/timeout-minutes:\s*(\d+)/)?.[1]);
+    assert.ok(timeout >= 30, `timeout-minutes ${timeout} cancels the paired gate mid-suite`);
 });
 
 // These two calls only format display prose; neither supplies a match/sort key.
