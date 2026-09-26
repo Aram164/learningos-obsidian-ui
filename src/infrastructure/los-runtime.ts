@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
 import process from 'node:process';
+import { TRACE_OWNERSHIP_ENV, ownershipMarkerForTraceparent } from './trace-context';
 
 export interface PythonResolution {
   readonly path: string;
@@ -51,11 +52,17 @@ export class LosRuntime {
    * Run the CLI. `traceParent` carries one W3C traceparent for this exact
    * dispatch (research track #2, Phase 1): it travels as child-process
    * environment, never as CLI arguments or payload, and an absent value
-   * leaves the child environment exactly as before.
+   * leaves the child environment exactly as before. A present value also
+   * carries the LearningOS-ownership marker, so Core adopts this
+   * dispatch's operation as its own instead of minting a second one
+   * (JF-04, Option A).
    */
   run(args: string[], callback: LosCallback, stdin?: string, traceParent?: string): void {
     const base = this.app.vault.adapter.getBasePath();
     const script = nodePath.join(base, 'tools', 'los.py');
+    const owned = traceParent === undefined
+      ? null
+      : ownershipMarkerForTraceparent(traceParent);
     const child = execFile(
       this.resolvePython().path,
       [script, ...args],
@@ -65,7 +72,13 @@ export class LosRuntime {
         maxBuffer: 8 * 1024 * 1024,
         ...(traceParent === undefined
           ? {}
-          : { env: { ...process.env, TRACEPARENT: traceParent } }),
+          : {
+            env: {
+              ...process.env,
+              TRACEPARENT: traceParent,
+              ...(owned === null ? {} : { [TRACE_OWNERSHIP_ENV]: owned }),
+            },
+          }),
       },
       callback,
     );

@@ -111,6 +111,26 @@ export function storeEnvelope(event: DiagnosticEvent): Record<string, unknown> {
 }
 
 /**
+ * Child-environment marker declaring a propagated context LearningOS-owned
+ * (JF-04, owner-selected Option A). Every UI dispatch sets this to the
+ * operation id alongside `TRACEPARENT`; Core adopts a propagated context
+ * as logical operation identity if and only if the marker names that exact
+ * context. An unmarked or mismatched `TRACEPARENT` is ambient parentage
+ * for correlation, never identity — so one UI logical operation stays one
+ * LearningOS operation without ever merging ambient traces.
+ */
+export const TRACE_OWNERSHIP_ENV = 'LOS_TRACE_OWNED';
+
+/**
+ * The ownership marker value for one dispatch: the operation id the child
+ * may adopt as its own. `null` for a malformed traceparent, which Core
+ * would reject anyway.
+ */
+export function ownershipMarkerForTraceparent(traceParent: string): string | null {
+  return parseTraceparent(traceParent)?.traceId ?? null;
+}
+
+/**
  * Parse a traceparent value; `null` for anything not strictly shaped.
  * All-zero ids and non-`00` versions are rejected per the W3C spec.
  */

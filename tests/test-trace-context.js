@@ -27,6 +27,8 @@ const {
   childAttemptContext,
   formatTraceparent,
   parseTraceparent,
+  TRACE_OWNERSHIP_ENV,
+  ownershipMarkerForTraceparent,
 } = load('src/infrastructure/trace-context.ts');
 const { LosRuntime } = load('src/infrastructure/los-runtime.ts');
 const { GatewayClient } = load('src/gateway-client.ts');
@@ -54,10 +56,24 @@ function testContextShapes() {
   assert.notEqual(newOperationContext().traceId, operation.traceId);
 }
 
+function testOwnershipMarker() {
+  // JF-04 Option A: the marker names the exact operation the child may
+  // adopt; malformed input yields no marker.
+  assert.equal(TRACE_OWNERSHIP_ENV, 'LOS_TRACE_OWNED');
+  assert.equal(
+    ownershipMarkerForTraceparent(`00-${TRACE_ID}-${SPAN_ID}-01`),
+    TRACE_ID,
+  );
+  for (const bad of [null, undefined, '', 'garbage', `01-${TRACE_ID}-${SPAN_ID}-01`,
+    `00-${TRACE_ID}-${SPAN_ID}`, `00-${'0'.repeat(32)}-${SPAN_ID}-01`]) {
+    assert.equal(ownershipMarkerForTraceparent(bad), null, String(bad));
+  }
+}
+
 function testRuntimeCarriesParentAsEnv() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'learningos-trace-rt-'));
   const stub = path.join(dir, 'stub-python.sh');
-  fs.writeFileSync(stub, '#!/bin/sh\necho "TP:${TRACEPARENT:-unset}"\n');
+  fs.writeFileSync(stub, '#!/bin/sh\necho "TP:${TRACEPARENT:-unset} OWN:${LOS_TRACE_OWNED:-unset}"\n');
   fs.chmodSync(stub, 0o755);
   const runtime = new LosRuntime(
     { vault: { adapter: { getBasePath: () => dir } } },
@@ -71,8 +87,9 @@ function testRuntimeCarriesParentAsEnv() {
   });
   return (async () => {
     const parent = `00-${TRACE_ID}-${SPAN_ID}-01`;
-    assert.equal(await run(parent), `TP:${parent}`);
-    assert.equal(await run(undefined), 'TP:unset');
+    assert.equal(await run(parent), `TP:${parent} OWN:${TRACE_ID}`);
+    assert.equal(await run(undefined), 'TP:unset OWN:unset');
+    assert.equal(await run('garbage'), 'TP:garbage OWN:unset');
   })().finally(() => fs.rmSync(dir, { recursive: true, force: true }));
 }
 
@@ -260,11 +277,12 @@ async function testTerminalEventsCarryCodesNeverMessages() {
 
 async function main() {
   testContextShapes();
+  testOwnershipMarker();
   await testRuntimeCarriesParentAsEnv();
   await testClientKeepsOneOperationAcrossReplay();
   await testClientEmitsOneDiagnosticStream();
   await testTerminalEventsCarryCodesNeverMessages();
-  console.log('test-trace-context: ok (5 groups)');
+  console.log('test-trace-context: ok (6 groups)');
 }
 
 main().then(

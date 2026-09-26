@@ -45,7 +45,16 @@ const ROOT = path.dirname(__dirname);
 const load = createSourceModuleLoader(ROOT);
 const { GatewayClient } = load('src/gateway-client.ts');
 const { MemoryGatewayRecoveryStore } = load('src/application/gateway-recovery.ts');
-const { newOperationContext, storeEnvelope } = load('src/infrastructure/trace-context.ts');
+const { newOperationContext, storeEnvelope, TRACE_OWNERSHIP_ENV, ownershipMarkerForTraceparent } = load('src/infrastructure/trace-context.ts');
+
+function ownedEnv(traceParent) {
+  if (traceParent === undefined) return {};
+  const owned = ownershipMarkerForTraceparent(traceParent);
+  return {
+    TRACEPARENT: traceParent,
+    ...(owned === null ? {} : { [TRACE_OWNERSHIP_ENV]: owned }),
+  };
+}
 
 const workspace = fs.mkdtempSync(path.join(os.tmpdir(), 'learningos-ops-gate-'));
 process.on('exit', () => fs.rmSync(workspace, { recursive: true, force: true }));
@@ -61,7 +70,7 @@ function spawnCore(args, stdin, traceParent) {
       timeout: 180000,
       env: {
         ...process.env,
-        ...(traceParent === undefined ? {} : { TRACEPARENT: traceParent }),
+        ...ownedEnv(traceParent),
       },
     },
   );
