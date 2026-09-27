@@ -80,6 +80,16 @@ const HARD_FORBIDDEN_TOKENS = [
 
 export class LiveAppCheckError extends Error {}
 
+export function writeVerdict(evidenceDir, verdict) {
+  if (!evidenceDir) return;
+  fs.mkdirSync(evidenceDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(evidenceDir, 'check-live-verdict.json'),
+    `${JSON.stringify(verdict, null, 2)}\n`,
+    'utf8',
+  );
+}
+
 /**
  * Command-resolution order (plan §Phase 7): explicit override, then an
  * already-registered `obsidian` on PATH, then the bundled CLI binary Obsidian
@@ -411,6 +421,7 @@ async function main() {
 
   const binary = resolveObsidianCli();
   if (!binary) {
+    writeVerdict(evidenceDir, { ok: false, status: 'cli-unavailable' });
     console.log('check-live-app: the Obsidian CLI is not available.');
     console.log('check-live-app: enable it in Obsidian: Settings → General → Command line interface.');
     console.log('check-live-app: this script never installs a CLI or creates a symlink automatically.');
@@ -485,17 +496,26 @@ async function main() {
   // The extracted live values, never the caller's arguments: echoing the
   // inputs back would make any wrong pair look verified.
   const result = redactDiagnostics(diagnostics);
-  console.log(JSON.stringify({
+  const verdict = {
     ok: true,
     appVersion: version.app,
     installerVersion: version.installer,
     plugin: { id: learningos.id, enabled: true },
     ...result,
-  }));
+  };
+  writeVerdict(evidenceDir, verdict);
+  console.log(JSON.stringify(verdict));
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch((error) => {
+    const index = process.argv.indexOf('--evidence-dir');
+    const evidenceDir = index >= 0 ? process.argv[index + 1] : null;
+    try {
+      writeVerdict(evidenceDir, { ok: false, error: error.message });
+    } catch (writeError) {
+      console.error(`check-live-app: could not save verdict: ${writeError.message}`);
+    }
     console.error(`check-live-app: ${error.message}`);
     process.exitCode = 1;
   });

@@ -904,6 +904,20 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
+  heading('reviewed map replacement stays near the top of an existing map');
+  {
+    const { app, plugin } = await boot();
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const root = app.workspace.getLeavesOfType(VIEW.unit)[0].view.contentEl;
+    const children = root.children;
+    const provenance = children.findIndex((child) => child.classes.has('los-map-provenance'));
+    const layout = children.findIndex((child) => child.classes.has('los-unit-layout'));
+    check('replacement is visible before the stage layout and outside the extras disclosure',
+      provenance >= 0 && provenance < layout
+      && Boolean(children[provenance].findText('los-btn', 'Replace with reviewed map')));
+    plugin.onunload();
+  }
+
   heading('the assigned page survives the whole plugin route');
   {
     /*

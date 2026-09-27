@@ -10,6 +10,7 @@
  */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -33,6 +34,7 @@ import {
   requireFullSha,
   versionAtLeast,
   versionExactly,
+  writeVerdict,
 } from '../scripts/check-live-app.mjs';
 
 let failures = 0;
@@ -48,6 +50,18 @@ function test(name, body) {
     console.error(error.stack || error);
   }
 }
+
+test('the evidence directory stores the same machine-readable verdict', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'los-live-verdict-'));
+  try {
+    const verdict = { ok: true, coreRevision: 'a'.repeat(40) };
+    writeVerdict(dir, verdict);
+    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(dir, 'check-live-verdict.json'), 'utf8')),
+      verdict);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 // ---- the hard allowlist -----------------------------------------------
 

@@ -298,6 +298,27 @@ export function render(
       )
       ?? firstStage;
 
+    const provenance = root.createDiv({
+      cls: 'los-map-provenance',
+    });
+
+    /* Keep the replacement gate visible with the map it replaces, including
+     * at an 800 px window height. */
+    provenance.createSpan({
+      cls: 'los-micro',
+      text:
+        studyMap.planTemplateVersion === null
+          ? 'This study map predates plan template v1. It stays readable; a replacement is imported from the current template.'
+          : `Study map on plan template v${studyMap.planTemplateVersion}.`,
+    });
+
+    openMapImport(
+      view,
+      provenance,
+      unit,
+      true,
+    );
+
     /* 14:502 is an eyebrow, a title and one action — no third line. The
      * summary that stood here restated the stage count, the completed count
      * and the current stage title, all three of which the rail and the stage
@@ -326,28 +347,6 @@ export function render(
       root,
       'Unit artifacts and evidence',
       'los-unit-extras',
-    );
-
-    const provenance = more.createDiv({
-      cls: 'los-map-provenance',
-    });
-
-    /* A map that predates the creation template is labelled rather than shown
-     * as though it conformed — the distinction remains explicit in the UI,
-     * because it is the same field and the same claim. */
-    provenance.createSpan({
-      cls: 'los-micro',
-      text:
-        studyMap.planTemplateVersion === null
-          ? 'This study map predates plan template v1. It stays readable; a replacement is imported from the current template.'
-          : `Study map on plan template v${studyMap.planTemplateVersion}.`,
-    });
-
-    openMapImport(
-      view,
-      provenance,
-      unit,
-      true,
     );
 
     view.renderArtifacts(

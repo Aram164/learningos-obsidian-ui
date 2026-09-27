@@ -19666,6 +19666,19 @@ function render(view) {
   const stage = studyMap.stages.find(
     (candidate2) => candidate2.id === view.stageId
   ) ?? firstStage;
+  const provenance = root.createDiv({
+    cls: "los-map-provenance"
+  });
+  provenance.createSpan({
+    cls: "los-micro",
+    text: studyMap.planTemplateVersion === null ? "This study map predates plan template v1. It stays readable; a replacement is imported from the current template." : `Study map on plan template v${studyMap.planTemplateVersion}.`
+  });
+  openMapImport(
+    view,
+    provenance,
+    unit,
+    true
+  );
   const layout = root.createDiv({
     cls: "los-unit-layout"
   });
@@ -19686,19 +19699,6 @@ function render(view) {
     root,
     "Unit artifacts and evidence",
     "los-unit-extras"
-  );
-  const provenance = more.createDiv({
-    cls: "los-map-provenance"
-  });
-  provenance.createSpan({
-    cls: "los-micro",
-    text: studyMap.planTemplateVersion === null ? "This study map predates plan template v1. It stays readable; a replacement is imported from the current template." : `Study map on plan template v${studyMap.planTemplateVersion}.`
-  });
-  openMapImport(
-    view,
-    provenance,
-    unit,
-    true
   );
   view.renderArtifacts(
     more,
@@ -20999,7 +20999,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:e1a23a9b86576eedde7974eef2f263b5a1373f40f80616ba904e1f463b858beb" : "unavailable";
+  return true ? "sha256:e2797ce8725f565ffacd9be6bd6bf4003fe964b651712cbafc322dcf25381f14" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
