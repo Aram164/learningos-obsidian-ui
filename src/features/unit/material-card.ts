@@ -210,7 +210,7 @@ function renderSpan(parent: HTMLElement, deps: MaterialCardDeps, routeId: string
   head.createEl('strong', { text: SPAN_AVAILABILITY[span.availability] });
   if (span.locator) head.createSpan({ cls: 'los-micro', text: span.locator });
   if (span.availability === 'remote-unobserved') {
-    box.createDiv({ cls: 'los-micro', text: 'Remote material is never fetched implicitly. Open it in your browser to read it.' });
+    box.createDiv({ cls: 'los-micro', text: 'This remote source has not been read here. Open the link to read it; a local excerpt needs a registered copy.' });
     if (span.url) box.createDiv({ cls: 'los-span-url', text: span.url });
     return;
   }

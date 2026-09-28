@@ -18148,7 +18148,7 @@ function renderSpan(parent, deps, routeId) {
   head.createEl("strong", { text: SPAN_AVAILABILITY[span.availability] });
   if (span.locator) head.createSpan({ cls: "los-micro", text: span.locator });
   if (span.availability === "remote-unobserved") {
-    box.createDiv({ cls: "los-micro", text: "Remote material is never fetched implicitly. Open it in your browser to read it." });
+    box.createDiv({ cls: "los-micro", text: "This remote source has not been read here. Open the link to read it; a local excerpt needs a registered copy." });
     if (span.url) box.createDiv({ cls: "los-span-url", text: span.url });
     return;
   }
@@ -20999,7 +20999,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:e2797ce8725f565ffacd9be6bd6bf4003fe964b651712cbafc322dcf25381f14" : "unavailable";
+  return true ? "sha256:18c6fd996f2bee479a32dc5d8280773398235b831e51bda0b20b396ba39e2329" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
