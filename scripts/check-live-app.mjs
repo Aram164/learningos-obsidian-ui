@@ -40,7 +40,7 @@
  * fallback this script is written to respect rather than bypass. The pure
  * logic below (allowlist enforcement, command-id resolution, DOM-count
  * assertion, error-buffer diffing, metadata redaction) is fully unit-tested
- * in tests/test-live-app-check.js against synthetic CLI output shaped to the
+ * in tests/test-live-app-check.mjs against synthetic CLI output shaped to the
  * plan's own description of the CLI. The thin `spawnSync` glue that actually
  * shells out is the one part that may need adjustment once this runs against
  * the real CLI for the first time (Phase 15) — expect to iterate here.
