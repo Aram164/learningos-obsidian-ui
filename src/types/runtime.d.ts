@@ -36,6 +36,9 @@ interface HTMLElement {
 }
 
 declare module 'obsidian' {
+  /** Opaque subscription owned by the host's event lifecycle. */
+  export type EventRef = object;
+
   export interface TAbstractFile {
     readonly path: string;
   }
@@ -65,6 +68,11 @@ declare module 'obsidian' {
     detachLeavesOfType(
       viewType: string,
     ): void;
+
+    on(
+      name: 'active-leaf-change',
+      callback: (leaf: WorkspaceLeaf | null) => unknown,
+    ): EventRef;
 
     onLayoutReady(
       callback: () => unknown,
@@ -172,6 +180,8 @@ declare module 'obsidian' {
         leaf: WorkspaceLeaf,
       ) => ItemView,
     ): void;
+
+    registerEvent(event: EventRef): void;
 
     addSettingTab(
       tab: PluginSettingTab,

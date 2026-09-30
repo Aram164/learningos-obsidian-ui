@@ -88,9 +88,9 @@ export class LearningOSSettingsTab extends PluginSettingTab {
     }
     new Setting(root).setName('Colour scheme')
       .setDesc(
-        'Changes the palette only. Sage still means applied, slate information '
-        + 'and amber attention in every scheme, and each one is held to the same '
-        + 'contrast floor. Ink is a dark canvas; the others keep the daylight surface.',
+        'Choose a richer light or dark palette. Wine, Graphite and Indigo have light surfaces; '
+        + 'Ink, Midnight, Slate and Carbon have dark canvases. Green marks applied, blue information '
+        + 'and amber attention. Every scheme meets the same contrast floor.',
       )
       .addDropdown((dropdown: DropdownComponent) => {
         for (const [id, label] of PALETTES) dropdown.addOption(id, label);

@@ -9,6 +9,7 @@ const suites = [
   require('./dashboard/abilities-review'),
   require('./dashboard/render-focus'),
   require('./dashboard/domain-atlas'),
+  require('./dashboard/active-leaf-navigation'),
   require('./dashboard/library-capture'),
   require('./dashboard/study-surfaces'),
   require('./dashboard/shelving-resilience'),

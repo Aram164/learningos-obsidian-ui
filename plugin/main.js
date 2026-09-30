@@ -2061,7 +2061,7 @@ var LearningOSSettingsTab = class extends import_obsidian2.PluginSettingTab {
       );
     }
     new import_obsidian2.Setting(root).setName("Colour scheme").setDesc(
-      "Changes the palette only. Sage still means applied, slate information and amber attention in every scheme, and each one is held to the same contrast floor. Ink is a dark canvas; the others keep the daylight surface."
+      "Choose a richer light or dark palette. Wine, Graphite and Indigo have light surfaces; Ink, Midnight, Slate and Carbon have dark canvases. Green marks applied, blue information and amber attention. Every scheme meets the same contrast floor."
     ).addDropdown((dropdown) => {
       for (const [id2, label] of PALETTES) dropdown.addOption(id2, label);
       return dropdown.setValue(this.plugin.settings.palette).onChange(async (value) => {
@@ -6924,6 +6924,7 @@ var AtlasView = class extends import_obsidian5.ItemView {
   async onOpen() {
     this.adopt(this.leaf.getViewState().state ?? {});
     this.render();
+    this.leaf.updateHeader?.();
   }
   /**
    * The Atlas's one write, routed like every other write in the app.
@@ -20445,6 +20446,13 @@ function registerApplication(plugin) {
   plugin.registerView(VIEW_REVIEW, (leaf) => new ReviewView(leaf, plugin));
   plugin.registerView(VIEW_GARDEN, (leaf) => new GardenView(leaf, plugin));
   plugin.registerView(VIEW_DIAGNOSTICS, (leaf) => new DiagnosticsView(leaf, plugin));
+  plugin.registerEvent(plugin.app.workspace.on("active-leaf-change", (leaf) => {
+    const state = leaf?.getViewState();
+    if (!state || state.type === VIEW_NAV || !APPLICATION_VIEW_TYPES.some((type) => type === state.type)) return;
+    const route2 = plugin.router.fromLegacy(state);
+    const nav = plugin.router.descriptor(route2).nav;
+    if (nav !== plugin.activeNav) plugin.setActiveNav(nav);
+  }));
   plugin.addSettingTab(new LearningOSSettingsTab(plugin.app, plugin));
   plugin.addRibbonIcon("route", "Open LearningOS", () => plugin.nav.openHome());
   plugin.addCommand({ id: "open-home", name: "Open Home", callback: () => plugin.nav.openHome() });
@@ -21485,7 +21493,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:6f060c5ef4103cf847b8b3776bbf04dba5b8dcfa56149820f3a6a98340b4022a" : "unavailable";
+  return true ? "sha256:834c5a41fc1e233e6245668695676b915d076d8b496379e9901bdc0df79577d0" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

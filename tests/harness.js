@@ -338,6 +338,7 @@ function makeApp(vaultRoot) {
   }
 
   const leaves = [];
+  const workspaceListeners = new Map();
   const app = {
     internalPlugins: {
       enabled: new Set(),
@@ -362,6 +363,15 @@ function makeApp(vaultRoot) {
       }),
     },
     workspace: {
+      on(name, callback) {
+        if (!workspaceListeners.has(name)) workspaceListeners.set(name, new Set());
+        const listeners = workspaceListeners.get(name);
+        listeners.add(callback);
+        return { off() { listeners.delete(callback); } };
+      },
+      trigger(name, ...args) {
+        for (const callback of [...(workspaceListeners.get(name) || [])]) callback(...args);
+      },
       activeFile: null,
       getActiveFile() { return this.activeFile; },
       getLeavesOfType(t) { return leaves.filter((l) => l.viewType === t); },
@@ -402,7 +412,11 @@ function makeApp(vaultRoot) {
       getLeftLeaf() { return app.workspace.makeLeaf(false, 'left'); },
       getRightLeaf() { return app.workspace.makeLeaf(false, 'right'); },
       revealLeaf(l) { app.workspace.revealed = l; },
-      setActiveLeaf(l) { app.workspace.active = l; },
+      setActiveLeaf(l) {
+        if (app.workspace.active === l) return;
+        app.workspace.active = l;
+        this.trigger('active-leaf-change', l);
+      },
       onLayoutReady(cb) { app.workspace._ready = cb; },
       leftSplit: { collapsed: false, collapse() { this.collapsed = true; } },
       rightSplit: { collapsed: false, collapse() { this.collapsed = true; } },

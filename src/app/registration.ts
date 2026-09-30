@@ -52,6 +52,7 @@ export const APPLICATION_VIEW_TYPES = [
 
 type ApplicationPlugin = Plugin & AppSurface & {
   readonly activeNav: string;
+  setActiveNav(key: string): void;
 };
 
 export function detachLegacyViews(plugin: ApplicationPlugin): void {
@@ -75,6 +76,16 @@ export function registerApplication(plugin: ApplicationPlugin): void {
   plugin.registerView(VIEW_REVIEW, (leaf: WorkspaceLeaf) => new ReviewView(leaf, plugin));
   plugin.registerView(VIEW_GARDEN, (leaf: WorkspaceLeaf) => new GardenView(leaf, plugin));
   plugin.registerView(VIEW_DIAGNOSTICS, (leaf: WorkspaceLeaf) => new DiagnosticsView(leaf, plugin));
+
+  // Native tab attention is a display fact, not a navigation or persistence action.
+  plugin.registerEvent(plugin.app.workspace.on('active-leaf-change', (leaf) => {
+    const state = leaf?.getViewState();
+    if (!state || state.type === VIEW_NAV
+      || !APPLICATION_VIEW_TYPES.some((type) => type === state.type)) return;
+    const route = plugin.router.fromLegacy(state);
+    const nav = plugin.router.descriptor(route).nav;
+    if (nav !== plugin.activeNav) plugin.setActiveNav(nav);
+  }));
 
   plugin.addSettingTab(new LearningOSSettingsTab(plugin.app, plugin));
   plugin.addRibbonIcon('route', 'Open LearningOS', () => plugin.nav.openHome());
