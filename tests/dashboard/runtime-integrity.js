@@ -191,6 +191,8 @@ module.exports = async function run() {
     const drawer = stub.Modal.last.contentEl;
     drawer.find('los-compare-group')
       .find((node) => node.getAttribute('data-compare-group') === 'lecture').fire('click');
+    const missingRow = drawer.find('los-material-list-row')[0];
+    missingRow.open = true; missingRow.fire('toggle');
     const missing = drawer.find('los-source-entry').find((card) => card.allText().includes('Missing projected lecture'));
     check('a projected missing file never renders a broken Open button',
       Boolean(missing) && !missing.findText('los-btn', 'Open'),

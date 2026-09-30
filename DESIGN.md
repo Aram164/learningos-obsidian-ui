@@ -154,8 +154,8 @@ maintenance is never mixed with study destinations.
   (*"2 + 0 + 3 = 5 on this stage"*), so showing one group never hides or
   uncounts a material. It opens on the most urgent group actually present; an
   empty group says where the materials are. *Beyond this stage* keeps **This
-  lecture's full menu** (purpose-first sub-headings in the fixed learnable
-  order, with search) and **All of** the course (other lectures' routes, with
+  lecture's full menu** (counted material-type disclosures, closed initially,
+  with compact expandable rows and search that reveals matching types) and **All of** the course (other lectures' routes, with
   *Go to lecture* and never a cross-unit choice) one click away. Every card is
   the Current-work card shape: purpose, exact locator, availability in words,
   *Why this one* on demand, the bounded excerpt on request. Selection stays
@@ -258,11 +258,11 @@ in Settings → About and on the Diagnostics view; `OWNERSHIP_STATEMENT` is the
 single copy. This supersedes the earlier "always-visible ownership footer"
 primitive.
 
-**Borders carry meaning.** They mark selection, focus, an editable area, or a
-boundary that needs review — not ordinary navigation, module, resource or queue
-rows, which are separated by dividers and whitespace instead. Raised surfaces
-are spent on the Continue card, the stage workspace, the note modal, the
-selected Library detail and modals; everything else sits on the page.
+**Borders carry meaning.** Strong borders mark selection, focus, an editable
+area, or a boundary that needs review. Browsing rows use quiet rounded surfaces,
+subtle token borders, and whitespace so each target is easy to distinguish.
+Raised surfaces emphasize the Continue card, stage workspace, selected Library
+detail, and modals. Navigation labels and icons align to a stable left edge.
 
 Copy is sentence case and action-led: *Resume stage*, *Add note*, *Complete
 stage*, *Attach selected file*, *Approve selected changes*, *End learning
@@ -281,7 +281,7 @@ clear success or failure feedback.
 
 ## Responsive and accessibility contract
 
-Home uses one focused content column at every width; rows stack their action below the label on narrow screens. Unit still uses rail/work/note at wide widths and becomes a single column below 720 px. Academic-date rows keep a stable date
+Home uses one focused content column at every width; rows stack their action below the label on narrow screens. Library places keep complete, wrapped labels and adapt to the width of their pane: the inspector moves below the list before the places move above it. Unit still uses rail/work/note at wide widths and becomes a single column below 720 px. Academic-date rows keep a stable date
 plus flexible-content grid until 480 px, when the date stacks above the content;
 actions always remain inside the flexible content row. Compact tables stack
 their labeled cells at 480 px. Resource actions wrap below their label. Every

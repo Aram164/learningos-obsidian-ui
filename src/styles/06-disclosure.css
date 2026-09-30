@@ -1,6 +1,6 @@
 /* Progressive disclosure. Native details, so it works with the keyboard and
  * with no script at all. */
-.los-disclosure > summary { min-height: 28px; padding: var(--los-1) 0; color: var(--los-accent); cursor: pointer; font-size: 13px; }
+.los-disclosure > summary { min-height: 36px; padding: var(--los-1) 0; color: var(--los-accent); cursor: pointer; font-size: 13px; }
 .los-disclosure-body { padding: var(--los-2) 0; }
 .los-coordination-row { display: grid; grid-template-columns: minmax(90px, auto) minmax(0, 1fr); gap: var(--los-3); padding-top: var(--los-2); }
 .los-coordination-row p { margin: 0; color: var(--los-ink-soft); }
@@ -10,7 +10,7 @@
 .los-overflow-trigger {
   display: inline-flex;
   min-width: 32px;
-  min-height: 28px;
+  min-height: 36px;
   align-items: center;
   justify-content: center;
   padding: 0 var(--los-2);

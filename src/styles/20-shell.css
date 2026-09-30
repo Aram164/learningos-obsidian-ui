@@ -5,6 +5,8 @@
  * dashboard. The layout still collapses naturally in narrow leaves. */
 .los-root:not(.los-app-nav) {
   padding: 30px 48px 56px;
+  container-type: inline-size;
+  container-name: los-view;
 }
 
 .los-root:not(.los-app-nav) > .los-page-header {
@@ -51,8 +53,12 @@
 
 .los-home-row {
   min-height: 68px;
-  padding: 12px 0;
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
 }
+.los-home-list { gap: var(--los-2); border-top: 0; }
 
 /* Modules is the current semester, not another subject browser. */
 .los-semester-summary,
@@ -70,7 +76,7 @@
   gap: var(--los-4);
   margin-bottom: 12px;
   padding-bottom: 12px;
-  border-bottom: 1px solid var(--los-line-strong);
+  border-bottom: 1px solid var(--los-rule);
 }
 
 .los-semester-summary span {
@@ -79,17 +85,16 @@
 }
 
 .los-semester-module-list {
-  gap: 0;
+  gap: var(--los-2);
 }
 
 .los-root .los-semester-module-row,
 .los-root .los-library-route-list .los-route-row {
   min-height: 72px;
-  padding: 12px 2px;
-  border: 0;
-  border-bottom: 1px solid var(--los-line);
-  border-radius: 0;
-  background: transparent;
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
 }
 
 .los-root .los-semester-module-row:hover,
@@ -143,6 +148,18 @@
 }
 
 .los-library-route-list {
-  gap: 0;
+  gap: var(--los-2);
 }
 
+@container los-view (max-width: 850px) {
+  .los-home-header { padding-right: 0; }
+  .los-home-header-actions { position: static; flex-wrap: wrap; margin-top: var(--los-3); }
+  .los-root .los-home-search-launcher { width: min(100%, 330px); }
+  .los-review-split { grid-template-columns: minmax(0, 1fr); }
+  .los-review-detail { padding: var(--los-4); }
+}
+
+@container los-view (max-width: 560px) {
+  .los-home-row { grid-template-columns: minmax(0, 1fr); }
+  .los-home-row > .los-btn { justify-self: start; }
+}

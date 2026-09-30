@@ -9,16 +9,20 @@
 .los-root .los-app-nav-item {
   display: flex;
   width: 100%;
-  min-height: 34px;
+  min-height: 40px;
   gap: var(--los-2);
   align-items: center;
+  justify-content: flex-start;
+  text-align: left;
   margin-bottom: 2px;
-  padding: var(--los-1) var(--los-2);
+  padding: var(--los-2) var(--los-3);
   border: 0;
   border-radius: var(--los-r-sm);
   background: transparent;
   color: var(--los-ink-soft);
 }
+.los-app-nav-item > span:first-child { display: inline-flex; flex: 0 0 20px; }
+.los-app-nav-item > span:nth-child(2) { min-width: 0; overflow-wrap: break-word; }
 .los-root .los-app-nav-item:hover { background: var(--los-paper-3); color: var(--los-ink); }
 .los-root .los-app-nav-item.is-active {
   background: var(--los-paper-3);
@@ -27,5 +31,5 @@
   font-weight: 650;
 }
 .los-nav-more { margin-top: var(--los-4); padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
-.los-nav-more-trigger { min-height: 28px; padding: var(--los-1) var(--los-2); color: var(--los-ink-soft); cursor: pointer; font-size: 12px; }
+.los-nav-more-trigger { min-height: 36px; padding: var(--los-2) var(--los-3); color: var(--los-ink-soft); cursor: pointer; font-size: 12px; }
 .los-nav-secondary { display: flex; flex-direction: column; margin-top: var(--los-1); }

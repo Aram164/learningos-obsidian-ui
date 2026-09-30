@@ -399,6 +399,10 @@ module.exports = async function run() {
             url: 'https://example.org/fixture-remote-lecture',
           },
         ];
+        sourceMap.sources[0].unit_routes.push({
+          ...sourceMap.sources[0].unit_routes[1], id: 'route-drawer-unknown',
+          title: 'Source appendix', format: 'future-format', locator: 'Appendix A',
+        });
         const foreign = { ...sourceMap.sources[0].unit_routes[1], id: 'route-foreign', unit_id: 'unit-fixture-sad-l02', title: 'Foreign lecture entry', covers: ['knowledge-foreign-only'] };
         sourceMap.sources[0].unit_routes.push(foreign, { ...foreign, id: 'route-analysis-hidden', unit_id: 'unit-fixture-analysis', title: 'Analysis must stay outside SaD' });
         const owner = manifest.units.find(row => row.id === 'unit-fixture-sad-l02');
@@ -433,7 +437,7 @@ module.exports = async function run() {
       drawer.find('los-compare-reconcile')[0].allText().startsWith('2 + 0 + 3 = 5 on this stage')
       && group('required').allText().includes('2 materials')
       && group('reference').allText().includes('3 materials')
-      && group('lecture').allText().includes('3 routes')
+      && group('lecture').allText().includes('4 routes')
       && group('course').allText().includes('1 route'));
     const reachable = [];
     for (const key of ['required', 'stuck', 'reference']) {
@@ -465,11 +469,26 @@ module.exports = async function run() {
     group('lecture').fire('click');
     const lecture = () => drawer.find('los-compare-body')[0];
     const deck = () => cards().find((card) => card.allText().includes('Current L02 lecture deck'));
-    check('the lecture menu is partitioned purpose-first, in the fixed learnable order',
-      cards().length === 3
-      && lecture().find('los-type-subhead').map((node) => node.allText()).join('|')
-        === 'Get oriented (1)|Build intuition (1)|Derive it (1)'
-      && lecture().allText().includes('3 of 3 routes'));
+    const types = () => lecture().find('los-material-type-group');
+    const rows = () => lecture().find('los-material-list-row');
+    const expandRows = () => rows().forEach((row) => { row.open = true; row.fire('toggle'); });
+    check('every lecture route is in a counted type, including unknown formats',
+      rows().length === 4
+      && types().map((node) => node.find('los-material-type-label')[0].allText()).join('|')
+        === 'Books|Videos|Articles|Other materials'
+      && lecture().allText().includes('4 of 4 materials'));
+    check('types and material details start closed, without reading or choosing anything',
+      types().every((node) => !node.open)
+      && rows().every((node) => !node.open)
+      && cards().length === 0
+      && !calls.some((args) => args[0] === 'material-span')
+      && !calls.envelope('unit.source-selection.set'));
+    const bookType = types()[0];
+    bookType.open = true; bookType.fire('toggle');
+    expandRows();
+    check('opening a material reveals its details without losing the other routes',
+      cards().length === 4 && rows().length === 4);
+
     check('route cards carry the source chip, the exact locator and the angle',
       cards().every((card) => card.find('los-chip').length >= 1)
       && deck().allText().includes('lecture-slides/VL_02.pdf')
@@ -511,17 +530,28 @@ module.exports = async function run() {
     search.value = 'Domingos'; search.fire('input');
     check('multi-character search preserves its input node and focus',
       drawer.find('los-source-search')[0] === search && global.document.activeElement === search
-      && cards().length === 1 && drawer.allText().includes('1 of 3 routes'));
+      && cards().length === 1 && drawer.allText().includes('1 of 4 materials'));
     search.value = plugin.store.get('source-fixture-book').title; search.fire('input');
-    check('search also matches the parent source title', cards().length === 3);
+    check('search also matches the parent source title', cards().length === 4);
+    search.value = 'video'; search.fire('input');
+    check('search reveals matching types and retains exact routes',
+      types().length === 1 && types()[0].open && rows().length === 1
+      && rows()[0].getAttribute('data-route-id') === 'route-drawer-remote');
+    search.value = ''; search.fire('input');
+    check('clearing search restores the learner type state and the complete menu',
+      rows().length === 4 && types()[0].open && !types()[1].open);
+    lecture().findText('los-btn', 'Collapse types').fire('click');
+    check('Collapse types closes every group while all routes remain reachable',
+      types().every((node) => !node.open) && rows().length === 4);
     search.value = 'does not exist'; search.fire('input');
     check('no-result state keeps the totals and says how to recover',
-      drawer.allText().includes('0 of 3 routes') && drawer.allText().includes('No material matches')
+      drawer.allText().includes('0 of 4 materials') && drawer.allText().includes('No material matches')
       && drawer.allText().includes('Clear the search'));
     group('lecture').fire('click');
-    check('choosing the group again clears the search and recovers every route', cards().length === 3);
+    check('choosing the group again clears the search and recovers every route', rows().length === 4 && cards().length === 4);
 
     group('course').fire('click');
+    expandRows();
     const foreignRow = cards().find(row => row.allText().includes('Foreign lecture entry'));
     check('the rest of the course is one click away, without cross-unit mutation',
       cards().length === 1 && !drawer.allText().includes('Analysis must stay outside SaD')
@@ -703,7 +733,7 @@ module.exports = async function run() {
       view.contentEl.find('los-knowledge-node').length === 2
       && text.includes('Lecture knowledge map')
       && text.includes('Builds on: Problem formulation'));
-    check('all material options are grouped by source with full detail available',
+    check('all material options are grouped by type with source identity available',
       view.contentEl.find('los-material-option').length === 2
       && text.includes('Choose your learning material')
       && view.contentEl.find('los-source-group').length === 2
@@ -805,6 +835,7 @@ module.exports = async function run() {
         const drawer = stub.Modal.last.contentEl;
         drawer.find('los-compare-group')
           .find((node) => node.getAttribute('data-compare-group') === 'lecture').fire('click');
+        drawer.find('los-material-list-row').forEach((row) => { row.open = true; row.fire('toggle'); });
         const shown = drawer.allText().includes(
           'Works the conditioning rule through a medical-test example.',
         );

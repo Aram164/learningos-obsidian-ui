@@ -1,3 +1,5 @@
+export { groupMaterialsByType, materialTypeLabel } from './material-types';
+
 /** Group without deduplicating routes or stage occurrences. */
 export function groupBySource<T extends { readonly sourceId: string | null }>(entries: readonly T[]): Map<string | null, T[]> {
   const groups = new Map<string | null, T[]>();

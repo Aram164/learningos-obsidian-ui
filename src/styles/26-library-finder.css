@@ -12,7 +12,7 @@
 
 .los-finder {
   display: grid;
-  grid-template-columns: 208px minmax(0, 1fr);
+  grid-template-columns: 240px minmax(0, 1fr);
   gap: var(--los-4);
   align-items: start;
 }
@@ -27,6 +27,7 @@
   position: sticky;
   top: 0;
   padding: var(--los-3) var(--los-2);
+  min-width: 0;
   border: 1px solid var(--los-rule);
   border-radius: var(--los-r-lg);
   background: var(--los-sidebar);
@@ -56,9 +57,10 @@
   display: flex;
   gap: var(--los-2);
   align-items: center;
+  justify-content: flex-start;
   width: 100%;
-  min-height: 28px;
-  padding: var(--los-1) var(--los-2);
+  min-height: 38px;
+  padding: var(--los-2) var(--los-3);
   border: 0;
   border-radius: var(--los-r-sm);
   background: transparent;
@@ -88,9 +90,10 @@
 }
 
 .los-finder-place-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: break-word;
+  line-height: 1.4;
 }
 
 /* ── Path bar ── */
@@ -141,6 +144,7 @@
 
 .los-finder-toolbar {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--los-2);
   align-items: center;
   margin-bottom: var(--los-3);
@@ -149,6 +153,7 @@
 .los-finder-filter {
   flex: 1 1 auto;
   min-width: 120px;
+  width: auto;
 }
 
 .los-finder-layouts {
@@ -366,7 +371,7 @@
   gap: var(--los-2);
   align-items: center;
   width: 100%;
-  min-height: 30px;
+  min-height: 36px;
   padding: var(--los-1) var(--los-3);
   border: 0;
   border-radius: 0;
@@ -374,6 +379,27 @@
   color: var(--los-ink);
   font-size: 13px;
   text-align: left;
+}
+
+/* Use the learning pane's width: the app may be wide while a split is small. */
+@container los-view (max-width: 1080px) {
+  .los-finder-body { grid-template-columns: minmax(0, 1fr); }
+  .los-finder-inspector { position: static; }
+  .los-finder-inspector .los-actions { flex-direction: row; flex-wrap: wrap; }
+}
+
+@container los-view (max-width: 740px) {
+  .los-finder { grid-template-columns: minmax(0, 1fr); }
+  .los-finder-sidebar { position: static; }
+  .los-finder-places-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--los-1); }
+  .los-root .los-finder-place { width: 100%; }
+  .los-finder-list-header, .los-root .los-finder-row { grid-template-columns: 20px minmax(0, 1fr) 96px; }
+  .los-finder-row-kind, .los-finder-list-header span:nth-child(2) { display: none; }
+}
+
+@container los-view (max-width: 420px) {
+  .los-finder-places-list { grid-template-columns: minmax(0, 1fr); }
+  .los-finder-list-header, .los-root .los-finder-row { grid-template-columns: 20px minmax(0, 1fr) 70px; gap: var(--los-2); }
 }
 
 .los-root .los-finder-column-row:hover {

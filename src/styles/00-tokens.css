@@ -24,9 +24,9 @@
   --los-4: 16px;
   --los-5: 24px;
   --los-6: 32px;
-  --los-r-sm: 5px;
-  --los-r-md: 8px;
-  --los-r-lg: 10px;
+  --los-r-sm: 8px;
+  --los-r-md: 12px;
+  --los-r-lg: 18px;
   --los-r-pill: 999px;
 
   /* ── Light: the Figma foundation palette ── */
@@ -78,7 +78,7 @@
   background: var(--los-paper);
   color: var(--los-ink);
   font-size: 14px;
-  line-height: 1.42;
+  line-height: 1.5;
 }
 
 /* LearningOS remains a daylight work surface inside dark Obsidian chrome.

@@ -238,3 +238,69 @@
   .los-compare-groups { position: static; }
   .los-compare-body { padding: var(--los-3); }
 }
+
+/* Keep context and navigation visible while the material list scrolls. */
+.modal:has(.los-material-drawer) {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 22px;
+}
+.los-root.los-material-drawer {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: min(800px, calc(100vh - 96px));
+  padding: var(--los-5);
+  overflow: hidden;
+}
+.los-compare-head { flex: 0 0 auto; padding-right: var(--los-5); }
+.los-compare-layout { flex: 1; min-height: 0; align-items: stretch; overflow: hidden; }
+.los-compare-groups { position: static; overflow-y: auto; }
+.los-compare-body { overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.los-root .los-compare-group { min-height: 56px; padding: var(--los-2) var(--los-3); }
+.los-root .los-compare-group.is-selected { background: var(--los-selected); }
+.los-material-drawer-note { margin: var(--los-3) 0 var(--los-2); }
+.los-compare-toolbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--los-2); margin-bottom: var(--los-3); }
+.los-compare-toolbar .los-source-counts { margin: 0; font-variant-numeric: tabular-nums; }
+.los-material-type-group { border: 1px solid var(--los-rule); border-radius: var(--los-r-md); background: var(--los-surface-raised); }
+.los-material-type-summary, .los-material-list-summary { display: flex; align-items: center; gap: var(--los-3); min-height: 60px; padding: var(--los-3) var(--los-4); cursor: pointer; list-style: none; }
+.los-material-type-summary::-webkit-details-marker, .los-material-list-summary::-webkit-details-marker { display: none; }
+.los-material-type-summary:hover, .los-material-list-summary:hover { background: var(--los-paper-3); border-radius: var(--los-r-md); }
+.los-material-type-label { flex: 1; font-weight: 650; }
+.los-material-type-icon { display: inline-flex; color: var(--los-ink-soft); }
+.los-material-type-count { min-width: 28px; padding: 2px var(--los-2); border-radius: var(--los-r-pill); background: var(--los-paper-3); color: var(--los-ink-soft); text-align: center; font-size: 12px; font-variant-numeric: tabular-nums; }
+.los-disclosure-chevron { display: inline-flex; flex: 0 0 16px; color: var(--los-ink-soft); }
+.los-disclosure-chevron svg { width: 16px; height: 16px; }
+.los-material-type-group[open] > summary > .los-disclosure-chevron,
+.los-material-list-row[open] > summary > .los-disclosure-chevron { transform: rotate(90deg); }
+.los-material-type-group[open] > summary { border-bottom: 1px solid var(--los-rule); }
+.los-material-type-list { padding: var(--los-1) var(--los-2); }
+.los-material-list-row + .los-material-list-row { border-top: 1px solid var(--los-rule); }
+.los-material-list-copy { display: flex; flex: 1; flex-direction: column; min-width: 0; gap: var(--los-1); }
+.los-material-list-copy strong { font-size: 14px; font-weight: 600; line-height: 1.5; overflow-wrap: break-word; }
+.los-material-selected { flex: 0 0 auto; padding: 2px var(--los-2); border-radius: var(--los-r-pill); background: var(--los-accent-wash); color: var(--los-accent-strong); font-size: 11px; font-weight: 600; }
+.los-material-list-detail { padding: 0 var(--los-2) var(--los-3); }
+.los-compare-cards .los-material-list-detail .los-material-card { display: flex; flex-direction: column; gap: var(--los-2); margin: 0; padding: var(--los-3); border: 0; background: var(--los-paper-3); }
+.los-material-list-detail .los-material-card-icon,
+.los-material-list-detail .los-material-purpose,
+.los-material-list-detail .los-material-title { display: none; }
+.los-material-list-detail .los-resource-copy { width: 100%; }
+.los-material-list-detail .los-resource-actions { align-self: flex-end; margin-top: var(--los-2); }
+.los-material-list-detail .los-resource-locator { line-height: 1.6; }
+.los-material-list-detail .los-resource-angle { margin-top: var(--los-3); line-height: 1.6; }
+
+@media (max-width: 720px) {
+  .los-root.los-material-drawer { padding: var(--los-4); height: calc(100vh - 64px); }
+  .los-compare-layout { display: flex; flex-direction: column; overflow-y: auto; gap: var(--los-3); }
+  .los-compare-groups, .los-compare-body { overflow: visible; }
+  .los-compare-group-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+  .los-compare-reconcile { display: none; }
+  .los-material-type-summary, .los-material-list-summary { padding: var(--los-3); gap: var(--los-2); }
+}
+
+@media (max-height: 760px) and (min-width: 721px) {
+  .los-compare-groups { gap: var(--los-1); }
+  .los-compare-group-list { gap: var(--los-1); }
+  .los-root .los-compare-group { min-height: 48px; }
+  .los-compare-reconcile { line-height: 1.4; }
+}

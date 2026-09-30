@@ -102,5 +102,5 @@
   justify-content: center;
   gap: var(--los-2);
 }
-.los-root .los-btn { min-height: 28px; padding: var(--los-1) var(--los-3); }
+.los-root .los-btn { min-height: 36px; padding: var(--los-1) var(--los-3); }
 .los-root .los-actions > .los-btn { text-align: left; }

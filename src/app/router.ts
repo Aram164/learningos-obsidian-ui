@@ -93,7 +93,7 @@ interface RouterHost {
       getLeavesOfType(type: string): RouterLeaf[];
       getLeaf(newLeaf?: boolean | string): RouterLeaf;
       getLeftLeaf?(split?: boolean): RouterLeaf | null;
-      revealLeaf(leaf: RouterLeaf): void;
+      revealLeaf(leaf: RouterLeaf): void | Promise<void>;
       setActiveLeaf?(leaf: RouterLeaf, options?: { focus?: boolean }): void;
       active?: {
         view?: RouterViewSurface;
@@ -386,7 +386,7 @@ export class ApplicationRouter {
         : this.plugin.app.workspace.getLeaf(true);
     }
     await leaf.setViewState({ type, active: true, state });
-    this.plugin.app.workspace.revealLeaf(leaf);
+    await this.plugin.app.workspace.revealLeaf(leaf);
     this.plugin.app.workspace.setActiveLeaf?.(leaf, { focus: true });
     return leaf;
   }

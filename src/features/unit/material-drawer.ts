@@ -3,17 +3,16 @@ import { makeModalAccessible } from '../../accessibility/modal';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 import { foldCase } from '../../sorting';
 import { asString, asText } from '../../projection/readers';
-import { button, empty } from '../../components';
+import { button, empty, icon } from '../../components';
+import { groupMaterialsByType, materialTypeLabel } from './source-browser';
 import type { StageResourceRenderer, StageResourceView } from '../stage-resources';
 import { readMaterialOptions, readUnitRecord } from './model';
 import type { MaterialOptionView, StageRecordView, UnitPlugin, UnitRecordView } from './model';
 import {
-  normalisePurpose,
-  PURPOSES,
+  purposeLabel,
   renderPlacementCard,
   renderRouteCard,
   routeForResource,
-  UNASSIGNED_PURPOSE,
   type MaterialCardDeps,
 } from './material-card';
 
@@ -72,9 +71,12 @@ interface CourseRoute {
 export class MaterialComparisonModal extends Modal {
   private group: GroupKey = 'required';
   private query = '';
+  private readonly expandedTypes = new Set<string>();
+  private readonly expandedMaterials = new Set<string>();
   private restoreAccessibility: (() => void) | null = null;
   private body: HTMLElement | null = null;
   private rail: HTMLElement | null = null;
+  private readonly railControls = new Map<GroupKey, HTMLButtonElement>();
   constructor(app: App, private readonly options: MaterialComparisonOptions) { super(app); }
 
   private get deps(): MaterialCardDeps {
@@ -161,6 +163,7 @@ export class MaterialComparisonModal extends Modal {
     const rail = this.rail;
     if (!rail) return;
     rail.empty();
+    this.railControls.clear();
     rail.createEl('h2', { cls: 'los-compare-eyebrow', text: 'What you need' });
     const stageList = rail.createDiv({ cls: 'los-compare-group-list', attr: { role: 'group', 'aria-label': 'Stage materials by need' } });
     enableButtonGroupKeyboardNavigation(stageList, 'vertical');
@@ -169,12 +172,12 @@ export class MaterialComparisonModal extends Modal {
     const wider = rail.createDiv({ cls: 'los-compare-group-list', attr: { role: 'group', 'aria-label': 'Wider material' } });
     enableButtonGroupKeyboardNavigation(wider, 'vertical');
     this.railButton(wider, 'lecture', 'This lecture’s full menu');
-    this.railButton(wider, 'course', `All of ${this.courseLabel()}`);
+    this.railButton(wider, 'course', 'All course materials');
     const total = this.options.resources.length;
     const split = STAGE_GROUPS.map((def) => this.count(def.key));
     rail.createEl('p', {
       cls: 'los-micro los-compare-reconcile',
-      text: `${split.join(' + ')} = ${total} on this stage. Choose a group to reveal its materials; source details stay in each card.`,
+      text: `${split.join(' + ')} = ${total} on this stage. Every material stays accessible from these groups.`,
     });
   }
 
@@ -185,6 +188,7 @@ export class MaterialComparisonModal extends Modal {
       cls: `los-compare-group is-clickable${active ? ' is-selected' : ''}${count ? '' : ' is-empty'}`,
       attr: { type: 'button', 'aria-pressed': String(active), 'data-compare-group': key },
     });
+    this.railControls.set(key, control);
     control.createSpan({ cls: 'los-compare-group-title', text: label });
     control.createSpan({
       cls: 'los-compare-group-count',
@@ -193,8 +197,14 @@ export class MaterialComparisonModal extends Modal {
     control.addEventListener('click', () => {
       this.group = key;
       this.query = '';
-      this.renderRail();
+      // Keep the controls in place so a keyboard selection retains focus.
+      for (const [itemKey, item] of this.railControls) {
+        const selected = itemKey === key;
+        item.classList.toggle('is-selected', selected);
+        item.setAttribute('aria-pressed', String(selected));
+      }
       this.renderBody();
+      if (this.body) this.body.scrollTop = 0;
     });
   }
 
@@ -207,13 +217,13 @@ export class MaterialComparisonModal extends Modal {
   private renderBody(): void {
     const body = this.body;
     if (!body) return;
+    const scrollTop = body.scrollTop;
     body.empty();
     const def = STAGE_GROUPS.find((row) => row.key === this.group);
     if (def) {
       this.renderStageGroup(body, def);
-      return;
-    }
-    this.renderRouteGroup(body);
+    } else this.renderRouteGroup(body);
+    body.scrollTop = scrollTop;
   }
 
   private renderStageGroup(body: HTMLElement, def: GroupDef): void {
@@ -239,8 +249,8 @@ export class MaterialComparisonModal extends Modal {
     body.createEl('p', {
       cls: 'los-micro',
       text: lecture
-        ? 'Every route this lecture offers, by purpose. Choosing one records your selection; the others stay listed.'
-        : 'Routes from the other lectures of this course. Choose them from their own lecture.',
+        ? 'All materials for this lecture. Open a type, then a material to see its exact pages, source and explanation angle.'
+        : 'Materials from the other lectures of this course, by type. Each material links back to its own lecture.',
     });
     const label = body.createEl('label', { cls: 'los-compare-search-label', text: 'Search' });
     const search = label.createEl('input', {
@@ -248,48 +258,87 @@ export class MaterialComparisonModal extends Modal {
       attr: { type: 'search', placeholder: 'Source, chapter or lecture', 'aria-label': 'Search materials', value: this.query },
     });
     search.value = this.query;
-    const results = body.createDiv({ cls: 'los-compare-cards', attr: { 'aria-live': 'polite' } });
+    const typeSections: HTMLDetailsElement[] = [];
+    const toolbar = body.createDiv({ cls: 'los-compare-toolbar' });
+    const status = toolbar.createDiv({ cls: 'los-source-counts', attr: { role: 'status', 'aria-live': 'polite' } });
+    const collapse = button(toolbar, 'Collapse types', () => {
+      for (const details of typeSections) {
+        details.open = false;
+        this.expandedTypes.delete(`${this.group}|${details.getAttribute('data-material-type')}`);
+      }
+    }, 'tertiary');
+    const results = body.createDiv({ cls: 'los-compare-cards' });
     const draw = () => {
       results.empty();
+      typeSections.length = 0;
       const rows: CourseRoute[] = lecture
         ? this.options.materialOptions.map((option) => ({ owner: this.options.unit, option }))
         : this.courseRoutes();
       const visible = rows.filter(({ owner, option }) => this.matches([
-        option.title, option.locator, option.angle, owner.title,
+        option.title, option.locator, option.angle, owner.title, option.format, materialTypeLabel(option.format), purposeLabel(option.depth),
         option.sourceId ? asString(this.options.plugin.store.get(option.sourceId)?.title) : null,
       ]));
-      results.createDiv({
-        cls: 'los-source-counts',
-        attr: { role: 'status' },
-        text: `${visible.length} of ${rows.length} ${rows.length === 1 ? 'route' : 'routes'}`,
-      });
+      status.setText(`${visible.length} of ${rows.length} materials`);
+      collapse.disabled = !visible.length;
       if (!visible.length) {
         empty(results, 'No material matches', 'Clear the search to see the complete list.');
         return;
       }
-      for (const purpose of [...PURPOSES, UNASSIGNED_PURPOSE]) {
-        const group = visible.filter(({ option }) => normalisePurpose(option.depth) === purpose.value);
-        if (!group.length) continue;
-        const section = results.createDiv({ cls: 'los-type-subgroup' });
-        section.createEl('h3', { cls: 'los-type-subhead', text: `${purpose.label} (${group.length})` });
-        for (const { owner, option } of group) {
-          const source = option.sourceId ? this.options.renderer.sourceRecord?.(option.sourceId) ?? null : null;
-          renderRouteCard(section, option, source, { ...this.deps, unitId: owner.id }, {
-            badges: owner.id === this.options.unit.id ? [] : [owner.title],
-            coverage: option.covers
-              .map((id) => owner.knowledgeNodes.find((node) => node.id === id)?.title)
-              .filter((title): title is string => Boolean(title)),
-            actions: (actions) => {
-              if (owner.id === this.options.unit.id) this.renderChoose(actions, option);
-              else {
-                button(actions, 'Go to lecture', () => {
+      for (const type of groupMaterialsByType(visible, (row) => row.option.format)) {
+        const typeKey = `${this.group}|${type.key}`;
+        const section = results.createEl('details', {
+          cls: 'los-material-type-group', attr: { 'data-material-type': type.key },
+        });
+        typeSections.push(section);
+        section.open = Boolean(this.query.trim()) || this.expandedTypes.has(typeKey);
+        const summary = section.createEl('summary', { cls: 'los-material-type-summary' });
+        icon(summary.createSpan({ cls: 'los-material-type-icon' }), type.icon);
+        summary.createSpan({ cls: 'los-material-type-label', text: type.label });
+        summary.createSpan({ cls: 'los-material-type-count', text: String(type.entries.length) });
+        icon(summary.createSpan({ cls: 'los-disclosure-chevron' }), 'chevron-right');
+        const list = section.createDiv({ cls: 'los-material-type-list' });
+        for (const { owner, option } of type.entries) {
+          const rowKey = `${owner.id}|${option.routeId}`;
+          const row = list.createEl('details', { cls: 'los-material-list-row', attr: { 'data-route-id': option.routeId } });
+          const rowSummary = row.createEl('summary', { cls: 'los-material-list-summary' });
+          const copy = rowSummary.createDiv({ cls: 'los-material-list-copy' });
+          copy.createEl('strong', { text: option.title });
+          copy.createSpan({ cls: 'los-micro', text: [purposeLabel(option.depth), owner.id === this.options.unit.id ? '' : owner.title].filter(Boolean).join(' · ') });
+          if (option.selected) rowSummary.createSpan({ cls: 'los-material-selected', text: 'Chosen' });
+          icon(rowSummary.createSpan({ cls: 'los-disclosure-chevron' }), 'chevron-right');
+          let populated = false;
+          const populate = () => {
+            if (populated) return;
+            populated = true;
+            const source = option.sourceId ? this.options.renderer.sourceRecord?.(option.sourceId) ?? null : null;
+            const detail = row.createDiv({ cls: 'los-material-list-detail' });
+            renderRouteCard(detail, option, source, { ...this.deps, unitId: owner.id }, {
+              coverage: option.covers
+                .map((id) => owner.knowledgeNodes.find((node) => node.id === id)?.title)
+                .filter((title): title is string => Boolean(title)),
+              actions: (actions) => {
+                if (owner.id === this.options.unit.id) this.renderChoose(actions, option);
+                else button(actions, 'Go to lecture', () => {
                   this.close();
                   this.options.plugin.nav.openUnit(owner.id);
                 }, 'quiet');
-              }
-            },
+              },
+            });
+          };
+          row.open = this.expandedMaterials.has(rowKey);
+          if (row.open) populate();
+          row.addEventListener('toggle', () => {
+            if (row.isConnected === false) return;
+            if (row.open) { this.expandedMaterials.add(rowKey); populate(); }
+            else this.expandedMaterials.delete(rowKey);
           });
         }
+        section.addEventListener('toggle', () => {
+          // Search reveals matching types without replacing the browsing state.
+          if (this.query.trim() || section.isConnected === false || !typeSections.includes(section)) return;
+          if (section.open) this.expandedTypes.add(typeKey);
+          else this.expandedTypes.delete(typeKey);
+        });
       }
     };
     search.addEventListener('input', () => {

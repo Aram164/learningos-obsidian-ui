@@ -1,4 +1,4 @@
-import { groupBySource } from './source-browser';
+import { groupMaterialsByType } from './source-browser';
 import { renderMaterialCautions, whyThisOne } from '../stage-resources';
 import { asText } from '../../projection/readers';
 import type { UnitMaterialsHost } from './ports';
@@ -124,10 +124,9 @@ export function renderMaterialOverview(
     'This is a complete menu, not a sequence. Pick the explanation angle and depth that fit your current need.',
   );
 
-  for (const [sourceId, entries] of groupBySource(options)) {
-    const source = sourceId ? view.plugin.store.get(sourceId) : null;
+  for (const { label, entries } of groupMaterialsByType(options, (option) => option.format)) {
     const group = materials.createEl('details', { cls: 'los-disclosure los-source-group' });
-    group.createEl('summary', { text: `${projectedString(source?.title) ?? sourceId ?? 'Source not yet identified'} · ${entries.length} entries` });
+    group.createEl('summary', { text: `${label} · ${entries.length} materials` });
     for (const option of entries) {
       const materialType = materialTypeOf(option.format);
       // No disclosure around the card: its own heading is the title, so a
@@ -195,9 +194,9 @@ export function renderMaterialOverview(
         }
       }
 
-      // The group heading above already names the source, so the row carries
-      // the rationale instead — behind the same "Why this one" gesture the
-      // stage screen and the material browser use.
+      const source = option.sourceId ? view.plugin.store.get(option.sourceId) : null;
+      if (source) chip(metadata, source, (record) => view.plugin.nav.openRecord(record));
+      // The type heading is for scanning; each material retains its source.
       if (fullDetail) whyThisOne(copy, fullDetail);
 
       if (option.canOpen || option.canChoose) {

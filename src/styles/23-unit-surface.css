@@ -767,7 +767,7 @@
 .los-source-controls label { display: flex; flex-direction: column; gap: var(--los-1); flex: 1 1 150px; font-size: 12px; }
 .los-source-controls :is(input, select) { width: 100%; min-width: 0; }
 .los-source-counts { margin-bottom: var(--los-2); color: var(--los-ink-soft); font-size: 13px; }
-.los-source-group { border-bottom: 1px solid var(--los-line); padding: var(--los-2) 0; }
+.los-source-group { margin-bottom: var(--los-2); border: 1px solid var(--los-rule); border-radius: var(--los-r-md); padding: var(--los-2) var(--los-3); background: var(--los-surface); }
 .los-source-group > summary { font-weight: 600; min-height: 36px; }
 /* A material inside a source group is a card, not a second disclosure: the
    group heading names the source and the card carries the rest. */

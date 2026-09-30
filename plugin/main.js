@@ -18034,6 +18034,35 @@ function renderMaterialCautions(parent, record10) {
 // src/features/unit/material-drawer.ts
 var import_obsidian19 = require("obsidian");
 
+// src/features/unit/material-types.ts
+var TYPES = [
+  { key: "course", label: "Course materials", icon: "presentation", formats: ["course-material", "course", "slides", "lecture", "deck"] },
+  { key: "book", label: "Books", icon: "book-open", formats: ["book", "textbook"] },
+  { key: "video", label: "Videos", icon: "play", formats: ["video"] },
+  { key: "article", label: "Articles", icon: "file-text", formats: ["article"] },
+  { key: "paper", label: "Papers", icon: "newspaper", formats: ["paper"] },
+  { key: "exercise", label: "Exercises", icon: "pencil-line", formats: ["exercise", "practice", "practise", "problem-set", "homework", "quiz"] },
+  { key: "solutions", label: "Solutions", icon: "clipboard-check", formats: ["solutions"] },
+  { key: "exam", label: "Past exams", icon: "graduation-cap", formats: ["exam"] },
+  { key: "code", label: "Code & notebooks", icon: "code", formats: ["code", "notebook"] },
+  { key: "website", label: "Websites", icon: "globe", formats: ["website", "web", "web-page", "webpage"] },
+  { key: "documentation", label: "Documentation", icon: "file-text", formats: ["documentation", "docs"] },
+  { key: "other", label: "Other materials", icon: "file-text", formats: [] }
+];
+function materialTypeLabel(format) {
+  const value = format.trim().toLowerCase();
+  return TYPES.find((type) => type.formats.includes(value))?.label ?? "Other materials";
+}
+function groupMaterialsByType(rows, formatOf) {
+  const groups = TYPES.map((type) => ({ ...type, entries: [] }));
+  for (const row4 of rows) {
+    const format = formatOf(row4).trim().toLowerCase();
+    const group = groups.find((type) => type.formats.includes(format)) ?? groups[groups.length - 1];
+    group.entries.push(row4);
+  }
+  return groups.filter((group) => group.entries.length > 0);
+}
+
 // src/features/unit/material-card.ts
 var import_obsidian18 = require("obsidian");
 
@@ -18365,9 +18394,12 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
   }
   group = "required";
   query = "";
+  expandedTypes = /* @__PURE__ */ new Set();
+  expandedMaterials = /* @__PURE__ */ new Set();
   restoreAccessibility = null;
   body = null;
   rail = null;
+  railControls = /* @__PURE__ */ new Map();
   get deps() {
     return {
       plugin: this.options.plugin,
@@ -18443,6 +18475,7 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
     const rail = this.rail;
     if (!rail) return;
     rail.empty();
+    this.railControls.clear();
     rail.createEl("h2", { cls: "los-compare-eyebrow", text: "What you need" });
     const stageList = rail.createDiv({ cls: "los-compare-group-list", attr: { role: "group", "aria-label": "Stage materials by need" } });
     enableButtonGroupKeyboardNavigation(stageList, "vertical");
@@ -18451,12 +18484,12 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
     const wider = rail.createDiv({ cls: "los-compare-group-list", attr: { role: "group", "aria-label": "Wider material" } });
     enableButtonGroupKeyboardNavigation(wider, "vertical");
     this.railButton(wider, "lecture", "This lecture\u2019s full menu");
-    this.railButton(wider, "course", `All of ${this.courseLabel()}`);
+    this.railButton(wider, "course", "All course materials");
     const total = this.options.resources.length;
     const split = STAGE_GROUPS.map((def) => this.count(def.key));
     rail.createEl("p", {
       cls: "los-micro los-compare-reconcile",
-      text: `${split.join(" + ")} = ${total} on this stage. Choose a group to reveal its materials; source details stay in each card.`
+      text: `${split.join(" + ")} = ${total} on this stage. Every material stays accessible from these groups.`
     });
   }
   railButton(parent, key, label) {
@@ -18466,6 +18499,7 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
       cls: `los-compare-group is-clickable${active ? " is-selected" : ""}${count2 ? "" : " is-empty"}`,
       attr: { type: "button", "aria-pressed": String(active), "data-compare-group": key }
     });
+    this.railControls.set(key, control);
     control.createSpan({ cls: "los-compare-group-title", text: label });
     control.createSpan({
       cls: "los-compare-group-count",
@@ -18474,8 +18508,13 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
     control.addEventListener("click", () => {
       this.group = key;
       this.query = "";
-      this.renderRail();
+      for (const [itemKey, item] of this.railControls) {
+        const selected = itemKey === key;
+        item.classList.toggle("is-selected", selected);
+        item.setAttribute("aria-pressed", String(selected));
+      }
       this.renderBody();
+      if (this.body) this.body.scrollTop = 0;
     });
   }
   matches(texts) {
@@ -18486,13 +18525,13 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
   renderBody() {
     const body = this.body;
     if (!body) return;
+    const scrollTop = body.scrollTop;
     body.empty();
     const def = STAGE_GROUPS.find((row4) => row4.key === this.group);
     if (def) {
       this.renderStageGroup(body, def);
-      return;
-    }
-    this.renderRouteGroup(body);
+    } else this.renderRouteGroup(body);
+    body.scrollTop = scrollTop;
   }
   renderStageGroup(body, def) {
     const entries = this.stageEntries(def.key);
@@ -18518,7 +18557,7 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
     body.createEl("h2", { text: lecture ? "This lecture\u2019s full menu" : `All of ${this.courseLabel()}` });
     body.createEl("p", {
       cls: "los-micro",
-      text: lecture ? "Every route this lecture offers, by purpose. Choosing one records your selection; the others stay listed." : "Routes from the other lectures of this course. Choose them from their own lecture."
+      text: lecture ? "All materials for this lecture. Open a type, then a material to see its exact pages, source and explanation angle." : "Materials from the other lectures of this course, by type. Each material links back to its own lecture."
     });
     const label = body.createEl("label", { cls: "los-compare-search-label", text: "Search" });
     const search = label.createEl("input", {
@@ -18526,47 +18565,91 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
       attr: { type: "search", placeholder: "Source, chapter or lecture", "aria-label": "Search materials", value: this.query }
     });
     search.value = this.query;
-    const results = body.createDiv({ cls: "los-compare-cards", attr: { "aria-live": "polite" } });
+    const typeSections = [];
+    const toolbar = body.createDiv({ cls: "los-compare-toolbar" });
+    const status = toolbar.createDiv({ cls: "los-source-counts", attr: { role: "status", "aria-live": "polite" } });
+    const collapse = button(toolbar, "Collapse types", () => {
+      for (const details of typeSections) {
+        details.open = false;
+        this.expandedTypes.delete(`${this.group}|${details.getAttribute("data-material-type")}`);
+      }
+    }, "tertiary");
+    const results = body.createDiv({ cls: "los-compare-cards" });
     const draw = () => {
       results.empty();
+      typeSections.length = 0;
       const rows = lecture ? this.options.materialOptions.map((option) => ({ owner: this.options.unit, option })) : this.courseRoutes();
       const visible = rows.filter(({ owner, option }) => this.matches([
         option.title,
         option.locator,
         option.angle,
         owner.title,
+        option.format,
+        materialTypeLabel(option.format),
+        purposeLabel(option.depth),
         option.sourceId ? asString(this.options.plugin.store.get(option.sourceId)?.title) : null
       ]));
-      results.createDiv({
-        cls: "los-source-counts",
-        attr: { role: "status" },
-        text: `${visible.length} of ${rows.length} ${rows.length === 1 ? "route" : "routes"}`
-      });
+      status.setText(`${visible.length} of ${rows.length} materials`);
+      collapse.disabled = !visible.length;
       if (!visible.length) {
         empty(results, "No material matches", "Clear the search to see the complete list.");
         return;
       }
-      for (const purpose of [...PURPOSES, UNASSIGNED_PURPOSE]) {
-        const group = visible.filter(({ option }) => normalisePurpose(option.depth) === purpose.value);
-        if (!group.length) continue;
-        const section3 = results.createDiv({ cls: "los-type-subgroup" });
-        section3.createEl("h3", { cls: "los-type-subhead", text: `${purpose.label} (${group.length})` });
-        for (const { owner, option } of group) {
-          const source = option.sourceId ? this.options.renderer.sourceRecord?.(option.sourceId) ?? null : null;
-          renderRouteCard(section3, option, source, { ...this.deps, unitId: owner.id }, {
-            badges: owner.id === this.options.unit.id ? [] : [owner.title],
-            coverage: option.covers.map((id2) => owner.knowledgeNodes.find((node) => node.id === id2)?.title).filter((title) => Boolean(title)),
-            actions: (actions) => {
-              if (owner.id === this.options.unit.id) this.renderChoose(actions, option);
-              else {
-                button(actions, "Go to lecture", () => {
+      for (const type of groupMaterialsByType(visible, (row4) => row4.option.format)) {
+        const typeKey = `${this.group}|${type.key}`;
+        const section3 = results.createEl("details", {
+          cls: "los-material-type-group",
+          attr: { "data-material-type": type.key }
+        });
+        typeSections.push(section3);
+        section3.open = Boolean(this.query.trim()) || this.expandedTypes.has(typeKey);
+        const summary = section3.createEl("summary", { cls: "los-material-type-summary" });
+        icon(summary.createSpan({ cls: "los-material-type-icon" }), type.icon);
+        summary.createSpan({ cls: "los-material-type-label", text: type.label });
+        summary.createSpan({ cls: "los-material-type-count", text: String(type.entries.length) });
+        icon(summary.createSpan({ cls: "los-disclosure-chevron" }), "chevron-right");
+        const list4 = section3.createDiv({ cls: "los-material-type-list" });
+        for (const { owner, option } of type.entries) {
+          const rowKey = `${owner.id}|${option.routeId}`;
+          const row4 = list4.createEl("details", { cls: "los-material-list-row", attr: { "data-route-id": option.routeId } });
+          const rowSummary = row4.createEl("summary", { cls: "los-material-list-summary" });
+          const copy = rowSummary.createDiv({ cls: "los-material-list-copy" });
+          copy.createEl("strong", { text: option.title });
+          copy.createSpan({ cls: "los-micro", text: [purposeLabel(option.depth), owner.id === this.options.unit.id ? "" : owner.title].filter(Boolean).join(" \xB7 ") });
+          if (option.selected) rowSummary.createSpan({ cls: "los-material-selected", text: "Chosen" });
+          icon(rowSummary.createSpan({ cls: "los-disclosure-chevron" }), "chevron-right");
+          let populated = false;
+          const populate = () => {
+            if (populated) return;
+            populated = true;
+            const source = option.sourceId ? this.options.renderer.sourceRecord?.(option.sourceId) ?? null : null;
+            const detail = row4.createDiv({ cls: "los-material-list-detail" });
+            renderRouteCard(detail, option, source, { ...this.deps, unitId: owner.id }, {
+              coverage: option.covers.map((id2) => owner.knowledgeNodes.find((node) => node.id === id2)?.title).filter((title) => Boolean(title)),
+              actions: (actions) => {
+                if (owner.id === this.options.unit.id) this.renderChoose(actions, option);
+                else button(actions, "Go to lecture", () => {
                   this.close();
                   this.options.plugin.nav.openUnit(owner.id);
                 }, "quiet");
               }
-            }
+            });
+          };
+          row4.open = this.expandedMaterials.has(rowKey);
+          if (row4.open) populate();
+          row4.addEventListener("toggle", () => {
+            if (row4.isConnected === false) return;
+            if (row4.open) {
+              this.expandedMaterials.add(rowKey);
+              populate();
+            } else this.expandedMaterials.delete(rowKey);
           });
         }
+        section3.addEventListener("toggle", () => {
+          if (this.query.trim() || section3.isConnected === false || !typeSections.includes(section3)) return;
+          if (section3.open) this.expandedTypes.add(typeKey);
+          else this.expandedTypes.delete(typeKey);
+        });
       }
     };
     search.addEventListener("input", () => {
@@ -18949,17 +19032,6 @@ function renderActionBar(view, root, unit, stage, expectedRevisions) {
   );
 }
 
-// src/features/unit/source-browser.ts
-function groupBySource(entries) {
-  const groups = /* @__PURE__ */ new Map();
-  for (const entry of entries) {
-    const group = groups.get(entry.sourceId) ?? [];
-    group.push(entry);
-    groups.set(entry.sourceId, group);
-  }
-  return groups;
-}
-
 // src/features/unit/materials.ts
 var import_obsidian20 = require("obsidian");
 function materialTypeOf(format) {
@@ -19014,10 +19086,9 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
     "Choose your learning material",
     "This is a complete menu, not a sequence. Pick the explanation angle and depth that fit your current need."
   );
-  for (const [sourceId, entries] of groupBySource(options)) {
-    const source = sourceId ? view.plugin.store.get(sourceId) : null;
+  for (const { label, entries } of groupMaterialsByType(options, (option) => option.format)) {
     const group = materials.createEl("details", { cls: "los-disclosure los-source-group" });
-    group.createEl("summary", { text: `${asString(source?.title) ?? sourceId ?? "Source not yet identified"} \xB7 ${entries.length} entries` });
+    group.createEl("summary", { text: `${label} \xB7 ${entries.length} materials` });
     for (const option of entries) {
       const materialType = materialTypeOf(option.format);
       const row4 = group.createDiv({
@@ -19065,14 +19136,16 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
         option.scope === "current" ? "status" : "role"
       );
       for (const knowledgeId of option.covers) {
-        const label = titleById.get(knowledgeId);
-        if (label) {
+        const label2 = titleById.get(knowledgeId);
+        if (label2) {
           metadata.createSpan({
             cls: "los-knowledge-chip",
-            text: label
+            text: label2
           });
         }
       }
+      const source = option.sourceId ? view.plugin.store.get(option.sourceId) : null;
+      if (source) chip(metadata, source, (record10) => view.plugin.nav.openRecord(record10));
       if (fullDetail) whyThisOne(copy, fullDetail);
       if (option.canOpen || option.canChoose) {
         const actions = row4.createDiv({
@@ -20803,7 +20876,7 @@ var ApplicationRouter = class {
       leaf = side === "left" ? this.plugin.app.workspace.getLeftLeaf?.(false) ?? this.plugin.app.workspace.getLeaf(true) : this.plugin.app.workspace.getLeaf(true);
     }
     await leaf.setViewState({ type, active: true, state });
-    this.plugin.app.workspace.revealLeaf(leaf);
+    await this.plugin.app.workspace.revealLeaf(leaf);
     this.plugin.app.workspace.setActiveLeaf?.(leaf, { focus: true });
     return leaf;
   }
@@ -21074,7 +21147,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:99907c80d5e362a7cd65428c096536672f24d2507aa5bbf3240c41b67f69cfea" : "unavailable";
+  return true ? "sha256:b3db8c38f2199a86013791579ab2ed4fcd7dd9d2a41d9ac2e8720cfd22db4461" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

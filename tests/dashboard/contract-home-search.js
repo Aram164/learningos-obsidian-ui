@@ -212,6 +212,27 @@ module.exports = async function run() {
 
   heading('reload state');
   {
+    const { app, plugin, home } = await boot();
+    await plugin.nav.openModules();
+    const modules = app.workspace.getLeavesOfType(VIEW.module)[0];
+    await plugin.nav.openHome();
+    let displayed = home;
+    const reveal = app.workspace.revealLeaf.bind(app.workspace);
+    app.workspace.revealLeaf = async (leaf) => {
+      await tick();
+      reveal(leaf);
+      displayed = leaf;
+    };
+    app.workspace.setActiveLeaf = (leaf) => {
+      // A hidden tab cannot accept focus until the host finishes revealing it.
+      if (displayed === leaf) app.workspace.active = leaf;
+    };
+    await plugin.nav.openModules();
+    check('sidebar navigation brings an existing tab forward after asynchronous reveal',
+      Boolean(modules) && app.workspace.active === modules && displayed === modules);
+    plugin.onunload();
+  }
+  {
     const first = await boot();
     await first.plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
     const persisted = { ...first.plugin._data };
