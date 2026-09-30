@@ -33,7 +33,7 @@ interface DomainIndex {
   readonly domains: DomainRow[];
   readonly sources: ReadonlyMap<string, ProjectionRecord>;
 }
-const count = (amount: number, singular: string, plural = `${singular}s`) => `${amount} ${amount === 1 ? singular : plural}`;
+const count = (amount: number, singular: string, plural = singular === 'shelf' ? 'shelves' : `${singular}s`) => `${amount} ${amount === 1 ? singular : plural}`;
 const roleOf = (record: ProjectionRecord) => asText(record.role) ?? 'reference';
 const title = (record: ProjectionRecord) => asText(record.title) ?? asText(record.id) ?? 'Untitled record';
 const prose = (value: unknown) => {

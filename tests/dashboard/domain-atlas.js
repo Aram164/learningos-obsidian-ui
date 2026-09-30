@@ -57,6 +57,7 @@ module.exports = async function run() {
   check('Domains is an existing Atlas route and opens without the generated text file',
     plugin.router.snapshot().current.name === 'atlas' && plugin.router.snapshot().current.lens === 'domains'
     && view.getDisplayText() === 'LearningOS · Domain Atlas' && root.allText().includes('Domain Atlas')
+    && plugin.activeNav === 'abilities'
     && !app.workspace.opened.includes('generated/domain-atlas.md'));
   check('known empty domains and future path buckets stay reachable without inferred domain aliases',
     choose(root, 'systems') && choose(root, 'biophysics') && choose(root, 'data-systems')

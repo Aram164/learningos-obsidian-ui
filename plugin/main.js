@@ -2316,7 +2316,7 @@ var ROLE_LABELS = {
   question: "Questions"
 };
 var ROLE_ORDER = ["crosswalk", "reference", "synthesis", "derivation", "exercise-bank", "mock-exam", "implementation", "question"];
-var count = (amount, singular, plural3 = `${singular}s`) => `${amount} ${amount === 1 ? singular : plural3}`;
+var count = (amount, singular, plural3 = singular === "shelf" ? "shelves" : `${singular}s`) => `${amount} ${amount === 1 ? singular : plural3}`;
 var roleOf = (record10) => asText(record10.role) ?? "reference";
 var title = (record10) => asText(record10.title) ?? asText(record10.id) ?? "Untitled record";
 var prose = (value) => {
@@ -6911,6 +6911,7 @@ var AtlasView = class extends import_obsidian5.ItemView {
   async setState(state = {}) {
     this.adopt(state);
     this.render();
+    this.leaf.updateHeader?.();
   }
   getState() {
     return {
@@ -21179,7 +21180,7 @@ var ApplicationRouter = class {
             lens: asAtlasLens(route2.lens),
             depth: asAtlasDepth(route2.depth)
           },
-          nav: "atlas"
+          nav: route2.lens === "domains" ? "abilities" : "atlas"
         };
       case "abilities":
         return {
@@ -21484,7 +21485,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:8b49669757770e7ddbbb0c180535b1d426ddc9013e0937998257d6052ea5eac4" : "unavailable";
+  return true ? "sha256:6f060c5ef4103cf847b8b3776bbf04dba5b8dcfa56149820f3a6a98340b4022a" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

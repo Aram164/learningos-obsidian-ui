@@ -161,6 +161,7 @@ export class AtlasView extends ItemView implements AtlasHost {
   ): Promise<void> {
     this.adopt(state);
     this.render();
+    this.leaf.updateHeader?.();
   }
 
   getState(): AtlasViewState {
