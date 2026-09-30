@@ -99,7 +99,7 @@ export function resolveObsidianCli(env = process.env) {
   if (env.OBSIDIAN_CLI) {
     return fs.existsSync(env.OBSIDIAN_CLI) ? env.OBSIDIAN_CLI : null;
   }
-  const onPath = spawnSync('command', ['-v', 'obsidian'], { shell: true, encoding: 'utf8' });
+  const onPath = spawnSync('command -v obsidian', { shell: true, encoding: 'utf8' });
   if (onPath.status === 0 && onPath.stdout.trim()) return onPath.stdout.trim();
   const bundled = '/Applications/Obsidian.app/Contents/MacOS/obsidian-cli';
   return fs.existsSync(bundled) ? bundled : null;

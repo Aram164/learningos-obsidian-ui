@@ -1107,9 +1107,11 @@ export class GatewayClient {
   materialSpan(
     unitId: string,
     routeId: string,
-    options: { extract?: boolean; expectedSnapshot?: string | null } = {},
+    options: { extract?: boolean; expectedSnapshot?: string | null; stageId?: string; resourceIndex?: number } = {},
   ) {
     const args = ['material-span', unitId, routeId];
+    if (options.stageId !== undefined) args.push('--stage', options.stageId);
+    if (options.resourceIndex !== undefined) args.push('--resource-index', String(options.resourceIndex));
     if (options.extract) args.push('--extract');
     if (options.expectedSnapshot) args.push('--expected-snapshot', options.expectedSnapshot);
     return this.call(args);

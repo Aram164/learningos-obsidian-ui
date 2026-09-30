@@ -15854,6 +15854,8 @@ Last response: ${result.error.message}`,
    */
   materialSpan(unitId, routeId, options = {}) {
     const args = ["material-span", unitId, routeId];
+    if (options.stageId !== void 0) args.push("--stage", options.stageId);
+    if (options.resourceIndex !== void 0) args.push("--resource-index", String(options.resourceIndex));
     if (options.extract) args.push("--extract");
     if (options.expectedSnapshot) args.push("--expected-snapshot", options.expectedSnapshot);
     return this.call(args);
@@ -17654,7 +17656,7 @@ function readStage(record10) {
     concepts: asStrings(record10.concepts),
     resources: asRecords(
       record10.resources
-    ).map(readResource),
+    ).map((resource, resourceIndex) => ({ ...readResource(resource), resourceIndex })),
     doneWhen: asStrings(
       record10.done_when
     ).filter(
@@ -18103,19 +18105,20 @@ function materialKind(record10, route2, workingKind) {
   return `${base} ${extension}`;
 }
 var spans = /* @__PURE__ */ new Map();
-function spanKey(snapshot, unitId, routeId) {
-  return `${snapshot ?? "none"}|${unitId}|${routeId}`;
+function spanKey(snapshot, unitId, routeId, placement) {
+  return `${snapshot ?? "none"}|${unitId}|${routeId}|${placement ? `${placement.stageId}|${placement.resourceIndex}` : "route"}`;
 }
-function inspect(deps, routeId) {
+function inspect(deps, routeId, placement) {
   const snapshot = deps.plugin.store.snapshotId;
-  const key = spanKey(snapshot, deps.unitId, routeId);
+  const key = spanKey(snapshot, deps.unitId, routeId, placement);
   if (spans.get(key)?.status === "loading") return;
   spans.set(key, { status: "loading" });
   if (spans.size > 40) spans.delete(spans.keys().next().value);
   deps.refresh();
   void deps.plugin.gateway.materialSpan(deps.unitId, routeId, {
     extract: true,
-    expectedSnapshot: snapshot
+    expectedSnapshot: snapshot,
+    ...placement
   }).then((value) => {
     const span = asMaterialSpan(value);
     spans.set(key, span ? { status: "ready", span } : { status: "error", message: "Core answered in a shape this build cannot read.", stale: false });
@@ -18128,8 +18131,8 @@ function inspect(deps, routeId) {
     });
   }).finally(() => deps.refresh());
 }
-function renderSpan(parent, deps, routeId) {
-  const state = spans.get(spanKey(deps.plugin.store.snapshotId, deps.unitId, routeId));
+function renderSpan(parent, deps, routeId, placement) {
+  const state = spans.get(spanKey(deps.plugin.store.snapshotId, deps.unitId, routeId, placement));
   if (!state) return;
   const box = parent.createDiv({ cls: "los-span-panel", attr: { role: "region", "aria-label": "Material excerpt" } });
   if (state.status === "loading") {
@@ -18190,13 +18193,13 @@ var SPAN_AVAILABILITY = {
   "remote-unobserved": "Remote \u2014 not fetched",
   unavailable: "Not available"
 };
-function renderAvailability(parent, availability, route2, deps) {
+function renderAvailability(parent, availability, route2, deps, placement) {
   const line = parent.createDiv({ cls: `los-material-availability is-${availability.kind}` });
   line.createSpan({ cls: "los-material-availability-label", text: availability.label });
   line.createSpan({ cls: "los-micro", text: availability.detail });
   if (availability.kind === "local" && route2) {
-    const state = spans.get(spanKey(deps.plugin.store.snapshotId, deps.unitId, route2.routeId));
-    const control = button(line, state?.status === "ready" ? "Inspect again" : "Inspect span", () => inspect(deps, route2.routeId), "tertiary");
+    const state = spans.get(spanKey(deps.plugin.store.snapshotId, deps.unitId, route2.routeId, placement));
+    const control = button(line, state?.status === "ready" ? "Inspect again" : "Inspect span", () => inspect(deps, route2.routeId, placement), "tertiary");
     control.addClass("los-span-trigger");
     control.disabled = state?.status === "loading";
   } else if (availability.kind === "local" && !route2) {
@@ -18204,6 +18207,7 @@ function renderAvailability(parent, availability, route2, deps) {
   }
 }
 function renderPlacementCard(parent, resource, route2, source, deps, options = {}) {
+  const placement = deps.stageId && resource.resourceIndex !== void 0 ? { stageId: deps.stageId, resourceIndex: resource.resourceIndex } : void 0;
   const card = parent.createDiv({
     cls: `los-resource-row los-material-card los-triage-${resource.scopeTriage || "unranked"}${options.prominent ? " is-prominent" : ""}`
   });
@@ -18223,8 +18227,8 @@ function renderPlacementCard(parent, resource, route2, source, deps, options = {
   const angle = asText(resource.record.angle) ?? route2?.angle ?? null;
   if (angle) copy.createDiv({ cls: "los-resource-angle", text: angle });
   renderMaterialCautions(copy, route2?.record ?? resource.record);
-  renderAvailability(copy, projectedAvailability(route2 && !hasOwnTarget(resource.record) ? route2.record : resource.record), route2, deps);
-  if (route2) renderSpan(copy, deps, route2.routeId);
+  renderAvailability(copy, projectedAvailability(route2 && !hasOwnTarget(resource.record) ? route2.record : resource.record), route2, deps, placement);
+  if (route2) renderSpan(copy, deps, route2.routeId, placement);
   const detail = asText(resource.record.angle_detail) ?? asText(route2?.record.angle_detail);
   if (detail) whyThisOne(copy, detail);
   const actions = card.createDiv({ cls: "los-actions los-resource-actions" });
@@ -18299,6 +18303,7 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
     return {
       plugin: this.options.plugin,
       unitId: this.options.unit.id,
+      stageId: this.options.stage.id,
       renderer: this.options.renderer,
       refresh: () => this.renderBody()
     };
@@ -18705,6 +18710,7 @@ function renderStage(view, layout, unit, studyMap, stage) {
       {
         plugin: view.plugin,
         unitId: unit.id,
+        stageId: stage.id,
         renderer: resourceRenderer,
         refresh: () => view.render()
       },
@@ -20999,7 +21005,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:4b172e543b7232d8c9ac5566406e0b8a56e63f4bbe67b5907f1b8019aebc7d0f" : "unavailable";
+  return true ? "sha256:746934c433c47bfe2362e1b8f61d50f18d13738771cfcc7b1a5ea965db995aab" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

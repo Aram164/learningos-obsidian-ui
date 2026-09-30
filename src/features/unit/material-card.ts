@@ -151,21 +151,27 @@ type SpanState =
 /** Answers per projection snapshot; a new snapshot makes every one stale. */
 const spans = new Map<string, SpanState>();
 
-function spanKey(snapshot: string | null, unitId: string, routeId: string): string {
-  return `${snapshot ?? 'none'}|${unitId}|${routeId}`;
+interface PlacementSpan {
+  readonly stageId: string;
+  readonly resourceIndex: number;
+}
+
+function spanKey(snapshot: string | null, unitId: string, routeId: string, placement?: PlacementSpan): string {
+  return `${snapshot ?? 'none'}|${unitId}|${routeId}|${placement ? `${placement.stageId}|${placement.resourceIndex}` : 'route'}`;
 }
 
 export interface MaterialCardDeps {
   readonly plugin: Pick<UnitPlugin, 'gateway' | 'openResource' | 'store'> & { generate?(): unknown };
   readonly unitId: string;
+  readonly stageId?: string;
   readonly renderer: StageResourceRenderer;
   /** Redraw the surface that owns the card once a span answer arrives. */
   readonly refresh: () => void;
 }
 
-function inspect(deps: MaterialCardDeps, routeId: string): void {
+function inspect(deps: MaterialCardDeps, routeId: string, placement?: PlacementSpan): void {
   const snapshot = deps.plugin.store.snapshotId;
-  const key = spanKey(snapshot, deps.unitId, routeId);
+  const key = spanKey(snapshot, deps.unitId, routeId, placement);
   if (spans.get(key)?.status === 'loading') return;
   spans.set(key, { status: 'loading' });
   if (spans.size > 40) spans.delete(spans.keys().next().value as string);
@@ -173,6 +179,7 @@ function inspect(deps: MaterialCardDeps, routeId: string): void {
   void deps.plugin.gateway.materialSpan(deps.unitId, routeId, {
     extract: true,
     expectedSnapshot: snapshot,
+    ...placement,
   }).then((value) => {
     const span = asMaterialSpan(value);
     spans.set(key, span
@@ -190,8 +197,8 @@ function inspect(deps: MaterialCardDeps, routeId: string): void {
   }).finally(() => deps.refresh());
 }
 
-function renderSpan(parent: HTMLElement, deps: MaterialCardDeps, routeId: string): void {
-  const state = spans.get(spanKey(deps.plugin.store.snapshotId, deps.unitId, routeId));
+function renderSpan(parent: HTMLElement, deps: MaterialCardDeps, routeId: string, placement?: PlacementSpan): void {
+  const state = spans.get(spanKey(deps.plugin.store.snapshotId, deps.unitId, routeId, placement));
   if (!state) return;
   const box = parent.createDiv({ cls: 'los-span-panel', attr: { role: 'region', 'aria-label': 'Material excerpt' } });
   if (state.status === 'loading') {
@@ -258,13 +265,13 @@ const SPAN_AVAILABILITY: Readonly<Record<MaterialSpanV1['availability'], string>
   unavailable: 'Not available',
 };
 
-function renderAvailability(parent: HTMLElement, availability: Availability, route: MaterialOptionView | null, deps: MaterialCardDeps): void {
+function renderAvailability(parent: HTMLElement, availability: Availability, route: MaterialOptionView | null, deps: MaterialCardDeps, placement?: PlacementSpan): void {
   const line = parent.createDiv({ cls: `los-material-availability is-${availability.kind}` });
   line.createSpan({ cls: 'los-material-availability-label', text: availability.label });
   line.createSpan({ cls: 'los-micro', text: availability.detail });
   if (availability.kind === 'local' && route) {
-    const state = spans.get(spanKey(deps.plugin.store.snapshotId, deps.unitId, route.routeId));
-    const control = button(line, state?.status === 'ready' ? 'Inspect again' : 'Inspect span', () => inspect(deps, route.routeId), 'tertiary');
+    const state = spans.get(spanKey(deps.plugin.store.snapshotId, deps.unitId, route.routeId, placement));
+    const control = button(line, state?.status === 'ready' ? 'Inspect again' : 'Inspect span', () => inspect(deps, route.routeId, placement), 'tertiary');
     control.addClass('los-span-trigger');
     control.disabled = state?.status === 'loading';
   } else if (availability.kind === 'local' && !route) {
@@ -291,6 +298,9 @@ export function renderPlacementCard(
   deps: MaterialCardDeps,
   options: CardOptions = {},
 ): HTMLElement {
+  const placement = deps.stageId && resource.resourceIndex !== undefined
+    ? { stageId: deps.stageId, resourceIndex: resource.resourceIndex }
+    : undefined;
   const card = parent.createDiv({
     cls: `los-resource-row los-material-card los-triage-${resource.scopeTriage || 'unranked'}${options.prominent ? ' is-prominent' : ''}`,
   });
@@ -314,8 +324,8 @@ export function renderPlacementCard(
   renderMaterialCautions(copy, route?.record ?? resource.record);
   renderAvailability(copy, projectedAvailability(route && !hasOwnTarget(resource.record)
     ? route.record
-    : resource.record), route, deps);
-  if (route) renderSpan(copy, deps, route.routeId);
+    : resource.record), route, deps, placement);
+  if (route) renderSpan(copy, deps, route.routeId, placement);
   const detail = asText(resource.record.angle_detail) ?? asText(route?.record.angle_detail);
   if (detail) whyThisOne(copy, detail);
 

@@ -320,6 +320,7 @@ export function renderStage(
         {
           plugin: view.plugin,
           unitId: unit.id,
+          stageId: stage.id,
           renderer: resourceRenderer,
           refresh: () => view.render(),
         },

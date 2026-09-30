@@ -9,6 +9,8 @@ import { hasDirectResourceTarget } from '../infrastructure/resource-target';
 /** Shared study-map resource shape for every learning module. */
 export interface StageResourceView {
   readonly record: ProjectionRecord;
+  /** Position in the canonical stage, retained when cards are grouped. */
+  readonly resourceIndex?: number;
   readonly id: string | null;
   readonly kind: string;
   readonly label: string;

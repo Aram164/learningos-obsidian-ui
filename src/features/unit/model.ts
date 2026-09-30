@@ -466,7 +466,7 @@ export function readStage(
     resources:
       projectedRecords(
         record.resources,
-      ).map(readResource),
+      ).map((resource, resourceIndex) => ({ ...readResource(resource), resourceIndex })),
     doneWhen:
       projectedStrings(
         record.done_when,

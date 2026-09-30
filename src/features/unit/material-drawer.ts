@@ -81,6 +81,7 @@ export class MaterialComparisonModal extends Modal {
     return {
       plugin: this.options.plugin,
       unitId: this.options.unit.id,
+      stageId: this.options.stage.id,
       renderer: this.options.renderer,
       refresh: () => this.renderBody(),
     };

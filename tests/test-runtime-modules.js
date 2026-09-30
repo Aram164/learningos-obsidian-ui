@@ -275,6 +275,59 @@ function routerPlugin(settings = {}) {
     assert.equal([...groups.values()].flat().length, 4);
   });
 
+  await test('material inspection keeps repeated stage placements and parent-route caches separate', async () => {
+    const { readStage } = loadWithHost('src/features/unit/model.ts');
+    const { renderPlacementCard, renderRouteCard } = loadWithHost('src/features/unit/material-card.ts');
+    const stage = readStage({ id: 'stage-exercises', resources: [
+      { route_id: 'route-exercises', source_id: 'source-exercises', label: 'First exercise',
+        material_uri: 'material://exercises/first.pdf', locator: 'first.pdf, PDF p. 2' },
+      { route_id: 'route-exercises', source_id: 'source-exercises', label: 'Second exercise',
+        material_uri: 'material://exercises/second.pdf', locator: 'second.pdf, PDF p. 3' },
+    ] });
+    assert.deepEqual(stage.resources.map((row) => row.resourceIndex), [0, 1]);
+    const calls = [];
+    const option = { routeId: 'route-exercises', title: 'All exercises', sourceId: 'source-exercises',
+      locator: 'All sheets', depth: 'practice', format: 'exercise', covers: [],
+      record: { material_uri: 'material://exercises/parent.pdf' } };
+    const deps = {
+      unitId: 'unit-exercises', stageId: stage.id, renderer: {}, refresh() {},
+      plugin: { store: { snapshotId: SNAPSHOT }, gateway: {
+        async materialSpan(unitId, routeId, options) {
+          calls.push({ unitId, routeId, options });
+          return { contract: 'material-span-v1', schema_version: 1, snapshot_id: SNAPSHOT,
+            unit_id: unitId, module_id: 'module-exercises', route_id: routeId,
+            availability: 'local-observed', locator: `placement ${options.resourceIndex}`, spans: [] };
+        },
+      } },
+    };
+    const first = renderPlacementCard(new RuntimeElement('main'), stage.resources[0], option, null, deps);
+    first.find('los-span-trigger')[0].fire('click');
+    await new Promise(setImmediate);
+    const second = renderPlacementCard(new RuntimeElement('main'), stage.resources[1], option, null, deps);
+    assert.equal(second.find('los-span-panel').length, 0, 'another placement must not reuse the first excerpt');
+    second.find('los-span-trigger')[0].fire('click');
+    await new Promise(setImmediate);
+    assert.deepEqual(calls.map(({ options }) => [options.stageId, options.resourceIndex]),
+      [['stage-exercises', 0], ['stage-exercises', 1]]);
+    assert.ok(calls.every(({ options }) => options.expectedSnapshot === SNAPSHOT && options.extract));
+    const parent = renderRouteCard(new RuntimeElement('main'), option, null, deps);
+    assert.equal(parent.find('los-span-panel').length, 0, 'the parent route must not reuse a placement excerpt');
+    parent.find('los-span-trigger')[0].fire('click');
+    await new Promise(setImmediate);
+    assert.equal(calls[2].options.stageId, undefined);
+    assert.equal(calls[2].options.resourceIndex, undefined);
+  });
+
+  await test('material span sends the exact canonical stage position to Core', async () => {
+    let sent;
+    await GatewayClient.prototype.materialSpan.call({ call(args) { sent = args; } },
+      'unit-exercises', 'route-exercises', {
+        stageId: 'stage-exercises', resourceIndex: 1, extract: true, expectedSnapshot: SNAPSHOT,
+      });
+    assert.deepEqual(sent, ['material-span', 'unit-exercises', 'route-exercises',
+      '--stage', 'stage-exercises', '--resource-index', '1', '--extract', '--expected-snapshot', SNAPSHOT]);
+  });
+
   await test('contract list parser accepts PyYAML and indented YAML sequences', async () => {
     const tools = await import(
       pathToFileURL(path.join(ROOT, 'scripts', 'contract-locks.mjs')).href
