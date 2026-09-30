@@ -13,7 +13,7 @@
  * whatever theme was installed. The REASON for that old rule was sound —
  * host themes had to remain legible without component-level overrides — so the
  * rule is kept in spirit: colours are semantic tokens and LearningOS keeps its
- * calm, daylight identity even when the surrounding Obsidian chrome is dark.
+ * chosen identity independently of the surrounding Obsidian chrome.
  * See DESIGN.md principle 2.
  *
  * Accent is used for emphasis, never as the only signal: state is carried by
@@ -32,30 +32,30 @@
   --los-r-pill: 999px;
 
   /* ── Light: the Figma foundation palette ── */
-  --los-paper:          #f5f1ea;  /* canvas */
-  --los-sidebar:        #ede7dc;
+  --los-paper:          #f5eee7;  /* canvas */
+  --los-sidebar:        #ecdfd8;
   --los-paper-2:        #fffdf9;  /* surface */
   --los-paper-3:        #faf8f4;  /* subtle hover/inset */
   --los-ink:            #16130f;
   --los-ink-soft:       #625a4f;  /* muted text remains 4.5:1 on token washes */
-  --los-ink-faint:      #756d63;  /* strengthened from Figma muted for 4.5:1 */
+  --los-ink-faint:      #6c6359;  /* strengthened from Figma muted for 4.5:1 */
   --los-rule:           #e0d8c9;
   --los-rule-strong:    #91897d;  /* 3:1 non-text boundary contrast on paper */
-  --los-accent:         #7a2540;  /* brand / decisive action */
-  --los-accent-strong:  #6e2038;
-  --los-accent-soft:    #9a3657;
-  --los-accent-wash:    #f2dfe6;
-  --los-selected:       #faf0f3;
+  --los-accent:         #8c1649;  /* brand / decisive action */
+  --los-accent-strong:  #701038;
+  --los-accent-soft:    #a32659;
+  --los-accent-wash:    #f4dce7;
+  --los-selected:       #f9e6ef;
   --los-on-accent:      #ffffff;
-  --los-success:        #3b5741;
-  --los-success-strong: #304936;
-  --los-success-wash:   #e3ede4;
-  --los-info:           #45566b;
-  --los-info-strong:    #37475a;
-  --los-info-wash:      #e2e8ef;
-  --los-warning:        #6f4e15;
-  --los-warning-strong: #5d4112;
-  --los-warning-wash:   #f5e9d2;
+  --los-success:        #24613e;
+  --los-success-strong: #1e4d31;
+  --los-success-wash:   #e1eee5;
+  --los-info:           #345a85;
+  --los-info-strong:    #28496e;
+  --los-info-wash:      #e0eaf6;
+  --los-warning:        #77500d;
+  --los-warning-strong: #604008;
+  --los-warning-wash:   #f8ebce;
   --los-shadow-soft:    rgba(54, 38, 27, .08);
 
   /* State hues, warmed to sit on paper. These carry MEANING, so they stay
@@ -79,38 +79,40 @@
   overflow-y: auto;
   background: var(--los-paper);
   color: var(--los-ink);
+  color-scheme: var(--los-color-scheme);
   font-size: 14px;
   line-height: 1.5;
+  --los-color-scheme: light;
+
 }
 
-/* LearningOS remains a daylight work surface inside dark Obsidian chrome.
- * The host still frames the app, but the learning space itself should feel
- * open and energising rather than like another dark developer panel. */
+/* Restate the base Wine palette in dark host chrome; the explicit scheme
+ * selector below owns the learning surface independently of host appearance. */
 .theme-dark .los-root {
-  --los-paper:          #f5f1ea;
-  --los-sidebar:        #ede7dc;
+  --los-paper:          #f5eee7;
+  --los-sidebar:        #ecdfd8;
   --los-paper-2:        #fffdf9;
   --los-paper-3:        #faf8f4;
   --los-ink:            #16130f;
   --los-ink-soft:       #625a4f;
-  --los-ink-faint:      #756d63;
+  --los-ink-faint:      #6c6359;
   --los-rule:           #e0d8c9;
   --los-rule-strong:    #91897d;
-  --los-accent:         #7a2540;
-  --los-accent-strong:  #6e2038;
-  --los-accent-soft:    #9a3657;
-  --los-accent-wash:    #f2dfe6;
-  --los-selected:       #faf0f3;
+  --los-accent:         #8c1649;
+  --los-accent-strong:  #701038;
+  --los-accent-soft:    #a32659;
+  --los-accent-wash:    #f4dce7;
+  --los-selected:       #f9e6ef;
   --los-on-accent:      #ffffff;
-  --los-success:        #3b5741;
-  --los-success-strong: #304936;
-  --los-success-wash:   #e3ede4;
-  --los-info:           #45566b;
-  --los-info-strong:    #37475a;
-  --los-info-wash:      #e2e8ef;
-  --los-warning:        #6f4e15;
-  --los-warning-strong: #5d4112;
-  --los-warning-wash:   #f5e9d2;
+  --los-success:        #24613e;
+  --los-success-strong: #1e4d31;
+  --los-success-wash:   #e1eee5;
+  --los-info:           #345a85;
+  --los-info-strong:    #28496e;
+  --los-info-wash:      #e0eaf6;
+  --los-warning:        #77500d;
+  --los-warning-strong: #604008;
+  --los-warning-wash:   #f8ebce;
   --los-shadow-soft:    rgba(54, 38, 27, .08);
   --los-st-active:      var(--los-success);
   --los-st-ready:       var(--los-accent);
@@ -118,6 +120,8 @@
   --los-st-paused:      #80652b;
   --los-st-done:        var(--los-success);
   --los-st-shelve:      var(--los-info);
+
+  --los-color-scheme: light;
 
 }
 
@@ -239,7 +243,7 @@
   position: relative;
   min-width: 0;
   padding: var(--los-3);
-  border: 1px solid var(--los-line);
+  border: 1px solid var(--los-rule);
   border-radius: var(--los-r-md);
   background: var(--los-surface);
   transition: border-color 100ms ease;
@@ -1935,7 +1939,7 @@
 .los-app-nav-item > span:nth-child(2) { min-width: 0; overflow-wrap: break-word; }
 .los-root .los-app-nav-item:hover { background: var(--los-paper-3); color: var(--los-ink); }
 .los-root .los-app-nav-item.is-active {
-  background: var(--los-paper-3);
+  background: var(--los-selected);
   color: var(--los-ink);
   box-shadow: inset 3px 0 0 var(--los-accent);
   font-weight: 650;
@@ -2296,19 +2300,19 @@
   .los-collection-switch { flex-direction: column; }
 }
 /* First-class Projects */
-.los-project-list { display: grid; gap: var(--size-4-3); margin-top: var(--size-4-4); }
+.los-project-list { display: grid; gap: var(--los-3); margin-top: var(--los-4); }
 .los-project-row { width: 100%; text-align: left; appearance: none; min-width: 0; }
-.los-project-tabs { display: flex; flex-wrap: wrap; gap: var(--size-2-2); margin: var(--size-4-4) 0; }
+.los-project-tabs { display: flex; flex-wrap: wrap; gap: var(--los-1); margin: var(--los-4) 0; }
 .los-project-tabs .is-active { background: var(--los-paper-3); box-shadow: inset 0 -2px 0 var(--los-accent); }
-.los-project-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--size-4-3); }
-.los-project-meta, .los-project-node { border: 1px solid var(--los-rule); border-radius: var(--radius-m); padding: var(--size-4-3); }
-.los-project-structure, .los-project-node-children { display: grid; gap: var(--size-4-3); }
-.los-project-node-children { margin-top: var(--size-4-3); margin-left: var(--size-4-4); }
-.los-project-link { display: flex; align-items: center; justify-content: space-between; gap: var(--size-4-3); }
+.los-project-meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--los-3); }
+.los-project-meta, .los-project-node { border: 1px solid var(--los-rule); border-radius: var(--los-r-md); padding: var(--los-3); }
+.los-project-structure, .los-project-node-children { display: grid; gap: var(--los-3); }
+.los-project-node-children { margin-top: var(--los-3); margin-left: var(--los-4); }
+.los-project-link { display: flex; align-items: center; justify-content: space-between; gap: var(--los-3); }
 .los-project-link-copy { min-width: 0; }
 @media (max-width: 720px) {
   .los-project-link { align-items: stretch; flex-direction: column; }
-  .los-project-node-children { margin-left: var(--size-4-2); }
+  .los-project-node-children { margin-left: var(--los-2); }
 }
 
 
@@ -2560,7 +2564,7 @@
  * leaf sizes prevents every screen from turning into a wall-to-wall admin
  * dashboard. The layout still collapses naturally in narrow leaves. */
 .los-root:not(.los-app-nav) {
-  padding: 30px 48px 56px;
+  padding: var(--los-5) clamp(var(--los-3), 4%, 48px) var(--los-6);
   container-type: inline-size;
   container-name: los-view;
 }
@@ -2572,7 +2576,6 @@
 }
 
 .los-root:not(.los-app-nav) > .los-section,
-.los-root:not(.los-app-nav) > .los-tabs,
 .los-root:not(.los-app-nav) > .los-actions,
 .los-root:not(.los-app-nav) > .los-empty {
   width: min(900px, 100%);
@@ -2676,8 +2679,7 @@
   border-bottom: 0;
 }
 
-.los-collection-switch .los-btn--cta,
-.los-filter-tab.is-active {
+.los-collection-switch .los-btn--cta {
   border-color: transparent;
   background: var(--los-accent-wash);
   color: var(--los-accent);
@@ -2719,20 +2721,52 @@
   .los-home-row { grid-template-columns: minmax(0, 1fr); }
   .los-home-row > .los-btn { justify-self: start; }
 }
-/* One tab row, used by Garden and Review (components.ts `filterTabs`). */
-.los-filter-tabs {
+/* One grouped control grammar, adapted from Apple's macOS segmented control.
+ * Native buttons retain their labels, pressed state and keyboard semantics. */
+.los-filter-tabs,
+.los-root .los-tabs,
+.los-root .los-subtabs,
+.los-root .los-project-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  width: min(900px, 100%);
-  margin: 0 0 18px;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px;
+  margin: 0 0 var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-sm);
+  background: var(--los-paper-3);
 }
-
-.los-root .los-filter-tab {
+.los-root .los-filter-tab,
+.los-root .los-tabs > .los-btn,
+.los-root .los-subtabs > .los-btn,
+.los-root .los-project-tabs > .los-btn {
   min-height: 32px;
-  padding: 4px 12px;
-  border-color: transparent;
-  border-radius: var(--los-r-pill);
+  padding: var(--los-1) var(--los-3);
+  border: 1px solid transparent;
+  border-radius: calc(var(--los-r-sm) - 2px);
+  background: transparent;
+  color: var(--los-ink-soft);
+  box-shadow: none;
+}
+.los-root .los-filter-tab:hover,
+.los-root .los-tabs > .los-btn:hover,
+.los-root .los-subtabs > .los-btn:hover,
+.los-root .los-project-tabs > .los-btn:hover {
+  background: var(--los-selected);
+  color: var(--los-ink);
+}
+.los-root .los-filter-tab.is-active,
+.los-root .los-tabs > .los-btn[aria-pressed="true"],
+.los-root .los-subtabs > .los-btn[aria-pressed="true"],
+.los-root .los-project-tabs > .los-btn[aria-pressed="true"] {
+  border-color: var(--los-rule);
+  background: var(--los-surface-raised);
+  color: var(--los-ink);
+  box-shadow: 0 1px 3px var(--los-shadow-soft);
+  font-weight: 650;
 }
 
 /* Garden is an incubation list, not an AI configuration panel. */
@@ -2873,18 +2907,6 @@
  * Detail screens use the same calm record-row grammar as the Figma system.
  * Cards remain reserved for a current workspace, composer, or boundary — a
  * border now means focus or a genuinely raised surface. */
-.los-root .los-tabs .los-btn--cta,
-.los-root .los-tabs .los-btn--row,
-.los-root .los-subtabs .los-btn--row,
-.los-root .los-project-tabs .is-active {
-  border-color: transparent;
-  border-radius: var(--los-r-pill);
-  background: var(--los-accent-wash);
-  box-shadow: none;
-  color: var(--los-accent);
-  font-weight: 650;
-}
-
 .los-section-heading {
   display: flex;
   width: min(900px, 100%);
@@ -2901,7 +2923,7 @@
 .los-record-list {
   display: grid;
   width: min(900px, 100%);
-  gap: 0;
+  gap: var(--los-2);
 }
 
 .los-root .los-record-row {
@@ -2911,11 +2933,10 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--los-4);
   align-items: center;
-  padding: 12px 2px;
-  border: 0;
-  border-bottom: 1px solid var(--los-line);
-  border-radius: 0;
-  background: transparent;
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
   color: var(--los-ink);
   text-align: left;
 }
@@ -2956,7 +2977,7 @@
   gap: var(--los-4);
   margin-top: 20px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--los-line-strong);
+  border-bottom: 1px solid var(--los-rule);
 }
 .los-learning-context h2 { margin: 0; }
 .los-learning-context span { color: var(--los-ink-soft); font-size: 12px; }
@@ -2976,9 +2997,15 @@
 .los-module-view > .los-subtabs { margin-bottom: 4px; }
 .los-module-unit-list { margin-bottom: 28px; }
 
+
+@container los-view (max-width: 560px) {
+  .los-root .los-record-row { grid-template-columns: minmax(0, 1fr); gap: var(--los-2); }
+  .los-learning-context, .los-semester-summary { flex-wrap: wrap; gap: var(--los-2); }
+  .los-project-link { align-items: stretch; flex-direction: column; }
+}
 /* The unit is the operating surface: contract first, exact work second. */
 .los-unit-view {
-  padding: 28px 40px 36px !important;
+  padding: var(--los-5) clamp(var(--los-3), 4%, 40px) var(--los-6) !important;
 }
 
 .los-unit-view > .los-page-header {
@@ -3017,7 +3044,7 @@
 
 .los-stage-rail,
 .los-stage-workspace {
-  border: 1px solid var(--los-line);
+  border: 1px solid var(--los-rule);
   border-radius: var(--los-r-lg);
 }
 
@@ -3845,10 +3872,21 @@
 }
 .los-source-required-label input { width: auto; }
 .los-source-required-label span { font-size: 12px; }
+
+/* Respond to the leaf, including a narrow split inside a wide window. */
+@container los-view (max-width: 980px) {
+  .los-unit-layout { grid-template-columns: 232px minmax(0, 1fr); min-height: 0; }
+  .los-stage-workspace { padding: var(--los-4); }
+}
+@container los-view (max-width: 700px) {
+  .los-unit-layout { grid-template-columns: minmax(0, 1fr); }
+  .los-unit-view > .los-page-header { padding-right: 0; }
+  .los-unit-view > .los-page-header > .los-actions { position: static; margin-top: var(--los-3); }
+  .los-stage-rail { max-height: 320px; overflow-y: auto; }
+}
 /* Projects are parallel work, rendered as workstreams and decisions rather
  * than a second module dashboard. */
 .los-project-view > .los-project-list,
-.los-project-view > .los-project-tabs,
 .los-project-view > .los-project-chips,
 .los-project-view > .los-project-body {
   width: min(900px, 100%);
@@ -3968,18 +4006,18 @@
  * slate and amber, each of which says something. Decisive action is carried
  * by weight and fill rather than by a fourth hue competing with them. */
 body[data-los-palette="graphite"] .los-root {
-  --los-paper:          #f5f1ea;
-  --los-paper-2:        #fffdf9;
-  --los-paper-3:        #faf8f4;
+  --los-paper:          #f2eee6;
+  --los-paper-2:        #fffdf8;
+  --los-paper-3:        #ece6da;
   --los-ink:            #16130f;
-  --los-ink-soft:       #5c554b;
-  --los-ink-faint:      #6e675d;
-  --los-rule:           #e0d8c9;
-  --los-rule-strong:    #8d8579;
-  --los-accent:         #3a3630;
-  --los-accent-strong:  #2a2722;
-  --los-accent-soft:    #57524a;
-  --los-accent-wash:    #e6e1d6;
+  --los-ink-soft:       #544d42;
+  --los-ink-faint:      #62594d;
+  --los-rule:           #d3c9b9;
+  --los-rule-strong:    #847969;
+  --los-accent:         #302c24;
+  --los-accent-strong:  #211e18;
+  --los-accent-soft:    #4d4437;
+  --los-accent-wash:    #ded5c5;
   --los-st-active:      var(--los-success);
   --los-st-ready:       var(--los-accent);
   --los-st-attention:   var(--los-warning);
@@ -3987,8 +4025,8 @@ body[data-los-palette="graphite"] .los-root {
   --los-st-done:        var(--los-success);
   --los-st-shelve:      var(--los-info);
 
-  --los-sidebar:        #ebe5d9;
-  --los-selected:       #f1ede4;
+  --los-sidebar:        #e5decf;
+  --los-selected:       #e6dece;
   --los-shadow-soft:    rgba(40, 34, 26, .09);
 }
 
@@ -3997,18 +4035,18 @@ body[data-los-palette="graphite"] .los-root {
  * ground. Brand is far more saturated than the slate used for information,
  * so the two never read as the same signal. */
 body[data-los-palette="indigo"] .los-root {
-  --los-paper:          #f1f2f7;
-  --los-paper-2:        #fdfdff;
-  --los-paper-3:        #f7f8fc;
+  --los-paper:          #eff0fc;
+  --los-paper-2:        #fcfcff;
+  --los-paper-3:        #e9ebfa;
   --los-ink:            #14151c;
-  --los-ink-soft:       #565a6b;
-  --los-ink-faint:      #666a7a;
-  --los-rule:           #dcdfe9;
-  --los-rule-strong:    #83889a;
-  --los-accent:         #35357f;
-  --los-accent-strong:  #2b2b69;
-  --los-accent-soft:    #4a4a97;
-  --los-accent-wash:    #e2e2f2;
+  --los-ink-soft:       #4d526c;
+  --los-ink-faint:      #5d627c;
+  --los-rule:           #d2d3e9;
+  --los-rule-strong:    #7d809c;
+  --los-accent:         #4930b5;
+  --los-accent-strong:  #37228f;
+  --los-accent-soft:    #6448cd;
+  --los-accent-wash:    #e2dafa;
   --los-st-active:      var(--los-success);
   --los-st-ready:       var(--los-accent);
   --los-st-attention:   var(--los-warning);
@@ -4016,58 +4054,58 @@ body[data-los-palette="indigo"] .los-root {
   --los-st-done:        var(--los-success);
   --los-st-shelve:      var(--los-info);
 
-  --los-sidebar:        #e4e6f0;
-  --los-selected:       #eeeefa;
+  --los-sidebar:        #dedff5;
+  --los-selected:       #e9e2fc;
   --los-shadow-soft:    rgba(26, 28, 48, .09);
 }
 
 /* ── Ink — dark canvas ────────────────────────────────────────────────────
- * This is the one scheme that departs from principle 2's "LearningOS stays a
- * daylight work surface inside dark chrome". That clause is a default, and
- * this is opt-in: it ships as a choice Aram makes, never as what a dark host
- * theme imposes. Everything else principle 2 requires still holds — one
+ * Dark schemes are explicit reader choices, independent of host mode.
+ * Everything principle 2 requires still holds — one
  * palette at the root, no component names a colour, every semantic role is
  * preserved, and the same numeric contrast gate applies.
  *
  * `--los-on-accent` inverts here: on a dark canvas the brand fill must be
  * light to be visible at all, so the text that sits on it is ink, not white.
  * The washes invert with it — a wash is a tinted panel, and on this ground a
- * tinted panel is darker than the canvas, not lighter. */
+ * tinted panel remains distinct from the near-black canvas. */
 body[data-los-palette="ink"] .los-root {
-  --los-paper:          #16181d;
-  --los-paper-2:        #1e2128;
-  --los-paper-3:        #242831;
-  --los-ink:            #edeff4;
-  --los-ink-soft:       #b6bcc9;
-  --los-ink-faint:      #a7adbb;
-  --los-rule:           #2f333d;
-  --los-rule-strong:    #767d8c;
-  --los-accent:         #e9a6ba;
-  --los-accent-strong:  #f2bccb;
-  --los-accent-soft:    #d18aa0;
-  --los-accent-wash:    #35242b;
+  --los-paper:          #0b080c;
+  --los-paper-2:        #171016;
+  --los-paper-3:        #221822;
+  --los-ink:            #fff1f7;
+  --los-ink-soft:       #d7bdcd;
+  --los-ink-faint:      #baa1b1;
+  --los-rule:           #382738;
+  --los-rule-strong:    #907990;
+  --los-accent:         #f078ad;
+  --los-accent-strong:  #ff97c3;
+  --los-accent-soft:    #d85f92;
+  --los-accent-wash:    #301223;
   --los-st-active:      var(--los-success);
   --los-st-ready:       var(--los-accent);
   --los-st-attention:   var(--los-warning);
-  --los-st-paused:      #d8b877;
+  --los-st-paused:      #f4bf5f;
   --los-st-done:        var(--los-success);
   --los-st-shelve:      var(--los-info);
 
-  --los-sidebar:        #1b1e24;
-  --los-selected:       #2b2128;
-  --los-on-accent:      #16181d;
-  --los-success:        #93c4a1;
-  --los-success-strong: #aed6ba;
-  --los-success-wash:   #1e2a22;
-  --los-info:           #9fb6cf;
-  --los-info-strong:    #bacde1;
-  --los-info-wash:      #1d242e;
-  --los-warning:        #d9b978;
-  --los-warning-strong: #e8ce98;
-  --los-warning-wash:   #2c2418;
+  --los-sidebar:        #100b11;
+  --los-selected:       #3b172b;
+  --los-on-accent:      #0b080c;
+  --los-success:        #66d99c;
+  --los-success-strong: #9fedbd;
+  --los-success-wash:   #0b291b;
+  --los-info:           #78bcff;
+  --los-info-strong:    #a8d3ff;
+  --los-info-wash:      #0b2138;
+  --los-warning:        #f4bf5f;
+  --los-warning-strong: #ffd58a;
+  --los-warning-wash:   #30200b;
   --los-shadow-soft:    rgba(0, 0, 0, .32);
 
-  --los-surface-raised: #252932;
+  --los-surface-raised: #251923;
+  --los-color-scheme: dark;
+
 }
 
 /* ── Midnight — navy canvas, violet brand ─────────────────────────────────
@@ -4075,39 +4113,41 @@ body[data-los-palette="ink"] .los-root {
  * clear of the blue-grey that means "information": on a cool ground those
  * two are the pair most at risk of reading as one signal. */
 body[data-los-palette="midnight"] .los-root {
-  --los-paper:          #0f1524;
-  --los-paper-2:        #161d30;
-  --los-paper-3:        #1b2339;
-  --los-ink:            #e9edf7;
-  --los-ink-soft:       #b3bdd3;
-  --los-ink-faint:      #a4aec7;
-  --los-rule:           #242e47;
-  --los-rule-strong:    #6e7a97;
-  --los-accent:         #b49bf0;
-  --los-accent-strong:  #c9b6f6;
-  --los-accent-soft:    #9a80d8;
-  --los-accent-wash:    #251f3d;
+  --los-paper:          #07091b;
+  --los-paper-2:        #10142d;
+  --los-paper-3:        #191e3d;
+  --los-ink:            #f1f0ff;
+  --los-ink-soft:       #c4c7e8;
+  --los-ink-faint:      #adadd0;
+  --los-rule:           #2e3459;
+  --los-rule-strong:    #7f86bb;
+  --los-accent:         #b194ff;
+  --los-accent-strong:  #cdb9ff;
+  --los-accent-soft:    #a182f0;
+  --los-accent-wash:    #281749;
   --los-st-active:      var(--los-success);
   --los-st-ready:       var(--los-accent);
   --los-st-attention:   var(--los-warning);
-  --los-st-paused:      #d8b877;
+  --los-st-paused:      #f4bf5f;
   --los-st-done:        var(--los-success);
   --los-st-shelve:      var(--los-info);
 
-  --los-sidebar:        #121828;
-  --los-selected:       #1f1b34;
-  --los-on-accent:      #0f1524;
-  --los-success:        #8fc6a4;
-  --los-success-strong: #aed8bd;
-  --los-success-wash:   #142418;
-  --los-info:           #8fb6d9;
-  --los-info-strong:    #b0cee9;
-  --los-info-wash:      #13202c;
-  --los-warning:        #d9b978;
-  --los-warning-strong: #e8ce98;
-  --los-warning-wash:   #2a2216;
+  --los-sidebar:        #0b0e24;
+  --los-selected:       #302052;
+  --los-on-accent:      #07091b;
+  --los-success:        #66d99c;
+  --los-success-strong: #9fedbd;
+  --los-success-wash:   #0b291b;
+  --los-info:           #78bcff;
+  --los-info-strong:    #a8d3ff;
+  --los-info-wash:      #0b2138;
+  --los-warning:        #f4bf5f;
+  --los-warning-strong: #ffd58a;
+  --los-warning-wash:   #30200b;
   --los-shadow-soft:    rgba(0, 0, 0, .40);
-  --los-surface-raised: #1c2438;
+  --los-surface-raised: #1c2146;
+  --los-color-scheme: dark;
+
 }
 
 /* ── Slate — blue-grey canvas, cyan brand ─────────────────────────────────
@@ -4116,39 +4156,41 @@ body[data-los-palette="midnight"] .los-root {
  * distinguishable from all three semantic hues, and here it is the semantic
  * that yields, not the brand. */
 body[data-los-palette="slate"] .los-root {
-  --los-paper:          #151a1f;
-  --los-paper-2:        #1c232a;
-  --los-paper-3:        #212931;
-  --los-ink:            #e9eef3;
-  --los-ink-soft:       #b0bac5;
-  --los-ink-faint:      #a1abb8;
-  --los-rule:           #28313a;
-  --los-rule-strong:    #6f7c8a;
-  --los-accent:         #63cfd8;
-  --los-accent-strong:  #8adde4;
-  --los-accent-soft:    #4aaeb6;
-  --los-accent-wash:    #12292c;
+  --los-paper:          #061318;
+  --los-paper-2:        #0d2229;
+  --los-paper-3:        #12313a;
+  --los-ink:            #e9fbff;
+  --los-ink-soft:       #acd1d9;
+  --los-ink-faint:      #96b9c2;
+  --los-rule:           #29434c;
+  --los-rule-strong:    #6f929a;
+  --los-accent:         #37d7ea;
+  --los-accent-strong:  #78eaff;
+  --los-accent-soft:    #23bccf;
+  --los-accent-wash:    #083440;
   --los-st-active:      var(--los-success);
   --los-st-ready:       var(--los-accent);
   --los-st-attention:   var(--los-warning);
-  --los-st-paused:      #d8b877;
+  --los-st-paused:      #f4bf5f;
   --los-st-done:        var(--los-success);
   --los-st-shelve:      var(--los-info);
 
-  --los-sidebar:        #181e24;
-  --los-selected:       #16282b;
-  --los-on-accent:      #151a1f;
-  --los-success:        #93c4a1;
-  --los-success-strong: #aed6ba;
-  --los-success-wash:   #1a2a20;
-  --los-info:           #a9b3e8;
-  --los-info-strong:    #c2c9f0;
-  --los-info-wash:      #1b1e33;
-  --los-warning:        #d9b978;
-  --los-warning-strong: #e8ce98;
-  --los-warning-wash:   #2b2318;
+  --los-sidebar:        #091b21;
+  --los-selected:       #0c3d49;
+  --los-on-accent:      #061318;
+  --los-success:        #66d99c;
+  --los-success-strong: #9fedbd;
+  --los-success-wash:   #0b291b;
+  --los-info:           #b1adff;
+  --los-info-strong:    #d0ccff;
+  --los-info-wash:      #211b3c;
+  --los-warning:        #f4bf5f;
+  --los-warning-strong: #ffd58a;
+  --los-warning-wash:   #30200b;
   --los-shadow-soft:    rgba(0, 0, 0, .40);
-  --los-surface-raised: #222a33;
+  --los-surface-raised: #173641;
+  --los-color-scheme: dark;
+
 }
 
 /* ── Carbon — near-black, cool cast, no brand hue ─────────────────────────
@@ -4157,39 +4199,41 @@ body[data-los-palette="slate"] .los-root {
  * the brightest thing on the page without being a fourth colour competing
  * with sage, periwinkle-blue and amber. */
 body[data-los-palette="carbon"] .los-root {
-  --los-paper:          #141619;
-  --los-paper-2:        #1b1e22;
-  --los-paper-3:        #202429;
-  --los-ink:            #eceef1;
-  --los-ink-soft:       #b4b9c0;
-  --los-ink-faint:      #a5aab2;
-  --los-rule:           #272b31;
-  --los-rule-strong:    #737983;
-  --los-accent:         #d7dbe2;
-  --los-accent-strong:  #e8ebef;
-  --los-accent-soft:    #b6bbc4;
-  --los-accent-wash:    #24272c;
+  --los-paper:          #050607;
+  --los-paper-2:        #101216;
+  --los-paper-3:        #1b1e24;
+  --los-ink:            #f4f7fc;
+  --los-ink-soft:       #c0cadb;
+  --los-ink-faint:      #9caac0;
+  --los-rule:           #2a2e36;
+  --los-rule-strong:    #747e90;
+  --los-accent:         #f1f5ff;
+  --los-accent-strong:  #ffffff;
+  --los-accent-soft:    #c4d0e5;
+  --los-accent-wash:    #202631;
   --los-st-active:      var(--los-success);
   --los-st-ready:       var(--los-accent);
   --los-st-attention:   var(--los-warning);
-  --los-st-paused:      #d8b877;
+  --los-st-paused:      #f4bf5f;
   --los-st-done:        var(--los-success);
   --los-st-shelve:      var(--los-info);
 
-  --los-sidebar:        #17191d;
-  --los-selected:       #22252a;
-  --los-on-accent:      #141619;
-  --los-success:        #93c4a1;
-  --los-success-strong: #aed6ba;
-  --los-success-wash:   #1e2a22;
-  --los-info:           #9fb6cf;
-  --los-info-strong:    #bacde1;
-  --los-info-wash:      #1d242e;
-  --los-warning:        #d9b978;
-  --los-warning-strong: #e8ce98;
-  --los-warning-wash:   #2c2418;
+  --los-sidebar:        #090b0e;
+  --los-selected:       #252e3e;
+  --los-on-accent:      #050607;
+  --los-success:        #66d99c;
+  --los-success-strong: #9fedbd;
+  --los-success-wash:   #0b291b;
+  --los-info:           #78bcff;
+  --los-info-strong:    #a8d3ff;
+  --los-info-wash:      #0b2138;
+  --los-warning:        #f4bf5f;
+  --los-warning-strong: #ffd58a;
+  --los-warning-wash:   #30200b;
   --los-shadow-soft:    rgba(0, 0, 0, .45);
-  --los-surface-raised: #212429;
+  --los-surface-raised: #20242b;
+  --los-color-scheme: dark;
+
 }
 
 /* ── Custom — the reader's own, defined outside this file ─────────────────
@@ -4946,7 +4990,7 @@ body[data-los-palette="carbon"] .los-root {
   width: auto;
   margin: 0;
   padding: 2px;
-  border-radius: var(--los-r-md);
+  border-radius: var(--los-r-sm);
   background: var(--los-paper-3);
 }
 .los-root .los-ability-search {
@@ -5568,6 +5612,17 @@ body[data-los-palette="carbon"] .los-root {
   .los-root .los-ability-list-row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .los-root.los-ability-draft { padding: var(--los-4); }
 }
+
+@container los-view (max-width: 980px) {
+  .los-ability-plane,
+  .los-ability-plane.has-inspector { grid-template-columns: minmax(0, 1fr); }
+}
+@container los-view (max-width: 600px) {
+  .los-ability-graph, .los-ability-detail-head, .los-ability-detail-section { padding: var(--los-3); }
+  .los-root .los-ability-list-row { grid-template-columns: minmax(0, 1fr); gap: var(--los-1); }
+  .los-ability-toolbar-right { width: 100%; }
+  .los-root .los-ability-search { flex: 1; min-width: 120px; }
+}
 /* ── Review (Figma 11:334) ───────────────────────────────────────────────────
  * A short selection list on the left and exactly one item on the right: its
  * claim, its evidence, what confirming it would do, and the actions. The list
@@ -6052,7 +6107,7 @@ body[data-los-palette="carbon"] .los-root {
   .los-compare-layout { display: flex; flex-direction: column; overflow-y: auto; gap: var(--los-3); }
   .los-compare-groups, .los-compare-body { overflow: visible; }
   .los-compare-group-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
-  .los-compare-reconcile { display: none; }
+  .los-compare-reconcile { margin-top: var(--los-2); }
   .los-material-type-summary, .los-material-list-summary { padding: var(--los-3); gap: var(--los-2); }
 }
 

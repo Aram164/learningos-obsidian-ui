@@ -495,7 +495,8 @@ module.exports = async function run() {
     check('raw colour appears only in the palette token blocks',
       (cssOutsideTokens.match(/#[0-9a-fA-F]{3,8}\b/g) || []).length === 0
       && (cssOutsideTokens.match(/\b(rgba?|hsla?)\(/g) || []).length === 0
-      && !/color-scheme:/.test(css));
+      && /color-scheme:\s*var\(--los-color-scheme\)/.test(css)
+      && !/color-scheme:\s*(?:light|dark|only)/.test(cssOutsideTokens));
     check('every component colour resolves through a --los-* token',
       (cssOutsideTokens.match(
         /var\(--(?:color|text|background|interactive)[a-z0-9-]*\)/g) || [])
@@ -533,6 +534,14 @@ module.exports = async function run() {
     const normalTextPairs = [
       ['--los-ink', '--los-paper'],
       ['--los-ink', '--los-paper-2'],
+      ['--los-ink', '--los-surface-raised'],
+      ['--los-ink-soft', '--los-selected'],
+      ['--los-ink-soft', '--los-surface-raised'],
+      ['--los-ink-faint', '--los-paper-2'],
+      ['--los-accent', '--los-paper-2'],
+      ['--los-success', '--los-success-wash'],
+      ['--los-info', '--los-info-wash'],
+      ['--los-warning', '--los-warning-wash'],
       ['--los-ink-soft', '--los-paper'],
       ['--los-ink-soft', '--los-paper-2'],
       ['--los-ink-soft', '--los-paper-3'],

@@ -1,3 +1,4 @@
+import { withRenderFocus } from '../accessibility/render-focus';
 import { ItemView, Notice, type WorkspaceLeaf } from 'obsidian';
 import {
   badge,
@@ -144,6 +145,10 @@ export class ProgramView extends ItemView {
   }
 
   render(): void {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+
+  private renderContent(): void {
     const root = this.contentEl;
     root.empty();
     root.addClass('los-root', 'los-program-view');

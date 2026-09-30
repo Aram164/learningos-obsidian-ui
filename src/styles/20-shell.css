@@ -4,7 +4,7 @@
  * leaf sizes prevents every screen from turning into a wall-to-wall admin
  * dashboard. The layout still collapses naturally in narrow leaves. */
 .los-root:not(.los-app-nav) {
-  padding: 30px 48px 56px;
+  padding: var(--los-5) clamp(var(--los-3), 4%, 48px) var(--los-6);
   container-type: inline-size;
   container-name: los-view;
 }
@@ -16,7 +16,6 @@
 }
 
 .los-root:not(.los-app-nav) > .los-section,
-.los-root:not(.los-app-nav) > .los-tabs,
 .los-root:not(.los-app-nav) > .los-actions,
 .los-root:not(.los-app-nav) > .los-empty {
   width: min(900px, 100%);
@@ -120,8 +119,7 @@
   border-bottom: 0;
 }
 
-.los-collection-switch .los-btn--cta,
-.los-filter-tab.is-active {
+.los-collection-switch .los-btn--cta {
   border-color: transparent;
   background: var(--los-accent-wash);
   color: var(--los-accent);

@@ -202,7 +202,7 @@ export function filterTabs<T extends string>(
     );
     control.addClass('los-filter-tab');
     control.toggleClass('is-active', value === active);
-    control.setAttrs({ 'aria-pressed': String(value === active) });
+    control.setAttrs({ 'aria-pressed': String(value === active), 'data-los-tab': value });
   }
   return row;
 }

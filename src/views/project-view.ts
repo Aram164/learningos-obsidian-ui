@@ -1,3 +1,4 @@
+import { withRenderFocus } from '../accessibility/render-focus';
 import { renderFiles, renderDecisions } from '../features/project/files';
 import { renderBoundaryBanner, renderStructure } from '../features/project/structure';
 import { renderDetail, renderOverview } from '../features/project/detail';
@@ -237,6 +238,10 @@ export class ProjectView extends ItemView {
   }
 
   render(): void {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+
+  private renderContent(): void {
     const root = this.contentEl;
 
     root.empty();

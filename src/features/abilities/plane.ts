@@ -199,13 +199,7 @@ function renderToolbar(root: HTMLElement, host: AbilityHost, plane: AbilityPlane
   search.addEventListener('input', () => {
     host.query = search.value;
     host.render();
-    const replacement = (root.ownerDocument ?? globalThis.document)
-      ?.getElementById?.('los-ability-search') as HTMLInputElement | null;
-    if (replacement && typeof replacement.focus === 'function') {
-      replacement.focus();
-      const end = replacement.value.length;
-      try { replacement.setSelectionRange?.(end, end); } catch { /* no selection support */ }
-    }
+
   });
   button(right, 'Concept atlas', () => host.plugin.nav.openAtlas(), 'tertiary')
     .addClass('los-ability-concept-link');

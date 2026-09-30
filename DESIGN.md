@@ -7,63 +7,30 @@ The interface carries usability while the core carries meaning.
 1. **Module-first, not focus-exclusive.** A resume card is useful, but every
    current module and unit remains reachable. Independent stage state is never
    flattened into one global path.
-2. **No raw colour *in components*; one palette at the root.** Revised
-   2026-08-15. This principle used to read "all colour resolves through Obsidian
-   theme variables", which meant LearningOS had no visual identity of its own —
-   it looked like whichever theme happened to be installed. It now has one:
-   **warm daylight paper with a berry-wine identity**, defined once in
-   `src/styles/00-tokens.css` as `--los-*` tokens and grounded in the Figma
-   foundations. LearningOS keeps this daylight work surface inside either
-   Obsidian host mode; dark chrome may frame it, but the learning canvas does
-   not become another near-black developer panel.
-   (`plugin/styles.css` is the composed artifact — the cascade is declared in
-   `build-styles.mjs`.)
+2. **Colour is chosen once and expressed through semantic tokens.** Carbon is
+   the chosen visual direction: a near-black canvas, distinct cool surfaces,
+   near-white decisive actions, and richer green, blue and amber for meaning.
+   Wine, Graphite, Indigo, Ink, Midnight and Slate remain supported reader
+   choices. Wine is the initial default; the selected scheme is independent
+   of Obsidian's host mode. Native fields follow that scheme's light/dark mode.
+   Every component resolves colour through `--los-*` tokens, declared only in
+   `00-tokens.css` and `25-palettes.css`; `plugin/styles.css` is composed by
+   `build-styles.mjs`. No component names a raw colour.
 
-   The constraint the old rule was protecting is unchanged and still binding:
-   **no component may name a colour.** Every rule refers to a token, colour is
-   defined only in palette blocks, and every one of them is
-   contrast-checked — body text 16.5:1, secondary text 5.0:1, muted text 4.5:1,
-   brand fill 9.7:1, completion fill 8.0:1, information 6.1:1, attention 6.3:1,
-   and reversible choice 8.6:1. Wine remains the brand action; sage is reserved
-   for commit/apply, slate for opening information, amber for attention, and
-   blush for reversible selection. Colour never carries meaning alone: every
-   state and action also has a text label.
-2a. **Schemes are palette swaps; meaning does not move.** Amends principle 2,
-   2026-09-11. Colour now lives in more than two blocks: the base palette in
-   `00-tokens.css`, the `.theme-dark` restatement beside it, and one block per
-   selectable scheme in `25-palettes.css` (Graphite, Indigo, Ink, Midnight,
-   Slate, Carbon). The reader chooses in Settings → LearningOS UI.
-
-   Three rules keep this from becoming the drift principle 2 exists to prevent:
-
-   - **A scheme may vary canvas and brand only.** The light schemes do not
-     touch `--los-success`, `--los-info` or `--los-warning`: sage still means
-     applied, slate information, amber attention. A skin the reader picks must
-     not change what a colour *means*. The dark schemes restate the semantics
-     because a wash is a tinted panel, and on a dark ground a tinted panel is
-     darker than the canvas rather than lighter — but they keep the same
-     assignments.
-   - **The brand must stay distinguishable from all three semantic hues**, so
-     decisive action is never mistaken for applied, information, or attention.
-     That is why there is no green or amber scheme: Graphite and Carbon solve
-     it by having no brand hue at all, Indigo and Midnight by being far more
-     saturated than slate, and Slate by moving *information* onto periwinkle
-     rather than moving the brand.
-   - **Every scheme passes the same numeric gate** before it can ship — the
-     contrast pairs in `tests/dashboard/runtime-integrity.js`, which also
-     refuses a scheme declaring a token the others lack. The state hues are
-     checked as text (4.5:1), not only as dots (3:1), since a status word now
-     carries its tone.
-
-   `Custom` is the deliberate exception: it sets the attribute, ships no rules,
-   and is labelled as unchecked. A reader's CSS snippet is then the only rule
-   defining those tokens, so it needs no `!important` to win — which is also
-   why the dark-surface rule no longer uses one.
+   Green means applied or supported, blue means information or nearby, and
+   amber means attention or uncertainty. Slate uses periwinkle information
+   to distinguish it from the cyan brand. Carbon and Graphite have neutral
+   brand actions; the other accents remain distinct from semantic hues.
+   Colour always repeats a visible word or state, never grants evidence.
+   All shipped schemes pass numeric WCAG AA pairs: 4.5:1 for ordinary text,
+   including status, selected, raised and semantic surfaces, and 3:1 for
+   interactive boundaries. Quiet decorative borders need not compete with
+   editable controls. `Custom` remains explicitly unchecked and snippet-owned.
 
 3. **No orphan links or dumps.** Typed chips, cards and exact source actions
    show why a record matters in the current module/unit/stage.
 4. **One stage workspace at a time.** Stage rail, exact work, and scratch are
-   adjacent on wide windows and stack cleanly below 1020/720 px.
+   adjacent in wide panes and stack cleanly as the pane narrows.
 5. **Keyboard and motion restraint.** Native buttons/inputs, visible focus
    rings, semantic labels, and `prefers-reduced-motion` support are mandatory.
 6. **Honest emptiness.** Missing maps, artifacts, proposals and offline CLI
@@ -237,11 +204,11 @@ maintenance is never mixed with study destinations.
 ## Components and tokens
 
 Spacing uses `--los-1` through `--los-6` on a 4 px scale. Body copy is 14 px,
-page headings are capped at 28 px, section headings are 17 px, surfaces use
-12–16 px padding, and normal controls are 28–32 px high. Sections are separated
-by 24–32 px instead of card-scale whitespace. Radii use
-`--los-r-sm/md/lg/pill`; surfaces and borders map to Obsidian
-`--background-*`; status stripes map to theme colours.
+page headings are capped at 28 px and section headings are 17 px. Normal
+controls are at least 36 px high, fields 38 px, grouped segments 32 px and
+sidebar rows 40 px. Surfaces use 12–24 px padding; sections use 24–32 px gaps.
+Radii are 8, 12 and 18 px. Fields use contrast-checked strong boundaries;
+reading surfaces use quieter token borders. Pane padding contracts naturally.
 
 Every button-like primitive explicitly resets theme appearance, size,
 alignment, line height, wrapping, hover, focus, and disabled behavior. Shared
@@ -251,11 +218,18 @@ allow character-by-character wrapping. Shared primitives also include badges,
 typed chips, fact lists, workspace/unit cards, empty states, sections, page
 headers, filter tabs, `disclosure()` and `overflowMenu()`.
 
-The Library's List/Columns layout choice uses a single rounded segmented
-control, guided by the native macOS 26 Figma kit. A quiet raised segment marks
-the current view; its text and `aria-pressed` state carry the choice. Both
-segments retain native-button keyboard navigation and visible focus. The
-control aligns with the filter, and the toolbar wraps inside narrow panes.
+Layout and section choices share one rounded group with a raised selected
+segment, visible focus and native `aria-pressed` buttons. Arrow keys move
+focus; Enter activates; Tab leaves the group. Wrapping keeps every label
+reachable in narrow panes. Library keeps its existing List/Columns behaviour.
+
+The active macOS 26 references in Figma are genuine linked Apple Sidebar Item
+`113:209` (Large, Selected) and Segmented Controls `113:1488` / `119:146`.
+Their comfortable row height, grouped selection and readable labels inform
+LearningOS's own reusable adaptation. The reference board is `119:121`;
+the token-bound switcher variants are `119:108` / `119:113`. Native references
+retain SF Pro; LearningOS mock-ups use Inter, and Obsidian uses its inherited
+UI font and existing icons. Apple assets are not embedded in the plugin.
 
 **Amended 2026-08-03: the always-visible ownership footer is retired.** It
 stated architecture policy under every screen, which made the product read as
@@ -287,13 +261,25 @@ clear success or failure feedback.
 
 ## Responsive and accessibility contract
 
-Home uses one focused content column at every width; rows stack their action below the label on narrow screens. Library places keep complete, wrapped labels and adapt to the width of their pane: the inspector moves below the list before the places move above it. Unit still uses rail/work/note at wide widths and becomes a single column below 720 px. Academic-date rows keep a stable date
-plus flexible-content grid until 480 px, when the date stacks above the content;
-actions always remain inside the flexible content row. Compact tables stack
-their labeled cells at 480 px. Resource actions wrap below their label. Every
-interactive element is a native control with an ARIA label where visible text
-is insufficient. Focus rings use the theme accent; loading does not animate,
-and reduced-motion removes hover transitions.
+Home keeps one reading column; row actions stack at narrow pane widths.
+Library retains full wrapped place labels, placing the inspector below the
+list before places move above it. Unit uses rail/current stage, contracts the
+rail at 980 px of content width and stacks it at 700 px; the stage list remains
+scrollable and complete. Atlas moves the inspector below the graph at 980 px,
+and stacks list cells at 600 px. Review stacks at 850 px. These depend on the
+pane's content width, including splits in a wide window. Modals use their
+available viewport, keep navigation and close controls reachable, and retain
+material totals and reconciliation at narrow widths.
+
+Presentation redraws retain the focused search field's text, caret, selection
+and scroll, and restore the corresponding button inside its own labelled
+group. Restoration is scoped to the same leaf and never steals another
+control's focus. Fixture regressions cover mid-string typing, replacing a
+selection, repeated input, multiple leaves and group activation. Library's
+existing in-place filtering and disclosure-state handling remain authoritative.
+Native controls carry accessible labels and token focus rings. Loading and
+empty/error states use the same headers, readable copy and safe action controls.
+Reduced motion removes hover transitions.
 
 ## Anti-patterns
 

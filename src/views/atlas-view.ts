@@ -1,3 +1,4 @@
+import { withRenderFocus } from '../accessibility/render-focus';
 import {
   ItemView,
   Notice,
@@ -261,6 +262,10 @@ export class AtlasView extends ItemView implements AtlasHost {
   }
 
   render(): void {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+
+  private renderContent(): void {
     this.clearRenderEffects();
     renderAtlas(this.contentEl, this);
   }

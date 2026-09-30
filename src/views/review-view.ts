@@ -1,3 +1,4 @@
+import { withRenderFocus } from '../accessibility/render-focus';
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
@@ -138,6 +139,10 @@ export class ReviewView extends ItemView implements ReviewHost {
   }
 
   render(): void {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+
+  private renderContent(): void {
     const root = this.contentEl;
 
     root.empty();
@@ -645,6 +650,10 @@ export class DiagnosticsView extends ItemView {
   }
 
   render(): void {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+
+  private renderContent(): void {
     const root = this.contentEl;
     root.empty();
     root.addClass('los-root', 'los-diagnostics-view');

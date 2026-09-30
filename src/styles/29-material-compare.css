@@ -294,7 +294,7 @@
   .los-compare-layout { display: flex; flex-direction: column; overflow-y: auto; gap: var(--los-3); }
   .los-compare-groups, .los-compare-body { overflow: visible; }
   .los-compare-group-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
-  .los-compare-reconcile { display: none; }
+  .los-compare-reconcile { margin-top: var(--los-2); }
   .los-material-type-summary, .los-material-list-summary { padding: var(--los-3); gap: var(--los-2); }
 }
 

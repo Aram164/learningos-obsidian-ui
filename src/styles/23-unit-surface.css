@@ -1,6 +1,6 @@
 /* The unit is the operating surface: contract first, exact work second. */
 .los-unit-view {
-  padding: 28px 40px 36px !important;
+  padding: var(--los-5) clamp(var(--los-3), 4%, 40px) var(--los-6) !important;
 }
 
 .los-unit-view > .los-page-header {
@@ -39,7 +39,7 @@
 
 .los-stage-rail,
 .los-stage-workspace {
-  border: 1px solid var(--los-line);
+  border: 1px solid var(--los-rule);
   border-radius: var(--los-r-lg);
 }
 
@@ -867,3 +867,15 @@
 }
 .los-source-required-label input { width: auto; }
 .los-source-required-label span { font-size: 12px; }
+
+/* Respond to the leaf, including a narrow split inside a wide window. */
+@container los-view (max-width: 980px) {
+  .los-unit-layout { grid-template-columns: 232px minmax(0, 1fr); min-height: 0; }
+  .los-stage-workspace { padding: var(--los-4); }
+}
+@container los-view (max-width: 700px) {
+  .los-unit-layout { grid-template-columns: minmax(0, 1fr); }
+  .los-unit-view > .los-page-header { padding-right: 0; }
+  .los-unit-view > .los-page-header > .los-actions { position: static; margin-top: var(--los-3); }
+  .los-stage-rail { max-height: 320px; overflow-y: auto; }
+}

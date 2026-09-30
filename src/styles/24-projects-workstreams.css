@@ -1,7 +1,6 @@
 /* Projects are parallel work, rendered as workstreams and decisions rather
  * than a second module dashboard. */
 .los-project-view > .los-project-list,
-.los-project-view > .los-project-tabs,
 .los-project-view > .los-project-chips,
 .los-project-view > .los-project-body {
   width: min(900px, 100%);

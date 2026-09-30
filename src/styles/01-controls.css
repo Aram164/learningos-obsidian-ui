@@ -73,7 +73,7 @@
   position: relative;
   min-width: 0;
   padding: var(--los-3);
-  border: 1px solid var(--los-line);
+  border: 1px solid var(--los-rule);
   border-radius: var(--los-r-md);
   background: var(--los-surface);
   transition: border-color 100ms ease;

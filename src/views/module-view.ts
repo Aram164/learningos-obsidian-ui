@@ -1,3 +1,4 @@
+import { withRenderFocus } from '../accessibility/render-focus';
 import { selectTab, selectComponent, renderSources } from '../features/module/actions';
 import { renderLogistics, deadlinesFor, renderAcademicDates, renderDeadlineRows } from '../features/module/logistics';
 import { renderModuleDetail, headline, renderOverview, renderUnits } from '../features/module/detail';
@@ -124,6 +125,10 @@ export class ModuleView extends ItemView {
   }
 
   render(): void {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+
+  private renderContent(): void {
     const root = this.contentEl;
 
     root.empty();

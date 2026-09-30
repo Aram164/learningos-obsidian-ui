@@ -1,17 +1,49 @@
-/* One tab row, used by Garden and Review (components.ts `filterTabs`). */
-.los-filter-tabs {
+/* One grouped control grammar, adapted from Apple's macOS segmented control.
+ * Native buttons retain their labels, pressed state and keyboard semantics. */
+.los-filter-tabs,
+.los-root .los-tabs,
+.los-root .los-subtabs,
+.los-root .los-project-tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
-  width: min(900px, 100%);
-  margin: 0 0 18px;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px;
+  margin: 0 0 var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-sm);
+  background: var(--los-paper-3);
 }
-
-.los-root .los-filter-tab {
+.los-root .los-filter-tab,
+.los-root .los-tabs > .los-btn,
+.los-root .los-subtabs > .los-btn,
+.los-root .los-project-tabs > .los-btn {
   min-height: 32px;
-  padding: 4px 12px;
-  border-color: transparent;
-  border-radius: var(--los-r-pill);
+  padding: var(--los-1) var(--los-3);
+  border: 1px solid transparent;
+  border-radius: calc(var(--los-r-sm) - 2px);
+  background: transparent;
+  color: var(--los-ink-soft);
+  box-shadow: none;
+}
+.los-root .los-filter-tab:hover,
+.los-root .los-tabs > .los-btn:hover,
+.los-root .los-subtabs > .los-btn:hover,
+.los-root .los-project-tabs > .los-btn:hover {
+  background: var(--los-selected);
+  color: var(--los-ink);
+}
+.los-root .los-filter-tab.is-active,
+.los-root .los-tabs > .los-btn[aria-pressed="true"],
+.los-root .los-subtabs > .los-btn[aria-pressed="true"],
+.los-root .los-project-tabs > .los-btn[aria-pressed="true"] {
+  border-color: var(--los-rule);
+  background: var(--los-surface-raised);
+  color: var(--los-ink);
+  box-shadow: 0 1px 3px var(--los-shadow-soft);
+  font-weight: 650;
 }
 
 /* Garden is an incubation list, not an AI configuration panel. */

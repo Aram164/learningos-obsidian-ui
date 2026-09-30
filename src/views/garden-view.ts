@@ -1,3 +1,4 @@
+import { withRenderFocus } from '../accessibility/render-focus';
 import {
   ItemView,
   Notice,
@@ -106,6 +107,10 @@ export class GardenView extends ItemView {
   }
 
   render(): void {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+
+  private renderContent(): void {
     const root = this.contentEl;
 
     root.empty();

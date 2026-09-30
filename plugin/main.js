@@ -1774,7 +1774,7 @@ function filterTabs(parent, ariaLabel, tabs, active, choose, countOf = null) {
     );
     control.addClass("los-filter-tab");
     control.toggleClass("is-active", value === active);
-    control.setAttrs({ "aria-pressed": String(value === active) });
+    control.setAttrs({ "aria-pressed": String(value === active), "data-los-tab": value });
   }
   return row4;
 }
@@ -2156,6 +2156,57 @@ var SessionEndModal = class extends import_obsidian2.Modal {
     this.contentEl.empty();
   }
 };
+
+// src/accessibility/render-focus.ts
+function captureRenderFocus(root) {
+  const doc = root.ownerDocument ?? globalThis.document;
+  const focused = doc?.activeElement;
+  if (!focused || !root.contains(focused)) return () => {
+  };
+  const selector = 'input[type="search"], input.los-route-search, input.los-search, textarea.los-garden-seed-editor, input.los-garden-seed-title';
+  const input = typeof focused.matches === "function" && focused.matches(selector) ? focused : null;
+  const group = focused.tagName === "BUTTON" && typeof focused.closest === "function" ? focused.closest('[role="group"]') : null;
+  const label = group?.getAttribute("aria-label");
+  if (!input && !label) return () => {
+  };
+  const value = input?.value;
+  const start = input?.selectionStart ?? null;
+  const end = input?.selectionEnd ?? null;
+  const direction = input?.selectionDirection ?? void 0;
+  const tab = focused.getAttribute("data-los-tab");
+  const text8 = focused.textContent;
+  const top = root.scrollTop;
+  const left = root.scrollLeft;
+  return () => {
+    const now2 = doc.activeElement;
+    if (now2 && now2 !== focused && now2 !== doc.body && now2.isConnected) return;
+    let replacement = null;
+    if (input && typeof root.querySelectorAll === "function") {
+      replacement = Array.from(root.querySelectorAll(selector)).find((node) => node.tagName === input.tagName && node.className === input.className && node.value === value) ?? null;
+    } else if (label && typeof root.querySelectorAll === "function") {
+      const nextGroup = Array.from(root.querySelectorAll('[role="group"]')).find((node) => node.getAttribute("aria-label") === label);
+      replacement = nextGroup ? Array.from(nextGroup.querySelectorAll("button")).find((node) => !node.disabled && (tab ? node.getAttribute("data-los-tab") === tab : node.textContent === text8)) ?? null : null;
+    }
+    if (!replacement) return;
+    replacement.focus({ preventScroll: true });
+    if (input && start !== null && end !== null) {
+      try {
+        replacement.setSelectionRange(start, end, direction);
+      } catch {
+      }
+    }
+    root.scrollTop = top;
+    root.scrollLeft = left;
+  };
+}
+function withRenderFocus(root, render2) {
+  const restore = captureRenderFocus(root);
+  try {
+    render2();
+  } finally {
+    restore();
+  }
+}
 
 // src/views/abilities-view.ts
 var import_obsidian4 = require("obsidian");
@@ -3656,15 +3707,6 @@ function renderToolbar(root, host, plane) {
   search.addEventListener("input", () => {
     host.query = search.value;
     host.render();
-    const replacement = (root.ownerDocument ?? globalThis.document)?.getElementById?.("los-ability-search");
-    if (replacement && typeof replacement.focus === "function") {
-      replacement.focus();
-      const end = replacement.value.length;
-      try {
-        replacement.setSelectionRange?.(end, end);
-      } catch {
-      }
-    }
   });
   button(right, "Concept atlas", () => host.plugin.nav.openAtlas(), "tertiary").addClass("los-ability-concept-link");
 }
@@ -4149,6 +4191,9 @@ var AbilitiesView = class extends import_obsidian4.ItemView {
     });
   }
   render() {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+  renderContent() {
     renderAbilityMap(this.contentEl, this);
   }
 };
@@ -6686,6 +6731,9 @@ var AtlasView = class extends import_obsidian5.ItemView {
     }
   }
   render() {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+  renderContent() {
     this.clearRenderEffects();
     renderAtlas(this.contentEl, this);
   }
@@ -7410,6 +7458,9 @@ var GardenView = class extends import_obsidian8.ItemView {
     this.render();
   }
   render() {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+  renderContent() {
     const root = this.contentEl;
     root.empty();
     root.addClass(
@@ -12744,6 +12795,9 @@ var ModuleView = class extends import_obsidian11.ItemView {
     return this.plugin.store.unitsFor(module2.id).length ? "units" : "overview";
   }
   render() {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+  renderContent() {
     const root = this.contentEl;
     root.empty();
     root.addClass(
@@ -13028,6 +13082,9 @@ var ProgramView = class extends import_obsidian13.ItemView {
     this.leaf.updateHeader?.();
   }
   render() {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+  renderContent() {
     const root = this.contentEl;
     root.empty();
     root.addClass("los-root", "los-program-view");
@@ -14142,6 +14199,9 @@ var ProjectView = class extends import_obsidian14.ItemView {
     );
   }
   render() {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+  renderContent() {
     const root = this.contentEl;
     root.empty();
     root.addClass(
@@ -16651,6 +16711,9 @@ var ReviewView = class extends import_obsidian16.ItemView {
     this.render();
   }
   render() {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+  renderContent() {
     const root = this.contentEl;
     root.empty();
     root.addClass(
@@ -17063,6 +17126,9 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
     return ["?", "Health not checked", "Run the bounded health report before trusting a green state."];
   }
   render() {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+  renderContent() {
     const root = this.contentEl;
     root.empty();
     root.addClass("los-root", "los-diagnostics-view");
@@ -21156,7 +21222,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:17d48dddf5eee8bd1c068f2d013f75364332a920547989e2b903c71e96ca221d" : "unavailable";
+  return true ? "sha256:1c42348e14ca3b3206be2677ac84b7d595447dd12e7e20942dcb627d1df623d2" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

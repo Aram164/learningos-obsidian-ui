@@ -91,7 +91,7 @@
   width: auto;
   margin: 0;
   padding: 2px;
-  border-radius: var(--los-r-md);
+  border-radius: var(--los-r-sm);
   background: var(--los-paper-3);
 }
 .los-root .los-ability-search {
@@ -712,4 +712,15 @@
   .los-ability-detail-section { padding: var(--los-3); }
   .los-root .los-ability-list-row { grid-template-columns: minmax(0, 1fr); gap: 2px; }
   .los-root.los-ability-draft { padding: var(--los-4); }
+}
+
+@container los-view (max-width: 980px) {
+  .los-ability-plane,
+  .los-ability-plane.has-inspector { grid-template-columns: minmax(0, 1fr); }
+}
+@container los-view (max-width: 600px) {
+  .los-ability-graph, .los-ability-detail-head, .los-ability-detail-section { padding: var(--los-3); }
+  .los-root .los-ability-list-row { grid-template-columns: minmax(0, 1fr); gap: var(--los-1); }
+  .los-ability-toolbar-right { width: 100%; }
+  .los-root .los-ability-search { flex: 1; min-width: 120px; }
 }

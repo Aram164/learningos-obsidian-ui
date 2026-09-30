@@ -1,3 +1,4 @@
+import { withRenderFocus } from '../accessibility/render-focus';
 import { ItemView, type WorkspaceLeaf } from 'obsidian';
 import { VIEW_ABILITIES } from '../constants';
 import { asAbilityLayout } from '../contracts/route-v1';
@@ -76,6 +77,10 @@ export class AbilitiesView extends ItemView implements AbilityHost {
   }
 
   render(): void {
+    withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+
+  private renderContent(): void {
     renderAbilityMap(this.contentEl, this);
   }
 }

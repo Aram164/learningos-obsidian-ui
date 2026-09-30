@@ -2,18 +2,6 @@
  * Detail screens use the same calm record-row grammar as the Figma system.
  * Cards remain reserved for a current workspace, composer, or boundary — a
  * border now means focus or a genuinely raised surface. */
-.los-root .los-tabs .los-btn--cta,
-.los-root .los-tabs .los-btn--row,
-.los-root .los-subtabs .los-btn--row,
-.los-root .los-project-tabs .is-active {
-  border-color: transparent;
-  border-radius: var(--los-r-pill);
-  background: var(--los-accent-wash);
-  box-shadow: none;
-  color: var(--los-accent);
-  font-weight: 650;
-}
-
 .los-section-heading {
   display: flex;
   width: min(900px, 100%);
@@ -30,7 +18,7 @@
 .los-record-list {
   display: grid;
   width: min(900px, 100%);
-  gap: 0;
+  gap: var(--los-2);
 }
 
 .los-root .los-record-row {
@@ -40,11 +28,10 @@
   grid-template-columns: minmax(0, 1fr) auto;
   gap: var(--los-4);
   align-items: center;
-  padding: 12px 2px;
-  border: 0;
-  border-bottom: 1px solid var(--los-line);
-  border-radius: 0;
-  background: transparent;
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
   color: var(--los-ink);
   text-align: left;
 }
@@ -85,7 +72,7 @@
   gap: var(--los-4);
   margin-top: 20px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--los-line-strong);
+  border-bottom: 1px solid var(--los-rule);
 }
 .los-learning-context h2 { margin: 0; }
 .los-learning-context span { color: var(--los-ink-soft); font-size: 12px; }
@@ -105,3 +92,9 @@
 .los-module-view > .los-subtabs { margin-bottom: 4px; }
 .los-module-unit-list { margin-bottom: 28px; }
 
+
+@container los-view (max-width: 560px) {
+  .los-root .los-record-row { grid-template-columns: minmax(0, 1fr); gap: var(--los-2); }
+  .los-learning-context, .los-semester-summary { flex-wrap: wrap; gap: var(--los-2); }
+  .los-project-link { align-items: stretch; flex-direction: column; }
+}
