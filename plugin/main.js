@@ -21147,7 +21147,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:b3db8c38f2199a86013791579ab2ed4fcd7dd9d2a41d9ac2e8720cfd22db4461" : "unavailable";
+  return true ? "sha256:717c30a8fc0a6f1cfde4ff601d46df6fef9ee2a8e36664553a5199ff7cfc5d98" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

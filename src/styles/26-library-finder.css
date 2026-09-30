@@ -312,9 +312,9 @@
 
 /* ── Column layout ──
  *
- * Every ancestor stays on screen. The horizontal scroll is the point: a tree
- * six levels deep is walked by pushing columns off the left, and a column that
- * wrapped or shrank would stop being a fixed place to aim at. */
+ * Ancestors keep a stable width as the tree grows. The current column uses
+ * any remaining room; deeper paths scroll horizontally without squeezing
+ * their navigation columns. */
 
 .los-finder-columns {
   display: flex;
@@ -332,11 +332,14 @@
   display: flex;
   flex: 0 0 236px;
   flex-direction: column;
+  min-width: 0;
+  min-height: 0;
   border-right: 1px solid var(--los-rule);
   overflow-y: auto;
 }
 
 .los-finder-column:last-child {
+  flex-grow: 1;
   border-right: 0;
 }
 
@@ -345,8 +348,10 @@
 }
 
 .los-finder-column-title {
+  flex: 0 0 auto;
   position: sticky;
   top: 0;
+  z-index: 1;
   padding: var(--los-2) var(--los-3);
   border-bottom: 1px solid var(--los-rule);
   background: var(--los-paper-3);
@@ -361,6 +366,7 @@
 }
 
 .los-finder-column-empty {
+  flex: 0 0 auto;
   padding: var(--los-3);
   color: var(--los-ink-faint);
   font-size: 12px;
@@ -368,8 +374,10 @@
 
 .los-root .los-finder-column-row {
   display: flex;
+  flex: 0 0 auto;
   gap: var(--los-2);
   align-items: center;
+  justify-content: flex-start;
   width: 100%;
   min-height: 36px;
   padding: var(--los-1) var(--los-3);
@@ -423,6 +431,12 @@
 
 .los-finder-column-row .los-finder-row-title {
   flex: 1 1 auto;
+  min-width: 0;
+}
+
+.los-finder-column-row .los-finder-row-icon,
+.los-finder-column-row .los-finder-row-chevron {
+  flex: 0 0 auto;
 }
 
 /* ── Inspector ── */
