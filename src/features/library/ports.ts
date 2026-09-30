@@ -21,8 +21,14 @@ export interface LibraryFinderHost {
   /** The selected entry's segment inside the open folder, or null. */
   readonly folderSelection: string | null;
   readonly folderLayout: LibraryFolderLayoutV1;
-  /** Filter text, scoped to the open folder. */
-  readonly query: string;
+  /**
+   * Filter text, scoped to the open folder.
+   *
+   * Mutable so typing can update the query and the results region without
+   * rebuilding the input itself — the same pattern Atlas search uses. Route
+   * state: the finder persists it via `rememberFolder` on every change.
+   */
+  query: string;
   /**
    * The tree context for this render. The view builds it once and hands out the
    * same object, so one render is one pass over the projection.
@@ -48,6 +54,8 @@ export interface LibraryFinderHost {
   takeFolderFocus(): boolean;
   setFolderLayout(layout: LibraryFolderLayoutV1): Promise<void>;
   setFolderQuery(query: string): Promise<void>;
+  /** Persist the current folder route (path, selection, layout, query). */
+  rememberFolder(): Promise<unknown>;
   /** Open a folder, or hand a leaf to whatever opens that kind of thing. */
   activateEntry(entry: FinderEntry): Promise<void>;
 }

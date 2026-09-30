@@ -174,7 +174,8 @@ function renderToolbar(
   parent: HTMLElement,
   folder: FinderFolder,
   shown: number,
-): void {
+  onQuery: (value: string) => void,
+): { input: HTMLInputElement; count: HTMLElement } {
   const toolbar = parent.createDiv({ cls: 'los-finder-toolbar' });
 
   const up = button(
@@ -194,10 +195,12 @@ function renderToolbar(
       placeholder: `Filter ${folder.name}…`,
       'aria-label': `Filter the contents of ${folder.name}`,
     },
-  });
+  }) as HTMLInputElement;
   search.value = view.query;
+  // Only the results region is redrawn while typing. Rebuilding the input on
+  // its own input event is what made focus leave after every keystroke.
   search.addEventListener('input', () => {
-    void view.setFolderQuery(search.value);
+    onQuery(search.value);
   });
 
   const layouts = toolbar.createDiv({
@@ -217,10 +220,12 @@ function renderToolbar(
   }
 
   const total = folder.entries.length;
-  toolbar.createSpan({
+  const count = toolbar.createSpan({
     cls: 'los-finder-count',
     text: shown === total ? itemCount(total) : `${shown} of ${total} items`,
   });
+
+  return { input: search, count };
 }
 
 // ----------------------------------------------------------------- list layout
@@ -280,6 +285,7 @@ function renderList(
   view: LibraryFinderHost,
   parent: HTMLElement,
   entries: readonly FinderEntry[],
+  focusSelection: boolean,
 ): void {
   const list = parent.createDiv({
     cls: 'los-finder-list',
@@ -294,7 +300,6 @@ function renderList(
   header.createSpan({ text: 'Kind' });
   header.createSpan({ text: 'Items' });
 
-  const focusSelection = view.takeFolderFocus();
   for (const entry of entries) {
     const row = renderRow(view, list, entry);
     if (focusSelection && entry.segment === view.folderSelection) row.focus();
@@ -525,11 +530,10 @@ function renderCoverage(
 export function renderFinder(
   view: LibraryFinderHost,
   root: HTMLElement,
-): void {
+): HTMLInputElement {
   const context = view.finderContext();
   const trail = trailFor(context, view.folderPath);
   const folder = trail[trail.length - 1] ?? folderAt(context, []);
-  const words = filterWords(view.query);
 
   const shell = root.createDiv({ cls: 'los-finder' });
   renderSidebar(view, shell, trail[0] ?? folder);
@@ -537,65 +541,125 @@ export function renderFinder(
   const main = shell.createDiv({ cls: 'los-finder-main' });
   renderPathBar(view, main, trail);
 
-  const entries = folder.entries.filter((entry) => matches(entry, words));
-  renderToolbar(view, main, folder, entries.length);
+  // The dynamic region: everything the filter changes. The input itself is
+  // static, so typing never rebuilds the field it is typed into.
+  let count: HTMLElement | null = null;
+  let noteWrap: HTMLElement | null = null;
+  let body: HTMLElement | null = null;
+  let input: HTMLInputElement | null = null;
 
-  if (folder.description && !words.length) {
-    main.createEl('p', {
-      cls: 'los-finder-folder-note',
-      text: folder.description,
+  const renderBody = (focusSelection: boolean): void => {
+    if (!body) return;
+    body.empty();
+    const words = filterWords(view.query);
+    const entries = folder.entries.filter((entry) => matches(entry, words));
+
+    if (folder.missing) {
+      empty(
+        body,
+        'Folder unavailable',
+        'This path is not in the current projection. It may have been renamed, '
+        + 'or the views may need rebuilding.',
+        'Back to Library',
+        () => void view.openFolder([]),
+      );
+      return;
+    }
+
+    if (view.folderLayout === 'columns') {
+      renderColumns(view, body, trail, words);
+    } else if (!folder.entries.length) {
+      empty(
+        body,
+        'Nothing filed here yet',
+        // Only a DECLARED folder can be empty — a domain from the taxonomy, or a
+        // module from the curriculum. Both exist whether or not anything has
+        // been routed to them, so this is a documented absence rather than a
+        // missing folder, and saying which one it is beats an unexplained blank.
+        `${folder.kindLabel} folders exist whether or not material has been `
+        + 'routed to them, so this is an absence on the record rather than '
+        + 'something gone missing.',
+      );
+    } else if (!entries.length) {
+      empty(
+        body,
+        'Nothing matches that filter',
+        `No item in ${folder.name} matches “${view.query.trim()}”.`,
+        'Clear filter',
+        () => handleClear(),
+      );
+    } else {
+      renderList(view, body, entries, focusSelection);
+    }
+
+    const panel = body.createDiv({
+      cls: 'los-finder-inspector',
+      attr: { 'aria-label': 'Selected item' },
     });
-  }
-
-  const body = main.createDiv({ cls: 'los-finder-body' });
-
-  if (folder.missing) {
-    empty(
-      body,
-      'Folder unavailable',
-      'This path is not in the current projection. It may have been renamed, '
-      + 'or the views may need rebuilding.',
-      'Back to Library',
-      () => void view.openFolder([]),
+    const selected = entries.find(
+      (entry) => entry.segment === view.folderSelection,
     );
-    return;
-  }
+    if (selected) renderEntryInspector(view, panel, selected);
+    else renderFolderInspector(panel, folder);
+  };
 
-  if (view.folderLayout === 'columns') {
-    renderColumns(view, body, trail, words);
-  } else if (!folder.entries.length) {
-    empty(
-      body,
-      'Nothing filed here yet',
-      // Only a DECLARED folder can be empty — a domain from the taxonomy, or a
-      // module from the curriculum. Both exist whether or not anything has
-      // been routed to them, so this is a documented absence rather than a
-      // missing folder, and saying which one it is beats an unexplained blank.
-      `${folder.kindLabel} folders exist whether or not material has been `
-      + 'routed to them, so this is an absence on the record rather than '
-      + 'something gone missing.',
+  const updateResults = (focusSelection: boolean): void => {
+    const words = filterWords(view.query);
+    const entries = folder.entries.filter((entry) => matches(entry, words));
+    const total = folder.entries.length;
+    const shown = entries.length;
+    count?.setText(
+      shown === total ? itemCount(total) : `${shown} of ${total} items`,
     );
-  } else if (!entries.length) {
-    empty(
-      body,
-      'Nothing matches that filter',
-      `No item in ${folder.name} matches “${view.query.trim()}”.`,
-      'Clear filter',
-      () => void view.setFolderQuery(''),
-    );
-  } else {
-    renderList(view, body, entries);
-  }
+    if (noteWrap) {
+      noteWrap.empty();
+      if (folder.description && !words.length) {
+        noteWrap.createEl('p', {
+          cls: 'los-finder-folder-note',
+          text: folder.description,
+        });
+      }
+    }
+    renderBody(focusSelection);
+  };
 
-  const panel = body.createDiv({
-    cls: 'los-finder-inspector',
-    attr: { 'aria-label': 'Selected item' },
-  });
-  const selected = entries.find(
-    (entry) => entry.segment === view.folderSelection,
-  );
-  if (selected) renderEntryInspector(view, panel, selected);
-  else renderFolderInspector(panel, folder);
+  const handleClear = (): void => {
+    // A pending row-focus belongs to the selection move that set it. Clearing
+    // the filter is a new act with its own focus target: the field itself.
+    view.takeFolderFocus();
+    if (!input) {
+      void view.setFolderQuery('');
+      return;
+    }
+    input.value = '';
+    view.query = '';
+    void view.rememberFolder();
+    updateResults(false);
+    input.focus();
+  };
+
+  const onQuery = (value: string): void => {
+    // Typing claims focus. A stale row-focus from an earlier selection move
+    // must not steal it back on the next full render.
+    view.takeFolderFocus();
+    view.query = value;
+    void view.rememberFolder();
+    updateResults(false);
+  };
+
+  const words = filterWords(view.query);
+  const entries = folder.entries.filter((entry) => matches(entry, words));
+  const toolbar = renderToolbar(view, main, folder, entries.length, onQuery);
+  input = toolbar.input;
+  count = toolbar.count;
+
+  noteWrap = main.createDiv({ cls: 'los-finder-note' });
+  body = main.createDiv({ cls: 'los-finder-body' });
+  // The full render consumes the pending row-focus, if any; later keystrokes
+  // update in place and leave focus where the learner put it.
+  updateResults(view.takeFolderFocus());
 
   if (!view.folderPath.length) renderCoverage(view, main);
+
+  return toolbar.input;
 }

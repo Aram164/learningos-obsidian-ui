@@ -628,6 +628,202 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
+  heading('library folder filter');
+  {
+    const { app, plugin } = await boot();
+    await plugin.nav.openLibrary();
+    await tick();
+    await tick();
+    let view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+
+    // Walk to Mathematics → Books, the folder from the report: two books.
+    const openSegment = async (segment) => {
+      view.contentEl.find('los-finder-row').find(
+        (row) => row.getAttribute('data-segment') === segment,
+      ).fire('click');
+      await tick();
+      await tick();
+      view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+      view.contentEl.find('los-finder-row').find(
+        (row) => row.getAttribute('data-segment') === segment,
+      ).fire('click');
+      await tick();
+      await tick();
+      view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    };
+    const mathSegment = view.contentEl.find('los-finder-row').find(
+      (row) => (row.getAttribute('data-segment') || '').includes('mathematics'),
+    ).getAttribute('data-segment');
+    await openSegment(mathSegment);
+    await openSegment('type:book');
+
+    check(
+      'the report folder holds two books to filter',
+      view.folderPath.join('/') === `${mathSegment}/type:book`
+        && view.contentEl.find('los-finder-row').length === 2,
+    );
+
+    // Continuous typing must not rebuild the field it is typed into: focus,
+    // text, caret and selection survive every keystroke while results update.
+    let search = view.contentEl.find('los-finder-filter')[0];
+    search.focus();
+    search.typeText('p');
+    await tick();
+    search.typeText('r');
+    await tick();
+    search.typeText('o');
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check(
+      'three keystrokes without re-clicking keep the same focused field',
+      view.contentEl.find('los-finder-filter')[0] === search
+        && global.document.activeElement === search
+        && search.value === 'pro'
+        && view.query === 'pro'
+        && search.selectionStart === 3
+        && search.selectionEnd === 3,
+    );
+    check(
+      'typing narrows the rows and the count while scoped to the folder',
+      view.contentEl.find('los-finder-row').length === 1
+        && view.contentEl.find('los-finder-count')[0].allText().includes('1 of 2')
+        && plugin.router.snapshot().current.query === 'pro',
+    );
+
+    // Editing in the middle inserts at the caret rather than appending.
+    search.setSelectionRange(1, 1);
+    search.typeText('X');
+    await tick();
+    check(
+      'a middle edit keeps focus and lands at the caret',
+      global.document.activeElement === search
+        && search.value === 'pXro'
+        && search.selectionStart === 2
+        && search.selectionEnd === 2,
+    );
+
+    // Backspace deletes before the caret.
+    search.value = 'pXro'.slice(0, 1) + 'pXro'.slice(2);
+    search.selectionStart = search.selectionEnd = 1;
+    search.fire('input');
+    await tick();
+    check(
+      'backspace keeps focus and deletes before the caret',
+      global.document.activeElement === search
+        && search.value === 'pro'
+        && view.query === 'pro',
+    );
+
+    // Paste replaces the selection.
+    search.setSelectionRange(0, 3);
+    search.value = 'prob';
+    search.selectionStart = search.selectionEnd = 4;
+    search.fire('input');
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check(
+      'paste keeps focus and replaces the selection while results update',
+      global.document.activeElement === search
+        && search.value === 'prob'
+        && view.contentEl.find('los-finder-row').length === 1,
+    );
+
+    // No match offers Clear, which empties the field and hands focus back.
+    search.value = 'zzz-no-match';
+    search.selectionStart = search.selectionEnd = 12;
+    search.fire('input');
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    view.contentEl.findText('los-btn', 'Clear filter').fire('click');
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    search = view.contentEl.find('los-finder-filter')[0];
+    check(
+      'Clear filter restores the rows and focuses the emptied field',
+      view.query === ''
+        && search.value === ''
+        && global.document.activeElement === search
+        && view.contentEl.find('los-finder-row').length === 2,
+    );
+
+    // The columns layout filters its current column under the same field.
+    await view.setFolderLayout('columns');
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    search = view.contentEl.find('los-finder-filter')[0];
+    search.focus();
+    search.typeText('isl');
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    const currentColumn = view.contentEl.find('los-finder-column').find(
+      (column) => column.classes.has('is-current'),
+    );
+    check(
+      'columns typing keeps the same focused field and narrows its column',
+      view.contentEl.find('los-finder-filter')[0] === search
+        && global.document.activeElement === search
+        && view.query === 'isl'
+        && currentColumn.find('los-finder-column-row').length === 1,
+    );
+
+    // A manifest refresh is not a reason to interrupt a half-typed query: the
+    // field is rebuilt by the redraw, so focus and caret cross it deliberately.
+    search.setSelectionRange(1, 1);
+    await plugin.reloadStore();
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    const refreshed = view.contentEl.find('los-finder-filter')[0];
+    check(
+      'an unrelated refresh preserves the query, the focus and the caret',
+      refreshed !== search
+        && refreshed.value === 'isl'
+        && view.query === 'isl'
+        && global.document.activeElement === refreshed
+        && refreshed.selectionStart === 1
+        && refreshed.selectionEnd === 1,
+    );
+
+    // Filtering changes neither selection nor navigation.
+    refreshed.value = '';
+    refreshed.selectionStart = refreshed.selectionEnd = 0;
+    refreshed.fire('input');
+    await tick();
+    await view.setFolderLayout('list');
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    const firstRow = view.contentEl.find('los-finder-row')[0];
+    const segment = firstRow.getAttribute('data-segment');
+    firstRow.fire('click');
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check(
+      'selection still takes focus after filtering',
+      view.folderSelection === segment
+        && global.document.activeElement
+        && global.document.activeElement.getAttribute('data-segment') === segment,
+    );
+
+    // The filter is scoped to its folder and does not travel with navigation.
+    view.contentEl.find('los-finder-filter')[0].typeText('x');
+    await tick();
+    await view.openEnclosingFolder();
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check(
+      'leaving the folder clears its filter',
+      view.query === ''
+        && view.contentEl.find('los-finder-filter')[0].value === '',
+    );
+
+    plugin.onunload();
+  }
+
   heading('zero-friction inbox capture');
   {
     const { app, plugin, calls } = await boot();

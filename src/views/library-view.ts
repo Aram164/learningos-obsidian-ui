@@ -228,6 +228,17 @@ export class LibraryView extends ItemView {
     // is what makes that true without any folder having to remember to.
     this._finderContext = null;
 
+    // A full rebuild must not interrupt a half-typed filter. Capture the caret
+    // before the old input is gone; the folder branch restores it afterwards.
+    // A pending row-focus wins over this — a selection move has its own target.
+    const active = typeof document === 'undefined'
+      ? null
+      : document.activeElement as HTMLInputElement | null;
+    const finderCaret = active?.classList?.contains('los-finder-filter')
+      && !this._focusSelection
+      ? { start: active.selectionStart, end: active.selectionEnd }
+      : null;
+
     root.empty();
     root.addClass(
       'los-root',
@@ -253,7 +264,17 @@ export class LibraryView extends ItemView {
     }
 
     if (this.screen === 'folder') {
-      this.renderFinder(root);
+      const filter = this.renderFinder(root);
+      if (finderCaret) {
+        filter.focus();
+        const start = finderCaret.start ?? filter.value.length;
+        const end = finderCaret.end ?? start;
+        try {
+          filter.setSelectionRange?.(start, end);
+        } catch {
+          /* a host without selection support keeps focus and loses only the caret */
+        }
+      }
       return;
     }
 
@@ -573,9 +594,25 @@ export class LibraryView extends ItemView {
   }
 
   async setFolderQuery(query: string): Promise<void> {
+    // Typing no longer comes through here — the finder updates the results
+    // region in place. This full-render path survives for external callers and
+    // as the Clear-filter fallback: render first so the UI answers at once,
+    // then persist, then hand focus to the new field.
     this.query = query;
-    await this.rememberFolder();
+    // A full render with a pending row-focus would pull focus to the row; a
+    // query change means the field, so the row claim is dropped deliberately.
+    this._focusSelection = false;
     this.render();
+    const filter = typeof this.contentEl.querySelector === 'function'
+      ? this.contentEl.querySelector<HTMLInputElement>('.los-finder-filter')
+      : null;
+    filter?.focus();
+    try {
+      if (filter) filter.setSelectionRange?.(filter.value.length, filter.value.length);
+    } catch {
+      /* focus alone is still the repair */
+    }
+    await this.rememberFolder();
   }
 
   /**
@@ -615,7 +652,7 @@ export class LibraryView extends ItemView {
 
     renderFinder(
     root: HTMLElement,
-  ): void {
-    renderFinder(this, root);
+  ): HTMLInputElement {
+    return renderFinder(this, root);
   }
 }

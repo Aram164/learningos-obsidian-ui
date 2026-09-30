@@ -10539,7 +10539,7 @@ function renderPathBar(view, parent, trail) {
     });
   });
 }
-function renderToolbar2(view, parent, folder2, shown) {
+function renderToolbar2(view, parent, folder2, shown, onQuery) {
   const toolbar = parent.createDiv({ cls: "los-finder-toolbar" });
   const up = button(
     toolbar,
@@ -10560,7 +10560,7 @@ function renderToolbar2(view, parent, folder2, shown) {
   });
   search.value = view.query;
   search.addEventListener("input", () => {
-    void view.setFolderQuery(search.value);
+    onQuery(search.value);
   });
   const layouts = toolbar.createDiv({
     cls: "los-finder-layouts",
@@ -10578,10 +10578,11 @@ function renderToolbar2(view, parent, folder2, shown) {
     control.setAttribute("aria-pressed", String(active));
   }
   const total = folder2.entries.length;
-  toolbar.createSpan({
+  const count2 = toolbar.createSpan({
     cls: "los-finder-count",
     text: shown === total ? itemCount(total) : `${shown} of ${total} items`
   });
+  return { input: search, count: count2 };
 }
 function renderRow(view, list4, entry) {
   const selected = view.folderSelection === entry.segment;
@@ -10621,7 +10622,7 @@ function renderRow(view, list4, entry) {
   });
   return row4;
 }
-function renderList2(view, parent, entries) {
+function renderList2(view, parent, entries, focusSelection) {
   const list4 = parent.createDiv({
     cls: "los-finder-list",
     attr: { "aria-label": "Folder contents" }
@@ -10633,7 +10634,6 @@ function renderList2(view, parent, entries) {
   header2.createSpan({ text: "Name" });
   header2.createSpan({ text: "Kind" });
   header2.createSpan({ text: "Items" });
-  const focusSelection = view.takeFolderFocus();
   for (const entry of entries) {
     const row4 = renderRow(view, list4, entry);
     if (focusSelection && entry.segment === view.folderSelection) row4.focus();
@@ -10801,63 +10801,109 @@ function renderFinder(view, root) {
   const context = view.finderContext();
   const trail = trailFor(context, view.folderPath);
   const folder2 = trail[trail.length - 1] ?? folderAt(context, []);
-  const words2 = filterWords(view.query);
   const shell2 = root.createDiv({ cls: "los-finder" });
   renderSidebar(view, shell2, trail[0] ?? folder2);
   const main = shell2.createDiv({ cls: "los-finder-main" });
   renderPathBar(view, main, trail);
-  const entries = folder2.entries.filter((entry) => matches(entry, words2));
-  renderToolbar2(view, main, folder2, entries.length);
-  if (folder2.description && !words2.length) {
-    main.createEl("p", {
-      cls: "los-finder-folder-note",
-      text: folder2.description
+  let count2 = null;
+  let noteWrap = null;
+  let body = null;
+  let input = null;
+  const renderBody = (focusSelection) => {
+    if (!body) return;
+    body.empty();
+    const words3 = filterWords(view.query);
+    const entries2 = folder2.entries.filter((entry) => matches(entry, words3));
+    if (folder2.missing) {
+      empty(
+        body,
+        "Folder unavailable",
+        "This path is not in the current projection. It may have been renamed, or the views may need rebuilding.",
+        "Back to Library",
+        () => void view.openFolder([])
+      );
+      return;
+    }
+    if (view.folderLayout === "columns") {
+      renderColumns(view, body, trail, words3);
+    } else if (!folder2.entries.length) {
+      empty(
+        body,
+        "Nothing filed here yet",
+        // Only a DECLARED folder can be empty — a domain from the taxonomy, or a
+        // module from the curriculum. Both exist whether or not anything has
+        // been routed to them, so this is a documented absence rather than a
+        // missing folder, and saying which one it is beats an unexplained blank.
+        `${folder2.kindLabel} folders exist whether or not material has been routed to them, so this is an absence on the record rather than something gone missing.`
+      );
+    } else if (!entries2.length) {
+      empty(
+        body,
+        "Nothing matches that filter",
+        `No item in ${folder2.name} matches \u201C${view.query.trim()}\u201D.`,
+        "Clear filter",
+        () => handleClear()
+      );
+    } else {
+      renderList2(view, body, entries2, focusSelection);
+    }
+    const panel = body.createDiv({
+      cls: "los-finder-inspector",
+      attr: { "aria-label": "Selected item" }
     });
-  }
-  const body = main.createDiv({ cls: "los-finder-body" });
-  if (folder2.missing) {
-    empty(
-      body,
-      "Folder unavailable",
-      "This path is not in the current projection. It may have been renamed, or the views may need rebuilding.",
-      "Back to Library",
-      () => void view.openFolder([])
+    const selected = entries2.find(
+      (entry) => entry.segment === view.folderSelection
     );
-    return;
-  }
-  if (view.folderLayout === "columns") {
-    renderColumns(view, body, trail, words2);
-  } else if (!folder2.entries.length) {
-    empty(
-      body,
-      "Nothing filed here yet",
-      // Only a DECLARED folder can be empty — a domain from the taxonomy, or a
-      // module from the curriculum. Both exist whether or not anything has
-      // been routed to them, so this is a documented absence rather than a
-      // missing folder, and saying which one it is beats an unexplained blank.
-      `${folder2.kindLabel} folders exist whether or not material has been routed to them, so this is an absence on the record rather than something gone missing.`
+    if (selected) renderEntryInspector(view, panel, selected);
+    else renderFolderInspector(panel, folder2);
+  };
+  const updateResults = (focusSelection) => {
+    const words3 = filterWords(view.query);
+    const entries2 = folder2.entries.filter((entry) => matches(entry, words3));
+    const total = folder2.entries.length;
+    const shown = entries2.length;
+    count2?.setText(
+      shown === total ? itemCount(total) : `${shown} of ${total} items`
     );
-  } else if (!entries.length) {
-    empty(
-      body,
-      "Nothing matches that filter",
-      `No item in ${folder2.name} matches \u201C${view.query.trim()}\u201D.`,
-      "Clear filter",
-      () => void view.setFolderQuery("")
-    );
-  } else {
-    renderList2(view, body, entries);
-  }
-  const panel = body.createDiv({
-    cls: "los-finder-inspector",
-    attr: { "aria-label": "Selected item" }
-  });
-  const selected = entries.find(
-    (entry) => entry.segment === view.folderSelection
-  );
-  if (selected) renderEntryInspector(view, panel, selected);
-  else renderFolderInspector(panel, folder2);
+    if (noteWrap) {
+      noteWrap.empty();
+      if (folder2.description && !words3.length) {
+        noteWrap.createEl("p", {
+          cls: "los-finder-folder-note",
+          text: folder2.description
+        });
+      }
+    }
+    renderBody(focusSelection);
+  };
+  const handleClear = () => {
+    view.takeFolderFocus();
+    if (!input) {
+      void view.setFolderQuery("");
+      return;
+    }
+    input.value = "";
+    view.query = "";
+    void view.rememberFolder();
+    updateResults(false);
+    input.focus();
+  };
+  const onQuery = (value) => {
+    view.takeFolderFocus();
+    view.query = value;
+    void view.rememberFolder();
+    updateResults(false);
+  };
+  const words2 = filterWords(view.query);
+  const entries = folder2.entries.filter((entry) => matches(entry, words2));
+  const toolbar = renderToolbar2(view, main, folder2, entries.length, onQuery);
+  input = toolbar.input;
+  count2 = toolbar.count;
+  noteWrap = main.createDiv({ cls: "los-finder-note" });
+  body = main.createDiv({ cls: "los-finder-body" });
+  updateResults(view.takeFolderFocus());
   if (!view.folderPath.length) renderCoverage(view, main);
+  return toolbar.input;
 }
 
 // src/features/library/filters.ts
@@ -11340,6 +11386,8 @@ var LibraryView = class extends import_obsidian10.ItemView {
   render() {
     const root = this.contentEl;
     this._finderContext = null;
+    const active = typeof document === "undefined" ? null : document.activeElement;
+    const finderCaret = active?.classList?.contains("los-finder-filter") && !this._focusSelection ? { start: active.selectionStart, end: active.selectionEnd } : null;
     root.empty();
     root.addClass(
       "los-root",
@@ -11361,7 +11409,16 @@ var LibraryView = class extends import_obsidian10.ItemView {
       return;
     }
     if (this.screen === "folder") {
-      this.renderFinder(root);
+      const filter = this.renderFinder(root);
+      if (finderCaret) {
+        filter.focus();
+        const start = finderCaret.start ?? filter.value.length;
+        const end = finderCaret.end ?? start;
+        try {
+          filter.setSelectionRange?.(start, end);
+        } catch {
+        }
+      }
       return;
     }
     if (this.screen === "group") {
@@ -11563,8 +11620,15 @@ var LibraryView = class extends import_obsidian10.ItemView {
   }
   async setFolderQuery(query) {
     this.query = query;
-    await this.rememberFolder();
+    this._focusSelection = false;
     this.render();
+    const filter = typeof this.contentEl.querySelector === "function" ? this.contentEl.querySelector(".los-finder-filter") : null;
+    filter?.focus();
+    try {
+      if (filter) filter.setSelectionRange?.(filter.value.length, filter.value.length);
+    } catch {
+    }
+    await this.rememberFolder();
   }
   /**
    * Open whatever this entry is.
@@ -11600,7 +11664,7 @@ var LibraryView = class extends import_obsidian10.ItemView {
     });
   }
   renderFinder(root) {
-    renderFinder(this, root);
+    return renderFinder(this, root);
   }
 };
 
@@ -21005,7 +21069,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:746934c433c47bfe2362e1b8f61d50f18d13738771cfcc7b1a5ea965db995aab" : "unavailable";
+  return true ? "sha256:f0784537a6758c9ba7d1f74041b6fa6b4fe8681a53c6b6ed42dc683d720e0929" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
