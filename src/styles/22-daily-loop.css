@@ -79,7 +79,6 @@
 .los-program-view > .los-learning-list { margin-bottom: 18px; }
 
 /* Module detail: one header, one tab strip, one 900px decision column. */
-.los-module-view > .los-subtabs,
 .los-module-view > .los-module-units-heading,
 .los-module-view > .los-module-unit-list,
 .los-module-view > .los-overview,
@@ -97,4 +96,24 @@
   .los-root .los-record-row { grid-template-columns: minmax(0, 1fr); gap: var(--los-2); }
   .los-learning-context, .los-semester-summary { flex-wrap: wrap; gap: var(--los-2); }
   .los-project-link { align-items: stretch; flex-direction: column; }
+}
+
+/* The projected learning commitments use the same reading surfaces as records. */
+.los-program-view > .los-learning-list { gap: var(--los-2); }
+.los-program-view .los-learning-row {
+  min-height: 72px;
+  padding: var(--los-3) var(--los-4);
+  align-items: center;
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+.los-root .los-btn.los-learning-title { display: block; min-height: 36px; }
+.los-project-view > .los-project-search {
+  width: min(900px, 100%);
+  margin-bottom: var(--los-3);
+}
+@container los-view (max-width: 560px) {
+  .los-learning-row { grid-template-columns: minmax(0, 1fr); gap: var(--los-1); }
+  .los-learning-meta { justify-content: flex-start; }
 }

@@ -21,7 +21,7 @@ export interface LibrarySourceFiltersV1 {
 /**
  * The Atlas lens (ADR-016 decision 8).
  *
- * One field carries all five values even though the shell splits them across
+ * One field carries the concept and corpus lenses even though the shell splits them across
  * two controls, because two fields would make `lens=prerequisites` with
  * `scope=diagnostics` expressible and it means nothing.
  */
@@ -30,7 +30,8 @@ export type AtlasLensV1 =
   | "path"
   | "semantic"
   | "bridges"
-  | "diagnostics";
+  | "diagnostics"
+  | "domains";
 
 /** How far the focused graph reaches. Depth 1 is the default. */
 export type AtlasDepthV1 = 1 | 2;
@@ -175,6 +176,7 @@ const ATLAS_LENSES: readonly AtlasLensV1[] = [
   "semantic",
   "bridges",
   "diagnostics",
+  "domains",
 ];
 
 const ATLAS_DEPTHS: readonly AtlasDepthV1[] = [1, 2];

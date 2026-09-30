@@ -14,6 +14,7 @@ import {
 import { renderFocusedGraph, renderOutline, renderPath } from './focused-graph';
 import { renderInspector } from './inspector';
 import { renderBridges, renderDiagnostics } from './lenses';
+import { renderDomains, renderAtlasVariants } from './domains';
 import { focusQuestion, moduleTrail, plural, subgraphSummary } from './narrative';
 import {
   collectQuestions,
@@ -380,6 +381,7 @@ function renderEntry(
       'Diagnostics',
       'What the relation registry has not yet been told, with every count opening its records.',
     ],
+    ['domains', 'Domain Atlas', 'Notes and curated shelves across every domain, with every record reachable.'],
   ] as const) {
     const row = seeds.createEl('button', {
       cls: 'los-atlas-record is-clickable',
@@ -510,10 +512,16 @@ function renderConceptSeed(
 }
 
 export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
-  const caret = capturedCaret();
+  const domainLens = host.state.lens === 'domains';
+  const caret = domainLens ? null : capturedCaret();
 
   root.empty();
   root.addClass('los-root', 'los-atlas-view');
+  root.toggleClass('los-domain-view', domainLens);
+  if (domainLens) {
+    renderDomains(root, host);
+    return;
+  }
 
   if (!host.plugin.store.ready) {
     pageHeader(root, 'Reach', 'Atlas unavailable');
@@ -529,7 +537,7 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
 
   const graph = buildAtlasGraph(host.plugin.store);
 
-  const header = pageHeader(
+  pageHeader(
     root,
     'Reach',
     'Concept atlas',
@@ -537,8 +545,7 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   );
   // The Atlas destination opens on the Ability map; concepts are one step
   // away from it and it is one step back from here.
-  button(header.createDiv({ cls: 'los-actions los-atlas-ability-link' }), 'Ability map',
-    () => host.plugin.nav.openAbilities(), 'quiet');
+  renderAtlasVariants(root, host.plugin.nav, 'concepts');
 
   const controls = root.createDiv({ cls: 'los-atlas-controls' });
   let results: HTMLElement;

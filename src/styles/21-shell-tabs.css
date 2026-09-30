@@ -1,6 +1,7 @@
 /* One grouped control grammar, adapted from Apple's macOS segmented control.
  * Native buttons retain their labels, pressed state and keyboard semantics. */
 .los-filter-tabs,
+.los-root .los-search-tabs,
 .los-root .los-tabs,
 .los-root .los-subtabs,
 .los-root .los-project-tabs {
@@ -17,6 +18,7 @@
   background: var(--los-paper-3);
 }
 .los-root .los-filter-tab,
+.los-root .los-search-tab,
 .los-root .los-tabs > .los-btn,
 .los-root .los-subtabs > .los-btn,
 .los-root .los-project-tabs > .los-btn {
@@ -29,6 +31,7 @@
   box-shadow: none;
 }
 .los-root .los-filter-tab:hover,
+.los-root .los-search-tab:hover,
 .los-root .los-tabs > .los-btn:hover,
 .los-root .los-subtabs > .los-btn:hover,
 .los-root .los-project-tabs > .los-btn:hover {
@@ -36,6 +39,7 @@
   color: var(--los-ink);
 }
 .los-root .los-filter-tab.is-active,
+.los-root .los-search-tab.is-active,
 .los-root .los-tabs > .los-btn[aria-pressed="true"],
 .los-root .los-subtabs > .los-btn[aria-pressed="true"],
 .los-root .los-project-tabs > .los-btn[aria-pressed="true"] {

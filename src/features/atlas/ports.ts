@@ -29,6 +29,8 @@ export type AtlasPlugin = Pick<
   readonly nav: Pick<
     AppNavigator,
     | 'openAbilities'
+    | 'openLibraryFolder'
+    | 'openLibraryHome'
     | 'openAtlas'
     | 'openModule'
     | 'openRecord'
@@ -93,9 +95,17 @@ export type AtlasInspectorTab =
   | 'evidence'
   | 'sources';
 
+/** View-owned attention inside the read-only Domains corpus lens. */
+export interface DomainAtlasState {
+  query: string;
+  selected: string | null;
+  readonly disclosures: Map<string, boolean>;
+}
+
 export interface AtlasHost {
   readonly plugin: AtlasPlugin;
   readonly state: AtlasRouteState;
+  readonly domains: DomainAtlasState;
   /** Search text. Working state, never route state. */
   query: string;
   tab: AtlasInspectorTab;

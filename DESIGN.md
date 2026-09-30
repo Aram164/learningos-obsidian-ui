@@ -176,7 +176,7 @@ maintenance is never mixed with study destinations.
   shows conditions, the evidence the attempt must show, every route, bridges,
   tentative connections and the stages where it is met. *Draft a worked
   attempt* and *Note a possible connection* save UI-owned drafts only; the
-  Atlas sends no write. The concept atlas stays under More.
+  Atlas sends no write. Ability map, Concept atlas and Domain Atlas share one accessible variant control. Domain Atlas groups projected notes by the generated atlas's published path buckets, and curated shelves by their recorded domain. It preserves every shelf entry and rationale, names entries and unique sources separately, and keeps source thematic folders distinct from note domains. Search preserves the selected domain, caret and explicit role/shelf disclosure preferences. The generated text overview remains available for excluded material; these counts grant no learning progress or ability evidence.
 - **Diagnostics**: contract versions, projection freshness (`✓ current`,
   `● stale`, `? core unavailable`), resolved Python interpreter and its
   attempted paths. Under More, never on Home.
@@ -195,7 +195,7 @@ maintenance is never mixed with study destinations.
   the core. AI may explain or propose but cannot broadly write.
 - **Inbox**: zero-friction text/file capture through `los.py capture`; the
   interface never asks the learner to choose a canonical destination.
-- **Garden and atlas**: the managed Garden Base and generated domain atlas are
+- **Garden and atlas**: the managed Garden Base and projected Domain Atlas are
   first-class navigation targets, not hidden vault furniture. Reopening a
   target reveals its existing tab instead of multiplying identical tabs.
 - **Boundaries**: Future Master's Planning is the sole curriculum boundary.

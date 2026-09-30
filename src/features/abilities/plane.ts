@@ -1,4 +1,5 @@
 import { button, empty, filterTabs } from '../../components';
+import { renderAtlasVariants } from '../atlas/domains';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 import type {
   AbilityBridgeV1,
@@ -167,6 +168,7 @@ function renderStamp(parent: HTMLElement, host: AbilityHost): void {
 }
 
 function renderToolbar(root: HTMLElement, host: AbilityHost, plane: AbilityPlane | null): void {
+  renderAtlasVariants(root, host.plugin.nav, 'abilities');
   const bar = root.createDiv({ cls: 'los-ability-toolbar' });
   const left = bar.createDiv({ cls: 'los-ability-toolbar-left' });
   const switcher = filterTabs<AbilityLayoutV1>(
@@ -201,8 +203,6 @@ function renderToolbar(root: HTMLElement, host: AbilityHost, plane: AbilityPlane
     host.render();
 
   });
-  button(right, 'Concept atlas', () => host.plugin.nav.openAtlas(), 'tertiary')
-    .addClass('los-ability-concept-link');
 }
 
 function renderUnread(root: HTMLElement, host: AbilityHost): void {

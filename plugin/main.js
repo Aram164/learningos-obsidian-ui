@@ -1736,17 +1736,17 @@ function chip(parent, record10, onClick) {
   if (onClick) el.addEventListener("click", () => onClick(record10));
   return el;
 }
-function pageHeader(parent, kicker, title, description = "", headingId = "") {
+function pageHeader(parent, kicker, title2, description = "", headingId = "") {
   const header2 = parent.createDiv({ cls: "los-page-header" });
   if (kicker) header2.createDiv({ cls: "los-kicker", text: kicker });
-  const heading = header2.createEl("h1", { text: title });
+  const heading = header2.createEl("h1", { text: title2 });
   if (headingId) heading.setAttribute("id", headingId);
   if (description) header2.createEl("p", { text: description });
   return header2;
 }
-function section(parent, title, description = "") {
+function section(parent, title2, description = "") {
   const wrap = parent.createDiv({ cls: "los-section" });
-  wrap.createEl("h2", { text: title });
+  wrap.createEl("h2", { text: title2 });
   if (description) wrap.createEl("p", { cls: "los-muted", text: description });
   return wrap;
 }
@@ -1765,10 +1765,10 @@ function filterTabs(parent, ariaLabel, tabs, active, choose, countOf = null) {
   row4.setAttrs({ role: "group", "aria-label": ariaLabel });
   enableButtonGroupKeyboardNavigation(row4);
   for (const [value, label] of tabs) {
-    const count2 = countOf ? countOf(value) : 0;
+    const count3 = countOf ? countOf(value) : 0;
     const control = button(
       row4,
-      count2 ? `${label} ${count2}` : label,
+      count3 ? `${label} ${count3}` : label,
       () => choose(value),
       "quiet"
     );
@@ -1798,9 +1798,9 @@ function overflowMenu(parent, items, label = "More actions") {
   }
   return details;
 }
-function empty(parent, title, detail, actionLabel = "", action = null) {
+function empty(parent, title2, detail, actionLabel = "", action = null) {
   const el = parent.createDiv({ cls: "los-empty" });
-  el.createEl("h3", { text: title });
+  el.createEl("h3", { text: title2 });
   el.createEl("p", { text: detail });
   if (actionLabel) button(el, actionLabel, action, "quiet");
   return el;
@@ -2221,7 +2221,8 @@ var ATLAS_LENSES = [
   "path",
   "semantic",
   "bridges",
-  "diagnostics"
+  "diagnostics",
+  "domains"
 ];
 var ATLAS_DEPTHS = [1, 2];
 var PROJECT_DETAIL_TABS = [
@@ -2292,6 +2293,263 @@ function foldCase(value) {
 }
 function upperCase(value) {
   return value.toLocaleUpperCase("en");
+}
+
+// src/features/atlas/domains.ts
+var KNOWN_DOMAINS = [
+  ["mathematics", "Mathematics"],
+  ["machine-learning", "Machine learning"],
+  ["systems", "Systems"],
+  ["data-systems", "Data systems"],
+  ["algorithms", "Algorithms"],
+  ["programming", "Programming"],
+  ["cross-domain", "Across domains"]
+];
+var ROLE_LABELS = {
+  crosswalk: "Crosswalks",
+  reference: "Reference notes",
+  synthesis: "Syntheses",
+  derivation: "Derivations",
+  "exercise-bank": "Exercise banks",
+  "mock-exam": "Mock exams",
+  implementation: "Implementations",
+  question: "Questions"
+};
+var ROLE_ORDER = ["crosswalk", "reference", "synthesis", "derivation", "exercise-bank", "mock-exam", "implementation", "question"];
+var count = (amount, singular, plural3 = `${singular}s`) => `${amount} ${amount === 1 ? singular : plural3}`;
+var roleOf = (record10) => asText(record10.role) ?? "reference";
+var title = (record10) => asText(record10.title) ?? asText(record10.id) ?? "Untitled record";
+var prose = (value) => {
+  const text8 = asText(value)?.trim() ?? "";
+  return text8.startsWith("<!--") ? "" : text8;
+};
+var domainTitle = (id2) => KNOWN_DOMAINS.find(([key]) => key === id2)?.[1] ?? id2.split("-").map((part2) => part2 ? part2.charAt(0).toUpperCase() + part2.slice(1) : "").join(" ");
+function noteBucket(record10) {
+  const parts = asText(record10.path)?.split("/") ?? [];
+  return parts[0] === "knowledge" && parts[1] === "notes" && parts[2] && !parts[2].endsWith(".md") ? parts[2] : "cross-domain";
+}
+function domainIndex(host) {
+  const notes = host.plugin.store.of("note");
+  const shelves = [...host.plugin.store.catalogues(), ...host.plugin.store.topicPacks()];
+  const ids2 = new Set(KNOWN_DOMAINS.map(([id2]) => id2));
+  for (const note of notes) ids2.add(noteBucket(note));
+  for (const shelf of shelves) ids2.add(asText(shelf.domain) ?? "cross-domain");
+  const known = KNOWN_DOMAINS.map(([id2]) => id2);
+  const ordered = [...known, ...[...ids2].filter((id2) => !known.includes(id2)).sort(compareStrings)];
+  return {
+    domains: ordered.map((id2) => ({
+      id: id2,
+      title: domainTitle(id2),
+      notes: notes.filter((note) => noteBucket(note) === id2).sort((a, b) => compareStrings(title(a), title(b))),
+      shelves: shelves.filter((shelf) => (asText(shelf.domain) ?? "cross-domain") === id2).sort((a, b) => compareStrings(title(a), title(b)))
+    })),
+    sources: new Map(host.plugin.store.sources().flatMap((source) => {
+      const id2 = asText(source.id);
+      return id2 ? [[id2, source]] : [];
+    }))
+  };
+}
+function entries(shelf) {
+  return Array.isArray(shelf.entries) ? shelf.entries.filter(isRecord2) : [];
+}
+function shelfCounts(shelf) {
+  const rows = entries(shelf);
+  return `${count(rows.length, "entry", "entries")} \xB7 ${count(new Set(rows.map((row4) => asText(row4.source)).filter(Boolean)).size, "source")}`;
+}
+function matches(query, fields) {
+  const words2 = foldCase(query).split(/\s+/).filter(Boolean);
+  const haystack = foldCase(fields.map((field2) => typeof field2 === "string" ? field2 : "").join(" "));
+  return words2.every((word) => haystack.includes(word));
+}
+function noteMatches(note, query) {
+  return matches(query, [title(note), note.domain, note.role, note.state, prose(note.summary)]);
+}
+function shelfMatches(shelf, query, index) {
+  return matches(query, [
+    title(shelf),
+    shelf.domain,
+    shelf.purpose,
+    prose(shelf.summary),
+    ...entries(shelf).flatMap((entry) => {
+      const source = index.sources.get(asText(entry.source) ?? "");
+      return [entry.group, entry.why, source ? title(source) : entry.source, ...asStrings(source?.authors)];
+    })
+  ]);
+}
+function renderAtlasVariants(parent, nav, active) {
+  const variants = filterTabs(parent, "Atlas views", [
+    ["abilities", "Ability map"],
+    ["concepts", "Concept atlas"],
+    ["domains", "Domain Atlas"]
+  ], active, (value) => {
+    if (value === active) return;
+    if (value === "abilities") void nav.openAbilities();
+    else void nav.openAtlas({ lens: value === "domains" ? "domains" : "prerequisites" });
+  });
+  variants.addClass("los-atlas-variant-switch");
+}
+function disclosure2(parent, state, key, query, label, cls) {
+  const details = parent.createEl("details", { cls });
+  details.open = Boolean(query.trim()) || state.disclosures.get(key) === true;
+  const summary = details.createEl("summary", { cls: "los-domain-disclosure-summary", text: label });
+  summary.addEventListener("click", () => state.disclosures.set(key, !details.open));
+  return details.createDiv({ cls: "los-domain-disclosure-body" });
+}
+function renderDomainDetail(parent, host, index, domain) {
+  const state = host.domains;
+  const query = state.query;
+  const wholeDomainMatches = matches(query, [domain.id, domain.title]);
+  const notes = domain.notes.filter((note) => wholeDomainMatches || noteMatches(note, query));
+  const shelves = domain.shelves.filter((shelf) => wholeDomainMatches || shelfMatches(shelf, query, index));
+  const detail = parent.createDiv({ cls: "los-domain-detail" });
+  detail.createEl("h2", { text: domain.title });
+  detail.createDiv({ cls: "los-domain-counts", text: query.trim() ? `${notes.length} of ${count(domain.notes.length, "note")} \xB7 ${shelves.length} of ${count(domain.shelves.length, "shelf")} match` : `${count(notes.length, "note")} \xB7 ${count(shelves.length, "shelf")}` });
+  if (!notes.length && !shelves.length) {
+    empty(
+      detail,
+      query.trim() ? "No matches in this domain" : "Nothing published here yet",
+      query.trim() ? "Choose another matching domain, or clear the search to see this domain\u2019s full overview." : "Published notes and curated shelves will appear here. Source folders remain available below."
+    );
+    return;
+  }
+  if (domain.notes.length) {
+    const section3 = detail.createDiv({ cls: "los-domain-notes" });
+    section3.createEl("h3", { text: "Notes by role" });
+    if (!notes.length) section3.createDiv({ cls: "los-domain-empty", text: "No notes match this search." });
+    const roles = [...new Set(notes.map(roleOf))].sort((a, b) => (ROLE_ORDER.indexOf(a) < 0 ? 99 : ROLE_ORDER.indexOf(a)) - (ROLE_ORDER.indexOf(b) < 0 ? 99 : ROLE_ORDER.indexOf(b)) || compareStrings(a, b));
+    for (const role of roles) {
+      const visible = notes.filter((note) => roleOf(note) === role);
+      const total = domain.notes.filter((note) => roleOf(note) === role).length;
+      const body = disclosure2(
+        section3,
+        state,
+        `${domain.id}:role:${role}`,
+        query,
+        `${ROLE_LABELS[role] ?? role} \xB7 ${query.trim() ? `${visible.length} of ${total}` : total}`,
+        "los-domain-role"
+      );
+      for (const note of visible) {
+        const row4 = button(body, title(note), () => host.plugin.nav.openRecord(note), "quiet");
+        row4.addClass("los-domain-note-row");
+        row4.createSpan({ cls: "los-domain-note-meta", text: [asText(note.state), asText(note.authorship)].filter(Boolean).join(" \xB7 ") });
+      }
+    }
+  }
+  if (domain.shelves.length) {
+    const section3 = detail.createDiv({ cls: "los-domain-shelves" });
+    section3.createEl("h3", { text: "Curated shelves" });
+    if (!shelves.length) section3.createDiv({ cls: "los-domain-empty", text: "No shelves match this search." });
+    for (const shelf of shelves) {
+      const shelfId = asText(shelf.id) ?? title(shelf);
+      const body = disclosure2(
+        section3,
+        state,
+        `${domain.id}:shelf:${shelfId}`,
+        query,
+        `${title(shelf)} \xB7 ${shelfCounts(shelf)}`,
+        "los-domain-shelf"
+      );
+      const purpose = prose(shelf.purpose);
+      const summary = prose(shelf.summary);
+      if (purpose) body.createEl("p", { text: purpose });
+      if (summary && summary !== purpose) body.createEl("p", { text: summary });
+      const actions = body.createDiv({ cls: "los-actions" });
+      button(actions, "Open shelf", () => host.plugin.nav.openRecord(shelf), "quiet").addClass("los-domain-open-shelf");
+      for (const entry of entries(shelf)) {
+        const id2 = asText(entry.source) ?? "";
+        const source = index.sources.get(id2);
+        const row4 = body.createDiv({ cls: "los-domain-entry-row" });
+        if (source) button(row4, title(source), () => host.plugin.nav.openSourceDetail(id2), "tertiary").addClass("los-domain-open-source");
+        else row4.createDiv({ cls: "los-domain-source-unavailable", text: `${id2 || "Source"} \xB7 unavailable in this projection` });
+        const group = prose(entry.group);
+        if (group) row4.createDiv({ cls: "los-domain-entry-group", text: group });
+        const why = prose(entry.why);
+        if (why) row4.createEl("p", { cls: "los-domain-entry-why", text: why });
+      }
+    }
+  }
+}
+function renderResults(results, host, index) {
+  const state = host.domains;
+  const query = state.query;
+  const visible = index.domains.filter((domain) => matches(query, [domain.id, domain.title]) || domain.notes.some((note) => noteMatches(note, query)) || domain.shelves.some((shelf) => shelfMatches(shelf, query, index)));
+  results.createDiv({ cls: "los-domain-search-status", attr: { role: "status" }, text: query.trim() ? `${count(visible.length, "domain")} match \u201C${query}\u201D. Your selected domain stays open.` : `${count(index.domains.length, "domain")} \xB7 ${count(index.domains.reduce((n, domain) => n + domain.notes.length, 0), "note")} \xB7 ${count(index.domains.reduce((n, domain) => n + domain.shelves.length, 0), "shelf")}` });
+  const layout = results.createDiv({ cls: "los-domain-layout" });
+  const rail = layout.createDiv({ cls: "los-domain-rail", attr: { role: "group", "aria-label": "Knowledge domains" } });
+  enableButtonGroupKeyboardNavigation(rail, "vertical");
+  for (const domain of index.domains.filter((row4) => visible.includes(row4) || row4.id === state.selected)) {
+    const choice = button(rail, domain.title, () => {
+      state.selected = domain.id;
+      withRenderFocus(results, () => {
+        results.empty();
+        renderResults(results, host, index);
+      });
+    }, "quiet");
+    choice.addClass("los-domain-choice");
+    choice.toggleClass("is-active", domain.id === state.selected);
+    choice.setAttrs({ "aria-pressed": String(domain.id === state.selected), "data-los-tab": domain.id });
+    choice.createSpan({ cls: "los-domain-choice-counts", text: `${count(domain.notes.length, "note")} \xB7 ${count(domain.shelves.length, "shelf")}` });
+    if (query.trim() && !visible.includes(domain)) choice.createSpan({ cls: "los-domain-choice-empty", text: "No search matches" });
+  }
+  const selected = index.domains.find((domain) => domain.id === state.selected);
+  if (selected) renderDomainDetail(layout, host, index, selected);
+}
+function renderSourceDomains(root, host, index) {
+  const section3 = root.createDiv({ cls: "los-domain-source-domains" });
+  section3.createEl("h2", { text: "Source folders" });
+  section3.createEl("p", { text: "Sources use their own recorded thematic groups. A source may appear in more than one folder; these counts overlap." });
+  const actions = section3.createDiv({ cls: "los-actions" });
+  button(actions, `All sources \xB7 ${index.sources.size}`, () => host.plugin.nav.openLibraryHome("sources"), "quiet").addClass("los-domain-all-sources");
+  button(actions, "Search all sources", () => host.plugin.nav.openLibraryHome("sources", host.domains.query), "quiet").addClass("los-domain-search-sources");
+  const groups = host.plugin.store.thematicGroups();
+  const groupIds = new Set(groups.map((group) => asText(group.id)).filter(Boolean));
+  const list4 = section3.createDiv({ cls: "los-domain-source-groups" });
+  for (const group of groups) {
+    const id2 = asText(group.id);
+    if (!id2) continue;
+    const amount = [...index.sources.values()].filter((source) => asStrings(source.thematic_group_ids).includes(id2)).length;
+    button(
+      list4,
+      `${title(group)} \xB7 ${count(amount, "source")}`,
+      () => host.plugin.nav.openLibraryFolder([`domain:${id2}`]),
+      "quiet"
+    ).addClass("los-domain-source-group");
+  }
+  const unfiled = [...index.sources.values()].filter((source) => !asStrings(source.thematic_group_ids).some((id2) => groupIds.has(id2))).length;
+  if (unfiled) button(
+    list4,
+    `Unfiled \xB7 ${count(unfiled, "source")}`,
+    () => host.plugin.nav.openLibraryFolder(["shelf:unfiled"]),
+    "quiet"
+  ).addClass("los-domain-unfiled");
+  const secondary = section3.createDiv({ cls: "los-actions" });
+  button(secondary, "Generated text overview", () => host.plugin.openVaultPath("generated/domain-atlas.md"), "tertiary");
+  section3.createEl("p", { cls: "los-micro", text: "The generated overview also records material outside this map. Notes, shelf placements and source counts describe published records; they do not record learning progress or ability evidence." });
+}
+function renderDomains(root, host) {
+  pageHeader(root, "Reach", "Domain Atlas", "A readable map of your published notes and curated shelves across every domain. Open one domain, then follow the records it holds.");
+  renderAtlasVariants(root, host.plugin.nav, "domains");
+  if (!host.plugin.store.ready) {
+    empty(root, "Domain Atlas unavailable", "The interface contract could not be loaded. Rebuild the projection or reopen this view when it is available.");
+    return;
+  }
+  const index = domainIndex(host);
+  const state = host.domains;
+  if (!index.domains.some((domain) => domain.id === state.selected)) {
+    state.selected = index.domains.find((domain) => domain.notes.length || domain.shelves.length)?.id ?? index.domains[0]?.id ?? null;
+  }
+  const controls = root.createDiv({ cls: "los-domain-controls" });
+  const label = controls.createEl("label", { text: "Search domains, notes and shelves", cls: "los-domain-search-label" });
+  const search = label.createEl("input", { cls: "los-domain-search", attr: { type: "search", placeholder: "Find a note, role, shelf or source on a shelf", "aria-label": "Search Domain Atlas" } });
+  search.value = state.query;
+  const results = root.createDiv({ cls: "los-domain-results" });
+  search.addEventListener("input", () => {
+    state.query = search.value;
+    results.empty();
+    renderResults(results, host, index);
+  });
+  renderResults(results, host, index);
+  renderSourceDomains(root, host, index);
 }
 
 // src/features/abilities/model.ts
@@ -2459,10 +2717,10 @@ function annotationLabel(annotation) {
   if (annotation === "either") return "either route";
   return "";
 }
-function columnLabel(index, count2) {
-  if (count2 <= 1) return "Abilities";
+function columnLabel(index, count3) {
+  if (count3 <= 1) return "Abilities";
   if (index === 0) return "Foundations";
-  if (index === count2 - 1) return "Extension";
+  if (index === count3 - 1) return "Extension";
   return `Step ${index + 1}`;
 }
 function nodeMeta(role, modules) {
@@ -2586,10 +2844,10 @@ function buildGroup(memberIds, rows, bridges2, candidates, labels) {
     }
     const gutterStart = columnX(index - 1) + PLANE.nodeWidth;
     const gutter = PLANE.columnGap;
-    const entries = [...bySources.values()];
-    entries.forEach((lane, position) => {
+    const entries2 = [...bySources.values()];
+    entries2.forEach((lane, position) => {
       lanes.push({
-        x: Math.round(gutterStart + (position + 1) * gutter / (entries.length + 1)),
+        x: Math.round(gutterStart + (position + 1) * gutter / (entries2.length + 1)),
         sources: lane.sources,
         targets: lane.targets,
         alternative: lane.alternative
@@ -2698,14 +2956,14 @@ function sentence(reason) {
   const trimmed = reason.trim();
   return trimmed ? trimmed.charAt(0).toUpperCase() + trimmed.slice(1) : trimmed;
 }
-function shortModuleLabel(title, code, fallback) {
-  const bracket = title?.match(/\(([A-Za-z][A-Za-z0-9&]{1,7})\)\s*$/)?.[1];
+function shortModuleLabel(title2, code, fallback) {
+  const bracket = title2?.match(/\(([A-Za-z][A-Za-z0-9&]{1,7})\)\s*$/)?.[1];
   if (bracket && bracket === bracket.toUpperCase()) return bracket;
   if (code) return code;
   if (bracket) return bracket;
-  const words2 = (title ?? "").split(/\s+/).filter((word) => /^[A-Za-z]/.test(word));
+  const words2 = (title2 ?? "").split(/\s+/).filter((word) => /^[A-Za-z]/.test(word));
   if (words2.length > 2) return words2.map((word) => word.charAt(0)).join("").toUpperCase();
-  return title || fallback;
+  return title2 || fallback;
 }
 
 // src/features/abilities/labels.ts
@@ -3255,7 +3513,7 @@ function abilityWorkspaces(store, row4) {
       seen.set(id2, asLabel(workspace, id2));
     }
   }
-  return [...seen].map(([id2, title]) => ({ id: id2, title }));
+  return [...seen].map(([id2, title2]) => ({ id: id2, title: title2 }));
 }
 function abilityWorkPointers(store, focus) {
   const options = [];
@@ -3297,9 +3555,9 @@ function openConnection(host, row4, brief) {
     onSaved: () => host.render()
   }).open();
 }
-function block(parent, title, lede = "") {
+function block(parent, title2, lede = "") {
   const wrap = parent.createEl("section", { cls: "los-ability-detail-section" });
-  wrap.createEl("h2", { text: title });
+  wrap.createEl("h2", { text: title2 });
   if (lede) wrap.createEl("p", { cls: "los-micro", text: lede });
   return wrap;
 }
@@ -3595,9 +3853,9 @@ function renderAbilityMap(root, host) {
     renderAbilityDetail(root, host, brief, plane, selected);
     return;
   }
-  const title = root.createDiv({ cls: "los-ability-title" });
-  title.createEl("h1", { text: "Ability map" });
-  title.createEl("p", {
+  const title2 = root.createDiv({ cls: "los-ability-title" });
+  title2.createEl("h1", { text: "Ability map" });
+  title2.createEl("p", {
     text: selected ? "Select an ability to see its conditions, routes and evidence." : "Explore one ability group at a time. Preparation routes are directed; reviewed bridges stay distinct."
   });
   renderToolbar(root, host, plane);
@@ -3676,6 +3934,7 @@ function renderStamp(parent, host) {
   stamp.createSpan({ text: `${base} \xB7 current` });
 }
 function renderToolbar(root, host, plane) {
+  renderAtlasVariants(root, host.plugin.nav, "abilities");
   const bar = root.createDiv({ cls: "los-ability-toolbar" });
   const left = bar.createDiv({ cls: "los-ability-toolbar-left" });
   const switcher = filterTabs(
@@ -3708,7 +3967,6 @@ function renderToolbar(root, host, plane) {
     host.query = search.value;
     host.render();
   });
-  button(right, "Concept atlas", () => host.plugin.nav.openAtlas(), "tertiary").addClass("los-ability-concept-link");
 }
 function renderUnread(root, host) {
   const horizon2 = host.plugin.abilityHorizon;
@@ -4054,9 +4312,9 @@ function renderStatus(parent, row4) {
   status.createEl("strong", { text: headline2 });
   for (const reason of row4.reasons) status.createDiv({ cls: "los-micro", text: sentence(reason) });
 }
-function section2(parent, title) {
+function section2(parent, title2) {
   const block2 = parent.createDiv({ cls: "los-ability-inspector-section" });
-  block2.createEl("h3", { text: title });
+  block2.createEl("h3", { text: title2 });
   return block2;
 }
 function renderBridgeInspector(surface, host, plane, bridge2) {
@@ -4617,13 +4875,13 @@ function bridges(graph) {
     return modules.length > 1 ? [{ concept, modules, moduleCount: modules.length }] : [];
   }).sort((left, right) => right.moduleCount - left.moduleCount || compareConcepts(left.concept, right.concept));
 }
-function diagnostic(id2, title, meaning, kind, records) {
+function diagnostic(id2, title2, meaning, kind, records) {
   const conceptIds2 = records.conceptIds ?? [];
   const edgeIds = records.edgeIds ?? [];
   const moduleIds = records.moduleIds ?? [];
   return {
     id: id2,
-    title,
+    title: title2,
     meaning,
     kind,
     count: kind === "concepts" ? conceptIds2.length : kind === "relations" ? edgeIds.length : moduleIds.length,
@@ -4636,7 +4894,7 @@ function diagnostics(graph) {
   const conceptIds2 = (predicate) => graph.concepts.filter(predicate).map((concept) => concept.id);
   const inStrict = (id2) => Boolean(graph.prerequisiteEdges.get(id2)?.length) || Boolean(graph.dependentEdges.get(id2)?.length);
   const edgeIds = (predicate) => graph.edges.filter(predicate).map((edge) => edge.id);
-  const entries = [
+  const entries2 = [
     diagnostic(
       "strict-roots",
       "Concepts with no authored prerequisites",
@@ -4714,7 +4972,7 @@ function diagnostics(graph) {
   ];
   const cycle = findStrictCycle(graph);
   if (cycle) {
-    entries.push(diagnostic(
+    entries2.push(diagnostic(
       "strict-cycle",
       "Prerequisite cycle",
       "Concepts that require one another in a loop. No learning order exists over them, so path derivation is blocked until the registry is corrected.",
@@ -4722,7 +4980,7 @@ function diagnostics(graph) {
       { conceptIds: cycle }
     ));
   }
-  return entries;
+  return entries2;
 }
 function summarize(graph) {
   const strictNodes = /* @__PURE__ */ new Set();
@@ -4751,8 +5009,8 @@ function summarize(graph) {
 }
 
 // src/features/atlas/narrative.ts
-function plural(count2, singular, many = `${singular}s`) {
-  return `${count2} ${count2 === 1 ? singular : many}`;
+function plural(count3, singular, many = `${singular}s`) {
+  return `${count3} ${count3 === 1 ? singular : many}`;
 }
 function focusQuestion(lens, label) {
   switch (lens) {
@@ -4899,9 +5157,9 @@ function mountEdges(canvas, host, graph, edges) {
         path.setAttribute("class", hit ? "los-atlas-edge-hit" : `los-atlas-edge los-atlas-edge--${edge.type}${host.edgeId === edge.id ? " is-selected" : ""}`);
         if (!hit) path.setAttribute("marker-end", `url(#${markerId})`);
         else {
-          const title = doc.createElementNS(SVG2, "title");
-          title.textContent = canonicalSentence(graph, edge);
-          path.append(title);
+          const title2 = doc.createElementNS(SVG2, "title");
+          title2.textContent = canonicalSentence(graph, edge);
+          path.append(title2);
           path.addEventListener("click", () => host.inspectEdge(edge.id));
         }
         svg.append(path);
@@ -5496,8 +5754,8 @@ function renderEndpoint(parent, host, graph, draft, end) {
   const paint = () => {
     results.empty();
     const query = draft.search.trim();
-    const matches2 = (query ? host.plugin.store.search(query, ["concept"]).map((record10) => asString(record10.id)).filter((id2) => Boolean(id2)) : graph.concepts.map((concept) => concept.id)).filter((id2) => id2 !== draft[end === "from" ? "to" : "from"]).slice(0, 12);
-    if (!matches2.length) {
+    const matches3 = (query ? host.plugin.store.search(query, ["concept"]).map((record10) => asString(record10.id)).filter((id2) => Boolean(id2)) : graph.concepts.map((concept) => concept.id)).filter((id2) => id2 !== draft[end === "from" ? "to" : "from"]).slice(0, 12);
+    if (!matches3.length) {
       results.createDiv({
         cls: "los-atlas-absence los-micro",
         text: `Nothing matches \u201C${query}\u201D. Both ends must already be registered concepts; this never creates one.`
@@ -5505,7 +5763,7 @@ function renderEndpoint(parent, host, graph, draft, end) {
       return;
     }
     enableButtonGroupKeyboardNavigation(results, "vertical");
-    for (const id2 of matches2) {
+    for (const id2 of matches3) {
       const row4 = results.createEl("button", {
         cls: "los-atlas-editor-result is-clickable",
         attr: { type: "button" },
@@ -6166,12 +6424,13 @@ function renderDiagnostics(parent, host, graph) {
     cls: "los-micro",
     text: "Each row below opens the records it counts. No authored evidence is not the same as not relevant, and nothing here is a judgment about a concept."
   });
-  const entries = diagnostics(graph);
+  const entries2 = diagnostics(graph);
   const list4 = panel.createDiv({ cls: "los-atlas-diagnostics" });
-  for (const entry of entries) {
+  for (const entry of entries2) {
     renderDiagnosticEntry(list4, host, graph, entry);
   }
   const actions = panel.createDiv({ cls: "los-actions" });
+  button(actions, "Domain Atlas", () => host.plugin.nav.openAtlas({ lens: "domains" }), "quiet");
   button(
     actions,
     "Open generated domain map",
@@ -6297,14 +6556,14 @@ function renderLensBar(parent, host, graph) {
   const group = corpus.createDiv({ cls: "los-atlas-corpus-lenses" });
   group.setAttrs({ role: "group", "aria-label": "Corpus lenses" });
   enableButtonGroupKeyboardNavigation(group, "horizontal");
-  for (const [lens, label, count2] of [
+  for (const [lens, label, count3] of [
     ["bridges", "Cross-module bridges", bridges(graph).length],
     ["diagnostics", "Diagnostics", diagnostics(graph).filter((entry) => entry.count > 0).length]
   ]) {
     const active = host.state.lens === lens;
     const control = button(
       group,
-      `${label} ${count2}`,
+      `${label} ${count3}`,
       () => host.go({ lens: active ? "prerequisites" : lens }),
       "quiet"
     );
@@ -6379,14 +6638,14 @@ function renderEntry(parent, host, graph, searchOnly = false) {
   }
   renderOpenQuestions(entry, host, graph);
   renderConnectAction(entry, host, null);
-  const entries = entry.createDiv({ cls: "los-atlas-entry-group" });
-  entries.createDiv({
+  const entries2 = entry.createDiv({ cls: "los-atlas-entry-group" });
+  entries2.createDiv({
     cls: "los-micro los-atlas-group-head",
     text: "Or start from the corpus"
   });
-  const seeds = entries.createDiv({ cls: "los-atlas-records" });
+  const seeds = entries2.createDiv({ cls: "los-atlas-records" });
   enableButtonGroupKeyboardNavigation(seeds, "vertical");
-  for (const [lens, title, detail] of [
+  for (const [lens, title2, detail] of [
     [
       "bridges",
       `Cross-module bridges \xB7 ${bridges(graph).length}`,
@@ -6396,13 +6655,14 @@ function renderEntry(parent, host, graph, searchOnly = false) {
       "diagnostics",
       "Diagnostics",
       "What the relation registry has not yet been told, with every count opening its records."
-    ]
+    ],
+    ["domains", "Domain Atlas", "Notes and curated shelves across every domain, with every record reachable."]
   ]) {
     const row4 = seeds.createEl("button", {
       cls: "los-atlas-record is-clickable",
       attr: { type: "button" }
     });
-    row4.createDiv({ cls: "los-atlas-record-title", text: title });
+    row4.createDiv({ cls: "los-atlas-record-title", text: title2 });
     row4.createDiv({ cls: "los-micro", text: detail });
     row4.addEventListener("click", () => host.go({ lens }));
   }
@@ -6471,9 +6731,15 @@ function renderConceptSeed(parent, host, graph, conceptId) {
   row4.addEventListener("click", () => host.go({ concept: conceptId }));
 }
 function renderAtlas(root, host) {
-  const caret = capturedCaret();
+  const domainLens = host.state.lens === "domains";
+  const caret = domainLens ? null : capturedCaret();
   root.empty();
   root.addClass("los-root", "los-atlas-view");
+  root.toggleClass("los-domain-view", domainLens);
+  if (domainLens) {
+    renderDomains(root, host);
+    return;
+  }
   if (!host.plugin.store.ready) {
     pageHeader(root, "Reach", "Atlas unavailable");
     empty(
@@ -6486,18 +6752,13 @@ function renderAtlas(root, host) {
     return;
   }
   const graph = buildAtlasGraph(host.plugin.store);
-  const header2 = pageHeader(
+  pageHeader(
     root,
     "Reach",
     "Concept atlas",
     "One concept at a time: what it requires, what builds on it, and the authored relation that says so."
   );
-  button(
-    header2.createDiv({ cls: "los-actions los-atlas-ability-link" }),
-    "Ability map",
-    () => host.plugin.nav.openAbilities(),
-    "quiet"
-  );
+  renderAtlasVariants(root, host.plugin.nav, "concepts");
   const controls = root.createDiv({ cls: "los-atlas-controls" });
   let results;
   const updateSearch = () => {
@@ -6567,6 +6828,7 @@ var AtlasView = class extends import_obsidian5.ItemView {
   lens = "prerequisites";
   depth = 1;
   query = "";
+  domains = { query: "", selected: null, disclosures: /* @__PURE__ */ new Map() };
   tab = "summary";
   semanticOpen = false;
   remainderOpen = false;
@@ -6596,7 +6858,7 @@ var AtlasView = class extends import_obsidian5.ItemView {
     return VIEW_ATLAS;
   }
   getDisplayText() {
-    return "LearningOS \xB7 Concept atlas";
+    return this.lens === "domains" ? "LearningOS \xB7 Domain Atlas" : "LearningOS \xB7 Concept atlas";
   }
   getIcon() {
     return "map";
@@ -7272,12 +7534,12 @@ var BoundaryView = class extends import_obsidian6.ItemView {
           const primary = lists[0] ?? "Other original lists";
           groups.set(primary, [...groups.get(primary) ?? [], source]);
         }
-        const count2 = [...groups.values()].reduce((total, rows) => total + rows.length, 0);
-        results.createDiv({ cls: "los-micro", text: `${count2} matching source${count2 === 1 ? "" : "s"}` });
-        for (const [name, entries] of [...groups].sort(([a], [b]) => compareStrings(a, b))) {
-          const group = disclosure(results, `${name} (${entries.length})`, "los-masters-group");
+        const count3 = [...groups.values()].reduce((total, rows) => total + rows.length, 0);
+        results.createDiv({ cls: "los-micro", text: `${count3} matching source${count3 === 1 ? "" : "s"}` });
+        for (const [name, entries2] of [...groups].sort(([a], [b]) => compareStrings(a, b))) {
+          const group = disclosure(results, `${name} (${entries2.length})`, "los-masters-group");
           if (query) group.parentElement?.setAttribute("open", "");
-          for (const source of entries) {
+          for (const source of entries2) {
             const row4 = group.createDiv({ cls: "los-masters-row" });
             const heading = row4.createDiv({ cls: "los-masters-row-head" });
             heading.createEl("strong", { text: source.title });
@@ -7354,12 +7616,12 @@ var BoundaryView = class extends import_obsidian6.ItemView {
         const evidence3 = row4.createDiv({ cls: "los-masters-evidence" });
         const leftTitle = sourceTitle.get(pair.left_candidate_source_id) || pair.left_candidate_source_id;
         const rightTitle = sourceTitle.get(pair.right_candidate_source_id) || pair.right_candidate_source_id;
-        for (const [side, title] of [
+        for (const [side, title2] of [
           [pair.evidence.left, leftTitle],
           [pair.evidence.right, rightTitle]
         ]) {
           const list4 = evidence3.createDiv({ cls: "los-masters-evidence-side" });
-          list4.createEl("strong", { text: `${title} evidence` });
+          list4.createEl("strong", { text: `${title2} evidence` });
           for (const item of side) {
             list4.createDiv({
               cls: "los-micro",
@@ -7489,7 +7751,7 @@ var GardenView = class extends import_obsidian8.ItemView {
       "Ideas can stay messy here until you know what they want to become."
     );
     this.renderComposer(root);
-    const entries = this.plugin.store.gardenEntries();
+    const entries2 = this.plugin.store.gardenEntries();
     filterTabs(
       root,
       "Garden filters",
@@ -7499,7 +7761,7 @@ var GardenView = class extends import_obsidian8.ItemView {
         this.filter = value;
         this.render();
       },
-      (value) => value === "all" ? entries.length : entries.filter(
+      (value) => value === "all" ? entries2.length : entries2.filter(
         (entry) => String(entry.state || "seed") === value
       ).length
     );
@@ -7513,14 +7775,14 @@ var GardenView = class extends import_obsidian8.ItemView {
       cls: "los-micro",
       text: "Review eligibility is projected by Core"
     });
-    const visible = this.filter === "all" ? entries : entries.filter(
+    const visible = this.filter === "all" ? entries2 : entries2.filter(
       (entry) => String(entry.state || "seed") === this.filter
     );
     if (!visible.length) {
       empty(
         root,
-        entries.length ? "Nothing in this view" : "No Garden seeds yet",
-        entries.length ? "Choose another Garden filter." : "Plant one above. A seed needs no module, topic, destination, or AI."
+        entries2.length ? "Nothing in this view" : "No Garden seeds yet",
+        entries2.length ? "Choose another Garden filter." : "Plant one above. A seed needs no module, topic, destination, or AI."
       );
     } else {
       const list4 = root.createDiv({
@@ -7576,14 +7838,14 @@ var GardenView = class extends import_obsidian8.ItemView {
     editor.addEventListener(
       "input",
       () => {
-        this.plugin.setGardenDraft(title.value, editor.value);
+        this.plugin.setGardenDraft(title2.value, editor.value);
         syncAddState();
       }
     );
     const actions = composer.createDiv({
       cls: "los-actions los-garden-composer-actions"
     });
-    const title = actions.createEl(
+    const title2 = actions.createEl(
       "input",
       {
         cls: "los-garden-seed-title",
@@ -7594,11 +7856,11 @@ var GardenView = class extends import_obsidian8.ItemView {
         }
       }
     );
-    title.value = this.seedTitle;
-    title.addEventListener(
+    title2.value = this.seedTitle;
+    title2.addEventListener(
       "input",
       () => {
-        this.plugin.setGardenDraft(title.value, editor.value);
+        this.plugin.setGardenDraft(title2.value, editor.value);
         syncAddState();
       }
     );
@@ -7624,7 +7886,7 @@ var GardenView = class extends import_obsidian8.ItemView {
       return;
     }
     const text8 = this.seedText;
-    const title = this.seedTitle.trim();
+    const title2 = this.seedTitle.trim();
     if (!text8.trim()) {
       new import_obsidian8.Notice(
         "Write something before adding the seed."
@@ -7637,10 +7899,10 @@ var GardenView = class extends import_obsidian8.ItemView {
       await this.plugin.mutate(
         () => this.plugin.gateway.createGardenSeed(
           text8,
-          title
+          title2
         )
       );
-      this.plugin.clearGardenDraft({ title, text: text8 });
+      this.plugin.clearGardenDraft({ title: title2, text: text8 });
       new import_obsidian8.Notice("Garden seed added.");
     } catch (error) {
       new import_obsidian8.Notice(errorMessage(error));
@@ -8099,7 +8361,7 @@ function renderToday(view, root) {
     );
     const kind = asString(deadline.kind);
     const label = asString(deadline.label);
-    const title = kind === "registration-window" ? label ?? asLabel(deadline) : asString(deadline.title) ?? label ?? asLabel(deadline);
+    const title2 = kind === "registration-window" ? label ?? asLabel(deadline) : asString(deadline.title) ?? label ?? asLabel(deadline);
     const startDate = asString(deadline.start_date);
     const endDate = asString(deadline.end_date);
     const date3 = endDate && startDate && endDate !== startDate ? `${startDate} \u2192 ${endDate}` : startDate ?? endDate ?? "Date pending";
@@ -8108,7 +8370,7 @@ function renderToday(view, root) {
     );
     const registrationDetail = registrationState && registrationState !== "registered" ? ` \xB7 ${registrationState}` : "";
     items.push({
-      title,
+      title: title2,
       detail: `${date3}${registrationDetail}`,
       actionLabel: moduleId ? "Open module" : "",
       action: moduleId ? () => view.plugin.nav.openModule(
@@ -8128,7 +8390,7 @@ function renderToday(view, root) {
       );
     }
     const details = [...categories.entries()].map(
-      ([category, count2]) => `${count2} ${category.replaceAll("-", " ")}`
+      ([category, count3]) => `${count3} ${category.replaceAll("-", " ")}`
     );
     items.push({
       title: `${reviewCount} decision${reviewCount === 1 ? "" : "s"} waiting`,
@@ -8783,8 +9045,8 @@ function renderSourceDetail(view, detail, record10) {
   if (knownLinks.length) {
     const links = disclosure(detail, `Known links (${knownLinks.length})`);
     for (const [label, address] of knownLinks) {
-      const title = typeof titles[label] === "string" ? titles[label] : label;
-      button(links, title, () => view.plugin.openResource({ url: address }), "info");
+      const title2 = typeof titles[label] === "string" ? titles[label] : label;
+      button(links, title2, () => view.plugin.openResource({ url: address }), "info");
     }
   }
   const memberships = view.shelfIndex().get(
@@ -9163,14 +9425,14 @@ function renderCataloguePage(view, root) {
     catalogue
   );
 }
-function renderOrderedCollection(view, detail, collection, title) {
-  const entries = collection.entries;
+function renderOrderedCollection(view, detail, collection, title2) {
+  const entries2 = collection.entries;
   const wrap = section(
     detail,
-    `${title} (${entries.length})`,
+    `${title2} (${entries2.length})`,
     "The order and grouping shown here come directly from the canonical collection."
   );
-  if (!entries.length) {
+  if (!entries2.length) {
     empty(
       wrap,
       "Empty collection",
@@ -9179,7 +9441,7 @@ function renderOrderedCollection(view, detail, collection, title) {
     return;
   }
   let previousGroup = null;
-  entries.forEach(
+  entries2.forEach(
     (entry, index) => {
       if (entry.group && entry.group !== previousGroup) {
         wrap.createDiv({
@@ -9254,11 +9516,11 @@ function renderLegacyList(view, root) {
     "quiet"
   );
   back.addClass("los-route-back");
-  const title = `${view.recordType.charAt(0).toUpperCase()}${view.recordType.slice(1)} records`;
+  const title2 = `${view.recordType.charAt(0).toUpperCase()}${view.recordType.slice(1)} records`;
   pageHeader(
     root,
     "Compatibility view",
-    title,
+    title2,
     view.domain ? `Domain: ${view.domain}` : "Legacy record families remain reachable until their migration gate closes."
   );
   const input = root.createEl(
@@ -9392,7 +9654,7 @@ function renderHome(view, root) {
     cls: "los-group-grid los-library-group-grid"
   });
   for (const group of groups) {
-    const count2 = view.collection === "topic-packs" ? view.plugin.store.topicPacksForGroup(group.id).length : view.plugin.store.sourcesForGroup(group.id).length;
+    const count3 = view.collection === "topic-packs" ? view.plugin.store.topicPacksForGroup(group.id).length : view.plugin.store.sourcesForGroup(group.id).length;
     const card = grid.createEl(
       "button",
       {
@@ -9412,10 +9674,10 @@ function renderHome(view, root) {
         text: group.title
       }
     );
-    const countLabel = view.collection === "topic-packs" ? `pack${count2 === 1 ? "" : "s"}` : `source${count2 === 1 ? "" : "s"}`;
+    const countLabel = view.collection === "topic-packs" ? `pack${count3 === 1 ? "" : "s"}` : `source${count3 === 1 ? "" : "s"}`;
     head.createSpan({
       cls: "los-group-count",
-      text: `${count2} ${countLabel}`
+      text: `${count3} ${countLabel}`
     });
     if (group.description) {
       card.createEl(
@@ -9667,7 +9929,7 @@ var MaterialTree = class {
     } catch (_) {
       return [];
     }
-    const entries = [];
+    const entries2 = [];
     const parent = path.replace(/\/+$/, "");
     for (const dirent of dirents) {
       if (hidden(dirent.name)) continue;
@@ -9683,7 +9945,7 @@ var MaterialTree = class {
           isDirectory = false;
         }
       }
-      entries.push({
+      entries2.push({
         path: `${parent}/${dirent.name}`,
         name: dirent.name,
         isDirectory,
@@ -9691,7 +9953,7 @@ var MaterialTree = class {
         childCount: isDirectory ? this.countAt(absolute) : 0
       });
     }
-    return entries.sort((left, right) => {
+    return entries2.sort((left, right) => {
       if (left.isDirectory !== right.isDirectory) return left.isDirectory ? -1 : 1;
       return compareStrings(left.name, right.name);
     });
@@ -10058,10 +10320,10 @@ function moduleEntry(context, module2) {
   });
 }
 function shelfSources(store, shelf) {
-  const entries = Array.isArray(shelf.entries) ? shelf.entries : [];
+  const entries2 = Array.isArray(shelf.entries) ? shelf.entries : [];
   const sources = [];
   const seen = /* @__PURE__ */ new Set();
-  for (const entry of entries) {
+  for (const entry of entries2) {
     const id2 = typeof entry === "string" ? entry : entry && typeof entry === "object" ? asString(entry.source) : null;
     if (!id2 || seen.has(id2)) continue;
     seen.add(id2);
@@ -10094,18 +10356,18 @@ function unavailable(path) {
     sourceId: null
   };
 }
-function plural2(count2, noun) {
-  return `${count2} ${noun}${count2 === 1 ? "" : "s"}`;
+function plural2(count3, noun) {
+  return `${count3} ${noun}${count3 === 1 ? "" : "s"}`;
 }
 function rootEntries(context) {
   const { index, store } = context;
-  const entries = [];
+  const entries2 = [];
   for (const group of index.groups) {
     const id2 = asString(group.id);
     if (!id2) continue;
     const sources = sourcesInGroup(index, id2);
     const modules = modulesInGroup(index, id2);
-    entries.push(folderEntry({
+    entries2.push(folderEntry({
       segment: segment("domain", id2),
       kind: "domain",
       name: titleOf(group),
@@ -10119,7 +10381,7 @@ function rootEntries(context) {
     }));
   }
   if (index.ungroupedModules.length) {
-    entries.push(folderEntry({
+    entries2.push(folderEntry({
       segment: ROOT_SHELVES.skills,
       kind: "shelf",
       name: "Skill Tracks",
@@ -10131,7 +10393,7 @@ function rootEntries(context) {
   }
   const packs = store.topicPacks();
   if (packs.length) {
-    entries.push(folderEntry({
+    entries2.push(folderEntry({
       segment: ROOT_SHELVES.packs,
       kind: "shelf",
       name: "Curated Packs",
@@ -10143,7 +10405,7 @@ function rootEntries(context) {
   }
   const catalogues = store.catalogues();
   if (catalogues.length) {
-    entries.push(folderEntry({
+    entries2.push(folderEntry({
       segment: ROOT_SHELVES.catalogues,
       kind: "shelf",
       name: "Catalogues",
@@ -10155,7 +10417,7 @@ function rootEntries(context) {
   }
   const unregistered = unregisteredMaterial(context);
   if (unregistered.length) {
-    entries.push(folderEntry({
+    entries2.push(folderEntry({
       segment: ROOT_SHELVES.unregistered,
       kind: "shelf",
       name: "Not in the registry",
@@ -10166,7 +10428,7 @@ function rootEntries(context) {
     }));
   }
   if (index.unfiled.length) {
-    entries.push(folderEntry({
+    entries2.push(folderEntry({
       segment: ROOT_SHELVES.unfiled,
       kind: "shelf",
       name: "Unfiled",
@@ -10176,14 +10438,14 @@ function rootEntries(context) {
       detail: "no domain recorded yet"
     }));
   }
-  return entries;
+  return entries2;
 }
 function domainEntries(context, groupId) {
   const { index } = context;
   const modules = modulesInGroup(index, groupId);
-  const entries = [];
+  const entries2 = [];
   if (modules.length) {
-    entries.push(folderEntry({
+    entries2.push(folderEntry({
       segment: "modules",
       kind: "bucket",
       name: "Modules",
@@ -10198,18 +10460,18 @@ function domainEntries(context, groupId) {
     (source) => typeIdOf(index, source)
   );
   for (const [type, label, icon2] of MATERIAL_TYPES) {
-    const count2 = counts.get(type) ?? 0;
-    if (!count2) continue;
-    entries.push(folderEntry({
+    const count3 = counts.get(type) ?? 0;
+    if (!count3) continue;
+    entries2.push(folderEntry({
       segment: segment("type", type),
       kind: "bucket",
       name: label,
       icon: icon2,
       kindLabel: "Folder",
-      count: count2
+      count: count3
     }));
   }
-  return entries;
+  return entries2;
 }
 function moduleBucketEntries(context, moduleId) {
   const { index } = context;
@@ -10217,20 +10479,20 @@ function moduleBucketEntries(context, moduleId) {
     sourcesInModule(index, moduleId),
     (source) => bucketIdOf(index, source)
   );
-  const entries = [];
+  const entries2 = [];
   for (const [bucket, label, icon2] of MODULE_BUCKETS) {
-    const count2 = counts.get(bucket) ?? 0;
-    if (!count2) continue;
-    entries.push(folderEntry({
+    const count3 = counts.get(bucket) ?? 0;
+    if (!count3) continue;
+    entries2.push(folderEntry({
       segment: segment("bucket", bucket),
       kind: "bucket",
       name: label,
       icon: icon2,
       kindLabel: "Folder",
-      count: count2
+      count: count3
     }));
   }
-  return entries;
+  return entries2;
 }
 function folderAt(context, path) {
   if (path.length > MAX_DEPTH) return unavailable(path);
@@ -10256,11 +10518,11 @@ function folderAt(context, path) {
 function domainFolder(context, groupId, rest, full) {
   const { index } = context;
   const group = index.groupById.get(groupId) ?? null;
-  const title = group ? titleOf(group) : groupId;
+  const title2 = group ? titleOf(group) : groupId;
   if (!rest.length) {
     return folder({
       path: full,
-      name: title,
+      name: title2,
       icon: "folder-open",
       kindLabel: "Domain",
       description: asText(group?.description) ?? "",
@@ -10276,7 +10538,7 @@ function domainFolder(context, groupId, rest, full) {
         name: "Modules",
         icon: "graduation-cap",
         kindLabel: "Folder",
-        description: `What ${title} is taught as. Each module holds only the sources actually routed to it.`,
+        description: `What ${title2} is taught as. Each module holds only the sources actually routed to it.`,
         entries: modulesInGroup(index, groupId).map((module2) => moduleEntry(context, module2))
       });
     }
@@ -10291,7 +10553,7 @@ function domainFolder(context, groupId, rest, full) {
         name: definition2.label,
         icon: definition2.icon,
         kindLabel: "Folder",
-        description: `${definition2.label} in ${title}.`,
+        description: `${definition2.label} in ${title2}.`,
         entries: sourcesInGroup(index, groupId).filter((source) => typeIdOf(index, source) === value).map((source) => sourceEntry(context, source))
       });
     }
@@ -10491,14 +10753,14 @@ var LAYOUTS2 = [
   ["list", "List"],
   ["columns", "Columns"]
 ];
-function itemCount(count2) {
-  if (count2 === null) return "";
-  return `${count2} item${count2 === 1 ? "" : "s"}`;
+function itemCount(count3) {
+  if (count3 === null) return "";
+  return `${count3} item${count3 === 1 ? "" : "s"}`;
 }
 function filterWords(query) {
   return foldCase(query.trim()).split(/\s+/).filter(Boolean);
 }
-function matches(entry, words2) {
+function matches2(entry, words2) {
   if (!words2.length) return true;
   const hay = foldCase(
     [entry.name, entry.detail, entry.kindLabel, entry.sourceId ?? ""].filter(Boolean).join(" ")
@@ -10522,9 +10784,9 @@ function renderSidebar(view, parent, root) {
     cls: "los-finder-sidebar",
     attr: { role: "navigation", "aria-label": "Library places" }
   });
-  const group = (title) => {
+  const group = (title2) => {
     const wrap = sidebar.createDiv({ cls: "los-finder-places" });
-    wrap.createEl("h3", { cls: "los-finder-places-title", text: title });
+    wrap.createEl("h3", { cls: "los-finder-places-title", text: title2 });
     return wrap.createDiv({ cls: "los-finder-places-list" });
   };
   const favourites = group("Favourites");
@@ -10550,10 +10812,10 @@ function renderSidebar(view, parent, root) {
     ["Domains", root.entries.filter((entry) => entry.kind === "domain")],
     ["Shelves", root.entries.filter((entry) => entry.kind === "shelf")]
   ];
-  for (const [title, entries] of sections) {
-    if (!entries.length) continue;
-    const list4 = group(title);
-    for (const entry of entries) {
+  for (const [title2, entries2] of sections) {
+    if (!entries2.length) continue;
+    const list4 = group(title2);
+    for (const entry of entries2) {
       renderPlace(list4, {
         label: entry.name,
         icon: entry.icon,
@@ -10629,11 +10891,11 @@ function renderToolbar2(view, parent, folder2, shown, onQuery) {
     control.setAttribute("aria-pressed", String(active));
   }
   const total = folder2.entries.length;
-  const count2 = toolbar.createSpan({
+  const count3 = toolbar.createSpan({
     cls: "los-finder-count",
     text: shown === total ? itemCount(total) : `${shown} of ${total} items`
   });
-  return { input: search, count: count2 };
+  return { input: search, count: count3 };
 }
 function renderRow(view, list4, entry) {
   const selected = view.folderSelection === entry.segment;
@@ -10673,7 +10935,7 @@ function renderRow(view, list4, entry) {
   });
   return row4;
 }
-function renderList2(view, parent, entries, focusSelection) {
+function renderList2(view, parent, entries2, focusSelection) {
   const list4 = parent.createDiv({
     cls: "los-finder-list",
     attr: { "aria-label": "Folder contents" }
@@ -10685,18 +10947,18 @@ function renderList2(view, parent, entries, focusSelection) {
   header2.createSpan({ text: "Name" });
   header2.createSpan({ text: "Kind" });
   header2.createSpan({ text: "Items" });
-  for (const entry of entries) {
+  for (const entry of entries2) {
     const row4 = renderRow(view, list4, entry);
     if (focusSelection && entry.segment === view.folderSelection) row4.focus();
   }
   list4.addEventListener("keydown", (event) => {
     if (event.altKey || event.ctrlKey || event.metaKey) return;
-    const index = entries.findIndex(
+    const index = entries2.findIndex(
       (entry) => entry.segment === view.folderSelection
     );
     const move = (next) => {
-      const clamped = Math.max(0, Math.min(entries.length - 1, next));
-      const target = entries[clamped];
+      const clamped = Math.max(0, Math.min(entries2.length - 1, next));
+      const target = entries2[clamped];
       if (!target) return;
       event.preventDefault();
       void view.selectFolderEntry(target.segment);
@@ -10704,7 +10966,7 @@ function renderList2(view, parent, entries, focusSelection) {
     if (event.key === "ArrowDown") return move(index + 1);
     if (event.key === "ArrowUp") return move(index < 0 ? 0 : index - 1);
     if (event.key === "Home") return move(0);
-    if (event.key === "End") return move(entries.length - 1);
+    if (event.key === "End") return move(entries2.length - 1);
     if (event.key === "ArrowLeft" || event.key === "Backspace") {
       if (!view.folderPath.length) return;
       event.preventDefault();
@@ -10712,7 +10974,7 @@ function renderList2(view, parent, entries, focusSelection) {
       return;
     }
     if (event.key === "ArrowRight") {
-      const current = index >= 0 ? entries[index] : void 0;
+      const current = index >= 0 ? entries2[index] : void 0;
       if (!current) return;
       event.preventDefault();
       void view.activateEntry(current);
@@ -10727,19 +10989,19 @@ function renderColumns(view, parent, trail, words2) {
   trail.forEach((folder2, depth) => {
     const openedSegment = view.folderPath[depth] ?? null;
     const isCurrent = depth === trail.length - 1;
-    const entries = isCurrent ? folder2.entries.filter((entry) => matches(entry, words2)) : folder2.entries;
+    const entries2 = isCurrent ? folder2.entries.filter((entry) => matches2(entry, words2)) : folder2.entries;
     const column = columns.createDiv({
       cls: `los-finder-column${isCurrent ? " is-current" : ""}`
     });
     column.createDiv({ cls: "los-finder-column-title", text: folder2.name });
-    if (!entries.length) {
+    if (!entries2.length) {
       column.createDiv({
         cls: "los-finder-column-empty",
         text: folder2.missing ? "Unavailable" : "Empty"
       });
       return;
     }
-    for (const entry of entries) {
+    for (const entry of entries2) {
       const opened = entry.segment === openedSegment;
       const selected = isCurrent && view.folderSelection === entry.segment;
       const row4 = column.createEl("button", {
@@ -10856,7 +11118,7 @@ function renderFinder(view, root) {
   renderSidebar(view, shell2, trail[0] ?? folder2);
   const main = shell2.createDiv({ cls: "los-finder-main" });
   renderPathBar(view, main, trail);
-  let count2 = null;
+  let count3 = null;
   let noteWrap = null;
   let body = null;
   let input = null;
@@ -10864,7 +11126,7 @@ function renderFinder(view, root) {
     if (!body) return;
     body.empty();
     const words3 = filterWords(view.query);
-    const entries2 = folder2.entries.filter((entry) => matches(entry, words3));
+    const entries3 = folder2.entries.filter((entry) => matches2(entry, words3));
     if (folder2.missing) {
       empty(
         body,
@@ -10887,7 +11149,7 @@ function renderFinder(view, root) {
         // missing folder, and saying which one it is beats an unexplained blank.
         `${folder2.kindLabel} folders exist whether or not material has been routed to them, so this is an absence on the record rather than something gone missing.`
       );
-    } else if (!entries2.length) {
+    } else if (!entries3.length) {
       empty(
         body,
         "Nothing matches that filter",
@@ -10896,13 +11158,13 @@ function renderFinder(view, root) {
         () => handleClear()
       );
     } else {
-      renderList2(view, body, entries2, focusSelection);
+      renderList2(view, body, entries3, focusSelection);
     }
     const panel = body.createDiv({
       cls: "los-finder-inspector",
       attr: { "aria-label": "Selected item" }
     });
-    const selected = entries2.find(
+    const selected = entries3.find(
       (entry) => entry.segment === view.folderSelection
     );
     if (selected) renderEntryInspector(view, panel, selected);
@@ -10910,10 +11172,10 @@ function renderFinder(view, root) {
   };
   const updateResults = (focusSelection) => {
     const words3 = filterWords(view.query);
-    const entries2 = folder2.entries.filter((entry) => matches(entry, words3));
+    const entries3 = folder2.entries.filter((entry) => matches2(entry, words3));
     const total = folder2.entries.length;
-    const shown = entries2.length;
-    count2?.setText(
+    const shown = entries3.length;
+    count3?.setText(
       shown === total ? itemCount(total) : `${shown} of ${total} items`
     );
     if (noteWrap) {
@@ -10946,10 +11208,10 @@ function renderFinder(view, root) {
     updateResults(false);
   };
   const words2 = filterWords(view.query);
-  const entries = folder2.entries.filter((entry) => matches(entry, words2));
-  const toolbar = renderToolbar2(view, main, folder2, entries.length, onQuery);
+  const entries2 = folder2.entries.filter((entry) => matches2(entry, words2));
+  const toolbar = renderToolbar2(view, main, folder2, entries2.length, onQuery);
   input = toolbar.input;
-  count2 = toolbar.count;
+  count3 = toolbar.count;
   noteWrap = main.createDiv({ cls: "los-finder-note" });
   body = main.createDiv({ cls: "los-finder-body" });
   updateResults(view.takeFolderFocus());
@@ -11157,7 +11419,7 @@ function renderSourceBrowser(view, root) {
     );
     for (const [
       value,
-      count2
+      count3
     ] of ordered) {
       select2.createEl(
         "option",
@@ -11165,7 +11427,7 @@ function renderSourceBrowser(view, root) {
           text: `${view.sourceFilterLabel(
             dimension,
             value
-          )} (${count2})`,
+          )} (${count3})`,
           attr: {
             value
           }
@@ -11588,8 +11850,8 @@ var LibraryView = class extends import_obsidian10.ItemView {
   renderCataloguePage(root) {
     renderCataloguePage(this, root);
   }
-  renderOrderedCollection(detail, collection, title) {
-    renderOrderedCollection(this, detail, collection, title);
+  renderOrderedCollection(detail, collection, title2) {
+    renderOrderedCollection(this, detail, collection, title2);
   }
   renderLegacyList(root) {
     renderLegacyList(this, root);
@@ -11851,20 +12113,20 @@ function normalizeUnitRecord(record10) {
   if (!id2) {
     return null;
   }
-  const title = asString(record10.title) ?? id2;
+  const title2 = asString(record10.title) ?? id2;
   const status = asString(record10.status) ?? "unspecified";
   const order = asCount(record10.order);
   const normalized = {
     ...record10,
     id: id2,
-    title,
+    title: title2,
     status,
     scope: asText(record10.scope) ?? ""
   };
   return {
     record: normalized,
     id: id2,
-    title,
+    title: title2,
     status,
     order
   };
@@ -12004,10 +12266,10 @@ function renderSources2(view, root, module2) {
   const sourceMap = view.plugin.store.sourceMap(
     module2.id
   );
-  const entries = readSourceEntries(
+  const entries2 = readSourceEntries(
     sourceMap ? sourceMap.sources : null
   );
-  if (!entries.length) {
+  if (!entries2.length) {
     empty(
       root,
       "No routed module sources yet",
@@ -12020,7 +12282,7 @@ function renderSources2(view, root, module2) {
     text: "Roles in this module \u2014 not global quality scores."
   });
   const groups = /* @__PURE__ */ new Map();
-  for (const entry of entries) {
+  for (const entry of entries2) {
     const current = groups.get(entry.role);
     if (current) {
       current.push(entry);
@@ -12871,10 +13133,10 @@ function categoryLabel(category) {
   return words2 ? words2.charAt(0).toUpperCase() + words2.slice(1) : "Review";
 }
 function buildReviewQueue(sources) {
-  const entries = [];
+  const entries2 = [];
   for (const draft of sources.drafts) {
     if (draft.kind === "claim") {
-      entries.push({
+      entries2.push({
         kind: "claim-draft",
         key: draft.id,
         draft,
@@ -12882,7 +13144,7 @@ function buildReviewQueue(sources) {
         context: `${draft.abilityTitle} \xB7 draft, not recorded`
       });
     } else {
-      entries.push({
+      entries2.push({
         kind: "connection-draft",
         key: draft.id,
         draft,
@@ -12893,7 +13155,7 @@ function buildReviewQueue(sources) {
   }
   for (const row4 of sources.horizon?.abilities ?? []) {
     if (!hasConflictingWork(row4)) continue;
-    entries.push({
+    entries2.push({
       kind: "ability-conflict",
       key: `ability-conflict:${row4.id}`,
       row: row4,
@@ -12904,7 +13166,7 @@ function buildReviewQueue(sources) {
   sources.items.forEach((item, index) => {
     const id2 = text3(item.id) || `review-item-${index}`;
     const category = text3(item.category) || "review";
-    entries.push({
+    entries2.push({
       kind: "core",
       key: id2,
       item,
@@ -12914,7 +13176,7 @@ function buildReviewQueue(sources) {
       reason: text3(item.reason)
     });
   });
-  return entries;
+  return entries2;
 }
 function reviewQueueCount(sources) {
   return buildReviewQueue(sources).length;
@@ -12939,7 +13201,7 @@ var NavView = class extends import_obsidian12.ItemView {
   async onOpen() {
     this.render();
   }
-  nav(parent, iconName, label, key, action, count2 = null) {
+  nav(parent, iconName, label, key, action, count3 = null) {
     const active = this.plugin.activeNav === key;
     const row4 = parent.createEl("button", {
       cls: `los-app-nav-item is-clickable${active ? " is-active" : ""}`,
@@ -12947,9 +13209,9 @@ var NavView = class extends import_obsidian12.ItemView {
     });
     icon(row4.createSpan(), iconName);
     row4.createSpan({ text: label });
-    if (count2) {
-      row4.createSpan({ cls: "los-nav-count", text: String(count2) });
-      row4.setAttr("aria-label", `${label}, ${count2} waiting`);
+    if (count3) {
+      row4.createSpan({ cls: "los-nav-count", text: String(count3) });
+      row4.setAttr("aria-label", `${label}, ${count3} waiting`);
     }
     row4.addEventListener("click", action);
     return row4;
@@ -13058,8 +13320,8 @@ var ProgramView = class extends import_obsidian13.ItemView {
       return "LearningOS \xB7 Planning";
     }
     const program = this.programId ? this.plugin.store.get(this.programId) : null;
-    const title = typeof program?.title === "string" ? program.title : "Learn";
-    return `LearningOS \xB7 ${title}`;
+    const title2 = typeof program?.title === "string" ? program.title : "Learn";
+    return `LearningOS \xB7 ${title2}`;
   }
   async setState(state = {}) {
     if (typeof state.programId === "string") {
@@ -13134,11 +13396,11 @@ var ProgramView = class extends import_obsidian13.ItemView {
       }
     });
     enableButtonGroupKeyboardNavigation(tabs);
-    for (const [areaId, title] of LEARN_AREAS) {
+    for (const [areaId, title2] of LEARN_AREAS) {
       const active = areaId === program.id;
       const tab = button(
         tabs,
-        title,
+        title2,
         () => this.plugin.nav.openLearn(areaId),
         active ? "cta" : "quiet"
       );
@@ -13198,7 +13460,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
       const copy = row4.createDiv({
         cls: "los-learning-copy"
       });
-      const title = button(
+      const title2 = button(
         copy,
         projectedExcerpt(
           module2.title,
@@ -13209,7 +13471,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
         ),
         "row"
       );
-      title.addClass("los-learning-title");
+      title2.addClass("los-learning-title");
       if (program.id === "program-job") {
         badge(copy, "Job", "role");
       }
@@ -13307,10 +13569,10 @@ var ProgramView = class extends import_obsidian13.ItemView {
       "Capture",
       "You capture; the operator files."
     );
-    const count2 = this.plugin.store.data?.counts?.inbox_items || 0;
+    const count3 = this.plugin.store.data?.counts?.inbox_items || 0;
     const wrap = section(
       root,
-      `${count2} item${count2 === 1 ? "" : "s"} awaiting routing`
+      `${count3} item${count3 === 1 ? "" : "s"} awaiting routing`
     );
     const form = wrap.createDiv({
       cls: "los-capture-grid"
@@ -13321,7 +13583,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
     textPanel.createEl("h3", {
       text: "Quick text"
     });
-    const title = textPanel.createEl("input", {
+    const title2 = textPanel.createEl("input", {
       cls: "los-search los-capture-title",
       attr: {
         type: "text",
@@ -13337,7 +13599,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
       }
     });
     const draft = this.plugin.getInboxDraft();
-    title.value = draft.title || "";
+    title2.value = draft.title || "";
     editor.value = draft.text || "";
     const status = textPanel.createDiv({
       cls: "los-draft-status",
@@ -13358,7 +13620,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
           return;
         }
         const captured = {
-          title: title.value.trim(),
+          title: title2.value.trim(),
           text: text8
         };
         this.capture(
@@ -13370,7 +13632,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
             this.plugin.clearInboxDraft(captured);
             const draft2 = this.plugin.getInboxDraft();
             editor.value = draft2.text;
-            title.value = draft2.title;
+            title2.value = draft2.title;
           }
         );
       },
@@ -13378,10 +13640,10 @@ var ProgramView = class extends import_obsidian13.ItemView {
     );
     const syncDraft = () => {
       const hasDraft = Boolean(
-        title.value || editor.value
+        title2.value || editor.value
       );
       this.plugin.setInboxDraft(
-        title.value,
+        title2.value,
         editor.value
       );
       captureButton.disabled = !editor.value.trim();
@@ -13393,7 +13655,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
         hasDraft
       );
     };
-    title.addEventListener(
+    title2.addEventListener(
       "input",
       syncDraft
     );
@@ -13403,11 +13665,11 @@ var ProgramView = class extends import_obsidian13.ItemView {
     );
     captureButton.disabled = !editor.value.trim();
     status.setText(
-      title.value || editor.value ? "Draft kept locally until capture." : "Nothing entered yet."
+      title2.value || editor.value ? "Draft kept locally until capture." : "Nothing entered yet."
     );
     status.toggleClass(
       "is-dirty",
-      Boolean(title.value || editor.value)
+      Boolean(title2.value || editor.value)
     );
     const filePanel = form.createDiv({
       cls: "los-capture-panel"
@@ -13741,7 +14003,7 @@ function renderDetail(view, root) {
     );
     return;
   }
-  const title = asLabel(project);
+  const title2 = asLabel(project);
   const status = asString(project.status) ?? "planned";
   const projectType = asString(project.project_type) ?? "project";
   const back = button(
@@ -13754,7 +14016,7 @@ function renderDetail(view, root) {
   pageHeader(
     root,
     `Projects \xB7 ${projectType} \xB7 ${status}`,
-    title,
+    title2,
     projectedExcerpt(
       project.objective,
       190
@@ -13993,7 +14255,7 @@ function renderList3(view, root) {
       if (!projectId) {
         continue;
       }
-      const title = asLabel(project);
+      const title2 = asLabel(project);
       const status = asString(project.status) ?? "planned";
       const projectType = asString(
         project.project_type
@@ -14002,7 +14264,7 @@ function renderList3(view, root) {
         cls: "los-record-row los-project-row is-clickable",
         attr: {
           type: "button",
-          "aria-label": `Open project: ${title}`
+          "aria-label": `Open project: ${title2}`
         }
       });
       row4.setAttr(
@@ -14013,7 +14275,7 @@ function renderList3(view, root) {
         cls: "los-record-copy"
       });
       copy.createEl("strong", {
-        text: title
+        text: title2
       });
       copy.createDiv({
         cls: "los-record-summary",
@@ -14632,10 +14894,10 @@ ${row4.text.trim()}`).join("\n\n");
       expectedRevisions: saved?.expectedRevisions ?? {}
     };
   }
-  setUnitNote(unitId, title, text8, expectedRevisions = {}, recoveredStages = {}) {
-    if (!title.trim() && !text8.trim()) delete this.settings.uiDrafts.unitNotes[unitId];
+  setUnitNote(unitId, title2, text8, expectedRevisions = {}, recoveredStages = {}) {
+    if (!title2.trim() && !text8.trim()) delete this.settings.uiDrafts.unitNotes[unitId];
     else this.settings.uiDrafts.unitNotes[unitId] = {
-      title,
+      title: title2,
       text: text8,
       expectedRevisions: { ...expectedRevisions },
       recoveredStages: { ...recoveredStages }
@@ -14728,8 +14990,8 @@ ${row4.text.trim()}`).join("\n\n");
   getInbox() {
     return { ...this.settings.uiDrafts.inbox };
   }
-  setInbox(title, text8) {
-    this.settings.uiDrafts.inbox = { title, text: text8 };
+  setInbox(title2, text8) {
+    this.settings.uiDrafts.inbox = { title: title2, text: text8 };
     this.scheduleSave();
   }
   /**
@@ -14746,8 +15008,8 @@ ${row4.text.trim()}`).join("\n\n");
   getGarden() {
     return { ...this.settings.uiDrafts.garden };
   }
-  setGarden(title, text8) {
-    this.settings.uiDrafts.garden = { title, text: text8 };
+  setGarden(title2, text8) {
+    this.settings.uiDrafts.garden = { title: title2, text: text8 };
     this.scheduleSave();
   }
   clearGarden(match = null) {
@@ -15058,17 +15320,17 @@ var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
 function clearDraftsOwnedBy(drafts, envelope) {
   const payload = envelope.payload;
   const text8 = typeof payload.text === "string" ? payload.text : null;
-  const title = typeof payload.title === "string" ? payload.title : "";
+  const title2 = typeof payload.title === "string" ? payload.title : "";
   if (envelope.capability === "capture.create") {
     if (text8 === null) return;
-    if (sameComposerDraft(drafts.inbox, { title, text: text8 })) {
+    if (sameComposerDraft(drafts.inbox, { title: title2, text: text8 })) {
       drafts.inbox = { title: "", text: "" };
     }
     return;
   }
   if (envelope.capability === "garden.seed.create") {
     if (text8 === null) return;
-    if (sameComposerDraft(drafts.garden, { title, text: text8 })) {
+    if (sameComposerDraft(drafts.garden, { title: title2, text: text8 })) {
       drafts.garden = { title: "", text: "" };
     }
     return;
@@ -15077,11 +15339,11 @@ function clearDraftsOwnedBy(drafts, envelope) {
     const unitId = typeof payload.unit_id === "string" ? payload.unit_id : "";
     if (!unitId) return;
     const draft = drafts.unitNotes[unitId];
-    const matches2 = draft && draft.text === text8 && String(draft.title || "").trim() === title;
-    if (matches2) {
+    const matches3 = draft && draft.text === text8 && String(draft.title || "").trim() === title2;
+    if (matches3) {
       delete drafts.unitNotes[unitId];
     }
-    if (!matches2 || !draft || !draft.recoveredStages) {
+    if (!matches3 || !draft || !draft.recoveredStages) {
       return;
     }
     const stageIds2 = Array.isArray(payload.stage_id) ? payload.stage_id : [];
@@ -15767,13 +16029,13 @@ Last response: ${result.error.message}`,
     );
   }
   async saveUnitNote(unitId, {
-    title = "",
+    title: title2 = "",
     text: text8,
     stageIds: stageIds2 = [],
     filePaths = []
   }, expectedRevisions = {}) {
     const payload = { unit_id: unitId, text: text8 };
-    if (String(title).trim()) payload.title = String(title).trim();
+    if (String(title2).trim()) payload.title = String(title2).trim();
     if (stageIds2.length) payload.stage_id = [...stageIds2];
     if (filePaths.length) {
       payload.attachment = [...filePaths];
@@ -15811,10 +16073,10 @@ Last response: ${result.error.message}`,
       ...resourceId ? { resource_id: resourceId } : {}
     }, { expectedRevisions });
   }
-  detour(unitId, stageId, title, classification = "required-now", expectedRevisions = {}) {
+  detour(unitId, stageId, title2, classification = "required-now", expectedRevisions = {}) {
     return this.capability(
       "detour.create",
-      { unit_id: unitId, stage_id: stageId, title, classification },
+      { unit_id: unitId, stage_id: stageId, title: title2, classification },
       { expectedRevisions }
     );
   }
@@ -15833,9 +16095,9 @@ Last response: ${result.error.message}`,
     if (label) payload.label = label;
     return this.capability("stage.attachment.add", payload, { expectedRevisions });
   }
-  captureText(text8, title = "") {
+  captureText(text8, title2 = "") {
     const payload = { text: text8 };
-    if (title) payload.title = title;
+    if (title2) payload.title = title2;
     return this.capability("capture.create", payload);
   }
   async captureFile(filePath) {
@@ -15844,9 +16106,9 @@ Last response: ${result.error.message}`,
       file_sha256: await fileSha256(filePath)
     });
   }
-  createGardenSeed(text8, title = "") {
+  createGardenSeed(text8, title2 = "") {
     const payload = { text: text8 };
-    if (title.trim()) payload.title = title.trim();
+    if (title2.trim()) payload.title = title2.trim();
     return this.capability(
       "garden.seed.create",
       payload
@@ -15965,8 +16227,8 @@ Last response: ${result.error.message}`,
    * "the standard" and "what the Create dialog offers" cannot drift apart.
    * No snapshot guard: this reads no repository file and writes nothing.
    */
-  planTemplate(profile, title, ids2 = {}) {
-    const args = ["plan-template", profile, "--title", title, "--json"];
+  planTemplate(profile, title2, ids2 = {}) {
+    const args = ["plan-template", profile, "--title", title2, "--json"];
     if (ids2.unitId) args.push("--unit-id", ids2.unitId);
     if (ids2.moduleId) args.push("--module-id", ids2.moduleId);
     return this.call(args);
@@ -16063,9 +16325,9 @@ function explicitAiContext(plugin, context = {}) {
 }
 
 // src/features/review/detail.ts
-function part(parent, title) {
+function part(parent, title2) {
   const block2 = parent.createDiv({ cls: "los-review-part" });
-  block2.createEl("h3", { text: title });
+  block2.createEl("h3", { text: title2 });
   return block2;
 }
 function rule(parent) {
@@ -16469,7 +16731,7 @@ function asLegacyArchiveLock(value) {
     "historical-only",
     "unresolved"
   ];
-  const entries = [];
+  const entries2 = [];
   for (const valueEntry of lock.entries) {
     const entry = record6(valueEntry);
     if (!entry || !exact3(entry, [
@@ -16495,7 +16757,7 @@ function asLegacyArchiveLock(value) {
         ..."sha256" in target ? { sha256: target.sha256 } : {}
       });
     }
-    entries.push({
+    entries2.push({
       relative_path: entry.relative_path,
       size: entry.size,
       sha256: entry.sha256,
@@ -16512,7 +16774,7 @@ function asLegacyArchiveLock(value) {
     id: "legacy-archive-lock",
     type: "legacy-archive-lock",
     created_at: lock.created_at,
-    entries,
+    entries: entries2,
     excluded: { count: excluded.count, status: "sealed-not-inspected" },
     verification: {
       verified_at: verification.verified_at,
@@ -16738,7 +17000,7 @@ var ReviewView = class extends import_obsidian16.ItemView {
     const horizon2 = this.plugin.abilityHorizon;
     horizon2.ensure();
     const brief = horizon2.current();
-    const entries = buildReviewQueue({
+    const entries2 = buildReviewQueue({
       items: this.plugin.store.reviewItems(),
       drafts: this.plugin.listAbilityDrafts(),
       horizon: brief
@@ -16755,13 +17017,13 @@ var ReviewView = class extends import_obsidian16.ItemView {
     });
     summary.createEl("strong", {
       cls: "los-review-count",
-      text: entries.length ? `${entries.length} ${entries.length === 1 ? "item needs" : "items need"} your decision` : "Nothing waiting"
+      text: entries2.length ? `${entries2.length} ${entries2.length === 1 ? "item needs" : "items need"} your decision` : "Nothing waiting"
     });
     summary.createSpan({
       cls: "los-micro",
       text: brief ? brief.abilities.some((row4) => row4.evidence.length) ? `${brief.abilities.filter((row4) => row4.evidence.length).length} abilities have recorded work` : "No learner attempt recorded" : horizon2.error ? "Ability records unavailable" : "Reading ability records\u2026"
     });
-    if (!entries.length) {
+    if (!entries2.length) {
       empty(
         root,
         "Nothing waiting",
@@ -16773,7 +17035,7 @@ var ReviewView = class extends import_obsidian16.ItemView {
       });
       return;
     }
-    const selected = entries.find((entry) => entry.key === this.selectedKey) ?? entries[0] ?? null;
+    const selected = entries2.find((entry) => entry.key === this.selectedKey) ?? entries2[0] ?? null;
     const split = root.createDiv({ cls: "los-review-split" });
     const listPane = split.createDiv({ cls: "los-review-pane" });
     listPane.createEl("h2", {
@@ -16785,7 +17047,7 @@ var ReviewView = class extends import_obsidian16.ItemView {
       attr: { role: "group", "aria-label": "Review items" }
     });
     enableButtonGroupKeyboardNavigation(list4, "vertical");
-    for (const entry of entries) {
+    for (const entry of entries2) {
       const active = entry.key === selected?.key;
       const row4 = list4.createEl("button", {
         cls: `los-review-item is-clickable is-${entry.kind}${active ? " is-selected" : ""}`,
@@ -17119,8 +17381,8 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
       return ["\u2713", "Healthy", `Core verified ${this.health.checks.length} registered checks at ${this.health.generated_at}.`];
     }
     if (this.health?.status === "attention-required") {
-      const count2 = this.health.checks.filter((check) => check.status !== "ok").length;
-      return ["!", "Attention required", `${count2} check${count2 === 1 ? "" : "s"} need an owner or remedy.`];
+      const count3 = this.health.checks.filter((check) => check.status !== "ok").length;
+      return ["!", "Attention required", `${count3} check${count3 === 1 ? "" : "s"} need an owner or remedy.`];
     }
     if (this.healthError) return ["?", "Health unavailable", this.healthError];
     return ["?", "Health not checked", "Run the bounded health report before trusting a green state."];
@@ -17151,11 +17413,11 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
       this.renderOperations(root);
       return;
     }
-    const [glyph, title, detail] = this.state();
+    const [glyph, title2, detail] = this.state();
     const status = root.createDiv({ cls: "los-diagnostic-status" });
     status.createSpan({ cls: "los-diagnostic-glyph", text: glyph });
     const copy = status.createDiv();
-    copy.createEl("strong", { text: title });
+    copy.createEl("strong", { text: title2 });
     copy.createDiv({ cls: "los-micro", text: detail });
     if (this.health) {
       const checks = section(root, "Health checks", `Generated ${this.health.generated_at}`);
@@ -17662,14 +17924,14 @@ function readUnitRecord(record10, fallbackId) {
     knowledgeMap?.nodes
   ).map((node) => {
     const nodeId = asString(node.id);
-    const title = asString(node.title);
+    const title2 = asString(node.title);
     const summary = asText(node.summary);
-    if (!nodeId || !title || !summary) {
+    if (!nodeId || !title2 || !summary) {
       return null;
     }
     return {
       id: nodeId,
-      title,
+      title: title2,
       summary,
       buildsOn: asStrings(
         node.builds_on
@@ -17711,18 +17973,18 @@ function readMaterialOptions(value, unitId, selectionsValue) {
       if (asString(route2.unit_id) !== unitId) {
         continue;
       }
-      const title = asString(route2.title);
+      const title2 = asString(route2.title);
       const format = asString(route2.format);
       const angle = asText(route2.angle);
       const routeId = asString(route2.id);
-      if (!routeId || !title || !format || !angle) {
+      if (!routeId || !title2 || !format || !angle) {
         continue;
       }
       const sourceId = asString(route2.source_id) ?? asString(entry.source_id);
       const locator = asText(route2.locator);
       options.push({
         record: route2,
-        title,
+        title: title2,
         format,
         angle,
         covers: asStrings(route2.covers),
@@ -17899,7 +18161,7 @@ function renderStageContext(view, center, unit, studyMap, stage) {
     if (!detourId) {
       continue;
     }
-    const title = asString(detour.title) ?? "Prerequisite detour";
+    const title2 = asString(detour.title) ?? "Prerequisite detour";
     const classification = asString(
       detour.classification
     ) ?? "required-now";
@@ -17910,7 +18172,7 @@ function renderStageContext(view, center, unit, studyMap, stage) {
       text: "Open prerequisite detour"
     });
     row4.createEl("p", {
-      text: `${title} \xB7 ${classification} \xB7 returns here`
+      text: `${title2} \xB7 ${classification} \xB7 returns here`
     });
     button(
       row4,
@@ -17948,9 +18210,9 @@ function renderArtifacts(view, root, unit) {
   const artifacts = readArtifacts(
     unit.record.artifacts
   );
-  let count2 = 0;
+  let count3 = 0;
   for (const [key, id2] of artifacts.named) {
-    count2 += 1;
+    count3 += 1;
     const card = wrap.createDiv({
       cls: "los-artifact-card"
     });
@@ -17967,7 +18229,7 @@ function renderArtifacts(view, root, unit) {
     );
   }
   for (const id2 of artifacts.other) {
-    count2 += 1;
+    count3 += 1;
     const record10 = view.plugin.store.get(id2) ?? fallbackRecord(id2);
     chip(
       wrap,
@@ -17977,7 +18239,7 @@ function renderArtifacts(view, root, unit) {
       )
     );
   }
-  if (!count2) {
+  if (!count3) {
     empty(
       wrap,
       "No durable artifact linked yet",
@@ -17994,12 +18256,12 @@ var TRIAGE_HEADING = {
   "reference-only": "Reference \u2014 preserved, not reading for this stage"
 };
 function triageSummary(resources) {
-  const count2 = (rank) => resources.filter(
+  const count3 = (rank) => resources.filter(
     (resource) => resource.scopeTriage === rank
   ).length;
-  const required = count2("required-now") + resources.filter((resource) => !resource.scopeTriage).length;
-  const stuck = count2("helpful-now");
-  const preserved = count2("deferred") + count2("reference-only");
+  const required = count3("required-now") + resources.filter((resource) => !resource.scopeTriage).length;
+  const stuck = count3("helpful-now");
+  const preserved = count3("deferred") + count3("reference-only");
   const parts = [];
   if (required) parts.push(`${required} required now`);
   if (stuck) parts.push(`${stuck} if stuck`);
@@ -18232,8 +18494,8 @@ function routeForResource(resource, options) {
   const routeId = asString(resource.record.route_id);
   if (routeId) return options.find((option) => option.routeId === routeId) ?? null;
   if (!resource.sourceId || !resource.locator) return null;
-  const matches2 = options.filter((option) => option.sourceId === resource.sourceId && option.locator === resource.locator);
-  return matches2.length === 1 ? matches2[0] ?? null : null;
+  const matches3 = options.filter((option) => option.sourceId === resource.sourceId && option.locator === resource.locator);
+  return matches3.length === 1 ? matches3[0] ?? null : null;
 }
 function projectedAvailability(record10) {
   const local = asString(record10.material_uri) ?? asString(record10.material_path);
@@ -18568,17 +18830,17 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
     });
   }
   railButton(parent, key, label) {
-    const count2 = this.count(key);
+    const count3 = this.count(key);
     const active = this.group === key;
     const control = parent.createEl("button", {
-      cls: `los-compare-group is-clickable${active ? " is-selected" : ""}${count2 ? "" : " is-empty"}`,
+      cls: `los-compare-group is-clickable${active ? " is-selected" : ""}${count3 ? "" : " is-empty"}`,
       attr: { type: "button", "aria-pressed": String(active), "data-compare-group": key }
     });
     this.railControls.set(key, control);
     control.createSpan({ cls: "los-compare-group-title", text: label });
     control.createSpan({
       cls: "los-compare-group-count",
-      text: `${count2} ${key === "lecture" || key === "course" ? count2 === 1 ? "route" : "routes" : count2 === 1 ? "material" : "materials"}`
+      text: `${count3} ${key === "lecture" || key === "course" ? count3 === 1 ? "route" : "routes" : count3 === 1 ? "material" : "materials"}`
     });
     control.addEventListener("click", () => {
       this.group = key;
@@ -18609,10 +18871,10 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
     body.scrollTop = scrollTop;
   }
   renderStageGroup(body, def) {
-    const entries = this.stageEntries(def.key);
+    const entries2 = this.stageEntries(def.key);
     body.createEl("h2", { text: def.label });
     body.createEl("p", { cls: "los-micro", text: def.description });
-    if (!entries.length) {
+    if (!entries2.length) {
       empty(
         body,
         `Nothing on this stage is ${def.label.toLowerCase()}`,
@@ -18621,7 +18883,7 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
       return;
     }
     const list4 = body.createDiv({ cls: "los-compare-cards", attr: { "aria-live": "polite" } });
-    for (const resource of entries) {
+    for (const resource of entries2) {
       const route2 = routeForResource(resource, this.options.materialOptions);
       const source = resource.sourceId ? this.options.renderer.sourceRecord?.(resource.sourceId) ?? null : null;
       renderPlacementCard(list4, resource, route2, source, this.deps).addClass("los-source-entry");
@@ -18700,7 +18962,7 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
             const source = option.sourceId ? this.options.renderer.sourceRecord?.(option.sourceId) ?? null : null;
             const detail = row4.createDiv({ cls: "los-material-list-detail" });
             renderRouteCard(detail, option, source, { ...this.deps, unitId: owner.id }, {
-              coverage: option.covers.map((id2) => owner.knowledgeNodes.find((node) => node.id === id2)?.title).filter((title) => Boolean(title)),
+              coverage: option.covers.map((id2) => owner.knowledgeNodes.find((node) => node.id === id2)?.title).filter((title2) => Boolean(title2)),
               actions: (actions) => {
                 if (owner.id === this.options.unit.id) this.renderChoose(actions, option);
                 else button(actions, "Go to lecture", () => {
@@ -18816,7 +19078,7 @@ function renderStage(view, layout, unit, studyMap, stage) {
       stage.doneWhen
     );
     const checkedCount = stage.doneWhen.reduce(
-      (count2, _criterion, index) => count2 + (marks[index] ? 1 : 0),
+      (count3, _criterion, index) => count3 + (marks[index] ? 1 : 0),
       0
     );
     const done = center.createDiv({
@@ -19143,7 +19405,7 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
       const card = nodes.createDiv({ cls: "los-knowledge-node" });
       card.createEl("h3", { text: node.title });
       card.createEl("p", { text: node.summary });
-      const dependencies = node.buildsOn.map((id2) => titleById.get(id2)).filter((title) => Boolean(title));
+      const dependencies = node.buildsOn.map((id2) => titleById.get(id2)).filter((title2) => Boolean(title2));
       if (dependencies.length) {
         card.createDiv({
           cls: "los-micro",
@@ -19161,10 +19423,10 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
     "Choose your learning material",
     "This is a complete menu, not a sequence. Pick the explanation angle and depth that fit your current need."
   );
-  for (const { label, entries } of groupMaterialsByType(options, (option) => option.format)) {
+  for (const { label, entries: entries2 } of groupMaterialsByType(options, (option) => option.format)) {
     const group = materials.createEl("details", { cls: "los-disclosure los-source-group" });
-    group.createEl("summary", { text: `${label} \xB7 ${entries.length} materials` });
-    for (const option of entries) {
+    group.createEl("summary", { text: `${label} \xB7 ${entries2.length} materials` });
+    for (const option of entries2) {
       const materialType = materialTypeOf(option.format);
       const row4 = group.createDiv({
         cls: "los-material-option los-source-entry"
@@ -21222,7 +21484,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:1c42348e14ca3b3206be2677ac84b7d595447dd12e7e20942dcb627d1df623d2" : "unavailable";
+  return true ? "sha256:8b49669757770e7ddbbb0c180535b1d426ddc9013e0937998257d6052ea5eac4" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
@@ -21247,7 +21509,7 @@ function strings2(value) {
 function optionalStrings(value) {
   return value === void 0 ? [] : strings2(value);
 }
-function count(value) {
+function count2(value) {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
 }
 function header(value) {
@@ -21322,7 +21584,7 @@ function row3(value) {
   const item = record9(value);
   if (!item) return null;
   const id2 = text7(item.id);
-  const title = text7(item.title);
+  const title2 = text7(item.title);
   const reasons = strings2(item.reasons);
   const concepts = strings2(item.concept_ids);
   const modules = optionalStrings(item.module_ids);
@@ -21330,10 +21592,10 @@ function row3(value) {
   const transfers = list3(item.transfer, transfer);
   const rows = list3(item.evidence, evidence2);
   const lifecycle = item.lifecycle === void 0 ? "active" : item.lifecycle;
-  if (!id2 || !title || !STATES.has(String(item.state)) || !reasons || !concepts || !modules || !routes || !transfers || !rows || lifecycle !== "active" && lifecycle !== "retired") return null;
+  if (!id2 || !title2 || !STATES.has(String(item.state)) || !reasons || !concepts || !modules || !routes || !transfers || !rows || lifecycle !== "active" && lifecycle !== "retired") return null;
   return {
     id: id2,
-    title,
+    title: title2,
     lifecycle,
     state: item.state,
     reasons,
@@ -21451,7 +21713,7 @@ function relatedEncounter(value) {
     objective: text7(item.objective),
     ability_ids: abilities,
     route_ids: routes,
-    route_total: count(item.route_total) ?? routes.length,
+    route_total: count2(item.route_total) ?? routes.length,
     routes_truncated: item.routes_truncated === true
   };
 }
@@ -21461,7 +21723,7 @@ function asAbilityBrief(value) {
   const abilities = list3(response.abilities, row3);
   const bridges2 = list3(response.bridges, bridge);
   const candidates = list3(response.candidate_connections, candidate);
-  const total = count(response.total);
+  const total = count2(response.total);
   if (!abilities || !bridges2 || !candidates || total === null) return null;
   return {
     snapshot_id: response.snapshot_id,
@@ -21470,7 +21732,7 @@ function asAbilityBrief(value) {
     truncated: response.truncated === true,
     bridges: bridges2,
     candidate_connections: candidates,
-    candidate_connection_count: count(response.candidate_connection_count) ?? candidates.length
+    candidate_connection_count: count2(response.candidate_connection_count) ?? candidates.length
   };
 }
 function definition(value) {
@@ -21509,7 +21771,7 @@ function asAbilityFocus(value) {
     bridges: bridges2,
     encounters,
     related_encounters: related,
-    related_encounters_total: count(response.related_encounters_total) ?? related.length,
+    related_encounters_total: count2(response.related_encounters_total) ?? related.length,
     candidate_connections: candidates,
     shared_concept_candidates: shared
   };
@@ -22717,8 +22979,8 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
   getUnitNoteDraft(unitId, stages = []) {
     return this.drafts.getUnitNote(unitId, stages);
   }
-  setUnitNoteDraft(unitId, title, text8, expectedRevisions = {}, recoveredStages = {}) {
-    this.drafts.setUnitNote(unitId, title, text8, expectedRevisions, recoveredStages);
+  setUnitNoteDraft(unitId, title2, text8, expectedRevisions = {}, recoveredStages = {}) {
+    this.drafts.setUnitNote(unitId, title2, text8, expectedRevisions, recoveredStages);
   }
   clearUnitNoteDraft(unitId, recoveredStages = {}, match = null) {
     this.drafts.clearUnitNote(unitId, recoveredStages, match);
@@ -22749,8 +23011,8 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
   getInboxDraft() {
     return this.drafts.getInbox();
   }
-  setInboxDraft(title, text8) {
-    this.drafts.setInbox(title, text8);
+  setInboxDraft(title2, text8) {
+    this.drafts.setInbox(title2, text8);
   }
   clearInboxDraft(match = null) {
     this.drafts.clearInbox(match);
@@ -22758,8 +23020,8 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
   getGardenDraft() {
     return this.drafts.getGarden();
   }
-  setGardenDraft(title, text8) {
-    this.drafts.setGarden(title, text8);
+  setGardenDraft(title2, text8) {
+    this.drafts.setGarden(title2, text8);
   }
   clearGardenDraft(match = null) {
     this.drafts.clearGarden(match);

@@ -48,6 +48,7 @@ export const STYLESHEET_MODULES = [
   '27-ability-map.css',
   '28-review-split.css',
   '29-material-compare.css',
+  '30-domain-atlas.css',
 ];
 
 /*

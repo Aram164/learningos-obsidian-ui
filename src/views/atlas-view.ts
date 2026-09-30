@@ -14,6 +14,7 @@ import {
 } from '../contracts/route-v1';
 import type {
   AtlasHost,
+  DomainAtlasState,
   AtlasInspectorTab,
   AtlasPlugin,
   AtlasRouteState,
@@ -55,6 +56,7 @@ export class AtlasView extends ItemView implements AtlasHost {
   private depth: AtlasDepthV1 = 1;
 
   query = '';
+  readonly domains: DomainAtlasState = { query: '', selected: null, disclosures: new Map() };
   tab: AtlasInspectorTab = 'summary';
   semanticOpen = false;
   remainderOpen = false;
@@ -94,7 +96,7 @@ export class AtlasView extends ItemView implements AtlasHost {
   }
 
   getDisplayText() {
-    return 'LearningOS · Concept atlas';
+    return this.lens === 'domains' ? 'LearningOS · Domain Atlas' : 'LearningOS · Concept atlas';
   }
 
   getIcon() {

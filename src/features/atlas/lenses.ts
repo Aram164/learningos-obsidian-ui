@@ -187,6 +187,7 @@ export function renderDiagnostics(
   }
 
   const actions = panel.createDiv({ cls: 'los-actions' });
+  button(actions, 'Domain Atlas', () => host.plugin.nav.openAtlas({ lens: 'domains' }), 'quiet');
   button(
     actions,
     'Open generated domain map',
