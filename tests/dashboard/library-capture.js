@@ -775,7 +775,7 @@ module.exports = async function run() {
     await tick();
     await tick();
     view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
-    const refreshed = view.contentEl.find('los-finder-filter')[0];
+    let refreshed = view.contentEl.find('los-finder-filter')[0];
     check(
       'an unrelated refresh preserves the query, the focus and the caret',
       refreshed !== search
@@ -785,6 +785,30 @@ module.exports = async function run() {
         && refreshed.selectionStart === 1
         && refreshed.selectionEnd === 1,
     );
+
+    refreshed.setSelectionRange(0, 2, 'backward');
+    await plugin.reloadStore();
+    await tick();
+    await tick();
+    refreshed = view.contentEl.find('los-finder-filter')[0];
+    check(
+      'a refresh preserves both selection endpoints and its direction',
+      global.document.activeElement === refreshed
+        && refreshed.value === 'isl'
+        && refreshed.selectionStart === 0
+        && refreshed.selectionEnd === 2
+        && refreshed.selectionDirection === 'backward',
+    );
+
+    // Rendering another Library leaf must not claim the first leaf's input.
+    const otherLeaf = app.workspace.getLeaf(true);
+    await otherLeaf.setViewState({ type: VIEW.library, state: view.getState() });
+    check(
+      'another Library leaf cannot steal a focused filter during rendering',
+      global.document.activeElement === refreshed,
+    );
+    otherLeaf.detach();
+    refreshed.focus();
 
     // Filtering changes neither selection nor navigation.
     refreshed.value = '';

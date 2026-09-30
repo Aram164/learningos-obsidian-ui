@@ -231,12 +231,17 @@ export class LibraryView extends ItemView {
     // A full rebuild must not interrupt a half-typed filter. Capture the caret
     // before the old input is gone; the folder branch restores it afterwards.
     // A pending row-focus wins over this — a selection move has its own target.
-    const active = typeof document === 'undefined'
-      ? null
-      : document.activeElement as HTMLInputElement | null;
+    const hostDocument = root.ownerDocument
+      ?? (typeof document === 'undefined' ? null : document);
+    const active = hostDocument?.activeElement as HTMLInputElement | null;
     const finderCaret = active?.classList?.contains('los-finder-filter')
+      && root.contains(active)
       && !this._focusSelection
-      ? { start: active.selectionStart, end: active.selectionEnd }
+      ? {
+        start: active.selectionStart,
+        end: active.selectionEnd,
+        direction: active.selectionDirection,
+      }
       : null;
 
     root.empty();
@@ -270,7 +275,7 @@ export class LibraryView extends ItemView {
         const start = finderCaret.start ?? filter.value.length;
         const end = finderCaret.end ?? start;
         try {
-          filter.setSelectionRange?.(start, end);
+          filter.setSelectionRange?.(start, end, finderCaret.direction ?? 'none');
         } catch {
           /* a host without selection support keeps focus and loses only the caret */
         }

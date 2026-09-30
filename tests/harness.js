@@ -24,6 +24,7 @@ class El {
      * field was rebuilt and the learner lost their place". */
     this.selectionStart = null;
     this.selectionEnd = null;
+    this.selectionDirection = 'none';
     this.listeners = {};
     this.classList = {
       add: (...c) => c.forEach((x) => this.classes.add(x)),
@@ -83,9 +84,13 @@ class El {
     }
     return this;
   }
-  setSelectionRange(start, end) {
+  contains(element) {
+    return this === element || this.children.some((child) => child.contains(element));
+  }
+  setSelectionRange(start, end, direction = 'none') {
     this.selectionStart = start;
     this.selectionEnd = end;
+    this.selectionDirection = direction;
     return this;
   }
   /** Type `chars` at the caret, as a keyboard would, and fire one input event. */

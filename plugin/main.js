@@ -11386,8 +11386,13 @@ var LibraryView = class extends import_obsidian10.ItemView {
   render() {
     const root = this.contentEl;
     this._finderContext = null;
-    const active = typeof document === "undefined" ? null : document.activeElement;
-    const finderCaret = active?.classList?.contains("los-finder-filter") && !this._focusSelection ? { start: active.selectionStart, end: active.selectionEnd } : null;
+    const hostDocument = root.ownerDocument ?? (typeof document === "undefined" ? null : document);
+    const active = hostDocument?.activeElement;
+    const finderCaret = active?.classList?.contains("los-finder-filter") && root.contains(active) && !this._focusSelection ? {
+      start: active.selectionStart,
+      end: active.selectionEnd,
+      direction: active.selectionDirection
+    } : null;
     root.empty();
     root.addClass(
       "los-root",
@@ -11415,7 +11420,7 @@ var LibraryView = class extends import_obsidian10.ItemView {
         const start = finderCaret.start ?? filter.value.length;
         const end = finderCaret.end ?? start;
         try {
-          filter.setSelectionRange?.(start, end);
+          filter.setSelectionRange?.(start, end, finderCaret.direction ?? "none");
         } catch {
         }
       }
@@ -21069,7 +21074,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:f0784537a6758c9ba7d1f74041b6fa6b4fe8681a53c6b6ed42dc683d720e0929" : "unavailable";
+  return true ? "sha256:99907c80d5e362a7cd65428c096536672f24d2507aa5bbf3240c41b67f69cfea" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
