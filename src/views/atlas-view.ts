@@ -96,7 +96,8 @@ export class AtlasView extends ItemView implements AtlasHost {
   }
 
   getDisplayText() {
-    return this.lens === 'domains' ? 'LearningOS · Domain Atlas' : 'LearningOS · Concept atlas';
+    // Both variants share one native view; the in-pane heading names its lens.
+    return 'LearningOS · Atlas';
   }
 
   getIcon() {
@@ -161,7 +162,6 @@ export class AtlasView extends ItemView implements AtlasHost {
   ): Promise<void> {
     this.adopt(state);
     this.render();
-    this.leaf.updateHeader?.();
   }
 
   getState(): AtlasViewState {
@@ -176,7 +176,6 @@ export class AtlasView extends ItemView implements AtlasHost {
   async onOpen(): Promise<void> {
     this.adopt(this.leaf.getViewState().state ?? {});
     this.render();
-    this.leaf.updateHeader?.();
   }
 
   /**

@@ -6452,21 +6452,6 @@ function isCorpusLens(lens) {
 function rememberConcept(recents, conceptId) {
   return [conceptId, ...recents.filter((id2) => id2 !== conceptId)].slice(0, RECENT_LIMIT);
 }
-function capturedCaret() {
-  const active = typeof document === "undefined" ? null : document.activeElement;
-  if (!active?.classList?.contains("los-atlas-search-input")) return null;
-  return { start: active.selectionStart, end: active.selectionEnd };
-}
-function restoreCaret(input, caret) {
-  if (!caret) return;
-  input.focus();
-  const start = caret.start ?? input.value.length;
-  const end = caret.end ?? start;
-  try {
-    input.setSelectionRange?.(start, end);
-  } catch {
-  }
-}
 function renderSearch(parent, host, update) {
   const field2 = parent.createDiv({ cls: "los-atlas-search" });
   const label = field2.createEl("label", {
@@ -6732,7 +6717,6 @@ function renderConceptSeed(parent, host, graph, conceptId) {
 }
 function renderAtlas(root, host) {
   const domainLens = host.state.lens === "domains";
-  const caret = domainLens ? null : capturedCaret();
   root.empty();
   root.addClass("los-root", "los-atlas-view");
   root.toggleClass("los-domain-view", domainLens);
@@ -6765,12 +6749,11 @@ function renderAtlas(root, host) {
     results.empty();
     if (host.query.trim()) renderEntry(results, host, graph, true);
   };
-  const input = renderSearch(controls, host, updateSearch);
+  renderSearch(controls, host, updateSearch);
   renderModuleFilter(controls, host, graph);
   results = root.createDiv({ cls: "los-atlas-search-results" });
   results.setAttrs({ "aria-live": "polite" });
   updateSearch();
-  restoreCaret(input, caret);
   if (!graph.concepts.length) {
     empty(
       root,
@@ -6858,7 +6841,7 @@ var AtlasView = class extends import_obsidian5.ItemView {
     return VIEW_ATLAS;
   }
   getDisplayText() {
-    return this.lens === "domains" ? "LearningOS \xB7 Domain Atlas" : "LearningOS \xB7 Concept atlas";
+    return "LearningOS \xB7 Atlas";
   }
   getIcon() {
     return "map";
@@ -6911,7 +6894,6 @@ var AtlasView = class extends import_obsidian5.ItemView {
   async setState(state = {}) {
     this.adopt(state);
     this.render();
-    this.leaf.updateHeader?.();
   }
   getState() {
     return {
@@ -6924,7 +6906,6 @@ var AtlasView = class extends import_obsidian5.ItemView {
   async onOpen() {
     this.adopt(this.leaf.getViewState().state ?? {});
     this.render();
-    this.leaf.updateHeader?.();
   }
   /**
    * The Atlas's one write, routed like every other write in the app.
@@ -21493,7 +21474,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:834c5a41fc1e233e6245668695676b915d076d8b496379e9901bdc0df79577d0" : "unavailable";
+  return true ? "sha256:a55c4a2b0fcc4cce46e516891f70a972efb5aa3eb73615514cb3babcbea3f8d4" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

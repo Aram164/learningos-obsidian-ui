@@ -25,11 +25,11 @@ module.exports = async function run() {
   const concepts = app.workspace.getLeaf(true);
   await concepts.setViewState({ type: VIEW.atlas, state: { lens: 'prerequisites' } });
   const restored = app.workspace.getLeaf(true);
-  const restoredTitles = [];
-  restored.updateHeader = () => restoredTitles.push(restored.view.getDisplayText());
   await restored.setViewState({ type: VIEW.atlas, state: { lens: 'domains' } });
-  check('restoring a Domain pane refreshes its native header after both state adoption and opening',
-    restoredTitles.length === 2 && restoredTitles.every((title) => title === 'LearningOS · Domain Atlas'));
+  check('Concept and Domain variants share a stable native title and show their own in-pane heading',
+    concepts.view.getDisplayText() === 'LearningOS · Atlas'
+    && restored.view.getDisplayText() === concepts.view.getDisplayText()
+    && restored.view.contentEl.findText('los-page-header', 'Domain Atlas'));
   await plugin.nav.openDiagnostics();
   const diagnostics = app.workspace.getLeavesOfType(VIEW.diagnostics)[0];
   const navLeaf = app.workspace.getLeavesOfType(VIEW.nav)[0];

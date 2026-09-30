@@ -69,44 +69,6 @@ export function rememberConcept(
     .slice(0, RECENT_LIMIT);
 }
 
-/**
- * Where the caret was when a redraw took the field away.
- *
- * A manifest refresh is not a reason to interrupt a half-typed query. The
- * shell rebuilds its whole root, so the input the learner is typing into is a
- * different element afterwards; without this, focus lands back on the document
- * and the caret jumps to the end of whatever survived.
- */
-interface SearchCaret {
-  readonly start: number | null;
-  readonly end: number | null;
-}
-
-function capturedCaret(): SearchCaret | null {
-  const active = typeof document === 'undefined'
-    ? null
-    : document.activeElement as HTMLInputElement | null;
-
-  if (!active?.classList?.contains('los-atlas-search-input')) return null;
-
-  return { start: active.selectionStart, end: active.selectionEnd };
-}
-
-function restoreCaret(input: HTMLInputElement, caret: SearchCaret | null): void {
-  if (!caret) return;
-
-  input.focus();
-  // `setSelectionRange` is absent on some hosts and throws on input types that
-  // carry no selection. Focus alone is still the larger half of the repair.
-  const start = caret.start ?? input.value.length;
-  const end = caret.end ?? start;
-  try {
-    input.setSelectionRange?.(start, end);
-  } catch {
-    /* a host without selection support keeps focus and loses only the caret */
-  }
-}
-
 function renderSearch(
   parent: HTMLElement,
   host: AtlasHost,
@@ -513,7 +475,6 @@ function renderConceptSeed(
 
 export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   const domainLens = host.state.lens === 'domains';
-  const caret = domainLens ? null : capturedCaret();
 
   root.empty();
   root.addClass('los-root', 'los-atlas-view');
@@ -553,12 +514,11 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
     results.empty();
     if (host.query.trim()) renderEntry(results, host, graph, true);
   };
-  const input = renderSearch(controls, host, updateSearch);
+  renderSearch(controls, host, updateSearch);
   renderModuleFilter(controls, host, graph);
   results = root.createDiv({ cls: 'los-atlas-search-results' });
   results.setAttrs({ 'aria-live': 'polite' });
   updateSearch();
-  restoreCaret(input, caret);
 
   if (!graph.concepts.length) {
     empty(

@@ -1,5 +1,7 @@
 'use strict';
 
+const { browserDom } = require('./browser-dom');
+
 const {
   path,
   fs,
@@ -473,6 +475,7 @@ module.exports = async function run() {
      * the field is rebuilt by the redraw, so focus and caret have to be carried
      * across it deliberately. The caret sits mid-word, not at the end, because
      * restoring to the end would still lose the learner's place. */
+    browserDom(view.contentEl);
     const search = view.contentEl.find('los-atlas-search-input')[0];
     search.focus();
     search.typeText('cond');

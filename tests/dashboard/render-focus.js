@@ -2,36 +2,8 @@
 'use strict';
 const { boot, VIEW, waitFor, check, heading } = require('./support');
 
-// Only this suite needs native selector/focus behaviour; the shared stub stays small.
-function browserDom(root) {
-  function wire(node, parent = null) {
-    node.parentElement = parent;
-    node.ownerDocument = global.document;
-    Object.defineProperties(node, {
-      tagName: { configurable: true, get: () => node.tag.toUpperCase() },
-      className: { configurable: true, get: () => [...node.classes].join(' ') },
-      textContent: { configurable: true, get: () => node.allText() },
-      isConnected: { configurable: true, get: () => root.contains(node) },
-    });
-    node.matches = (selector) => selector.split(',').some((part) => {
-      part = part.trim();
-      if (part === '[role="group"]') return node.getAttribute('role') === 'group';
-      if (part === 'button') return node.tag === 'button';
-      if (part === 'input[type="search"]') return node.tag === 'input' && node.getAttribute('type') === 'search';
-      const match = part.match(/^(input|textarea)\.([a-z-]+)$/);
-      return Boolean(match && node.tag === match[1] && node.classes.has(match[2]));
-    });
-    node.closest = (selector) => node.matches(selector) ? node : node.parentElement?.closest(selector) ?? null;
-    node.querySelectorAll = (selector) => node.children.flatMap((child) => [
-      ...(child.matches(selector) ? [child] : []), ...child.querySelectorAll(selector),
-    ]);
-    const spawn = node._spawn;
-    node._spawn = function(tag, opts) { return wire(spawn.call(this, tag, opts), this); };
-    for (const child of node.children) wire(child, node);
-    return node;
-  }
-  return wire(root);
-}
+const { browserDom } = require('./browser-dom');
+
 const viewOf = (app, type) => app.workspace.getLeavesOfType(type)[0]?.view;
 module.exports = async function run() {
   heading('redraw focus: continuous typing, selection and independent leaves');
@@ -65,6 +37,59 @@ module.exports = async function run() {
   const another = global.document.body.createEl('input');
   another.focus(); view.render();
   check('Atlas refresh never steals focus from a different leaf', global.document.activeElement === another);
+  // Real projection reloads redraw every leaf, including another Concept
+  // pane whose search has the same class but an independent query/caret.
+  await plugin.nav.openAtlas({ lens: 'prerequisites' });
+  const conceptA = app.workspace.getLeavesOfType(VIEW.atlas)[0];
+  const conceptB = app.workspace.getLeaf(true);
+  await conceptB.setViewState({ type: VIEW.atlas, state: { lens: 'prerequisites' } });
+  const conceptRootA = browserDom(conceptA.view.contentEl);
+  const conceptRootB = browserDom(conceptB.view.contentEl);
+  const conceptInputA = () => conceptRootA.find('los-atlas-search-input')[0];
+  const conceptInputB = () => conceptRootB.find('los-atlas-search-input')[0];
+  conceptInputA().value = 'conditional'; conceptInputA().fire('input');
+  conceptInputB().value = 'bayes'; conceptInputB().fire('input');
+  // Emptying a scrollable pane can clamp its native scroll position while
+  // its contents are replaced. The adapter makes that browser effect visible.
+  for (const conceptRoot of [conceptRootA, conceptRootB]) {
+    const empty = conceptRoot.empty;
+    conceptRoot.empty = function() {
+      empty.call(this); this.scrollTop = 0; this.scrollLeft = 0; return this;
+    };
+  }
+  app.workspace.setActiveLeaf(conceptA);
+  conceptInputA().focus(); conceptInputA().setSelectionRange(2, 9, 'backward');
+  conceptRootA.scrollTop = 257; conceptRootA.scrollLeft = 19;
+  const focusedA = conceptInputA();
+  conceptB.view.render();
+  check('refreshing another Concept pane never takes the focused pane’s field',
+    global.document.activeElement === focusedA && conceptInputA() === focusedA
+    && focusedA.selectionStart === 2 && focusedA.selectionEnd === 9
+    && focusedA.selectionDirection === 'backward');
+  await plugin.reloadStore();
+  check('refreshing both Concept leaves retains focus, backward selection and scroll in the first leaf',
+    conceptInputA() !== focusedA && global.document.activeElement === conceptInputA()
+    && conceptInputA().value === 'conditional' && conceptInputA().selectionStart === 2
+    && conceptInputA().selectionEnd === 9 && conceptInputA().selectionDirection === 'backward'
+    && conceptRootA.scrollTop === 257 && conceptRootA.scrollLeft === 19);
+  app.workspace.setActiveLeaf(conceptB);
+  conceptInputB().focus(); conceptInputB().setSelectionRange(0, 3, 'forward');
+  conceptRootB.scrollTop = 441; conceptRootB.scrollLeft = 5;
+  const focusedB = conceptInputB();
+  conceptA.view.render();
+  check('the other Concept pane is also protected when it is the focused second leaf',
+    global.document.activeElement === focusedB && conceptInputB() === focusedB);
+  await plugin.reloadStore();
+  check('the second Concept leaf preserves its own selection and scroll during a full refresh',
+    conceptInputB() !== focusedB && global.document.activeElement === conceptInputB()
+    && conceptInputB().value === 'bayes' && conceptInputB().selectionStart === 0
+    && conceptInputB().selectionEnd === 3 && conceptInputB().selectionDirection === 'forward'
+    && conceptRootB.scrollTop === 441 && conceptRootB.scrollLeft === 5);
+  check('independent Concept queries survive both refresh orders without Gateway writes',
+    conceptA.view.query === 'conditional' && conceptB.view.query === 'bayes'
+    && conceptInputA().value === 'conditional' && conceptInputB().value === 'bayes'
+    && calls.envelopes.length === 0);
+  another.focus();
   await plugin.nav.openGarden();
   const garden = viewOf(app, VIEW.garden);
   const gardenRoot = browserDom(garden.contentEl);
