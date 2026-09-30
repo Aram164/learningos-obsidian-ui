@@ -214,7 +214,7 @@ function renderToolbar(
       layouts,
       label,
       () => void view.setFolderLayout(id),
-      active ? 'cta' : 'quiet',
+      'quiet',
     );
     control.setAttribute('aria-pressed', String(active));
   }

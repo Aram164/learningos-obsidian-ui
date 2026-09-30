@@ -593,9 +593,21 @@ export class LibraryView extends ItemView {
   }
 
   async setFolderLayout(layout: LibraryFolderLayoutV1): Promise<void> {
+    const hostDocument = this.contentEl.ownerDocument
+      ?? (typeof document === 'undefined' ? null : document);
+    const active = hostDocument?.activeElement;
+    const controls = typeof this.contentEl.querySelector === 'function'
+      ? this.contentEl.querySelector('.los-finder-layouts')
+      : null;
+    const restoreFocus = active != null && controls?.contains(active);
     this.folderLayout = layout;
     await this.rememberFolder();
     this.render();
+    if (restoreFocus) {
+      this.contentEl.querySelector<HTMLButtonElement>(
+        '.los-finder-layouts button[aria-pressed="true"]',
+      )?.focus();
+    }
   }
 
   async setFolderQuery(query: string): Promise<void> {

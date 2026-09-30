@@ -748,10 +748,31 @@ module.exports = async function run() {
     );
 
     // The columns layout filters its current column under the same field.
-    await view.setFolderLayout('columns');
+    // Supply the two native DOM queries missing from this fixture's DOM shim.
+    view.contentEl.querySelector = (selector) => {
+      const group = view.contentEl.find('los-finder-layouts')[0];
+      if (selector === '.los-finder-layouts') return group;
+      if (selector === '.los-finder-layouts button[aria-pressed="true"]') {
+        return group.find('los-btn').find(
+          (control) => control.getAttribute('aria-pressed') === 'true',
+        ) || null;
+      }
+      return null;
+    };
+    const columnsControl = view.contentEl.findText('los-btn', 'Columns');
+    columnsControl.focus();
+    columnsControl.fire('click');
     await tick();
     await tick();
     view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check(
+      'changing layout keeps the current folder and returns focus to its selected segment',
+      view.folderLayout === 'columns'
+        && view.folderPath.join('/') === `${mathSegment}/type:book`
+        && global.document.activeElement !== columnsControl
+        && global.document.activeElement === view.contentEl.findText('los-btn', 'Columns')
+        && global.document.activeElement.getAttribute('aria-pressed') === 'true',
+    );
     search = view.contentEl.find('los-finder-filter')[0];
     search.focus();
     search.typeText('isl');

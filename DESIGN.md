@@ -251,6 +251,12 @@ allow character-by-character wrapping. Shared primitives also include badges,
 typed chips, fact lists, workspace/unit cards, empty states, sections, page
 headers, filter tabs, `disclosure()` and `overflowMenu()`.
 
+The Library's List/Columns layout choice uses a single rounded segmented
+control, guided by the native macOS 26 Figma kit. A quiet raised segment marks
+the current view; its text and `aria-pressed` state carry the choice. Both
+segments retain native-button keyboard navigation and visible focus. The
+control aligns with the filter, and the toolbar wraps inside narrow panes.
+
 **Amended 2026-08-03: the always-visible ownership footer is retired.** It
 stated architecture policy under every screen, which made the product read as
 internal tooling rather than a study cockpit. The statement is now made once,

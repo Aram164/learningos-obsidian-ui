@@ -10573,7 +10573,7 @@ function renderToolbar2(view, parent, folder2, shown, onQuery) {
       layouts,
       label,
       () => void view.setFolderLayout(id2),
-      active ? "cta" : "quiet"
+      "quiet"
     );
     control.setAttribute("aria-pressed", String(active));
   }
@@ -11619,9 +11619,18 @@ var LibraryView = class extends import_obsidian10.ItemView {
     this.render();
   }
   async setFolderLayout(layout) {
+    const hostDocument = this.contentEl.ownerDocument ?? (typeof document === "undefined" ? null : document);
+    const active = hostDocument?.activeElement;
+    const controls = typeof this.contentEl.querySelector === "function" ? this.contentEl.querySelector(".los-finder-layouts") : null;
+    const restoreFocus = active != null && controls?.contains(active);
     this.folderLayout = layout;
     await this.rememberFolder();
     this.render();
+    if (restoreFocus) {
+      this.contentEl.querySelector(
+        '.los-finder-layouts button[aria-pressed="true"]'
+      )?.focus();
+    }
   }
   async setFolderQuery(query) {
     this.query = query;
@@ -21147,7 +21156,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:717c30a8fc0a6f1cfde4ff601d46df6fef9ee2a8e36664553a5199ff7cfc5d98" : "unavailable";
+  return true ? "sha256:17d48dddf5eee8bd1c068f2d013f75364332a920547989e2b903c71e96ca221d" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

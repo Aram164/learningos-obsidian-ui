@@ -159,7 +159,41 @@
 .los-finder-layouts {
   display: inline-flex;
   flex: 0 0 auto;
+  align-items: stretch;
   gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-sm);
+  background: var(--los-paper-3);
+}
+
+/* A layout choice is one segmented control, with a quiet raised selection.
+   Keep its total height aligned with the filter rather than styling the
+   selected segment as a competing primary action. */
+.los-root .los-finder-layouts .los-btn {
+  min-width: 70px;
+  min-height: 32px;
+  padding: 2px var(--los-3);
+  border-color: transparent;
+  border-radius: calc(var(--los-r-sm) - 2px);
+  background: transparent;
+  color: var(--los-ink-soft);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.los-root .los-finder-layouts .los-btn:hover {
+  border-color: transparent;
+  background: var(--los-surface);
+  color: var(--los-ink);
+}
+
+.los-root .los-finder-layouts .los-btn[aria-pressed="true"] {
+  border-color: var(--los-line);
+  background: var(--los-surface-raised);
+  color: var(--los-ink);
+  box-shadow: 0 1px 2px var(--los-shadow-soft);
+  font-weight: 650;
 }
 
 .los-finder-count {
