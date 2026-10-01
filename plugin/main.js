@@ -2323,7 +2323,7 @@ var AUTHOR_LABELS = {
   unrecorded: "Authorship unrecorded"
 };
 var INITIAL_ROWS = 20;
-var count = (amount, singular, plural3 = `${singular}s`) => `${amount} ${amount === 1 ? singular : plural3}`;
+var count = (amount, singular, plural3 = singular === "source shelf" ? "source shelves" : `${singular}s`) => `${amount} ${amount === 1 ? singular : plural3}`;
 var roleOf = (record10) => asText(record10.role) ?? "unrecorded";
 var authorOf = (record10) => asText(record10.authorship) ?? "unrecorded";
 var roleLabel = (role) => ROLE_LABELS[role] ?? role;
@@ -2570,7 +2570,7 @@ function renderShelves(parent, host, index, domain, shelves, redraw) {
   }
   const footer = body.createDiv({ cls: "los-domain-list-footer", text: `${Math.min(limit, rows.length)} of ${count(rows.length, "ordered entry", "ordered entries")} shown` });
   showMore(footer, state, key, rows.length, redraw, "entries");
-  button(footer, "All source folders", () => host.plugin.nav.openLibraryHome("sources"), "tertiary");
+  button(footer, "All source folders", () => host.plugin.nav.openLibraryFolder([]), "tertiary");
 }
 function renderResults(results, host, index) {
   const state = host.domains;
@@ -7426,6 +7426,17 @@ function renderAtlas(root, host) {
   about.createDiv({ text: "Explore authored concepts, their linked notes and learning order. Modules show where teaching is mapped. Semantic connections explain related ideas; only prerequisites order learning." });
   renderAtlasVariants(root, host.plugin.nav, "concepts");
   const controls = root.createDiv({ cls: "los-atlas-controls" });
+  const history = controls.createDiv({ cls: "los-atlas-concept-history", attr: {
+    role: "group",
+    "aria-label": "Concept history"
+  } });
+  enableButtonGroupKeyboardNavigation(history, "horizontal");
+  const back = button(history, "Back", () => host.conceptBack(), "quiet");
+  back.setAttrs({ "aria-label": "Back to previous concept", "data-los-tab": "concept-back" });
+  back.disabled = !host.canConceptBack;
+  const forward = button(history, "Forward", () => host.conceptForward(), "quiet");
+  forward.setAttrs({ "aria-label": "Forward to next concept", "data-los-tab": "concept-forward" });
+  forward.disabled = !host.canConceptForward;
   let results;
   let entryRegion = null;
   const updateSearch = () => {
@@ -7518,6 +7529,10 @@ var AtlasView = class extends import_obsidian5.ItemView {
   renderCleanups = [];
   conceptAttention = /* @__PURE__ */ new Map();
   pendingConceptBrowse = false;
+  routeAdopted = false;
+  conceptPast = [];
+  conceptFuture = [];
+  pendingConceptTraversal = null;
   addRenderCleanup(cleanup) {
     this.renderCleanups.push(cleanup);
   }
@@ -7560,11 +7575,30 @@ var AtlasView = class extends import_obsidian5.ItemView {
       module: next.module,
       lens: next.lens,
       depth: next.depth
-    });
+    }, this.leaf);
   }
   openConceptBrowser() {
     this.pendingConceptBrowse = true;
     this.go({ concept: null, lens: "prerequisites" });
+  }
+  get canConceptBack() {
+    return !this.pendingConceptTraversal && this.conceptPast.length > 0;
+  }
+  get canConceptForward() {
+    return !this.pendingConceptTraversal && this.conceptFuture.length > 0;
+  }
+  conceptBack() {
+    this.traverseConcept("back");
+  }
+  conceptForward() {
+    this.traverseConcept("forward");
+  }
+  traverseConcept(direction) {
+    if (this.pendingConceptTraversal) return;
+    const target = (direction === "back" ? this.conceptPast : this.conceptFuture).at(-1);
+    if (!target) return;
+    this.pendingConceptTraversal = { direction, target };
+    this.go(target);
   }
   /**
    * Adopt one route state. Unknown lens and depth values are coerced by the
@@ -7572,6 +7606,7 @@ var AtlasView = class extends import_obsidian5.ItemView {
    * its default instead of failing to open it (ADR-016 decision 8).
    */
   adopt(state) {
+    const previousRoute = this.state;
     const previous = this.concept;
     const attention = {
       query: this.query,
@@ -7592,6 +7627,21 @@ var AtlasView = class extends import_obsidian5.ItemView {
     this.lens = asAtlasLens(state.lens);
     this.depth = asAtlasDepth(state.depth);
     if (this.concept !== previous) {
+      if (this.routeAdopted) {
+        const traversal = this.pendingConceptTraversal;
+        if (traversal && this.concept === traversal.target.concept && this.module === traversal.target.module && this.lens === traversal.target.lens && this.depth === traversal.target.depth) {
+          if (traversal.direction === "back") {
+            this.conceptPast.pop();
+            this.conceptFuture.push(previousRoute);
+          } else {
+            this.conceptFuture.pop();
+            this.conceptPast.push(previousRoute);
+          }
+        } else {
+          this.conceptPast.push(previousRoute);
+          this.conceptFuture.length = 0;
+        }
+      }
       this.conceptAttention.set(previous, attention);
       const restored = this.conceptAttention.get(this.concept);
       this.query = restored?.query ?? "";
@@ -7609,6 +7659,8 @@ var AtlasView = class extends import_obsidian5.ItemView {
         this.concept
       );
     }
+    this.routeAdopted = true;
+    this.pendingConceptTraversal = null;
     if (this.pendingConceptBrowse && this.concept === null && this.lens === "prerequisites") {
       this.pendingConceptBrowse = false;
       this.query = "";
@@ -7701,7 +7753,17 @@ var AtlasView = class extends import_obsidian5.ItemView {
     }
   }
   render() {
+    const doc = this.contentEl.ownerDocument ?? globalThis.document;
+    const focused = doc?.activeElement;
+    const historyKey = focused && this.contentEl.contains(focused) ? focused.getAttribute("data-los-tab") : null;
     withRenderFocus(this.contentEl, () => this.renderContent());
+    if (historyKey === "concept-back" || historyKey === "concept-forward") {
+      const now2 = doc.activeElement;
+      if (!now2 || now2 === focused || now2 === doc.body || !now2.isConnected) {
+        const fallback = Array.from(this.contentEl.querySelectorAll("button")).find((node) => !node.disabled && node.getAttribute("data-los-tab") === (historyKey === "concept-back" ? "concept-forward" : "concept-back"));
+        fallback?.focus({ preventScroll: true });
+      }
+    }
   }
   renderContent() {
     this.clearRenderEffects();
@@ -21543,7 +21605,7 @@ var AppNavigator = class {
    * concept ends up in the depth slot. Unknown values are coerced by the route
    * contract rather than rejected here.
    */
-  openAtlas(target = {}) {
+  openAtlas(target = {}, preferredLeaf) {
     const current = this.router.snapshot().current;
     const changingAtlasState = current?.name === "atlas";
     return this.router.navigate(
@@ -21554,7 +21616,7 @@ var AppNavigator = class {
         lens: asAtlasLens(target.lens),
         depth: asAtlasDepth(target.depth)
       },
-      { pushHistory: !changingAtlasState }
+      { pushHistory: !changingAtlasState, ...preferredLeaf ? { preferredLeaf } : {} }
     );
   }
   /**
@@ -21921,8 +21983,9 @@ var ApplicationRouter = class {
   sameRoute(left, right) {
     return JSON.stringify(left) === JSON.stringify(right);
   }
-  async openLeaf(type, state = {}, side = "main") {
-    let leaf = this.plugin.app.workspace.getLeavesOfType(type)[0];
+  async openLeaf(type, state = {}, side = "main", preferredLeaf) {
+    const leaves = this.plugin.app.workspace.getLeavesOfType(type);
+    let leaf = preferredLeaf && leaves.includes(preferredLeaf) ? preferredLeaf : leaves[0];
     if (!leaf) {
       leaf = side === "left" ? this.plugin.app.workspace.getLeftLeaf?.(false) ?? this.plugin.app.workspace.getLeaf(true) : this.plugin.app.workspace.getLeaf(true);
     }
@@ -21975,7 +22038,7 @@ var ApplicationRouter = class {
       await this.persist();
     }
     this.plugin.setActiveNav(descriptor.nav);
-    const leaf = await this.openLeaf(descriptor.type, descriptor.state);
+    const leaf = await this.openLeaf(descriptor.type, descriptor.state, "main", options.preferredLeaf);
     if (Number.isFinite(options.restoreScrollTop) && leaf?.view?.contentEl) {
       leaf.view.contentEl.scrollTop = Number(options.restoreScrollTop);
     }
@@ -22198,7 +22261,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:410876bb311d457ac631faac46504dc26f8116291a0c03adf26d8dcfaaf5c740" : "unavailable";
+  return true ? "sha256:bc3ee9ee158e1e11e257f9729adb897bc5017b46bbe2a351f1b101a79ff3c1e7" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

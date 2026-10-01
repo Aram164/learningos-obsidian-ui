@@ -85,9 +85,9 @@ export interface AtlasRouteState {
 /**
  * The inspector's tab.
  *
- * View-owned rather than route state, and deliberately so: changing a lens is
- * a change of question and pushes history, while changing a tab is a change of
- * attention within one answer and must not (Figma 88:3).
+ * View-owned rather than route state: a tab changes attention within one
+ * answer. Atlas route changes retain application replacement semantics;
+ * the per-leaf Back/Forward trail records concept changes only.
  */
 export type AtlasInspectorTab =
   | 'summary'
@@ -134,6 +134,11 @@ export interface AtlasHost {
   go(target: Partial<AtlasRouteState>): void;
   /** Open complete concept browsing after route attention has been restored. */
   openConceptBrowser(): void;
+  /** Per-leaf concept selections, separate from application route history. */
+  readonly canConceptBack: boolean;
+  readonly canConceptForward: boolean;
+  conceptBack(): void;
+  conceptForward(): void;
   /** Redraw without navigating — for working state only. */
   render(): void;
 

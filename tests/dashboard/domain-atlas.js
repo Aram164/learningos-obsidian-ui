@@ -157,6 +157,11 @@ module.exports = async function run() {
   check('entry source navigation uses the existing source destination', plugin.router.snapshot().current.name === 'source-detail'
     && plugin.router.snapshot().current.resourceId === 'source-fixture-book');
   await plugin.nav.back(); refreshRoot();
+  root.findText('los-btn', 'All source folders').fire('click'); await tick();
+  check('All source folders opens the complete folder browser rather than a flat source list',
+    plugin.router.snapshot().current.name === 'library-folder'
+    && plugin.router.snapshot().current.path.length === 0);
+  await plugin.nav.back(); refreshRoot();
   toggle(root.find('los-domain-tools')[0]);
   root.find('los-domain-source-group')[0].fire('click'); await tick();
   check('source folders use actual thematic-group route prefixes', plugin.router.snapshot().current.name === 'library-folder'

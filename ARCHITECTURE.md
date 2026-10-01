@@ -48,7 +48,11 @@ it may translate a user action into a declared Core capability, but it never
 becomes a second implementation of that capability.
 
 Atlas presentation attention is owned by its leaf: Concepts remembers search,
-selection context and disclosures per inspected record; Notes & shelves owns
+selection context and disclosures per inspected record. Its in-pane Back/Forward
+trail stores route snapshots only when the selected concept changes, including
+the entry browser, and applies them through the navigator to the owning leaf.
+The trail remains outside persisted application history and the route contract;
+a new concept selection clears its forward branch. Notes & shelves owns
 filters, selected records and row limits. Abilities retains camera, fold, bridge
 layer and inspector attention in a leaf-scoped store. None enters the route
 contract or grants learning evidence. `features/abilities/viewport.ts` owns one

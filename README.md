@@ -36,6 +36,13 @@ second source of truth.
    (`learner.ability-observation.append` or `ability.candidate.append`, `ui`
    channel only). Completing a stage records progress, never ability evidence.
 
+In Concepts, the in-pane **Back** and **Forward** buttons revisit concept
+selections in that Atlas pane, restoring module, lens, depth, search and
+disclosures. A new concept after Back clears Forward. Search and disclosure
+changes add no steps. These controls use a per-pane trail; application and
+Obsidian history keep their existing behavior. Both buttons support native
+keyboard activation and arrow movement between available directions.
+
 On the ability plane, drag the background or focus the canvas and scroll to pan.
 Pinch or Ctrl/Meta/Alt plus wheel zooms at the pointer; the buttons zoom at the
 centre. Fit all, Fit selection and Fit group use the available pane. On a focused

@@ -22,7 +22,7 @@
  * real: a facade that has to be handed the whole object it was carved out of
  * has not been carved out of anything.
  */
-import { Notice, type App } from 'obsidian';
+import { Notice, type App, type WorkspaceLeaf } from 'obsidian';
 import { GlobalSearchModal } from './global-search';
 import type { ApplicationRouter } from './router';
 import type { DraftStore } from '../application/draft-store';
@@ -246,7 +246,7 @@ export class AppNavigator {
    * concept ends up in the depth slot. Unknown values are coerced by the route
    * contract rather than rejected here.
    */
-  openAtlas(target: AtlasTarget = {}) {
+  openAtlas(target: AtlasTarget = {}, preferredLeaf?: WorkspaceLeaf) {
     const current = this.router.snapshot().current;
     const changingAtlasState = current?.name === 'atlas';
 
@@ -258,7 +258,7 @@ export class AppNavigator {
         lens: asAtlasLens(target.lens),
         depth: asAtlasDepth(target.depth),
       },
-      { pushHistory: !changingAtlasState },
+      { pushHistory: !changingAtlasState, ...(preferredLeaf ? { preferredLeaf } : {}) },
     );
   }
 

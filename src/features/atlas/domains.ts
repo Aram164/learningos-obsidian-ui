@@ -33,7 +33,7 @@ interface DomainIndex {
   readonly notes: readonly ProjectionRecord[];
   readonly sources: ReadonlyMap<string, ProjectionRecord>;
 }
-const count = (amount: number, singular: string, plural = `${singular}s`) => `${amount} ${amount === 1 ? singular : plural}`;
+const count = (amount: number, singular: string, plural = singular === 'source shelf' ? 'source shelves' : `${singular}s`) => `${amount} ${amount === 1 ? singular : plural}`;
 const roleOf = (record: ProjectionRecord) => asText(record.role) ?? 'unrecorded';
 const authorOf = (record: ProjectionRecord) => asText(record.authorship) ?? 'unrecorded';
 const roleLabel = (role: string) => ROLE_LABELS[role] ?? role;
@@ -258,7 +258,7 @@ function renderShelves(parent: HTMLElement, host: AtlasHost, index: DomainIndex,
   }
   const footer = body.createDiv({ cls: 'los-domain-list-footer', text: `${Math.min(limit, rows.length)} of ${count(rows.length, 'ordered entry', 'ordered entries')} shown` });
   showMore(footer, state, key, rows.length, redraw, 'entries');
-  button(footer, 'All source folders', () => host.plugin.nav.openLibraryHome('sources'), 'tertiary');
+  button(footer, 'All source folders', () => host.plugin.nav.openLibraryFolder([]), 'tertiary');
 }
 function renderResults(results: HTMLElement, host: AtlasHost, index: DomainIndex): void {
   const state = host.domains;

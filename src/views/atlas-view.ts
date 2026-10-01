@@ -50,15 +50,10 @@ interface ConceptAttention {
 /**
  * The Concept Atlas leaf (ADR-016).
  *
- * This shell owns exactly two things: the route state Obsidian persists, and
- * the working state that must not enter a route — the search text, the
- * inspector tab, and two disclosure flags. Everything else belongs to the
- * Atlas feature.
- *
- * The distinction is not cosmetic. Route state is what Back restores and what a
- * shared link reproduces, so a change to it pushes history; the inspector tab
- * is a change of attention inside one answer and must not. Keeping the two in
- * different places is what stops that rule from being merely a convention.
+ * This shell owns persisted route fields and per-leaf attention. Application
+ * navigation replaces Atlas selections; the concept trail supplies Back and
+ * Forward within this leaf without changing that navigation contract. Search,
+ * disclosures and inspector attention stay outside both histories.
  */
 export class AtlasView extends ItemView implements AtlasHost {
   readonly plugin: AtlasPlugin;
@@ -82,6 +77,10 @@ export class AtlasView extends ItemView implements AtlasHost {
   private renderCleanups: Array<() => void> = [];
   private conceptAttention = new Map<string | null, ConceptAttention>();
   private pendingConceptBrowse = false;
+  private routeAdopted = false;
+  private readonly conceptPast: AtlasRouteState[] = [];
+  private readonly conceptFuture: AtlasRouteState[] = [];
+  private pendingConceptTraversal: { direction: 'back' | 'forward'; target: AtlasRouteState } | null = null;
 
   addRenderCleanup(cleanup: () => void): void {
     this.renderCleanups.push(cleanup);
@@ -138,12 +137,26 @@ export class AtlasView extends ItemView implements AtlasHost {
       module: next.module,
       lens: next.lens,
       depth: next.depth,
-    });
+    }, this.leaf);
   }
 
   openConceptBrowser(): void {
     this.pendingConceptBrowse = true;
     this.go({ concept: null, lens: 'prerequisites' });
+  }
+
+  get canConceptBack(): boolean { return !this.pendingConceptTraversal && this.conceptPast.length > 0; }
+  get canConceptForward(): boolean { return !this.pendingConceptTraversal && this.conceptFuture.length > 0; }
+
+  conceptBack(): void { this.traverseConcept('back'); }
+  conceptForward(): void { this.traverseConcept('forward'); }
+
+  private traverseConcept(direction: 'back' | 'forward'): void {
+    if (this.pendingConceptTraversal) return;
+    const target = (direction === 'back' ? this.conceptPast : this.conceptFuture).at(-1);
+    if (!target) return;
+    this.pendingConceptTraversal = { direction, target };
+    this.go(target);
   }
 
   /**
@@ -152,6 +165,7 @@ export class AtlasView extends ItemView implements AtlasHost {
    * its default instead of failing to open it (ADR-016 decision 8).
    */
   private adopt(state: AtlasViewState): void {
+    const previousRoute = this.state;
     const previous = this.concept;
     const attention: ConceptAttention = {
       query: this.query, browseAll: this.concepts.browseAll, visibleLimit: this.concepts.visibleLimit,
@@ -169,6 +183,23 @@ export class AtlasView extends ItemView implements AtlasHost {
     this.depth = asAtlasDepth(state.depth);
 
     if (this.concept !== previous) {
+      if (this.routeAdopted) {
+        const traversal = this.pendingConceptTraversal;
+        if (traversal && this.concept === traversal.target.concept
+          && this.module === traversal.target.module && this.lens === traversal.target.lens
+          && this.depth === traversal.target.depth) {
+          if (traversal.direction === 'back') {
+            this.conceptPast.pop();
+            this.conceptFuture.push(previousRoute);
+          } else {
+            this.conceptFuture.pop();
+            this.conceptPast.push(previousRoute);
+          }
+        } else {
+          this.conceptPast.push(previousRoute);
+          this.conceptFuture.length = 0;
+        }
+      }
       this.conceptAttention.set(previous, attention);
       const restored = this.conceptAttention.get(this.concept);
       // Attention belongs to the inspected record (or the entry browser), so
@@ -187,6 +218,8 @@ export class AtlasView extends ItemView implements AtlasHost {
         this.plugin.settings.atlasRecentConcepts, this.concept,
       );
     }
+    this.routeAdopted = true;
+    this.pendingConceptTraversal = null;
     // Explicit exploration takes precedence over remembered entry attention.
     // Applying it before adopting the route would be overwritten on re-centre.
     if (this.pendingConceptBrowse && this.concept === null && this.lens === 'prerequisites') {
@@ -305,7 +338,22 @@ export class AtlasView extends ItemView implements AtlasHost {
   }
 
   render(): void {
+    const doc = this.contentEl.ownerDocument ?? globalThis.document;
+    const focused = doc?.activeElement as HTMLElement | null;
+    const historyKey = focused && this.contentEl.contains(focused)
+      ? focused.getAttribute('data-los-tab') : null;
     withRenderFocus(this.contentEl, () => this.renderContent());
+    // Exhausting one direction disables its native button. Keep keyboard
+    // attention on the remaining direction rather than a removed control.
+    if (historyKey === 'concept-back' || historyKey === 'concept-forward') {
+      const now = doc.activeElement;
+      if (!now || now === focused || now === doc.body || !now.isConnected) {
+        const fallback = Array.from(this.contentEl.querySelectorAll<HTMLButtonElement>('button'))
+          .find((node) => !node.disabled && node.getAttribute('data-los-tab')
+            === (historyKey === 'concept-back' ? 'concept-forward' : 'concept-back'));
+        fallback?.focus({ preventScroll: true });
+      }
+    }
   }
 
   private renderContent(): void {

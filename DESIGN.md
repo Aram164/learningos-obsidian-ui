@@ -169,6 +169,11 @@ maintenance is never mixed with study destinations.
   for semantic context, paths, provenance, questions, relation editing, the
   full text outline and every omitted record. Semantic relations never become
   preparation order. All existing lenses and deep links remain valid.
+  Compact Back/Forward controls revisit concept selections within each pane,
+  restoring the route and per-record search/disclosures. Initial deep links
+  have no invented previous entry; same-concept filters, lenses and disclosures
+  add no steps. The trail is view-owned, and application/native history retains
+  its existing semantics.
 
   Notes & shelves separates durable notes from source shelves. Domain membership
   follows the published path buckets, including unknown/unfiled domains. Compact

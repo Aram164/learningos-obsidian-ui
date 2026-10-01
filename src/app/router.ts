@@ -56,6 +56,7 @@ interface RouteDescriptor {
 }
 
 interface NavigationOptions {
+  preferredLeaf?: RouterLeaf;
   preserveOverlay?: boolean;
   remember?: boolean;
   pushHistory?: boolean;
@@ -378,8 +379,10 @@ export class ApplicationRouter {
     type: string,
     state: Record<string, unknown> = {},
     side: 'main' | 'left' = 'main',
+    preferredLeaf?: RouterLeaf,
   ): Promise<RouterLeaf> {
-    let leaf = this.plugin.app.workspace.getLeavesOfType(type)[0];
+    const leaves = this.plugin.app.workspace.getLeavesOfType(type);
+    let leaf = preferredLeaf && leaves.includes(preferredLeaf) ? preferredLeaf : leaves[0];
     if (!leaf) {
       leaf = side === 'left'
         ? this.plugin.app.workspace.getLeftLeaf?.(false) ?? this.plugin.app.workspace.getLeaf(true)
@@ -435,7 +438,7 @@ export class ApplicationRouter {
       await this.persist();
     }
     this.plugin.setActiveNav(descriptor.nav);
-    const leaf = await this.openLeaf(descriptor.type, descriptor.state);
+    const leaf = await this.openLeaf(descriptor.type, descriptor.state, 'main', options.preferredLeaf);
     if (Number.isFinite(options.restoreScrollTop) && leaf?.view?.contentEl) {
       leaf.view.contentEl.scrollTop = Number(options.restoreScrollTop);
     }

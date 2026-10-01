@@ -424,6 +424,16 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   renderAtlasVariants(root, host.plugin.nav, 'concepts');
 
   const controls = root.createDiv({ cls: 'los-atlas-controls' });
+  const history = controls.createDiv({ cls: 'los-atlas-concept-history', attr: {
+    role: 'group', 'aria-label': 'Concept history',
+  } });
+  enableButtonGroupKeyboardNavigation(history, 'horizontal');
+  const back = button(history, 'Back', () => host.conceptBack(), 'quiet');
+  back.setAttrs({ 'aria-label': 'Back to previous concept', 'data-los-tab': 'concept-back' });
+  back.disabled = !host.canConceptBack;
+  const forward = button(history, 'Forward', () => host.conceptForward(), 'quiet');
+  forward.setAttrs({ 'aria-label': 'Forward to next concept', 'data-los-tab': 'concept-forward' });
+  forward.disabled = !host.canConceptForward;
   let results: HTMLElement;
   let entryRegion: HTMLElement | null = null;
   const updateSearch = () => {

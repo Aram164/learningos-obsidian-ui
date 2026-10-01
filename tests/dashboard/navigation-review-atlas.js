@@ -1002,6 +1002,95 @@ module.exports = async function run() {
   }
 
 
+  heading('reachable per-leaf concept Back and Forward preserve record attention');
+  {
+    const { app, plugin, calls } = await boot();
+    await plugin.nav.openAtlas({ concept: 'concept-bayes', module: 'module-fixture-m2', lens: 'semantic', depth: 2 });
+    const leaf = app.workspace.getLeavesOfType(VIEW.atlas)[0];
+    const atlas = () => leaf.view;
+    const root = browserDom(atlas().contentEl);
+    const control = (direction) => root.find('los-atlas-concept-history')[0].findText('los-btn', direction);
+    const field = () => root.find('los-atlas-search-input')[0];
+    const disclosure = (key) => root.find('los-atlas-disclosure')
+      .find((row) => row.getAttribute('data-atlas-disclosure') === key);
+    const select = async (id) => {
+      root.find('los-atlas-node').find((node) => node.getAttribute('data-atlas-concept') === id).fire('click');
+      await waitFor(() => atlas().state.concept === id);
+    };
+    check('a fresh semantic deep link has no invented previous selection and native history controls',
+      control('Back').disabled && control('Forward').disabled
+      && control('Back').tag === 'button' && control('Back').getAttribute('type') === 'button'
+      && control('Back').getAttribute('aria-label') === 'Back to previous concept'
+      && control('Forward').getAttribute('aria-label') === 'Forward to next concept');
+    const applicationHistory = plugin.router.snapshot().history.length;
+    field().value = 'conditional'; field().fire('input');
+    disclosure('concept-bayes:outline').open = true; disclosure('concept-bayes:outline').fire('toggle');
+    const bayesRoute = atlas().getState();
+    await select('concept-bedingte-wahrscheinlichkeit');
+    atlas().go({ module: null, lens: 'prerequisites', depth: 1 });
+    await waitFor(() => atlas().state.lens === 'prerequisites' && atlas().state.depth === 1 && atlas().state.module === null);
+    field().value = 'logistic'; field().fire('input');
+    disclosure('concept-bedingte-wahrscheinlichkeit:outline').open = true;
+    disclosure('concept-bedingte-wahrscheinlichkeit:outline').fire('toggle');
+    const conditionalRoute = atlas().getState();
+    root.find('los-atlas-concept-seed').find((row) => row.getAttribute('data-concept-id') === 'concept-logistic-regression').fire('click');
+    await waitFor(() => atlas().state.concept === 'concept-logistic-regression');
+    field().value = 'regression'; field().fire('input');
+    const logisticRoute = atlas().getState();
+    control('Back').focus(); control('Back').fire('click', { detail: 0 });
+    await waitFor(() => atlas().state.concept === 'concept-bedingte-wahrscheinlichkeit');
+    check('keyboard activation of Back restores exact concept/module/lens/depth, query and disclosure',
+      JSON.stringify(atlas().getState()) === JSON.stringify(conditionalRoute)
+      && field().value === 'logistic' && disclosure('concept-bedingte-wahrscheinlichkeit:outline').open
+      && global.document.activeElement === control('Back') && !control('Back').disabled && !control('Forward').disabled);
+    let prevented = false;
+    root.find('los-atlas-concept-history')[0].fire('keydown', {
+      key: 'ArrowRight', target: control('Back'), preventDefault() { prevented = true; },
+    });
+    check('history keyboard movement reaches Forward without navigating',
+      prevented && global.document.activeElement === control('Forward')
+      && JSON.stringify(atlas().getState()) === JSON.stringify(conditionalRoute));
+    control('Forward').fire('click', { detail: 0 });
+    await waitFor(() => atlas().state.concept === 'concept-logistic-regression');
+    check('Forward restores the next concept and its independent query',
+      JSON.stringify(atlas().getState()) === JSON.stringify(logisticRoute)
+      && field().value === 'regression' && control('Forward').disabled
+      && global.document.activeElement === control('Back'));
+    control('Back').fire('click'); await waitFor(() => atlas().state.concept === 'concept-bedingte-wahrscheinlichkeit');
+    atlas().go({ depth: 2 }); await waitFor(() => atlas().state.depth === 2);
+    field().value = 'Bayes'; field().fire('input');
+    disclosure('atlas-about').open = true; disclosure('atlas-about').fire('toggle');
+    atlas().render();
+    check('search, disclosures and same-concept route controls do not consume the forward trail', !control('Forward').disabled);
+    await select('concept-bayes');
+    check('a new concept selection after Back clears Forward without adding application history',
+      control('Forward').disabled && plugin.router.snapshot().history.length === applicationHistory);
+    control('Back').fire('click'); await waitFor(() => atlas().state.concept === 'concept-bedingte-wahrscheinlichkeit');
+    control('Back').fire('click'); await waitFor(() => atlas().state.concept === 'concept-bayes');
+    check('the original concept returns with its saved route and attention, then exhausts Back',
+      JSON.stringify(atlas().getState()) === JSON.stringify(bayesRoute)
+      && field().value === 'conditional' && disclosure('concept-bayes:outline').open
+      && control('Back').disabled && !control('Forward').disabled);
+
+    const second = app.workspace.getLeaf(true);
+    await second.setViewState({ type: VIEW.atlas, state: { concept: 'concept-logistic-regression', lens: 'prerequisites' } });
+    const secondRoot = browserDom(second.view.contentEl);
+    check('a second leaf starts its own trail even while the first leaf has Forward available',
+      secondRoot.findText('los-btn', 'Back').disabled && secondRoot.findText('los-btn', 'Forward').disabled);
+    await second.setViewState({ type: VIEW.atlas, state: { concept: 'concept-bayes', lens: 'semantic', depth: 2 } });
+    const firstState = JSON.stringify(atlas().getState());
+    secondRoot.findText('los-btn', 'Back').fire('click');
+    await waitFor(() => second.view.state.concept === 'concept-logistic-regression');
+    check('Back acts in its owning concurrent leaf and leaves the first route/attention intact',
+      second.view.state.concept === 'concept-logistic-regression' && second.view.state.lens === 'prerequisites'
+      && JSON.stringify(atlas().getState()) === firstState && field().value === 'conditional'
+      && !control('Forward').disabled);
+    check('concept trails remain absent from persisted routes and all traversal remains read-only',
+      Object.keys(atlas().getState()).sort().join(',') === 'concept,depth,lens,module'
+      && plugin.router.snapshot().history.length === applicationHistory && calls.envelopes.length === 0);
+    plugin.onunload();
+  }
+
   heading('explicit concept exploration and module-filtered recent concepts');
   {
     const { app, plugin, calls } = await boot({
@@ -1037,6 +1126,17 @@ module.exports = async function run() {
       && JSON.stringify([...browsed].sort()) === JSON.stringify(['concept-bayes', 'concept-bedingte-wahrscheinlichkeit'].sort()));
     check('explicit exploration retains Atlas replacement history and performs no Core writes',
       plugin.router.snapshot().history.length === historyLength && calls.envelopes.length === 0);
+    root.find('los-atlas-search-input')[0].value = 'conditional';
+    root.find('los-atlas-search-input')[0].fire('input');
+    const entry = atlas().getState();
+    root.find('los-atlas-concept-history')[0].findText('los-btn', 'Back').fire('click');
+    await waitFor(() => atlas().state.concept === 'concept-bayes');
+    root.find('los-atlas-concept-history')[0].findText('los-btn', 'Forward').fire('click');
+    await waitFor(() => atlas().state.concept === null);
+    check('entry Back and Forward restore the exact full browser route and its query attention',
+      JSON.stringify(atlas().getState()) === JSON.stringify(entry)
+      && atlas().concepts.browseAll && root.find('los-atlas-search-input')[0].value === 'conditional'
+      && plugin.router.snapshot().history.length === historyLength && calls.envelopes.length === 0);
     plugin.onunload();
   }
 
