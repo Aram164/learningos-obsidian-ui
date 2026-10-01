@@ -2323,7 +2323,7 @@ var AUTHOR_LABELS = {
   unrecorded: "Authorship unrecorded"
 };
 var INITIAL_ROWS = 20;
-var count = (amount, singular, plural3 = singular === "source shelf" ? "source shelves" : `${singular}s`) => `${amount} ${amount === 1 ? singular : plural3}`;
+var count = (amount, singular, plural3 = singular.endsWith("shelf") ? `${singular.slice(0, -5)}shelves` : `${singular}s`) => `${amount} ${amount === 1 ? singular : plural3}`;
 var roleOf = (record10) => asText(record10.role) ?? "unrecorded";
 var authorOf = (record10) => asText(record10.authorship) ?? "unrecorded";
 var roleLabel = (role) => ROLE_LABELS[role] ?? role;
@@ -22261,7 +22261,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:bc3ee9ee158e1e11e257f9729adb897bc5017b46bbe2a351f1b101a79ff3c1e7" : "unavailable";
+  return true ? "sha256:5914e5c5b820d6b4c8ce3d857106c5ce81ec1600365019ca35de3248532ec719" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

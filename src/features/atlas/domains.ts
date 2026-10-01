@@ -33,7 +33,7 @@ interface DomainIndex {
   readonly notes: readonly ProjectionRecord[];
   readonly sources: ReadonlyMap<string, ProjectionRecord>;
 }
-const count = (amount: number, singular: string, plural = singular === 'source shelf' ? 'source shelves' : `${singular}s`) => `${amount} ${amount === 1 ? singular : plural}`;
+const count = (amount: number, singular: string, plural = singular.endsWith('shelf') ? `${singular.slice(0, -5)}shelves` : `${singular}s`) => `${amount} ${amount === 1 ? singular : plural}`;
 const roleOf = (record: ProjectionRecord) => asText(record.role) ?? 'unrecorded';
 const authorOf = (record: ProjectionRecord) => asText(record.authorship) ?? 'unrecorded';
 const roleLabel = (role: string) => ROLE_LABELS[role] ?? role;
