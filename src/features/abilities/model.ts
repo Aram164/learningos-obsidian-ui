@@ -121,15 +121,96 @@ export interface AbilityPlane {
 }
 
 export const PLANE = {
-  nodeWidth: 220,
-  nodeHeight: 76,
-  columnGap: 76,
-  rowGap: 44,
+  nodeWidth: 208,
+  nodeHeight: 40,
+  columnGap: 104,
+  rowGap: 82,
   pad: 8,
   bandHeight: 34,
   bandGap: 8,
   bandTop: 20,
 } as const;
+
+export interface PlaneBounds { readonly x: number; readonly y: number; readonly width: number; readonly height: number }
+export interface OverviewRegion extends PlaneBounds { readonly group: AbilityGroup; readonly nodes: readonly PlaneNode[] }
+export interface AbilityOverview extends PlaneBounds {
+  readonly regions: readonly OverviewRegion[];
+  readonly nodes: ReadonlyMap<string, PlaneNode>;
+  readonly edges: readonly PlaneEdge[];
+}
+
+/** Stable world coordinates. Pane size and presentation folding never arrange records again. */
+export function abilityOverview(plane: AbilityPlane): AbilityOverview {
+  const regions: OverviewRegion[] = [];
+  const nodes = new Map<string, PlaneNode>();
+  let y = 32;
+  let width = 0;
+  for (const group of plane.groups) {
+    const horizontal = !group.edges.length;
+    const placed = group.nodes.map((node, index) => ({
+      ...node,
+      x: 72 + (horizontal ? index * (PLANE.nodeWidth + PLANE.columnGap) : node.x),
+      y: y + 72 + (horizontal ? 0 : node.y),
+    }));
+    for (const node of placed) nodes.set(node.id, node);
+    const regionWidth = Math.max(PLANE.nodeWidth, ...placed.map((node) => node.x + PLANE.nodeWidth)) + 56;
+    const regionHeight = horizontal ? 160 + group.height - group.graphHeight : 96 + group.height;
+    regions.push({ group, nodes: placed, x: 72, y, width: regionWidth - 72, height: regionHeight });
+    width = Math.max(width, regionWidth);
+    y += regionHeight + 80;
+  }
+  return { x: 0, y: 0, width: Math.max(320, width), height: Math.max(200, y), regions, nodes,
+    edges: plane.groups.flatMap((group) => [...group.edges]) };
+}
+
+/** One-hop attention uses drawn reduced edges, never complete route membership. */
+export function preparationNeighbours(edges: readonly PlaneEdge[], selected: string | null): {
+  prerequisites: ReadonlySet<string>; dependents: ReadonlySet<string>;
+} {
+  return {
+    prerequisites: new Set(edges.filter((edge) => edge.to === selected).map((edge) => edge.from)),
+    dependents: new Set(edges.filter((edge) => edge.from === selected).map((edge) => edge.to)),
+  };
+}
+
+/** Expanded preparation paths claim identities. Reviewed bridges do not claim paths. */
+export function foldedVisibility(
+  overview: AbilityOverview, folded: ReadonlySet<string>, selected: string | null,
+  retained: ReadonlySet<string> = new Set(),
+): { nodes: ReadonlySet<string>; edges: readonly PlaneEdge[]; hiddenIncident: ReadonlyMap<string, number> } {
+  const incoming = new Set(overview.edges.map((edge) => edge.to));
+  const roots = [...overview.nodes.keys()].filter((id) => !incoming.has(id));
+  const visible = new Set<string>();
+  const pending = [...roots, ...retained, ...(selected ? [selected] : [])];
+  const outgoing = new Map<string, string[]>();
+  for (const edge of overview.edges) {
+    const targets = outgoing.get(edge.from) ?? [];
+    targets.push(edge.to); outgoing.set(edge.from, targets);
+  }
+  while (pending.length) {
+    const id = pending.pop();
+    if (!id || visible.has(id) || !overview.nodes.has(id)) continue;
+    visible.add(id);
+    if (!folded.has(id)) pending.push(...(outgoing.get(id) ?? []));
+  }
+  const edges = overview.edges.filter((edge) => !folded.has(edge.from)
+    && visible.has(edge.from) && visible.has(edge.to));
+  const shown = new Set(edges);
+  const hiddenIncident = new Map<string, number>();
+  for (const edge of overview.edges) {
+    if (shown.has(edge)) continue;
+    for (const id of [edge.from, edge.to]) hiddenIncident.set(id, (hiddenIncident.get(id) ?? 0) + 1);
+  }
+  return { nodes: visible, edges, hiddenIncident };
+}
+
+export function boundsOfNodes(nodes: readonly PlaneNode[]): PlaneBounds {
+  if (!nodes.length) return { x: 0, y: 0, width: 1, height: 1 };
+  const x = Math.min(...nodes.map((node) => node.x));
+  const y = Math.min(...nodes.map((node) => node.y));
+  return { x, y, width: Math.max(...nodes.map((node) => node.x + PLANE.nodeWidth)) - x,
+    height: Math.max(...nodes.map((node) => node.y + PLANE.nodeHeight)) - y };
+}
 
 export const STATE_LABEL: Readonly<Record<AbilityStateV1, string>> = {
   supported: 'Supported',

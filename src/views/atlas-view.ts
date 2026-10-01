@@ -15,6 +15,7 @@ import {
 import type {
   AtlasHost,
   DomainAtlasState,
+  ConceptAtlasState,
   AtlasInspectorTab,
   AtlasPlugin,
   AtlasRouteState,
@@ -33,6 +34,17 @@ interface AtlasViewState {
   module?: string | null;
   lens?: AtlasLensV1;
   depth?: AtlasDepthV1;
+}
+
+interface ConceptAttention {
+  readonly query: string;
+  readonly browseAll: boolean;
+  readonly visibleLimit: number;
+  readonly tab: AtlasInspectorTab;
+  readonly semanticOpen: boolean;
+  readonly remainderOpen: boolean;
+  readonly edgeId: string | null;
+  readonly disclosures: ReadonlyMap<string, boolean>;
 }
 
 /**
@@ -56,7 +68,11 @@ export class AtlasView extends ItemView implements AtlasHost {
   private depth: AtlasDepthV1 = 1;
 
   query = '';
-  readonly domains: DomainAtlasState = { query: '', selected: null, disclosures: new Map() };
+  readonly domains: DomainAtlasState = {
+    query: '', selected: null, collection: 'notes', role: null, authorship: null,
+    selectedNote: null, selectedShelf: null, limits: new Map(), disclosures: new Map(),
+  };
+  readonly concepts: ConceptAtlasState = { browseAll: false, visibleLimit: 30, disclosures: new Map() };
   tab: AtlasInspectorTab = 'summary';
   semanticOpen = false;
   remainderOpen = false;
@@ -64,6 +80,8 @@ export class AtlasView extends ItemView implements AtlasHost {
   editor: RelationDraft | null = null;
   private mutationPending = false;
   private renderCleanups: Array<() => void> = [];
+  private conceptAttention = new Map<string | null, ConceptAttention>();
+  private pendingConceptBrowse = false;
 
   addRenderCleanup(cleanup: () => void): void {
     this.renderCleanups.push(cleanup);
@@ -123,6 +141,11 @@ export class AtlasView extends ItemView implements AtlasHost {
     });
   }
 
+  openConceptBrowser(): void {
+    this.pendingConceptBrowse = true;
+    this.go({ concept: null, lens: 'prerequisites' });
+  }
+
   /**
    * Adopt one route state. Unknown lens and depth values are coerced by the
    * route contract rather than refused, so a stale deep link opens the Atlas on
@@ -130,6 +153,11 @@ export class AtlasView extends ItemView implements AtlasHost {
    */
   private adopt(state: AtlasViewState): void {
     const previous = this.concept;
+    const attention: ConceptAttention = {
+      query: this.query, browseAll: this.concepts.browseAll, visibleLimit: this.concepts.visibleLimit,
+      tab: this.tab, semanticOpen: this.semanticOpen, remainderOpen: this.remainderOpen,
+      edgeId: this.edgeId, disclosures: new Map(this.concepts.disclosures),
+    };
 
     if (typeof state.concept === 'string' || state.concept === null) {
       this.concept = state.concept;
@@ -140,20 +168,32 @@ export class AtlasView extends ItemView implements AtlasHost {
     this.lens = asAtlasLens(state.lens);
     this.depth = asAtlasDepth(state.depth);
 
-    if (this.concept && this.concept !== previous) {
-      this.query = '';
-      this.edgeId = null;
-      // Working state belongs to one concept. Carrying an expanded remainder or
-      // an open semantic group across a re-centre would show the reader a
-      // disclosure they never opened for the concept now on screen.
-      this.tab = 'summary';
-      this.semanticOpen = false;
-      this.remainderOpen = false;
+    if (this.concept !== previous) {
+      this.conceptAttention.set(previous, attention);
+      const restored = this.conceptAttention.get(this.concept);
+      // Attention belongs to the inspected record (or the entry browser), so
+      // Back restores its search/disclosures while a new neighbour starts quiet.
+      this.query = restored?.query ?? '';
+      this.concepts.browseAll = restored?.browseAll ?? false;
+      this.concepts.visibleLimit = restored?.visibleLimit ?? 30;
+      this.concepts.disclosures.clear();
+      for (const [key, open] of restored?.disclosures ?? []) this.concepts.disclosures.set(key, open);
+      this.edgeId = restored?.edgeId ?? null;
+      this.tab = restored?.tab ?? 'summary';
+      this.semanticOpen = restored?.semanticOpen ?? false;
+      this.remainderOpen = restored?.remainderOpen ?? false;
       this.editor = null;
-      this.plugin.settings.atlasRecentConcepts = rememberConcept(
-        this.plugin.settings.atlasRecentConcepts,
-        this.concept,
+      if (this.concept) this.plugin.settings.atlasRecentConcepts = rememberConcept(
+        this.plugin.settings.atlasRecentConcepts, this.concept,
       );
+    }
+    // Explicit exploration takes precedence over remembered entry attention.
+    // Applying it before adopting the route would be overwritten on re-centre.
+    if (this.pendingConceptBrowse && this.concept === null && this.lens === 'prerequisites') {
+      this.pendingConceptBrowse = false;
+      this.query = '';
+      this.concepts.browseAll = true;
+      this.concepts.visibleLimit = 30;
     }
   }
 

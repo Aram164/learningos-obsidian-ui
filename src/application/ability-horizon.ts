@@ -169,6 +169,12 @@ export class AbilityHorizon {
         if (!expanded) {
           throw new Error('Core answered this ability in a shape this build cannot read. Nothing was changed.');
         }
+        if (expanded.focus !== abilityId) {
+          throw new Error('Core answered a different ability than the requested record. The response was not used. Try this focused read again.');
+        }
+        if (expanded.snapshot_id !== brief.snapshot_id) {
+          throw new Error('Core answered this ability from a different snapshot than the loaded horizon. The response was not used. Reread the ability map before trying again.');
+        }
         if (this.brief === brief) this.expansions.set(abilityId, expanded);
       } catch (error: unknown) {
         if (snapshotRefused(error)) {

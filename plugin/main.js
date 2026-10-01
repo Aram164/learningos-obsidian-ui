@@ -2306,24 +2306,35 @@ var KNOWN_DOMAINS = [
   ["cross-domain", "Across domains"]
 ];
 var ROLE_LABELS = {
-  crosswalk: "Crosswalks",
-  reference: "Reference notes",
-  synthesis: "Syntheses",
-  derivation: "Derivations",
-  "exercise-bank": "Exercise banks",
-  "mock-exam": "Mock exams",
-  implementation: "Implementations",
-  question: "Questions"
+  crosswalk: "Crosswalk",
+  reference: "Reference",
+  synthesis: "Synthesis",
+  derivation: "Derivation",
+  "exercise-bank": "Exercise bank",
+  "mock-exam": "Mock exam",
+  implementation: "Implementation",
+  question: "Question"
 };
-var ROLE_ORDER = ["crosswalk", "reference", "synthesis", "derivation", "exercise-bank", "mock-exam", "implementation", "question"];
-var count = (amount, singular, plural3 = singular === "shelf" ? "shelves" : `${singular}s`) => `${amount} ${amount === 1 ? singular : plural3}`;
-var roleOf = (record10) => asText(record10.role) ?? "reference";
+var AUTHOR_LABELS = {
+  user: "User authored",
+  mixed: "Mixed authorship",
+  "operator-drafted": "Operator draft",
+  external: "External authorship",
+  unrecorded: "Authorship unrecorded"
+};
+var INITIAL_ROWS = 20;
+var count = (amount, singular, plural3 = `${singular}s`) => `${amount} ${amount === 1 ? singular : plural3}`;
+var roleOf = (record10) => asText(record10.role) ?? "unrecorded";
+var authorOf = (record10) => asText(record10.authorship) ?? "unrecorded";
+var roleLabel = (role) => ROLE_LABELS[role] ?? role;
+var authorLabel = (author) => AUTHOR_LABELS[author] ?? author;
 var title = (record10) => asText(record10.title) ?? asText(record10.id) ?? "Untitled record";
 var prose = (value) => {
   const text8 = asText(value)?.trim() ?? "";
   return text8.startsWith("<!--") ? "" : text8;
 };
 var domainTitle = (id2) => KNOWN_DOMAINS.find(([key]) => key === id2)?.[1] ?? id2.split("-").map((part2) => part2 ? part2.charAt(0).toUpperCase() + part2.slice(1) : "").join(" ");
+var byTitle = (a, b) => compareStrings(title(a), title(b)) || compareStrings(asText(a.id) ?? "", asText(b.id) ?? "");
 function noteBucket(record10) {
   const parts = asText(record10.path)?.split("/") ?? [];
   return parts[0] === "knowledge" && parts[1] === "notes" && parts[2] && !parts[2].endsWith(".md") ? parts[2] : "cross-domain";
@@ -2337,11 +2348,12 @@ function domainIndex(host) {
   const known = KNOWN_DOMAINS.map(([id2]) => id2);
   const ordered = [...known, ...[...ids2].filter((id2) => !known.includes(id2)).sort(compareStrings)];
   return {
+    notes,
     domains: ordered.map((id2) => ({
       id: id2,
       title: domainTitle(id2),
-      notes: notes.filter((note) => noteBucket(note) === id2).sort((a, b) => compareStrings(title(a), title(b))),
-      shelves: shelves.filter((shelf) => (asText(shelf.domain) ?? "cross-domain") === id2).sort((a, b) => compareStrings(title(a), title(b)))
+      notes: notes.filter((note) => noteBucket(note) === id2).sort(byTitle),
+      shelves: shelves.filter((shelf) => (asText(shelf.domain) ?? "cross-domain") === id2).sort(byTitle)
     })),
     sources: new Map(host.plugin.store.sources().flatMap((source) => {
       const id2 = asText(source.id);
@@ -2354,15 +2366,23 @@ function entries(shelf) {
 }
 function shelfCounts(shelf) {
   const rows = entries(shelf);
-  return `${count(rows.length, "entry", "entries")} \xB7 ${count(new Set(rows.map((row4) => asText(row4.source)).filter(Boolean)).size, "source")}`;
+  return `${count(rows.length, "ordered entry", "ordered entries")} \xB7 ${count(new Set(rows.map((row4) => asText(row4.source)).filter(Boolean)).size, "source")}`;
 }
 function matches(query, fields) {
   const words2 = foldCase(query).split(/\s+/).filter(Boolean);
   const haystack = foldCase(fields.map((field2) => typeof field2 === "string" ? field2 : "").join(" "));
   return words2.every((word) => haystack.includes(word));
 }
-function noteMatches(note, query) {
-  return matches(query, [title(note), note.domain, note.role, note.state, prose(note.summary)]);
+function noteMatches(note, state, wholeDomainMatches) {
+  return (!state.role || roleOf(note) === state.role) && (!state.authorship || authorOf(note) === state.authorship) && (wholeDomainMatches || matches(state.query, [
+    title(note),
+    note.domain,
+    note.role,
+    roleLabel(roleOf(note)),
+    authorLabel(authorOf(note)),
+    note.state,
+    prose(note.summary)
+  ]));
 }
 function shelfMatches(shelf, query, index) {
   return matches(query, [
@@ -2378,9 +2398,9 @@ function shelfMatches(shelf, query, index) {
 }
 function renderAtlasVariants(parent, nav, active) {
   const variants = filterTabs(parent, "Atlas views", [
-    ["abilities", "Ability map"],
-    ["concepts", "Concept atlas"],
-    ["domains", "Domain Atlas"]
+    ["concepts", "Concepts"],
+    ["domains", "Notes & shelves"],
+    ["abilities", "Abilities"]
   ], active, (value) => {
     if (value === active) return;
     if (value === "abilities") void nav.openAbilities();
@@ -2388,116 +2408,237 @@ function renderAtlasVariants(parent, nav, active) {
   });
   variants.addClass("los-atlas-variant-switch");
 }
-function disclosure2(parent, state, key, query, label, cls) {
+function disclosure2(parent, state, key, label, cls) {
   const details = parent.createEl("details", { cls });
-  details.open = Boolean(query.trim()) || state.disclosures.get(key) === true;
-  const summary = details.createEl("summary", { cls: "los-domain-disclosure-summary", text: label });
-  summary.addEventListener("click", () => state.disclosures.set(key, !details.open));
+  details.open = state.disclosures.get(key) === true;
+  details.createEl("summary", { cls: "los-domain-disclosure-summary", text: label }).addEventListener("click", () => state.disclosures.set(key, !details.open));
+  details.addEventListener("toggle", () => state.disclosures.set(key, details.open));
   return details.createDiv({ cls: "los-domain-disclosure-body" });
 }
-function renderDomainDetail(parent, host, index, domain) {
+function showMore(parent, state, key, total, redraw, noun) {
+  const limit = state.limits.get(key) ?? INITIAL_ROWS;
+  if (total > limit) button(parent, `Show all ${total} ${noun}`, () => {
+    state.limits.set(key, total);
+    redraw();
+  }, "tertiary").addClass("los-domain-show-more");
+  return limit;
+}
+function renderNoteInspector(parent, host, index, note, outsideFilter, redraw) {
+  const panel = parent.createEl("aside", { cls: "los-domain-inspector", attr: { "aria-label": "Selected note" } });
+  panel.createDiv({ cls: "los-domain-inspector-kicker", text: "Selected note" });
+  panel.createEl("h3", { text: title(note) });
+  panel.createDiv({ cls: "los-domain-note-meta", text: [roleLabel(roleOf(note)), authorLabel(authorOf(note)), asText(note.state)].filter(Boolean).join(" \xB7 ") });
+  if (outsideFilter) panel.createDiv({ cls: "los-domain-empty", text: "This selected note is outside the current filters." });
+  const actions = panel.createDiv({ cls: "los-actions" });
+  button(actions, "Open note", () => host.plugin.nav.openRecord(note), "quiet").addClass("los-domain-open-note");
+  button(actions, "Clear selection", () => {
+    host.domains.selectedNote = null;
+    redraw(asText(note.id) ?? "");
+  }, "tertiary");
+  const ids2 = asStrings(note.concepts);
+  const concepts = panel.createDiv({ cls: "los-domain-note-concepts" });
+  concepts.createEl("h4", { text: `Linked concepts \xB7 ${ids2.length}` });
+  if (!ids2.length) concepts.createDiv({ cls: "los-domain-empty", text: "No explicit concept links are recorded." });
+  for (const id2 of ids2) {
+    const concept = host.plugin.store.get(id2);
+    if (concept?.type === "concept") button(concepts, title(concept), () => host.plugin.nav.openAtlas({ concept: id2, lens: "prerequisites" }), "tertiary").addClass("los-domain-open-concept");
+    else concepts.createDiv({ cls: "los-domain-source-unavailable", text: `${id2} \xB7 unavailable in this projection` });
+  }
+  const body = disclosure2(panel, host.domains, `note:${note.id}:provenance`, "Sources and provenance", "los-domain-note-provenance");
+  const summary = prose(note.summary);
+  if (summary) body.createEl("p", { text: summary });
+  factList(body, [
+    ["Authorship", authorLabel(authorOf(note))],
+    ["Lifecycle", asText(note.state)],
+    ["Semantic review", asText(note.semantic_review)],
+    ["Reviewed", asText(note.reviewed)]
+  ]);
+  const sourceIds = asStrings(note.sources);
+  body.createEl("h4", { text: `Recorded sources \xB7 ${sourceIds.length}` });
+  if (!sourceIds.length) body.createDiv({ cls: "los-domain-empty", text: "No direct note sources recorded." });
+  for (const id2 of sourceIds) {
+    const source = index.sources.get(id2);
+    if (source) button(body, title(source), () => host.plugin.nav.openSourceDetail(id2), "tertiary").addClass("los-domain-note-source");
+    else body.createDiv({ cls: "los-domain-source-unavailable", text: `${id2} \xB7 unavailable in this projection` });
+  }
+  if (isRecord2(note.material_analysis)) {
+    const analysis = note.material_analysis;
+    factList(body, [
+      ["Material", asText(analysis.material)],
+      ["Observed range", isRecord2(analysis.inspected_range) ? `${asText(analysis.inspected_range.start) ?? "?"}\u2013${asText(analysis.inspected_range.end) ?? "?"}` : null],
+      ["Analysis provenance", asText(analysis.resolution)],
+      ["Analysis source", asText(analysis.source_id)]
+    ]);
+    const sourceId = asText(analysis.source_id);
+    if (sourceId) {
+      const source = index.sources.get(sourceId);
+      if (source) button(body, `Open analysis source: ${title(source)}`, () => host.plugin.nav.openSourceDetail(sourceId), "tertiary").addClass("los-domain-analysis-source");
+      else body.createDiv({ cls: "los-domain-source-unavailable", text: `${sourceId} \xB7 unavailable in this projection` });
+    }
+  }
+  const evidence3 = Array.isArray(note.evidence) ? note.evidence : [];
+  if (evidence3.length) {
+    body.createEl("h4", { text: `Recorded evidence \xB7 ${evidence3.length}` });
+    for (const item of evidence3) body.createDiv({ cls: "los-domain-recorded-evidence", text: isRecord2(item) && asText(item.type) && asText(item.ref) ? `${asText(item.type)} \xB7 ${asText(item.ref)}` : asText(item) ?? JSON.stringify(item) });
+  }
+}
+function renderNotes(parent, host, index, domain, notes, redraw) {
   const state = host.domains;
-  const query = state.query;
-  const wholeDomainMatches = matches(query, [domain.id, domain.title]);
-  const notes = domain.notes.filter((note) => wholeDomainMatches || noteMatches(note, query));
-  const shelves = domain.shelves.filter((shelf) => wholeDomainMatches || shelfMatches(shelf, query, index));
-  const detail = parent.createDiv({ cls: "los-domain-detail" });
-  detail.createEl("h2", { text: domain.title });
-  detail.createDiv({ cls: "los-domain-counts", text: query.trim() ? `${notes.length} of ${count(domain.notes.length, "note")} \xB7 ${shelves.length} of ${count(domain.shelves.length, "shelf")} match` : `${count(notes.length, "note")} \xB7 ${count(shelves.length, "shelf")}` });
-  if (!notes.length && !shelves.length) {
+  const selected = domain.notes.find((note) => note.id === state.selectedNote);
+  const workspace = parent.createDiv({ cls: "los-domain-note-workspace" });
+  workspace.toggleClass("has-selection", Boolean(selected));
+  const list4 = workspace.createDiv({ cls: "los-domain-notes", attr: { role: "group", "aria-label": `Notes in ${domain.title}` } });
+  enableButtonGroupKeyboardNavigation(list4, "vertical");
+  if (!notes.length) empty(
+    list4,
+    domain.notes.length ? "No notes match these filters" : "No notes published in this domain",
+    "Choose another domain, adjust the note filters, or browse Source shelves."
+  );
+  const key = `notes:${domain.id}:${state.role ?? ""}:${state.authorship ?? ""}:${state.query}`;
+  const limit = state.limits.get(key) ?? INITIAL_ROWS;
+  for (const note of notes.slice(0, limit)) {
+    const id2 = asText(note.id) ?? "";
+    const row4 = list4.createDiv({ cls: "los-domain-note-row", attr: { "data-note-id": id2 } });
+    row4.toggleClass("is-selected", note === selected);
+    const choice = button(row4, title(note), () => {
+      state.selectedNote = id2;
+      redraw();
+    }, "quiet");
+    choice.addClass("los-domain-select-note");
+    choice.setAttrs({ "aria-pressed": String(note === selected), "data-los-tab": id2 });
+    choice.createSpan({ cls: "los-domain-note-meta", text: `${roleLabel(roleOf(note))} \xB7 ${authorLabel(authorOf(note))}` });
+    button(row4, "Open", () => host.plugin.nav.openRecord(note), "tertiary").addClass("los-domain-row-open");
+  }
+  const footer = list4.createDiv({ cls: "los-domain-list-footer", text: `${Math.min(limit, notes.length)} of ${count(notes.length, "note")} shown` });
+  showMore(footer, state, key, notes.length, redraw, "notes");
+  if (selected) renderNoteInspector(workspace, host, index, selected, !notes.includes(selected), redraw);
+}
+function renderShelves(parent, host, index, domain, shelves, redraw) {
+  const state = host.domains;
+  const section3 = parent.createDiv({ cls: "los-domain-shelves" });
+  const first = shelves[0];
+  if (!first) {
     empty(
-      detail,
-      query.trim() ? "No matches in this domain" : "Nothing published here yet",
-      query.trim() ? "Choose another matching domain, or clear the search to see this domain\u2019s full overview." : "Published notes and curated shelves will appear here. Source folders remain available below."
+      section3,
+      domain.shelves.length ? "No source shelves match this search" : "No source shelves published in this domain",
+      "Source folders remain available through Atlas tools."
     );
     return;
   }
-  if (domain.notes.length) {
-    const section3 = detail.createDiv({ cls: "los-domain-notes" });
-    section3.createEl("h3", { text: "Notes by role" });
-    if (!notes.length) section3.createDiv({ cls: "los-domain-empty", text: "No notes match this search." });
-    const roles = [...new Set(notes.map(roleOf))].sort((a, b) => (ROLE_ORDER.indexOf(a) < 0 ? 99 : ROLE_ORDER.indexOf(a)) - (ROLE_ORDER.indexOf(b) < 0 ? 99 : ROLE_ORDER.indexOf(b)) || compareStrings(a, b));
-    for (const role of roles) {
-      const visible = notes.filter((note) => roleOf(note) === role);
-      const total = domain.notes.filter((note) => roleOf(note) === role).length;
-      const body = disclosure2(
-        section3,
-        state,
-        `${domain.id}:role:${role}`,
-        query,
-        `${ROLE_LABELS[role] ?? role} \xB7 ${query.trim() ? `${visible.length} of ${total}` : total}`,
-        "los-domain-role"
-      );
-      for (const note of visible) {
-        const row4 = button(body, title(note), () => host.plugin.nav.openRecord(note), "quiet");
-        row4.addClass("los-domain-note-row");
-        row4.createSpan({ cls: "los-domain-note-meta", text: [asText(note.state), asText(note.authorship)].filter(Boolean).join(" \xB7 ") });
-      }
+  if (!shelves.some((shelf2) => shelf2.id === state.selectedShelf)) state.selectedShelf = asText(first.id);
+  if (shelves.length > 1) {
+    const choices = section3.createDiv({ cls: "los-domain-shelf-choices", attr: { role: "group", "aria-label": `Source shelves in ${domain.title}` } });
+    enableButtonGroupKeyboardNavigation(choices, "vertical");
+    for (const shelf2 of shelves) {
+      const id2 = asText(shelf2.id) ?? "";
+      const choice = button(choices, title(shelf2), () => {
+        state.selectedShelf = id2;
+        redraw();
+      }, "quiet");
+      choice.addClass("los-domain-shelf-choice");
+      choice.setAttrs({ "aria-pressed": String(shelf2.id === state.selectedShelf), "data-los-tab": id2 });
+      choice.toggleClass("is-active", shelf2.id === state.selectedShelf);
+      choice.createSpan({ cls: "los-domain-note-meta", text: shelfCounts(shelf2) });
     }
   }
-  if (domain.shelves.length) {
-    const section3 = detail.createDiv({ cls: "los-domain-shelves" });
-    section3.createEl("h3", { text: "Curated shelves" });
-    if (!shelves.length) section3.createDiv({ cls: "los-domain-empty", text: "No shelves match this search." });
-    for (const shelf of shelves) {
-      const shelfId = asText(shelf.id) ?? title(shelf);
-      const body = disclosure2(
-        section3,
-        state,
-        `${domain.id}:shelf:${shelfId}`,
-        query,
-        `${title(shelf)} \xB7 ${shelfCounts(shelf)}`,
-        "los-domain-shelf"
-      );
-      const purpose = prose(shelf.purpose);
-      const summary = prose(shelf.summary);
-      if (purpose) body.createEl("p", { text: purpose });
-      if (summary && summary !== purpose) body.createEl("p", { text: summary });
-      const actions = body.createDiv({ cls: "los-actions" });
-      button(actions, "Open shelf", () => host.plugin.nav.openRecord(shelf), "quiet").addClass("los-domain-open-shelf");
-      for (const entry of entries(shelf)) {
-        const id2 = asText(entry.source) ?? "";
-        const source = index.sources.get(id2);
-        const row4 = body.createDiv({ cls: "los-domain-entry-row" });
-        if (source) button(row4, title(source), () => host.plugin.nav.openSourceDetail(id2), "tertiary").addClass("los-domain-open-source");
-        else row4.createDiv({ cls: "los-domain-source-unavailable", text: `${id2 || "Source"} \xB7 unavailable in this projection` });
-        const group = prose(entry.group);
-        if (group) row4.createDiv({ cls: "los-domain-entry-group", text: group });
-        const why = prose(entry.why);
-        if (why) row4.createEl("p", { cls: "los-domain-entry-why", text: why });
-      }
-    }
+  const shelf = shelves.find((row4) => row4.id === state.selectedShelf) ?? first;
+  const shelfId = asText(shelf.id) ?? "";
+  const body = section3.createDiv({ cls: "los-domain-shelf", attr: { "data-shelf-id": shelfId } });
+  body.createEl("h3", { text: title(shelf) });
+  body.createDiv({ cls: "los-domain-counts", text: shelfCounts(shelf) });
+  const actions = body.createDiv({ cls: "los-actions" });
+  button(actions, "Open shelf", () => host.plugin.nav.openRecord(shelf), "tertiary").addClass("los-domain-open-shelf");
+  const about = disclosure2(body, state, `shelf:${shelfId}:about`, "About this source shelf", "los-domain-shelf-about");
+  for (const text8 of new Set([prose(shelf.purpose), prose(shelf.summary)].filter(Boolean))) about.createEl("p", { text: text8 });
+  const rows = entries(shelf);
+  const key = `shelf:${shelfId}:entries`;
+  const limit = state.limits.get(key) ?? INITIAL_ROWS;
+  for (const [position, entry] of rows.slice(0, limit).entries()) {
+    const id2 = asText(entry.source) ?? "";
+    const source = index.sources.get(id2);
+    const row4 = body.createDiv({ cls: "los-domain-entry-row", attr: { "data-entry-index": String(position), "data-source-id": id2 } });
+    row4.createEl("h4", {
+      text: source ? title(source) : `${id2 || "Source"} \xB7 unavailable in this projection`,
+      cls: source ? "los-domain-entry-title" : "los-domain-source-unavailable"
+    });
+    const controls = row4.createDiv({ cls: "los-domain-entry-actions" });
+    const group = prose(entry.group);
+    if (group) controls.createSpan({ cls: "los-domain-entry-group", text: group });
+    const why = disclosure2(controls, state, `shelf:${shelfId}:entry:${position}:why`, "Why this source", "los-domain-entry-rationale");
+    why.createEl("p", { cls: "los-domain-entry-why", text: prose(entry.why) || "No rationale recorded for this placement." });
+    if (source) button(controls, "Open source", () => host.plugin.nav.openSourceDetail(id2), "tertiary").addClass("los-domain-open-source");
   }
+  const footer = body.createDiv({ cls: "los-domain-list-footer", text: `${Math.min(limit, rows.length)} of ${count(rows.length, "ordered entry", "ordered entries")} shown` });
+  showMore(footer, state, key, rows.length, redraw, "entries");
+  button(footer, "All source folders", () => host.plugin.nav.openLibraryHome("sources"), "tertiary");
 }
 function renderResults(results, host, index) {
   const state = host.domains;
-  const query = state.query;
-  const visible = index.domains.filter((domain) => matches(query, [domain.id, domain.title]) || domain.notes.some((note) => noteMatches(note, query)) || domain.shelves.some((shelf) => shelfMatches(shelf, query, index)));
-  results.createDiv({ cls: "los-domain-search-status", attr: { role: "status" }, text: query.trim() ? `${count(visible.length, "domain")} match \u201C${query}\u201D. Your selected domain stays open.` : `${count(index.domains.length, "domain")} \xB7 ${count(index.domains.reduce((n, domain) => n + domain.notes.length, 0), "note")} \xB7 ${count(index.domains.reduce((n, domain) => n + domain.shelves.length, 0), "shelf")}` });
+  const redraw = (focusNote) => {
+    withRenderFocus(results, () => {
+      results.empty();
+      renderResults(results, host, index);
+    });
+    if (focusNote) {
+      const choice = Array.from(results.querySelectorAll("button")).find((control) => control.getAttribute("data-los-tab") === focusNote);
+      (choice ?? Array.from(results.querySelectorAll("button")).find((control) => control.getAttribute("data-los-tab") === state.selected))?.focus({ preventScroll: true });
+    }
+  };
+  const domainMatches = (domain2) => matches(state.query, [domain2.id, domain2.title]);
+  const visibleNotes = (domain2) => domain2.notes.filter((note) => noteMatches(note, state, domainMatches(domain2)));
+  const visibleShelves = (domain2) => domain2.shelves.filter((shelf) => domainMatches(domain2) || shelfMatches(shelf, state.query, index));
+  const filtering = Boolean(state.query.trim() || state.collection === "notes" && (state.role || state.authorship));
+  const searching = Boolean(state.query.trim());
+  const visible = index.domains.filter((domain2) => !filtering || (searching ? domainMatches(domain2) || visibleNotes(domain2).length || visibleShelves(domain2).length : state.collection === "notes" ? visibleNotes(domain2).length : visibleShelves(domain2).length));
+  const searchScope = searching ? ` \xB7 ${count(index.domains.reduce((n, domain2) => n + visibleNotes(domain2).length, 0), "matching note")} \xB7 ${count(index.domains.reduce((n, domain2) => n + visibleShelves(domain2).length, 0), "matching source shelf")}` : "";
+  results.createDiv({ cls: "los-domain-search-status", attr: { role: "status" }, text: filtering ? `${count(visible.length, "domain")} match${searchScope}. Your selected domain stays open.` : `${count(index.notes.length, "note")} \xB7 ${count(index.domains.reduce((n, domain2) => n + domain2.shelves.length, 0), "source shelf")}` });
   const layout = results.createDiv({ cls: "los-domain-layout" });
   const rail = layout.createDiv({ cls: "los-domain-rail", attr: { role: "group", "aria-label": "Knowledge domains" } });
+  rail.createDiv({ cls: "los-domain-rail-label", text: "Domains" });
   enableButtonGroupKeyboardNavigation(rail, "vertical");
-  for (const domain of index.domains.filter((row4) => visible.includes(row4) || row4.id === state.selected)) {
-    const choice = button(rail, domain.title, () => {
-      state.selected = domain.id;
-      withRenderFocus(results, () => {
-        results.empty();
-        renderResults(results, host, index);
-      });
+  for (const domain2 of index.domains.filter((row4) => visible.includes(row4) || row4.id === state.selected)) {
+    const choice = button(rail, domain2.title, () => {
+      if (state.selected !== domain2.id) {
+        state.selectedNote = null;
+        state.selectedShelf = null;
+      }
+      state.selected = domain2.id;
+      redraw();
     }, "quiet");
     choice.addClass("los-domain-choice");
-    choice.toggleClass("is-active", domain.id === state.selected);
-    choice.setAttrs({ "aria-pressed": String(domain.id === state.selected), "data-los-tab": domain.id });
-    choice.createSpan({ cls: "los-domain-choice-counts", text: `${count(domain.notes.length, "note")} \xB7 ${count(domain.shelves.length, "shelf")}` });
-    if (query.trim() && !visible.includes(domain)) choice.createSpan({ cls: "los-domain-choice-empty", text: "No search matches" });
+    choice.toggleClass("is-active", domain2.id === state.selected);
+    choice.setAttrs({ "aria-pressed": String(domain2.id === state.selected), "data-los-tab": domain2.id });
+    choice.createSpan({ cls: "los-domain-choice-counts", text: `${count(domain2.notes.length, "note")} \xB7 ${count(domain2.shelves.length, "source shelf")}` });
+    if (filtering && !visible.includes(domain2)) choice.createSpan({ cls: "los-domain-choice-empty", text: "No filter matches" });
   }
-  const selected = index.domains.find((domain) => domain.id === state.selected);
-  if (selected) renderDomainDetail(layout, host, index, selected);
+  const domain = index.domains.find((row4) => row4.id === state.selected);
+  if (!domain) return;
+  const detail = layout.createDiv({ cls: "los-domain-detail" });
+  const heading = detail.createDiv({ cls: "los-domain-detail-heading" });
+  heading.createEl("h2", { text: domain.title });
+  const notes = visibleNotes(domain), shelves = visibleShelves(domain);
+  const full = state.collection === "notes" ? domain.notes.length : domain.shelves.length;
+  const shown = state.collection === "notes" ? notes.length : shelves.length;
+  heading.createDiv({ cls: "los-domain-counts", text: `${filtering ? `${shown} of ` : ""}${count(full, state.collection === "notes" ? "note" : "source shelf")}` });
+  filterTabs(detail, "Domain content", [["notes", "Notes"], ["shelves", "Source shelves"]], state.collection, (value) => {
+    state.collection = value;
+    host.render();
+  }, searching ? (value) => value === "notes" ? notes.length : shelves.length : null).addClass("los-domain-content-switch");
+  if (searching && !shown) {
+    const other = state.collection === "notes" ? shelves.length : notes.length;
+    if (other) button(detail, `Show ${count(other, state.collection === "notes" ? "matching source shelf" : "matching note")}`, () => {
+      state.collection = state.collection === "notes" ? "shelves" : "notes";
+      host.render();
+    }, "quiet").addClass("los-domain-other-matches");
+  }
+  if (state.collection === "notes") renderNotes(detail, host, index, domain, notes, redraw);
+  else renderShelves(detail, host, index, domain, shelves, redraw);
 }
 function renderSourceDomains(root, host, index) {
-  const section3 = root.createDiv({ cls: "los-domain-source-domains" });
+  const body = disclosure2(root, host.domains, "atlas:tools", "Atlas tools", "los-domain-tools");
+  const section3 = body.createDiv({ cls: "los-domain-source-domains" });
   section3.createEl("h2", { text: "Source folders" });
-  section3.createEl("p", { text: "Sources use their own recorded thematic groups. A source may appear in more than one folder; these counts overlap." });
+  section3.createEl("p", { text: "Sources use their recorded thematic groups. A source may appear in more than one folder; these counts overlap." });
   const actions = section3.createDiv({ cls: "los-actions" });
   button(actions, `All sources \xB7 ${index.sources.size}`, () => host.plugin.nav.openLibraryHome("sources"), "quiet").addClass("los-domain-all-sources");
   button(actions, "Search all sources", () => host.plugin.nav.openLibraryHome("sources", host.domains.query), "quiet").addClass("los-domain-search-sources");
@@ -2522,47 +2663,158 @@ function renderSourceDomains(root, host, index) {
     () => host.plugin.nav.openLibraryFolder(["shelf:unfiled"]),
     "quiet"
   ).addClass("los-domain-unfiled");
-  const secondary = section3.createDiv({ cls: "los-actions" });
-  button(secondary, "Generated text overview", () => host.plugin.openVaultPath("generated/domain-atlas.md"), "tertiary");
-  section3.createEl("p", { cls: "los-micro", text: "The generated overview also records material outside this map. Notes, shelf placements and source counts describe published records; they do not record learning progress or ability evidence." });
+  button(body, "Generated text overview", () => host.plugin.openVaultPath("generated/domain-atlas.md"), "tertiary");
+}
+function noteFilter(parent, cls, ariaLabel, allLabel, values2, selected, labelOf, choose, disabled) {
+  const select2 = parent.createEl("select", { cls, attr: { "aria-label": ariaLabel } });
+  select2.createEl("option", { text: allLabel, attr: { value: "" } });
+  for (const value of values2) select2.createEl("option", { text: labelOf(value), attr: { value } });
+  select2.value = selected ?? "";
+  select2.disabled = disabled;
+  select2.addEventListener("change", () => choose(select2.value || null));
 }
 function renderDomains(root, host) {
-  pageHeader(root, "Reach", "Domain Atlas", "A readable map of your published notes and curated shelves across every domain. Open one domain, then follow the records it holds.");
+  const header2 = pageHeader(root, "", "Atlas");
+  header2.addClass("los-domain-header");
+  const about = disclosure2(header2, host.domains, "atlas:about", "About Atlas", "los-domain-about");
+  about.createEl("p", { text: "Browse explicitly linked concepts, published notes and ordered source shelves. Abilities shows authored preparation and recorded evidence. Browsing does not record learning progress or ability credit." });
   renderAtlasVariants(root, host.plugin.nav, "domains");
   if (!host.plugin.store.ready) {
-    empty(root, "Domain Atlas unavailable", "The interface contract could not be loaded. Rebuild the projection or reopen this view when it is available.");
+    empty(root, "Notes & shelves unavailable", "The interface contract could not be loaded. Reopen this view when the projection is available.");
     return;
   }
-  const index = domainIndex(host);
-  const state = host.domains;
-  if (!index.domains.some((domain) => domain.id === state.selected)) {
-    state.selected = index.domains.find((domain) => domain.notes.length || domain.shelves.length)?.id ?? index.domains[0]?.id ?? null;
-  }
+  const index = domainIndex(host), state = host.domains;
+  if (!index.domains.some((domain) => domain.id === state.selected)) state.selected = index.domains.find((domain) => domain.notes.length || domain.shelves.length)?.id ?? index.domains[0]?.id ?? null;
+  if (!index.notes.some((note) => note.id === state.selectedNote)) state.selectedNote = null;
+  if (state.role && !index.notes.some((note) => roleOf(note) === state.role)) state.role = null;
+  if (state.authorship && !index.notes.some((note) => authorOf(note) === state.authorship)) state.authorship = null;
   const controls = root.createDiv({ cls: "los-domain-controls" });
-  const label = controls.createEl("label", { text: "Search domains, notes and shelves", cls: "los-domain-search-label" });
-  const search = label.createEl("input", { cls: "los-domain-search", attr: { type: "search", placeholder: "Find a note, role, shelf or source on a shelf", "aria-label": "Search Domain Atlas" } });
+  const search = controls.createEl("input", { cls: "los-domain-search", attr: { type: "search", placeholder: "Find a note or source shelf", "aria-label": "Search Notes & shelves" } });
   search.value = state.query;
   const results = root.createDiv({ cls: "los-domain-results" });
-  search.addEventListener("input", () => {
-    state.query = search.value;
+  const update = () => {
     results.empty();
     renderResults(results, host, index);
+  };
+  search.addEventListener("input", () => {
+    state.query = search.value;
+    update();
   });
+  noteFilter(
+    controls,
+    "los-domain-author-filter",
+    "Note authorship",
+    "All authors",
+    [...new Set(index.notes.map(authorOf))].sort(compareStrings),
+    state.authorship,
+    authorLabel,
+    (value) => {
+      state.authorship = value;
+      update();
+    },
+    state.collection === "shelves"
+  );
+  noteFilter(
+    controls,
+    "los-domain-role-filter",
+    "Note type",
+    "All note types",
+    [...new Set(index.notes.map(roleOf))].sort(compareStrings),
+    state.role,
+    roleLabel,
+    (value) => {
+      state.role = value;
+      update();
+    },
+    state.collection === "shelves"
+  );
   renderResults(results, host, index);
   renderSourceDomains(root, host, index);
 }
 
 // src/features/abilities/model.ts
 var PLANE = {
-  nodeWidth: 220,
-  nodeHeight: 76,
-  columnGap: 76,
-  rowGap: 44,
+  nodeWidth: 208,
+  nodeHeight: 40,
+  columnGap: 104,
+  rowGap: 82,
   pad: 8,
   bandHeight: 34,
   bandGap: 8,
   bandTop: 20
 };
+function abilityOverview(plane) {
+  const regions = [];
+  const nodes = /* @__PURE__ */ new Map();
+  let y = 32;
+  let width = 0;
+  for (const group of plane.groups) {
+    const horizontal = !group.edges.length;
+    const placed = group.nodes.map((node, index) => ({
+      ...node,
+      x: 72 + (horizontal ? index * (PLANE.nodeWidth + PLANE.columnGap) : node.x),
+      y: y + 72 + (horizontal ? 0 : node.y)
+    }));
+    for (const node of placed) nodes.set(node.id, node);
+    const regionWidth = Math.max(PLANE.nodeWidth, ...placed.map((node) => node.x + PLANE.nodeWidth)) + 56;
+    const regionHeight = horizontal ? 160 + group.height - group.graphHeight : 96 + group.height;
+    regions.push({ group, nodes: placed, x: 72, y, width: regionWidth - 72, height: regionHeight });
+    width = Math.max(width, regionWidth);
+    y += regionHeight + 80;
+  }
+  return {
+    x: 0,
+    y: 0,
+    width: Math.max(320, width),
+    height: Math.max(200, y),
+    regions,
+    nodes,
+    edges: plane.groups.flatMap((group) => [...group.edges])
+  };
+}
+function preparationNeighbours(edges, selected) {
+  return {
+    prerequisites: new Set(edges.filter((edge) => edge.to === selected).map((edge) => edge.from)),
+    dependents: new Set(edges.filter((edge) => edge.from === selected).map((edge) => edge.to))
+  };
+}
+function foldedVisibility(overview, folded, selected, retained = /* @__PURE__ */ new Set()) {
+  const incoming = new Set(overview.edges.map((edge) => edge.to));
+  const roots = [...overview.nodes.keys()].filter((id2) => !incoming.has(id2));
+  const visible = /* @__PURE__ */ new Set();
+  const pending = [...roots, ...retained, ...selected ? [selected] : []];
+  const outgoing = /* @__PURE__ */ new Map();
+  for (const edge of overview.edges) {
+    const targets = outgoing.get(edge.from) ?? [];
+    targets.push(edge.to);
+    outgoing.set(edge.from, targets);
+  }
+  while (pending.length) {
+    const id2 = pending.pop();
+    if (!id2 || visible.has(id2) || !overview.nodes.has(id2)) continue;
+    visible.add(id2);
+    if (!folded.has(id2)) pending.push(...outgoing.get(id2) ?? []);
+  }
+  const edges = overview.edges.filter((edge) => !folded.has(edge.from) && visible.has(edge.from) && visible.has(edge.to));
+  const shown = new Set(edges);
+  const hiddenIncident = /* @__PURE__ */ new Map();
+  for (const edge of overview.edges) {
+    if (shown.has(edge)) continue;
+    for (const id2 of [edge.from, edge.to]) hiddenIncident.set(id2, (hiddenIncident.get(id2) ?? 0) + 1);
+  }
+  return { nodes: visible, edges, hiddenIncident };
+}
+function boundsOfNodes(nodes) {
+  if (!nodes.length) return { x: 0, y: 0, width: 1, height: 1 };
+  const x = Math.min(...nodes.map((node) => node.x));
+  const y = Math.min(...nodes.map((node) => node.y));
+  return {
+    x,
+    y,
+    width: Math.max(...nodes.map((node) => node.x + PLANE.nodeWidth)) - x,
+    height: Math.max(...nodes.map((node) => node.y + PLANE.nodeHeight)) - y
+  };
+}
 var STATE_LABEL = {
   supported: "Supported",
   nearby: "Nearby",
@@ -2581,7 +2833,7 @@ function routeMembers(route2) {
 function unique(values2) {
   return [...new Set(values2)];
 }
-function byTitle(rows) {
+function byTitle2(rows) {
   return (left, right) => {
     const a = rows.get(left)?.title ?? left;
     const b = rows.get(right)?.title ?? right;
@@ -2761,7 +3013,7 @@ function buildGroup(memberIds, rows, bridges2, candidates, labels) {
     }
   }
   const columnCount = memberIds.length ? Math.max(...memberIds.map((id2) => column.get(id2) ?? 0)) + 1 : 0;
-  const titleOrder = byTitle(rows);
+  const titleOrder = byTitle2(rows);
   const byColumn = Array.from({ length: columnCount }, () => []);
   for (const id2 of memberIds) byColumn[column.get(id2) ?? 0]?.push(id2);
   const order = /* @__PURE__ */ new Map();
@@ -3493,6 +3745,7 @@ function renderExpansionState(parent, host, abilityId) {
       horizon2.retryExpansion(abilityId);
       host.render();
     }, "tertiary");
+    button(parent, "Read ability map again", () => void horizon2.refresh(), "tertiary");
     return;
   }
   const expansion = horizon2.expansion(abilityId);
@@ -3820,9 +4073,170 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
   }
 }
 
+// src/features/abilities/viewport.ts
+var MIN_SCALE = 1e-3;
+var MAX_SCALE = 2.5;
+var PAN_THRESHOLD = 5;
+function zoomAt(camera, point, scale) {
+  const next = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
+  const ratio = next / camera.scale;
+  return {
+    scale: next,
+    x: point.x - (point.x - camera.x) * ratio,
+    y: point.y - (point.y - camera.y) * ratio
+  };
+}
+function fitCamera(bounds, size, padding = 44) {
+  const width = Math.max(1, size.width - padding * 2);
+  const height = Math.max(1, size.height - padding * 2);
+  const scale = Math.max(MIN_SCALE, Math.min(1, width / Math.max(1, bounds.width), height / Math.max(1, bounds.height)));
+  return {
+    scale,
+    x: size.width / 2 - (bounds.x + bounds.width / 2) * scale,
+    y: size.height / 2 - (bounds.y + bounds.height / 2) * scale
+  };
+}
+function revealCamera(camera, bounds, size) {
+  const left = bounds.x * camera.scale + camera.x;
+  const top = bounds.y * camera.scale + camera.y;
+  const right = left + bounds.width * camera.scale;
+  const bottom = top + bounds.height * camera.scale;
+  if (left >= 24 && top >= 24 && right <= size.width - 24 && bottom <= size.height - 24) return camera;
+  return {
+    ...camera,
+    x: size.width / 2 - (bounds.x + bounds.width / 2) * camera.scale,
+    y: size.height / 2 - (bounds.y + bounds.height / 2) * camera.scale
+  };
+}
+function cameraTransform(camera) {
+  return `translate(${camera.x}px, ${camera.y}px) scale(${camera.scale})`;
+}
+function mountAbilityViewport(options) {
+  const { element, world } = options;
+  let disposed = false;
+  let suppress = false;
+  let drag = null;
+  const listeners = [];
+  const rect = () => typeof element.getBoundingClientRect === "function" ? element.getBoundingClientRect() : { left: 0, top: 0, width: 900, height: 560 };
+  const size = () => {
+    const box = rect();
+    return { width: box.width || element.clientWidth || 900, height: box.height || element.clientHeight || 560 };
+  };
+  const apply = (camera) => {
+    if (disposed) return;
+    options.changed(camera);
+    world.style.transform = cameraTransform(camera);
+    element.setAttribute("data-camera", JSON.stringify(camera));
+    options.percentage.setText(`${Math.round(camera.scale * 100)}%`);
+  };
+  const current = () => options.camera() ?? fitCamera(options.bounds, size());
+  const fit = (bounds) => apply(fitCamera(bounds, size()));
+  const zoom = (factor) => {
+    const pane = size();
+    apply(zoomAt(current(), { x: pane.width / 2, y: pane.height / 2 }, current().scale * factor));
+  };
+  const listen = (type, handler, config) => {
+    element.addEventListener(type, handler, config);
+    listeners.push([type, handler, config]);
+  };
+  listen("pointerdown", ((event) => {
+    if (event.button !== 0) return;
+    const target = event.target;
+    const interactive = Boolean(target?.closest?.("button, input, select, a, summary"));
+    suppress = false;
+    drag = { pointer: event.pointerId, x: event.clientX, y: event.clientY, camera: current(), moved: false, pan: !interactive };
+    if (!interactive) {
+      element.focus({ preventScroll: true });
+      element.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    }
+  }));
+  listen("pointermove", ((event) => {
+    if (!drag || event.pointerId !== drag.pointer) return;
+    const x = event.clientX - drag.x;
+    const y = event.clientY - drag.y;
+    if (!drag.moved && Math.hypot(x, y) < PAN_THRESHOLD) return;
+    drag.moved = true;
+    if (!drag.pan) return;
+    element.addClass("is-panning");
+    apply({ ...drag.camera, x: drag.camera.x + x, y: drag.camera.y + y });
+  }));
+  const release = ((event) => {
+    if (!drag || event.pointerId !== drag.pointer) return;
+    suppress = drag.moved;
+    drag = null;
+    element.removeClass("is-panning");
+    if (element.hasPointerCapture?.(event.pointerId)) element.releasePointerCapture(event.pointerId);
+  });
+  listen("pointerup", release);
+  listen("pointercancel", release);
+  listen("lostpointercapture", release);
+  listen("wheel", ((event) => {
+    const active = (element.ownerDocument ?? globalThis.document)?.activeElement;
+    if (!active || !element.contains(active)) return;
+    event.preventDefault();
+    const box = rect();
+    if (event.ctrlKey || event.metaKey || event.altKey) {
+      const factor = Math.exp(-event.deltaY * (event.deltaMode === 1 ? 0.04 : 2e-3));
+      apply(zoomAt(current(), { x: event.clientX - box.left, y: event.clientY - box.top }, current().scale * factor));
+    } else {
+      const multiplier = event.deltaMode === 1 ? 20 : 1;
+      apply({ ...current(), x: current().x - event.deltaX * multiplier, y: current().y - event.deltaY * multiplier });
+    }
+  }), { passive: false });
+  listen("keydown", ((event) => {
+    if (event.target !== element) return;
+    if (event.key === "+" || event.key === "=") {
+      event.preventDefault();
+      zoom(1.2);
+    }
+    if (event.key === "-") {
+      event.preventDefault();
+      zoom(1 / 1.2);
+    }
+    if (event.key === "0" || event.key.toLowerCase() === "f") {
+      event.preventDefault();
+      fit(options.bounds);
+    }
+    if (event.key.startsWith("Arrow")) {
+      event.preventDefault();
+      const delta = event.shiftKey ? 100 : 40;
+      apply({
+        ...current(),
+        x: current().x + (event.key === "ArrowLeft" ? delta : event.key === "ArrowRight" ? -delta : 0),
+        y: current().y + (event.key === "ArrowUp" ? delta : event.key === "ArrowDown" ? -delta : 0)
+      });
+    }
+  }));
+  let frame = null;
+  const initial = options.camera();
+  apply(initial ?? fitCamera(options.bounds, size()));
+  if (!initial && typeof requestAnimationFrame === "function") {
+    frame = requestAnimationFrame(() => {
+      if (!disposed) fit(options.bounds);
+    });
+  }
+  return {
+    fit,
+    zoom,
+    reveal: (bounds) => apply(revealCamera(current(), bounds, size())),
+    suppressClick: () => {
+      const value = suppress;
+      suppress = false;
+      return value;
+    },
+    dispose: () => {
+      disposed = true;
+      if (frame !== null) cancelAnimationFrame(frame);
+      if (drag && element.hasPointerCapture?.(drag.pointer)) element.releasePointerCapture(drag.pointer);
+      drag = null;
+      for (const [type, handler, config] of listeners) element.removeEventListener?.(type, handler, config);
+    }
+  };
+}
+
 // src/features/abilities/plane.ts
 var SVG = "http://www.w3.org/2000/svg";
-var HEAD = 30;
 var LAYOUTS = [
   ["plane", "Plane"],
   ["list", "List"]
@@ -3847,16 +4261,35 @@ function renderAbilityMap(root, host) {
   const brief = horizon2.current();
   const labels = projectionLabels(plugin.store);
   const plane = brief ? buildAbilityPlane(brief, labels) : null;
+  if (brief && plane) reconcileAttention(host, plane, brief.snapshot_id);
   const selected = host.state.ability && plane?.rowOf.has(host.state.ability) ? host.state.ability : null;
   renderTopBar(root, host, plane, selected);
+  if (brief && plane && host.state.ability && !selected && host.state.detail) {
+    const requested = host.state.ability;
+    horizon2.ensureExpansion(requested);
+    const focused = horizon2.expansion(requested);
+    if (focused && "ability" in focused && focused.snapshot_id === brief.snapshot_id) {
+      const detailPlane = { ...plane, rowOf: new Map([...plane.rowOf, [requested, focused.ability]]) };
+      renderAbilityDetail(root, host, brief, detailPlane, requested);
+    } else {
+      const requestedPanel = root.createDiv({ cls: "los-ability-detail" });
+      requestedPanel.createEl("h1", { text: "Requested ability" });
+      if (focused && focused.snapshot_id !== brief.snapshot_id) {
+        requestedPanel.createEl("p", { text: "The focused record belongs to another snapshot. Read the horizon again before opening it." });
+        button(requestedPanel, "Read again", () => void horizon2.refresh(), "quiet");
+      } else renderExpansionState(requestedPanel, host, requested);
+      button(requestedPanel, "Back to map", () => host.go({ detail: false }), "tertiary");
+    }
+    return;
+  }
   if (brief && plane && selected && host.state.detail) {
     renderAbilityDetail(root, host, brief, plane, selected);
     return;
   }
   const title2 = root.createDiv({ cls: "los-ability-title" });
-  title2.createEl("h1", { text: "Ability map" });
+  title2.createEl("h1", { text: "Atlas" });
   title2.createEl("p", {
-    text: selected ? "Select an ability to see its conditions, routes and evidence." : "Explore one ability group at a time. Preparation routes are directed; reviewed bridges stay distinct."
+    text: selected ? "The selected ability and its immediate preparation neighbours are highlighted." : "Select an ability to highlight its immediate neighbours. Details and complete routes open on request."
   });
   renderToolbar(root, host, plane);
   if (!brief || !plane) {
@@ -3871,7 +4304,13 @@ function renderAbilityMap(root, host) {
     );
     return;
   }
+  if (host.state.ability && !selected) {
+    const outside = root.createDiv({ cls: "los-ability-search-results" });
+    outside.createEl("p", { cls: "los-micro", text: "The requested ability is outside this loaded horizon. Its focused detail can be read without adding records to the plane." });
+    button(outside, "Read requested ability", () => host.go({ detail: true }), "quiet");
+  }
   if (host.query.trim()) renderSearchResults(root, host, plane, labels);
+  root.createDiv({ cls: "los-micro los-ability-scope", text: `${brief.abilities.length} of ${brief.total} abilities loaded${brief.truncated ? " \xB7 bounded horizon" : ""}${horizon2.recordsAhead ? " \xB7 projection is behind the records" : ""}` });
   if (host.state.layout === "list") {
     renderList(root, host, plane, brief);
     return;
@@ -3947,15 +4386,12 @@ function renderToolbar(root, host, plane) {
   switcher.addClass("los-ability-layout-switch");
   const right = bar.createDiv({ cls: "los-ability-toolbar-right" });
   const label = right.createEl("label", {
-    cls: "los-sr-only",
-    text: "Find an ability",
-    attr: { for: "los-ability-search" }
+    cls: "los-ability-search-label"
   });
-  label.setAttribute("for", "los-ability-search");
-  const search = right.createEl("input", {
+  label.createSpan({ cls: "los-sr-only", text: "Find an ability" });
+  const search = label.createEl("input", {
     cls: "los-ability-search",
     attr: {
-      id: "los-ability-search",
       type: "search",
       placeholder: "Find an ability",
       value: host.query
@@ -3996,7 +4432,7 @@ function renderSearchResults(root, host, plane, labels) {
   box.createDiv({ cls: "los-micro", text: `${hits.length} ${hits.length === 1 ? "ability matches" : "abilities match"}` });
   const list4 = box.createDiv({ cls: "los-ability-search-list", attr: { role: "group", "aria-label": "Matching abilities" } });
   enableButtonGroupKeyboardNavigation(list4, "vertical");
-  for (const id2 of hits.slice(0, 12)) {
+  for (const id2 of hits) {
     const row4 = plane.rowOf.get(id2);
     if (!row4) continue;
     const hit = list4.createEl("button", {
@@ -4007,230 +4443,366 @@ function renderSearchResults(root, host, plane, labels) {
     hit.createSpan({ cls: "los-micro", text: STATE_LABEL[row4.state] });
     hit.addEventListener("click", () => {
       host.query = "";
+      host.attention.retained.clear();
+      host.attention.retained.add(id2);
+      const neighbours = preparationNeighbours(plane.groups.flatMap((group) => [...group.edges]), id2);
+      for (const peer of [...neighbours.prerequisites, ...neighbours.dependents]) host.attention.retained.add(peer);
+      host.attention.folded.delete(id2);
+      host.attention.fitRequest = "reveal";
       host.go({ group: plane.groupOfAbility.get(id2) ?? null, ability: id2, detail: false });
     });
   }
 }
-function pickGroup(host, plane, selected) {
-  const fromAbility = selected ? plane.groupOfAbility.get(selected) : null;
-  const key = fromAbility ?? host.state.group;
-  return plane.groups.find((group) => group.key === key) ?? plane.groups[0] ?? null;
+function reconcileAttention(host, plane, snapshot) {
+  const attention = host.attention;
+  const ids2 = new Set(plane.rowOf.keys());
+  if (attention.snapshot !== snapshot) {
+    if (attention.ids.size && ![...ids2].some((id2) => attention.ids.has(id2))) attention.camera = null;
+    for (const id2 of attention.folded) if (!ids2.has(id2)) attention.folded.delete(id2);
+    for (const id2 of attention.retained) if (!ids2.has(id2)) attention.retained.delete(id2);
+    if (host.bridgeKey && !plane.bridges.some((bridge2) => bridgeKey(bridge2) === host.bridgeKey)) host.bridgeKey = null;
+    attention.snapshot = snapshot;
+    attention.ids = ids2;
+  }
 }
 function renderPlane(root, host, plane, brief, selected) {
-  const group = pickGroup(host, plane, selected);
-  const bridge2 = host.bridgeKey ? plane.bridges.find((row4) => bridgeKey(row4) === host.bridgeKey) ?? null : null;
-  const inspecting = Boolean(selected || bridge2);
+  const overview = abilityOverview(plane);
+  const visibility = foldedVisibility(overview, host.attention.folded, selected, host.attention.retained);
+  const bridge2 = host.attention.bridgesVisible && host.bridgeKey ? plane.bridges.find((row4) => bridgeKey(row4) === host.bridgeKey) ?? null : null;
+  const inspecting = Boolean(bridge2 || selected && (host.attention.inspector || host.attention.routes));
   const surface = root.createDiv({ cls: `los-ability-plane${inspecting ? " has-inspector" : ""}` });
-  if (!inspecting) renderGroups(surface, host, plane, group);
-  if (group) renderGraph(surface, host, plane, group, selected, inspecting);
-  if (bridge2) renderBridgeInspector(surface, host, plane, bridge2);
-  else if (selected) renderInspector(surface, host, plane, brief, selected);
-  if (brief.truncated) {
-    root.createDiv({
-      cls: "los-micro los-ability-truncated",
-      text: `Showing ${brief.abilities.length} of ${brief.total} abilities \u2014 Core bounds one read. Search or open an ability to expand the rest.`
-    });
-  }
-}
-function renderGroups(surface, host, plane, current) {
-  const rail = surface.createDiv({ cls: "los-ability-groups" });
-  rail.createEl("h2", { cls: "los-ability-eyebrow", text: "Ability groups" });
-  const list4 = rail.createDiv({
-    cls: "los-ability-group-list",
-    attr: { role: "group", "aria-label": "Ability groups" }
-  });
-  enableButtonGroupKeyboardNavigation(list4, "vertical");
-  for (const group of plane.groups) {
-    const active = group.key === current?.key;
-    const card = list4.createEl("button", {
-      cls: `los-ability-group is-clickable${active ? " is-selected" : ""}`,
-      attr: { type: "button", "aria-pressed": String(active), "data-ability-group": group.key }
-    });
-    card.createSpan({ cls: "los-ability-group-title", text: group.title });
-    const bridges2 = group.reviewedBridgeCount;
-    card.createSpan({
-      cls: "los-ability-group-meta",
-      text: `${group.nodes.length} ${group.nodes.length === 1 ? "ability" : "abilities"} \xB7 ${bridges2} reviewed ${bridges2 === 1 ? "bridge" : "bridges"}`
-    });
-    card.addEventListener("click", () => {
-      host.bridgeKey = null;
-      host.go({ group: group.key, ability: null, detail: false });
-    });
-  }
-  rail.createEl("p", {
-    cls: "los-ability-group-note",
-    text: plane.groups.length > 1 ? "Groups are separate; no path joins them." : "Every mapped ability belongs to this one group."
-  });
-  if (plane.crossGroupCandidates.length) {
-    rail.createEl("p", {
-      cls: "los-ability-group-note",
-      text: `${plane.crossGroupCandidates.length} tentative ${plane.crossGroupCandidates.length === 1 ? "connection crosses" : "connections cross"} groups. Tentative connections carry nothing and never join groups.`
-    });
-  }
-}
-function nodeLabel(node, plane) {
-  const titleOf2 = (id2) => plane.rowOf.get(id2)?.title ?? id2;
-  const parts = [`${node.row.title}. ${STATE_LABEL[node.row.state]}. ${node.meta}.`];
-  const preparation = preparationSentence(node.row, titleOf2);
-  if (preparation) parts.push(`Prepared by: ${preparation}`);
-  if (node.bridgeCount) parts.push(`${node.bridgeCount} reviewed or candidate ${node.bridgeCount === 1 ? "bridge" : "bridges"}.`);
-  return parts.join(" ");
-}
-function renderGraph(surface, host, plane, group, selected, inspecting) {
   const panel = surface.createDiv({ cls: "los-ability-graph" });
-  const head = panel.createDiv({ cls: "los-ability-graph-head" });
-  const titleRow = head.createDiv({ cls: "los-ability-graph-title" });
-  titleRow.createEl("h2", { text: group.title });
-  if (inspecting) {
-    button(titleRow, "All groups", () => {
-      host.bridgeKey = null;
-      host.go({ ability: null, detail: false });
-    }, "tertiary").addClass("los-ability-back");
+  const controls = panel.createDiv({ cls: "los-ability-camera-controls", attr: { role: "group", "aria-label": "Ability camera" } });
+  const overviewNav = panel.createDiv({ cls: "los-ability-overview-nav", attr: { role: "group", "aria-label": "Ability groups at overview scale" } });
+  overviewNav.createDiv({ cls: "los-micro los-ability-overview-hint", text: "Overview \xB7 fit a group to read its abilities" });
+  enableButtonGroupKeyboardNavigation(overviewNav, "both");
+  for (const region of overview.regions) {
+    const fit = button(overviewNav, region.group.title, () => {
+      camera.fit(region);
+      if (overviewNav.hidden) viewport.focus({ preventScroll: true });
+    }, "quiet");
+    fit.addClass("los-ability-overview-group");
+    fit.setAttrs({ "data-los-tab": `overview-${region.group.key}`, "data-overview-group": region.group.key });
+    fit.createSpan({ cls: "los-micro", text: `${region.nodes.length} abilities \xB7 ${region.group.edges.length} preparation connections` });
   }
-  head.createEl("p", {
-    text: inspecting ? "Select any ability. Preparation moves left to right." : "Preparation flows left to right. Select an ability to inspect its evidence."
-  });
-  const scroll = panel.createDiv({ cls: "los-ability-canvas-scroll" });
-  const canvas = scroll.createDiv({ cls: "los-ability-canvas" });
-  const height = HEAD + group.height;
-  canvas.setAttr("style", `width:${group.width}px;height:${height}px`);
-  for (const column of group.columns) {
-    const heading = canvas.createDiv({ cls: "los-ability-column-head" });
-    heading.setAttr("style", `left:${column.x}px;width:${PLANE.nodeWidth}px`);
-    const annotation = annotationLabel(column.annotation);
-    heading.setText(annotation ? `${column.label} \xB7 ${annotation}` : column.label);
+  const viewport = panel.createDiv({ cls: "los-ability-viewport", attr: {
+    tabindex: "0",
+    role: "region",
+    "aria-label": "Ability preparation canvas. Drag the background or use the focused wheel to pan. Pinch or Ctrl plus wheel zooms at the pointer. Plus and minus zoom; F fits all; arrow keys pan."
+  } });
+  const canvas = viewport.createDiv({ cls: "los-ability-canvas" });
+  canvas.setAttr("style", `width:${overview.width}px;height:${overview.height}px`);
+  const neighbours = preparationNeighbours(overview.edges, selected);
+  const bridgePeers = /* @__PURE__ */ new Set();
+  if (selected && host.attention.bridgesVisible) for (const row4 of plane.bridges) {
+    if (row4.review.state !== "reviewed") continue;
+    if (row4.from === selected) bridgePeers.add(row4.to);
+    if (row4.to === selected) bridgePeers.add(row4.from);
   }
-  drawEdges(canvas, group, height);
-  const nodes = canvas.createDiv({
-    cls: "los-ability-nodes",
-    attr: { role: "group", "aria-label": `${group.title}: abilities in preparation order` }
-  });
-  enableButtonGroupKeyboardNavigation(nodes, "both");
-  const highlighted = /* @__PURE__ */ new Set();
-  const bridge2 = host.bridgeKey ? group.bridges.find((row4) => row4.key === host.bridgeKey)?.bridge ?? null : null;
-  if (bridge2) {
-    highlighted.add(bridge2.from);
-    highlighted.add(bridge2.to);
+  const highlighted = /* @__PURE__ */ new Set([...neighbours.prerequisites, ...neighbours.dependents]);
+  for (const region of overview.regions) {
+    const group = region.group;
+    const heading = canvas.createDiv({ cls: "los-ability-region-head", attr: { "data-ability-group": group.key } });
+    heading.setAttr("style", `left:${region.x}px;top:${region.y}px`);
+    heading.createEl("h2", { text: group.title });
+    heading.createSpan({ cls: "los-micro", text: `${group.nodes.length} abilities` });
+    for (const column of group.columns) {
+      if (!group.edges.length) continue;
+      const head = canvas.createDiv({ cls: "los-ability-column-head" });
+      const annotation = annotationLabel(column.annotation);
+      head.setText(annotation ? `${column.label} \xB7 ${annotation}` : column.label);
+      head.setAttr("style", `left:${region.x + column.x}px;top:${region.y + 46}px;width:${PLANE.nodeWidth}px`);
+    }
   }
-  for (const node of group.nodes) {
+  drawEdges(canvas, overview, visibility.edges, selected);
+  const nodes = canvas.createDiv({ cls: "los-ability-nodes", attr: { role: "group", "aria-label": "Loaded abilities in preparation order" } });
+  const cards = /* @__PURE__ */ new Map();
+  for (const node of overview.nodes.values()) {
+    if (!visibility.nodes.has(node.id)) continue;
     const active = node.id === selected;
+    const near = highlighted.has(node.id);
+    const peer = bridgePeers.has(node.id);
+    const attention = active ? "Selected" : neighbours.prerequisites.has(node.id) ? "Immediate prerequisite" : neighbours.dependents.has(node.id) ? "Immediate dependent" : peer ? "Reviewed bridge peer" : "";
     const card = nodes.createEl("button", {
-      cls: `los-ability-node is-clickable los-ability-state-${node.row.state}${active ? " is-selected" : ""}${highlighted.has(node.id) ? " is-bridged" : ""}`,
+      cls: `los-ability-node is-clickable los-ability-state-${node.row.state}${active ? " is-selected" : near ? " is-neighbour" : peer ? " is-bridged" : selected ? " is-muted" : ""}`,
       attr: {
         type: "button",
         "data-ability": node.id,
+        "data-los-tab": `ability-${node.id}`,
         "aria-pressed": String(active),
-        "aria-label": nodeLabel(node, plane)
+        "aria-label": `${attention ? attention + ". " : ""}${nodeLabel(node, plane)}`,
+        title: `${node.row.title} \xB7 ${STATE_LABEL[node.row.state]}`
       }
     });
-    card.setAttr("style", `left:${node.x}px;top:${HEAD + node.y}px;width:${PLANE.nodeWidth}px;height:${PLANE.nodeHeight}px`);
+    card.setAttr("style", `left:${node.x}px;top:${node.y}px;width:${PLANE.nodeWidth}px;height:${PLANE.nodeHeight}px`);
     card.createSpan({ cls: "los-ability-node-title", text: node.row.title });
-    const meta = card.createSpan({ cls: "los-ability-node-meta" });
-    meta.createSpan({ text: active ? `Selected \xB7 ${node.meta}` : node.meta });
-    if (node.row.state !== "uncertain" || node.row.evidence.length) {
-      meta.createSpan({ cls: `los-ability-node-state is-${node.row.state}`, text: STATE_LABEL[node.row.state] });
-    }
-    if (node.bridgeCount) {
-      card.createSpan({
-        cls: "los-ability-node-bridges",
-        text: `\u2194 ${node.bridgeCount}`,
-        attr: { "aria-hidden": "true" }
+    if (node.row.state !== "uncertain" || node.row.evidence.length) card.createSpan({ cls: "los-sr-only", text: STATE_LABEL[node.row.state] });
+    cards.set(node.id, card);
+    card.addEventListener("click", (event) => {
+      if (camera.suppressClick()) return;
+      const previous = host.attention.lastActivation;
+      const now2 = Date.now();
+      host.attention.lastActivation = { id: node.id, at: now2 };
+      if (event.detail === 2 || event.detail !== 0 && previous?.id === node.id && now2 - previous.at < 450) {
+        camera.fit(selectionBounds(node.id));
+        host.attention.lastActivation = null;
+        return;
+      }
+      host.bridgeKey = null;
+      host.go({ group: plane.groupOfAbility.get(node.id) ?? null, ability: node.id, detail: false });
+    });
+    card.addEventListener("dblclick", (event) => {
+      event.preventDefault();
+      camera.fit(selectionBounds(node.id));
+    });
+    card.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        host.go({ ability: null, detail: false });
+      }
+      if (event.key.toLowerCase() === "d") {
+        event.preventDefault();
+        host.go({ ability: node.id, detail: true });
+      }
+      if (event.key.toLowerCase() === "e") {
+        event.preventDefault();
+        if (host.attention.folded.has(node.id)) host.attention.folded.delete(node.id);
+        else host.attention.folded.add(node.id);
+        host.render();
+      }
+      if (event.key.toLowerCase() === "f") {
+        event.preventDefault();
+        camera.fit(selectionBounds(node.id));
+      }
+      if (!event.key.startsWith("Arrow")) return;
+      const adjacent = preparationNeighbours(overview.edges, node.id);
+      const desired = event.key === "ArrowLeft" ? [...adjacent.prerequisites] : event.key === "ArrowRight" ? [...adjacent.dependents] : [...adjacent.prerequisites, ...adjacent.dependents];
+      const targets = desired.map((id2) => overview.nodes.get(id2)).filter((other) => Boolean(other && cards.has(other.id))).sort((left, right) => Math.abs(left.y - node.y) - Math.abs(right.y - node.y));
+      if (targets[0]) {
+        event.preventDefault();
+        event.stopPropagation();
+        cards.get(targets[0].id)?.focus();
+        camera.reveal(boundsOfNodes([targets[0]]));
+      }
+    });
+    const outgoing = overview.edges.filter((edge) => edge.from === node.id);
+    if (outgoing.length) {
+      const folded = host.attention.folded.has(node.id);
+      const endcap = nodes.createEl("button", { cls: `los-ability-endcap${folded ? " is-folded" : ""}`, text: folded ? "+" : "\u2039", attr: {
+        type: "button",
+        "data-fold-ability": node.id,
+        "data-los-tab": `fold-${node.id}`,
+        "aria-expanded": String(!folded),
+        "aria-label": `${folded ? "Expand" : "Fold"} ${outgoing.length} outgoing connections from ${node.row.title}`
+      } });
+      endcap.setAttr("style", `left:${node.x + PLANE.nodeWidth + 4}px;top:${node.y}px`);
+      endcap.addEventListener("click", () => {
+        if (camera.suppressClick()) return;
+        if (folded) host.attention.folded.delete(node.id);
+        else host.attention.folded.add(node.id);
+        host.render();
       });
     }
-    card.addEventListener("click", () => {
+    const hidden2 = visibility.hiddenIncident.get(node.id) ?? 0;
+    if (hidden2) {
+      const count3 = nodes.createDiv({ cls: "los-ability-fold-count", text: `${hidden2} folded`, attr: { "aria-label": `${hidden2} incident preparation connections are folded` } });
+      count3.setAttr("style", `left:${node.x}px;top:${node.y + PLANE.nodeHeight + 4}px`);
+    }
+  }
+  if (host.attention.bridgesVisible) renderBridgeBands(canvas, host, plane, overview, visibility.nodes, () => camera.suppressClick());
+  const outline = panel.createEl("details", { cls: "los-ability-outline-disclosure" });
+  outline.createEl("summary", { text: "Preparation connections as text" });
+  const outlineList = outline.createEl("ul", { cls: "los-ability-edge-outline" });
+  for (const edge of overview.edges) outlineList.createEl("li", { text: `${plane.rowOf.get(edge.from)?.title ?? edge.from} prepares ${plane.rowOf.get(edge.to)?.title ?? edge.to}${edge.alternative ? " (one of several routes)" : ""}${visibility.edges.includes(edge) ? "" : " \xB7 folded"}` });
+  const percentage = controls.createSpan({ cls: "los-ability-zoom-percentage", attr: { "aria-live": "polite" } });
+  const camera = mountAbilityViewport({
+    element: viewport,
+    world: canvas,
+    bounds: overview,
+    camera: () => host.attention.camera,
+    changed: (value) => {
+      host.attention.camera = value;
+      const distant = value.scale < 0.65;
+      viewport.toggleClass("is-distant", distant);
+      overviewNav.hidden = !distant;
+    },
+    percentage
+  });
+  host.ownInteraction(() => camera.dispose());
+  button(controls, "Fit all", () => camera.fit(overview), "quiet");
+  button(controls, "+", () => camera.zoom(1.2), "quiet").setAttr("aria-label", "Zoom in");
+  button(controls, "\u2212", () => camera.zoom(1 / 1.2), "quiet").setAttr("aria-label", "Zoom out");
+  const groupChoice = controls.createEl("select", { cls: "los-ability-fit-group", attr: { "aria-label": "Group to fit" } });
+  for (const region of overview.regions) groupChoice.createEl("option", { text: region.group.title, attr: { value: region.group.key } });
+  groupChoice.value = host.attention.fitGroup && overview.regions.some((region) => region.group.key === host.attention.fitGroup) ? host.attention.fitGroup : overview.regions[0]?.group.key ?? "";
+  groupChoice.addEventListener("change", () => {
+    host.attention.fitGroup = groupChoice.value;
+  });
+  button(controls, "Fit group", () => {
+    const region = overview.regions.find((region2) => region2.group.key === groupChoice.value);
+    if (region) camera.fit(region);
+  }, "quiet");
+  const fitSelection = button(controls, "Fit selection", () => {
+    if (selected) camera.fit(selectionBounds(selected));
+  }, "quiet");
+  fitSelection.disabled = !selected;
+  const bridges2 = button(controls, `Bridges \xB7 ${plane.bridges.filter((row4) => row4.review.state === "reviewed").length}`, () => {
+    host.attention.bridgesVisible = !host.attention.bridgesVisible;
+    if (!host.attention.bridgesVisible) host.bridgeKey = null;
+    host.render();
+  }, "quiet");
+  bridges2.setAttr("aria-pressed", String(host.attention.bridgesVisible));
+  function selectionBounds(id2) {
+    const near = preparationNeighbours(overview.edges, id2);
+    return boundsOfNodes([id2, ...near.prerequisites, ...near.dependents].map((key) => overview.nodes.get(key)).filter((node) => Boolean(node && visibility.nodes.has(node.id))));
+  }
+  if (host.attention.fitRequest) {
+    const request = host.attention.fitRequest;
+    host.attention.fitRequest = null;
+    if (request === "all") camera.fit(overview);
+    if (selected && request === "selection") camera.fit(selectionBounds(selected));
+    if (selected && request === "reveal") {
+      const node = overview.nodes.get(selected);
+      if (node) camera.reveal(boundsOfNodes([node]));
+    }
+    if (request === "group") {
+      const group = overview.regions.find((region) => region.group.key === host.attention.fitGroup);
+      if (group) camera.fit(group);
+    }
+  }
+  viewport.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !event.defaultPrevented) {
       host.bridgeKey = null;
-      host.go({ group: group.key, ability: node.id, detail: false });
-    });
-  }
-  for (const entry of group.bridges) {
-    const from = group.columns[entry.fromColumn]?.x ?? PLANE.pad;
-    const toColumn = group.columns[entry.toColumn];
-    const right = (toColumn?.x ?? from) + PLANE.nodeWidth;
-    const top = HEAD + group.graphHeight + PLANE.bandTop + entry.band * (PLANE.bandHeight + PLANE.bandGap);
-    const reviewed = entry.bridge.review.state === "reviewed";
-    const band = canvas.createEl("button", {
-      cls: `los-ability-bridge is-clickable is-${entry.bridge.kind}${reviewed ? " is-reviewed" : " is-candidate"}${entry.bridge.freshness === "current" ? "" : " is-not-current"}${host.bridgeKey === entry.key ? " is-selected" : ""}`,
-      attr: { type: "button", "data-bridge": entry.key }
-    });
-    band.setAttr("style", `left:${from}px;top:${top}px;width:${right - from}px;height:${PLANE.bandHeight}px`);
-    const fromTitle = plane.rowOf.get(entry.bridge.from)?.title ?? entry.bridge.from;
-    const toTitle = plane.rowOf.get(entry.bridge.to)?.title ?? entry.bridge.to;
-    const status = reviewed ? entry.bridge.freshness === "current" ? "Reviewed" : "Reviewed \xB7 source changed" : "Candidate";
-    band.createSpan({
-      cls: "los-ability-bridge-label",
-      text: `${bridgeSymbol(entry.bridge.kind)}  ${status} ${entry.bridge.kind} bridge`
-    });
-    band.setAttr(
-      "aria-label",
-      `${status} ${entry.bridge.kind} bridge from ${fromTitle} to ${toTitle}. Open its conditions.`
-    );
-    band.addEventListener("click", () => {
-      host.bridgeKey = host.bridgeKey === entry.key ? null : entry.key;
-      host.render();
-    });
-  }
-  const outline = panel.createEl("ul", { cls: "los-sr-only los-ability-edge-outline" });
-  for (const edge of group.edges) {
-    outline.createEl("li", {
-      text: `${plane.rowOf.get(edge.from)?.title ?? edge.from} prepares ${plane.rowOf.get(edge.to)?.title ?? edge.to}${edge.alternative ? " (one of several routes)" : ""}`
-    });
-  }
+      host.go({ ability: null, detail: false });
+    }
+  });
+  if (selected) renderSelectionDock(panel, host, plane, selected, neighbours, bridgePeers, visibility.hiddenIncident.get(selected) ?? 0, visibility.nodes);
   const foot = panel.createDiv({ cls: "los-ability-graph-foot" });
-  if (!group.hasEvidence) {
-    foot.createEl("p", { text: "No learner attempt recorded. Ability states stay uncertain until confirmed work exists." });
+  if (![...plane.rowOf.values()].some((row4) => row4.evidence.length)) foot.createEl("p", { text: "No learner attempt recorded. Ability states stay uncertain until confirmed work exists." });
+  if (plane.crossGroupCandidates.length) foot.createEl("p", { text: `${plane.crossGroupCandidates.length} tentative connection${plane.crossGroupCandidates.length === 1 ? "" : "s"} crosses groups; tentative connections carry nothing.` });
+  foot.createDiv({ cls: "los-micro", text: `${visibility.nodes.size} visible of ${brief.abilities.length} loaded abilities \xB7 ${overview.edges.length - visibility.edges.length} folded preparation connections` });
+  if (host.attention.bridgesVisible) {
+    const omitted = plane.bridges.filter((row4) => !visibility.nodes.has(row4.from) || !visibility.nodes.has(row4.to)).length;
+    if (omitted) foot.createDiv({ cls: "los-micro", text: `${omitted} bridge connections omitted by folding; bridges never retain preparation paths.` });
   }
-  if (group.bridges.length) {
-    foot.createEl("p", { text: "A bridge carries evidence only within its reviewed conditions and while its source is current." });
+  if (bridge2) renderBridgeInspector(surface, host, plane, bridge2);
+  else if (selected && inspecting) {
+    if (host.attention.routes) renderRoutes(surface, host, plane, selected);
+    else renderInspector(surface, host, plane, brief, selected);
   }
-  if (group.candidates.length) {
-    foot.createEl("p", {
-      text: `${group.candidates.length} tentative ${group.candidates.length === 1 ? "connection is" : "connections are"} recorded here. They carry nothing until reviewed into a bridge.`
-    });
-  }
-  if (inspecting && !selected) {
-    foot.createEl("p", { text: "Choose another group from the Atlas map." });
-  }
+  if (brief.truncated) root.createDiv({ cls: "los-micro los-ability-truncated", text: `Showing ${brief.abilities.length} of ${brief.total} abilities. Search locates loaded records; Details explicitly expands one record under this snapshot. Unloaded prerequisites remain named in Routes.` });
 }
-function drawEdges(canvas, group, height) {
+function nodeLabel(node, plane) {
+  const parts = [`${node.row.title}. ${STATE_LABEL[node.row.state]}. ${node.meta}.`];
+  const preparation = preparationSentence(node.row, (id2) => plane.rowOf.get(id2)?.title ?? id2);
+  if (preparation) parts.push(`Complete preparation routes: ${preparation}`);
+  if (node.bridgeCount) parts.push(`${node.bridgeCount} bridge connections, separately disclosed.`);
+  return parts.join(" ");
+}
+function drawEdges(canvas, overview, edges, selected) {
   const doc = canvas.ownerDocument;
   if (!doc || typeof doc.createElementNS !== "function") return;
   const svg = doc.createElementNS(SVG, "svg");
   svg.setAttribute("class", "los-ability-edges");
   svg.setAttribute("aria-hidden", "true");
-  svg.setAttribute("width", String(group.width));
-  svg.setAttribute("height", String(height));
-  svg.setAttribute("viewBox", `0 0 ${group.width} ${height}`);
-  const nodes = new Map(group.nodes.map((node) => [node.id, node]));
-  const centre = (node) => HEAD + node.y + PLANE.nodeHeight / 2;
-  const line = (d, cls) => {
+  svg.setAttribute("width", String(overview.width));
+  svg.setAttribute("height", String(overview.height));
+  svg.setAttribute("viewBox", `0 0 ${overview.width} ${overview.height}`);
+  for (const edge of edges) {
+    const from = overview.nodes.get(edge.from);
+    const to = overview.nodes.get(edge.to);
+    if (!from || !to) continue;
+    const x1 = from.x + PLANE.nodeWidth + 24;
+    const x2 = to.x - 8;
+    const y1 = from.y + PLANE.nodeHeight / 2;
+    const y2 = to.y + PLANE.nodeHeight / 2;
+    const bend = Math.max(40, (x2 - x1) * 0.55);
+    const active = edge.from === selected || edge.to === selected;
     const path = doc.createElementNS(SVG, "path");
-    path.setAttribute("d", d);
-    path.setAttribute("class", cls);
+    path.setAttribute("class", `los-ability-edge${edge.alternative ? " is-alternative" : ""}${active ? " is-incident" : selected ? " is-muted" : ""}`);
+    path.setAttribute("data-preparation-from", edge.from);
+    path.setAttribute("data-preparation-to", edge.to);
+    path.setAttribute("d", `M ${x1} ${y1} C ${x1 + bend} ${y1}, ${x2 - bend} ${y2}, ${x2} ${y2}`);
     svg.append(path);
-  };
-  for (const lane of group.lanes) {
-    const sources = lane.sources.map((id2) => nodes.get(id2)).filter((node) => Boolean(node));
-    const targets = lane.targets.map((id2) => nodes.get(id2)).filter((node) => Boolean(node));
-    if (!sources.length || !targets.length) continue;
-    const ys = [...sources.map(centre), ...targets.map(centre)];
-    const kind = lane.alternative ? " is-alternative" : "";
-    for (const source of sources) {
-      line(`M ${source.x + PLANE.nodeWidth} ${centre(source)} H ${lane.x}`, `los-ability-edge${kind}`);
-    }
-    line(`M ${lane.x} ${Math.min(...ys)} V ${Math.max(...ys)}`, `los-ability-edge${kind}`);
-    for (const target of targets) {
-      const y = centre(target);
-      line(`M ${lane.x} ${y} H ${target.x - 7}`, `los-ability-edge${kind}`);
-      line(`M ${target.x - 8} ${y - 5} L ${target.x - 1} ${y} L ${target.x - 8} ${y + 5}`, "los-ability-arrow");
-      const dot = doc.createElementNS(SVG, "circle");
-      dot.setAttribute("cx", String(lane.x));
-      dot.setAttribute("cy", String(y));
-      dot.setAttribute("r", "4.5");
-      dot.setAttribute("class", `los-ability-join${kind}`);
-      svg.append(dot);
-    }
+    const arrow = doc.createElementNS(SVG, "path");
+    arrow.setAttribute("class", `los-ability-arrow${active ? " is-incident" : ""}`);
+    arrow.setAttribute("d", `M ${x2 - 5} ${y2 - 4} L ${x2} ${y2} L ${x2 - 5} ${y2 + 4}`);
+    svg.append(arrow);
   }
   canvas.prepend(svg);
+}
+function renderBridgeBands(canvas, host, plane, overview, visible, suppressClick) {
+  const layer = canvas.createDiv({ cls: "los-ability-bridge-bands", attr: { role: "group", "aria-label": "Bridge connections" } });
+  enableButtonGroupKeyboardNavigation(layer, "both");
+  for (const region of overview.regions) for (const entry of region.group.bridges) {
+    if (!visible.has(entry.bridge.from) || !visible.has(entry.bridge.to)) continue;
+    const from = overview.nodes.get(entry.bridge.from);
+    const to = overview.nodes.get(entry.bridge.to);
+    if (!from || !to) continue;
+    const x = Math.min(from.x, to.x);
+    const right = Math.max(from.x, to.x) + PLANE.nodeWidth;
+    const top = Math.max(...region.nodes.map((node) => node.y + PLANE.nodeHeight)) + PLANE.bandTop + entry.band * (PLANE.bandHeight + PLANE.bandGap);
+    const reviewed = entry.bridge.review.state === "reviewed";
+    const band = layer.createEl("button", {
+      cls: `los-ability-bridge is-clickable is-${entry.bridge.kind}${reviewed ? " is-reviewed" : " is-candidate"}${entry.bridge.freshness === "current" ? "" : " is-not-current"}${host.bridgeKey === entry.key ? " is-selected" : ""}`,
+      attr: { type: "button", "data-bridge": entry.key, "data-los-tab": `bridge-${entry.key}`, "aria-label": `${reviewed ? "Reviewed" : "Candidate"} ${entry.bridge.kind} bridge from ${from.row.title} to ${to.row.title}. Open conditions.` }
+    });
+    band.setAttr("style", `left:${x}px;top:${top}px;width:${right - x}px;height:${PLANE.bandHeight}px`);
+    band.createSpan({ cls: "los-ability-bridge-label", text: `${bridgeSymbol(entry.bridge.kind)} ${reviewed ? "Reviewed" : "Candidate"} ${entry.bridge.kind} bridge${entry.bridge.freshness === "current" ? "" : " \xB7 source not current"}` });
+    band.addEventListener("click", () => {
+      if (suppressClick()) return;
+      host.bridgeKey = host.bridgeKey === entry.key ? null : entry.key;
+      host.render();
+    });
+  }
+  void plane;
+}
+function renderSelectionDock(parent, host, plane, selected, neighbours, bridgePeers, hidden2, visible) {
+  const row4 = plane.rowOf.get(selected);
+  if (!row4) return;
+  const dock = parent.createDiv({ cls: "los-ability-selection-dock", attr: { role: "group", "aria-label": "Selected ability actions" } });
+  const info = dock.createDiv();
+  info.createEl("strong", { text: row4.title });
+  const outside = new Set(row4.preparation_routes.flatMap((route2) => [...route2.supported, ...route2.missing_or_uncertain]).filter((id2) => !plane.rowOf.has(id2)));
+  const hiddenPeers = [...bridgePeers].filter((id2) => !visible.has(id2)).length;
+  info.createDiv({ cls: "los-micro", text: `${neighbours.prerequisites.size} loaded immediate prerequisites \xB7 ${neighbours.dependents.size} loaded immediate dependents${host.attention.bridgesVisible ? ` \xB7 ${bridgePeers.size} reviewed bridge peers${hiddenPeers ? ` (${hiddenPeers} hidden by folding)` : ""}` : ""}${hidden2 ? ` \xB7 ${hidden2} folded incident connections` : ""}${outside.size ? ` \xB7 ${outside.size} complete route members outside loaded horizon` : ""}` });
+  button(dock, "Details", () => {
+    host.attention.inspector = !host.attention.inspector;
+    host.attention.routes = false;
+    host.render();
+  }, "quiet").setAttr("aria-expanded", String(host.attention.inspector));
+  button(dock, "Routes", () => {
+    host.attention.routes = !host.attention.routes;
+    host.attention.inspector = false;
+    host.render();
+  }, "quiet").setAttr("aria-expanded", String(host.attention.routes));
+  button(dock, "Clear selection", () => {
+    host.bridgeKey = null;
+    host.go({ ability: null, detail: false });
+  }, "tertiary");
+}
+function renderRoutes(surface, host, plane, selected) {
+  const row4 = plane.rowOf.get(selected);
+  if (!row4) return;
+  const panel = surface.createEl("aside", { cls: "los-ability-inspector", attr: { "aria-label": `Complete preparation routes: ${row4.title}` } });
+  panel.createEl("h2", { text: "Complete preparation routes" });
+  panel.createEl("p", { text: row4.title });
+  panel.createEl("p", { cls: "los-micro", text: "All members of a route are required together. Separate routes are alternatives. Folding changes only the drawing." });
+  for (const [index, route2] of row4.preparation_routes.entries()) {
+    const block2 = panel.createDiv({ cls: "los-ability-route" });
+    block2.createEl("h3", { text: `Route ${index + 1}${row4.preparation_routes.length > 1 ? " \xB7 alternative" : ""}` });
+    const list4 = block2.createEl("ul");
+    for (const id2 of [.../* @__PURE__ */ new Set([...route2.supported, ...route2.missing_or_uncertain])]) list4.createEl("li", { text: `${plane.rowOf.get(id2)?.title ?? id2}${plane.rowOf.has(id2) ? "" : " \xB7 outside loaded horizon"}${route2.supported.includes(id2) ? " \xB7 supported" : " \xB7 missing or uncertain"}` });
+    block2.createEl("p", { text: route2.reason });
+    if (route2.source) button(block2, route2.source, () => host.plugin.openAuthoredPath((route2.source ?? "").split("#")[0] ?? ""), "tertiary").addClass("los-ability-source-link");
+  }
+  if (!row4.preparation_routes.length) panel.createEl("p", { text: "No reviewed preparation route is recorded." });
+  button(panel, "Close routes", () => {
+    host.attention.routes = false;
+    host.render();
+  }, "tertiary");
+  button(panel, "Open full ability detail \u2192", () => host.go({ detail: true }), "tertiary").addClass("los-ability-detail-link");
 }
 function draftsFor(host, abilityId) {
   return host.plugin.listAbilityDrafts().filter((draft) => draft.kind === "claim" ? draft.abilityId === abilityId : draft.fromAbility === abilityId || draft.toAbility === abilityId).length;
@@ -4248,6 +4820,10 @@ function renderInspector(surface, host, plane, brief, abilityId) {
     cls: "los-ability-inspector",
     attr: { "aria-label": `Selected ability: ${row4.title}` }
   });
+  button(panel, "Close details", () => {
+    host.attention.inspector = false;
+    host.render();
+  }, "tertiary");
   const modules = row4.module_ids.map((id2) => labels.module(id2)).join(" \xB7 ");
   panel.createDiv({ cls: "los-ability-eyebrow is-accent", text: `Selected ability${modules ? ` \xB7 ${modules}` : ""}` });
   panel.createEl("h2", { text: row4.title });
@@ -4355,8 +4931,11 @@ function renderBridgeInspector(surface, host, plane, bridge2) {
   }
   const footer = panel.createDiv({ cls: "los-ability-inspector-foot" });
   button(footer, "Close bridge", () => {
+    const key = host.bridgeKey;
+    const container = surface.parentElement;
     host.bridgeKey = null;
     host.render();
+    if (container) Array.from(container.querySelectorAll("button")).find((control) => control.getAttribute("data-bridge") === key)?.focus({ preventScroll: true });
   }, "tertiary");
 }
 function renderList(root, host, plane, brief) {
@@ -4397,14 +4976,34 @@ function renderList(root, host, plane, brief) {
 }
 
 // src/views/abilities-view.ts
+var leafAttention = /* @__PURE__ */ new WeakMap();
 var AbilitiesView = class extends import_obsidian4.ItemView {
   plugin;
   route = { group: null, ability: null, layout: "plane", detail: false };
   query = "";
   bridgeKey = null;
+  attention;
+  presentation;
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
+    const remembered = leafAttention.get(leaf);
+    remembered?.cleanup?.();
+    this.presentation = remembered ?? { state: {
+      camera: null,
+      folded: /* @__PURE__ */ new Set(),
+      retained: /* @__PURE__ */ new Set(),
+      bridgesVisible: false,
+      inspector: false,
+      routes: false,
+      snapshot: null,
+      ids: /* @__PURE__ */ new Set(),
+      fitRequest: null,
+      fitGroup: null,
+      lastActivation: null
+    }, cleanup: null };
+    this.attention = this.presentation.state;
+    leafAttention.set(leaf, this.presentation);
   }
   getViewType() {
     return VIEW_ABILITIES;
@@ -4420,7 +5019,11 @@ var AbilitiesView = class extends import_obsidian4.ItemView {
   }
   adopt(state) {
     const ability = typeof state.ability === "string" && state.ability ? state.ability : null;
-    if (ability !== this.route.ability) this.bridgeKey = null;
+    if (ability !== this.route.ability) {
+      this.bridgeKey = null;
+      this.attention.inspector = false;
+      this.attention.routes = false;
+    }
     this.route = {
       group: typeof state.group === "string" && state.group ? state.group : null,
       ability,
@@ -4449,7 +5052,16 @@ var AbilitiesView = class extends import_obsidian4.ItemView {
     });
   }
   render() {
+    this.presentation.cleanup?.();
+    this.presentation.cleanup = null;
     withRenderFocus(this.contentEl, () => this.renderContent());
+  }
+  ownInteraction(cleanup) {
+    this.presentation.cleanup = cleanup;
+  }
+  async onClose() {
+    this.presentation.cleanup?.();
+    this.presentation.cleanup = null;
   }
   renderContent() {
     renderAbilityMap(this.contentEl, this);
@@ -5012,21 +5624,6 @@ function summarize(graph) {
 function plural(count3, singular, many = `${singular}s`) {
   return `${count3} ${count3 === 1 ? singular : many}`;
 }
-function focusQuestion(lens, label) {
-  switch (lens) {
-    case "path":
-      return label ? `Everything I would have to work through to reach ${label}` : "Everything I would have to work through to reach a concept";
-    case "semantic":
-      return label ? `What does ${label} relate to that is not a prerequisite?` : "What does a concept relate to that is not a prerequisite?";
-    case "bridges":
-      return "Which concepts are taught in more than one module?";
-    case "diagnostics":
-      return "What has the relation registry not yet been told?";
-    case "prerequisites":
-    default:
-      return label ? `What must I understand to derive ${label}?` : "What must I understand to derive a concept?";
-  }
-}
 function subgraphSummary(graph, view) {
   const prerequisites = graph.prerequisiteEdges.get(view.focus.id)?.length ?? 0;
   const dependents = graph.dependentEdges.get(view.focus.id)?.length ?? 0;
@@ -5116,8 +5713,8 @@ function mountEdges(canvas, host, graph, edges) {
     if (disposed || !canvas.isConnected) return;
     svg.replaceChildren();
     const base = canvas.getBoundingClientRect();
-    svg.setAttribute("width", String(canvas.scrollWidth));
-    svg.setAttribute("height", String(canvas.scrollHeight));
+    svg.setAttribute("width", String(base.width));
+    svg.setAttribute("height", String(base.height));
     const defs = doc.createElementNS(SVG2, "defs");
     const marker = doc.createElementNS(SVG2, "marker");
     for (const [key, value] of Object.entries({
@@ -5173,21 +5770,64 @@ function mountEdges(canvas, host, graph, edges) {
   observer?.observe(canvas);
   canvas.querySelectorAll("[data-atlas-concept]").forEach((node) => observer?.observe(node));
   win.addEventListener("resize", schedule);
+  const scrollRegions = [canvas, ...Array.from(canvas.querySelectorAll(".los-atlas-lanes"))];
+  scrollRegions.forEach((region) => region.addEventListener("scroll", schedule));
   schedule();
   host.addRenderCleanup(() => {
     disposed = true;
     if (frame) win.cancelAnimationFrame(frame);
     observer?.disconnect();
     win.removeEventListener("resize", schedule);
+    scrollRegions.forEach((region) => region.removeEventListener("scroll", schedule));
     svg.remove();
   });
 }
 
+// src/features/atlas/disclosure.ts
+function conceptDisclosure(parent, host, key, label, cls = "") {
+  const details = parent.createEl("details", {
+    cls: `los-disclosure los-atlas-disclosure ${cls}`.trim()
+  });
+  details.createEl("summary", { text: label });
+  details.open = host.concepts.disclosures.get(key) === true;
+  details.setAttribute("data-atlas-disclosure", key);
+  details.addEventListener("toggle", () => {
+    if (details.isConnected !== false) host.concepts.disclosures.set(key, details.open);
+  });
+  return details.createDiv({ cls: "los-disclosure-body" });
+}
+
+// src/features/atlas/presentation.ts
+function conceptPlaneSlice(view, perLane = 4) {
+  const limit = Math.max(1, Math.trunc(perLane));
+  const counts = /* @__PURE__ */ new Map();
+  const ids2 = /* @__PURE__ */ new Set([view.focus.id]);
+  const outward = [...view.nodes].sort((left, right) => left.distance - right.distance);
+  for (const node of outward) {
+    if (node.direction === "focus") continue;
+    const key = `${node.direction}:${node.column}`;
+    const count3 = counts.get(key) ?? 0;
+    const connected = node.direction === "related" ? view.semanticEdges.some((edge) => edge.from === node.concept.id && ids2.has(edge.to) || edge.to === node.concept.id && ids2.has(edge.from)) : view.strictEdges.some((edge) => node.direction === "prerequisite" ? edge.to === node.concept.id && ids2.has(edge.from) : edge.from === node.concept.id && ids2.has(edge.to));
+    if (count3 >= limit || !connected) continue;
+    ids2.add(node.concept.id);
+    counts.set(key, count3 + 1);
+  }
+  const shown = view.nodes.filter((node) => ids2.has(node.concept.id));
+  const omitted = view.nodes.filter((node) => !ids2.has(node.concept.id));
+  const visible = (edge) => ids2.has(edge.from) && ids2.has(edge.to);
+  return {
+    nodes: shown,
+    omitted,
+    strictEdges: view.strictEdges.filter(visible),
+    semanticEdges: view.semanticEdges.filter(visible)
+  };
+}
+
 // src/features/atlas/focused-graph.ts
 var COLUMN_HEADINGS = {
-  prerequisite: "Prerequisites",
+  prerequisite: "Before this",
   focus: "Selected concept",
-  dependent: "Dependents",
+  dependent: "Builds on this",
   related: "Semantic neighbours"
 };
 function nodeAttachment(graph, view, node) {
@@ -5224,8 +5864,10 @@ function renderNode(parent, host, graph, view, node) {
   });
   control.createDiv({
     cls: "los-micro los-atlas-node-trail",
-    text: nodeAttachment(graph, view, node)
+    text: node.direction === "focus" ? "Current focus" : node.direction === "prerequisite" ? "Prerequisite" : node.direction === "dependent" ? "Dependent" : "Related idea"
   });
+  control.createSpan({ cls: "los-sr-only", text: nodeAttachment(graph, view, node) });
+  control.setAttribute("title", nodeAttachment(graph, view, node));
   if (node.concept.record === null) {
     control.createDiv({
       cls: "los-micro",
@@ -5277,13 +5919,14 @@ function renderRemainder(parent, host, view, concepts, noun) {
 }
 function renderFocusedGraph(parent, host, graph, view) {
   const canvas = parent.createDiv({ cls: "los-atlas-canvas" });
+  const slice = conceptPlaneSlice(view);
   const lanes = canvas.createDiv({ cls: "los-atlas-lanes" });
   lanes.setAttrs({
     role: "group",
     "aria-label": `Concepts around ${view.focus.label}`
   });
   enableButtonGroupKeyboardNavigation(lanes, "both");
-  const strictNodes = view.nodes.filter((node) => node.direction !== "related");
+  const strictNodes = slice.nodes.filter((node) => node.direction !== "related");
   const columns = [...new Set(strictNodes.map((node) => node.column))].sort((left, right) => left - right);
   if (!strictNodes.some((node) => node.direction === "prerequisite")) {
     const lane = lanes.createDiv({ cls: "los-atlas-lane los-atlas-lane--prerequisite" });
@@ -5319,7 +5962,7 @@ function renderFocusedGraph(parent, host, graph, view) {
     card.createDiv({ cls: "los-micro", text: "Absence, not a claim that none exist." });
     renderRemainder(lane, host, view, view.beyond.dependents, "dependent");
   }
-  const related = view.nodes.filter((node) => node.direction === "related");
+  const related = slice.nodes.filter((node) => node.direction === "related");
   if (related.length || view.semanticEdges.length || view.beyond.semantic.length) {
     const band = canvas.createDiv({ cls: "los-atlas-semantic" });
     band.createDiv({
@@ -5347,11 +5990,34 @@ function renderFocusedGraph(parent, host, graph, view) {
       text: `Neither strict nor semantic, so nothing traverses it: ${view.beyond.unrecognized.map((concept) => concept.label).join(" \xB7 ")}. Listed in Diagnostics.`
     });
   }
+  if (slice.omitted.length) {
+    canvas.createDiv({
+      cls: "los-micro los-atlas-picture-scope",
+      text: `${slice.nodes.length} of ${view.nodes.length} concepts drawn at depth ${view.depth} \xB7 ${slice.omitted.length} in the named remainder`
+    });
+    const remainder = conceptDisclosure(
+      canvas,
+      host,
+      `${view.focus.id}:crowded-remainder`,
+      `Show ${slice.omitted.length} more concepts at this depth`,
+      "los-atlas-crowded-remainder"
+    );
+    for (const node of slice.omitted) {
+      const row4 = button(
+        remainder,
+        `${node.concept.label} \xB7 ${COLUMN_HEADINGS[node.direction]}`,
+        () => host.go({ concept: node.concept.id }),
+        "row"
+      );
+      row4.setAttribute("data-omitted-concept", node.concept.id);
+    }
+    remainder.createDiv({ cls: "los-micro", text: "Every connection at this depth remains inspectable in Text outline." });
+  }
   mountEdges(canvas, host, graph, [
-    ...view.strictEdges,
-    ...host.state.lens === "semantic" ? view.semanticEdges : []
+    ...slice.strictEdges,
+    ...host.state.lens === "semantic" ? slice.semanticEdges : []
   ]);
-  renderLegend(canvas);
+  renderLegend(conceptDisclosure(canvas, host, "graph-legend", "Map legend"));
 }
 function renderLegend(parent) {
   const legend = parent.createDiv({ cls: "los-atlas-legend" });
@@ -5410,7 +6076,7 @@ function renderOutline(parent, host, graph, view) {
   });
   head.createDiv({
     cls: "los-micro",
-    text: "The same data as the graph, not a summary of it."
+    text: "Complete authored relations at this depth, including concepts in the named picture remainder."
   });
   const prerequisites = view.strictEdges;
   const authoredSemantic = graph.semanticEdges.get(view.focus.id) ?? [];
@@ -5558,9 +6224,12 @@ function byLabel(left, right) {
   return compareStrings(asLabel(left), asLabel(right));
 }
 function buildConceptContext(store, conceptId) {
-  const notes = store.related(conceptId).map((row4) => row4.rec).filter((record10) => record10?.type === "note").sort(byLabel);
+  const notes = linkedConceptNotes(store, conceptId);
   const sources = store.sources().filter((source) => sourceNamesConcept(source, conceptId)).sort(byLabel);
   return { notes, sources };
+}
+function linkedConceptNotes(store, conceptId) {
+  return store.related(conceptId).map((row4) => row4.rec).filter((record10) => record10?.type === "note").sort(byLabel);
 }
 
 // src/features/atlas/questions.ts
@@ -6256,21 +6925,85 @@ function renderSummary(parent, host, graph, view) {
     text: "Evidence records what exists, not what was understood."
   });
 }
+function noteMetadata(note) {
+  const labels = {
+    reference: "Reference",
+    "exercise-bank": "Exercise bank",
+    "mock-exam": "Mock exam",
+    question: "Question",
+    synthesis: "Synthesis",
+    derivation: "Derivation",
+    crosswalk: "Crosswalk",
+    implementation: "Implementation",
+    user: "User authored",
+    mixed: "Mixed authorship",
+    "operator-drafted": "Operator draft"
+  };
+  return [asString(note.role), asString(note.authorship)].filter((value) => Boolean(value)).map((value) => labels[value] ?? value).join(" \xB7 ");
+}
+function renderLinkedNote(parent, host, note) {
+  const row4 = parent.createEl("button", {
+    cls: "los-atlas-record los-atlas-linked-note is-clickable",
+    attr: { type: "button" }
+  });
+  row4.setAttribute("data-note-id", asString(note.id) ?? "");
+  const copy = row4.createDiv({ cls: "los-atlas-record-copy" });
+  copy.createDiv({ cls: "los-atlas-record-title", text: asLabel(note) });
+  copy.createDiv({ cls: "los-micro", text: noteMetadata(note) });
+  row4.createSpan({ cls: "los-atlas-record-open", text: "Open" });
+  row4.addEventListener("click", () => host.plugin.nav.openRecord(note));
+}
 function renderInspector2(parent, host, graph, view) {
   const panel = parent.createEl("aside", { cls: "los-atlas-inspector" });
-  const headingId = "los-atlas-inspector-heading";
-  panel.setAttrs({ role: "complementary", "aria-labelledby": headingId });
-  panel.createDiv({ cls: "los-micro los-atlas-kicker", text: "Selected concept" });
-  panel.createEl("h2", { text: view.focus.label }).setAttribute("id", headingId);
-  const aliases = aliasesOf(view.focus.record);
-  if (aliases.length) {
-    panel.createDiv({
-      cls: "los-micro",
-      text: `Also called ${aliases.join(" \xB7 ")}`
-    });
+  panel.setAttrs({ role: "complementary", "aria-label": `Notes and details for ${view.focus.label}` });
+  const selectedEdge = host.edgeId ? graph.relationByIdentity.get(host.edgeId) : null;
+  if (selectedEdge) {
+    panel.createDiv({ cls: "los-micro", text: "Selected connection" });
+    connectionRow(panel, host, graph, selectedEdge, selectedEdge.from);
+    renderQuestionNote(
+      conceptDisclosure(
+        panel,
+        host,
+        `${selectedEdge.id}:questions`,
+        "Questions about this connection"
+      ),
+      host,
+      questionsForRelation(collectQuestions(host.plugin.store, graph), selectedEdge.id),
+      "No question recorded against this connection."
+    );
+    renderRemoveConnection(panel, host, graph, selectedEdge);
+    button(panel, "Close connection", () => {
+      host.edgeId = null;
+      host.tab = "summary";
+      host.render();
+    }, "quiet");
+    return;
   }
+  const notes = buildConceptContext(host.plugin.store, view.focus.id).notes;
+  panel.createEl("h3", { text: `Linked notes \xB7 ${notes.length}` });
+  const list4 = panel.createDiv({ cls: "los-atlas-records los-atlas-linked-notes" });
+  list4.setAttribute("aria-label", "Linked notes");
+  enableButtonGroupKeyboardNavigation(list4, "vertical");
+  for (const note of notes.slice(0, 2)) renderLinkedNote(list4, host, note);
+  if (!notes.length) list4.createDiv({ cls: "los-micro", text: "No notes explicitly linked to this concept." });
+  if (notes.length > 2) {
+    const all = conceptDisclosure(panel, host, `${view.focus.id}:notes`, `Show all ${notes.length} linked notes`);
+    all.createDiv({ cls: "los-micro", text: `${notes.length - 2} more notes; the first two remain above.` });
+    for (const note of notes.slice(2)) renderLinkedNote(all, host, note);
+  }
+  const actions = panel.createDiv({ cls: "los-actions los-atlas-inspector-actions" });
+  const openDetails = (tab) => {
+    host.tab = tab;
+    host.concepts.disclosures.set(`${view.focus.id}:details`, true);
+    host.render();
+  };
+  button(actions, "Where it is taught", () => openDetails("evidence"), "quiet");
+  button(actions, "Questions", () => openDetails("summary"), "quiet");
+  const details = conceptDisclosure(panel, host, `${view.focus.id}:details`, "Concept details");
+  const aliases = aliasesOf(view.focus.record);
+  if (aliases.length) details.createDiv({ cls: "los-micro", text: `Also called ${aliases.join(" \xB7 ")}` });
   filterTabs(
-    panel,
+    details,
     "What to inspect about this concept",
     TABS,
     host.tab,
@@ -6279,37 +7012,20 @@ function renderInspector2(parent, host, graph, view) {
       host.render();
     }
   );
-  const body = panel.createDiv({ cls: "los-atlas-inspector-body" });
-  enableButtonGroupKeyboardNavigation(body, "vertical");
-  const selectedEdge = host.edgeId ? graph.relationByIdentity.get(host.edgeId) : null;
-  if (selectedEdge) {
-    body.createDiv({ cls: "los-micro", text: "Selected connection" });
-    connectionRow(body, host, graph, selectedEdge, selectedEdge.from);
-    renderQuestionNote(
-      body,
-      host,
-      questionsForRelation(collectQuestions(host.plugin.store, graph), selectedEdge.id),
-      "No question recorded against this connection."
-    );
-    renderRemoveConnection(body, host, graph, selectedEdge);
-    button(body, "Close connection", () => {
-      host.edgeId = null;
-      host.render();
-    }, "quiet");
-  }
+  const detailBody = details.createDiv({ cls: "los-atlas-inspector-body" });
+  enableButtonGroupKeyboardNavigation(detailBody, "vertical");
   switch (host.tab) {
     case "connections":
-      renderConnections(body, host, graph, view.focus.id);
+      renderConnections(detailBody, host, graph, view.focus.id);
       break;
     case "evidence":
-      renderEvidence(body, host, graph, view.focus.id);
+      renderEvidence(detailBody, host, graph, view.focus.id);
       break;
     case "sources":
-      renderSources(body, host, graph, view.focus.id);
+      renderSources(detailBody, host, graph, view.focus.id);
       break;
-    case "summary":
     default:
-      renderSummary(body, host, graph, view);
+      renderSummary(detailBody, host, graph, view);
       break;
   }
 }
@@ -6441,9 +7157,9 @@ function renderDiagnostics(parent, host, graph) {
 
 // src/features/atlas/shell.ts
 var CONCEPT_LENSES = [
-  ["prerequisites", "Prerequisites"],
-  ["path", "Path to concept"],
-  ["semantic", "Semantic context"]
+  ["prerequisites", "Direct connections"],
+  ["semantic", "Related ideas"],
+  ["path", "Learning path"]
 ];
 var RECENT_LIMIT = 8;
 function isCorpusLens(lens) {
@@ -6455,16 +7171,14 @@ function rememberConcept(recents, conceptId) {
 function renderSearch(parent, host, update) {
   const field2 = parent.createDiv({ cls: "los-atlas-search" });
   const label = field2.createEl("label", {
-    cls: "los-micro",
-    text: "Search concepts"
+    cls: "los-atlas-search-label"
   });
-  label.setAttribute("for", "los-atlas-search-input");
-  const input = field2.createEl("input", {
+  label.createSpan({ cls: "los-sr-only", text: "Find a concept" });
+  const input = label.createEl("input", {
     cls: "los-atlas-search-input",
     attr: {
       type: "search",
-      id: "los-atlas-search-input",
-      placeholder: "Search concepts, e.g. logistic regression",
+      placeholder: "Find a concept",
       value: host.query
     }
   });
@@ -6477,11 +7191,17 @@ function renderSearch(parent, host, update) {
 function renderModuleFilter(parent, host, graph) {
   const publishing = graph.modules.filter((module2) => module2.conceptCount > 0);
   if (!publishing.length) return;
-  const wrap = parent.createDiv({ cls: "los-atlas-modules" });
-  wrap.createDiv({ cls: "los-micro", text: "Modules" });
+  const wrap = conceptDisclosure(
+    parent,
+    host,
+    "module-filter",
+    host.state.module ? graph.modules.find((module2) => module2.id === host.state.module)?.shortLabel ?? "Selected module" : "All modules",
+    "los-atlas-module-filter"
+  );
   const row4 = wrap.createDiv({ cls: "los-atlas-module-chips" });
   row4.setAttrs({ role: "group", "aria-label": "Filter by module" });
   enableButtonGroupKeyboardNavigation(row4, "horizontal");
+  button(row4, "All modules", () => host.go({ module: null }), "quiet").setAttribute("aria-pressed", String(host.state.module === null));
   for (const module2 of publishing) {
     const active = host.state.module === module2.id;
     const chip2 = row4.createEl("button", {
@@ -6490,18 +7210,15 @@ function renderModuleFilter(parent, host, graph) {
       text: `${module2.shortLabel} ${module2.conceptCount}`
     });
     chip2.toggleClass("is-active", active);
-    chip2.toggleClass("is-actionable", module2.actionable);
     chip2.setAttrs({
       "aria-pressed": String(active),
       "aria-label": `${module2.label} \u2014 ${plural(module2.conceptCount, "concept")}`
     });
-    chip2.addEventListener("click", () => host.go({
-      module: active ? null : module2.id
-    }));
+    chip2.addEventListener("click", () => host.go({ module: active ? null : module2.id }));
   }
   wrap.createDiv({
     cls: "los-micro",
-    text: host.state.module ? "Marks concepts this module evidences. It filters lists; it never removes a relation from the graph." : "A module says where a concept is taught. It is never an axis of the graph."
+    text: "Filters concept lists. Authored graph connections stay complete across modules."
   });
 }
 function renderDepth(parent, host, remainder) {
@@ -6525,132 +7242,96 @@ function renderDepth(parent, host, remainder) {
     text: remainder ? `${plural(remainder, "concept")} beyond depth ${host.state.depth} \u2014 counted, never dropped` : `Nothing lies beyond depth ${host.state.depth} here`
   });
 }
-function renderLensBar(parent, host, graph) {
-  const bar = parent.createDiv({ cls: "los-atlas-lensbar" });
-  const concept = bar.createDiv({ cls: "los-atlas-lensgroup" });
-  concept.createDiv({ cls: "los-micro", text: "Lens" });
+function renderLensBar(parent, host) {
   filterTabs(
-    concept,
+    parent,
     "Which question to ask about the selected concept",
     CONCEPT_LENSES,
-    isCorpusLens(host.state.lens) ? "prerequisites" : host.state.lens,
+    host.state.lens,
     (value) => host.go({ lens: value })
   );
-  const corpus = bar.createDiv({ cls: "los-atlas-lensgroup" });
-  corpus.createDiv({ cls: "los-micro", text: "Corpus" });
-  const group = corpus.createDiv({ cls: "los-atlas-corpus-lenses" });
-  group.setAttrs({ role: "group", "aria-label": "Corpus lenses" });
-  enableButtonGroupKeyboardNavigation(group, "horizontal");
-  for (const [lens, label, count3] of [
-    ["bridges", "Cross-module bridges", bridges(graph).length],
-    ["diagnostics", "Diagnostics", diagnostics(graph).filter((entry) => entry.count > 0).length]
-  ]) {
-    const active = host.state.lens === lens;
-    const control = button(
-      group,
-      `${label} ${count3}`,
-      () => host.go({ lens: active ? "prerequisites" : lens }),
-      "quiet"
-    );
-    control.addClass("los-atlas-corpus-lens");
-    control.toggleClass("is-active", active);
-    control.setAttrs({ "aria-pressed": String(active) });
-  }
-  corpus.createDiv({
-    cls: "los-micro",
-    text: "Same route, same screen \u2014 not a separate view."
-  });
 }
-function renderQuestion(parent, host, label) {
-  const band = parent.createDiv({ cls: "los-atlas-question" });
-  band.createDiv({ cls: "los-micro los-atlas-kicker", text: "This view answers" });
-  band.createEl("p", {
-    cls: "los-atlas-question-text",
-    text: focusQuestion(host.state.lens, label)
-  });
+function renderAtlasTools(parent, host, graph) {
+  const actions = parent.createDiv({ cls: "los-actions los-atlas-secondary-actions" });
+  button(
+    actions,
+    `Across modules \xB7 ${bridges(graph).length}`,
+    () => host.go({ lens: "bridges" }),
+    "quiet"
+  );
+  const tools = conceptDisclosure(actions, host, "atlas-tools", "Atlas tools");
+  button(tools, "Diagnostics", () => host.go({ lens: "diagnostics" }), "quiet");
+  button(
+    tools,
+    "Open generated domain map",
+    () => host.plugin.openVaultPath("generated/domain-atlas.md"),
+    "quiet"
+  );
+  button(tools, "Source folders", () => host.plugin.nav.openLibraryHome(), "quiet");
+  renderOpenQuestions(conceptDisclosure(tools, host, "open-questions", "My open questions"), host, graph);
+  if (!host.state.concept) renderConnectAction(tools, host, null);
 }
 function renderEntry(parent, host, graph, searchOnly = false) {
   const entry = parent.createDiv({ cls: "los-atlas-entry" });
-  const summary = summarize(graph);
-  if (!searchOnly) entry.createDiv({
-    cls: "los-atlas-lens-lead",
-    text: `${plural(summary.concepts, "concept")} \xB7 ${plural(summary.relations, "authored relation")} \xB7 ${summary.strictRelations} of them order learning. Choose one concept to focus.`
-  });
   const query = host.query.trim();
-  if (query && searchOnly) {
-    const results = host.plugin.store.search(query, ["concept"]).filter((record10) => {
+  const browsing = host.concepts.browseAll;
+  if (query || browsing) {
+    const candidates = query ? host.plugin.store.search(query, ["concept"]) : graph.concepts.flatMap((concept) => concept.record ? [concept.record] : []);
+    const results = candidates.filter((record10) => {
       const id2 = asString(record10.id);
-      if (!id2) return false;
-      if (!host.state.module) return true;
-      return (graph.modulesByConcept.get(id2) ?? []).includes(host.state.module);
-    });
-    const group = entry.createDiv({ cls: "los-atlas-entry-group" });
-    group.createDiv({
-      cls: "los-micro los-atlas-group-head",
-      text: `Concept results \xB7 ${plural(results.length, "concept")}`
+      return Boolean(id2) && (!host.state.module || (graph.modulesByConcept.get(id2) ?? []).includes(host.state.module));
+    }).sort((left, right) => compareStrings(
+      conceptOf(graph, asString(left.id)).label,
+      conceptOf(graph, asString(right.id)).label
+    ) || compareStrings(asString(left.id), asString(right.id)));
+    const group2 = entry.createDiv({ cls: "los-atlas-entry-group" });
+    group2.createEl("h2", { text: browsing ? "Browse concepts" : "Concept results" });
+    const shown = Math.min(host.concepts.visibleLimit, results.length);
+    group2.createDiv({
+      cls: "los-micro los-atlas-browser-scope",
+      text: `${shown} of ${plural(results.length, "concept")} shown${host.state.module ? " in this module" : ""}`
     });
     if (!results.length) {
-      group.createDiv({
-        cls: "los-atlas-absence",
-        text: `Nothing matches \u201C${query}\u201D. Search returns concepts only \u2014 modules and notes become filters and evidence after a concept is chosen, never competing results.`
-      });
+      group2.createDiv({ cls: "los-atlas-absence", text: query ? `Nothing matches \u201C${query}\u201D. Try another concept or module.` : "No concepts are published for this module." });
     } else {
-      const list4 = group.createDiv({ cls: "los-atlas-records" });
+      const list4 = group2.createDiv({ cls: "los-atlas-records" });
+      list4.setAttribute("aria-label", "Concept results");
       enableButtonGroupKeyboardNavigation(list4, "vertical");
-      for (const record10 of results.slice(0, 20)) {
-        const id2 = asString(record10.id);
-        if (!id2) continue;
-        renderConceptSeed(list4, host, graph, id2);
+      for (const record10 of results.slice(0, shown)) {
+        renderConceptSeed(list4, host, graph, asString(record10.id));
+      }
+      if (shown < results.length) {
+        button(group2, `Show more \xB7 ${results.length - shown} remaining`, () => {
+          host.concepts.visibleLimit += 30;
+          host.render();
+        }, "quiet").addClass("los-atlas-show-more");
       }
     }
+    if (browsing) button(group2, "Close browser", () => {
+      host.concepts.browseAll = false;
+      host.query = "";
+      host.concepts.visibleLimit = 30;
+      host.render();
+    }, "quiet");
+    return;
   }
   if (searchOnly) return;
-  const recents = host.plugin.settings.atlasRecentConcepts.filter((id2) => graph.conceptById.has(id2));
-  const recentGroup = entry.createDiv({ cls: "los-atlas-entry-group" });
-  recentGroup.createDiv({
-    cls: "los-micro los-atlas-group-head",
-    text: "Recently visited"
-  });
-  if (!recents.length) {
-    recentGroup.createDiv({
-      cls: "los-atlas-absence",
-      text: "Nothing visited yet in this vault. Search above, or start from one of the corpus lenses."
-    });
-  } else {
-    const list4 = recentGroup.createDiv({ cls: "los-atlas-records" });
+  entry.createEl("h2", { text: "Choose a concept" });
+  entry.createDiv({ cls: "los-atlas-entry-lead", text: "Open a concept\u2019s map and linked notes." });
+  const recents = host.plugin.settings.atlasRecentConcepts.filter((id2) => graph.conceptById.has(id2) && (!host.state.module || (graph.modulesByConcept.get(id2) ?? []).includes(host.state.module)));
+  const group = entry.createDiv({ cls: "los-atlas-entry-group" });
+  group.createDiv({ cls: "los-micro los-atlas-group-head", text: "Recently visited" });
+  if (!recents.length) group.createDiv({ cls: "los-micro", text: "No concepts visited yet. Search above or browse all concepts." });
+  else {
+    const list4 = group.createDiv({ cls: "los-atlas-records" });
     enableButtonGroupKeyboardNavigation(list4, "vertical");
     for (const id2 of recents) renderConceptSeed(list4, host, graph, id2);
   }
-  renderOpenQuestions(entry, host, graph);
-  renderConnectAction(entry, host, null);
-  const entries2 = entry.createDiv({ cls: "los-atlas-entry-group" });
-  entries2.createDiv({
-    cls: "los-micro los-atlas-group-head",
-    text: "Or start from the corpus"
-  });
-  const seeds = entries2.createDiv({ cls: "los-atlas-records" });
-  enableButtonGroupKeyboardNavigation(seeds, "vertical");
-  for (const [lens, title2, detail] of [
-    [
-      "bridges",
-      `Cross-module bridges \xB7 ${bridges(graph).length}`,
-      "Concepts carrying evidence from more than one module."
-    ],
-    [
-      "diagnostics",
-      "Diagnostics",
-      "What the relation registry has not yet been told, with every count opening its records."
-    ],
-    ["domains", "Domain Atlas", "Notes and curated shelves across every domain, with every record reachable."]
-  ]) {
-    const row4 = seeds.createEl("button", {
-      cls: "los-atlas-record is-clickable",
-      attr: { type: "button" }
-    });
-    row4.createDiv({ cls: "los-atlas-record-title", text: title2 });
-    row4.createDiv({ cls: "los-micro", text: detail });
-    row4.addEventListener("click", () => host.go({ lens }));
-  }
+  button(entry, `Browse all ${graph.concepts.filter((concept) => concept.record).length} concepts`, () => {
+    host.concepts.browseAll = true;
+    host.concepts.visibleLimit = 30;
+    host.render();
+  }, "quiet").addClass("los-atlas-browse-all");
 }
 function renderOpenQuestions(parent, host, graph) {
   const open = openQuestions(collectQuestions(host.plugin.store, graph));
@@ -6702,18 +7383,21 @@ function renderConnectAction(parent, host, focusId) {
 }
 function renderConceptSeed(parent, host, graph, conceptId) {
   const concept = conceptOf(graph, conceptId);
-  const prerequisites = graph.prerequisiteEdges.get(conceptId)?.length ?? 0;
-  const dependents = graph.dependentEdges.get(conceptId)?.length ?? 0;
+  const notes = linkedConceptNotes(host.plugin.store, conceptId);
   const row4 = parent.createEl("button", {
-    cls: "los-atlas-record is-clickable",
+    cls: "los-atlas-record los-atlas-concept-seed is-clickable",
     attr: { type: "button" }
   });
-  row4.createDiv({ cls: "los-atlas-record-title", text: concept.label });
-  row4.createDiv({
-    cls: "los-micro",
-    text: `${moduleTrail(graph, conceptId)} \xB7 ${plural(prerequisites, "prerequisite")} \xB7 ${plural(dependents, "dependent")}`
-  });
-  row4.addEventListener("click", () => host.go({ concept: conceptId }));
+  row4.setAttribute("data-concept-id", conceptId);
+  row4.setAttribute("data-linked-note-count", String(notes.length));
+  const copy = row4.createDiv({ cls: "los-atlas-record-copy" });
+  copy.createDiv({ cls: "los-atlas-record-title", text: concept.label });
+  copy.createDiv({ cls: "los-micro", text: plural(notes.length, "linked note") });
+  row4.createSpan({ cls: "los-atlas-record-open", text: "Open" });
+  row4.addEventListener("click", () => host.go({
+    concept: conceptId,
+    lens: isCorpusLens(host.state.lens) ? "prerequisites" : host.state.lens
+  }));
 }
 function renderAtlas(root, host) {
   const domainLens = host.state.lens === "domains";
@@ -6736,30 +7420,30 @@ function renderAtlas(root, host) {
     return;
   }
   const graph = buildAtlasGraph(host.plugin.store);
-  pageHeader(
-    root,
-    "Reach",
-    "Concept atlas",
-    "One concept at a time: what it requires, what builds on it, and the authored relation that says so."
-  );
+  const heading = root.createDiv({ cls: "los-atlas-heading" });
+  heading.createEl("h1", { text: "Atlas" });
+  const about = conceptDisclosure(heading, host, "atlas-about", "About Atlas");
+  about.createDiv({ text: "Explore authored concepts, their linked notes and learning order. Modules show where teaching is mapped. Semantic connections explain related ideas; only prerequisites order learning." });
   renderAtlasVariants(root, host.plugin.nav, "concepts");
   const controls = root.createDiv({ cls: "los-atlas-controls" });
   let results;
+  let entryRegion = null;
   const updateSearch = () => {
     results.empty();
     if (host.query.trim()) renderEntry(results, host, graph, true);
+    if (entryRegion) {
+      entryRegion.empty();
+      if (!host.query.trim()) renderEntry(entryRegion, host, graph);
+    }
   };
   renderSearch(controls, host, updateSearch);
   renderModuleFilter(controls, host, graph);
+  button(controls, "Explore", () => host.openConceptBrowser(), "quiet");
   results = root.createDiv({ cls: "los-atlas-search-results" });
   results.setAttrs({ "aria-live": "polite" });
   updateSearch();
   if (!graph.concepts.length) {
-    empty(
-      root,
-      "No concepts are published yet",
-      "A concept appears once it is registered in the knowledge tree. An empty Atlas means nothing has been authored, not that nothing is being studied."
-    );
+    empty(root, "No concepts are published yet", "Register a concept to make it available here.");
     return;
   }
   const focusId = host.state.concept;
@@ -6768,38 +7452,40 @@ function renderAtlas(root, host) {
     depth: host.state.depth,
     includeSemanticNeighbours: host.state.lens === "semantic"
   }) : null;
-  if (view) {
-    renderDepth(
-      controls,
-      host,
-      view.beyond.prerequisites.length + view.beyond.dependents.length
-    );
-  }
-  renderLensBar(root, host, graph);
-  renderQuestion(root, host, focusId ? conceptOf(graph, focusId).label : null);
   if (corpusLens) {
+    button(root, "Choose a concept", () => host.go({ concept: null, lens: "prerequisites" }), "quiet");
     if (host.state.lens === "bridges") renderBridges(root, host, graph);
     else renderDiagnostics(root, host, graph);
+    renderAtlasTools(root, host, graph);
     return;
   }
   if (!view) {
-    renderEntry(root, host, graph);
+    entryRegion = root.createDiv({ cls: "los-atlas-entry-region" });
+    if (!host.query.trim()) renderEntry(entryRegion, host, graph);
+    if (host.editor) renderRelationEditor(root, host, graph, host.editor);
+    renderAtlasTools(root, host, graph);
     return;
   }
-  const band = root.createDiv({ cls: "los-atlas-summary" });
-  band.setAttrs({ role: "status" });
-  band.setText(subgraphSummary(graph, view));
+  const focusHead = root.createDiv({ cls: "los-atlas-focus-heading" });
+  const copy = focusHead.createDiv();
+  copy.createEl("h2", { text: view.focus.label });
+  copy.createDiv({ cls: "los-micro", text: `${moduleTrail(graph, view.focus.id)} \xB7 ${host.state.lens === "prerequisites" ? "Direct connections" : host.state.lens === "semantic" ? "Related ideas" : "Learning path"}` });
+  renderConnectAction(focusHead, host, view.focus.id);
   const body = root.createDiv({ cls: "los-atlas-body" });
   const main = body.createDiv({ cls: "los-atlas-main" });
   if (host.editor) renderRelationEditor(main, host, graph, host.editor);
-  else renderConnectAction(main, host, view.focus.id);
-  if (host.state.lens === "path") {
-    renderPath(main, host, graph, view.focus.id);
-  } else {
-    renderFocusedGraph(main, host, graph, view);
+  if (host.state.lens === "path") renderPath(main, host, graph, view.focus.id);
+  else renderFocusedGraph(main, host, graph, view);
+  const scope = main.createDiv({ cls: "los-atlas-focused-scope" });
+  scope.createDiv({ cls: "los-micro", attr: { role: "status" }, text: subgraphSummary(graph, view) });
+  const further = conceptDisclosure(scope, host, `${view.focus.id}:explore`, "Explore further");
+  renderDepth(further, host, view.beyond.prerequisites.length + view.beyond.dependents.length);
+  renderLensBar(main, host);
+  if (host.state.lens !== "path") {
+    renderOutline(conceptDisclosure(main, host, `${view.focus.id}:outline`, "Text outline"), host, graph, view);
   }
-  if (host.state.lens !== "path") renderOutline(main, host, graph, view);
   renderInspector2(body, host, graph, view);
+  renderAtlasTools(root, host, graph);
 }
 
 // src/views/atlas-view.ts
@@ -6811,7 +7497,18 @@ var AtlasView = class extends import_obsidian5.ItemView {
   lens = "prerequisites";
   depth = 1;
   query = "";
-  domains = { query: "", selected: null, disclosures: /* @__PURE__ */ new Map() };
+  domains = {
+    query: "",
+    selected: null,
+    collection: "notes",
+    role: null,
+    authorship: null,
+    selectedNote: null,
+    selectedShelf: null,
+    limits: /* @__PURE__ */ new Map(),
+    disclosures: /* @__PURE__ */ new Map()
+  };
+  concepts = { browseAll: false, visibleLimit: 30, disclosures: /* @__PURE__ */ new Map() };
   tab = "summary";
   semanticOpen = false;
   remainderOpen = false;
@@ -6819,6 +7516,8 @@ var AtlasView = class extends import_obsidian5.ItemView {
   editor = null;
   mutationPending = false;
   renderCleanups = [];
+  conceptAttention = /* @__PURE__ */ new Map();
+  pendingConceptBrowse = false;
   addRenderCleanup(cleanup) {
     this.renderCleanups.push(cleanup);
   }
@@ -6863,6 +7562,10 @@ var AtlasView = class extends import_obsidian5.ItemView {
       depth: next.depth
     });
   }
+  openConceptBrowser() {
+    this.pendingConceptBrowse = true;
+    this.go({ concept: null, lens: "prerequisites" });
+  }
   /**
    * Adopt one route state. Unknown lens and depth values are coerced by the
    * route contract rather than refused, so a stale deep link opens the Atlas on
@@ -6870,6 +7573,16 @@ var AtlasView = class extends import_obsidian5.ItemView {
    */
   adopt(state) {
     const previous = this.concept;
+    const attention = {
+      query: this.query,
+      browseAll: this.concepts.browseAll,
+      visibleLimit: this.concepts.visibleLimit,
+      tab: this.tab,
+      semanticOpen: this.semanticOpen,
+      remainderOpen: this.remainderOpen,
+      edgeId: this.edgeId,
+      disclosures: new Map(this.concepts.disclosures)
+    };
     if (typeof state.concept === "string" || state.concept === null) {
       this.concept = state.concept;
     }
@@ -6878,17 +7591,29 @@ var AtlasView = class extends import_obsidian5.ItemView {
     }
     this.lens = asAtlasLens(state.lens);
     this.depth = asAtlasDepth(state.depth);
-    if (this.concept && this.concept !== previous) {
-      this.query = "";
-      this.edgeId = null;
-      this.tab = "summary";
-      this.semanticOpen = false;
-      this.remainderOpen = false;
+    if (this.concept !== previous) {
+      this.conceptAttention.set(previous, attention);
+      const restored = this.conceptAttention.get(this.concept);
+      this.query = restored?.query ?? "";
+      this.concepts.browseAll = restored?.browseAll ?? false;
+      this.concepts.visibleLimit = restored?.visibleLimit ?? 30;
+      this.concepts.disclosures.clear();
+      for (const [key, open] of restored?.disclosures ?? []) this.concepts.disclosures.set(key, open);
+      this.edgeId = restored?.edgeId ?? null;
+      this.tab = restored?.tab ?? "summary";
+      this.semanticOpen = restored?.semanticOpen ?? false;
+      this.remainderOpen = restored?.remainderOpen ?? false;
       this.editor = null;
-      this.plugin.settings.atlasRecentConcepts = rememberConcept(
+      if (this.concept) this.plugin.settings.atlasRecentConcepts = rememberConcept(
         this.plugin.settings.atlasRecentConcepts,
         this.concept
       );
+    }
+    if (this.pendingConceptBrowse && this.concept === null && this.lens === "prerequisites") {
+      this.pendingConceptBrowse = false;
+      this.query = "";
+      this.concepts.browseAll = true;
+      this.concepts.visibleLimit = 30;
     }
   }
   async setState(state = {}) {
@@ -10050,7 +10775,7 @@ function titleOf(record10) {
   if (!record10) return "Unknown";
   return asText(record10.title) ?? asString(record10.id) ?? "Unknown";
 }
-function byTitle2(left, right) {
+function byTitle3(left, right) {
   return compareStrings(titleOf(left), titleOf(right));
 }
 function hostOf(url) {
@@ -10121,7 +10846,7 @@ function buildIndex(store) {
   const unfiled = [];
   const claimedMaterial = /* @__PURE__ */ new Set();
   const materialParents = /* @__PURE__ */ new Set();
-  for (const source of store.sources().slice().sort(byTitle2)) {
+  for (const source of store.sources().slice().sort(byTitle3)) {
     const id2 = asString(source.id);
     if (!id2) continue;
     typeOf.set(id2, sourceTypeOf(source));
@@ -10149,7 +10874,7 @@ function buildIndex(store) {
   }
   const modulesByGroup = /* @__PURE__ */ new Map();
   const ungroupedModules = [];
-  for (const module2 of store.modules().slice().sort(byTitle2)) {
+  for (const module2 of store.modules().slice().sort(byTitle3)) {
     const own = asStrings(module2.thematic_group_ids).filter((groupId) => groupById.has(groupId));
     if (own.length) {
       for (const groupId of own) push2(modulesByGroup, groupId, module2);
@@ -10634,7 +11359,7 @@ function shelfFolder(context, shelf, rest, full) {
   const prefix = isPacks ? "pack" : "catalogue";
   const iconName = isPacks ? "notebook-tabs" : "library-big";
   if (!rest.length) {
-    const shelves = (isPacks ? store.topicPacks() : store.catalogues()).slice().sort(byTitle2);
+    const shelves = (isPacks ? store.topicPacks() : store.catalogues()).slice().sort(byTitle3);
     return folder({
       path: full,
       name: isPacks ? "Curated Packs" : "Catalogues",
@@ -12758,7 +13483,7 @@ function renderUnits(view, root, module2) {
 }
 
 // src/features/module/navigation.ts
-function renderGroups2(view, root) {
+function renderGroups(view, root) {
   const semester = view.plugin.store.currentSemester();
   const modules = view.plugin.store.currentSemesterModules().map(
     (record10) => readModuleRecord(record10)
@@ -13060,7 +13785,7 @@ var ModuleView = class extends import_obsidian11.ItemView {
     this.renderGroups(root);
   }
   renderGroups(root) {
-    renderGroups2(this, root);
+    renderGroups(this, root);
   }
   renderGroupList(root) {
     renderGroupList(this, root);
@@ -13228,7 +13953,7 @@ var NavView = class extends import_obsidian12.ItemView {
     this.nav(primary, "graduation-cap", "Learn", "learn", () => this.plugin.nav.openLearn());
     this.nav(primary, "briefcase-business", "Projects", "projects", () => this.plugin.nav.openProjects());
     this.nav(primary, "library", "Library", "library", () => this.plugin.nav.openLibrary());
-    this.nav(primary, "map", "Atlas", "abilities", () => this.plugin.nav.openAbilities());
+    this.nav(primary, "map", "Atlas", "abilities", () => this.plugin.nav.openAtlas({ concept: null, lens: "prerequisites" }));
     this.nav(primary, "sprout", "Garden", "garden", () => this.plugin.nav.openGarden());
     this.nav(
       primary,
@@ -13248,7 +13973,6 @@ var NavView = class extends import_obsidian12.ItemView {
     const secondary = more.createDiv({ cls: "los-nav-secondary" });
     enableButtonGroupKeyboardNavigation(secondary, "vertical");
     this.nav(secondary, "plus", "Capture", "capture", () => this.plugin.nav.openCapture());
-    this.nav(secondary, "network", "Concept atlas", "atlas", () => this.plugin.nav.openAtlas());
     this.nav(
       secondary,
       "shield",
@@ -20443,7 +21167,7 @@ function registerApplication(plugin) {
   plugin.addCommand({ id: "open-library", name: "Open Library", callback: () => plugin.nav.openLibrary() });
   plugin.addCommand({ id: "open-global-search", name: "Search LearningOS", callback: () => plugin.nav.openGlobalSearch() });
   plugin.addCommand({ id: "open-ability-map", name: "Open Atlas (ability map)", callback: () => plugin.nav.openAbilities() });
-  plugin.addCommand({ id: "open-atlas", name: "Open Concept Atlas", callback: () => plugin.nav.openAtlas() });
+  plugin.addCommand({ id: "open-atlas", name: "Open Atlas", callback: () => plugin.nav.openAtlas({ concept: null, lens: "prerequisites" }) });
   plugin.addCommand({ id: "open-garden", name: "Open Garden", callback: () => plugin.nav.openGarden() });
   plugin.addCommand({ id: "open-review", name: "Open Review", callback: () => plugin.nav.openReview() });
   plugin.addCommand({ id: "open-diagnostics", name: "Open Diagnostics", callback: () => plugin.nav.openDiagnostics() });
@@ -21169,7 +21893,7 @@ var ApplicationRouter = class {
             lens: asAtlasLens(route2.lens),
             depth: asAtlasDepth(route2.depth)
           },
-          nav: route2.lens === "domains" ? "abilities" : "atlas"
+          nav: "abilities"
         };
       case "abilities":
         return {
@@ -21474,7 +22198,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:a55c4a2b0fcc4cce46e516891f70a972efb5aa3eb73615514cb3babcbea3f8d4" : "unavailable";
+  return true ? "sha256:410876bb311d457ac631faac46504dc26f8116291a0c03adf26d8dcfaaf5c740" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
@@ -21890,6 +22614,12 @@ var AbilityHorizon = class {
         const expanded = asAbilityFocus(value) ?? asAbilityUnmapped(value);
         if (!expanded) {
           throw new Error("Core answered this ability in a shape this build cannot read. Nothing was changed.");
+        }
+        if (expanded.focus !== abilityId) {
+          throw new Error("Core answered a different ability than the requested record. The response was not used. Try this focused read again.");
+        }
+        if (expanded.snapshot_id !== brief.snapshot_id) {
+          throw new Error("Core answered this ability from a different snapshot than the loaded horizon. The response was not used. Reread the ability map before trying again.");
         }
         if (this.brief === brief) this.expansions.set(abilityId, expanded);
       } catch (error) {

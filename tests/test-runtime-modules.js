@@ -17,6 +17,8 @@ const { ManifestStore } = load('src/manifest-store.ts');
  * the next bump. It did go stale, as v8, the day the projection reached v9. */
 const { MANIFEST_CONTRACT_VERSION: CONTRACT } = load('src/contracts/manifest.ts');
 const { GatewayClient } = load('src/gateway-client.ts');
+const { AbilityHorizon } = load('src/application/ability-horizon.ts');
+const abilityFixtures = require('./ability-fixtures');
 const { gatewaySubjectSha256 } = load('src/contracts/gateway-v2.ts');
 const { DraftStore, emptyUiDrafts } = load('src/application/draft-store.ts');
 const {
@@ -2749,6 +2751,46 @@ function routerPlugin(settings = {}) {
       [],
     );
   });
+
+  /* Focused ability answers belong to the requested identity and horizon. */
+  async function settledExpansion(horizon, id) {
+    horizon.ensureExpansion(id);
+    for (let attempt = 0; attempt < 20 && horizon.expanding(id); attempt++) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    assert.equal(horizon.expanding(id), false, 'focused read settles');
+  }
+
+  for (const kind of ['focus', 'unmapped']) for (const mismatch of ['identity', 'snapshot']) {
+    await test(`ability horizon refuses a shape-valid ${kind} response with another ${mismatch}`, async () => {
+      const requested = kind === 'focus' ? 'ability-fixture-conditional' : 'ability-fixture-unmapped-request';
+      const answer = abilityFixtures.abilityFocus(mismatch === 'identity'
+        ? kind === 'focus' ? 'ability-fixture-bayes-m2' : 'ability-fixture-other-unmapped' : requested);
+      if (mismatch === 'snapshot') answer.snapshot_id = `sha256:${'a'.repeat(64)}`;
+      const reads = [];
+      const horizon = new AbilityHorizon({
+        store: { snapshotId: SNAPSHOT }, horizonChanged() {},
+        gateway: { async abilityContext(options) {
+          reads.push(options); return options.abilityId ? answer : abilityFixtures.abilityBrief();
+        } },
+      });
+      await horizon.refresh();
+      await settledExpansion(horizon, requested);
+      assert.equal(horizon.expansion(requested), null, 'foreign response is never cached');
+      assert.match(horizon.expansionError(requested), mismatch === 'identity' ? /different ability/ : /different snapshot/);
+      assert.equal(horizon.current().snapshot_id, SNAPSHOT, 'valid bounded horizon remains independent');
+      assert.equal(reads.length, 2, 'a mismatched response does not start an automatic refresh loop');
+      assert.deepEqual(reads[1], { abilityId: requested, expectedSnapshot: SNAPSHOT });
+      horizon.ensureExpansion(requested);
+      assert.equal(reads.length, 2, 'the visible error waits for an explicit retry');
+      const correct = abilityFixtures.abilityFocus(requested);
+      Object.keys(answer).forEach((key) => delete answer[key]); Object.assign(answer, correct);
+      horizon.retryExpansion(requested);
+      for (let attempt = 0; attempt < 20 && horizon.expanding(requested); attempt++) await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(horizon.expansion(requested).focus, requested, 'explicit corrected retry admits matching response');
+      assert.equal(horizon.expansionError(requested), null);
+    });
+  }
 
   /* ----------------------------------------------------------------------
    * Snapshot guard. guard() refuses rather than sending the string "null"

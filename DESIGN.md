@@ -49,11 +49,11 @@ The interface carries usability while the core carries meaning.
 ## Navigation
 
 Eight permanent destinations: **Home, Modules, Learn, Projects, Library,
-Atlas, Garden, Review.** (Amended 2026-09-23: the Atlas joined them and opens on
-the ability map; Review carries a live count, which is the length of the same
+Atlas, Garden, Review.** (Amended 2026-10-01: Atlas opens on Concepts;
+Review carries a live count, which is the length of the same
 queue Review lists and never a second tally.) Modules begins with explicit thematic groups and opens
 full-page lists/details. Bachelor's, Skills, Job, and Thesis & projects remain
-sub-areas inside Learn. Capture, Concept atlas, the Future Master's Planning
+sub-areas inside Learn. Capture, the Future Master's Planning
 boundary, Diagnostics, and *Rebuild projection* live under **More** —
 maintenance is never mixed with study destinations.
 
@@ -160,23 +160,53 @@ maintenance is never mixed with study destinations.
   met (reviewed ability, active workspace, result, activity, assistance, work
   pointer, claim); Core checks everything again and its refusal keeps the
   draft.
-- **Atlas** (ability map, Figma A1 · 40:1117 and A2 · 40:1203): Core's bounded,
-  snapshot-bound `ability.context` horizon, drawn and never derived. Abilities
-  fall into **separate groups** — the connected pieces of preparation routes
-  and bridges; a tentative connection carries nothing and never joins two
-  groups — chosen one at a time from a rail. Inside a group the **directed
-  preparation graph** runs left to right (foundations → steps → extensions),
-  transitively reduced so an implied arrow is not drawn twice, with the same
-  edges as a text outline for assistive technology. **Reviewed bridges are
-  bands under the graph**, labelled with kind, review state and source
-  freshness, never drawn as preparation arrows. State is always a word on the
-  node (*Supported*, *Nearby*, *Uncertain*, *Unmapped*); colour only repeats
-  it. Selecting a node opens the **inspector** beside the graph (what counts,
-  preparation in one sentence, recorded evidence); *Open full ability detail*
-  shows conditions, the evidence the attempt must show, every route, bridges,
-  tentative connections and the stages where it is met. *Draft a worked
-  attempt* and *Note a possible connection* save UI-owned drafts only; the
-  Atlas sends no write. Ability map, Concept atlas and Domain Atlas share one accessible variant control. Domain Atlas groups projected notes by the generated atlas's published path buckets, and curated shelves by their recorded domain. It preserves every shelf entry and rationale, names entries and unique sources separately, and keeps source thematic folders distinct from note domains. Search preserves the selected domain, caret and explicit role/shelf disclosure preferences. The generated text overview remains available for excluded material; these counts grant no learning progress or ability evidence.
+- **Atlas** (concept-first workspace, Figma page 159:2, amended 2026-10-01):
+  one navigation destination, with **Concepts / Notes & shelves / Abilities**
+  in that order. Fresh entry opens concept search and recent concepts. Browse
+  all uses stable title order and explicit linked-note counts from the same
+  projection links as concept context. A selected concept has a bounded
+  authored prerequisite/dependent graph, linked notes nearby, and disclosures
+  for semantic context, paths, provenance, questions, relation editing, the
+  full text outline and every omitted record. Semantic relations never become
+  preparation order. All existing lenses and deep links remain valid.
+
+  Notes & shelves separates durable notes from source shelves. Domain membership
+  follows the published path buckets, including unknown/unfiled domains. Compact
+  role/authorship filters expose every projected value. Stable rows open an
+  explicit note inspector; sources, lifecycle and provenance are disclosed.
+  Source shelves retain authored entry order, duplicates, recorded groups and
+  rationale. Every note, shelf, entry and source folder remains reachable; the
+  generated text overview is available through Atlas tools.
+
+  Abilities uses the bounded, snapshot-bound `ability.context` horizon (50
+  initial records), with honest loaded/total counts and explicit focused
+  expansion. All loaded groups occupy named regions on one plane; every
+  ability ID appears once. Compact nodes and curved preparation arrows reuse
+  the current tokens and Obsidian typography. One-hop attention uses the
+  transitively reduced preparation edges; complete AND/OR route membership
+  remains in Routes. Selection opens a compact action dock, with Details
+  explicit. Reviewed bridges are a separate disclosed layer and never become
+  preparation reachability. Folding removes a branch's display claim; other
+  expanded paths and retained/selected anchors keep shared targets visible.
+  Reopening preserves identity and position.
+
+  A single camera transforms nodes, arrows and bridge bands. Background drag
+  pans; focused wheel/two-finger scrolling pans. Pinch or Ctrl/Meta/Alt plus
+  wheel zoom anchors at the pointer; unfocused scrolling stays with the page.
+  Outside-transform controls
+  offer zoom, Fit all, Fit selection/group and List. Search locates loaded
+  records without silently expanding Core's horizon. Keyboard operation and
+  full titles remain available. Camera/fold/layer attention is view-owned,
+  stays outside route history, survives ordinary redraws, and cleans up on
+  replacement/close. Attention grants no mastery, evidence, transfer or credit;
+  ability writes continue through Review only.
+
+  Below 65% zoom the plane keeps graph shapes and accessible record names while
+  hiding tiny prose; a readable group/count navigator outside the transform
+  offers a fit action for every loaded group. Group fitting includes its heading
+  and bridge-band area. Focused ability responses are admitted only when their
+  snapshot and focus match the current horizon and requested identity; mismatches
+  remain explicit failures with retry/read-again actions.
 - **Diagnostics**: contract versions, projection freshness (`✓ current`,
   `● stale`, `? core unavailable`), resolved Python interpreter and its
   attempted paths. Under More, never on Home.

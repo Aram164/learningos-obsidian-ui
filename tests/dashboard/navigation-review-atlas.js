@@ -30,9 +30,7 @@ module.exports = async function run() {
     const { app, plugin, calls } = await boot();
     const nav = app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
     const text = nav.allText();
-    /* Eight permanent destinations from the approved application IA. The
-     * Atlas joined them on 2026-09-23: it opens on the ability map, and the
-     * concept atlas stays under More. */
+    /* Eight permanent destinations; Atlas opens the compact Concepts entry. */
     check('eight permanent destinations, no more',
       nav.find('los-nav-primary')[0].find('los-app-nav-item').length === 8
       && ['Home', 'Modules', 'Learn', 'Projects', 'Library', 'Atlas', 'Garden', 'Review']
@@ -121,7 +119,10 @@ module.exports = async function run() {
     check('Garden marks Garden, not Review, as the active destination',
       nav.findText('los-app-nav-item', 'Garden')?.classes.has('is-active')
       && !nav.findText('los-app-nav-item', 'Review')?.classes.has('is-active'));
-    nav.findText('los-app-nav-item', 'Concept atlas').fire('click'); await tick();
+    check('Atlas has one navigation entry and no duplicate under More',
+      nav.find('los-app-nav-item').filter((row) => row.allText() === 'Atlas').length === 1
+      && !text.includes('Concept atlas'));
+    nav.findText('los-app-nav-item', 'Atlas').fire('click'); await tick();
     /* The atlas is a decision surface, not a document: opening it must give a
      * navigable view. The Markdown file stays reachable from inside it, because
      * it is still the session-bootstrap artifact (core CLAUDE.md §2.8). */
@@ -131,7 +132,7 @@ module.exports = async function run() {
     /* ADR-016 moved the generated map behind the Diagnostics corpus lens: it is
      * a secondary view (decision 10), not the thing the screen opens on. It is
      * still one control away from the entry state, and still reachable. */
-    atlas.contentEl.findText('los-atlas-record', 'Diagnostics').fire('click');
+    atlas.contentEl.findText('los-btn', 'Diagnostics').fire('click');
     await tick();
     app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl
       .findText('los-btn', 'Open generated domain map').fire('click');
@@ -463,13 +464,12 @@ module.exports = async function run() {
     let text = view.contentEl.allText();
 
     check('the Atlas opens on search and recent focuses, not on the corpus',
-      text.includes('Search concepts')
+      text.includes('Find a concept')
       && text.includes('Recently visited')
       && !text.includes('Module \u00d7 Concept atlas'));
-    check('the entry state sizes the corpus without spreading it on the screen',
-      text.includes('5 concepts')
-      && text.includes('5 authored relations')
-      && text.includes('4 of them order learning'));
+    check('the entry state makes the complete corpus browsable without graph controls',
+      text.includes('Browse all 5 concepts') && !view.contentEl.find('los-atlas-depth').length
+      && !view.contentEl.find('los-atlas-node').length);
 
     /* A4. A manifest refresh is not a reason to interrupt a half-typed query:
      * the field is rebuilt by the redraw, so focus and caret have to be carried
@@ -697,7 +697,13 @@ module.exports = async function run() {
     await plugin.nav.openAtlas({ concept: 'concept-bayes' });
     await tick();
     view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
-    view.contentEl.find('los-atlas-question-action')[0].fire('click');
+    // Returning to Bayes retains its selected connection attention. Resolve
+    // the concept question explicitly, rather than whichever band came first.
+    view.contentEl.findText('los-btn', 'Close connection')?.fire('click');
+    view.contentEl.findText('los-btn', 'Questions').fire('click');
+    view.contentEl.find('los-atlas-question-action')
+      .find((action) => action.getAttribute('aria-label')
+        === 'Mark “Why does Bayes need the conditional first?” answered').fire('click');
     await settle();
     const saved = calls.envelope('atlas.question.save');
     check('resolving a question sends one guarded capability envelope',
@@ -910,4 +916,128 @@ module.exports = async function run() {
 
     plugin.onunload();
   }
+
+  heading('concept-first browsing, explicit note parity and bounded crowded graph');
+  {
+    const { app, plugin, calls } = await boot({ patchManifest: (manifest) => {
+      const template = manifest.records.find((record) => record.type === 'concept');
+      const note = manifest.records.find((record) => record.type === 'note' && record.role === 'reference');
+      for (let i = 0; i < 74; i += 1) {
+        const id = `concept-fixture-extra-${i}`;
+        manifest.records.push({ ...template, id, title: `Extra concept ${String(i).padStart(2, '0')}` });
+        manifest.relations.push({ from: 'concept-bayes', to: id, type: 'requires', context: null, source: null });
+      }
+      manifest.records.push({ ...template, id: 'concept-fixture-zero', title: 'Zero linked notes' });
+      for (let i = 0; i < 22; i += 1) {
+        const id = `note-fixture-extra-${i}`;
+        manifest.records.push({ ...note, id, title: `Linked note ${String(i).padStart(2, '0')} with a long readable title`,
+          concepts: ['concept-bayes'], authorship: i % 2 ? 'mixed' : 'user',
+          path: `knowledge/notes/mathematics/${id}.md` });
+        manifest.backlinks.concept_to_notes['concept-bayes'].push(id);
+      }
+      // Identical prose with no explicit link remains outside the note count.
+      manifest.records.push({ ...note, id: 'note-fixture-text-only', concepts: [],
+        title: 'Bayes theorem text alone', path: 'knowledge/notes/mathematics/text-only.md' });
+    } });
+    const atlas = () => app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    await plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' });
+    let root = browserDom(atlas().contentEl);
+    check('fresh Concepts has compact entry and no graph/depth/lens controls before selection',
+      root.allText().includes('Choose a concept') && root.find('los-atlas-node').length === 0
+      && root.find('los-atlas-depth').length === 0 && root.find('los-filter-tabs').length === 1);
+    root.find('los-atlas-browse-all')[0].fire('click');
+    while (root.find('los-atlas-show-more').length) root.find('los-atlas-show-more')[0].fire('click');
+    const rows = root.find('los-atlas-concept-seed');
+    const ids = rows.map((row) => row.getAttribute('data-concept-id'));
+    const allConcepts = plugin.store.of('concept').map((record) => record.id).sort();
+    check('complete Show more reaches every published concept exactly once',
+      JSON.stringify([...ids].sort()) === JSON.stringify(allConcepts) && new Set(ids).size === ids.length);
+    check('each browser note count equals the selected concept projected backlink set',
+      rows.every((row) => Number(row.getAttribute('data-linked-note-count'))
+        === plugin.store.related(row.getAttribute('data-concept-id')).filter(({ rec }) => rec.type === 'note').length));
+    check('zero-note concepts remain visible and text-only similarity never creates links',
+      rows.find((row) => row.getAttribute('data-concept-id') === 'concept-fixture-zero')
+        ?.getAttribute('data-linked-note-count') === '0'
+      && rows.find((row) => row.getAttribute('data-concept-id') === 'concept-bayes')
+        ?.getAttribute('data-linked-note-count') === '23');
+    const input = root.find('los-atlas-search-input')[0];
+    input.focus();
+    for (const char of 'Bayes') input.typeText(char);
+    check('browse search keeps the same labelled native input during continuous typing',
+      root.find('los-atlas-search-input')[0] === input && global.document.activeElement === input
+      && input.parentElement.tag === 'label' && input.selectionStart === 5);
+    root.find('los-atlas-concept-seed').find((row) => row.getAttribute('data-concept-id') === 'concept-bayes').fire('click');
+    await tick(); root = browserDom(atlas().contentEl);
+    check('crowded concepts cap pictured nodes and explicitly name every omitted concept',
+      root.find('los-atlas-node').length <= 9 && root.find('los-atlas-crowded-remainder').length === 1
+      && root.find('los-atlas-crowded-remainder')[0].allText().includes('Text outline')
+      && root.find('los-atlas-outline-row').length >= 77
+      && root.find('los-atlas-node').length + root.find('los-atlas-crowded-remainder')[0].find('los-btn').length >= 77);
+    const noteRows = root.find('los-atlas-linked-note');
+    check('all linked notes remain reachable through an honest Show all disclosure',
+      noteRows.length === 23 && root.allText().includes('Show all 23 linked notes')
+      && !noteRows.some((row) => row.getAttribute('data-note-id') === 'note-fixture-text-only'));
+    const details = root.find('los-atlas-disclosure').find((row) => row.getAttribute('data-atlas-disclosure') === 'concept-bayes:notes');
+    const before = plugin.router.snapshot();
+    details.open = true; details.fire('toggle'); atlas().render();
+    check('opening notes is retained attention and adds no route history',
+      root.find('los-atlas-disclosure').find((row) => row.getAttribute('data-atlas-disclosure') === 'concept-bayes:notes').open
+      && JSON.stringify(plugin.router.snapshot()) === JSON.stringify(before));
+    await plugin.nav.openUnit('unit-fixture-aml-l04', 'stage-fixture-aml-bayes');
+    await plugin.nav.back(); await tick(); root = browserDom(atlas().contentEl);
+    check('Back from an evidence unit restores the selected concept and linked-note context',
+      plugin.router.snapshot().current?.concept === 'concept-bayes' && root.find('los-atlas-linked-note').length === 23);
+    const saved = atlas().getState();
+    await plugin.nav.openAtlas({ concept: 'concept-fixture-zero', lens: 'semantic', depth: 2 });
+    root = browserDom(atlas().contentEl);
+    check('restoring a zero-note semantic deep link preserves concept, lens and depth honestly',
+      atlas().getState().concept === 'concept-fixture-zero' && atlas().getState().lens === 'semantic'
+      && atlas().getState().depth === 2 && root.allText().includes('No notes explicitly linked'));
+    await plugin.nav.openAtlas(saved); root = browserDom(atlas().contentEl);
+    check('restoring the saved route returns the exact concept and note context',
+      JSON.stringify(atlas().getState()) === JSON.stringify(saved)
+      && root.find('los-atlas-linked-note').length === 23);
+    check('browsing, graph selection, disclosures and history cause no Core writes', calls.envelopes.length === 0);
+    plugin.onunload();
+  }
+
+
+  heading('explicit concept exploration and module-filtered recent concepts');
+  {
+    const { app, plugin, calls } = await boot({
+      settings: { atlasRecentConcepts: ['concept-bayes', 'concept-logistic-regression'] },
+      patchManifest: (manifest) => {
+        manifest.records.find((record) => record.id === 'note-fixture-probability').authorship = 'operator-drafted';
+      },
+    });
+    const atlas = () => app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    await plugin.nav.openAtlas({ concept: null, module: 'module-fixture-m2', lens: 'prerequisites' });
+    let root = browserDom(atlas().contentEl);
+    const recents = root.find('los-atlas-concept-seed').map((row) => row.getAttribute('data-concept-id'));
+    check('the compact module filter also applies to recent concepts without changing recency order',
+      JSON.stringify(recents) === JSON.stringify(['concept-bayes']));
+    const field = root.find('los-atlas-search-input')[0];
+    field.value = 'Conditional'; field.fire('input');
+    await plugin.nav.openAtlas({ concept: 'concept-bayes', module: 'module-fixture-m2', lens: 'prerequisites' });
+    root = browserDom(atlas().contentEl);
+    check('projected operator-drafted authorship is presented as Operator draft',
+      root.find('los-atlas-linked-note').find((row) => row.getAttribute('data-note-id') === 'note-fixture-probability')
+        .allText().includes('Operator draft') && !root.find('los-atlas-linked-note')[0].allText().includes('operator-drafted'));
+    const historyLength = plugin.router.snapshot().history.length;
+    root.findText('los-btn', 'Explore').fire('click');
+    await waitFor(() => atlas().state.concept === null && atlas().concepts.browseAll);
+    root = browserDom(atlas().contentEl);
+    const browsed = root.find('los-atlas-concept-seed').map((row) => row.getAttribute('data-concept-id'));
+    check('Explore explicitly opens full browsing despite remembered filtered entry attention',
+      atlas().state.concept === null && atlas().state.lens === 'prerequisites' && atlas().concepts.browseAll
+      && root.find('los-atlas-search-input')[0].value === '' && root.allText().includes('Browse concepts')
+      && root.find('los-atlas-browse-all').length === 0 && root.find('los-atlas-node').length === 0);
+    check('Explore retains the selected module and the complete projected module membership',
+      atlas().state.module === 'module-fixture-m2'
+      && JSON.stringify([...browsed].sort()) === JSON.stringify(['concept-bayes', 'concept-bedingte-wahrscheinlichkeit'].sort()));
+    check('explicit exploration retains Atlas replacement history and performs no Core writes',
+      plugin.router.snapshot().history.length === historyLength && calls.envelopes.length === 0);
+    plugin.onunload();
+  }
+
 };

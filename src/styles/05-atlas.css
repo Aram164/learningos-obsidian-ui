@@ -262,7 +262,7 @@
 .los-atlas-search-results:empty { display: none; }
 .los-atlas-search-results { margin-bottom: var(--los-4); }
 
-@media (max-width: 720px) {
+@container los-view (max-width: 720px) {
   .los-atlas-edge-layer { display: none; }
 }
 
@@ -856,13 +856,13 @@
 
 /* -------------------------------------------------------- narrow widths */
 
-@media (max-width: 1020px) {
+@container los-view (max-width: 980px) {
   .los-atlas-body {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
-@media (max-width: 720px) {
+@container los-view (max-width: 720px) {
   .los-atlas-lanes {
     display: grid;
     gap: var(--los-3);
@@ -1039,4 +1039,89 @@
 .los-root .los-atlas-editor-save[disabled] {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+/* Concept-first Atlas: compact entry, bounded map, adjacent linked notes. */
+.los-atlas-view { --los-atlas-node: 180px; }
+.los-atlas-heading,
+.los-atlas-focus-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: var(--los-4);
+  margin-bottom: var(--los-5);
+}
+.los-atlas-heading h1,
+.los-atlas-focus-heading h2,
+.los-atlas-entry h2 { margin: 0; }
+.los-atlas-heading > .los-disclosure { max-width: 360px; }
+.los-atlas-heading > .los-disclosure > summary { font-size: 13px; }
+.los-atlas-controls {
+  align-items: center;
+  gap: var(--los-3);
+  padding: 0;
+  margin: var(--los-5) 0;
+  border: 0;
+}
+.los-atlas-search { flex: 1 1 320px; }
+.los-root .los-atlas-search-input {
+  min-height: 38px;
+  border-color: var(--los-line-strong);
+  border-radius: var(--los-r-sm);
+  font: inherit;
+}
+.los-atlas-module-filter { flex: 0 0 auto; max-width: 100%; }
+.los-atlas-module-filter[open] { flex-basis: 100%; }
+.los-atlas-module-filter .los-disclosure-body { display: grid; gap: var(--los-3); }
+.los-atlas-entry { max-width: 860px; gap: var(--los-4); }
+.los-atlas-entry-lead { color: var(--los-ink-soft); margin-bottom: var(--los-2); }
+.los-atlas-entry-group { gap: var(--los-3); }
+.los-root .los-atlas-concept-seed,
+.los-root .los-atlas-linked-note {
+  display: flex;
+  align-items: center;
+  gap: var(--los-4);
+  min-height: 74px;
+  padding: var(--los-3) var(--los-4);
+  border-color: transparent;
+}
+.los-atlas-record-copy { display: grid; flex: 1 1 auto; min-width: 0; gap: var(--los-1); }
+.los-atlas-concept-seed .los-atlas-record-title,
+.los-atlas-linked-note .los-atlas-record-title { font-size: 14px; font-weight: 550; }
+.los-atlas-record-open { flex: 0 0 auto; color: var(--los-info-strong); font-size: 13px; }
+.los-atlas-secondary-actions { align-items: start; margin-top: var(--los-5); }
+.los-atlas-secondary-actions > .los-disclosure { min-width: 0; }
+.los-atlas-secondary-actions .los-disclosure-body { display: grid; gap: var(--los-2); }
+.los-atlas-body { gap: var(--los-5); grid-template-columns: minmax(0, 1fr) minmax(280px, 32%); }
+.los-atlas-main { gap: var(--los-3); }
+.los-atlas-focus-heading { margin-bottom: var(--los-5); }
+.los-atlas-focus-heading > div:first-child { min-width: 0; display: grid; gap: var(--los-2); }
+.los-atlas-canvas { padding: var(--los-5); border-color: transparent; overflow: hidden; }
+.los-atlas-edge-layer { overflow: hidden; }
+.los-atlas-lanes { gap: var(--los-5); }
+.los-atlas-lane { flex: 1 0 var(--los-atlas-node); }
+.los-atlas-lane-head { font-size: 12px; font-weight: 450; text-transform: none; letter-spacing: normal; }
+.los-root .los-atlas-node { min-height: 86px; padding: var(--los-4); border-color: transparent; border-radius: var(--los-r-sm); }
+.los-atlas-node-title { font-size: 14px; }
+.los-root .los-atlas-node.is-focus { border: 1px solid var(--los-line-strong); background: var(--los-accent-wash); }
+.los-atlas-node--focus .los-atlas-node-title { font-size: 14px; }
+.los-atlas-focused-scope { display: flex; gap: var(--los-3); align-items: start; justify-content: space-between; flex-wrap: wrap; }
+.los-atlas-focused-scope > .los-disclosure { flex: 0 1 320px; }
+.los-atlas-focused-scope > .los-micro { flex: 1 1 240px; }
+.los-atlas-inspector { border: 0; padding: 0; background: transparent; }
+.los-atlas-inspector h3 { margin: 0 0 var(--los-3); }
+.los-atlas-inspector-actions { padding-top: var(--los-3); margin-top: var(--los-3); border-top: 1px solid var(--los-line); }
+.los-atlas-inspector .los-disclosure-body { min-width: 0; }
+.los-atlas-inspector .los-filter-tabs { flex-wrap: wrap; }
+.los-atlas-crowded-remainder .los-disclosure-body { display: grid; gap: var(--los-2); }
+.los-atlas-picture-scope { max-width: 100%; }
+@container los-view (max-width: 980px) {
+  .los-atlas-body { grid-template-columns: minmax(0, 1fr); }
+  .los-atlas-inspector { max-width: none; }
+}
+@container los-view (max-width: 600px) {
+  .los-atlas-heading, .los-atlas-focus-heading { flex-wrap: wrap; }
+  .los-atlas-search { flex-basis: 100%; }
+  .los-atlas-canvas { padding: var(--los-3); }
+  .los-root .los-atlas-concept-seed, .los-root .los-atlas-linked-note { min-height: 0; }
 }

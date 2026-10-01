@@ -96,7 +96,7 @@ export function registerApplication(plugin: ApplicationPlugin): void {
   plugin.addCommand({ id: 'open-library', name: 'Open Library', callback: () => plugin.nav.openLibrary() });
   plugin.addCommand({ id: 'open-global-search', name: 'Search LearningOS', callback: () => plugin.nav.openGlobalSearch() });
   plugin.addCommand({ id: 'open-ability-map', name: 'Open Atlas (ability map)', callback: () => plugin.nav.openAbilities() });
-  plugin.addCommand({ id: 'open-atlas', name: 'Open Concept Atlas', callback: () => plugin.nav.openAtlas() });
+  plugin.addCommand({ id: 'open-atlas', name: 'Open Atlas', callback: () => plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' }) });
   plugin.addCommand({ id: 'open-garden', name: 'Open Garden', callback: () => plugin.nav.openGarden() });
   plugin.addCommand({ id: 'open-review', name: 'Open Review', callback: () => plugin.nav.openReview() });
   // The live-app verification driver (scripts/check-live-app.mjs) needs a

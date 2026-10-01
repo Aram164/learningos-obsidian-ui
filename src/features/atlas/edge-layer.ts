@@ -28,8 +28,11 @@ export function mountEdges(
     if (disposed || !canvas.isConnected) return;
     svg.replaceChildren();
     const base = canvas.getBoundingClientRect();
-    svg.setAttribute('width', String(canvas.scrollWidth));
-    svg.setAttribute('height', String(canvas.scrollHeight));
+    // The cards scroll inside their lane viewport. Keep the overlay bounded
+    // to the canvas, rather than letting an off-screen endpoint spill into
+    // the notes inspector or retain an oversized SVG after the pane shrinks.
+    svg.setAttribute('width', String(base.width));
+    svg.setAttribute('height', String(base.height));
     const defs = doc.createElementNS(SVG, 'defs');
     const marker = doc.createElementNS(SVG, 'marker');
     for (const [key, value] of Object.entries({ id: markerId, viewBox: '0 0 10 10', refX: '9', refY: '5',
@@ -78,12 +81,15 @@ export function mountEdges(
   observer?.observe(canvas);
   canvas.querySelectorAll<HTMLElement>('[data-atlas-concept]').forEach(node => observer?.observe(node));
   win.addEventListener('resize', schedule);
+  const scrollRegions = [canvas, ...Array.from(canvas.querySelectorAll<HTMLElement>('.los-atlas-lanes'))];
+  scrollRegions.forEach(region => region.addEventListener('scroll', schedule));
   schedule();
   host.addRenderCleanup(() => {
     disposed = true;
     if (frame) win.cancelAnimationFrame(frame);
     observer?.disconnect();
     win.removeEventListener('resize', schedule);
+    scrollRegions.forEach(region => region.removeEventListener('scroll', schedule));
     svg.remove();
   });
 }

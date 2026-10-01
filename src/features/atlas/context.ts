@@ -61,14 +61,23 @@ export function buildConceptContext(
   store: ConceptContextStore,
   conceptId: string,
 ): ConceptContext {
-  const notes = store.related(conceptId)
-    .map((row) => row.rec)
-    .filter((record): record is ProjectionRecord => record?.type === 'note')
-    .sort(byLabel);
+  const notes = linkedConceptNotes(store, conceptId);
 
   const sources = store.sources()
     .filter((source: ProjectionRecord) => sourceNamesConcept(source, conceptId))
     .sort(byLabel);
 
   return { notes, sources };
+}
+
+/** The identical projected link set used by the context and entry counts. */
+export function linkedConceptNotes(
+  store: Pick<ConceptContextStore, 'related'>,
+  conceptId: string,
+): readonly ProjectionRecord[] {
+  return store.related(conceptId)
+    .map((row) => row.rec)
+    .filter((record): record is ProjectionRecord => record?.type === 'note')
+    .sort(byLabel);
+
 }

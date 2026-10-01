@@ -25,12 +25,25 @@ second source of truth.
    selected proposal IDs through the guarded gateway.
 6. End the learning session deliberately: review the exact gateway ledger,
    then optionally commit and push only those files.
-7. Read the **Atlas**: Core's ability map, one separate group at a time, its
-   directed preparation graph and its reviewed bridges. Drafting a worked
-   attempt or a possible connection saves a UI-owned draft; only **Confirm &
-   record** in Review sends it (`learner.ability-observation.append` or
-   `ability.candidate.append`, `ui` channel only). Completing a stage records
-   progress, never ability evidence.
+7. Open **Atlas** on Concepts: search or browse every projected concept, inspect
+   authored prerequisites/dependents, and open explicitly linked notes nearby.
+   **Notes & shelves** browses the complete projected note corpus and ordered
+   source shelves. **Abilities** places the loaded groups on one zoomable plane;
+   selection highlights one hop, shared-node folding preserves other expanded
+   paths, and Details/Routes opens evidence explicitly. Reviewed bridges use a
+   separate disclosed layer. Drafting a worked attempt or possible connection
+   saves a UI-owned draft; only **Confirm & record** in Review sends it
+   (`learner.ability-observation.append` or `ability.candidate.append`, `ui`
+   channel only). Completing a stage records progress, never ability evidence.
+
+On the ability plane, drag the background or focus the canvas and scroll to pan.
+Pinch or Ctrl/Meta/Alt plus wheel zooms at the pointer; the buttons zoom at the
+centre. Fit all, Fit selection and Fit group use the available pane. On a focused
+canvas, arrows pan, `+`/`-` zoom and `F`/`0` fits all. On a node, arrows move to
+immediate preparation neighbours, `E` folds or expands, `F` fits its neighbourhood,
+`D` opens full detail and Escape clears selection. List and the preparation text
+outline expose the same records without the camera. Search locates loaded records;
+focused expansion remains explicit and bound to the horizon snapshot.
 
 The current primary navigation is **Home · Modules · Learn · Projects · Library · Atlas · Garden · Review** (Review shows its live count), with structural Search available from the navigator and command palette. Modules and Library use explicit full-page application routes; Library separates Learning Sources from purpose-built Topic Packs. Future Master's Planning remains a policy-only boundary. Job learning uses the same projected module, unit, study-map, note, search, and AI surfaces as every other learning area, with a small visual badge for `program-job`.
 

@@ -31,7 +31,7 @@
     "test:library-finder": "node tests/test-library-finder.js",
     "test:trace-context": "node tests/test-trace-context.js",
     "test:operations": "node tests/test-operations.js",
-    "test:abilities": "node tests/test-abilities-model.js"
+    "test:abilities": "node tests/test-abilities-model.js && node tests/test-atlas-presentation-review.js"
   },
   "devDependencies": {
     "ajv": "^8.20.0",

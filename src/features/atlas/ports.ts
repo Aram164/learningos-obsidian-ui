@@ -99,6 +99,19 @@ export type AtlasInspectorTab =
 export interface DomainAtlasState {
   query: string;
   selected: string | null;
+  collection: 'notes' | 'shelves';
+  role: string | null;
+  authorship: string | null;
+  selectedNote: string | null;
+  selectedShelf: string | null;
+  readonly limits: Map<string, number>;
+  readonly disclosures: Map<string, boolean>;
+}
+
+/** Concept browsing and disclosures change attention, never route history. */
+export interface ConceptAtlasState {
+  browseAll: boolean;
+  visibleLimit: number;
   readonly disclosures: Map<string, boolean>;
 }
 
@@ -106,6 +119,7 @@ export interface AtlasHost {
   readonly plugin: AtlasPlugin;
   readonly state: AtlasRouteState;
   readonly domains: DomainAtlasState;
+  readonly concepts: ConceptAtlasState;
   /** Search text. Working state, never route state. */
   query: string;
   tab: AtlasInspectorTab;
@@ -118,6 +132,8 @@ export interface AtlasHost {
   addRenderCleanup(cleanup: () => void): void;
   /** Navigate, merging the given fields over the current route. */
   go(target: Partial<AtlasRouteState>): void;
+  /** Open complete concept browsing after route attention has been restored. */
+  openConceptBrowser(): void;
   /** Redraw without navigating — for working state only. */
   render(): void;
 

@@ -1,58 +1,92 @@
-/* Domain Atlas: projected knowledge records, distinct from ability evidence. */
-.los-atlas-variant-switch { margin-bottom: var(--los-4); }
+/* Notes & shelves: compact browsing of published records, separate from evidence. */
+.los-atlas-variant-switch { margin-bottom: var(--los-5); }
 .los-root .los-atlas-variant-switch { width: fit-content; max-width: 100%; }
+.los-domain-header { display: flex; align-items: start; justify-content: space-between; gap: var(--los-4); }
+.los-domain-about { max-width: min(460px, 55%); }
+.los-domain-about > summary { padding: var(--los-2); font-size: 13px; font-weight: 500; }
+.los-domain-about > .los-domain-disclosure-body { padding-top: var(--los-3); }
 .los-domain-controls,
 .los-domain-results,
-.los-domain-source-domains { width: min(1104px, 100%); }
-.los-domain-controls { margin-bottom: var(--los-3); }
-.los-domain-search-label { display: grid; gap: var(--los-2); color: var(--los-ink-soft); font-size: 13px; }
-.los-root .los-domain-search { width: min(680px, 100%); }
-.los-domain-search-status { color: var(--los-ink-soft); font-size: 13px; margin-bottom: var(--los-3); }
-.los-domain-layout { display: grid; grid-template-columns: minmax(200px, 240px) minmax(0, 1fr); gap: var(--los-4); align-items: start; }
-.los-domain-rail { display: flex; flex-direction: column; gap: var(--los-2); min-width: 0; }
-.los-root .los-domain-choice { display: flex; flex-direction: column; gap: var(--los-1); width: 100%; min-height: 64px; padding: var(--los-3); border: 1px solid var(--los-rule); border-radius: var(--los-r-md); background: var(--los-surface); font-weight: 600; }
-.los-root .los-domain-choice.is-active { background: var(--los-selected); border-color: var(--los-line-strong); box-shadow: inset 3px 0 0 var(--los-accent); }
+.los-domain-tools { width: 100%; max-width: 1280px; }
+.los-domain-controls { display: flex; flex-wrap: wrap; align-items: center; gap: var(--los-3); margin-bottom: var(--los-3); }
+.los-root .los-domain-search { flex: 1 1 320px; width: auto; min-width: 0; }
+.los-root .los-domain-author-filter,
+.los-root .los-domain-role-filter { flex: 0 1 auto; max-width: 100%; min-height: 38px; color: var(--los-ink-soft); font-size: 13px; }
+.los-domain-search-status { color: var(--los-ink-faint); font-size: 12px; margin-bottom: var(--los-3); }
+.los-domain-layout { display: grid; grid-template-columns: minmax(160px, 208px) minmax(0, 1fr); gap: var(--los-5); align-items: start; }
+.los-domain-rail { display: flex; flex-direction: column; gap: var(--los-1); min-width: 0; padding: var(--los-2); border-radius: var(--los-r-md); background: var(--los-paper-2); }
+.los-domain-rail-label { padding: var(--los-1) var(--los-2); color: var(--los-ink-faint); font-size: 13px; }
+.los-root .los-domain-choice { display: flex; flex-direction: column; align-items: flex-start; text-align: left; gap: var(--los-1); width: 100%; min-height: 64px; padding: var(--los-3); border: 1px solid transparent; border-radius: var(--los-r-sm); background: transparent; font-weight: 500; overflow-wrap: anywhere; white-space: normal; }
+.los-root .los-domain-choice.is-active { background: var(--los-selected); border-color: var(--los-line-strong); }
 .los-domain-choice-counts,
 .los-domain-choice-empty { color: var(--los-ink-soft); font-size: 12px; font-weight: 400; }
 .los-domain-choice-empty { color: var(--los-ink-faint); }
-.los-domain-detail { min-width: 0; padding: var(--los-4); border: 1px solid var(--los-rule); border-radius: var(--los-r-lg); background: var(--los-surface); }
-.los-root .los-domain-detail > h2 { margin: 0 0 var(--los-1); font-size: 20px; }
-.los-domain-counts { color: var(--los-ink-soft); margin-bottom: var(--los-4); font-size: 13px; }
+.los-domain-detail { min-width: 0; }
+.los-domain-detail-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--los-2); align-items: baseline; margin-bottom: var(--los-3); }
+.los-root .los-domain-detail-heading > h2 { margin: 0; font-size: 20px; }
+.los-domain-counts { color: var(--los-ink-faint); font-size: 12px; }
+.los-domain-content-switch { width: fit-content; margin-bottom: var(--los-4); }
+.los-domain-note-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--los-4); align-items: start; }
+.los-domain-note-workspace.has-selection { grid-template-columns: minmax(0, 1fr) minmax(290px, 0.95fr); }
 .los-domain-notes,
-.los-domain-shelves { display: flex; flex-direction: column; gap: var(--los-2); }
-.los-domain-shelves { margin-top: var(--los-4); }
-.los-root .los-domain-detail h3 { margin: 0 0 var(--los-1); font-size: 15px; }
-.los-domain-role,
-.los-domain-shelf { min-width: 0; border: 1px solid var(--los-rule); border-radius: var(--los-r-md); overflow: clip; background: var(--los-surface-raised); }
-.los-domain-disclosure-summary { min-height: 44px; padding: var(--los-3); color: var(--los-ink); font-weight: 600; cursor: pointer; overflow-wrap: anywhere; }
-.los-domain-disclosure-summary:hover { background: var(--los-paper-3); }
-.los-root .los-domain-disclosure-summary:focus-visible { outline-offset: -4px; }
-.los-domain-disclosure-body { display: flex; flex-direction: column; gap: var(--los-2); padding: 0 var(--los-3) var(--los-3); }
-.los-root .los-domain-note-row { display: flex; flex-direction: column; align-items: flex-start; gap: var(--los-1); width: 100%; min-height: 56px; background: var(--los-surface); border: 1px solid var(--los-rule); padding: var(--los-2) var(--los-3); }
-.los-domain-note-meta { font-size: 12px; color: var(--los-ink-soft); }
-.los-domain-entry-row { min-width: 0; border-top: 1px solid var(--los-rule); padding-top: var(--los-3); }
-.los-root .los-domain-open-source { display: block; width: 100%; min-height: 36px; padding-left: 0; font-weight: 600; }
-.los-domain-entry-group { color: var(--los-ink-soft); font-size: 12px; margin: var(--los-1) 0; }
-.los-root .los-domain-entry-why,
-.los-domain-disclosure-body > p { margin: 0; font-size: 13px; color: var(--los-ink-soft); }
+.los-domain-shelves { display: flex; flex-direction: column; gap: var(--los-3); min-width: 0; }
+.los-domain-note-row { display: flex; align-items: center; min-width: 0; padding: var(--los-3) var(--los-4); gap: var(--los-3); border-radius: var(--los-r-md); background: var(--los-surface); border: 1px solid transparent; }
+.los-domain-note-row.is-selected { background: var(--los-selected); border-color: var(--los-line-strong); }
+.los-root .los-domain-select-note { display: flex; flex: 1 1 auto; flex-direction: column; align-items: flex-start; text-align: left; gap: var(--los-1); padding: 0; min-width: 0; min-height: 46px; white-space: normal; overflow-wrap: anywhere; border: none; background: transparent; border-radius: var(--los-r-sm); line-height: 1.55; font-weight: 500; }
+.los-domain-note-meta { color: var(--los-ink-soft); font-size: 12px; font-weight: 400; }
+.los-root .los-domain-row-open { flex-shrink: 0; min-height: 36px; padding: var(--los-1) var(--los-2); color: var(--los-info-ink, var(--los-accent)); }
+.los-domain-inspector { min-width: 0; padding: var(--los-5); display: flex; flex-direction: column; gap: var(--los-3); border-radius: var(--los-r-md); background: var(--los-surface); }
+.los-domain-inspector-kicker { color: var(--los-ink-faint); font-size: 13px; }
+.los-root .los-domain-inspector h3 { font-size: 17px; line-height: 1.45; margin: 0; overflow-wrap: anywhere; }
+.los-root .los-domain-inspector h4 { font-size: 14px; margin: 0 0 var(--los-2); }
+.los-domain-note-concepts { padding-top: var(--los-4); border-top: 1px solid var(--los-rule); }
+.los-root .los-domain-open-concept,
+.los-root .los-domain-note-source { display: block; width: 100%; text-align: left; min-height: 40px; white-space: normal; overflow-wrap: anywhere; }
+.los-domain-note-provenance { margin-top: var(--los-2); }
+.los-domain-disclosure-summary { min-height: 36px; padding: var(--los-2) 0; color: var(--los-ink-soft); font-size: 13px; font-weight: 500; cursor: pointer; overflow-wrap: anywhere; }
+.los-domain-disclosure-body { display: flex; flex-direction: column; gap: var(--los-2); padding-top: var(--los-2); }
+.los-root .los-domain-disclosure-body p { margin: 0; font-size: 13px; color: var(--los-ink-soft); overflow-wrap: anywhere; }
+.los-domain-shelf-choices { display: flex; flex-wrap: wrap; gap: var(--los-2); }
+.los-root .los-domain-shelf-choice { display: flex; flex-direction: column; text-align: left; align-items: flex-start; gap: var(--los-1); padding: var(--los-3); min-height: 52px; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.los-root .los-domain-shelf-choice.is-active { background: var(--los-selected); border-color: var(--los-line-strong); }
+.los-domain-shelf { display: flex; flex-direction: column; gap: var(--los-3); min-width: 0; }
+.los-root .los-domain-shelf > h3 { margin: 0; font-size: 17px; overflow-wrap: anywhere; }
+.los-domain-entry-row { min-width: 0; padding: var(--los-4); border-radius: var(--los-r-sm); background: var(--los-surface); }
+.los-root .los-domain-entry-title,
+.los-root .los-domain-source-unavailable { margin: 0 0 var(--los-2); font-size: 14px; overflow-wrap: anywhere; }
+.los-domain-entry-actions { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--los-3); }
+.los-domain-entry-group { color: var(--los-ink-faint); font-size: 12px; }
+.los-domain-entry-rationale { flex: 1 1 120px; min-width: 0; }
+.los-domain-entry-rationale[open] { flex-basis: 100%; order: 2; }
+.los-root .los-domain-open-source { min-height: 36px; }
 .los-domain-source-unavailable,
 .los-domain-empty { color: var(--los-ink-soft); font-size: 13px; }
-.los-domain-source-domains { margin-top: var(--los-5); padding-top: var(--los-5); border-top: 1px solid var(--los-rule); }
-.los-root .los-domain-source-domains > h2 { margin: 0 0 var(--los-2); font-size: 20px; }
-.los-domain-source-domains > p { margin: 0 0 var(--los-3); color: var(--los-ink-soft); }
+.los-domain-list-footer { display: flex; flex-wrap: wrap; gap: var(--los-3); align-items: center; color: var(--los-ink-faint); font-size: 12px; padding-top: var(--los-2); }
+.los-domain-tools { margin-top: var(--los-5); border-top: 1px solid var(--los-rule); padding-top: var(--los-3); }
+.los-domain-source-domains > p { margin: 0 0 var(--los-3); color: var(--los-ink-soft); font-size: 13px; }
+.los-root .los-domain-source-domains > h2 { margin: 0 0 var(--los-2); font-size: 18px; }
 .los-domain-source-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(240px, 100%), 1fr)); gap: var(--los-2); margin: var(--los-3) 0; }
 .los-root .los-domain-source-group,
-.los-root .los-domain-unfiled { min-height: 48px; padding: var(--los-3); background: var(--los-surface); border-color: var(--los-rule); }
-/* Search and variant controls wrap within a split pane. */
+.los-root .los-domain-unfiled { min-height: 44px; padding: var(--los-3); background: var(--los-surface); border-color: var(--los-rule); white-space: normal; }
+.los-domain-recorded-evidence { overflow-wrap: anywhere; font-size: 13px; }
+/* Search and shared variant controls wrap within a split pane. */
 .los-ability-toolbar-right { flex: 1 1 320px; max-width: 100%; }
 .los-root .los-ability-search { flex: 1 1 220px; max-width: 100%; }
 .los-root .los-context-stamp { max-width: 100%; }
+@container los-view (max-width: 980px) {
+  .los-domain-note-workspace.has-selection { grid-template-columns: minmax(0, 1fr); }
+}
 @container los-view (max-width: 780px) {
   .los-domain-layout { grid-template-columns: minmax(0, 1fr); }
-  .los-domain-rail { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); }
+  .los-domain-rail { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); }
+  .los-domain-rail-label { grid-column: 1 / -1; }
+  .los-domain-about { max-width: 65%; }
 }
 @container los-view (max-width: 560px) {
   .los-root .los-atlas-variant-switch { display: flex; flex-wrap: wrap; }
   .los-root .los-atlas-variant-switch > button { flex: 1 1 auto; }
-  .los-domain-detail { padding: var(--los-3); }
+  .los-domain-inspector { padding: var(--los-3); }
+  .los-domain-note-row { padding: var(--los-3); gap: var(--los-2); }
+  .los-domain-header { flex-wrap: wrap; }
+  .los-domain-about { max-width: 100%; }
 }

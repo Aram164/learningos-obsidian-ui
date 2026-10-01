@@ -2,6 +2,7 @@ import type { App } from 'obsidian';
 import type { AppNavigator } from '../../app/navigator';
 import type { AppSurface } from '../../app/surface';
 import type { AbilityLayoutV1 } from '../../contracts/route-v1';
+import type { AbilityCamera } from './viewport';
 
 /**
  * The narrow host the Ability map needs.
@@ -49,6 +50,23 @@ export interface AbilityHost {
   query: string;
   /** The bridge whose inspector is open. Working state. */
   bridgeKey: string | null;
+  readonly attention: AbilityAttention;
+  ownInteraction(cleanup: () => void): void;
   go(target: Partial<AbilityRouteState>): void;
   render(): void;
+}
+
+/** Presentation only: excluded from persisted route state and learner records. */
+export interface AbilityAttention {
+  camera: AbilityCamera | null;
+  folded: Set<string>;
+  retained: Set<string>;
+  bridgesVisible: boolean;
+  inspector: boolean;
+  routes: boolean;
+  snapshot: string | null;
+  ids: Set<string>;
+  fitRequest: 'all' | 'selection' | 'group' | 'reveal' | null;
+  fitGroup: string | null;
+  lastActivation: { id: string; at: number } | null;
 }

@@ -724,3 +724,117 @@
   .los-ability-toolbar-right { width: 100%; }
   .los-root .los-ability-search { flex: 1; min-width: 120px; }
 }
+
+/* Compact, view-owned Atlas plane. All geometry shares the camera transform. */
+.los-ability-plane,
+.los-ability-plane.has-inspector {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.los-ability-plane.has-inspector { grid-template-columns: minmax(0, 1fr) minmax(250px, 320px); }
+.los-ability-graph {
+  position: relative;
+  overflow: hidden;
+  padding: var(--los-2);
+  background: var(--los-paper-2);
+}
+.los-ability-camera-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--los-1);
+  padding: var(--los-1) var(--los-2) var(--los-2);
+}
+.los-ability-zoom-percentage { min-width: 3.5em; color: var(--los-ink-soft); font-size: 12px; }
+.los-ability-scope { padding-inline: var(--los-1); }
+.los-ability-search-label { display: flex; flex: 1 1 220px; min-width: 0; max-width: 100%; }
+.los-ability-viewport {
+  position: relative;
+  width: 100%;
+  height: clamp(360px, 62vh, 620px);
+  min-width: 0;
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  border-radius: var(--los-r-sm);
+  outline-offset: -3px;
+}
+.los-ability-viewport:focus-visible { outline: 2px solid var(--los-accent); }
+.los-ability-viewport.is-panning { cursor: grabbing; }
+.los-ability-canvas { transform-origin: 0 0; will-change: transform; }
+.los-ability-region-head { position: absolute; display: flex; align-items: center; gap: var(--los-3); }
+.los-root .los-ability-region-head h2 { margin: 0; font-size: 16px !important; }
+.los-ability-region-head .los-btn { min-height: 24px; padding: 2px 6px; font-size: 11px; }
+.los-root .los-ability-node {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: var(--los-r-sm);
+  box-shadow: none;
+  background: var(--los-paper-3);
+  font-size: 13px;
+  cursor: pointer;
+}
+.los-ability-node-title { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 500; }
+.los-root .los-ability-node.los-ability-state-supported,
+.los-root .los-ability-node.los-ability-state-nearby,
+.los-root .los-ability-node.los-ability-state-unmapped { box-shadow: none; }
+.los-root .los-ability-node.is-selected { border-width: 2px; border-color: var(--los-accent); background: var(--los-selected); }
+.los-root .los-ability-node.is-neighbour { border-width: 2px; border-color: var(--los-info); background: var(--los-info-wash); }
+.los-root .los-ability-node.is-bridged { border-width: 2px; border-style: dashed; border-color: var(--los-info); }
+.los-root .los-ability-node.is-muted { background: var(--los-paper-2); color: var(--los-ink-soft); }
+.los-root .los-ability-endcap {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  min-height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--los-r-pill);
+  color: var(--los-ink-soft);
+  background: transparent;
+  box-shadow: none;
+  cursor: pointer;
+}
+.los-ability-endcap::before { content: ''; position: absolute; inset: 8px; border-radius: var(--los-r-pill); background: var(--los-paper-3); z-index: -1; }
+.los-root .los-ability-endcap:hover,
+.los-root .los-ability-endcap:focus-visible { background: var(--los-selected); }
+.los-root .los-ability-endcap.is-folded { border: 1px dashed var(--los-rule-strong); }
+.los-ability-fold-count { position: absolute; font-size: 11px; color: var(--los-ink-soft); }
+.los-ability-edge { stroke-width: 1.5; stroke: var(--los-ink-faint); }
+.los-ability-arrow { stroke: var(--los-ink-faint); }
+.los-ability-edge.is-incident,
+.los-ability-arrow.is-incident { stroke: var(--los-info); stroke-width: 2.5; }
+.los-ability-edge.is-alternative { stroke-dasharray: 5 3; }
+.los-ability-selection-dock { display: flex; align-items: center; flex-wrap: wrap; gap: var(--los-2); padding: var(--los-3); margin-top: var(--los-2); border: 1px solid var(--los-rule); border-radius: var(--los-r-md); background: var(--los-surface-raised); }
+.los-ability-selection-dock > div { flex: 1 1 240px; min-width: 0; }
+.los-ability-selection-dock strong { overflow-wrap: anywhere; }
+.los-ability-outline-disclosure { margin-top: var(--los-2); padding-inline: var(--los-2); font-size: 12px; color: var(--los-ink-soft); }
+.los-ability-edge-outline { padding-left: var(--los-4); }
+.los-ability-graph-foot { margin-top: var(--los-2); padding: var(--los-2); }
+.los-ability-inspector { max-height: min(80vh, 900px); overflow: auto; }
+@container los-view (max-width: 980px) {
+  .los-ability-plane.has-inspector { grid-template-columns: minmax(0, 1fr); }
+  .los-ability-inspector { max-height: none; }
+}
+@container los-view (max-width: 600px) {
+  .los-ability-camera-controls { padding-inline: 0; }
+  .los-ability-viewport { height: 440px; }
+  .los-ability-selection-dock { padding: var(--los-2); }
+}
+/* Distant views keep spatial shapes; readable group orientation stays outside the camera. */
+.los-ability-overview-nav { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr)); gap: var(--los-2); max-height: 180px; overflow: auto; padding: var(--los-2); }
+.los-ability-overview-nav[hidden] { display: none; }
+.los-ability-overview-hint { grid-column: 1 / -1; }
+.los-root .los-ability-overview-group { display: flex; flex-direction: column; align-items: flex-start; gap: var(--los-1); white-space: normal; text-align: left; overflow-wrap: anywhere; padding: var(--los-2); }
+.los-ability-viewport.is-distant .los-ability-node-title,
+.los-ability-viewport.is-distant .los-ability-region-head,
+.los-ability-viewport.is-distant .los-ability-column-head,
+.los-ability-viewport.is-distant .los-ability-fold-count,
+.los-ability-viewport.is-distant .los-ability-bridge-label { visibility: hidden; }

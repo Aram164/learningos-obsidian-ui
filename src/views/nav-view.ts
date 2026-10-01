@@ -43,7 +43,7 @@ type NavPlugin = Pick<
  * Eight permanent destinations, nothing else. Areas (Bachelor's / Skills /
  * Thesis) are sub-areas of Learn; the decision queues (Shelving / Garden /
  * Inbox / ability drafts) are Review, which carries its live count; the Atlas
- * opens on the ability map (Figma v4, 2026-09-23). Boundaries, diagnostics
+ * opens on Concepts (Figma concept-first workspace, 2026-10-01). Boundaries, diagnostics
  * and maintenance live under More. The sidebar's job is to make the next step
  * obvious, not to prove the system is large.
  */
@@ -114,7 +114,7 @@ export class NavView extends ItemView {
     this.nav(primary, 'graduation-cap', 'Learn', 'learn', () => this.plugin.nav.openLearn());
     this.nav(primary, 'briefcase-business', 'Projects', 'projects', () => this.plugin.nav.openProjects());
     this.nav(primary, 'library', 'Library', 'library', () => this.plugin.nav.openLibrary());
-    this.nav(primary, 'map', 'Atlas', 'abilities', () => this.plugin.nav.openAbilities());
+    this.nav(primary, 'map', 'Atlas', 'abilities', () => this.plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' }));
     this.nav(primary, 'sprout', 'Garden', 'garden', () => this.plugin.nav.openGarden());
     this.nav(primary, 'check-check', 'Review', 'review', () => this.plugin.nav.openReview(),
       this.reviewCount());
@@ -129,7 +129,6 @@ export class NavView extends ItemView {
     const secondary = more.createDiv({ cls: 'los-nav-secondary' });
     enableButtonGroupKeyboardNavigation(secondary, 'vertical');
     this.nav(secondary, 'plus', 'Capture', 'capture', () => this.plugin.nav.openCapture());
-    this.nav(secondary, 'network', 'Concept atlas', 'atlas', () => this.plugin.nav.openAtlas());
     this.nav(secondary, 'shield', 'Future Master’s Planning', 'masters',
       () => this.plugin.nav.openBoundary('program-masters-planning'));
     this.nav(secondary, 'activity', 'Diagnostics', 'diagnostics', () => this.plugin.nav.openDiagnostics());

@@ -25,6 +25,7 @@ import {
   questionsForRelation,
   type AtlasQuestion,
 } from './questions';
+import { conceptDisclosure } from './disclosure';
 import { renderRemoveConnection } from './relation-editor';
 import {
   contextSentence,
@@ -544,71 +545,79 @@ function renderSummary(
   });
 }
 
+function noteMetadata(note: ProjectionRecord): string {
+  const labels: Record<string, string> = {
+    reference: 'Reference', 'exercise-bank': 'Exercise bank', 'mock-exam': 'Mock exam',
+    question: 'Question', synthesis: 'Synthesis', derivation: 'Derivation',
+    crosswalk: 'Crosswalk', implementation: 'Implementation',
+    user: 'User authored', mixed: 'Mixed authorship', 'operator-drafted': 'Operator draft',
+  };
+  return [projectedString(note.role), projectedString(note.authorship)]
+    .filter((value): value is string => Boolean(value))
+    .map((value) => labels[value] ?? value).join(' · ');
+}
+
+function renderLinkedNote(parent: HTMLElement, host: AtlasHost, note: ProjectionRecord): void {
+  const row = parent.createEl('button', {
+    cls: 'los-atlas-record los-atlas-linked-note is-clickable', attr: { type: 'button' },
+  });
+  row.setAttribute('data-note-id', projectedString(note.id) ?? '');
+  const copy = row.createDiv({ cls: 'los-atlas-record-copy' });
+  copy.createDiv({ cls: 'los-atlas-record-title', text: projectedLabel(note) });
+  copy.createDiv({ cls: 'los-micro', text: noteMetadata(note) });
+  row.createSpan({ cls: 'los-atlas-record-open', text: 'Open' });
+  row.addEventListener('click', () => host.plugin.nav.openRecord(note));
+}
+
 export function renderInspector(
-  parent: HTMLElement,
-  host: AtlasHost,
-  graph: AtlasGraph,
-  view: AtlasNeighbourhood,
+  parent: HTMLElement, host: AtlasHost, graph: AtlasGraph, view: AtlasNeighbourhood,
 ): void {
   const panel = parent.createEl('aside', { cls: 'los-atlas-inspector' });
-  const headingId = 'los-atlas-inspector-heading';
-  panel.setAttrs({ role: 'complementary', 'aria-labelledby': headingId });
-
-  panel.createDiv({ cls: 'los-micro los-atlas-kicker', text: 'Selected concept' });
-  panel.createEl('h2', { text: view.focus.label }).setAttribute('id', headingId);
-
-  const aliases = aliasesOf(view.focus.record);
-  if (aliases.length) {
-    panel.createDiv({
-      cls: 'los-micro',
-      text: `Also called ${aliases.join(' · ')}`,
-    });
-  }
-
-  filterTabs<AtlasInspectorTab>(
-    panel,
-    'What to inspect about this concept',
-    TABS,
-    host.tab,
-    (value: AtlasInspectorTab) => {
-      host.tab = value;
-      host.render();
-    },
-  );
-
-  const body = panel.createDiv({ cls: 'los-atlas-inspector-body' });
-  enableButtonGroupKeyboardNavigation(body, 'vertical');
-
+  panel.setAttrs({ role: 'complementary', 'aria-label': `Notes and details for ${view.focus.label}` });
   const selectedEdge = host.edgeId ? graph.relationByIdentity.get(host.edgeId) : null;
   if (selectedEdge) {
-    body.createDiv({ cls: 'los-micro', text: 'Selected connection' });
-    connectionRow(body, host, graph, selectedEdge, selectedEdge.from);
-    renderQuestionNote(
-      body,
-      host,
+    panel.createDiv({ cls: 'los-micro', text: 'Selected connection' });
+    connectionRow(panel, host, graph, selectedEdge, selectedEdge.from);
+    renderQuestionNote(conceptDisclosure(panel, host, `${selectedEdge.id}:questions`,
+      'Questions about this connection'), host,
       questionsForRelation(collectQuestions(host.plugin.store, graph), selectedEdge.id),
-      'No question recorded against this connection.',
-    );
-    // Editing and removing live with the selected relation, so the thing being
-    // changed is the thing on screen (ADR-017 decision 1).
-    renderRemoveConnection(body, host, graph, selectedEdge);
-    button(body, 'Close connection', () => { host.edgeId = null; host.render(); }, 'quiet');
+      'No question recorded against this connection.');
+    renderRemoveConnection(panel, host, graph, selectedEdge);
+    button(panel, 'Close connection', () => { host.edgeId = null; host.tab = 'summary'; host.render(); }, 'quiet');
+    return;
   }
-
+  const notes = buildConceptContext(host.plugin.store, view.focus.id).notes;
+  panel.createEl('h3', { text: `Linked notes · ${notes.length}` });
+  const list = panel.createDiv({ cls: 'los-atlas-records los-atlas-linked-notes' });
+  list.setAttribute('aria-label', 'Linked notes');
+  enableButtonGroupKeyboardNavigation(list, 'vertical');
+  for (const note of notes.slice(0, 2)) renderLinkedNote(list, host, note);
+  if (!notes.length) list.createDiv({ cls: 'los-micro', text: 'No notes explicitly linked to this concept.' });
+  if (notes.length > 2) {
+    const all = conceptDisclosure(panel, host, `${view.focus.id}:notes`, `Show all ${notes.length} linked notes`);
+    all.createDiv({ cls: 'los-micro', text: `${notes.length - 2} more notes; the first two remain above.` });
+    for (const note of notes.slice(2)) renderLinkedNote(all, host, note);
+  }
+  const actions = panel.createDiv({ cls: 'los-actions los-atlas-inspector-actions' });
+  const openDetails = (tab: AtlasInspectorTab) => {
+    host.tab = tab;
+    host.concepts.disclosures.set(`${view.focus.id}:details`, true);
+    host.render();
+  };
+  button(actions, 'Where it is taught', () => openDetails('evidence'), 'quiet');
+  button(actions, 'Questions', () => openDetails('summary'), 'quiet');
+  const details = conceptDisclosure(panel, host, `${view.focus.id}:details`, 'Concept details');
+  const aliases = aliasesOf(view.focus.record);
+  if (aliases.length) details.createDiv({ cls: 'los-micro', text: `Also called ${aliases.join(' · ')}` });
+  filterTabs<AtlasInspectorTab>(details, 'What to inspect about this concept', TABS, host.tab,
+    (value: AtlasInspectorTab) => { host.tab = value; host.render(); });
+  const detailBody = details.createDiv({ cls: 'los-atlas-inspector-body' });
+  enableButtonGroupKeyboardNavigation(detailBody, 'vertical');
   switch (host.tab) {
-    case 'connections':
-      renderConnections(body, host, graph, view.focus.id);
-      break;
-    case 'evidence':
-      renderEvidence(body, host, graph, view.focus.id);
-      break;
-    case 'sources':
-      renderSources(body, host, graph, view.focus.id);
-      break;
-    case 'summary':
-    default:
-      renderSummary(body, host, graph, view);
-      break;
+    case 'connections': renderConnections(detailBody, host, graph, view.focus.id); break;
+    case 'evidence': renderEvidence(detailBody, host, graph, view.focus.id); break;
+    case 'sources': renderSources(detailBody, host, graph, view.focus.id); break;
+    default: renderSummary(detailBody, host, graph, view); break;
   }
 }
 

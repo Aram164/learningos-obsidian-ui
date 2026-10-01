@@ -21,6 +21,8 @@ import {
 } from './narrative';
 import type { AtlasHost } from './ports';
 import { mountEdges } from './edge-layer';
+import { conceptDisclosure } from './disclosure';
+import { conceptPlaneSlice } from './presentation';
 
 /**
  * The focused graph and its outline — two renderings of one neighbourhood.
@@ -40,9 +42,9 @@ import { mountEdges } from './edge-layer';
  */
 
 const COLUMN_HEADINGS: Readonly<Record<string, string>> = {
-  prerequisite: 'Prerequisites',
+  prerequisite: 'Before this',
   focus: 'Selected concept',
-  dependent: 'Dependents',
+  dependent: 'Builds on this',
   related: 'Semantic neighbours',
 };
 
@@ -103,8 +105,12 @@ function renderNode(
   });
   control.createDiv({
     cls: 'los-micro los-atlas-node-trail',
-    text: nodeAttachment(graph, view, node),
+    text: node.direction === 'focus' ? 'Current focus'
+      : node.direction === 'prerequisite' ? 'Prerequisite'
+      : node.direction === 'dependent' ? 'Dependent' : 'Related idea',
   });
+  control.createSpan({ cls: 'los-sr-only', text: nodeAttachment(graph, view, node) });
+  control.setAttribute('title', nodeAttachment(graph, view, node));
 
   if (node.concept.record === null) {
     control.createDiv({
@@ -188,6 +194,7 @@ export function renderFocusedGraph(
   view: AtlasNeighbourhood,
 ): void {
   const canvas = parent.createDiv({ cls: 'los-atlas-canvas' });
+  const slice = conceptPlaneSlice(view);
   const lanes = canvas.createDiv({ cls: 'los-atlas-lanes' });
   lanes.setAttrs({
     role: 'group',
@@ -195,7 +202,7 @@ export function renderFocusedGraph(
   });
   enableButtonGroupKeyboardNavigation(lanes, 'both');
 
-  const strictNodes = view.nodes.filter((node) => node.direction !== 'related');
+  const strictNodes = slice.nodes.filter((node) => node.direction !== 'related');
   const columns = [...new Set(strictNodes.map((node) => node.column))]
     .sort((left, right) => left - right);
 
@@ -250,7 +257,7 @@ export function renderFocusedGraph(
     renderRemainder(lane, host, view, view.beyond.dependents, 'dependent');
   }
 
-  const related = view.nodes.filter((node) => node.direction === 'related');
+  const related = slice.nodes.filter((node) => node.direction === 'related');
 
   if (related.length || view.semanticEdges.length || view.beyond.semantic.length) {
     const band = canvas.createDiv({ cls: 'los-atlas-semantic' });
@@ -285,11 +292,23 @@ export function renderFocusedGraph(
     });
   }
 
+  if (slice.omitted.length) {
+    canvas.createDiv({ cls: 'los-micro los-atlas-picture-scope',
+      text: `${slice.nodes.length} of ${view.nodes.length} concepts drawn at depth ${view.depth} · ${slice.omitted.length} in the named remainder` });
+    const remainder = conceptDisclosure(canvas, host, `${view.focus.id}:crowded-remainder`,
+      `Show ${slice.omitted.length} more concepts at this depth`, 'los-atlas-crowded-remainder');
+    for (const node of slice.omitted) {
+      const row = button(remainder, `${node.concept.label} · ${COLUMN_HEADINGS[node.direction]}`,
+        () => host.go({ concept: node.concept.id }), 'row');
+      row.setAttribute('data-omitted-concept', node.concept.id);
+    }
+    remainder.createDiv({ cls: 'los-micro', text: 'Every connection at this depth remains inspectable in Text outline.' });
+  }
   mountEdges(canvas, host, graph, [
-    ...view.strictEdges,
-    ...(host.state.lens === 'semantic' ? view.semanticEdges : []),
+    ...slice.strictEdges,
+    ...(host.state.lens === 'semantic' ? slice.semanticEdges : []),
   ]);
-  renderLegend(canvas);
+  renderLegend(conceptDisclosure(canvas, host, 'graph-legend', 'Map legend'));
 }
 
 /**
@@ -377,7 +396,7 @@ export function renderOutline(
   });
   head.createDiv({
     cls: 'los-micro',
-    text: 'The same data as the graph, not a summary of it.',
+    text: 'Complete authored relations at this depth, including concepts in the named picture remainder.',
   });
 
   const prerequisites = view.strictEdges;

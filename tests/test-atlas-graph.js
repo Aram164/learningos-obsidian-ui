@@ -676,4 +676,45 @@ assert.deepEqual(bridges(empty), []);
   );
 }
 
+/* A high-degree presentation remains bounded without changing authored scope. */
+const { conceptPlaneSlice } = load('src/features/atlas/presentation.ts');
+const highDegreeRecords = [concept('concept-centre', 'Central concept'),
+  ...Array.from({ length: 70 }, (_, i) => concept(`concept-many-${i}`, `Neighbour ${String(i).padStart(2, '0')}`))];
+const highDegreeGraph = buildAtlasGraph(storeOf({ records: highDegreeRecords,
+  relations: highDegreeRecords.slice(1).map((row) => relation('concept-centre', 'requires', row.id)) }));
+const highDegreeView = neighbourhood(highDegreeGraph, 'concept-centre');
+const slice = conceptPlaneSlice(highDegreeView);
+assert.equal(slice.nodes.length, 5);
+assert.equal(slice.omitted.length, 66);
+assert.equal(slice.strictEdges.length, 4);
+assert.equal(highDegreeView.strictEdges.length, 70, 'presentation never shortens the authored text scope');
+assert.equal(new Set([...slice.nodes, ...slice.omitted].map((node) => node.concept.id)).size, 71);
+assert.ok(slice.strictEdges.every((edge) => slice.nodes.some((node) => node.concept.id === edge.from)
+  && slice.nodes.some((node) => node.concept.id === edge.to)));
+assert.deepEqual(conceptPlaneSlice(highDegreeView), slice, 'repeat layout uses identical identities');
+const crowdedBranches = [concept('concept-focus', 'Focus'),
+  ...Array.from({ length: 5 }, (_, i) => concept(`concept-parent-${i}`, `Parent ${i}`)),
+  ...Array.from({ length: 5 }, (_, i) => concept(`concept-ancestor-${i}`, `Ancestor ${4 - i}`))];
+const crowdedBranchGraph = buildAtlasGraph(storeOf({ records: crowdedBranches,
+  relations: Array.from({ length: 5 }, (_, i) => [
+    relation('concept-focus', 'requires', `concept-parent-${i}`),
+    relation(`concept-parent-${i}`, 'requires', `concept-ancestor-${i}`),
+  ]).flat() }));
+const branchSlice = conceptPlaneSlice(neighbourhood(crowdedBranchGraph, 'concept-focus', { depth: 2 }), 1);
+assert.deepEqual(branchSlice.nodes.map(node => node.concept.id),
+  ['concept-ancestor-0', 'concept-parent-0', 'concept-focus'],
+  'a bound keeps the actual visible path, even when distant labels sort before their omitted connector');
+assert.equal(branchSlice.strictEdges.length, 2);
+assert.equal(branchSlice.omitted.length, 8);
+const { linkedConceptNotes, buildConceptContext } = load('src/features/atlas/context.ts');
+const linkStore = {
+  related: () => [{ rec: { id: 'note-b', type: 'note', title: 'B note' } },
+    { rec: { id: 'source-a', type: 'source', title: 'Related source' } },
+    { rec: { id: 'note-a', type: 'note', title: 'A note' } }],
+  sources: () => [],
+};
+assert.deepEqual(linkedConceptNotes(linkStore, 'concept-centre').map((note) => note.id), ['note-a', 'note-b']);
+assert.deepEqual(linkedConceptNotes(linkStore, 'concept-centre'), buildConceptContext(linkStore, 'concept-centre').notes);
+assert.deepEqual(linkedConceptNotes({ related: () => [] }, 'concept-empty'), []);
+
 console.log('Atlas graph OK: layers, direction, provenance, remainders, cycles, and determinism.');

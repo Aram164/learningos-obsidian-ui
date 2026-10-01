@@ -6,16 +6,14 @@ import {
   buildAtlasGraph,
   bridges,
   conceptOf,
-  diagnostics,
   neighbourhood,
-  summarize,
   type AtlasGraph,
 } from './graph';
 import { renderFocusedGraph, renderOutline, renderPath } from './focused-graph';
 import { renderInspector } from './inspector';
 import { renderBridges, renderDiagnostics } from './lenses';
 import { renderDomains, renderAtlasVariants } from './domains';
-import { focusQuestion, moduleTrail, plural, subgraphSummary } from './narrative';
+import { moduleTrail, plural, subgraphSummary } from './narrative';
 import {
   collectQuestions,
   openQuestions,
@@ -28,6 +26,9 @@ import {
   renderRelationEditor,
 } from './relation-editor';
 import type { AtlasHost } from './ports';
+import { linkedConceptNotes } from './context';
+import { conceptDisclosure } from './disclosure';
+import { compareStrings } from '../../sorting';
 
 /**
  * The Atlas shell (ADR-016).
@@ -46,9 +47,9 @@ import type { AtlasHost } from './ports';
  */
 
 const CONCEPT_LENSES: ReadonlyArray<readonly [AtlasLensV1, string]> = [
-  ['prerequisites', 'Prerequisites'],
-  ['path', 'Path to concept'],
-  ['semantic', 'Semantic context'],
+  ['prerequisites', 'Direct connections'],
+  ['semantic', 'Related ideas'],
+  ['path', 'Learning path'],
 ];
 
 const RECENT_LIMIT = 8;
@@ -76,17 +77,15 @@ function renderSearch(
 ): HTMLInputElement {
   const field = parent.createDiv({ cls: 'los-atlas-search' });
   const label = field.createEl('label', {
-    cls: 'los-micro',
-    text: 'Search concepts',
+    cls: 'los-atlas-search-label',
   });
-  label.setAttribute('for', 'los-atlas-search-input');
+  label.createSpan({ cls: 'los-sr-only', text: 'Find a concept' });
 
-  const input = field.createEl('input', {
+  const input = label.createEl('input', {
     cls: 'los-atlas-search-input',
     attr: {
       type: 'search',
-      id: 'los-atlas-search-input',
-      placeholder: 'Search concepts, e.g. logistic regression',
+      placeholder: 'Find a concept',
       value: host.query,
     },
   });
@@ -117,13 +116,15 @@ function renderModuleFilter(
   const publishing = graph.modules.filter((module) => module.conceptCount > 0);
   if (!publishing.length) return;
 
-  const wrap = parent.createDiv({ cls: 'los-atlas-modules' });
-  wrap.createDiv({ cls: 'los-micro', text: 'Modules' });
-
+  const wrap = conceptDisclosure(parent, host, 'module-filter',
+    host.state.module
+      ? graph.modules.find((module) => module.id === host.state.module)?.shortLabel ?? 'Selected module'
+      : 'All modules', 'los-atlas-module-filter');
   const row = wrap.createDiv({ cls: 'los-atlas-module-chips' });
   row.setAttrs({ role: 'group', 'aria-label': 'Filter by module' });
   enableButtonGroupKeyboardNavigation(row, 'horizontal');
-
+  button(row, 'All modules', () => host.go({ module: null }), 'quiet')
+    .setAttribute('aria-pressed', String(host.state.module === null));
   for (const module of publishing) {
     const active = host.state.module === module.id;
     const chip = row.createEl('button', {
@@ -132,22 +133,13 @@ function renderModuleFilter(
       text: `${module.shortLabel} ${module.conceptCount}`,
     });
     chip.toggleClass('is-active', active);
-    chip.toggleClass('is-actionable', module.actionable);
-    chip.setAttrs({
-      'aria-pressed': String(active),
-      'aria-label': `${module.label} — ${plural(module.conceptCount, 'concept')}`,
-    });
-    chip.addEventListener('click', () => host.go({
-      module: active ? null : module.id,
-    }));
+    chip.setAttrs({ 'aria-pressed': String(active),
+      'aria-label': `${module.label} — ${plural(module.conceptCount, 'concept')}` });
+    chip.addEventListener('click', () => host.go({ module: active ? null : module.id }));
   }
+  wrap.createDiv({ cls: 'los-micro',
+    text: 'Filters concept lists. Authored graph connections stay complete across modules.' });
 
-  wrap.createDiv({
-    cls: 'los-micro',
-    text: host.state.module
-      ? 'Marks concepts this module evidences. It filters lists; it never removes a relation from the graph.'
-      : 'A module says where a concept is taught. It is never an axis of the graph.',
-  });
 }
 
 function renderDepth(
@@ -183,63 +175,23 @@ function renderDepth(
   });
 }
 
-function renderLensBar(
-  parent: HTMLElement,
-  host: AtlasHost,
-  graph: AtlasGraph,
-): void {
-  const bar = parent.createDiv({ cls: 'los-atlas-lensbar' });
-
-  const concept = bar.createDiv({ cls: 'los-atlas-lensgroup' });
-  concept.createDiv({ cls: 'los-micro', text: 'Lens' });
-  filterTabs<AtlasLensV1>(
-    concept,
-    'Which question to ask about the selected concept',
-    CONCEPT_LENSES,
-    isCorpusLens(host.state.lens) ? 'prerequisites' : host.state.lens,
-    (value: AtlasLensV1) => host.go({ lens: value }),
-  );
-
-  const corpus = bar.createDiv({ cls: 'los-atlas-lensgroup' });
-  corpus.createDiv({ cls: 'los-micro', text: 'Corpus' });
-
-  const group = corpus.createDiv({ cls: 'los-atlas-corpus-lenses' });
-  group.setAttrs({ role: 'group', 'aria-label': 'Corpus lenses' });
-  enableButtonGroupKeyboardNavigation(group, 'horizontal');
-
-  for (const [lens, label, count] of [
-    ['bridges', 'Cross-module bridges', bridges(graph).length],
-    ['diagnostics', 'Diagnostics', diagnostics(graph).filter((entry) => entry.count > 0).length],
-  ] as const) {
-    const active = host.state.lens === lens;
-    const control = button(
-      group,
-      `${label} ${count}`,
-      () => host.go({ lens: active ? 'prerequisites' : lens }),
-      'quiet',
-    );
-    control.addClass('los-atlas-corpus-lens');
-    control.toggleClass('is-active', active);
-    control.setAttrs({ 'aria-pressed': String(active) });
-  }
-
-  corpus.createDiv({
-    cls: 'los-micro',
-    text: 'Same route, same screen — not a separate view.',
-  });
+function renderLensBar(parent: HTMLElement, host: AtlasHost): void {
+  filterTabs<AtlasLensV1>(parent, 'Which question to ask about the selected concept',
+    CONCEPT_LENSES, host.state.lens,
+    (value: AtlasLensV1) => host.go({ lens: value }));
 }
 
-function renderQuestion(
-  parent: HTMLElement,
-  host: AtlasHost,
-  label: string | null,
-): void {
-  const band = parent.createDiv({ cls: 'los-atlas-question' });
-  band.createDiv({ cls: 'los-micro los-atlas-kicker', text: 'This view answers' });
-  band.createEl('p', {
-    cls: 'los-atlas-question-text',
-    text: focusQuestion(host.state.lens, label),
-  });
+function renderAtlasTools(parent: HTMLElement, host: AtlasHost, graph: AtlasGraph): void {
+  const actions = parent.createDiv({ cls: 'los-actions los-atlas-secondary-actions' });
+  button(actions, `Across modules · ${bridges(graph).length}`,
+    () => host.go({ lens: 'bridges' }), 'quiet');
+  const tools = conceptDisclosure(actions, host, 'atlas-tools', 'Atlas tools');
+  button(tools, 'Diagnostics', () => host.go({ lens: 'diagnostics' }), 'quiet');
+  button(tools, 'Open generated domain map',
+    () => host.plugin.openVaultPath('generated/domain-atlas.md'), 'quiet');
+  button(tools, 'Source folders', () => host.plugin.nav.openLibraryHome(), 'quiet');
+  renderOpenQuestions(conceptDisclosure(tools, host, 'open-questions', 'My open questions'), host, graph);
+  if (!host.state.concept) renderConnectAction(tools, host, null);
 }
 
 /**
@@ -256,103 +208,70 @@ function renderEntry(
   searchOnly = false,
 ): void {
   const entry = parent.createDiv({ cls: 'los-atlas-entry' });
-  const summary = summarize(graph);
-
-  if (!searchOnly) entry.createDiv({
-    cls: 'los-atlas-lens-lead',
-    text: `${plural(summary.concepts, 'concept')} · ${plural(summary.relations, 'authored relation')} · ${summary.strictRelations} of them order learning. Choose one concept to focus.`,
-  });
-
   const query = host.query.trim();
+  const browsing = host.concepts.browseAll;
 
-  if (query && searchOnly) {
-    const results = host.plugin.store
-      .search(query, ['concept'])
-      .filter((record) => {
-        const id = projectedString(record.id);
-        if (!id) return false;
-        if (!host.state.module) return true;
-        return (graph.modulesByConcept.get(id) ?? []).includes(host.state.module);
-      });
-
+  if (query || browsing) {
+    const candidates = query
+      ? host.plugin.store.search(query, ['concept'])
+      : graph.concepts.flatMap((concept) => concept.record ? [concept.record] : []);
+    const results = candidates.filter((record) => {
+      const id = projectedString(record.id);
+      return Boolean(id) && (!host.state.module
+        || (graph.modulesByConcept.get(id as string) ?? []).includes(host.state.module));
+    }).sort((left, right) => compareStrings(
+      conceptOf(graph, projectedString(left.id) as string).label,
+      conceptOf(graph, projectedString(right.id) as string).label)
+      || compareStrings(projectedString(left.id) as string, projectedString(right.id) as string));
     const group = entry.createDiv({ cls: 'los-atlas-entry-group' });
-    group.createDiv({
-      cls: 'los-micro los-atlas-group-head',
-      text: `Concept results · ${plural(results.length, 'concept')}`,
-    });
-
+    group.createEl('h2', { text: browsing ? 'Browse concepts' : 'Concept results' });
+    const shown = Math.min(host.concepts.visibleLimit, results.length);
+    group.createDiv({ cls: 'los-micro los-atlas-browser-scope',
+      text: `${shown} of ${plural(results.length, 'concept')} shown${host.state.module ? ' in this module' : ''}` });
     if (!results.length) {
-      group.createDiv({
-        cls: 'los-atlas-absence',
-        text: `Nothing matches “${query}”. Search returns concepts only — modules and notes become filters and evidence after a concept is chosen, never competing results.`,
-      });
+      group.createDiv({ cls: 'los-atlas-absence', text: query
+        ? `Nothing matches “${query}”. Try another concept or module.`
+        : 'No concepts are published for this module.' });
     } else {
       const list = group.createDiv({ cls: 'los-atlas-records' });
+      list.setAttribute('aria-label', 'Concept results');
       enableButtonGroupKeyboardNavigation(list, 'vertical');
-
-      for (const record of results.slice(0, 20)) {
-        const id = projectedString(record.id);
-        if (!id) continue;
-        renderConceptSeed(list, host, graph, id);
+      for (const record of results.slice(0, shown)) {
+        renderConceptSeed(list, host, graph, projectedString(record.id) as string);
+      }
+      if (shown < results.length) {
+        button(group, `Show more · ${results.length - shown} remaining`, () => {
+          host.concepts.visibleLimit += 30;
+          host.render();
+        }, 'quiet').addClass('los-atlas-show-more');
       }
     }
+    if (browsing) button(group, 'Close browser', () => {
+      host.concepts.browseAll = false;
+      host.query = '';
+      host.concepts.visibleLimit = 30;
+      host.render();
+    }, 'quiet');
+    return;
   }
-
   if (searchOnly) return;
-
-  const recents = host.plugin.settings.atlasRecentConcepts
-    .filter((id) => graph.conceptById.has(id));
-
-  const recentGroup = entry.createDiv({ cls: 'los-atlas-entry-group' });
-  recentGroup.createDiv({
-    cls: 'los-micro los-atlas-group-head',
-    text: 'Recently visited',
-  });
-
-  if (!recents.length) {
-    recentGroup.createDiv({
-      cls: 'los-atlas-absence',
-      text: 'Nothing visited yet in this vault. Search above, or start from one of the corpus lenses.',
-    });
-  } else {
-    const list = recentGroup.createDiv({ cls: 'los-atlas-records' });
+  entry.createEl('h2', { text: 'Choose a concept' });
+  entry.createDiv({ cls: 'los-atlas-entry-lead', text: 'Open a concept’s map and linked notes.' });
+  const recents = host.plugin.settings.atlasRecentConcepts.filter((id) => graph.conceptById.has(id)
+    && (!host.state.module || (graph.modulesByConcept.get(id) ?? []).includes(host.state.module)));
+  const group = entry.createDiv({ cls: 'los-atlas-entry-group' });
+  group.createDiv({ cls: 'los-micro los-atlas-group-head', text: 'Recently visited' });
+  if (!recents.length) group.createDiv({ cls: 'los-micro', text: 'No concepts visited yet. Search above or browse all concepts.' });
+  else {
+    const list = group.createDiv({ cls: 'los-atlas-records' });
     enableButtonGroupKeyboardNavigation(list, 'vertical');
     for (const id of recents) renderConceptSeed(list, host, graph, id);
   }
-
-  renderOpenQuestions(entry, host, graph);
-  renderConnectAction(entry, host, null);
-
-  const entries = entry.createDiv({ cls: 'los-atlas-entry-group' });
-  entries.createDiv({
-    cls: 'los-micro los-atlas-group-head',
-    text: 'Or start from the corpus',
-  });
-
-  const seeds = entries.createDiv({ cls: 'los-atlas-records' });
-  enableButtonGroupKeyboardNavigation(seeds, 'vertical');
-
-  for (const [lens, title, detail] of [
-    [
-      'bridges',
-      `Cross-module bridges · ${bridges(graph).length}`,
-      'Concepts carrying evidence from more than one module.',
-    ],
-    [
-      'diagnostics',
-      'Diagnostics',
-      'What the relation registry has not yet been told, with every count opening its records.',
-    ],
-    ['domains', 'Domain Atlas', 'Notes and curated shelves across every domain, with every record reachable.'],
-  ] as const) {
-    const row = seeds.createEl('button', {
-      cls: 'los-atlas-record is-clickable',
-      attr: { type: 'button' },
-    });
-    row.createDiv({ cls: 'los-atlas-record-title', text: title });
-    row.createDiv({ cls: 'los-micro', text: detail });
-    row.addEventListener('click', () => host.go({ lens }));
-  }
+  button(entry, `Browse all ${graph.concepts.filter((concept) => concept.record).length} concepts`, () => {
+    host.concepts.browseAll = true;
+    host.concepts.visibleLimit = 30;
+    host.render();
+  }, 'quiet').addClass('los-atlas-browse-all');
 }
 
 /**
@@ -458,19 +377,19 @@ function renderConceptSeed(
   conceptId: string,
 ): void {
   const concept = conceptOf(graph, conceptId);
-  const prerequisites = graph.prerequisiteEdges.get(conceptId)?.length ?? 0;
-  const dependents = graph.dependentEdges.get(conceptId)?.length ?? 0;
-
+  const notes = linkedConceptNotes(host.plugin.store, conceptId);
   const row = parent.createEl('button', {
-    cls: 'los-atlas-record is-clickable',
-    attr: { type: 'button' },
+    cls: 'los-atlas-record los-atlas-concept-seed is-clickable', attr: { type: 'button' },
   });
-  row.createDiv({ cls: 'los-atlas-record-title', text: concept.label });
-  row.createDiv({
-    cls: 'los-micro',
-    text: `${moduleTrail(graph, conceptId)} · ${plural(prerequisites, 'prerequisite')} · ${plural(dependents, 'dependent')}`,
-  });
-  row.addEventListener('click', () => host.go({ concept: conceptId }));
+  row.setAttribute('data-concept-id', conceptId);
+  row.setAttribute('data-linked-note-count', String(notes.length));
+  const copy = row.createDiv({ cls: 'los-atlas-record-copy' });
+  copy.createDiv({ cls: 'los-atlas-record-title', text: concept.label });
+  copy.createDiv({ cls: 'los-micro', text: plural(notes.length, 'linked note') });
+  row.createSpan({ cls: 'los-atlas-record-open', text: 'Open' });
+  row.addEventListener('click', () => host.go({ concept: conceptId,
+    lens: isCorpusLens(host.state.lens) ? 'prerequisites' : host.state.lens }));
+
 }
 
 export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
@@ -498,87 +417,72 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
 
   const graph = buildAtlasGraph(host.plugin.store);
 
-  pageHeader(
-    root,
-    'Reach',
-    'Concept atlas',
-    'One concept at a time: what it requires, what builds on it, and the authored relation that says so.',
-  );
-  // The Atlas destination opens on the Ability map; concepts are one step
-  // away from it and it is one step back from here.
+  const heading = root.createDiv({ cls: 'los-atlas-heading' });
+  heading.createEl('h1', { text: 'Atlas' });
+  const about = conceptDisclosure(heading, host, 'atlas-about', 'About Atlas');
+  about.createDiv({ text: 'Explore authored concepts, their linked notes and learning order. Modules show where teaching is mapped. Semantic connections explain related ideas; only prerequisites order learning.' });
   renderAtlasVariants(root, host.plugin.nav, 'concepts');
 
   const controls = root.createDiv({ cls: 'los-atlas-controls' });
   let results: HTMLElement;
+  let entryRegion: HTMLElement | null = null;
   const updateSearch = () => {
     results.empty();
     if (host.query.trim()) renderEntry(results, host, graph, true);
+    if (entryRegion) {
+      entryRegion.empty();
+      if (!host.query.trim()) renderEntry(entryRegion, host, graph);
+    }
   };
   renderSearch(controls, host, updateSearch);
   renderModuleFilter(controls, host, graph);
+  button(controls, 'Explore', () => host.openConceptBrowser(), 'quiet');
   results = root.createDiv({ cls: 'los-atlas-search-results' });
   results.setAttrs({ 'aria-live': 'polite' });
   updateSearch();
 
   if (!graph.concepts.length) {
-    empty(
-      root,
-      'No concepts are published yet',
-      'A concept appears once it is registered in the knowledge tree. An empty Atlas means nothing has been authored, not that nothing is being studied.',
-    );
+    empty(root, 'No concepts are published yet', 'Register a concept to make it available here.');
     return;
   }
-
   const focusId = host.state.concept;
   const corpusLens = isCorpusLens(host.state.lens);
-  const view = focusId && !corpusLens
-    ? neighbourhood(graph, focusId, {
-      depth: host.state.depth,
-      includeSemanticNeighbours: host.state.lens === 'semantic',
-    })
-    : null;
-
-  if (view) {
-    renderDepth(
-      controls,
-      host,
-      view.beyond.prerequisites.length + view.beyond.dependents.length,
-    );
-  }
-
-  renderLensBar(root, host, graph);
-  renderQuestion(root, host, focusId ? conceptOf(graph, focusId).label : null);
-
+  const view = focusId && !corpusLens ? neighbourhood(graph, focusId, {
+    depth: host.state.depth, includeSemanticNeighbours: host.state.lens === 'semantic',
+  }) : null;
   if (corpusLens) {
+    button(root, 'Choose a concept', () => host.go({ concept: null, lens: 'prerequisites' }), 'quiet');
     if (host.state.lens === 'bridges') renderBridges(root, host, graph);
     else renderDiagnostics(root, host, graph);
+    renderAtlasTools(root, host, graph);
     return;
   }
-
   if (!view) {
-    renderEntry(root, host, graph);
+    entryRegion = root.createDiv({ cls: 'los-atlas-entry-region' });
+    if (!host.query.trim()) renderEntry(entryRegion, host, graph);
+    if (host.editor) renderRelationEditor(root, host, graph, host.editor);
+    renderAtlasTools(root, host, graph);
     return;
   }
 
-  // One string, three consumers: this band, the outline heading, and the live
-  // announcement. Built once in the read model so they cannot drift apart.
-  const band = root.createDiv({ cls: 'los-atlas-summary' });
-  band.setAttrs({ role: 'status' });
-  band.setText(subgraphSummary(graph, view));
-
+  const focusHead = root.createDiv({ cls: 'los-atlas-focus-heading' });
+  const copy = focusHead.createDiv();
+  copy.createEl('h2', { text: view.focus.label });
+  copy.createDiv({ cls: 'los-micro', text: `${moduleTrail(graph, view.focus.id)} · ${host.state.lens === 'prerequisites' ? 'Direct connections' : host.state.lens === 'semantic' ? 'Related ideas' : 'Learning path'}` });
+  renderConnectAction(focusHead, host, view.focus.id);
   const body = root.createDiv({ cls: 'los-atlas-body' });
   const main = body.createDiv({ cls: 'los-atlas-main' });
-
-  // Authoring sits with the graph it changes, not behind a separate mode.
   if (host.editor) renderRelationEditor(main, host, graph, host.editor);
-  else renderConnectAction(main, host, view.focus.id);
-
-  if (host.state.lens === 'path') {
-    renderPath(main, host, graph, view.focus.id);
-  } else {
-    renderFocusedGraph(main, host, graph, view);
+  if (host.state.lens === 'path') renderPath(main, host, graph, view.focus.id);
+  else renderFocusedGraph(main, host, graph, view);
+  const scope = main.createDiv({ cls: 'los-atlas-focused-scope' });
+  scope.createDiv({ cls: 'los-micro', attr: { role: 'status' }, text: subgraphSummary(graph, view) });
+  const further = conceptDisclosure(scope, host, `${view.focus.id}:explore`, 'Explore further');
+  renderDepth(further, host, view.beyond.prerequisites.length + view.beyond.dependents.length);
+  renderLensBar(main, host);
+  if (host.state.lens !== 'path') {
+    renderOutline(conceptDisclosure(main, host, `${view.focus.id}:outline`, 'Text outline'), host, graph, view);
   }
-
-  if (host.state.lens !== 'path') renderOutline(main, host, graph, view);
   renderInspector(body, host, graph, view);
+  renderAtlasTools(root, host, graph);
 }

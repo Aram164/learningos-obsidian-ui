@@ -7,9 +7,9 @@ module.exports = async function run() {
   await plugin.nav.openAtlas({ lens: 'domains' });
   const domains = app.workspace.getLeavesOfType(VIEW.atlas)[0];
   const domainView = domains.view, domainRoot = domainView.contentEl;
-  const role = domainRoot.find('los-domain-role')[0];
-  const roleSummary = role.children.find((child) => child.tag === 'summary');
-  roleSummary.fire('click'); role.open = true;
+  const about = domainRoot.find('los-domain-about')[0];
+  const aboutSummary = about.children.find((child) => child.tag === 'summary');
+  aboutSummary.fire('click'); about.open = true;
   const domainSearch = domainRoot.find('los-domain-search')[0];
   domainSearch.value = 'probability'; domainSearch.fire('input');
   const working = { query: domainView.domains.query, selected: domainView.domains.selected,
@@ -29,7 +29,7 @@ module.exports = async function run() {
   check('Concept and Domain variants share a stable native title and show their own in-pane heading',
     concepts.view.getDisplayText() === 'LearningOS · Atlas'
     && restored.view.getDisplayText() === concepts.view.getDisplayText()
-    && restored.view.contentEl.findText('los-page-header', 'Domain Atlas'));
+    && restored.view.contentEl.findText('los-page-header', 'Atlas'));
   await plugin.nav.openDiagnostics();
   const diagnostics = app.workspace.getLeavesOfType(VIEW.diagnostics)[0];
   const navLeaf = app.workspace.getLeavesOfType(VIEW.nav)[0];
@@ -54,13 +54,13 @@ module.exports = async function run() {
   check('switching to an existing Library tab highlights Library',
     plugin.activeNav === 'library' && navLeaf.view.contentEl.findText('los-app-nav-item', 'Library').classes.has('is-active'));
   app.workspace.setActiveLeaf(concepts);
-  check('switching to another Atlas leaf derives its Concept destination from that leaf’s state', plugin.activeNav === 'atlas');
+  check('switching to another Atlas leaf retains the single Atlas destination from that leaf’s state', plugin.activeNav === 'abilities');
   app.workspace.setActiveLeaf(native);
-  check('a native non-LearningOS tab does not fabricate a Home destination', plugin.activeNav === 'atlas');
+  check('a native non-LearningOS tab does not fabricate a Home destination', plugin.activeNav === 'abilities');
   app.workspace.setActiveLeaf(navLeaf);
-  check('focusing the sidebar itself does not change the highlighted destination', plugin.activeNav === 'atlas');
+  check('focusing the sidebar itself does not change the highlighted destination', plugin.activeNav === 'abilities');
   app.workspace.trigger('active-leaf-change', null);
-  check('a transient null active leaf is ignored', plugin.activeNav === 'atlas');
+  check('a transient null active leaf is ignored', plugin.activeNav === 'abilities');
   app.workspace.setActiveLeaf(restored);
   check('a separately restored Domain tab also highlights primary Atlas', plugin.activeNav === 'abilities');
   app.workspace.setActiveLeaf(diagnostics);

@@ -47,6 +47,17 @@ in `src/constants.ts` and `src/settings.ts`. `src/gateway-client.ts` is a facade
 it may translate a user action into a declared Core capability, but it never
 becomes a second implementation of that capability.
 
+Atlas presentation attention is owned by its leaf: Concepts remembers search,
+selection context and disclosures per inspected record; Notes & shelves owns
+filters, selected records and row limits. Abilities retains camera, fold, bridge
+layer and inspector attention in a leaf-scoped store. None enters the route
+contract or grants learning evidence. `features/abilities/viewport.ts` owns one
+transform for nodes, SVG edges and bands, disposes its listeners on redraw/close,
+and never calls Core. `features/atlas/presentation.ts` bounds the pictured concept
+lanes while the complete authored neighbourhood remains in the named remainder
+and text outline. Read horizons and guarded mutations retain their existing
+application and Core owners.
+
 ## Dependency rules
 
 1. Views may compose features. Features depend on their own ports, contracts,

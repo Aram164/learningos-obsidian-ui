@@ -35,7 +35,12 @@ const {
   searchAbilities,
   shortModuleLabel,
   routeMembers,
+  abilityOverview,
+  preparationNeighbours,
+  foldedVisibility,
+  boundsOfNodes,
 } = load('src/features/abilities/model.ts');
+const { zoomAt, fitCamera, revealCamera, cameraTransform, mountAbilityViewport } = load('src/features/abilities/viewport.ts');
 const {
   candidatePayload,
   claimProblems,
@@ -207,6 +212,159 @@ test('sentences and search come straight from the routes', () => {
   assert.deepEqual(searchAbilities(plane, '   ', labels), []);
   assert.equal(shortModuleLabel('Advanced Machine Learning (AML)', null, 'x'), 'AML');
   assert.equal(shortModuleLabel('Statistics & Analysis', 'M2', 'x'), 'M2');
+});
+
+/* --------------------------------------------------------- compact DAG */
+function syntheticPlane(records, bridges = []) {
+  const template = brief.abilities[0];
+  return buildAbilityPlane({ ...brief, total: records.length, truncated: false, bridges,
+    candidate_connections: [], abilities: records.map(([id, members]) => ({ ...template, id, title: `Record ${id}`,
+      state: 'uncertain', evidence: [], transfer: [], preparation_routes: members.length ? members.map((route) => ({
+        reason: 'Authored fixture gate', source: 'knowledge/notes/fixture.md', supported: [],
+        missing_or_uncertain: route, remaining_work: route,
+      })) : [],
+    })) }, labels);
+}
+
+test('selection follows reduced one-hop adjacency while every authored AND/OR gate survives', () => {
+  const overview = abilityOverview(plane);
+  const nearby = preparationNeighbours(overview.edges, 'ability-fixture-bayes-m2');
+  assert.deepEqual([...nearby.prerequisites], ['ability-fixture-conditional']);
+  assert.equal(nearby.prerequisites.has('ability-fixture-probability-rules'), false);
+  assert.equal(nearby.prerequisites.has('ability-fixture-bayes-aml'), false, 'a reviewed peer is not preparation');
+  const andOr = syntheticPlane([['root', []], ['a', [['root']]], ['b', [['root']]], ['target', [['root', 'a'], ['root', 'b']]]]);
+  assert.deepEqual(andOr.rowOf.get('target').preparation_routes.map(routeMembers), [['root', 'a'], ['root', 'b']]);
+  assert.deepEqual([...preparationNeighbours(abilityOverview(andOr).edges, 'target').prerequisites].sort(), ['a', 'b']);
+});
+
+test('folding withdraws one claim, retains shared targets and selected anchors, and restores identity/geometry', () => {
+  const shared = syntheticPlane([['chain', []], ['forward', []], ['aml', [['chain', 'forward']]], ['sad', [['chain', 'forward']]], ['full', [['aml'], ['sad']]]]);
+  const overview = abilityOverview(shared);
+  const originalPositions = [...overview.nodes.values()].map(({ id, x, y }) => ({ id, x, y }));
+  const foldOne = foldedVisibility(overview, new Set(['chain']), 'chain');
+  assert.equal(foldOne.nodes.size, 5, 'the other foundation still claims both local gradients');
+  assert.equal(foldOne.edges.length, 4);
+  assert.equal(foldOne.hiddenIncident.get('chain'), 2);
+  assert.deepEqual([...preparationNeighbours(overview.edges, 'chain').dependents].sort(), ['aml', 'sad'], 'folding does not alter neighbour semantics');
+  const foldBoth = foldedVisibility(overview, new Set(['chain', 'forward']), null);
+  assert.deepEqual([...foldBoth.nodes].sort(), ['chain', 'forward']);
+  const anchor = foldedVisibility(overview, new Set(['chain', 'forward']), 'aml');
+  assert.deepEqual([...anchor.nodes].sort(), ['aml', 'chain', 'forward', 'full'], 'selected identity claims its expanded descendants');
+  const retained = foldedVisibility(overview, new Set(['chain', 'forward']), null, new Set(['sad']));
+  assert.equal(retained.nodes.has('sad'), true);
+  assert.equal(retained.nodes.has('full'), true);
+  const reopened = foldedVisibility(overview, new Set(), null);
+  assert.equal(reopened.nodes.size, 5); assert.equal(reopened.edges.length, 6);
+  assert.deepEqual([...overview.nodes.values()].map(({ id, x, y }) => ({ id, x, y })), originalPositions);
+});
+
+test('overview parity and non-overlap hold for 50 records, disconnected roots and long labels', () => {
+  const records = Array.from({ length: 50 }, (_, index) => [`id-${String(index).padStart(2, '0')}`, index ? [[`id-${String(index - 1).padStart(2, '0')}`]] : []]);
+  const large = syntheticPlane(records);
+  const overview = abilityOverview(large);
+  assert.equal(overview.nodes.size, 50); assert.equal(overview.edges.length, 49);
+  assert.deepEqual([...overview.nodes.keys()].sort(), records.map(([id]) => id).sort());
+  for (const node of overview.nodes.values()) assert.ok(node.x >= 0 && node.y >= 0);
+  const empty = abilityOverview(syntheticPlane([]));
+  assert.equal(empty.nodes.size, 0); assert.equal(empty.regions.length, 0);
+  assert.ok(empty.width > 0 && empty.height > 0);
+  const independent = abilityOverview(syntheticPlane([['a', []], ['b', []], ['c', []]]));
+  assert.equal(independent.regions.length, 3);
+  for (let index = 1; index < independent.regions.length; index++) {
+    const prev = independent.regions[index - 1]; const next = independent.regions[index];
+    assert.ok(next.y > prev.y + prev.height, 'group worlds never overlap');
+  }
+  assert.deepEqual([...abilityOverview(syntheticPlane([...records].reverse())).nodes.values()], [...overview.nodes.values()]);
+});
+
+test('anchored zoom retains world point, fits all large loaded geometry and reserves actual inspector pane', () => {
+  const camera = { x: 83, y: -46, scale: 0.7 };
+  const point = { x: 313, y: 207 };
+  const next = zoomAt(camera, point, 1.4);
+  assert.equal((point.x - camera.x) / camera.scale, (point.x - next.x) / next.scale);
+  assert.equal((point.y - camera.y) / camera.scale, (point.y - next.y) / next.scale);
+  const records = Array.from({ length: 50 }, (_, i) => [`n-${i}`, i ? [[`n-${i - 1}`]] : []]);
+  const overview = abilityOverview(syntheticPlane(records));
+  for (const width of [1440, 980, 800, 600, 380]) {
+    const size = { width, height: 560 };
+    const fit = fitCamera(overview, size);
+    assert.ok(fit.x >= 43 && fit.y >= 43);
+    assert.ok(fit.x + overview.width * fit.scale <= width - 43);
+    assert.ok(fit.y + overview.height * fit.scale <= 517);
+    assert.equal(zoomAt(fit, point, fit.scale).scale, fit.scale, 'zoom after fit never jumps to an arbitrary minimum');
+  }
+  const group = boundsOfNodes([...overview.nodes.values()].slice(0, 3));
+  const wide = fitCamera(group, { width: 980, height: 560 });
+  const inspectorPane = fitCamera(group, { width: 620, height: 560 });
+  assert.ok(inspectorPane.scale < wide.scale);
+  assert.equal(revealCamera(camera, { x: 10, y: 130, width: 208, height: 40 }, { width: 800, height: 560 }), camera, 'revealing an already visible record leaves camera unchanged');
+  assert.equal(revealCamera(camera, { x: 10000, y: 0, width: 208, height: 40 }, { width: 800, height: 560 }).scale, camera.scale);
+});
+
+test('Fit group contains actual branching-region headings, nodes and bridge space at narrow panes', () => {
+  const foundations = Array.from({ length: 5 }, (_, index) => [`foundation-${index}`, []]);
+  const branch = syntheticPlane([...foundations, ['and-target', [foundations.map(([id]) => id)]]]);
+  const overview = abilityOverview(branch); const region = overview.regions[0];
+  assert.equal(region.nodes.length, 6); assert.equal(region.group.edges.length, 5);
+  for (const size of [{width: 900, height: 560}, {width: 680, height: 400}, {width: 380, height: 440}]) {
+    const camera = fitCamera(region, size);
+    assert.ok(region.y * camera.scale + camera.y >= 43, 'group heading is inside the fitted pane');
+    assert.ok(region.x * camera.scale + camera.x >= 43);
+    assert.ok((region.y + region.height) * camera.scale + camera.y <= size.height - 43);
+    assert.ok((region.x + region.width) * camera.scale + camera.x <= size.width - 43);
+    for (const node of region.nodes) {
+      assert.ok(node.y * camera.scale + camera.y > 0);
+      assert.ok((node.y + 40) * camera.scale + camera.y < size.height);
+    }
+  }
+});
+
+test('viewport transforms one world, confines gestures, distinguishes pan/click and removes every listener', () => {
+  const listeners = new Map();
+  const doc = { activeElement: null };
+  const viewport = {
+    ownerDocument: doc, clientWidth: 800, clientHeight: 500, style: {},
+    getBoundingClientRect: () => ({ left: 20, top: 30, width: 800, height: 500 }),
+    addEventListener: (kind, listener) => { const rows = listeners.get(kind) ?? []; rows.push(listener); listeners.set(kind, rows); },
+    removeEventListener: (kind, listener) => listeners.set(kind, listeners.get(kind).filter((row) => row !== listener)),
+    contains: (node) => node === viewport, focus: () => { doc.activeElement = viewport; },
+    addClass() {}, removeClass() {}, setAttribute() {}, setPointerCapture() {}, hasPointerCapture: () => false,
+  };
+  const world = { style: {} }; const percentage = { setText(value) { this.value = value; } };
+  let camera = { x: 0, y: 0, scale: 0.75 }; let prevented = 0;
+  const controller = mountAbilityViewport({ element: viewport, world, bounds: { x: 0, y: 0, width: 800, height: 500 },
+    camera: () => camera, changed: (next) => { camera = next; }, percentage });
+  const fire = (kind, extra) => listeners.get(kind).forEach((handler) => handler({ target: viewport, preventDefault: () => prevented++, ...extra }));
+  fire('wheel', { deltaX: 0, deltaY: 20, deltaMode: 0, ctrlKey: true, clientX: 300, clientY: 200 });
+  assert.equal(prevented, 0, 'unfocused page wheel is untouched');
+  fire('pointerdown', { button: 0, pointerId: 1, clientX: 10, clientY: 10 });
+  fire('pointermove', { pointerId: 1, clientX: 13, clientY: 12 });
+  assert.equal(camera.x, 0, 'tiny jitter is still a click');
+  fire('pointermove', { pointerId: 1, clientX: 110, clientY: 35 });
+  fire('pointerup', { pointerId: 1 });
+  assert.equal(camera.x, 100); assert.equal(camera.y, 25);
+  assert.equal(controller.suppressClick(), true); assert.equal(controller.suppressClick(), false);
+  for (const kind of ['node', 'endcap', 'bridge']) {
+    const button = { closest: () => button, kind };
+    const beforeDrag = { ...camera };
+    fire('pointerdown', { target: button, button: 0, pointerId: 2, clientX: 100, clientY: 100 });
+    fire('pointermove', { target: button, pointerId: 2, clientX: 150, clientY: 180 });
+    fire('pointerup', { target: button, pointerId: 2 });
+    assert.deepEqual(camera, beforeDrag, `${kind}-origin drag does not pan the background`);
+    assert.equal(controller.suppressClick(), true, `${kind}-origin drag suppresses selection/folding`);
+    fire('pointerdown', { target: button, button: 0, pointerId: 3, clientX: 100, clientY: 100 });
+    fire('pointermove', { target: button, pointerId: 3, clientX: 102, clientY: 101 });
+    fire('pointerup', { target: button, pointerId: 3 });
+    assert.equal(controller.suppressClick(), false, `${kind} short movement still activates`);
+  }
+
+  fire('wheel', { deltaX: 35, deltaY: 20, deltaMode: 0, ctrlKey: false, clientX: 300, clientY: 200 });
+  assert.equal(camera.x, 65); assert.equal(camera.y, 5); assert.equal(camera.scale, 0.75);
+  const anchor = { x: 280, y: 170 }; const before = { ...camera };
+  fire('wheel', { deltaX: 0, deltaY: -80, deltaMode: 0, ctrlKey: true, clientX: 300, clientY: 200 });
+  assert.ok(Math.abs((anchor.x - camera.x) / camera.scale - (anchor.x - before.x) / before.scale) < 1e-9);
+  assert.equal(world.style.transform, cameraTransform(camera), 'nodes, edges and bands have one transformed ancestor');
+  controller.dispose(); assert.equal([...listeners.values()].flat().length, 0, 'cleanup removes wheel, keyboard and pointer listeners');
 });
 
 /* ------------------------------------------------------------ claims */

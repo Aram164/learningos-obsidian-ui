@@ -349,7 +349,7 @@ export class ApplicationRouter {
           lens: asAtlasLens(route.lens),
           depth: asAtlasDepth(route.depth),
         },
-        nav: route.lens === 'domains' ? 'abilities' : 'atlas',
+        nav: 'abilities',
       };
       case 'abilities': return {
         type: VIEW_ABILITIES,

@@ -12,6 +12,7 @@ export function renderExpansionState(parent: HTMLElement, host: AbilityHost, abi
       horizon.retryExpansion(abilityId);
       host.render();
     }, 'tertiary');
+    button(parent, 'Read ability map again', () => void horizon.refresh(), 'tertiary');
     return;
   }
   const expansion = horizon.expansion(abilityId);

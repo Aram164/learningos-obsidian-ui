@@ -395,13 +395,18 @@ function makeApp(vaultRoot) {
             if (i >= 0) leaves.splice(i, 1);
           },
           async setViewState(st) {
+            const retained = this.viewType === st.type && this.view;
+            if (!retained && this.view?.onClose) await this.view.onClose();
             this.viewType = st.type;
             this.state = st.state || null;
             const factory = app._plugin.views[st.type];
             if (!factory) return; // e.g. core 'webviewer'
-            this.view = factory(this);
+            // Obsidian retains a same-type leaf and applies its new state.
+            // Recreating it here erased view-owned focus/camera/disclosures
+            // on every selection, hiding native attention regressions.
+            if (!retained) this.view = factory(this);
             if (this.view.setState) await this.view.setState(this.state || {}, {});
-            await this.view.onOpen();
+            if (!retained) await this.view.onOpen();
           },
           async openFile(f) { app.workspace.opened.push(f.path); },
         };
