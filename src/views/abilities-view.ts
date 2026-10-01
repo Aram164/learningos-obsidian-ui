@@ -86,7 +86,7 @@ export class AbilitiesView extends ItemView implements AbilityHost {
       ability: next.ability,
       layout: next.layout,
       detail: next.detail,
-    });
+    }, this.leaf);
   }
 
   render(): void {

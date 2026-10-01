@@ -39,6 +39,7 @@ const {
   totalSourceCount,
   trailFor,
 } = load('src/features/library/finder-tree.ts');
+const { asLibraryFolderPath } = load('src/contracts/route-v1.ts');
 
 // --------------------------------------------------------------------- doubles
 
@@ -294,6 +295,19 @@ const fixture = checkVault('fixture', fixtureManifest(), NO_MATERIALS);
 // ------------------------------------------------- hand-built edge conditions
 
 {
+  const distinct = [
+    'domain:g-a', 'modules', 'module:x', 'bucket:lecture-slides', 'source:slides',
+    'at:materials/slides/notes', 'at:materials/slides/notes/notes',
+  ];
+  assert.deepEqual(asLibraryFolderPath(distinct.flatMap((part) => [part, part])), distinct,
+    'the duplicate-activation recovery applies to exact adjacent repeats at every folder level');
+  assert.deepEqual(asLibraryFolderPath(['domain:g-a', 'type:book', 'domain:g-a']),
+    ['domain:g-a', 'type:book', 'domain:g-a'], 'other invalid paths are not silently rewritten');
+  assert.deepEqual(asLibraryFolderPath(distinct), distinct,
+    'same-name nested material directories carry different complete paths and remain distinct');
+}
+
+{
   // A source in two domains is one record seen twice, and says so.
   const manifest = {
     thematic_groups: [
@@ -428,6 +442,18 @@ const fixture = checkVault('fixture', fixtureManifest(), NO_MATERIALS);
   assert.equal(slides.entries.length, 2, 'descending reaches the real files');
   assert.equal(slides.entries[0].kindLabel, 'PDF document');
   assert.equal(slides.sourceId, 'source-lectures', 'a file keeps the source it came from');
+
+  const repeatedName = [
+    'domain:g-ml', 'type:lecture', 'source:source-lectures',
+    'at:materials/ml/course-x/notes', 'at:materials/ml/course-x/notes/notes',
+  ];
+  const nestedContext = createFinderContext(storeFor(manifest), materialsFrom({
+    'materials/ml/course-x': [{ name: 'notes', children: 1 }],
+    'materials/ml/course-x/notes': [{ name: 'notes', children: 1 }],
+    'materials/ml/course-x/notes/notes': [{ name: 'Exercise.pdf', size: 10 }],
+  }));
+  assert.deepEqual(folderAt(nestedContext, asLibraryFolderPath(repeatedName)).entries.map((row) => row.name),
+    ['Exercise.pdf'], 'recovering duplicate activation does not truncate same-name nested directories');
 
   // A path escaping the materials root reads as empty, never as a folder.
   assert.equal(

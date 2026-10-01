@@ -104,12 +104,15 @@ export function renderAtlasVariants(
   parent: HTMLElement,
   nav: Pick<AppNavigator, 'openAbilities' | 'openAtlas'>,
   active: 'abilities' | 'concepts' | 'domains',
+  go?: AtlasHost['go'],
 ): void {
   const variants = filterTabs(parent, 'Atlas views', [
     ['concepts', 'Concepts'], ['domains', 'Notes & shelves'], ['abilities', 'Abilities'],
   ] as const, active, (value) => {
     if (value === active) return;
     if (value === 'abilities') void nav.openAbilities();
+    else if (go) go({ concept: null, module: null,
+      lens: value === 'domains' ? 'domains' : 'prerequisites', depth: 1 });
     else void nav.openAtlas({ lens: value === 'domains' ? 'domains' : 'prerequisites' });
   });
   variants.addClass('los-atlas-variant-switch');
@@ -146,7 +149,7 @@ function renderNoteInspector(parent: HTMLElement, host: AtlasHost, index: Domain
   if (!ids.length) concepts.createDiv({ cls: 'los-domain-empty', text: 'No explicit concept links are recorded.' });
   for (const id of ids) {
     const concept = host.plugin.store.get(id);
-    if (concept?.type === 'concept') button(concepts, title(concept), () => host.plugin.nav.openAtlas({ concept: id, lens: 'prerequisites' }), 'tertiary')
+    if (concept?.type === 'concept') button(concepts, title(concept), () => host.go({ concept: id, module: null, lens: 'prerequisites', depth: 1 }), 'tertiary')
       .addClass('los-domain-open-concept');
     else concepts.createDiv({ cls: 'los-domain-source-unavailable', text: `${id} · unavailable in this projection` });
   }
@@ -356,7 +359,7 @@ export function renderDomains(root: HTMLElement, host: AtlasHost): void {
   header.addClass('los-domain-header');
   const about = disclosure(header, host.domains, 'atlas:about', 'About Atlas', 'los-domain-about');
   about.createEl('p', { text: 'Browse explicitly linked concepts, published notes and ordered source shelves. Abilities shows authored preparation and recorded evidence. Browsing does not record learning progress or ability credit.' });
-  renderAtlasVariants(root, host.plugin.nav, 'domains');
+  renderAtlasVariants(root, host.plugin.nav, 'domains', (target) => host.go(target));
   if (!host.plugin.store.ready) {
     empty(root, 'Notes & shelves unavailable', 'The interface contract could not be loaded. Reopen this view when the projection is available.');
     return;

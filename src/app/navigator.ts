@@ -269,7 +269,7 @@ export class AppNavigator {
    * replaces the current entry; opening the full detail is a place Back should
    * return from, so it pushes one.
    */
-  openAbilities(target: AbilityTarget = {}) {
+  openAbilities(target: AbilityTarget = {}, preferredLeaf?: WorkspaceLeaf) {
     const current = this.router.snapshot().current;
     const inMap = current?.name === 'abilities';
     const detail = target.detail === true && Boolean(target.ability);
@@ -282,7 +282,7 @@ export class AppNavigator {
         layout: asAbilityLayout(target.layout),
         detail,
       },
-      { pushHistory: !inMap || enteringDetail },
+      { pushHistory: !inMap || enteringDetail, ...(preferredLeaf ? { preferredLeaf } : {}) },
     );
   }
 

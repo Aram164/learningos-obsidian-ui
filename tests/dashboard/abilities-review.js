@@ -314,7 +314,7 @@ module.exports = async function run() {
 
   heading('keyboard bridge attention and simultaneous search labels stay scoped to their leaves');
   {
-    const { app, plugin } = await boot(); await plugin.nav.openAbilities();
+    const { app, plugin, calls } = await boot(); await plugin.nav.openAbilities();
     const firstView = leafOf(app, VIEW.abilities);
     await waitFor(() => firstView.contentEl.find('los-ability-node').length === 6);
     const root = browserDom(firstView.contentEl);
@@ -341,6 +341,29 @@ module.exports = async function run() {
       field.getAttribute('id') === null && secondField.getAttribute('id') === null
       && field.parentElement?.tag === 'label' && secondField.parentElement?.tag === 'label'
       && global.document.activeElement === field && field.value === 'bay' && field.selectionStart === 3 && secondField.value === '');
+    const firstRoute = JSON.stringify(firstView.getState());
+    const firstCamera = JSON.stringify(firstView.attention.camera);
+    app.workspace.setActiveLeaf(secondLeaf);
+    abilityNode(secondRoot, 'ability-fixture-conditional').fire('click');
+    await waitFor(() => secondLeaf.view.state.ability === 'ability-fixture-conditional');
+    check('ability selection changes and activates its originating leaf only',
+      secondLeaf.view.state.ability === 'ability-fixture-conditional' && app.workspace.active === secondLeaf
+      && JSON.stringify(firstView.getState()) === firstRoute && firstView.query === 'bay'
+      && JSON.stringify(firstView.attention.camera) === firstCamera);
+    secondRoot.findText('los-btn', 'Routes').fire('click');
+    secondRoot.find('los-ability-detail-link')[0].fire('click');
+    await waitFor(() => secondLeaf.view.state.detail);
+    check('full ability detail remains in the selected second leaf',
+      secondLeaf.view.state.detail && secondLeaf.view.state.ability === 'ability-fixture-conditional'
+      && app.workspace.active === secondLeaf && JSON.stringify(firstView.getState()) === firstRoute);
+    secondRoot.findText('los-ability-crumb', 'Plane').fire('click');
+    await waitFor(() => !secondLeaf.view.state.detail);
+    secondRoot.findText('los-filter-tab', 'List').fire('click');
+    await waitFor(() => secondLeaf.view.state.layout === 'list');
+    check('return and layout controls preserve the other leaf camera, query and route without Core writes',
+      secondLeaf.view.state.layout === 'list' && app.workspace.active === secondLeaf
+      && JSON.stringify(firstView.getState()) === firstRoute && firstView.query === 'bay'
+      && JSON.stringify(firstView.attention.camera) === firstCamera && calls.envelopes.length === 0);
     plugin.onunload();
   }
 

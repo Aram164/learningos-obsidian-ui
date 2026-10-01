@@ -2263,7 +2263,7 @@ function asLibraryFolderLayout(value) {
 }
 function asLibraryFolderPath(value) {
   if (!Array.isArray(value)) return [];
-  return value.filter((segment2) => typeof segment2 === "string" && segment2.length > 0).slice(0, 12);
+  return value.filter((segment2) => typeof segment2 === "string" && segment2.length > 0).filter((segment2, index, path) => index === 0 || segment2 !== path[index - 1]).slice(0, 12);
 }
 function asAtlasLens(value) {
   return isAtlasLens(value) ? value : "prerequisites";
@@ -2396,7 +2396,7 @@ function shelfMatches(shelf, query, index) {
     })
   ]);
 }
-function renderAtlasVariants(parent, nav, active) {
+function renderAtlasVariants(parent, nav, active, go) {
   const variants = filterTabs(parent, "Atlas views", [
     ["concepts", "Concepts"],
     ["domains", "Notes & shelves"],
@@ -2404,6 +2404,12 @@ function renderAtlasVariants(parent, nav, active) {
   ], active, (value) => {
     if (value === active) return;
     if (value === "abilities") void nav.openAbilities();
+    else if (go) go({
+      concept: null,
+      module: null,
+      lens: value === "domains" ? "domains" : "prerequisites",
+      depth: 1
+    });
     else void nav.openAtlas({ lens: value === "domains" ? "domains" : "prerequisites" });
   });
   variants.addClass("los-atlas-variant-switch");
@@ -2441,7 +2447,7 @@ function renderNoteInspector(parent, host, index, note, outsideFilter, redraw) {
   if (!ids2.length) concepts.createDiv({ cls: "los-domain-empty", text: "No explicit concept links are recorded." });
   for (const id2 of ids2) {
     const concept = host.plugin.store.get(id2);
-    if (concept?.type === "concept") button(concepts, title(concept), () => host.plugin.nav.openAtlas({ concept: id2, lens: "prerequisites" }), "tertiary").addClass("los-domain-open-concept");
+    if (concept?.type === "concept") button(concepts, title(concept), () => host.go({ concept: id2, module: null, lens: "prerequisites", depth: 1 }), "tertiary").addClass("los-domain-open-concept");
     else concepts.createDiv({ cls: "los-domain-source-unavailable", text: `${id2} \xB7 unavailable in this projection` });
   }
   const body = disclosure2(panel, host.domains, `note:${note.id}:provenance`, "Sources and provenance", "los-domain-note-provenance");
@@ -2678,7 +2684,7 @@ function renderDomains(root, host) {
   header2.addClass("los-domain-header");
   const about = disclosure2(header2, host.domains, "atlas:about", "About Atlas", "los-domain-about");
   about.createEl("p", { text: "Browse explicitly linked concepts, published notes and ordered source shelves. Abilities shows authored preparation and recorded evidence. Browsing does not record learning progress or ability credit." });
-  renderAtlasVariants(root, host.plugin.nav, "domains");
+  renderAtlasVariants(root, host.plugin.nav, "domains", (target) => host.go(target));
   if (!host.plugin.store.ready) {
     empty(root, "Notes & shelves unavailable", "The interface contract could not be loaded. Reopen this view when the projection is available.");
     return;
@@ -5049,7 +5055,7 @@ var AbilitiesView = class extends import_obsidian4.ItemView {
       ability: next.ability,
       layout: next.layout,
       detail: next.detail
-    });
+    }, this.leaf);
   }
   render() {
     this.presentation.cleanup?.();
@@ -7267,7 +7273,7 @@ function renderAtlasTools(parent, host, graph) {
     () => host.plugin.openVaultPath("generated/domain-atlas.md"),
     "quiet"
   );
-  button(tools, "Source folders", () => host.plugin.nav.openLibraryHome(), "quiet");
+  button(tools, "Source folders", () => host.plugin.nav.openLibraryFolder([]), "quiet");
   renderOpenQuestions(conceptDisclosure(tools, host, "open-questions", "My open questions"), host, graph);
   if (!host.state.concept) renderConnectAction(tools, host, null);
 }
@@ -7424,7 +7430,7 @@ function renderAtlas(root, host) {
   heading.createEl("h1", { text: "Atlas" });
   const about = conceptDisclosure(heading, host, "atlas-about", "About Atlas");
   about.createDiv({ text: "Explore authored concepts, their linked notes and learning order. Modules show where teaching is mapped. Semantic connections explain related ideas; only prerequisites order learning." });
-  renderAtlasVariants(root, host.plugin.nav, "concepts");
+  renderAtlasVariants(root, host.plugin.nav, "concepts", (target) => host.go(target));
   const controls = root.createDiv({ cls: "los-atlas-controls" });
   const history = controls.createDiv({ cls: "los-atlas-concept-history", attr: {
     role: "group",
@@ -11667,8 +11673,13 @@ function renderToolbar2(view, parent, folder2, shown, onQuery) {
   });
   return { input: search, count: count3 };
 }
+function isCurrentFolder(view, path) {
+  return path.length === view.folderPath.length && path.every((segment2, index) => segment2 === view.folderPath[index]);
+}
 function renderRow(view, list4, entry) {
   const selected = view.folderSelection === entry.segment;
+  const parentPath = [...view.folderPath];
+  let openedOnClick = false;
   const row4 = list4.createEl("button", {
     cls: `los-finder-row is-clickable${selected ? " is-selected" : ""}`,
     attr: {
@@ -11696,16 +11707,23 @@ function renderRow(view, list4, entry) {
     });
     icon(trailing.createSpan({ cls: "los-finder-row-chevron" }), "chevron-right");
   }
-  row4.addEventListener("click", () => {
-    if (selected) void view.activateEntry(entry);
-    else void view.selectFolderEntry(entry.segment);
+  row4.addEventListener("click", (event) => {
+    if (!isCurrentFolder(view, parentPath) || event.detail > 1) return;
+    if (selected) {
+      openedOnClick = true;
+      void view.activateEntry(entry);
+    } else void view.selectFolderEntry(entry.segment);
   });
   row4.addEventListener("dblclick", () => {
-    void view.activateEntry(entry);
+    if (!openedOnClick && isCurrentFolder(view, parentPath)) {
+      void view.activateEntry(entry);
+    }
+    openedOnClick = false;
   });
   return row4;
 }
 function renderList2(view, parent, entries2, focusSelection) {
+  const parentPath = [...view.folderPath];
   const list4 = parent.createDiv({
     cls: "los-finder-list",
     attr: { "aria-label": "Folder contents" }
@@ -11722,6 +11740,7 @@ function renderList2(view, parent, entries2, focusSelection) {
     if (focusSelection && entry.segment === view.folderSelection) row4.focus();
   }
   list4.addEventListener("keydown", (event) => {
+    if (!isCurrentFolder(view, parentPath)) return;
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     const index = entries2.findIndex(
       (entry) => entry.segment === view.folderSelection
@@ -11784,12 +11803,15 @@ function renderColumns(view, parent, trail, words2) {
       if (entry.isFolder) {
         icon(row4.createSpan({ cls: "los-finder-row-chevron" }), "chevron-right");
       }
-      row4.addEventListener("click", () => {
+      row4.addEventListener("click", (event) => {
+        if (event.detail > 1) return;
         if (entry.isFolder) void view.openFolder([...folder2.path, entry.segment]);
         else void view.openFolder(folder2.path, entry.segment);
       });
       row4.addEventListener("dblclick", () => {
-        void view.activateEntry(entry);
+        if (!entry.isFolder && isCurrentFolder(view, folder2.path)) {
+          void view.activateEntry(entry);
+        }
       });
     }
   });
@@ -11807,6 +11829,7 @@ function renderFolderInspector(panel, folder2) {
   });
 }
 function renderEntryInspector(view, panel, entry) {
+  const parentPath = [...view.folderPath];
   icon(panel.createDiv({ cls: "los-finder-inspector-icon" }), entry.icon);
   panel.createEl("h2", { text: entry.name });
   panel.createDiv({ cls: "los-finder-inspector-kind", text: entry.kindLabel });
@@ -11832,13 +11855,16 @@ function renderEntryInspector(view, panel, entry) {
     });
   }
   const actions = panel.createDiv({ cls: "los-actions" });
+  const activate = () => {
+    if (isCurrentFolder(view, parentPath)) void view.activateEntry(entry);
+  };
   if (entry.isFolder) {
-    button(actions, "Open folder", () => void view.activateEntry(entry), "cta");
+    button(actions, "Open folder", activate, "cta");
   } else if (entry.materialPath || entry.url) {
     button(
       actions,
       entry.materialPath ? "Open file" : "Open online",
-      () => void view.activateEntry(entry),
+      activate,
       "cta"
     );
   }
@@ -21626,7 +21652,7 @@ var AppNavigator = class {
    * replaces the current entry; opening the full detail is a place Back should
    * return from, so it pushes one.
    */
-  openAbilities(target = {}) {
+  openAbilities(target = {}, preferredLeaf) {
     const current = this.router.snapshot().current;
     const inMap = current?.name === "abilities";
     const detail = target.detail === true && Boolean(target.ability);
@@ -21639,7 +21665,7 @@ var AppNavigator = class {
         layout: asAbilityLayout(target.layout),
         detail
       },
-      { pushHistory: !inMap || enteringDetail }
+      { pushHistory: !inMap || enteringDetail, ...preferredLeaf ? { preferredLeaf } : {} }
     );
   }
   openShelving(unitId = null) {
@@ -21706,6 +21732,9 @@ function asText2(value, fallback = "") {
 }
 function asNullableText(value) {
   return typeof value === "string" && value ? value : null;
+}
+function normalizeFolderRoute(route2) {
+  return route2.name === "library-folder" ? { ...route2, path: asLibraryFolderPath(route2.path) } : route2;
 }
 var ApplicationRouter = class {
   plugin;
@@ -22016,11 +22045,13 @@ var ApplicationRouter = class {
   }
   /** Replace restorable route state without opening a leaf or adding history. */
   async remember(route2) {
+    route2 = normalizeFolderRoute(route2);
     this.navigation.current = route2;
     await this.persist();
     return route2;
   }
   async navigate(route2, options = {}) {
+    route2 = normalizeFolderRoute(route2);
     if (!options.preserveOverlay) this.clearOverlay();
     const descriptor = this.descriptor(route2);
     const remember = options.remember !== false;
@@ -22060,9 +22091,10 @@ var ApplicationRouter = class {
   async back() {
     const entry = this.navigation.history.pop();
     if (!entry) return this.navigate({ name: "home" }, { pushHistory: false });
-    this.navigation.current = entry.route;
+    const route2 = normalizeFolderRoute(entry.route);
+    this.navigation.current = route2;
     await this.persist();
-    return this.navigate(entry.route, {
+    return this.navigate(route2, {
       remember: false,
       pushHistory: false,
       restoreScrollTop: entry.scrollTop || 0,
@@ -22261,7 +22293,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:5914e5c5b820d6b4c8ce3d857106c5ce81ec1600365019ca35de3248532ec719" : "unavailable";
+  return true ? "sha256:f80b70e41730e257c3dc6c3be7c3c7cdbed9286b54ddb813d89f8e509dd1d1ad" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

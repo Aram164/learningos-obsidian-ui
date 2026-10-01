@@ -628,6 +628,139 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
+  heading('library native double-click');
+  {
+    const { app, plugin, calls } = await boot();
+    const domain = 'domain:thematic-group-mathematics';
+    const books = 'type:book';
+    const view = () => app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    const listRow = (segment) => view().contentEl.find('los-finder-row').find(
+      (row) => row.getAttribute('data-segment') === segment,
+    );
+    const settle = async () => { await tick(); await tick(); };
+    const doubleClick = (row) => {
+      row.fire('click', { detail: 1 });
+      row.fire('click', { detail: 2 });
+      row.fire('dblclick', { detail: 2 });
+    };
+    const at = (segments) => JSON.stringify(view().folderPath) === JSON.stringify(segments)
+      && !view().contentEl.allText().includes('Folder unavailable');
+
+    await plugin.nav.openLibraryFolder([]);
+    const originalRow = listRow(domain);
+    originalRow.fire('click', { detail: 1 });
+    await settle();
+    const replacementRow = listRow(domain);
+    replacementRow.fire('click', { detail: 2 });
+    replacementRow.fire('dblclick', { detail: 2 });
+    await settle();
+    check('a native double-click across a selection redraw opens the domain once', at([domain]));
+    originalRow.fire('dblclick', { detail: 2 });
+    await settle();
+    check('a departed parent row cannot append its segment inside the opened domain', at([domain]));
+
+    await plugin.nav.openLibraryFolder([]);
+    doubleClick(listRow(domain));
+    await settle();
+    check('a double-click before selection persistence finishes still opens one domain', at([domain]));
+
+    await plugin.nav.openLibraryFolder([], domain);
+    doubleClick(listRow(domain));
+    await settle();
+    check('double-clicking an already selected domain cannot create a duplicate path', at([domain]));
+
+    await plugin.nav.openLibraryFolder([], domain);
+    const openFolder = view().contentEl.findText('los-btn', 'Open folder');
+    doubleClick(openFolder);
+    await settle();
+    check('the inspector Open folder button also remains bound to its rendered parent', at([domain]));
+
+    await plugin.nav.openLibraryFolder([domain, books]);
+    let openCount = 0;
+    const openResource = plugin.openResource;
+    plugin.openResource = () => { openCount += 1; };
+    let leaf = view().contentEl.find('los-finder-row')[0];
+    const leafSegment = leaf.getAttribute('data-segment');
+    leaf.fire('click', { detail: 1 });
+    await settle();
+    leaf = listRow(leafSegment);
+    leaf.fire('click', { detail: 2 });
+    leaf.fire('dblclick', { detail: 2 });
+    await settle();
+    check('an unselected leaf opens once across the native selection redraw', openCount === 1);
+    doubleClick(listRow(leafSegment));
+    await settle();
+    check('an already selected leaf opens once per native double-click', openCount === 2);
+    listRow(leafSegment).fire('click', { detail: 1 });
+    check('a later ordinary click can reopen the selected leaf', openCount === 3);
+
+    await plugin.nav.openLibraryFolder([], null, 'columns');
+    const columnRow = (column, title) => view().contentEl.find('los-finder-column')[column]
+      .find('los-finder-column-row').find((row) => row.allText().includes(title));
+    doubleClick(columnRow(0, 'Mathematics'));
+    await settle();
+    check('Columns double-click enters Mathematics without appending it twice', at([domain]));
+    doubleClick(columnRow(0, 'Mathematics'));
+    await settle();
+    check('double-clicking the retained ancestor column remains in Mathematics', at([domain]));
+    doubleClick(columnRow(1, 'Books'));
+    await settle();
+    check('Columns double-click also opens a material-type child exactly once', at([domain, books]));
+    doubleClick(view().contentEl.find('los-finder-column')[2].find('los-finder-column-row')[0]);
+    await settle();
+    check('a Columns leaf still opens once after its selection clicks', openCount === 4 && at([domain, books]));
+    plugin.openResource = openResource;
+    check('native folder browsing and opening never issue canonical writes', calls.envelopes.length === 0);
+    plugin.onunload();
+  }
+
+  heading('library persisted folder recovery');
+  {
+    const domain = 'domain:thematic-group-mathematics';
+    const { app, plugin, calls } = await boot({ settings: {
+      navigation: { version: 1, current: { name: 'home' }, history: [{
+        route: { name: 'library-folder', path: [domain, domain], layout: 'list', query: 'book' },
+        scrollTop: 37,
+      }] },
+    } });
+    await plugin.router.back();
+    const view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check('Back repairs duplicated folder history in the visible and persisted current route',
+      JSON.stringify(view.folderPath) === JSON.stringify([domain])
+        && JSON.stringify(plugin.router.snapshot().current.path) === JSON.stringify([domain])
+        && JSON.stringify(plugin._data.navigation.current.path) === JSON.stringify([domain])
+        && view.query === 'book' && view.contentEl.scrollTop === 37
+        && plugin.router.snapshot().history.length === 0 && calls.envelopes.length === 0);
+    plugin.onunload();
+  }
+  {
+    const domain = 'domain:thematic-group-mathematics';
+    const path = [domain, domain, 'type:book', 'type:book'];
+    const { app, plugin, calls } = await boot({ settings: {
+      navigation: { version: 1, current: {
+        name: 'library-folder', path, layout: 'columns', query: 'prob', selected: 'source-fixture-book',
+      }, history: [] },
+    } });
+    const view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    const expected = [domain, 'type:book'];
+    check('reload recovers only adjacent duplicated folder segments and preserves attention',
+      JSON.stringify(view.folderPath) === JSON.stringify(expected)
+        && view.folderLayout === 'columns' && view.query === 'prob'
+        && view.folderSelection === 'source-fixture-book'
+        && !view.contentEl.allText().includes('Folder unavailable'));
+    check('reload saves the repaired route without adding history or canonical writes',
+      JSON.stringify(plugin._data.navigation.current.path) === JSON.stringify(expected)
+        && plugin.router.snapshot().history.length === 0 && calls.envelopes.length === 0);
+    await plugin.nav.openLibraryFolder([domain, 'type:missing']);
+    check('a genuinely missing folder remains visible as unavailable',
+      view.contentEl.allText().includes('Folder unavailable')
+        && view.folderPath[1] === 'type:missing');
+    await plugin.nav.openLibraryFolder([domain, 'type:book', domain]);
+    check('non-adjacent invalid repetitions are preserved as unavailable',
+      view.contentEl.allText().includes('Folder unavailable') && view.folderPath.length === 3);
+    plugin.onunload();
+  }
+
   heading('library folder filter');
   {
     const { app, plugin } = await boot();

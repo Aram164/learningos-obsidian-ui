@@ -189,7 +189,7 @@ function renderAtlasTools(parent: HTMLElement, host: AtlasHost, graph: AtlasGrap
   button(tools, 'Diagnostics', () => host.go({ lens: 'diagnostics' }), 'quiet');
   button(tools, 'Open generated domain map',
     () => host.plugin.openVaultPath('generated/domain-atlas.md'), 'quiet');
-  button(tools, 'Source folders', () => host.plugin.nav.openLibraryHome(), 'quiet');
+  button(tools, 'Source folders', () => host.plugin.nav.openLibraryFolder([]), 'quiet');
   renderOpenQuestions(conceptDisclosure(tools, host, 'open-questions', 'My open questions'), host, graph);
   if (!host.state.concept) renderConnectAction(tools, host, null);
 }
@@ -421,7 +421,7 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   heading.createEl('h1', { text: 'Atlas' });
   const about = conceptDisclosure(heading, host, 'atlas-about', 'About Atlas');
   about.createDiv({ text: 'Explore authored concepts, their linked notes and learning order. Modules show where teaching is mapped. Semantic connections explain related ideas; only prerequisites order learning.' });
-  renderAtlasVariants(root, host.plugin.nav, 'concepts');
+  renderAtlasVariants(root, host.plugin.nav, 'concepts', (target) => host.go(target));
 
   const controls = root.createDiv({ cls: 'los-atlas-controls' });
   const history = controls.createDiv({ cls: 'los-atlas-concept-history', attr: {

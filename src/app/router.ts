@@ -88,6 +88,12 @@ interface RouterLeaf {
   view?: RouterViewSurface;
 }
 
+function normalizeFolderRoute(route: ApplicationRouteV1): ApplicationRouteV1 {
+  return route.name === 'library-folder'
+    ? { ...route, path: asLibraryFolderPath(route.path) }
+    : route;
+}
+
 interface RouterHost {
   app: {
     workspace: {
@@ -415,12 +421,14 @@ export class ApplicationRouter {
 
   /** Replace restorable route state without opening a leaf or adding history. */
   async remember(route: ApplicationRouteV1): Promise<ApplicationRouteV1> {
+    route = normalizeFolderRoute(route);
     this.navigation.current = route;
     await this.persist();
     return route;
   }
 
   async navigate(route: ApplicationRouteV1, options: NavigationOptions = {}) {
+    route = normalizeFolderRoute(route);
     if (!options.preserveOverlay) this.clearOverlay();
     const descriptor = this.descriptor(route);
     const remember = options.remember !== false;
@@ -462,9 +470,10 @@ export class ApplicationRouter {
   async back() {
     const entry = this.navigation.history.pop();
     if (!entry) return this.navigate({ name: 'home' }, { pushHistory: false });
-    this.navigation.current = entry.route;
+    const route = normalizeFolderRoute(entry.route);
+    this.navigation.current = route;
     await this.persist();
-    return this.navigate(entry.route, {
+    return this.navigate(route, {
       remember: false, pushHistory: false, restoreScrollTop: entry.scrollTop || 0,
       restoreSelectedElementId: entry.selectedElementId,
     });

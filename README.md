@@ -43,6 +43,11 @@ changes add no steps. These controls use a per-pane trail; application and
 Obsidian history keep their existing behavior. Both buttons support native
 keyboard activation and arrow movement between available directions.
 
+Concepts/Notes section switches and linked-concept actions stay in their
+originating Atlas pane. Ability selection, detail and layout actions likewise
+stay in their originating ability pane. Atlas source-folder actions open the
+Library folder browser.
+
 On the ability plane, drag the background or focus the canvas and scroll to pan.
 Pinch or Ctrl/Meta/Alt plus wheel zooms at the pointer; the buttons zoom at the
 centre. Fit all, Fit selection and Fit group use the available pane. On a focused

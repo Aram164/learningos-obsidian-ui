@@ -254,6 +254,11 @@ export function asLibraryFolderPath(value: unknown): string[] {
   return value
     .filter((segment): segment is string =>
       typeof segment === "string" && segment.length > 0)
+    // A former click/dblclick handler could append the folder just opened a
+    // second time. No valid tree edge repeats its parent segment: even `at:`
+    // carries the complete material path, so same-name nested folders differ.
+    // Recover only this exact duplication; other missing paths stay visible.
+    .filter((segment, index, path) => index === 0 || segment !== path[index - 1])
     .slice(0, 12);
 }
 

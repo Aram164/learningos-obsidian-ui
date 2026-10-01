@@ -230,12 +230,22 @@ function renderToolbar(
 
 // ----------------------------------------------------------------- list layout
 
+function isCurrentFolder(
+  view: LibraryFinderHost,
+  path: readonly string[],
+): boolean {
+  return path.length === view.folderPath.length
+    && path.every((segment, index) => segment === view.folderPath[index]);
+}
+
 function renderRow(
   view: LibraryFinderHost,
   list: HTMLElement,
   entry: FinderEntry,
 ): HTMLButtonElement {
   const selected = view.folderSelection === entry.segment;
+  const parentPath = [...view.folderPath];
+  let openedOnClick = false;
   const row = list.createEl('button', {
     cls: `los-finder-row is-clickable${selected ? ' is-selected' : ''}`,
     attr: {
@@ -273,11 +283,22 @@ function renderRow(
   // First click selects and fills the inspector; a click on the already
   // selected row opens it, which is how a list behaves when browsing is the
   // common case and opening is the committed one.
-  row.addEventListener('click', () => {
-    if (selected) void view.activateEntry(entry);
-    else void view.selectFolderEntry(entry.segment);
+  row.addEventListener('click', (event: MouseEvent) => {
+    if (!isCurrentFolder(view, parentPath) || event.detail > 1) return;
+    if (selected) {
+      openedOnClick = true;
+      void view.activateEntry(entry);
+    } else void view.selectFolderEntry(entry.segment);
   });
-  row.addEventListener('dblclick', () => { void view.activateEntry(entry); });
+  row.addEventListener('dblclick', () => {
+    // Native double-click delivers click, click, then dblclick. Selection can
+    // replace the row between those events; opening can already change the
+    // folder. Only a row still in its rendered parent may complete the act.
+    if (!openedOnClick && isCurrentFolder(view, parentPath)) {
+      void view.activateEntry(entry);
+    }
+    openedOnClick = false;
+  });
   return row;
 }
 
@@ -287,6 +308,7 @@ function renderList(
   entries: readonly FinderEntry[],
   focusSelection: boolean,
 ): void {
+  const parentPath = [...view.folderPath];
   const list = parent.createDiv({
     cls: 'los-finder-list',
     attr: { 'aria-label': 'Folder contents' },
@@ -306,6 +328,7 @@ function renderList(
   }
 
   list.addEventListener('keydown', (event: KeyboardEvent) => {
+    if (!isCurrentFolder(view, parentPath)) return;
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     const index = entries.findIndex(
       (entry) => entry.segment === view.folderSelection,
@@ -390,11 +413,18 @@ function renderColumns(
       if (entry.isFolder) {
         icon(row.createSpan({ cls: 'los-finder-row-chevron' }), 'chevron-right');
       }
-      row.addEventListener('click', () => {
+      row.addEventListener('click', (event: MouseEvent) => {
+        if (event.detail > 1) return;
         if (entry.isFolder) void view.openFolder([...folder.path, entry.segment]);
         else void view.openFolder(folder.path, entry.segment);
       });
-      row.addEventListener('dblclick', () => { void view.activateEntry(entry); });
+      row.addEventListener('dblclick', () => {
+        // Folders have already opened from their explicit column parent.
+        // A leaf opens only after click has selected its own parent folder.
+        if (!entry.isFolder && isCurrentFolder(view, folder.path)) {
+          void view.activateEntry(entry);
+        }
+      });
     }
   });
 }
@@ -423,6 +453,7 @@ function renderEntryInspector(
   panel: HTMLElement,
   entry: FinderEntry,
 ): void {
+  const parentPath = [...view.folderPath];
   icon(panel.createDiv({ cls: 'los-finder-inspector-icon' }), entry.icon);
   panel.createEl('h2', { text: entry.name });
   panel.createDiv({ cls: 'los-finder-inspector-kind', text: entry.kindLabel });
@@ -453,14 +484,17 @@ function renderEntryInspector(
   }
 
   const actions = panel.createDiv({ cls: 'los-actions' });
+  const activate = (): void => {
+    if (isCurrentFolder(view, parentPath)) void view.activateEntry(entry);
+  };
 
   if (entry.isFolder) {
-    button(actions, 'Open folder', () => void view.activateEntry(entry), 'cta');
+    button(actions, 'Open folder', activate, 'cta');
   } else if (entry.materialPath || entry.url) {
     button(
       actions,
       entry.materialPath ? 'Open file' : 'Open online',
-      () => void view.activateEntry(entry),
+      activate,
       'cta',
     );
   }

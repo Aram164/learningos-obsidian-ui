@@ -139,6 +139,19 @@ module.exports = async function run() {
     await tick();
     check('the generated atlas file stays reachable from the view',
       app.workspace.opened.includes('generated/domain-atlas.md'));
+    await plugin.nav.openAtlas({ concept: 'concept-bayes', module: 'module-fixture-m2', lens: 'semantic', depth: 2 });
+    const atlasRoute = atlas.getState();
+    atlas.contentEl.findText('los-btn', 'Source folders').fire('click');
+    await tick();
+    check('Atlas tools opens the root source-folder browser',
+      plugin.router.snapshot().current.name === 'library-folder'
+      && plugin.router.snapshot().current.path.length === 0
+      && app.workspace.getLeavesOfType(VIEW.library)[0].view.contentEl.find('los-finder').length === 1);
+    await plugin.nav.back();
+    check('Back from source folders restores the exact Atlas concept/module/lens/depth',
+      JSON.stringify(atlas.getState()) === JSON.stringify(atlasRoute)
+      && plugin.router.snapshot().current.name === 'atlas'
+      && calls.envelopes.length === 0);
     plugin.onunload();
   }
 
@@ -1088,6 +1101,41 @@ module.exports = async function run() {
     check('concept trails remain absent from persisted routes and all traversal remains read-only',
       Object.keys(atlas().getState()).sort().join(',') === 'concept,depth,lens,module'
       && plugin.router.snapshot().history.length === applicationHistory && calls.envelopes.length === 0);
+    plugin.onunload();
+  }
+
+  heading('Atlas section and linked-concept navigation stay in the originating leaf');
+  {
+    const { app, plugin, calls } = await boot();
+    await plugin.nav.openAtlas({ concept: 'concept-bayes', module: 'module-fixture-m2', lens: 'semantic', depth: 2 });
+    const first = app.workspace.getLeavesOfType(VIEW.atlas)[0];
+    first.view.query = 'retained Bayes query';
+    first.view.concepts.disclosures.set('atlas-about', true);
+    const firstRoute = JSON.stringify(first.view.getState());
+    const second = app.workspace.getLeaf(true);
+    await second.setViewState({ type: VIEW.atlas, state: { concept: 'concept-logistic-regression', lens: 'path', depth: 2 } });
+    const root = browserDom(second.view.contentEl);
+    app.workspace.setActiveLeaf(second);
+    const firstUnchanged = () => JSON.stringify(first.view.getState()) === firstRoute
+      && first.view.query === 'retained Bayes query' && first.view.concepts.disclosures.get('atlas-about') === true;
+    root.findText('los-filter-tab', 'Notes & shelves').fire('click');
+    await waitFor(() => second.view.state.lens === 'domains');
+    check('switching to Notes & shelves changes and activates its own leaf only',
+      second.view.state.lens === 'domains' && app.workspace.active === second && firstUnchanged());
+    const row = root.find('los-domain-note-row').find((note) => note.getAttribute('data-note-id') === 'note-fixture-probability');
+    row.find('los-domain-select-note')[0].fire('click');
+    root.find('los-domain-open-concept')[0].fire('click');
+    await waitFor(() => second.view.state.concept === 'concept-bayes');
+    check('a selected note opens its linked concept in that leaf without replacing the other concept',
+      second.view.state.concept === 'concept-bayes' && second.view.state.lens === 'prerequisites'
+      && app.workspace.active === second && firstUnchanged());
+    root.findText('los-filter-tab', 'Notes & shelves').fire('click');
+    await waitFor(() => second.view.state.lens === 'domains');
+    root.findText('los-filter-tab', 'Concepts').fire('click');
+    await waitFor(() => second.view.state.lens === 'prerequisites');
+    check('returning through the Concepts section preserves the independent other leaf and learner state',
+      second.view.state.concept === null && app.workspace.active === second
+      && firstUnchanged() && calls.envelopes.length === 0);
     plugin.onunload();
   }
 
