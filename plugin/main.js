@@ -13922,7 +13922,7 @@ function text3(value) {
   return typeof value === "string" ? value : "";
 }
 function hasConflictingWork(row4) {
-  return row4.reasons.some((reason) => /conflicting/i.test(reason));
+  return row4.reason_codes.includes("conflicting-later-work");
 }
 function categoryLabel(category) {
   const words2 = category.replace(/-/g, " ").trim();
@@ -17232,6 +17232,7 @@ function editClaim(host, draft) {
     lifecycle: "active",
     state: "uncertain",
     reasons: [],
+    reason_codes: [],
     concept_ids: [],
     module_ids: [],
     preparation_routes: [],
@@ -22356,7 +22357,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:4323a0f794c130cfefff0b97b699907aadf56120c97c7a302f99f509be6b08c9" : "unavailable";
+  return true ? "sha256:4849887ef2553278f8e14c0e48b75d04c9f6bc17849b5a3076b34b655819c1d9" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
@@ -22458,19 +22459,21 @@ function row3(value) {
   const id2 = text7(item.id);
   const title2 = text7(item.title);
   const reasons = strings2(item.reasons);
+  const reasonCodes = optionalStrings(item.reason_codes);
   const concepts = strings2(item.concept_ids);
   const modules = optionalStrings(item.module_ids);
   const routes = list3(item.preparation_routes, route);
   const transfers = list3(item.transfer, transfer);
   const rows = list3(item.evidence, evidence2);
   const lifecycle = item.lifecycle === void 0 ? "active" : item.lifecycle;
-  if (!id2 || !title2 || !STATES.has(String(item.state)) || !reasons || !concepts || !modules || !routes || !transfers || !rows || lifecycle !== "active" && lifecycle !== "retired") return null;
+  if (!id2 || !title2 || !STATES.has(String(item.state)) || !reasons || !reasonCodes || !concepts || !modules || !routes || !transfers || !rows || lifecycle !== "active" && lifecycle !== "retired") return null;
   return {
     id: id2,
     title: title2,
     lifecycle,
     state: item.state,
     reasons,
+    reason_codes: reasonCodes,
     concept_ids: concepts,
     module_ids: modules,
     preparation_routes: routes,
