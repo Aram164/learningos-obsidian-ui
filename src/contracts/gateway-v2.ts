@@ -266,7 +266,11 @@ export function requestArtifactId(
 /**
  * Core signs this exact object using sorted, compact JSON and UTF-8. Request
  * identifiers and approval are deliberately excluded so replay identity can
- * change without changing what the learner approved.
+ * change without changing what the learner approved. Core additionally
+ * covers the optional `session_id` when an envelope carries one; this
+ * interface never sends it (the UI names its session through the child
+ * environment instead), so the six fields below stay the whole subject
+ * here.
  */
 export function gatewayApprovalSubject(
   capability: string,

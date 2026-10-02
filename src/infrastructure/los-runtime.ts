@@ -2,6 +2,7 @@ import { execFile } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
 import process from 'node:process';
+import { runtimeSourceFingerprint } from '../build-identity';
 import { TRACE_OWNERSHIP_ENV, ownershipMarkerForTraceparent } from './trace-context';
 
 export interface PythonResolution {
@@ -26,6 +27,20 @@ export const SESSION_ID_ENV = 'LOS_SESSION_ID';
  * lands in an agent session's ledger (or vice versa).
  */
 export const UI_SESSION_ID = 'ui';
+
+/** The environment variable naming the Core client and its build. */
+export const CLIENT_ENV = 'LOS_CLIENT';
+
+/**
+ * This running bundle's client marker, stamped on every Core child it
+ * spawns. The build is the compiled-in source fingerprint, so Core can
+ * tell a current UI from an outdated installed build (or an unmarked
+ * terminal agent) instead of guessing its identity. An unmarked call
+ * stays valid — the marker is informational, never a refusal input.
+ */
+export function uiClientMarker(): string {
+  return `obsidian-ui/${runtimeSourceFingerprint()}`;
+}
 
 interface LosRuntimeHost {
   readonly vault: {
@@ -60,7 +75,8 @@ export class LosRuntime {
   }
 
   /**
-   * Run the CLI. `traceParent` carries one W3C traceparent for this exact
+   * Run the CLI. Every child carries this UI's session identity and client
+   * marker. `traceParent` carries one W3C traceparent for this exact
    * dispatch (research track #2, Phase 1): it travels as child-process
    * environment, never as CLI arguments or payload, and an absent value
    * leaves the child environment exactly as before. A present value also
@@ -84,6 +100,7 @@ export class LosRuntime {
         env: {
           ...process.env,
           [SESSION_ID_ENV]: UI_SESSION_ID,
+          [CLIENT_ENV]: uiClientMarker(),
           ...(traceParent === undefined
             ? {}
             : {

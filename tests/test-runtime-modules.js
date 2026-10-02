@@ -1376,6 +1376,30 @@ function routerPlugin(settings = {}) {
       'a UI-spawned write must land in the UI session ledger');
   });
 
+  await test('LosRuntime stamps every child with the UI client marker', async () => {
+    const { LosRuntime, CLIENT_ENV, uiClientMarker } = load('src/infrastructure/los-runtime.ts');
+    const { runtimeSourceFingerprint } = load('src/build-identity.ts');
+    assert.equal(CLIENT_ENV, 'LOS_CLIENT');
+    assert.equal(uiClientMarker(), `obsidian-ui/${runtimeSourceFingerprint()}`);
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'learningos-ui-client-'));
+    process.on('exit', () => fs.rmSync(base, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(base, 'tools'), { recursive: true });
+    fs.writeFileSync(path.join(base, 'tools', 'los.py'),
+      'console.log(process.env.LOS_CLIENT || "MISSING");\n', 'utf8');
+    const runtime = new LosRuntime(
+      { vault: { adapter: { getBasePath: () => base } } },
+      () => process.execPath,
+    );
+    const stdout = await new Promise((resolve, reject) => {
+      runtime.run(['session-end'], (error, out) => {
+        if (error) reject(error);
+        else resolve(out);
+      });
+    });
+    assert.equal(stdout.trim(), uiClientMarker(),
+      'a UI-spawned child must carry the running build identity');
+  });
+
   await test('Gateway approval sorting matches Python Unicode code-point order', async () => {
     const subject = {
       schema_version: 2,

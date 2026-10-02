@@ -16249,8 +16249,22 @@ var import_node_child_process = require("node:child_process");
 var fs2 = __toESM(require("node:fs"));
 var nodePath2 = __toESM(require("node:path"));
 var import_node_process = __toESM(require("node:process"));
+
+// src/build-identity.ts
+function runtimeSourceFingerprint() {
+  return true ? "sha256:55b820a9d75e7a0b1b98b2d693a2a11fabbcd97d3461366076ff96bc3b922972" : "unavailable";
+}
+function runtimeContractVersion() {
+  return true ? 15 : 0;
+}
+
+// src/infrastructure/los-runtime.ts
 var SESSION_ID_ENV = "LOS_SESSION_ID";
 var UI_SESSION_ID = "ui";
+var CLIENT_ENV = "LOS_CLIENT";
+function uiClientMarker() {
+  return `obsidian-ui/${runtimeSourceFingerprint()}`;
+}
 var LosRuntime = class {
   constructor(app, configuredPython) {
     this.app = app;
@@ -16273,7 +16287,8 @@ var LosRuntime = class {
     return { path: fallback, origin: "PATH fallback", attempted: [...attempted, fallback] };
   }
   /**
-   * Run the CLI. `traceParent` carries one W3C traceparent for this exact
+   * Run the CLI. Every child carries this UI's session identity and client
+   * marker. `traceParent` carries one W3C traceparent for this exact
    * dispatch (research track #2, Phase 1): it travels as child-process
    * environment, never as CLI arguments or payload, and an absent value
    * leaves the child environment exactly as before. A present value also
@@ -16295,6 +16310,7 @@ var LosRuntime = class {
         env: {
           ...import_node_process.default.env,
           [SESSION_ID_ENV]: UI_SESSION_ID,
+          [CLIENT_ENV]: uiClientMarker(),
           ...traceParent === void 0 ? {} : {
             TRACEPARENT: traceParent,
             ...owned === null ? {} : { [TRACE_OWNERSHIP_ENV]: owned }
@@ -22354,14 +22370,6 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
     this.contentEl.empty();
   }
 };
-
-// src/build-identity.ts
-function runtimeSourceFingerprint() {
-  return true ? "sha256:96806c5dbc3d3bd0163ace693920e735e2c58579e4f79be6a7361abfdcb083e1" : "unavailable";
-}
-function runtimeContractVersion() {
-  return true ? 15 : 0;
-}
 
 // src/contracts/ability-context.ts
 var ABILITY_CONTEXT_CONTRACT = "ability-context-v1";
