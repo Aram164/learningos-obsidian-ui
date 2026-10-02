@@ -355,7 +355,8 @@ module.exports = async function run() {
         || envelope.capability.startsWith('ability.')));
     await plugin.reviewSessionEnd();
     check('session closure first requests an exact change review',
-      calls.some((args) => args.length === 1 && args[0] === 'session-end')
+      calls.some((args) => args[0] === 'session-end'
+        && args.includes('--session-id') && args.includes('ui'))
       && stub.Modal.last?.contentEl?.getAttribute('role') === 'dialog'
       && stub.Modal.last?.contentEl?.getAttribute('aria-labelledby') === 'los-session-end-heading');
     plugin.onunload();

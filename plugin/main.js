@@ -15365,8 +15365,8 @@ var ProjectView = class extends import_obsidian14.ItemView {
 
 // src/views/review-view.ts
 var import_obsidian16 = require("obsidian");
-var fs2 = __toESM(require("node:fs"));
-var nodePath2 = __toESM(require("node:path"));
+var fs3 = __toESM(require("node:fs"));
+var nodePath3 = __toESM(require("node:path"));
 
 // src/features/review/detail.ts
 var import_obsidian15 = require("obsidian");
@@ -16244,6 +16244,69 @@ function parseTraceparent(value) {
   return { traceId, spanId, sampled: (parseInt(flags, 16) & 1) === 1 };
 }
 
+// src/infrastructure/los-runtime.ts
+var import_node_child_process = require("node:child_process");
+var fs2 = __toESM(require("node:fs"));
+var nodePath2 = __toESM(require("node:path"));
+var import_node_process = __toESM(require("node:process"));
+var SESSION_ID_ENV = "LOS_SESSION_ID";
+var UI_SESSION_ID = "ui";
+var LosRuntime = class {
+  constructor(app, configuredPython) {
+    this.app = app;
+    this.configuredPython = configuredPython;
+  }
+  resolvePython() {
+    const base = this.app.vault.adapter.getBasePath();
+    const configured = this.configuredPython().trim();
+    const searchOrder = [
+      [configured, "configured in settings"],
+      [nodePath2.join(base, ".venv", "bin", "python"), "project virtual environment"],
+      [nodePath2.join(base, ".venv", "Scripts", "python.exe"), "project virtual environment (Windows)"]
+    ];
+    const candidates = searchOrder.filter(([path]) => path);
+    const attempted = candidates.map(([path]) => path);
+    for (const [path, origin] of candidates) {
+      if (fs2.existsSync(path)) return { path, origin, attempted };
+    }
+    const fallback = import_node_process.default.platform === "win32" ? "python" : "python3";
+    return { path: fallback, origin: "PATH fallback", attempted: [...attempted, fallback] };
+  }
+  /**
+   * Run the CLI. `traceParent` carries one W3C traceparent for this exact
+   * dispatch (research track #2, Phase 1): it travels as child-process
+   * environment, never as CLI arguments or payload, and an absent value
+   * leaves the child environment exactly as before. A present value also
+   * carries the LearningOS-ownership marker, so Core adopts this
+   * dispatch's operation as its own instead of minting a second one
+   * (JF-04, Option A).
+   */
+  run(args, callback, stdin, traceParent) {
+    const base = this.app.vault.adapter.getBasePath();
+    const script = nodePath2.join(base, "tools", "los.py");
+    const owned = traceParent === void 0 ? null : ownershipMarkerForTraceparent(traceParent);
+    const child = (0, import_node_child_process.execFile)(
+      this.resolvePython().path,
+      [script, ...args],
+      {
+        cwd: base,
+        timeout: 18e4,
+        maxBuffer: 8 * 1024 * 1024,
+        env: {
+          ...import_node_process.default.env,
+          [SESSION_ID_ENV]: UI_SESSION_ID,
+          ...traceParent === void 0 ? {} : {
+            TRACEPARENT: traceParent,
+            ...owned === null ? {} : { [TRACE_OWNERSHIP_ENV]: owned }
+          }
+        }
+      },
+      callback
+    );
+    if (stdin !== void 0) child.stdin?.end(stdin);
+  }
+};
+
 // src/gateway-client.ts
 var GATEWAY_RECOVERY_NOTICE = "The Gateway response was interrupted. Replaying the same approved request; no new write will be created.";
 var GATEWAY_RECOVERY_BLOCKED = "LearningOS could not confirm whether the previous write landed, so it will not send another. Your draft was kept. Open Diagnostics \u2192 Gateway recovery to retry the same request.";
@@ -16952,7 +17015,7 @@ Last response: ${result.error.message}`,
   }
   endSession(commitMessage = null, push3 = false) {
     this.assertMutationAllowed();
-    const args = ["session-end"];
+    const args = ["session-end", "--session-id", UI_SESSION_ID];
     if (commitMessage) args.push("--commit-message", commitMessage);
     if (push3) args.push("--push");
     return this.call(args);
@@ -18134,21 +18197,21 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
       const app = this.app;
       const base = app.vault.adapter.getBasePath();
       const pluginInfo = this.plugin.manifest;
-      const directory = pluginInfo?.dir || nodePath2.join(
+      const directory = pluginInfo?.dir || nodePath3.join(
         ".obsidian",
         "plugins",
         pluginInfo?.id || "learningos-ui"
       );
-      const target = nodePath2.join(
+      const target = nodePath3.join(
         base,
         directory,
         "build-info.json"
       );
-      if (!fs2.existsSync(target)) {
+      if (!fs3.existsSync(target)) {
         return fallback;
       }
       const parsed = JSON.parse(
-        fs2.readFileSync(target, "utf8")
+        fs3.readFileSync(target, "utf8")
       );
       if (!isRecord2(parsed)) {
         return fallback;
@@ -22293,7 +22356,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:f80b70e41730e257c3dc6c3be7c3c7cdbed9286b54ddb813d89f8e509dd1d1ad" : "unavailable";
+  return true ? "sha256:c0c4b362615f3ba5265aeb114b0ace205704e73fdef49b8b27df87afe65f9b1b" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
@@ -22777,66 +22840,6 @@ var AIActionClient = class {
         deliveryId
       ])
     );
-  }
-};
-
-// src/infrastructure/los-runtime.ts
-var import_node_child_process = require("node:child_process");
-var fs3 = __toESM(require("node:fs"));
-var nodePath3 = __toESM(require("node:path"));
-var import_node_process = __toESM(require("node:process"));
-var LosRuntime = class {
-  constructor(app, configuredPython) {
-    this.app = app;
-    this.configuredPython = configuredPython;
-  }
-  resolvePython() {
-    const base = this.app.vault.adapter.getBasePath();
-    const configured = this.configuredPython().trim();
-    const searchOrder = [
-      [configured, "configured in settings"],
-      [nodePath3.join(base, ".venv", "bin", "python"), "project virtual environment"],
-      [nodePath3.join(base, ".venv", "Scripts", "python.exe"), "project virtual environment (Windows)"]
-    ];
-    const candidates = searchOrder.filter(([path]) => path);
-    const attempted = candidates.map(([path]) => path);
-    for (const [path, origin] of candidates) {
-      if (fs3.existsSync(path)) return { path, origin, attempted };
-    }
-    const fallback = import_node_process.default.platform === "win32" ? "python" : "python3";
-    return { path: fallback, origin: "PATH fallback", attempted: [...attempted, fallback] };
-  }
-  /**
-   * Run the CLI. `traceParent` carries one W3C traceparent for this exact
-   * dispatch (research track #2, Phase 1): it travels as child-process
-   * environment, never as CLI arguments or payload, and an absent value
-   * leaves the child environment exactly as before. A present value also
-   * carries the LearningOS-ownership marker, so Core adopts this
-   * dispatch's operation as its own instead of minting a second one
-   * (JF-04, Option A).
-   */
-  run(args, callback, stdin, traceParent) {
-    const base = this.app.vault.adapter.getBasePath();
-    const script = nodePath3.join(base, "tools", "los.py");
-    const owned = traceParent === void 0 ? null : ownershipMarkerForTraceparent(traceParent);
-    const child = (0, import_node_child_process.execFile)(
-      this.resolvePython().path,
-      [script, ...args],
-      {
-        cwd: base,
-        timeout: 18e4,
-        maxBuffer: 8 * 1024 * 1024,
-        ...traceParent === void 0 ? {} : {
-          env: {
-            ...import_node_process.default.env,
-            TRACEPARENT: traceParent,
-            ...owned === null ? {} : { [TRACE_OWNERSHIP_ENV]: owned }
-          }
-        }
-      },
-      callback
-    );
-    if (stdin !== void 0) child.stdin?.end(stdin);
   }
 };
 
