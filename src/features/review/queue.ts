@@ -11,10 +11,10 @@ import type { ProjectionRecord } from '../../contracts/manifest';
  *
  * Membership comes from three places and nowhere else. Core's `review_items`
  * (planning, inbox, shelving, Garden) exactly as projected; Core's ability
- * horizon, where an ability's own reasons say its recorded work conflicts;
- * and Aram's own ability drafts, which are his and are labelled as drafts
- * until he confirms them. Nothing is synthesized from counts, stage status,
- * file layout or age, and no entry is ever an example.
+ * horizon, where an ability's own reason codes say its recorded work
+ * conflicts; and Aram's own ability drafts, which are his and are labelled
+ * as drafts until he confirms them. Nothing is synthesized from counts,
+ * stage status, file layout or age, and no entry is ever an example.
  */
 export type ReviewEntry =
   | {
@@ -58,9 +58,13 @@ function text(value: unknown): string {
   return typeof value === 'string' ? value : '';
 }
 
-/** Core's own words for a conflict: later comparable work disagrees. */
+/**
+ * Core's structured verdict for a conflict: later comparable work disagrees.
+ * Decided from `reason_codes` alone — prose is display only, so rewording a
+ * reason can neither add nor drop a queue entry.
+ */
 export function hasConflictingWork(row: AbilityRowV1): boolean {
-  return row.reasons.some((reason) => /conflicting/i.test(reason));
+  return row.reason_codes.includes('conflicting-later-work');
 }
 
 export function categoryLabel(category: string): string {

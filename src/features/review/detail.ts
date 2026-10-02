@@ -77,8 +77,8 @@ async function send(host: ReviewHost, action: () => Promise<unknown>, done: stri
 
 function editClaim(host: ReviewHost, draft: AbilityClaimDraft): void {
   const row = rowFor(host, draft.abilityId)
-    ?? { id: draft.abilityId, title: draft.abilityTitle, lifecycle: 'active', state: 'uncertain', reasons: [], concept_ids: [],
-      module_ids: [], preparation_routes: [], transfer: [], evidence: [] } as AbilityRowV1;
+    ?? { id: draft.abilityId, title: draft.abilityTitle, lifecycle: 'active', state: 'uncertain', reasons: [], reason_codes: [],
+      concept_ids: [], module_ids: [], preparation_routes: [], transfer: [], evidence: [] } as AbilityRowV1;
   const expansion = host.plugin.abilityHorizon.expansion(draft.abilityId);
   const focus = expansion && 'ability' in expansion ? expansion : null;
   new AbilityClaimDraftModal(host.app, {

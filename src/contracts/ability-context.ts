@@ -9,8 +9,9 @@
  * tolerated: the producer may add fields without a paired UI release, and
  * nothing here re-derives meaning from them.
  *
- * The interface never computes a state. Every `state`, `reasons`, `supported`
- * and `missing_or_uncertain` below is Core's answer, rendered as given.
+ * The interface never computes a state. Every `state`, `reasons`,
+ * `reason_codes`, `supported` and `missing_or_uncertain` below is Core's
+ * answer, rendered as given.
  */
 
 export const ABILITY_CONTEXT_CONTRACT = 'ability-context-v1';
@@ -63,6 +64,12 @@ export interface AbilityRowV1 {
   readonly lifecycle: 'active' | 'retired';
   readonly state: AbilityStateV1;
   readonly reasons: readonly string[];
+  /**
+   * Stable codes parallel to `reasons`, decided by Core from the same
+   * structured facts the prose describes. Decisions read this list;
+   * prose is display only. Absent from older Cores, which decode as [].
+   */
+  readonly reason_codes: readonly string[];
   readonly concept_ids: readonly string[];
   readonly module_ids: readonly string[];
   readonly preparation_routes: readonly AbilityRouteV1[];
@@ -287,13 +294,14 @@ function row(value: unknown): AbilityRowV1 | null {
   const id = text(item.id);
   const title = text(item.title);
   const reasons = strings(item.reasons);
+  const reasonCodes = optionalStrings(item.reason_codes);
   const concepts = strings(item.concept_ids);
   const modules = optionalStrings(item.module_ids);
   const routes = list(item.preparation_routes, route);
   const transfers = list(item.transfer, transfer);
   const rows = list(item.evidence, evidence);
   const lifecycle = item.lifecycle === undefined ? 'active' : item.lifecycle;
-  if (!id || !title || !STATES.has(String(item.state)) || !reasons || !concepts
+  if (!id || !title || !STATES.has(String(item.state)) || !reasons || !reasonCodes || !concepts
     || !modules || !routes || !transfers || !rows
     || (lifecycle !== 'active' && lifecycle !== 'retired')) return null;
   return {
@@ -302,6 +310,7 @@ function row(value: unknown): AbilityRowV1 | null {
     lifecycle,
     state: item.state as AbilityStateV1,
     reasons,
+    reason_codes: reasonCodes,
     concept_ids: concepts,
     module_ids: modules,
     preparation_routes: routes,

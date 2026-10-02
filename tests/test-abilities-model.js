@@ -496,7 +496,8 @@ test('Review lists drafts, Core conflicts and Core decisions — and nothing syn
     { id: 'review-inbox-x', category: 'inbox', title: '', context: 'work/inbox/x.md', reason: 'Route it.' },
   ];
   const conflicted = asAbilityBrief(fixtures.abilityBrief((raw) => {
-    raw.abilities[2].reasons = ['later comparable work is conflicting'];
+    raw.abilities[2].reasons = ['conflicting later work'];
+    raw.abilities[2].reason_codes = ['conflicting-later-work'];
   }));
   const drafts = [claimDraft(), connectionDraft()];
   const queue = buildReviewQueue({ items, drafts, horizon: conflicted });
@@ -511,6 +512,33 @@ test('Review lists drafts, Core conflicts and Core decisions — and nothing syn
   assert.equal(reviewQueueCount({ items: [], drafts: [], horizon: brief }), 0,
     'uncertain abilities with no conflicting work are not decisions');
   assert.equal(hasConflictingWork(brief.abilities[0]), false);
+});
+
+test('the Review queue decides from reason codes, never from prose', () => {
+  // Rewording the prose changes nothing: the code alone decides.
+  const reworded = asAbilityBrief(fixtures.abilityBrief((raw) => {
+    raw.abilities[2].reasons = ['later comparable work disagrees'];
+    raw.abilities[2].reason_codes = ['conflicting-later-work'];
+  }));
+  assert.equal(hasConflictingWork(reworded.abilities[2]), true);
+  assert.equal(reviewQueueCount({ items: [], drafts: [], horizon: reworded }), 1);
+  // And prose that merely mentions conflict, without the code, is not a
+  // conflict — neither a reworded Core reason nor a future reason that
+  // happens to contain the word may miscategorize the row.
+  const mentionOnly = asAbilityBrief(fixtures.abilityBrief((raw) => {
+    raw.abilities[2].reasons = ['insufficient or conflicting target-specific evidence'];
+    raw.abilities[2].reason_codes = ['no-current-work'];
+  }));
+  assert.equal(hasConflictingWork(mentionOnly.abilities[2]), false);
+  assert.equal(reviewQueueCount({ items: [], drafts: [], horizon: mentionOnly }), 0);
+  // An older Core that emits no codes decodes as no conflict, loudly
+  // shaped — the row still reads, and the queue stays code-decided.
+  const legacy = asAbilityBrief(fixtures.abilityBrief((raw) => {
+    for (const row of raw.abilities) delete row.reason_codes;
+  }));
+  assert.ok(legacy, 'a horizon without codes still decodes');
+  assert.deepEqual(legacy.abilities[0].reason_codes, []);
+  assert.equal(reviewQueueCount({ items: [], drafts: [], horizon: legacy }), 0);
 });
 
 test('UI-owned drafts round-trip and refuse what they cannot represent', () => {

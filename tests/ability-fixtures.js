@@ -43,6 +43,7 @@ const ABILITIES = [
     title: 'Apply the probability axioms to finite events',
     state: 'supported',
     reasons: ['current confirmed work meets every stated condition'],
+    reason_codes: ['current-confirmed-attempt'],
     concept_ids: ['concept-wahrscheinlichkeit'],
     module_ids: ['module-fixture-m2'],
     preparation_routes: [],
@@ -71,6 +72,7 @@ const ABILITIES = [
     title: 'Compute a conditional probability from a joint table',
     state: 'nearby',
     reasons: ['every prerequisite on one route is supported; no confirmed work of its own yet'],
+    reason_codes: ['no-current-work', 'named-remaining-work'],
     concept_ids: ['concept-bedingte-wahrscheinlichkeit', 'concept-wahrscheinlichkeit'],
     module_ids: ['module-fixture-m2'],
     preparation_routes: [route(
@@ -85,6 +87,7 @@ const ABILITIES = [
     title: 'Invert a conditional probability with Bayes theorem',
     state: 'uncertain',
     reasons: ['no current confirmed work under the stated conditions'],
+    reason_codes: ['no-current-work'],
     concept_ids: ['concept-bayes', 'concept-bedingte-wahrscheinlichkeit'],
     module_ids: ['module-fixture-m2'],
     preparation_routes: [route(
@@ -99,6 +102,7 @@ const ABILITIES = [
     title: 'Score a naive Bayes classifier by hand',
     state: 'uncertain',
     reasons: ['no current confirmed work under the stated conditions'],
+    reason_codes: ['no-current-work'],
     concept_ids: ['concept-bayes'],
     module_ids: ['module-fixture-aml'],
     preparation_routes: [route(
@@ -113,6 +117,7 @@ const ABILITIES = [
     title: 'Fit a logistic regression by maximum likelihood',
     state: 'uncertain',
     reasons: ['no current confirmed work under the stated conditions'],
+    reason_codes: ['no-current-work'],
     concept_ids: ['concept-logistic-regression'],
     module_ids: ['module-fixture-aml'],
     preparation_routes: [],
@@ -124,6 +129,7 @@ const ABILITIES = [
     title: 'Construct a frequentist confidence interval',
     state: 'uncertain',
     reasons: ['no current confirmed work under the stated conditions'],
+    reason_codes: ['no-current-work'],
     concept_ids: ['concept-frequentist-inference'],
     module_ids: ['module-fixture-m2'],
     preparation_routes: [],
