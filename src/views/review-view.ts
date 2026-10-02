@@ -936,7 +936,10 @@ export class DiagnosticsView extends ItemView {
   async testInterpreter(): Promise<void> {
     const resolved = this.plugin.resolvePython();
     try {
-      const result: unknown = await this.plugin.gateway.call(['status', '--json']);
+      // --no-validate: this tests the interpreter, not the repository. A full
+      // status exits 1 whenever validation finds errors, which would report a
+      // working interpreter as failed; the unreadable-file refusal still runs.
+      const result: unknown = await this.plugin.gateway.call(['status', '--json', '--no-validate']);
       this.report = `${resolved.path} (${resolved.origin})\nCore answered: ${JSON.stringify(result).slice(0, 400)}`;
     } catch (error: unknown) {
       this.report = `${resolved.path} (${resolved.origin})\nFailed: ${errorMessage(error)}\nTried: ${resolved.attempted.join(', ')}`;

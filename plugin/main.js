@@ -18490,7 +18490,7 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
   async testInterpreter() {
     const resolved = this.plugin.resolvePython();
     try {
-      const result = await this.plugin.gateway.call(["status", "--json"]);
+      const result = await this.plugin.gateway.call(["status", "--json", "--no-validate"]);
       this.report = `${resolved.path} (${resolved.origin})
 Core answered: ${JSON.stringify(result).slice(0, 400)}`;
     } catch (error) {
@@ -22356,7 +22356,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:c0c4b362615f3ba5265aeb114b0ace205704e73fdef49b8b27df87afe65f9b1b" : "unavailable";
+  return true ? "sha256:4323a0f794c130cfefff0b97b699907aadf56120c97c7a302f99f509be6b08c9" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
