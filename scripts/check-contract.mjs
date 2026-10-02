@@ -25,6 +25,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { manifestLock, yamlStringList } from './contract-locks.mjs';
+import { checkAbilityContractMirror } from './ability-contract-mirror.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 const readJson = (relative) => JSON.parse(fs.readFileSync(path.join(root, relative), 'utf8'));
@@ -143,6 +144,8 @@ if (!fs.existsSync(producerPath)) {
       `Core/UI ${key} mirror`);
   }
   console.log(`contract: mirror of core v${producerVersion} verified`);
+  checkAbilityContractMirror(root, producerRoot);
+  console.log('contract: ability-context-v1 query schema mirror verified');
 
   /*
    * Admission, checked from both sides too (added 2026-09-13).

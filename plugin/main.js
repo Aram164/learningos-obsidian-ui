@@ -22357,7 +22357,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:4849887ef2553278f8e14c0e48b75d04c9f6bc17849b5a3076b34b655819c1d9" : "unavailable";
+  return true ? "sha256:96806c5dbc3d3bd0163ace693920e735e2c58579e4f79be6a7361abfdcb083e1" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
@@ -22467,6 +22467,7 @@ function row3(value) {
   const rows = list3(item.evidence, evidence2);
   const lifecycle = item.lifecycle === void 0 ? "active" : item.lifecycle;
   if (!id2 || !title2 || !STATES.has(String(item.state)) || !reasons || !reasonCodes || !concepts || !modules || !routes || !transfers || !rows || lifecycle !== "active" && lifecycle !== "retired") return null;
+  if (item.reason_codes !== void 0 && (reasonCodes.length !== reasons.length || reasonCodes.some((code) => !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(code)))) return null;
   return {
     id: id2,
     title: title2,

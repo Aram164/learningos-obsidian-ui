@@ -541,6 +541,27 @@ test('the Review queue decides from reason codes, never from prose', () => {
   assert.equal(reviewQueueCount({ items: [], drafts: [], horizon: legacy }), 0);
 });
 
+test('present reason codes reject malformed lists in horizon and focus', () => {
+  for (const codes of [null, 'conflicting-later-work', [42], [''], ['not a code'], [], ['x', 'y']]) {
+    assert.equal(asAbilityBrief(fixtures.abilityBrief((raw) => {
+      raw.abilities[0].reason_codes = codes;
+    })), null);
+    assert.equal(asAbilityFocus(fixtures.abilityFocus('ability-fixture-bayes-m2', (raw) => {
+      raw.ability.reason_codes = codes;
+    })), null);
+  }
+  const future = asAbilityBrief(fixtures.abilityBrief((raw) => {
+    raw.abilities[0].reason_codes = ['future-structured-fact'];
+  }));
+  assert.ok(future, 'new well-shaped codes remain additive');
+  assert.equal(hasConflictingWork(future.abilities[0]), false);
+  const legacyFocus = asAbilityFocus(fixtures.abilityFocus('ability-fixture-bayes-m2', (raw) => {
+    delete raw.ability.reason_codes;
+  }));
+  assert.ok(legacyFocus, 'older focused answers remain readable');
+  assert.deepEqual(legacyFocus.ability.reason_codes, []);
+});
+
 test('UI-owned drafts round-trip and refuse what they cannot represent', () => {
   assert.deepEqual(asAbilityDraft(JSON.parse(JSON.stringify(claimDraft()))), claimDraft());
   assert.deepEqual(asAbilityDraft(JSON.parse(JSON.stringify(connectionDraft()))), connectionDraft());

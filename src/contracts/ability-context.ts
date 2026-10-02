@@ -304,6 +304,8 @@ function row(value: unknown): AbilityRowV1 | null {
   if (!id || !title || !STATES.has(String(item.state)) || !reasons || !reasonCodes || !concepts
     || !modules || !routes || !transfers || !rows
     || (lifecycle !== 'active' && lifecycle !== 'retired')) return null;
+  if (item.reason_codes !== undefined && (reasonCodes.length !== reasons.length
+    || reasonCodes.some((code) => !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(code)))) return null;
   return {
     id,
     title,

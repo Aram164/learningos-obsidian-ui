@@ -11,7 +11,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:source-graph": "node scripts/check-source-graph.mjs",
     "check:code": "npm run typecheck && npm run check:source-graph && npm run test:manifest-store-indexes && npm run test:atlas-graph && npm run test:library-finder && npm run test:trace-context && npm run test:operations && npm run test:abilities",
-    "contract:check": "node scripts/check-contract.mjs",
+    "contract:check": "node scripts/check-contract.mjs && node tests/test-ability-contract-mirror.mjs",
     "contract:generate": "node scripts/generate-contract.mjs --bundle ../repository/generated/contract-prototype/manifest-v15.bundle.json --meta ../repository/generated/contract-prototype/manifest-v15.meta.json",
     "typecheck:contract-prototype": "tsc -p tsconfig.contract-prototype.json --noEmit",
     "contract:diff-prototype": "node scripts/diff-contract-prototype.mjs",
