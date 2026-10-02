@@ -1332,6 +1332,50 @@ function routerPlugin(settings = {}) {
       'the approval binds the exact sorted compact UTF-8 subject');
   });
 
+  await test('GatewayClient endSession always names the UI session identity', async () => {
+    const seen = [];
+    const plugin = {
+      runLos: (args, callback) => {
+        seen.push(args);
+        callback(null, '{"ok": true, "owned_changes": [], "unrelated_changes": []}', '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    };
+    const gateway = new GatewayClient(plugin);
+    await gateway.endSession();
+    await gateway.endSession('learner message', true);
+    // Without the explicit id a UI review would close an agent session's
+    // ledger, and a UI commit would stage it.
+    assert.deepEqual(seen[0], ['session-end', '--session-id', 'ui']);
+    assert.deepEqual(seen[1],
+      ['session-end', '--session-id', 'ui', '--commit-message', 'learner message', '--push']);
+  });
+
+  await test('LosRuntime stamps every child with the UI session identity', async () => {
+    const { LosRuntime, UI_SESSION_ID, SESSION_ID_ENV } = load('src/infrastructure/los-runtime.ts');
+    assert.equal(UI_SESSION_ID, 'ui');
+    assert.equal(SESSION_ID_ENV, 'LOS_SESSION_ID');
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'learningos-ui-session-'));
+    process.on('exit', () => fs.rmSync(base, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(base, 'tools'), { recursive: true });
+    // Node executes the script regardless of its extension, so the fixture
+    // stands in for tools/los.py while the interpreter is node itself.
+    fs.writeFileSync(path.join(base, 'tools', 'los.py'),
+      'console.log(process.env.LOS_SESSION_ID || "MISSING");\n', 'utf8');
+    const runtime = new LosRuntime(
+      { vault: { adapter: { getBasePath: () => base } } },
+      () => process.execPath,
+    );
+    const stdout = await new Promise((resolve, reject) => {
+      runtime.run(['session-end'], (error, out) => {
+        if (error) reject(error);
+        else resolve(out);
+      });
+    });
+    assert.equal(stdout.trim(), 'ui',
+      'a UI-spawned write must land in the UI session ledger');
+  });
+
   await test('Gateway approval sorting matches Python Unicode code-point order', async () => {
     const subject = {
       schema_version: 2,

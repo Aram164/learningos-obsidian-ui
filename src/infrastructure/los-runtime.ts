@@ -16,6 +16,17 @@ export type LosCallback = (
   stderr: string,
 ) => void;
 
+/** The environment variable naming the calling session to Core. */
+export const SESSION_ID_ENV = 'LOS_SESSION_ID';
+
+/**
+ * This UI's session identity, stamped on every Core child it spawns. One
+ * stable value — not per launch — so writes from an earlier launch are still
+ * this session's rows when the learner reviews them, and so no UI write ever
+ * lands in an agent session's ledger (or vice versa).
+ */
+export const UI_SESSION_ID = 'ui';
+
 interface LosRuntimeHost {
   readonly vault: {
     readonly adapter: {
@@ -70,15 +81,16 @@ export class LosRuntime {
         cwd: base,
         timeout: 180000,
         maxBuffer: 8 * 1024 * 1024,
-        ...(traceParent === undefined
-          ? {}
-          : {
-            env: {
-              ...process.env,
+        env: {
+          ...process.env,
+          [SESSION_ID_ENV]: UI_SESSION_ID,
+          ...(traceParent === undefined
+            ? {}
+            : {
               TRACEPARENT: traceParent,
               ...(owned === null ? {} : { [TRACE_OWNERSHIP_ENV]: owned }),
-            },
-          }),
+            }),
+        },
       },
       callback,
     );

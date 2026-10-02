@@ -356,6 +356,7 @@ declare module 'node:child_process' {
     cwd?: string;
     timeout?: number;
     maxBuffer?: number;
+    env?: Record<string, string | undefined>;
   }
 
   /** Node closes a writable stream with `end`; `stdin` is null if not piped. */

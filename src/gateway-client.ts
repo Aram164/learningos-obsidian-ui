@@ -40,6 +40,7 @@ import {
   type DiagnosticEvent,
   type TraceContext,
 } from './infrastructure/trace-context';
+import { UI_SESSION_ID } from './infrastructure/los-runtime';
 
 type LosCallback = (
   error: Error | null,
@@ -1004,8 +1005,11 @@ export class GatewayClient {
   endSession(commitMessage: string | null = null, push = false) {
     // Review-only session closure still publishes the projection and removes
     // the ownership ledger, so it is a mutation even without a commit message.
+    // The explicit session id closes exactly this UI's ledger: without it a
+    // review here would wipe an agent's unclaimed rows, and a commit here
+    // would stage them.
     this.assertMutationAllowed();
-    const args = ['session-end'];
+    const args = ['session-end', '--session-id', UI_SESSION_ID];
     if (commitMessage) args.push('--commit-message', commitMessage);
     if (push) args.push('--push');
     return this.call(args);
