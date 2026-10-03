@@ -232,9 +232,10 @@ function validModuleComponent(value: unknown): boolean {
 function validExaminationSitting(value: unknown): boolean {
   const source = row(value);
   return Boolean(source && exact(source, ['termin', 'date'], [
-    'end_date', 'time', 'label', 'notes',
+    'end_date', 'withdrawal_deadline', 'time', 'label', 'notes',
   ]) && positive(source.termin) && source.termin <= 3 && date(source.date)
-    && optional(source, 'end_date', date) && optional(source, 'time', nonEmpty)
+    && optional(source, 'end_date', date) && optional(source, 'withdrawal_deadline', date)
+    && optional(source, 'time', nonEmpty)
     && optional(source, 'label', nonEmpty) && optional(source, 'notes', text));
 }
 
@@ -265,7 +266,7 @@ function validAttempt(value: unknown): boolean {
   const source = row(value);
   return Boolean(source && exact(source, ['termin', 'result'], ['date', 'grade', 'notes'])
     && positive(source.termin) && source.termin <= 3
-    && values(source.result, ['registered', 'withdrawn', 'passed', 'failed'] as const)
+    && values(source.result, ['registered', 'withdrawn', 'sat', 'passed', 'failed'] as const)
     && optional(source, 'date', date)
     && optional(source, 'grade', (grade) => finite(grade) && grade >= 1 && grade <= 5)
     && optional(source, 'notes', text));

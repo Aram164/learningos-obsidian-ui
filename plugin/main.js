@@ -245,10 +245,11 @@ function validExaminationSitting(value) {
   const source = row(value);
   return Boolean(source && exact(source, ["termin", "date"], [
     "end_date",
+    "withdrawal_deadline",
     "time",
     "label",
     "notes"
-  ]) && positive(source.termin) && source.termin <= 3 && date(source.date) && optional(source, "end_date", date) && optional(source, "time", nonEmpty) && optional(source, "label", nonEmpty) && optional(source, "notes", text));
+  ]) && positive(source.termin) && source.termin <= 3 && date(source.date) && optional(source, "end_date", date) && optional(source, "withdrawal_deadline", date) && optional(source, "time", nonEmpty) && optional(source, "label", nonEmpty) && optional(source, "notes", text));
 }
 function validRegistrationWindow(value) {
   const source = row(value);
@@ -271,7 +272,7 @@ function validExamination(value) {
 }
 function validAttempt(value) {
   const source = row(value);
-  return Boolean(source && exact(source, ["termin", "result"], ["date", "grade", "notes"]) && positive(source.termin) && source.termin <= 3 && values(source.result, ["registered", "withdrawn", "passed", "failed"]) && optional(source, "date", date) && optional(source, "grade", (grade) => finite(grade) && grade >= 1 && grade <= 5) && optional(source, "notes", text));
+  return Boolean(source && exact(source, ["termin", "result"], ["date", "grade", "notes"]) && positive(source.termin) && source.termin <= 3 && values(source.result, ["registered", "withdrawn", "sat", "passed", "failed"]) && optional(source, "date", date) && optional(source, "grade", (grade) => finite(grade) && grade >= 1 && grade <= 5) && optional(source, "notes", text));
 }
 function validModuleRecord(value) {
   const source = row(value);
@@ -16252,7 +16253,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:55b820a9d75e7a0b1b98b2d693a2a11fabbcd97d3461366076ff96bc3b922972" : "unavailable";
+  return true ? "sha256:7e45ccc4522792755397d308cc0d4d2b24df7b6256e3989f7831b577b877bd87" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

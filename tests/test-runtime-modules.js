@@ -383,6 +383,46 @@ function routerPlugin(settings = {}) {
     assert.ok(store.records.length > 0);
   });
 
+  function examManifestApp(sitting, result) {
+    return manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      const moduleId = manifest.modules[0].id;
+      for (const record of [...manifest.modules, ...manifest.records]) {
+        if (record.id !== moduleId) continue;
+        record.examination = { sittings: [sitting] };
+        record.attempts = [{ termin: 2, date: '2026-10-09', result }];
+      }
+      return JSON.stringify(manifest);
+    });
+  }
+
+  for (const result of ['registered', 'sat']) {
+    await test(`ManifestStore loads a withdrawal deadline and ${result} exam attempt`, async () => {
+      const sitting = { termin: 2, date: '2026-10-09', withdrawal_deadline: '2026-10-02' };
+      const store = new ManifestStore(examManifestApp(sitting, result));
+      assert.equal(await store.load(), true, store.error);
+      const module = store.get(store.data.modules[0].id);
+      assert.deepEqual(module.examination.sittings, [sitting]);
+      assert.deepEqual(module.attempts, [{ termin: 2, date: '2026-10-09', result }]);
+    });
+  }
+
+  for (const [label, fields, result] of [
+    ['invalid calendar deadline', { withdrawal_deadline: '2026-02-30' }, 'registered'],
+    ['null deadline', { withdrawal_deadline: null }, 'registered'],
+    ['unknown sitting field', { withdrawal_deadline: '2026-10-02', unknown: true }, 'registered'],
+    ['undeclared attempt outcome', { withdrawal_deadline: '2026-10-02' }, 'no-show'],
+  ]) {
+    await test(`ManifestStore refuses ${label} without publishing a partial store`, async () => {
+      const sitting = { termin: 2, date: '2026-10-09', ...fields };
+      const store = new ManifestStore(examManifestApp(sitting, result));
+      assert.equal(await store.load(), false);
+      assert.match(store.error, /Manifest module rows/);
+      assert.equal(store.ready, false);
+      assert.equal(store.data, null);
+    });
+  }
+
   await test('ManifestStore exposes projected examination on every source row', async () => {
     const store = new ManifestStore(manifestApp());
     assert.equal(await store.load(), true);
