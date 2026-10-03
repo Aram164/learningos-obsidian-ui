@@ -15,6 +15,7 @@ const suites = [
   require('./dashboard/shelving-resilience'),
   require('./dashboard/gateway-recovery'),
   require('./dashboard/runtime-integrity'),
+  require('./dashboard/session-end-flow'),
 ];
 
 async function main() {

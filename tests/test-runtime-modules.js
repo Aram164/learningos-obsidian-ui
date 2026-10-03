@@ -1384,8 +1384,8 @@ function routerPlugin(settings = {}) {
     const gateway = new GatewayClient(plugin);
     await gateway.endSession();
     await gateway.endSession('learner message', true);
-    // Without the explicit id a UI review would close an agent session's
-    // ledger, and a UI commit would stage it.
+    // Without the explicit id a UI review would report an agent session's
+    // rows, and a UI commit would stage them.
     assert.deepEqual(seen[0], ['session-end', '--session-id', 'ui']);
     assert.deepEqual(seen[1],
       ['session-end', '--session-id', 'ui', '--commit-message', 'learner message', '--push']);

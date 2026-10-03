@@ -1003,11 +1003,13 @@ export class GatewayClient {
       { expectedRevisions });
   }
   endSession(commitMessage: string | null = null, push = false) {
-    // Review-only session closure still publishes the projection and removes
-    // the ownership ledger, so it is a mutation even without a commit message.
-    // The explicit session id closes exactly this UI's ledger: without it a
-    // review here would wipe an agent's unclaimed rows, and a commit here
-    // would stage them.
+    // A review still publishes the projection, so it is a mutation even
+    // without a commit message — but it never closes: Core keeps this UI's
+    // ownership ledger until an explicit commit (or --close), so the modal's
+    // review-then-commit sequence stages exactly the reviewed list.
+    // The explicit session id scopes every call to this UI's ledger: without
+    // it a review here would report an agent's unclaimed rows, and a commit
+    // here would stage them.
     this.assertMutationAllowed();
     const args = ['session-end', '--session-id', UI_SESSION_ID];
     if (commitMessage) args.push('--commit-message', commitMessage);
