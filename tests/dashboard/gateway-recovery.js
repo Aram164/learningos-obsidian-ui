@@ -27,6 +27,7 @@ const {
   waitFor,
   gatewayConfirmation,
   gatewayRefusal,
+  FIXTURE_SNAPSHOT,
 } = require('./support');
 
 const clone = (value) => JSON.parse(JSON.stringify(value));
@@ -487,5 +488,193 @@ module.exports = async function run() {
       reopened.find('los-garden-seed-editor')[0].value
         === 'a seed that must outlive a restart');
     restarted.plugin.onunload();
+  }
+
+  heading('typed error details ride along without changing recovery');
+
+  /* S14 D3: every failure response below carries the enriched details Core
+   * now sends (reason, suggestions, remedy). The UI treats details as opaque:
+   * classification, settlement and every shown message must equal the run
+   * without them. Core answers a refusal on stdout with a non-zero exit, so
+   * each override fails the process exactly as the UNCONFIRMED case above. */
+  const ENRICHED_DETAILS = {
+    reason: 'NOT_FOUND',
+    suggestions: ['note-demo'],
+    remedy: 'Check the id against the manifest and retry.',
+  };
+  const failWith = (response) => (args, callback, stdin) => {
+    if (!stdin) return callback(null, JSON.stringify({ ok: true }), '');
+    const body = clone(response(JSON.parse(stdin)));
+    body.error.details = clone(ENRICHED_DETAILS);
+    callback(Object.assign(new Error('los exited 2'), { code: 2 }),
+      JSON.stringify(body), '');
+  };
+  const bareWith = (response) => (args, callback, stdin) => {
+    if (!stdin) return callback(null, JSON.stringify({ ok: true }), '');
+    callback(Object.assign(new Error('los exited 2'), { code: 2 }),
+      JSON.stringify(response(JSON.parse(stdin))), '');
+  };
+
+  async function mutateWith(override) {
+    const sent = [];
+    Notice.log.length = 0;
+    const { plugin } = await build({
+      spy: (_args, stdin) => { if (stdin) sent.push(stdin); },
+      runLosOverride: override,
+    });
+    let thrown = null;
+    await plugin.mutate(
+      () => plugin.gateway.captureText('a thought with details', 'Recovered'),
+    ).catch((error) => { thrown = error; });
+    const outcome = {
+      thrown,
+      record: clone(plugin.settings.gatewayRecovery),
+      sent,
+      notices: Notice.log.slice(),
+      unresolved: plugin.gateway.recovery.unresolved,
+    };
+    plugin.onunload();
+    return outcome;
+  }
+
+  {
+    /* INVALID_REQUEST is definitive: nothing was committed, so the record is
+     * discarded and the refusal settles. */
+    const message = 'no note note-missing to attach this capture to';
+    const response = (envelope) => gatewayRefusal(
+      envelope, 'INVALID_REQUEST', message);
+    const enriched = await mutateWith(failWith(response));
+    check('an enriched INVALID_REQUEST settles as refused',
+      enriched.thrown !== null
+      && enriched.thrown.message === message
+      && enriched.thrown.gatewayCode === 'INVALID_REQUEST'
+      && enriched.record === null
+      && enriched.sent.length === 1);
+    const bare = await mutateWith(bareWith(response));
+    check('the refused message equals the message without the details',
+      bare.thrown !== null
+      && bare.thrown.message === enriched.thrown.message
+      && JSON.stringify(bare.notices) === JSON.stringify(enriched.notices));
+  }
+
+  {
+    /* INTERNAL_FAILURE is never definitive: the commit may have landed while
+     * the rollback did not complete, so the write stays pending. */
+    const message = 'the capture commit failed and its rollback did not complete';
+    const response = (envelope) => gatewayRefusal(
+      envelope, 'INTERNAL_FAILURE', message);
+    const enriched = await mutateWith(failWith(response));
+    check('an enriched INTERNAL_FAILURE stays pending through one replay',
+      enriched.sent.length === 2
+      && enriched.sent[0] === enriched.sent[1]
+      && enriched.record !== null
+      && enriched.record.phase === 'blocked'
+      && enriched.record.last_error.code === 'INTERNAL_FAILURE'
+      && enriched.record.last_error.message === message
+      && enriched.unresolved === true);
+    const bare = await mutateWith(bareWith(response));
+    check('the pending message equals the message without the details',
+      bare.record.last_error.message === enriched.record.last_error.message
+      && bare.thrown.message === enriched.thrown.message
+      && JSON.stringify(bare.notices) === JSON.stringify(enriched.notices));
+  }
+
+  {
+    /* A failure that names a transaction is neither a strict refusal (which
+     * carries no receipt) nor a receipt: the outcome is unknown. */
+    const TX = 'tx-postcommit';
+    const message = 'the capture receipt was written but the answer was lost';
+    const postCommit = (envelope) => ({
+      ...gatewayRefusal(envelope, 'INTERNAL_FAILURE', message),
+      transaction_id: TX,
+      receipt_path: `operations/transactions/${TX}/receipt.json`,
+      snapshot_after: FIXTURE_SNAPSHOT,
+    });
+    const direct = await build({ runLosOverride: failWith(postCommit) });
+    const first = await direct.plugin.gateway
+      .dispatchPreparedEnvelope(envelopeJson);
+    check('the post-commit failure classifies ambiguous with UNRECOGNISED_RESPONSE',
+      first.outcome === 'ambiguous' && first.error.code === 'UNRECOGNISED_RESPONSE'
+      && first.error.message === message);
+    direct.plugin.onunload();
+
+    const sent = [];
+    Notice.log.length = 0;
+    const journey = await build({
+      spy: (_args, stdin) => { if (stdin) sent.push(stdin); },
+      runLosOverride: failWith(postCommit),
+    });
+    let thrown = null;
+    await journey.plugin.mutate(
+      () => journey.plugin.gateway.captureText('a thought with details', 'Recovered'),
+    ).catch((error) => { thrown = error; });
+    const stuck = journey.plugin.settings.gatewayRecovery;
+    check('the ambiguous record is retained and blocked',
+      sent.length === 2
+      && stuck !== null
+      && stuck.phase === 'blocked'
+      && stuck.last_error.code === 'UNRECOGNISED_RESPONSE'
+      && stuck.last_error.message === message
+      && journey.plugin.gateway.recovery.unresolved === true);
+
+    /* The exact replay answers for the same transaction: Core reconciled the
+     * write the first attempt left behind, and the projection observation
+     * retires the record through the existing Diagnostics retry. */
+    const replay = gatewayConfirmation(JSON.parse(stuck.envelope_json));
+    replay.replayed = true;
+    replay.transaction_id = TX;
+    const stuckEnvelope = JSON.parse(stuck.envelope_json);
+    check('the replay answers the same transaction the failure named',
+      replay.transaction_id === TX
+      && replay.request_id === stuckEnvelope.request_id
+      && replay.idempotency_key === stuckEnvelope.idempotency_key
+      && replay.capability === stuckEnvelope.capability);
+    journey.plugin.runLos = (args, callback, stdin) => {
+      if (stdin) sent.push(stdin);
+      if (!stdin) return callback(null, JSON.stringify({ ok: true }), '');
+      return callback(null, JSON.stringify(replay), '');
+    };
+    await journey.app.workspace._ready();
+    await journey.plugin.nav.openDiagnostics();
+    const retryView = journey.app.workspace
+      .getLeavesOfType(VIEW.diagnostics)[0].view;
+    retryView.contentEl.findText('los-btn', 'Retry exact request').fire('click');
+    await waitFor(() => journey.plugin.settings.gatewayRecovery === null
+      && !journey.plugin.gateway.isBusy);
+    check('the exact replay settles the stuck write',
+      journey.plugin.settings.gatewayRecovery === null
+      && sent.length === 3
+      && sent[2] === stuck.envelope_json);
+    journey.plugin.onunload();
+
+    const bare = await mutateWith(bareWith(postCommit));
+    check('the post-commit message equals the message without the details',
+      bare.record.last_error.message === message
+      && bare.thrown.message === thrown.message);
+  }
+
+  {
+    /* An answer to another request answers nothing: it is rejected and the
+     * record waits for the learner. */
+    const message = 'a captured thought for a different session';
+    const response = (envelope) => ({
+      ...gatewayRefusal(envelope, 'INVALID_REQUEST', message),
+      request_id: 'req-other-session',
+      idempotency_key: 'idem-other-session',
+    });
+    const enriched = await mutateWith(failWith(response));
+    check('an identity-mismatched response is rejected with IDENTITY_MISMATCH',
+      enriched.sent.length === 2
+      && enriched.record !== null
+      && enriched.record.phase === 'blocked'
+      && enriched.record.last_error.code === 'IDENTITY_MISMATCH'
+      && enriched.record.last_error.message === message
+      && enriched.unresolved === true
+      && enriched.record.envelope_json === enriched.sent[0]);
+    const bare = await mutateWith(bareWith(response));
+    check('the mismatch message equals the message without the details',
+      bare.record.last_error.message === enriched.record.last_error.message
+      && bare.thrown.message === enriched.thrown.message
+      && JSON.stringify(bare.notices) === JSON.stringify(enriched.notices));
   }
 };
