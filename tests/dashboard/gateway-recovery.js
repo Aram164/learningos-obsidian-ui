@@ -505,7 +505,10 @@ module.exports = async function run() {
   const failWith = (response) => (args, callback, stdin) => {
     if (!stdin) return callback(null, JSON.stringify({ ok: true }), '');
     const body = clone(response(JSON.parse(stdin)));
-    body.error.details = clone(ENRICHED_DETAILS);
+    body.error.details = {
+      ...body.error.details,
+      ...clone(ENRICHED_DETAILS),
+    };
     callback(Object.assign(new Error('los exited 2'), { code: 2 }),
       JSON.stringify(body), '');
   };
@@ -561,9 +564,18 @@ module.exports = async function run() {
     /* INTERNAL_FAILURE is never definitive: the commit may have landed while
      * the rollback did not complete, so the write stays pending. */
     const message = 'the capture commit failed and its rollback did not complete';
-    const response = (envelope) => gatewayRefusal(
-      envelope, 'INTERNAL_FAILURE', message);
-    const enriched = await mutateWith(failWith(response));
+    const response = (envelope) => {
+      const body = gatewayRefusal(envelope, 'INTERNAL_FAILURE', message);
+      body.error.details = { rollback_complete: false };
+      return body;
+    };
+    const seenDetails = [];
+    const capture = failWith(response);
+    const recording = (args, callback, stdin) => capture(args, (error, stdout, stderr) => {
+      if (stdin) seenDetails.push(JSON.parse(stdout).error.details);
+      callback(error, stdout, stderr);
+    }, stdin);
+    const enriched = await mutateWith(recording);
     check('an enriched INTERNAL_FAILURE stays pending through one replay',
       enriched.sent.length === 2
       && enriched.sent[0] === enriched.sent[1]
@@ -572,6 +584,12 @@ module.exports = async function run() {
       && enriched.record.last_error.code === 'INTERNAL_FAILURE'
       && enriched.record.last_error.message === message
       && enriched.unresolved === true);
+    check('the failure carries the real rollback flag merged with enrichment',
+      seenDetails.length === 2
+      && seenDetails.every((details) => details.rollback_complete === false
+        && details.reason === 'NOT_FOUND'
+        && Array.isArray(details.suggestions)
+        && typeof details.remedy === 'string'));
     const bare = await mutateWith(bareWith(response));
     check('the pending message equals the message without the details',
       bare.record.last_error.message === enriched.record.last_error.message
