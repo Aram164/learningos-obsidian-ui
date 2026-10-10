@@ -40,10 +40,21 @@ test('UI CI policy', () => {
     );
     assert.match(yml, /RESOLVED_CORE_REF:\s*\$\{\{ steps\.producer-ref\.outputs\.ref \}\}/);
     // The paired gate is Core's complete suite: live_install tests cannot pass
-    // in any checkout, and the suite outlasts short caps (11-20 min hosted).
+    // in any checkout, and the suite outlasts short caps (the observed gate
+    // took 42:51 and ran beyond the 45-minute cap).
     assert.match(yml, /PYTEST_ADDOPTS: '-m "not live_install"'/);
     const timeout = Number(yml.match(/timeout-minutes:\s*(\d+)/)?.[1]);
-    assert.ok(timeout >= 30, `timeout-minutes ${timeout} cancels the paired gate mid-suite`);
+    assert.equal(timeout, 90, `timeout-minutes ${timeout} is not the 90-minute bound`);
+    // SPEC (bm): the paired gate reproduces the verified project
+    // environment — the exact interpreter patch and Core's repository venv
+    // the procedure transcripts invoke — never the runner's interpreter.
+    assert.match(yml, /python-version: "3\.14\.4"/);
+    assert.ok(!/python-version: "3\.14"/.test(yml), 'unpinned python-version "3.14" silently selects a new patch');
+    const pipInstalls = runScripts(yml).filter((script) => script.includes('pip install'));
+    assert.equal(pipInstalls.length, 1);
+    const venvAt = pipInstalls[0].indexOf('python -m venv .venv');
+    assert.ok(venvAt >= 0, 'Core dependencies must install into a repository .venv');
+    assert.ok(pipInstalls[0].indexOf('.venv/bin/python -m pip install -e ".[dev]"') > venvAt);
     // Core's suite runs its procedure transcripts under the pinned Scrut and
     // compares its ratchets against origin/main, exactly as Core's validate.yml.
     assert.match(yml, /scrut-v0\.5\.0-linux-x86_64\.tar\.gz/);
