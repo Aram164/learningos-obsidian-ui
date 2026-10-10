@@ -43,6 +43,8 @@ jobs:
           repository: Aram164/LearningOS
           ref: ${{ steps.producer-ref.outputs.ref }}
           path: repository
+          # Full history: Core's ratchet tests compare against origin/main.
+          fetch-depth: 0
 
       - name: Print the resolved Core ref and commit
         working-directory: repository
@@ -65,6 +67,24 @@ jobs:
         working-directory: repository
         run: pip install -e ".[dev]"
 
+      # The procedure transcripts in Core's suite (tests/test_procedures.py)
+      # run under Scrut v0.5.0, pinned by GitHub's published SHA-256 exactly as
+      # Core's validate.yml pins it; the binary reaches the gate as LOS_SCRUT_BIN.
+      - name: Install Scrut v0.5.0 (pinned digest)
+        run: |
+          set -eu
+          dir="$RUNNER_TEMP/scrut"
+          mkdir -p "$dir"
+          curl --proto '=https' --tlsv1.2 -fsSL -o "$dir/scrut.tar.gz" \
+            https://github.com/facebookincubator/scrut/releases/download/v0.5.0/scrut-v0.5.0-linux-x86_64.tar.gz
+          echo "5c373d077a73dc4a5d4b43f3474e0f443dc72fb42f89b312ef55f934e6e6ba15  $dir/scrut.tar.gz" | sha256sum -c -
+          tar -xzf "$dir/scrut.tar.gz" -C "$dir"
+          bin="$(find "$dir" -type f -name scrut | head -n 1)"
+          test -n "$bin"
+          chmod 0755 "$bin"
+          test "$("$bin" --version)" = "scrut 0.5.0"
+          echo "LOS_SCRUT_BIN=$bin" >> "$GITHUB_ENV"
+
       # `live_install` tests need state no checkout can carry: the
       # maintainer's gitignored data, or the wrapper root above repository/.
       # Deselected by name exactly as Core's validate.yml does; the live
@@ -73,6 +93,7 @@ jobs:
         working-directory: repository
         env:
           PYTEST_ADDOPTS: '-m "not live_install"'
+          LOS_RATCHET_BASE: origin/main
         run: make system-check
 
       - name: Exercise the fixture installer path

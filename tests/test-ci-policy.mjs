@@ -44,6 +44,13 @@ test('UI CI policy', () => {
     assert.match(yml, /PYTEST_ADDOPTS: '-m "not live_install"'/);
     const timeout = Number(yml.match(/timeout-minutes:\s*(\d+)/)?.[1]);
     assert.ok(timeout >= 30, `timeout-minutes ${timeout} cancels the paired gate mid-suite`);
+    // Core's suite runs its procedure transcripts under the pinned Scrut and
+    // compares its ratchets against origin/main, exactly as Core's validate.yml.
+    assert.match(yml, /scrut-v0\.5\.0-linux-x86_64\.tar\.gz/);
+    assert.match(yml, /5c373d077a73dc4a5d4b43f3474e0f443dc72fb42f89b312ef55f934e6e6ba15 {2}\$dir\/scrut\.tar\.gz" \| sha256sum -c -/);
+    assert.match(yml, /echo "LOS_SCRUT_BIN=\$bin" >> "\$GITHUB_ENV"/);
+    assert.match(yml, /LOS_RATCHET_BASE: origin\/main/);
+    assert.match(yml, /path: repository\n\s*# Full history[^\n]*\n\s*fetch-depth: 0/);
 });
 
 // These two calls only format display prose; neither supplies a match/sort key.
