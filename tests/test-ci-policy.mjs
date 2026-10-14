@@ -40,11 +40,11 @@ test('UI CI policy', () => {
     );
     assert.match(yml, /RESOLVED_CORE_REF:\s*\$\{\{ steps\.producer-ref\.outputs\.ref \}\}/);
     // The paired gate is Core's complete suite: live_install tests cannot pass
-    // in any checkout, and the suite outlasts short caps (the observed gate
-    // took 42:51 and ran beyond the 45-minute cap).
+    // in any checkout. Phase 4 Linux pytest alone took 86 minutes and the
+    // exact-pair run exhausted 90 minutes before artifact creation.
     assert.match(yml, /PYTEST_ADDOPTS: '-m "not live_install"'/);
     const timeout = Number(yml.match(/timeout-minutes:\s*(\d+)/)?.[1]);
-    assert.equal(timeout, 90, `timeout-minutes ${timeout} is not the 90-minute bound`);
+    assert.equal(timeout, 180, `timeout-minutes ${timeout} is not the 180-minute bound`);
     // SPEC (bm): the paired gate reproduces the verified project
     // environment — the exact interpreter patch and Core's repository venv
     // the procedure transcripts invoke — never the runner's interpreter.
