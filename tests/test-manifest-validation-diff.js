@@ -2536,17 +2536,23 @@ function buildIndependentSchemaInventory(bundle) {
   }
 
   visit(bundle.root, bundle.root, '#', bundle.root_uri || bundle.root.$id);
+  for (const site of inventory.values()) site.bindings = new Map();
   return inventory;
 }
 
 const independentSchemaInventory = buildIndependentSchemaInventory(bundleData);
 
+function coverageBindingKey(seedName, instancePath) {
+  return JSON.stringify([seedName, instancePath]);
+}
+
 function bindInventoryToSeeds(inventory, seeds, rootSchema) {
-  function bindSite(resourceUri, schemaPtr, keyword, dataPtr) {
+  function bindSite(resourceUri, schemaPtr, keyword, seedName, dataPtr) {
     const site = inventory.get(`${resourceUri}::${schemaPtr}::${keyword}`);
     if (site) {
       site.status = 'INSTANTIATED';
       site.boundPaths.add(dataPtr);
+      site.bindings.set(coverageBindingKey(seedName, dataPtr), { seed: seedName, instancePath: dataPtr });
     }
   }
 
@@ -2576,7 +2582,7 @@ function bindInventoryToSeeds(inventory, seeds, rootSchema) {
     }
 
     if (schema.additionalProperties === false) {
-      bindSite(curResUri, schemaPtr + '/additionalProperties', 'additionalProperties', dataPtr + '/__unexpected_extension__');
+      bindSite(curResUri, schemaPtr + '/additionalProperties', 'additionalProperties', seedName, dataPtr + '/__unexpected_extension__');
     } else if (schema.additionalProperties && typeof schema.additionalProperties === 'object'
       && !isAnyJsonValue(schema.additionalProperties)) {
       for (const [key, value] of Object.entries(data)) {
@@ -2584,7 +2590,7 @@ function bindInventoryToSeeds(inventory, seeds, rootSchema) {
         if (Object.hasOwn(schema.properties || {}, key)) continue;
         const valuePtr = schemaPtr + '/additionalProperties';
         const valuePath = dataPtr + '/' + key;
-        bindSite(curResUri, valuePtr, 'type', valuePath);
+        bindSite(curResUri, valuePtr, 'type', seedName, valuePath);
         walkBinding(seedName, value, schema.additionalProperties, valuePtr, valuePath, currentRoot);
       }
     }
@@ -2594,7 +2600,7 @@ function bindInventoryToSeeds(inventory, seeds, rootSchema) {
       const targetPath = dataPtr + '/' + propName;
       const propPtr = schemaPtr + '/properties/' + propName;
       for (const kw of ['type', 'required', 'enum', 'pattern', 'format']) {
-        bindSite(curResUri, propPtr, kw, targetPath);
+        bindSite(curResUri, propPtr, kw, seedName, targetPath);
       }
       walkBinding(seedName, data[propName], propDef, propPtr, targetPath, currentRoot);
     }
@@ -2613,17 +2619,31 @@ function reconcileInventoryCoverage(inventory, targetMap, requiredTargetPaths = 
   for (const [key, site] of inventory.entries()) {
     // Historical attribution is not a claim that a decoder condition remains.
     assert.ok(!Object.hasOwn(site, 'retainedGuard'), `Unsupported retained protection claim at "${key}"`);
+    assert.deepEqual(site.boundPaths, new Set([...site.bindings.values()].map((binding) => binding.instancePath)),
+      `Schema site "${key}" bound paths disagree with seed bindings`);
+    site.witnesses = [];
     if (site.status === 'INSTANTIATED') {
       instantiatedSitesCount++;
       assert.ok(site.boundPaths.size > 0, `Instantiated schema site "${key}" has 0 bound paths!`);
       for (const p of site.boundPaths) {
         instantiatedPaths.add(p);
-        const hasCheck = (targetMap.get(p) || []).some((m) => m.category === site.category);
-        if (!hasCheck) missingCoverage.push(`${p} (${site.schemaPointer}): missing required ${site.category} mutation`);
+      }
+      // Credit this schema site only through a seed/path independently bound to it.
+      // Legacy mutation schemaPointer metadata omits some union indices.
+      for (const [bindingKey, binding] of site.bindings) {
+        for (const mutation of targetMap.get(bindingKey) || []) {
+          if (mutation.category === site.category) {
+            site.witnesses.push({ mutationId: mutation.id, ...binding, category: mutation.category });
+          }
+        }
+      }
+      if (site.witnesses.length === 0) {
+        missingCoverage.push(`${site.schemaPointer}: missing required ${site.category} mutation at any true seed/path binding`);
       }
     } else {
       assert.equal(site.status, 'UNINSTANTIATED', `Unknown inventory status at "${key}"`);
       assert.equal(site.boundPaths.size, 0, `Uninstantiated site "${key}" has bound paths!`);
+      assert.equal(site.bindings.size, 0, `Uninstantiated site "${key}" has seed bindings!`);
       uninstantiatedSites.push({
         ...site, coverage: 'UNEXERCISED', deletionEligible: false,
         reason: 'No seed value reaches this schema site; historical decoder attribution proves no retained protection.',
@@ -2842,8 +2862,9 @@ async function runSuite() {
     const after = clone(before);
     m.mutate(after);
     for (const p of recordTargetDiff(before, after)) {
-      if (!targetMap.has(p)) targetMap.set(p, []);
-      targetMap.get(p).push(m);
+      const key = coverageBindingKey(m.seed, p);
+      if (!targetMap.has(key)) targetMap.set(key, []);
+      targetMap.get(key).push(m);
     }
   }
 
@@ -2865,8 +2886,8 @@ async function runSuite() {
   const { instantiatedPaths, instantiatedSitesCount, uninstantiatedSites } =
     reconcileInventoryCoverage(independentSchemaInventory, targetMap, requiredTargetPaths);
   const { runCoverageControls } = require('./test-manifest-coverage-controls');
-  runCoverageControls({ buildIndependentSchemaInventory, bindInventoryToSeeds, reconcileInventoryCoverage });
-  console.log(`[PASS] Independent schema inventory verified: ${instantiatedSitesCount} instantiated schema sites (${instantiatedPaths.size} instance paths) fully covered.`);
+  runCoverageControls({ buildIndependentSchemaInventory, bindInventoryToSeeds, reconcileInventoryCoverage, coverageBindingKey });
+  console.log(`[PASS] Independent schema inventory verified: ${instantiatedSitesCount} instantiated schema sites (${instantiatedPaths.size} distinct instance paths), each with a true seed/path mutation witness.`);
   console.log(`[INFO] ${uninstantiatedSites.length} schema sites are explicitly unexercised; they grant no decoder deletion permission or retained-protection claim.`);
 
   // -------------------------------------------------------------------------
@@ -2973,7 +2994,7 @@ function writeCoverageReport(results, stats) {
     instantiatedSites: stats.instantiatedSitesCount,
     uninstantiatedSites: stats.uninstantiatedCount,
     sites: stats.inventory.map((site) => ({
-      ...site, boundPaths: [...site.boundPaths],
+      ...site, boundPaths: [...site.boundPaths], bindings: [...site.bindings.values()],
       coverage: site.status === 'INSTANTIATED' ? 'MUTATION_COVERED' : 'UNEXERCISED',
       deletionEligible: false,
     })),
@@ -3050,9 +3071,9 @@ function writeCoverageReport(results, stats) {
 - **Top-Level Graph Edge Surface (1):**
   - \`module_concept_edges\` (array of items with \`module_id\`, \`concept_id\`, and \`evidence\` union).
 
-### C. Instantiated and Uninstantiated Paths Inventory (F2 Resolution)
-- **Instantiated Property Paths:** Exactly **${stats.instantiatedCount}** property paths (${stats.instantiatedSitesCount} schema sites) across all 7 seeds are instantiated and checked for the inventory categories (type, required removal, additionalProperties, enum, and format/pattern), including deep nested paths such as \`/study_maps/0/stages/0/title\`, \`/study_maps/0/stages/0/status\`, and polymorphic record fields.
-- **Uninstantiated Sub-Paths:** **${stats.uninstantiatedCount}** optional/auxiliary paths across declared schema models are not instantiated in any seed. They are explicitly **UNEXERCISED**, prove no retained decoder protection, and grant **no deletion permission**. Historical decoder identifiers are attribution only. The complete inventory is written to \`S31-06-schema-inventory.json\`.
+### C. Instantiated and Uninstantiated Schema-Site Inventory (F2 Resolution)
+- **Schema-site coverage:** **${stats.instantiatedSitesCount}** independently instantiated schema sites spanning **${stats.instantiatedCount}** distinct instance paths across all 7 seeds each have at least one mutation witness in their required inventory category (type, required removal, additionalProperties, enum, or format/pattern). Each witness identifies its mutation, seed, and instance path, and belongs to an independently bound seed/path for that exact schema site, including its union branch. This attests coverage per schema site/category; it does not attest every seed instance or repeated dictionary/array value. Legacy mutation schema pointers do not determine coverage.
+- **Uninstantiated schema sites:** **${stats.uninstantiatedCount}** optional/auxiliary sites across declared schema models are not instantiated in any seed. They are explicitly **UNEXERCISED**, prove no retained decoder protection, and grant **no deletion permission**. Historical decoder identifiers are attribution only. The complete inventory, seed/path bindings, and concrete mutation witness lists are written to \`S31-06-schema-inventory.json\`.
 
 ---
 
@@ -3203,7 +3224,7 @@ ${Object.entries(GUARD_METADATA).map(([gid, meta]) => {
   console.log(`[PASS] Evidence report written to: ${reportPath}`);
 }
 
-module.exports = { buildIndependentSchemaInventory, bindInventoryToSeeds, reconcileInventoryCoverage };
+module.exports = { buildIndependentSchemaInventory, bindInventoryToSeeds, reconcileInventoryCoverage, coverageBindingKey };
 if (require.main === module) {
   runSuite().catch((err) => {
     console.error('\n[FATAL] Differential suite failed:', err);
