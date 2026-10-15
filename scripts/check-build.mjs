@@ -82,7 +82,8 @@ if (process.env.CI && process.env.LEARNINGOS_ALLOW_MISSING_CORE !== '1'
 }
 if (!Array.isArray(info.modules) || !info.modules.includes('src/main.ts')
     || !info.modules.includes('src/manifest-store.ts')
-    || !info.modules.includes('src/build-identity.ts')) {
+    || !info.modules.includes('src/build-identity.ts')
+    || !info.modules.includes('src/contracts/generated/manifest.validator.cjs')) {
   throw new Error('The module graph did not report the expected source inputs.');
 }
 

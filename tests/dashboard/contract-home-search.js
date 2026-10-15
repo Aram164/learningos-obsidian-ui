@@ -77,7 +77,7 @@ module.exports = async function run() {
       /* `json` comes from the "generated/manifest.json" literal and `ts` from
        * the stable "contracts/manifest.ts" source path; the rest are
        * Array/Map members reached through a projected collection. */
-      .filter((key) => !['json', 'ts', 'length', 'find', 'filter', 'map'].includes(key));
+      .filter((key) => !['json', 'ts', 'validator', 'length', 'find', 'filter', 'map'].includes(key));
     const missing = [...new Set(read)].filter((key) => !(key in manifest));
     check('fixture declares every top-level key the app reads', !missing.length,
       `missing from fixture-vault: ${missing.join(', ')}`);

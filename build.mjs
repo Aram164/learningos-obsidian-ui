@@ -48,8 +48,8 @@ async function loadTypeScript() {
 function resolveInternal(parentId, specifier) {
   if (!specifier.startsWith('.')) return null;
   const base = path.posix.normalize(path.posix.join(path.posix.dirname(parentId), specifier));
-  for (const candidate of [`${base}.ts`, path.posix.join(base, 'index.ts')]) {
-    if (fs.existsSync(path.join(root, candidate))) return candidate;
+  for (const candidate of [`${base}.ts`, path.posix.join(base, 'index.ts'), base, `${base}.cjs`]) {
+    if (fs.existsSync(path.join(root, candidate)) && fs.statSync(path.join(root, candidate)).isFile()) return candidate;
   }
   throw new Error(`Cannot resolve ${specifier} from ${parentId}`);
 }
@@ -109,6 +109,8 @@ async function fallbackBundle() {
 `  const base = parent.join('/');\n` +
 `  if (__modules[base + '.ts']) return base + '.ts';\n` +
 `  if (__modules[base + '/index.ts']) return base + '/index.ts';\n` +
+`  if (__modules[base]) return base;\n` +
+`  if (__modules[base + '.cjs']) return base + '.cjs';\n` +
 `  throw new Error('Cannot resolve ' + specifier + ' from ' + parentId);\n` +
 `}\n` +
 `function __load(id) {\n` +
@@ -150,7 +152,7 @@ async function esbuildBundle(build, define) {
   return {
     bundler: 'esbuild',
     modules: Object.keys(result.metafile.inputs)
-      .filter((relative) => relative.startsWith('src/') && relative.endsWith('.ts'))
+      .filter((relative) => relative.startsWith('src/') && (relative.endsWith('.ts') || relative.endsWith('.cjs')))
       .sort(),
   };
 }

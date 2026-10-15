@@ -16,7 +16,7 @@
     "typecheck:contract-prototype": "tsc -p tsconfig.contract-prototype.json --noEmit",
     "contract:diff-prototype": "node scripts/diff-contract-prototype.mjs",
     "test:ui": "node tests/test-dashboard.js && node tests/test-ai-actions.js",
-    "test": "npm run build && npm run check:code && npm run typecheck:contracts && npm run contract:check && npm run test:installer && npm run test:modules && npm run test:ui && npm run test:live-app-check && npm run test:ci-policy",
+    "test": "npm run build && npm run check:code && npm run typecheck:contracts && npm run contract:check && npm run test:installer && npm run test:modules && npm run test:ui && npm run test:live-app-check && npm run test:ci-policy && npm run test:build-fingerprint",
     "check": "npm run test && node scripts/check-host-surface.mjs && node scripts/check-build.mjs",
     "build:info": "node scripts/print-build-info.mjs",
     "install:status": "node scripts/check-install-current.mjs",
@@ -31,7 +31,8 @@
     "test:library-finder": "node tests/test-library-finder.js",
     "test:trace-context": "node tests/test-trace-context.js",
     "test:operations": "node tests/test-operations.js",
-    "test:abilities": "node tests/test-abilities-model.js && node tests/test-atlas-presentation-review.js"
+    "test:abilities": "node tests/test-abilities-model.js && node tests/test-atlas-presentation-review.js",
+    "test:build-fingerprint": "node tests/test-build-fingerprint.mjs"
   },
   "devDependencies": {
     "ajv": "^8.20.0",

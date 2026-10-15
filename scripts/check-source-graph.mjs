@@ -12,8 +12,9 @@ function sourceModules(directory) {
     .flatMap((entryValue) => {
       const absolute = path.join(directory, entryValue.name);
       if (entryValue.isDirectory()) return sourceModules(absolute);
-      if (!entryValue.isFile() || !entryValue.name.endsWith('.ts')
-          || entryValue.name.endsWith('.d.ts')) return [];
+      if (!entryValue.isFile()) return [];
+      if (entryValue.name.endsWith('.d.ts') || entryValue.name.endsWith('.d.cts') || entryValue.name.endsWith('.meta.ts')) return [];
+      if (!entryValue.name.endsWith('.ts') && !entryValue.name.endsWith('.cjs')) return [];
       return [path.relative(root, absolute).split(path.sep).join('/')];
     });
 }
@@ -23,9 +24,9 @@ function resolveInternal(importer, specifier) {
   const base = path.posix.normalize(
     path.posix.join(path.posix.dirname(importer), specifier),
   );
-  const candidates = base.endsWith('.ts')
+  const candidates = base.endsWith('.ts') || base.endsWith('.cjs')
     ? [base]
-    : [`${base}.ts`, path.posix.join(base, 'index.ts')];
+    : [`${base}.ts`, path.posix.join(base, 'index.ts'), `${base}.cjs`];
   const resolved = candidates.find((candidate) =>
     fs.existsSync(path.join(root, candidate)));
   if (!resolved) {
