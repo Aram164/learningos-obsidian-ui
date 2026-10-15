@@ -22211,10 +22211,6 @@ function validStringMap(value) {
   const source = row(value);
   return Boolean(source && Object.values(source).every(text));
 }
-function validIntegerMap(value) {
-  const source = row(value);
-  return Boolean(source && Object.values(source).every(natural));
-}
 function validStringArrayMap(value) {
   const source = row(value);
   return Boolean(source && Object.values(source).every((items) => strings(items, true)));
@@ -23513,9 +23509,6 @@ function assertManifest(value) {
       throw new TypeError(`Manifest field ${key} must be an object.`);
     }
   }
-  if (!validIntegerMap(value.artifact_revisions)) {
-    throw new TypeError("Manifest artifact revisions must map to non-negative integers.");
-  }
   if (!validBacklinks(value.backlinks)) {
     throw new TypeError(`Manifest backlinks must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
@@ -23524,9 +23517,6 @@ function assertManifest(value) {
   }
   if (!validProgress(value.progress)) {
     throw new TypeError(`Manifest progress must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  if (!validStringMap(value.project_aliases)) {
-    throw new TypeError("Manifest project aliases must map to strings.");
   }
   if (!validResumePointer(value.resume_pointer)) {
     throw new TypeError(`Manifest resume pointer must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
@@ -38402,7 +38392,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:2fe6b5ab2e365ff666bee732a6697c740604caa35cb4248c263618ed2d7a604a" : "unavailable";
+  return true ? "sha256:d7557b72a47d0e029d624d3511e0eddd8f12c908873500d337965a7e037cb6cd" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

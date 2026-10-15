@@ -15,7 +15,7 @@ const { ManifestStore } = load('src/manifest-store.ts');
 /* The app's own declaration, not a literal: check-contract.mjs already binds it
  * to the lock and to Core, so deriving here cannot drift and cannot go stale on
  * the next bump. It did go stale, as v8, the day the projection reached v9. */
-const { MANIFEST_CONTRACT_VERSION: CONTRACT } = load('src/contracts/manifest.ts');
+const { assertManifest, MANIFEST_CONTRACT_VERSION: CONTRACT } = load('src/contracts/manifest.ts');
 const { GatewayClient } = load('src/gateway-client.ts');
 const { AbilityHorizon } = load('src/application/ability-horizon.ts');
 const abilityFixtures = require('./ability-fixtures');
@@ -650,6 +650,171 @@ function routerPlugin(settings = {}) {
       assert.equal(await store.load(), false, `${label} drift must be refused`);
       assert.equal(store.data, null, `${label} drift must not leave partial state`);
     }
+  });
+
+  await test('ManifestStore and assertManifest enforce centralized single-validation ownership', async () => {
+    let validatorCount = 0;
+    const realValidator = require(path.join(ROOT, 'src/contracts/generated/manifest.validator.cjs'));
+    const countingValidator = function (data) {
+      validatorCount++;
+      const result = realValidator.call(this, data);
+      countingValidator.errors = realValidator.errors;
+      return result;
+    };
+    countingValidator.default = countingValidator;
+    const instrumentedLoader = createSourceModuleLoader(ROOT, {
+      './generated/manifest.validator.cjs': countingValidator,
+    });
+    const { assertManifest: instrumentedAssertManifest } = instrumentedLoader('src/contracts/manifest.ts');
+    const { ManifestStore: InstrumentedManifestStore } = instrumentedLoader('src/manifest-store.ts');
+    const rawFixture = JSON.parse(fs.readFileSync(FIXTURE_MANIFEST, 'utf8'));
+
+    // A. Direct assertManifest invokes the real generated Ajv validator
+    validatorCount = 0;
+    assert.doesNotThrow(() => instrumentedAssertManifest(JSON.parse(JSON.stringify(rawFixture))));
+    assert.equal(validatorCount, 1, 'direct assertManifest must invoke real Ajv validator');
+
+    // B. A valid ManifestStore.load invokes the generated validator exactly once
+    validatorCount = 0;
+    const store = new InstrumentedManifestStore(manifestApp());
+    assert.equal(await store.load(), true);
+    assert.equal(validatorCount, 1, 'ManifestStore.load must invoke generated validator exactly once');
+
+    // C. A schema-invalid manifest is refused
+    const schemaInvalid = JSON.parse(JSON.stringify(rawFixture));
+    delete schemaInvalid._generated.warning;
+    assert.throws(
+      () => instrumentedAssertManifest(schemaInvalid),
+      /Manifest does not match its schema: \/_generated must have required property 'warning'/,
+    );
+
+    // D. Wrong contract versions remain refused
+    const wrongContract = JSON.parse(JSON.stringify(rawFixture));
+    wrongContract._generated.contract_version = 1;
+    assert.throws(() => instrumentedAssertManifest(wrongContract), /contract_version/);
+    const wrongContractStore = new InstrumentedManifestStore(manifestApp((text) =>
+      text.replace(`"contract_version": ${CONTRACT}`, '"contract_version": 1')));
+    assert.equal(await wrongContractStore.load(), false);
+    assert.match(wrongContractStore.error, /requires contract 15/);
+
+    // E. Wrong schema SHA-256 values remain refused
+    const wrongPin = JSON.parse(JSON.stringify(rawFixture));
+    wrongPin._generated.schema_sha256 = `sha256:${'0'.repeat(64)}`;
+    assert.throws(() => instrumentedAssertManifest(wrongPin), /Unsupported manifest schema/);
+    const wrongPinStore = new InstrumentedManifestStore(manifestApp((text) => {
+      const m = JSON.parse(text);
+      m._generated.schema_sha256 = `sha256:${'0'.repeat(64)}`;
+      return JSON.stringify(m);
+    }));
+    assert.equal(await wrongPinStore.load(), false);
+    assert.match(wrongPinStore.error, /Unsupported manifest schema/);
+
+    // F. A failed reload clears previously published manifest state
+    let reloadValid = true;
+    const reloadStore = new InstrumentedManifestStore({
+      vault: {
+        adapter: {
+          exists: async () => true,
+          read: async () => reloadValid ? JSON.stringify(rawFixture) : JSON.stringify(schemaInvalid),
+        },
+      },
+    });
+    assert.equal(await reloadStore.load(), true);
+    assert.equal(reloadStore.ready, true);
+    assert.ok(reloadStore.records.length > 0);
+    assert.notEqual(reloadStore.data, null);
+    reloadValid = false;
+    assert.equal(await reloadStore.load(), false);
+    assert.equal(reloadStore.ready, false);
+    assert.equal(reloadStore.data, null);
+    assert.equal(reloadStore.snapshotId, null);
+    assert.deepEqual(reloadStore.records, []);
+    assert.notEqual(reloadStore.error, '');
+  });
+
+  await test('assertManifest rejects malformed artifact_revisions and project_aliases dictionaries', () => {
+    const rawFixture = JSON.parse(fs.readFileSync(FIXTURE_MANIFEST, 'utf8'));
+
+    // artifact_revisions:
+    // Existing valid values pass
+    assert.doesNotThrow(() => assertManifest(JSON.parse(JSON.stringify(rawFixture))));
+
+    // Negative integer fails closed with schema diagnostic
+    const negative = JSON.parse(JSON.stringify(rawFixture));
+    negative.artifact_revisions['unit-fixture-sad-l04'] = -1;
+    assert.throws(
+      () => assertManifest(negative),
+      /Manifest does not match its schema: \/artifact_revisions\/unit-fixture-sad-l04 must be >= 0/,
+    );
+
+    // Fractional number fails closed with schema diagnostic
+    const fractional = JSON.parse(JSON.stringify(rawFixture));
+    fractional.artifact_revisions['unit-fixture-sad-l04'] = 3.14;
+    assert.throws(
+      () => assertManifest(fractional),
+      /Manifest does not match its schema: \/artifact_revisions\/unit-fixture-sad-l04 must be integer/,
+    );
+
+    // String instead of integer fails closed with schema diagnostic
+    const strRev = JSON.parse(JSON.stringify(rawFixture));
+    strRev.artifact_revisions['unit-fixture-sad-l04'] = 'invalid-rev';
+    assert.throws(
+      () => assertManifest(strRev),
+      /Manifest does not match its schema: \/artifact_revisions\/unit-fixture-sad-l04 must be integer/,
+    );
+
+    // Null value fails closed with schema diagnostic
+    const nullRev = JSON.parse(JSON.stringify(rawFixture));
+    nullRev.artifact_revisions['unit-fixture-sad-l04'] = null;
+    assert.throws(
+      () => assertManifest(nullRev),
+      /Manifest does not match its schema: \/artifact_revisions\/unit-fixture-sad-l04 must be integer/,
+    );
+
+    // Invalid top-level shape (number/array) fails closed with schema diagnostic
+    const shapeNumRev = JSON.parse(JSON.stringify(rawFixture));
+    shapeNumRev.artifact_revisions = 42;
+    assert.throws(
+      () => assertManifest(shapeNumRev),
+      /Manifest does not match its schema: \/artifact_revisions must be object/,
+    );
+    const shapeArrRev = JSON.parse(JSON.stringify(rawFixture));
+    shapeArrRev.artifact_revisions = [];
+    assert.throws(
+      () => assertManifest(shapeArrRev),
+      /Manifest does not match its schema: \/artifact_revisions must be object/,
+    );
+
+    // project_aliases:
+    // Numeric dictionary value fails closed with schema diagnostic
+    const numAlias = JSON.parse(JSON.stringify(rawFixture));
+    numAlias.project_aliases['alias-test'] = 42;
+    assert.throws(
+      () => assertManifest(numAlias),
+      /Manifest does not match its schema: \/project_aliases\/alias-test must be string/,
+    );
+
+    // Null dictionary value fails closed with schema diagnostic
+    const nullAlias = JSON.parse(JSON.stringify(rawFixture));
+    nullAlias.project_aliases['alias-test'] = null;
+    assert.throws(
+      () => assertManifest(nullAlias),
+      /Manifest does not match its schema: \/project_aliases\/alias-test must be string/,
+    );
+
+    // Invalid top-level shape (number/array) fails closed with schema diagnostic
+    const shapeNumAlias = JSON.parse(JSON.stringify(rawFixture));
+    shapeNumAlias.project_aliases = 42;
+    assert.throws(
+      () => assertManifest(shapeNumAlias),
+      /Manifest does not match its schema: \/project_aliases must be object/,
+    );
+    const shapeArrAlias = JSON.parse(JSON.stringify(rawFixture));
+    shapeArrAlias.project_aliases = [];
+    assert.throws(
+      () => assertManifest(shapeArrAlias),
+      /Manifest does not match its schema: \/project_aliases must be object/,
+    );
   });
 
   await test('Omnisearch full-text search uses only the public command', async () => {

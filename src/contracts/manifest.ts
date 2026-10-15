@@ -22,7 +22,6 @@ import {
   validCounts,
   validFlatStage,
   validGardenEntry,
-  validIntegerMap,
   validModuleRecord,
   validModuleSourceMap,
   validProgress,
@@ -35,7 +34,6 @@ import {
   validResumePointer,
   validReviewItem,
   validSemester,
-  validStringMap,
   validStudyMap,
   validThematicGroup,
   validTopic,
@@ -891,9 +889,6 @@ export function assertManifest(value: unknown): asserts value is Manifest {
     }
   }
 
-  if (!validIntegerMap(value.artifact_revisions)) {
-    throw new TypeError("Manifest artifact revisions must map to non-negative integers.");
-  }
   if (!validBacklinks(value.backlinks)) {
     throw new TypeError(`Manifest backlinks must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
   }
@@ -902,9 +897,6 @@ export function assertManifest(value: unknown): asserts value is Manifest {
   }
   if (!validProgress(value.progress)) {
     throw new TypeError(`Manifest progress must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  if (!validStringMap(value.project_aliases)) {
-    throw new TypeError("Manifest project aliases must map to strings.");
   }
   if (!validResumePointer(value.resume_pointer)) {
     throw new TypeError(`Manifest resume pointer must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
