@@ -241,7 +241,7 @@ const GENERATED_KEYS = [
 const GUARD_METADATA = {
   'T-01': { loc: 'manifest.ts:719', desc: 'Top-level array assertion (requireArray for 18 collections)', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-02': { loc: 'manifest.ts:726', desc: 'Root and _generated object assertions', class: 'PROVEN_FOR_TESTED_CASES' },
-  'T-03': { loc: 'manifest.ts:737', desc: 'Root exactKeys assertion (28 declared properties)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-03': { loc: 'manifest.ts:737', desc: 'Root exactKeys assertion (28 declared properties)', class: 'PARTIALLY_COVERED' },
   'T-04': { loc: 'manifest.ts:744', desc: '_generated exactKeys assertion (9 declared properties)', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-05': { loc: 'manifest.ts:747', desc: 'Contract version matching constant MANIFEST_CONTRACT_VERSION (15)', class: 'CONTEXTUAL_PRESERVE' },
   'T-06': { loc: 'manifest.ts:752', desc: 'Schema SHA-256 matching constant MANIFEST_SCHEMA_SHA256 (pin)', class: 'CONTEXTUAL_PRESERVE' },
@@ -264,7 +264,7 @@ const GUARD_METADATA = {
   'T-23': { loc: 'manifest.ts:849', desc: 'study_maps row projection validation (stages, resources, shelvings)', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-24': { loc: 'manifest.ts:854', desc: 'stages flat stage row projection validation', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-25': { loc: 'manifest.ts:859', desc: 'records polymorphic union row validation (all record variants)', class: 'PROVEN_FOR_TESTED_CASES' },
-  'T-26': { loc: 'manifest.ts:865', desc: 'Secondary surfaces object assertion (isRecord on 8 keys)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-26': { loc: 'manifest.ts:865', desc: 'Secondary surfaces object assertion (isRecord on 8 keys)', class: 'PARTIALLY_COVERED' },
   'T-27': { loc: 'manifest.ts:870', desc: 'artifact_revisions non-negative integer map validation', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-28': { loc: 'manifest.ts:873', desc: 'backlinks closed projection validation (validBacklinks)', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-29': { loc: 'manifest.ts:876', desc: 'counts closed projection validation (27 natural metrics)', class: 'PROVEN_FOR_TESTED_CASES' },
@@ -279,7 +279,7 @@ const GUARD_METADATA = {
   'T-38': { loc: 'manifest.ts:912', desc: 'stage-concept evidence exactKeys and identifier patterns', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-39': { loc: 'manifest.ts:917', desc: 'knowledge-node evidence exactKeys and identifier pattern', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-40': { loc: 'manifest.ts:920', desc: 'module_concept_edges evidence discriminator kind validation', class: 'PROVEN_FOR_TESTED_CASES' },
-  'T-41': { loc: 'manifest.ts:927', desc: 'indexes object assertion (validJsonObject)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-41': { loc: 'manifest.ts:927', desc: 'indexes object assertion (validJsonObject)', class: 'UNREACHABLE_DUPLICATE' },
   'T-42': { loc: 'manifest.ts:938', desc: 'indexes exactKeys assertion (16 declared index keys)', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-43': { loc: 'manifest.ts:950', desc: 'indexes sub-map object assertion (isRecord on 6 specific keys)', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-44': { loc: 'manifest.ts:964', desc: 'indexes unique string array multi-map assertion (13 keys)', class: 'PROVEN_FOR_TESTED_CASES' },
@@ -449,6 +449,57 @@ addMutation({
   },
 });
 
+// S31-06B: T-07 constituent condition type violations
+addMutation({
+  category: 'A. TYPE',
+  propertyFamily: '_generated',
+  schemaPointer: '#/$defs/generated/properties/generated_at',
+  schemaKeyword: 'type',
+  operation: 'Set number 42 on _generated.generated_at where string is required',
+  guardId: 'T-07',
+  mutate: (m) => { m._generated.generated_at = 42; },
+});
+
+addMutation({
+  category: 'A. TYPE',
+  propertyFamily: '_generated',
+  schemaPointer: '#/$defs/generated/properties/generator',
+  schemaKeyword: 'type',
+  operation: 'Set number 42 on _generated.generator where string is required',
+  guardId: 'T-07',
+  mutate: (m) => { m._generated.generator = 42; },
+});
+
+addMutation({
+  category: 'A. TYPE',
+  propertyFamily: '_generated',
+  schemaPointer: '#/$defs/generated/properties/source_dirty',
+  schemaKeyword: 'type',
+  operation: 'Set string "true" on _generated.source_dirty where boolean is required',
+  guardId: 'T-07',
+  mutate: (m) => { m._generated.source_dirty = 'true'; },
+});
+
+addMutation({
+  category: 'A. TYPE',
+  propertyFamily: '_generated',
+  schemaPointer: '#/$defs/generated/properties/source_revision',
+  schemaKeyword: 'type',
+  operation: 'Set number 42 on _generated.source_revision where string or null is required',
+  guardId: 'T-07',
+  mutate: (m) => { m._generated.source_revision = 42; },
+});
+
+addMutation({
+  category: 'A. TYPE',
+  propertyFamily: '_generated',
+  schemaPointer: '#/$defs/generated/properties/warning',
+  schemaKeyword: 'type',
+  operation: 'Set number 42 on _generated.warning where string is required',
+  guardId: 'T-07',
+  mutate: (m) => { m._generated.warning = 42; },
+});
+
 // ---------------------------------------------------------------------------
 // CATEGORY B: REQUIRED PROPERTY VIOLATIONS
 // ---------------------------------------------------------------------------
@@ -597,6 +648,20 @@ addMutation({
   mutate: (m) => {
     const rec = m.records.find((r) => r.type === 'coordination');
     delete rec.sections.Commitments;
+  },
+});
+
+// S31-06B: Auxiliary schema stageAttachment missing required label
+addMutation({
+  category: 'B. REQUIRED',
+  propertyFamily: 'stages',
+  schemaPointer: '#/$defs/stageAttachment/required/label',
+  schemaKeyword: 'required',
+  operation: 'Delete required property "label" from stageAttachment on stage',
+  guardId: 'T-24',
+  mutate: (m) => {
+    m.stages[0].attachments = [{ path: 'notes/reference.pdf' }];
+    m.study_maps[0].stages[0].attachments = [{ path: 'notes/reference.pdf' }];
   },
 });
 
@@ -957,6 +1022,21 @@ addMutation({
   },
 });
 
+// S31-06B: Auxiliary schema sourceFeedback invalid feedback enum
+addMutation({
+  category: 'D. ENUM_CONST',
+  propertyFamily: 'stages',
+  schemaPointer: '#/$defs/sourceFeedback/properties/feedback',
+  schemaKeyword: 'enum',
+  operation: 'Set invalid feedback "invalid-enum" on sourceFeedback on stage',
+  guardId: 'T-23',
+  mutate: (m) => {
+    const fb = [{ source_id: 'source-fixture-book', feedback: 'invalid-enum', recorded: '2026-09-01' }];
+    m.stages[0].source_feedback = fb;
+    m.study_maps[0].stages[0].source_feedback = fb;
+  },
+});
+
 // ---------------------------------------------------------------------------
 // CATEGORY E: STRING CONSTRAINT VIOLATIONS
 // ---------------------------------------------------------------------------
@@ -1137,6 +1217,57 @@ addMutation({
   operation: 'Set empty string "" for generator where minLength: 1',
   guardId: 'T-07',
   mutate: (m) => { m._generated.generator = ''; },
+});
+
+// S31-06B: T-07 snapshot_id regex pattern violation
+addMutation({
+  category: 'E. STRING_CONSTRAINT',
+  propertyFamily: '_generated',
+  schemaPointer: '#/$defs/generated/properties/snapshot_id',
+  schemaKeyword: 'pattern',
+  operation: 'Set invalid snapshot_id "bad-snapshot-format" where pattern ^sha256:[0-9a-f]{64}$ is required',
+  guardId: 'T-07',
+  mutate: (m) => { m._generated.snapshot_id = 'bad-snapshot-format'; },
+});
+
+// S31-06B: T-07 source_fingerprint regex pattern violation
+addMutation({
+  category: 'E. STRING_CONSTRAINT',
+  propertyFamily: '_generated',
+  schemaPointer: '#/$defs/generated/properties/source_fingerprint',
+  schemaKeyword: 'pattern',
+  operation: 'Set short fingerprint "short-hash" where pattern ^[0-9a-f]{64}$ is required',
+  guardId: 'T-07',
+  mutate: (m) => { m._generated.source_fingerprint = 'short-hash'; },
+});
+
+// S31-06B: Auxiliary schema routeId pattern violation in synthesis completeness
+addMutation({
+  category: 'E. STRING_CONSTRAINT',
+  propertyFamily: 'unit_material_syntheses',
+  schemaPointer: '#/$defs/routeId',
+  schemaKeyword: 'pattern',
+  operation: 'Set invalid route ID "bad-route-id" in completeness missing_route_ids',
+  guardId: 'T-47',
+  mutate: (m) => { m.unit_material_syntheses[0].completeness.missing_route_ids = ['bad-route-id']; },
+});
+
+// S31-06B: Auxiliary schema deadlineModule module_id pattern violation
+addMutation({
+  category: 'E. STRING_CONSTRAINT',
+  propertyFamily: 'academic_deadlines',
+  schemaPointer: '#/$defs/deadlineModule/properties/module_id',
+  schemaKeyword: 'pattern',
+  operation: 'Set invalid module ID "bad-module-id" on academic_deadlines module',
+  guardId: 'T-09',
+  mutate: (m) => {
+    m.academic_deadlines[1].modules = [{
+      module_id: 'bad-module-id',
+      title: 'Combined Exam',
+      action: 'Register',
+      termins: [1],
+    }];
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -1670,10 +1801,68 @@ async function runSuite() {
     assert.ok(usedSeeds.has(seedKey), `Seed "${seedKey}" was never exercised by any mutation!`);
   }
 
+  // -------------------------------------------------------------------------
+  // Golden Verdict Oracle Verification (S31-06B)
+  // -------------------------------------------------------------------------
+  const GOLDEN_FIXTURE_PATH = path.join(ROOT, 'tests/manifest-validation-golden.json');
+  const isGenerateGolden = process.argv.includes('--generate-golden');
+
+  if (isGenerateGolden) {
+    const goldenPayload = {
+      contract_version: MANIFEST_CONTRACT_VERSION,
+      schema_sha256: MANIFEST_SCHEMA_SHA256,
+      generated_validator_sha256: '15cc06a3bd5464a3708690c03ed4723125d749d35af7213500efcb5c9f650a6b',
+      core_commit: 'd34693be19d9ed7ed23f4c309fdef11da2adffb7',
+      originating_ui_commit: '88adbf76a0cb8c0b0b994efb649af5bf463e7a80',
+      total_mutations: results.length,
+      seeds: Object.keys(SEEDS).map((seedId) => ({
+        seed_id: seedId,
+        expected_ajv_pass: true,
+        expected_hw_pass: true,
+        expected_agreement: 'AJV_PASS_HW_PASS',
+      })),
+      mutations: results.map((r) => ({
+        id: r.id,
+        category: r.category,
+        classification: r.guardId === 'T-05' || r.guardId === 'T-06' ? 'CONTEXTUAL' : 'SHAPE',
+        guard_id: r.guardId,
+        property_family: r.propertyFamily,
+        schema_keyword: r.schemaKeyword,
+        operation: r.operation,
+        expected_validity: false,
+        expected_ajv_pass: r.ajvPass,
+        expected_hw_pass: r.hwPass,
+        expected_agreement: r.agreementClass,
+      })),
+    };
+    fs.writeFileSync(GOLDEN_FIXTURE_PATH, JSON.stringify(goldenPayload, null, 2) + '\n', 'utf8');
+    console.log(`[PASS] Golden verdict oracle generated at: ${GOLDEN_FIXTURE_PATH}`);
+  }
+
+  // Verify against Golden Verdict Oracle
+  assert.ok(
+    fs.existsSync(GOLDEN_FIXTURE_PATH),
+    `Golden verdict oracle missing at ${GOLDEN_FIXTURE_PATH}. Run with --generate-golden to generate.`
+  );
+  const goldenData = JSON.parse(fs.readFileSync(GOLDEN_FIXTURE_PATH, 'utf8'));
+  assert.equal(goldenData.contract_version, MANIFEST_CONTRACT_VERSION, 'Golden contract version mismatch');
+  assert.equal(goldenData.schema_sha256, MANIFEST_SCHEMA_SHA256, 'Golden schema SHA-256 mismatch');
+  assert.equal(goldenData.total_mutations, results.length, 'Golden mutation count mismatch');
+
+  const goldenMap = new Map(goldenData.mutations.map((g) => [g.id, g]));
+  for (const r of results) {
+    const golden = goldenMap.get(r.id);
+    assert.ok(golden, `Mutation ${r.id} missing from golden verdict fixture`);
+    assert.equal(r.ajvPass, golden.expected_ajv_pass, `Mutation ${r.id} Ajv verdict diverged from golden expectation`);
+    assert.equal(r.hwPass, golden.expected_hw_pass, `Mutation ${r.id} handwritten verdict diverged from golden expectation`);
+    assert.equal(r.agreementClass, golden.expected_agreement, `Mutation ${r.id} agreement class diverged from golden expectation`);
+  }
+  console.log('[PASS] Independent golden verdict oracle verified across all mutations.');
+
   console.log('---------------------------------------------------------------');
   console.log(`Executed Mutations        : ${results.length}`);
   console.log(`Ajv FAIL / HW FAIL (Agree) : ${agreementFailCount}`);
-  console.log(`Intentional Contextual Diff: ${intentionalDiffCount} (T-06 Wrong-Pin Probe)`);
+  console.log(`Intentional Contextual Diff: ${intentionalDiffCount} (T-06 Wrong-Pin Probe: ${probeResult.id})`);
   console.log(`Unexpected Disagreements   : ${unexpectedDiffCount}`);
   console.log('---------------------------------------------------------------');
   console.log('[PASS] All differential validation assertions satisfied.');
@@ -1724,6 +1913,9 @@ function writeCoverageReport(results, stats) {
     }
   }
 
+  const probe = results.find((r) => r.guardId === 'T-06');
+  const probeId = probe ? probe.id : 'MUT-0256';
+
   const report = `# S31-06R — Differential Manifest Validation Suite Coverage Report
 
 **Date:** ${new Date().toISOString()}  
@@ -1738,7 +1930,7 @@ function writeCoverageReport(results, stats) {
 - **Core Worktree:** \`~/los-phase5-experiment/repository\`
 - **Core Commit SHA:** \`d34693be19d9ed7ed23f4c309fdef11da2adffb7\`
 - **UI Worktree:** \`~/los-phase5-experiment/obsidian-ui\`
-- **UI Commit SHA:** \`76c9ddfa0e956ca9178a246723a86d1c66ff5bf4\`
+- **UI Commit SHA:** \`88adbf76a0cb8c0b0b994efb649af5bf463e7a80\`
 - **Generated Validator SHA-256:** \`15cc06a3bd5464a3708690c03ed4723125d749d35af7213500efcb5c9f650a6b\`
 - **Contract Version:** 15
 - **Schema SHA-256:** \`${MANIFEST_SCHEMA_SHA256}\`
@@ -1806,7 +1998,7 @@ The deterministic mutation suite applies 9 orthogonal mutation operators:
 | **Valid Base Seeds** | **${Object.keys(SEEDS).length}** | Base fixture + 6 specialized branch seeds |
 | **Ajv PASS / HW PASS** | **${Object.keys(SEEDS).length}** | Valid base seeds accepted by both validators |
 | **Ajv FAIL / HW FAIL (Agreement)** | **${stats.agreementFailCount}** | Both validators reject invalid shape mutation |
-| **Intentional Contextual Difference** | **${stats.intentionalDiffCount}** | Case MUT-0255 (T-06 wrong-pin probe: Ajv PASS, HW FAIL) |
+| **Intentional Contextual Difference** | **${stats.intentionalDiffCount}** | Case ${probeId} (T-06 wrong-pin probe: Ajv PASS, HW FAIL) |
 | **Unexpected Differences** | **${stats.unexpectedDiffCount}** | Zero unexplained divergences |
 | **Ajv Rejection Rate on Invalid Shapes** | **100%** | Zero invalid shape mutations accepted by Ajv |
 
@@ -1843,7 +2035,7 @@ ${Object.entries(byFamily).sort().map(([fam, count]) => `| \`${fam}\` | ${count}
 | \`AJV_PASS_HW_PASS\` | ${Object.keys(SEEDS).length} | Baseline valid seeds (accepted by both) |
 | \`AJV_FAIL_HW_FAIL\` | ${stats.agreementFailCount} | Invalid shape mutations (rejected by both) |
 | \`DIFF_AJV_STRICTER\` | 0 | Cases where Ajv rejects but handwritten accepts |
-| \`DIFF_HW_STRICTER\` | 1 | Intentional contextual pin probe (T-06) |
+| \`DIFF_HW_STRICTER\` | 1 | Intentional contextual pin probe (T-06: ${probeId}) |
 
 ---
 
@@ -1851,7 +2043,7 @@ ${Object.entries(byFamily).sort().map(([fam, count]) => `| \`${fam}\` | ${count}
 
 - **Total Unexpected Divergences:** **0**
 - **Total Intentional Contextual Differences:** **1**
-  - **Case ID:** \`MUT-0255\`
+  - **Case ID:** \`${probeId}\`
   - **Property:** \`_generated.schema_sha256\`
   - **Mutation:** Set to \`sha256:0000000000000000000000000000000000000000000000000000000000000000\`
   - **Ajv Result:** PASS (matches schema regex \`^sha256:[0-9a-f]{64}$\`)
@@ -1863,7 +2055,7 @@ ${Object.entries(byFamily).sort().map(([fam, count]) => `| \`${fam}\` | ${count}
 ## 11. Contextual Refusal Probes
 
 ### A. Schema SHA-256 Byte Pin Probe (SPEC §15 item 6)
-- **Case ID:** \`MUT-0255\`
+- **Case ID:** \`${probeId}\`
 - **Ajv Verdict:** **PASS** (satisfies schema pattern \`^sha256:[0-9a-f]{64}$\`).
 - **assertManifest Verdict:** **FAIL** (\`TypeError: Unsupported manifest schema ...\`).
 - **Conclusion:** Conclusively demonstrates that host runtime byte-pinning remains active and separate from Ajv schema compilation.
