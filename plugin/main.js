@@ -23547,9 +23547,6 @@ function assertManifest(value) {
     }
   }
   const indexes = value.indexes;
-  if (!isRecord(indexes)) {
-    throw new TypeError("Manifest field indexes must be an object.");
-  }
   if (!exactKeys(indexes, [
     "component_to_units",
     "concept_to_modules",
@@ -38389,7 +38386,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:fb638eb9796661f4c6fa56d7acdc5660d97edbc366032dbb1f7738583e794ee7" : "unavailable";
+  return true ? "sha256:0093a274d55264710e895989095a62dbfcef20a375be01629a31ea3ef33bb67d" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

@@ -922,10 +922,7 @@ export function assertManifest(value: unknown): asserts value is Manifest {
     }
   }
 
-  const indexes = value.indexes;
-  if (!isRecord(indexes)) {
-    throw new TypeError("Manifest field indexes must be an object.");
-  }
+  const indexes = value.indexes as JsonRecord;
 
   if (!exactKeys(indexes, [
     "component_to_units", "concept_to_modules", "concept_to_units",
