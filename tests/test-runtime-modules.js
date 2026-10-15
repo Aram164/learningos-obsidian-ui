@@ -817,6 +817,118 @@ function routerPlugin(settings = {}) {
     );
   });
 
+  await test('ManifestStore refuses wrong schema-pin while generated Ajv accepts, clearing all state (S31-08)', async () => {
+    // 1. Load the valid v15 fixture
+    const rawFixture = JSON.parse(fs.readFileSync(FIXTURE_MANIFEST, 'utf8'));
+
+    // 2. Replace only _generated.schema_sha256 with 64 zeroes
+    const wrongPinFixture = JSON.parse(JSON.stringify(rawFixture));
+    wrongPinFixture._generated.schema_sha256 = `sha256:${'0'.repeat(64)}`;
+
+    // 3. Prove that real generated Ajv standalone validator accepts the mutated fixture
+    const validateManifest = require(path.join(ROOT, 'src/contracts/generated/manifest.validator.cjs'));
+    const ajvAccepted = validateManifest(wrongPinFixture);
+    assert.equal(ajvAccepted, true, 'generated Ajv validator must accept manifest with wrong schema SHA-256');
+    assert.equal(validateManifest.errors, null, 'Ajv errors must be null for wrong-pin manifest');
+
+    // Also verify that direct assertManifest fails closed at the contextual check
+    assert.throws(
+      () => assertManifest(wrongPinFixture),
+      /Unsupported manifest schema/,
+      'assertManifest must reject manifest with wrong schema SHA-256 pin',
+    );
+
+    // 4 & 5. Prove that production ManifestStore.load() rejects it with exact error
+    const store = new ManifestStore(manifestApp(() => JSON.stringify(wrongPinFixture)));
+    const loadSuccess = await store.load();
+    assert.equal(loadSuccess, false, 'ManifestStore.load() must reject wrong schema pin');
+    assert.match(
+      store.error,
+      /Unsupported manifest schema/,
+      'store.error must report Unsupported manifest schema',
+    );
+
+    // 6. Verify complete refusal state
+    assert.equal(store.ready, false, 'store.ready must be false after refusal');
+    assert.equal(store.data, null, 'store.data must be null after refusal');
+    assert.equal(store.records.length, 0, 'store.records must be empty array after refusal');
+    assert.equal(store.byId.size, 0, 'store.byId must be empty Map after refusal');
+    assert.equal(store.snapshotId, null, 'store.snapshotId must be null after refusal');
+    assert.equal(store.contractVersion, null, 'store.contractVersion must be null after refusal');
+
+    // 7. Verify derived read accessors expose no partial data
+    assert.equal(store.get('unit-fixture-sad-l04'), null);
+    assert.deepEqual(store.of('unit'), []);
+    assert.deepEqual(store.rows('units'), []);
+    assert.deepEqual(store.programs(), []);
+    assert.deepEqual(store.modules(), []);
+    assert.deepEqual(store.units(), []);
+    assert.deepEqual(store.studyMaps(), []);
+    assert.equal(store.currentSemester(), null);
+    assert.deepEqual(store.currentSemesterModules(), []);
+    assert.deepEqual(store.projects(), []);
+    assert.deepEqual(store.projectRelationships(), []);
+    assert.deepEqual(store.thematicGroups(), []);
+    assert.deepEqual(store.sources(), []);
+    assert.deepEqual(store.topicPacks(), []);
+    assert.deepEqual(store.catalogues(), []);
+    assert.deepEqual(store.moduleConceptEdges(), []);
+    assert.deepEqual(store.relations(), []);
+    assert.deepEqual(store.gardenEntries(), []);
+    assert.deepEqual(store.reviewItems(), []);
+    assert.deepEqual(store.topics(), []);
+    assert.deepEqual(store.search('lecture'), []);
+    assert.equal(store.artifactRevision('unit-fixture-sad-l04'), 0);
+    assert.equal(store.stage('stage-fixture-conditioning'), null);
+    assert.equal(store.sourceMap('module-fixture-aml'), null);
+    assert.equal(store.materialSynthesisForUnit('unit-fixture-sad-l04'), null);
+
+    // 8. Rejection when reloading an already populated store with the wrong schema pin
+    let manifestContent = JSON.stringify(rawFixture);
+    const reloadStore = new ManifestStore({
+      vault: {
+        adapter: {
+          exists: async () => true,
+          read: async () => manifestContent,
+        },
+      },
+    });
+
+    // Populate the store initially with valid fixture
+    const initialLoadSuccess = await reloadStore.load();
+    assert.equal(initialLoadSuccess, true, 'initial load of valid manifest must succeed');
+    assert.equal(reloadStore.ready, true);
+    assert.notEqual(reloadStore.data, null);
+    assert.ok(reloadStore.records.length > 0);
+    assert.ok(reloadStore.byId.size > 0);
+    assert.notEqual(reloadStore.snapshotId, null);
+    assert.equal(reloadStore.contractVersion, CONTRACT);
+    assert.notEqual(reloadStore.get('unit-fixture-sad-l04'), null);
+    assert.ok(reloadStore.units().length > 0);
+
+    // Mutate to wrong schema pin and reload
+    manifestContent = JSON.stringify(wrongPinFixture);
+    const reloadSuccess = await reloadStore.load();
+    assert.equal(reloadSuccess, false, 'reload with wrong schema pin must fail');
+    assert.match(reloadStore.error, /Unsupported manifest schema/);
+
+    // Verify previously populated state is completely cleared
+    assert.equal(reloadStore.ready, false, 'reloadStore.ready must be reset to false');
+    assert.equal(reloadStore.data, null, 'reloadStore.data must be reset to null');
+    assert.equal(reloadStore.records.length, 0, 'reloadStore.records must be reset to empty array');
+    assert.equal(reloadStore.byId.size, 0, 'reloadStore.byId must be reset to empty Map');
+    assert.equal(reloadStore.snapshotId, null, 'reloadStore.snapshotId must be reset to null');
+    assert.equal(reloadStore.contractVersion, null, 'reloadStore.contractVersion must be reset to null');
+
+    // Verify derived read accessors expose no lingering data from prior load
+    assert.equal(reloadStore.get('unit-fixture-sad-l04'), null);
+    assert.deepEqual(reloadStore.units(), []);
+    assert.deepEqual(reloadStore.modules(), []);
+    assert.deepEqual(reloadStore.sources(), []);
+    assert.deepEqual(reloadStore.search('lecture'), []);
+    assert.equal(reloadStore.stage('stage-fixture-conditioning'), null);
+  });
+
   await test('Omnisearch full-text search uses only the public command', async () => {
     // This harness has no DOM at all — `document` is genuinely undefined
     // here, so the private-selector/synthetic-keystroke path this replaced
