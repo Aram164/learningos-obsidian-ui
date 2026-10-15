@@ -20,8 +20,8 @@ function createSourceModuleLoader(root, mocks = {}) {
   function resolve(parentFile, specifier) {
     if (!specifier.startsWith('.')) return null;
     const base = path.resolve(path.dirname(parentFile), specifier);
-    for (const candidate of [`${base}.ts`, path.join(base, 'index.ts')]) {
-      if (fs.existsSync(candidate)) return candidate;
+    for (const candidate of [`${base}.ts`, path.join(base, 'index.ts'), base, `${base}.cjs`]) {
+      if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) return candidate;
     }
     throw new Error(`Cannot resolve ${specifier} from ${parentFile}`);
   }
@@ -55,7 +55,9 @@ function createSourceModuleLoader(root, mocks = {}) {
     const localRequire = (specifier) => {
       if (Object.prototype.hasOwnProperty.call(mocks, specifier)) return mocks[specifier];
       const internal = resolve(filename, specifier);
-      return internal ? load(path.relative(root, internal)) : require(specifier);
+      if (!internal) return require(specifier);
+      if (internal.endsWith('.cjs')) return require(internal);
+      return load(path.relative(root, internal));
     };
     const execute = new Function('module', 'exports', 'require', '__filename', '__dirname', transpiled.outputText);
     execute(module, module.exports, localRequire, filename, path.dirname(filename));

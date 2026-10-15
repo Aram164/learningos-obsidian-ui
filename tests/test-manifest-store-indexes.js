@@ -14,6 +14,7 @@ const load = createSourceModuleLoader(root, {
   // Contract decoding has its own exhaustive suite. This unit isolates the
   // store's post-validation indexing and atomic publication behavior.
   './contracts/manifest': { assertManifest: () => undefined },
+  './contracts/generated/manifest.validator.cjs': Object.assign(() => true, { default: () => true }),
   './projection/readers': {
     asStrings: (value) => Array.isArray(value)
       ? value.filter((item) => typeof item === 'string')

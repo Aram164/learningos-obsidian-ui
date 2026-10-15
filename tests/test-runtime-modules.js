@@ -407,17 +407,37 @@ function routerPlugin(settings = {}) {
     });
   }
 
-  for (const [label, fields, result] of [
-    ['invalid calendar deadline', { withdrawal_deadline: '2026-02-30' }, 'registered'],
-    ['null deadline', { withdrawal_deadline: null }, 'registered'],
-    ['unknown sitting field', { withdrawal_deadline: '2026-10-02', unknown: true }, 'registered'],
-    ['undeclared attempt outcome', { withdrawal_deadline: '2026-10-02' }, 'no-show'],
+  for (const [label, fields, result, expectedDiagnostic] of [
+    [
+      'invalid calendar deadline',
+      { withdrawal_deadline: '2026-02-30' },
+      'registered',
+      /\/modules\/0\/examination\/sittings\/0\/withdrawal_deadline must match format "date"/,
+    ],
+    [
+      'null deadline',
+      { withdrawal_deadline: null },
+      'registered',
+      /\/modules\/0\/examination\/sittings\/0\/withdrawal_deadline must be string/,
+    ],
+    [
+      'unknown sitting field',
+      { withdrawal_deadline: '2026-10-02', unknown: true },
+      'registered',
+      /\/modules\/0\/examination\/sittings\/0 must NOT have additional properties/,
+    ],
+    [
+      'undeclared attempt outcome',
+      { withdrawal_deadline: '2026-10-02' },
+      'no-show',
+      /\/modules\/0\/attempts\/0\/result must be equal to one of the allowed values/,
+    ],
   ]) {
     await test(`ManifestStore refuses ${label} without publishing a partial store`, async () => {
       const sitting = { termin: 2, date: '2026-10-09', ...fields };
       const store = new ManifestStore(examManifestApp(sitting, result));
       assert.equal(await store.load(), false);
-      assert.match(store.error, /Manifest module rows/);
+      assert.match(store.error, expectedDiagnostic);
       assert.equal(store.ready, false);
       assert.equal(store.data, null);
     });
@@ -516,7 +536,7 @@ function routerPlugin(settings = {}) {
     }));
     assert.equal(await store.load(), false);
     assert.equal(store.data, null);
-    assert.match(store.error, /at least one evidence item/);
+    assert.match(store.error, /\/module_concept_edges\/0\/evidence must NOT have fewer than 1 items/);
   });
 
   await test('ManifestStore rejects an undeclared Atlas evidence field', async () => {
@@ -527,7 +547,7 @@ function routerPlugin(settings = {}) {
     }));
     assert.equal(await store.load(), false);
     assert.equal(store.data, null);
-    assert.match(store.error, /stage-concept evidence/);
+    assert.match(store.error, /\/module_concept_edges\/0\/evidence\/0 must NOT have additional properties/);
   });
 
   await test('ManifestStore clears the prior snapshot after a reload failure', async () => {
@@ -581,7 +601,7 @@ function routerPlugin(settings = {}) {
       return JSON.stringify(manifest);
     }));
     assert.equal(await store.load(), false);
-    assert.match(store.error, /UnitMaterialSynthesisV1/);
+    assert.match(store.error, /\/unit_material_syntheses\/0\/basis must have required property 'source_map_revision'/);
   });
 
   await test('ManifestStore refuses synthesis rows without derived projection status', async () => {
@@ -591,7 +611,7 @@ function routerPlugin(settings = {}) {
       return JSON.stringify(manifest);
     }));
     assert.equal(await store.load(), false);
-    assert.match(store.error, /UnitMaterialSynthesisV1/);
+    assert.match(store.error, /\/unit_material_syntheses\/0 must have required property 'freshness'/);
   });
 
   await test('ManifestStore rejects extension fields in closed record rows', async () => {
@@ -601,7 +621,7 @@ function routerPlugin(settings = {}) {
       return JSON.stringify(manifest);
     }));
     assert.equal(await store.load(), false);
-    assert.match(store.error, /closed v\d+ record union/);
+    assert.match(store.error, /\/records\/0 must NOT have additional properties/);
   });
 
   await test('ManifestStore rejects malformed secondary surfaces before exposing data', async () => {
@@ -682,7 +702,7 @@ function routerPlugin(settings = {}) {
       return JSON.stringify(manifest);
     }));
     assert.equal(await store.load(), false);
-    assert.match(store.error, /closed v\d+ projection/);
+    assert.match(store.error, /\/programs\/\d+\/kind must be equal to one of the allowed values/);
   });
 
   await test('bounded health, archive, and prospective-planning decoders fail closed', async () => {
@@ -1153,7 +1173,7 @@ function routerPlugin(settings = {}) {
       return JSON.stringify(manifest);
     }));
     assert.equal(await store.load(), false);
-    assert.match(store.error, new RegExp(`top-level keys do not match contract v${CONTRACT}`));
+    assert.match(store.error, /\/ must have required property 'units'/);
     assert.deepEqual(store.units(), []);
   });
 

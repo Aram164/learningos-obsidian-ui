@@ -44,7 +44,7 @@ function argValue(argv, name, fallback = null) {
 const bundlePath = argValue(process.argv, '--bundle');
 if (!bundlePath) throw new Error('Missing required --bundle <path>.');
 const metaPath = argValue(process.argv, '--meta');
-const outDir = argValue(process.argv, '--out', 'contract-prototype/generated');
+const outDir = argValue(process.argv, '--out', 'src/contracts/generated');
 
 const bundle = JSON.parse(fs.readFileSync(path.resolve(root, bundlePath), 'utf8'));
 if (bundle.format !== 'learningos-contract-bundle/1') {
