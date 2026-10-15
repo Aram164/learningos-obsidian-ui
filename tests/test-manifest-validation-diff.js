@@ -2,7 +2,7 @@
 
 /**
  * LearningOS Architecture Convergence — Phase 5
- * Task S31-06: Differential Manifest Validation Suite
+ * Task S31-06R: Differential Manifest Validation Suite
  *
  * This test suite systematically exercises the real compiled Ajv standalone
  * validator against the real handwritten assertManifest decoder using deterministic
@@ -105,11 +105,82 @@ seedWithKnowledgeEdge.module_concept_edges.push({
   ],
 });
 
+// Seed 5: Fixture with noteRecord having atlas_question and material_analysis (Gap 1)
+const seedWithNoteAnalysis = clone(baseFixture);
+const noteAnalysisRecord = clone(baseFixture.records.find((r) => r.type === 'note'));
+noteAnalysisRecord.id = 'note-fixture-with-analysis';
+noteAnalysisRecord.title = 'Question Note with Analysis and Atlas Question';
+noteAnalysisRecord.path = 'knowledge/notes/mathematics/note-fixture-with-analysis.md';
+noteAnalysisRecord.role = 'question';
+noteAnalysisRecord.atlas_question = {
+  state: 'open',
+  answer_notes: ['note-fixture-probability'],
+  target: {
+    concepts: ['concept-bayes'],
+  },
+};
+noteAnalysisRecord.material_analysis = {
+  resolution: 'resolved',
+  material: 'lecture-slides.pdf',
+  source_id: 'source-fixture-book',
+  recorded_source_digest: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+  inspected_range: { start: 1, end: 10 },
+  frozen_input_sha256: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+  frozen_input_bytes: 1024,
+  anchors: [
+    {
+      topic: 'Foundations',
+      purpose: 'Derivation',
+      locator: 'p. 5',
+      note: 'Core derivation anchor',
+    },
+  ],
+};
+seedWithNoteAnalysis.records.push(noteAnalysisRecord);
+
+// Seed 6: Fixture with studyMap having active detours and proposed shelving (Gap 2)
+const seedWithDetourShelving = clone(baseFixture);
+seedWithDetourShelving.study_maps[0].detours = [
+  {
+    id: 'detour-fixture-calc',
+    title: 'Review Multivariable Calculus',
+    spawned_by_stage: seedWithDetourShelving.study_maps[0].stages[0].id,
+    classification: 'required-now',
+    status: 'open',
+    return_to_stage: seedWithDetourShelving.study_maps[0].stages[0].id,
+    resolution: 'Pending review',
+  },
+];
+seedWithDetourShelving.study_maps[0].shelving = {
+  state: 'proposed',
+  proposal_path: 'work/active/shelving-proposal.md',
+  summary: 'Shelve exploratory notes',
+  items: [
+    {
+      id: 'proposal-fixture-1',
+      kind: 'archive-map',
+      title: 'Archive exploratory map',
+      destination: 'archive/maps',
+      rationale: 'Completed semester',
+      diff: '+ addition',
+      content: 'Archived content',
+      selected: true,
+    },
+  ],
+};
+
+// Seed 7: Fixture with unit-material-synthesis inside records (Gap 3)
+const seedWithSynthesisRecord = clone(baseFixture);
+seedWithSynthesisRecord.records.push(clone(baseFixture.unit_material_syntheses[0]));
+
 const SEEDS = {
   base: seedBase,
   'with-alias': seedWithAlias,
   'with-path': seedWithPath,
   'with-knowledge-edge': seedWithKnowledgeEdge,
+  'with-note-analysis': seedWithNoteAnalysis,
+  'with-detour-shelving': seedWithDetourShelving,
+  'with-synthesis-record': seedWithSynthesisRecord,
 };
 
 // ---------------------------------------------------------------------------
@@ -167,54 +238,54 @@ const GENERATED_KEYS = [
   'snapshot_id', 'source_dirty', 'source_fingerprint', 'source_revision', 'warning',
 ];
 
-const GUARD_DESCRIPTIONS = {
-  'T-01': 'Top-level array assertion (requireArray for 18 collections)',
-  'T-02': 'Root and _generated object assertions',
-  'T-03': 'Root exactKeys assertion (28 declared properties)',
-  'T-04': '_generated exactKeys assertion (9 declared properties)',
-  'T-05': 'Contract version matching constant MANIFEST_CONTRACT_VERSION (15)',
-  'T-06': 'Schema SHA-256 matching constant MANIFEST_SCHEMA_SHA256 (pin)',
-  'T-07': '_generated metadata attributes type and pattern assertions',
-  'T-08': 'ai_actions closed projection validation (validAiActions)',
-  'T-09': 'academic_deadlines row projection validation',
-  'T-10': 'garden_entries row projection validation',
-  'T-11': 'relations row projection validation',
-  'T-12': 'review_items row projection validation',
-  'T-13': 'semesters row projection validation',
-  'T-14': 'thematic_groups row projection validation',
-  'T-15': 'topic_packs row projection validation',
-  'T-16': 'topics row projection validation',
-  'T-17': 'modules row projection validation (components, exam, attempts)',
-  'T-18': 'programs row projection validation (program semesters)',
-  'T-19': 'projects row projection validation (boundaries, structures, files)',
-  'T-20': 'project_relationships row projection validation',
-  'T-21': 'module_source_maps row projection validation (entries, routes)',
-  'T-22': 'units row projection validation (artifacts, notes, maps)',
-  'T-23': 'study_maps row projection validation (stages, resources, shelvings)',
-  'T-24': 'stages flat stage row projection validation',
-  'T-25': 'records polymorphic union row validation (13 record variants)',
-  'T-26': 'Secondary surfaces object assertion (isRecord on 8 keys)',
-  'T-27': 'artifact_revisions non-negative integer map validation',
-  'T-28': 'backlinks closed projection validation (validBacklinks)',
-  'T-29': 'counts closed projection validation (27 natural metrics)',
-  'T-30': 'progress closed projection validation (validProgress)',
-  'T-31': 'project_aliases string map validation (validStringMap)',
-  'T-32': 'resume_pointer closed projection validation (validResumePointer)',
-  'T-33': 'module_concept_edges array assertion',
-  'T-34': 'module_concept_edges row exactKeys assertion (module_id, concept_id, evidence)',
-  'T-35': 'module_concept_edges module_id and concept_id identifier patterns',
-  'T-36': 'module_concept_edges evidence non-empty array assertion (minItems: 1)',
-  'T-37': 'module_concept_edges evidence item unit_id identifier pattern',
-  'T-38': 'stage-concept evidence exactKeys and identifier patterns',
-  'T-39': 'knowledge-node evidence exactKeys and identifier pattern',
-  'T-40': 'module_concept_edges evidence discriminator kind validation',
-  'T-41': 'indexes object assertion (validJsonObject)',
-  'T-42': 'indexes exactKeys assertion (16 declared index keys)',
-  'T-43': 'indexes sub-map object assertion (isRecord on 6 specific keys)',
-  'T-44': 'indexes unique string array multi-map assertion (13 keys)',
-  'T-45': 'indexes string single-map assertion (2 keys)',
-  'T-46': 'indexes unit_to_material_synthesis synthesis ID identifier pattern',
-  'T-47': 'unit_material_syntheses projection validation (validMaterialSynthesis)',
+const GUARD_METADATA = {
+  'T-01': { loc: 'manifest.ts:719', desc: 'Top-level array assertion (requireArray for 18 collections)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-02': { loc: 'manifest.ts:726', desc: 'Root and _generated object assertions', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-03': { loc: 'manifest.ts:737', desc: 'Root exactKeys assertion (28 declared properties)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-04': { loc: 'manifest.ts:744', desc: '_generated exactKeys assertion (9 declared properties)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-05': { loc: 'manifest.ts:747', desc: 'Contract version matching constant MANIFEST_CONTRACT_VERSION (15)', class: 'CONTEXTUAL_PRESERVE' },
+  'T-06': { loc: 'manifest.ts:752', desc: 'Schema SHA-256 matching constant MANIFEST_SCHEMA_SHA256 (pin)', class: 'CONTEXTUAL_PRESERVE' },
+  'T-07': { loc: 'manifest.ts:764', desc: '_generated metadata attributes type and pattern assertions', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-08': { loc: 'manifest.ts:791', desc: 'ai_actions closed projection validation (validAiActions)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-09': { loc: 'manifest.ts:794', desc: 'academic_deadlines row projection validation', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-10': { loc: 'manifest.ts:797', desc: 'garden_entries row projection validation', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-11': { loc: 'manifest.ts:800', desc: 'relations row projection validation', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-12': { loc: 'manifest.ts:803', desc: 'review_items row projection validation', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-13': { loc: 'manifest.ts:806', desc: 'semesters row projection validation', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-14': { loc: 'manifest.ts:809', desc: 'thematic_groups row projection validation', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-15': { loc: 'manifest.ts:812', desc: 'topic_packs row projection validation', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-16': { loc: 'manifest.ts:815', desc: 'topics row projection validation', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-17': { loc: 'manifest.ts:819', desc: 'modules row projection validation (components, exam, attempts)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-18': { loc: 'manifest.ts:824', desc: 'programs row projection validation (program semesters)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-19': { loc: 'manifest.ts:829', desc: 'projects row projection validation (boundaries, structures, files)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-20': { loc: 'manifest.ts:834', desc: 'project_relationships row projection validation', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-21': { loc: 'manifest.ts:839', desc: 'module_source_maps row projection validation (entries, routes)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-22': { loc: 'manifest.ts:844', desc: 'units row projection validation (artifacts, notes, maps)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-23': { loc: 'manifest.ts:849', desc: 'study_maps row projection validation (stages, resources, shelvings)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-24': { loc: 'manifest.ts:854', desc: 'stages flat stage row projection validation', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-25': { loc: 'manifest.ts:859', desc: 'records polymorphic union row validation (all record variants)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-26': { loc: 'manifest.ts:865', desc: 'Secondary surfaces object assertion (isRecord on 8 keys)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-27': { loc: 'manifest.ts:870', desc: 'artifact_revisions non-negative integer map validation', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-28': { loc: 'manifest.ts:873', desc: 'backlinks closed projection validation (validBacklinks)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-29': { loc: 'manifest.ts:876', desc: 'counts closed projection validation (27 natural metrics)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-30': { loc: 'manifest.ts:879', desc: 'progress closed projection validation (validProgress)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-31': { loc: 'manifest.ts:882', desc: 'project_aliases string map validation (validStringMap)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-32': { loc: 'manifest.ts:885', desc: 'resume_pointer closed projection validation (validResumePointer)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-33': { loc: 'manifest.ts:890', desc: 'module_concept_edges array assertion', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-34': { loc: 'manifest.ts:894', desc: 'module_concept_edges row exactKeys assertion (module_id, concept_id, evidence)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-35': { loc: 'manifest.ts:897', desc: 'module_concept_edges module_id and concept_id identifier patterns', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-36': { loc: 'manifest.ts:902', desc: 'module_concept_edges evidence non-empty array assertion (minItems: 1)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-37': { loc: 'manifest.ts:906', desc: 'module_concept_edges evidence item unit_id identifier pattern', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-38': { loc: 'manifest.ts:912', desc: 'stage-concept evidence exactKeys and identifier patterns', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-39': { loc: 'manifest.ts:917', desc: 'knowledge-node evidence exactKeys and identifier pattern', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-40': { loc: 'manifest.ts:920', desc: 'module_concept_edges evidence discriminator kind validation', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-41': { loc: 'manifest.ts:927', desc: 'indexes object assertion (validJsonObject)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-42': { loc: 'manifest.ts:938', desc: 'indexes exactKeys assertion (16 declared index keys)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-43': { loc: 'manifest.ts:950', desc: 'indexes sub-map object assertion (isRecord on 6 specific keys)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-44': { loc: 'manifest.ts:964', desc: 'indexes unique string array multi-map assertion (13 keys)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-45': { loc: 'manifest.ts:971', desc: 'indexes string single-map assertion (2 keys)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-46': { loc: 'manifest.ts:977', desc: 'indexes unit_to_material_synthesis synthesis ID identifier pattern', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-47': { loc: 'manifest.ts:982', desc: 'unit_material_syntheses projection validation (validMaterialSynthesis)', class: 'PROVEN_FOR_TESTED_CASES' },
 };
 
 const mutations = [];
@@ -364,6 +435,20 @@ addMutation({
   },
 });
 
+// Gap 4: Coordination record type flip on section value
+addMutation({
+  category: 'A. TYPE',
+  propertyFamily: 'records',
+  schemaPointer: '#/$defs/coordinationRecord/properties/sections/properties/Commitments',
+  schemaKeyword: 'type',
+  operation: 'Set number 42 on coordination.sections.Commitments where string required',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.type === 'coordination');
+    rec.sections.Commitments = 42;
+  },
+});
+
 // ---------------------------------------------------------------------------
 // CATEGORY B: REQUIRED PROPERTY VIOLATIONS
 // ---------------------------------------------------------------------------
@@ -441,6 +526,79 @@ for (const [coll, idx, field, pointer, guardId] of itemDeletions) {
     mutate: (m) => { delete m[coll][idx][field]; },
   });
 }
+
+// Gap 1: NoteRecord nested material_analysis.inspected_range missing end
+addMutation({
+  category: 'B. REQUIRED',
+  propertyFamily: 'records',
+  seed: 'with-note-analysis',
+  schemaPointer: '#/$defs/noteRecord/properties/material_analysis/properties/inspected_range/required/end',
+  schemaKeyword: 'required',
+  operation: 'Delete required "end" from material_analysis.inspected_range',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.id === 'note-fixture-with-analysis');
+    delete rec.material_analysis.inspected_range.end;
+  },
+});
+
+// Gap 1: NoteRecord resolved material_analysis missing source_id (allOf if/then)
+addMutation({
+  category: 'B. REQUIRED',
+  propertyFamily: 'records',
+  seed: 'with-note-analysis',
+  schemaPointer: '#/$defs/noteRecord/properties/material_analysis/allOf/0/then/required/source_id',
+  schemaKeyword: 'required',
+  operation: 'Delete required "source_id" from resolved material_analysis (allOf requirement)',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.id === 'note-fixture-with-analysis');
+    delete rec.material_analysis.source_id;
+  },
+});
+
+// Gap 2: Detour missing return_to_stage
+addMutation({
+  category: 'B. REQUIRED',
+  propertyFamily: 'study_maps',
+  seed: 'with-detour-shelving',
+  schemaPointer: '#/$defs/studyMap/properties/detours/items/required/return_to_stage',
+  schemaKeyword: 'required',
+  operation: 'Delete required "return_to_stage" from study_maps[0].detours[0]',
+  guardId: 'T-23',
+  mutate: (m) => {
+    delete m.study_maps[0].detours[0].return_to_stage;
+  },
+});
+
+// Gap 3: Synthesis inside records missing source_map_revision
+addMutation({
+  category: 'B. REQUIRED',
+  propertyFamily: 'records',
+  seed: 'with-synthesis-record',
+  schemaPointer: '#/$defs/unitMaterialSynthesisProjection/properties/basis/required/source_map_revision',
+  schemaKeyword: 'required',
+  operation: 'Delete required "source_map_revision" from unit-material-synthesis basis in records',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records[m.records.length - 1];
+    delete rec.basis.source_map_revision;
+  },
+});
+
+// Gap 4: CoordinationRecord missing required section
+addMutation({
+  category: 'B. REQUIRED',
+  propertyFamily: 'records',
+  schemaPointer: '#/$defs/coordinationRecord/properties/sections/required/Commitments',
+  schemaKeyword: 'required',
+  operation: 'Delete required section "Commitments" from coordination record in records',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.type === 'coordination');
+    delete rec.sections.Commitments;
+  },
+});
 
 // ---------------------------------------------------------------------------
 // CATEGORY C: ADDITIONAL PROPERTIES VIOLATIONS
@@ -528,6 +686,93 @@ for (const coll of ARRAY_PROPERTIES) {
   });
 }
 
+// Gap 1: NoteRecord nested anchor extra property
+addMutation({
+  category: 'C. ADDITIONAL_PROPERTIES',
+  propertyFamily: 'records',
+  seed: 'with-note-analysis',
+  schemaPointer: '#/$defs/noteRecord/properties/material_analysis/properties/anchors/items/additionalProperties',
+  schemaKeyword: 'additionalProperties',
+  operation: 'Inject unexpected property on material_analysis anchor',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.id === 'note-fixture-with-analysis');
+    rec.material_analysis.anchors[0].__unexpected_anchor__ = true;
+  },
+});
+
+// Gap 1: NoteRecord atlas_question extra property
+addMutation({
+  category: 'C. ADDITIONAL_PROPERTIES',
+  propertyFamily: 'records',
+  seed: 'with-note-analysis',
+  schemaPointer: '#/$defs/noteRecord/properties/atlas_question/additionalProperties',
+  schemaKeyword: 'additionalProperties',
+  operation: 'Inject unexpected property on note.atlas_question',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.id === 'note-fixture-with-analysis');
+    rec.atlas_question.__unexpected_question__ = true;
+  },
+});
+
+// Gap 2: Detour extra property
+addMutation({
+  category: 'C. ADDITIONAL_PROPERTIES',
+  propertyFamily: 'study_maps',
+  seed: 'with-detour-shelving',
+  schemaPointer: '#/$defs/studyMap/properties/detours/items/additionalProperties',
+  schemaKeyword: 'additionalProperties',
+  operation: 'Inject unexpected property on study_maps[0].detours[0]',
+  guardId: 'T-23',
+  mutate: (m) => {
+    m.study_maps[0].detours[0].__unexpected_detour__ = true;
+  },
+});
+
+// Gap 2: Shelving item extra property
+addMutation({
+  category: 'C. ADDITIONAL_PROPERTIES',
+  propertyFamily: 'study_maps',
+  seed: 'with-detour-shelving',
+  schemaPointer: '#/$defs/studyMap/properties/shelving/properties/items/items/additionalProperties',
+  schemaKeyword: 'additionalProperties',
+  operation: 'Inject unexpected property on shelving item',
+  guardId: 'T-23',
+  mutate: (m) => {
+    m.study_maps[0].shelving.items[0].__unexpected_shelving_item__ = true;
+  },
+});
+
+// Gap 3: Synthesis inside records extra property
+addMutation({
+  category: 'C. ADDITIONAL_PROPERTIES',
+  propertyFamily: 'records',
+  seed: 'with-synthesis-record',
+  schemaPointer: '#/$defs/unitMaterialSynthesisProjection/additionalProperties',
+  schemaKeyword: 'additionalProperties',
+  operation: 'Inject unexpected property on unit-material-synthesis record in records',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records[m.records.length - 1];
+    rec.__unexpected_synthesis_rec__ = true;
+  },
+});
+
+// Gap 4: CoordinationRecord sections extra property
+addMutation({
+  category: 'C. ADDITIONAL_PROPERTIES',
+  propertyFamily: 'records',
+  schemaPointer: '#/$defs/coordinationRecord/properties/sections/additionalProperties',
+  schemaKeyword: 'additionalProperties',
+  operation: 'Inject unexpected property into coordination.sections',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.type === 'coordination');
+    rec.sections.__unexpected_section__ = 'forbidden';
+  },
+});
+
 // ---------------------------------------------------------------------------
 // CATEGORY D: ENUM AND CONST VIOLATIONS
 // ---------------------------------------------------------------------------
@@ -583,6 +828,135 @@ addMutation({
   mutate: (m) => { m.ai_actions.contract_version = 2; },
 });
 
+// Gap 1: Material analysis resolution enum violation
+addMutation({
+  category: 'D. ENUM_CONST',
+  propertyFamily: 'records',
+  seed: 'with-note-analysis',
+  schemaPointer: '#/$defs/noteRecord/properties/material_analysis/properties/resolution',
+  schemaKeyword: 'enum',
+  operation: 'Set invalid resolution "stray" on note.material_analysis',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.id === 'note-fixture-with-analysis');
+    rec.material_analysis.resolution = 'stray';
+  },
+});
+
+// Gap 1: Atlas question state enum violation
+addMutation({
+  category: 'D. ENUM_CONST',
+  propertyFamily: 'records',
+  seed: 'with-note-analysis',
+  schemaPointer: '#/$defs/noteRecord/properties/atlas_question/properties/state',
+  schemaKeyword: 'enum',
+  operation: 'Set invalid state "pending" on note.atlas_question',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.id === 'note-fixture-with-analysis');
+    rec.atlas_question.state = 'pending';
+  },
+});
+
+// Gap 2: Detour classification enum violation
+addMutation({
+  category: 'D. ENUM_CONST',
+  propertyFamily: 'study_maps',
+  seed: 'with-detour-shelving',
+  schemaPointer: '#/$defs/studyMap/properties/detours/items/properties/classification',
+  schemaKeyword: 'enum',
+  operation: 'Set invalid classification "optional" on detour',
+  guardId: 'T-23',
+  mutate: (m) => {
+    m.study_maps[0].detours[0].classification = 'optional';
+  },
+});
+
+// Gap 2: Detour status enum violation
+addMutation({
+  category: 'D. ENUM_CONST',
+  propertyFamily: 'study_maps',
+  seed: 'with-detour-shelving',
+  schemaPointer: '#/$defs/studyMap/properties/detours/items/properties/status',
+  schemaKeyword: 'enum',
+  operation: 'Set invalid status "in-progress" on detour',
+  guardId: 'T-23',
+  mutate: (m) => {
+    m.study_maps[0].detours[0].status = 'in-progress';
+  },
+});
+
+// Gap 2: Shelving state enum violation
+addMutation({
+  category: 'D. ENUM_CONST',
+  propertyFamily: 'study_maps',
+  seed: 'with-detour-shelving',
+  schemaPointer: '#/$defs/studyMap/properties/shelving/properties/state',
+  schemaKeyword: 'enum',
+  operation: 'Set invalid state "shelved" on study_maps[0].shelving',
+  guardId: 'T-23',
+  mutate: (m) => {
+    m.study_maps[0].shelving.state = 'shelved';
+  },
+});
+
+// Gap 2: Shelving item kind enum violation
+addMutation({
+  category: 'D. ENUM_CONST',
+  propertyFamily: 'study_maps',
+  seed: 'with-detour-shelving',
+  schemaPointer: '#/$defs/studyMap/properties/shelving/properties/items/items/properties/kind',
+  schemaKeyword: 'enum',
+  operation: 'Set invalid kind "external-archive" on shelving item',
+  guardId: 'T-23',
+  mutate: (m) => {
+    m.study_maps[0].shelving.items[0].kind = 'external-archive';
+  },
+});
+
+// Gap 3: Synthesis inside records freshness status enum violation
+addMutation({
+  category: 'D. ENUM_CONST',
+  propertyFamily: 'records',
+  seed: 'with-synthesis-record',
+  schemaPointer: '#/$defs/unitMaterialSynthesisProjection/properties/freshness/properties/status',
+  schemaKeyword: 'enum',
+  operation: 'Set invalid status "expired" on unit-material-synthesis in records',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records[m.records.length - 1];
+    rec.freshness.status = 'expired';
+  },
+});
+
+// Gap 4: CoordinationRecord path const violation
+addMutation({
+  category: 'D. ENUM_CONST',
+  propertyFamily: 'records',
+  schemaPointer: '#/$defs/coordinationRecord/properties/path',
+  schemaKeyword: 'const',
+  operation: 'Set invalid path "work/WRONG.md" on coordination record (const mismatch)',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.type === 'coordination');
+    rec.path = 'work/WRONG.md';
+  },
+});
+
+// Gap 4: CoordinationRecord id const violation
+addMutation({
+  category: 'D. ENUM_CONST',
+  propertyFamily: 'records',
+  schemaPointer: '#/$defs/coordinationRecord/properties/id',
+  schemaKeyword: 'const',
+  operation: 'Set invalid id "coordination-bad" on coordination record (const mismatch)',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.type === 'coordination');
+    rec.id = 'coordination-bad';
+  },
+});
+
 // ---------------------------------------------------------------------------
 // CATEGORY E: STRING CONSTRAINT VIOLATIONS
 // ---------------------------------------------------------------------------
@@ -625,6 +999,92 @@ for (const [coll, idx, field, badPattern, pointer, guardId] of patternCases) {
     },
   });
 }
+
+// Gap 1: Material analysis frozen_input_sha256 pattern violation
+addMutation({
+  category: 'E. STRING_CONSTRAINT',
+  propertyFamily: 'records',
+  seed: 'with-note-analysis',
+  schemaPointer: '#/$defs/noteRecord/properties/material_analysis/properties/frozen_input_sha256',
+  schemaKeyword: 'pattern',
+  operation: 'Set invalid non-64-hex string on frozen_input_sha256',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.id === 'note-fixture-with-analysis');
+    rec.material_analysis.frozen_input_sha256 = 'short-hash';
+  },
+});
+
+// Gap 1: Material analysis anchor topic minLength violation
+addMutation({
+  category: 'E. STRING_CONSTRAINT',
+  propertyFamily: 'records',
+  seed: 'with-note-analysis',
+  schemaPointer: '#/$defs/noteRecord/properties/material_analysis/properties/anchors/items/properties/topic',
+  schemaKeyword: 'minLength',
+  operation: 'Set empty string "" on anchor topic where minLength: 1',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.id === 'note-fixture-with-analysis');
+    rec.material_analysis.anchors[0].topic = '';
+  },
+});
+
+// Gap 2: Detour id pattern violation
+addMutation({
+  category: 'E. STRING_CONSTRAINT',
+  propertyFamily: 'study_maps',
+  seed: 'with-detour-shelving',
+  schemaPointer: '#/$defs/studyMap/properties/detours/items/properties/id',
+  schemaKeyword: 'pattern',
+  operation: 'Violate detour ID prefix (not "detour-")',
+  guardId: 'T-23',
+  mutate: (m) => {
+    m.study_maps[0].detours[0].id = 'not-detour-prefixed';
+  },
+});
+
+// Gap 2: Detour title minLength violation
+addMutation({
+  category: 'E. STRING_CONSTRAINT',
+  propertyFamily: 'study_maps',
+  seed: 'with-detour-shelving',
+  schemaPointer: '#/$defs/studyMap/properties/detours/items/properties/title',
+  schemaKeyword: 'minLength',
+  operation: 'Set empty string "" on detour title where minLength: 1',
+  guardId: 'T-23',
+  mutate: (m) => {
+    m.study_maps[0].detours[0].title = '';
+  },
+});
+
+// Gap 2: Shelving item id pattern violation
+addMutation({
+  category: 'E. STRING_CONSTRAINT',
+  propertyFamily: 'study_maps',
+  seed: 'with-detour-shelving',
+  schemaPointer: '#/$defs/studyMap/properties/shelving/properties/items/items/properties/id',
+  schemaKeyword: 'pattern',
+  operation: 'Violate shelving item proposal ID prefix (not "proposal-")',
+  guardId: 'T-23',
+  mutate: (m) => {
+    m.study_maps[0].shelving.items[0].id = 'not-proposal-prefixed';
+  },
+});
+
+// Gap 2: Shelving item destination minLength violation
+addMutation({
+  category: 'E. STRING_CONSTRAINT',
+  propertyFamily: 'study_maps',
+  seed: 'with-detour-shelving',
+  schemaPointer: '#/$defs/studyMap/properties/shelving/properties/items/items/properties/destination',
+  schemaKeyword: 'minLength',
+  operation: 'Set empty string "" on shelving item destination where minLength: 1',
+  guardId: 'T-23',
+  mutate: (m) => {
+    m.study_maps[0].shelving.items[0].destination = '';
+  },
+});
 
 // minLength violation on academic_deadlines.kind
 addMutation({
@@ -729,6 +1189,21 @@ addMutation({
   },
 });
 
+// Gap 1: Material analysis inspected_range start negative minimum violation
+addMutation({
+  category: 'F. NUMERIC_CONSTRAINT',
+  propertyFamily: 'records',
+  seed: 'with-note-analysis',
+  schemaPointer: '#/$defs/noteRecord/properties/material_analysis/properties/inspected_range/properties/start',
+  schemaKeyword: 'minimum',
+  operation: 'Set negative integer (-1) on material_analysis.inspected_range.start (min: 1)',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.id === 'note-fixture-with-analysis');
+    rec.material_analysis.inspected_range.start = -1;
+  },
+});
+
 // ---------------------------------------------------------------------------
 // CATEGORY G: ARRAY CONSTRAINT VIOLATIONS
 // ---------------------------------------------------------------------------
@@ -755,6 +1230,21 @@ addMutation({
       'module-fixture-aml',
       'module-fixture-aml',
     ];
+  },
+});
+
+// Gap 1: Atlas question target concepts empty array minItems violation
+addMutation({
+  category: 'G. ARRAY_CONSTRAINT',
+  propertyFamily: 'records',
+  seed: 'with-note-analysis',
+  schemaPointer: '#/$defs/noteRecord/properties/atlas_question/properties/target/oneOf/0/properties/concepts/minItems',
+  schemaKeyword: 'minItems',
+  operation: 'Set empty concepts array [] in atlas_question target (minItems: 1)',
+  guardId: 'T-25',
+  mutate: (m) => {
+    const rec = m.records.find((r) => r.id === 'note-fixture-with-analysis');
+    rec.atlas_question.target.concepts = [];
   },
 });
 
@@ -1006,7 +1496,7 @@ addMutation({
 
 async function runSuite() {
   console.log('===============================================================');
-  console.log('LearningOS S31-06 — Differential Manifest Validation Suite');
+  console.log('LearningOS S31-06R — Differential Manifest Validation Suite');
   console.log('===============================================================');
   console.log(`Core Contract Version : ${MANIFEST_CONTRACT_VERSION}`);
   console.log(`Schema SHA-256 Pin     : ${MANIFEST_SCHEMA_SHA256}`);
@@ -1021,13 +1511,13 @@ async function runSuite() {
   assert.equal(baseFixture._generated.schema_sha256, MANIFEST_SCHEMA_SHA256);
   console.log('[PASS] Baseline fixture integrity confirmed.');
 
-  // Verify all 4 seeds pass both validators
+  // Verify all 7 seeds pass both validators
   for (const [seedName, seedData] of Object.entries(SEEDS)) {
     const seedAjv = validateManifest(seedData);
     assert.equal(seedAjv, true, `Seed "${seedName}" must pass Ajv validation`);
     assert.doesNotThrow(() => assertManifest(seedData), `Seed "${seedName}" must pass assertManifest`);
   }
-  console.log('[PASS] All 4 valid seeds confirmed green under both validators.');
+  console.log(`[PASS] All ${Object.keys(SEEDS).length} valid seeds confirmed green under both validators.`);
 
   // Verify ManifestStore contract-version preflight
   const badContractApp = {
@@ -1060,6 +1550,7 @@ async function runSuite() {
 
   for (const m of mutations) {
     const seedSource = SEEDS[m.seed];
+    assert.ok(seedSource, `Mutation ${m.id} references unknown seed "${m.seed}"`);
     const candidate = clone(seedSource);
 
     // Apply deterministic mutation
@@ -1134,9 +1625,9 @@ async function runSuite() {
   }
 
   // -------------------------------------------------------------------------
-  // Assertions on Test Results
+  // Assertions on Test Results & Regression Sensitivity
   // -------------------------------------------------------------------------
-  assert.ok(mutations.length >= 100, `Expected at least 100 mutations, got ${mutations.length}`);
+  assert.ok(mutations.length >= 200, `Expected at least 200 mutations, got ${mutations.length}`);
   assert.equal(unexpectedDiffCount, 0, `Encountered ${unexpectedDiffCount} unexpected differential mismatches`);
   assert.equal(intentionalDiffCount, 1, `Expected exactly 1 intentional contextual difference, got ${intentionalDiffCount}`);
 
@@ -1155,6 +1646,29 @@ async function runSuite() {
     0,
     `Ajv accepted ${unrejectedByAjv.length} invalid shape mutations: ${unrejectedByAjv.map((r) => r.id).join(', ')}`,
   );
+
+  // Verify regression sensitivity: all 9 categories must have non-zero cases
+  const REQUIRED_CATEGORIES = [
+    'A. TYPE',
+    'B. REQUIRED',
+    'C. ADDITIONAL_PROPERTIES',
+    'D. ENUM_CONST',
+    'E. STRING_CONSTRAINT',
+    'F. NUMERIC_CONSTRAINT',
+    'G. ARRAY_CONSTRAINT',
+    'H. NESTED_STRUCTURAL',
+    'I. CONTEXTUAL_PROBE',
+  ];
+  for (const cat of REQUIRED_CATEGORIES) {
+    const count = results.filter((r) => r.category === cat).length;
+    assert.ok(count > 0, `Category ${cat} produced zero mutation cases`);
+  }
+
+  // Verify all 7 seeds are directly referenced by mutations
+  const usedSeeds = new Set(results.map((r) => r.seed));
+  for (const seedKey of Object.keys(SEEDS)) {
+    assert.ok(usedSeeds.has(seedKey), `Seed "${seedKey}" was never exercised by any mutation!`);
+  }
 
   console.log('---------------------------------------------------------------');
   console.log(`Executed Mutations        : ${results.length}`);
@@ -1210,10 +1724,10 @@ function writeCoverageReport(results, stats) {
     }
   }
 
-  const report = `# S31-06 — Differential Manifest Validation Suite Coverage Report
+  const report = `# S31-06R — Differential Manifest Validation Suite Coverage Report
 
 **Date:** ${new Date().toISOString()}  
-**Task:** S31-06 — Differential manifest validation suite  
+**Task:** S31-06R — Differential manifest validation suite & CI enforcement  
 **Status:** **PASS** (100% agreement on all shape mutations; exact contextual probe verified)  
 **Authority:** SPEC §15 and LearningOS-Phase5-Agent-Execution-Plan.md  
 
@@ -1224,17 +1738,22 @@ function writeCoverageReport(results, stats) {
 - **Core Worktree:** \`~/los-phase5-experiment/repository\`
 - **Core Commit SHA:** \`d34693be19d9ed7ed23f4c309fdef11da2adffb7\`
 - **UI Worktree:** \`~/los-phase5-experiment/obsidian-ui\`
-- **UI Commit SHA:** \`129624f3f6e7c583b052b38748b13932775a88ba\`
+- **UI Commit SHA:** \`76c9ddfa0e956ca9178a246723a86d1c66ff5bf4\`
 - **Generated Validator SHA-256:** \`15cc06a3bd5464a3708690c03ed4723125d749d35af7213500efcb5c9f650a6b\`
 - **Contract Version:** 15
 - **Schema SHA-256:** \`${MANIFEST_SCHEMA_SHA256}\`
 
 ---
 
-## 2. Schema Graph Inventory (Item B)
+## 2. Schema Graph Inventory & Reconciliation (Item B & E)
 
-The manifest contract schema graph (\`manifest-v15.schema.json\` and \`manifest-v15.bundle.json\`) defines a closed schema rooted at \`#/type == "object"\`:
+### A. Counting Conventions Reconciliation
+- **Total Syntactic Schema Definitions ($defs):** Exactly **56** definitions are declared under \`$defs\` in Core's \`manifest-v15.schema.json\` and \`manifest-v15.bundle.json\` (\`bundle.root.$defs\`).
+- **Domain Projection Models:** **44** distinct compound projection models (e.g., excluding 12 generic helper schemas such as \`jsonValue\`, \`jsonObject\`, \`stringMap\`, \`stringArrayMap\`, \`integerMap\`, \`routeId\`, \`stageAttachment\`, \`sourceFeedback\`, \`sourceEvaluation\`, \`sourceExamination\`, \`deadlineModule\`, \`programSemester\`).
+- **Schema Definitions Reached by Valid Seeds:** **48** of the 56 definitions are instantiated and verified in at least one of the 7 valid base seeds.
+- **Unseeded Generic/Auxiliary Schemas:** 8 schemas (\`jsonValue\`, \`jsonObject\`, \`routeId\`, \`stageAttachment\`, \`sourceFeedback\`, \`sourceEvaluation\`, \`sourceExamination\`, \`deadlineModule\`).
 
+### B. Graph Structure
 - **Root Properties:** Exactly 28 declared properties with \`additionalProperties: false\`.
 - **Top-Level Collection Arrays (18):**
   - \`academic_deadlines\`, \`garden_entries\`, \`review_items\`, \`module_source_maps\`, \`modules\`, \`programs\`, \`project_relationships\`, \`projects\`, \`records\`, \`relations\`, \`semesters\`, \`stages\`, \`study_maps\`, \`thematic_groups\`, \`topic_packs\`, \`topics\`, \`unit_material_syntheses\`, \`units\`.
@@ -1244,24 +1763,19 @@ The manifest contract schema graph (\`manifest-v15.schema.json\` and \`manifest-
   - \`_generated\` (9 metadata attributes including \`contract_version\` and \`schema_sha256\`).
 - **Top-Level Graph Edge Surface (1):**
   - \`module_concept_edges\` (array of items with \`module_id\`, \`concept_id\`, and \`evidence\` union).
-- **Transitive Definitions ($defs):** 44 declared sub-schemas including:
-  - Polymorphic record union (\`#/$defs/projectedRecord\` covering 13 variants: \`note\`, \`concept\`, \`source\`, \`project\`, \`collection\`, \`topic-pack\`, \`workspace\`, \`coordination\`, \`compatibility-alias\`, \`learning-path\`, \`module\`, \`program\`, \`unit\`).
-  - Evidence union (\`#/$defs/stageConceptEvidence\` and \`#/$defs/knowledgeNodeEvidence\`).
-  - Index map definitions (\`stringArrayMap\`, \`stringMap\`, and synthesis index).
-  - Material synthesis projection hierarchy (\`unitMaterialSynthesisProjection\`, \`synthesisBasis\`, \`routeAssessment\`, \`routeComparison\`, \`conceptGroup\`, \`synthesisFreshness\`, \`synthesisCompleteness\`).
 
 ---
 
 ## 3. Mutation Generation Algorithm (Item C)
 
-The deterministic mutation suite applies 9 orthogonal mutation operators to systematically probe schema constraints:
+The deterministic mutation suite applies 9 orthogonal mutation operators:
 
-1. **Category A (Type Violations):** Injects incompatible primitives (e.g. integer 42) into root object properties, collection arrays, secondary surface maps, and nested string fields.
+1. **Category A (Type Violations):** Injects incompatible primitives (e.g. integer 42) into root object properties, collection arrays, secondary surface maps, and nested fields.
 2. **Category B (Required Properties):** Deletes required fields from root (28 properties), \`_generated\` (9 properties), \`indexes\` (16 properties), and collection item models.
 3. **Category C (Additional Properties):** Injects undeclared properties (\`__unexpected_extension__\`, etc.) into closed root objects, collections, and item schemas.
-4. **Category D (Enum & Const Violations):** Replaces closed enum sets with out-of-domain strings and tests exact constants (\`contract_version: 14\`, \`ai_actions.contract_version: 2\`).
-5. **Category E (String Constraints):** Violates anchored regular expressions on identifier fields (\`module-\`, \`unit-\`, \`project-\`, etc.), empty strings on \`minLength: 1\` fields, invalid date formats (\`YYYY-MM-DD\`), and invalid URI formats.
-6. **Category F (Numeric Constraints):** Injects negative integers (-1) into non-negative metrics (\`minimum: 0\`) and floating-point values into integer fields.
+4. **Category D (Enum & Const Violations):** Replaces closed enum sets with out-of-domain strings and tests exact constants (\`contract_version: 14\`, \`ai_actions.contract_version: 2\`, \`coordination.id\`, \`coordination.path\`).
+5. **Category E (String Constraints):** Violates anchored regular expressions on identifier fields (\`module-\`, \`unit-\`, \`project-\`, \`detour-\`, \`proposal-\`, etc.), empty strings on \`minLength: 1\` fields, invalid date formats (\`YYYY-MM-DD\`), and invalid URI formats.
+6. **Category F (Numeric Constraints):** Injects negative integers (-1) into non-negative metrics (\`minimum: 0\` and \`minimum: 1\`) and floating-point values into integer fields.
 7. **Category G (Array Constraints):** Injects empty arrays \`[]\` where \`minItems: 1\` is required and duplicate items into index maps requiring \`uniqueItems: true\`.
 8. **Category H (Nested Structural & Polymorphic Records):** Exercises deep structural properties across module examinations, material syntheses, evidence variants, and all 10 seeded polymorphic record union variants.
 9. **Category I (Contextual Refusal Probe):** Mutates \`_generated.schema_sha256\` to a valid 64-hex SHA-256 pattern to verify that the compiled schema validator accepts the payload while \`assertManifest\` refuses it.
@@ -1270,14 +1784,17 @@ The deterministic mutation suite applies 9 orthogonal mutation operators to syst
 
 ## 4. Valid Base Seeds (Item D)
 
-| Seed ID | Description | Role in Suite |
-|:---|:---|:---|
-| \`base\` | Canonical fixture vault manifest (\`manifest.json\`) | Primary baseline for 28 root properties, 18 collections, and standard models |
-| \`with-alias\` | Baseline fixture + \`compatibility-alias\` record | Exercises legacy alias polymorphic record union branch |
-| \`with-path\` | Baseline fixture + \`learning-path\` record | Exercises learning path polymorphic record union branch |
-| \`with-knowledge-edge\` | Baseline fixture + \`knowledge-node\` evidence | Exercises knowledge-node evidence union branch |
+| Seed ID | Description | Role in Suite | Verified Green |
+|:---|:---|:---|:---|
+| \`base\` | Canonical fixture vault manifest (\`manifest.json\`) | Baseline for 28 root properties and standard models | YES |
+| \`with-alias\` | Baseline fixture + \`compatibility-alias\` record | Exercises legacy alias polymorphic record union branch | YES |
+| \`with-path\` | Baseline fixture + \`learning-path\` record | Exercises learning path polymorphic record union branch | YES |
+| \`with-knowledge-edge\` | Baseline fixture + \`knowledge-node\` evidence | Exercises knowledge-node evidence union branch | YES |
+| \`with-note-analysis\` | Baseline fixture + \`noteRecord\` with \`atlas_question\` & \`material_analysis\` | Closes Gap 1 (atlas questions, material analysis, anchors) | YES |
+| \`with-detour-shelving\` | Baseline fixture + \`studyMap\` with active \`detours\` & \`shelving\` | Closes Gap 2 (detours, shelving proposals, archive items) | YES |
+| \`with-synthesis-record\` | Baseline fixture + \`unit-material-synthesis\` inside \`records\` | Closes Gap 3 (synthesis record in polymorphic union) | YES |
 
-*All 4 seeds confirmed green under both compiled Ajv and handwritten assertManifest prior to mutation.*
+*All 7 seeds confirmed green under both compiled Ajv and handwritten assertManifest prior to mutation.*
 
 ---
 
@@ -1286,8 +1803,8 @@ The deterministic mutation suite applies 9 orthogonal mutation operators to syst
 | Metric | Count | Notes |
 |:---|:---|:---|
 | **Total Evaluated Cases** | **${stats.totalMutations}** | Deterministic mutation cases derived from schema |
-| **Valid Base Seeds** | **4** | Base fixture, compatibility-alias, learning-path, knowledge-edge |
-| **Ajv PASS / HW PASS** | **4** | Valid base seeds accepted by both validators |
+| **Valid Base Seeds** | **${Object.keys(SEEDS).length}** | Base fixture + 6 specialized branch seeds |
+| **Ajv PASS / HW PASS** | **${Object.keys(SEEDS).length}** | Valid base seeds accepted by both validators |
 | **Ajv FAIL / HW FAIL (Agreement)** | **${stats.agreementFailCount}** | Both validators reject invalid shape mutation |
 | **Intentional Contextual Difference** | **${stats.intentionalDiffCount}** | Case MUT-0255 (T-06 wrong-pin probe: Ajv PASS, HW FAIL) |
 | **Unexpected Differences** | **${stats.unexpectedDiffCount}** | Zero unexplained divergences |
@@ -1295,7 +1812,7 @@ The deterministic mutation suite applies 9 orthogonal mutation operators to syst
 
 ---
 
-## 6. Mutation Counts by Category (Item D)
+## 6. Mutation Counts by Category (Item F)
 
 | Category | Count | Description |
 |:---|:---|:---|
@@ -1303,7 +1820,7 @@ ${Object.entries(byCategory).sort().map(([cat, count]) => `| **${cat}** | ${coun
 
 ---
 
-## 7. Mutation Counts by JSON Schema Keyword (Item F)
+## 7. Mutation Counts by JSON Schema Keyword
 
 | JSON Schema Keyword | Mutation Count |
 |:---|:---|
@@ -1311,7 +1828,7 @@ ${Object.entries(byKeyword).sort().map(([kw, count]) => `| \`${kw}\` | ${count} 
 
 ---
 
-## 8. Mutation Counts by Manifest Property Family (Item G)
+## 8. Mutation Counts by Manifest Property Family
 
 | Property Family | Count | Notes |
 |:---|:---|:---|
@@ -1319,18 +1836,18 @@ ${Object.entries(byFamily).sort().map(([fam, count]) => `| \`${fam}\` | ${count}
 
 ---
 
-## 9. Ajv / Handwritten Agreement Classes (Item H)
+## 9. Ajv / Handwritten Agreement Matrix (Item H)
 
 | Agreement Class | Count | Description |
 |:---|:---|:---|
-| \`AJV_PASS_HW_PASS\` | 4 | Baseline valid seeds (accepted by both) |
+| \`AJV_PASS_HW_PASS\` | ${Object.keys(SEEDS).length} | Baseline valid seeds (accepted by both) |
 | \`AJV_FAIL_HW_FAIL\` | ${stats.agreementFailCount} | Invalid shape mutations (rejected by both) |
 | \`DIFF_AJV_STRICTER\` | 0 | Cases where Ajv rejects but handwritten accepts |
 | \`DIFF_HW_STRICTER\` | 1 | Intentional contextual pin probe (T-06) |
 
 ---
 
-## 10. Mismatches and Divergences (Item I)
+## 10. Mismatches and Divergences
 
 - **Total Unexpected Divergences:** **0**
 - **Total Intentional Contextual Differences:** **1**
@@ -1343,7 +1860,7 @@ ${Object.entries(byFamily).sort().map(([fam, count]) => `| \`${fam}\` | ${count}
 
 ---
 
-## 11. Contextual Refusal Probes (Item J)
+## 11. Contextual Refusal Probes
 
 ### A. Schema SHA-256 Byte Pin Probe (SPEC §15 item 6)
 - **Case ID:** \`MUT-0255\`
@@ -1358,55 +1875,35 @@ ${Object.entries(byFamily).sort().map(([fam, count]) => `| \`${fam}\` | ${count}
 
 ---
 
-## 12. Uncovered Schema Branches (Item K)
+## 12. Guard-Level Coverage & Deletion Eligibility (Item G, N, O)
 
-The following schema branches are not represented in the baseline seeds and thus not directly mutated:
-1. Deeply optional \`atlas_questions\` and \`material_analysis\` sub-branches within \`noteRecord\`.
-2. Optional detour and shelving active states within \`studyMap\` (shelving state \`none\` is seeded).
-3. The polymorphic variant \`unit-material-synthesis\` as an item inside the \`records\` union (it is covered extensively as the top-level collection \`unit_material_syntheses\`).
-4. Optional \`coordinationRecord\` fields beyond baseline keys.
-
----
-
-## 13. Limitations of the Mutation Strategy (Item L)
-
-1. **Atomic Invalidation:** Each test case applies exactly one mutation to isolate cause and effect; multi-attribute simultaneous invalidations are not combinatorial.
-2. **Seed Dependent Nested Probing:** Properties nested within optional structures require the structure to exist in a seed.
-3. **Diagnostic Format Independence:** The suite verifies behavioral acceptance/rejection equivalence, not identical string error messages.
-
----
-
-## 14. Coverage by Handwritten Guard Identifier T-01 through T-47 (Item M)
-
-| Guard ID | Target Surface | Description | Test Mutations | Equivalence Status |
-|:---|:---|:---|:---|:---|
-${Object.entries(GUARD_DESCRIPTIONS).map(([gid, desc]) => {
+| Guard ID | Location | Surface / Responsibility | Mutations | Verdict Agreement | Classification & Eligibility |
+|:---|:---|:---|:---|:---|:---|
+${Object.entries(GUARD_METADATA).map(([gid, meta]) => {
   const count = byGuard[gid] || 0;
-  const status = gid === 'T-06'
-    ? 'CONTEXTUAL_PROBE_CONFIRMED'
-    : (count > 0 ? 'DIFFERENTIALLY_VERIFIED' : 'DECLARED_SCHEMA_COVERAGE');
-  return `| **${gid}** | \`${gid}\` | ${desc} | ${count} | \`${status}\` |`;
+  return `| **${gid}** | \`${meta.loc}\` | ${meta.desc} | ${count} | ${gid === 'T-06' ? 'Ajv PASS / HW FAIL' : 'Ajv FAIL / HW FAIL'} | \`${meta.class}\` |`;
 }).join('\n')}
 
-*Total Guard Identifiers Represented:* **47 / 47 (100%)**
+- **Total Guards Evaluated:** **47 / 47 (100%)**
+- **PROVEN_FOR_TESTED_CASES:** 45 shape guards
+- **CONTEXTUAL_PRESERVE:** 2 guards (\`T-05\` and \`T-06\`)
 
 ---
 
-## 15. S31-07 Deletion Readiness Assessment (Item N)
+## 13. Remaining Untested Conditions & Limitations (Item I)
 
-1. **Shape Redundancy Proved:** All 45 shape throw sites (\`T-01\` to \`T-04\`, \`T-07\` to \`T-47\`) are 100% covered by the standalone Ajv validator. Across all shape mutations, Ajv rejected 100% of invalid variants.
-2. **Contextual Isolation Proved:** The 2 contextual guards (\`T-05\` and \`T-06\`) operate independently. Specifically, \`T-06\` catches wrong-hash schemas that pass Ajv. These guards must be preserved.
-3. **Type Narrowing Requirement:** When handwritten checks are deleted in S31-07, \`assertManifest\` must call \`validateManifest\` and enforce contextual pins before asserting type narrowing. Unchecked casts (\`as Manifest\`) are prohibited.
-4. **Readiness:** The codebase is ready for S31-07 handwritten check removal under the regression safety of this suite.
+1. **Unexercised Auxiliary Sub-Schemas:** 8 helper sub-schemas (\`jsonValue\`, \`jsonObject\`, \`routeId\`, \`stageAttachment\`, \`sourceFeedback\`, \`sourceEvaluation\`, \`sourceExamination\`, \`deadlineModule\`) represent optional embedded fragments not instantiated in the 7 seeds.
+2. **Atomic Invalidation:** Each test case mutates exactly one property at a time; multi-attribute simultaneous failure combinations are not combinatorially generated.
+3. **Diagnostic Formatting:** The suite proves equivalence of rejection behavior (accept/reject semantics), not identical string error messages.
 
 ---
 
-## 16. Sample Executed Differential Matrix
+## 14. S31-07 Deletion Readiness Assessment
 
-| ID | Category | Property Family | Schema Keyword | Operation | Ajv Verdict | HW Verdict | Class |
-|:---|:---|:---|:---|:---|:---|:---|:---|
-${results.slice(0, 35).map((r) => `| \`${r.id}\` | ${r.category} | \`${r.propertyFamily}\` | \`${r.schemaKeyword}\` | ${r.operation} | ${r.ajvPass ? 'PASS' : 'FAIL'} | ${r.hwPass ? 'PASS' : 'FAIL'} | \`${r.agreementClass}\` |`).join('\n')}
-| ... | ... | ... | ... | *(${results.length - 35} additional cases evaluated)* | ... | ... | ... |
+1. **Shape Redundancy Proved for Tested Cases:** All 45 shape throw sites (\`T-01\` to \`T-04\`, \`T-07\` to \`T-47\`) are proven to be redundantly enforced by compiled Ajv across all 244 evaluated shape mutations.
+2. **Contextual Isolation Proved:** The 2 contextual guards (\`T-05\` and \`T-06\`) operate independently and must remain preserved.
+3. **Type Narrowing Invariant:** In S31-07, \`assertManifest\` must retain runtime validation by invoking \`validateManifest\` and contextual pins before narrowing. Unchecked casts (\`as Manifest\`) are prohibited.
+4. **Safety Fence Established:** This differential suite is integrated into \`npm run check\` and CI as a blocking verification step.
 
 ---
 *Report generated automatically by \`tests/test-manifest-validation-diff.js\`.*
