@@ -23168,8 +23168,19 @@ function validProjectedRecord(value, validSynthesis) {
 }
 
 // src/contracts/manifest.ts
+var import_manifest_validator = __toESM(require_manifest_validator());
 var MANIFEST_CONTRACT_VERSION = 15;
 var MANIFEST_SCHEMA_SHA256 = "sha256:c487c6ed2e05c05425c6b41bd291e566b16a7e1ee3af667ae00763608d7e121f";
+function formatAjvErrors(errors) {
+  if (!Array.isArray(errors) || errors.length === 0) {
+    return "unknown validation error";
+  }
+  return errors.slice(0, 5).map((err) => {
+    const path = err.instancePath && err.instancePath.length > 0 ? err.instancePath : "/";
+    const msg = err.message && err.message.length > 0 ? err.message : "is invalid";
+    return `${path} ${msg}`;
+  }).join(", ");
+}
 function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
@@ -23336,6 +23347,11 @@ function requireArray(record10, key) {
   }
 }
 function assertManifest(value) {
+  if (!(0, import_manifest_validator.default)(value)) {
+    throw new TypeError(
+      `Manifest does not match its schema: ${formatAjvErrors(import_manifest_validator.default.errors)}`
+    );
+  }
   if (!isRecord(value) || !isRecord(value._generated)) {
     throw new TypeError("Manifest requires an _generated object.");
   }
@@ -38386,7 +38402,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:0093a274d55264710e895989095a62dbfcef20a375be01629a31ea3ef33bb67d" : "unavailable";
+  return true ? "sha256:2fe6b5ab2e365ff666bee732a6697c740604caa35cb4248c263618ed2d7a604a" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
@@ -45286,22 +45302,11 @@ var ResourceOpener = class {
 };
 
 // src/manifest-store.ts
-var import_manifest_validator = __toESM(require_manifest_validator());
 function isRecord3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function projectedText(value) {
   return typeof value === "string" && value.length > 0 ? value : null;
-}
-function formatAjvErrors(errors) {
-  if (!Array.isArray(errors) || errors.length === 0) {
-    return "unknown validation error";
-  }
-  return errors.slice(0, 5).map((err) => {
-    const path = err.instancePath && err.instancePath.length > 0 ? err.instancePath : "/";
-    const msg = err.message && err.message.length > 0 ? err.message : "is invalid";
-    return `${path} ${msg}`;
-  }).join(", ");
 }
 function emptyStoreIndexes() {
   return {
@@ -45436,11 +45441,6 @@ var ManifestStore = class {
       if (version !== MANIFEST_CONTRACT_VERSION) {
         throw new Error(
           `Unsupported manifest contract ${String(version ?? "unknown")}; LearningOS UI requires contract ${MANIFEST_CONTRACT_VERSION}.`
-        );
-      }
-      if (!(0, import_manifest_validator.default)(parsed)) {
-        throw new TypeError(
-          `Manifest does not match its schema: ${formatAjvErrors(import_manifest_validator.default.errors)}`
         );
       }
       assertManifest(parsed);

@@ -1,6 +1,5 @@
 import { compareStrings, foldCase } from './sorting';
 import { CONTRACT_VERSION } from './constants';
-import validateManifest from './contracts/generated/manifest.validator.cjs';
 import { assertManifest } from './contracts/manifest';
 import type {
   Manifest,
@@ -25,25 +24,6 @@ function isRecord(
 /** A projected string field, or null for both absent and empty. */
 function projectedText(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null;
-}
-
-interface AjvErrorLike {
-  readonly instancePath?: string;
-  readonly message?: string;
-}
-
-function formatAjvErrors(errors: readonly AjvErrorLike[] | null | undefined): string {
-  if (!Array.isArray(errors) || errors.length === 0) {
-    return 'unknown validation error';
-  }
-  return errors
-    .slice(0, 5)
-    .map((err) => {
-      const path = err.instancePath && err.instancePath.length > 0 ? err.instancePath : '/';
-      const msg = err.message && err.message.length > 0 ? err.message : 'is invalid';
-      return `${path} ${msg}`;
-    })
-    .join(', ');
 }
 
 interface ManifestStoreHost {
@@ -254,11 +234,6 @@ export class ManifestStore {
       if (version !== CONTRACT_VERSION) {
         throw new Error(
           `Unsupported manifest contract ${String(version ?? 'unknown')}; LearningOS UI requires contract ${CONTRACT_VERSION}.`,
-        );
-      }
-      if (!validateManifest(parsed)) {
-        throw new TypeError(
-          `Manifest does not match its schema: ${formatAjvErrors(validateManifest.errors)}`,
         );
       }
       assertManifest(parsed);

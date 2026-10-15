@@ -41,8 +41,28 @@ import {
   validTopic,
   validTopicPack,
 } from './manifest-records';
+import validateManifest from './generated/manifest.validator.cjs';
 
 export const MANIFEST_SCHEMA_SHA256 = 'sha256:c487c6ed2e05c05425c6b41bd291e566b16a7e1ee3af667ae00763608d7e121f' as const;
+
+interface AjvErrorLike {
+  readonly instancePath?: string;
+  readonly message?: string;
+}
+
+export function formatAjvErrors(errors: readonly AjvErrorLike[] | null | undefined): string {
+  if (!Array.isArray(errors) || errors.length === 0) {
+    return 'unknown validation error';
+  }
+  return errors
+    .slice(0, 5)
+    .map((err) => {
+      const path = err.instancePath && err.instancePath.length > 0 ? err.instancePath : '/';
+      const msg = err.message && err.message.length > 0 ? err.message : 'is invalid';
+      return `${path} ${msg}`;
+    })
+    .join(', ');
+}
 
 export type JsonRecord = Record<string, unknown>;
 
@@ -722,6 +742,11 @@ function requireArray(record: JsonRecord, key: keyof Manifest): void {
 
 /** Fail closed before an untyped projection reaches feature code. */
 export function assertManifest(value: unknown): asserts value is Manifest {
+  if (!validateManifest(value)) {
+    throw new TypeError(
+      `Manifest does not match its schema: ${formatAjvErrors(validateManifest.errors)}`,
+    );
+  }
   if (!isRecord(value) || !isRecord(value._generated)) {
     throw new TypeError("Manifest requires an _generated object.");
   }
