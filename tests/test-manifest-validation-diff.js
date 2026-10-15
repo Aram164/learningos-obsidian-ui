@@ -3012,10 +3012,10 @@ function writeCoverageReport(results, stats) {
   const digest = (filename) => createHash('sha256').update(fs.readFileSync(filename)).digest('hex');
   const report = `# S31-06R — Differential Manifest Validation Suite Coverage Report
 
-**Date:** ${new Date().toISOString()}  
-**Task:** S31-06R — Differential manifest validation suite & CI enforcement  
-**Status:** **PASS** (100% agreement on all shape mutations; exact contextual probe verified)  
-**Authority:** SPEC §15 and LearningOS-Phase5-Agent-Execution-Plan.md  
+**Date:** ${new Date().toISOString()}
+**Task:** S31-06R — Differential manifest validation suite & CI enforcement
+**Status:** **PASS** (100% agreement on all shape mutations; exact contextual probe verified)
+**Authority:** SPEC §15 and LearningOS-Phase5-Agent-Execution-Plan.md
 
 ---
 
