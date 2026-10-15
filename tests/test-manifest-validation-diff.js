@@ -14,6 +14,8 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
+const { execFileSync } = require('node:child_process');
+const { createHash } = require('node:crypto');
 const { createSourceModuleLoader } = require('./source-module-loader');
 
 const ROOT = path.dirname(__dirname);
@@ -265,11 +267,11 @@ const GUARD_METADATA = {
   'T-24': { loc: 'manifest.ts:854', desc: 'stages flat stage row projection validation', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-25': { loc: 'manifest.ts:859', desc: 'records polymorphic union row validation (all record variants)', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-26': { loc: 'manifest.ts:865', desc: 'Secondary surfaces object assertion (isRecord on 8 keys)', class: 'PARTIALLY_COVERED' },
-  'T-27': { loc: 'manifest.ts:870', desc: 'artifact_revisions non-negative integer map validation', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-27': { loc: 'manifest.ts:870 (historical)', desc: 'artifact_revisions non-negative integer map validation (retired)', class: 'RETIRED' },
   'T-28': { loc: 'manifest.ts:873', desc: 'backlinks closed projection validation (validBacklinks)', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-29': { loc: 'manifest.ts:876', desc: 'counts closed projection validation (27 natural metrics)', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-30': { loc: 'manifest.ts:879', desc: 'progress closed projection validation (validProgress)', class: 'PROVEN_FOR_TESTED_CASES' },
-  'T-31': { loc: 'manifest.ts:882', desc: 'project_aliases string map validation (validStringMap)', class: 'PROVEN_FOR_TESTED_CASES' },
+  'T-31': { loc: 'manifest.ts:882 (historical)', desc: 'project_aliases string map validation (retired)', class: 'RETIRED' },
   'T-32': { loc: 'manifest.ts:885', desc: 'resume_pointer closed projection validation (validResumePointer)', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-33': { loc: 'manifest.ts:890', desc: 'module_concept_edges array assertion', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-34': { loc: 'manifest.ts:894', desc: 'module_concept_edges row exactKeys assertion (module_id, concept_id, evidence)', class: 'PROVEN_FOR_TESTED_CASES' },
@@ -279,7 +281,7 @@ const GUARD_METADATA = {
   'T-38': { loc: 'manifest.ts:912', desc: 'stage-concept evidence exactKeys and identifier patterns', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-39': { loc: 'manifest.ts:917', desc: 'knowledge-node evidence exactKeys and identifier pattern', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-40': { loc: 'manifest.ts:920', desc: 'module_concept_edges evidence discriminator kind validation', class: 'PROVEN_FOR_TESTED_CASES' },
-  'T-41': { loc: 'manifest.ts:927', desc: 'indexes object assertion (validJsonObject)', class: 'UNREACHABLE_DUPLICATE' },
+  'T-41': { loc: 'manifest.ts:927', desc: 'indexes object assertion (validJsonObject)', class: 'REMOVED' },
   'T-42': { loc: 'manifest.ts:938', desc: 'indexes exactKeys assertion (16 declared index keys)', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-43': { loc: 'manifest.ts:950', desc: 'indexes sub-map object assertion (isRecord on 6 specific keys)', class: 'PROVEN_FOR_TESTED_CASES' },
   'T-44': { loc: 'manifest.ts:964', desc: 'indexes unique string array multi-map assertion (13 keys)', class: 'PROVEN_FOR_TESTED_CASES' },
@@ -1622,6 +1624,1024 @@ addMutation({
 });
 
 // ---------------------------------------------------------------------------
+// Schema-Driven Property-Graph Traversal & Mutation Generation (F2 Resolution)
+// ---------------------------------------------------------------------------
+
+const { loadFreshCoreBundle } = require('../scripts/core-contract-bundle.mjs');
+const coreRoot = path.resolve(ROOT, '../repository');
+
+let bundleData;
+try {
+  const loaded = loadFreshCoreBundle(coreRoot);
+  bundleData = loaded.bundle;
+} catch (err) {
+  console.error('[FATAL] Failed to load fresh Core contract bundle:', err.message);
+  process.exit(1);
+}
+
+const schemaDefs = bundleData?.root?.$defs || {};
+
+function resolveSchemaDef(schema, defs) {
+  if (!schema) return { properties: {}, required: [] };
+  if (schema.$ref) {
+    const ref = schema.$ref;
+    if (ref.startsWith('#/$defs/')) {
+      const defName = ref.slice('#/$defs/'.length);
+      return resolveSchemaDef(defs[defName] || {}, defs);
+    }
+  }
+  if (schema.allOf) {
+    const merged = { properties: {}, required: [] };
+    for (const sub of schema.allOf) {
+      const resolved = resolveSchemaDef(sub, defs);
+      Object.assign(merged.properties, resolved.properties || {});
+      if (resolved.required) merged.required.push(...resolved.required);
+      if (resolved.additionalProperties !== undefined) merged.additionalProperties = resolved.additionalProperties;
+    }
+    return merged;
+  }
+  return {
+    properties: schema.properties || {},
+    required: schema.required || [],
+    additionalProperties: schema.additionalProperties,
+  };
+}
+
+const SCHEMA_COLLECTION_MODELS = {
+  academic_deadlines: { schema: resolveSchemaDef(schemaDefs.academicDeadline, schemaDefs), guard: 'T-09', defName: 'academicDeadline' },
+  garden_entries: { schema: resolveSchemaDef(schemaDefs.gardenEntry, schemaDefs), guard: 'T-10', defName: 'gardenEntry' },
+  relations: { schema: resolveSchemaDef(schemaDefs.relation, schemaDefs), guard: 'T-11', defName: 'relation' },
+  review_items: { schema: resolveSchemaDef(schemaDefs.reviewItem, schemaDefs), guard: 'T-12', defName: 'reviewItem' },
+  semesters: { schema: resolveSchemaDef(schemaDefs.semester, schemaDefs), guard: 'T-13', defName: 'semester' },
+  thematic_groups: { schema: resolveSchemaDef(schemaDefs.thematicGroup, schemaDefs), guard: 'T-14', defName: 'thematicGroup' },
+  topic_packs: { schema: resolveSchemaDef(schemaDefs.collectionRecord, schemaDefs), guard: 'T-15', defName: 'collectionRecord' },
+  topics: { schema: resolveSchemaDef(schemaDefs.topic, schemaDefs), guard: 'T-16', defName: 'topic' },
+  modules: { schema: resolveSchemaDef(schemaDefs.moduleRecord, schemaDefs), guard: 'T-17', defName: 'moduleRecord' },
+  programs: { schema: resolveSchemaDef(schemaDefs.programRecord, schemaDefs), guard: 'T-18', defName: 'programRecord' },
+  projects: { schema: resolveSchemaDef(schemaDefs.projectRecord, schemaDefs), guard: 'T-19', defName: 'projectRecord' },
+  project_relationships: { schema: resolveSchemaDef(schemaDefs.projectRelationship, schemaDefs), guard: 'T-20', defName: 'projectRelationship' },
+  module_source_maps: { schema: resolveSchemaDef(schemaDefs.moduleSourceMap, schemaDefs), guard: 'T-21', defName: 'moduleSourceMap' },
+  units: { schema: resolveSchemaDef(schemaDefs.projectedUnit, schemaDefs), guard: 'T-22', defName: 'projectedUnit' },
+  study_maps: { schema: resolveSchemaDef(schemaDefs.studyMap, schemaDefs), guard: 'T-23', defName: 'studyMap' },
+  stages: { schema: resolveSchemaDef(schemaDefs.flatStage, schemaDefs), guard: 'T-24', defName: 'flatStage' },
+  unit_material_syntheses: { schema: resolveSchemaDef(schemaDefs.unitMaterialSynthesisProjection, schemaDefs), guard: 'T-47', defName: 'unitMaterialSynthesisProjection' },
+};
+
+// Traverse schema properties and generate applicable variants (type flips, required removals)
+for (const [colName, { schema, guard, defName }] of Object.entries(SCHEMA_COLLECTION_MODELS)) {
+  const item = baseFixture[colName]?.[0];
+  if (!item) continue;
+  const props = schema.properties || {};
+  const req = new Set(schema.required || []);
+
+  for (const [propName, propSchema] of Object.entries(props)) {
+    if (!(propName in item)) continue;
+
+    // Type violation: flip primitive/array/object
+    addMutation({
+      seed: 'base',
+      category: 'A. TYPE',
+      propertyFamily: colName,
+      schemaPointer: `#/$defs/${defName}/properties/${propName}`,
+      schemaKeyword: 'type',
+      operation: `Set incompatible primitive on ${colName}[0].${propName}`,
+      guardId: guard,
+      mutate: (m) => {
+        const val = m[colName][0][propName];
+        m[colName][0][propName] = typeof val === 'number' ? 'invalid' : 42;
+      },
+    });
+
+    // Required violation: delete required property
+    if (req.has(propName)) {
+      addMutation({
+        seed: 'base',
+        category: 'B. REQUIRED',
+        propertyFamily: colName,
+        schemaPointer: `#/$defs/${defName}/required/${propName}`,
+        schemaKeyword: 'required',
+        operation: `Delete required property "${colName}[0].${propName}"`,
+        guardId: guard,
+        mutate: (m) => {
+          delete m[colName][0][propName];
+        },
+      });
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Recursive Schema-Driven Traversal Across All 7 Seeds (MUT-0587+)
+// ---------------------------------------------------------------------------
+
+const schemaRegistry = new Map();
+schemaRegistry.set('', bundleData.root);
+if (bundleData.root_uri) schemaRegistry.set(bundleData.root_uri, bundleData.root);
+if (bundleData.root?.$id) schemaRegistry.set(bundleData.root.$id, bundleData.root);
+for (const r of bundleData.resources || []) {
+  if (r.declared_id) schemaRegistry.set(r.declared_id, r.schema);
+  for (const a of r.aliases || []) schemaRegistry.set(a, r.schema);
+  if (r.schema?.$id) schemaRegistry.set(r.schema.$id, r.schema);
+}
+
+function resolveSchemaRef(schema, currentRoot = bundleData.root, stack = []) {
+  if (!schema || typeof schema !== 'object') return { schema, root: currentRoot };
+  if (schema.$ref) {
+    if (stack.includes(schema.$ref)) return { schema, root: currentRoot };
+    const [baseUri, pointer] = schema.$ref.split('#');
+    let newRoot = currentRoot;
+    if (baseUri) {
+      newRoot = schemaRegistry.get(baseUri);
+      if (!newRoot) throw new Error(`Schema resource not found: ${baseUri} (ref: ${schema.$ref})`);
+    }
+    let target = newRoot;
+    if (pointer && pointer !== '/') {
+      for (const part of pointer.split('/').filter(Boolean)) {
+        if (!target) break;
+        target = target[part];
+      }
+    }
+    if (!target) return { schema: {}, root: newRoot || currentRoot };
+    return resolveSchemaRef(target, newRoot, [...stack, schema.$ref]);
+  }
+  return { schema, root: currentRoot };
+}
+
+function resolveFullSchema(schema, currentRoot = bundleData.root) {
+  if (!schema) return { properties: {}, required: [], currentRoot, rawSchema: null };
+  const refRes = resolveSchemaRef(schema, currentRoot);
+  schema = refRes.schema;
+  currentRoot = refRes.root;
+
+  if (schema.allOf) {
+    const merged = { properties: {}, required: [], currentRoot, rawSchema: schema };
+    for (const sub of schema.allOf) {
+      const res = resolveFullSchema(sub, currentRoot);
+      Object.assign(merged.properties, res.properties || {});
+      if (res.required) merged.required.push(...res.required);
+      if (res.additionalProperties !== undefined) merged.additionalProperties = res.additionalProperties;
+      if (res.items) merged.items = res.items;
+      if (res.oneOf) merged.oneOf = res.oneOf;
+      if (res.anyOf) merged.anyOf = res.anyOf;
+      if (res.enum) merged.enum = res.enum;
+      if (res.const !== undefined) merged.const = res.const;
+      if (res.format) merged.format = res.format;
+      if (res.pattern) merged.pattern = res.pattern;
+      if (res.type) merged.type = res.type;
+      if (res.minimum !== undefined) merged.minimum = res.minimum;
+      if (res.minItems !== undefined) merged.minItems = res.minItems;
+    }
+    return merged;
+  }
+
+  return {
+    properties: schema.properties || {},
+    required: schema.required || [],
+    additionalProperties: schema.additionalProperties,
+    items: schema.items,
+    oneOf: schema.oneOf,
+    anyOf: schema.anyOf,
+    enum: schema.enum,
+    const: schema.const,
+    format: schema.format,
+    pattern: schema.pattern,
+    type: schema.type,
+    minimum: schema.minimum,
+    minItems: schema.minItems,
+    currentRoot,
+    rawSchema: schema,
+  };
+}
+
+function matchAlternativeBranch(data, branches, currentRoot) {
+  if (!branches || !Array.isArray(branches) || branches.length === 0) return null;
+  if (data === null || data === undefined) {
+    for (let i = 0; i < branches.length; i++) {
+      const res = resolveFullSchema(branches[i], currentRoot);
+      if (res.type === 'null' || (Array.isArray(res.type) && res.type.includes('null'))) {
+        return { index: i, branchSchema: res, currentRoot: res.currentRoot };
+      }
+    }
+    return null;
+  }
+
+  // 1. Exact root const match (e.g. source_map: "source-map.yaml")
+  for (let i = 0; i < branches.length; i++) {
+    const res = resolveFullSchema(branches[i], currentRoot);
+    if (res.const !== undefined && data === res.const) {
+      return { index: i, branchSchema: res, currentRoot: res.currentRoot };
+    }
+  }
+
+  // 2. Discriminator property match across all properties (const or enum, e.g. kind: "stage-concept", type: "note")
+  if (typeof data === 'object') {
+    for (let i = 0; i < branches.length; i++) {
+      const res = resolveFullSchema(branches[i], currentRoot);
+      const props = res.properties || {};
+      for (const [key, propSchema] of Object.entries(props)) {
+        if (key in data) {
+          const resolvedProp = resolveFullSchema(propSchema, res.currentRoot);
+          const constVal = resolvedProp.const;
+          if (constVal !== undefined && data[key] === constVal) {
+            return { index: i, branchSchema: res, currentRoot: res.currentRoot };
+          }
+          if (resolvedProp.enum && resolvedProp.enum.includes(data[key])) {
+            return { index: i, branchSchema: res, currentRoot: res.currentRoot };
+          }
+        }
+      }
+    }
+
+    // 3. Structural match based on required properties
+    if (!Array.isArray(data)) {
+      for (let i = 0; i < branches.length; i++) {
+        const res = resolveFullSchema(branches[i], currentRoot);
+        const req = res.required || [];
+        if (req.length > 0 && req.every((k) => k in data)) {
+          return { index: i, branchSchema: res, currentRoot: res.currentRoot };
+        }
+      }
+      const dataKeys = Object.keys(data);
+      for (let i = 0; i < branches.length; i++) {
+        const res = resolveFullSchema(branches[i], currentRoot);
+        const props = res.properties || {};
+        if (dataKeys.length > 0 && dataKeys.every((k) => k in props)) {
+          return { index: i, branchSchema: res, currentRoot: res.currentRoot };
+        }
+      }
+    }
+  }
+
+  // 4. Primitive / type match
+  for (let i = 0; i < branches.length; i++) {
+    const res = resolveFullSchema(branches[i], currentRoot);
+    const exp = res.type;
+    if (exp) {
+      if (typeof data === 'string' && (exp === 'string' || (Array.isArray(exp) && exp.includes('string')))) {
+        return { index: i, branchSchema: res, currentRoot: res.currentRoot };
+      }
+      if (typeof data === 'number' && (exp === 'number' || exp === 'integer' || (Array.isArray(exp) && (exp.includes('number') || exp.includes('integer'))))) {
+        return { index: i, branchSchema: res, currentRoot: res.currentRoot };
+      }
+      if (typeof data === 'boolean' && (exp === 'boolean' || (Array.isArray(exp) && exp.includes('boolean')))) {
+        return { index: i, branchSchema: res, currentRoot: res.currentRoot };
+      }
+      if (Array.isArray(data) && (exp === 'array' || (Array.isArray(exp) && exp.includes('array')))) {
+        return { index: i, branchSchema: res, currentRoot: res.currentRoot };
+      }
+    }
+  }
+
+  return null;
+}
+
+function isAnyJsonValue(schema) {
+  if (!schema) return true;
+  if (schema.$ref === '#/$defs/jsonValue') return true;
+  if (schema.oneOf && schema.oneOf.length >= 5) return true;
+  return false;
+}
+
+// Compute target paths already covered by MUT-0001 through MUT-0586
+const initialCoveredTargets = new Map();
+function computePathDiff(a, b, p = '') {
+  if (JSON.stringify(a) === JSON.stringify(b)) return [];
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) return [p];
+  const result = [];
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const q = p + '/' + k;
+    if (!(k in a) || !(k in b)) result.push(q);
+    else result.push(...computePathDiff(a[k], b[k], q));
+  }
+  return result;
+}
+
+for (const m of mutations) {
+  const before = SEEDS[m.seed];
+  const after = clone(before);
+  m.mutate(after);
+  for (const p of computePathDiff(before, after)) {
+    if (!initialCoveredTargets.has(p)) initialCoveredTargets.set(p, new Set());
+    initialCoveredTargets.get(p).add(m.category);
+  }
+}
+
+function getByPath(obj, segments) {
+  let curr = obj;
+  for (const s of segments) {
+    if (curr == null) return undefined;
+    curr = curr[s];
+  }
+  return curr;
+}
+
+function setByPath(obj, segments, val) {
+  let curr = obj;
+  for (let i = 0; i < segments.length - 1; i++) {
+    curr = curr[segments[i]];
+  }
+  curr[segments[segments.length - 1]] = val;
+}
+
+function deleteByPath(obj, segments) {
+  let curr = obj;
+  for (let i = 0; i < segments.length - 1; i++) {
+    curr = curr[segments[i]];
+  }
+  delete curr[segments[segments.length - 1]];
+}
+
+function makeIncompatibleType(val, schema) {
+  const types = new Set(Array.isArray(schema?.type) ? schema.type : (schema?.type ? [schema.type] : []));
+  if (types.has('number') || types.has('integer')) return 'invalid-primitive';
+  if (types.has('string')) return 42;
+  if (types.has('boolean')) return 'invalid-bool';
+  if (types.has('array')) return 42;
+  if (types.has('object')) return 42;
+  return typeof val === 'number' ? 'invalid-primitive' : 42;
+}
+
+function inferGuardId(segments) {
+  if (segments.length === 0) return null;
+  const top = segments[0];
+  if (COLLECTION_ROW_GUARDS[top]) return COLLECTION_ROW_GUARDS[top];
+  if (top === '_generated') return 'T-04';
+  if (top === 'counts') return 'T-29';
+  if (top === 'progress') return 'T-30';
+  if (top === 'backlinks') return 'T-28';
+  if (top === 'resume_pointer') return 'T-32';
+  if (top === 'artifact_revisions') return 'T-27';
+  if (top === 'project_aliases') return 'T-31';
+  if (top === 'indexes') return 'T-42';
+  if (top === 'ai_actions') return 'T-08';
+  if (top === 'module_concept_edges') {
+    const sStr = segments.join('/');
+    if (sStr.includes('evidence') && (segments[segments.length - 1] === 'stage_id' || segments[segments.length - 1] === 'study_map_id')) return 'T-38';
+    if (sStr.includes('evidence') && segments[segments.length - 1] === 'node_id') return 'T-39';
+    if (sStr.includes('evidence') && segments[segments.length - 1] === 'kind') return 'T-40';
+    if (sStr.includes('evidence') && segments[segments.length - 1] === 'unit_id') return 'T-37';
+    return 'T-34';
+  }
+  return null;
+}
+
+function inferGuardFromPtr(ptr, fallback = 'T-26') {
+  const parts = ptr.split('/').filter(Boolean);
+  let top = parts[1] || '';
+  if (top === 'properties' || top === '$defs') {
+    top = parts[2] || '';
+  }
+  if (COLLECTION_ROW_GUARDS[top]) return COLLECTION_ROW_GUARDS[top];
+  if (top === '_generated') return 'T-04';
+  if (top === 'counts') return 'T-29';
+  if (top === 'progress') return 'T-30';
+  if (top === 'backlinks') return 'T-28';
+  if (top === 'resume_pointer') return 'T-32';
+  if (top === 'artifact_revisions') return 'T-27';
+  if (top === 'project_aliases') return 'T-31';
+  if (top === 'indexes') return 'T-42';
+  if (top === 'ai_actions') return 'T-08';
+  if (top === 'module_concept_edges') {
+    if (ptr.includes('stageConceptEvidence') || ptr.includes('oneOf/0')) return 'T-38';
+    if (ptr.includes('knowledgeNodeEvidence') || ptr.includes('oneOf/1')) return 'T-39';
+    return 'T-34';
+  }
+  return fallback;
+}
+
+const schemaInventoryMap = new Map();
+
+function walkSchemaAndData(seedName, data, schema, schemaPtr, dataPtr, segments) {
+  if (!data || typeof data !== 'object') return;
+  schema = resolveFullSchema(schema);
+  const guardId = inferGuardId(segments);
+  const family = segments[0] || 'root';
+
+  if (Array.isArray(data)) {
+    if (schema.items) {
+      const itemSchema = resolveFullSchema(schema.items);
+      for (let i = 0; i < data.length; i++) {
+        const segs = [...segments, i];
+        const ptr = dataPtr + '/' + i;
+        if (itemSchema.oneOf) {
+          const item = data[i];
+          for (const branch of itemSchema.oneOf) {
+            const resBranch = resolveFullSchema(branch);
+            const constType = resBranch.properties?.type?.const;
+            const enumType = resBranch.properties?.type?.enum;
+            if ((constType && item.type === constType) || (enumType && enumType.includes(item.type))) {
+              walkSchemaAndData(seedName, item, resBranch, schemaPtr + '/items/oneOf', ptr, segs);
+              break;
+            }
+          }
+        } else {
+          walkSchemaAndData(seedName, data[i], itemSchema, schemaPtr + '/items', ptr, segs);
+        }
+      }
+    }
+    return;
+  }
+
+  // Closed object additionalProperties violation
+  if (schema.additionalProperties === false) {
+    const addPropPath = dataPtr + '/__unexpected_extension__';
+    const existingCats = initialCoveredTargets.get(addPropPath) || new Set();
+    if (!existingCats.has('C. ADDITIONAL_PROPERTIES')) {
+      addMutation({
+        seed: seedName,
+        category: 'C. ADDITIONAL_PROPERTIES',
+        propertyFamily: family,
+        schemaPointer: schemaPtr + '/additionalProperties',
+        schemaKeyword: 'additionalProperties',
+        operation: `Inject unexpected property into closed object at ${dataPtr}`,
+        guardId,
+        mutate: (m) => {
+          const target = getByPath(m, segments);
+          if (target && typeof target === 'object') {
+            target.__unexpected_extension__ = 'invalid_extension';
+          }
+        },
+      });
+      existingCats.add('C. ADDITIONAL_PROPERTIES');
+      initialCoveredTargets.set(addPropPath, existingCats);
+    }
+  }
+
+  // Dictionary values if additionalProperties is a schema object
+  if (schema.additionalProperties && typeof schema.additionalProperties === 'object' && !isAnyJsonValue(schema.additionalProperties)) {
+    const valSchema = resolveFullSchema(schema.additionalProperties);
+    for (const [key, val] of Object.entries(data)) {
+      if (Object.hasOwn(schema.properties || {}, key)) continue;
+      const segs = [...segments, key];
+      const targetPath = dataPtr + '/' + key;
+      const existingCats = initialCoveredTargets.get(targetPath) || new Set();
+      if (!existingCats.has('A. TYPE')) {
+        addMutation({
+          seed: seedName,
+          category: 'A. TYPE',
+          propertyFamily: family,
+          schemaPointer: schemaPtr + '/additionalProperties',
+          schemaKeyword: 'type',
+          operation: `Set incompatible type on dictionary value at ${targetPath}`,
+          guardId,
+          mutate: (m) => {
+            const v = getByPath(m, segs);
+            setByPath(m, segs, makeIncompatibleType(v, valSchema));
+          },
+        });
+        existingCats.add('A. TYPE');
+        initialCoveredTargets.set(targetPath, existingCats);
+      }
+      walkSchemaAndData(seedName, val, valSchema, schemaPtr + '/additionalProperties', targetPath, segs);
+    }
+  }
+
+  const req = new Set(schema.required || []);
+  const props = schema.properties || {};
+
+  for (const [propName, propSchema] of Object.entries(props)) {
+    const resolvedProp = resolveFullSchema(propSchema);
+    const segs = [...segments, propName];
+    const targetPath = dataPtr + '/' + propName;
+    const propPtr = schemaPtr + '/properties/' + propName;
+
+    if (!(propName in data)) {
+      if (!schemaInventoryMap.has(targetPath)) {
+        schemaInventoryMap.set(targetPath, {
+          path: targetPath,
+          schemaPointer: propPtr,
+          historicalDecoderGuard: guardId,
+          status: 'UNINSTANTIATED',
+        });
+      }
+      continue;
+    }
+
+    const applicableChecks = [];
+    if (!isAnyJsonValue(propSchema)) applicableChecks.push('A. TYPE');
+    if (req.has(propName)) applicableChecks.push('B. REQUIRED');
+    if (resolvedProp.enum) applicableChecks.push('D. ENUM_CONST');
+    if (resolvedProp.format || resolvedProp.pattern) applicableChecks.push('E. STRING_CONSTRAINT');
+
+    schemaInventoryMap.set(targetPath, {
+      path: targetPath,
+      seed: seedName,
+      guardId,
+      schemaPointer: propPtr,
+      status: 'INSTANTIATED',
+      applicableChecks,
+    });
+
+    const existingCats = initialCoveredTargets.get(targetPath) || new Set();
+
+    // 1. Type
+    if (!existingCats.has('A. TYPE') && !isAnyJsonValue(propSchema)) {
+      addMutation({
+        seed: seedName,
+        category: 'A. TYPE',
+        propertyFamily: family,
+        schemaPointer: propPtr + '/type',
+        schemaKeyword: 'type',
+        operation: `Set incompatible primitive on ${targetPath}`,
+        guardId,
+        mutate: (m) => {
+          const val = getByPath(m, segs);
+          setByPath(m, segs, makeIncompatibleType(val, resolvedProp));
+        },
+      });
+      existingCats.add('A. TYPE');
+      initialCoveredTargets.set(targetPath, existingCats);
+    }
+
+    // 2. Required
+    if (req.has(propName) && !existingCats.has('B. REQUIRED')) {
+      addMutation({
+        seed: seedName,
+        category: 'B. REQUIRED',
+        propertyFamily: family,
+        schemaPointer: schemaPtr + '/required/' + propName,
+        schemaKeyword: 'required',
+        operation: `Delete required property at ${targetPath}`,
+        guardId,
+        mutate: (m) => {
+          deleteByPath(m, segs);
+        },
+      });
+      existingCats.add('B. REQUIRED');
+      initialCoveredTargets.set(targetPath, existingCats);
+    }
+
+    // 3. Enum
+    if (resolvedProp.enum && !existingCats.has('D. ENUM_CONST')) {
+      addMutation({
+        seed: seedName,
+        category: 'D. ENUM_CONST',
+        propertyFamily: family,
+        schemaPointer: propPtr + '/enum',
+        schemaKeyword: 'enum',
+        operation: `Set out-of-domain enum on ${targetPath}`,
+        guardId,
+        mutate: (m) => {
+          setByPath(m, segs, '__invalid_enum_out_of_domain__');
+        },
+      });
+      existingCats.add('D. ENUM_CONST');
+      initialCoveredTargets.set(targetPath, existingCats);
+    }
+
+    // 4. Format / Pattern
+    if (resolvedProp.format && !existingCats.has('E. STRING_CONSTRAINT')) {
+      addMutation({
+        seed: seedName,
+        category: 'E. STRING_CONSTRAINT',
+        propertyFamily: family,
+        schemaPointer: propPtr + '/format',
+        schemaKeyword: 'format',
+        operation: `Violate format on ${targetPath}`,
+        guardId,
+        mutate: (m) => {
+          setByPath(m, segs, 'not-a-valid-format');
+        },
+      });
+      existingCats.add('E. STRING_CONSTRAINT');
+      initialCoveredTargets.set(targetPath, existingCats);
+    } else if (resolvedProp.pattern && !existingCats.has('E. STRING_CONSTRAINT')) {
+      addMutation({
+        seed: seedName,
+        category: 'E. STRING_CONSTRAINT',
+        propertyFamily: family,
+        schemaPointer: propPtr + '/pattern',
+        schemaKeyword: 'pattern',
+        operation: `Violate regex pattern on ${targetPath}`,
+        guardId,
+        mutate: (m) => {
+          setByPath(m, segs, 'INVALID_PATTERN_VIOLATION');
+        },
+      });
+      existingCats.add('E. STRING_CONSTRAINT');
+      initialCoveredTargets.set(targetPath, existingCats);
+    }
+
+    walkSchemaAndData(seedName, data[propName], propSchema, propPtr, targetPath, segs);
+  }
+}
+
+for (const [seedName, seed] of Object.entries(SEEDS)) {
+  walkSchemaAndData(seedName, seed, bundleData.root, '#', '', []);
+}
+
+// ---------------------------------------------------------------------------
+// Supplemental Generalized Schema-Alternative Traversal (MUT-3561+)
+// Resolves array alternatives (kind evidence) and object unions (atlas_question.target)
+// ---------------------------------------------------------------------------
+
+// Re-index initialCoveredTargets with all mutations through MUT-3560
+for (const m of mutations.slice(586)) {
+  const before = SEEDS[m.seed];
+  const after = clone(before);
+  m.mutate(after);
+  for (const p of computePathDiff(before, after)) {
+    if (!initialCoveredTargets.has(p)) initialCoveredTargets.set(p, new Set());
+    initialCoveredTargets.get(p).add(m.category);
+  }
+}
+
+function walkSupplementalAlternatives(seedName, data, schema, schemaPtr, dataPtr, segments, currentRoot) {
+  if (!data || typeof data !== 'object') return;
+  schema = resolveFullSchema(schema, currentRoot);
+  currentRoot = schema.currentRoot;
+  const guardId = inferGuardId(segments);
+  const family = segments[0] || 'root';
+
+  if (Array.isArray(data)) {
+    if (schema.items) {
+      const itemSchema = resolveFullSchema(schema.items, currentRoot);
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+        const segs = [...segments, i];
+        const ptr = dataPtr + '/' + i;
+        if (itemSchema.oneOf || itemSchema.anyOf) {
+          const alts = itemSchema.oneOf || itemSchema.anyOf;
+          const match = matchAlternativeBranch(item, alts, itemSchema.currentRoot);
+          if (!match) {
+            throw new Error(`General coverage reconciliation error: Seed "${seedName}" data at "${ptr}" did not match any branch in alternative at "${schemaPtr}/items"`);
+          }
+          walkSupplementalAlternatives(seedName, item, match.branchSchema, schemaPtr + '/items/oneOf/' + match.index, ptr, segs, match.currentRoot);
+        } else {
+          walkSupplementalAlternatives(seedName, item, itemSchema, schemaPtr + '/items', ptr, segs, itemSchema.currentRoot);
+        }
+      }
+    }
+    return;
+  }
+
+  // Closed object additionalProperties
+  if (schema.additionalProperties === false) {
+    const addPropPath = dataPtr + '/__unexpected_extension__';
+    const existingCats = initialCoveredTargets.get(addPropPath) || new Set();
+    if (!existingCats.has('C. ADDITIONAL_PROPERTIES')) {
+      addMutation({
+        seed: seedName,
+        category: 'C. ADDITIONAL_PROPERTIES',
+        propertyFamily: family,
+        schemaPointer: schemaPtr + '/additionalProperties',
+        schemaKeyword: 'additionalProperties',
+        operation: `Inject unexpected property into closed object at ${dataPtr}`,
+        guardId,
+        mutate: (m) => {
+          let curr = m;
+          for (const s of segments) curr = curr[s];
+          if (curr && typeof curr === 'object') {
+            curr.__unexpected_extension__ = 'invalid_extension';
+          }
+        },
+      });
+      existingCats.add('C. ADDITIONAL_PROPERTIES');
+      initialCoveredTargets.set(addPropPath, existingCats);
+    }
+  }
+
+  const req = new Set(schema.required || []);
+  const props = schema.properties || {};
+
+  for (const [propName, propDef] of Object.entries(props)) {
+    if (!(propName in data)) continue;
+    const resolvedProp = resolveFullSchema(propDef, currentRoot);
+    const segs = [...segments, propName];
+    const targetPath = dataPtr + '/' + propName;
+    const propPtr = schemaPtr + '/properties/' + propName;
+    const existingCats = initialCoveredTargets.get(targetPath) || new Set();
+    const propGuard = inferGuardId(segs) || guardId;
+
+    if (!existingCats.has('A. TYPE') && !isAnyJsonValue(propDef)) {
+      addMutation({
+        seed: seedName,
+        category: 'A. TYPE',
+        propertyFamily: family,
+        schemaPointer: propPtr + '/type',
+        schemaKeyword: 'type',
+        operation: `Set incompatible primitive on ${targetPath}`,
+        guardId: propGuard,
+        mutate: (m) => {
+          let curr = m;
+          for (let i = 0; i < segs.length - 1; i++) curr = curr[segs[i]];
+          const val = curr[segs[segs.length - 1]];
+          curr[segs[segs.length - 1]] = typeof val === 'number' ? 'invalid' : 42;
+        },
+      });
+      existingCats.add('A. TYPE');
+      initialCoveredTargets.set(targetPath, existingCats);
+    }
+
+    if (req.has(propName) && !existingCats.has('B. REQUIRED')) {
+      addMutation({
+        seed: seedName,
+        category: 'B. REQUIRED',
+        propertyFamily: family,
+        schemaPointer: schemaPtr + '/required/' + propName,
+        schemaKeyword: 'required',
+        operation: `Delete required property at ${targetPath}`,
+        guardId: propGuard,
+        mutate: (m) => {
+          let curr = m;
+          for (let i = 0; i < segs.length - 1; i++) curr = curr[segs[i]];
+          delete curr[segs[segs.length - 1]];
+        },
+      });
+      existingCats.add('B. REQUIRED');
+      initialCoveredTargets.set(targetPath, existingCats);
+    }
+
+    if (resolvedProp.enum && !existingCats.has('D. ENUM_CONST')) {
+      addMutation({
+        seed: seedName,
+        category: 'D. ENUM_CONST',
+        propertyFamily: family,
+        schemaPointer: propPtr + '/enum',
+        schemaKeyword: 'enum',
+        operation: `Set out-of-domain enum on ${targetPath}`,
+        guardId: propGuard,
+        mutate: (m) => {
+          let curr = m;
+          for (let i = 0; i < segs.length - 1; i++) curr = curr[segs[i]];
+          curr[segs[segs.length - 1]] = '__invalid_enum_out_of_domain__';
+        },
+      });
+      existingCats.add('D. ENUM_CONST');
+      initialCoveredTargets.set(targetPath, existingCats);
+    }
+
+    if (resolvedProp.format && !existingCats.has('E. STRING_CONSTRAINT')) {
+      addMutation({
+        seed: seedName,
+        category: 'E. STRING_CONSTRAINT',
+        propertyFamily: family,
+        schemaPointer: propPtr + '/format',
+        schemaKeyword: 'format',
+        operation: `Violate format on ${targetPath}`,
+        guardId: propGuard,
+        mutate: (m) => {
+          let curr = m;
+          for (let i = 0; i < segs.length - 1; i++) curr = curr[segs[i]];
+          curr[segs[segs.length - 1]] = 'not-a-valid-format';
+        },
+      });
+      existingCats.add('E. STRING_CONSTRAINT');
+      initialCoveredTargets.set(targetPath, existingCats);
+    } else if (resolvedProp.pattern && !existingCats.has('E. STRING_CONSTRAINT')) {
+      addMutation({
+        seed: seedName,
+        category: 'E. STRING_CONSTRAINT',
+        propertyFamily: family,
+        schemaPointer: propPtr + '/pattern',
+        schemaKeyword: 'pattern',
+        operation: `Violate regex pattern on ${targetPath}`,
+        guardId: propGuard,
+        mutate: (m) => {
+          let curr = m;
+          for (let i = 0; i < segs.length - 1; i++) curr = curr[segs[i]];
+          curr[segs[segs.length - 1]] = 'INVALID_PATTERN_VIOLATION';
+        },
+      });
+      existingCats.add('E. STRING_CONSTRAINT');
+      initialCoveredTargets.set(targetPath, existingCats);
+    }
+
+    if (resolvedProp.oneOf || resolvedProp.anyOf) {
+      const alts = resolvedProp.oneOf || resolvedProp.anyOf;
+      const match = matchAlternativeBranch(data[propName], alts, resolvedProp.currentRoot);
+      if (!match) {
+        throw new Error(`General coverage reconciliation error: Seed "${seedName}" data at "${targetPath}" did not match any branch in alternative at "${propPtr}"`);
+      }
+      walkSupplementalAlternatives(seedName, data[propName], match.branchSchema, propPtr + '/oneOf/' + match.index, targetPath, segs, match.currentRoot);
+    } else {
+      walkSupplementalAlternatives(seedName, data[propName], propDef, propPtr, targetPath, segs, resolvedProp.currentRoot);
+    }
+  }
+}
+
+for (const [seedName, seedData] of Object.entries(SEEDS)) {
+  walkSupplementalAlternatives(seedName, seedData, bundleData.root, '#', '', [], bundleData.root);
+}
+
+// ---------------------------------------------------------------------------
+// Independent Schema-Site Inventory Construction & Instance Binding (Requirement 2)
+// ---------------------------------------------------------------------------
+
+function buildIndependentSchemaInventory(bundle) {
+  const inventory = new Map();
+  function visit(schema, currentRoot, schemaPointer, resourceUri, refStack = new Set()) {
+    if (schema.$ref) {
+      const fullRef = (resourceUri || '') + schema.$ref;
+      if (refStack.has(fullRef)) return;
+      refStack = new Set(refStack);
+      refStack.add(fullRef);
+    }
+    const res = resolveFullSchema(schema, currentRoot);
+    const curResUri = res.currentRoot?.$id || resourceUri;
+    const curRoot = res.currentRoot;
+
+    if (res.oneOf || res.anyOf) {
+      const alts = res.oneOf || res.anyOf;
+      for (let i = 0; i < alts.length; i++) {
+        visit(alts[i], curRoot, schemaPointer + '/oneOf/' + i, curResUri, refStack);
+      }
+    }
+
+    const guard = inferGuardFromPtr(schemaPointer);
+
+    if (res.additionalProperties === false) {
+      const key = `${curResUri}::${schemaPointer}/additionalProperties::additionalProperties`;
+      if (!inventory.has(key)) {
+        inventory.set(key, {
+          key, resourceUri: curResUri, schemaPointer: schemaPointer + '/additionalProperties',
+          keyword: 'additionalProperties', category: 'C. ADDITIONAL_PROPERTIES',
+          historicalDecoderGuard: guard, status: 'UNINSTANTIATED', boundPaths: new Set(),
+        });
+      }
+    } else if (res.additionalProperties && typeof res.additionalProperties === 'object' && !isAnyJsonValue(res.additionalProperties)) {
+      const key = `${curResUri}::${schemaPointer}/additionalProperties::type`;
+      if (!inventory.has(key)) {
+        inventory.set(key, {
+          key, resourceUri: curResUri, schemaPointer: schemaPointer + '/additionalProperties',
+          keyword: 'type', category: 'A. TYPE',
+          historicalDecoderGuard: guard, status: 'UNINSTANTIATED', boundPaths: new Set(),
+        });
+      }
+      visit(res.additionalProperties, curRoot, schemaPointer + '/additionalProperties', curResUri, refStack);
+    }
+
+    if (res.items) {
+      visit(res.items, curRoot, schemaPointer + '/items', curResUri, refStack);
+    }
+
+    const req = new Set(res.required || []);
+    for (const [propName, propDef] of Object.entries(res.properties || {})) {
+      const propPtr = schemaPointer + '/properties/' + propName;
+      const propGuard = inferGuardFromPtr(propPtr) || guard;
+      const resolvedProp = resolveFullSchema(propDef, curRoot);
+
+      if (!isAnyJsonValue(propDef)) {
+        const key = `${curResUri}::${propPtr}::type`;
+        if (!inventory.has(key)) {
+          inventory.set(key, {
+            key, resourceUri: curResUri, schemaPointer: propPtr, keyword: 'type',
+            category: 'A. TYPE', propertyKey: propName, historicalDecoderGuard: propGuard,
+            status: 'UNINSTANTIATED', boundPaths: new Set(),
+          });
+        }
+      }
+      if (req.has(propName)) {
+        const key = `${curResUri}::${propPtr}::required`;
+        if (!inventory.has(key)) {
+          inventory.set(key, {
+            key, resourceUri: curResUri, schemaPointer: propPtr, keyword: 'required',
+            category: 'B. REQUIRED', propertyKey: propName, historicalDecoderGuard: propGuard,
+            status: 'UNINSTANTIATED', boundPaths: new Set(),
+          });
+        }
+      }
+      if (resolvedProp.enum) {
+        const key = `${curResUri}::${propPtr}::enum`;
+        if (!inventory.has(key)) {
+          inventory.set(key, {
+            key, resourceUri: curResUri, schemaPointer: propPtr, keyword: 'enum',
+            category: 'D. ENUM_CONST', propertyKey: propName, historicalDecoderGuard: propGuard,
+            status: 'UNINSTANTIATED', boundPaths: new Set(),
+          });
+        }
+      }
+      if (resolvedProp.pattern) {
+        const key = `${curResUri}::${propPtr}::pattern`;
+        if (!inventory.has(key)) {
+          inventory.set(key, {
+            key, resourceUri: curResUri, schemaPointer: propPtr, keyword: 'pattern',
+            category: 'E. STRING_CONSTRAINT', propertyKey: propName, historicalDecoderGuard: propGuard,
+            status: 'UNINSTANTIATED', boundPaths: new Set(),
+          });
+        }
+      }
+      if (resolvedProp.format) {
+        const key = `${curResUri}::${propPtr}::format`;
+        if (!inventory.has(key)) {
+          inventory.set(key, {
+            key, resourceUri: curResUri, schemaPointer: propPtr, keyword: 'format',
+            category: 'E. STRING_CONSTRAINT', propertyKey: propName, historicalDecoderGuard: propGuard,
+            status: 'UNINSTANTIATED', boundPaths: new Set(),
+          });
+        }
+      }
+      visit(propDef, curRoot, propPtr, curResUri, refStack);
+    }
+  }
+
+  visit(bundle.root, bundle.root, '#', bundle.root_uri || bundle.root.$id);
+  return inventory;
+}
+
+const independentSchemaInventory = buildIndependentSchemaInventory(bundleData);
+
+function bindInventoryToSeeds(inventory, seeds, rootSchema) {
+  function bindSite(resourceUri, schemaPtr, keyword, dataPtr) {
+    const site = inventory.get(`${resourceUri}::${schemaPtr}::${keyword}`);
+    if (site) {
+      site.status = 'INSTANTIATED';
+      site.boundPaths.add(dataPtr);
+    }
+  }
+
+  function walkBinding(seedName, data, schema, schemaPtr, dataPtr, currentRoot) {
+    schema = resolveFullSchema(schema, currentRoot);
+    currentRoot = schema.currentRoot;
+    const curResUri = currentRoot?.$id || rootSchema.$id;
+
+    // Alternative selection also applies to dictionary values and array items.
+    if (schema.oneOf || schema.anyOf) {
+      const match = matchAlternativeBranch(data, schema.oneOf || schema.anyOf, currentRoot);
+      if (!match) {
+        throw new Error(`General coverage reconciliation error: Seed "${seedName}" data at "${dataPtr}" did not match any branch in alternative at "${schemaPtr}"`);
+      }
+      walkBinding(seedName, data, match.branchSchema, schemaPtr + '/oneOf/' + match.index, dataPtr, match.currentRoot);
+      return;
+    }
+    if (!data || typeof data !== 'object') return;
+
+    if (Array.isArray(data)) {
+      if (schema.items) {
+        for (let i = 0; i < data.length; i++) {
+          walkBinding(seedName, data[i], schema.items, schemaPtr + '/items', dataPtr + '/' + i, currentRoot);
+        }
+      }
+      return;
+    }
+
+    if (schema.additionalProperties === false) {
+      bindSite(curResUri, schemaPtr + '/additionalProperties', 'additionalProperties', dataPtr + '/__unexpected_extension__');
+    } else if (schema.additionalProperties && typeof schema.additionalProperties === 'object'
+      && !isAnyJsonValue(schema.additionalProperties)) {
+      for (const [key, value] of Object.entries(data)) {
+        // JSON Schema applies this schema only to keys outside `properties`.
+        if (Object.hasOwn(schema.properties || {}, key)) continue;
+        const valuePtr = schemaPtr + '/additionalProperties';
+        const valuePath = dataPtr + '/' + key;
+        bindSite(curResUri, valuePtr, 'type', valuePath);
+        walkBinding(seedName, value, schema.additionalProperties, valuePtr, valuePath, currentRoot);
+      }
+    }
+
+    for (const [propName, propDef] of Object.entries(schema.properties || {})) {
+      if (!Object.hasOwn(data, propName)) continue;
+      const targetPath = dataPtr + '/' + propName;
+      const propPtr = schemaPtr + '/properties/' + propName;
+      for (const kw of ['type', 'required', 'enum', 'pattern', 'format']) {
+        bindSite(curResUri, propPtr, kw, targetPath);
+      }
+      walkBinding(seedName, data[propName], propDef, propPtr, targetPath, currentRoot);
+    }
+  }
+
+  for (const [seedName, seedData] of Object.entries(seeds)) {
+    walkBinding(seedName, seedData, rootSchema, '#', '', rootSchema);
+  }
+}
+
+function reconcileInventoryCoverage(inventory, targetMap, requiredTargetPaths = []) {
+  const missingCoverage = [];
+  const instantiatedPaths = new Set();
+  const uninstantiatedSites = [];
+  let instantiatedSitesCount = 0;
+  for (const [key, site] of inventory.entries()) {
+    // Historical attribution is not a claim that a decoder condition remains.
+    assert.ok(!Object.hasOwn(site, 'retainedGuard'), `Unsupported retained protection claim at "${key}"`);
+    if (site.status === 'INSTANTIATED') {
+      instantiatedSitesCount++;
+      assert.ok(site.boundPaths.size > 0, `Instantiated schema site "${key}" has 0 bound paths!`);
+      for (const p of site.boundPaths) {
+        instantiatedPaths.add(p);
+        const hasCheck = (targetMap.get(p) || []).some((m) => m.category === site.category);
+        if (!hasCheck) missingCoverage.push(`${p} (${site.schemaPointer}): missing required ${site.category} mutation`);
+      }
+    } else {
+      assert.equal(site.status, 'UNINSTANTIATED', `Unknown inventory status at "${key}"`);
+      assert.equal(site.boundPaths.size, 0, `Uninstantiated site "${key}" has bound paths!`);
+      uninstantiatedSites.push({
+        ...site, coverage: 'UNEXERCISED', deletionEligible: false,
+        reason: 'No seed value reaches this schema site; historical decoder attribution proves no retained protection.',
+      });
+    }
+  }
+  assert.equal(missingCoverage.length, 0,
+    `Schema property coverage incomplete (${missingCoverage.length} missing):\n${missingCoverage.join('\n')}`);
+  for (const reqPath of requiredTargetPaths) {
+    assert.ok(instantiatedPaths.has(reqPath),
+      `Required target path "${reqPath}" is missing from instantiated coverage inventory!`);
+  }
+  return { instantiatedPaths, instantiatedSitesCount, uninstantiatedSites };
+}
+
+bindInventoryToSeeds(independentSchemaInventory, SEEDS, bundleData.root);
+
+// ---------------------------------------------------------------------------
 // Suite Execution and Differential Verification
 // ---------------------------------------------------------------------------
 
@@ -1802,41 +2822,99 @@ async function runSuite() {
   }
 
   // -------------------------------------------------------------------------
+  // Schema-Driven Property Graph Coverage & Completeness Verification (F2)
+  // -------------------------------------------------------------------------
+  const targetMap = new Map();
+  function recordTargetDiff(a, b, p = '') {
+    if (JSON.stringify(a) === JSON.stringify(b)) return [];
+    if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) return [p];
+    const res = [];
+    for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+      const q = p + '/' + k;
+      if (!(k in a) || !(k in b)) res.push(q);
+      else res.push(...recordTargetDiff(a[k], b[k], q));
+    }
+    return res;
+  }
+
+  for (const m of mutations) {
+    const before = SEEDS[m.seed];
+    const after = clone(before);
+    m.mutate(after);
+    for (const p of recordTargetDiff(before, after)) {
+      if (!targetMap.has(p)) targetMap.set(p, []);
+      targetMap.get(p).push(m);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Complete Schema Inventory Coverage & Verification (F2 Resolution)
+  // -------------------------------------------------------------------------
+  const requiredTargetPaths = [
+    '/module_concept_edges/0/evidence/0/stage_id',
+    '/module_concept_edges/0/evidence/0/study_map_id',
+    '/records/20/atlas_question/target/concepts',
+    '/study_maps/0/stages/0/title', '/study_maps/0/stages/0/status',
+    '/records/0/title', '/modules/0/title', '/projects/0/title',
+    ...Object.keys(baseFixture.project_aliases).map((key) => '/project_aliases/' + key),
+    ...Object.keys(baseFixture.artifact_revisions).map((key) => '/artifact_revisions/' + key),
+    ...Object.entries(baseFixture.progress).flatMap(([key, value]) => [
+      '/progress/' + key, ...Object.keys(value).map((field) => '/progress/' + key + '/' + field),
+    ]),
+  ];
+  const { instantiatedPaths, instantiatedSitesCount, uninstantiatedSites } =
+    reconcileInventoryCoverage(independentSchemaInventory, targetMap, requiredTargetPaths);
+  const { runCoverageControls } = require('./test-manifest-coverage-controls');
+  runCoverageControls({ buildIndependentSchemaInventory, bindInventoryToSeeds, reconcileInventoryCoverage });
+  console.log(`[PASS] Independent schema inventory verified: ${instantiatedSitesCount} instantiated schema sites (${instantiatedPaths.size} instance paths) fully covered.`);
+  console.log(`[INFO] ${uninstantiatedSites.length} schema sites are explicitly unexercised; they grant no decoder deletion permission or retained-protection claim.`);
+
+  // -------------------------------------------------------------------------
   // Golden Verdict Oracle Verification (S31-06B)
   // -------------------------------------------------------------------------
   const GOLDEN_FIXTURE_PATH = path.join(ROOT, 'tests/manifest-validation-golden.json');
   const isGenerateGolden = process.argv.includes('--generate-golden');
 
   if (isGenerateGolden) {
+    let baseGoldenMutations = [];
+    if (fs.existsSync(GOLDEN_FIXTURE_PATH)) {
+      const existing = JSON.parse(fs.readFileSync(GOLDEN_FIXTURE_PATH, 'utf8'));
+      baseGoldenMutations = existing.mutations || [];
+    }
+
+    // Append only new mutations, preserving all existing expected verdicts
+    const newMutationsToAppend = results.slice(baseGoldenMutations.length).map((r) => ({
+      id: r.id,
+      category: r.category,
+      classification: r.guardId === 'T-05' || r.guardId === 'T-06' ? 'CONTEXTUAL' : 'SHAPE',
+      guard_id: r.guardId,
+      property_family: r.propertyFamily,
+      schema_keyword: r.schemaKeyword,
+      operation: r.operation,
+      expected_validity: false,
+      expected_ajv_pass: r.ajvPass,
+      expected_hw_pass: r.hwPass,
+      expected_agreement: r.agreementClass,
+    }));
+    const combinedMutations = [...baseGoldenMutations, ...newMutationsToAppend];
+
     const goldenPayload = {
       contract_version: MANIFEST_CONTRACT_VERSION,
       schema_sha256: MANIFEST_SCHEMA_SHA256,
       generated_validator_sha256: '15cc06a3bd5464a3708690c03ed4723125d749d35af7213500efcb5c9f650a6b',
       core_commit: 'd34693be19d9ed7ed23f4c309fdef11da2adffb7',
       originating_ui_commit: '88adbf76a0cb8c0b0b994efb649af5bf463e7a80',
-      total_mutations: results.length,
+      total_mutations: combinedMutations.length,
       seeds: Object.keys(SEEDS).map((seedId) => ({
         seed_id: seedId,
         expected_ajv_pass: true,
         expected_hw_pass: true,
         expected_agreement: 'AJV_PASS_HW_PASS',
       })),
-      mutations: results.map((r) => ({
-        id: r.id,
-        category: r.category,
-        classification: r.guardId === 'T-05' || r.guardId === 'T-06' ? 'CONTEXTUAL' : 'SHAPE',
-        guard_id: r.guardId,
-        property_family: r.propertyFamily,
-        schema_keyword: r.schemaKeyword,
-        operation: r.operation,
-        expected_validity: false,
-        expected_ajv_pass: r.ajvPass,
-        expected_hw_pass: r.hwPass,
-        expected_agreement: r.agreementClass,
-      })),
+      mutations: combinedMutations,
     };
     fs.writeFileSync(GOLDEN_FIXTURE_PATH, JSON.stringify(goldenPayload, null, 2) + '\n', 'utf8');
-    console.log(`[PASS] Golden verdict oracle generated at: ${GOLDEN_FIXTURE_PATH}`);
+    console.log(`[PASS] Golden verdict oracle updated with ${newMutationsToAppend.length} appended mutations at: ${GOLDEN_FIXTURE_PATH}`);
   }
 
   // Verify against Golden Verdict Oracle
@@ -1877,6 +2955,11 @@ async function runSuite() {
     ajvFailCount,
     hwPassCount,
     hwFailCount,
+    instantiatedCount: instantiatedPaths.size,
+    instantiatedSitesCount,
+    inventory: [...independentSchemaInventory.values()],
+    uninstantiatedCount: uninstantiatedSites.length,
+    uninstantiatedPaths: uninstantiatedSites,
   });
 }
 
@@ -1886,6 +2969,15 @@ function writeCoverageReport(results, stats) {
     fs.mkdirSync(scratchDir, { recursive: true });
   }
   const reportPath = path.join(scratchDir, 'S31-06-coverage-report.md');
+  fs.writeFileSync(path.join(scratchDir, 'S31-06-schema-inventory.json'), JSON.stringify({
+    instantiatedSites: stats.instantiatedSitesCount,
+    uninstantiatedSites: stats.uninstantiatedCount,
+    sites: stats.inventory.map((site) => ({
+      ...site, boundPaths: [...site.boundPaths],
+      coverage: site.status === 'INSTANTIATED' ? 'MUTATION_COVERED' : 'UNEXERCISED',
+      deletionEligible: false,
+    })),
+  }, null, 2) + '\n');
 
   // Group by category
   const byCategory = {};
@@ -1916,6 +3008,8 @@ function writeCoverageReport(results, stats) {
   const probe = results.find((r) => r.guardId === 'T-06');
   const probeId = probe ? probe.id : 'MUT-0256';
 
+  const identity = (directory) => execFileSync('git', ['-C', directory, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+  const digest = (filename) => createHash('sha256').update(fs.readFileSync(filename)).digest('hex');
   const report = `# S31-06R — Differential Manifest Validation Suite Coverage Report
 
 **Date:** ${new Date().toISOString()}  
@@ -1927,11 +3021,12 @@ function writeCoverageReport(results, stats) {
 
 ## 1. Environment & Commit Identities (Item A)
 
-- **Core Worktree:** \`~/los-phase5-experiment/repository\`
-- **Core Commit SHA:** \`d34693be19d9ed7ed23f4c309fdef11da2adffb7\`
-- **UI Worktree:** \`~/los-phase5-experiment/obsidian-ui\`
-- **UI Commit SHA:** \`88adbf76a0cb8c0b0b994efb649af5bf463e7a80\`
-- **Generated Validator SHA-256:** \`15cc06a3bd5464a3708690c03ed4723125d749d35af7213500efcb5c9f650a6b\`
+- **Core Worktree:** \`${coreRoot}\`
+- **Core HEAD:** \`${identity(coreRoot)}\`
+- **UI Worktree:** \`${ROOT}\`
+- **UI HEAD:** \`${identity(ROOT)}\` (HEAD does not identify uncommitted files)
+- **Suite Source SHA-256:** \`${digest(__filename)}\`
+- **Generated Validator SHA-256:** \`${digest(path.join(ROOT, 'src/contracts/generated/manifest.validator.cjs'))}\`
 - **Contract Version:** 15
 - **Schema SHA-256:** \`${MANIFEST_SCHEMA_SHA256}\`
 
@@ -1940,10 +3035,9 @@ function writeCoverageReport(results, stats) {
 ## 2. Schema Graph Inventory & Reconciliation (Item B & E)
 
 ### A. Counting Conventions Reconciliation
-- **Total Syntactic Schema Definitions ($defs):** Exactly **56** definitions are declared under \`$defs\` in Core's \`manifest-v15.schema.json\` and \`manifest-v15.bundle.json\` (\`bundle.root.$defs\`).
-- **Domain Projection Models:** **44** distinct compound projection models (e.g., excluding 12 generic helper schemas such as \`jsonValue\`, \`jsonObject\`, \`stringMap\`, \`stringArrayMap\`, \`integerMap\`, \`routeId\`, \`stageAttachment\`, \`sourceFeedback\`, \`sourceEvaluation\`, \`sourceExamination\`, \`deadlineModule\`, \`programSemester\`).
-- **Schema Definitions Reached by Valid Seeds:** **48** of the 56 definitions are instantiated and verified in at least one of the 7 valid base seeds.
-- **Unseeded Generic/Auxiliary Schemas:** 8 schemas (\`jsonValue\`, \`jsonObject\`, \`routeId\`, \`stageAttachment\`, \`sourceFeedback\`, \`sourceEvaluation\`, \`sourceExamination\`, \`deadlineModule\`).
+- **Root schema definitions:** ${Object.keys(bundleData.root.$defs || {}).length}.
+- **Transitive schema resources:** ${Object.keys(bundleData.resources || {}).length}.
+- **Inventory accounting:** ${stats.instantiatedSitesCount} instantiated sites and ${stats.uninstantiatedCount} unexercised sites. Definition counts do not prove that all branches were exercised.
 
 ### B. Graph Structure
 - **Root Properties:** Exactly 28 declared properties with \`additionalProperties: false\`.
@@ -1955,6 +3049,10 @@ function writeCoverageReport(results, stats) {
   - \`_generated\` (9 metadata attributes including \`contract_version\` and \`schema_sha256\`).
 - **Top-Level Graph Edge Surface (1):**
   - \`module_concept_edges\` (array of items with \`module_id\`, \`concept_id\`, and \`evidence\` union).
+
+### C. Instantiated and Uninstantiated Paths Inventory (F2 Resolution)
+- **Instantiated Property Paths:** Exactly **${stats.instantiatedCount}** property paths (${stats.instantiatedSitesCount} schema sites) across all 7 seeds are instantiated and checked for the inventory categories (type, required removal, additionalProperties, enum, and format/pattern), including deep nested paths such as \`/study_maps/0/stages/0/title\`, \`/study_maps/0/stages/0/status\`, and polymorphic record fields.
+- **Uninstantiated Sub-Paths:** **${stats.uninstantiatedCount}** optional/auxiliary paths across declared schema models are not instantiated in any seed. They are explicitly **UNEXERCISED**, prove no retained decoder protection, and grant **no deletion permission**. Historical decoder identifiers are attribution only. The complete inventory is written to \`S31-06-schema-inventory.json\`.
 
 ---
 
@@ -1986,7 +3084,7 @@ The deterministic mutation suite applies 9 orthogonal mutation operators:
 | \`with-detour-shelving\` | Baseline fixture + \`studyMap\` with active \`detours\` & \`shelving\` | Closes Gap 2 (detours, shelving proposals, archive items) | YES |
 | \`with-synthesis-record\` | Baseline fixture + \`unit-material-synthesis\` inside \`records\` | Closes Gap 3 (synthesis record in polymorphic union) | YES |
 
-*All 7 seeds confirmed green under both compiled Ajv and handwritten assertManifest prior to mutation.*
+*All 7 seeds confirmed green under both compiled Ajv and production assertManifest prior to mutation.*
 
 ---
 
@@ -2067,24 +3165,24 @@ ${Object.entries(byFamily).sort().map(([fam, count]) => `| \`${fam}\` | ${count}
 
 ---
 
-## 12. Guard-Level Coverage & Deletion Eligibility (Item G, N, O)
+## 12. Historical Decoder Attribution (Item G, N, O)
 
-| Guard ID | Location | Surface / Responsibility | Mutations | Verdict Agreement | Classification & Eligibility |
+| Historical ID | Historical Location | Surface / Responsibility | Mutations | Boundary Verdict Agreement | Historical Classification |
 |:---|:---|:---|:---|:---|:---|
 ${Object.entries(GUARD_METADATA).map(([gid, meta]) => {
   const count = byGuard[gid] || 0;
   return `| **${gid}** | \`${meta.loc}\` | ${meta.desc} | ${count} | ${gid === 'T-06' ? 'Ajv PASS / HW FAIL' : 'Ajv FAIL / HW FAIL'} | \`${meta.class}\` |`;
 }).join('\n')}
 
-- **Total Guards Evaluated:** **47 / 47 (100%)**
-- **PROVEN_FOR_TESTED_CASES:** 45 shape guards
-- **CONTEXTUAL_PRESERVE:** 2 guards (\`T-05\` and \`T-06\`)
+- **Historical decoder identifiers:** 47 attribution rows; these are not counts of currently executable guards.
+- **Retired conditions:** T-27, T-31 and T-41.
+- **Contextual bindings preserved:** T-05 and T-06.
 
 ---
 
 ## 13. Remaining Untested Conditions & Limitations (Item I)
 
-1. **Unexercised Auxiliary Sub-Schemas:** 8 helper sub-schemas (\`jsonValue\`, \`jsonObject\`, \`routeId\`, \`stageAttachment\`, \`sourceFeedback\`, \`sourceEvaluation\`, \`sourceExamination\`, \`deadlineModule\`) represent optional embedded fragments not instantiated in the 7 seeds.
+1. **Unexercised schema sites:** ${stats.uninstantiatedCount} sites are explicitly listed in \`S31-06-schema-inventory.json\`. They have no mutation-coverage or retained-protection attestation. No further decoder deletion is authorized by them.
 2. **Atomic Invalidation:** Each test case mutates exactly one property at a time; multi-attribute simultaneous failure combinations are not combinatorially generated.
 3. **Diagnostic Formatting:** The suite proves equivalence of rejection behavior (accept/reject semantics), not identical string error messages.
 
@@ -2092,7 +3190,7 @@ ${Object.entries(GUARD_METADATA).map(([gid, meta]) => {
 
 ## 14. S31-07 Deletion Readiness Assessment
 
-1. **Shape Redundancy Proved for Tested Cases:** All 45 shape throw sites (\`T-01\` to \`T-04\`, \`T-07\` to \`T-47\`) are proven to be redundantly enforced by compiled Ajv across all 244 evaluated shape mutations.
+1. **Bounded evidence:** Mutation agreement covers the instantiated inventory categories only. Unexercised branches grant no decoder deletion permission. The production assertion invokes Ajv first, so its rejection does not independently prove execution of a handwritten condition.
 2. **Contextual Isolation Proved:** The 2 contextual guards (\`T-05\` and \`T-06\`) operate independently and must remain preserved.
 3. **Type Narrowing Invariant:** In S31-07, \`assertManifest\` must retain runtime validation by invoking \`validateManifest\` and contextual pins before narrowing. Unchecked casts (\`as Manifest\`) are prohibited.
 4. **Safety Fence Established:** This differential suite is integrated into \`npm run check\` and CI as a blocking verification step.
@@ -2105,8 +3203,10 @@ ${Object.entries(GUARD_METADATA).map(([gid, meta]) => {
   console.log(`[PASS] Evidence report written to: ${reportPath}`);
 }
 
-// Execute
-runSuite().catch((err) => {
-  console.error('\n[FATAL] Differential suite failed:', err);
-  process.exit(1);
-});
+module.exports = { buildIndependentSchemaInventory, bindInventoryToSeeds, reconcileInventoryCoverage };
+if (require.main === module) {
+  runSuite().catch((err) => {
+    console.error('\n[FATAL] Differential suite failed:', err);
+    process.exit(1);
+  });
+}

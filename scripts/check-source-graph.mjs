@@ -13,9 +13,15 @@ function sourceModules(directory) {
       const absolute = path.join(directory, entryValue.name);
       if (entryValue.isDirectory()) return sourceModules(absolute);
       if (!entryValue.isFile()) return [];
-      if (entryValue.name.endsWith('.d.ts') || entryValue.name.endsWith('.d.cts') || entryValue.name.endsWith('.meta.ts')) return [];
+      if (entryValue.name.endsWith('.d.ts') || entryValue.name.endsWith('.d.cts')) return [];
+      const relative = path.relative(root, absolute).split(path.sep).join('/');
+      // The generated contract metadata module is a build-time/verification constant
+      // emitter not imported by the runtime entrypoint. Exclude only this exact
+      // generated file; any other *.meta.ts source file must remain strictly
+      // subject to source-graph reachability and boundary enforcement.
+      if (relative === 'src/contracts/generated/manifest.meta.ts') return [];
       if (!entryValue.name.endsWith('.ts') && !entryValue.name.endsWith('.cjs')) return [];
-      return [path.relative(root, absolute).split(path.sep).join('/')];
+      return [relative];
     });
 }
 
