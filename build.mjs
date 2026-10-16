@@ -132,6 +132,9 @@ async function fallbackBundle() {
 async function esbuildBundle(build, define) {
   const result = await build({
     absWorkingDir: root,
+    // Shared dependency trees must keep the same logical module identities
+    // when a verified pair is copied to another isolated checkout.
+    preserveSymlinks: true,
     entryPoints: ['src/main.ts'],
     outfile,
     bundle: true,

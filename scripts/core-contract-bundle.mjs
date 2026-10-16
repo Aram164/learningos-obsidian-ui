@@ -24,7 +24,7 @@ export function findCorePython(coreRoot) {
     try {
       const probe = spawnSync(
         process.env.PYTHON,
-        ['-c', 'import learning_os.contracts.bundle'],
+        ['-c', 'import learning_os.store.contracts.bundle'],
         { encoding: 'utf8', cwd: coreRoot, env },
       );
       if (probe.status === 0) return { python: process.env.PYTHON, env };
@@ -45,7 +45,7 @@ export function findCorePython(coreRoot) {
     try {
       const probe = spawnSync(
         candidate,
-        ['-c', 'import learning_os.contracts.bundle'],
+        ['-c', 'import learning_os.store.contracts.bundle'],
         { encoding: 'utf8', cwd: coreRoot, env },
       );
       if (probe.status === 0) return { python: candidate, env };

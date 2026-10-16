@@ -1,3 +1,5 @@
+import { validateAbilityBriefWire, validateAbilityFocusWire, validateAbilityUnmappedWire } from './generated/responses.validator.cjs';
+import type * as Wire from './generated/responses.types';
 /**
  * Decoders for Core's snapshot-bound `ability.context` query
  * (`system/schema/ability-context.schema.json`, result `ability-context-v1`).
@@ -179,334 +181,102 @@ export interface AbilityUnmappedV1 {
   readonly reason: string;
 }
 
+// These are view projections: shape is checked once by Core's generated validator.
 type Loose = Record<string, unknown>;
-
-const STATES: ReadonlySet<string> = new Set(['supported', 'nearby', 'uncertain', 'unmapped']);
-const RESULTS: ReadonlySet<string> = new Set(['correct', 'incorrect', 'partial', 'abandoned']);
-const KINDS: ReadonlySet<string> = new Set(['equivalence', 'extension', 'connection']);
-const FRESHNESS: ReadonlySet<string> = new Set(['current', 'stale', 'unavailable', 'not-reviewed']);
-
+const FRESHNESS = new Set(['current', 'stale', 'unavailable', 'not-reviewed']);
 function record(value: unknown): Loose | null {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? value as Loose
-    : null;
+  return typeof value === 'object' && value !== null && !Array.isArray(value) ? value as Loose : null;
 }
-
 function text(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
-
-function strings(value: unknown): string[] | null {
-  if (!Array.isArray(value)) return null;
-  return value.every((item) => typeof item === 'string')
-    ? value as string[]
-    : null;
-}
-
-function optionalStrings(value: unknown): string[] | null {
-  return value === undefined ? [] : strings(value);
-}
-
 function count(value: unknown): number | null {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : null;
 }
-
-function header(value: unknown): Loose | null {
-  const response = record(value);
-  if (!response
-    || response.contract !== ABILITY_CONTEXT_CONTRACT
-    || response.schema_version !== 1
-    || typeof response.snapshot_id !== 'string'
-    || !/^sha256:[a-f0-9]{64}$/.test(response.snapshot_id)) return null;
-  return response;
+function list<T, U>(value: readonly T[] | undefined, project: (item: T) => U): U[] {
+  return (value ?? []).map(project);
 }
-
-function route(value: unknown): AbilityRouteV1 | null {
-  const row = record(value);
-  const reason = row ? text(row.reason) : null;
-  const supported = row ? strings(row.supported) : null;
-  const missing = row ? strings(row.missing_or_uncertain) : null;
-  const remaining = row ? optionalStrings(row.remaining_work) : null;
-  if (!row || !reason || !supported || !missing || !remaining) return null;
-  return {
-    reason,
-    source: text(row.source),
-    supported,
-    missing_or_uncertain: missing,
-    remaining_work: remaining,
-  };
+function route(item: Wire.AbilityRouteWire): AbilityRouteV1 {
+  return { reason: item.reason, source: text(item.source), supported: item.supported,
+    missing_or_uncertain: item.missing_or_uncertain, remaining_work: item.remaining_work ?? [] };
 }
-
-function transfer(value: unknown): AbilityTransferV1 | null {
-  const row = record(value);
-  if (!row) return null;
-  const from = text(row.from);
-  const source = text(row.source);
-  const carries = text(row.carries);
-  const changes = text(row.changes);
-  return from && source && carries && changes ? { from, source, carries, changes } : null;
+function evidence(item: Wire.AbilityEvidenceWire): AbilityEvidenceV1 {
+  const origin = record(item.origin);
+  return { id: item.id, result: item.result, work_ref: item.work_ref,
+    claim: text(item.claim), activity: text(item.activity), timestamp: text(item.timestamp),
+    assistance: typeof item.assistance === 'string' ? item.assistance : null,
+    conditions: item.conditions ?? [], conditions_not_met: item.conditions_not_met ?? [],
+    evidence_tags: item.evidence_tags ?? [], confirmation_ref: text(item.confirmation_ref),
+    supersedes: text(item.supersedes), origin_path: origin ? text(origin.path) : null,
+    workspace_id: origin ? text(origin.workspace_id) : null };
 }
-
-function evidence(value: unknown): AbilityEvidenceV1 | null {
-  const row = record(value);
-  if (!row) return null;
-  const id = text(row.id);
-  const workRef = text(row.work_ref);
-  if (!id || !workRef || !RESULTS.has(String(row.result))) return null;
-  const origin = record(row.origin);
-  const conditions = optionalStrings(row.conditions);
-  const notMet = optionalStrings(row.conditions_not_met);
-  const tags = optionalStrings(row.evidence_tags);
-  if (!conditions || !notMet || !tags) return null;
-  return {
-    id,
-    result: row.result as AbilityResultV1,
-    work_ref: workRef,
-    claim: text(row.claim),
-    activity: text(row.activity),
-    timestamp: text(row.timestamp),
-    assistance: typeof row.assistance === 'string' ? row.assistance : null,
-    conditions,
-    conditions_not_met: notMet,
-    evidence_tags: tags,
-    confirmation_ref: text(row.confirmation_ref),
-    supersedes: text(row.supersedes),
-    origin_path: origin ? text(origin.path) : null,
-    workspace_id: origin ? text(origin.workspace_id) : null,
-  };
+function row(item: Wire.AbilityRowWire): AbilityRowV1 | null {
+  // A schema validates each list; this relation binds their meaning together.
+  if (item.reason_codes !== undefined && item.reason_codes.length !== item.reasons.length) return null;
+  return { id: item.id, title: item.title, lifecycle: item.lifecycle ?? 'active', state: item.state,
+    reasons: item.reasons, reason_codes: item.reason_codes ?? [], concept_ids: item.concept_ids,
+    module_ids: item.module_ids ?? [], preparation_routes: list(item.preparation_routes, route),
+    transfer: list(item.transfer, (entry) => ({ from: entry.from, source: entry.source,
+      carries: entry.carries, changes: entry.changes })), evidence: list(item.evidence, evidence) };
 }
-
-function list<T>(value: unknown, decode: (item: unknown) => T | null): T[] | null {
-  if (value === undefined) return [];
-  if (!Array.isArray(value)) return null;
-  const out: T[] = [];
-  for (const item of value) {
-    const decoded = decode(item);
-    if (decoded === null) return null;
-    out.push(decoded);
-  }
-  return out;
+function review(item: Wire.AbilityReviewWire): AbilityReviewV1 {
+  return { state: item.state, reviewed_by: text(item.reviewed_by), reviewed_on: text(item.reviewed_on) };
 }
-
-function row(value: unknown): AbilityRowV1 | null {
-  const item = record(value);
-  if (!item) return null;
-  const id = text(item.id);
-  const title = text(item.title);
-  const reasons = strings(item.reasons);
-  const reasonCodes = optionalStrings(item.reason_codes);
-  const concepts = strings(item.concept_ids);
-  const modules = optionalStrings(item.module_ids);
-  const routes = list(item.preparation_routes, route);
-  const transfers = list(item.transfer, transfer);
-  const rows = list(item.evidence, evidence);
-  const lifecycle = item.lifecycle === undefined ? 'active' : item.lifecycle;
-  if (!id || !title || !STATES.has(String(item.state)) || !reasons || !reasonCodes || !concepts
-    || !modules || !routes || !transfers || !rows
-    || (lifecycle !== 'active' && lifecycle !== 'retired')) return null;
-  if (item.reason_codes !== undefined && (reasonCodes.length !== reasons.length
-    || reasonCodes.some((code) => !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(code)))) return null;
-  return {
-    id,
-    title,
-    lifecycle,
-    state: item.state as AbilityStateV1,
-    reasons,
-    reason_codes: reasonCodes,
-    concept_ids: concepts,
-    module_ids: modules,
-    preparation_routes: routes,
-    transfer: transfers,
-    evidence: rows,
-  };
-}
-
-function review(value: unknown): AbilityReviewV1 | null {
-  const item = record(value);
-  if (!item || (item.state !== 'candidate' && item.state !== 'reviewed')) return null;
-  return {
-    state: item.state,
-    reviewed_by: text(item.reviewed_by),
-    reviewed_on: text(item.reviewed_on),
-  };
-}
-
-function bridge(value: unknown): AbilityBridgeV1 | null {
-  const item = record(value);
-  if (!item) return null;
-  const from = text(item.from);
-  const to = text(item.to);
-  const carries = text(item.carries);
-  const changes = text(item.changes);
-  const source = text(item.source);
-  const conditions = optionalStrings(item.conditions);
-  const reviewed = review(item.review);
+function bridge(item: Wire.AbilityBridgeWire): AbilityBridgeV1 {
   const freshness = record(item.source_freshness);
   const status = freshness && FRESHNESS.has(String(freshness.status))
-    ? freshness.status as BridgeFreshnessStatusV1
-    : null;
-  if (!from || !to || !carries || !changes || !source || !conditions || !reviewed
-    || !KINDS.has(String(item.kind))) return null;
-  return {
-    from,
-    to,
-    kind: item.kind as AbilityBridgeKindV1,
-    carries,
-    changes,
-    conditions,
-    source,
-    source_sha256: text(item.source_sha256),
-    review: reviewed,
-    // A bridge Core did not observe is not current. Absence reads as unknown,
-    // which is the one state that can never carry evidence.
-    freshness: status ?? (reviewed.state === 'reviewed' ? 'unavailable' : 'not-reviewed'),
-  };
+    ? freshness.status as BridgeFreshnessStatusV1 : null;
+  return { from: item.from, to: item.to, kind: item.kind, carries: item.carries, changes: item.changes,
+    conditions: item.conditions ?? [], source: item.source, source_sha256: text(item.source_sha256),
+    review: review(item.review), freshness: status ?? (item.review.state === 'reviewed' ? 'unavailable' : 'not-reviewed') };
 }
-
-function candidate(value: unknown): AbilityCandidateV1 | null {
-  const item = record(value);
-  if (!item) return null;
-  const id = text(item.id);
-  const from = text(item.from);
-  const to = text(item.to);
-  const carries = text(item.carries);
-  const changes = text(item.changes);
-  const sourceRef = text(item.source_ref);
-  const created = text(item.created_at);
-  const conditions = optionalStrings(item.conditions);
-  if (!id || !from || !to || !carries || !changes || !sourceRef || !created || !conditions
-    || !KINDS.has(String(item.kind))) return null;
-  return {
-    id, from, to, kind: item.kind as AbilityBridgeKindV1, carries, changes,
-    conditions, source_ref: sourceRef, created_at: created,
-  };
+function candidate(item: Wire.AbilityCandidateWire): AbilityCandidateV1 {
+  return { id: item.id, from: item.from, to: item.to, kind: item.kind, carries: item.carries,
+    changes: item.changes, conditions: item.conditions ?? [], source_ref: item.source_ref, created_at: item.created_at };
 }
-
-function encounterMaterial(value: unknown): AbilityEncounterMaterialV1 | null {
-  const item = record(value);
-  if (!item) return null;
-  return {
-    route_id: text(item.route_id),
-    source_id: text(item.source_id),
-    locator: text(item.locator),
-    match_state: text(item.match_state) ?? 'unmapped',
-  };
+function encounterMaterial(value: object): AbilityEncounterMaterialV1 {
+  const item = value as Loose;
+  return { route_id: text(item.route_id), source_id: text(item.source_id), locator: text(item.locator),
+    match_state: text(item.match_state) ?? 'unmapped' };
 }
-
-function encounter(value: unknown): AbilityEncounterV1 | null {
-  const item = record(value);
-  if (!item) return null;
-  const moduleId = text(item.module_id);
-  const unitId = text(item.unit_id);
-  const stageId = text(item.stage_id);
-  const materials = list(item.materials, encounterMaterial);
-  if (!moduleId || !unitId || !stageId || !materials) return null;
-  return {
-    module_id: moduleId,
-    unit_id: unitId,
-    study_map_id: text(item.study_map_id),
-    stage_id: stageId,
-    title: text(item.title),
-    objective: text(item.objective),
-    status: text(item.status),
-    materials,
-  };
+function encounter(item: Wire.AbilityEncounterWire): AbilityEncounterV1 {
+  return { module_id: item.module_id, unit_id: item.unit_id, study_map_id: text(item.study_map_id),
+    stage_id: item.stage_id, title: text(item.title), objective: text(item.objective), status: text(item.status),
+    materials: list(item.materials, encounterMaterial) };
 }
-
-function relatedEncounter(value: unknown): AbilityRelatedEncounterV1 | null {
-  const item = record(value);
-  if (!item) return null;
-  const moduleId = text(item.module_id);
-  const unitId = text(item.unit_id);
-  const stageId = text(item.stage_id);
-  const abilities = strings(item.ability_ids);
-  const routes = optionalStrings(item.route_ids);
-  if (!moduleId || !unitId || !stageId || !abilities || !routes) return null;
-  return {
-    module_id: moduleId,
-    unit_id: unitId,
-    stage_id: stageId,
-    title: text(item.title),
-    objective: text(item.objective),
-    ability_ids: abilities,
-    route_ids: routes,
-    route_total: count(item.route_total) ?? routes.length,
-    routes_truncated: item.routes_truncated === true,
-  };
+function relatedEncounter(item: Wire.AbilityRelatedEncounterWire): AbilityRelatedEncounterV1 {
+  const routes = item.route_ids ?? [];
+  return { module_id: item.module_id, unit_id: item.unit_id, stage_id: item.stage_id,
+    title: text(item.title), objective: text(item.objective), ability_ids: item.ability_ids,
+    route_ids: routes, route_total: count(item.route_total) ?? routes.length,
+    routes_truncated: item.routes_truncated === true };
 }
-
-/** The bounded horizon, or null when Core answered with anything else. */
+function definition(item: Wire.AbilityDefinitionWire): AbilityDefinitionV1 | null {
+  const base = row(item);
+  return base ? { ...base, claim: item.claim, source: text(item.source), conditions: item.conditions,
+    evidence_spec: item.evidence_spec, review: review(item.review) } : null;
+}
 export function asAbilityBrief(value: unknown): AbilityBriefV1 | null {
-  const response = header(value);
-  if (!response || response.focus !== undefined) return null;
-  const abilities = list(response.abilities, row);
-  const bridges = list(response.bridges, bridge);
-  const candidates = list(response.candidate_connections, candidate);
-  const total = count(response.total);
-  if (!abilities || !bridges || !candidates || total === null) return null;
-  return {
-    snapshot_id: response.snapshot_id as string,
-    abilities,
-    total,
-    truncated: response.truncated === true,
-    bridges,
-    candidate_connections: candidates,
-    candidate_connection_count: count(response.candidate_connection_count) ?? candidates.length,
-  };
+  if (!validateAbilityBriefWire(value)) return null;
+  const abilities = list(value.abilities, row);
+  if (abilities.some((item) => item === null)) return null;
+  const candidates = list(value.candidate_connections, candidate);
+  return { snapshot_id: value.snapshot_id, abilities: abilities as AbilityRowV1[], total: value.total,
+    truncated: value.truncated === true, bridges: list(value.bridges, bridge), candidate_connections: candidates,
+    candidate_connection_count: count(value.candidate_connection_count) ?? candidates.length };
 }
-
-function definition(value: unknown): AbilityDefinitionV1 | null {
-  const base = row(value);
-  const item = record(value);
-  if (!base || !item) return null;
-  const claim = text(item.claim);
-  const conditions = strings(item.conditions);
-  const spec = strings(item.evidence_spec);
-  const reviewed = review(item.review);
-  if (!claim || !conditions || !spec || !reviewed) return null;
-  return {
-    ...base,
-    claim,
-    source: text(item.source),
-    conditions,
-    evidence_spec: spec,
-    review: reviewed,
-  };
-}
-
-/** One expanded ability, or null. An unmapped focus is `asAbilityUnmapped`. */
 export function asAbilityFocus(value: unknown): AbilityFocusV1 | null {
-  const response = header(value);
-  if (!response) return null;
-  const focus = text(response.focus);
-  const ability = definition(response.ability);
-  const bridges = list(response.bridges, bridge);
-  const encounters = list(response.encounters, encounter);
-  const related = list(response.related_encounters, relatedEncounter);
-  const candidates = list(response.candidate_connections, candidate);
-  const shared = optionalStrings(response.shared_concept_candidates);
-  if (!focus || !ability || ability.id !== focus || !bridges || !encounters || !related
-    || !candidates || !shared) return null;
-  return {
-    snapshot_id: response.snapshot_id as string,
-    focus,
-    ability,
-    bridges,
-    encounters,
-    related_encounters: related,
-    related_encounters_total: count(response.related_encounters_total) ?? related.length,
-    candidate_connections: candidates,
-    shared_concept_candidates: shared,
-  };
+  if (!validateAbilityFocusWire(value)) return null;
+  const ability = definition(value.ability);
+  if (!ability || ability.id !== value.focus) return null;
+  const related = list(value.related_encounters, relatedEncounter);
+  return { snapshot_id: value.snapshot_id, focus: value.focus, ability, bridges: list(value.bridges, bridge),
+    encounters: list(value.encounters, encounter), related_encounters: related,
+    related_encounters_total: count(value.related_encounters_total) ?? related.length,
+    candidate_connections: list(value.candidate_connections, candidate),
+    shared_concept_candidates: value.shared_concept_candidates ?? [] };
 }
-
-/** Core's answer for an identity no reviewed ability maps. Not a knowledge gap. */
 export function asAbilityUnmapped(value: unknown): AbilityUnmappedV1 | null {
-  const response = header(value);
-  if (!response || response.state !== 'unmapped' || response.ability !== undefined) return null;
-  const focus = text(response.focus);
-  const reason = text(response.reason);
-  return focus && reason
-    ? { snapshot_id: response.snapshot_id as string, focus, reason }
-    : null;
+  return validateAbilityUnmappedWire(value)
+    ? { snapshot_id: value.snapshot_id, focus: value.focus, reason: value.reason } : null;
 }

@@ -2,77 +2,12 @@ import { GatewayError } from './gateway-v1';
 
 export const GATEWAY_SCHEMA_VERSION = 2 as const;
 
-export type GatewayChannelV2 = 'ui' | 'codex' | 'operator' | 'system-task';
-export type GatewayApprovalKindV2 =
-  | 'direct-user-gesture'
-  | 'approved-delivery'
-  | 'operator-approval';
-
-export interface GatewayApprovalV2 {
-  kind: GatewayApprovalKindV2;
-  subject_sha256: string;
-}
-
-export interface GatewayRequestV2 {
-  schema_version: typeof GATEWAY_SCHEMA_VERSION;
-  request_id: string;
-  idempotency_key: string;
-  capability: string;
-  channel: GatewayChannelV2;
-  expected_snapshot: string;
-  expected_revisions: Readonly<Record<string, number>>;
-  approval: GatewayApprovalV2;
-  payload: Record<string, unknown>;
-}
-
-export interface GatewayErrorBodyV2 {
-  code: string;
-  message: string;
-  retryable: boolean;
-  details: Record<string, unknown>;
-}
-
-/**
- * A capability response is not a confirmation until every identity echo,
- * receipt field and resulting snapshot has been checked. Nullable producer
- * fields belong only to refused responses; this narrowed success type makes it
- * impossible for a caller to treat one of those as a completed write.
- */
-export interface GatewaySuccessV2 {
-  schema_version: typeof GATEWAY_SCHEMA_VERSION;
-  request_id: string;
-  idempotency_key: string;
-  capability: string;
-  ok: true;
-  replayed: boolean;
-  transaction_id: string;
-  receipt_path: string;
-  snapshot_after: string;
-  result: Record<string, unknown>;
-  error: null;
-}
-
-/**
- * The refused counterpart of `GatewaySuccessV2`.
- *
- * Core answers a V2 envelope with the same eleven keys whether it committed or
- * not, so a refusal is as checkable as a receipt — and it has to be, because
- * "Core says it refused" is the only evidence that lets recovery stop worrying
- * about a write. A shape that is merely *not* a success is not a refusal.
- */
-export interface GatewayFailureV2 {
-  schema_version: typeof GATEWAY_SCHEMA_VERSION;
-  request_id: string;
-  idempotency_key: string;
-  capability: string;
-  ok: false;
-  replayed: boolean;
-  transaction_id: null;
-  receipt_path: null;
-  snapshot_after: null;
-  result: Record<string, unknown>;
-  error: GatewayErrorBodyV2;
-}
+import { validateGatewaySuccessV2, validateGatewayFailureV2, validateGatewayRequestV2 } from './generated/responses.validator.cjs';
+import type { GatewayApprovalV2, GatewayRequestV2, GatewaySuccessV2, GatewayFailureV2 } from './generated/responses.types';
+export type { GatewayApprovalV2, GatewayRequestV2, GatewayErrorBodyV2,
+  GatewaySuccessV2, GatewayFailureV2 } from './generated/responses.types';
+export type GatewayChannelV2 = GatewayRequestV2['channel'];
+export type GatewayApprovalKindV2 = GatewayApprovalV2['kind'];
 
 /**
  * Codes that mean, definitively, that nothing was committed.
@@ -119,10 +54,6 @@ function nonEmpty(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
 }
 
-function exactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
-  return Object.keys(value).length === keys.length
-    && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
-}
 
 export function isSha256(value: unknown): value is string {
   return typeof value === 'string' && /^sha256:[0-9a-f]{64}$/.test(value);
@@ -323,118 +254,28 @@ export async function gatewaySubjectSha256(
     .map((byte) => byte.toString(16).padStart(2, '0')).join('')}`;
 }
 
-/** Turn an untrusted process response into the only success shape the UI uses. */
-export function asGatewaySuccessV2(
-  value: unknown,
-  expected: GatewayResponseIdentityV2,
-): GatewaySuccessV2 {
-  const response = record(value);
-  const result = record(response?.result);
-  const responseKeys = [
-    'schema_version', 'request_id', 'idempotency_key', 'capability', 'ok',
-    'replayed', 'transaction_id', 'receipt_path', 'snapshot_after', 'result',
-    'error',
-  ] as const;
-  const identityMatches = response?.request_id === expected.requestId
-    && response?.idempotency_key === expected.idempotencyKey
-    && response?.capability === expected.capability;
-  const confirmed = response !== null
-    && exactKeys(response, responseKeys)
-    && response.schema_version === GATEWAY_SCHEMA_VERSION
-    && identityMatches
-    && response.ok === true
-    && typeof response.replayed === 'boolean'
-    && nonEmpty(response.transaction_id)
-    && nonEmpty(response.receipt_path)
-    && isSha256(response.snapshot_after)
-    && result !== null
-    && response.error === null;
-
-  if (!confirmed) {
+/** A valid shape is a confirmation only when every request identity matches. */
+export function asGatewaySuccessV2(value: unknown, expected: GatewayResponseIdentityV2): GatewaySuccessV2 {
+  if (!validateGatewaySuccessV2(value)
+    || value.request_id !== expected.requestId
+    || value.idempotency_key !== expected.idempotencyKey
+    || value.capability !== expected.capability) {
     throw new GatewayError(
       'LearningOS did not return a complete Gateway V2 receipt, so the change is unconfirmed. Your draft was kept.',
-      null,
-      { code: 'UNCONFIRMED', retryable: false },
-    );
+      null, { code: 'UNCONFIRMED', retryable: false });
   }
-  return response as unknown as GatewaySuccessV2;
+  return value;
 }
 
-/**
- * The strict failure parser that sits beside `asGatewaySuccessV2`.
- *
- * It returns null rather than throwing, because "this is not a trustworthy
- * refusal" is an *answer* the recovery path acts on: an unrecognisable response
- * means the outcome is unknown, and the record must be kept. Trusting a
- * half-read refusal would clear the evidence of a write that may have landed.
- */
-export function asGatewayFailureV2(
-  value: unknown,
-  expected: GatewayResponseIdentityV2,
-): GatewayFailureV2 | null {
-  const response = record(value);
-  if (!response) return null;
-  const responseKeys = [
-    'schema_version', 'request_id', 'idempotency_key', 'capability', 'ok',
-    'replayed', 'transaction_id', 'receipt_path', 'snapshot_after', 'result',
-    'error',
-  ] as const;
-  const error = record(response.error);
-  const refused = exactKeys(response, responseKeys)
-    && response.schema_version === GATEWAY_SCHEMA_VERSION
-    && response.request_id === expected.requestId
-    && response.idempotency_key === expected.idempotencyKey
-    && response.capability === expected.capability
-    && response.ok === false
-    && typeof response.replayed === 'boolean'
-    && response.transaction_id === null
-    && response.receipt_path === null
-    && response.snapshot_after === null
-    && record(response.result) !== null
-    && error !== null
-    && exactKeys(error, ['code', 'message', 'retryable', 'details'])
-    && nonEmpty(error.code)
-    && nonEmpty(error.message)
-    && typeof error.retryable === 'boolean'
-    && record(error.details) !== null;
-  return refused ? response as unknown as GatewayFailureV2 : null;
+export function asGatewayFailureV2(value: unknown, expected: GatewayResponseIdentityV2): GatewayFailureV2 | null {
+  return validateGatewayFailureV2(value)
+    && value.request_id === expected.requestId
+    && value.idempotency_key === expected.idempotencyKey
+    && value.capability === expected.capability ? value : null;
 }
 
-/**
- * Strictly narrow a persisted or received envelope back to `GatewayRequestV2`.
- *
- * Recovery resends a string that has been sitting in `data.json`, possibly
- * across an Obsidian restart and an editor that can open that file. Nothing
- * downstream re-derives the envelope, so this is the only place that can
- * establish it is still the shape the learner approved.
- */
+/** Persisted requests must also belong to this interface's authorization policy. */
 export function asGatewayRequestV2(value: unknown): GatewayRequestV2 | null {
-  const envelope = record(value);
-  if (!envelope) return null;
-  const approval = record(envelope.approval);
-  const revisions = record(envelope.expected_revisions);
-  const valid = exactKeys(envelope, [
-    'schema_version', 'request_id', 'idempotency_key', 'capability', 'channel',
-    'expected_snapshot', 'expected_revisions', 'approval', 'payload',
-  ])
-    && envelope.schema_version === GATEWAY_SCHEMA_VERSION
-    && nonEmpty(envelope.request_id)
-    && nonEmpty(envelope.idempotency_key)
-    && nonEmpty(envelope.capability)
-    // The UI only ever prepares its own channel; a persisted record claiming
-    // another one was not written by this interface.
-    && envelope.channel === 'ui'
-    && isSha256(envelope.expected_snapshot)
-    && revisions !== null
-    && Object.entries(revisions).every(
-      ([id, revision]) => nonEmpty(id)
-        && Number.isInteger(revision)
-        && (revision as number) >= 0,
-    )
-    && approval !== null
-    && exactKeys(approval, ['kind', 'subject_sha256'])
-    && approval.kind === 'direct-user-gesture'
-    && isSha256(approval.subject_sha256)
-    && record(envelope.payload) !== null;
-  return valid ? envelope as unknown as GatewayRequestV2 : null;
+  return validateGatewayRequestV2(value) && value.channel === 'ui'
+    && value.approval.kind === 'direct-user-gesture' ? value : null;
 }

@@ -11,12 +11,12 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "check:source-graph": "node scripts/check-source-graph.mjs",
     "check:code": "npm run typecheck && npm run check:source-graph && npm run test:manifest-store-indexes && npm run test:atlas-graph && npm run test:library-finder && npm run test:trace-context && npm run test:operations && npm run test:abilities",
-    "contract:check": "node scripts/check-contract.mjs && node scripts/check-contract-production.mjs && node tests/test-ability-contract-mirror.mjs",
+    "contract:check": "node scripts/check-contract.mjs && node scripts/check-contract-production.mjs && node tests/test-ability-contract-mirror.mjs && node scripts/generate-responses.mjs --check",
     "contract:generate": "node scripts/generate-contract.mjs --bundle ../repository/generated/contract-prototype/manifest-v15.bundle.json --meta ../repository/generated/contract-prototype/manifest-v15.meta.json",
     "typecheck:contract-prototype": "tsc -p tsconfig.contract-prototype.json --noEmit",
     "contract:diff-prototype": "node scripts/diff-contract-prototype.mjs",
     "test:ui": "node tests/test-dashboard.js && node tests/test-ai-actions.js",
-    "test": "npm run build && npm run check:code && npm run typecheck:contracts && npm run contract:check && npm run test:installer && npm run test:modules && npm run test:ui && npm run test:live-app-check && npm run test:ci-policy && npm run test:build-fingerprint && npm run test:manifest-validation-diff",
+    "test": "npm run build && npm run check:code && npm run typecheck:contracts && npm run contract:check && npm run test:installer && npm run test:modules && npm run test:ui && npm run test:live-app-check && npm run test:ci-policy && npm run test:build-fingerprint && npm run test:manifest-validation-diff && npm run test:response-validation-diff",
     "check": "npm run test && node scripts/check-host-surface.mjs && node scripts/check-build.mjs",
     "build:info": "node scripts/print-build-info.mjs",
     "install:status": "node scripts/check-install-current.mjs",
@@ -33,7 +33,9 @@
     "test:operations": "node tests/test-operations.js",
     "test:abilities": "node tests/test-abilities-model.js && node tests/test-atlas-presentation-review.js",
     "test:build-fingerprint": "node tests/test-build-fingerprint.mjs",
-    "test:manifest-validation-diff": "node tests/test-manifest-validation-diff.js"
+    "test:manifest-validation-diff": "node tests/test-manifest-validation-diff.js",
+    "contract:responses": "node scripts/generate-responses.mjs",
+    "test:response-validation-diff": "node tests/test-response-validation-diff.js"
   },
   "devDependencies": {
     "ajv": "^8.20.0",

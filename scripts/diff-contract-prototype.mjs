@@ -30,7 +30,7 @@ function findPython() {
   ];
   for (const candidate of candidates) {
     const probe = spawnSync(candidate,
-      ['-c', 'import learning_os.contracts.bundle'],
+      ['-c', 'import learning_os.store.contracts.bundle'],
       { encoding: 'utf8', cwd: coreRoot });
     if (probe.status === 0) return candidate;
   }
