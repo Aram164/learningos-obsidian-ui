@@ -68,7 +68,7 @@ var require_formats = __commonJS({
     }
     exports2.fullFormats = {
       // date: http://tools.ietf.org/html/rfc3339#section-5.6
-      date: fmtDef(date3, compareDate),
+      date: fmtDef(date2, compareDate),
       // date-time: http://tools.ietf.org/html/rfc3339#section-5.6
       time: fmtDef(getTime(true), compareTime),
       "date-time": fmtDef(getDateTime(true), compareDateTime),
@@ -76,7 +76,7 @@ var require_formats = __commonJS({
       "iso-date-time": fmtDef(getDateTime(), compareIsoDateTime),
       // duration: https://tools.ietf.org/html/rfc3339#appendix-A
       duration: /^P(?!$)((\d+Y)?(\d+M)?(\d+D)?(T(?=\d)(\d+H)?(\d+M)?(\d+S)?)?|(\d+W)?)$/,
-      uri: uri2,
+      uri,
       "uri-reference": /^(?:[a-z][a-z0-9+\-.]*:)?(?:\/?\/(?:(?:[a-z0-9\-._~!$&'()*+,;=:]|%[0-9a-f]{2})*@)?(?:\[(?:(?:(?:(?:[0-9a-f]{1,4}:){6}|::(?:[0-9a-f]{1,4}:){5}|(?:[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){4}|(?:(?:[0-9a-f]{1,4}:){0,1}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){3}|(?:(?:[0-9a-f]{1,4}:){0,2}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){2}|(?:(?:[0-9a-f]{1,4}:){0,3}[0-9a-f]{1,4})?::[0-9a-f]{1,4}:|(?:(?:[0-9a-f]{1,4}:){0,4}[0-9a-f]{1,4})?::)(?:[0-9a-f]{1,4}:[0-9a-f]{1,4}|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?))|(?:(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4})?::[0-9a-f]{1,4}|(?:(?:[0-9a-f]{1,4}:){0,6}[0-9a-f]{1,4})?::)|[Vv][0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+)\]|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)|(?:[a-z0-9\-._~!$&'"()*+,;=]|%[0-9a-f]{2})*)(?::\d*)?(?:\/(?:[a-z0-9\-._~!$&'"()*+,;=:@]|%[0-9a-f]{2})*)*|\/(?:(?:[a-z0-9\-._~!$&'"()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'"()*+,;=:@]|%[0-9a-f]{2})*)*)?|(?:[a-z0-9\-._~!$&'"()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'"()*+,;=:@]|%[0-9a-f]{2})*)*)?(?:\?(?:[a-z0-9\-._~!$&'"()*+,;=:@/?]|%[0-9a-f]{2})*)?(?:#(?:[a-z0-9\-._~!$&'"()*+,;=:@/?]|%[0-9a-f]{2})*)?$/i,
       // uri-template: https://tools.ietf.org/html/rfc6570
       "uri-template": /^(?:(?:[^\x00-\x20"'<>%\\^`{|}]|%[0-9a-f]{2})|\{[+#./;?&=,!@|]?(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?(?:,(?:[a-z0-9_]|%[0-9a-f]{2})+(?::[1-9][0-9]{0,3}|\*)?)*\})*$/i,
@@ -134,7 +134,7 @@ var require_formats = __commonJS({
     }
     var DATE = /^(\d\d\d\d)-(\d\d)-(\d\d)$/;
     var DAYS = [0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-    function date3(str2) {
+    function date2(str2) {
       const matches3 = DATE.exec(str2);
       if (!matches3)
         return false;
@@ -202,8 +202,8 @@ var require_formats = __commonJS({
     function getDateTime(strictTimeZone) {
       const time = getTime(strictTimeZone);
       return function date_time(str2) {
-        const dateTime5 = str2.split(DATE_TIME_SEPARATOR);
-        return dateTime5.length === 2 && date3(dateTime5[0]) && time(dateTime5[1]);
+        const dateTime4 = str2.split(DATE_TIME_SEPARATOR);
+        return dateTime4.length === 2 && date2(dateTime4[0]) && time(dateTime4[1]);
       };
     }
     function compareDateTime(dt1, dt2) {
@@ -227,7 +227,7 @@ var require_formats = __commonJS({
     }
     var NOT_URI_FRAGMENT = /\/|:/;
     var URI = /^(?:[a-z][a-z0-9+\-.]*:)(?:\/?\/(?:(?:[a-z0-9\-._~!$&'()*+,;=:]|%[0-9a-f]{2})*@)?(?:\[(?:(?:(?:(?:[0-9a-f]{1,4}:){6}|::(?:[0-9a-f]{1,4}:){5}|(?:[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){4}|(?:(?:[0-9a-f]{1,4}:){0,1}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){3}|(?:(?:[0-9a-f]{1,4}:){0,2}[0-9a-f]{1,4})?::(?:[0-9a-f]{1,4}:){2}|(?:(?:[0-9a-f]{1,4}:){0,3}[0-9a-f]{1,4})?::[0-9a-f]{1,4}:|(?:(?:[0-9a-f]{1,4}:){0,4}[0-9a-f]{1,4})?::)(?:[0-9a-f]{1,4}:[0-9a-f]{1,4}|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?))|(?:(?:[0-9a-f]{1,4}:){0,5}[0-9a-f]{1,4})?::[0-9a-f]{1,4}|(?:(?:[0-9a-f]{1,4}:){0,6}[0-9a-f]{1,4})?::)|[Vv][0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+)\]|(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)|(?:[a-z0-9\-._~!$&'()*+,;=]|%[0-9a-f]{2})*)(?::\d*)?(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*|\/(?:(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)?|(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})+(?:\/(?:[a-z0-9\-._~!$&'()*+,;=:@]|%[0-9a-f]{2})*)*)(?:\?(?:[a-z0-9\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?(?:#(?:[a-z0-9\-._~!$&'()*+,;=:@/?]|%[0-9a-f]{2})*)?$/i;
-    function uri2(str2) {
+    function uri(str2) {
       return NOT_URI_FRAGMENT.test(str2) && URI.test(str2);
     }
     var BYTE = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/gm;
@@ -22175,994 +22175,6 @@ var import_obsidian27 = require("obsidian");
 var fs5 = __toESM(require("node:fs"));
 var nodePath5 = __toESM(require("node:path"));
 
-// src/contracts/manifest-records.ts
-var row = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
-var text = (value) => typeof value === "string";
-var nonEmpty = (value) => text(value) && value.trim().length > 0;
-var natural = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0;
-var integer = (value) => typeof value === "number" && Number.isInteger(value);
-var positive = (value) => typeof value === "number" && Number.isInteger(value) && value >= 1;
-var finite = (value) => typeof value === "number" && Number.isFinite(value);
-var identifier = (value, prefix) => text(value) && new RegExp(`^${prefix}[a-z0-9]+(?:-[a-z0-9]+)*$`).test(value);
-var date = (value) => {
-  if (!text(value)) return false;
-  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (!match) return false;
-  const parsed = /* @__PURE__ */ new Date(`${value}T00:00:00Z`);
-  return Number.isFinite(parsed.getTime()) && parsed.getUTCFullYear() === Number(match[1]) && parsed.getUTCMonth() + 1 === Number(match[2]) && parsed.getUTCDate() === Number(match[3]);
-};
-var dateTime = (value) => text(value) && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
-var uri = (value) => text(value) && /^[a-z][a-z0-9+.-]*:[^\s]+$/i.test(value);
-function exact(value, required, optional2 = []) {
-  const allowed = /* @__PURE__ */ new Set([...required, ...optional2]);
-  return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => allowed.has(key));
-}
-function values(value, allowed) {
-  return text(value) && allowed.includes(value);
-}
-function list(value, predicate, unique2 = false) {
-  return Array.isArray(value) && value.every(predicate) && (!unique2 || new Set(value).size === value.length);
-}
-var strings = (value, unique2 = false) => list(value, text, unique2);
-var ids = (value, prefix, unique2 = true) => list(value, (item) => identifier(item, prefix), unique2);
-var optional = (source, key, predicate) => !(key in source) || predicate(source[key]);
-var nullable = (value, predicate) => value === null || predicate(value);
-function validStringMap(value) {
-  const source = row(value);
-  return Boolean(source && Object.values(source).every(text));
-}
-function validStringArrayMap(value) {
-  const source = row(value);
-  return Boolean(source && Object.values(source).every((items) => strings(items, true)));
-}
-function validJsonValue(value, seen = /* @__PURE__ */ new Set()) {
-  if (value === null || text(value) || typeof value === "boolean") return true;
-  if (typeof value === "number") return Number.isFinite(value);
-  if (typeof value !== "object" || seen.has(value)) return false;
-  seen.add(value);
-  const valid = Array.isArray(value) ? value.every((item) => validJsonValue(item, seen)) : Object.values(value).every((item) => validJsonValue(item, seen));
-  seen.delete(value);
-  return valid;
-}
-function validJsonObject(value) {
-  const source = row(value);
-  return Boolean(source && Object.values(source).every((item) => validJsonValue(item)));
-}
-function validDeadlineModule(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["module_id", "title", "action", "termins"]) && identifier(source.module_id, "module-") && nonEmpty(source.title) && nullable(source.action, text) && list(source.termins, (termin) => positive(termin) && Number(termin) <= 3, true));
-}
-function validAcademicDeadline(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["kind", "label", "start_date", "end_date"], [
-    "module_id",
-    "modules",
-    "notes",
-    "registration_state",
-    "termin",
-    "time",
-    "title"
-  ]) && nonEmpty(source.kind) && nonEmpty(source.label) && date(source.start_date) && date(source.end_date) && optional(source, "module_id", text) && optional(source, "modules", (items) => list(items, validDeadlineModule)) && optional(source, "notes", (item) => nullable(item, text)) && optional(source, "registration_state", text) && optional(source, "termin", positive) && optional(source, "time", (item) => nullable(item, text)) && optional(source, "title", text));
-}
-function validBacklinks(value) {
-  const source = row(value);
-  if (!source || !exact(source, [], [
-    "concept_relations",
-    "concept_to_notes",
-    "module_to_units",
-    "module_to_workspaces",
-    "note_incoming",
-    "source_to_notes",
-    "source_to_units",
-    "unit_to_workspaces",
-    "workspace_to_notes"
-  ])) return false;
-  return optional(source, "concept_relations", validJsonObject) && [
-    "concept_to_notes",
-    "module_to_units",
-    "module_to_workspaces",
-    "note_incoming",
-    "source_to_notes",
-    "source_to_units",
-    "unit_to_workspaces",
-    "workspace_to_notes"
-  ].every((key) => optional(source, key, validStringArrayMap));
-}
-var COUNT_KEYS = [
-  "ai_action_requests",
-  "collections",
-  "concepts",
-  "garden_entries",
-  "inbox_items",
-  "learning_paths",
-  "learning_paths_active",
-  "modules",
-  "notes",
-  "notes_reviewed",
-  "notes_with_evidence",
-  "programs",
-  "projects",
-  "relations",
-  "source_feedback_records",
-  "sources",
-  "sources_with_topics",
-  "stages",
-  "stages_complete",
-  "study_maps",
-  "thematic_groups",
-  "topic_packs",
-  "topics",
-  "units",
-  "units_needing_map",
-  "workspaces_active",
-  "workspaces_archived"
-];
-function validCounts(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, COUNT_KEYS) && COUNT_KEYS.every((key) => natural(source[key])));
-}
-function validGardenEntry(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "last_ai_request_id",
-    "path",
-    "revision",
-    "state",
-    "tags",
-    "title",
-    "transcription_path",
-    "type"
-  ]) && text(source.id) && nullable(source.last_ai_request_id, text) && text(source.path) && text(source.revision) && text(source.state) && strings(source.tags) && text(source.title) && nullable(source.transcription_path, text) && source.type === "garden-note");
-}
-function validProgress(value) {
-  const source = row(value);
-  const keys = [
-    "stages_complete",
-    "stages_total",
-    "units_complete",
-    "units_needing_map",
-    "units_total"
-  ];
-  return Boolean(source && Object.values(source).every((item) => {
-    const progress = row(item);
-    return Boolean(progress && exact(progress, keys) && keys.every((key) => natural(progress[key])));
-  }));
-}
-function validRelation(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["from", "type", "to", "context", "source"]) && ["from", "type", "to", "context", "source"].every((key) => nullable(source[key], text)));
-}
-function validResumePointer(value) {
-  const source = row(value);
-  if (!source) return false;
-  if (exact(source, [])) return true;
-  return exact(source, [
-    "type",
-    "module_id",
-    "unit_id",
-    "study_map_id",
-    "stage_id",
-    "updated"
-  ]) && source.type === "resume-pointer" && ["module_id", "unit_id", "study_map_id", "stage_id", "updated"].every((key) => text(source[key]));
-}
-function validReviewItem(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "category",
-    "context",
-    "id",
-    "reason",
-    "target",
-    "title"
-  ]) && text(source.category) && text(source.context) && text(source.id) && text(source.reason) && validJsonObject(source.target) && text(source.title));
-}
-function validSemester(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["id", "order", "program_id", "status", "title"]) && text(source.id) && integer(source.order) && text(source.program_id) && text(source.status) && text(source.title));
-}
-function validThematicGroup(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["id", "title", "description", "order"]) && text(source.id) && text(source.title) && text(source.description) && integer(source.order));
-}
-function validTopic(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["id", "title", "domain"]) && text(source.id) && text(source.title) && text(source.domain));
-}
-function validModuleComponent(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["id", "title", "order"], ["short_title"]) && identifier(source.id, "component-") && nonEmpty(source.title) && natural(source.order) && optional(source, "short_title", text));
-}
-function validExaminationSitting(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["termin", "date"], [
-    "end_date",
-    "withdrawal_deadline",
-    "time",
-    "label",
-    "notes"
-  ]) && positive(source.termin) && source.termin <= 3 && date(source.date) && optional(source, "end_date", date) && optional(source, "withdrawal_deadline", date) && optional(source, "time", nonEmpty) && optional(source, "label", nonEmpty) && optional(source, "notes", text));
-}
-function validRegistrationWindow(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["opens", "closes", "label"], ["action", "termins"]) && date(source.opens) && date(source.closes) && nonEmpty(source.label) && optional(source, "action", nonEmpty) && optional(source, "termins", (termins) => list(
-    termins,
-    (termin) => positive(termin) && Number(termin) <= 3,
-    true
-  )));
-}
-function validExamination(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [], ["type", "notes", "sittings", "registration_windows"]) && optional(source, "type", (item) => values(item, [
-    "klausur",
-    "muendlich",
-    "portfolio",
-    "project",
-    "hausarbeit",
-    "other"
-  ])) && optional(source, "notes", text) && optional(source, "sittings", (items) => list(items, validExaminationSitting)) && optional(source, "registration_windows", (items) => list(items, validRegistrationWindow)));
-}
-function validAttempt(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["termin", "result"], ["date", "grade", "notes"]) && positive(source.termin) && source.termin <= 3 && values(source.result, ["registered", "withdrawn", "sat", "passed", "failed"]) && optional(source, "date", date) && optional(source, "grade", (grade) => finite(grade) && grade >= 1 && grade <= 5) && optional(source, "notes", text));
-}
-function validModuleRecord(value) {
-  const source = row(value);
-  if (!source || !exact(source, [
-    "id",
-    "type",
-    "title",
-    "revision",
-    "path",
-    "kind",
-    "area_id",
-    "thematic_group_ids",
-    "status",
-    "administrative_status",
-    "operational_state",
-    "is_actionable",
-    "institution",
-    "code",
-    "credits",
-    "semester",
-    "components",
-    "examination",
-    "attempts",
-    "grade",
-    "unit_order",
-    "source_map"
-  ])) return false;
-  return identifier(source.id, "module-") && source.type === "module" && nonEmpty(source.title) && natural(source.revision) && nonEmpty(source.path) && values(source.kind, ["academic", "skill", "project", "foundation"]) && nullable(source.area_id, (item) => identifier(item, "program-")) && ids(source.thematic_group_ids, "thematic-group-") && values(source.status, [
-    "planned",
-    "enrolled",
-    "active",
-    "paused",
-    "awaiting-grade",
-    "completed",
-    "dropped",
-    "archived"
-  ]) && (source.administrative_status === null || values(source.administrative_status, [
-    "planned",
-    "enrolled",
-    "awaiting-grade",
-    "completed",
-    "dropped",
-    "archived"
-  ])) && values(source.operational_state, ["none", "complete", "active", "paused"]) && typeof source.is_actionable === "boolean" && nullable(source.institution, text) && nullable(source.code, text) && nullable(source.credits, (item) => finite(item) && item >= 0) && nullable(source.semester, (item) => text(item) && /^(sose|wise)-\d{4}$/.test(item)) && list(source.components, validModuleComponent) && nullable(source.examination, validExamination) && list(source.attempts, validAttempt) && nullable(source.grade, (item) => finite(item) && item >= 1 && item <= 5) && ids(source.unit_order, "unit-") && (source.source_map === null || source.source_map === "source-map.yaml");
-}
-function validProgramSemester(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["id", "title", "status", "order"]) && identifier(source.id, "semester-") && nonEmpty(source.title) && values(source.status, ["current", "previous", "future", "archived"]) && natural(source.order));
-}
-function validProgramRecord(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "type",
-    "title",
-    "kind",
-    "status",
-    "default",
-    "semester_bound",
-    "revision",
-    "path"
-  ], ["description", "boundary_action", "semesters"]) && identifier(source.id, "program-") && source.type === "program" && nonEmpty(source.title) && values(source.kind, ["academic", "skills", "projects"]) && values(source.status, ["active", "metadata-only", "archived"]) && typeof source.default === "boolean" && typeof source.semester_bound === "boolean" && natural(source.revision) && nonEmpty(source.path) && optional(source, "description", text) && optional(source, "boundary_action", text) && optional(source, "semesters", (items) => list(items, validProgramSemester)));
-}
-function validProjectBoundaries(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["confidentiality", "external_code_access"], ["notes"]) && values(source.confidentiality, ["public", "private", "confidential"]) && values(source.external_code_access, ["none", "read-only", "approved"]) && optional(source, "notes", text));
-}
-function validStructureNode(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["id", "title", "kind"], ["status", "summary", "children"]) && text(source.id) && /^(workstream|step-map|step|milestone)-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(source.id) && nonEmpty(source.title) && values(source.kind, ["workstream", "step-map", "step", "milestone"]) && optional(source, "status", (item) => values(item, [
-    "planned",
-    "active",
-    "blocked",
-    "complete",
-    "completed",
-    "deferred"
-  ])) && optional(source, "summary", text) && optional(source, "children", (items) => list(items, validStructureNode)));
-}
-function validProjectStructure(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["kind", "nodes"]) && values(source.kind, ["none", "linear", "parallel", "nested"]) && list(source.nodes, validStructureNode));
-}
-function validProjectFile(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["label", "path"], ["kind"]) && nonEmpty(source.label) && nonEmpty(source.path) && optional(source, "kind", (item) => values(item, [
-    "input",
-    "output",
-    "working",
-    "external"
-  ])));
-}
-function validProjectDecision(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["id", "title", "status", "summary"], ["decided_at"]) && identifier(source.id, "decision-") && nonEmpty(source.title) && values(source.status, ["open", "decided", "revisit"]) && nonEmpty(source.summary) && optional(source, "decided_at", date));
-}
-function validProjectRecord(value) {
-  const source = row(value);
-  if (!source || !exact(source, [
-    "schema_version",
-    "id",
-    "type",
-    "title",
-    "project_type",
-    "status",
-    "root_uri",
-    "objective",
-    "milestone_ids",
-    "linked_module_ids",
-    "unit_ids",
-    "workspace_ids",
-    "thematic_group_ids",
-    "boundaries",
-    "revision",
-    "path",
-    "relationship_ids"
-  ], [
-    "structure",
-    "files",
-    "decisions",
-    "migrated_from",
-    "migrated_at",
-    "migration",
-    "source_sha256"
-  ])) return false;
-  return source.schema_version === 1 && identifier(source.id, "project-") && source.type === "project" && nonEmpty(source.title) && values(source.project_type, ["thesis", "research", "software", "writing", "other"]) && values(source.status, ["planned", "active", "paused", "completed", "archived"]) && text(source.root_uri) && /^(project|github):\/\/[^\s]+$/.test(source.root_uri) && nonEmpty(source.objective) && ids(source.milestone_ids, "milestone-") && ids(source.linked_module_ids, "module-") && ids(source.unit_ids, "unit-") && ids(source.workspace_ids, "workspace-") && ids(source.thematic_group_ids, "thematic-group-") && validProjectBoundaries(source.boundaries) && natural(source.revision) && nonEmpty(source.path) && ids(source.relationship_ids, "relationship-") && optional(source, "structure", validProjectStructure) && optional(source, "files", (items) => list(items, validProjectFile)) && optional(source, "decisions", (items) => list(items, validProjectDecision)) && optional(source, "migrated_from", text) && optional(source, "migrated_at", dateTime) && optional(source, "migration", text) && optional(source, "source_sha256", (item) => text(item) && /^[a-f0-9]{64}$/.test(item));
-}
-function validProjectRelationship(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "type",
-    "from_project_id",
-    "to_id",
-    "to_type",
-    "relation_type",
-    "reason",
-    "contribution",
-    "path"
-  ]) && identifier(source.id, "relationship-") && source.type === "project-relationship" && identifier(source.from_project_id, "project-") && nonEmpty(source.to_id) && values(source.to_type, ["module", "source", "topic-pack", "note", "file"]) && values(source.relation_type, ["uses", "informs", "depends-on", "produces", "related"]) && nonEmpty(source.reason) && nonEmpty(source.contribution) && nonEmpty(source.path));
-}
-function validCompatibilityAlias(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["id", "type", "target_id", "target_type", "path"]) && nonEmpty(source.id) && source.type === "compatibility-alias" && identifier(source.target_id, "project-") && source.target_type === "project" && source.path === "projects/aliases.yaml");
-}
-function validNoteEvidence(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["type", "ref"]) && values(source.type, [
-    "derivation",
-    "explanation",
-    "implementation",
-    "exercise",
-    "exam",
-    "external"
-  ]) && nonEmpty(source.ref));
-}
-function validNoteRecord(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "type",
-    "title",
-    "path",
-    "domain",
-    "summary",
-    "role",
-    "state",
-    "authorship",
-    "concepts",
-    "sources",
-    "contexts",
-    "attachments",
-    "evidence",
-    "supersedes",
-    "reviewed",
-    "transcription",
-    "semantic_review",
-    "atlas_question",
-    "material_analysis"
-  ]) && identifier(source.id, "note-") && source.type === "note" && nonEmpty(source.title) && nonEmpty(source.path) && text(source.domain) && text(source.summary) && values(source.role, [
-    "synthesis",
-    "reference",
-    "derivation",
-    "exercise-bank",
-    "mock-exam",
-    "implementation",
-    "question",
-    "crosswalk"
-  ]) && nullable(source.state, (item) => values(item, [
-    "rough",
-    "evolving",
-    "mature",
-    "deprecated"
-  ])) && nullable(source.authorship, (item) => values(item, [
-    "user",
-    "mixed",
-    "external",
-    "operator-drafted"
-  ])) && ids(source.concepts, "concept-") && ids(source.sources, "source-") && ids(source.contexts, "workspace-") && strings(source.attachments) && list(source.evidence, validNoteEvidence) && ids(source.supersedes, "note-") && nullable(source.reviewed, date) && nullable(source.transcription, (item) => values(item, [
-    "none",
-    "manual",
-    "ai-assisted"
-  ])) && nullable(source.semantic_review, (item) => values(item, [
-    "unreviewed",
-    "user-reviewed"
-  ])) && nullable(source.atlas_question, validAtlasQuestion) && (source.atlas_question === null || source.role === "question") && nullable(source.material_analysis, validMaterialAnalysis));
-}
-function validMaterialAnalysis(value) {
-  const source = row(value);
-  if (!source || !exact(source, [
-    "resolution",
-    "material",
-    "recorded_source_digest",
-    "inspected_range",
-    "frozen_input_sha256",
-    "frozen_input_bytes"
-  ], [
-    "source_id",
-    "live_source_digest",
-    "anchors",
-    "model",
-    "built"
-  ])) return false;
-  const hex64 = (item) => text(item) && /^[a-f0-9]{64}$/.test(item);
-  const range = row(source.inspected_range);
-  return values(source.resolution, ["resolved", "unresolved", "unavailable", "stale"]) && nonEmpty(source.material) && hex64(source.recorded_source_digest) && Boolean(range && exact(range, ["start", "end"]) && positive(range.start) && positive(range.end)) && hex64(source.frozen_input_sha256) && positive(source.frozen_input_bytes) && optional(source, "source_id", (item) => identifier(item, "source-")) && optional(source, "live_source_digest", hex64) && optional(source, "anchors", (items) => list(items, validAnalysisAnchor)) && optional(source, "model", text) && optional(source, "built", date) && (source.resolution === "resolved" ? typeof source.source_id === "string" : source.source_id === void 0);
-}
-function validAnalysisAnchor(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["topic", "purpose", "locator"], ["note"]) && nonEmpty(source.topic) && nonEmpty(source.purpose) && nonEmpty(source.locator) && (source.note === void 0 || text(source.note)));
-}
-function validAtlasQuestion(value) {
-  const source = row(value);
-  if (!source || !exact(source, ["state", "target"], ["answer_notes"])) return false;
-  const target = row(source.target);
-  if (!target) return false;
-  const concepts = exact(target, ["concepts"]) && ids(target.concepts, "concept-") && Array.isArray(target.concepts) && target.concepts.length >= 1 && target.concepts.length <= 2;
-  const relation = exact(target, ["from", "type", "to"]) && identifier(target.from, "concept-") && identifier(target.to, "concept-") && values(target.type, [
-    "requires",
-    "builds-on",
-    "derives",
-    "generalizes",
-    "contrasts-with",
-    "equivalent-to",
-    "applies-in",
-    "motivates"
-  ]);
-  return values(source.state, ["open", "resolved"]) && (concepts || relation) && (source.answer_notes === void 0 || ids(source.answer_notes, "note-"));
-}
-function validConceptRecord(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["id", "type", "title", "path", "aliases", "deprecated"]) && identifier(source.id, "concept-") && source.type === "concept" && nonEmpty(source.title) && nonEmpty(source.path) && strings(source.aliases, true) && typeof source.deprecated === "boolean");
-}
-function validUsefulSection(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["section", "note"]) && text(source.section) && text(source.note));
-}
-function validSourceEvaluation(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "roles",
-    "level",
-    "audience",
-    "prerequisites",
-    "strengths",
-    "weaknesses",
-    "reviewed",
-    "concepts",
-    "useful_sections"
-  ]) && strings(source.roles) && nullable(source.level, (item) => values(item, [
-    "introductory",
-    "intermediate",
-    "advanced",
-    "reference"
-  ])) && strings(source.audience) && strings(source.prerequisites) && strings(source.strengths) && strings(source.weaknesses) && nullable(source.reviewed, date) && ids(source.concepts, "concept-") && list(source.useful_sections, validUsefulSection));
-}
-function validSourceExamination(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["evaluated", "approved_analysis_count", "metadata_placed"]) && typeof source.evaluated === "boolean" && natural(source.approved_analysis_count) && typeof source.metadata_placed === "boolean");
-}
-function validSourceDiscovery(value) {
-  const source = row(value);
-  const provenance = (item) => text(item) && /^(https?:\/\/\S+|\S+#L[0-9]+)$/.test(item);
-  return Boolean(source && exact(
-    source,
-    ["observed", "basis", "possible_use"],
-    ["origins", "child_titles"]
-  ) && date(source.observed) && Array.isArray(source.basis) && source.basis.length > 0 && list(source.basis, (item) => {
-    const basis = row(item);
-    return Boolean(basis && exact(basis, ["kind", "ref"]) && values(basis.kind, [
-      "list-entry",
-      "landing-page",
-      "catalogue-entry",
-      "playlist-metadata",
-      "table-of-contents"
-    ]) && provenance(basis.ref));
-  }) && nonEmpty(source.possible_use) && source.possible_use.length <= 200 && optional(source, "origins", (items) => list(items, provenance)) && optional(source, "child_titles", (item) => {
-    const titles = row(item);
-    return Boolean(titles && Object.values(titles).every(nonEmpty));
-  }));
-}
-function validSourceRecord(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "type",
-    "title",
-    "revision",
-    "path",
-    "source_type",
-    "thematic_group_ids",
-    "topics",
-    "url",
-    "material",
-    "material_path",
-    "material_exists",
-    "authors",
-    "organization",
-    "year",
-    "identifiers",
-    "roles",
-    "evaluations",
-    "discovery",
-    "examination"
-  ]) && identifier(source.id, "source-") && source.type === "source" && nonEmpty(source.title) && natural(source.revision) && nonEmpty(source.path) && values(source.source_type, [
-    "book",
-    "paper",
-    "lecture",
-    "course",
-    "video",
-    "website",
-    "documentation",
-    "software",
-    "conversation",
-    "other"
-  ]) && ids(source.thematic_group_ids, "thematic-group-") && ids(source.topics, "topic-") && nullable(source.url, uri) && nullable(source.material, (item) => text(item) && /^material:\/\/.+/.test(item)) && nullable(source.material_path, text) && typeof source.material_exists === "boolean" && strings(source.authors) && nullable(source.organization, text) && nullable(source.year, (item) => natural(item) && item >= 1800 && item <= 2100) && validStringMap(source.identifiers) && strings(source.roles, true) && list(source.evaluations, validSourceEvaluation) && nullable(source.discovery, validSourceDiscovery) && validSourceExamination(source.examination));
-}
-function validCollectionEntry(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["source", "group", "why"]) && identifier(source.source, "source-") && nullable(source.group, text) && nullable(source.why, text));
-}
-function validCollectionRecord(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "type",
-    "revision",
-    "collection_kind",
-    "title",
-    "path",
-    "thematic_group_ids",
-    "purpose",
-    "sources",
-    "summary",
-    "domain",
-    "entries"
-  ]) && nonEmpty(source.id) && values(source.type, ["collection", "topic-pack"]) && natural(source.revision) && values(source.collection_kind, ["catalogue", "topic-pack"]) && nonEmpty(source.title) && text(source.path) && /^sources\/collections\/.+\.yaml$/.test(source.path) && ids(source.thematic_group_ids, "thematic-group-") && nullable(source.purpose, text) && ids(source.sources, "source-", false) && text(source.summary) && nonEmpty(source.domain) && list(source.entries, validCollectionEntry));
-}
-var validTopicPack = validCollectionRecord;
-function validWorkspaceRecord(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "type",
-    "title",
-    "revision",
-    "path",
-    "status",
-    "standing",
-    "archived",
-    "deadline",
-    "objective",
-    "next_action",
-    "concepts",
-    "notes",
-    "sources",
-    "program_ids",
-    "module_ids",
-    "unit_ids",
-    "project_id"
-  ]) && identifier(source.id, "workspace-") && source.type === "workspace" && nonEmpty(source.title) && natural(source.revision) && nonEmpty(source.path) && values(source.status, ["active", "blocked", "complete"]) && typeof source.standing === "boolean" && typeof source.archived === "boolean" && nullable(source.deadline, date) && text(source.objective) && text(source.next_action) && ids(source.concepts, "concept-") && ids(source.notes, "note-") && ids(source.sources, "source-") && ids(source.program_ids, "program-") && ids(source.module_ids, "module-") && ids(source.unit_ids, "unit-") && nullable(source.project_id, (item) => identifier(item, "project-")));
-}
-function validStageAttachment(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["path", "label"]) && nonEmpty(source.path) && nonEmpty(source.label));
-}
-function validResource(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["kind", "label"], [
-    "id",
-    "route_id",
-    "source_id",
-    "locator",
-    "angle",
-    "angle_detail",
-    "url",
-    "vault_path",
-    "scope_triage",
-    "material_uri",
-    "material_path",
-    "material_exists"
-  ]) && text(source.kind) && text(source.label) && optional(source, "id", text) && optional(source, "route_id", (item) => identifier(item, "route-")) && optional(source, "source_id", text) && optional(source, "locator", text) && optional(source, "angle", text) && optional(source, "angle_detail", text) && optional(source, "url", uri) && optional(source, "vault_path", text) && optional(source, "scope_triage", text) && optional(source, "material_uri", text) && optional(source, "material_path", text) && optional(source, "material_exists", (item) => typeof item === "boolean"));
-}
-function validSourceFeedback(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["source_id", "feedback", "recorded"], [
-    "resource_id",
-    "note"
-  ]) && identifier(source.source_id, "source-") && optional(source, "resource_id", (item) => identifier(item, "resource-")) && values(source.feedback, [
-    "helpful",
-    "too-advanced",
-    "wrong-perspective",
-    "useful-for-derivation",
-    "useful-for-review",
-    "skipped"
-  ]) && optional(source, "note", text) && date(source.recorded));
-}
-function validStudyMapStage(value, flat) {
-  const source = row(value);
-  const required = [
-    "id",
-    "title",
-    "status",
-    "objective",
-    "done_when",
-    "resources",
-    "working_note",
-    "attachments",
-    "source_feedback",
-    "scope_triage",
-    "notes_text",
-    "notes_updated",
-    ...flat ? ["study_map_id", "unit_id", "module_id"] : []
-  ];
-  if (!source || !exact(source, required, [
-    "number",
-    "estimate_minutes",
-    "exam_critical",
-    "concepts",
-    "detour_id",
-    "completed",
-    ...flat ? [] : ["study_map_id", "unit_id", "module_id"]
-  ])) return false;
-  return text(source.id) && text(source.title) && text(source.status) && text(source.objective) && strings(source.done_when) && list(source.resources, validResource) && text(source.working_note) && list(source.attachments, validStageAttachment) && list(source.source_feedback, validSourceFeedback) && text(source.scope_triage) && text(source.notes_text) && nullable(source.notes_updated, text) && optional(source, "number", positive) && optional(source, "estimate_minutes", positive) && optional(source, "exam_critical", (item) => typeof item === "boolean") && optional(source, "concepts", strings) && optional(source, "detour_id", text) && optional(source, "completed", text) && optional(source, "study_map_id", text) && optional(source, "unit_id", text) && optional(source, "module_id", text);
-}
-var validFlatStage = (value) => validStudyMapStage(value, true);
-function validStudyMapSourcePlan(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["path", "provenance"]) && nonEmpty(source.path) && values(source.provenance, [
-    "migrated-mini-plan",
-    "learner",
-    "ai-proposed",
-    "operator",
-    "durable-note"
-  ]));
-}
-function validDetour(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "title",
-    "spawned_by_stage",
-    "classification",
-    "status",
-    "return_to_stage"
-  ], ["resolution"]) && identifier(source.id, "detour-") && nonEmpty(source.title) && identifier(source.spawned_by_stage, "stage-") && values(source.classification, [
-    "required-now",
-    "helpful-now",
-    "deferred",
-    "reference-only"
-  ]) && values(source.status, ["open", "resolved", "deferred"]) && identifier(source.return_to_stage, "stage-") && optional(source, "resolution", text));
-}
-function validShelvingItem(value, archiveKind) {
-  const source = row(value);
-  const studyMap = archiveKind === "archive-map";
-  return Boolean(source && exact(source, ["id", "kind", "title", "destination", "rationale"], [
-    "diff",
-    ...studyMap ? ["content", "metadata"] : [],
-    "selected"
-  ]) && identifier(source.id, "proposal-") && values(source.kind, [
-    "durable-note",
-    "garden",
-    "concept-relation",
-    archiveKind
-  ]) && nonEmpty(source.title) && nonEmpty(source.destination) && nonEmpty(source.rationale) && optional(source, "diff", text) && (!studyMap || optional(source, "content", text)) && (!studyMap || optional(source, "metadata", (item) => row(item) !== null)) && optional(source, "selected", (item) => typeof item === "boolean"));
-}
-function validShelving(value, studyMap) {
-  const source = row(value);
-  return Boolean(source && exact(source, studyMap ? ["state"] : [], [
-    "state",
-    "proposal_path",
-    "summary",
-    "items"
-  ]) && optional(source, "state", (item) => values(item, studyMap ? ["none", "draft", "proposed", "approved", "applied"] : ["none", "draft", "proposed", "approved"])) && optional(source, "proposal_path", (item) => text(item) && (studyMap || /^work\/active\/.+\.md$/.test(item))) && optional(source, "summary", text) && optional(source, "items", (items) => list(
-    items,
-    (item) => validShelvingItem(item, studyMap ? "archive-map" : "archive-path")
-  )));
-}
-function validStudyMap(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "type",
-    "unit_id",
-    "module_id",
-    "status",
-    "current_stage",
-    "source_plan",
-    "stages",
-    "shelving",
-    "revision",
-    "path"
-  ], ["plan_template_version", "detours"]) && text(source.id) && source.type === "study-map" && text(source.unit_id) && text(source.module_id) && text(source.status) && text(source.current_stage) && validStudyMapSourcePlan(source.source_plan) && list(source.stages, (stage) => validStudyMapStage(stage, false)) && validShelving(source.shelving, true) && natural(source.revision) && text(source.path) && optional(source, "plan_template_version", positive) && optional(source, "detours", (items) => list(items, validDetour)));
-}
-function validPathStage(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "title",
-    "status",
-    "objective",
-    "done_when",
-    "resources",
-    "notes_text",
-    "notes_updated"
-  ], [
-    "number",
-    "estimate_minutes",
-    "exam_critical",
-    "concepts",
-    "notes_path",
-    "attachments",
-    "completed"
-  ]) && identifier(source.id, "stage-") && nonEmpty(source.title) && values(source.status, ["pending", "active", "complete", "skipped"]) && nonEmpty(source.objective) && Array.isArray(source.done_when) && source.done_when.length > 0 && source.done_when.every(nonEmpty) && list(source.resources, validResource) && text(source.notes_text) && nullable(source.notes_updated, text) && optional(source, "number", positive) && optional(source, "estimate_minutes", positive) && optional(source, "exam_critical", (item) => typeof item === "boolean") && optional(source, "concepts", (items) => ids(items, "concept-")) && optional(source, "notes_path", text) && optional(source, "attachments", (items) => list(items, validStageAttachment)) && optional(source, "completed", date));
-}
-function validLearningPath(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "type",
-    "revision",
-    "title",
-    "path",
-    "workspace_id",
-    "area",
-    "module_id",
-    "status",
-    "current_stage",
-    "created",
-    "updated",
-    "objective",
-    "source_plan",
-    "stages",
-    "shelving",
-    "archived"
-  ]) && identifier(source.id, "path-") && source.type === "learning-path" && natural(source.revision) && nonEmpty(source.title) && nonEmpty(source.path) && identifier(source.workspace_id, "workspace-") && values(source.area, ["university", "personal"]) && nullable(source.module_id, (item) => identifier(item, "module-")) && values(source.status, ["active", "paused", "ready-to-shelve", "complete"]) && identifier(source.current_stage, "stage-") && date(source.created) && nullable(source.updated, date) && text(source.objective) && nullable(source.source_plan, text) && Array.isArray(source.stages) && source.stages.length > 0 && source.stages.every(validPathStage) && validShelving(source.shelving, false) && typeof source.archived === "boolean");
-}
-function validKnowledgeNode(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["id", "title", "summary"], ["builds_on", "concept_ids"]) && identifier(source.id, "knowledge-") && nonEmpty(source.title) && nonEmpty(source.summary) && optional(source, "builds_on", (items) => strings(items, true)) && optional(source, "concept_ids", (items) => ids(items, "concept-")));
-}
-function validUnitArtifacts(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [], [
-    "ultimate_reference",
-    "exercise_bank",
-    "mock_exam",
-    "other"
-  ]) && optional(source, "ultimate_reference", (item) => identifier(item, "note-")) && optional(source, "exercise_bank", (item) => identifier(item, "note-")) && optional(source, "mock_exam", (item) => identifier(item, "note-")) && optional(source, "other", (items) => ids(items, "note-")));
-}
-function validUnitNoteSection(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "recorded_at",
-    "title",
-    "stage_ids",
-    "attachments",
-    "text",
-    "summary"
-  ]) && nullable(source.recorded_at, text) && nonEmpty(source.title) && strings(source.stage_ids) && list(source.attachments, validStageAttachment) && text(source.text) && text(source.summary));
-}
-function validKnowledgeMap(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["summary", "nodes"]) && text(source.summary) && list(source.nodes, validKnowledgeNode));
-}
-function validScopeSource(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["source_id", "authority"], ["locator"]) && text(source.source_id) && text(source.authority) && optional(source, "locator", text));
-}
-function validSourceSelection(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["source_id", "locator", "purpose"], ["route_id", "stage_ids"]) && text(source.source_id) && text(source.locator) && text(source.purpose) && optional(source, "route_id", (item) => identifier(item, "route-")) && optional(source, "stage_ids", (items) => strings(items, true)));
-}
-function validProjectedUnit(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "type",
-    "module_id",
-    "kind",
-    "title",
-    "order",
-    "scope",
-    "status",
-    "artifacts",
-    "workspace_ids",
-    "source_selections",
-    "scope_sources",
-    "revision",
-    "path",
-    "project_ids",
-    "needs_study_map",
-    "notes_text",
-    "note_sections",
-    "notes_updated"
-  ], [
-    "component_id",
-    "knowledge_map",
-    "current_study_map",
-    "working_note",
-    "parent_unit_id",
-    "child_unit_ids",
-    "related_module_ids"
-  ]) && identifier(source.id, "unit-") && source.type === "unit" && identifier(source.module_id, "module-") && optional(source, "component_id", text) && text(source.kind) && text(source.title) && natural(source.order) && text(source.scope) && text(source.status) && natural(source.revision) && text(source.path) && typeof source.needs_study_map === "boolean" && text(source.notes_text) && nullable(source.notes_updated, text) && strings(source.project_ids, true) && validUnitArtifacts(source.artifacts) && strings(source.workspace_ids) && list(source.source_selections, validSourceSelection) && list(source.scope_sources, validScopeSource) && list(source.note_sections, validUnitNoteSection) && optional(source, "knowledge_map", validKnowledgeMap) && optional(source, "current_study_map", text) && optional(source, "working_note", text) && optional(source, "parent_unit_id", text) && optional(source, "child_unit_ids", strings) && optional(source, "related_module_ids", strings));
-}
-function validRequiredAsset(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["name"], ["material_uri", "needed_for", "obtain_from"]) && nonEmpty(source.name) && optional(source, "material_uri", (v) => text(v) && String(v).startsWith("material://")) && optional(source, "needed_for", nonEmpty) && optional(source, "obtain_from", nonEmpty));
-}
-function validProjectedRoute(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "unit_id",
-    "source_id",
-    "title",
-    "format",
-    "angle",
-    "covers",
-    "depth",
-    "scope"
-  ], [
-    "angle_detail",
-    "locator",
-    "url",
-    "vault_path",
-    "material_uri",
-    "material_path",
-    "material_exists",
-    "requires_assets",
-    "exposes_solutions_for"
-  ]) && identifier(source.id, "route-") && identifier(source.unit_id, "unit-") && identifier(source.source_id, "source-") && nonEmpty(source.title) && nonEmpty(source.format) && nonEmpty(source.angle) && Array.isArray(source.covers) && source.covers.length > 0 && ids(source.covers, "knowledge-") && nonEmpty(source.depth) && nonEmpty(source.scope) && optional(source, "angle_detail", nonEmpty) && optional(source, "locator", text) && optional(source, "url", uri) && optional(source, "vault_path", text) && optional(source, "material_uri", text) && optional(source, "material_path", text) && optional(source, "material_exists", (item) => typeof item === "boolean") && optional(source, "requires_assets", (v) => Array.isArray(v) && v.length > 0 && list(v, validRequiredAsset)) && optional(source, "exposes_solutions_for", (v) => ids(v, "route-")));
-}
-function validSourceMapEntry(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "source_id",
-    "role",
-    "why",
-    "priority",
-    "unit_routes"
-  ], ["when"]) && identifier(source.source_id, "source-") && nonEmpty(source.role) && nonEmpty(source.why) && natural(source.priority) && optional(source, "when", text) && list(source.unit_routes, (item) => identifier(item, "unit-") || validProjectedRoute(item)));
-}
-function validModuleSourceMap(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, ["id", "type", "module_id", "sources", "revision", "path"]) && identifier(source.id, "source-map-") && source.type === "module-source-map" && identifier(source.module_id, "module-") && list(source.sources, validSourceMapEntry) && natural(source.revision) && text(source.path));
-}
-function validCoordinationRecord(value) {
-  const source = row(value);
-  const sections = row(source?.sections);
-  return Boolean(source && exact(source, ["id", "type", "path", "sections"]) && source.id === "coordination" && source.type === "coordination" && source.path === "work/COORDINATION.md" && sections && exact(sections, ["Commitments", "Priorities", "Dependencies", "Deferrals"]) && Object.values(sections).every(text));
-}
-function validAiAction(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "title",
-    "description",
-    "target_kinds",
-    "interaction_mode",
-    "status",
-    "supported_providers"
-  ]) && text(source.id) && /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/.test(source.id) && nonEmpty(source.title) && text(source.description) && list(source.target_kinds, nonEmpty, true) && nonEmpty(source.interaction_mode) && values(source.status, ["planned", "implemented"]) && list(source.supported_providers, nonEmpty, true));
-}
-function validAiProvider(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "id",
-    "adapter",
-    "available",
-    "supported_modes",
-    "supports_direct_delivery"
-  ]) && nonEmpty(source.id) && nonEmpty(source.adapter) && typeof source.available === "boolean" && list(source.supported_modes, nonEmpty, true) && typeof source.supports_direct_delivery === "boolean");
-}
-function validAiRequest(value) {
-  const source = row(value);
-  const target = row(source?.target);
-  return Boolean(source && exact(source, [
-    "id",
-    "action_id",
-    "target",
-    "provider",
-    "status",
-    "created_at",
-    "delivery_id",
-    "receipt_id",
-    "bundle_path"
-  ]) && identifier(source.id, "ai-request-") && text(source.action_id) && /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/.test(source.action_id) && target && exact(target, ["kind", "id"]) && nonEmpty(target.kind) && nonEmpty(target.id) && nonEmpty(source.provider) && values(source.status, ["prepared", "delivery-ready", "completed"]) && dateTime(source.created_at) && nullable(source.delivery_id, text) && nullable(source.receipt_id, text) && text(source.bundle_path) && /^operations\/ai-actions\/requests\/[^/]+$/.test(source.bundle_path));
-}
-function validAiActions(value) {
-  const source = row(value);
-  return Boolean(source && exact(source, [
-    "available",
-    "contract_version",
-    "provider_adapters",
-    "requests"
-  ]) && source.contract_version === 1 && list(source.available, validAiAction) && list(source.provider_adapters, validAiProvider) && list(source.requests, validAiRequest));
-}
-function validProjectedRecord(value, validSynthesis) {
-  const source = row(value);
-  switch (source?.type) {
-    case "note":
-      return validNoteRecord(source);
-    case "concept":
-      return validConceptRecord(source);
-    case "source":
-      return validSourceRecord(source);
-    case "project":
-      return validProjectRecord(source);
-    case "project-relationship":
-      return validProjectRelationship(source);
-    case "compatibility-alias":
-      return validCompatibilityAlias(source);
-    case "module":
-      return validModuleRecord(source);
-    case "collection":
-    case "topic-pack":
-      return validCollectionRecord(source);
-    case "workspace":
-      return validWorkspaceRecord(source);
-    case "learning-path":
-      return validLearningPath(source);
-    case "program":
-      return validProgramRecord(source);
-    case "unit":
-      return validProjectedUnit(source);
-    case "study-map":
-      return validStudyMap(source);
-    case "module-source-map":
-      return validModuleSourceMap(source);
-    case "unit-material-synthesis":
-      return validSynthesis(source);
-    case "coordination":
-      return validCoordinationRecord(source);
-    default:
-      return false;
-  }
-}
-
 // src/contracts/manifest.ts
 var import_manifest_validator = __toESM(require_manifest_validator());
 var MANIFEST_CONTRACT_VERSION = 15;
@@ -23177,226 +22189,13 @@ function formatAjvErrors(errors) {
     return `${path} ${msg}`;
   }).join(", ");
 }
-function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-function exactKeys(value, required, optional2 = []) {
-  const allowed = /* @__PURE__ */ new Set([...required, ...optional2]);
-  return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => allowed.has(key));
-}
-var nonEmptyText = (value) => typeof value === "string" && value.trim().length > 0;
-var sha256 = (value) => typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
-var natural2 = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0;
-var identifier2 = (value, prefix) => typeof value === "string" && new RegExp(`^${prefix}[a-z0-9]+(?:-[a-z0-9]+)*$`).test(value);
-function uniqueStringArray(value, predicate) {
-  return Array.isArray(value) && value.every(predicate) && new Set(value).size === value.length;
-}
-function validSynthesisEvidence(value) {
-  if (!isRecord(value) || !exactKeys(value, ["locator", "checksum"], ["note"])) return false;
-  return nonEmptyText(value.locator) && sha256(value.checksum) && (!("note" in value) || nonEmptyText(value.note));
-}
-function validAnalysisAnchor2(value) {
-  if (!isRecord(value) || !exactKeys(value, ["topic", "purpose", "locator"])) return false;
-  return nonEmptyText(value.topic) && nonEmptyText(value.purpose) && nonEmptyText(value.locator);
-}
-function validAnalysisRef(value) {
-  if (!isRecord(value) || !exactKeys(
-    value,
-    [
-      "note_id",
-      "note_revision",
-      "note_digest",
-      "anchor",
-      "material",
-      "inspected_range"
-    ]
-  )) return false;
-  const range = value.inspected_range;
-  return identifier2(value.note_id, "note-") && natural2(value.note_revision) && sha256(value.note_digest) && validAnalysisAnchor2(value.anchor) && nonEmptyText(value.material) && isRecord(range) && exactKeys(range, ["start", "end"]) && natural2(range.start) && range.start >= 1 && natural2(range.end) && range.end >= 1;
-}
-function validSynthesisBasis(value) {
-  if (!isRecord(value) || !exactKeys(value, [
-    "unit_revision",
-    "source_map_revision",
-    "source_map_checksum",
-    "route_set_checksum",
-    "material_checksums",
-    "policy",
-    "ai_provenance"
-  ])) return false;
-  const checksums = value.material_checksums;
-  const provenance = value.ai_provenance;
-  return natural2(value.unit_revision) && natural2(value.source_map_revision) && sha256(value.source_map_checksum) && sha256(value.route_set_checksum) && isRecord(checksums) && Object.entries(checksums).every(([routeId, checksum]) => identifier2(routeId, "route-") && sha256(checksum)) && value.policy === "tiered-v2" && isRecord(provenance) && exactKeys(provenance, ["request_id", "delivery_id", "provider"]) && nonEmptyText(provenance.request_id) && nonEmptyText(provenance.delivery_id) && ["manual-bundle", "local"].includes(String(provenance.provider));
-}
-function validRouteAssessment(value) {
-  if (!isRecord(value) || !exactKeys(value, [
-    "route_id",
-    "source_id",
-    "locator",
-    "review_status",
-    "concept_ids"
-  ], [
-    "contribution",
-    "assumptions",
-    "notation",
-    "exercise_value",
-    "best_for",
-    "limitations",
-    "scope_of_absence",
-    "reason",
-    "evidence",
-    "analysis_refs"
-  ]) || !identifier2(value.route_id, "route-") || !identifier2(value.source_id, "source-") || !nonEmptyText(value.locator) || !["deep-reviewed", "screened", "unevaluated", "unavailable"].includes(String(value.review_status)) || !uniqueStringArray(value.concept_ids, (item) => identifier2(item, "concept-"))) return false;
-  const detailed = [
-    "contribution",
-    "assumptions",
-    "notation",
-    "exercise_value",
-    "best_for",
-    "limitations",
-    "scope_of_absence"
-  ];
-  if ("reason" in value && !nonEmptyText(value.reason)) return false;
-  if ("evidence" in value && (!Array.isArray(value.evidence) || !value.evidence.every(validSynthesisEvidence))) return false;
-  if ("analysis_refs" in value && (!Array.isArray(value.analysis_refs) || !value.analysis_refs.every(validAnalysisRef))) return false;
-  if (value.review_status === "deep-reviewed") {
-    return detailed.every((key) => nonEmptyText(value[key])) && Array.isArray(value.evidence) && value.evidence.length > 0;
-  }
-  return nonEmptyText(value.reason) && detailed.every((key) => !(key in value));
-}
-function validRouteComparison(value) {
-  if (!isRecord(value) || !exactKeys(value, [
-    "left_route_id",
-    "right_route_id",
-    "relation",
-    "narrative",
-    "concept_ids",
-    "evidence"
-  ]) || !identifier2(value.left_route_id, "route-") || !identifier2(value.right_route_id, "route-") || !["duplicates", "overlaps", "complements", "extends", "contrasts", "alternate-notation"].includes(String(value.relation)) || !nonEmptyText(value.narrative) || !uniqueStringArray(value.concept_ids, (item) => identifier2(item, "concept-"))) return false;
-  const evidence3 = value.evidence;
-  return isRecord(evidence3) && exactKeys(evidence3, ["left", "right"]) && Array.isArray(evidence3.left) && evidence3.left.length > 0 && evidence3.left.every(validSynthesisEvidence) && Array.isArray(evidence3.right) && evidence3.right.length > 0 && evidence3.right.every(validSynthesisEvidence);
-}
-function validConceptGroup(value) {
-  return isRecord(value) && exactKeys(value, [
-    "concept_id",
-    "local_node_ids",
-    "related_unit_ids",
-    "bridge_note_ids",
-    "narrative"
-  ]) && identifier2(value.concept_id, "concept-") && uniqueStringArray(value.local_node_ids, (item) => identifier2(item, "knowledge-")) && uniqueStringArray(value.related_unit_ids, (item) => identifier2(item, "unit-")) && uniqueStringArray(value.bridge_note_ids, (item) => identifier2(item, "note-")) && nonEmptyText(value.narrative);
-}
-var synthesisStaleReasons = [
-  "source_map_revision",
-  "source_map_checksum",
-  "route_set_checksum",
-  "material_checksums",
-  "policy",
-  "current-basis-unavailable",
-  "analysis-refs-stale"
-];
-function validSynthesisFreshness(value) {
-  return isRecord(value) && exactKeys(value, ["status", "reasons"]) && ["current", "stale"].includes(String(value.status)) && uniqueStringArray(value.reasons, (reason) => typeof reason === "string" && synthesisStaleReasons.includes(reason));
-}
-function validSynthesisCompleteness(value) {
-  if (!isRecord(value) || !exactKeys(value, [
-    "complete",
-    "current_route_count",
-    "assessed_route_count",
-    "deep_reviewed_count",
-    "screened_count",
-    "unevaluated_count",
-    "unavailable_count",
-    "missing_route_ids",
-    "orphaned_route_ids",
-    "duplicate_route_ids"
-  ]) || typeof value.complete !== "boolean") return false;
-  for (const key of [
-    "current_route_count",
-    "assessed_route_count",
-    "deep_reviewed_count",
-    "screened_count",
-    "unevaluated_count",
-    "unavailable_count"
-  ]) {
-    if (!natural2(value[key])) return false;
-  }
-  return ["missing_route_ids", "orphaned_route_ids", "duplicate_route_ids"].every((key) => uniqueStringArray(value[key], (routeId) => identifier2(routeId, "route-")));
-}
-function validMaterialSynthesis(value) {
-  return isRecord(value) && exactKeys(value, [
-    "schema_version",
-    "id",
-    "type",
-    "unit_id",
-    "status",
-    "basis",
-    "route_assessments",
-    "comparisons",
-    "concept_groups",
-    "freshness",
-    "completeness"
-  ]) && value.schema_version === 1 && identifier2(value.id, "material-synthesis-") && value.type === "unit-material-synthesis" && identifier2(value.unit_id, "unit-") && value.status === "approved" && validSynthesisBasis(value.basis) && Array.isArray(value.route_assessments) && value.route_assessments.length > 0 && value.route_assessments.every(validRouteAssessment) && Array.isArray(value.comparisons) && value.comparisons.every(validRouteComparison) && Array.isArray(value.concept_groups) && value.concept_groups.every(validConceptGroup) && validSynthesisFreshness(value.freshness) && validSynthesisCompleteness(value.completeness);
-}
-function requireArray(record10, key) {
-  if (!Array.isArray(record10[key])) {
-    throw new TypeError(`Manifest field ${String(key)} must be an array.`);
-  }
-}
 function assertManifest(value) {
   if (!(0, import_manifest_validator.default)(value)) {
     throw new TypeError(
       `Manifest does not match its schema: ${formatAjvErrors(import_manifest_validator.default.errors)}`
     );
   }
-  if (!isRecord(value) || !isRecord(value._generated)) {
-    throw new TypeError("Manifest requires an _generated object.");
-  }
-  if (!exactKeys(value, [
-    "_generated",
-    "academic_deadlines",
-    "ai_actions",
-    "artifact_revisions",
-    "backlinks",
-    "counts",
-    "garden_entries",
-    "indexes",
-    "module_concept_edges",
-    "module_source_maps",
-    "modules",
-    "programs",
-    "progress",
-    "project_aliases",
-    "project_relationships",
-    "projects",
-    "records",
-    "relations",
-    "resume_pointer",
-    "review_items",
-    "semesters",
-    "stages",
-    "study_maps",
-    "thematic_groups",
-    "topic_packs",
-    "topics",
-    "unit_material_syntheses",
-    "units"
-  ])) {
-    throw new TypeError(`Manifest top-level keys do not match contract v${MANIFEST_CONTRACT_VERSION}.`);
-  }
   const generated = value._generated;
-  if (!exactKeys(generated, [
-    "contract_version",
-    "generated_at",
-    "generator",
-    "schema_sha256",
-    "snapshot_id",
-    "source_dirty",
-    "source_fingerprint",
-    "source_revision",
-    "warning"
-  ])) {
-    throw new TypeError(`Manifest _generated keys do not match contract v${MANIFEST_CONTRACT_VERSION}.`);
-  }
   if (generated.contract_version !== MANIFEST_CONTRACT_VERSION) {
     throw new TypeError(
       `Unsupported manifest contract ${String(generated.contract_version)}; expected ${MANIFEST_CONTRACT_VERSION}.`
@@ -23406,219 +22205,6 @@ function assertManifest(value) {
     throw new TypeError(
       `Unsupported manifest schema ${String(generated.schema_sha256)}; expected ${MANIFEST_SCHEMA_SHA256}.`
     );
-  }
-  if (typeof generated.generated_at !== "string" || !nonEmptyText(generated.generator) || !sha256(generated.snapshot_id) || typeof generated.source_dirty !== "boolean" || typeof generated.source_fingerprint !== "string" || !/^[a-f0-9]{64}$/.test(generated.source_fingerprint) || !(generated.source_revision === null || typeof generated.source_revision === "string") || typeof generated.warning !== "string") {
-    throw new TypeError(`Manifest _generated metadata does not match contract v${MANIFEST_CONTRACT_VERSION}.`);
-  }
-  for (const key of [
-    "academic_deadlines",
-    "garden_entries",
-    "review_items",
-    "module_source_maps",
-    "modules",
-    "programs",
-    "project_relationships",
-    "projects",
-    "records",
-    "relations",
-    "semesters",
-    "stages",
-    "study_maps",
-    "thematic_groups",
-    "topic_packs",
-    "topics",
-    "unit_material_syntheses",
-    "units"
-  ]) {
-    requireArray(value, key);
-  }
-  if (!validAiActions(value.ai_actions)) {
-    throw new TypeError(`Manifest ai_actions must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  if (!value.academic_deadlines.every(validAcademicDeadline)) {
-    throw new TypeError(`Manifest academic deadlines must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  if (!value.garden_entries.every(validGardenEntry)) {
-    throw new TypeError(`Manifest Garden rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  if (!value.relations.every(validRelation)) {
-    throw new TypeError(`Manifest relations must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  if (!value.review_items.every(validReviewItem)) {
-    throw new TypeError(`Manifest review rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  if (!value.semesters.every(validSemester)) {
-    throw new TypeError(`Manifest semesters must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  if (!value.thematic_groups.every(validThematicGroup)) {
-    throw new TypeError(`Manifest thematic groups must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  if (!value.topic_packs.every(validTopicPack)) {
-    throw new TypeError(`Manifest topic packs must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  if (!value.topics.every(validTopic)) {
-    throw new TypeError(`Manifest topics must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  for (const module2 of value.modules) {
-    if (!validModuleRecord(module2)) {
-      throw new TypeError(`Manifest module rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-    }
-  }
-  for (const program of value.programs) {
-    if (!validProgramRecord(program)) {
-      throw new TypeError(`Manifest program rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-    }
-  }
-  for (const project of value.projects) {
-    if (!validProjectRecord(project)) {
-      throw new TypeError(`Manifest project rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-    }
-  }
-  for (const relationship of value.project_relationships) {
-    if (!validProjectRelationship(relationship)) {
-      throw new TypeError(`Manifest project relationships must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-    }
-  }
-  for (const sourceMap of value.module_source_maps) {
-    if (!validModuleSourceMap(sourceMap)) {
-      throw new TypeError(`Manifest module source maps must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-    }
-  }
-  for (const unit of value.units) {
-    if (!validProjectedUnit(unit)) {
-      throw new TypeError(`Manifest unit rows must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-    }
-  }
-  for (const studyMap of value.study_maps) {
-    if (!validStudyMap(studyMap)) {
-      throw new TypeError(`Manifest study maps must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-    }
-  }
-  for (const stage of value.stages) {
-    if (!validFlatStage(stage)) {
-      throw new TypeError(`Manifest flat stages must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-    }
-  }
-  for (const record10 of value.records) {
-    if (!validProjectedRecord(record10, validMaterialSynthesis)) {
-      throw new TypeError(`Manifest records must match the closed v${MANIFEST_CONTRACT_VERSION} record union.`);
-    }
-  }
-  for (const key of ["ai_actions", "artifact_revisions", "backlinks", "counts", "indexes", "progress", "project_aliases", "resume_pointer"]) {
-    if (!isRecord(value[key])) {
-      throw new TypeError(`Manifest field ${key} must be an object.`);
-    }
-  }
-  if (!validBacklinks(value.backlinks)) {
-    throw new TypeError(`Manifest backlinks must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  if (!validCounts(value.counts)) {
-    throw new TypeError(`Manifest counts must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  if (!validProgress(value.progress)) {
-    throw new TypeError(`Manifest progress must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  if (!validResumePointer(value.resume_pointer)) {
-    throw new TypeError(`Manifest resume pointer must match the closed v${MANIFEST_CONTRACT_VERSION} projection.`);
-  }
-  const edges = value.module_concept_edges;
-  if (!Array.isArray(edges)) {
-    throw new TypeError("Manifest field module_concept_edges must be an array.");
-  }
-  for (const edge of edges) {
-    if (!isRecord(edge) || !exactKeys(edge, ["module_id", "concept_id", "evidence"])) {
-      throw new TypeError("Manifest module_concept_edges rows must be {module_id, concept_id, evidence}.");
-    }
-    if (!identifier2(edge.module_id, "module-") || !identifier2(edge.concept_id, "concept-")) {
-      throw new TypeError("Manifest module_concept_edges rows must name a module and a concept.");
-    }
-    if (!Array.isArray(edge.evidence) || edge.evidence.length === 0) {
-      throw new TypeError("Manifest module_concept_edges rows must carry at least one evidence item.");
-    }
-    for (const item of edge.evidence) {
-      if (!isRecord(item) || !identifier2(item.unit_id, "unit-")) {
-        throw new TypeError("Manifest module_concept_edges evidence must name a unit.");
-      }
-      if (item.kind === "stage-concept") {
-        if (!exactKeys(item, ["kind", "unit_id", "study_map_id", "stage_id"]) || !identifier2(item.study_map_id, "study-map-") || !identifier2(item.stage_id, "stage-")) {
-          throw new TypeError("Manifest stage-concept evidence must name its study map and stage.");
-        }
-      } else if (item.kind === "knowledge-node") {
-        if (!exactKeys(item, ["kind", "unit_id", "node_id"]) || !identifier2(item.node_id, "knowledge-")) {
-          throw new TypeError("Manifest knowledge-node evidence must name its node.");
-        }
-      } else {
-        throw new TypeError(`Unknown module_concept_edges evidence kind ${String(item.kind)}.`);
-      }
-    }
-  }
-  const indexes = value.indexes;
-  if (!exactKeys(indexes, [
-    "component_to_units",
-    "concept_to_modules",
-    "concept_to_units",
-    "module_to_concepts",
-    "module_to_units",
-    "project_aliases",
-    "project_to_relationships",
-    "project_to_units",
-    "project_to_workspaces",
-    "source_to_modules",
-    "source_to_units",
-    "unit_to_concepts",
-    "unit_to_material_synthesis",
-    "unit_to_study_map",
-    "workspace_to_modules",
-    "workspace_to_units"
-  ])) {
-    throw new TypeError(`Manifest index keys do not match contract v${MANIFEST_CONTRACT_VERSION}.`);
-  }
-  for (const key of [
-    "concept_to_units",
-    "source_to_modules",
-    "source_to_units",
-    "unit_to_concepts",
-    "unit_to_material_synthesis",
-    "unit_to_study_map"
-  ]) {
-    if (!isRecord(indexes[key])) {
-      throw new TypeError(`Manifest index ${key} must be an object.`);
-    }
-  }
-  for (const key of [
-    "component_to_units",
-    "concept_to_modules",
-    "concept_to_units",
-    "module_to_concepts",
-    "module_to_units",
-    "project_to_relationships",
-    "project_to_units",
-    "project_to_workspaces",
-    "source_to_modules",
-    "source_to_units",
-    "unit_to_concepts",
-    "workspace_to_modules",
-    "workspace_to_units"
-  ]) {
-    const index = indexes[key];
-    if (!isRecord(index) || !Object.values(index).every((ids2) => uniqueStringArray(ids2, (item) => typeof item === "string"))) {
-      throw new TypeError(`Manifest index ${key} must map to unique string arrays.`);
-    }
-  }
-  for (const key of ["project_aliases", "unit_to_study_map"]) {
-    const index = indexes[key];
-    if (!isRecord(index) || !Object.values(index).every((idValue) => typeof idValue === "string")) {
-      throw new TypeError(`Manifest index ${key} must map to strings.`);
-    }
-  }
-  const synthesisIndex = indexes.unit_to_material_synthesis;
-  if (!isRecord(synthesisIndex) || !Object.values(synthesisIndex).every((idValue) => identifier2(idValue, "material-synthesis-"))) {
-    throw new TypeError("Manifest index unit_to_material_synthesis must map to synthesis IDs.");
-  }
-  for (const synthesis of value.unit_material_syntheses) {
-    if (!validMaterialSynthesis(synthesis)) {
-      throw new TypeError("Manifest material syntheses must match UnitMaterialSynthesisV1.");
-    }
   }
 }
 
@@ -23742,11 +22328,11 @@ var import_obsidian = require("obsidian");
 var import_electron = require("electron");
 
 // src/projection/readers.ts
-function isRecord2(value) {
+function isRecord(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function asRecord(value) {
-  return isRecord2(value) ? value : null;
+  return isRecord(value) ? value : null;
 }
 function asRecordOrEmpty(value) {
   return asRecord(value) ?? {};
@@ -23759,14 +22345,14 @@ function asTrimmedString(value) {
 }
 function asText(value) {
   if (typeof value !== "string" && typeof value !== "number") return null;
-  const text8 = String(value);
-  return text8.length > 0 ? text8 : null;
+  const text7 = String(value);
+  return text7.length > 0 ? text7 : null;
 }
 function asBoolean(value) {
   return value === true || value === 1 || value === "true";
 }
 function asRecords(value) {
-  return Array.isArray(value) ? value.filter(isRecord2) : [];
+  return Array.isArray(value) ? value.filter(isRecord) : [];
 }
 function asStrings(value) {
   return Array.isArray(value) ? value.filter((item) => typeof item === "string" && item.length > 0) : [];
@@ -23845,8 +22431,8 @@ function button(parent, label, onClick, variant = "") {
   });
   return el;
 }
-function badge(parent, text8, variant = "") {
-  return parent.createSpan({ cls: `los-badge ${variant ? `los-badge--${variant}` : ""}`, text: text8 });
+function badge(parent, text7, variant = "") {
+  return parent.createSpan({ cls: `los-badge ${variant ? `los-badge--${variant}` : ""}`, text: text7 });
 }
 var STATUS_TONES = {
   active: "active",
@@ -23891,23 +22477,23 @@ function section(parent, title2, description = "") {
   return wrap;
 }
 function factList(parent, facts) {
-  const list4 = parent.createDiv({ cls: "los-fact-list" });
+  const list3 = parent.createDiv({ cls: "los-fact-list" });
   for (const [label, value] of facts) {
     if (value === null || value === void 0 || value === "") continue;
-    const row4 = list4.createDiv({ cls: "los-fact-row" });
-    row4.createDiv({ cls: "los-fact-label", text: label });
-    row4.createDiv({ cls: "los-fact-value", text: String(value) });
+    const row3 = list3.createDiv({ cls: "los-fact-row" });
+    row3.createDiv({ cls: "los-fact-label", text: label });
+    row3.createDiv({ cls: "los-fact-value", text: String(value) });
   }
-  return list4;
+  return list3;
 }
 function filterTabs(parent, ariaLabel, tabs, active, choose, countOf = null) {
-  const row4 = parent.createDiv({ cls: "los-filter-tabs" });
-  row4.setAttrs({ role: "group", "aria-label": ariaLabel });
-  enableButtonGroupKeyboardNavigation(row4);
+  const row3 = parent.createDiv({ cls: "los-filter-tabs" });
+  row3.setAttrs({ role: "group", "aria-label": ariaLabel });
+  enableButtonGroupKeyboardNavigation(row3);
   for (const [value, label] of tabs) {
     const count3 = countOf ? countOf(value) : 0;
     const control = button(
-      row4,
+      row3,
       count3 ? `${label} ${count3}` : label,
       () => choose(value),
       "quiet"
@@ -23916,7 +22502,7 @@ function filterTabs(parent, ariaLabel, tabs, active, choose, countOf = null) {
     control.toggleClass("is-active", value === active);
     control.setAttrs({ "aria-pressed": String(value === active), "data-los-tab": value });
   }
-  return row4;
+  return row3;
 }
 function disclosure(parent, summaryText, cls = "") {
   const details = parent.createEl("details", { cls: `los-disclosure ${cls}`.trim() });
@@ -24001,7 +22587,7 @@ function unitCard(parent, plugin, unit) {
   if (map) {
     const stages = asRecords(map.stages);
     const done = stages.filter(
-      (row4) => row4.status === "complete"
+      (row3) => row3.status === "complete"
     ).length;
     card.createDiv({ cls: "los-progress-copy", text: `${done} of ${stages.length} stages complete` });
   } else {
@@ -24216,7 +22802,7 @@ var LearningOSSettingsTab = class extends import_obsidian2.PluginSettingTab {
         await this.plugin.persistSettings();
       });
     });
-    new import_obsidian2.Setting(root).setName("Python interpreter").setDesc("Leave blank to auto-detect: the project virtual environment, then the system Python.").addText((text8) => text8.setValue(this.plugin.settings.pythonPath || "").onChange(async (value) => {
+    new import_obsidian2.Setting(root).setName("Python interpreter").setDesc("Leave blank to auto-detect: the project virtual environment, then the system Python.").addText((text7) => text7.setValue(this.plugin.settings.pythonPath || "").onChange(async (value) => {
       this.plugin.settings.pythonPath = value.trim();
       await this.plugin.persistSettings();
     }));
@@ -24314,7 +22900,7 @@ function captureRenderFocus(root) {
   const end = input?.selectionEnd ?? null;
   const direction = input?.selectionDirection ?? void 0;
   const tab = focused.getAttribute("data-los-tab");
-  const text8 = focused.textContent;
+  const text7 = focused.textContent;
   const top = root.scrollTop;
   const left = root.scrollLeft;
   return () => {
@@ -24325,7 +22911,7 @@ function captureRenderFocus(root) {
       replacement = Array.from(root.querySelectorAll(selector)).find((node) => node.tagName === input.tagName && node.className === input.className && node.value === value) ?? null;
     } else if (label && typeof root.querySelectorAll === "function") {
       const nextGroup = Array.from(root.querySelectorAll('[role="group"]')).find((node) => node.getAttribute("aria-label") === label);
-      replacement = nextGroup ? Array.from(nextGroup.querySelectorAll("button")).find((node) => !node.disabled && (tab ? node.getAttribute("data-los-tab") === tab : node.textContent === text8)) ?? null : null;
+      replacement = nextGroup ? Array.from(nextGroup.querySelectorAll("button")).find((node) => !node.disabled && (tab ? node.getAttribute("data-los-tab") === tab : node.textContent === text7)) ?? null : null;
     }
     if (!replacement) return;
     replacement.focus({ preventScroll: true });
@@ -24470,8 +23056,8 @@ var roleLabel = (role) => ROLE_LABELS[role] ?? role;
 var authorLabel = (author) => AUTHOR_LABELS[author] ?? author;
 var title = (record10) => asText(record10.title) ?? asText(record10.id) ?? "Untitled record";
 var prose = (value) => {
-  const text8 = asText(value)?.trim() ?? "";
-  return text8.startsWith("<!--") ? "" : text8;
+  const text7 = asText(value)?.trim() ?? "";
+  return text7.startsWith("<!--") ? "" : text7;
 };
 var domainTitle = (id2) => KNOWN_DOMAINS.find(([key]) => key === id2)?.[1] ?? id2.split("-").map((part2) => part2 ? part2.charAt(0).toUpperCase() + part2.slice(1) : "").join(" ");
 var byTitle = (a, b) => compareStrings(title(a), title(b)) || compareStrings(asText(a.id) ?? "", asText(b.id) ?? "");
@@ -24482,11 +23068,11 @@ function noteBucket(record10) {
 function domainIndex(host) {
   const notes = host.plugin.store.of("note");
   const shelves = [...host.plugin.store.catalogues(), ...host.plugin.store.topicPacks()];
-  const ids2 = new Set(KNOWN_DOMAINS.map(([id2]) => id2));
-  for (const note of notes) ids2.add(noteBucket(note));
-  for (const shelf of shelves) ids2.add(asText(shelf.domain) ?? "cross-domain");
+  const ids = new Set(KNOWN_DOMAINS.map(([id2]) => id2));
+  for (const note of notes) ids.add(noteBucket(note));
+  for (const shelf of shelves) ids.add(asText(shelf.domain) ?? "cross-domain");
   const known = KNOWN_DOMAINS.map(([id2]) => id2);
-  const ordered = [...known, ...[...ids2].filter((id2) => !known.includes(id2)).sort(compareStrings)];
+  const ordered = [...known, ...[...ids].filter((id2) => !known.includes(id2)).sort(compareStrings)];
   return {
     notes,
     domains: ordered.map((id2) => ({
@@ -24502,11 +23088,11 @@ function domainIndex(host) {
   };
 }
 function entries(shelf) {
-  return Array.isArray(shelf.entries) ? shelf.entries.filter(isRecord2) : [];
+  return Array.isArray(shelf.entries) ? shelf.entries.filter(isRecord) : [];
 }
 function shelfCounts(shelf) {
   const rows = entries(shelf);
-  return `${count(rows.length, "ordered entry", "ordered entries")} \xB7 ${count(new Set(rows.map((row4) => asText(row4.source)).filter(Boolean)).size, "source")}`;
+  return `${count(rows.length, "ordered entry", "ordered entries")} \xB7 ${count(new Set(rows.map((row3) => asText(row3.source)).filter(Boolean)).size, "source")}`;
 }
 function matches(query, fields) {
   const words2 = foldCase(query).split(/\s+/).filter(Boolean);
@@ -24581,11 +23167,11 @@ function renderNoteInspector(parent, host, index, note, outsideFilter, redraw) {
     host.domains.selectedNote = null;
     redraw(asText(note.id) ?? "");
   }, "tertiary");
-  const ids2 = asStrings(note.concepts);
+  const ids = asStrings(note.concepts);
   const concepts = panel.createDiv({ cls: "los-domain-note-concepts" });
-  concepts.createEl("h4", { text: `Linked concepts \xB7 ${ids2.length}` });
-  if (!ids2.length) concepts.createDiv({ cls: "los-domain-empty", text: "No explicit concept links are recorded." });
-  for (const id2 of ids2) {
+  concepts.createEl("h4", { text: `Linked concepts \xB7 ${ids.length}` });
+  if (!ids.length) concepts.createDiv({ cls: "los-domain-empty", text: "No explicit concept links are recorded." });
+  for (const id2 of ids) {
     const concept = host.plugin.store.get(id2);
     if (concept?.type === "concept") button(concepts, title(concept), () => host.go({ concept: id2, module: null, lens: "prerequisites", depth: 1 }), "tertiary").addClass("los-domain-open-concept");
     else concepts.createDiv({ cls: "los-domain-source-unavailable", text: `${id2} \xB7 unavailable in this projection` });
@@ -24607,11 +23193,11 @@ function renderNoteInspector(parent, host, index, note, outsideFilter, redraw) {
     if (source) button(body, title(source), () => host.plugin.nav.openSourceDetail(id2), "tertiary").addClass("los-domain-note-source");
     else body.createDiv({ cls: "los-domain-source-unavailable", text: `${id2} \xB7 unavailable in this projection` });
   }
-  if (isRecord2(note.material_analysis)) {
+  if (isRecord(note.material_analysis)) {
     const analysis = note.material_analysis;
     factList(body, [
       ["Material", asText(analysis.material)],
-      ["Observed range", isRecord2(analysis.inspected_range) ? `${asText(analysis.inspected_range.start) ?? "?"}\u2013${asText(analysis.inspected_range.end) ?? "?"}` : null],
+      ["Observed range", isRecord(analysis.inspected_range) ? `${asText(analysis.inspected_range.start) ?? "?"}\u2013${asText(analysis.inspected_range.end) ?? "?"}` : null],
       ["Analysis provenance", asText(analysis.resolution)],
       ["Analysis source", asText(analysis.source_id)]
     ]);
@@ -24625,7 +23211,7 @@ function renderNoteInspector(parent, host, index, note, outsideFilter, redraw) {
   const evidence3 = Array.isArray(note.evidence) ? note.evidence : [];
   if (evidence3.length) {
     body.createEl("h4", { text: `Recorded evidence \xB7 ${evidence3.length}` });
-    for (const item of evidence3) body.createDiv({ cls: "los-domain-recorded-evidence", text: isRecord2(item) && asText(item.type) && asText(item.ref) ? `${asText(item.type)} \xB7 ${asText(item.ref)}` : asText(item) ?? JSON.stringify(item) });
+    for (const item of evidence3) body.createDiv({ cls: "los-domain-recorded-evidence", text: isRecord(item) && asText(item.type) && asText(item.ref) ? `${asText(item.type)} \xB7 ${asText(item.ref)}` : asText(item) ?? JSON.stringify(item) });
   }
 }
 function renderNotes(parent, host, index, domain, notes, redraw) {
@@ -24633,10 +23219,10 @@ function renderNotes(parent, host, index, domain, notes, redraw) {
   const selected = domain.notes.find((note) => note.id === state.selectedNote);
   const workspace = parent.createDiv({ cls: "los-domain-note-workspace" });
   workspace.toggleClass("has-selection", Boolean(selected));
-  const list4 = workspace.createDiv({ cls: "los-domain-notes", attr: { role: "group", "aria-label": `Notes in ${domain.title}` } });
-  enableButtonGroupKeyboardNavigation(list4, "vertical");
+  const list3 = workspace.createDiv({ cls: "los-domain-notes", attr: { role: "group", "aria-label": `Notes in ${domain.title}` } });
+  enableButtonGroupKeyboardNavigation(list3, "vertical");
   if (!notes.length) empty(
-    list4,
+    list3,
     domain.notes.length ? "No notes match these filters" : "No notes published in this domain",
     "Choose another domain, adjust the note filters, or browse Source shelves."
   );
@@ -24644,18 +23230,18 @@ function renderNotes(parent, host, index, domain, notes, redraw) {
   const limit = state.limits.get(key) ?? INITIAL_ROWS;
   for (const note of notes.slice(0, limit)) {
     const id2 = asText(note.id) ?? "";
-    const row4 = list4.createDiv({ cls: "los-domain-note-row", attr: { "data-note-id": id2 } });
-    row4.toggleClass("is-selected", note === selected);
-    const choice = button(row4, title(note), () => {
+    const row3 = list3.createDiv({ cls: "los-domain-note-row", attr: { "data-note-id": id2 } });
+    row3.toggleClass("is-selected", note === selected);
+    const choice = button(row3, title(note), () => {
       state.selectedNote = id2;
       redraw();
     }, "quiet");
     choice.addClass("los-domain-select-note");
     choice.setAttrs({ "aria-pressed": String(note === selected), "data-los-tab": id2 });
     choice.createSpan({ cls: "los-domain-note-meta", text: `${roleLabel(roleOf(note))} \xB7 ${authorLabel(authorOf(note))}` });
-    button(row4, "Open", () => host.plugin.nav.openRecord(note), "tertiary").addClass("los-domain-row-open");
+    button(row3, "Open", () => host.plugin.nav.openRecord(note), "tertiary").addClass("los-domain-row-open");
   }
-  const footer = list4.createDiv({ cls: "los-domain-list-footer", text: `${Math.min(limit, notes.length)} of ${count(notes.length, "note")} shown` });
+  const footer = list3.createDiv({ cls: "los-domain-list-footer", text: `${Math.min(limit, notes.length)} of ${count(notes.length, "note")} shown` });
   showMore(footer, state, key, notes.length, redraw, "notes");
   if (selected) renderNoteInspector(workspace, host, index, selected, !notes.includes(selected), redraw);
 }
@@ -24687,7 +23273,7 @@ function renderShelves(parent, host, index, domain, shelves, redraw) {
       choice.createSpan({ cls: "los-domain-note-meta", text: shelfCounts(shelf2) });
     }
   }
-  const shelf = shelves.find((row4) => row4.id === state.selectedShelf) ?? first;
+  const shelf = shelves.find((row3) => row3.id === state.selectedShelf) ?? first;
   const shelfId = asText(shelf.id) ?? "";
   const body = section3.createDiv({ cls: "los-domain-shelf", attr: { "data-shelf-id": shelfId } });
   body.createEl("h3", { text: title(shelf) });
@@ -24695,19 +23281,19 @@ function renderShelves(parent, host, index, domain, shelves, redraw) {
   const actions = body.createDiv({ cls: "los-actions" });
   button(actions, "Open shelf", () => host.plugin.nav.openRecord(shelf), "tertiary").addClass("los-domain-open-shelf");
   const about = disclosure2(body, state, `shelf:${shelfId}:about`, "About this source shelf", "los-domain-shelf-about");
-  for (const text8 of new Set([prose(shelf.purpose), prose(shelf.summary)].filter(Boolean))) about.createEl("p", { text: text8 });
+  for (const text7 of new Set([prose(shelf.purpose), prose(shelf.summary)].filter(Boolean))) about.createEl("p", { text: text7 });
   const rows = entries(shelf);
   const key = `shelf:${shelfId}:entries`;
   const limit = state.limits.get(key) ?? INITIAL_ROWS;
   for (const [position, entry] of rows.slice(0, limit).entries()) {
     const id2 = asText(entry.source) ?? "";
     const source = index.sources.get(id2);
-    const row4 = body.createDiv({ cls: "los-domain-entry-row", attr: { "data-entry-index": String(position), "data-source-id": id2 } });
-    row4.createEl("h4", {
+    const row3 = body.createDiv({ cls: "los-domain-entry-row", attr: { "data-entry-index": String(position), "data-source-id": id2 } });
+    row3.createEl("h4", {
       text: source ? title(source) : `${id2 || "Source"} \xB7 unavailable in this projection`,
       cls: source ? "los-domain-entry-title" : "los-domain-source-unavailable"
     });
-    const controls = row4.createDiv({ cls: "los-domain-entry-actions" });
+    const controls = row3.createDiv({ cls: "los-domain-entry-actions" });
     const group = prose(entry.group);
     if (group) controls.createSpan({ cls: "los-domain-entry-group", text: group });
     const why = disclosure2(controls, state, `shelf:${shelfId}:entry:${position}:why`, "Why this source", "los-domain-entry-rationale");
@@ -24742,7 +23328,7 @@ function renderResults(results, host, index) {
   const rail = layout.createDiv({ cls: "los-domain-rail", attr: { role: "group", "aria-label": "Knowledge domains" } });
   rail.createDiv({ cls: "los-domain-rail-label", text: "Domains" });
   enableButtonGroupKeyboardNavigation(rail, "vertical");
-  for (const domain2 of index.domains.filter((row4) => visible.includes(row4) || row4.id === state.selected)) {
+  for (const domain2 of index.domains.filter((row3) => visible.includes(row3) || row3.id === state.selected)) {
     const choice = button(rail, domain2.title, () => {
       if (state.selected !== domain2.id) {
         state.selectedNote = null;
@@ -24757,7 +23343,7 @@ function renderResults(results, host, index) {
     choice.createSpan({ cls: "los-domain-choice-counts", text: `${count(domain2.notes.length, "note")} \xB7 ${count(domain2.shelves.length, "source shelf")}` });
     if (filtering && !visible.includes(domain2)) choice.createSpan({ cls: "los-domain-choice-empty", text: "No filter matches" });
   }
-  const domain = index.domains.find((row4) => row4.id === state.selected);
+  const domain = index.domains.find((row3) => row3.id === state.selected);
   if (!domain) return;
   const detail = layout.createDiv({ cls: "los-domain-detail" });
   const heading = detail.createDiv({ cls: "los-domain-detail-heading" });
@@ -24790,13 +23376,13 @@ function renderSourceDomains(root, host, index) {
   button(actions, "Search all sources", () => host.plugin.nav.openLibraryHome("sources", host.domains.query), "quiet").addClass("los-domain-search-sources");
   const groups = host.plugin.store.thematicGroups();
   const groupIds = new Set(groups.map((group) => asText(group.id)).filter(Boolean));
-  const list4 = section3.createDiv({ cls: "los-domain-source-groups" });
+  const list3 = section3.createDiv({ cls: "los-domain-source-groups" });
   for (const group of groups) {
     const id2 = asText(group.id);
     if (!id2) continue;
     const amount = [...index.sources.values()].filter((source) => asStrings(source.thematic_group_ids).includes(id2)).length;
     button(
-      list4,
+      list3,
       `${title(group)} \xB7 ${count(amount, "source")}`,
       () => host.plugin.nav.openLibraryFolder([`domain:${id2}`]),
       "quiet"
@@ -24804,17 +23390,17 @@ function renderSourceDomains(root, host, index) {
   }
   const unfiled = [...index.sources.values()].filter((source) => !asStrings(source.thematic_group_ids).some((id2) => groupIds.has(id2))).length;
   if (unfiled) button(
-    list4,
+    list3,
     `Unfiled \xB7 ${count(unfiled, "source")}`,
     () => host.plugin.nav.openLibraryFolder(["shelf:unfiled"]),
     "quiet"
   ).addClass("los-domain-unfiled");
   button(body, "Generated text overview", () => host.plugin.openVaultPath("generated/domain-atlas.md"), "tertiary");
 }
-function noteFilter(parent, cls, ariaLabel, allLabel, values2, selected, labelOf, choose, disabled) {
+function noteFilter(parent, cls, ariaLabel, allLabel, values, selected, labelOf, choose, disabled) {
   const select2 = parent.createEl("select", { cls, attr: { "aria-label": ariaLabel } });
   select2.createEl("option", { text: allLabel, attr: { value: "" } });
-  for (const value of values2) select2.createEl("option", { text: labelOf(value), attr: { value } });
+  for (const value of values) select2.createEl("option", { text: labelOf(value), attr: { value } });
   select2.value = selected ?? "";
   select2.disabled = disabled;
   select2.addEventListener("change", () => choose(select2.value || null));
@@ -24976,8 +23562,8 @@ function bridgeKey(bridge2) {
 function routeMembers(route2) {
   return [.../* @__PURE__ */ new Set([...route2.supported, ...route2.missing_or_uncertain])];
 }
-function unique(values2) {
-  return [...new Set(values2)];
+function unique(values) {
+  return [...new Set(values)];
 }
 function byTitle2(rows) {
   return (left, right) => {
@@ -24992,8 +23578,8 @@ function slugTitle(id2) {
 }
 function groupTitle(rows, labels) {
   const score = /* @__PURE__ */ new Map();
-  for (const row4 of rows) {
-    row4.concept_ids.forEach((conceptId, position) => {
+  for (const row3 of rows) {
+    row3.concept_ids.forEach((conceptId, position) => {
       const entry = score.get(conceptId) ?? { count: 0, position: 0 };
       entry.count += 1;
       entry.position += position;
@@ -25004,8 +23590,8 @@ function groupTitle(rows, labels) {
   if (!best) return rows[0]?.title ?? "Abilities";
   return labels.concept(best[0]) ?? slugTitle(best[0]);
 }
-function components(ids2, links) {
-  const parent = new Map(ids2.map((id2) => [id2, id2]));
+function components(ids, links) {
+  const parent = new Map(ids.map((id2) => [id2, id2]));
   const find = (id2) => {
     let root = id2;
     while (parent.get(root) !== root) root = parent.get(root) ?? root;
@@ -25024,7 +23610,7 @@ function components(ids2, links) {
     if (a !== b) parent.set(a < b ? b : a, a < b ? a : b);
   }
   const groups = /* @__PURE__ */ new Map();
-  for (const id2 of ids2) {
+  for (const id2 of ids) {
     const root = find(id2);
     const members = groups.get(root);
     if (members) members.push(id2);
@@ -25032,7 +23618,7 @@ function components(ids2, links) {
   }
   return [...groups.values()].map((members) => members.sort());
 }
-function columnsOf(ids2, prerequisites) {
+function columnsOf(ids, prerequisites) {
   const memo = /* @__PURE__ */ new Map();
   const visiting = /* @__PURE__ */ new Set();
   const depth = (id2) => {
@@ -25046,10 +23632,10 @@ function columnsOf(ids2, prerequisites) {
     memo.set(id2, value);
     return value;
   };
-  for (const id2 of ids2) depth(id2);
+  for (const id2 of ids) depth(id2);
   return memo;
 }
-function ancestorsOf(ids2, prerequisites) {
+function ancestorsOf(ids, prerequisites) {
   const memo = /* @__PURE__ */ new Map();
   const visiting = /* @__PURE__ */ new Set();
   const walk = (id2) => {
@@ -25066,11 +23652,11 @@ function ancestorsOf(ids2, prerequisites) {
     memo.set(id2, found);
     return found;
   };
-  for (const id2 of ids2) walk(id2);
+  for (const id2 of ids) walk(id2);
   return memo;
 }
-function mean(values2) {
-  return values2.reduce((sum, value) => sum + value, 0) / Math.max(values2.length, 1);
+function mean(values) {
+  return values.reduce((sum, value) => sum + value, 0) / Math.max(values.length, 1);
 }
 function stack(wanted, step) {
   let blocks = wanted.map((entry) => ({ ids: [entry.id], want: [entry.y], top: entry.y }));
@@ -25082,10 +23668,10 @@ function stack(wanted, step) {
       const lower = blocks[index + 1];
       if (!upper || !lower) continue;
       if (upper.top + upper.ids.length * step > lower.top + 0.5) {
-        const ids2 = [...upper.ids, ...lower.ids];
+        const ids = [...upper.ids, ...lower.ids];
         const want = [...upper.want, ...lower.want];
         const top = mean(want.map((value, position) => value - position * step));
-        blocks.splice(index, 2, { ids: ids2, want, top });
+        blocks.splice(index, 2, { ids, want, top });
         merged = true;
         break;
       }
@@ -25136,8 +23722,8 @@ function buildGroup(memberIds, rows, bridges2, candidates, labels) {
   const prerequisites = /* @__PURE__ */ new Map();
   const routes = /* @__PURE__ */ new Map();
   for (const id2 of memberIds) {
-    const row4 = rows.get(id2);
-    const routeSets = (row4?.preparation_routes ?? []).map((route2) => routeMembers(route2).filter((member) => members.has(member)));
+    const row3 = rows.get(id2);
+    const routeSets = (row3?.preparation_routes ?? []).map((route2) => routeMembers(route2).filter((member) => members.has(member)));
     routes.set(id2, routeSets);
     prerequisites.set(id2, unique(routeSets.flat()));
   }
@@ -25163,31 +23749,31 @@ function buildGroup(memberIds, rows, bridges2, candidates, labels) {
   const byColumn = Array.from({ length: columnCount }, () => []);
   for (const id2 of memberIds) byColumn[column.get(id2) ?? 0]?.push(id2);
   const order = /* @__PURE__ */ new Map();
-  const assign = (ids2) => ids2.forEach((id2, index) => order.set(id2, index));
+  const assign = (ids) => ids.forEach((id2, index) => order.set(id2, index));
   const sourcesOf = (id2) => edges.filter((edge) => edge.to === id2).map((edge) => edge.from);
   const targetsOf = (id2) => edges.filter((edge) => edge.from === id2).map((edge) => edge.to);
   byColumn[0]?.sort(titleOrder);
   if (byColumn[0]) assign(byColumn[0]);
   for (let index = 1; index < columnCount; index += 1) {
-    const ids2 = byColumn[index] ?? [];
+    const ids = byColumn[index] ?? [];
     const centre = (id2) => mean(sourcesOf(id2).map((source) => order.get(source) ?? 0));
-    ids2.sort((left, right) => centre(left) - centre(right) || titleOrder(left, right));
-    assign(ids2);
+    ids.sort((left, right) => centre(left) - centre(right) || titleOrder(left, right));
+    assign(ids);
   }
   for (let index = columnCount - 2; index >= 0; index -= 1) {
-    const ids2 = byColumn[index] ?? [];
+    const ids = byColumn[index] ?? [];
     const centre = (id2) => {
       const targets = targetsOf(id2);
       return targets.length ? mean(targets.map((target) => order.get(target) ?? 0)) : order.get(id2) ?? 0;
     };
-    ids2.sort((left, right) => centre(left) - centre(right) || (order.get(left) ?? 0) - (order.get(right) ?? 0));
-    assign(ids2);
+    ids.sort((left, right) => centre(left) - centre(right) || (order.get(left) ?? 0) - (order.get(right) ?? 0));
+    assign(ids);
   }
   const step = PLANE.nodeHeight + PLANE.rowGap;
   const y = /* @__PURE__ */ new Map();
   for (let index = 0; index < columnCount; index += 1) {
-    const ids2 = byColumn[index] ?? [];
-    const wanted = ids2.map((id2, position) => {
+    const ids = byColumn[index] ?? [];
+    const wanted = ids.map((id2, position) => {
       const sources = sourcesOf(id2).filter((source) => y.has(source));
       return {
         id: id2,
@@ -25199,20 +23785,20 @@ function buildGroup(memberIds, rows, bridges2, candidates, labels) {
   }
   const top = Math.min(0, ...[...y.values()]);
   const columnX = (index) => PLANE.pad + index * (PLANE.nodeWidth + PLANE.columnGap);
-  const moduleLabels = (row4) => unique((row4?.module_ids ?? []).map((id2) => labels.module(id2)));
+  const moduleLabels = (row3) => unique((row3?.module_ids ?? []).map((id2) => labels.module(id2)));
   const bridgeCountOf = (id2) => bridges2.filter((bridge2) => bridge2.from === id2 || bridge2.to === id2).length;
   const nodes = [];
   for (let index = 0; index < columnCount; index += 1) {
     for (const id2 of byColumn[index] ?? []) {
-      const row4 = rows.get(id2);
-      if (!row4) continue;
+      const row3 = rows.get(id2);
+      if (!row3) continue;
       const hasSources = (prerequisites.get(id2) ?? []).length > 0;
       const hasTargets = (dependents.get(id2) ?? []).length > 0;
       const role = hasSources ? hasTargets ? "step" : "extension" : hasTargets ? "foundation" : "standalone";
-      const modules = moduleLabels(row4);
+      const modules = moduleLabels(row3);
       nodes.push({
         id: id2,
-        row: row4,
+        row: row3,
         column: index,
         order: order.get(id2) ?? 0,
         x: columnX(index),
@@ -25278,7 +23864,7 @@ function buildGroup(memberIds, rows, bridges2, candidates, labels) {
   const graphHeight = nodes.length ? Math.max(...nodes.map((node) => node.y + PLANE.nodeHeight)) + PLANE.pad : PLANE.nodeHeight + 2 * PLANE.pad;
   const bandsHeight = bandEnds.length ? PLANE.bandTop + bandEnds.length * (PLANE.bandHeight + PLANE.bandGap) : 0;
   const width = columnCount ? PLANE.pad * 2 + columnCount * PLANE.nodeWidth + (columnCount - 1) * PLANE.columnGap : PLANE.nodeWidth + 2 * PLANE.pad;
-  const groupRows = memberIds.map((id2) => rows.get(id2)).filter((row4) => Boolean(row4));
+  const groupRows = memberIds.map((id2) => rows.get(id2)).filter((row3) => Boolean(row3));
   return {
     key: [...memberIds].sort()[0] ?? "group",
     title: groupTitle(groupRows, labels),
@@ -25287,25 +23873,25 @@ function buildGroup(memberIds, rows, bridges2, candidates, labels) {
     lanes,
     columns,
     bridges: placedBridges,
-    candidates: candidates.filter((row4) => members.has(row4.from) && members.has(row4.to)),
+    candidates: candidates.filter((row3) => members.has(row3.from) && members.has(row3.to)),
     reviewedBridgeCount: placedBridges.filter((entry) => entry.bridge.review.state === "reviewed").length,
     width,
     graphHeight,
     height: graphHeight + bandsHeight,
-    hasEvidence: groupRows.some((row4) => row4.evidence.length > 0)
+    hasEvidence: groupRows.some((row3) => row3.evidence.length > 0)
   };
 }
 function buildAbilityPlane(brief, labels) {
-  const rows = new Map(brief.abilities.map((row4) => [row4.id, row4]));
-  const ids2 = [...rows.keys()].sort();
+  const rows = new Map(brief.abilities.map((row3) => [row3.id, row3]));
+  const ids = [...rows.keys()].sort();
   const links = [];
-  for (const row4 of brief.abilities) {
-    for (const route2 of row4.preparation_routes) {
-      for (const member of routeMembers(route2)) links.push([member, row4.id]);
+  for (const row3 of brief.abilities) {
+    for (const route2 of row3.preparation_routes) {
+      for (const member of routeMembers(route2)) links.push([member, row3.id]);
     }
   }
   for (const bridge2 of brief.bridges) links.push([bridge2.from, bridge2.to]);
-  const groups = components(ids2, links).map((members) => buildGroup(members, rows, brief.bridges, brief.candidate_connections, labels)).sort((left, right) => right.nodes.length - left.nodes.length || compareStrings(left.title, right.title) || compareStrings(left.key, right.key));
+  const groups = components(ids, links).map((members) => buildGroup(members, rows, brief.bridges, brief.candidate_connections, labels)).sort((left, right) => right.nodes.length - left.nodes.length || compareStrings(left.title, right.title) || compareStrings(left.key, right.key));
   const groupOfAbility = /* @__PURE__ */ new Map();
   for (const group of groups) {
     for (const node of group.nodes) groupOfAbility.set(node.id, group.key);
@@ -25314,7 +23900,7 @@ function buildAbilityPlane(brief, labels) {
     groups,
     groupOfAbility,
     rowOf: rows,
-    crossGroupCandidates: brief.candidate_connections.filter((row4) => groupOfAbility.get(row4.from) !== groupOfAbility.get(row4.to)),
+    crossGroupCandidates: brief.candidate_connections.filter((row3) => groupOfAbility.get(row3.from) !== groupOfAbility.get(row3.to)),
     bridges: brief.bridges
   };
 }
@@ -25322,13 +23908,13 @@ function joinAnd(items) {
   if (items.length <= 1) return items[0] ?? "";
   return `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
 }
-function preparationSentence(row4, titleOf2) {
-  const sets = row4.preparation_routes.map(routeMembers).filter((set) => set.length);
+function preparationSentence(row3, titleOf2) {
+  const sets = row3.preparation_routes.map(routeMembers).filter((set) => set.length);
   const first = sets[0];
   if (!first) return null;
   const common = first.filter((id2) => sets.every((set) => set.includes(id2)));
   const rest = sets.map((set) => set.filter((id2) => !common.includes(id2))).filter((set) => set.length);
-  const phrase = (ids2) => joinAnd(ids2.map(titleOf2));
+  const phrase = (ids) => joinAnd(ids.map(titleOf2));
   if (!rest.length) return `${phrase(common)}.`;
   const alternatives = rest.map(phrase).join(" or ");
   return common.length ? `${phrase(common)}, then ${alternatives}.` : `${alternatives}.`;
@@ -25385,8 +23971,8 @@ function recordsDate(generatedAt) {
   const month = months[Number(match[2]) - 1];
   return month ? `${Number(match[3])} ${month}` : null;
 }
-function clockTime(date3) {
-  return `${String(date3.getHours()).padStart(2, "0")}:${String(date3.getMinutes()).padStart(2, "0")}`;
+function clockTime(date2) {
+  return `${String(date2.getHours()).padStart(2, "0")}:${String(date2.getMinutes()).padStart(2, "0")}`;
 }
 
 // src/contracts/ability-writes.ts
@@ -25484,7 +24070,7 @@ function observationPayload(draft, idempotencyKey) {
 }
 function connectionProblems(draft, brief) {
   const problems = [];
-  const known = new Set((brief?.abilities ?? []).filter((row4) => row4.lifecycle === "active").map((row4) => row4.id));
+  const known = new Set((brief?.abilities ?? []).filter((row3) => row3.lifecycle === "active").map((row3) => row3.id));
   if (!known.has(draft.fromAbility) || !known.has(draft.toAbility)) {
     problems.push("Both abilities must be active in the current ability map.");
   }
@@ -25662,7 +24248,7 @@ var AbilityClaimDraftModal = class extends import_obsidian3.Modal {
     const workspace = select(
       form,
       "Workspace",
-      this.options.workspaces.map((row4) => [row4.id, row4.title]),
+      this.options.workspaces.map((row3) => [row3.id, row3.title]),
       existing?.workspace || this.options.workspaces[0]?.id || "",
       this.options.workspaces.length ? "The active workspace this work belongs to." : "No active workspace covers this ability\u2019s modules, so it cannot be recorded yet."
     );
@@ -25698,10 +24284,10 @@ var AbilityClaimDraftModal = class extends import_obsidian3.Modal {
       const block2 = form.createDiv({ cls: "los-ability-form-group" });
       block2.createDiv({ cls: "los-ability-form-label", text: "What the attempt shows" });
       for (const criterion of definition2.evidence_spec) {
-        const row4 = block2.createEl("label", { cls: "los-ability-form-check" });
-        const box = row4.createEl("input", { attr: { type: "checkbox", "aria-label": criterion } });
+        const row3 = block2.createEl("label", { cls: "los-ability-form-check" });
+        const box = row3.createEl("input", { attr: { type: "checkbox", "aria-label": criterion } });
         box.checked = existing?.evidenceTags.includes(criterion) ?? false;
-        row4.createSpan({ text: criterion });
+        row3.createSpan({ text: criterion });
         criteriaBoxes.set(criterion, box);
       }
     }
@@ -25818,11 +24404,11 @@ var AbilityConnectionDraftModal = class extends import_obsidian3.Modal {
       text: "A tentative connection carries no evidence and changes no state. It waits for an operator review before it could become a bridge."
     });
     const form = root.createDiv({ cls: "los-ability-form" });
-    const others = candidates.filter((row4) => row4.id !== from.id);
+    const others = candidates.filter((row3) => row3.id !== from.id);
     const target = select(
       form,
       "Connects to",
-      others.map((row4) => [row4.id, row4.title]),
+      others.map((row3) => [row3.id, row3.title]),
       existing?.toAbility ?? others[0]?.id ?? ""
     );
     const kind = select(form, "Kind", CONNECTION_KINDS, existing?.connection ?? "connection");
@@ -25844,7 +24430,7 @@ var AbilityConnectionDraftModal = class extends import_obsidian3.Modal {
     const actions = root.createDiv({ cls: "los-actions los-ability-draft-actions" });
     button(actions, existing ? "Save changes" : "Save draft", () => {
       const stamp = now();
-      const to = others.find((row4) => row4.id === target.value) ?? null;
+      const to = others.find((row3) => row3.id === target.value) ?? null;
       const draft = {
         kind: "connection",
         id: existing?.id ?? newAbilityDraftId("connection"),
@@ -25903,9 +24489,9 @@ function renderExpansionState(parent, host, abilityId) {
 }
 
 // src/features/abilities/detail.ts
-function abilityWorkspaces(store, row4) {
+function abilityWorkspaces(store, row3) {
   const seen = /* @__PURE__ */ new Map();
-  for (const moduleId of row4.module_ids) {
+  for (const moduleId of row3.module_ids) {
     for (const workspace of store.workspacesForModule(moduleId)) {
       const id2 = asString(workspace.id);
       if (!id2 || workspace.archived === true || asString(workspace.status) !== "active") continue;
@@ -25933,11 +24519,11 @@ function abilityWorkPointers(store, focus) {
   }
   return options;
 }
-function openDraft(host, row4, focus, supersedes = null) {
+function openDraft(host, row3, focus, supersedes = null) {
   new AbilityClaimDraftModal(host.app, {
-    ability: row4,
+    ability: row3,
     definition: focus?.ability ?? null,
-    workspaces: abilityWorkspaces(host.plugin.store, row4),
+    workspaces: abilityWorkspaces(host.plugin.store, row3),
     workPointers: abilityWorkPointers(host.plugin.store, focus),
     existing: null,
     supersedes,
@@ -25945,9 +24531,9 @@ function openDraft(host, row4, focus, supersedes = null) {
     onSaved: () => host.render()
   }).open();
 }
-function openConnection(host, row4, brief) {
+function openConnection(host, row3, brief) {
   new AbilityConnectionDraftModal(host.app, {
-    from: row4,
+    from: row3,
     candidates: brief.abilities,
     existing: null,
     save: (draft) => host.plugin.saveAbilityDraft(draft),
@@ -25960,7 +24546,7 @@ function block(parent, title2, lede = "") {
   if (lede) wrap.createEl("p", { cls: "los-micro", text: lede });
   return wrap;
 }
-function list2(parent, items) {
+function list(parent, items) {
   const target = parent.createEl("ul", { cls: "los-ability-detail-list" });
   for (const item of items) target.createEl("li", { text: item });
 }
@@ -25979,43 +24565,43 @@ function pointer(parent, host, value) {
   }
 }
 function renderEvidenceRow(parent, host, item, correctedBy, onCorrect) {
-  const row4 = parent.createDiv({ cls: `los-ability-evidence is-${item.result}${correctedBy.has(item.id) ? " is-corrected" : ""}` });
-  const head = row4.createDiv({ cls: "los-ability-evidence-head" });
+  const row3 = parent.createDiv({ cls: `los-ability-evidence is-${item.result}${correctedBy.has(item.id) ? " is-corrected" : ""}` });
+  const head = row3.createDiv({ cls: "los-ability-evidence-head" });
   head.createEl("strong", { text: `${RESULT_LABEL[item.result]}${correctedBy.has(item.id) ? " \xB7 corrected" : ""}` });
   head.createSpan({ cls: "los-micro", text: [item.timestamp?.slice(0, 16).replace("T", " "), item.activity].filter(Boolean).join(" \xB7 ") });
-  if (item.claim) row4.createEl("p", { text: item.claim });
+  if (item.claim) row3.createEl("p", { text: item.claim });
   const facts = [];
   if (item.assistance !== null) facts.push(`Assistance: ${item.assistance || "\u2014"}`);
   if (item.conditions.length) facts.push(`Met: ${item.conditions.join("; ")}`);
   if (item.conditions_not_met.length) facts.push(`Not met: ${item.conditions_not_met.join("; ")}`);
   if (item.evidence_tags.length) facts.push(`Shows: ${item.evidence_tags.join("; ")}`);
-  for (const fact of facts) row4.createDiv({ cls: "los-micro", text: fact });
-  const refs = row4.createDiv({ cls: "los-ability-evidence-refs" });
+  for (const fact of facts) row3.createDiv({ cls: "los-micro", text: fact });
+  const refs = row3.createDiv({ cls: "los-ability-evidence-refs" });
   refs.createSpan({ cls: "los-micro", text: "Work: " });
   pointer(refs, host, item.work_ref);
   if (item.confirmation_ref) {
-    const confirmation = row4.createDiv({ cls: "los-ability-evidence-refs" });
+    const confirmation = row3.createDiv({ cls: "los-ability-evidence-refs" });
     confirmation.createSpan({ cls: "los-micro", text: "Confirmed: " });
     confirmation.createSpan({ cls: "los-ability-pointer", text: item.confirmation_ref });
   }
-  if (item.supersedes) row4.createDiv({ cls: "los-micro", text: `Corrects ${item.supersedes}; that record stays visible.` });
+  if (item.supersedes) row3.createDiv({ cls: "los-micro", text: `Corrects ${item.supersedes}; that record stays visible.` });
   const corrector = correctedBy.get(item.id);
   if (corrector) {
-    row4.createDiv({ cls: "los-micro", text: `Corrected by ${corrector}.` });
+    row3.createDiv({ cls: "los-micro", text: `Corrected by ${corrector}.` });
   } else {
-    button(row4, "Draft a correction", () => onCorrect(item.id), "tertiary");
+    button(row3, "Draft a correction", () => onCorrect(item.id), "tertiary");
   }
 }
 function renderAbilityDetail(root, host, brief, plane, abilityId) {
-  const row4 = plane.rowOf.get(abilityId);
-  if (!row4) return;
+  const row3 = plane.rowOf.get(abilityId);
+  if (!row3) return;
   const horizon2 = host.plugin.abilityHorizon;
   horizon2.ensureExpansion(abilityId);
   const expansion = horizon2.expansion(abilityId);
   const focus = expansion && "ability" in expansion ? expansion : null;
   const labels = projectionLabels(host.plugin.store);
   const titleOf2 = (id2) => plane.rowOf.get(id2)?.title ?? id2;
-  const modules = row4.module_ids.map((id2) => labels.module(id2));
+  const modules = row3.module_ids.map((id2) => labels.module(id2));
   const page = root.createDiv({ cls: "los-ability-detail" });
   const header2 = page.createDiv({ cls: "los-ability-detail-head" });
   const eyebrow = ["Ability", ...modules];
@@ -26027,20 +24613,20 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
     eyebrow.push("candidate identity");
   }
   header2.createDiv({ cls: "los-ability-eyebrow is-accent", text: eyebrow.join(" \xB7 ") });
-  header2.createEl("h1", { text: row4.title });
-  const status = header2.createDiv({ cls: `los-ability-status is-${row4.state}` });
+  header2.createEl("h1", { text: row3.title });
+  const status = header2.createDiv({ cls: `los-ability-status is-${row3.state}` });
   status.createEl("strong", {
-    text: row4.evidence.length || row4.state !== "uncertain" ? STATE_LABEL[row4.state] : `${STATE_LABEL[row4.state]} \xB7 no attempt recorded`
+    text: row3.evidence.length || row3.state !== "uncertain" ? STATE_LABEL[row3.state] : `${STATE_LABEL[row3.state]} \xB7 no attempt recorded`
   });
-  for (const reason of row4.reasons) status.createDiv({ cls: "los-micro", text: sentence(reason) });
+  for (const reason of row3.reasons) status.createDiv({ cls: "los-micro", text: sentence(reason) });
   const actions = header2.createDiv({ cls: "los-actions los-ability-detail-actions" });
   const canRecord = focus?.ability.review.state === "reviewed" && focus.ability.lifecycle === "active";
-  const draftButton = button(actions, "Draft a worked attempt", () => openDraft(host, row4, focus), "cta");
+  const draftButton = button(actions, "Draft a worked attempt", () => openDraft(host, row3, focus), "cta");
   draftButton.disabled = !canRecord;
   if (!canRecord) {
     draftButton.setAttr("title", focus?.ability.lifecycle === "retired" ? "Retired identities keep their history but cannot receive new evidence." : focus ? "Only a reviewed ability can hold evidence." : "Waiting for this ability\u2019s conditions from Core.");
   }
-  button(actions, "Note a possible connection", () => openConnection(host, row4, brief), "quiet").disabled = row4.lifecycle === "retired";
+  button(actions, "Note a possible connection", () => openConnection(host, row3, brief), "quiet").disabled = row3.lifecycle === "retired";
   button(actions, "Back to map", () => host.go({ detail: false }), "tertiary");
   header2.createEl("p", {
     cls: "los-micro",
@@ -26062,10 +24648,10 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
     counts.createEl("p", { cls: "los-ability-claim", text: focus.ability.claim });
     if (focus.ability.conditions.length) {
       counts.createEl("h3", { text: "Conditions" });
-      list2(counts, focus.ability.conditions);
+      list(counts, focus.ability.conditions);
     }
     counts.createEl("h3", { text: "The attempt must show" });
-    list2(counts, focus.ability.evidence_spec);
+    list(counts, focus.ability.evidence_spec);
     if (focus.ability.source) {
       const source = counts.createDiv({ cls: "los-ability-evidence-refs" });
       source.createSpan({ cls: "los-micro", text: "Defined from: " });
@@ -26077,14 +24663,14 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
   const routes = block(
     page,
     "Preparation routes",
-    row4.preparation_routes.length > 1 ? "Any one route prepares this ability; every ability inside a route is needed." : ""
+    row3.preparation_routes.length > 1 ? "Any one route prepares this ability; every ability inside a route is needed." : ""
   );
-  if (!row4.preparation_routes.length) {
+  if (!row3.preparation_routes.length) {
     routes.createEl("p", { text: "No reviewed preparation route. This ability is where its group starts." });
   }
-  row4.preparation_routes.forEach((route2, index) => {
+  row3.preparation_routes.forEach((route2, index) => {
     const card = routes.createDiv({ cls: "los-ability-route" });
-    card.createEl("h3", { text: row4.preparation_routes.length > 1 ? `Route ${index + 1}` : "Route" });
+    card.createEl("h3", { text: row3.preparation_routes.length > 1 ? `Route ${index + 1}` : "Route" });
     card.createEl("p", { text: route2.reason });
     const members = card.createEl("ul", { cls: "los-ability-detail-list" });
     for (const member of routeMembers(route2)) {
@@ -26106,17 +24692,17 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
     }
   });
   const ledger = block(page, "Evidence", "Every recorded attempt, corrections included. Conflicting work stays visible.");
-  const rows = focus?.ability.evidence ?? row4.evidence;
+  const rows = focus?.ability.evidence ?? row3.evidence;
   if (!rows.length) {
     ledger.createEl("p", { text: "No learner attempt has been recorded. Confirmed work can change this state." });
   } else {
     const correctedBy = /* @__PURE__ */ new Map();
     for (const item of rows) if (item.supersedes) correctedBy.set(item.supersedes, item.id);
     for (const item of [...rows].reverse()) {
-      renderEvidenceRow(ledger, host, item, correctedBy, (id2) => openDraft(host, row4, focus, id2));
+      renderEvidenceRow(ledger, host, item, correctedBy, (id2) => openDraft(host, row3, focus, id2));
     }
   }
-  for (const transfer2 of row4.transfer) {
+  for (const transfer2 of row3.transfer) {
     const card = ledger.createDiv({ cls: "los-ability-route" });
     card.createEl("strong", { text: `Supported through a reviewed equivalence from ${titleOf2(transfer2.from)}` });
     card.createEl("p", { text: `Carries: ${transfer2.carries}` });
@@ -26199,9 +24785,9 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
   }
   if (focus?.shared_concept_candidates.length) {
     const shared = block(page, "Shares a concept tag with", "A shared tag is a lead to look at, never credit.");
-    list2(shared, focus.shared_concept_candidates.map(titleOf2));
+    list(shared, focus.shared_concept_candidates.map(titleOf2));
   }
-  const concepts = asStrings(row4.concept_ids);
+  const concepts = asStrings(row3.concept_ids);
   if (concepts.length) {
     const tags = block(page, "Concepts");
     const line = tags.createDiv({ cls: "los-ability-concepts" });
@@ -26473,8 +25059,8 @@ function renderTopBar(root, host, plane, selected) {
   });
   atlas.addEventListener("click", () => host.go({ ability: null, detail: false }));
   crumbs.createSpan({ cls: "los-ability-crumb-sep", text: "\u203A", attr: { "aria-hidden": "true" } });
-  const row4 = selected ? plane?.rowOf.get(selected) : null;
-  if (host.state.detail && row4) {
+  const row3 = selected ? plane?.rowOf.get(selected) : null;
+  if (host.state.detail && row3) {
     const back = crumbs.createEl("button", {
       cls: "los-ability-crumb is-clickable",
       text: host.state.layout === "list" ? "List" : "Plane",
@@ -26482,7 +25068,7 @@ function renderTopBar(root, host, plane, selected) {
     });
     back.addEventListener("click", () => host.go({ detail: false }));
     crumbs.createSpan({ cls: "los-ability-crumb-sep", text: "\u203A", attr: { "aria-hidden": "true" } });
-    crumbs.createSpan({ cls: "los-ability-crumb is-current", text: row4.title });
+    crumbs.createSpan({ cls: "los-ability-crumb is-current", text: row3.title });
   } else {
     crumbs.createSpan({
       cls: "los-ability-crumb is-current",
@@ -26576,17 +25162,17 @@ function renderSearchResults(root, host, plane, labels) {
     return;
   }
   box.createDiv({ cls: "los-micro", text: `${hits.length} ${hits.length === 1 ? "ability matches" : "abilities match"}` });
-  const list4 = box.createDiv({ cls: "los-ability-search-list", attr: { role: "group", "aria-label": "Matching abilities" } });
-  enableButtonGroupKeyboardNavigation(list4, "vertical");
+  const list3 = box.createDiv({ cls: "los-ability-search-list", attr: { role: "group", "aria-label": "Matching abilities" } });
+  enableButtonGroupKeyboardNavigation(list3, "vertical");
   for (const id2 of hits) {
-    const row4 = plane.rowOf.get(id2);
-    if (!row4) continue;
-    const hit = list4.createEl("button", {
+    const row3 = plane.rowOf.get(id2);
+    if (!row3) continue;
+    const hit = list3.createEl("button", {
       cls: "los-ability-search-hit is-clickable",
       attr: { type: "button" }
     });
-    hit.createSpan({ cls: "los-ability-search-title", text: row4.title });
-    hit.createSpan({ cls: "los-micro", text: STATE_LABEL[row4.state] });
+    hit.createSpan({ cls: "los-ability-search-title", text: row3.title });
+    hit.createSpan({ cls: "los-micro", text: STATE_LABEL[row3.state] });
     hit.addEventListener("click", () => {
       host.query = "";
       host.attention.retained.clear();
@@ -26601,20 +25187,20 @@ function renderSearchResults(root, host, plane, labels) {
 }
 function reconcileAttention(host, plane, snapshot) {
   const attention = host.attention;
-  const ids2 = new Set(plane.rowOf.keys());
+  const ids = new Set(plane.rowOf.keys());
   if (attention.snapshot !== snapshot) {
-    if (attention.ids.size && ![...ids2].some((id2) => attention.ids.has(id2))) attention.camera = null;
-    for (const id2 of attention.folded) if (!ids2.has(id2)) attention.folded.delete(id2);
-    for (const id2 of attention.retained) if (!ids2.has(id2)) attention.retained.delete(id2);
+    if (attention.ids.size && ![...ids].some((id2) => attention.ids.has(id2))) attention.camera = null;
+    for (const id2 of attention.folded) if (!ids.has(id2)) attention.folded.delete(id2);
+    for (const id2 of attention.retained) if (!ids.has(id2)) attention.retained.delete(id2);
     if (host.bridgeKey && !plane.bridges.some((bridge2) => bridgeKey(bridge2) === host.bridgeKey)) host.bridgeKey = null;
     attention.snapshot = snapshot;
-    attention.ids = ids2;
+    attention.ids = ids;
   }
 }
 function renderPlane(root, host, plane, brief, selected) {
   const overview = abilityOverview(plane);
   const visibility = foldedVisibility(overview, host.attention.folded, selected, host.attention.retained);
-  const bridge2 = host.attention.bridgesVisible && host.bridgeKey ? plane.bridges.find((row4) => bridgeKey(row4) === host.bridgeKey) ?? null : null;
+  const bridge2 = host.attention.bridgesVisible && host.bridgeKey ? plane.bridges.find((row3) => bridgeKey(row3) === host.bridgeKey) ?? null : null;
   const inspecting = Boolean(bridge2 || selected && (host.attention.inspector || host.attention.routes));
   const surface = root.createDiv({ cls: `los-ability-plane${inspecting ? " has-inspector" : ""}` });
   const panel = surface.createDiv({ cls: "los-ability-graph" });
@@ -26640,10 +25226,10 @@ function renderPlane(root, host, plane, brief, selected) {
   canvas.setAttr("style", `width:${overview.width}px;height:${overview.height}px`);
   const neighbours = preparationNeighbours(overview.edges, selected);
   const bridgePeers = /* @__PURE__ */ new Set();
-  if (selected && host.attention.bridgesVisible) for (const row4 of plane.bridges) {
-    if (row4.review.state !== "reviewed") continue;
-    if (row4.from === selected) bridgePeers.add(row4.to);
-    if (row4.to === selected) bridgePeers.add(row4.from);
+  if (selected && host.attention.bridgesVisible) for (const row3 of plane.bridges) {
+    if (row3.review.state !== "reviewed") continue;
+    if (row3.from === selected) bridgePeers.add(row3.to);
+    if (row3.to === selected) bridgePeers.add(row3.from);
   }
   const highlighted = /* @__PURE__ */ new Set([...neighbours.prerequisites, ...neighbours.dependents]);
   for (const region of overview.regions) {
@@ -26793,7 +25379,7 @@ function renderPlane(root, host, plane, brief, selected) {
     if (selected) camera.fit(selectionBounds(selected));
   }, "quiet");
   fitSelection.disabled = !selected;
-  const bridges2 = button(controls, `Bridges \xB7 ${plane.bridges.filter((row4) => row4.review.state === "reviewed").length}`, () => {
+  const bridges2 = button(controls, `Bridges \xB7 ${plane.bridges.filter((row3) => row3.review.state === "reviewed").length}`, () => {
     host.attention.bridgesVisible = !host.attention.bridgesVisible;
     if (!host.attention.bridgesVisible) host.bridgeKey = null;
     host.render();
@@ -26825,11 +25411,11 @@ function renderPlane(root, host, plane, brief, selected) {
   });
   if (selected) renderSelectionDock(panel, host, plane, selected, neighbours, bridgePeers, visibility.hiddenIncident.get(selected) ?? 0, visibility.nodes);
   const foot = panel.createDiv({ cls: "los-ability-graph-foot" });
-  if (![...plane.rowOf.values()].some((row4) => row4.evidence.length)) foot.createEl("p", { text: "No learner attempt recorded. Ability states stay uncertain until confirmed work exists." });
+  if (![...plane.rowOf.values()].some((row3) => row3.evidence.length)) foot.createEl("p", { text: "No learner attempt recorded. Ability states stay uncertain until confirmed work exists." });
   if (plane.crossGroupCandidates.length) foot.createEl("p", { text: `${plane.crossGroupCandidates.length} tentative connection${plane.crossGroupCandidates.length === 1 ? "" : "s"} crosses groups; tentative connections carry nothing.` });
   foot.createDiv({ cls: "los-micro", text: `${visibility.nodes.size} visible of ${brief.abilities.length} loaded abilities \xB7 ${overview.edges.length - visibility.edges.length} folded preparation connections` });
   if (host.attention.bridgesVisible) {
-    const omitted = plane.bridges.filter((row4) => !visibility.nodes.has(row4.from) || !visibility.nodes.has(row4.to)).length;
+    const omitted = plane.bridges.filter((row3) => !visibility.nodes.has(row3.from) || !visibility.nodes.has(row3.to)).length;
     if (omitted) foot.createDiv({ cls: "los-micro", text: `${omitted} bridge connections omitted by folding; bridges never retain preparation paths.` });
   }
   if (bridge2) renderBridgeInspector(surface, host, plane, bridge2);
@@ -26905,12 +25491,12 @@ function renderBridgeBands(canvas, host, plane, overview, visible, suppressClick
   void plane;
 }
 function renderSelectionDock(parent, host, plane, selected, neighbours, bridgePeers, hidden2, visible) {
-  const row4 = plane.rowOf.get(selected);
-  if (!row4) return;
+  const row3 = plane.rowOf.get(selected);
+  if (!row3) return;
   const dock = parent.createDiv({ cls: "los-ability-selection-dock", attr: { role: "group", "aria-label": "Selected ability actions" } });
   const info = dock.createDiv();
-  info.createEl("strong", { text: row4.title });
-  const outside = new Set(row4.preparation_routes.flatMap((route2) => [...route2.supported, ...route2.missing_or_uncertain]).filter((id2) => !plane.rowOf.has(id2)));
+  info.createEl("strong", { text: row3.title });
+  const outside = new Set(row3.preparation_routes.flatMap((route2) => [...route2.supported, ...route2.missing_or_uncertain]).filter((id2) => !plane.rowOf.has(id2)));
   const hiddenPeers = [...bridgePeers].filter((id2) => !visible.has(id2)).length;
   info.createDiv({ cls: "los-micro", text: `${neighbours.prerequisites.size} loaded immediate prerequisites \xB7 ${neighbours.dependents.size} loaded immediate dependents${host.attention.bridgesVisible ? ` \xB7 ${bridgePeers.size} reviewed bridge peers${hiddenPeers ? ` (${hiddenPeers} hidden by folding)` : ""}` : ""}${hidden2 ? ` \xB7 ${hidden2} folded incident connections` : ""}${outside.size ? ` \xB7 ${outside.size} complete route members outside loaded horizon` : ""}` });
   button(dock, "Details", () => {
@@ -26929,21 +25515,21 @@ function renderSelectionDock(parent, host, plane, selected, neighbours, bridgePe
   }, "tertiary");
 }
 function renderRoutes(surface, host, plane, selected) {
-  const row4 = plane.rowOf.get(selected);
-  if (!row4) return;
-  const panel = surface.createEl("aside", { cls: "los-ability-inspector", attr: { "aria-label": `Complete preparation routes: ${row4.title}` } });
+  const row3 = plane.rowOf.get(selected);
+  if (!row3) return;
+  const panel = surface.createEl("aside", { cls: "los-ability-inspector", attr: { "aria-label": `Complete preparation routes: ${row3.title}` } });
   panel.createEl("h2", { text: "Complete preparation routes" });
-  panel.createEl("p", { text: row4.title });
+  panel.createEl("p", { text: row3.title });
   panel.createEl("p", { cls: "los-micro", text: "All members of a route are required together. Separate routes are alternatives. Folding changes only the drawing." });
-  for (const [index, route2] of row4.preparation_routes.entries()) {
+  for (const [index, route2] of row3.preparation_routes.entries()) {
     const block2 = panel.createDiv({ cls: "los-ability-route" });
-    block2.createEl("h3", { text: `Route ${index + 1}${row4.preparation_routes.length > 1 ? " \xB7 alternative" : ""}` });
-    const list4 = block2.createEl("ul");
-    for (const id2 of [.../* @__PURE__ */ new Set([...route2.supported, ...route2.missing_or_uncertain])]) list4.createEl("li", { text: `${plane.rowOf.get(id2)?.title ?? id2}${plane.rowOf.has(id2) ? "" : " \xB7 outside loaded horizon"}${route2.supported.includes(id2) ? " \xB7 supported" : " \xB7 missing or uncertain"}` });
+    block2.createEl("h3", { text: `Route ${index + 1}${row3.preparation_routes.length > 1 ? " \xB7 alternative" : ""}` });
+    const list3 = block2.createEl("ul");
+    for (const id2 of [.../* @__PURE__ */ new Set([...route2.supported, ...route2.missing_or_uncertain])]) list3.createEl("li", { text: `${plane.rowOf.get(id2)?.title ?? id2}${plane.rowOf.has(id2) ? "" : " \xB7 outside loaded horizon"}${route2.supported.includes(id2) ? " \xB7 supported" : " \xB7 missing or uncertain"}` });
     block2.createEl("p", { text: route2.reason });
     if (route2.source) button(block2, route2.source, () => host.plugin.openAuthoredPath((route2.source ?? "").split("#")[0] ?? ""), "tertiary").addClass("los-ability-source-link");
   }
-  if (!row4.preparation_routes.length) panel.createEl("p", { text: "No reviewed preparation route is recorded." });
+  if (!row3.preparation_routes.length) panel.createEl("p", { text: "No reviewed preparation route is recorded." });
   button(panel, "Close routes", () => {
     host.attention.routes = false;
     host.render();
@@ -26954,8 +25540,8 @@ function draftsFor(host, abilityId) {
   return host.plugin.listAbilityDrafts().filter((draft) => draft.kind === "claim" ? draft.abilityId === abilityId : draft.fromAbility === abilityId || draft.toAbility === abilityId).length;
 }
 function renderInspector(surface, host, plane, brief, abilityId) {
-  const row4 = plane.rowOf.get(abilityId);
-  if (!row4) return;
+  const row3 = plane.rowOf.get(abilityId);
+  if (!row3) return;
   const horizon2 = host.plugin.abilityHorizon;
   horizon2.ensureExpansion(abilityId);
   const expansion = horizon2.expansion(abilityId);
@@ -26964,16 +25550,16 @@ function renderInspector(surface, host, plane, brief, abilityId) {
   const titleOf2 = (id2) => plane.rowOf.get(id2)?.title ?? id2;
   const panel = surface.createEl("aside", {
     cls: "los-ability-inspector",
-    attr: { "aria-label": `Selected ability: ${row4.title}` }
+    attr: { "aria-label": `Selected ability: ${row3.title}` }
   });
   button(panel, "Close details", () => {
     host.attention.inspector = false;
     host.render();
   }, "tertiary");
-  const modules = row4.module_ids.map((id2) => labels.module(id2)).join(" \xB7 ");
+  const modules = row3.module_ids.map((id2) => labels.module(id2)).join(" \xB7 ");
   panel.createDiv({ cls: "los-ability-eyebrow is-accent", text: `Selected ability${modules ? ` \xB7 ${modules}` : ""}` });
-  panel.createEl("h2", { text: row4.title });
-  renderStatus(panel, row4);
+  panel.createEl("h2", { text: row3.title });
+  renderStatus(panel, row3);
   const counts = section2(panel, "What counts");
   if (focus) {
     counts.createEl("p", { text: focus.ability.claim });
@@ -26987,11 +25573,11 @@ function renderInspector(surface, host, plane, brief, abilityId) {
     renderExpansionState(counts, host, abilityId);
   }
   const preparation = section2(panel, "Preparation");
-  const sentenceText = preparationSentence(row4, titleOf2);
+  const sentenceText = preparationSentence(row3, titleOf2);
   preparation.createEl("p", {
     text: sentenceText ?? "No reviewed preparation route. This is where the group starts."
   });
-  const nearest = row4.preparation_routes.find((route2) => route2.supported.length);
+  const nearest = row3.preparation_routes.find((route2) => route2.supported.length);
   if (nearest) {
     preparation.createEl("p", {
       cls: "los-micro",
@@ -26999,18 +25585,18 @@ function renderInspector(surface, host, plane, brief, abilityId) {
     });
   }
   const evidence3 = section2(panel, "Evidence");
-  if (!row4.evidence.length) {
+  if (!row3.evidence.length) {
     evidence3.createEl("p", { text: "No learner attempt has been recorded. Confirmed work can change this state." });
   } else {
     evidence3.createEl("p", {
-      text: `${row4.evidence.length} recorded ${row4.evidence.length === 1 ? "attempt" : "attempts"} shown here; the full ledger is in the detail.`
+      text: `${row3.evidence.length} recorded ${row3.evidence.length === 1 ? "attempt" : "attempts"} shown here; the full ledger is in the detail.`
     });
-    for (const item of row4.evidence) {
+    for (const item of row3.evidence) {
       evidence3.createDiv({ cls: "los-micro", text: `${item.result} \xB7 ${item.work_ref}` });
     }
   }
-  if (row4.transfer.length) {
-    for (const transfer2 of row4.transfer) {
+  if (row3.transfer.length) {
+    for (const transfer2 of row3.transfer) {
       evidence3.createDiv({
         cls: "los-micro",
         text: `Supported through a reviewed equivalence from ${titleOf2(transfer2.from)}.`
@@ -27028,11 +25614,11 @@ function renderInspector(surface, host, plane, brief, abilityId) {
   const open = button(footer, "Open full ability detail \u2192", () => host.go({ detail: true }), "tertiary");
   open.addClass("los-ability-detail-link");
 }
-function renderStatus(parent, row4) {
-  const status = parent.createDiv({ cls: `los-ability-status is-${row4.state}` });
-  const headline2 = row4.evidence.length || row4.state !== "uncertain" ? STATE_LABEL[row4.state] : `${STATE_LABEL[row4.state]} \xB7 no attempt recorded`;
+function renderStatus(parent, row3) {
+  const status = parent.createDiv({ cls: `los-ability-status is-${row3.state}` });
+  const headline2 = row3.evidence.length || row3.state !== "uncertain" ? STATE_LABEL[row3.state] : `${STATE_LABEL[row3.state]} \xB7 no attempt recorded`;
   status.createEl("strong", { text: headline2 });
-  for (const reason of row4.reasons) status.createDiv({ cls: "los-micro", text: sentence(reason) });
+  for (const reason of row3.reasons) status.createDiv({ cls: "los-micro", text: sentence(reason) });
 }
 function section2(parent, title2) {
   const block2 = parent.createDiv({ cls: "los-ability-inspector-section" });
@@ -27061,8 +25647,8 @@ function renderBridgeInspector(surface, host, plane, bridge2) {
   changes.createEl("p", { text: bridge2.changes });
   const conditions = section2(panel, "Only under");
   if (bridge2.conditions.length) {
-    const list4 = conditions.createEl("ul");
-    for (const condition of bridge2.conditions) list4.createEl("li", { text: condition });
+    const list3 = conditions.createEl("ul");
+    for (const condition of bridge2.conditions) list3.createEl("li", { text: condition });
   } else {
     conditions.createEl("p", { cls: "los-micro", text: "No conditions stated." });
   }
@@ -27099,18 +25685,18 @@ function renderList(root, host, plane, brief) {
     });
     enableButtonGroupKeyboardNavigation(rows, "vertical");
     for (const node of group.nodes) {
-      const row4 = rows.createEl("button", {
+      const row3 = rows.createEl("button", {
         cls: "los-ability-list-row is-clickable",
         attr: { type: "button", "data-ability": node.id }
       });
-      row4.createSpan({ cls: "los-ability-list-title", text: node.row.title });
-      row4.createSpan({ cls: "los-ability-list-meta", text: node.meta });
-      row4.createSpan({ cls: `los-ability-list-state is-${node.row.state}`, text: STATE_LABEL[node.row.state] });
-      row4.createSpan({
+      row3.createSpan({ cls: "los-ability-list-title", text: node.row.title });
+      row3.createSpan({ cls: "los-ability-list-meta", text: node.meta });
+      row3.createSpan({ cls: `los-ability-list-state is-${node.row.state}`, text: STATE_LABEL[node.row.state] });
+      row3.createSpan({
         cls: "los-ability-list-meta",
         text: `${node.row.preparation_routes.length} ${node.row.preparation_routes.length === 1 ? "route" : "routes"} \xB7 ${node.bridgeCount} ${node.bridgeCount === 1 ? "bridge" : "bridges"}`
       });
-      row4.addEventListener("click", () => host.go({ group: group.key, ability: node.id, detail: true }));
+      row3.addEventListener("click", () => host.go({ group: group.key, ability: node.id, detail: true }));
     }
   }
   if (brief.truncated) {
@@ -27374,24 +25960,24 @@ function buildAtlasGraph(store) {
     [prerequisiteEdges, (edge) => edge.to],
     [dependentEdges, (edge) => edge.from]
   ]) {
-    for (const list4 of index.values()) {
-      list4.sort((left, right) => order(farEnd(left), farEnd(right)) || compareStrings(left.type, right.type) || compareStrings(left.id, right.id));
+    for (const list3 of index.values()) {
+      list3.sort((left, right) => order(farEnd(left), farEnd(right)) || compareStrings(left.type, right.type) || compareStrings(left.id, right.id));
     }
   }
   for (const index of [semanticEdges, unrecognizedEdges]) {
-    for (const [conceptId, list4] of index) {
-      list4.sort((left, right) => {
+    for (const [conceptId, list3] of index) {
+      list3.sort((left, right) => {
         const leftFar = left.from === conceptId ? left.to : left.from;
         const rightFar = right.from === conceptId ? right.to : right.from;
         return compareStrings(left.type, right.type) || order(leftFar, rightFar) || compareStrings(left.id, right.id);
       });
     }
   }
-  for (const list4 of modulesByConcept.values()) {
-    list4.sort((left, right) => compareStrings(left, right));
+  for (const list3 of modulesByConcept.values()) {
+    list3.sort((left, right) => compareStrings(left, right));
   }
-  for (const list4 of conceptsByModule.values()) {
-    list4.sort(order);
+  for (const list3 of conceptsByModule.values()) {
+    list3.sort(order);
   }
   return {
     concepts,
@@ -27438,8 +26024,8 @@ function evidenceFor(graph, moduleId, conceptId) {
   ) ?? [];
 }
 function modulesFor(graph, conceptId) {
-  const ids2 = new Set(graph.modulesByConcept.get(conceptId) ?? []);
-  return graph.modules.filter((module2) => ids2.has(module2.id));
+  const ids = new Set(graph.modulesByConcept.get(conceptId) ?? []);
+  return graph.modules.filter((module2) => ids.has(module2.id));
 }
 function neighbourhood(graph, focusId, options = {}) {
   const depth = Math.max(1, Math.trunc(options.depth ?? 1));
@@ -27525,7 +26111,7 @@ function neighbourhood(graph, focusId, options = {}) {
   };
   const beyondPrerequisites = beyondFrom(prerequisiteFrontier, "prerequisite");
   const beyondDependents = beyondFrom(dependentFrontier, "dependent");
-  const sortedConcepts = (values2) => [...values2].sort(compareConcepts);
+  const sortedConcepts = (values) => [...values].sort(compareConcepts);
   const prerequisites = sortedConcepts(beyondPrerequisites.values());
   const dependents = sortedConcepts(beyondDependents.values());
   const semantic = sortedConcepts(semanticNeighbours.values());
@@ -27948,20 +26534,20 @@ function conceptDisclosure(parent, host, key, label, cls = "") {
 function conceptPlaneSlice(view, perLane = 4) {
   const limit = Math.max(1, Math.trunc(perLane));
   const counts = /* @__PURE__ */ new Map();
-  const ids2 = /* @__PURE__ */ new Set([view.focus.id]);
+  const ids = /* @__PURE__ */ new Set([view.focus.id]);
   const outward = [...view.nodes].sort((left, right) => left.distance - right.distance);
   for (const node of outward) {
     if (node.direction === "focus") continue;
     const key = `${node.direction}:${node.column}`;
     const count3 = counts.get(key) ?? 0;
-    const connected = node.direction === "related" ? view.semanticEdges.some((edge) => edge.from === node.concept.id && ids2.has(edge.to) || edge.to === node.concept.id && ids2.has(edge.from)) : view.strictEdges.some((edge) => node.direction === "prerequisite" ? edge.to === node.concept.id && ids2.has(edge.from) : edge.from === node.concept.id && ids2.has(edge.to));
+    const connected = node.direction === "related" ? view.semanticEdges.some((edge) => edge.from === node.concept.id && ids.has(edge.to) || edge.to === node.concept.id && ids.has(edge.from)) : view.strictEdges.some((edge) => node.direction === "prerequisite" ? edge.to === node.concept.id && ids.has(edge.from) : edge.from === node.concept.id && ids.has(edge.to));
     if (count3 >= limit || !connected) continue;
-    ids2.add(node.concept.id);
+    ids.add(node.concept.id);
     counts.set(key, count3 + 1);
   }
-  const shown = view.nodes.filter((node) => ids2.has(node.concept.id));
-  const omitted = view.nodes.filter((node) => !ids2.has(node.concept.id));
-  const visible = (edge) => ids2.has(edge.from) && ids2.has(edge.to);
+  const shown = view.nodes.filter((node) => ids.has(node.concept.id));
+  const omitted = view.nodes.filter((node) => !ids.has(node.concept.id));
+  const visible = (edge) => ids.has(edge.from) && ids.has(edge.to);
   return {
     nodes: shown,
     omitted,
@@ -27983,7 +26569,7 @@ function nodeAttachment(graph, view, node) {
   const toward = edges.filter((edge) => otherEnd(edge, node.concept.id) !== node.concept.id);
   const nearest = toward.find((edge) => {
     const other = otherEnd(edge, node.concept.id);
-    const otherNode = view.nodes.find((row4) => row4.concept.id === other);
+    const otherNode = view.nodes.find((row3) => row3.concept.id === other);
     return (otherNode?.distance ?? Number.MAX_SAFE_INTEGER) < node.distance;
   }) ?? toward[0];
   if (node.direction === "related") {
@@ -28053,15 +26639,15 @@ function renderRemainder(parent, host, view, concepts, noun) {
     host.render();
   });
   if (!host.remainderOpen) return;
-  const list4 = card.createDiv({ cls: "los-atlas-remainder-list" });
-  enableButtonGroupKeyboardNavigation(list4, "vertical");
+  const list3 = card.createDiv({ cls: "los-atlas-remainder-list" });
+  enableButtonGroupKeyboardNavigation(list3, "vertical");
   for (const concept of concepts) {
-    const row4 = list4.createEl("button", {
+    const row3 = list3.createEl("button", {
       cls: "los-atlas-remainder-item is-clickable",
       attr: { type: "button" },
       text: concept.label
     });
-    row4.addEventListener("click", () => host.go({ concept: concept.id }));
+    row3.addEventListener("click", () => host.go({ concept: concept.id }));
   }
 }
 function renderFocusedGraph(parent, host, graph, view) {
@@ -28117,9 +26703,9 @@ function renderFocusedGraph(parent, host, graph, view) {
       text: "Semantic context \xB7 excluded from path order"
     });
     if (related.length) {
-      const row4 = band.createDiv({ cls: "los-atlas-semantic-row" });
-      enableButtonGroupKeyboardNavigation(row4, "horizontal");
-      for (const node of related) renderNode(row4, host, graph, view, node);
+      const row3 = band.createDiv({ cls: "los-atlas-semantic-row" });
+      enableButtonGroupKeyboardNavigation(row3, "horizontal");
+      for (const node of related) renderNode(row3, host, graph, view, node);
     }
     band.createDiv({
       cls: "los-micro",
@@ -28150,13 +26736,13 @@ function renderFocusedGraph(parent, host, graph, view) {
       "los-atlas-crowded-remainder"
     );
     for (const node of slice.omitted) {
-      const row4 = button(
+      const row3 = button(
         remainder,
         `${node.concept.label} \xB7 ${COLUMN_HEADINGS[node.direction]}`,
         () => host.go({ concept: node.concept.id }),
         "row"
       );
-      row4.setAttribute("data-omitted-concept", node.concept.id);
+      row3.setAttribute("data-omitted-concept", node.concept.id);
     }
     remainder.createDiv({ cls: "los-micro", text: "Every connection at this depth remains inspectable in Text outline." });
   }
@@ -28170,7 +26756,7 @@ function renderLegend(parent) {
   const legend = parent.createDiv({ cls: "los-atlas-legend" });
   legend.createDiv({ cls: "los-micro los-atlas-legend-kicker", text: "Legend" });
   const items = legend.createDiv({ cls: "los-atlas-legend-items" });
-  for (const [key, text8] of [
+  for (const [key, text7] of [
     ["requires", "requires"],
     ["builds-on", "builds on"],
     ["semantic", "semantic \u2014 never in a path"],
@@ -28179,7 +26765,7 @@ function renderLegend(parent) {
   ]) {
     const item = items.createDiv({ cls: "los-atlas-legend-item" });
     item.createSpan({ cls: `los-atlas-legend-mark los-atlas-legend-mark--${key}` }).setAttrs({ "aria-hidden": "true" });
-    item.createSpan({ text: text8 });
+    item.createSpan({ text: text7 });
   }
   legend.createDiv({
     cls: "los-micro",
@@ -28187,27 +26773,27 @@ function renderLegend(parent) {
   });
 }
 function outlineRow(parent, host, graph, edge, focusId, position, hiddenByLens = false) {
-  const row4 = parent.createEl("button", {
+  const row3 = parent.createEl("button", {
     cls: "los-atlas-outline-row is-clickable",
     attr: { type: "button" }
   });
-  row4.addClass(`los-atlas-outline-row--${edge.layer}`);
-  if (hiddenByLens) row4.addClass("los-atlas-outline-row--hidden-by-lens");
-  row4.setAttribute("data-relation-id", edge.id);
+  row3.addClass(`los-atlas-outline-row--${edge.layer}`);
+  if (hiddenByLens) row3.addClass("los-atlas-outline-row--hidden-by-lens");
+  row3.setAttribute("data-relation-id", edge.id);
   const state = hiddenByLens ? " \xB7 hidden by the selected lens" : "";
-  row4.createDiv({
+  row3.createDiv({
     cls: "los-atlas-outline-title",
     text: `${position} \xB7 ${relationSentences(graph, edge).join(" ")}${state}`
   });
-  row4.createDiv({
+  row3.createDiv({
     cls: "los-micro",
     text: provenanceLine(graph, edge, focusId)
   });
-  row4.createSpan({ cls: "los-atlas-outline-action los-micro", text: "Inspect connection" });
-  row4.setAttrs({
+  row3.createSpan({ cls: "los-atlas-outline-action los-micro", text: "Inspect connection" });
+  row3.setAttrs({
     "aria-label": `${relationSentences(graph, edge).join(" ")}${state}. ${provenanceLine(graph, edge, focusId)}. Inspect connection.`
   });
-  row4.addEventListener("click", () => host.inspectEdge(edge.id));
+  row3.addEventListener("click", () => host.inspectEdge(edge.id));
 }
 function renderOutline(parent, host, graph, view) {
   const outline = parent.createDiv({ cls: "los-atlas-outline" });
@@ -28231,8 +26817,8 @@ function renderOutline(parent, host, graph, view) {
   const drawnSemanticIds = new Set(drawnSemantic.map((edge) => edge.id));
   const hiddenSemantic = authoredSemantic.filter((edge) => !drawnSemanticIds.has(edge.id));
   const semanticHeading = authoredSemantic.length ? `Semantic \xB7 ${plural(authoredSemantic.length, "authored", "authored")}, ${drawnSemantic.length} drawn by this lens` : "Semantic \xB7 0 authored";
-  const list4 = outline.createDiv({ cls: "los-atlas-outline-list" });
-  enableButtonGroupKeyboardNavigation(list4, "vertical");
+  const list3 = outline.createDiv({ cls: "los-atlas-outline-list" });
+  enableButtonGroupKeyboardNavigation(list3, "vertical");
   for (const [heading, edges, absence, hidden2] of [
     [
       `Visible prerequisite connections \xB7 ${plural(prerequisites.length, "authored", "authored")}`,
@@ -28248,18 +26834,18 @@ function renderOutline(parent, host, graph, view) {
     ]
   ]) {
     if (!edges.length && !hidden2.length && !absence) continue;
-    list4.createDiv({ cls: "los-micro los-atlas-outline-group", text: heading });
+    list3.createDiv({ cls: "los-micro los-atlas-outline-group", text: heading });
     if (!edges.length && !hidden2.length) {
-      list4.createDiv({ cls: "los-atlas-outline-absence los-micro", text: absence });
+      list3.createDiv({ cls: "los-atlas-outline-absence los-micro", text: absence });
       continue;
     }
     const total = edges.length + hidden2.length;
     edges.forEach((edge, index) => {
-      outlineRow(list4, host, graph, edge, view.focus.id, `${index + 1} of ${total}`);
+      outlineRow(list3, host, graph, edge, view.focus.id, `${index + 1} of ${total}`);
     });
     hidden2.forEach((edge, index) => {
       outlineRow(
-        list4,
+        list3,
         host,
         graph,
         edge,
@@ -28336,14 +26922,14 @@ function renderPath(parent, host, graph, focusId) {
     cls: "los-micro",
     text: `${plural(path.total, "concept")} in ${plural(path.layers.length, "step")}, ordered by the strict layer alone. Semantic relations are not in this order and never were.`
   });
-  const list4 = canvas.createDiv({ cls: "los-atlas-outline-list" });
-  enableButtonGroupKeyboardNavigation(list4, "vertical");
-  list4.createDiv({
+  const list3 = canvas.createDiv({ cls: "los-atlas-outline-list" });
+  enableButtonGroupKeyboardNavigation(list3, "vertical");
+  list3.createDiv({
     cls: "los-micro los-atlas-outline-group",
     text: `Every step as text \xB7 ${plural(path.edges.length, "authored relation")}`
   });
   path.edges.forEach((edge, index) => {
-    outlineRow(list4, host, graph, edge, edge.from, `${index + 1} of ${path.edges.length}`);
+    outlineRow(list3, host, graph, edge, edge.from, `${index + 1} of ${path.edges.length}`);
   });
 }
 function layerBadge(parent, edge) {
@@ -28376,7 +26962,7 @@ function buildConceptContext(store, conceptId) {
   return { notes, sources };
 }
 function linkedConceptNotes(store, conceptId) {
-  return store.related(conceptId).map((row4) => row4.rec).filter((record10) => record10?.type === "note").sort(byLabel);
+  return store.related(conceptId).map((row3) => row3.rec).filter((record10) => record10?.type === "note").sort(byLabel);
 }
 
 // src/features/atlas/questions.ts
@@ -28448,9 +27034,9 @@ var RELATION_TYPES = [
   ...SEMANTIC_RELATION_TYPES
 ];
 function rowOf(edge) {
-  const row4 = { from: edge.from, type: edge.type, to: edge.to };
+  const row3 = { from: edge.from, type: edge.type, to: edge.to };
   return {
-    ...row4,
+    ...row3,
     ...edge.context ? { context: edge.context } : {},
     ...edge.source ? { source: edge.source } : {}
   };
@@ -28511,19 +27097,19 @@ function draftRefusal(graph, draft) {
   if (!graph.conceptById.has(draft.to) || !graph.conceptById.has(draft.from)) {
     return "Both ends must be concepts that already exist.";
   }
-  const row4 = draftRow(draft);
-  const identity = `${row4.from}--${row4.type}--${row4.to}`;
+  const row3 = draftRow(draft);
+  const identity = `${row3.from}--${row3.type}--${row3.to}`;
   const replaced = draft.original ? `${draft.original.from}--${draft.original.type}--${draft.original.to}` : null;
   const existing = graph.relationByIdentity.get(identity);
   if (existing && identity !== replaced) {
     return "That connection is already authored.";
   }
-  if (relationLayer(row4.type) === "strict") {
-    const seen = /* @__PURE__ */ new Set([row4.from]);
-    const frontier = [row4.to];
+  if (relationLayer(row3.type) === "strict") {
+    const seen = /* @__PURE__ */ new Set([row3.from]);
+    const frontier = [row3.to];
     while (frontier.length) {
       const id2 = frontier.pop();
-      if (id2 === row4.from) return "That would make a loop of prerequisites.";
+      if (id2 === row3.from) return "That would make a loop of prerequisites.";
       if (seen.has(id2)) continue;
       seen.add(id2);
       for (const edge of graph.prerequisiteEdges.get(id2) ?? []) {
@@ -28532,7 +27118,7 @@ function draftRefusal(graph, draft) {
       }
     }
   }
-  if (row4.source && !graph.conceptById.has(row4.source) && !graph.resolvedSources.has(row4.source) && !/^(note|source)-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row4.source)) {
+  if (row3.source && !graph.conceptById.has(row3.source) && !graph.resolvedSources.has(row3.source) && !/^(note|source)-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(row3.source)) {
     return "A source must be an existing note or source identifier.";
   }
   return null;
@@ -28580,12 +27166,12 @@ function renderEndpoint(parent, host, graph, draft, end) {
     }
     enableButtonGroupKeyboardNavigation(results, "vertical");
     for (const id2 of matches3) {
-      const row4 = results.createEl("button", {
+      const row3 = results.createEl("button", {
         cls: "los-atlas-editor-result is-clickable",
         attr: { type: "button" },
         text: conceptLabel(graph, id2)
       });
-      row4.addEventListener("click", () => {
+      row3.addEventListener("click", () => {
         if (end === "from") draft.from = id2;
         else draft.to = id2;
         draft.picking = null;
@@ -28690,8 +27276,8 @@ function renderRelationEditor(parent, host, graph, draft) {
     actions,
     draft.mode === "add" ? "Save this connection" : "Save the change",
     () => {
-      const row4 = draftRow(draft);
-      void host.changeRelations([draft.mode === "add" ? { action: "add", new: row4 } : { action: "replace", old: draft.original, new: row4 }]);
+      const row3 = draftRow(draft);
+      void host.changeRelations([draft.mode === "add" ? { action: "add", new: row3 } : { action: "replace", old: draft.original, new: row3 }]);
     }
   );
   save.addClass("los-atlas-editor-save");
@@ -28728,10 +27314,10 @@ function aliasesOf(record10) {
 }
 function connectionRow(parent, host, graph, edge, conceptId) {
   const other = otherEnd(edge, conceptId);
-  const row4 = parent.createDiv({ cls: "los-atlas-connection" });
-  row4.setAttribute("data-relation-id", edge.id);
-  row4.toggleClass("is-selected", host.edgeId === edge.id);
-  const copy = row4.createDiv({ cls: "los-atlas-connection-copy" });
+  const row3 = parent.createDiv({ cls: "los-atlas-connection" });
+  row3.setAttribute("data-relation-id", edge.id);
+  row3.toggleClass("is-selected", host.edgeId === edge.id);
+  const copy = row3.createDiv({ cls: "los-atlas-connection-copy" });
   const headline2 = copy.createDiv({ cls: "los-atlas-connection-title" });
   headline2.createSpan({ text: edgeHeadline(graph, edge, conceptId) });
   layerBadge(headline2, edge);
@@ -28769,7 +27355,7 @@ function connectionRow(parent, host, graph, edge, conceptId) {
   if (edge.context) {
     copy.createDiv({ cls: "los-atlas-connection-context", text: edge.context });
   }
-  const action = row4.createDiv({ cls: "los-atlas-connection-action" });
+  const action = row3.createDiv({ cls: "los-atlas-connection-action" });
   button(action, "Focus", () => host.go({ concept: other }), "quiet");
 }
 function renderConnections(parent, host, graph, conceptId) {
@@ -28926,27 +27512,27 @@ function renderSources(parent, host, graph, conceptId) {
   }
   for (const edge of edges) {
     const provenance = provenanceOf(graph, edge);
-    const row4 = parent.createDiv({ cls: "los-atlas-provenance-row" });
-    row4.addClass(`los-atlas-provenance--${provenance.state}`);
-    row4.createDiv({
+    const row3 = parent.createDiv({ cls: "los-atlas-provenance-row" });
+    row3.addClass(`los-atlas-provenance--${provenance.state}`);
+    row3.createDiv({
       cls: "los-atlas-connection-title",
       text: edgeHeadline(graph, edge, conceptId)
     });
-    row4.createDiv({ cls: "los-micro", text: provenanceSentence(provenance) });
+    row3.createDiv({ cls: "los-micro", text: provenanceSentence(provenance) });
     if (provenance.state === "resolved") {
       button(
-        row4,
+        row3,
         "Open source",
         () => host.plugin.nav.openRecord(provenance.record),
         "quiet"
       );
     } else if (provenance.state === "undocumented") {
-      row4.createDiv({
+      row3.createDiv({
         cls: "los-micro",
         text: "The schema permits a relation with no source. It is undocumented, not invalid."
       });
     } else {
-      row4.createDiv({
+      row3.createDiv({
         cls: "los-micro los-atlas-unresolved",
         text: "The identifier is reported exactly as authored. Nothing is substituted for it."
       });
@@ -29000,11 +27586,11 @@ function renderQuestionNote(parent, host, questions, absence) {
     band.createDiv({ cls: "los-atlas-absence los-micro", text: absence });
     return;
   }
-  const list4 = band.createDiv({ cls: "los-atlas-question-list" });
+  const list3 = band.createDiv({ cls: "los-atlas-question-list" });
   for (const question of questions) {
-    const row4 = list4.createDiv({ cls: "los-atlas-question-row" });
-    row4.toggleClass("is-resolved", question.state === "resolved");
-    const open2 = row4.createEl("button", {
+    const row3 = list3.createDiv({ cls: "los-atlas-question-row" });
+    row3.toggleClass("is-resolved", question.state === "resolved");
+    const open2 = row3.createEl("button", {
       cls: "los-atlas-question-open is-clickable",
       attr: { type: "button" }
     });
@@ -29017,7 +27603,7 @@ function renderQuestionNote(parent, host, questions, absence) {
       "aria-label": `${question.title}. ${question.state}. Open the note.`
     });
     open2.addEventListener("click", () => host.plugin.openVaultPath(question.path));
-    const actions = row4.createDiv({ cls: "los-actions" });
+    const actions = row3.createDiv({ cls: "los-actions" });
     const resolving = question.state === "open";
     const control = button(
       actions,
@@ -29089,16 +27675,16 @@ function noteMetadata(note) {
   return [asString(note.role), asString(note.authorship)].filter((value) => Boolean(value)).map((value) => labels[value] ?? value).join(" \xB7 ");
 }
 function renderLinkedNote(parent, host, note) {
-  const row4 = parent.createEl("button", {
+  const row3 = parent.createEl("button", {
     cls: "los-atlas-record los-atlas-linked-note is-clickable",
     attr: { type: "button" }
   });
-  row4.setAttribute("data-note-id", asString(note.id) ?? "");
-  const copy = row4.createDiv({ cls: "los-atlas-record-copy" });
+  row3.setAttribute("data-note-id", asString(note.id) ?? "");
+  const copy = row3.createDiv({ cls: "los-atlas-record-copy" });
   copy.createDiv({ cls: "los-atlas-record-title", text: asLabel(note) });
   copy.createDiv({ cls: "los-micro", text: noteMetadata(note) });
-  row4.createSpan({ cls: "los-atlas-record-open", text: "Open" });
-  row4.addEventListener("click", () => host.plugin.nav.openRecord(note));
+  row3.createSpan({ cls: "los-atlas-record-open", text: "Open" });
+  row3.addEventListener("click", () => host.plugin.nav.openRecord(note));
 }
 function renderInspector2(parent, host, graph, view) {
   const panel = parent.createEl("aside", { cls: "los-atlas-inspector" });
@@ -29128,11 +27714,11 @@ function renderInspector2(parent, host, graph, view) {
   }
   const notes = buildConceptContext(host.plugin.store, view.focus.id).notes;
   panel.createEl("h3", { text: `Linked notes \xB7 ${notes.length}` });
-  const list4 = panel.createDiv({ cls: "los-atlas-records los-atlas-linked-notes" });
-  list4.setAttribute("aria-label", "Linked notes");
-  enableButtonGroupKeyboardNavigation(list4, "vertical");
-  for (const note of notes.slice(0, 2)) renderLinkedNote(list4, host, note);
-  if (!notes.length) list4.createDiv({ cls: "los-micro", text: "No notes explicitly linked to this concept." });
+  const list3 = panel.createDiv({ cls: "los-atlas-records los-atlas-linked-notes" });
+  list3.setAttribute("aria-label", "Linked notes");
+  enableButtonGroupKeyboardNavigation(list3, "vertical");
+  for (const note of notes.slice(0, 2)) renderLinkedNote(list3, host, note);
+  if (!notes.length) list3.createDiv({ cls: "los-micro", text: "No notes explicitly linked to this concept." });
   if (notes.length > 2) {
     const all = conceptDisclosure(panel, host, `${view.focus.id}:notes`, `Show all ${notes.length} linked notes`);
     all.createDiv({ cls: "los-micro", text: `${notes.length - 2} more notes; the first two remain above.` });
@@ -29179,16 +27765,16 @@ function renderInspector2(parent, host, graph, view) {
 
 // src/features/atlas/lenses.ts
 function conceptRow(parent, host, graph, conceptId, detail) {
-  const row4 = parent.createEl("button", {
+  const row3 = parent.createEl("button", {
     cls: "los-atlas-record is-clickable",
     attr: { type: "button" }
   });
-  row4.createDiv({
+  row3.createDiv({
     cls: "los-atlas-record-title",
     text: conceptLabel(graph, conceptId)
   });
-  row4.createDiv({ cls: "los-micro", text: detail });
-  row4.addEventListener("click", () => host.go({
+  row3.createDiv({ cls: "los-micro", text: detail });
+  row3.addEventListener("click", () => host.go({
     concept: conceptId,
     lens: "prerequisites"
   }));
@@ -29215,11 +27801,11 @@ function renderBridges(parent, host, graph) {
     );
     return;
   }
-  const list4 = panel.createDiv({ cls: "los-atlas-records" });
-  enableButtonGroupKeyboardNavigation(list4, "vertical");
+  const list3 = panel.createDiv({ cls: "los-atlas-records" });
+  enableButtonGroupKeyboardNavigation(list3, "vertical");
   for (const bridge2 of rows) {
     const detail = bridge2.modules.map((module2) => `${module2.label} (${plural(evidenceFor(graph, module2.id, bridge2.concept.id).length, "tag")})`).join(" \xB7 ");
-    conceptRow(list4, host, graph, bridge2.concept.id, detail);
+    conceptRow(list3, host, graph, bridge2.concept.id, detail);
   }
 }
 function renderDiagnosticEntry(parent, host, graph, entry) {
@@ -29237,43 +27823,43 @@ function renderDiagnosticEntry(parent, host, graph, entry) {
     body.createDiv({ cls: "los-micro", text: "Nothing in this state right now." });
     return;
   }
-  const list4 = body.createDiv({ cls: "los-atlas-records" });
-  enableButtonGroupKeyboardNavigation(list4, "vertical");
+  const list3 = body.createDiv({ cls: "los-atlas-records" });
+  enableButtonGroupKeyboardNavigation(list3, "vertical");
   for (const conceptId of entry.conceptIds) {
-    conceptRow(list4, host, graph, conceptId, moduleTrail(graph, conceptId));
+    conceptRow(list3, host, graph, conceptId, moduleTrail(graph, conceptId));
   }
   for (const edgeId of entry.edgeIds) {
     const edge = graph.relationByIdentity.get(edgeId);
     if (!edge) continue;
-    const row4 = list4.createEl("button", {
+    const row3 = list3.createEl("button", {
       cls: "los-atlas-record is-clickable",
       attr: { type: "button" }
     });
-    row4.createDiv({
+    row3.createDiv({
       cls: "los-atlas-record-title",
       text: `${conceptLabel(graph, edge.from)} \u2014 ${edgeHeadline(graph, edge, edge.from)}`
     });
-    row4.createDiv({
+    row3.createDiv({
       cls: "los-micro",
       text: provenanceSentence(provenanceOf(graph, edge))
     });
-    row4.addEventListener("click", () => host.go({
+    row3.addEventListener("click", () => host.go({
       concept: edge.from,
       lens: "prerequisites"
     }));
   }
   for (const moduleId of entry.moduleIds) {
-    const module2 = graph.modules.find((row5) => row5.id === moduleId);
-    const row4 = list4.createEl("button", {
+    const module2 = graph.modules.find((row4) => row4.id === moduleId);
+    const row3 = list3.createEl("button", {
       cls: "los-atlas-record is-clickable",
       attr: { type: "button" }
     });
-    row4.createDiv({
+    row3.createDiv({
       cls: "los-atlas-record-title",
       text: module2?.label ?? moduleId
     });
-    row4.createDiv({ cls: "los-micro", text: "No concept evidence published" });
-    row4.addEventListener("click", () => host.plugin.nav.openModule(moduleId));
+    row3.createDiv({ cls: "los-micro", text: "No concept evidence published" });
+    row3.addEventListener("click", () => host.plugin.nav.openModule(moduleId));
   }
 }
 function renderDiagnostics(parent, host, graph) {
@@ -29288,9 +27874,9 @@ function renderDiagnostics(parent, host, graph) {
     text: "Each row below opens the records it counts. No authored evidence is not the same as not relevant, and nothing here is a judgment about a concept."
   });
   const entries2 = diagnostics(graph);
-  const list4 = panel.createDiv({ cls: "los-atlas-diagnostics" });
+  const list3 = panel.createDiv({ cls: "los-atlas-diagnostics" });
   for (const entry of entries2) {
-    renderDiagnosticEntry(list4, host, graph, entry);
+    renderDiagnosticEntry(list3, host, graph, entry);
   }
   const actions = panel.createDiv({ cls: "los-actions" });
   button(actions, "Domain Atlas", () => host.plugin.nav.openAtlas({ lens: "domains" }), "quiet");
@@ -29345,13 +27931,13 @@ function renderModuleFilter(parent, host, graph) {
     host.state.module ? graph.modules.find((module2) => module2.id === host.state.module)?.shortLabel ?? "Selected module" : "All modules",
     "los-atlas-module-filter"
   );
-  const row4 = wrap.createDiv({ cls: "los-atlas-module-chips" });
-  row4.setAttrs({ role: "group", "aria-label": "Filter by module" });
-  enableButtonGroupKeyboardNavigation(row4, "horizontal");
-  button(row4, "All modules", () => host.go({ module: null }), "quiet").setAttribute("aria-pressed", String(host.state.module === null));
+  const row3 = wrap.createDiv({ cls: "los-atlas-module-chips" });
+  row3.setAttrs({ role: "group", "aria-label": "Filter by module" });
+  enableButtonGroupKeyboardNavigation(row3, "horizontal");
+  button(row3, "All modules", () => host.go({ module: null }), "quiet").setAttribute("aria-pressed", String(host.state.module === null));
   for (const module2 of publishing) {
     const active = host.state.module === module2.id;
-    const chip2 = row4.createEl("button", {
+    const chip2 = row3.createEl("button", {
       cls: "los-atlas-module-chip is-clickable",
       attr: { type: "button" },
       text: `${module2.shortLabel} ${module2.conceptCount}`
@@ -29441,11 +28027,11 @@ function renderEntry(parent, host, graph, searchOnly = false) {
     if (!results.length) {
       group2.createDiv({ cls: "los-atlas-absence", text: query ? `Nothing matches \u201C${query}\u201D. Try another concept or module.` : "No concepts are published for this module." });
     } else {
-      const list4 = group2.createDiv({ cls: "los-atlas-records" });
-      list4.setAttribute("aria-label", "Concept results");
-      enableButtonGroupKeyboardNavigation(list4, "vertical");
+      const list3 = group2.createDiv({ cls: "los-atlas-records" });
+      list3.setAttribute("aria-label", "Concept results");
+      enableButtonGroupKeyboardNavigation(list3, "vertical");
       for (const record10 of results.slice(0, shown)) {
-        renderConceptSeed(list4, host, graph, asString(record10.id));
+        renderConceptSeed(list3, host, graph, asString(record10.id));
       }
       if (shown < results.length) {
         button(group2, `Show more \xB7 ${results.length - shown} remaining`, () => {
@@ -29470,9 +28056,9 @@ function renderEntry(parent, host, graph, searchOnly = false) {
   group.createDiv({ cls: "los-micro los-atlas-group-head", text: "Recently visited" });
   if (!recents.length) group.createDiv({ cls: "los-micro", text: "No concepts visited yet. Search above or browse all concepts." });
   else {
-    const list4 = group.createDiv({ cls: "los-atlas-records" });
-    enableButtonGroupKeyboardNavigation(list4, "vertical");
-    for (const id2 of recents) renderConceptSeed(list4, host, graph, id2);
+    const list3 = group.createDiv({ cls: "los-atlas-records" });
+    enableButtonGroupKeyboardNavigation(list3, "vertical");
+    for (const id2 of recents) renderConceptSeed(list3, host, graph, id2);
   }
   button(entry, `Browse all ${graph.concepts.filter((concept) => concept.record).length} concepts`, () => {
     host.concepts.browseAll = true;
@@ -29488,9 +28074,9 @@ function renderOpenQuestions(parent, host, graph) {
     cls: "los-micro los-atlas-group-head",
     text: `My open questions \xB7 ${plural(open.length, "question")}`
   });
-  const list4 = group.createDiv({ cls: "los-atlas-records" });
-  enableButtonGroupKeyboardNavigation(list4, "vertical");
-  for (const question of open) renderQuestionRow(list4, host, graph, question);
+  const list3 = group.createDiv({ cls: "los-atlas-records" });
+  enableButtonGroupKeyboardNavigation(list3, "vertical");
+  for (const question of open) renderQuestionRow(list3, host, graph, question);
   group.createDiv({
     cls: "los-micro",
     text: "Recording a question says you have one. It does not add a connection, remove one, or claim anything about what you understand."
@@ -29498,20 +28084,20 @@ function renderOpenQuestions(parent, host, graph) {
 }
 function renderQuestionRow(parent, host, graph, question) {
   const destination = question.targetPresent ? questionDestination(question.target) : null;
-  const row4 = destination ? parent.createEl("button", {
+  const row3 = destination ? parent.createEl("button", {
     cls: "los-atlas-record los-atlas-question-row is-clickable",
     attr: { type: "button" }
   }) : parent.createDiv({ cls: "los-atlas-record los-atlas-question-row is-orphaned" });
-  row4.createDiv({ cls: "los-atlas-record-title", text: question.title });
-  row4.createDiv({
+  row3.createDiv({ cls: "los-atlas-record-title", text: question.title });
+  row3.createDiv({
     cls: "los-micro",
     text: question.targetPresent ? `${question.target.kind === "relation" ? "On the connection" : "On"} ${targetSentence(graph, question.target)}` : `Recorded on ${targetSentence(graph, question.target)} \u2014 no longer authored`
   });
   if (destination) {
-    row4.setAttrs({
+    row3.setAttrs({
       "aria-label": `${question.title}. ${targetSentence(graph, question.target)}.`
     });
-    row4.addEventListener("click", () => host.go({ concept: destination }));
+    row3.addEventListener("click", () => host.go({ concept: destination }));
   }
 }
 function renderConnectAction(parent, host, focusId) {
@@ -29531,17 +28117,17 @@ function renderConnectAction(parent, host, focusId) {
 function renderConceptSeed(parent, host, graph, conceptId) {
   const concept = conceptOf(graph, conceptId);
   const notes = linkedConceptNotes(host.plugin.store, conceptId);
-  const row4 = parent.createEl("button", {
+  const row3 = parent.createEl("button", {
     cls: "los-atlas-record los-atlas-concept-seed is-clickable",
     attr: { type: "button" }
   });
-  row4.setAttribute("data-concept-id", conceptId);
-  row4.setAttribute("data-linked-note-count", String(notes.length));
-  const copy = row4.createDiv({ cls: "los-atlas-record-copy" });
+  row3.setAttribute("data-concept-id", conceptId);
+  row3.setAttribute("data-linked-note-count", String(notes.length));
+  const copy = row3.createDiv({ cls: "los-atlas-record-copy" });
   copy.createDiv({ cls: "los-atlas-record-title", text: concept.label });
   copy.createDiv({ cls: "los-micro", text: plural(notes.length, "linked note") });
-  row4.createSpan({ cls: "los-atlas-record-open", text: "Open" });
-  row4.addEventListener("click", () => host.go({
+  row3.createSpan({ cls: "los-atlas-record-open", text: "Open" });
+  row3.addEventListener("click", () => host.go({
     concept: conceptId,
     lens: isCorpusLens(host.state.lens) ? "prerequisites" : host.state.lens
   }));
@@ -29922,28 +28508,28 @@ var AtlasView = class extends import_obsidian5.ItemView {
 var import_obsidian6 = require("obsidian");
 
 // src/contracts/masters-planning.ts
-var row2 = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
-var text2 = (value) => typeof value === "string" && value.trim().length > 0;
-var date2 = (value) => {
+var row = (value) => typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
+var text = (value) => typeof value === "string" && value.trim().length > 0;
+var date = (value) => {
   if (typeof value !== "string") return false;
   const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!match) return false;
   const parsed = /* @__PURE__ */ new Date(`${value}T00:00:00Z`);
   return Number.isFinite(parsed.getTime()) && parsed.getUTCFullYear() === Number(match[1]) && parsed.getUTCMonth() + 1 === Number(match[2]) && parsed.getUTCDate() === Number(match[3]);
 };
-var dateTime2 = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
-var natural3 = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0;
+var dateTime = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
+var natural = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0;
 var id = (value, prefix) => typeof value === "string" && new RegExp(`^${prefix}[a-z0-9]+(?:-[a-z0-9]+)*$`).test(value);
-function exact2(value, required, optional2 = []) {
-  const allowed = /* @__PURE__ */ new Set([...required, ...optional2]);
+function exact(value, required, optional = []) {
+  const allowed = /* @__PURE__ */ new Set([...required, ...optional]);
   return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => allowed.has(key));
 }
-function stringList(value, pattern = text2, unique2 = false) {
+function stringList(value, pattern = text, unique2 = false) {
   return Array.isArray(value) && value.every(pattern) && (!unique2 || new Set(value).size === value.length);
 }
 function stringMap(value) {
-  const source = row2(value);
-  return Boolean(source && Object.values(source).every(text2));
+  const source = row(value);
+  return Boolean(source && Object.values(source).every(text));
 }
 var sourceTypes = [
   "book",
@@ -29990,10 +28576,10 @@ var relations = [
   "contrasts",
   "alternate-notation"
 ];
-var sha2562 = (value) => typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
+var sha256 = (value) => typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
 function evidence(value) {
-  const source = row2(value);
-  if (!source || !exact2(source, ["locator", "checksum"], ["note"]) || !text2(source.locator) || !sha2562(source.checksum) || "note" in source && !text2(source.note)) return null;
+  const source = row(value);
+  if (!source || !exact(source, ["locator", "checksum"], ["note"]) || !text(source.locator) || !sha256(source.checksum) || "note" in source && !text(source.note)) return null;
   return {
     locator: source.locator,
     checksum: source.checksum,
@@ -30001,8 +28587,8 @@ function evidence(value) {
   };
 }
 function factState(value) {
-  const state = row2(value);
-  if (!state || !exact2(state, ["status", "as_of", "evidence"]) || !factStatuses.includes(state.status) || !(state.as_of === null || date2(state.as_of)) || !stringList(state.evidence)) return null;
+  const state = row(value);
+  if (!state || !exact(state, ["status", "as_of", "evidence"]) || !factStatuses.includes(state.status) || !(state.as_of === null || date(state.as_of)) || !stringList(state.evidence)) return null;
   return {
     status: state.status,
     as_of: state.as_of,
@@ -30010,8 +28596,8 @@ function factState(value) {
   };
 }
 function catalog(value) {
-  const source = row2(value);
-  if (!source || !exact2(source, [
+  const source = row(value);
+  if (!source || !exact(source, [
     "schema_version",
     "id",
     "type",
@@ -30020,16 +28606,16 @@ function catalog(value) {
     "candidate_modules",
     "candidate_sources",
     "comparison_ids"
-  ]) || source.schema_version !== 1 || source.id !== "master-planning-catalog" || source.type !== "master-planning-catalog" || !natural3(source.revision) || !dateTime2(source.updated_at) || !Array.isArray(source.candidate_modules) || !Array.isArray(source.candidate_sources) || !stringList(
+  ]) || source.schema_version !== 1 || source.id !== "master-planning-catalog" || source.type !== "master-planning-catalog" || !natural(source.revision) || !dateTime(source.updated_at) || !Array.isArray(source.candidate_modules) || !Array.isArray(source.candidate_sources) || !stringList(
     source.comparison_ids,
     (item) => id(item, "candidate-comparison-"),
     true
   )) return null;
   const modules = [];
   for (const valueModule of source.candidate_modules) {
-    const module2 = row2(valueModule);
+    const module2 = row(valueModule);
     const facts = factState(module2?.fact_state);
-    if (!module2 || !exact2(module2, [
+    if (!module2 || !exact(module2, [
       "id",
       "title",
       "planning_state",
@@ -30038,11 +28624,11 @@ function catalog(value) {
       "fact_state",
       "source_ids",
       "unresolved_references"
-    ], ["promoted_module_id"]) || !id(module2.id, "candidate-module-") || !text2(module2.title) || !planningStates.includes(module2.planning_state) || module2.privacy_class !== "academic-only" || !stringList(module2.provenance) || module2.provenance.length === 0 || !facts || !stringList(
+    ], ["promoted_module_id"]) || !id(module2.id, "candidate-module-") || !text(module2.title) || !planningStates.includes(module2.planning_state) || module2.privacy_class !== "academic-only" || !stringList(module2.provenance) || module2.provenance.length === 0 || !facts || !stringList(
       module2.source_ids,
       (item) => id(item, "candidate-source-"),
       true
-    ) || !stringList(module2.unresolved_references, text2, true) || "promoted_module_id" in module2 && !id(module2.promoted_module_id, "module-")) return null;
+    ) || !stringList(module2.unresolved_references, text, true) || "promoted_module_id" in module2 && !id(module2.promoted_module_id, "module-")) return null;
     modules.push({
       id: module2.id,
       title: module2.title,
@@ -30057,16 +28643,16 @@ function catalog(value) {
   }
   const sources = [];
   for (const valueCandidate of source.candidate_sources) {
-    const candidate2 = row2(valueCandidate);
+    const candidate2 = row(valueCandidate);
     const facts = factState(candidate2?.fact_state);
-    if (!candidate2 || !exact2(candidate2, [
+    if (!candidate2 || !exact(candidate2, [
       "id",
       "title",
       "planning_state",
       "privacy_class",
       "provenance",
       "fact_state"
-    ], ["canonical_source_id", "url", "identifiers", "child_titles", "possible_use", "type"]) || !id(candidate2.id, "candidate-source-") || !text2(candidate2.title) || !planningStates.includes(candidate2.planning_state) || candidate2.privacy_class !== "academic-only" || !stringList(candidate2.provenance) || candidate2.provenance.length === 0 || !facts || "canonical_source_id" in candidate2 && !id(candidate2.canonical_source_id, "source-") || "url" in candidate2 && !text2(candidate2.url) || "identifiers" in candidate2 && !stringMap(candidate2.identifiers) || "child_titles" in candidate2 && !stringMap(candidate2.child_titles) || "possible_use" in candidate2 && (!text2(candidate2.possible_use) || candidate2.possible_use.length > 200) || "type" in candidate2 && !sourceTypes.includes(candidate2.type)) return null;
+    ], ["canonical_source_id", "url", "identifiers", "child_titles", "possible_use", "type"]) || !id(candidate2.id, "candidate-source-") || !text(candidate2.title) || !planningStates.includes(candidate2.planning_state) || candidate2.privacy_class !== "academic-only" || !stringList(candidate2.provenance) || candidate2.provenance.length === 0 || !facts || "canonical_source_id" in candidate2 && !id(candidate2.canonical_source_id, "source-") || "url" in candidate2 && !text(candidate2.url) || "identifiers" in candidate2 && !stringMap(candidate2.identifiers) || "child_titles" in candidate2 && !stringMap(candidate2.child_titles) || "possible_use" in candidate2 && (!text(candidate2.possible_use) || candidate2.possible_use.length > 200) || "type" in candidate2 && !sourceTypes.includes(candidate2.type)) return null;
     sources.push({
       id: candidate2.id,
       title: candidate2.title,
@@ -30094,8 +28680,8 @@ function catalog(value) {
   };
 }
 function assessment(value) {
-  const source = row2(value);
-  if (!source || !exact2(source, ["candidate_source_id", "role", "review_status", "concept_ids"], [
+  const source = row(value);
+  if (!source || !exact(source, ["candidate_source_id", "role", "review_status", "concept_ids"], [
     "contribution",
     "assumptions",
     "notation",
@@ -30111,9 +28697,9 @@ function assessment(value) {
   )) return null;
   const deep = source.review_status === "deep-reviewed";
   const deepFields = ["contribution", "assumptions", "notation", "exercise_value", "best_for", "limitations"];
-  if (deep !== deepFields.every((key) => text2(source[key]))) return null;
-  if ("reason" in source && !text2(source.reason)) return null;
-  if (!deep && !text2(source.reason)) return null;
+  if (deep !== deepFields.every((key) => text(source[key]))) return null;
+  if ("reason" in source && !text(source.reason)) return null;
+  if (!deep && !text(source.reason)) return null;
   if (deepFields.some((key) => key in source) && !deep) return null;
   if (source.role !== "comparison" && !deep) return null;
   if ("evidence" in source && (!Array.isArray(source.evidence) || source.evidence.some((item) => evidence(item) === null))) return null;
@@ -30121,8 +28707,8 @@ function assessment(value) {
   return source;
 }
 function comparison(value, parsedCatalog, knownConceptIds) {
-  const source = row2(value);
-  if (!source || !exact2(source, [
+  const source = row(value);
+  if (!source || !exact(source, [
     "schema_version",
     "id",
     "type",
@@ -30132,14 +28718,14 @@ function comparison(value, parsedCatalog, knownConceptIds) {
     "source_assessments",
     "comparisons"
   ]) || source.schema_version !== 1 || !id(source.id, "candidate-comparison-") || source.type !== "candidate-source-comparison" || !id(source.candidate_module_id, "candidate-module-") || source.status !== "approved" || !Array.isArray(source.source_assessments) || !Array.isArray(source.comparisons)) return null;
-  const basis = row2(source.basis);
-  if (!basis || !exact2(basis, [
+  const basis = row(source.basis);
+  if (!basis || !exact(basis, [
     "catalog_revision",
     "candidate_set_checksum",
     "policy",
     "request_id",
     "delivery_id"
-  ]) || !natural3(basis.catalog_revision) || !sha2562(basis.candidate_set_checksum) || basis.policy !== "tiered-v1" || !text2(basis.request_id) || !text2(basis.delivery_id)) return null;
+  ]) || !natural(basis.catalog_revision) || !sha256(basis.candidate_set_checksum) || basis.policy !== "tiered-v1" || !text(basis.request_id) || !text(basis.delivery_id)) return null;
   const assessments = source.source_assessments.map(assessment);
   if (assessments.some((item) => item === null) || assessments.length === 0) return null;
   if (!assessments.some((item) => item?.role === "selected")) return null;
@@ -30158,15 +28744,15 @@ function comparison(value, parsedCatalog, knownConceptIds) {
   const comparisons = [];
   const seenComparisons = /* @__PURE__ */ new Set();
   for (const valuePair of source.comparisons) {
-    const pair = row2(valuePair);
-    if (!pair || !exact2(pair, [
+    const pair = row(valuePair);
+    if (!pair || !exact(pair, [
       "left_candidate_source_id",
       "right_candidate_source_id",
       "relation",
       "narrative",
       "concept_ids",
       "evidence"
-    ]) || !id(pair.left_candidate_source_id, "candidate-source-") || !id(pair.right_candidate_source_id, "candidate-source-") || pair.left_candidate_source_id === pair.right_candidate_source_id || !relations.includes(pair.relation) || !text2(pair.narrative) || !stringList(
+    ]) || !id(pair.left_candidate_source_id, "candidate-source-") || !id(pair.right_candidate_source_id, "candidate-source-") || pair.left_candidate_source_id === pair.right_candidate_source_id || !relations.includes(pair.relation) || !text(pair.narrative) || !stringList(
       pair.concept_ids,
       (item) => id(item, "concept-"),
       true
@@ -30182,8 +28768,8 @@ function comparison(value, parsedCatalog, knownConceptIds) {
     ].join("\0");
     if (seenComparisons.has(pairKey)) return null;
     seenComparisons.add(pairKey);
-    const evidenceSides = row2(pair.evidence);
-    if (!evidenceSides || !exact2(evidenceSides, ["left", "right"]) || !Array.isArray(evidenceSides.left) || evidenceSides.left.length === 0 || !Array.isArray(evidenceSides.right) || evidenceSides.right.length === 0) return null;
+    const evidenceSides = row(pair.evidence);
+    if (!evidenceSides || !exact(evidenceSides, ["left", "right"]) || !Array.isArray(evidenceSides.left) || evidenceSides.left.length === 0 || !Array.isArray(evidenceSides.right) || evidenceSides.right.length === 0) return null;
     const leftEvidence = evidenceSides.left.map(evidence);
     const rightEvidence = evidenceSides.right.map(evidence);
     if (leftEvidence.some((item) => item === null) || rightEvidence.some((item) => item === null)) return null;
@@ -30217,8 +28803,8 @@ function comparison(value, parsedCatalog, knownConceptIds) {
   };
 }
 function asMastersPlanningDashboard(value, knownConceptIds = /* @__PURE__ */ new Set()) {
-  const dashboard = row2(value);
-  if (!dashboard || !exact2(dashboard, [
+  const dashboard = row(value);
+  if (!dashboard || !exact(dashboard, [
     "schema_version",
     "type",
     "opened_at",
@@ -30226,13 +28812,13 @@ function asMastersPlanningDashboard(value, knownConceptIds = /* @__PURE__ */ new
     "catalog",
     "comparisons",
     "isolation"
-  ]) || dashboard.schema_version !== 1 || dashboard.type !== "masters-planning-dashboard" || !dateTime2(dashboard.opened_at) || dashboard.banner !== "Prospective\u2014not current LearningOS" || !Array.isArray(dashboard.comparisons)) return null;
+  ]) || dashboard.schema_version !== 1 || dashboard.type !== "masters-planning-dashboard" || !dateTime(dashboard.opened_at) || dashboard.banner !== "Prospective\u2014not current LearningOS" || !Array.isArray(dashboard.comparisons)) return null;
   const parsedCatalog = dashboard.catalog === null ? null : catalog(dashboard.catalog);
   if (dashboard.catalog !== null && parsedCatalog === null) return null;
   if (!parsedCatalog && dashboard.comparisons.length > 0) return null;
   const comparisons = parsedCatalog ? dashboard.comparisons.map((item) => comparison(item, parsedCatalog, knownConceptIds)) : [];
   if (comparisons.some((item) => item === null)) return null;
-  const isolation = row2(dashboard.isolation);
+  const isolation = row(dashboard.isolation);
   const isolationKeys = [
     "normal_manifest",
     "search",
@@ -30241,7 +28827,7 @@ function asMastersPlanningDashboard(value, knownConceptIds = /* @__PURE__ */ new
     "deadlines",
     "ordinary_ai_context"
   ];
-  if (!isolation || !exact2(isolation, isolationKeys) || isolationKeys.some((key) => isolation[key] !== false)) return null;
+  if (!isolation || !exact(isolation, isolationKeys) || isolationKeys.some((key) => isolation[key] !== false)) return null;
   return {
     schema_version: 1,
     type: "masters-planning-dashboard",
@@ -30404,8 +28990,8 @@ var BoundaryView = class extends import_obsidian6.ItemView {
       modules.createDiv({ cls: "los-micro", text: "No candidate modules in this revision." });
     }
     for (const module2 of catalog2.candidate_modules) {
-      const row4 = modules.createDiv({ cls: "los-masters-row" });
-      const heading = row4.createDiv({ cls: "los-masters-row-head" });
+      const row3 = modules.createDiv({ cls: "los-masters-row" });
+      const heading = row3.createDiv({ cls: "los-masters-row-head" });
       heading.createEl("strong", { text: module2.title });
       badge(heading, module2.planning_state, "role");
       badge(
@@ -30414,10 +29000,10 @@ var BoundaryView = class extends import_obsidian6.ItemView {
         module2.fact_state.status === "verified-current" ? "status" : "role"
       );
       if (module2.fact_state.as_of) {
-        row4.createDiv({ cls: "los-micro", text: `Facts checked as of ${module2.fact_state.as_of}` });
+        row3.createDiv({ cls: "los-micro", text: `Facts checked as of ${module2.fact_state.as_of}` });
       }
       if (module2.unresolved_references.length) {
-        row4.createDiv({
+        row3.createDiv({
           cls: "los-micro",
           text: `${module2.unresolved_references.length} unresolved reference${module2.unresolved_references.length === 1 ? "" : "s"}`
         });
@@ -30457,8 +29043,8 @@ var BoundaryView = class extends import_obsidian6.ItemView {
           const group = disclosure(results, `${name} (${entries2.length})`, "los-masters-group");
           if (query) group.parentElement?.setAttribute("open", "");
           for (const source of entries2) {
-            const row4 = group.createDiv({ cls: "los-masters-row" });
-            const heading = row4.createDiv({ cls: "los-masters-row-head" });
+            const row3 = group.createDiv({ cls: "los-masters-row" });
+            const heading = row3.createDiv({ cls: "los-masters-row-head" });
             heading.createEl("strong", { text: source.title });
             badge(heading, source.planning_state, "role");
             badge(
@@ -30468,15 +29054,15 @@ var BoundaryView = class extends import_obsidian6.ItemView {
             );
             if (source.type) badge(heading, source.type, "level");
             const lists = sourceLists(source);
-            if (lists.length > 1) row4.createDiv({ cls: "los-micro", text: `Also listed in ${lists.slice(1).join(", ")}` });
-            if (source.possible_use) row4.createEl("p", { text: source.possible_use });
+            if (lists.length > 1) row3.createDiv({ cls: "los-micro", text: `Also listed in ${lists.slice(1).join(", ")}` });
+            if (source.possible_use) row3.createEl("p", { text: source.possible_use });
             if (source.url) {
               const address = source.url;
-              button(row4, "Open online", () => this.plugin.openResource({ url: address }), "info");
+              button(row3, "Open online", () => this.plugin.openResource({ url: address }), "info");
             }
             for (const [label, address] of Object.entries(source.identifiers ?? {})) {
               button(
-                row4,
+                row3,
                 source.child_titles?.[label] ?? label,
                 () => this.plugin.openResource({ url: address }),
                 "info"
@@ -30493,8 +29079,8 @@ var BoundaryView = class extends import_obsidian6.ItemView {
       const reviewed = section(root, "Approved source assessments");
       const sourceTitle = new Map(catalog2.candidate_sources.map((source) => [source.id, source.title]));
       for (const assessment2 of assessments) {
-        const row4 = reviewed.createDiv({ cls: "los-masters-row" });
-        const heading = row4.createDiv({ cls: "los-masters-row-head" });
+        const row3 = reviewed.createDiv({ cls: "los-masters-row" });
+        const heading = row3.createDiv({ cls: "los-masters-row-head" });
         heading.createEl("strong", {
           text: sourceTitle.get(assessment2.candidate_source_id) || assessment2.candidate_source_id
         });
@@ -30505,9 +29091,9 @@ var BoundaryView = class extends import_obsidian6.ItemView {
           assessment2.review_status === "deep-reviewed" ? "status" : "role"
         );
         const summary2 = assessment2.contribution || assessment2.reason;
-        if (summary2) row4.createEl("p", { text: summary2 });
+        if (summary2) row3.createEl("p", { text: summary2 });
         if (assessment2.concept_ids.length) {
-          row4.createDiv({
+          row3.createDiv({
             cls: "los-micro",
             text: `Concepts: ${assessment2.concept_ids.join(", ")}`
           });
@@ -30519,28 +29105,28 @@ var BoundaryView = class extends import_obsidian6.ItemView {
       const comparisons = section(root, "Approved source comparisons");
       const sourceTitle = new Map(catalog2.candidate_sources.map((source) => [source.id, source.title]));
       for (const pair of pairs) {
-        const row4 = comparisons.createDiv({ cls: "los-masters-row" });
-        const heading = row4.createDiv({ cls: "los-masters-row-head" });
+        const row3 = comparisons.createDiv({ cls: "los-masters-row" });
+        const heading = row3.createDiv({ cls: "los-masters-row-head" });
         heading.createEl("strong", {
           text: `${sourceTitle.get(pair.left_candidate_source_id) || pair.left_candidate_source_id} \u2194 ${sourceTitle.get(pair.right_candidate_source_id) || pair.right_candidate_source_id}`
         });
         badge(heading, pair.relation.replaceAll("-", " "), "role");
-        row4.createEl("p", { text: pair.narrative });
-        row4.createDiv({
+        row3.createEl("p", { text: pair.narrative });
+        row3.createDiv({
           cls: "los-micro",
           text: `Concepts: ${pair.concept_ids.join(", ")}`
         });
-        const evidence3 = row4.createDiv({ cls: "los-masters-evidence" });
+        const evidence3 = row3.createDiv({ cls: "los-masters-evidence" });
         const leftTitle = sourceTitle.get(pair.left_candidate_source_id) || pair.left_candidate_source_id;
         const rightTitle = sourceTitle.get(pair.right_candidate_source_id) || pair.right_candidate_source_id;
         for (const [side, title2] of [
           [pair.evidence.left, leftTitle],
           [pair.evidence.right, rightTitle]
         ]) {
-          const list4 = evidence3.createDiv({ cls: "los-masters-evidence-side" });
-          list4.createEl("strong", { text: `${title2} evidence` });
+          const list3 = evidence3.createDiv({ cls: "los-masters-evidence-side" });
+          list3.createEl("strong", { text: `${title2} evidence` });
           for (const item of side) {
-            list4.createDiv({
+            list3.createDiv({
               cls: "los-micro",
               text: item.note ? `${item.locator} \u2014 ${item.note}` : item.locator
             });
@@ -30560,10 +29146,10 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const wrap = parent.createDiv({ cls: "los-ai-action-row" });
   const providers = plugin.aiActions.providers();
   const available = providers.filter(
-    (row4) => Boolean(row4.available)
+    (row3) => Boolean(row3.available)
   );
   let provider = available.some(
-    (row4) => row4.id === plugin.settings.preferredAiProvider
+    (row3) => row3.id === plugin.settings.preferredAiProvider
   ) ? plugin.settings.preferredAiProvider : available[0]?.id || "manual-bundle";
   if (provider !== plugin.settings.preferredAiProvider) {
     plugin.settings.preferredAiProvider = provider;
@@ -30702,11 +29288,11 @@ var GardenView = class extends import_obsidian8.ItemView {
         entries2.length ? "Choose another Garden filter." : "Plant one above. A seed needs no module, topic, destination, or AI."
       );
     } else {
-      const list4 = root.createDiv({
+      const list3 = root.createDiv({
         cls: "los-garden-list"
       });
       for (const target of visible) {
-        this.card(list4, target);
+        this.card(list3, target);
       }
     }
     const tools = disclosure(
@@ -30802,9 +29388,9 @@ var GardenView = class extends import_obsidian8.ItemView {
     if (this.planting) {
       return;
     }
-    const text8 = this.seedText;
+    const text7 = this.seedText;
     const title2 = this.seedTitle.trim();
-    if (!text8.trim()) {
+    if (!text7.trim()) {
       new import_obsidian8.Notice(
         "Write something before adding the seed."
       );
@@ -30815,11 +29401,11 @@ var GardenView = class extends import_obsidian8.ItemView {
     try {
       await this.plugin.mutate(
         () => this.plugin.gateway.createGardenSeed(
-          text8,
+          text7,
           title2
         )
       );
-      this.plugin.clearGardenDraft({ title: title2, text: text8 });
+      this.plugin.clearGardenDraft({ title: title2, text: text7 });
       new import_obsidian8.Notice("Garden seed added.");
     } catch (error) {
       new import_obsidian8.Notice(errorMessage(error));
@@ -30951,7 +29537,7 @@ var GardenView = class extends import_obsidian8.ItemView {
 
 // src/features/home/model.ts
 function readResumePointer(value) {
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return {};
   }
   return {
@@ -31024,31 +29610,31 @@ function renderElsewhere(view, root) {
     );
     return;
   }
-  const list4 = sectionEl.createDiv({
+  const list3 = sectionEl.createDiv({
     cls: "los-home-list"
   });
-  for (const row4 of visibleRows) {
-    const nextAction = row4.type === "Project" ? "" : view.moduleNextAction(
-      row4.record
+  for (const row3 of visibleRows) {
+    const nextAction = row3.type === "Project" ? "" : view.moduleNextAction(
+      row3.record
     );
     view.renderHomeRow(
-      list4,
+      list3,
       {
         title: asLabel(
-          row4.record
+          row3.record
         ),
-        detail: `${row4.type}${nextAction ? ` \xB7 ${nextAction}` : ""}`,
+        detail: `${row3.type}${nextAction ? ` \xB7 ${nextAction}` : ""}`,
         actionLabel: "Open",
-        action: row4.open
+        action: row3.open
       }
     );
   }
 }
 function renderHomeRow(parent, item) {
-  const row4 = parent.createDiv({
+  const row3 = parent.createDiv({
     cls: "los-home-row"
   });
-  const copy = row4.createDiv({
+  const copy = row3.createDiv({
     cls: "los-home-row-copy"
   });
   copy.createEl("strong", {
@@ -31062,13 +29648,13 @@ function renderHomeRow(parent, item) {
   }
   if (item.actionLabel && item.action) {
     button(
-      row4,
+      row3,
       item.actionLabel,
       item.action,
       "tertiary"
     );
   }
-  return row4;
+  return row3;
 }
 function nextWorkspaceDate(view, workspace) {
   const directDeadline = asString(workspace.deadline);
@@ -31081,17 +29667,17 @@ function nextWorkspaceDate(view, workspace) {
     )
   );
   const dates = [];
-  for (const row4 of view.plugin.store.rows(
+  for (const row3 of view.plugin.store.rows(
     "academic_deadlines"
   )) {
-    const kind = asString(row4.kind);
-    const moduleId = asString(row4.module_id);
-    const startDate = asString(row4.start_date);
+    const kind = asString(row3.kind);
+    const moduleId = asString(row3.module_id);
+    const startDate = asString(row3.start_date);
     if (kind === "exam" && moduleId && startDate && moduleIds.has(moduleId)) {
       dates.push(startDate);
     }
     if (kind === "registration-window" && startDate && asRecords(
-      row4.modules
+      row3.modules
     ).some(
       (module2) => {
         const nestedModuleId = asString(
@@ -31113,10 +29699,10 @@ function moduleNextAction(view, module2) {
     return "";
   }
   const workspace = view.plugin.store.of("workspace").filter(
-    (row4) => {
-      const status = asString(row4.status);
-      return row4.archived !== true && status !== "complete" && asStrings(
-        row4.module_ids
+    (row3) => {
+      const status = asString(row3.status);
+      return row3.archived !== true && status !== "complete" && asStrings(
+        row3.module_ids
       ).includes(moduleId);
     }
   ).sort(
@@ -31144,11 +29730,11 @@ function moduleNextAction(view, module2) {
       map.current_stage
     );
     const stage = (currentStageId ? stages.find(
-      (row4) => asString(row4.id) === currentStageId
+      (row3) => asString(row3.id) === currentStageId
     ) : void 0) ?? stages.find(
-      (row4) => asString(row4.status) === "active"
+      (row3) => asString(row3.status) === "active"
     ) ?? stages.find(
-      (row4) => asString(row4.status) !== "complete"
+      (row3) => asString(row3.status) !== "complete"
     );
     const stageTitle = stage ? asString(stage.title) : null;
     if (stageTitle) {
@@ -31204,7 +29790,7 @@ function renderContinue(view, root) {
   });
   const stages = asRecords(map?.stages);
   const position = stages.findIndex(
-    (row4) => asString(row4.id) === pointer2.stage_id
+    (row3) => asString(row3.id) === pointer2.stage_id
   );
   const meta = copy.createDiv({
     cls: "los-continue-meta"
@@ -31248,9 +29834,9 @@ function renderToday(view, root) {
   const items = [];
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const upcoming = view.plugin.store.rows("academic_deadlines").filter(
-    (row4) => {
-      const boundary = asString(row4.end_date) ?? asString(
-        row4.start_date
+    (row3) => {
+      const boundary = asString(row3.end_date) ?? asString(
+        row3.start_date
       ) ?? "";
       return boundary >= today;
     }
@@ -31281,14 +29867,14 @@ function renderToday(view, root) {
     const title2 = kind === "registration-window" ? label ?? asLabel(deadline) : asString(deadline.title) ?? label ?? asLabel(deadline);
     const startDate = asString(deadline.start_date);
     const endDate = asString(deadline.end_date);
-    const date3 = endDate && startDate && endDate !== startDate ? `${startDate} \u2192 ${endDate}` : startDate ?? endDate ?? "Date pending";
+    const date2 = endDate && startDate && endDate !== startDate ? `${startDate} \u2192 ${endDate}` : startDate ?? endDate ?? "Date pending";
     const registrationState = asString(
       deadline.registration_state
     );
     const registrationDetail = registrationState && registrationState !== "registered" ? ` \xB7 ${registrationState}` : "";
     items.push({
       title: title2,
-      detail: `${date3}${registrationDetail}`,
+      detail: `${date2}${registrationDetail}`,
       actionLabel: moduleId ? "Open module" : "",
       action: moduleId ? () => view.plugin.nav.openModule(
         moduleId
@@ -31324,12 +29910,12 @@ function renderToday(view, root) {
     );
     return;
   }
-  const list4 = sectionEl.createDiv({
+  const list3 = sectionEl.createDiv({
     cls: "los-home-list"
   });
   for (const item of items.slice(0, 4)) {
     view.renderHomeRow(
-      list4,
+      list3,
       item
     );
   }
@@ -31493,7 +30079,7 @@ function isSourceFacet(value) {
   );
 }
 function readLibraryViewState(value, currentCollection, currentRecordType) {
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return {
       screen: "folder",
       collection: currentCollection,
@@ -31547,7 +30133,7 @@ function readLibraryViewState(value, currentCollection, currentRecordType) {
   };
 }
 function readThematicGroup(value) {
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const id2 = asString(value.id);
@@ -31561,7 +30147,7 @@ function readThematicGroup(value) {
   };
 }
 function readCollectionEntry(value) {
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const sourceId = asString(value.source);
@@ -31592,7 +30178,7 @@ function readAttachment(value) {
       label: value.split("/").pop() || value
     };
   }
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const path = asString(value.path) ?? asString(value.vault_path);
@@ -31613,7 +30199,7 @@ function readAttachments(value) {
   );
 }
 function readUsefulSection(value) {
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const section3 = asText(value.section);
@@ -31626,7 +30212,7 @@ function readUsefulSection(value) {
   };
 }
 function readEvaluation(value) {
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const roles = asStrings(value.roles);
@@ -31664,7 +30250,7 @@ function readEvaluations(value) {
   );
 }
 function readExamination(value) {
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   return {
@@ -31674,7 +30260,7 @@ function readExamination(value) {
   };
 }
 function readLibraryRecord(value) {
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const id2 = asString(value.id);
@@ -31720,7 +30306,7 @@ function readRelatedRecords(value) {
   }
   const records = [];
   for (const candidate2 of value) {
-    if (!isRecord2(candidate2)) {
+    if (!isRecord(candidate2)) {
       continue;
     }
     const record10 = readLibraryRecord(candidate2.rec);
@@ -31926,14 +30512,14 @@ function renderSourceDetail(view, detail, record10) {
     if (!value) {
       continue;
     }
-    const row4 = facts.createDiv({
+    const row3 = facts.createDiv({
       cls: "los-fact-row"
     });
-    row4.createSpan({
+    row3.createSpan({
       cls: "los-fact-label",
       text: label
     });
-    row4.createSpan({
+    row3.createSpan({
       cls: "los-fact-value",
       text: value
     });
@@ -31942,7 +30528,7 @@ function renderSourceDetail(view, detail, record10) {
     const placed2 = facts.createDiv({ cls: "los-chip-row" });
     badge(placed2, record10.examination.metadataPlaced ? "Placed from metadata \xB7 not examined" : "Not examined", "status");
   }
-  const discovery = isRecord2(record10.record.discovery) ? record10.record.discovery : null;
+  const discovery = isRecord(record10.record.discovery) ? record10.record.discovery : null;
   if (discovery) {
     const provenance = section(
       detail,
@@ -31956,8 +30542,8 @@ function renderSourceDetail(view, detail, record10) {
       provenance.createDiv({ cls: "los-micro", text: `Recorded ${discovery.observed}` });
     }
   }
-  const identifiers = isRecord2(record10.record.identifiers) ? record10.record.identifiers : {};
-  const titles = discovery && isRecord2(discovery.child_titles) ? discovery.child_titles : {};
+  const identifiers = isRecord(record10.record.identifiers) ? record10.record.identifiers : {};
+  const titles = discovery && isRecord(discovery.child_titles) ? discovery.child_titles : {};
   const knownLinks = Object.entries(identifiers).filter(([, value]) => typeof value === "string" && /^https?:\/\//i.test(value));
   if (knownLinks.length) {
     const links = disclosure(detail, `Known links (${knownLinks.length})`);
@@ -32062,16 +30648,16 @@ function renderSourceDetail(view, detail, record10) {
         for (const role of evaluation.roles) badge(purpose, role, "role");
         if (evaluation.level) badge(purpose, evaluation.level, "level");
       }
-      for (const [label, values2] of [
+      for (const [label, values] of [
         ["Strengths", evaluation.strengths],
         ["Weaknesses", evaluation.weaknesses],
         ["Assumes", evaluation.prerequisites],
         ["Written for", evaluation.audience]
       ]) {
-        if (!values2.length) continue;
+        if (!values.length) continue;
         const block2 = card.createDiv({ cls: "los-row" });
         block2.createEl("strong", { text: `${label}: ` });
-        block2.createSpan({ text: values2.join(" \xB7 ") });
+        block2.createSpan({ text: values.join(" \xB7 ") });
       }
       for (const selection of evaluation.usefulSections) {
         card.createDiv({
@@ -32123,8 +30709,8 @@ function renderTechnical(view, detail, record10) {
 }
 
 // src/features/library/collections.ts
-function renderRecordRow(view, list4, record10, isPack = false) {
-  const row4 = list4.createEl(
+function renderRecordRow(view, list3, record10, isPack = false) {
+  const row3 = list3.createEl(
     "button",
     {
       cls: "los-route-row is-clickable",
@@ -32135,7 +30721,7 @@ function renderRecordRow(view, list4, record10, isPack = false) {
       }
     }
   );
-  const copy = row4.createDiv({
+  const copy = row3.createDiv({
     cls: "los-route-row-copy"
   });
   copy.createEl(
@@ -32160,11 +30746,11 @@ function renderRecordRow(view, list4, record10, isPack = false) {
       text: meta
     });
   }
-  row4.createSpan({
+  row3.createSpan({
     cls: "los-route-open",
     text: "Open \u2192"
   });
-  row4.addEventListener(
+  row3.addEventListener(
     "click",
     () => {
       view.selectedElementId = record10.id;
@@ -32372,14 +30958,14 @@ function renderOrderedCollection(view, detail, collection, title2) {
           entry.sourceId
         )
       );
-      const row4 = wrap.createDiv({
+      const row3 = wrap.createDiv({
         cls: "los-pack-entry"
       });
-      row4.createSpan({
+      row3.createSpan({
         cls: "los-pack-order",
         text: String(index + 1)
       });
-      const copy = row4.createDiv({
+      const copy = row3.createDiv({
         cls: "los-route-row-copy"
       });
       const open = copy.createEl(
@@ -32490,11 +31076,11 @@ function renderLegacyList(view, root) {
     );
     return;
   }
-  const list4 = root.createDiv({
+  const list3 = root.createDiv({
     cls: "los-route-list"
   });
   for (const record10 of rows) {
-    const row4 = list4.createEl(
+    const row3 = list3.createEl(
       "button",
       {
         cls: "los-route-row is-clickable",
@@ -32504,7 +31090,7 @@ function renderLegacyList(view, root) {
         }
       }
     );
-    const copy = row4.createDiv({
+    const copy = row3.createDiv({
       cls: "los-route-row-copy"
     });
     copy.createEl(
@@ -32521,11 +31107,11 @@ function renderLegacyList(view, root) {
         record10.state
       ].filter(Boolean).join(" \xB7 ")
     });
-    row4.createSpan({
+    row3.createSpan({
       cls: "los-route-open",
       text: record10.path ? "Open file \u2192" : "Open \u2192"
     });
-    row4.addEventListener(
+    row3.addEventListener(
       "click",
       () => {
         view.selectedElementId = record10.id;
@@ -32756,12 +31342,12 @@ function renderGroup(view, root) {
     );
     return;
   }
-  const list4 = root.createDiv({
+  const list3 = root.createDiv({
     cls: "los-route-list los-library-route-list"
   });
   for (const record10 of rows) {
     view.renderRecordRow(
-      list4,
+      list3,
       record10,
       true
     );
@@ -33685,14 +32271,14 @@ function matches2(entry, words2) {
   return words2.every((word) => hay.includes(word));
 }
 function renderPlace(parent, options) {
-  const row4 = parent.createEl("button", {
+  const row3 = parent.createEl("button", {
     cls: `los-finder-place is-clickable${options.active ? " is-active" : ""}`,
     attr: { type: "button" }
   });
-  if (options.active) row4.setAttribute("aria-current", "true");
-  icon(row4.createSpan({ cls: "los-finder-place-icon" }), options.icon);
-  row4.createSpan({ cls: "los-finder-place-label", text: options.label });
-  row4.addEventListener("click", () => {
+  if (options.active) row3.setAttribute("aria-current", "true");
+  icon(row3.createSpan({ cls: "los-finder-place-icon" }), options.icon);
+  row3.createSpan({ cls: "los-finder-place-label", text: options.label });
+  row3.addEventListener("click", () => {
     void options.onOpen();
   });
 }
@@ -33731,9 +32317,9 @@ function renderSidebar(view, parent, root) {
   ];
   for (const [title2, entries2] of sections) {
     if (!entries2.length) continue;
-    const list4 = group(title2);
+    const list3 = group(title2);
     for (const entry of entries2) {
-      renderPlace(list4, {
+      renderPlace(list3, {
         label: entry.name,
         icon: entry.icon,
         active: view.folderPath[0] === entry.segment,
@@ -33817,11 +32403,11 @@ function renderToolbar2(view, parent, folder2, shown, onQuery) {
 function isCurrentFolder(view, path) {
   return path.length === view.folderPath.length && path.every((segment2, index) => segment2 === view.folderPath[index]);
 }
-function renderRow(view, list4, entry) {
+function renderRow(view, list3, entry) {
   const selected = view.folderSelection === entry.segment;
   const parentPath = [...view.folderPath];
   let openedOnClick = false;
-  const row4 = list4.createEl("button", {
+  const row3 = list3.createEl("button", {
     cls: `los-finder-row is-clickable${selected ? " is-selected" : ""}`,
     attr: {
       type: "button",
@@ -33829,15 +32415,15 @@ function renderRow(view, list4, entry) {
       "aria-label": entry.isFolder ? `${entry.name}, folder` : `${entry.name}, ${entry.kindLabel}`
     }
   });
-  if (selected) row4.setAttribute("aria-current", "true");
-  icon(row4.createSpan({ cls: "los-finder-row-icon" }), entry.icon);
-  const name = row4.createDiv({ cls: "los-finder-row-name" });
+  if (selected) row3.setAttribute("aria-current", "true");
+  icon(row3.createSpan({ cls: "los-finder-row-icon" }), entry.icon);
+  const name = row3.createDiv({ cls: "los-finder-row-name" });
   name.createSpan({ cls: "los-finder-row-title", text: entry.name });
   if (entry.detail) {
     name.createSpan({ cls: "los-finder-row-detail", text: entry.detail });
   }
-  row4.createSpan({ cls: "los-finder-row-kind", text: entry.kindLabel });
-  const trailing = row4.createSpan({ cls: "los-finder-row-trailing" });
+  row3.createSpan({ cls: "los-finder-row-kind", text: entry.kindLabel });
+  const trailing = row3.createSpan({ cls: "los-finder-row-trailing" });
   if (entry.alsoIn > 1) {
     badge(trailing, `in ${entry.alsoIn} domains`, "info");
   }
@@ -33848,28 +32434,28 @@ function renderRow(view, list4, entry) {
     });
     icon(trailing.createSpan({ cls: "los-finder-row-chevron" }), "chevron-right");
   }
-  row4.addEventListener("click", (event) => {
+  row3.addEventListener("click", (event) => {
     if (!isCurrentFolder(view, parentPath) || event.detail > 1) return;
     if (selected) {
       openedOnClick = true;
       void view.activateEntry(entry);
     } else void view.selectFolderEntry(entry.segment);
   });
-  row4.addEventListener("dblclick", () => {
+  row3.addEventListener("dblclick", () => {
     if (!openedOnClick && isCurrentFolder(view, parentPath)) {
       void view.activateEntry(entry);
     }
     openedOnClick = false;
   });
-  return row4;
+  return row3;
 }
 function renderList2(view, parent, entries2, focusSelection) {
   const parentPath = [...view.folderPath];
-  const list4 = parent.createDiv({
+  const list3 = parent.createDiv({
     cls: "los-finder-list",
     attr: { "aria-label": "Folder contents" }
   });
-  const header2 = list4.createDiv({
+  const header2 = list3.createDiv({
     cls: "los-finder-list-header",
     attr: { "aria-hidden": "true" }
   });
@@ -33877,10 +32463,10 @@ function renderList2(view, parent, entries2, focusSelection) {
   header2.createSpan({ text: "Kind" });
   header2.createSpan({ text: "Items" });
   for (const entry of entries2) {
-    const row4 = renderRow(view, list4, entry);
-    if (focusSelection && entry.segment === view.folderSelection) row4.focus();
+    const row3 = renderRow(view, list3, entry);
+    if (focusSelection && entry.segment === view.folderSelection) row3.focus();
   }
-  list4.addEventListener("keydown", (event) => {
+  list3.addEventListener("keydown", (event) => {
     if (!isCurrentFolder(view, parentPath)) return;
     if (event.altKey || event.ctrlKey || event.metaKey) return;
     const index = entries2.findIndex(
@@ -33934,22 +32520,22 @@ function renderColumns(view, parent, trail, words2) {
     for (const entry of entries2) {
       const opened = entry.segment === openedSegment;
       const selected = isCurrent && view.folderSelection === entry.segment;
-      const row4 = column.createEl("button", {
+      const row3 = column.createEl("button", {
         cls: "los-finder-column-row is-clickable" + (opened ? " is-open" : "") + (selected ? " is-selected" : ""),
         attr: { type: "button" }
       });
-      if (opened || selected) row4.setAttribute("aria-current", "true");
-      icon(row4.createSpan({ cls: "los-finder-row-icon" }), entry.icon);
-      row4.createSpan({ cls: "los-finder-row-title", text: entry.name });
+      if (opened || selected) row3.setAttribute("aria-current", "true");
+      icon(row3.createSpan({ cls: "los-finder-row-icon" }), entry.icon);
+      row3.createSpan({ cls: "los-finder-row-title", text: entry.name });
       if (entry.isFolder) {
-        icon(row4.createSpan({ cls: "los-finder-row-chevron" }), "chevron-right");
+        icon(row3.createSpan({ cls: "los-finder-row-chevron" }), "chevron-right");
       }
-      row4.addEventListener("click", (event) => {
+      row3.addEventListener("click", (event) => {
         if (event.detail > 1) return;
         if (entry.isFolder) void view.openFolder([...folder2.path, entry.segment]);
         else void view.openFolder(folder2.path, entry.segment);
       });
-      row4.addEventListener("dblclick", () => {
+      row3.addEventListener("dblclick", () => {
         if (!entry.isFolder && isCurrentFolder(view, folder2.path)) {
           void view.activateEntry(entry);
         }
@@ -33983,10 +32569,10 @@ function renderEntryInspector(view, panel, entry) {
   if (entry.url) facts.push(["Link", entry.url]);
   if (entry.sourceId) facts.push(["Registry id", entry.sourceId]);
   if (facts.length) {
-    const list4 = panel.createEl("dl", { cls: "los-finder-inspector-facts" });
+    const list3 = panel.createEl("dl", { cls: "los-finder-inspector-facts" });
     for (const [label, value] of facts) {
-      list4.createEl("dt", { text: label });
-      list4.createEl("dd", { text: value });
+      list3.createEl("dt", { text: label });
+      list3.createEl("dd", { text: value });
     }
   }
   if (entry.alsoIn > 1) {
@@ -34169,13 +32755,13 @@ function sourceFilterValuesFor(view, source, dimension) {
     );
   }
   if (dimension === "purpose") {
-    const values2 = /* @__PURE__ */ new Set();
+    const values = /* @__PURE__ */ new Set();
     for (const evaluation of source.evaluations) {
       for (const role of evaluation.roles) {
-        values2.add(role);
+        values.add(role);
       }
     }
-    return [...values2];
+    return [...values];
   }
   if (dimension === "form") {
     return source.sourceType ? [source.sourceType] : [];
@@ -34226,7 +32812,7 @@ function sourceFilterLabel(view, dimension, value) {
   }
   if (dimension === "topic") {
     const topic = view.plugin.store.topics().find(
-      (row4) => asString(row4.id) === value
+      (row3) => asString(row3.id) === value
     );
     return topic ? asString(topic.title) ?? value : value;
   }
@@ -34488,12 +33074,12 @@ function renderSourceBrowser(view, root) {
     );
     return;
   }
-  const list4 = browser.createDiv({
+  const list3 = browser.createDiv({
     cls: "los-route-list los-library-route-list"
   });
   for (const source of rows) {
     view.renderRecordRow(
-      list4,
+      list3,
       source,
       false
     );
@@ -34775,8 +33361,8 @@ var LibraryView = class extends import_obsidian10.ItemView {
       facet: this.facet
     });
   }
-  renderRecordRow(list4, record10, isPack = false) {
-    renderRecordRow(this, list4, record10, isPack);
+  renderRecordRow(list3, record10, isPack = false) {
+    renderRecordRow(this, list3, record10, isPack);
   }
   renderSourcePage(root) {
     renderSourcePage(this, root);
@@ -34951,7 +33537,7 @@ function isModuleTab(value) {
   );
 }
 function readModuleViewState(value) {
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return {
       screen: "groups",
       groupId: null,
@@ -35015,7 +33601,7 @@ function readComponents(value) {
   }).filter(nonNull);
 }
 function readExamination2(value) {
-  const examination = isRecord2(value) ? value : {};
+  const examination = isRecord(value) ? value : {};
   return {
     type: asString(examination.type),
     notes: asText(examination.notes)
@@ -35100,7 +33686,7 @@ function normalizeWorkspaceRecord(record10) {
   };
 }
 function readProgress(value) {
-  const progress = isRecord2(value) ? value : {};
+  const progress = isRecord(value) ? value : {};
   return {
     stagesComplete: asCount(
       progress.stages_complete
@@ -35239,7 +33825,7 @@ function renderSources2(view, root, module2) {
       text: role.replaceAll("-", " ")
     });
     for (const entry of roleEntries) {
-      const row4 = group.createDiv({
+      const row3 = group.createDiv({
         cls: "los-row"
       });
       const source = entry.sourceId ? view.plugin.store.get(
@@ -35247,7 +33833,7 @@ function renderSources2(view, root, module2) {
       ) : null;
       if (source) {
         chip(
-          row4,
+          row3,
           source,
           (record10) => {
             const id2 = asString(
@@ -35260,11 +33846,11 @@ function renderSources2(view, root, module2) {
           }
         );
       }
-      row4.createEl("p", {
+      row3.createEl("p", {
         text: entry.why
       });
       if (entry.unitRouteCount) {
-        row4.createDiv({
+        row3.createDiv({
           cls: "los-micro",
           text: `${entry.unitRouteCount} routed unit(s)`
         });
@@ -35332,7 +33918,7 @@ function deadlinesFor(view, module2) {
   return view.plugin.store.rows("academic_deadlines").map(
     (record10) => readAcademicDeadline(record10)
   ).filter(
-    (row4) => row4.directModuleId === module2.id || row4.modules.some(
+    (row3) => row3.directModuleId === module2.id || row3.modules.some(
       (entry) => entry.moduleId === module2.id
     )
   ).sort(
@@ -35354,10 +33940,10 @@ function renderAcademicDates(view, root, module2) {
   );
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const ahead = rows.filter(
-    (row4) => (row4.endDate || row4.startDate) >= today
+    (row3) => (row3.endDate || row3.startDate) >= today
   );
   const past = rows.filter(
-    (row4) => (row4.endDate || row4.startDate) < today
+    (row3) => (row3.endDate || row3.startDate) < today
   );
   if (ahead.length) {
     view.renderDeadlineRows(
@@ -35386,26 +33972,26 @@ function renderAcademicDates(view, root, module2) {
   }
 }
 function renderDeadlineRows(wrap, module2, rows) {
-  const list4 = wrap.createDiv({
+  const list3 = wrap.createDiv({
     cls: "los-date-list"
   });
-  for (const row4 of rows) {
-    const card = list4.createDiv({
-      cls: `los-date-row los-deadline-${row4.kind}`
+  for (const row3 of rows) {
+    const card = list3.createDiv({
+      cls: `los-date-row los-deadline-${row3.kind}`
     });
-    const date3 = row4.endDate && row4.endDate !== row4.startDate ? `${row4.startDate} \u2192 ${row4.endDate}` : row4.startDate;
+    const date2 = row3.endDate && row3.endDate !== row3.startDate ? `${row3.startDate} \u2192 ${row3.endDate}` : row3.startDate;
     card.createDiv({
       cls: "los-date-when",
-      text: date3
+      text: date2
     });
     const copy = card.createDiv({
       cls: "los-date-copy"
     });
     copy.createEl("strong", {
-      text: row4.label
+      text: row3.label
     });
-    if (row4.kind === "registration-window") {
-      const entry = row4.modules.find(
+    if (row3.kind === "registration-window") {
+      const entry = row3.modules.find(
         (item) => item.moduleId === module2.id
       );
       if (entry?.action) {
@@ -35417,20 +34003,20 @@ function renderDeadlineRows(wrap, module2, rows) {
     } else {
       copy.createDiv({
         cls: "los-micro",
-        text: row4.title || module2.title
+        text: row3.title || module2.title
       });
       const facts = copy.createDiv({
         cls: "los-row"
       });
       badge(
         facts,
-        row4.registrationState,
-        row4.registrationState || "needs-map"
+        row3.registrationState,
+        row3.registrationState || "needs-map"
       );
-      if (row4.time) {
+      if (row3.time) {
         facts.createSpan({
           cls: "los-micro",
-          text: row4.time
+          text: row3.time
         });
       }
     }
@@ -35518,8 +34104,8 @@ function renderModuleDetail(view, root) {
 function headline(view, module2) {
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const nextDate = view.deadlinesFor(module2).filter(
-    (row4) => (row4.endDate || row4.startDate) >= today
-  ).map((row4) => row4.startDate)[0];
+    (row3) => (row3.endDate || row3.startDate) >= today
+  ).map((row3) => row3.startDate)[0];
   return [
     semesterLabel(module2.semester),
     module2.credits ? `${module2.credits} LP` : "",
@@ -35578,7 +34164,7 @@ function renderOverview(view, root, module2) {
   }
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
   const ahead = view.deadlinesFor(module2).filter(
-    (row4) => (row4.endDate || row4.startDate) >= today
+    (row3) => (row3.endDate || row3.startDate) >= today
   );
   if (ahead.length) {
     view.renderDeadlineRows(
@@ -35652,7 +34238,7 @@ function renderUnits(view, root, module2) {
       (unit) => unit.status === "active"
     ).length} in progress`
   });
-  const list4 = root.createDiv({
+  const list3 = root.createDiv({
     cls: "los-record-list los-module-unit-list"
   });
   for (const unit of ordered) {
@@ -35667,14 +34253,14 @@ function renderUnits(view, root, module2) {
     const currentStage = currentStageId ? stages.find(
       (stage) => stage.id === currentStageId
     ) : null;
-    const row4 = list4.createEl("button", {
+    const row3 = list3.createEl("button", {
       cls: "los-record-row is-clickable",
       attr: {
         type: "button",
         "aria-label": `Open unit: ${unit.title}`
       }
     });
-    const copy = row4.createDiv({
+    const copy = row3.createDiv({
       cls: "los-record-copy"
     });
     copy.createEl("strong", {
@@ -35690,18 +34276,18 @@ function renderUnits(view, root, module2) {
       text: meta
     });
     if (map) {
-      row4.createSpan({
+      row3.createSpan({
         cls: "los-record-action",
         text: "Open \u2192"
       });
     } else {
       badge(
-        row4,
+        row3,
         "No map",
         "needs-map"
       );
     }
-    row4.addEventListener(
+    row3.addEventListener(
       "click",
       () => {
         view.selectedElementId = unit.id;
@@ -35740,14 +34326,14 @@ function renderGroups(view, root) {
   summary.createSpan({
     text: `${modules.length} enrolled module${modules.length === 1 ? "" : "s"}`
   });
-  const list4 = root.createDiv({
+  const list3 = root.createDiv({
     cls: "los-route-list los-semester-module-list"
   });
   for (const module2 of modules) {
     const progress = readProgress(
       view.plugin.store.progress(module2.id)
     );
-    const row4 = list4.createEl(
+    const row3 = list3.createEl(
       "button",
       {
         cls: "los-route-row los-semester-module-row is-clickable",
@@ -35758,7 +34344,7 @@ function renderGroups(view, root) {
         }
       }
     );
-    const copy = row4.createDiv({
+    const copy = row3.createDiv({
       cls: "los-route-row-copy"
     });
     copy.createEl("strong", {
@@ -35772,11 +34358,11 @@ function renderGroups(view, root) {
       cls: "los-route-meta",
       text: facts.join(" \xB7 ")
     });
-    row4.createSpan({
+    row3.createSpan({
       cls: "los-route-open",
       text: "Open \u2192"
     });
-    row4.addEventListener(
+    row3.addEventListener(
       "click",
       () => {
         view.selectedElementId = module2.id;
@@ -35880,11 +34466,11 @@ function renderGroupList(view, root) {
     );
     return;
   }
-  const list4 = root.createDiv({
+  const list3 = root.createDiv({
     cls: "los-route-list"
   });
   for (const module2 of rows) {
-    const row4 = list4.createEl(
+    const row3 = list3.createEl(
       "button",
       {
         cls: "los-route-row is-clickable",
@@ -35895,7 +34481,7 @@ function renderGroupList(view, root) {
         }
       }
     );
-    const copy = row4.createDiv({
+    const copy = row3.createDiv({
       cls: "los-route-row-copy"
     });
     copy.createEl("strong", {
@@ -35913,11 +34499,11 @@ function renderGroupList(view, root) {
         text: meta
       });
     }
-    row4.createSpan({
+    row3.createSpan({
       cls: "los-route-open",
       text: "Open \u2192"
     });
-    row4.addEventListener(
+    row3.addEventListener(
       "click",
       () => {
         view.selectedElementId = module2.id;
@@ -36059,11 +34645,11 @@ var ModuleView = class extends import_obsidian11.ItemView {
 var import_obsidian12 = require("obsidian");
 
 // src/features/review/queue.ts
-function text3(value) {
+function text2(value) {
   return typeof value === "string" ? value : "";
 }
-function hasConflictingWork(row4) {
-  return row4.reason_codes.includes("conflicting-later-work");
+function hasConflictingWork(row3) {
+  return row3.reason_codes.includes("conflicting-later-work");
 }
 function categoryLabel(category) {
   const words2 = category.replace(/-/g, " ").trim();
@@ -36090,27 +34676,27 @@ function buildReviewQueue(sources) {
       });
     }
   }
-  for (const row4 of sources.horizon?.abilities ?? []) {
-    if (!hasConflictingWork(row4)) continue;
+  for (const row3 of sources.horizon?.abilities ?? []) {
+    if (!hasConflictingWork(row3)) continue;
     entries2.push({
       kind: "ability-conflict",
-      key: `ability-conflict:${row4.id}`,
-      row: row4,
+      key: `ability-conflict:${row3.id}`,
+      row: row3,
       title: "Conflicting attempts",
-      context: row4.title
+      context: row3.title
     });
   }
   sources.items.forEach((item, index) => {
-    const id2 = text3(item.id) || `review-item-${index}`;
-    const category = text3(item.category) || "review";
+    const id2 = text2(item.id) || `review-item-${index}`;
+    const category = text2(item.category) || "review";
     entries2.push({
       kind: "core",
       key: id2,
       item,
       category,
-      title: text3(item.title) || id2,
-      context: [categoryLabel(category), text3(item.context)].filter(Boolean).join(" \xB7 "),
-      reason: text3(item.reason)
+      title: text2(item.title) || id2,
+      context: [categoryLabel(category), text2(item.context)].filter(Boolean).join(" \xB7 "),
+      reason: text2(item.reason)
     });
   });
   return entries2;
@@ -36140,18 +34726,18 @@ var NavView = class extends import_obsidian12.ItemView {
   }
   nav(parent, iconName, label, key, action, count3 = null) {
     const active = this.plugin.activeNav === key;
-    const row4 = parent.createEl("button", {
+    const row3 = parent.createEl("button", {
       cls: `los-app-nav-item is-clickable${active ? " is-active" : ""}`,
       attr: { type: "button", "aria-current": active ? "page" : "false" }
     });
-    icon(row4.createSpan(), iconName);
-    row4.createSpan({ text: label });
+    icon(row3.createSpan(), iconName);
+    row3.createSpan({ text: label });
     if (count3) {
-      row4.createSpan({ cls: "los-nav-count", text: String(count3) });
-      row4.setAttr("aria-label", `${label}, ${count3} waiting`);
+      row3.createSpan({ cls: "los-nav-count", text: String(count3) });
+      row3.setAttr("aria-label", `${label}, ${count3} waiting`);
     }
-    row4.addEventListener("click", action);
-    return row4;
+    row3.addEventListener("click", action);
+    return row3;
   }
   /** Review's live count: the same queue Review lists, never a second tally. */
   reviewCount() {
@@ -36228,7 +34814,7 @@ function readProgramSemesters(value) {
   }
   const semesters = [];
   for (const candidate2 of value) {
-    if (!isRecord2(candidate2) || typeof candidate2.title !== "string" || typeof candidate2.status !== "string") {
+    if (!isRecord(candidate2) || typeof candidate2.title !== "string" || typeof candidate2.status !== "string") {
       continue;
     }
     semesters.push({
@@ -36369,7 +34955,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
     context.createSpan({
       text: `${modules.length} commitment${modules.length === 1 ? "" : "s"} \xB7 ${currentSemester?.status ?? projectedExcerpt(program.status, 40)}`
     });
-    const list4 = root.createDiv({
+    const list3 = root.createDiv({
       cls: "los-learning-list"
     });
     if (!modules.length) {
@@ -36390,10 +34976,10 @@ var ProgramView = class extends import_obsidian13.ItemView {
       }
     }
     for (const module2 of modules) {
-      const row4 = list4.createDiv({
+      const row3 = list3.createDiv({
         cls: "los-learning-row"
       });
-      const copy = row4.createDiv({
+      const copy = row3.createDiv({
         cls: "los-learning-copy"
       });
       const title2 = button(
@@ -36411,7 +34997,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
       if (program.id === "program-job") {
         badge(copy, "Job", "role");
       }
-      const examination = isRecord2(
+      const examination = isRecord(
         module2.examination
       ) ? projectedExcerpt(
         module2.examination.type,
@@ -36422,7 +35008,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
         module2.credits ? `${projectedExcerpt(module2.credits, 20)} LP` : "",
         examination
       ].filter(Boolean).join(" \xB7 ");
-      const metaRow = row4.createDiv({ cls: "los-learning-meta los-micro" });
+      const metaRow = row3.createDiv({ cls: "los-learning-meta los-micro" });
       if (status) metaRow.createSpan({ cls: statusTone(module2.status), text: status });
       if (status && rest) metaRow.createSpan({ text: " \xB7 " });
       if (rest) metaRow.createSpan({ text: rest });
@@ -36430,14 +35016,14 @@ var ProgramView = class extends import_obsidian13.ItemView {
     if (Boolean(program.semester_bound)) {
       const semesters2 = disclosure(root, "Semesters");
       for (const semester of readProgramSemesters(program.semesters)) {
-        const row4 = semesters2.createDiv({
+        const row3 = semesters2.createDiv({
           cls: "los-row"
         });
-        row4.createEl("strong", {
+        row3.createEl("strong", {
           text: semester.title
         });
         badge(
-          row4,
+          row3,
           semester.status,
           semester.status
         );
@@ -36452,7 +35038,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
    */
   renderCoordination(root) {
     const coordination = this.plugin.store.get("coordination");
-    const sections = isRecord2(coordination?.sections) ? coordination.sections : {};
+    const sections = isRecord(coordination?.sections) ? coordination.sections : {};
     const rows = COORDINATION_HEADINGS.map(
       (heading) => [
         heading,
@@ -36461,7 +35047,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
           1600
         )
       ]
-    ).filter((row4) => Boolean(row4[1]));
+    ).filter((row3) => Boolean(row3[1]));
     if (!rows.length) {
       return;
     }
@@ -36471,13 +35057,13 @@ var ProgramView = class extends import_obsidian13.ItemView {
       "los-coordination-details"
     );
     for (const [heading, body] of rows) {
-      const row4 = panel.createDiv({
+      const row3 = panel.createDiv({
         cls: "los-coordination-row"
       });
-      row4.createEl("strong", {
+      row3.createEl("strong", {
         text: heading
       });
-      row4.createEl("p", {
+      row3.createEl("p", {
         text: body
       });
     }
@@ -36492,7 +35078,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
       cls: "los-card-grid"
     });
     const units = this.plugin.store.units().filter(
-      (row4) => row4.needs_study_map === true
+      (row3) => row3.needs_study_map === true
     );
     for (const unit of units) {
       unitCard(grid, this.plugin, unit);
@@ -36547,8 +35133,8 @@ var ProgramView = class extends import_obsidian13.ItemView {
       textPanel,
       "Capture text",
       () => {
-        const text8 = editor.value.trim();
-        if (!text8) {
+        const text7 = editor.value.trim();
+        if (!text7) {
           new import_obsidian13.Notice(
             "Enter some text before capturing."
           );
@@ -36557,7 +35143,7 @@ var ProgramView = class extends import_obsidian13.ItemView {
         }
         const captured = {
           title: title2.value.trim(),
-          text: text8
+          text: text7
         };
         this.capture(
           () => this.plugin.gateway.captureText(
@@ -36708,10 +35294,10 @@ function renderFiles(view, root, project) {
     const path = asString(file.path);
     const label = asString(file.label) ?? path ?? asString(file.id) ?? "Untitled file";
     const kind = asString(file.kind) ?? "file";
-    const row4 = wrap.createDiv({
+    const row3 = wrap.createDiv({
       cls: "los-record-row los-project-file"
     });
-    const copy = row4.createDiv({
+    const copy = row3.createDiv({
       cls: "los-record-copy los-project-link-copy"
     });
     copy.createEl("strong", {
@@ -36723,7 +35309,7 @@ function renderFiles(view, root, project) {
     });
     if (path) {
       button(
-        row4,
+        row3,
         "Open",
         () => view.plugin.openAuthoredPath(
           path
@@ -36750,10 +35336,10 @@ function renderDecisions(root, project) {
   }
   for (const decision of decisions) {
     const status = asString(decision.status) ?? "open";
-    const row4 = wrap.createDiv({
+    const row3 = wrap.createDiv({
       cls: "los-record-row los-project-decision"
     });
-    const copy = row4.createDiv({
+    const copy = row3.createDiv({
       cls: "los-record-copy"
     });
     copy.createEl("strong", {
@@ -36764,7 +35350,7 @@ function renderDecisions(root, project) {
       text: asText(decision.summary) ?? ""
     });
     badge(
-      row4,
+      row3,
       status,
       status
     );
@@ -36785,7 +35371,7 @@ function isProjectTab(value) {
   );
 }
 function readProjectViewState(value) {
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return {};
   }
   const screen = value.screen === "detail" ? "detail" : value.screen === "list" ? "list" : void 0;
@@ -36800,7 +35386,7 @@ function readProjectViewState(value) {
   };
 }
 function readProjectBoundaries(value) {
-  const boundaries = isRecord2(value) ? value : {};
+  const boundaries = isRecord(value) ? value : {};
   return {
     confidentiality: asString(
       boundaries.confidentiality
@@ -36812,7 +35398,7 @@ function readProjectBoundaries(value) {
   };
 }
 function readProjectStructure(value) {
-  const structure = isRecord2(value) ? value : {};
+  const structure = isRecord(value) ? value : {};
   return {
     kind: asString(structure.kind) ?? "none",
     nodes: asRecords(structure.nodes)
@@ -36875,7 +35461,7 @@ function renderStructure(root, project) {
   const tree = wrap.createDiv({
     cls: "los-record-list los-project-structure"
   });
-  const renderNode2 = (parent, row4, depth = 0) => {
+  const renderNode2 = (parent, row3, depth = 0) => {
     const item = parent.createDiv({
       cls: `los-record-row los-project-structure-row los-project-node-depth-${Math.min(depth, 4)}`
     });
@@ -36883,23 +35469,23 @@ function renderStructure(root, project) {
       cls: "los-record-copy"
     });
     copy.createEl("strong", {
-      text: asLabel(row4)
+      text: asLabel(row3)
     });
-    const status = asString(row4.status);
+    const status = asString(row3.status);
     if (status) {
       copy.createDiv({
         cls: "los-record-meta",
-        text: `${asString(row4.kind) ?? "step"} \xB7 ${status}`
+        text: `${asString(row3.kind) ?? "step"} \xB7 ${status}`
       });
     }
-    const summary = asString(row4.summary);
+    const summary = asString(row3.summary);
     if (summary) {
       copy.createDiv({
         cls: "los-record-summary",
         text: summary
       });
     }
-    const children = asRecords(row4.children);
+    const children = asRecords(row3.children);
     if (children.length) {
       for (const child of children) {
         renderNode2(
@@ -36910,10 +35496,10 @@ function renderStructure(root, project) {
       }
     }
   };
-  for (const row4 of structure.nodes) {
+  for (const row3 of structure.nodes) {
     renderNode2(
       tree,
-      row4
+      row3
     );
   }
 }
@@ -37076,14 +35662,14 @@ function renderOverview2(view, root, project) {
     ]
   ];
   for (const [label, value] of metadata) {
-    const row4 = meta.createDiv({
+    const row3 = meta.createDiv({
       cls: "los-project-meta"
     });
-    row4.createDiv({
+    row3.createDiv({
       cls: "los-kicker",
       text: label
     });
-    row4.createEl("strong", {
+    row3.createEl("strong", {
       text: value
     });
   }
@@ -37101,7 +35687,7 @@ function renderOverview2(view, root, project) {
   const unitRows = asStrings(project.unit_ids).map(
     (id2) => view.plugin.store.get(id2)
   ).filter(
-    (row4) => row4 !== null
+    (row3) => row3 !== null
   );
   if (!unitRows.length) {
     empty(
@@ -37196,18 +35782,18 @@ function renderList3(view, root) {
       const projectType = asString(
         project.project_type
       ) ?? "project";
-      const row4 = results.createEl("button", {
+      const row3 = results.createEl("button", {
         cls: "los-record-row los-project-row is-clickable",
         attr: {
           type: "button",
           "aria-label": `Open project: ${title2}`
         }
       });
-      row4.setAttr(
+      row3.setAttr(
         "data-record-id",
         projectId
       );
-      const copy = row4.createDiv({
+      const copy = row3.createDiv({
         cls: "los-record-copy"
       });
       copy.createEl("strong", {
@@ -37226,11 +35812,11 @@ function renderList3(view, root) {
           project.linked_module_ids
         )} linked modules`
       });
-      row4.createSpan({
+      row3.createSpan({
         cls: "los-record-action",
         text: "Open \u2192"
       });
-      row4.addEventListener(
+      row3.addEventListener(
         "click",
         () => {
           view.selectedElementId = projectId;
@@ -37457,10 +36043,10 @@ var ProjectView = class extends import_obsidian14.ItemView {
       const target = this.plugin.store.get(
         relationship.toId
       );
-      const row4 = wrap.createDiv({
+      const row3 = wrap.createDiv({
         cls: "los-record-row los-project-link"
       });
-      const copy = row4.createDiv({
+      const copy = row3.createDiv({
         cls: "los-record-copy los-project-link-copy"
       });
       copy.createEl("strong", {
@@ -37470,7 +36056,7 @@ var ProjectView = class extends import_obsidian14.ItemView {
         cls: "los-record-meta",
         text: `${relationship.toType} \xB7 ${relationship.relationType}`
       });
-      const actions = row4.createDiv({
+      const actions = row3.createDiv({
         cls: "los-actions"
       });
       if (target) {
@@ -37537,10 +36123,10 @@ function isDefinitiveNoCommitCode(code) {
 function record2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
-function nonEmpty2(value) {
+function nonEmpty(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
-function exactKeys2(value, keys) {
+function exactKeys(value, keys) {
   return Object.keys(value).length === keys.length && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
 }
 function isSha256(value) {
@@ -37615,7 +36201,7 @@ function requestArtifactId(capability, idempotencyKey) {
       { code: "INVALID_REQUEST", retryable: false }
     );
   }
-  if (!nonEmpty2(idempotencyKey)) {
+  if (!nonEmpty(idempotencyKey)) {
     throw new GatewayError(
       `${capability} needs an idempotency key to guard its request; nothing was written.`,
       null,
@@ -37677,7 +36263,7 @@ function asGatewaySuccessV2(value, expected) {
     "error"
   ];
   const identityMatches = response?.request_id === expected.requestId && response?.idempotency_key === expected.idempotencyKey && response?.capability === expected.capability;
-  const confirmed = response !== null && exactKeys2(response, responseKeys) && response.schema_version === GATEWAY_SCHEMA_VERSION && identityMatches && response.ok === true && typeof response.replayed === "boolean" && nonEmpty2(response.transaction_id) && nonEmpty2(response.receipt_path) && isSha256(response.snapshot_after) && result !== null && response.error === null;
+  const confirmed = response !== null && exactKeys(response, responseKeys) && response.schema_version === GATEWAY_SCHEMA_VERSION && identityMatches && response.ok === true && typeof response.replayed === "boolean" && nonEmpty(response.transaction_id) && nonEmpty(response.receipt_path) && isSha256(response.snapshot_after) && result !== null && response.error === null;
   if (!confirmed) {
     throw new GatewayError(
       "LearningOS did not return a complete Gateway V2 receipt, so the change is unconfirmed. Your draft was kept.",
@@ -37704,7 +36290,7 @@ function asGatewayFailureV2(value, expected) {
     "error"
   ];
   const error = record2(response.error);
-  const refused = exactKeys2(response, responseKeys) && response.schema_version === GATEWAY_SCHEMA_VERSION && response.request_id === expected.requestId && response.idempotency_key === expected.idempotencyKey && response.capability === expected.capability && response.ok === false && typeof response.replayed === "boolean" && response.transaction_id === null && response.receipt_path === null && response.snapshot_after === null && record2(response.result) !== null && error !== null && exactKeys2(error, ["code", "message", "retryable", "details"]) && nonEmpty2(error.code) && nonEmpty2(error.message) && typeof error.retryable === "boolean" && record2(error.details) !== null;
+  const refused = exactKeys(response, responseKeys) && response.schema_version === GATEWAY_SCHEMA_VERSION && response.request_id === expected.requestId && response.idempotency_key === expected.idempotencyKey && response.capability === expected.capability && response.ok === false && typeof response.replayed === "boolean" && response.transaction_id === null && response.receipt_path === null && response.snapshot_after === null && record2(response.result) !== null && error !== null && exactKeys(error, ["code", "message", "retryable", "details"]) && nonEmpty(error.code) && nonEmpty(error.message) && typeof error.retryable === "boolean" && record2(error.details) !== null;
   return refused ? response : null;
 }
 function asGatewayRequestV2(value) {
@@ -37712,7 +36298,7 @@ function asGatewayRequestV2(value) {
   if (!envelope) return null;
   const approval = record2(envelope.approval);
   const revisions = record2(envelope.expected_revisions);
-  const valid = exactKeys2(envelope, [
+  const valid = exactKeys(envelope, [
     "schema_version",
     "request_id",
     "idempotency_key",
@@ -37722,9 +36308,9 @@ function asGatewayRequestV2(value) {
     "expected_revisions",
     "approval",
     "payload"
-  ]) && envelope.schema_version === GATEWAY_SCHEMA_VERSION && nonEmpty2(envelope.request_id) && nonEmpty2(envelope.idempotency_key) && nonEmpty2(envelope.capability) && envelope.channel === "ui" && isSha256(envelope.expected_snapshot) && revisions !== null && Object.entries(revisions).every(
-    ([id2, revision]) => nonEmpty2(id2) && Number.isInteger(revision) && revision >= 0
-  ) && approval !== null && exactKeys2(approval, ["kind", "subject_sha256"]) && approval.kind === "direct-user-gesture" && isSha256(approval.subject_sha256) && record2(envelope.payload) !== null;
+  ]) && envelope.schema_version === GATEWAY_SCHEMA_VERSION && nonEmpty(envelope.request_id) && nonEmpty(envelope.idempotency_key) && nonEmpty(envelope.capability) && envelope.channel === "ui" && isSha256(envelope.expected_snapshot) && revisions !== null && Object.entries(revisions).every(
+    ([id2, revision]) => nonEmpty(id2) && Number.isInteger(revision) && revision >= 0
+  ) && approval !== null && exactKeys(approval, ["kind", "subject_sha256"]) && approval.kind === "direct-user-gesture" && isSha256(approval.subject_sha256) && record2(envelope.payload) !== null;
   return valid ? envelope : null;
 }
 
@@ -37755,10 +36341,10 @@ function normalizeUiDrafts(value) {
 function criterionKeys(criteria) {
   const seen = /* @__PURE__ */ new Map();
   return criteria.map((criterion) => {
-    const text8 = String(criterion ?? "").replace(/\s+/g, " ").trim();
+    const text7 = String(criterion ?? "").replace(/\s+/g, " ").trim();
     let hash = 2166136261;
-    for (let index = 0; index < text8.length; index += 1) {
-      hash ^= text8.charCodeAt(index);
+    for (let index = 0; index < text7.length; index += 1) {
+      hash ^= text7.charCodeAt(index);
       hash = Math.imul(hash, 16777619) >>> 0;
     }
     const base = hash.toString(16).padStart(8, "0");
@@ -37794,10 +36380,10 @@ var DraftStore = class {
     const entry = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
     return { text: entry?.text ?? savedText, dirty: entry != null && entry.text !== savedText };
   }
-  setStage(unitId, stageId, text8, savedText = "") {
+  setStage(unitId, stageId, text7, savedText = "") {
     const key = this.stageKey(unitId, stageId);
-    if (text8 === savedText) delete this.settings.uiDrafts.stages[key];
-    else this.settings.uiDrafts.stages[key] = { text: text8 };
+    if (text7 === savedText) delete this.settings.uiDrafts.stages[key];
+    else this.settings.uiDrafts.stages[key] = { text: text7 };
     this.scheduleSave();
   }
   clearStage(unitId, stageId) {
@@ -37819,9 +36405,9 @@ var DraftStore = class {
         recoveredStages[stageId] = entry.text;
       }
     }
-    const recoveredText = recovered.map((row4) => `### ${row4.title}
+    const recoveredText = recovered.map((row3) => `### ${row3.title}
 
-${row4.text.trim()}`).join("\n\n");
+${row3.text.trim()}`).join("\n\n");
     return {
       title: saved?.title || (recovered.length ? "Recovered stage drafts" : ""),
       text: [String(saved?.text || "").trim(), recoveredText].filter(Boolean).join("\n\n"),
@@ -37830,11 +36416,11 @@ ${row4.text.trim()}`).join("\n\n");
       expectedRevisions: saved?.expectedRevisions ?? {}
     };
   }
-  setUnitNote(unitId, title2, text8, expectedRevisions = {}, recoveredStages = {}) {
-    if (!title2.trim() && !text8.trim()) delete this.settings.uiDrafts.unitNotes[unitId];
+  setUnitNote(unitId, title2, text7, expectedRevisions = {}, recoveredStages = {}) {
+    if (!title2.trim() && !text7.trim()) delete this.settings.uiDrafts.unitNotes[unitId];
     else this.settings.uiDrafts.unitNotes[unitId] = {
       title: title2,
-      text: text8,
+      text: text7,
       expectedRevisions: { ...expectedRevisions },
       recoveredStages: { ...recoveredStages }
     };
@@ -37926,8 +36512,8 @@ ${row4.text.trim()}`).join("\n\n");
   getInbox() {
     return { ...this.settings.uiDrafts.inbox };
   }
-  setInbox(title2, text8) {
-    this.settings.uiDrafts.inbox = { title: title2, text: text8 };
+  setInbox(title2, text7) {
+    this.settings.uiDrafts.inbox = { title: title2, text: text7 };
     this.scheduleSave();
   }
   /**
@@ -37944,8 +36530,8 @@ ${row4.text.trim()}`).join("\n\n");
   getGarden() {
     return { ...this.settings.uiDrafts.garden };
   }
-  setGarden(title2, text8) {
-    this.settings.uiDrafts.garden = { title: title2, text: text8 };
+  setGarden(title2, text7) {
+    this.settings.uiDrafts.garden = { title: title2, text: text7 };
     this.scheduleSave();
   }
   clearGarden(match = null) {
@@ -37997,17 +36583,17 @@ var RECORD_KEYS = [
 function record3(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
-function exactKeys3(value, keys) {
+function exactKeys2(value, keys) {
   return Object.keys(value).length === keys.length && keys.every((key) => Object.prototype.hasOwnProperty.call(value, key));
 }
-function nonEmpty3(value) {
+function nonEmpty2(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
 async function validateGatewayRecoveryRecord(value) {
   const refuse = (error) => ({ ok: false, error });
   const candidate2 = record3(value);
   if (!candidate2) return refuse("the recovery record is not an object");
-  if (!exactKeys3(candidate2, RECORD_KEYS)) {
+  if (!exactKeys2(candidate2, RECORD_KEYS)) {
     return refuse(`the recovery record must carry exactly ${RECORD_KEYS.join(", ")}`);
   }
   if (candidate2.schema_version !== 1) {
@@ -38017,7 +36603,7 @@ async function validateGatewayRecoveryRecord(value) {
     return refuse(`unknown recovery phase ${JSON.stringify(candidate2.phase)}`);
   }
   const phase = candidate2.phase;
-  if (!nonEmpty3(candidate2.created_at) || !Number.isFinite(Date.parse(candidate2.created_at))) {
+  if (!nonEmpty2(candidate2.created_at) || !Number.isFinite(Date.parse(candidate2.created_at))) {
     return refuse("the recovery record has no readable creation timestamp");
   }
   if (typeof candidate2.envelope_json !== "string" || !candidate2.envelope_json) {
@@ -38061,7 +36647,7 @@ async function validateGatewayRecoveryRecord(value) {
   let lastError = null;
   if (candidate2.last_error !== null) {
     const failure = record3(candidate2.last_error);
-    if (!failure || !exactKeys3(failure, ["code", "message"]) || !nonEmpty3(failure.code) || typeof failure.message !== "string") {
+    if (!failure || !exactKeys2(failure, ["code", "message"]) || !nonEmpty2(failure.code) || typeof failure.message !== "string") {
       return refuse("the recorded error is not a {code, message} pair");
     }
     lastError = { code: failure.code, message: failure.message };
@@ -38255,18 +36841,18 @@ var SettingsGatewayRecoveryStore = class extends MemoryGatewayRecoveryStore {
 };
 function clearDraftsOwnedBy(drafts, envelope) {
   const payload = envelope.payload;
-  const text8 = typeof payload.text === "string" ? payload.text : null;
+  const text7 = typeof payload.text === "string" ? payload.text : null;
   const title2 = typeof payload.title === "string" ? payload.title : "";
   if (envelope.capability === "capture.create") {
-    if (text8 === null) return;
-    if (sameComposerDraft(drafts.inbox, { title: title2, text: text8 })) {
+    if (text7 === null) return;
+    if (sameComposerDraft(drafts.inbox, { title: title2, text: text7 })) {
       drafts.inbox = { title: "", text: "" };
     }
     return;
   }
   if (envelope.capability === "garden.seed.create") {
-    if (text8 === null) return;
-    if (sameComposerDraft(drafts.garden, { title: title2, text: text8 })) {
+    if (text7 === null) return;
+    if (sameComposerDraft(drafts.garden, { title: title2, text: text7 })) {
       drafts.garden = { title: "", text: "" };
     }
     return;
@@ -38275,7 +36861,7 @@ function clearDraftsOwnedBy(drafts, envelope) {
     const unitId = typeof payload.unit_id === "string" ? payload.unit_id : "";
     if (!unitId) return;
     const draft = drafts.unitNotes[unitId];
-    const matches3 = draft && draft.text === text8 && String(draft.title || "").trim() === title2;
+    const matches3 = draft && draft.text === text7 && String(draft.title || "").trim() === title2;
     if (matches3) {
       delete drafts.unitNotes[unitId];
     }
@@ -38393,7 +36979,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:3c0da1b8dc16597abf213e5570fe9a07e37d09e4fdb17cdb3464dea813319fe2" : "unavailable";
+  return true ? "sha256:757f4019aefeb0edb68fbc3fd842368568ba452f7c5d9d02d94022ad030102f1" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
@@ -39036,20 +37622,20 @@ Last response: ${result.error.message}`,
     return ["--expected-snapshot", this.snapshotId()];
   }
   // ---- porcelain: each is one declared capability, nothing more ----------
-  saveNote(unitId, stageId, text8, expectedRevisions = {}) {
+  saveNote(unitId, stageId, text7, expectedRevisions = {}) {
     return this.capability(
       "stage.note.write",
-      { unit_id: unitId, stage_id: stageId, text: text8, replace: true },
+      { unit_id: unitId, stage_id: stageId, text: text7, replace: true },
       { expectedRevisions }
     );
   }
   async saveUnitNote(unitId, {
     title: title2 = "",
-    text: text8,
+    text: text7,
     stageIds: stageIds2 = [],
     filePaths = []
   }, expectedRevisions = {}) {
-    const payload = { unit_id: unitId, text: text8 };
+    const payload = { unit_id: unitId, text: text7 };
     if (String(title2).trim()) payload.title = String(title2).trim();
     if (stageIds2.length) payload.stage_id = [...stageIds2];
     if (filePaths.length) {
@@ -39110,8 +37696,8 @@ Last response: ${result.error.message}`,
     if (label) payload.label = label;
     return this.capability("stage.attachment.add", payload, { expectedRevisions });
   }
-  captureText(text8, title2 = "") {
-    const payload = { text: text8 };
+  captureText(text7, title2 = "") {
+    const payload = { text: text7 };
     if (title2) payload.title = title2;
     return this.capability("capture.create", payload);
   }
@@ -39121,8 +37707,8 @@ Last response: ${result.error.message}`,
       file_sha256: await fileSha256(filePath)
     });
   }
-  createGardenSeed(text8, title2 = "") {
-    const payload = { text: text8 };
+  createGardenSeed(text7, title2 = "") {
+    const payload = { text: text7 };
     if (title2.trim()) payload.title = title2.trim();
     return this.capability(
       "garden.seed.create",
@@ -39242,10 +37828,10 @@ Last response: ${result.error.message}`,
    * "the standard" and "what the Create dialog offers" cannot drift apart.
    * No snapshot guard: this reads no repository file and writes nothing.
    */
-  planTemplate(profile, title2, ids2 = {}) {
+  planTemplate(profile, title2, ids = {}) {
     const args = ["plan-template", profile, "--title", title2, "--json"];
-    if (ids2.unitId) args.push("--unit-id", ids2.unitId);
-    if (ids2.moduleId) args.push("--module-id", ids2.moduleId);
+    if (ids.unitId) args.push("--unit-id", ids.unitId);
+    if (ids.moduleId) args.push("--module-id", ids.moduleId);
     return this.call(args);
   }
   /**
@@ -39323,7 +37909,7 @@ function explicitAiContext(plugin, context = {}) {
   const stage = context.stageId ? plugin.store.stage(context.stageId) : null;
   const stageResources = Array.isArray(stage?.resources) ? stage.resources : [];
   const unitSelections = Array.isArray(unit?.source_selections) ? unit.source_selections.filter(
-    (row4) => typeof row4 === "object" && row4 !== null && !Array.isArray(row4)
+    (row3) => typeof row3 === "object" && row3 !== null && !Array.isArray(row3)
   ) : [];
   const resources = stageResources.length ? stageResources : unitSelections;
   return {
@@ -39332,8 +37918,8 @@ function explicitAiContext(plugin, context = {}) {
     component_id: context.componentId || unit?.component_id || null,
     unit_id: unit?.id || context.unitId || null,
     stage_id: stage?.id || context.stageId || null,
-    selected_source_ids: [...new Set(resources.map((row4) => row4.source_id).filter((value) => typeof value === "string" && value.length > 0))],
-    selected_materials: resources.map((row4) => row4.material_uri || row4.vault_path || row4.url || row4.material_path || row4.locator).filter((value) => typeof value === "string" && value.length > 0),
+    selected_source_ids: [...new Set(resources.map((row3) => row3.source_id).filter((value) => typeof value === "string" && value.length > 0))],
+    selected_materials: resources.map((row3) => row3.material_uri || row3.vault_path || row3.url || row3.material_path || row3.locator).filter((value) => typeof value === "string" && value.length > 0),
     manifest_snapshot: plugin.store.snapshotId,
     active_file_supplement: plugin.app.workspace.getActiveFile?.()?.path || null
   };
@@ -39353,7 +37939,7 @@ function definitionFor(host, abilityId) {
   return expansion && "ability" in expansion ? expansion.ability : null;
 }
 function rowFor(host, abilityId) {
-  return host.plugin.abilityHorizon.current()?.abilities.find((row4) => row4.id === abilityId) ?? null;
+  return host.plugin.abilityHorizon.current()?.abilities.find((row3) => row3.id === abilityId) ?? null;
 }
 function ensureAbility(host, abilityId) {
   host.plugin.abilityHorizon.ensure();
@@ -39363,8 +37949,8 @@ function problemList(parent, problems) {
   if (!problems.length) return;
   const box = parent.createDiv({ cls: "los-review-problems", attr: { role: "note" } });
   box.createEl("strong", { text: "Before it can be recorded" });
-  const list4 = box.createEl("ul");
-  for (const problem of problems) list4.createEl("li", { text: problem });
+  const list3 = box.createEl("ul");
+  for (const problem of problems) list3.createEl("li", { text: problem });
 }
 async function send(host, action, done) {
   if (host.sending) return false;
@@ -39383,7 +37969,7 @@ async function send(host, action, done) {
   }
 }
 function editClaim(host, draft) {
-  const row4 = rowFor(host, draft.abilityId) ?? {
+  const row3 = rowFor(host, draft.abilityId) ?? {
     id: draft.abilityId,
     title: draft.abilityTitle,
     lifecycle: "active",
@@ -39399,9 +37985,9 @@ function editClaim(host, draft) {
   const expansion = host.plugin.abilityHorizon.expansion(draft.abilityId);
   const focus = expansion && "ability" in expansion ? expansion : null;
   new AbilityClaimDraftModal(host.app, {
-    ability: row4,
+    ability: row3,
     definition: focus?.ability ?? null,
-    workspaces: abilityWorkspaces(host.plugin.store, row4),
+    workspaces: abilityWorkspaces(host.plugin.store, row3),
     workPointers: abilityWorkPointers(host.plugin.store, focus),
     existing: draft,
     save: (next) => host.plugin.saveAbilityDraft(next),
@@ -39410,7 +37996,7 @@ function editClaim(host, draft) {
 }
 function editConnection(host, draft) {
   const brief = host.plugin.abilityHorizon.current();
-  const from = brief?.abilities.find((row4) => row4.id === draft.fromAbility);
+  const from = brief?.abilities.find((row3) => row3.id === draft.fromAbility);
   if (!brief || !from) {
     new import_obsidian15.Notice("The ability map is not loaded, so this connection cannot be edited yet.");
     return;
@@ -39431,8 +38017,8 @@ function drop(host, id2) {
 function renderClaimDraft(parent, host, draft) {
   ensureAbility(host, draft.abilityId);
   const definition2 = definitionFor(host, draft.abilityId);
-  const row4 = rowFor(host, draft.abilityId);
-  const workspaces = row4 ? abilityWorkspaces(host.plugin.store, row4) : [];
+  const row3 = rowFor(host, draft.abilityId);
+  const workspaces = row3 ? abilityWorkspaces(host.plugin.store, row3) : [];
   const horizonReady = Boolean(host.plugin.abilityHorizon.current());
   const loading = horizonReady && !definition2 && !host.plugin.abilityHorizon.expansionError(draft.abilityId);
   parent.createDiv({ cls: "los-review-eyebrow", text: `Worked attempt \xB7 draft${draft.supersedes ? " \xB7 correction" : ""}` });
@@ -39448,8 +38034,8 @@ function renderClaimDraft(parent, host, draft) {
   });
   const shows = part(parent, "What the attempt shows");
   if (draft.evidenceTags.length) {
-    const list4 = shows.createEl("ul");
-    for (const tag of draft.evidenceTags) list4.createEl("li", { text: tag });
+    const list3 = shows.createEl("ul");
+    for (const tag of draft.evidenceTags) list3.createEl("li", { text: tag });
   } else {
     shows.createEl("p", { cls: "los-micro", text: "No evidence criterion marked." });
   }
@@ -39465,8 +38051,8 @@ function renderClaimDraft(parent, host, draft) {
     ...draft.conditionsNotMet.map((condition) => `Not met: ${condition}`)
   ];
   if (conditions.length) {
-    const list4 = shows.createEl("ul", { cls: "los-review-conditions" });
-    for (const condition of conditions) list4.createEl("li", { text: condition });
+    const list3 = shows.createEl("ul", { cls: "los-review-conditions" });
+    for (const condition of conditions) list3.createEl("li", { text: condition });
   }
   const unanswered = unresolvedConditions(draft, definition2);
   if (unanswered.length) {
@@ -39544,8 +38130,8 @@ function renderConnectionDraft(parent, host, draft) {
   const differs = part(parent, "What still differs");
   differs.createEl("p", { text: draft.changes.trim() || "Not written yet." });
   if (draft.conditions.length) {
-    const list4 = differs.createEl("ul", { cls: "los-review-conditions" });
-    for (const condition of draft.conditions) list4.createEl("li", { text: `Only under: ${condition}` });
+    const list3 = differs.createEl("ul", { cls: "los-review-conditions" });
+    for (const condition of draft.conditions) list3.createEl("li", { text: `Only under: ${condition}` });
   }
   const evidence3 = part(parent, "Evidence");
   evidence3.createDiv({
@@ -39565,7 +38151,7 @@ function renderConnectionDraft(parent, host, draft) {
   rule(parent);
   const actions = parent.createDiv({ cls: "los-actions los-review-actions" });
   const confirm = button(actions, host.sending ? "Recording\u2026" : "Confirm & record", () => {
-    const current = host.plugin.listAbilityDrafts().find((row4) => row4.id === draft.id);
+    const current = host.plugin.listAbilityDrafts().find((row3) => row3.id === draft.id);
     if (!current || current.kind !== "connection" || current.updatedAt !== draft.updatedAt) {
       new import_obsidian15.Notice("The draft changed; review it again before confirming.");
       host.render();
@@ -39589,15 +38175,15 @@ function renderConnectionDraft(parent, host, draft) {
   button(actions, "Edit", () => editConnection(host, draft), "quiet").disabled = host.sending;
   button(actions, "Not this", () => drop(host, draft.id), "tertiary").disabled = host.sending;
 }
-function renderConflict(parent, host, row4) {
+function renderConflict(parent, host, row3) {
   parent.createDiv({ cls: "los-review-eyebrow", text: "Conflicting attempts \xB7 Core" });
-  parent.createEl("h2", { text: row4.title });
+  parent.createEl("h2", { text: row3.title });
   rule(parent);
   const claim = part(parent, "What Core says");
-  for (const reason of row4.reasons) claim.createEl("p", { text: sentence(reason) });
+  for (const reason of row3.reasons) claim.createEl("p", { text: sentence(reason) });
   const evidence3 = part(parent, "Evidence");
-  if (!row4.evidence.length) evidence3.createEl("p", { cls: "los-micro", text: "The ledger is in the ability detail." });
-  for (const item of row4.evidence) {
+  if (!row3.evidence.length) evidence3.createEl("p", { cls: "los-micro", text: "The ledger is in the ability detail." });
+  for (const item of row3.evidence) {
     evidence3.createDiv({ cls: "los-review-pointer-text", text: `${RESULT_LABEL[item.result]} \xB7 ${item.work_ref}` });
   }
   rule(parent);
@@ -39607,7 +38193,7 @@ function renderConflict(parent, host, row4) {
   });
   rule(parent);
   const actions = parent.createDiv({ cls: "los-actions los-review-actions" });
-  button(actions, "Open the ability", () => host.plugin.nav.openAbilities({ ability: row4.id, detail: true }), "quiet");
+  button(actions, "Open the ability", () => host.plugin.nav.openAbilities({ ability: row3.id, detail: true }), "quiet");
 }
 function coreAction(host, target) {
   if (!target) return null;
@@ -39636,7 +38222,7 @@ function renderCore(parent, host, entry) {
   const claim = part(parent, "Decision");
   claim.createDiv({ cls: "los-review-claim", text: entry.reason || "Core recorded no reason." });
   const evidence3 = part(parent, "Evidence");
-  const target = isRecord2(entry.item.target) ? entry.item.target : null;
+  const target = isRecord(entry.item.target) ? entry.item.target : null;
   const targetId = asString(target?.unit_id) ?? asString(target?.id);
   const record10 = targetId ? host.plugin.store.get(targetId) : null;
   if (record10) chip(evidence3, record10);
@@ -39672,30 +38258,30 @@ function renderReviewEntry(parent, host, entry) {
 function record5(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
-function exactKeys4(value, required, optional2 = []) {
-  const allowed = /* @__PURE__ */ new Set([...required, ...optional2]);
+function exactKeys3(value, required, optional = []) {
+  const allowed = /* @__PURE__ */ new Set([...required, ...optional]);
   return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => allowed.has(key));
 }
-function text4(value) {
+function text3(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
-function dateTime3(value) {
+function dateTime2(value) {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
 }
 function asHealthReport(value) {
   const report = record5(value);
-  if (!report || !exactKeys4(
+  if (!report || !exactKeys3(
     report,
     ["schema_version", "type", "generated_at", "status", "checks"]
-  ) || report.schema_version !== 1 || report.type !== "health-report" || !dateTime3(report.generated_at) || !["healthy", "attention-required"].includes(String(report.status)) || !Array.isArray(report.checks)) return null;
+  ) || report.schema_version !== 1 || report.type !== "health-report" || !dateTime2(report.generated_at) || !["healthy", "attention-required"].includes(String(report.status)) || !Array.isArray(report.checks)) return null;
   const checks = [];
   for (const valueCheck of report.checks) {
     const check = record5(valueCheck);
-    if (!check || !exactKeys4(
+    if (!check || !exactKeys3(
       check,
       ["id", "status", "summary", "owner", "remedy"],
       ["details"]
-    ) || !text4(check.id) || !["ok", "warning", "error", "unknown"].includes(String(check.status)) || !text4(check.summary) || !text4(check.owner) || !text4(check.remedy) || "details" in check && record5(check.details) === null) return null;
+    ) || !text3(check.id) || !["ok", "warning", "error", "unknown"].includes(String(check.status)) || !text3(check.summary) || !text3(check.owner) || !text3(check.remedy) || "details" in check && record5(check.details) === null) return null;
     checks.push({
       id: check.id,
       status: check.status,
@@ -39720,18 +38306,18 @@ function asHealthReport(value) {
 function record6(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
-function exact3(value, required, optional2 = []) {
-  const allowed = /* @__PURE__ */ new Set([...required, ...optional2]);
+function exact2(value, required, optional = []) {
+  const allowed = /* @__PURE__ */ new Set([...required, ...optional]);
   return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => allowed.has(key));
 }
-var sha2563 = (value) => typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
-var text5 = (value) => typeof value === "string" && value.trim().length > 0;
-var dateTime4 = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
-var natural4 = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0;
-var relativePath = (value) => text5(value) && !value.startsWith("/") && !value.split("/").includes("..");
+var sha2562 = (value) => typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
+var text4 = (value) => typeof value === "string" && value.trim().length > 0;
+var dateTime3 = (value) => typeof value === "string" && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/.test(value) && Number.isFinite(Date.parse(value));
+var natural2 = (value) => typeof value === "number" && Number.isInteger(value) && value >= 0;
+var relativePath = (value) => text4(value) && !value.startsWith("/") && !value.split("/").includes("..");
 function asLegacyArchiveLock(value) {
   const lock = record6(value);
-  if (!lock || !exact3(lock, [
+  if (!lock || !exact2(lock, [
     "schema_version",
     "id",
     "type",
@@ -39739,7 +38325,7 @@ function asLegacyArchiveLock(value) {
     "entries",
     "excluded",
     "verification"
-  ]) || lock.schema_version !== 1 || lock.id !== "legacy-archive-lock" || lock.type !== "legacy-archive-lock" || !dateTime4(lock.created_at) || !Array.isArray(lock.entries)) return null;
+  ]) || lock.schema_version !== 1 || lock.id !== "legacy-archive-lock" || lock.type !== "legacy-archive-lock" || !dateTime3(lock.created_at) || !Array.isArray(lock.entries)) return null;
   const dispositions = [
     "canonicalized",
     "byte-preserved",
@@ -39750,22 +38336,22 @@ function asLegacyArchiveLock(value) {
   const entries2 = [];
   for (const valueEntry of lock.entries) {
     const entry = record6(valueEntry);
-    if (!entry || !exact3(entry, [
+    if (!entry || !exact2(entry, [
       "relative_path",
       "size",
       "sha256",
       "category",
       "disposition",
       "canonical_targets"
-    ]) || !relativePath(entry.relative_path) || !natural4(entry.size) || !sha2563(entry.sha256) || !text5(entry.category) || !dispositions.includes(entry.disposition) || !Array.isArray(entry.canonical_targets)) return null;
+    ]) || !relativePath(entry.relative_path) || !natural2(entry.size) || !sha2562(entry.sha256) || !text4(entry.category) || !dispositions.includes(entry.disposition) || !Array.isArray(entry.canonical_targets)) return null;
     const targets = [];
     for (const valueTarget of entry.canonical_targets) {
       const target = record6(valueTarget);
-      if (!target || !exact3(
+      if (!target || !exact2(
         target,
         ["path", "exists", "checksum_matches"],
         ["sha256"]
-      ) || !relativePath(target.path) || typeof target.exists !== "boolean" || !(typeof target.checksum_matches === "boolean" || target.checksum_matches === null) || "sha256" in target && target.sha256 !== null && !sha2563(target.sha256)) return null;
+      ) || !relativePath(target.path) || typeof target.exists !== "boolean" || !(typeof target.checksum_matches === "boolean" || target.checksum_matches === null) || "sha256" in target && target.sha256 !== null && !sha2562(target.sha256)) return null;
       targets.push({
         path: target.path,
         exists: target.exists,
@@ -39784,7 +38370,7 @@ function asLegacyArchiveLock(value) {
   }
   const excluded = record6(lock.excluded);
   const verification = record6(lock.verification);
-  if (!excluded || !exact3(excluded, ["count", "status"]) || !natural4(excluded.count) || excluded.status !== "sealed-not-inspected" || !verification || !exact3(verification, ["verified_at", "status"], ["issues"]) || !dateTime4(verification.verified_at) || !["verified", "attention-required"].includes(String(verification.status)) || "issues" in verification && (!Array.isArray(verification.issues) || !verification.issues.every(text5))) return null;
+  if (!excluded || !exact2(excluded, ["count", "status"]) || !natural2(excluded.count) || excluded.status !== "sealed-not-inspected" || !verification || !exact2(verification, ["verified_at", "status"], ["issues"]) || !dateTime3(verification.verified_at) || !["verified", "attention-required"].includes(String(verification.status)) || "issues" in verification && (!Array.isArray(verification.issues) || !verification.issues.every(text4))) return null;
   return {
     schema_version: 1,
     id: "legacy-archive-lock",
@@ -39801,7 +38387,7 @@ function asLegacyArchiveLock(value) {
 }
 function asLegacyArchiveStatus(value) {
   const status = record6(value);
-  if (!status || !exact3(status, ["schema_version", "type", "available", "lock"]) || status.schema_version !== 1 || status.type !== "legacy-archive-status" || typeof status.available !== "boolean") return null;
+  if (!status || !exact2(status, ["schema_version", "type", "available", "lock"]) || status.schema_version !== 1 || status.type !== "legacy-archive-status" || typeof status.available !== "boolean") return null;
   const lock = status.lock === null ? null : asLegacyArchiveLock(status.lock);
   if (status.lock !== null && lock === null) return null;
   if (status.available !== (lock !== null)) return null;
@@ -39817,14 +38403,14 @@ function asLegacyArchiveStatus(value) {
 function record7(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
-function exactKeys5(value, required) {
+function exactKeys4(value, required) {
   return required.every((key) => Object.prototype.hasOwnProperty.call(value, key)) && Object.keys(value).every((key) => required.includes(key));
 }
 var CANONICAL = ["COMMITTED", "NOT_COMMITTED", "AMBIGUOUS"];
 var RECOVERY = ["none", "verify-observation", "reconcile-exact-request"];
 function asRow(value) {
-  const row4 = record7(value);
-  if (!row4 || !exactKeys5(row4, [
+  const row3 = record7(value);
+  if (!row3 || !exactKeys4(row3, [
     "trace_id",
     "request_id",
     "capability",
@@ -39837,38 +38423,38 @@ function asRow(value) {
     "recovery_requirement",
     "needs_attention"
   ])) return null;
-  if (typeof row4.trace_id !== "string" || typeof row4.capability !== "string") return null;
-  if (row4.request_id !== null && typeof row4.request_id !== "string") return null;
-  if (row4.started_at !== null && typeof row4.started_at !== "number") return null;
-  if (row4.duration_ms !== null && typeof row4.duration_ms !== "number") return null;
-  if (typeof row4.attempts !== "number" || typeof row4.replayed !== "boolean") return null;
-  if (row4.first_failure_stage !== null && typeof row4.first_failure_stage !== "string") return null;
-  if (!CANONICAL.includes(String(row4.canonical_outcome))) return null;
-  if (!RECOVERY.includes(String(row4.recovery_requirement))) return null;
-  if (typeof row4.needs_attention !== "boolean") return null;
-  return row4;
+  if (typeof row3.trace_id !== "string" || typeof row3.capability !== "string") return null;
+  if (row3.request_id !== null && typeof row3.request_id !== "string") return null;
+  if (row3.started_at !== null && typeof row3.started_at !== "number") return null;
+  if (row3.duration_ms !== null && typeof row3.duration_ms !== "number") return null;
+  if (typeof row3.attempts !== "number" || typeof row3.replayed !== "boolean") return null;
+  if (row3.first_failure_stage !== null && typeof row3.first_failure_stage !== "string") return null;
+  if (!CANONICAL.includes(String(row3.canonical_outcome))) return null;
+  if (!RECOVERY.includes(String(row3.recovery_requirement))) return null;
+  if (typeof row3.needs_attention !== "boolean") return null;
+  return row3;
 }
 function asOperationsList(value) {
   const body = record7(value);
-  if (!body || !exactKeys5(body, ["operations"]) || !Array.isArray(body.operations)) return null;
+  if (!body || !exactKeys4(body, ["operations"]) || !Array.isArray(body.operations)) return null;
   const operations = [];
   for (const item of body.operations) {
-    const row4 = asRow(item);
-    if (!row4) return null;
-    operations.push(row4);
+    const row3 = asRow(item);
+    if (!row3) return null;
+    operations.push(row3);
   }
   return { operations };
 }
 function asAttempt(value) {
-  const row4 = record7(value);
-  if (!row4 || !exactKeys5(row4, ["span", "status", "replay_of"])) return null;
-  if (typeof row4.span !== "string" || typeof row4.status !== "string") return null;
-  if (row4.replay_of !== null && typeof row4.replay_of !== "string") return null;
-  return row4;
+  const row3 = record7(value);
+  if (!row3 || !exactKeys4(row3, ["span", "status", "replay_of"])) return null;
+  if (typeof row3.span !== "string" || typeof row3.status !== "string") return null;
+  if (row3.replay_of !== null && typeof row3.replay_of !== "string") return null;
+  return row3;
 }
 function asDiagnosis(value) {
   const body = record7(value);
-  if (!body || !exactKeys5(body, [
+  if (!body || !exactKeys4(body, [
     "first_failure_stage",
     "execution_outcome",
     "canonical_outcome",
@@ -39896,15 +38482,15 @@ function asDiagnosis(value) {
 }
 var TIMELINE_STATES = ["passed", "failed", "skipped", "missing"];
 function asTimelineRow(value) {
-  const row4 = record7(value);
-  if (!row4 || !exactKeys5(row4, ["stage", "state", "detail"])) return null;
-  if (typeof row4.stage !== "string" || !TIMELINE_STATES.includes(String(row4.state))) return null;
-  if (row4.detail !== null && typeof row4.detail !== "string") return null;
-  return row4;
+  const row3 = record7(value);
+  if (!row3 || !exactKeys4(row3, ["stage", "state", "detail"])) return null;
+  if (typeof row3.stage !== "string" || !TIMELINE_STATES.includes(String(row3.state))) return null;
+  if (row3.detail !== null && typeof row3.detail !== "string") return null;
+  return row3;
 }
 function asFacts(value) {
   const facts = record7(value);
-  if (!facts || !exactKeys5(facts, [
+  if (!facts || !exactKeys4(facts, [
     "transaction_id",
     "receipt_path",
     "snapshot_before",
@@ -39917,7 +38503,7 @@ function asFacts(value) {
 }
 function asOperationDetail(value) {
   const body = record7(value);
-  if (!body || !exactKeys5(body, [
+  if (!body || !exactKeys4(body, [
     "request_id",
     "capability",
     "diagnosis",
@@ -39932,9 +38518,9 @@ function asOperationDetail(value) {
   if (!Array.isArray(body.timeline)) return null;
   const timeline = [];
   for (const item of body.timeline) {
-    const row4 = asTimelineRow(item);
-    if (!row4) return null;
-    timeline.push(row4);
+    const row3 = asTimelineRow(item);
+    if (!row3) return null;
+    timeline.push(row3);
   }
   if (body.observed_snapshot !== null && typeof body.observed_snapshot !== "string") return null;
   if (!["SETTLED", "REFUSED", "BLOCKED"].includes(String(body.ui_outcome))) return null;
@@ -40037,7 +38623,7 @@ var ReviewView = class extends import_obsidian16.ItemView {
     });
     summary.createSpan({
       cls: "los-micro",
-      text: brief ? brief.abilities.some((row4) => row4.evidence.length) ? `${brief.abilities.filter((row4) => row4.evidence.length).length} abilities have recorded work` : "No learner attempt recorded" : horizon2.error ? "Ability records unavailable" : "Reading ability records\u2026"
+      text: brief ? brief.abilities.some((row3) => row3.evidence.length) ? `${brief.abilities.filter((row3) => row3.evidence.length).length} abilities have recorded work` : "No learner attempt recorded" : horizon2.error ? "Ability records unavailable" : "Reading ability records\u2026"
     });
     if (!entries2.length) {
       empty(
@@ -40058,14 +38644,14 @@ var ReviewView = class extends import_obsidian16.ItemView {
       cls: "los-review-list-head",
       text: "Needs your decision"
     });
-    const list4 = listPane.createDiv({
+    const list3 = listPane.createDiv({
       cls: "los-review-items",
       attr: { role: "group", "aria-label": "Review items" }
     });
-    enableButtonGroupKeyboardNavigation(list4, "vertical");
+    enableButtonGroupKeyboardNavigation(list3, "vertical");
     for (const entry of entries2) {
       const active = entry.key === selected?.key;
-      const row4 = list4.createEl("button", {
+      const row3 = list3.createEl("button", {
         cls: `los-review-item is-clickable is-${entry.kind}${active ? " is-selected" : ""}`,
         attr: {
           type: "button",
@@ -40073,9 +38659,9 @@ var ReviewView = class extends import_obsidian16.ItemView {
           "aria-pressed": String(active)
         }
       });
-      row4.createSpan({ cls: "los-review-item-title", text: entry.title });
-      row4.createSpan({ cls: "los-review-item-context", text: entry.context });
-      row4.addEventListener("click", () => this.select(entry.key));
+      row3.createSpan({ cls: "los-review-item-title", text: entry.title });
+      row3.createSpan({ cls: "los-review-item-context", text: entry.context });
+      row3.addEventListener("click", () => this.select(entry.key));
     }
     listPane.createDiv({
       cls: "los-micro los-review-queue-note",
@@ -40170,9 +38756,9 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
     this.operationsError = "";
     this.render();
     try {
-      const list4 = asOperationsList(await this.plugin.gateway.operationsList(30));
-      if (!list4) throw new Error("Core returned an invalid operations response.");
-      this.operations = list4.operations;
+      const list3 = asOperationsList(await this.plugin.gateway.operationsList(30));
+      if (!list3) throw new Error("Core returned an invalid operations response.");
+      this.operations = list3.operations;
       this.operationsLoaded = true;
     } catch (error) {
       this.operations = [];
@@ -40212,10 +38798,10 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
   }
   filteredOperations() {
     if (this.operationsFilter === "attention") {
-      return this.operations.filter((row4) => row4.needs_attention);
+      return this.operations.filter((row3) => row3.needs_attention);
     }
     if (this.operationsFilter === "recoveries") {
-      return this.operations.filter((row4) => row4.replayed || row4.attempts > 1);
+      return this.operations.filter((row3) => row3.replayed || row3.attempts > 1);
     }
     return this.operations;
   }
@@ -40240,23 +38826,23 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
     filterTabs(root, "Operations filters", OPERATIONS_FILTERS, this.operationsFilter, (value) => {
       this.operationsFilter = value;
       this.render();
-    }, (value) => value === "all" ? this.operations.length : value === "attention" ? this.operations.filter((row4) => row4.needs_attention).length : this.operations.filter((row4) => row4.replayed || row4.attempts > 1).length);
+    }, (value) => value === "all" ? this.operations.length : value === "attention" ? this.operations.filter((row3) => row3.needs_attention).length : this.operations.filter((row3) => row3.replayed || row3.attempts > 1).length);
     const rows = this.filteredOperations();
     if (rows.length === 0) {
       empty(root, "No operations", this.operationsFilter === "all" ? "No causal operations are on record yet." : "Nothing matches this filter.");
     }
-    for (const row4 of rows) {
-      const glyph = row4.recovery_requirement !== "none" ? "!" : row4.replayed ? "\u27F3" : row4.canonical_outcome === "COMMITTED" ? "\u2713" : "\u2715";
-      const label = row4.recovery_requirement !== "none" ? "Ambiguous" : row4.replayed ? "Replayed" : row4.canonical_outcome === "COMMITTED" ? "Settled" : "Refused";
-      const time = row4.started_at === null ? "--:--" : new Date(row4.started_at * 1e3).toTimeString().slice(0, 5);
-      const duration = row4.duration_ms === null ? "" : ` \xB7 ${Math.round(row4.duration_ms)} ms`;
+    for (const row3 of rows) {
+      const glyph = row3.recovery_requirement !== "none" ? "!" : row3.replayed ? "\u27F3" : row3.canonical_outcome === "COMMITTED" ? "\u2713" : "\u2715";
+      const label = row3.recovery_requirement !== "none" ? "Ambiguous" : row3.replayed ? "Replayed" : row3.canonical_outcome === "COMMITTED" ? "Settled" : "Refused";
+      const time = row3.started_at === null ? "--:--" : new Date(row3.started_at * 1e3).toTimeString().slice(0, 5);
+      const duration = row3.duration_ms === null ? "" : ` \xB7 ${Math.round(row3.duration_ms)} ms`;
       const item = button(
         root,
-        `${time}  ${row4.capability}  ${glyph} ${label}${duration}`,
+        `${time}  ${row3.capability}  ${glyph} ${label}${duration}`,
         () => {
-          if (row4.request_id) void this.loadOperationDetail(row4.request_id);
+          if (row3.request_id) void this.loadOperationDetail(row3.request_id);
         },
-        this.selectedRequest !== null && row4.request_id === this.selectedRequest ? "info" : "quiet"
+        this.selectedRequest !== null && row3.request_id === this.selectedRequest ? "info" : "quiet"
       );
       void item;
     }
@@ -40308,10 +38894,10 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
       }
     }
     const timeline = section(detail, "Timeline", "Causal stages in execution order.");
-    for (const row4 of current.timeline) {
-      const glyph = row4.state === "passed" ? "\u2713" : row4.state === "failed" ? "!" : "\u2013";
+    for (const row3 of current.timeline) {
+      const glyph = row3.state === "passed" ? "\u2713" : row3.state === "failed" ? "!" : "\u2013";
       timeline.createEl("p", {
-        text: `${glyph} ${row4.stage}${row4.detail ? ` \u2014 ${row4.detail}` : ""}`
+        text: `${glyph} ${row3.stage}${row3.detail ? ` \u2014 ${row3.detail}` : ""}`
       });
     }
     factList(
@@ -40371,7 +38957,7 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
       const parsed = JSON.parse(
         fs3.readFileSync(target, "utf8")
       );
-      if (!isRecord2(parsed)) {
+      if (!isRecord(parsed)) {
         return fallback;
       }
       return {
@@ -40438,11 +39024,11 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
     if (this.health) {
       const checks = section(root, "Health checks", `Generated ${this.health.generated_at}`);
       for (const check of this.health.checks) {
-        const row4 = checks.createDiv({ cls: "los-health-check" });
-        const heading = row4.createDiv({ cls: "los-health-check-head" });
+        const row3 = checks.createDiv({ cls: "los-health-check" });
+        const heading = row3.createDiv({ cls: "los-health-check-head" });
         heading.createEl("strong", { text: check.summary });
         badge(heading, check.status, check.status === "ok" ? "status" : "role");
-        factList(row4, [
+        factList(row3, [
           ["Check", check.id],
           ["Owner", check.owner],
           ["Remedy", check.remedy]
@@ -40542,7 +39128,7 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
       let requestId = null;
       try {
         const envelope = JSON.parse(state.entry.record.envelope_json);
-        if (isRecord2(envelope) && typeof envelope.request_id === "string") {
+        if (isRecord(envelope) && typeof envelope.request_id === "string") {
           requestId = envelope.request_id;
         }
       } catch (_) {
@@ -40663,12 +39249,12 @@ Tried: ${resolved.attempted.join(", ")}`;
 // src/views/shelving-view.ts
 var import_obsidian17 = require("obsidian");
 function readShelvingProposal(value) {
-  if (!isRecord2(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
+  if (!isRecord(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
     return null;
   }
   const items = [];
   for (const candidate2 of value.items) {
-    if (!isRecord2(candidate2) || typeof candidate2.id !== "string" || typeof candidate2.title !== "string") {
+    if (!isRecord(candidate2) || typeof candidate2.id !== "string" || typeof candidate2.title !== "string") {
       continue;
     }
     const item = {
@@ -40813,14 +39399,14 @@ var ShelvingView = class extends import_obsidian17.ItemView {
     );
     const summary = section(root, "Proposed changes", proposal.summary || "Select only changes you want to apply.");
     for (const item of proposal.items) {
-      const row4 = summary.createDiv({ cls: "los-proposal-row" });
-      const toggle = row4.createEl("input", { attr: { type: "checkbox", "aria-label": `Select ${item.title}` } });
+      const row3 = summary.createDiv({ cls: "los-proposal-row" });
+      const toggle = row3.createEl("input", { attr: { type: "checkbox", "aria-label": `Select ${item.title}` } });
       toggle.checked = this.selected.has(item.id);
       toggle.addEventListener("change", () => {
         if (toggle.checked) this.selected.add(item.id);
         else this.selected.delete(item.id);
       });
-      const copy = row4.createDiv();
+      const copy = row3.createDiv();
       copy.createEl("h3", { text: item.title });
       if (item.destination) copy.createDiv({ cls: "los-detail-id", text: item.destination });
       if (item.rationale) copy.createEl("p", { text: item.rationale });
@@ -40839,7 +39425,7 @@ var ShelvingView = class extends import_obsidian17.ItemView {
   renderQueue(root) {
     const wrap = section(root, "Ready to shelve");
     const rows = this.plugin.store.units().filter(
-      (row4) => row4.status === "ready-to-shelve"
+      (row3) => row3.status === "ready-to-shelve"
     );
     if (!rows.length) empty(wrap, "No unit is waiting", "Keep working from any active unit.");
     for (const unit of rows) unitCard(wrap, this.plugin, unit);
@@ -40907,7 +39493,7 @@ function errorMessage3(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function readUnitViewState(value) {
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return {
       hasStageId: false
     };
@@ -40933,7 +39519,7 @@ function readUnitRecord(record10, fallbackId) {
   if (!id2 || !moduleId) {
     return null;
   }
-  const knowledgeMap = isRecord2(
+  const knowledgeMap = isRecord(
     record10.knowledge_map
   ) ? record10.knowledge_map : null;
   const knowledgeNodes = asRecords(
@@ -41044,7 +39630,7 @@ function readStageAttachment(value) {
       label: value.split("/").pop() || value
     };
   }
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return null;
   }
   const path = asString(value.path) ?? asString(value.vault_path);
@@ -41109,7 +39695,7 @@ function readStudyMap(record10) {
   };
 }
 function readArtifacts(value) {
-  if (!isRecord2(value)) {
+  if (!isRecord(value)) {
     return {
       named: [],
       other: []
@@ -41147,12 +39733,12 @@ function renderStageContext(view, center, unit, studyMap, stage) {
     typeof studyMap.record.id === "string" ? studyMap.record.id : null
   );
   const detours = studyMap.detours.filter(
-    (row4) => asString(
-      row4.spawned_by_stage
+    (row3) => asString(
+      row3.spawned_by_stage
     ) === stage.id && asString(
-      row4.status
+      row3.status
     ) !== "resolved" && asString(
-      row4.id
+      row3.id
     ) !== null
   );
   if (!stage.attachments.length && !detours.length && !stage.sourceFeedback.length) {
@@ -41181,17 +39767,17 @@ function renderStageContext(view, center, unit, studyMap, stage) {
     const classification = asString(
       detour.classification
     ) ?? "required-now";
-    const row4 = detail.createDiv({
+    const row3 = detail.createDiv({
       cls: "los-detour-row"
     });
-    row4.createEl("strong", {
+    row3.createEl("strong", {
       text: "Open prerequisite detour"
     });
-    row4.createEl("p", {
+    row3.createEl("p", {
       text: `${title2} \xB7 ${classification} \xB7 returns here`
     });
     button(
-      row4,
+      row3,
       "Resolve and return",
       () => view.mutate(
         () => view.plugin.gateway.resolveDetour(
@@ -41374,7 +39960,7 @@ function whyThisOne(copy, detailText, fillFoot) {
 }
 function renderMaterialCautions(parent, record10) {
   for (const asset of Array.isArray(record10.requires_assets) ? record10.requires_assets : []) {
-    if (!isRecord2(asset) || typeof asset.name !== "string") continue;
+    if (!isRecord(asset) || typeof asset.name !== "string") continue;
     const part2 = asText(asset.needed_for);
     const origin = asText(asset.obtain_from);
     parent.createDiv({ cls: "los-micro", text: `${asset.material_uri ? "Required file" : "Not registered locally"}: ${asset.name}` + (part2 ? ` \u2014 needed for ${part2}` : "") + (origin ? `. Obtain from ${origin}.` : ".") });
@@ -41408,10 +39994,10 @@ function materialTypeLabel(format) {
 }
 function groupMaterialsByType(rows, formatOf) {
   const groups = TYPES.map((type) => ({ ...type, entries: [] }));
-  for (const row4 of rows) {
-    const format = formatOf(row4).trim().toLowerCase();
+  for (const row3 of rows) {
+    const format = formatOf(row3).trim().toLowerCase();
     const group = groups.find((type) => type.formats.includes(format)) ?? groups[groups.length - 1];
-    group.entries.push(row4);
+    group.entries.push(row3);
   }
   return groups.filter((group) => group.entries.length > 0);
 }
@@ -41430,35 +40016,35 @@ var AVAILABILITY = /* @__PURE__ */ new Set([
 function record8(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
-function text6(value) {
+function text5(value) {
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 function spanFile(value) {
   const item = record8(value);
   if (!item) return null;
-  const uri2 = text6(item.material_uri);
-  const digest = text6(item.file_sha256);
-  const extraction = text6(item.extraction);
-  if (!uri2 || !digest || !extraction) return null;
+  const uri = text5(item.material_uri);
+  const digest = text5(item.file_sha256);
+  const extraction = text5(item.extraction);
+  if (!uri || !digest || !extraction) return null;
   const pages = Array.isArray(item.pages) ? item.pages.filter((page) => Number.isInteger(page)) : [];
   return {
-    material_uri: uri2,
-    format: text6(item.format) ?? "unknown",
+    material_uri: uri,
+    format: text5(item.format) ?? "unknown",
     file_sha256: digest,
     extraction,
     excerpt: typeof item.excerpt === "string" ? item.excerpt : null,
     excerpt_truncated: item.excerpt_truncated === true,
     pages,
     page_total: Number.isInteger(item.page_total) ? item.page_total : null,
-    reason: text6(item.reason)
+    reason: text5(item.reason)
   };
 }
 function asMaterialSpan(value) {
   const response = record8(value);
   if (!response || response.contract !== MATERIAL_SPAN_CONTRACT || response.schema_version !== 1 || typeof response.snapshot_id !== "string" || !/^sha256:[a-f0-9]{64}$/.test(response.snapshot_id) || !AVAILABILITY.has(String(response.availability)) || !Array.isArray(response.spans)) return null;
-  const unitId = text6(response.unit_id);
-  const moduleId = text6(response.module_id);
-  const routeId = text6(response.route_id);
+  const unitId = text5(response.unit_id);
+  const moduleId = text5(response.module_id);
+  const routeId = text5(response.route_id);
   if (!unitId || !moduleId || !routeId) return null;
   const files = [];
   for (const entry of response.spans) {
@@ -41473,9 +40059,9 @@ function asMaterialSpan(value) {
     unit_id: unitId,
     module_id: moduleId,
     route_id: routeId,
-    source_id: text6(response.source_id),
-    locator: text6(response.locator),
-    url: text6(response.url),
+    source_id: text5(response.source_id),
+    locator: text5(response.locator),
+    url: text5(response.url),
     availability: response.availability,
     files,
     analysis_notes_total: notesTotal
@@ -41873,14 +40459,14 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
   matches(texts) {
     const query = foldCase(this.query.trim());
     if (!query) return true;
-    return texts.some((text8) => text8 && foldCase(text8).includes(query));
+    return texts.some((text7) => text7 && foldCase(text7).includes(query));
   }
   renderBody() {
     const body = this.body;
     if (!body) return;
     const scrollTop = body.scrollTop;
     body.empty();
-    const def = STAGE_GROUPS.find((row4) => row4.key === this.group);
+    const def = STAGE_GROUPS.find((row3) => row3.key === this.group);
     if (def) {
       this.renderStageGroup(body, def);
     } else this.renderRouteGroup(body);
@@ -41898,11 +40484,11 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
       );
       return;
     }
-    const list4 = body.createDiv({ cls: "los-compare-cards", attr: { "aria-live": "polite" } });
+    const list3 = body.createDiv({ cls: "los-compare-cards", attr: { "aria-live": "polite" } });
     for (const resource of entries2) {
       const route2 = routeForResource(resource, this.options.materialOptions);
       const source = resource.sourceId ? this.options.renderer.sourceRecord?.(resource.sourceId) ?? null : null;
-      renderPlacementCard(list4, resource, route2, source, this.deps).addClass("los-source-entry");
+      renderPlacementCard(list3, resource, route2, source, this.deps).addClass("los-source-entry");
     }
   }
   renderRouteGroup(body) {
@@ -41948,7 +40534,7 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
         empty(results, "No material matches", "Clear the search to see the complete list.");
         return;
       }
-      for (const type of groupMaterialsByType(visible, (row4) => row4.option.format)) {
+      for (const type of groupMaterialsByType(visible, (row3) => row3.option.format)) {
         const typeKey = `${this.group}|${type.key}`;
         const section3 = results.createEl("details", {
           cls: "los-material-type-group",
@@ -41961,11 +40547,11 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
         summary.createSpan({ cls: "los-material-type-label", text: type.label });
         summary.createSpan({ cls: "los-material-type-count", text: String(type.entries.length) });
         icon(summary.createSpan({ cls: "los-disclosure-chevron" }), "chevron-right");
-        const list4 = section3.createDiv({ cls: "los-material-type-list" });
+        const list3 = section3.createDiv({ cls: "los-material-type-list" });
         for (const { owner, option } of type.entries) {
           const rowKey = `${owner.id}|${option.routeId}`;
-          const row4 = list4.createEl("details", { cls: "los-material-list-row", attr: { "data-route-id": option.routeId } });
-          const rowSummary = row4.createEl("summary", { cls: "los-material-list-summary" });
+          const row3 = list3.createEl("details", { cls: "los-material-list-row", attr: { "data-route-id": option.routeId } });
+          const rowSummary = row3.createEl("summary", { cls: "los-material-list-summary" });
           const copy = rowSummary.createDiv({ cls: "los-material-list-copy" });
           copy.createEl("strong", { text: option.title });
           copy.createSpan({ cls: "los-micro", text: [purposeLabel(option.depth), owner.id === this.options.unit.id ? "" : owner.title].filter(Boolean).join(" \xB7 ") });
@@ -41976,7 +40562,7 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
             if (populated) return;
             populated = true;
             const source = option.sourceId ? this.options.renderer.sourceRecord?.(option.sourceId) ?? null : null;
-            const detail = row4.createDiv({ cls: "los-material-list-detail" });
+            const detail = row3.createDiv({ cls: "los-material-list-detail" });
             renderRouteCard(detail, option, source, { ...this.deps, unitId: owner.id }, {
               coverage: option.covers.map((id2) => owner.knowledgeNodes.find((node) => node.id === id2)?.title).filter((title2) => Boolean(title2)),
               actions: (actions) => {
@@ -41988,11 +40574,11 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
               }
             });
           };
-          row4.open = this.expandedMaterials.has(rowKey);
-          if (row4.open) populate();
-          row4.addEventListener("toggle", () => {
-            if (row4.isConnected === false) return;
-            if (row4.open) {
+          row3.open = this.expandedMaterials.has(rowKey);
+          if (row3.open) populate();
+          row3.addEventListener("toggle", () => {
+            if (row3.isConnected === false) return;
+            if (row3.open) {
               this.expandedMaterials.add(rowKey);
               populate();
             } else this.expandedMaterials.delete(rowKey);
@@ -42110,17 +40696,17 @@ function renderStage(view, layout, unit, studyMap, stage) {
       cls: "los-micro",
       text: `${checkedCount} of ${stage.doneWhen.length}`
     });
-    const list4 = done.createDiv({
+    const list3 = done.createDiv({
       cls: "los-donewhen-list"
     });
     for (const [index, criterion] of stage.doneWhen.entries()) {
-      const row4 = list4.createEl(
+      const row3 = list3.createEl(
         "label",
         {
           cls: "los-donewhen-row"
         }
       );
-      const box = row4.createEl(
+      const box = row3.createEl(
         "input",
         {
           attr: {
@@ -42148,17 +40734,17 @@ function renderStage(view, layout, unit, studyMap, stage) {
             nextChecked,
             stage.doneWhen
           );
-          row4.toggleClass(
+          row3.toggleClass(
             "is-checked",
             nextChecked
           );
         }
       );
-      row4.toggleClass(
+      row3.toggleClass(
         "is-checked",
         checked
       );
-      row4.createSpan({
+      row3.createSpan({
         text: criterion
       });
     }
@@ -42444,16 +41030,16 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
     group.createEl("summary", { text: `${label} \xB7 ${entries2.length} materials` });
     for (const option of entries2) {
       const materialType = materialTypeOf(option.format);
-      const row4 = group.createDiv({
+      const row3 = group.createDiv({
         cls: "los-material-option los-source-entry"
       });
       icon(
-        row4.createSpan({
+        row3.createSpan({
           cls: "los-material-icon"
         }),
         optionIcon(materialType)
       );
-      const copy = row4.createDiv({
+      const copy = row3.createDiv({
         cls: "los-material-copy"
       });
       copy.createEl("h4", {
@@ -42501,7 +41087,7 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
       if (source) chip(metadata, source, (record10) => view.plugin.nav.openRecord(record10));
       if (fullDetail) whyThisOne(copy, fullDetail);
       if (option.canOpen || option.canChoose) {
-        const actions = row4.createDiv({
+        const actions = row3.createDiv({
           cls: "los-actions los-material-actions"
         });
         if (option.canChoose && option.sourceId && option.locator) {
@@ -42635,9 +41221,9 @@ function renderMaterialSynthesis(view, root, synthesis, options, moduleId) {
     ];
     for (const [label, value] of details) {
       if (!value) continue;
-      const row4 = card.createDiv({ cls: "los-synthesis-detail" });
-      row4.createSpan({ cls: "los-micro", text: label });
-      row4.createEl("p", { text: value });
+      const row3 = card.createDiv({ cls: "los-synthesis-detail" });
+      row3.createSpan({ cls: "los-micro", text: label });
+      row3.createEl("p", { text: value });
     }
     if (assessment2.concept_ids.length) {
       const concepts = card.createDiv({ cls: "los-material-metadata" });
@@ -42658,27 +41244,27 @@ function renderMaterialSynthesis(view, root, synthesis, options, moduleId) {
     const comparisons = block2.createDiv({ cls: "los-synthesis-comparisons" });
     comparisons.createEl("h3", { text: "Route comparisons" });
     for (const comparison2 of synthesis.comparisons) {
-      const row4 = comparisons.createDiv({ cls: "los-synthesis-comparison" });
+      const row3 = comparisons.createDiv({ cls: "los-synthesis-comparison" });
       const labels = [
         routeTitles.get(comparison2.left_route_id) || comparison2.left_route_id,
         routeTitles.get(comparison2.right_route_id) || comparison2.right_route_id
       ];
-      const heading = row4.createDiv({ cls: "los-synthesis-comparison-head" });
+      const heading = row3.createDiv({ cls: "los-synthesis-comparison-head" });
       heading.createEl("strong", { text: labels.join(" \u2194 ") });
       badge(heading, comparison2.relation.replaceAll("-", " "), "role");
-      row4.createEl("p", { text: comparison2.narrative });
+      row3.createEl("p", { text: comparison2.narrative });
     }
   }
   if (synthesis.concept_groups.length) {
     const bridges2 = block2.createDiv({ cls: "los-synthesis-comparisons" });
     bridges2.createEl("h3", { text: "Concept bridges" });
     for (const group of synthesis.concept_groups) {
-      const row4 = bridges2.createDiv({ cls: "los-synthesis-comparison" });
+      const row3 = bridges2.createDiv({ cls: "los-synthesis-comparison" });
       const concept = view.plugin.store.get(group.concept_id);
-      row4.createEl("strong", {
+      row3.createEl("strong", {
         text: asString(concept?.title) || group.concept_id
       });
-      row4.createEl("p", { text: group.narrative });
+      row3.createEl("p", { text: group.narrative });
       const local = [];
       let elsewhere = 0;
       for (const relatedId of [...group.related_unit_ids, ...group.bridge_note_ids]) {
@@ -42689,13 +41275,13 @@ function renderMaterialSynthesis(view, root, synthesis, options, moduleId) {
         else local.push(record10);
       }
       if (local.length) {
-        const related = row4.createDiv({ cls: "los-material-metadata" });
+        const related = row3.createDiv({ cls: "los-material-metadata" });
         for (const record10 of local) {
           chip(related, record10, (target) => view.plugin.nav.openRecord(target));
         }
       }
       if (elsewhere) {
-        const beyond = row4.createDiv({ cls: "los-synthesis-beyond" });
+        const beyond = row3.createDiv({ cls: "los-synthesis-beyond" });
         beyond.createSpan({
           cls: "los-micro",
           text: `${elsewhere} connection${elsewhere === 1 ? "" : "s"} in other modules`
@@ -42753,11 +41339,11 @@ function renderLearningRouteRail(parent, options) {
       summary.createSpan({ cls: "los-micro", text: options.titleMeta });
     }
   }
-  const list4 = rail.createDiv({ cls: "los-stage-list", attr: { role: "list" } });
+  const list3 = rail.createDiv({ cls: "los-stage-list", attr: { role: "list" } });
   const selectedIndex = options.items.findIndex((item) => item.id === options.selectedId);
   for (const [index, item] of options.items.entries()) {
     const selected = item.id === options.selectedId;
-    const row4 = list4.createEl("button", {
+    const row3 = list3.createEl("button", {
       cls: `los-stage-row los-s-${item.state} ${selected ? "is-selected" : index > selectedIndex ? "is-upcoming" : "is-before"} is-clickable`,
       attr: {
         type: "button",
@@ -42769,11 +41355,11 @@ function renderLearningRouteRail(parent, options) {
         "aria-pressed": String(selected)
       }
     });
-    row4.createSpan({ cls: "los-stage-marker", attr: { "aria-hidden": "true" } });
-    const copy = row4.createSpan({ cls: "los-stage-copy" });
+    row3.createSpan({ cls: "los-stage-marker", attr: { "aria-hidden": "true" } });
+    const copy = row3.createSpan({ cls: "los-stage-copy" });
     copy.createSpan({ cls: "los-stage-title", text: `${item.number} \xB7 ${item.title}` });
     if (item.marker) copy.createSpan({ cls: "los-micro", text: item.marker });
-    row4.addEventListener("click", () => options.select(item.id));
+    row3.addEventListener("click", () => options.select(item.id));
   }
   return rail;
 }
@@ -42781,12 +41367,12 @@ function renderLearningRouteRail(parent, options) {
 // src/features/unit/map-import.ts
 var import_obsidian21 = require("obsidian");
 function stageIds(value) {
-  return Array.isArray(value) ? value.map((row4) => asString(row4)).filter((row4) => Boolean(row4)) : [];
+  return Array.isArray(value) ? value.map((row3) => asString(row3)).filter((row3) => Boolean(row3)) : [];
 }
 function renderImportDiff(root, answer) {
   root.empty();
-  const payload = isRecord2(answer) ? answer : null;
-  const diff = payload && isRecord2(payload.diff) ? payload.diff : null;
+  const payload = isRecord(answer) ? answer : null;
+  const diff = payload && isRecord(payload.diff) ? payload.diff : null;
   if (!diff || !Array.isArray(diff.stages_after) || !Array.isArray(diff.content_changes) || !Array.isArray(diff.map_changes) || !diff.stages_after.every((v) => typeof v === "string" && v.length > 0) || payload?.canonical_files_written !== 0) {
     root.createDiv({
       cls: "los-muted",
@@ -42803,8 +41389,8 @@ function renderImportDiff(root, answer) {
     cls: "los-kicker",
     text: replacement ? "This replaces the current map" : "This creates the first map"
   });
-  const list4 = root.createEl("ul", { cls: "los-map-import-diff" });
-  const line = (text8) => list4.createEl("li", { text: text8 });
+  const list3 = root.createEl("ul", { cls: "los-map-import-diff" });
+  const line = (text7) => list3.createEl("li", { text: text7 });
   line(`${after.length} stage${after.length === 1 ? "" : "s"} after the import.`);
   if (added.length) line(`Adds: ${added.join(", ")}.`);
   if (retired.length) line(`Retires: ${retired.join(", ")}.`);
@@ -42827,7 +41413,7 @@ function renderImportDiff(root, answer) {
     line(`Evidence exists on retired stage${evidence3.length === 1 ? "" : "s"}: ${evidence3.join(", ")}.`);
   }
   for (const value of [...diff.content_changes, ...diff.map_changes]) {
-    if (!isRecord2(value) || "stage_id" in value && typeof value.stage_id !== "string" || typeof value.field !== "string" || !("before" in value) || !("after" in value)) return false;
+    if (!isRecord(value) || "stage_id" in value && typeof value.stage_id !== "string" || typeof value.field !== "string" || !("before" in value) || !("after" in value)) return false;
     const change = root.createEl("details");
     change.createEl("summary", { text: `${value.stage_id ?? "Map"}: ${value.field.replaceAll("_", " ")}` });
     change.createEl("div", { text: "Before" });
@@ -43688,19 +42274,19 @@ var GlobalSearchModal = class extends import_obsidian23.Modal {
       );
       return;
     }
-    const list4 = this.results.createDiv({ cls: "los-search-result-list" });
-    for (const row4 of rows.slice(0, 24)) {
-      const result = list4.createEl("button", {
+    const list3 = this.results.createDiv({ cls: "los-search-result-list" });
+    for (const row3 of rows.slice(0, 24)) {
+      const result = list3.createEl("button", {
         cls: "los-search-result is-clickable",
-        attr: { type: "button", "aria-label": `Open ${row4.title}` }
+        attr: { type: "button", "aria-label": `Open ${row3.title}` }
       });
       const copy = result.createDiv({ cls: "los-search-result-copy" });
-      copy.createEl("strong", { text: row4.title });
-      copy.createDiv({ cls: "los-micro", text: row4.subtitle });
+      copy.createEl("strong", { text: row3.title });
+      copy.createDiv({ cls: "los-micro", text: row3.subtitle });
       result.createSpan({ cls: "los-search-open", text: "Open \u2192" });
       result.addEventListener("click", () => {
         this.close();
-        row4.open();
+        row3.open();
       });
     }
     if (rows.length > 24) {
@@ -44465,8 +43051,8 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
     ).map((stage) => String(stage.id));
   }
   async save() {
-    const text8 = String(this.editor?.value || "");
-    if (!text8.trim()) {
+    const text7 = String(this.editor?.value || "");
+    if (!text7.trim()) {
       new import_obsidian25.Notice("Write a note before saving.");
       this.editor?.focus();
       return;
@@ -44490,7 +43076,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
     }
     this.saving = true;
     try {
-      const sent = { title: this.titleInput?.value || "", text: text8 };
+      const sent = { title: this.titleInput?.value || "", text: text7 };
       await this.plugin.mutate(() => this.plugin.gateway.saveUnitNote(unitId, {
         ...sent,
         stageIds: this.referencedStageIds,
@@ -44521,15 +43107,15 @@ var FRESHNESS = /* @__PURE__ */ new Set(["current", "stale", "unavailable", "not
 function record9(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
-function text7(value) {
+function text6(value) {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
-function strings2(value) {
+function strings(value) {
   if (!Array.isArray(value)) return null;
   return value.every((item) => typeof item === "string") ? value : null;
 }
 function optionalStrings(value) {
-  return value === void 0 ? [] : strings2(value);
+  return value === void 0 ? [] : strings(value);
 }
 function count2(value) {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
@@ -44540,58 +43126,58 @@ function header(value) {
   return response;
 }
 function route(value) {
-  const row4 = record9(value);
-  const reason = row4 ? text7(row4.reason) : null;
-  const supported = row4 ? strings2(row4.supported) : null;
-  const missing = row4 ? strings2(row4.missing_or_uncertain) : null;
-  const remaining = row4 ? optionalStrings(row4.remaining_work) : null;
-  if (!row4 || !reason || !supported || !missing || !remaining) return null;
+  const row3 = record9(value);
+  const reason = row3 ? text6(row3.reason) : null;
+  const supported = row3 ? strings(row3.supported) : null;
+  const missing = row3 ? strings(row3.missing_or_uncertain) : null;
+  const remaining = row3 ? optionalStrings(row3.remaining_work) : null;
+  if (!row3 || !reason || !supported || !missing || !remaining) return null;
   return {
     reason,
-    source: text7(row4.source),
+    source: text6(row3.source),
     supported,
     missing_or_uncertain: missing,
     remaining_work: remaining
   };
 }
 function transfer(value) {
-  const row4 = record9(value);
-  if (!row4) return null;
-  const from = text7(row4.from);
-  const source = text7(row4.source);
-  const carries = text7(row4.carries);
-  const changes = text7(row4.changes);
+  const row3 = record9(value);
+  if (!row3) return null;
+  const from = text6(row3.from);
+  const source = text6(row3.source);
+  const carries = text6(row3.carries);
+  const changes = text6(row3.changes);
   return from && source && carries && changes ? { from, source, carries, changes } : null;
 }
 function evidence2(value) {
-  const row4 = record9(value);
-  if (!row4) return null;
-  const id2 = text7(row4.id);
-  const workRef = text7(row4.work_ref);
-  if (!id2 || !workRef || !RESULTS3.has(String(row4.result))) return null;
-  const origin = record9(row4.origin);
-  const conditions = optionalStrings(row4.conditions);
-  const notMet = optionalStrings(row4.conditions_not_met);
-  const tags = optionalStrings(row4.evidence_tags);
+  const row3 = record9(value);
+  if (!row3) return null;
+  const id2 = text6(row3.id);
+  const workRef = text6(row3.work_ref);
+  if (!id2 || !workRef || !RESULTS3.has(String(row3.result))) return null;
+  const origin = record9(row3.origin);
+  const conditions = optionalStrings(row3.conditions);
+  const notMet = optionalStrings(row3.conditions_not_met);
+  const tags = optionalStrings(row3.evidence_tags);
   if (!conditions || !notMet || !tags) return null;
   return {
     id: id2,
-    result: row4.result,
+    result: row3.result,
     work_ref: workRef,
-    claim: text7(row4.claim),
-    activity: text7(row4.activity),
-    timestamp: text7(row4.timestamp),
-    assistance: typeof row4.assistance === "string" ? row4.assistance : null,
+    claim: text6(row3.claim),
+    activity: text6(row3.activity),
+    timestamp: text6(row3.timestamp),
+    assistance: typeof row3.assistance === "string" ? row3.assistance : null,
     conditions,
     conditions_not_met: notMet,
     evidence_tags: tags,
-    confirmation_ref: text7(row4.confirmation_ref),
-    supersedes: text7(row4.supersedes),
-    origin_path: origin ? text7(origin.path) : null,
-    workspace_id: origin ? text7(origin.workspace_id) : null
+    confirmation_ref: text6(row3.confirmation_ref),
+    supersedes: text6(row3.supersedes),
+    origin_path: origin ? text6(origin.path) : null,
+    workspace_id: origin ? text6(origin.workspace_id) : null
   };
 }
-function list3(value, decode) {
+function list2(value, decode) {
   if (value === void 0) return [];
   if (!Array.isArray(value)) return null;
   const out = [];
@@ -44602,18 +43188,18 @@ function list3(value, decode) {
   }
   return out;
 }
-function row3(value) {
+function row2(value) {
   const item = record9(value);
   if (!item) return null;
-  const id2 = text7(item.id);
-  const title2 = text7(item.title);
-  const reasons = strings2(item.reasons);
+  const id2 = text6(item.id);
+  const title2 = text6(item.title);
+  const reasons = strings(item.reasons);
   const reasonCodes = optionalStrings(item.reason_codes);
-  const concepts = strings2(item.concept_ids);
+  const concepts = strings(item.concept_ids);
   const modules = optionalStrings(item.module_ids);
-  const routes = list3(item.preparation_routes, route);
-  const transfers = list3(item.transfer, transfer);
-  const rows = list3(item.evidence, evidence2);
+  const routes = list2(item.preparation_routes, route);
+  const transfers = list2(item.transfer, transfer);
+  const rows = list2(item.evidence, evidence2);
   const lifecycle = item.lifecycle === void 0 ? "active" : item.lifecycle;
   if (!id2 || !title2 || !STATES.has(String(item.state)) || !reasons || !reasonCodes || !concepts || !modules || !routes || !transfers || !rows || lifecycle !== "active" && lifecycle !== "retired") return null;
   if (item.reason_codes !== void 0 && (reasonCodes.length !== reasons.length || reasonCodes.some((code) => !/^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(code)))) return null;
@@ -44636,18 +43222,18 @@ function review(value) {
   if (!item || item.state !== "candidate" && item.state !== "reviewed") return null;
   return {
     state: item.state,
-    reviewed_by: text7(item.reviewed_by),
-    reviewed_on: text7(item.reviewed_on)
+    reviewed_by: text6(item.reviewed_by),
+    reviewed_on: text6(item.reviewed_on)
   };
 }
 function bridge(value) {
   const item = record9(value);
   if (!item) return null;
-  const from = text7(item.from);
-  const to = text7(item.to);
-  const carries = text7(item.carries);
-  const changes = text7(item.changes);
-  const source = text7(item.source);
+  const from = text6(item.from);
+  const to = text6(item.to);
+  const carries = text6(item.carries);
+  const changes = text6(item.changes);
+  const source = text6(item.source);
   const conditions = optionalStrings(item.conditions);
   const reviewed = review(item.review);
   const freshness = record9(item.source_freshness);
@@ -44661,7 +43247,7 @@ function bridge(value) {
     changes,
     conditions,
     source,
-    source_sha256: text7(item.source_sha256),
+    source_sha256: text6(item.source_sha256),
     review: reviewed,
     // A bridge Core did not observe is not current. Absence reads as unknown,
     // which is the one state that can never carry evidence.
@@ -44671,13 +43257,13 @@ function bridge(value) {
 function candidate(value) {
   const item = record9(value);
   if (!item) return null;
-  const id2 = text7(item.id);
-  const from = text7(item.from);
-  const to = text7(item.to);
-  const carries = text7(item.carries);
-  const changes = text7(item.changes);
-  const sourceRef = text7(item.source_ref);
-  const created = text7(item.created_at);
+  const id2 = text6(item.id);
+  const from = text6(item.from);
+  const to = text6(item.to);
+  const carries = text6(item.carries);
+  const changes = text6(item.changes);
+  const sourceRef = text6(item.source_ref);
+  const created = text6(item.created_at);
   const conditions = optionalStrings(item.conditions);
   if (!id2 || !from || !to || !carries || !changes || !sourceRef || !created || !conditions || !KINDS2.has(String(item.kind))) return null;
   return {
@@ -44696,46 +43282,46 @@ function encounterMaterial(value) {
   const item = record9(value);
   if (!item) return null;
   return {
-    route_id: text7(item.route_id),
-    source_id: text7(item.source_id),
-    locator: text7(item.locator),
-    match_state: text7(item.match_state) ?? "unmapped"
+    route_id: text6(item.route_id),
+    source_id: text6(item.source_id),
+    locator: text6(item.locator),
+    match_state: text6(item.match_state) ?? "unmapped"
   };
 }
 function encounter(value) {
   const item = record9(value);
   if (!item) return null;
-  const moduleId = text7(item.module_id);
-  const unitId = text7(item.unit_id);
-  const stageId = text7(item.stage_id);
-  const materials = list3(item.materials, encounterMaterial);
+  const moduleId = text6(item.module_id);
+  const unitId = text6(item.unit_id);
+  const stageId = text6(item.stage_id);
+  const materials = list2(item.materials, encounterMaterial);
   if (!moduleId || !unitId || !stageId || !materials) return null;
   return {
     module_id: moduleId,
     unit_id: unitId,
-    study_map_id: text7(item.study_map_id),
+    study_map_id: text6(item.study_map_id),
     stage_id: stageId,
-    title: text7(item.title),
-    objective: text7(item.objective),
-    status: text7(item.status),
+    title: text6(item.title),
+    objective: text6(item.objective),
+    status: text6(item.status),
     materials
   };
 }
 function relatedEncounter(value) {
   const item = record9(value);
   if (!item) return null;
-  const moduleId = text7(item.module_id);
-  const unitId = text7(item.unit_id);
-  const stageId = text7(item.stage_id);
-  const abilities = strings2(item.ability_ids);
+  const moduleId = text6(item.module_id);
+  const unitId = text6(item.unit_id);
+  const stageId = text6(item.stage_id);
+  const abilities = strings(item.ability_ids);
   const routes = optionalStrings(item.route_ids);
   if (!moduleId || !unitId || !stageId || !abilities || !routes) return null;
   return {
     module_id: moduleId,
     unit_id: unitId,
     stage_id: stageId,
-    title: text7(item.title),
-    objective: text7(item.objective),
+    title: text6(item.title),
+    objective: text6(item.objective),
     ability_ids: abilities,
     route_ids: routes,
     route_total: count2(item.route_total) ?? routes.length,
@@ -44745,9 +43331,9 @@ function relatedEncounter(value) {
 function asAbilityBrief(value) {
   const response = header(value);
   if (!response || response.focus !== void 0) return null;
-  const abilities = list3(response.abilities, row3);
-  const bridges2 = list3(response.bridges, bridge);
-  const candidates = list3(response.candidate_connections, candidate);
+  const abilities = list2(response.abilities, row2);
+  const bridges2 = list2(response.bridges, bridge);
+  const candidates = list2(response.candidate_connections, candidate);
   const total = count2(response.total);
   if (!abilities || !bridges2 || !candidates || total === null) return null;
   return {
@@ -44761,18 +43347,18 @@ function asAbilityBrief(value) {
   };
 }
 function definition(value) {
-  const base = row3(value);
+  const base = row2(value);
   const item = record9(value);
   if (!base || !item) return null;
-  const claim = text7(item.claim);
-  const conditions = strings2(item.conditions);
-  const spec = strings2(item.evidence_spec);
+  const claim = text6(item.claim);
+  const conditions = strings(item.conditions);
+  const spec = strings(item.evidence_spec);
   const reviewed = review(item.review);
   if (!claim || !conditions || !spec || !reviewed) return null;
   return {
     ...base,
     claim,
-    source: text7(item.source),
+    source: text6(item.source),
     conditions,
     evidence_spec: spec,
     review: reviewed
@@ -44781,12 +43367,12 @@ function definition(value) {
 function asAbilityFocus(value) {
   const response = header(value);
   if (!response) return null;
-  const focus = text7(response.focus);
+  const focus = text6(response.focus);
   const ability = definition(response.ability);
-  const bridges2 = list3(response.bridges, bridge);
-  const encounters = list3(response.encounters, encounter);
-  const related = list3(response.related_encounters, relatedEncounter);
-  const candidates = list3(response.candidate_connections, candidate);
+  const bridges2 = list2(response.bridges, bridge);
+  const encounters = list2(response.encounters, encounter);
+  const related = list2(response.related_encounters, relatedEncounter);
+  const candidates = list2(response.candidate_connections, candidate);
   const shared = optionalStrings(response.shared_concept_candidates);
   if (!focus || !ability || ability.id !== focus || !bridges2 || !encounters || !related || !candidates || !shared) return null;
   return {
@@ -44804,8 +43390,8 @@ function asAbilityFocus(value) {
 function asAbilityUnmapped(value) {
   const response = header(value);
   if (!response || response.state !== "unmapped" || response.ability !== void 0) return null;
-  const focus = text7(response.focus);
-  const reason = text7(response.reason);
+  const focus = text6(response.focus);
+  const reason = text6(response.reason);
   return focus && reason ? { snapshot_id: response.snapshot_id, focus, reason } : null;
 }
 
@@ -45293,7 +43879,7 @@ var ResourceOpener = class {
 };
 
 // src/manifest-store.ts
-function isRecord3(value) {
+function isRecord2(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 function projectedText(value) {
@@ -45318,7 +43904,7 @@ function isArchivedRecord(record10, archivedModuleIds) {
 }
 function projectedRows(value) {
   return Array.isArray(value) ? value.filter(
-    (row4) => isRecord3(row4)
+    (row3) => isRecord2(row3)
   ) : [];
 }
 function buildStoreIndexes(manifest, records) {
@@ -45331,19 +43917,19 @@ function buildStoreIndexes(manifest, records) {
     rowsByGroup.set(
       group,
       projectedRows(value).filter(
-        (row4) => !isArchivedRecord(row4, archivedModuleIds)
+        (row3) => !isArchivedRecord(row3, archivedModuleIds)
       )
     );
   }
   const visibleRecords = records.filter(
-    (row4) => !isArchivedRecord(row4, archivedModuleIds)
+    (row3) => !isArchivedRecord(row3, archivedModuleIds)
   );
   const rowsByType = /* @__PURE__ */ new Map();
-  for (const row4 of visibleRecords) {
-    if (typeof row4.type !== "string") continue;
-    const rows = rowsByType.get(row4.type);
-    if (rows) rows.push(row4);
-    else rowsByType.set(row4.type, [row4]);
+  for (const row3 of visibleRecords) {
+    if (typeof row3.type !== "string") continue;
+    const rows = rowsByType.get(row3.type);
+    if (rows) rows.push(row3);
+    else rowsByType.set(row3.type, [row3]);
   }
   const sourceMapByModule = /* @__PURE__ */ new Map();
   for (const sourceMap of rowsByGroup.get("module_source_maps") ?? []) {
@@ -45427,7 +44013,7 @@ var ManifestStore = class {
           "generated/manifest.json"
         )
       );
-      const generated = isRecord3(parsed) && isRecord3(parsed._generated) ? parsed._generated : null;
+      const generated = isRecord2(parsed) && isRecord2(parsed._generated) ? parsed._generated : null;
       const version = generated?.contract_version;
       if (version !== MANIFEST_CONTRACT_VERSION) {
         throw new Error(
@@ -45437,10 +44023,10 @@ var ManifestStore = class {
       assertManifest(parsed);
       const manifest = parsed;
       const records = (manifest.records || []).filter(
-        (row4) => row4 && typeof row4 === "object"
+        (row3) => row3 && typeof row3 === "object"
       );
       const byId = new Map(
-        records.flatMap((row4) => typeof row4.id === "string" ? [[row4.id, row4]] : [])
+        records.flatMap((row3) => typeof row3.id === "string" ? [[row3.id, row3]] : [])
       );
       const indexedGroups = [
         "programs",
@@ -45454,9 +44040,9 @@ var ManifestStore = class {
         "unit_material_syntheses"
       ];
       for (const group of indexedGroups) {
-        for (const row4 of manifest[group]) {
-          if (typeof row4?.id === "string") {
-            byId.set(row4.id, row4);
+        for (const row3 of manifest[group]) {
+          if (typeof row3?.id === "string") {
+            byId.set(row3.id, row3);
           }
         }
       }
@@ -45511,7 +44097,7 @@ var ManifestStore = class {
     return this.rows("modules");
   }
   currentSemester() {
-    return this.rows("semesters").filter((row4) => row4.status === "current").sort((a, b) => Number(a.order || 0) - Number(b.order || 0))[0] || null;
+    return this.rows("semesters").filter((row3) => row3.status === "current").sort((a, b) => Number(a.order || 0) - Number(b.order || 0))[0] || null;
   }
   /**
    * Modules is a semester surface, not a second subject catalogue.
@@ -45528,11 +44114,11 @@ var ManifestStore = class {
       semesterIds.add(semester.id);
       semesterIds.add(semester.id.replace(/^semester-/, ""));
     }
-    return this.modules().filter((row4) => {
-      if (row4.kind !== "academic") return false;
-      if (["completed", "archived", "dropped"].includes(String(row4.status || ""))) return false;
-      if (!semesterIds.size) return row4.status === "enrolled";
-      return semesterIds.has(String(row4.semester || ""));
+    return this.modules().filter((row3) => {
+      if (row3.kind !== "academic") return false;
+      if (["completed", "archived", "dropped"].includes(String(row3.status || ""))) return false;
+      if (!semesterIds.size) return row3.status === "enrolled";
+      return semesterIds.has(String(row3.semester || ""));
     }).sort((a, b) => compareStrings(String(a.title || a.id || ""), String(b.title || b.id || "")));
   }
   projects() {
@@ -45540,14 +44126,14 @@ var ManifestStore = class {
   }
   projectRelationships(projectId = null) {
     const rows = [...this.data?.project_relationships || []];
-    return projectId ? rows.filter((row4) => row4.from_project_id === projectId) : rows;
+    return projectId ? rows.filter((row3) => row3.from_project_id === projectId) : rows;
   }
   resolveProjectAlias(id2) {
     return this.data?.project_aliases?.[id2] || id2;
   }
   projectForUnit(unit) {
-    const ids2 = Array.isArray(unit?.project_ids) ? unit.project_ids : [];
-    return ids2.map((id2) => this.get(id2)).find((row4) => row4?.type === "project") || null;
+    const ids = Array.isArray(unit?.project_ids) ? unit.project_ids : [];
+    return ids.map((id2) => this.get(id2)).find((row3) => row3?.type === "project") || null;
   }
   thematicGroups() {
     return this.rows("thematic_groups").slice().sort((a, b) => Number(a.order || 0) - Number(b.order || 0) || compareStrings(String(a.title || ""), String(b.title || "")));
@@ -45560,16 +44146,16 @@ var ManifestStore = class {
     return rows.length ? rows : this.of("topic-pack");
   }
   catalogues() {
-    return this.of("collection").filter((row4) => row4.collection_kind !== "topic-pack");
+    return this.of("collection").filter((row3) => row3.collection_kind !== "topic-pack");
   }
   modulesForGroup(groupId) {
-    return this.modules().filter((row4) => (row4.thematic_group_ids || []).includes(groupId));
+    return this.modules().filter((row3) => (row3.thematic_group_ids || []).includes(groupId));
   }
   sourcesForGroup(groupId) {
-    return this.sources().filter((row4) => (row4.thematic_group_ids || []).includes(groupId));
+    return this.sources().filter((row3) => (row3.thematic_group_ids || []).includes(groupId));
   }
   topicPacksForGroup(groupId) {
-    return this.topicPacks().filter((row4) => (row4.thematic_group_ids || []).includes(groupId));
+    return this.topicPacks().filter((row3) => (row3.thematic_group_ids || []).includes(groupId));
   }
   /** ADR-015: the Module x Concept crossing, evidence included. */
   moduleConceptEdges() {
@@ -45589,16 +44175,16 @@ var ManifestStore = class {
    * `context` and `source` stay nullable, because null is their meaning.
    */
   relations() {
-    return this.rows("relations").flatMap((row4) => {
-      const from = projectedText(row4.from);
-      const type = projectedText(row4.type);
-      const to = projectedText(row4.to);
+    return this.rows("relations").flatMap((row3) => {
+      const from = projectedText(row3.from);
+      const type = projectedText(row3.type);
+      const to = projectedText(row3.to);
       return from && type && to ? [{
         from,
         type,
         to,
-        context: projectedText(row4.context),
-        source: projectedText(row4.source)
+        context: projectedText(row3.context),
+        source: projectedText(row3.source)
       }] : [];
     });
   }
@@ -45625,25 +44211,25 @@ var ManifestStore = class {
   }
   aiAction(actionId) {
     const available = this.data?.ai_actions?.available;
-    return this.rows("ai_actions_available").find((row4) => row4.id === actionId) || (Array.isArray(available) ? available : []).find((row4) => row4?.id === actionId) || null;
+    return this.rows("ai_actions_available").find((row3) => row3.id === actionId) || (Array.isArray(available) ? available : []).find((row3) => row3?.id === actionId) || null;
   }
   aiProviders() {
     const rows = this.data?.ai_actions?.provider_adapters;
-    return Array.isArray(rows) ? rows.filter((row4) => row4 && typeof row4 === "object") : [];
+    return Array.isArray(rows) ? rows.filter((row3) => row3 && typeof row3 === "object") : [];
   }
   aiRequestsForTarget(targetId) {
     const rows = this.data?.ai_actions?.requests;
-    return (Array.isArray(rows) ? rows : []).filter((row4) => row4?.target?.id === targetId);
+    return (Array.isArray(rows) ? rows : []).filter((row3) => row3?.target?.id === targetId);
   }
   latestAiRequest(targetId) {
     return this.aiRequestsForTarget(targetId).slice().sort((a, b) => compareStrings(String(b.created_at || ""), String(a.created_at || "")))[0] || null;
   }
   modulesFor(programId) {
-    return this.modules().filter((row4) => row4.area_id === programId);
+    return this.modules().filter((row3) => row3.area_id === programId);
   }
   unitsFor(moduleId, componentId = null) {
-    const rows = this.units().filter((row4) => row4.module_id === moduleId);
-    return componentId ? rows.filter((row4) => row4.component_id === componentId) : rows;
+    const rows = this.units().filter((row3) => row3.module_id === moduleId);
+    return componentId ? rows.filter((row3) => row3.component_id === componentId) : rows;
   }
   mapForUnit(unitId) {
     const mapId = this.data?.indexes?.unit_to_study_map?.[unitId];
@@ -45686,29 +44272,29 @@ var ManifestStore = class {
   }
   workspacesForModule(moduleId) {
     const rawIds = this.data?.backlinks?.module_to_workspaces?.[moduleId];
-    const ids2 = Array.isArray(rawIds) ? rawIds.filter(
+    const ids = Array.isArray(rawIds) ? rawIds.filter(
       (id2) => typeof id2 === "string"
     ) : [];
-    return ids2.map((id2) => this.get(id2)).filter(
-      (row4) => row4 !== null
+    return ids.map((id2) => this.get(id2)).filter(
+      (row3) => row3 !== null
     );
   }
   useModules(sourceId) {
     const rawIds = this.data?.indexes?.source_to_modules?.[sourceId];
-    const ids2 = Array.isArray(rawIds) ? rawIds.filter(
+    const ids = Array.isArray(rawIds) ? rawIds.filter(
       (id2) => typeof id2 === "string"
     ) : [];
-    return ids2.map((id2) => this.get(id2)).filter(
-      (row4) => row4 !== null && row4.type === "module"
+    return ids.map((id2) => this.get(id2)).filter(
+      (row3) => row3 !== null && row3.type === "module"
     );
   }
   useUnits(sourceId) {
     const rawIds = this.data?.indexes?.source_to_units?.[sourceId];
-    const ids2 = Array.isArray(rawIds) ? rawIds.filter(
+    const ids = Array.isArray(rawIds) ? rawIds.filter(
       (id2) => typeof id2 === "string"
     ) : [];
-    return ids2.map((id2) => this.get(id2)).filter(
-      (row4) => row4 !== null
+    return ids.map((id2) => this.get(id2)).filter(
+      (row3) => row3 !== null
     );
   }
   search(query, types = null) {
@@ -45734,7 +44320,7 @@ var ManifestStore = class {
   related(id2) {
     const record10 = this.get(id2);
     if (!record10) return [];
-    const ids2 = /* @__PURE__ */ new Set();
+    const ids = /* @__PURE__ */ new Set();
     for (const key of [
       "concepts",
       "sources",
@@ -45746,21 +44332,21 @@ var ManifestStore = class {
       "unit_order",
       "related_module_ids"
     ]) {
-      for (const value of asStrings(record10[key])) ids2.add(value);
+      for (const value of asStrings(record10[key])) ids.add(value);
     }
     for (const table of Object.values(this.data?.backlinks || {})) {
-      if (isRecord3(table) && Array.isArray(table[id2])) {
+      if (isRecord2(table) && Array.isArray(table[id2])) {
         for (const value of table[id2]) {
-          if (typeof value === "string") ids2.add(value);
-          else if (isRecord3(value) && typeof value.from === "string") ids2.add(value.from);
+          if (typeof value === "string") ids.add(value);
+          else if (isRecord2(value) && typeof value.from === "string") ids.add(value.from);
         }
       }
     }
     for (const relationship of this.projectRelationships()) {
-      if (relationship.from_project_id === id2) ids2.add(relationship.to_id);
-      if (relationship.to_id === id2) ids2.add(relationship.from_project_id);
+      if (relationship.from_project_id === id2) ids.add(relationship.to_id);
+      if (relationship.to_id === id2) ids.add(relationship.from_project_id);
     }
-    return [...ids2].map((value) => ({ rec: this.get(value) })).filter((row4) => row4.rec);
+    return [...ids].map((value) => ({ rec: this.get(value) })).filter((row3) => row3.rec);
   }
 };
 
@@ -45950,8 +44536,8 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
   getUnitNoteDraft(unitId, stages = []) {
     return this.drafts.getUnitNote(unitId, stages);
   }
-  setUnitNoteDraft(unitId, title2, text8, expectedRevisions = {}, recoveredStages = {}) {
-    this.drafts.setUnitNote(unitId, title2, text8, expectedRevisions, recoveredStages);
+  setUnitNoteDraft(unitId, title2, text7, expectedRevisions = {}, recoveredStages = {}) {
+    this.drafts.setUnitNote(unitId, title2, text7, expectedRevisions, recoveredStages);
   }
   clearUnitNoteDraft(unitId, recoveredStages = {}, match = null) {
     this.drafts.clearUnitNote(unitId, recoveredStages, match);
@@ -45982,8 +44568,8 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
   getInboxDraft() {
     return this.drafts.getInbox();
   }
-  setInboxDraft(title2, text8) {
-    this.drafts.setInbox(title2, text8);
+  setInboxDraft(title2, text7) {
+    this.drafts.setInbox(title2, text7);
   }
   clearInboxDraft(match = null) {
     this.drafts.clearInbox(match);
@@ -45991,8 +44577,8 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
   getGardenDraft() {
     return this.drafts.getGarden();
   }
-  setGardenDraft(title2, text8) {
-    this.drafts.setGarden(title2, text8);
+  setGardenDraft(title2, text7) {
+    this.drafts.setGarden(title2, text7);
   }
   clearGardenDraft(match = null) {
     this.drafts.clearGarden(match);
