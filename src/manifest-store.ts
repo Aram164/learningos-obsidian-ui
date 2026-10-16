@@ -238,9 +238,11 @@ export class ManifestStore {
       }
       assertManifest(parsed);
       const manifest: Manifest = parsed;
+      // The store indexes heterogeneous wire rows under the UI's convenience
+      // view (ProjectionRecord): the one place a schema type is widened.
       const records = (manifest.records || []).filter(
         (row) => row && typeof row === 'object',
-      );
+      ) as unknown as ProjectionRecord[];
       const byId = new Map(
         records.flatMap((row) => typeof row.id === 'string' ? [[row.id, row] as const] : []),
       );
@@ -262,7 +264,7 @@ export class ManifestStore {
       for (const group of indexedGroups) {
         for (const row of manifest[group]) {
           if (typeof row?.id === 'string') {
-            byId.set(row.id, row);
+            byId.set(row.id, row as unknown as ProjectionRecord);
           }
         }
       }

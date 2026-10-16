@@ -5,17 +5,18 @@
  * artifacts beside the handwritten contract layer:
  *
  *   Phase 2: Ajv standalone validator (manifest.validator.cjs). WORKS.
- *   Phase 3: TypeScript wire types via json-schema-to-typescript. VERDICT:
- *            FAIL — json2ts@16 cannot consume this schema graph (root-level
+ *   Phase 3: TypeScript wire types (manifest.types.ts) from the local
+ *            symbolic emitter scripts/emit-contract-types.mjs (Phase 6
+ *            6.C.1, decision C23). WORKS. The earlier json2ts route FAILED —
+ *            json2ts@16 cannot consume this schema graph (root-level
  *            $ref with sibling keywords in unit-material-synthesis.schema.json
  *            plus cross-file back-edges and genuine $ref circularity; its
  *            bundler aborts with "Refs should have been resolved by the
  *            resolver!" in single-file, directory, and --imports modes, and
- *            full $RefParser dereference yields a circular structure). Kept
- *            reproducible via scripts/stage-contract-types.mjs + the REPLAY.md
- *            record; handwritten UI types stay authoritative for the wire
- *            shapes while the generated Ajv validator stays authoritative
- *            for validation.
+ *            full $RefParser dereference yields a circular structure); that
+ *            attempt stays reproducible via scripts/stage-contract-types.mjs
+ *            + the REPLAY.md record. The generated Ajv validator stays
+ *            authoritative for validation.
  *   Phase 4: manifest.meta.ts + prototype lock (manifest.prototype.lock.json),
  *            both rendered purely from the bundle metadata.
  *
@@ -30,6 +31,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import standaloneCode from 'ajv/dist/standalone/index.js';
 import { createAjv2020, registerBundleIdentities } from './ajv-options.mjs';
+import { emitTypes } from './emit-contract-types.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
 
@@ -80,6 +82,18 @@ const validatorPath = path.join(resolvedOut, 'manifest.validator.cjs');
 fs.writeFileSync(validatorPath, header + code);
 console.log(`validator: ${path.relative(root, validatorPath)} `
   + `(${(bundle.resources || []).length} resources, ${fs.statSync(validatorPath).size} bytes)`);
+
+/* ---- TypeScript wire types (local symbolic emitter) ---- */
+{
+  const aliases = JSON.parse(
+    fs.readFileSync(path.join(root, 'scripts', 'contract-type-aliases.json'), 'utf8'),
+  ).aliases;
+  const types = emitTypes(bundle, aliases);
+  const typesPath = path.join(resolvedOut, 'manifest.types.ts');
+  fs.writeFileSync(typesPath, types.source);
+  console.log(`types: ${path.relative(root, typesPath)} (${types.symbols.length} symbols, `
+    + `${Object.keys(aliases).length} public aliases)`);
+}
 
 /* ---- Version/hash metadata + prototype lock ---- */
 if (typeof meta?.contract_version !== 'number') {

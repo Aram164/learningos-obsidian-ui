@@ -1,0 +1,133 @@
+{
+  "_comment": "Each UI public manifest type is an alias of exactly one schema node (resource identity + JSON pointer). Changing a pin is a reviewed contract decision, never inferred from a similar name.",
+  "aliases": {
+    "Manifest": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": ""
+    },
+    "GeneratedMetadata": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/generated"
+    },
+    "ManifestIndexes": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/indexes"
+    },
+    "ManifestBacklinks": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/backlinks"
+    },
+    "ModuleProgress": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/progress/additionalProperties"
+    },
+    "ResumePointer": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/resumePointer/oneOf/1"
+    },
+    "UnitNoteAttachment": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/stageAttachment"
+    },
+    "UnitNoteSection": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/unitNoteSection"
+    },
+    "ThematicGroup": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/thematicGroup"
+    },
+    "Topic": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/topic"
+    },
+    "TopicPack": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/collectionRecord"
+    },
+    "ProjectRelationship": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/projectRelationship"
+    },
+    "Project": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/projectRecord"
+    },
+    "ModuleRecord": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/moduleRecord"
+    },
+    "ProgramRecord": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/programRecord"
+    },
+    "AiActionsProjection": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/aiActions"
+    },
+    "Unit": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/projectedUnit"
+    },
+    "RelationRecord": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/relation"
+    },
+    "ModuleConceptEdge": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/moduleConceptEdge"
+    },
+    "ModuleConceptEvidence": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/moduleConceptEdge/properties/evidence/items"
+    },
+    "MaterialSynthesisFreshness": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/unitMaterialSynthesisProjection/allOf/1/properties/freshness"
+    },
+    "MaterialSynthesisStaleReason": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/unitMaterialSynthesisProjection/allOf/1/properties/freshness/properties/reasons/items"
+    },
+    "MaterialSynthesisCompleteness": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/unitMaterialSynthesisProjection/allOf/1/properties/completeness"
+    },
+    "MaterialRouteReviewStatus": {
+      "resource": "https://learningos.local/schema/material-comparison-defs.schema.json",
+      "pointer": "/$defs/routeReviewStatus"
+    },
+    "MaterialSynthesisEvidence": {
+      "resource": "https://learningos.local/schema/material-comparison-defs.schema.json",
+      "pointer": "/$defs/evidence"
+    },
+    "UnitMaterialSynthesisV1": {
+      "resource": "https://learningos.local/contracts/manifest-v15.schema.json",
+      "pointer": "/$defs/unitMaterialSynthesisProjection"
+    },
+    "MaterialSynthesisAnalysisRef": {
+      "resource": "https://learningos.local/schema/unit-material-synthesis.schema.json",
+      "pointer": "/$defs/analysisRef"
+    },
+    "MaterialSynthesisAnalysisAnchor": {
+      "resource": "https://learningos.local/schema/unit-material-synthesis.schema.json",
+      "pointer": "/$defs/analysisRef/properties/anchor"
+    },
+    "MaterialSynthesisBasis": {
+      "resource": "https://learningos.local/schema/unit-material-synthesis.schema.json",
+      "pointer": "/$defs/canonicalRecord/properties/basis"
+    },
+    "MaterialRouteAssessment": {
+      "resource": "https://learningos.local/schema/unit-material-synthesis.schema.json",
+      "pointer": "/$defs/canonicalRecord/properties/route_assessments/items"
+    },
+    "MaterialRouteComparison": {
+      "resource": "https://learningos.local/schema/unit-material-synthesis.schema.json",
+      "pointer": "/$defs/canonicalRecord/properties/comparisons/items"
+    },
+    "MaterialConceptGroup": {
+      "resource": "https://learningos.local/schema/unit-material-synthesis.schema.json",
+      "pointer": "/$defs/canonicalRecord/properties/concept_groups/items"
+    }
+  }
+}

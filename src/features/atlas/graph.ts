@@ -200,7 +200,12 @@ function push<T>(index: Map<string, T[]>, key: string, value: T): void {
   else index.set(key, [value]);
 }
 
-function toEdge(relation: RelationRecord): AtlasEdge {
+function toEdge(wire: RelationRecord): AtlasEdge {
+  // The manifest schema admits null for every relation field; the relation
+  // registry, which Core validates before projecting, requires from/type/to.
+  // The atlas has always read them as present: this names that assumption at
+  // one place instead of an interface that claimed it for every reader.
+  const relation = wire as RelationRecord & { from: string; type: string; to: string };
   const layer = relationLayer(relation.type);
   // Authoring reads subject to object — "logistic regression requires
   // conditional probability" — so on the strict layer the object is the

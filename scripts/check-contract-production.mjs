@@ -8,6 +8,7 @@
  *   - src/contracts/generated/manifest.validator.cjs
  *   - src/contracts/generated/manifest.meta.ts
  *   - src/contracts/generated/manifest.prototype.lock.json
+ *   - src/contracts/generated/manifest.types.ts
  *
  * Fails with exit 1 if any production artifact drifts from Core's schema closure,
  * or if Core is present but Python bundler dependencies cannot run.
@@ -72,6 +73,7 @@ try {
     'manifest.validator.cjs',
     'manifest.meta.ts',
     'manifest.prototype.lock.json',
+    'manifest.types.ts',
   ];
 
   const differences = [];
@@ -102,7 +104,7 @@ try {
     }\nRun \`npm run contract:generate\` to synchronize production artifacts.`);
   }
 
-  console.log('contract: production validator, metadata, and lock match Core schema closure regeneration');
+  console.log('contract: production validator, types, metadata, and lock match Core schema closure regeneration');
 } finally {
   fs.rmSync(scratch, { recursive: true, force: true });
 }

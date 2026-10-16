@@ -31,9 +31,9 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
-// ../../../../../../../obsidian-ui/node_modules/ajv/dist/runtime/ucs2length.js
+// ../../../Desktop/semestercontext/LearningOS/obsidian-ui/node_modules/ajv/dist/runtime/ucs2length.js
 var require_ucs2length = __commonJS({
-  "../../../../../../../obsidian-ui/node_modules/ajv/dist/runtime/ucs2length.js"(exports2) {
+  "../../../Desktop/semestercontext/LearningOS/obsidian-ui/node_modules/ajv/dist/runtime/ucs2length.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     function ucs2length(str2) {
@@ -57,9 +57,9 @@ var require_ucs2length = __commonJS({
   }
 });
 
-// ../../../../../../../obsidian-ui/node_modules/ajv-formats/dist/formats.js
+// ../../../Desktop/semestercontext/LearningOS/obsidian-ui/node_modules/ajv-formats/dist/formats.js
 var require_formats = __commonJS({
-  "../../../../../../../obsidian-ui/node_modules/ajv-formats/dist/formats.js"(exports2) {
+  "../../../Desktop/semestercontext/LearningOS/obsidian-ui/node_modules/ajv-formats/dist/formats.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     exports2.formatNames = exports2.fastFormats = exports2.fullFormats = void 0;
@@ -260,9 +260,9 @@ var require_formats = __commonJS({
   }
 });
 
-// ../../../../../../../obsidian-ui/node_modules/fast-deep-equal/index.js
+// ../../../Desktop/semestercontext/LearningOS/obsidian-ui/node_modules/fast-deep-equal/index.js
 var require_fast_deep_equal = __commonJS({
-  "../../../../../../../obsidian-ui/node_modules/fast-deep-equal/index.js"(exports2, module2) {
+  "../../../Desktop/semestercontext/LearningOS/obsidian-ui/node_modules/fast-deep-equal/index.js"(exports2, module2) {
     "use strict";
     module2.exports = function equal(a, b) {
       if (a === b) return true;
@@ -295,9 +295,9 @@ var require_fast_deep_equal = __commonJS({
   }
 });
 
-// ../../../../../../../obsidian-ui/node_modules/ajv/dist/runtime/equal.js
+// ../../../Desktop/semestercontext/LearningOS/obsidian-ui/node_modules/ajv/dist/runtime/equal.js
 var require_equal = __commonJS({
-  "../../../../../../../obsidian-ui/node_modules/ajv/dist/runtime/equal.js"(exports2) {
+  "../../../Desktop/semestercontext/LearningOS/obsidian-ui/node_modules/ajv/dist/runtime/equal.js"(exports2) {
     "use strict";
     Object.defineProperty(exports2, "__esModule", { value: true });
     var equal = require_fast_deep_equal();
@@ -27274,7 +27274,8 @@ function push(index, key, value) {
   if (existing) existing.push(value);
   else index.set(key, [value]);
 }
-function toEdge(relation) {
+function toEdge(wire) {
+  const relation = wire;
   const layer = relationLayer(relation.type);
   const strict = layer === "strict";
   return {
@@ -38392,7 +38393,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:21a17d9be74b4f130434741cb0fffe290948c4f3eb6463a937b40d8b3102758d" : "unavailable";
+  return true ? "sha256:3c0da1b8dc16597abf213e5570fe9a07e37d09e4fdb17cdb3464dea813319fe2" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

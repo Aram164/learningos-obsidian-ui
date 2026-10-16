@@ -64,6 +64,55 @@ export function formatAjvErrors(errors: readonly AjvErrorLike[] | null | undefin
 
 export type JsonRecord = Record<string, unknown>;
 
+export type {
+  AiActionsProjection,
+  GeneratedMetadata,
+  Manifest,
+  ManifestBacklinks,
+  ManifestIndexes,
+  MaterialConceptGroup,
+  MaterialRouteAssessment,
+  MaterialRouteComparison,
+  MaterialRouteReviewStatus,
+  MaterialSynthesisAnalysisAnchor,
+  MaterialSynthesisAnalysisRef,
+  MaterialSynthesisBasis,
+  MaterialSynthesisCompleteness,
+  MaterialSynthesisEvidence,
+  MaterialSynthesisFreshness,
+  MaterialSynthesisStaleReason,
+  ModuleConceptEdge,
+  ModuleConceptEvidence,
+  ModuleProgress,
+  ModuleRecord,
+  ProgramRecord,
+  Project,
+  ProjectRelationship,
+  RelationRecord,
+  ResumePointer,
+  ThematicGroup,
+  Topic,
+  TopicPack,
+  Unit,
+  UnitMaterialSynthesisV1,
+  UnitNoteAttachment,
+  UnitNoteSection,
+} from './generated/manifest.types';
+import type {
+  Manifest,
+  MaterialConceptGroup,
+  MaterialRouteAssessment,
+  MaterialRouteComparison,
+  MaterialSynthesisAnalysisAnchor,
+  MaterialSynthesisAnalysisRef,
+  MaterialSynthesisBasis,
+  MaterialSynthesisCompleteness,
+  MaterialSynthesisEvidence,
+  MaterialSynthesisFreshness,
+  MaterialSynthesisStaleReason,
+  UnitMaterialSynthesisV1,
+} from './generated/manifest.types';
+
 /**
  * Shared fields across projected records. Feature code decodes richer domain
  * shapes at its boundary; unknown extension fields remain available without
@@ -140,367 +189,35 @@ export interface ProjectionRecord extends JsonRecord {
   request?: ProjectionRecord;
 }
 
-export interface ModuleProgress extends JsonRecord {
-  stages_complete: number;
-  stages_total: number;
-  units_complete: number;
-  units_total: number;
-  units_needing_map: number;
-}
-
-export interface ManifestIndexes extends JsonRecord {
-  unit_to_study_map: Record<string, string>;
-  unit_to_material_synthesis: Record<string, string>;
-  unit_to_concepts: Record<string, string[]>;
-  concept_to_units: Record<string, string[]>;
-  module_to_concepts: Record<string, string[]>;
-  concept_to_modules: Record<string, string[]>;
-  source_to_modules: Record<string, string[]>;
-  source_to_units: Record<string, string[]>;
-}
-
-export interface ManifestBacklinks extends JsonRecord {
-  module_to_workspaces: Record<string, string[]>;
-}
-
-export interface ResumePointer extends JsonRecord {
-  type: 'resume-pointer';
-  unit_id: string;
-  study_map_id: string;
-  stage_id: string;
-  module_id: string;
-  updated: string;
-}
-
-export interface UnitNoteAttachment { path: string; label: string; }
-export interface UnitNoteSection extends JsonRecord {
-  recorded_at: string | null;
-  title: string;
-  stage_ids: readonly string[];
-  attachments: readonly UnitNoteAttachment[];
-  text: string;
-  summary: string;
-}
-export interface ThematicGroup extends JsonRecord {
-  id: string;
-  title: string;
-  description: string;
-  order: number;
-}
-
-/**
- * ADR-009 topic facet. `domain` is a display grouping only — it never
- * constrains which sources may carry the topic, so an interface may group by it
- * but must not filter membership with it.
- */
-export interface Topic extends JsonRecord {
-  id: string;
-  title: string;
-  domain: string;
-}
-
-export interface TopicPack extends JsonRecord {
-  id: string;
-  type: "topic-pack";
-  title: string;
-  purpose: string;
-  thematic_group_ids: readonly string[];
-  entries: readonly JsonRecord[];
-}
 
 
-export interface ProjectRelationship extends JsonRecord {
-  id: string;
-  type: "project-relationship";
-  from_project_id: string;
-  to_id: string;
-  to_type: string;
-  relation_type: string;
-  reason: string;
-  contribution: string;
-  path: string;
-}
-export interface Project extends JsonRecord {
-  schema_version: 1;
-  id: string;
-  type: "project";
-  title: string;
-  status: string;
-  project_type: string;
-  root_uri: string;
-  objective: string;
-  milestone_ids: readonly string[];
-  structure?: JsonRecord;
-  linked_module_ids: readonly string[];
-  unit_ids: readonly string[];
-  workspace_ids: readonly string[];
-  thematic_group_ids: readonly string[];
-  boundaries: JsonRecord;
-  files?: readonly JsonRecord[];
-  decisions?: readonly JsonRecord[];
-  revision: number;
-  path: string;
-  relationship_ids: readonly string[];
-}
 
-export interface ModuleRecord extends ProjectionRecord {
-  id: string;
-  type: 'module';
-  title: string;
-  revision: number;
-  path: string;
-  kind: 'academic' | 'skill' | 'project' | 'foundation';
-  area_id: string | null;
-  thematic_group_ids: readonly string[];
-  status: string;
-  administrative_status: string | null;
-  operational_state: 'none' | 'complete' | 'active' | 'paused';
-  is_actionable: boolean;
-  components: readonly JsonRecord[];
-  attempts: readonly JsonRecord[];
-  unit_order: readonly string[];
-}
 
-export interface ProgramRecord extends ProjectionRecord {
-  id: string;
-  type: 'program';
-  title: string;
-  kind: 'academic' | 'skills' | 'projects';
-  status: 'active' | 'metadata-only' | 'archived';
-  default: boolean;
-  semester_bound: boolean;
-  revision: number;
-  path: string;
-}
 
-export interface AiActionsProjection extends JsonRecord {
-  available: readonly JsonRecord[];
-  contract_version: 1;
-  provider_adapters: readonly JsonRecord[];
-  requests: readonly JsonRecord[];
-}
 
-export interface Unit extends JsonRecord {
-  id: string;
-  type: "unit";
-  project_ids?: readonly string[];
-  module_id: string;
-  title: string;
-  notes_text: string;
-  note_sections: readonly UnitNoteSection[];
-  notes_updated: string | null;
-  working_note?: string;
-}
 
-export type MaterialRouteReviewStatus =
-  | 'deep-reviewed'
-  | 'screened'
-  | 'unevaluated'
-  | 'unavailable';
 
-export interface MaterialSynthesisEvidence extends JsonRecord {
-  locator: string;
-  checksum: string;
-  note?: string;
-}
 
-export interface MaterialSynthesisAnalysisAnchor extends JsonRecord {
-  topic: string;
-  purpose: string;
-  locator: string;
-}
 
-export interface MaterialSynthesisAnalysisRef extends JsonRecord {
-  note_id: string;
-  note_revision: number;
-  note_digest: string;
-  anchor: MaterialSynthesisAnalysisAnchor;
-  material: string;
-  inspected_range: { start: number; end: number };
-}
 
-export interface MaterialRouteAssessment extends JsonRecord {
-  route_id: string;
-  source_id: string;
-  locator: string;
-  review_status: MaterialRouteReviewStatus;
-  concept_ids: readonly string[];
-  contribution?: string;
-  assumptions?: string;
-  notation?: string;
-  exercise_value?: string;
-  best_for?: string;
-  limitations?: string;
-  scope_of_absence?: string;
-  reason?: string;
-  evidence?: readonly MaterialSynthesisEvidence[];
-  analysis_refs?: readonly MaterialSynthesisAnalysisRef[];
-}
 
-export interface MaterialRouteComparison extends JsonRecord {
-  left_route_id: string;
-  right_route_id: string;
-  relation: 'duplicates' | 'overlaps' | 'complements' | 'extends' | 'contrasts' | 'alternate-notation';
-  narrative: string;
-  concept_ids: readonly string[];
-  evidence: {
-    left: readonly MaterialSynthesisEvidence[];
-    right: readonly MaterialSynthesisEvidence[];
-  };
-}
 
-export interface MaterialConceptGroup extends JsonRecord {
-  concept_id: string;
-  local_node_ids: readonly string[];
-  related_unit_ids: readonly string[];
-  bridge_note_ids: readonly string[];
-  narrative: string;
-}
 
-export interface MaterialSynthesisBasis extends JsonRecord {
-  unit_revision: number;
-  source_map_revision: number;
-  source_map_checksum: string;
-  route_set_checksum: string;
-  material_checksums: Readonly<Record<string, string>>;
-  policy: 'tiered-v2';
-  ai_provenance: {
-    request_id: string;
-    delivery_id: string;
-    provider: 'manual-bundle' | 'local';
-  };
-}
 
-export interface UnitMaterialSynthesisV1 extends JsonRecord {
-  schema_version: 1;
-  id: string;
-  type: 'unit-material-synthesis';
-  unit_id: string;
-  status: 'approved';
-  basis: MaterialSynthesisBasis;
-  route_assessments: readonly MaterialRouteAssessment[];
-  comparisons: readonly MaterialRouteComparison[];
-  concept_groups: readonly MaterialConceptGroup[];
-  freshness: MaterialSynthesisFreshness;
-  completeness: MaterialSynthesisCompleteness;
-}
 
-// `unit_revision` was removed in v11: publishing a dossier guards the unit
-// artifact, so the commit bumped its revision after the basis had already been
-// derived, and every dossier reported a stale basis from the moment it was
-// written. The revision is still recorded as provenance, never compared.
-export type MaterialSynthesisStaleReason =
-  | 'source_map_revision'
-  | 'source_map_checksum'
-  | 'route_set_checksum'
-  | 'material_checksums'
-  | 'policy'
-  | 'current-basis-unavailable'
-  | 'analysis-refs-stale';
 
-export interface MaterialSynthesisFreshness extends JsonRecord {
-  status: 'current' | 'stale';
-  reasons: readonly MaterialSynthesisStaleReason[];
-}
 
-export interface MaterialSynthesisCompleteness extends JsonRecord {
-  complete: boolean;
-  current_route_count: number;
-  assessed_route_count: number;
-  deep_reviewed_count: number;
-  screened_count: number;
-  unevaluated_count: number;
-  unavailable_count: number;
-  missing_route_ids: readonly string[];
-  orphaned_route_ids: readonly string[];
-  duplicate_route_ids: readonly string[];
-}
 
-/**
- * One cell of the Module x Concept crossing, and why it is filled (ADR-015).
- *
- * The evidence is not diagnostics. Core refuses to publish an edge without it,
- * because an unexplained cell is a claim the learner has to take on faith —
- * and this projection makes claims about how to spend weeks of study.
- */
-export type ModuleConceptEvidence =
-  | {
-      readonly kind: 'stage-concept';
-      readonly unit_id: string;
-      readonly study_map_id: string;
-      readonly stage_id: string;
-    }
-  | {
-      readonly kind: 'knowledge-node';
-      readonly unit_id: string;
-      readonly node_id: string;
-    };
 
-/**
- * One authored concept relation (ADR-016).
- *
- * `context` and `source` are nullable by schema, and that is a meaning rather
- * than a gap: an undocumented relation is a valid relation. Nothing may
- * substitute a citation for a row that carries none, and nothing may drop the
- * row for lacking one. `backlinks.concept_relations` publishes the same edges
- * without these two fields, which is why the Atlas reads this collection.
- */
-export interface RelationRecord extends JsonRecord {
-  from: string;
-  type: string;
-  to: string;
-  context: string | null;
-  source: string | null;
-}
 
-export interface ModuleConceptEdge extends JsonRecord {
-  module_id: string;
-  concept_id: string;
-  evidence: readonly ModuleConceptEvidence[];
-}
 
-export interface GeneratedMetadata extends JsonRecord {
-  contract_version: typeof MANIFEST_CONTRACT_VERSION;
-  schema_sha256: typeof MANIFEST_SCHEMA_SHA256;
-  generated_at: string;
-  generator: string;
-  snapshot_id: string;
-  source_dirty: boolean;
-  source_fingerprint: string;
-  source_revision: string | null;
-  warning: string;
-}
 
-export interface Manifest extends JsonRecord {
-  _generated: GeneratedMetadata;
-  academic_deadlines: readonly ProjectionRecord[];
-  ai_actions: AiActionsProjection;
-  backlinks: ManifestBacklinks;
-  counts: ProjectionRecord;
-  garden_entries: readonly ProjectionRecord[];
-  review_items: readonly ProjectionRecord[];
-  indexes: ManifestIndexes;
-  module_concept_edges: readonly ModuleConceptEdge[];
-  module_source_maps: readonly ProjectionRecord[];
-  modules: readonly ModuleRecord[];
-  programs: readonly ProgramRecord[];
-  progress: Record<string, ModuleProgress>;
-  artifact_revisions: Record<string, number>;
-  project_aliases: Record<string, string>;
-  project_relationships: readonly ProjectRelationship[];
-  projects: readonly Project[];
-  records: readonly ProjectionRecord[];
-  relations: readonly ProjectionRecord[];
-  resume_pointer: ResumePointer | Record<string, never>;
-  semesters: readonly ProjectionRecord[];
-  stages: readonly ProjectionRecord[];
-  study_maps: readonly ProjectionRecord[];
-  thematic_groups: readonly ThematicGroup[];
-  topic_packs: readonly TopicPack[];
-  topics: readonly Topic[];
-  unit_material_syntheses: readonly UnitMaterialSynthesisV1[];
-  units: readonly Unit[];
-}
+
+
+
+
+
+
 
 function isRecord(value: unknown): value is JsonRecord {
   return typeof value === "object" && value !== null && !Array.isArray(value);
