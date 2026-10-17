@@ -6,7 +6,6 @@
  *
  * Used by:
  *   - scripts/check-contract-production.mjs (production artifact comparison)
- *   - tests/test-manifest-validation-diff.js (differential validation suite)
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
