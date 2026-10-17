@@ -3220,6 +3220,37 @@ function routerPlugin(settings = {}) {
     assert.equal(invoked, false, 'the CLI must not be invoked at all');
   });
 
+  await test('GatewayClient.call parses CLI --json refusals from stderr when stdout is empty', async () => {
+    const gateway = new GatewayClient({
+      runLos: (_args, cb) => {
+        const err = Object.assign(new Error('Command failed'), { code: 2 });
+        cb(
+          err,
+          '',
+          JSON.stringify({
+            error: {
+              code: 'INVALID_REQUEST',
+              message: 'record not found: missing-id',
+              retryable: false,
+              details: {},
+            },
+          }),
+        );
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await assert.rejects(
+      () => gateway.call(['inspect', 'missing-id', '--json']),
+      (err) => {
+        assert.equal(err.message, 'record not found: missing-id');
+        assert.equal(err.exitCode, 2);
+        assert.equal(err.gatewayCode, 'INVALID_REQUEST');
+        assert.equal(err.retryable, false);
+        return true;
+      },
+    );
+  });
+
   if (failures) {
     console.error(`\n${failures} module test failure(s)`);
     process.exit(1);

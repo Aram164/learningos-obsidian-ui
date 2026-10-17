@@ -287,15 +287,15 @@ export class GatewayClient {
           return;
         }
         if (error) {
-          // A refusal puts its reason on stdout and leaves stderr empty, so
-          // reading stderr first threw the sentence away and reported Node's
-          // "Command failed: python …" instead. The exit code travels with it
-          // because code 3 (projection conflict) is recoverable and the
-          // caller has to be able to tell.
+          // A capability refusal puts its JSON reason on stdout; a CLI --json
+          // refusal puts its JSON error object on stderr (6.B.1). Reading
+          // stdout || stderr preserves the structured code/retryable/message
+          // fields before falling back to plain stderr or Node's error message.
           let refusal: ReturnType<typeof gatewayErrorDetails> | null = null;
-          try { refusal = gatewayErrorDetails(JSON.parse(String(stdout || ''))); }
+          const rawError = String(stdout || '').trim() || String(stderr || '').trim();
+          try { refusal = gatewayErrorDetails(JSON.parse(rawError)); }
           catch (_) { /* A non-JSON process failure is reported from stderr below. */ }
-          const reason = structuredError(stdout) || stderr.trim()
+          const reason = structuredError(stdout) || structuredError(stderr) || stderr.trim()
             || error.message || String(error);
           reject(new GatewayError(reason, exitCodeOf(error), refusal || {}));
           return;

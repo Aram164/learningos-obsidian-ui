@@ -47602,7 +47602,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:05b8f1b8a041dd894bcaadc15f45fbd7dc3d55810793c68425fa4f3d44379e4a" : "unavailable";
+  return true ? "sha256:660313237fbfcc2f738dd6a3a321c817a8e4f24747ffd7568e66a9d2fbe70970" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
@@ -47809,11 +47809,12 @@ var GatewayClient = class {
           }
           if (error) {
             let refusal = null;
+            const rawError = String(stdout || "").trim() || String(stderr || "").trim();
             try {
-              refusal = gatewayErrorDetails(JSON.parse(String(stdout || "")));
+              refusal = gatewayErrorDetails(JSON.parse(rawError));
             } catch (_) {
             }
-            const reason = structuredError(stdout) || stderr.trim() || error.message || String(error);
+            const reason = structuredError(stdout) || structuredError(stderr) || stderr.trim() || error.message || String(error);
             reject(new GatewayError(reason, exitCodeOf(error), refusal || {}));
             return;
           }
