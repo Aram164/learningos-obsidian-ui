@@ -1,0 +1,118 @@
+name: UI CI
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    # Phase 4 Linux pytest alone took 86 minutes; the complete local
+    # source gate took 130 minutes. Keep complete paired coverage with
+    # a bounded allowance for extraction tests and the UI checks.
+    timeout-minutes: 180
+    defaults:
+      run:
+        working-directory: obsidian-ui
+    steps:
+      - name: Check out the UI
+        uses: actions/checkout@v4
+        with:
+          path: obsidian-ui
+
+      - name: Resolve the matching producer branch
+        id: producer-ref
+        env:
+          REQUESTED_REF: ${{ github.head_ref || github.ref_name }}
+        run: |
+          if git ls-remote --exit-code --heads \
+            https://github.com/Aram164/LearningOS.git \
+            "refs/heads/$REQUESTED_REF" >/dev/null 2>&1; then
+            echo "ref=$REQUESTED_REF" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=main" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check out the paired Core producer
+        uses: actions/checkout@v4
+        with:
+          repository: Aram164/LearningOS
+          ref: ${{ steps.producer-ref.outputs.ref }}
+          path: repository
+          # Full history: Core's ratchet tests compare against origin/main.
+          fetch-depth: 0
+
+      - name: Print the resolved Core ref and commit
+        working-directory: repository
+        env:
+          RESOLVED_CORE_REF: ${{ steps.producer-ref.outputs.ref }}
+        run: |
+          printf 'Core ref resolved: %s\n' "$RESOLVED_CORE_REF"
+          printf 'Core commit checked out: %s\n' "$(git rev-parse HEAD)"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14.4"
+
+      - name: Install UI dependencies
+        run: npm ci --ignore-scripts
+      # The documented project environment is Core's repository venv: parser
+      # diagnostics are characterized bytes pinned to this interpreter, and
+      # the procedure transcripts invoke $LOS_REPO/.venv/bin/python.
+      - name: Install Core development dependencies
+        working-directory: repository
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install -e ".[dev]"
+
+      # The procedure transcripts in Core's suite (tests/test_procedures.py)
+      # run under Scrut v0.5.0, pinned by GitHub's published SHA-256 exactly as
+      # Core's validate.yml pins it; the binary reaches the gate as LOS_SCRUT_BIN.
+      - name: Install PDF text extractor
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends poppler-utils
+          pdftotext -v
+
+      - name: Install Scrut v0.5.0 (pinned digest)
+        run: |
+          set -eu
+          dir="$RUNNER_TEMP/scrut"
+          mkdir -p "$dir"
+          curl --proto '=https' --tlsv1.2 -fsSL -o "$dir/scrut.tar.gz" \
+            https://github.com/facebookincubator/scrut/releases/download/v0.5.0/scrut-v0.5.0-linux-x86_64.tar.gz
+          echo "5c373d077a73dc4a5d4b43f3474e0f443dc72fb42f89b312ef55f934e6e6ba15  $dir/scrut.tar.gz" | sha256sum -c -
+          tar -xzf "$dir/scrut.tar.gz" -C "$dir"
+          bin="$(find "$dir" -type f -name scrut | head -n 1)"
+          test -n "$bin"
+          chmod 0755 "$bin"
+          test "$("$bin" --version)" = "scrut 0.5.0"
+          echo "LOS_SCRUT_BIN=$bin" >> "$GITHUB_ENV"
+
+      # `live_install` tests need state no checkout can carry: the
+      # maintainer's gitignored data, or the wrapper root above repository/.
+      # Deselected by name exactly as Core's validate.yml does; the live
+      # installation's own `make system-check` still runs them.
+      - name: paired release gate (make system-check)
+        working-directory: repository
+        env:
+          PYTEST_ADDOPTS: '-m "not live_install"'
+          LOS_RATCHET_BASE: origin/main
+        run: make system-check
+
+      - name: Exercise the fixture installer path
+        run: python3 install.py --vault fixture-vault --dry-run --node "$(command -v node)"
+
+      - name: Upload built plugin
+        uses: actions/upload-artifact@v4
+        with:
+          name: learningos-ui-plugin
+          path: obsidian-ui/plugin/
+          if-no-files-found: error

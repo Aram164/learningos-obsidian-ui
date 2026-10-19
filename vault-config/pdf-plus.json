@@ -1,0 +1,6 @@
+{
+  "_comment": "Backlink-style PDF annotation stays available; direct PDF mutation is disabled.",
+  "enablePDFEdit": false,
+  "defaultWriteFileToggle": false,
+  "syncDefaultWriteFileToggle": false
+}

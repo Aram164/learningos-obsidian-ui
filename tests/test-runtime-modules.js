@@ -1,0 +1,3433 @@
+'use strict';
+
+const assert = require('assert/strict');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const crypto = require('crypto');
+const { pathToFileURL } = require('url');
+const { createSourceModuleLoader } = require('./source-module-loader');
+
+const ROOT = path.dirname(__dirname);
+const FIXTURE_MANIFEST = path.join(ROOT, 'fixture-vault', 'generated', 'manifest.json');
+const load = createSourceModuleLoader(ROOT);
+const { ManifestStore } = load('src/manifest-store.ts');
+/* The app's own declaration, not a literal: check-contract.mjs already binds it
+ * to the lock and to Core, so deriving here cannot drift and cannot go stale on
+ * the next bump. It did go stale, as v8, the day the projection reached v9. */
+const { assertManifest, MANIFEST_CONTRACT_VERSION: CONTRACT } = load('src/contracts/manifest.ts');
+const { GatewayClient } = load('src/gateway-client.ts');
+const { AbilityHorizon } = load('src/application/ability-horizon.ts');
+const abilityFixtures = require('./ability-fixtures');
+const { gatewaySubjectSha256 } = load('src/contracts/gateway-v2.ts');
+const { DraftStore, emptyUiDrafts } = load('src/application/draft-store.ts');
+const {
+  MemoryGatewayRecoveryStore,
+  SettingsGatewayRecoveryStore,
+  clearDraftsOwnedBy,
+  gatewayRecoverySummary,
+  validateGatewayRecoveryRecord,
+} = load('src/application/gateway-recovery.ts');
+const { isProjectionConflict, GatewayError } = load('src/contracts/gateway-v1.ts');
+const { asHealthReport } = load('src/contracts/health-report.ts');
+const { asLegacyArchiveLock, asLegacyArchiveStatus } = load('src/contracts/legacy-archive.ts');
+const { asMastersPlanningDashboard } = load('src/contracts/masters-planning.ts');
+const { ApplicationRouter } = load('src/app/router.ts');
+const { asPlanTemplate } = load('src/features/plan-template.ts');
+const { enableButtonGroupKeyboardNavigation } = load('src/accessibility/button-group.ts');
+const constants = load('src/constants.ts');
+
+const SNAPSHOT = `sha256:${'1'.repeat(64)}`;
+const gatewayFileRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'learningos-ui-gateway-'));
+const gatewayFile = path.join(gatewayFileRoot, 'approved-input.pdf');
+const gatewayMap = path.join(gatewayFileRoot, 'reviewed-map.yaml');
+fs.writeFileSync(gatewayFile, Buffer.from([0, 1, 2, 254, 255]));
+fs.writeFileSync(gatewayMap, 'type: study-map\nid: study-map-test\n', 'utf8');
+process.on('exit', () => fs.rmSync(gatewayFileRoot, { recursive: true, force: true }));
+
+function fileDigest(filename) {
+  return `sha256:${crypto.createHash('sha256').update(fs.readFileSync(filename)).digest('hex')}`;
+}
+
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(Object.keys(value).sort().map((key) => [key, canonical(value[key])]));
+  }
+  return value;
+}
+
+/*
+ * Core requires a V2 envelope's `expected_revisions` to cover exactly the
+ * artifacts its transaction touches, and `capture.create` / `garden.seed.create`
+ * guard the *request* because Core names their target file itself. A mock that
+ * confirms anything is the reason the UI could ship a build in which every
+ * capture and Garden seed was refused by the real gateway while every test
+ * passed. This one refuses the same envelopes Core refuses.
+ */
+const REQUEST_SCOPED_PREFIXES = {
+  'capture.create': 'capture-request',
+  'garden.seed.create': 'garden-request',
+};
+
+function guardRefusal(request) {
+  const prefix = REQUEST_SCOPED_PREFIXES[request.capability];
+  if (!prefix) return null;
+  const expected = { [`${prefix}:${request.idempotency_key}`]: 0 };
+  const actual = request.expected_revisions || {};
+  const same = Object.keys(expected).length === Object.keys(actual).length
+    && Object.entries(expected).every(([id, revision]) => actual[id] === revision);
+  return same ? null
+    : 'GatewayEnvelopeV2 expected_revisions must cover exactly every transaction '
+      + `artifact (wanted ${JSON.stringify(expected)}, got ${JSON.stringify(actual)})`;
+}
+
+function gatewayConfirmation(stdin, snapshotAfter = SNAPSHOT, overrides = {}) {
+  const request = JSON.parse(stdin);
+  const refusal = guardRefusal(request);
+  if (refusal) {
+    return JSON.stringify({
+      schema_version: 2,
+      request_id: request.request_id,
+      idempotency_key: request.idempotency_key,
+      capability: request.capability,
+      ok: false,
+      replayed: false,
+      transaction_id: null,
+      receipt_path: null,
+      snapshot_after: null,
+      result: {},
+      error: {
+        code: 'INVALID_REQUEST', message: refusal, retryable: false, details: {},
+      },
+    });
+  }
+  return JSON.stringify({
+    schema_version: 2,
+    request_id: request.request_id,
+    idempotency_key: request.idempotency_key,
+    capability: request.capability,
+    ok: true,
+    replayed: false,
+    transaction_id: 'tx-1',
+    receipt_path: 'operations/transactions/tx-1/receipt.json',
+    snapshot_after: snapshotAfter,
+    result: {},
+    error: null,
+    ...overrides,
+  });
+}
+
+/** The guard Core will compute for this envelope, from the envelope itself. */
+function expectedRequestGuard(envelope) {
+  const prefix = REQUEST_SCOPED_PREFIXES[envelope.capability];
+  assert.ok(prefix, `${envelope.capability} is not request-scoped`);
+  return { [`${prefix}:${envelope.idempotency_key}`]: 0 };
+}
+
+/** Core's approval subject, recomputed here from what actually travelled. */
+function approvalSubjectSha256(envelope) {
+  const subject = {
+    schema_version: 2,
+    capability: envelope.capability,
+    channel: 'ui',
+    expected_snapshot: envelope.expected_snapshot,
+    expected_revisions: envelope.expected_revisions,
+    payload: envelope.payload,
+  };
+  return `sha256:${crypto.createHash('sha256')
+    .update(JSON.stringify(canonical(subject)), 'utf8').digest('hex')}`;
+}
+
+const noticeLog = [];
+const externalLog = [];
+
+/*
+ * Host mocks for the modules that import 'obsidian' / 'electron'.
+ *
+ * Deliberately minimal and faithful: each mock provides exactly what the real
+ * host provides and nothing more. A mock that is more permissive than the host
+ * is what produced RC-7 — see the note in tests/harness.js. These tests only
+ * exercise query logic, so Modal needs a constructor and nothing else; if a
+ * test ever needs contentEl it should build a real element, not have the mock
+ * invent one.
+ */
+const hostMocks = {
+  obsidian: {
+    Modal: class Modal { constructor(app) { this.app = app; } },
+    Notice: class Notice { constructor(message) { noticeLog.push(String(message)); } },
+    setIcon: () => undefined,
+  },
+  electron: {
+    shell: {
+      openExternal: async (url) => { externalLog.push(String(url)); },
+      openPath: async () => '',
+    },
+    webUtils: { getPathForFile: () => '' },
+  },
+};
+const loadWithHost = createSourceModuleLoader(ROOT, hostMocks);
+const { GlobalSearchModal } = loadWithHost('src/app/global-search.ts');
+const { AppNavigator } = loadWithHost('src/app/navigator.ts');
+const {
+  ResourceOpener,
+  visualStudioCodeUrl,
+} = loadWithHost('src/infrastructure/resource-opener.ts');
+const {
+  hasDirectResourceTarget,
+  pageDestination,
+} = loadWithHost('src/infrastructure/resource-target.ts');
+const {
+  renderStageResources,
+} = loadWithHost('src/features/stage-resources.ts');
+const { renderModuleDetail } = loadWithHost('src/features/module/detail.ts');
+
+let failures = 0;
+let checks = 0;
+async function test(name, body) {
+  try {
+    await body();
+    checks += 1;
+    console.log(`  ok   ${name}`);
+  } catch (error) {
+    failures += 1;
+    console.error(`  FAIL ${name}`);
+    console.error(error.stack || error);
+  }
+}
+
+class RuntimeElement {
+  constructor(tag) {
+    this.tag = tag;
+    this.children = [];
+    this.classes = new Set();
+    this.text = '';
+    this.attrs = {};
+    this.listeners = {};
+  }
+
+  spawn(tag, options = {}) {
+    const child = new RuntimeElement(tag);
+    if (options.cls) {
+      String(options.cls).split(/\s+/).filter(Boolean).forEach(
+        (name) => child.classes.add(name),
+      );
+    }
+    if (options.text !== undefined) child.text = String(options.text);
+    if (options.attr) Object.assign(child.attrs, options.attr);
+    this.children.push(child);
+    return child;
+  }
+
+  createEl(tag, options) { return this.spawn(tag, options); }
+  createDiv(options) { return this.spawn('div', options); }
+  createSpan(options) { return this.spawn('span', options); }
+  addClass(...names) { names.forEach((name) => this.classes.add(name)); return this; }
+  setAttr(name, value) { this.attrs[name] = value; return this; }
+  setAttrs(values) { Object.assign(this.attrs, values); return this; }
+  setText(value) { this.text = String(value); return this; }
+  removeAttribute(name) { delete this.attrs[name]; return this; }
+  addEventListener(name, listener) { (this.listeners[name] ||= []).push(listener); }
+  fire(name) {
+    for (const listener of this.listeners[name] || []) {
+      listener({ preventDefault() {} });
+    }
+  }
+  find(className) {
+    const matches = this.classes.has(className) ? [this] : [];
+    return matches.concat(...this.children.map((child) => child.find(className)));
+  }
+}
+
+function manifestApp(transform = (value) => value) {
+  return {
+    vault: {
+      adapter: {
+        exists: async () => true,
+        read: async () => transform(fs.readFileSync(FIXTURE_MANIFEST, 'utf8')),
+      },
+    },
+  };
+}
+
+function routerPlugin(settings = {}) {
+  return {
+    settings,
+    store: { get: () => null },
+    app: { workspace: {} },
+    persistSettings: async () => undefined,
+    setActiveNav: () => undefined,
+  };
+}
+
+(async () => {
+  console.log('\nDirect TypeScript module tests');
+
+  await test('source groups preserve repeated placements, missing identities and authored order', async () => {
+    const { groupBySource } = load('src/features/unit/source-browser.ts');
+    const first = { sourceId: 'source-one', routeId: 'same-route', text: 'first instruction' };
+    const second = { sourceId: 'source-one', routeId: 'same-route', text: 'different instruction' };
+    const missing = { sourceId: null, text: 'unresolved source' };
+    const other = { sourceId: 'source-two', text: 'another book' };
+    const groups = groupBySource([first, missing, second, other]);
+    assert.deepEqual([...groups.keys()], ['source-one', null, 'source-two']);
+    assert.deepEqual(groups.get('source-one'), [first, second]);
+    assert.equal(groups.get('source-one')[0], first);
+    assert.equal(groups.get(null)[0], missing);
+    assert.equal([...groups.values()].flat().length, 4);
+  });
+
+  await test('material inspection keeps repeated stage placements and parent-route caches separate', async () => {
+    const { readStage } = loadWithHost('src/features/unit/model.ts');
+    const { renderPlacementCard, renderRouteCard } = loadWithHost('src/features/unit/material-card.ts');
+    const stage = readStage({ id: 'stage-exercises', resources: [
+      { route_id: 'route-exercises', source_id: 'source-exercises', label: 'First exercise',
+        material_uri: 'material://exercises/first.pdf', locator: 'first.pdf, PDF p. 2' },
+      { route_id: 'route-exercises', source_id: 'source-exercises', label: 'Second exercise',
+        material_uri: 'material://exercises/second.pdf', locator: 'second.pdf, PDF p. 3' },
+    ] });
+    assert.deepEqual(stage.resources.map((row) => row.resourceIndex), [0, 1]);
+    const calls = [];
+    const option = { routeId: 'route-exercises', title: 'All exercises', sourceId: 'source-exercises',
+      locator: 'All sheets', depth: 'practice', format: 'exercise', covers: [],
+      record: { material_uri: 'material://exercises/parent.pdf' } };
+    const deps = {
+      unitId: 'unit-exercises', stageId: stage.id, renderer: {}, refresh() {},
+      plugin: { store: { snapshotId: SNAPSHOT }, gateway: {
+        async materialSpan(unitId, routeId, options) {
+          calls.push({ unitId, routeId, options });
+          return { contract: 'material-span-v1', schema_version: 1, snapshot_id: SNAPSHOT,
+            unit_id: unitId, module_id: 'module-exercises', route_id: routeId,
+            availability: 'local-observed', locator: `placement ${options.resourceIndex}`, spans: [] };
+        },
+      } },
+    };
+    const first = renderPlacementCard(new RuntimeElement('main'), stage.resources[0], option, null, deps);
+    first.find('los-span-trigger')[0].fire('click');
+    await new Promise(setImmediate);
+    const second = renderPlacementCard(new RuntimeElement('main'), stage.resources[1], option, null, deps);
+    assert.equal(second.find('los-span-panel').length, 0, 'another placement must not reuse the first excerpt');
+    second.find('los-span-trigger')[0].fire('click');
+    await new Promise(setImmediate);
+    assert.deepEqual(calls.map(({ options }) => [options.stageId, options.resourceIndex]),
+      [['stage-exercises', 0], ['stage-exercises', 1]]);
+    assert.ok(calls.every(({ options }) => options.expectedSnapshot === SNAPSHOT && options.extract));
+    const parent = renderRouteCard(new RuntimeElement('main'), option, null, deps);
+    assert.equal(parent.find('los-span-panel').length, 0, 'the parent route must not reuse a placement excerpt');
+    parent.find('los-span-trigger')[0].fire('click');
+    await new Promise(setImmediate);
+    assert.equal(calls[2].options.stageId, undefined);
+    assert.equal(calls[2].options.resourceIndex, undefined);
+  });
+
+  await test('material span sends the exact canonical stage position to Core', async () => {
+    let sent;
+    await GatewayClient.prototype.materialSpan.call({ call(args) { sent = args; } },
+      'unit-exercises', 'route-exercises', {
+        stageId: 'stage-exercises', resourceIndex: 1, extract: true, expectedSnapshot: SNAPSHOT,
+      });
+    assert.deepEqual(sent, ['material-span', 'unit-exercises', 'route-exercises',
+      '--stage', 'stage-exercises', '--resource-index', '1', '--extract', '--expected-snapshot', SNAPSHOT]);
+  });
+
+  await test('contract list parser accepts PyYAML and indented YAML sequences', async () => {
+    const tools = await import(
+      pathToFileURL(path.join(ROOT, 'scripts', 'contract-locks.mjs')).href
+    );
+    assert.deepEqual(
+      tools.yamlStringList('keys:\n- first\n- second\nnext: value\n', 'keys'),
+      ['first', 'second'],
+    );
+    assert.deepEqual(
+      tools.yamlStringList('keys:\n  - first\n  - second\nnext: value\n', 'keys'),
+      ['first', 'second'],
+    );
+  });
+
+  await test('program-job uses the ordinary module detail with a visual badge', async () => {
+    const root = new RuntimeElement('main');
+    const module = {
+      id: 'module-job-rust-engineering',
+      type: 'module',
+      title: 'Rust Engineering',
+      kind: 'skill',
+      area_id: 'program-job',
+      status: 'active',
+      unit_order: [],
+    };
+    renderModuleDetail({
+      moduleId: module.id,
+      tab: 'overview',
+      plugin: {
+        store: { get: () => module },
+        nav: { back: () => undefined },
+      },
+      defaultTab: () => 'overview',
+      headline: () => 'Active learning module',
+      selectTab: () => undefined,
+      renderOverview: () => undefined,
+      renderUnits: () => undefined,
+      renderSources: () => undefined,
+      renderLogistics: () => undefined,
+    }, root);
+    assert.equal(root.find('los-badge').some((item) => item.text === 'Job'), true);
+    assert.equal(root.find('los-tabs').length, 1,
+      'Job modules keep the same module tabs as every other module');
+  });
+
+  await test(`ManifestStore loads a contract-valid v${CONTRACT} fixture`, async () => {
+    const store = new ManifestStore(manifestApp());
+    assert.equal(await store.load(), true);
+    assert.equal(store.ready, true);
+    assert.equal(store.contractVersion, CONTRACT);
+    assert.ok(store.records.length > 0);
+  });
+
+  function examManifestApp(sitting, result) {
+    return manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      const moduleId = manifest.modules[0].id;
+      for (const record of [...manifest.modules, ...manifest.records]) {
+        if (record.id !== moduleId) continue;
+        record.examination = { sittings: [sitting] };
+        record.attempts = [{ termin: 2, date: '2026-10-09', result }];
+      }
+      return JSON.stringify(manifest);
+    });
+  }
+
+  for (const result of ['registered', 'sat']) {
+    await test(`ManifestStore loads a withdrawal deadline and ${result} exam attempt`, async () => {
+      const sitting = { termin: 2, date: '2026-10-09', withdrawal_deadline: '2026-10-02' };
+      const store = new ManifestStore(examManifestApp(sitting, result));
+      assert.equal(await store.load(), true, store.error);
+      const module = store.get(store.data.modules[0].id);
+      assert.deepEqual(module.examination.sittings, [sitting]);
+      assert.deepEqual(module.attempts, [{ termin: 2, date: '2026-10-09', result }]);
+    });
+  }
+
+  for (const [label, fields, result, expectedDiagnostic] of [
+    [
+      'invalid calendar deadline',
+      { withdrawal_deadline: '2026-02-30' },
+      'registered',
+      /\/modules\/0\/examination\/sittings\/0\/withdrawal_deadline must match format "date"/,
+    ],
+    [
+      'null deadline',
+      { withdrawal_deadline: null },
+      'registered',
+      /\/modules\/0\/examination\/sittings\/0\/withdrawal_deadline must be string/,
+    ],
+    [
+      'unknown sitting field',
+      { withdrawal_deadline: '2026-10-02', unknown: true },
+      'registered',
+      /\/modules\/0\/examination\/sittings\/0 must NOT have additional properties/,
+    ],
+    [
+      'undeclared attempt outcome',
+      { withdrawal_deadline: '2026-10-02' },
+      'no-show',
+      /\/modules\/0\/attempts\/0\/result must be equal to one of the allowed values/,
+    ],
+  ]) {
+    await test(`ManifestStore refuses ${label} without publishing a partial store`, async () => {
+      const sitting = { termin: 2, date: '2026-10-09', ...fields };
+      const store = new ManifestStore(examManifestApp(sitting, result));
+      assert.equal(await store.load(), false);
+      assert.match(store.error, expectedDiagnostic);
+      assert.equal(store.ready, false);
+      assert.equal(store.data, null);
+    });
+  }
+
+  await test('ManifestStore exposes projected examination on every source row', async () => {
+    const store = new ManifestStore(manifestApp());
+    assert.equal(await store.load(), true);
+    const sources = store.records.filter((record) => record.type === 'source');
+    assert.ok(sources.length > 0);
+    for (const source of sources) {
+      assert.equal(typeof source.examination.evaluated, 'boolean');
+      assert.ok(Number.isInteger(source.examination.approved_analysis_count));
+      assert.equal(typeof source.examination.metadata_placed, 'boolean');
+    }
+    const unevaluated = sources.find((source) => source.id === 'source-fixture-video');
+    assert.deepEqual(unevaluated.examination, { approved_analysis_count: 0, evaluated: false, metadata_placed: false });
+  });
+
+  await test('ManifestStore rejects a source row without examination', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      for (const record of manifest.records) {
+        if (record.type === 'source') delete record.examination;
+      }
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), false);
+    assert.equal(store.data, null);
+  });
+
+  await test('ManifestStore exposes bounded source discovery and rejects dangling provenance', async () => {
+    const discovery = {
+      observed: '2026-09-23',
+      basis: [{ kind: 'list-entry', ref: 'legacy/LEARNING-RESOURCES.md#L114' }],
+      possible_use: 'A possible lecture series.',
+    };
+    const withDiscovery = manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest.records.find((record) => record.id === 'source-fixture-video').discovery = discovery;
+      return JSON.stringify(manifest);
+    });
+    const store = new ManifestStore(withDiscovery);
+    assert.equal(await store.load(), true);
+    assert.equal(store.records.find((record) => record.id === 'source-fixture-video')
+      ?.discovery?.possible_use, 'A possible lecture series.');
+    const bad = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest.records.find((record) => record.id === 'source-fixture-video').discovery = {
+        ...discovery, basis: [{ kind: 'list-entry', ref: 'uncited' }],
+      };
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await bad.load(), false);
+  });
+
+  await test('readLibraryRecord carries examination for the placed-from-metadata badge', async () => {
+    const { readLibraryRecord } = load('src/features/library/model.ts');
+    const placed = readLibraryRecord({
+      id: 'source-placed', type: 'source', examination: { evaluated: false, approved_analysis_count: 0, metadata_placed: true },
+    });
+    assert.deepEqual(placed.examination, { evaluated: false, approvedAnalysisCount: 0, metadataPlaced: true });
+    const examined = readLibraryRecord({
+      id: 'source-read', type: 'source', examination: { evaluated: true, approved_analysis_count: 2, metadata_placed: false },
+    });
+    assert.deepEqual(examined.examination, { evaluated: true, approvedAnalysisCount: 2, metadataPlaced: false });
+    assert.equal(readLibraryRecord({ id: 'source-old', type: 'source' }).examination, null);
+  });
+
+  await test('ManifestStore rejects an old contract before exposing data', async () => {
+    const store = new ManifestStore(manifestApp((text) =>
+      text.replace(`"contract_version": ${CONTRACT}`, '"contract_version": 1')));
+    assert.equal(await store.load(), false);
+    assert.equal(store.ready, false);
+    assert.equal(store.data, null);
+    assert.match(store.error, new RegExp(`requires contract ${CONTRACT}`));
+  });
+
+  await test('ManifestStore rejects a manifest with a different schema byte hash', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest._generated.schema_sha256 = `sha256:${'0'.repeat(64)}`;
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), false);
+    assert.equal(store.ready, false);
+    assert.equal(store.data, null);
+    assert.match(store.error, /Unsupported manifest schema/);
+  });
+
+  await test('ManifestStore rejects an Atlas edge without evidence', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest.module_concept_edges[0].evidence = [];
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), false);
+    assert.equal(store.data, null);
+    assert.match(store.error, /\/module_concept_edges\/0\/evidence must NOT have fewer than 1 items/);
+  });
+
+  await test('ManifestStore rejects an undeclared Atlas evidence field', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest.module_concept_edges[0].evidence[0].confidence = 1;
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), false);
+    assert.equal(store.data, null);
+    assert.match(store.error, /\/module_concept_edges\/0\/evidence\/0 must NOT have additional properties/);
+  });
+
+  await test('ManifestStore retains the prior snapshot, marked stale, after a reload failure', async () => {
+    let valid = true;
+    const store = new ManifestStore(manifestApp((text) => valid
+      ? text
+      : text.replace(`"contract_version": ${CONTRACT}`, '"contract_version": 1')));
+    assert.equal(await store.load(), true);
+    assert.ok(store.records.length > 0);
+    const retainedSnapshot = store.snapshotId;
+    valid = false;
+    assert.equal(await store.load(), false);
+    // S7: the last valid snapshot and its indexes stay readable under an
+    // explicit stale flag; the snapshot id is retained for observation
+    // but cannot authorize a fresh write (GatewayClient refuses it).
+    assert.equal(store.stale, true);
+    assert.equal(store.ready, true);
+    assert.notEqual(store.data, null);
+    assert.equal(store.snapshotId, retainedSnapshot);
+    assert.ok(store.records.length > 0);
+    assert.notEqual(store.get('unit-fixture-sad-l04'), null);
+    assert.notEqual(store.error, '');
+  });
+
+  await test('ManifestStore exposes exact artifact revision guards', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest.artifact_revisions['unit-fixture-sad-l04'] = 7;
+      manifest.artifact_revisions['study-map-fixture-sad-l04'] = 4;
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), true);
+    assert.deepEqual(store.artifactGuard(
+      'unit-fixture-sad-l04',
+      'study-map-fixture-sad-l04',
+    ), {
+      'unit-fixture-sad-l04': 7,
+      'study-map-fixture-sad-l04': 4,
+    });
+  });
+
+  await test('ManifestStore resolves approved material synthesis only through the unit index', async () => {
+    const store = new ManifestStore(manifestApp());
+    assert.equal(await store.load(), true);
+    const synthesis = store.materialSynthesisForUnit('unit-fixture-sad-l04');
+    assert.equal(synthesis?.id, 'material-synthesis-fixture-sad-l04');
+    assert.equal(synthesis?.route_assessments[0]?.review_status, 'screened');
+    assert.equal(synthesis?.freshness.status, 'current');
+    assert.equal(synthesis?.completeness.complete, true);
+    assert.equal(synthesis?.completeness.assessed_route_count, 1);
+    assert.equal(store.materialSynthesisForUnit('unit-fixture-analysis'), null);
+  });
+
+  await test('ManifestStore refuses a synthesis without its source-map revision basis', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      delete manifest.unit_material_syntheses[0].basis.source_map_revision;
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), false);
+    assert.match(store.error, /\/unit_material_syntheses\/0\/basis must have required property 'source_map_revision'/);
+  });
+
+  await test('ManifestStore refuses synthesis rows without derived projection status', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      delete manifest.unit_material_syntheses[0].freshness;
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), false);
+    assert.match(store.error, /\/unit_material_syntheses\/0 must have required property 'freshness'/);
+  });
+
+  await test('ManifestStore rejects extension fields in closed record rows', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest.records[0].invented_projection_field = true;
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), false);
+    assert.match(store.error, /\/records\/0 must NOT have additional properties/);
+  });
+
+  await test('ManifestStore rejects malformed secondary surfaces before exposing data', async () => {
+    const corruptions = [
+      ['academic deadlines', (manifest) => manifest.academic_deadlines.push(42)],
+      ['artifact revisions', (manifest) => { manifest.artifact_revisions.bad = 'oops'; }],
+      ['backlinks', (manifest) => { manifest.backlinks.invented = []; }],
+      ['counts', (manifest) => { manifest.counts.invented = 1; }],
+      ['Garden rows', (manifest) => manifest.garden_entries.push(42)],
+      ['progress', (manifest) => { manifest.progress.bad = { stages_complete: 'oops' }; }],
+      ['project aliases', (manifest) => { manifest.project_aliases.bad = 42; }],
+      ['relations', (manifest) => manifest.relations.push(42)],
+      ['resume pointer', (manifest) => { manifest.resume_pointer = { unit_id: 42 }; }],
+      ['review rows', (manifest) => manifest.review_items.push(42)],
+      ['semesters', (manifest) => manifest.semesters.push(42)],
+      ['thematic groups', (manifest) => manifest.thematic_groups.push(42)],
+      ['topic packs', (manifest) => manifest.topic_packs.push(42)],
+      ['topics', (manifest) => manifest.topics.push(42)],
+    ];
+    for (const [label, corrupt] of corruptions) {
+      const store = new ManifestStore(manifestApp((text) => {
+        const manifest = JSON.parse(text);
+        corrupt(manifest);
+        return JSON.stringify(manifest);
+      }));
+      assert.equal(await store.load(), false, `${label} drift must be refused`);
+      assert.equal(store.data, null, `${label} drift must not leave partial state`);
+    }
+  });
+
+  await test('ManifestStore and assertManifest enforce centralized single-validation ownership', async () => {
+    let validatorCount = 0;
+    const realValidator = require(path.join(ROOT, 'src/contracts/generated/manifest.validator.cjs'));
+    const countingValidator = function (data) {
+      validatorCount++;
+      const result = realValidator.call(this, data);
+      countingValidator.errors = realValidator.errors;
+      return result;
+    };
+    countingValidator.default = countingValidator;
+    const instrumentedLoader = createSourceModuleLoader(ROOT, {
+      './generated/manifest.validator.cjs': countingValidator,
+    });
+    const { assertManifest: instrumentedAssertManifest } = instrumentedLoader('src/contracts/manifest.ts');
+    const { ManifestStore: InstrumentedManifestStore } = instrumentedLoader('src/manifest-store.ts');
+    const rawFixture = JSON.parse(fs.readFileSync(FIXTURE_MANIFEST, 'utf8'));
+
+    // A. Direct assertManifest invokes the real generated Ajv validator
+    validatorCount = 0;
+    assert.doesNotThrow(() => instrumentedAssertManifest(JSON.parse(JSON.stringify(rawFixture))));
+    assert.equal(validatorCount, 1, 'direct assertManifest must invoke real Ajv validator');
+
+    // B. A valid ManifestStore.load invokes the generated validator exactly once
+    validatorCount = 0;
+    const store = new InstrumentedManifestStore(manifestApp());
+    assert.equal(await store.load(), true);
+    assert.equal(validatorCount, 1, 'ManifestStore.load must invoke generated validator exactly once');
+
+    // C. A schema-invalid manifest is refused
+    const schemaInvalid = JSON.parse(JSON.stringify(rawFixture));
+    delete schemaInvalid._generated.warning;
+    assert.throws(
+      () => instrumentedAssertManifest(schemaInvalid),
+      /Manifest does not match its schema: \/_generated must have required property 'warning'/,
+    );
+
+    // D. Wrong contract versions remain refused
+    const wrongContract = JSON.parse(JSON.stringify(rawFixture));
+    wrongContract._generated.contract_version = 1;
+    assert.throws(() => instrumentedAssertManifest(wrongContract), /contract_version/);
+    const wrongContractStore = new InstrumentedManifestStore(manifestApp((text) =>
+      text.replace(`"contract_version": ${CONTRACT}`, '"contract_version": 1')));
+    assert.equal(await wrongContractStore.load(), false);
+    assert.match(wrongContractStore.error, /requires contract 15/);
+
+    // E. Wrong schema SHA-256 values remain refused
+    const wrongPin = JSON.parse(JSON.stringify(rawFixture));
+    wrongPin._generated.schema_sha256 = `sha256:${'0'.repeat(64)}`;
+    assert.throws(() => instrumentedAssertManifest(wrongPin), /Unsupported manifest schema/);
+    const wrongPinStore = new InstrumentedManifestStore(manifestApp((text) => {
+      const m = JSON.parse(text);
+      m._generated.schema_sha256 = `sha256:${'0'.repeat(64)}`;
+      return JSON.stringify(m);
+    }));
+    assert.equal(await wrongPinStore.load(), false);
+    assert.match(wrongPinStore.error, /Unsupported manifest schema/);
+
+    // F. A failed reload clears previously published manifest state
+    let reloadValid = true;
+    const reloadStore = new InstrumentedManifestStore({
+      vault: {
+        adapter: {
+          exists: async () => true,
+          read: async () => reloadValid ? JSON.stringify(rawFixture) : JSON.stringify(schemaInvalid),
+        },
+      },
+    });
+    assert.equal(await reloadStore.load(), true);
+    assert.equal(reloadStore.ready, true);
+    assert.ok(reloadStore.records.length > 0);
+    assert.notEqual(reloadStore.data, null);
+    reloadValid = false;
+    assert.equal(await reloadStore.load(), false);
+    // S7: a failed reload after a valid one retains that snapshot as
+    // explicitly stale instead of clearing it.
+    assert.equal(reloadStore.stale, true);
+    assert.equal(reloadStore.ready, true);
+    assert.notEqual(reloadStore.data, null);
+    assert.notEqual(reloadStore.snapshotId, null);
+    assert.ok(reloadStore.records.length > 0);
+    assert.notEqual(reloadStore.error, '');
+  });
+
+  await test('assertManifest rejects malformed artifact_revisions and project_aliases dictionaries', () => {
+    const rawFixture = JSON.parse(fs.readFileSync(FIXTURE_MANIFEST, 'utf8'));
+
+    // artifact_revisions:
+    // Existing valid values pass
+    assert.doesNotThrow(() => assertManifest(JSON.parse(JSON.stringify(rawFixture))));
+
+    // Negative integer fails closed with schema diagnostic
+    const negative = JSON.parse(JSON.stringify(rawFixture));
+    negative.artifact_revisions['unit-fixture-sad-l04'] = -1;
+    assert.throws(
+      () => assertManifest(negative),
+      /Manifest does not match its schema: \/artifact_revisions\/unit-fixture-sad-l04 must be >= 0/,
+    );
+
+    // Fractional number fails closed with schema diagnostic
+    const fractional = JSON.parse(JSON.stringify(rawFixture));
+    fractional.artifact_revisions['unit-fixture-sad-l04'] = 3.14;
+    assert.throws(
+      () => assertManifest(fractional),
+      /Manifest does not match its schema: \/artifact_revisions\/unit-fixture-sad-l04 must be integer/,
+    );
+
+    // String instead of integer fails closed with schema diagnostic
+    const strRev = JSON.parse(JSON.stringify(rawFixture));
+    strRev.artifact_revisions['unit-fixture-sad-l04'] = 'invalid-rev';
+    assert.throws(
+      () => assertManifest(strRev),
+      /Manifest does not match its schema: \/artifact_revisions\/unit-fixture-sad-l04 must be integer/,
+    );
+
+    // Null value fails closed with schema diagnostic
+    const nullRev = JSON.parse(JSON.stringify(rawFixture));
+    nullRev.artifact_revisions['unit-fixture-sad-l04'] = null;
+    assert.throws(
+      () => assertManifest(nullRev),
+      /Manifest does not match its schema: \/artifact_revisions\/unit-fixture-sad-l04 must be integer/,
+    );
+
+    // Invalid top-level shape (number/array) fails closed with schema diagnostic
+    const shapeNumRev = JSON.parse(JSON.stringify(rawFixture));
+    shapeNumRev.artifact_revisions = 42;
+    assert.throws(
+      () => assertManifest(shapeNumRev),
+      /Manifest does not match its schema: \/artifact_revisions must be object/,
+    );
+    const shapeArrRev = JSON.parse(JSON.stringify(rawFixture));
+    shapeArrRev.artifact_revisions = [];
+    assert.throws(
+      () => assertManifest(shapeArrRev),
+      /Manifest does not match its schema: \/artifact_revisions must be object/,
+    );
+
+    // project_aliases:
+    // Numeric dictionary value fails closed with schema diagnostic
+    const numAlias = JSON.parse(JSON.stringify(rawFixture));
+    numAlias.project_aliases['alias-test'] = 42;
+    assert.throws(
+      () => assertManifest(numAlias),
+      /Manifest does not match its schema: \/project_aliases\/alias-test must be string/,
+    );
+
+    // Null dictionary value fails closed with schema diagnostic
+    const nullAlias = JSON.parse(JSON.stringify(rawFixture));
+    nullAlias.project_aliases['alias-test'] = null;
+    assert.throws(
+      () => assertManifest(nullAlias),
+      /Manifest does not match its schema: \/project_aliases\/alias-test must be string/,
+    );
+
+    // Invalid top-level shape (number/array) fails closed with schema diagnostic
+    const shapeNumAlias = JSON.parse(JSON.stringify(rawFixture));
+    shapeNumAlias.project_aliases = 42;
+    assert.throws(
+      () => assertManifest(shapeNumAlias),
+      /Manifest does not match its schema: \/project_aliases must be object/,
+    );
+    const shapeArrAlias = JSON.parse(JSON.stringify(rawFixture));
+    shapeArrAlias.project_aliases = [];
+    assert.throws(
+      () => assertManifest(shapeArrAlias),
+      /Manifest does not match its schema: \/project_aliases must be object/,
+    );
+  });
+
+  await test('ManifestStore refuses wrong schema-pin while generated Ajv accepts, clearing all state (S31-08)', async () => {
+    // 1. Load the valid v15 fixture
+    const rawFixture = JSON.parse(fs.readFileSync(FIXTURE_MANIFEST, 'utf8'));
+
+    // 2. Replace only _generated.schema_sha256 with 64 zeroes
+    const wrongPinFixture = JSON.parse(JSON.stringify(rawFixture));
+    wrongPinFixture._generated.schema_sha256 = `sha256:${'0'.repeat(64)}`;
+
+    // 3. Prove that real generated Ajv standalone validator accepts the mutated fixture
+    const validateManifest = require(path.join(ROOT, 'src/contracts/generated/manifest.validator.cjs'));
+    const ajvAccepted = validateManifest(wrongPinFixture);
+    assert.equal(ajvAccepted, true, 'generated Ajv validator must accept manifest with wrong schema SHA-256');
+    assert.equal(validateManifest.errors, null, 'Ajv errors must be null for wrong-pin manifest');
+
+    // Also verify that direct assertManifest fails closed at the contextual check
+    assert.throws(
+      () => assertManifest(wrongPinFixture),
+      /Unsupported manifest schema/,
+      'assertManifest must reject manifest with wrong schema SHA-256 pin',
+    );
+
+    // 4 & 5. Prove that production ManifestStore.load() rejects it with exact error
+    const store = new ManifestStore(manifestApp(() => JSON.stringify(wrongPinFixture)));
+    const loadSuccess = await store.load();
+    assert.equal(loadSuccess, false, 'ManifestStore.load() must reject wrong schema pin');
+    assert.match(
+      store.error,
+      /Unsupported manifest schema/,
+      'store.error must report Unsupported manifest schema',
+    );
+
+    // 6. Verify complete refusal state
+    assert.equal(store.ready, false, 'store.ready must be false after refusal');
+    assert.equal(store.data, null, 'store.data must be null after refusal');
+    assert.equal(store.records.length, 0, 'store.records must be empty array after refusal');
+    assert.equal(store.byId.size, 0, 'store.byId must be empty Map after refusal');
+    assert.equal(store.snapshotId, null, 'store.snapshotId must be null after refusal');
+    assert.equal(store.contractVersion, null, 'store.contractVersion must be null after refusal');
+
+    // 7. Verify derived read accessors expose no partial data
+    assert.equal(store.get('unit-fixture-sad-l04'), null);
+    assert.deepEqual(store.of('unit'), []);
+    assert.deepEqual(store.rows('units'), []);
+    assert.deepEqual(store.programs(), []);
+    assert.deepEqual(store.modules(), []);
+    assert.deepEqual(store.units(), []);
+    assert.deepEqual(store.studyMaps(), []);
+    assert.equal(store.currentSemester(), null);
+    assert.deepEqual(store.currentSemesterModules(), []);
+    assert.deepEqual(store.projects(), []);
+    assert.deepEqual(store.projectRelationships(), []);
+    assert.deepEqual(store.thematicGroups(), []);
+    assert.deepEqual(store.sources(), []);
+    assert.deepEqual(store.topicPacks(), []);
+    assert.deepEqual(store.catalogues(), []);
+    assert.deepEqual(store.moduleConceptEdges(), []);
+    assert.deepEqual(store.relations(), []);
+    assert.deepEqual(store.gardenEntries(), []);
+    assert.deepEqual(store.reviewItems(), []);
+    assert.deepEqual(store.topics(), []);
+    assert.deepEqual(store.search('lecture'), []);
+    assert.equal(store.artifactRevision('unit-fixture-sad-l04'), 0);
+    assert.equal(store.stage('stage-fixture-conditioning'), null);
+    assert.equal(store.sourceMap('module-fixture-aml'), null);
+    assert.equal(store.materialSynthesisForUnit('unit-fixture-sad-l04'), null);
+
+    // 8. Rejection when reloading an already populated store with the wrong schema pin
+    let manifestContent = JSON.stringify(rawFixture);
+    const reloadStore = new ManifestStore({
+      vault: {
+        adapter: {
+          exists: async () => true,
+          read: async () => manifestContent,
+        },
+      },
+    });
+
+    // Populate the store initially with valid fixture
+    const initialLoadSuccess = await reloadStore.load();
+    assert.equal(initialLoadSuccess, true, 'initial load of valid manifest must succeed');
+    assert.equal(reloadStore.ready, true);
+    assert.notEqual(reloadStore.data, null);
+    assert.ok(reloadStore.records.length > 0);
+    assert.ok(reloadStore.byId.size > 0);
+    assert.notEqual(reloadStore.snapshotId, null);
+    assert.equal(reloadStore.contractVersion, CONTRACT);
+    assert.notEqual(reloadStore.get('unit-fixture-sad-l04'), null);
+    assert.ok(reloadStore.units().length > 0);
+
+    // Mutate to wrong schema pin and reload
+    manifestContent = JSON.stringify(wrongPinFixture);
+    const reloadSuccess = await reloadStore.load();
+    assert.equal(reloadSuccess, false, 'reload with wrong schema pin must fail');
+    assert.match(reloadStore.error, /Unsupported manifest schema/);
+
+    // S7: previously populated state is retained, explicitly stale —
+    // never cleared, and never presented as fresh. The wrong-pin
+    // manifest itself contributes nothing.
+    assert.equal(reloadStore.stale, true, 'reloadStore.stale must mark the retained snapshot');
+    assert.equal(reloadStore.ready, true, 'the retained snapshot stays readable');
+    assert.notEqual(reloadStore.data, null, 'reloadStore.data must retain the last valid manifest');
+    assert.ok(reloadStore.records.length > 0, 'reloadStore.records must retain the last valid rows');
+    assert.ok(reloadStore.byId.size > 0, 'reloadStore.byId must retain the last valid index');
+    assert.notEqual(reloadStore.snapshotId, null, 'the retained snapshot id stays observable');
+    assert.equal(reloadStore.contractVersion, CONTRACT, 'the retained contract version is the valid one');
+
+    // Derived read accessors still serve the retained valid snapshot.
+    assert.notEqual(reloadStore.get('unit-fixture-sad-l04'), null);
+    assert.ok(reloadStore.units().length > 0);
+  });
+
+  await test('Omnisearch full-text search uses only the public command', async () => {
+    // This harness has no DOM at all — `document` is genuinely undefined
+    // here, so the private-selector/synthetic-keystroke path this replaced
+    // would throw a ReferenceError the instant it ran, not silently degrade.
+    // That is exactly why the old implementation could regress unnoticed: no
+    // test ever called this method. Calling it now, with an argument shaped
+    // like the removed `query` parameter would have been, is the regression
+    // guard — a reintroduced DOM reach-in fails this test immediately.
+    assert.equal(typeof document, 'undefined');
+    let requestedCommand = null;
+    const nav = {
+      app: {
+        commands: {
+          executeCommandById: (id) => { requestedCommand = id; return true; },
+        },
+      },
+    };
+    assert.doesNotThrow(() => AppNavigator.prototype.openFullTextSearch.call(nav, 'a query'));
+    assert.equal(requestedCommand, 'omnisearch:show-modal');
+    assert.equal(AppNavigator.prototype.openFullTextSearch.length, 0,
+      'the method must take no query argument to seed into private DOM');
+  });
+
+  await test('an empty contract-valid resume pointer returns Home', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest.resume_pointer = {};
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), true);
+    let destination = '';
+    AppNavigator.prototype.openResume.call({
+      store,
+      openHome: () => { destination = 'home'; },
+      openUnit: () => { destination = 'unit'; },
+    });
+    assert.equal(destination, 'home');
+  });
+
+  await test('ManifestStore excludes prospective and boundary rows from the normal projection', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest.programs.push({
+        id: 'program-prospective-boundary', type: 'program', title: 'Prospective boundary',
+        kind: 'boundary', status: 'boundary-only', default: false, semester_bound: false,
+        revision: 0, path: 'prospective/boundary.yaml',
+      });
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), false);
+    assert.match(store.error, /\/programs\/\d+\/kind must be equal to one of the allowed values/);
+  });
+
+  await test('bounded health, archive, and prospective-planning decoders fail closed', async () => {
+    const health = {
+      schema_version: 1,
+      type: 'health-report',
+      generated_at: '2099-04-01T12:00:00Z',
+      status: 'attention-required',
+      checks: [{
+        id: 'projection-current', status: 'warning', summary: 'Projection is stale',
+        owner: 'operator', remedy: 'Rebuild the projection', details: {},
+      }],
+    };
+    assert.equal(asHealthReport(health)?.checks[0]?.owner, 'operator');
+    assert.equal(asHealthReport({ ...health, invented: true }), null);
+    assert.equal(asHealthReport({ ...health, generated_at: 'not-a-date' }), null);
+    assert.equal(asHealthReport({ ...health, status: 'healthy' }), null,
+      'a non-ok check must never cross the boundary as a green aggregate');
+
+    const archive = {
+      schema_version: 1,
+      id: 'legacy-archive-lock',
+      type: 'legacy-archive-lock',
+      created_at: '2099-04-01T12:00:00Z',
+      entries: [{
+        relative_path: 'history/fixture.md', size: 12,
+        sha256: `sha256:${'a'.repeat(64)}`,
+        category: 'historical', disposition: 'historical-only', canonical_targets: [],
+      }],
+      excluded: { count: 2, status: 'sealed-not-inspected' },
+      verification: { verified_at: '2099-04-01T12:30:00Z', status: 'verified' },
+    };
+    assert.equal(asLegacyArchiveLock(archive)?.excluded.count, 2);
+    assert.equal(asLegacyArchiveStatus({
+      schema_version: 1,
+      type: 'legacy-archive-status',
+      available: true,
+      lock: archive,
+    })?.lock?.excluded.count, 2);
+    assert.equal(asLegacyArchiveStatus({
+      schema_version: 1,
+      type: 'legacy-archive-status',
+      available: false,
+      lock: null,
+    })?.available, false);
+    assert.equal(asLegacyArchiveStatus({
+      schema_version: 1,
+      type: 'legacy-archive-status',
+      available: false,
+      lock: archive,
+    }), null);
+    assert.equal(asLegacyArchiveLock({
+      ...archive,
+      excluded: { count: 2, status: 'inspected' },
+    }), null);
+
+    const masters = {
+      schema_version: 1,
+      type: 'masters-planning-dashboard',
+      opened_at: '2099-04-01T13:00:00Z',
+      banner: 'Prospective—not current LearningOS',
+      catalog: {
+        schema_version: 1,
+        id: 'master-planning-catalog',
+        type: 'master-planning-catalog',
+        revision: 3,
+        updated_at: '2099-04-01T12:00:00Z',
+        candidate_modules: [{
+          id: 'candidate-module-fixture', title: 'Fixture module', planning_state: 'shortlist',
+          privacy_class: 'academic-only', provenance: ['fixture'],
+          fact_state: { status: 'verified-current', as_of: '2099-04-01', evidence: [] },
+          source_ids: ['candidate-source-fixture'], unresolved_references: [],
+        }],
+        candidate_sources: [{
+          id: 'candidate-source-fixture', title: 'Fixture source', planning_state: 'longlist',
+          privacy_class: 'academic-only', provenance: ['fixture'],
+          fact_state: { status: 'unverified', as_of: null, evidence: [] },
+        }],
+        comparison_ids: [],
+      },
+      comparisons: [],
+      isolation: {
+        normal_manifest: false, search: false, workload: false,
+        recommendations: false, deadlines: false, ordinary_ai_context: false,
+      },
+    };
+    assert.equal(asMastersPlanningDashboard(masters)?.catalog?.revision, 3);
+    const selectedComparison = {
+      schema_version: 1,
+      id: 'candidate-comparison-fixture',
+      type: 'candidate-source-comparison',
+      candidate_module_id: 'candidate-module-fixture',
+      status: 'approved',
+      basis: {
+        catalog_revision: 3,
+        candidate_set_checksum: `sha256:${'b'.repeat(64)}`,
+        policy: 'tiered-v1',
+        request_id: 'fixture-request',
+        delivery_id: 'fixture-delivery',
+      },
+      source_assessments: [{
+        candidate_source_id: 'candidate-source-fixture',
+        role: 'selected',
+        review_status: 'deep-reviewed',
+        concept_ids: [],
+        contribution: 'Primary source.',
+        assumptions: 'Current catalog.',
+        notation: 'Standard notation.',
+        exercise_value: 'Focused exercises.',
+        best_for: 'First learning.',
+        limitations: 'Prospective only.',
+        evidence: [{ locator: 'Fixture section', checksum: `sha256:${'c'.repeat(64)}` }],
+      }],
+      comparisons: [],
+    };
+    assert.equal(asMastersPlanningDashboard({
+      ...masters,
+      comparisons: [selectedComparison],
+    })?.comparisons[0]?.source_assessments[0]?.role, 'selected');
+    const companionSource = {
+      id: 'candidate-source-companion', title: 'Fixture companion', planning_state: 'shortlist',
+      privacy_class: 'academic-only', provenance: ['fixture'],
+      fact_state: { status: 'verified-current', as_of: '2099-04-01', evidence: [] },
+    };
+    const companionAssessment = {
+      ...selectedComparison.source_assessments[0],
+      candidate_source_id: 'candidate-source-companion',
+      role: 'comparison',
+      concept_ids: ['concept-bayes'],
+      contribution: 'Companion source.',
+      evidence: [{ locator: 'Companion section', checksum: `sha256:${'d'.repeat(64)}` }],
+    };
+    const pairwiseComparison = {
+      ...selectedComparison,
+      source_assessments: [{
+        ...selectedComparison.source_assessments[0],
+        concept_ids: ['concept-bayes'],
+      }, companionAssessment],
+      comparisons: [{
+        left_candidate_source_id: 'candidate-source-fixture',
+        right_candidate_source_id: 'candidate-source-companion',
+        relation: 'contrasts',
+        narrative: 'The sources use different notation.',
+        concept_ids: ['concept-bayes'],
+        evidence: {
+          left: [{
+            locator: 'Fixture section', checksum: `sha256:${'c'.repeat(64)}`,
+            note: 'Probability notation.',
+          }],
+          right: [{
+            locator: 'Companion section', checksum: `sha256:${'d'.repeat(64)}`,
+            note: 'Odds notation.',
+          }],
+        },
+      }],
+    };
+    const mastersWithPair = {
+      ...masters,
+      catalog: {
+        ...masters.catalog,
+        candidate_modules: [{
+          ...masters.catalog.candidate_modules[0],
+          source_ids: ['candidate-source-fixture', 'candidate-source-companion'],
+        }],
+        candidate_sources: [...masters.catalog.candidate_sources, companionSource],
+      },
+      comparisons: [pairwiseComparison],
+    };
+    const knownConcepts = new Set(['concept-bayes']);
+    assert.equal(
+      asMastersPlanningDashboard(mastersWithPair, knownConcepts)
+        ?.comparisons[0]?.comparisons[0]?.evidence.right[0]?.note,
+      'Odds notation.',
+    );
+    assert.equal(asMastersPlanningDashboard({
+      ...mastersWithPair,
+      comparisons: [{
+        ...pairwiseComparison,
+        comparisons: [{ ...pairwiseComparison.comparisons[0], evidence: undefined }],
+      }],
+    }, knownConcepts), null);
+    assert.equal(asMastersPlanningDashboard(mastersWithPair, new Set()), null);
+    assert.equal(asMastersPlanningDashboard({
+      ...mastersWithPair,
+      comparisons: [{
+        ...pairwiseComparison,
+        source_assessments: [pairwiseComparison.source_assessments[0], {
+          ...companionAssessment,
+          review_status: 'screened',
+          reason: 'Only screened.',
+          contribution: undefined,
+          assumptions: undefined,
+          notation: undefined,
+          exercise_value: undefined,
+          best_for: undefined,
+          limitations: undefined,
+          evidence: undefined,
+        }],
+      }],
+    }, knownConcepts), null);
+    assert.equal(asMastersPlanningDashboard({
+      ...masters,
+      comparisons: [{
+        ...selectedComparison,
+        source_assessments: [{
+          ...selectedComparison.source_assessments[0],
+          role: 'comparison',
+        }],
+      }],
+    }), null);
+    const screenedSelected = {
+      ...selectedComparison.source_assessments[0],
+      role: 'selected',
+      review_status: 'screened',
+      reason: 'Only screened.',
+    };
+    for (const field of [
+      'contribution', 'assumptions', 'notation', 'exercise_value', 'best_for', 'limitations',
+    ]) delete screenedSelected[field];
+    screenedSelected.evidence = [];
+    assert.equal(asMastersPlanningDashboard({
+      ...masters,
+      comparisons: [{
+        ...selectedComparison,
+        source_assessments: [screenedSelected],
+      }],
+    }), null);
+    assert.equal(asMastersPlanningDashboard({
+      ...masters,
+      isolation: { ...masters.isolation, search: true },
+    }), null);
+    assert.equal(asMastersPlanningDashboard({
+      ...masters,
+      catalog: {
+        ...masters.catalog,
+        candidate_modules: [{ ...masters.catalog.candidate_modules[0], provenance: [] }],
+      },
+    }), null);
+    const linked = {
+      ...masters.catalog.candidate_sources[0],
+      url: 'https://example.invalid/cs000/',
+      identifiers: { 'lec-01': 'https://example.invalid/cs000/lec01' },
+      child_titles: { 'lec-01': 'Lecture 1' },
+      possible_use: 'Possibly the attention block.',
+      type: 'course',
+    };
+    assert.equal(asMastersPlanningDashboard({
+      ...masters,
+      catalog: { ...masters.catalog, candidate_sources: [linked] },
+    })?.catalog?.candidate_sources[0]?.child_titles?.['lec-01'], 'Lecture 1');
+    assert.equal(asMastersPlanningDashboard({
+      ...masters,
+      catalog: {
+        ...masters.catalog,
+        candidate_sources: [{ ...linked, type: 'seminar' }],
+      },
+    }), null);
+    assert.equal(asMastersPlanningDashboard({
+      ...masters,
+      catalog: {
+        ...masters.catalog,
+        candidate_sources: [{ ...linked, possible_use: 'x'.repeat(201) }],
+      },
+    }), null);
+  });
+
+  await test('a persisted unit-note draft keeps the revisions it was composed against', async () => {
+    const settings = { uiDrafts: emptyUiDrafts() };
+    const drafts = new DraftStore(settings, async () => undefined);
+    drafts.setUnitNote('unit-a', 'Title', 'Draft text', {
+      'unit-a': 3,
+      'study-map-a': 8,
+    });
+    assert.deepEqual(drafts.getUnitNote('unit-a').expectedRevisions, {
+      'unit-a': 3,
+      'study-map-a': 8,
+    });
+    drafts.dispose();
+  });
+
+  await test('recovering stage drafts into a unit-note draft is idempotent', async () => {
+    let settings = { uiDrafts: emptyUiDrafts() };
+    settings.uiDrafts.stages['unit-a::stage-a'] = { text: 'Original learner reasoning' };
+    const drafts = new DraftStore(settings, async () => undefined);
+
+    const stages = [{ id: 'stage-a', title: 'Stage A' }];
+
+    let noteDraft = drafts.getUnitNote('unit-a', stages);
+    drafts.setUnitNote('unit-a', noteDraft.title, noteDraft.text, noteDraft.expectedRevisions, noteDraft.recoveredStages);
+
+    drafts.setUnitNote('unit-a', 'My Note', noteDraft.text + '\n\nExtra insight.', noteDraft.expectedRevisions, drafts.getUnitNote('unit-a').recoveredStages);
+
+    noteDraft = drafts.getUnitNote('unit-a', stages);
+    drafts.setUnitNote('unit-a', noteDraft.title, noteDraft.text, noteDraft.expectedRevisions, noteDraft.recoveredStages);
+
+    noteDraft = drafts.getUnitNote('unit-a', stages);
+    drafts.setUnitNote('unit-a', noteDraft.title, noteDraft.text, noteDraft.expectedRevisions, noteDraft.recoveredStages);
+
+    const serialized = JSON.parse(JSON.stringify(settings));
+    const reloaded = new DraftStore(serialized, async () => undefined);
+    const finalDraft = reloaded.getUnitNote('unit-a', stages);
+
+    assert.equal(
+      finalDraft.text.match(/Original learner reasoning/g)?.length,
+      1,
+      'the recovered stage text appears exactly once despite repeated opens'
+    );
+    assert.equal(
+      finalDraft.text.includes('Extra insight.'),
+      true,
+      'subsequent learner edits to the unit note remain intact'
+    );
+
+    reloaded.clearUnitNote('unit-a', finalDraft.recoveredStages, { title: 'Different', text: 'Mismatched' });
+    assert.equal(reloaded.getUnitNote('unit-a', stages).text, finalDraft.text, 'draft remains on failed save (mismatched match)');
+    assert.equal(reloaded.getStage('unit-a', 'stage-a').text, 'Original learner reasoning', 'stage draft is preserved on failed save');
+
+    reloaded.clearUnitNote('unit-a', finalDraft.recoveredStages, { title: finalDraft.title, text: finalDraft.text });
+    assert.equal(reloaded.getUnitNote('unit-a', stages).text, '', 'unit draft is cleared on successful save');
+    assert.equal(reloaded.getStage('unit-a', 'stage-a').text, '', 'stage draft is cleared on successful save');
+
+    reloaded.dispose();
+    drafts.dispose();
+    reloaded.dispose();
+  });
+
+  await test('a completion tick certifies a criterion, not a position', async () => {
+    // F08 (2026-09-05 audit): position-keyed marks carried the tick for
+    // "Describe a scatterplot" over to the criterion that replaced it.
+    const settings = { uiDrafts: emptyUiDrafts() };
+    const drafts = new DraftStore(settings, async () => undefined);
+    const original = ['Describe a scatterplot', 'Compute the covariance'];
+
+    drafts.setDoneWhen('unit-a', 'stage-a', 0, true, original);
+    assert.deepEqual(drafts.getDoneWhen('unit-a', 'stage-a', original), [true, false]);
+
+    const reworded = ['Derive the normal equation', 'Compute the covariance'];
+    assert.deepEqual(
+      drafts.getDoneWhen('unit-a', 'stage-a', reworded),
+      [false, false],
+      'a revised criterion does not inherit the mark made against the old one',
+    );
+
+    const reordered = ['Compute the covariance', 'Describe a scatterplot'];
+    assert.deepEqual(
+      drafts.getDoneWhen('unit-a', 'stage-a', reordered),
+      [false, true],
+      'and an unchanged criterion keeps its mark through a reorder',
+    );
+
+    // Unrelated stages and units are untouched by either.
+    drafts.setDoneWhen('unit-a', 'stage-b', 0, true, original);
+    assert.deepEqual(drafts.getDoneWhen('unit-a', 'stage-b', original), [true, false]);
+    drafts.dispose();
+  });
+
+  await test('a mark survives a restart, and a legacy positional array upgrades once', async () => {
+    // Persistence is the settings object, so a "restart" is a second store
+    // over the same stored value.
+    const settings = { uiDrafts: emptyUiDrafts() };
+    const first = new DraftStore(settings, async () => undefined);
+    const criteria = ['Describe a scatterplot', 'Compute the covariance'];
+    first.setDoneWhen('unit-a', 'stage-a', 1, true, criteria);
+    first.dispose();
+
+    const restarted = new DraftStore(settings, async () => undefined);
+    assert.deepEqual(restarted.getDoneWhen('unit-a', 'stage-a', criteria), [false, true]);
+    restarted.dispose();
+
+    const legacy = { uiDrafts: emptyUiDrafts() };
+    legacy.uiDrafts.doneWhen['unit-b::stage-b'] = [true, false];
+    const upgrading = new DraftStore(legacy, async () => undefined);
+    assert.deepEqual(
+      upgrading.getDoneWhen('unit-b', 'stage-b', criteria),
+      [true, false],
+      'ticks a learner already made are kept across the upgrade',
+    );
+    assert.equal(
+      Array.isArray(legacy.uiDrafts.doneWhen['unit-b::stage-b']),
+      false,
+      'and the positional array is replaced, so the next revision invalidates properly',
+    );
+    assert.deepEqual(
+      upgrading.getDoneWhen('unit-b', 'stage-b', ['Derive the normal equation', 'Compute the covariance']),
+      [false, false],
+    );
+    upgrading.dispose();
+  });
+
+  await test('editing one relation is checked against the graph the edit produces', async () => {
+    // F11 (2026-09-05 audit): reversing a single edge was refused as a loop,
+    // because the preflight traversed the edge the replacement removes.
+    // The editor module reaches for the host's `obsidian` surface at import
+    // time; only the two constructors it names are needed to load it headless.
+    const atlasLoad = createSourceModuleLoader(ROOT, {
+      obsidian: { Modal: class {}, Notice: class {} },
+      electron: {},
+    });
+    const { buildAtlasGraph, findStrictCycle } = atlasLoad('src/features/atlas/graph.ts');
+    const { editDraft, draftRefusal } = atlasLoad('src/features/atlas/relation-editor.ts');
+    const conceptsOf = (keys) => keys.map((key) => ({
+      id: `concept-${key}`, type: 'concept', title: key.toUpperCase(),
+    }));
+    const graphOf = (keys, relations) => {
+      const records = conceptsOf(keys);
+      return buildAtlasGraph({
+        get: (id) => records.find((row) => row.id === id) ?? null,
+        of: (type) => records.filter((row) => row.type === type),
+        modules: () => [],
+        moduleConceptEdges: () => [],
+        relations: () => relations,
+      });
+    };
+
+    const single = graphOf(['a', 'b'], [
+      { from: 'concept-a', type: 'requires', to: 'concept-b' },
+    ]);
+    const reversal = editDraft(single.edges[0]);
+    reversal.from = 'concept-b';
+    reversal.to = 'concept-a';
+    assert.equal(draftRefusal(single, reversal), null, 'a single-edge reversal is legal');
+    assert.equal(
+      findStrictCycle(graphOf(['a', 'b'], [
+        { from: 'concept-b', type: 'requires', to: 'concept-a' },
+      ])),
+      null,
+      'and the graph it produces really has no cycle',
+    );
+
+    // An edit that closes a loop through edges the replacement keeps is still
+    // refused. A→B→C plus an unrelated D→A, retargeted to C→A, is a cycle.
+    const chain = graphOf(['a', 'b', 'c', 'd'], [
+      { from: 'concept-a', type: 'requires', to: 'concept-b' },
+      { from: 'concept-b', type: 'requires', to: 'concept-c' },
+      { from: 'concept-d', type: 'requires', to: 'concept-a' },
+    ]);
+    const closing = editDraft(chain.edges.find((edge) => edge.from === 'concept-d'));
+    closing.from = 'concept-c';
+    closing.to = 'concept-a';
+    assert.match(String(draftRefusal(chain, closing)), /loop of prerequisites/);
+    assert.ok(
+      findStrictCycle(graphOf(['a', 'b', 'c'], [
+        { from: 'concept-a', type: 'requires', to: 'concept-b' },
+        { from: 'concept-b', type: 'requires', to: 'concept-c' },
+        { from: 'concept-c', type: 'requires', to: 'concept-a' },
+      ])),
+      'and that replacement graph really does contain a cycle',
+    );
+
+    // Adding, rather than editing, still sees the whole graph.
+    const addition = {
+      mode: 'add', from: 'concept-c', type: 'requires', to: 'concept-a',
+      context: '', source: '', original: null, picking: null, search: '', error: null,
+    };
+    assert.match(String(draftRefusal(chain, addition)), /loop of prerequisites/);
+
+    // Removing the old row does not license a duplicate of a different one.
+    const duplicate = editDraft(chain.edges.find((edge) => edge.from === 'concept-d'));
+    duplicate.from = 'concept-a';
+    duplicate.to = 'concept-b';
+    assert.match(String(draftRefusal(chain, duplicate)), /already authored/);
+  });
+
+  await test('ManifestStore assertion rejects a missing required array', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      delete manifest.units;
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), false);
+    assert.match(store.error, /\/ must have required property 'units'/);
+    assert.deepEqual(store.units(), []);
+  });
+
+  await test('material angle detail is record-backed, independent, and collapsed by default', async () => {
+    const root = new RuntimeElement('div');
+    const exactDetail = '  Verbatim detail from the projected resource.  ';
+    const resources = [
+      {
+        record: {
+          angle: 'Short comparison angle.',
+          angle_detail: exactDetail,
+        },
+        id: 'resource-with-detail',
+        kind: 'read',
+        label: 'Resource with detail',
+        locator: 'Chapter 9',
+        sourceId: null,
+        scopeTriage: 'required-now',
+        canOpen: false,
+      },
+      {
+        record: {
+          angle: 'A second comparison angle.',
+          angle_detail: 'Second projected detail.',
+        },
+        id: 'second-resource-with-detail',
+        kind: 'read',
+        label: 'Second resource with detail',
+        locator: 'Chapter 10',
+        sourceId: null,
+        scopeTriage: 'helpful-now',
+        canOpen: false,
+      },
+      {
+        record: {
+          angle: 'This short angle must never be promoted into a detail.',
+          locator: 'This locator must never become a detail either.',
+        },
+        id: 'resource-without-detail',
+        kind: 'read',
+        label: 'Resource without detail',
+        locator: 'Appendix A',
+        sourceId: null,
+        scopeTriage: 'reference-only',
+        canOpen: false,
+      },
+    ];
+    renderStageResources(root, resources, {});
+
+    const details = root.find('los-resource-angle-detail');
+    const toggles = root.find('los-resource-angle-trigger');
+    assert.equal(details.length, 2, 'no disclosure is synthesized without angle_detail');
+    assert.equal(details[0].text, exactDetail, 'the projected detail is not rewritten');
+    assert.equal(details[0].attrs.hidden, '', 'each disclosure starts collapsed');
+    assert.equal(details[1].attrs.hidden, '');
+    assert.equal(toggles.length, 2);
+    assert.equal(toggles[0].attrs['aria-expanded'], 'false');
+    assert.equal(toggles[0].attrs['aria-controls'], details[0].attrs.id);
+
+    toggles[0].fire('click');
+    assert.equal(toggles[0].attrs['aria-expanded'], 'true');
+    assert.equal('hidden' in details[0].attrs, false);
+    assert.equal(toggles[0].text, '▾ Why this one');
+    assert.equal(details[1].attrs.hidden, '', 'opening one row does not open another');
+
+    toggles[1].fire('click');
+    assert.equal('hidden' in details[0].attrs, false);
+    assert.equal('hidden' in details[1].attrs, false, 'several rows can stay open for comparison');
+
+    toggles[0].fire('click');
+    assert.equal(toggles[0].attrs['aria-expanded'], 'false');
+    assert.equal(details[0].attrs.hidden, '');
+    assert.equal('hidden' in details[1].attrs, false, 'each row owns its disclosure state');
+
+    const nextStageRoot = new RuntimeElement('div');
+    renderStageResources(nextStageRoot, resources, {});
+    assert.ok(
+      nextStageRoot.find('los-resource-angle-detail').every(
+        (detail) => detail.attrs.hidden === '',
+      ),
+      'a newly rendered stage starts at the same collapsed density',
+    );
+  });
+
+  await test('ManifestStore list accessors remain safe before load', async () => {
+    const store = new ManifestStore({ vault: { adapter: {} } });
+    assert.deepEqual(store.modules(), []);
+    assert.deepEqual(store.projects(), []);
+    assert.equal(store.get('missing'), null);
+  });
+
+  await test('archived modules and their learning records stay out of every UI lookup', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      const archivedModule = {
+        ...manifest.modules[0],
+        id: 'module-archived-fixture',
+        title: 'Archived fixture module',
+        status: 'archived',
+        unit_order: ['unit-archived-fixture'],
+      };
+      const archivedUnit = {
+        ...manifest.units[0],
+        id: 'unit-archived-fixture',
+        title: 'Archived fixture unit',
+        module_id: archivedModule.id,
+      };
+      manifest.modules.push(archivedModule);
+      manifest.units.push(archivedUnit);
+      manifest.records.push(archivedModule, archivedUnit);
+      return JSON.stringify(manifest);
+    }));
+
+    assert.equal(await store.load(), true);
+    assert.equal(store.get('module-archived-fixture'), null);
+    assert.equal(store.get('unit-archived-fixture'), null);
+    assert.equal(
+      store.modules().some((row) => row.id === 'module-archived-fixture'),
+      false,
+    );
+    assert.equal(
+      store.units().some((row) => row.id === 'unit-archived-fixture'),
+      false,
+    );
+    assert.equal(
+      store.search('archived fixture').some(
+        (row) => row.id === 'module-archived-fixture'
+          || row.id === 'unit-archived-fixture',
+      ),
+      false,
+    );
+  });
+
+  await test('button groups gain arrow, Home, and End navigation without changing selection', async () => {
+    let listener = null;
+    const controls = [0, 1, 2].map((index) => ({
+      disabled: index === 1,
+      focused: false,
+      getAttribute: () => null,
+      focus() { this.focused = true; },
+    }));
+    const group = {
+      addEventListener: (name, callback) => { if (name === 'keydown') listener = callback; },
+      querySelectorAll: () => controls,
+    };
+    enableButtonGroupKeyboardNavigation(group, 'horizontal');
+    let prevented = false;
+    listener({
+      key: 'ArrowRight', target: controls[0],
+      preventDefault: () => { prevented = true; },
+    });
+    assert.equal(prevented, true);
+    assert.equal(controls[2].focused, true, 'disabled controls are skipped');
+    controls.forEach((control) => { control.focused = false; });
+    listener({ key: 'End', target: controls[0], preventDefault() {} });
+    assert.equal(controls[2].focused, true);
+    assert.ok(controls.every((control) => !('pressed' in control)),
+      'focus movement must not invent selection state');
+  });
+
+  await test('GatewayClient refuses empty and unreadable write confirmations', async () => {
+    const outputs = ['', 'not-json'];
+    const plugin = {
+      runLos: (_args, callback) => callback(null, outputs.shift(), ''),
+      store: { snapshotId: SNAPSHOT },
+    };
+    const gateway = new GatewayClient(plugin);
+    await assert.rejects(gateway.call(['stage-note']), /unconfirmed/);
+    await assert.rejects(gateway.call(['stage-note']), /unreadable output/);
+  });
+
+  await test('GatewayClient accepts one confirmed JSON result and carries the snapshot guard', async () => {
+    let received = null;
+    let sent = null;
+    const plugin = {
+      runLos: (args, callback, stdin) => {
+        received = args; sent = stdin;
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    };
+    const gateway = new GatewayClient(plugin);
+    const result = await gateway.saveUnitNote(
+      'unit-a', { text: 'text', stageIds: ['stage-a'] },
+      { 'unit-a': 3, 'study-map-a': 8 },
+    );
+    assert.equal(result.transaction_id, 'tx-1');
+    // One write shape: a declared capability, its payload on stdin.
+    assert.deepEqual(received, ['capability', 'unit.note.append', '--payload-file', '-']);
+    const envelope = JSON.parse(sent);
+    assert.equal(envelope.capability, 'unit.note.append');
+    assert.equal(envelope.schema_version, 2);
+    assert.equal(envelope.channel, 'ui');
+    assert.equal(envelope.expected_snapshot, SNAPSHOT,
+      'the snapshot guard must travel with the write');
+    assert.deepEqual(envelope.expected_revisions, {
+      'unit-a': 3,
+      'study-map-a': 8,
+    });
+    assert.deepEqual(envelope.payload,
+      { unit_id: 'unit-a', text: 'text', stage_id: ['stage-a'] });
+    assert.ok(envelope.request_id, 'every write is identifiable');
+    assert.ok(envelope.idempotency_key, 'every write is safe to replay deliberately');
+    assert.equal(envelope.approval.kind, 'direct-user-gesture');
+    const subject = {
+      schema_version: 2,
+      capability: envelope.capability,
+      channel: 'ui',
+      expected_snapshot: SNAPSHOT,
+      expected_revisions: envelope.expected_revisions,
+      payload: envelope.payload,
+    };
+    const expectedSubject = `sha256:${crypto.createHash('sha256')
+      .update(JSON.stringify(canonical(subject)), 'utf8').digest('hex')}`;
+    assert.equal(envelope.approval.subject_sha256, expectedSubject,
+      'the approval binds the exact sorted compact UTF-8 subject');
+  });
+
+  await test('GatewayClient endSession always names the UI session identity', async () => {
+    const seen = [];
+    const plugin = {
+      runLos: (args, callback) => {
+        seen.push(args);
+        callback(null, '{"ok": true, "owned_changes": [], "unrelated_changes": []}', '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    };
+    const gateway = new GatewayClient(plugin);
+    await gateway.endSession();
+    await gateway.endSession('learner message', true);
+    // Without the explicit id a UI review would report an agent session's
+    // rows, and a UI commit would stage them.
+    assert.deepEqual(seen[0], ['session-end', '--session-id', 'ui']);
+    assert.deepEqual(seen[1],
+      ['session-end', '--session-id', 'ui', '--commit-message', 'learner message', '--push']);
+  });
+
+  await test('LosRuntime stamps every child with the UI session identity', async () => {
+    const { LosRuntime, UI_SESSION_ID, SESSION_ID_ENV } = load('src/infrastructure/los-runtime.ts');
+    assert.equal(UI_SESSION_ID, 'ui');
+    assert.equal(SESSION_ID_ENV, 'LOS_SESSION_ID');
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'learningos-ui-session-'));
+    process.on('exit', () => fs.rmSync(base, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(base, 'tools'), { recursive: true });
+    // Node executes the script regardless of its extension, so the fixture
+    // stands in for tools/los.py while the interpreter is node itself.
+    fs.writeFileSync(path.join(base, 'tools', 'los.py'),
+      'console.log(process.env.LOS_SESSION_ID || "MISSING");\n', 'utf8');
+    const runtime = new LosRuntime(
+      { vault: { adapter: { getBasePath: () => base } } },
+      () => process.execPath,
+    );
+    const stdout = await new Promise((resolve, reject) => {
+      runtime.run(['session-end'], (error, out) => {
+        if (error) reject(error);
+        else resolve(out);
+      });
+    });
+    assert.equal(stdout.trim(), 'ui',
+      'a UI-spawned write must land in the UI session ledger');
+  });
+
+  await test('LosRuntime stamps every child with the UI client marker', async () => {
+    const { LosRuntime, CLIENT_ENV, uiClientMarker } = load('src/infrastructure/los-runtime.ts');
+    const { runtimeSourceFingerprint } = load('src/build-identity.ts');
+    assert.equal(CLIENT_ENV, 'LOS_CLIENT');
+    assert.equal(uiClientMarker(), `obsidian-ui/${runtimeSourceFingerprint()}`);
+    const base = fs.mkdtempSync(path.join(os.tmpdir(), 'learningos-ui-client-'));
+    process.on('exit', () => fs.rmSync(base, { recursive: true, force: true }));
+    fs.mkdirSync(path.join(base, 'tools'), { recursive: true });
+    fs.writeFileSync(path.join(base, 'tools', 'los.py'),
+      'console.log(process.env.LOS_CLIENT || "MISSING");\n', 'utf8');
+    const runtime = new LosRuntime(
+      { vault: { adapter: { getBasePath: () => base } } },
+      () => process.execPath,
+    );
+    const stdout = await new Promise((resolve, reject) => {
+      runtime.run(['session-end'], (error, out) => {
+        if (error) reject(error);
+        else resolve(out);
+      });
+    });
+    assert.equal(stdout.trim(), uiClientMarker(),
+      'a UI-spawned child must carry the running build identity');
+  });
+
+  await test('Gateway approval sorting matches Python Unicode code-point order', async () => {
+    const subject = {
+      schema_version: 2,
+      capability: 'capture.create',
+      channel: 'ui',
+      expected_snapshot: SNAPSHOT,
+      expected_revisions: {},
+      payload: { '😀': 'astral', '\ue000': 'private-use' },
+    };
+    assert.equal(
+      await gatewaySubjectSha256(subject),
+      'sha256:35ede539db12bbb697f8246dbd57be36bc5d5663ff567137a835d937e1544ed3',
+    );
+  });
+
+  /*
+   * A response that is not a receipt is not therefore a refusal.
+   *
+   * These two used to reject with UNCONFIRMED, which reads as "nothing was
+   * written" — but neither a mismatched identity nor an unrecognised extra
+   * field tells you whether Core committed. They are ambiguous, so the client
+   * replays the same envelope once and then blocks with the record retained.
+   * The draft survives either way, which is what the learner sees.
+   */
+  await test('a success response with the wrong identity is ambiguous, not a refusal', async () => {
+    const sent = [];
+    const recovery = new MemoryGatewayRecoveryStore(true);
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        sent.push(stdin);
+        callback(null, gatewayConfirmation(stdin, SNAPSHOT, {
+          request_id: 'req-from-another-write',
+        }), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+      recovery,
+    });
+    await assert.rejects(
+      gateway.captureText('keep this draft'),
+      (error) => error.gatewayCode === 'RECOVERY_BLOCKED'
+        && /draft was kept/.test(error.message),
+    );
+    assert.equal(sent.length, 2, 'exactly one automatic replay, never a loop');
+    assert.equal(sent[0], sent[1], 'the replay is the same bytes, not a new request');
+    assert.equal(recovery.replayable().record.phase, 'blocked');
+    assert.equal(recovery.replayable().record.last_error.code, 'IDENTITY_MISMATCH');
+  });
+
+  await test('extension fields in the closed V2 success envelope leave the outcome open', async () => {
+    const recovery = new MemoryGatewayRecoveryStore(true);
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin, SNAPSHOT, {
+        invented_confirmation_field: true,
+      }), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery,
+    });
+    await assert.rejects(
+      gateway.captureText('keep this draft'),
+      (error) => error.gatewayCode === 'RECOVERY_BLOCKED'
+        && /draft was kept/.test(error.message),
+    );
+    assert.equal(recovery.replayable().record.phase, 'blocked',
+      'an unresolved write stays on the record rather than being forgotten');
+  });
+
+  await test('ordinary vault and material openers refuse symlinks outside their roots', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'learningos-resource-boundary-'));
+    try {
+      const vault = path.join(root, 'LearningOS', 'repository');
+      const materials = path.join(root, 'LearningOS', 'materials');
+      const outside = path.join(root, 'outside.pdf');
+      fs.mkdirSync(vault, { recursive: true });
+      fs.mkdirSync(materials, { recursive: true });
+      fs.writeFileSync(outside, 'outside');
+      fs.symlinkSync(outside, path.join(vault, 'outside-link.pdf'));
+      fs.symlinkSync(outside, path.join(materials, 'outside-link.pdf'));
+      const opener = new ResourceOpener({
+        vault: {
+          adapter: { getBasePath: () => vault },
+          getAbstractFileByPath: () => ({ path: 'outside-link.pdf' }),
+        },
+        workspace: {},
+      });
+      assert.equal(await opener.openVaultPath('outside-link.pdf'), undefined);
+      assert.match(noticeLog.at(-1), /Unsafe vault symlink/);
+      assert.equal(await opener.openMaterialPath('materials/outside-link.pdf'), false);
+      assert.match(noticeLog.at(-1), /Unsafe material symlink/);
+      assert.equal(externalLog.some((entry) => entry.includes('outside.pdf')), false);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  await test('VS Code file links preserve the exact local target', async () => {
+    assert.equal(
+      visualStudioCodeUrl('/Users/Aram A/notes/topic #1.md'),
+      'vscode://file/Users/Aram%20A/notes/topic%20%231.md',
+    );
+  });
+
+  await test('direct resource targets exclude folders and missing local files', async () => {
+    assert.equal(hasDirectResourceTarget({
+      material_path: 'materials/aml/lecture-slides',
+      material_exists: true,
+    }), false);
+    assert.equal(hasDirectResourceTarget({
+      material_path: 'materials/aml/lecture-slides/VL 11-transformers.pdf',
+      material_exists: false,
+    }), false);
+    assert.equal(hasDirectResourceTarget({
+      material_path: 'materials/aml/lecture-slides/VL 11-transformers.pdf',
+    }), false);
+    assert.equal(hasDirectResourceTarget({
+      material_path: 'materials/aml/lecture-slides/VL 11-transformers.pdf',
+      material_exists: true,
+    }), true);
+    assert.equal(hasDirectResourceTarget({ url: 'javascript:alert(1)' }), false);
+    assert.equal(hasDirectResourceTarget({ url: 'https://example.org/lecture-11' }), true);
+  });
+
+  /*
+   * F07: the page the stage names.
+   *
+   * Opening the CLT lecture reached the right file and showed page 1 of 38.
+   * The stage knew it wanted physical pages 20-22 and the opening path did
+   * not carry it, so the learner had to rediscover the location by hand
+   * (audit workbench/audits/synthetic-learner-2026-09-12, F07).
+   */
+  await test('a qualified physical page in the locator becomes a destination', () => {
+    const pdf = { material_path: 'materials/sad/08_normal_distribution.pdf' };
+    assert.deepEqual(
+      pageDestination({ ...pdf, locator: 'lecture-slides/08_normal_distribution.pdf, PDF pp. 20-22' }),
+      { page: 20, label: 'physical pages 20\u201322' });
+    assert.deepEqual(
+      pageDestination({ ...pdf, locator: '\u00a74.3, physical PDF pp. 214\u2013220' }),
+      { page: 214, label: 'physical pages 214\u2013220' });
+    assert.deepEqual(
+      pageDestination({ ...pdf, locator: 'Read physical p. 14 only' }),
+      { page: 14, label: 'physical page 14' });
+  });
+
+  await test('a printed page beside a physical one is never the destination', () => {
+    /*
+     * Analysis Chapter 01 declares both numberings, which is exactly the case
+     * F07 said to check. The first parser tested for a qualifier *somewhere*
+     * and then extracted with an optional-qualifier pattern, so the guard was
+     * satisfied by the `PDF` further along while the match landed on the
+     * printed `p. 1` (review workbench/audits/repair-review-2026-09-13, R2).
+     */
+    const pdf = { material_path: 'materials/analysis/skript.pdf' };
+    assert.deepEqual(pageDestination({
+      ...pdf,
+      locator: 'unser skript.pdf Kapitel 1, printed p. 1 (PDF p. 11)\u2013printed p. 6 '
+        + '(PDF p. 16); \u00a71.1 Zahlenmengen printed p. 2 (PDF p. 12)',
+    }), { page: 11, label: 'physical page 11' });
+    // The qualifier has to be adjacent, not merely present in the string.
+    assert.equal(pageDestination({
+      ...pdf, locator: 'printed pp. 12-20; see the PDF for the full deck',
+    }), null);
+    assert.equal(pageDestination({ ...pdf, locator: 'printed p. 4' }), null);
+  });
+
+  await test('an unqualified page or a slide label is never guessed at', () => {
+    const pdf = { material_path: 'materials/sad/deck.pdf' };
+    // A printed slide number routinely differs from its position in the file;
+    // the L08 route says so itself. Landing on the wrong page confidently is
+    // worse than landing on page 1 and being told where to go.
+    for (const locator of [
+      'exercise-slides/UE6.pdf, slides 5-20',
+      'exercise-slides/Blatt.pdf, pp. 1 and 3, Aufgaben 1 and 3',
+      '\u00a79.3.1 Maximum Likelihood-Sch\u00e4tzung',
+      'lecture-slides/08_normal_distribution.pdf, 38 slides',
+      '',
+    ]) {
+      assert.equal(pageDestination({ ...pdf, locator }), null, locator || '(empty)');
+    }
+    // Not a PDF: nothing to be positioned inside.
+    assert.equal(pageDestination({
+      material_path: 'materials/sad/notes.md', locator: 'PDF pp. 20-22',
+    }), null);
+    assert.equal(pageDestination({ ...pdf, locator: 'PDF p. 0' }), null);
+    // A malformed span still names a usable opening page; inventing the span
+    // would be the guess, not reading the first number.
+    assert.deepEqual(pageDestination({ ...pdf, locator: 'PDF pp. 22-20' }),
+      { page: 22, label: 'physical page 22' });
+  });
+
+  await test('the destination reaches the opener that can act on it', async () => {
+    const seen = { material: [], vault: [] };
+    const opener = new ResourceOpener({});
+    const ports = {
+      openMaterialPath: (path, destination) => seen.material.push([path, destination]),
+      openVaultPath: (path, destination) => seen.vault.push([path, destination]),
+    };
+    await opener.openResource({
+      material_path: 'materials/sad/08_normal_distribution.pdf',
+      material_exists: true,
+      locator: 'lecture-slides/08_normal_distribution.pdf, PDF pp. 20-22',
+    }, ports);
+    assert.deepEqual(seen.material.at(-1),
+      ['materials/sad/08_normal_distribution.pdf', { page: 20, label: 'physical pages 20\u201322' }]);
+    await opener.openResource({
+      vault_path: 'knowledge/attachments/chapter.pdf',
+      locator: 'chapter.pdf, physical PDF pp. 5-9',
+    }, ports);
+    assert.deepEqual(seen.vault.at(-1),
+      ['knowledge/attachments/chapter.pdf', { page: 5, label: 'physical pages 5\u20139' }]);
+    // No declaration, no destination: the opener is told nothing rather than
+    // being handed a guess to announce.
+    await opener.openResource({
+      material_path: 'materials/sad/UE6.pdf',
+      material_exists: true,
+      locator: 'exercise-slides/UE6.pdf, slides 5-20',
+    }, ports);
+    assert.deepEqual(seen.material.at(-1), ['materials/sad/UE6.pdf', null]);
+  });
+
+  await test('resource opening skips a collection folder for its exact website', async () => {
+    externalLog.length = 0;
+    const opener = new ResourceOpener({});
+    await opener.openResource({
+      material_path: 'materials/aml/lecture-slides',
+      material_exists: true,
+      url: 'https://example.org/aml/lecture-11',
+    });
+    assert.equal(externalLog.at(-1), 'https://example.org/aml/lecture-11');
+    assert.equal(await opener.openResource({
+      material_path: 'materials/aml/lecture-slides',
+      material_exists: true,
+    }), false);
+  });
+
+  await test('resource opening skips a vault collection folder for its exact website', async () => {
+    externalLog.length = 0;
+    const openedVault = [];
+    const opener = new ResourceOpener({});
+    const record = {
+      vault_path: 'knowledge/attachments/lecture-collection',
+      url: 'https://example.org/exact-lecture',
+    };
+    assert.equal(hasDirectResourceTarget(record), true);
+    await opener.openResource(record, {
+      openMaterialPath: () => undefined,
+      openVaultPath: (value) => openedVault.push(value),
+    });
+    assert.deepEqual(openedVault, []);
+    assert.equal(externalLog.at(-1), 'https://example.org/exact-lecture');
+  });
+
+  await test('randomized resource precedence remains file-first and fail-closed', async () => {
+    let seed = 0x5eed1234;
+    const next = () => {
+      seed = (1664525 * seed + 1013904223) >>> 0;
+      return seed;
+    };
+    const opener = new ResourceOpener({});
+    const opened = { material: [], vault: [] };
+    const ports = {
+      openMaterialPath: (value) => opened.material.push(value),
+      openVaultPath: (value) => opened.vault.push(value),
+    };
+
+    for (let index = 0; index < 2_048; index += 1) {
+      const token = `${next().toString(16)} lecture ${index}`;
+      const file = `materials/fuzz/${token}.pdf`;
+      const folder = `materials/fuzz/${token}`;
+      const website = `https://example.org/lecture/${index}?seed=${next()}`;
+      const category = next() % 8;
+      let record;
+      let expected;
+      if (category === 0) {
+        record = { material_path: file, material_exists: true, url: website };
+        expected = 'material';
+      } else if (category === 1) {
+        record = { material_path: file, material_exists: false, url: website };
+        expected = 'url';
+      } else if (category === 2) {
+        record = { material_path: folder, material_exists: true, url: website };
+        expected = 'url';
+      } else if (category === 3) {
+        record = { material_path: folder, material_exists: true };
+        expected = null;
+      } else if (category === 4) {
+        record = { vault_path: `notes/${token}.md` };
+        expected = 'vault';
+      } else if (category === 5) {
+        record = { vault_path: `notes/${token}` };
+        expected = null;
+      } else if (category === 6) {
+        record = { vault_path: `material://fuzz/${token}.pdf`, url: website };
+        expected = 'url';
+      } else {
+        record = { material_path: folder, url: `javascript:alert(${index})` };
+        expected = null;
+      }
+
+      assert.equal(hasDirectResourceTarget(record), expected !== null);
+      if (expected === null) continue;
+      const before = {
+        material: opened.material.length,
+        vault: opened.vault.length,
+        url: externalLog.length,
+      };
+      await opener.openResource(record, ports);
+      assert.equal(opened.material.length - before.material, expected === 'material' ? 1 : 0);
+      assert.equal(opened.vault.length - before.vault, expected === 'vault' ? 1 : 0);
+      assert.equal(externalLog.length - before.url, expected === 'url' ? 1 : 0);
+    }
+  });
+
+  /*
+   * The core answers a refusal on stdout and leaves stderr empty. Preferring
+   * stderr meant the learner saw Node's "Command failed: python …" instead of
+   * the sentence explaining what was refused and why.
+   *
+   * A V1-shaped body is no longer trusted as a refusal of a V2 write — only a
+   * complete, identity-matched V2 failure envelope can say "nothing was
+   * written" — but the sentence still has to reach the learner, and does.
+   */
+  await test('an unrecognised body still surfaces the reason the core gave', async () => {
+    const refusal = JSON.stringify({
+      ok: false,
+      error: 'los: projection conflict — authored files changed since the app loaded',
+    });
+    const failure = Object.assign(new Error('Command failed: python tools/los.py capability'), { code: 3 });
+    const plugin = {
+      runLos: (_args, callback) => callback(failure, refusal, ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: new MemoryGatewayRecoveryStore(true),
+    };
+    const gateway = new GatewayClient(plugin);
+    await assert.rejects(
+      gateway.progress('u', 's', 'complete'),
+      (error) => {
+        assert.match(error.message, /projection conflict/,
+          'the core’s reason must reach the learner');
+        assert.doesNotMatch(error.message, /Command failed/);
+        assert.equal(error.gatewayCode, 'RECOVERY_BLOCKED');
+        // Deliberately NOT a projection conflict: an automatic rebuild-and-
+        // retry is only safe when the refusal proves nothing was committed,
+        // and an unrecognisable body proves nothing at all.
+        assert.equal(isProjectionConflict(error), false);
+        return true;
+      },
+    );
+  });
+
+  await test('Gateway V2 typed refusal codes survive the process boundary', async () => {
+    const failure = Object.assign(new Error('capability refused'), { code: 2 });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        const request = JSON.parse(stdin);
+        callback(failure, JSON.stringify({
+          schema_version: 2,
+          request_id: request.request_id,
+          idempotency_key: request.idempotency_key,
+          capability: request.capability,
+          ok: false,
+          replayed: false,
+          transaction_id: null,
+          receipt_path: null,
+          snapshot_after: null,
+          result: {},
+          error: {
+            code: 'STALE_SNAPSHOT',
+            message: 'Reload the current projection.',
+            retryable: true,
+            details: {},
+          },
+        }), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await assert.rejects(gateway.captureText('bounded'), (error) => {
+      assert.equal(error.gatewayCode, 'STALE_SNAPSHOT');
+      assert.equal(error.retryable, true);
+      assert.equal(isProjectionConflict(error), true);
+      assert.equal(error.message, 'Reload the current projection.');
+      return true;
+    });
+  });
+
+  await test('an ordinary failure with a real stderr still reports it', async () => {
+    const failure = Object.assign(new Error('spawn ENOENT'), { code: 2 });
+    const plugin = {
+      runLos: (_args, callback) => callback(failure, '', 'python: no such interpreter'),
+      store: { snapshotId: SNAPSHOT },
+      recovery: new MemoryGatewayRecoveryStore(true),
+    };
+    const gateway = new GatewayClient(plugin);
+    await assert.rejects(gateway.progress('u', 's', 'complete'), (error) => {
+      assert.match(error.message, /no such interpreter/);
+      assert.equal(isProjectionConflict(error), false,
+        'only exit 3 may trigger an automatic rebuild');
+      return true;
+    });
+  });
+
+  await test('every porcelain method sends one declared capability envelope', async () => {
+    const calls = [];
+    const plugin = {
+      runLos: (args, callback, stdin) => {
+        calls.push({ args, envelope: JSON.parse(stdin) });
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    };
+    const gateway = new GatewayClient(plugin);
+    await gateway.progress('u', 's', 'complete');
+    await gateway.sourceSelection('u', 'route-u-chapter-2', 'src', 'Chapter 2', 'Worked derivation', true);
+    await gateway.feedback('u', 's', 'src', 'helpful');
+    await gateway.detour('u', 's', 'a gap');
+    await gateway.resolveDetour('u', 'd', 'done');
+    await gateway.attach('u', 's', gatewayFile);
+    await gateway.captureText('note text', 'a title');
+    await gateway.captureFile(gatewayFile);
+    await gateway.saveAtlasQuestion({ id: 'note-q', state: 'resolved' });
+    await gateway.saveUnitNote('u', {
+      text: 'body', stageIds: ['s'], filePaths: [gatewayFile],
+    });
+
+    assert.deepEqual(calls.map((c) => c.envelope.capability), [
+      'stage.progress.update', 'unit.source-selection.set', 'source.feedback.record', 'detour.create',
+      'detour.resolve', 'stage.attachment.add', 'capture.create',
+      'capture.create', 'atlas.question.save', 'unit.note.append',
+    ]);
+    for (const call of calls) {
+      assert.equal(call.args[0], 'capability', 'one call shape for every write');
+      assert.deepEqual(call.args.slice(2), ['--payload-file', '-']);
+      assert.equal(call.envelope.schema_version, 2);
+      assert.equal(call.envelope.expected_snapshot, SNAPSHOT);
+      // The two request-scoped capabilities carry the guard Core derives from
+      // their own idempotency key; every other capability keeps transmitting
+      // exactly the caller-supplied map, empty here because these calls pass
+      // none.
+      assert.deepEqual(
+        call.envelope.expected_revisions,
+        REQUEST_SCOPED_PREFIXES[call.envelope.capability]
+          ? expectedRequestGuard(call.envelope)
+          : {},
+      );
+      assert.equal(call.envelope.approval.subject_sha256,
+        approvalSubjectSha256(call.envelope),
+        'the approval must be hashed over the map that actually travelled');
+      assert.ok(!('expected_snapshot' in call.envelope.payload),
+        'the payload must not restate what the envelope owns');
+      assert.ok(!('approve' in call.envelope.payload),
+        'Gateway V2 approval belongs only in the envelope');
+    }
+    // Addressed by capability rather than by position: the list above changes
+    // whenever the app gains or loses a write, and an index silently pointed
+    // at the wrong envelope the last time it did.
+    const expectedFileDigest = fileDigest(gatewayFile);
+    const sentAs = (capability) => calls
+      .filter((c) => c.envelope.capability === capability)
+      .map((c) => c.envelope.payload);
+    assert.equal(sentAs('stage.attachment.add')[0].file_sha256, expectedFileDigest);
+    const [captureText, captureFile] = sentAs('capture.create');
+    assert.ok(!('file_sha256' in captureText), 'a typed capture carries no file');
+    assert.equal(captureFile.file_sha256, expectedFileDigest);
+    assert.deepEqual(sentAs('unit.note.append')[0].attachment_sha256, [expectedFileDigest]);
+  });
+
+  /*
+   * The request-scoped guard, from the interface side.
+   *
+   * `capture.create` and `garden.seed.create` cannot be guarded against a
+   * filename, because Core picks it. They guard the request instead — which
+   * means the guard can only be built after the idempotency key exists, and
+   * Core hashes the approval over `expected_revisions`, so it must be final
+   * before the subject is hashed and identical to what the envelope carries.
+   * Deriving it in the wrong order produced a validly-signed approval for a
+   * guard Core never saw, and every capture the UI sent was refused.
+   *
+   * Each expectation below is computed from the envelope that was actually
+   * emitted, never from a literal — a test that hardcodes the key would keep
+   * passing while the two sides drifted apart, which is the failure mode.
+   */
+  await test('a fresh text capture carries the guard derived from its own request', async () => {
+    let envelope = null;
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        envelope = JSON.parse(stdin);
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    const confirmation = await gateway.captureText('a thought worth keeping', 'a title');
+    assert.equal(confirmation.transaction_id, 'tx-1');
+    assert.equal(envelope.capability, 'capture.create');
+    assert.deepEqual(envelope.expected_revisions, expectedRequestGuard(envelope));
+    assert.deepEqual(Object.keys(envelope.expected_revisions),
+      [`capture-request:${envelope.idempotency_key}`]);
+    assert.equal(envelope.approval.subject_sha256, approvalSubjectSha256(envelope),
+      'the approval hash must be taken after the guard is final');
+  });
+
+  await test('a fresh file capture carries the guard derived from its own request', async () => {
+    let envelope = null;
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        envelope = JSON.parse(stdin);
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await gateway.captureFile(gatewayFile);
+    assert.equal(envelope.capability, 'capture.create');
+    assert.equal(envelope.payload.file_sha256, fileDigest(gatewayFile),
+      'the approved bytes still travel with the request');
+    assert.deepEqual(envelope.expected_revisions, expectedRequestGuard(envelope));
+    assert.equal(envelope.approval.subject_sha256, approvalSubjectSha256(envelope));
+  });
+
+  await test('a fresh Garden seed carries the guard derived from its own request', async () => {
+    let envelope = null;
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        envelope = JSON.parse(stdin);
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await gateway.createGardenSeed('a loose thought', 'Seed title');
+    assert.equal(envelope.capability, 'garden.seed.create');
+    assert.deepEqual(envelope.expected_revisions, expectedRequestGuard(envelope));
+    assert.deepEqual(Object.keys(envelope.expected_revisions),
+      [`garden-request:${envelope.idempotency_key}`]);
+    assert.equal(envelope.approval.subject_sha256, approvalSubjectSha256(envelope));
+    assert.deepEqual(envelope.payload, { text: 'a loose thought', title: 'Seed title' });
+  });
+
+  await test('two captures never reuse one request guard', async () => {
+    const envelopes = [];
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        envelopes.push(JSON.parse(stdin));
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await gateway.captureText('first');
+    await gateway.captureText('second');
+    assert.notEqual(envelopes[0].idempotency_key, envelopes[1].idempotency_key);
+    assert.notDeepEqual(envelopes[0].expected_revisions, envelopes[1].expected_revisions);
+    for (const envelope of envelopes) {
+      assert.deepEqual(envelope.expected_revisions, expectedRequestGuard(envelope));
+    }
+  });
+
+  await test('a request-scoped capability refuses a competing caller guard locally', async () => {
+    let reached = false;
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        reached = true;
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    // Silently replacing or merging it would turn a guard the caller asked for
+    // into an unguarded write, so this is a refusal — and it happens here,
+    // before anything is sent.
+    assert.throws(
+      () => gateway.capability('capture.create', { text: 'x' },
+        { expectedRevisions: { 'capture-request:someone-elses': 4 } }),
+      (error) => error.gatewayCode === 'INVALID_REQUEST'
+        && /nothing was written/.test(error.message),
+    );
+    assert.equal(reached, false, 'nothing may reach Core after a local refusal');
+  });
+
+  await test('unrelated capabilities still transmit their caller-supplied guards unchanged', async () => {
+    const envelopes = [];
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        envelopes.push(JSON.parse(stdin));
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await gateway.saveUnitNote('unit-a', { text: 'text' }, { 'unit-a': 3, 'study-map-a': 8 });
+    await gateway.progress('unit-a', 'stage-a', 'complete', { 'unit-a': 4 });
+    assert.deepEqual(envelopes[0].expected_revisions, { 'unit-a': 3, 'study-map-a': 8 });
+    assert.deepEqual(envelopes[1].expected_revisions, { 'unit-a': 4 });
+    for (const envelope of envelopes) {
+      assert.ok(!(`capture-request:${envelope.idempotency_key}` in envelope.expected_revisions),
+        'the request-scoped guard belongs only to the capabilities that need it');
+      assert.equal(envelope.approval.subject_sha256, approvalSubjectSha256(envelope));
+    }
+  });
+
+  await test('the plan template is read from Core, not authored in the interface', async () => {
+    const calls = [];
+    const answer = {
+      ok: true,
+      contract: 'plan-template-v1',
+      profile: 'curriculum',
+      plan_template_version: 1,
+      schema: 'learning-plan.schema.json',
+      plan: {
+        type: 'learning-plan',
+        plan_template_version: 1,
+        title: 'Lecture 01',
+        status: 'ready',
+        horizon: 'now',
+        cadence: 'One stage per week',
+        outcome: 'Explain and apply the lecture independently.',
+        stages: [{ id: 'stage-x', number: 1, title: 'Lecture 01' }],
+      },
+    };
+    const gateway = new GatewayClient({
+      runLos: (args, callback) => {
+        calls.push(args);
+        callback(null, JSON.stringify(answer), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+
+    const template = asPlanTemplate(await gateway.planTemplate('curriculum', 'Lecture 01'));
+    assert.deepEqual(calls, [[
+      'plan-template', 'curriculum', '--title', 'Lecture 01', '--json',
+    ]], 'the query is the declared read, with no snapshot write guard');
+    assert.equal(template.planTemplateVersion, 1);
+    assert.equal(template.schema, 'learning-plan.schema.json');
+    assert.equal(template.cadence, 'One stage per week');
+    assert.equal(template.horizon, 'now');
+
+    await gateway.planTemplate('curriculum', 'Lecture 01', {
+      unitId: 'unit-demo-l01', moduleId: 'module-demo',
+    });
+    assert.deepEqual(calls[1], [
+      'plan-template', 'curriculum', '--title', 'Lecture 01', '--json',
+      '--unit-id', 'unit-demo-l01', '--module-id', 'module-demo',
+    ]);
+  });
+
+  await test('a reviewed study map is applied by path through one declared capability', async () => {
+    /*
+     * Core admits `unit.map.import` to a gesture over `channel: "ui"`, because
+     * the dialog runs the no-write preflight and renders the concrete diff
+     * before this control exists (review repair-review-2026-09-13, D1). The
+     * envelope is unchanged: a path plus its exact digest, so Core reads the
+     * approved bytes once and refuses the map whole.
+     */
+    const calls = [];
+    const gateway = new GatewayClient({
+      runLos: (args, callback, stdin) => {
+        calls.push({ args, envelope: args[0] === 'capability' ? JSON.parse(stdin) : null });
+        callback(null, args[0] === 'capability'
+          ? gatewayConfirmation(stdin)
+          : JSON.stringify({ ok: true, mode: 'check', canonical_files_written: 0, unit_id: 'unit-amls-l01', study_map_id: 'study-map-amls-l01', file_sha256: fileDigest(gatewayMap), snapshot_id: SNAPSHOT, expected_revisions: { 'unit-amls-l01': 1, 'study-map-amls-l01': 2 }, diff: { stages_after: [], content_changes: [] } }), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+
+    const reviewed = await gateway.checkUnitMapImport('unit-amls-l01', gatewayMap);
+    const preflight = calls.at(-1).args;
+    assert.equal(preflight[0], 'unit-map-import', 'the preflight is not a capability write');
+    assert.ok(preflight.includes('--check'), 'the preflight must write nothing');
+    assert.ok(preflight.includes(fileDigest(gatewayMap)),
+      'the diff shown is bound to the exact bytes that will be imported');
+
+    await gateway.importUnitMap(reviewed);
+    await gateway.importUnitMap(await gateway.checkUnitMapImport('unit-amls-l01', gatewayMap, true));
+    const envelopes = calls.map((c) => c.envelope).filter(Boolean);
+    assert.deepEqual(envelopes.map((e) => e.capability),
+      ['unit.map.import', 'unit.map.import']);
+    for (const envelope of envelopes) {
+      assert.equal(envelope.channel, 'ui', 'the admission is channel-bound');
+      assert.equal(envelope.approval.kind, 'direct-user-gesture');
+      assert.equal(envelope.expected_snapshot, SNAPSHOT);
+      assert.deepEqual(Object.keys(envelope.payload).sort().filter((k) => k !== 'replace'),
+        ['file', 'file_sha256', 'unit_id']);
+      assert.equal(envelope.payload.file, gatewayMap);
+      assert.equal(envelope.payload.file_sha256, fileDigest(gatewayMap));
+    }
+    assert.ok(!('replace' in envelopes[0].payload),
+      'a first import must not silently claim permission to overwrite');
+    assert.equal(envelopes[1].payload.replace, true);
+  });
+
+  await test('the four reviewed workflows send, and nothing else does', async () => {
+    const sent = [];
+    const gateway = new GatewayClient({
+      runLos: (args, callback, stdin) => {
+        sent.push(JSON.parse(stdin).capability);
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await gateway.changeConceptRelations([{ action: 'add', new: { from: 'a', type: 'requires', to: 'b' } }]);
+    await gateway.prepareShelving('u');
+    await gateway.applyShelving('u', ['p1']);
+    assert.deepEqual(sent,
+      ['concept.relations.change', 'review.prepare', 'review.apply']);
+
+    // Everything else this client can still name refuses before an envelope
+    // exists, naming its own route back rather than the approval kind.
+    let invoked = false;
+    const closed = new GatewayClient({
+      runLos: () => { invoked = true; },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await assert.rejects(async () => closed.saveNote('u', 's', 'text'), /retired surface/);
+    assert.equal(invoked, false, 'no envelope reaches Core for it');
+  });
+
+  await test('a half-read plan-template answer is refused rather than trusted', async () => {
+    // Each of these would otherwise produce a "template" the dialog would
+    // present as authoritative while carrying none of the standard.
+    for (const broken of [
+      { ok: false, error: 'refused' },
+      { ok: true, contract: 'plan-template-v0', profile: 'curriculum', plan_template_version: 1 },
+      { ok: true, contract: 'plan-template-v1', profile: 'unknown', plan_template_version: 1 },
+      { ok: true, contract: 'plan-template-v1', profile: 'job' },
+    ]) {
+      assert.throws(() => asPlanTemplate(broken), /plan[- ]template/i);
+    }
+  });
+
+  await test('GatewayClient serializes writes and recovers after rejection', async () => {
+    const gateway = new GatewayClient({ store: { snapshotId: SNAPSHOT } });
+    const order = [];
+    let releaseFirst;
+    const gate = new Promise((resolve) => { releaseFirst = resolve; });
+    const first = gateway.enqueue(async () => { order.push('first:start'); await gate; order.push('first:end'); });
+    const second = gateway.enqueue(async () => { order.push('second'); throw new Error('expected'); });
+    const third = gateway.enqueue(async () => { order.push('third'); });
+    await Promise.resolve();
+    assert.deepEqual(order, ['first:start']);
+    releaseFirst();
+    await first;
+    await assert.rejects(second, /expected/);
+    await third;
+    await gateway.chain;
+    assert.deepEqual(order, ['first:start', 'first:end', 'second', 'third']);
+    assert.equal(gateway.isBusy, false);
+  });
+
+  /* --------------------------------------------------------------------
+   * Gateway recovery: one interrupted write, never two canonical ones.
+   *
+   * These exercise the client directly with an in-memory record store. The
+   * plugin-level counterparts (tests/dashboard) prove the same behaviour with
+   * the record actually persisted through `data.json`.
+   * ------------------------------------------------------------------ */
+
+  /** A gateway whose process answers from a scripted queue of responses. */
+  function scriptedGateway(responses, { snapshot = SNAPSHOT } = {}) {
+    const sent = [];
+    const notices = [];
+    const recovery = new MemoryGatewayRecoveryStore(true);
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        sent.push(stdin);
+        const next = responses[Math.min(sent.length - 1, responses.length - 1)];
+        next(callback, stdin);
+      },
+      store: { snapshotId: snapshot },
+      notify: (message) => notices.push(message),
+      recovery,
+    });
+    return { gateway, recovery, sent, notices };
+  }
+
+  const answerWith = (body, error = null) => (callback, stdin) => callback(
+    error, typeof body === 'function' ? body(stdin) : body, '',
+  );
+
+  function refusalFor(stdin, code, message = 'refused', retryable = false) {
+    const request = JSON.parse(stdin);
+    return JSON.stringify({
+      schema_version: 2,
+      request_id: request.request_id,
+      idempotency_key: request.idempotency_key,
+      capability: request.capability,
+      ok: false,
+      replayed: false,
+      transaction_id: null,
+      receipt_path: null,
+      snapshot_after: null,
+      result: {},
+      error: { code, message, retryable, details: {} },
+    });
+  }
+
+  await test('a prepared request is recorded before the process is ever started', async () => {
+    const seen = [];
+    const recovery = new MemoryGatewayRecoveryStore(true);
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => {
+        // The order this asserts is the whole design: if the record were
+        // written after the spawn, an interruption in between would leave a
+        // committed write with nothing on disk that knows about it.
+        seen.push(recovery.replayable()?.record.phase ?? 'none');
+        callback(null, gatewayConfirmation(stdin), '');
+      },
+      store: { snapshotId: SNAPSHOT },
+      recovery,
+    });
+    await gateway.captureText('recorded before it is sent');
+    assert.deepEqual(seen, ['prepared']);
+    assert.equal(recovery.replayable().record.phase, 'confirmed',
+      'a receipt is not the end of it — the record waits for reconciliation');
+  });
+
+  await test('an interrupted response is replayed once, byte for byte', async () => {
+    const { gateway, sent, notices, recovery } = scriptedGateway([
+      answerWith('', Object.assign(new Error('killed'), { code: null })),
+      answerWith((stdin) => gatewayConfirmation(stdin, SNAPSHOT, { replayed: true })),
+    ]);
+    const confirmation = await gateway.captureText('one thought, one write');
+    assert.equal(confirmation.replayed, true, 'Core recognised the retry as the same write');
+    assert.equal(sent.length, 2);
+    assert.equal(sent[0], sent[1], 'the replay is the stored string, not a rebuilt envelope');
+    const first = JSON.parse(sent[0]);
+    const second = JSON.parse(sent[1]);
+    assert.equal(first.request_id, second.request_id);
+    assert.equal(first.idempotency_key, second.idempotency_key);
+    assert.deepEqual(first.expected_revisions, second.expected_revisions);
+    assert.equal(first.approval.subject_sha256, second.approval.subject_sha256);
+    assert.ok(notices.some((line) => /Replaying the same approved request/.test(line)),
+      'a replay is never silent');
+    assert.equal(recovery.replayable().record.phase, 'confirmed');
+  });
+
+  await test('a second ambiguity blocks instead of looping', async () => {
+    const { gateway, sent, recovery } = scriptedGateway([
+      answerWith('', new Error('interrupted')),
+    ]);
+    await assert.rejects(gateway.captureText('unknowable'),
+      (error) => error.gatewayCode === 'RECOVERY_BLOCKED');
+    assert.equal(sent.length, 2, 'exactly two attempts, ever');
+    assert.equal(recovery.replayable().record.phase, 'blocked');
+  });
+
+  await test('a refusal during recovery cannot erase an ambiguous first attempt', async () => {
+    const { gateway, sent, recovery } = scriptedGateway([
+      answerWith('', new Error('the child died during commit')),
+      answerWith(
+        (stdin) => refusalFor(
+          stdin,
+          'STALE_SNAPSHOT',
+          'canonical state changed since this request was approved',
+          true,
+        ),
+        Object.assign(new Error('refused'), { code: 3 }),
+      ),
+    ]);
+    await assert.rejects(
+      gateway.captureText('the first attempt may have changed canonical bytes'),
+      (error) => error.gatewayCode === 'RECOVERY_BLOCKED',
+    );
+    assert.equal(sent.length, 2, 'one exact recovery attempt is still the limit');
+    assert.equal(recovery.replayable().record.phase, 'blocked');
+    assert.equal(recovery.replayable().record.last_error.code, 'STALE_SNAPSHOT',
+      'the replay refusal remains visible without claiming the first attempt was clean');
+  });
+
+  await test('a definitive refusal clears the record; an ambiguous one keeps it', async () => {
+    const definitive = [
+      'INVALID_REQUEST', 'UNKNOWN_CAPABILITY', 'STALE_SNAPSHOT', 'REVISION_CONFLICT',
+      'OUT_OF_SCOPE', 'AMBIGUOUS_MIGRATION', 'VALIDATION_FAILED', 'PROJECTION_FAILED',
+      'UNCONFIRMED',
+    ];
+    for (const code of definitive) {
+      const { gateway, sent, recovery } = scriptedGateway([
+        answerWith((stdin) => refusalFor(stdin, code),
+          Object.assign(new Error('refused'), { code: 2 })),
+      ]);
+      await assert.rejects(gateway.captureText('draft is kept either way'),
+        (error) => error.gatewayCode === code);
+      assert.equal(sent.length, 1, `${code} is definitive, so it is never replayed`);
+      assert.equal(recovery.replayable(), null, `${code} retires the record`);
+    }
+    // These two are raised from inside the write path, so "did it commit?" is
+    // exactly the open question. Neither may retire the record.
+    for (const code of ['INTERNAL_FAILURE', 'IDEMPOTENCY_CONFLICT', 'A_CODE_FROM_A_NEWER_CORE']) {
+      const { gateway, sent, recovery } = scriptedGateway([
+        answerWith((stdin) => refusalFor(stdin, code),
+          Object.assign(new Error('refused'), { code: 2 })),
+      ]);
+      await assert.rejects(gateway.captureText('unknowable'),
+        (error) => error.gatewayCode === 'RECOVERY_BLOCKED');
+      assert.equal(sent.length, 2, `${code} earns one replay`);
+      assert.equal(recovery.replayable().record.phase, 'blocked',
+        `${code} must not retire the record`);
+    }
+  });
+
+  await test('success-shaped JSON from a failed process is not believed', async () => {
+    const { gateway, recovery } = scriptedGateway([
+      answerWith((stdin) => gatewayConfirmation(stdin),
+        Object.assign(new Error('Command failed'), { code: 2 })),
+    ]);
+    await assert.rejects(gateway.captureText('contradiction'),
+      (error) => error.gatewayCode === 'RECOVERY_BLOCKED');
+    assert.equal(recovery.replayable().record.last_error.code, 'PROCESS_CONTRADICTION');
+  });
+
+  await test('a fresh write is refused while any outcome is unresolved', async () => {
+    const { gateway, sent } = scriptedGateway([
+      answerWith('', new Error('interrupted')),
+    ]);
+    await assert.rejects(gateway.captureText('first'), /Diagnostics/);
+    const before = sent.length;
+    assert.throws(() => gateway.captureText('second'),
+      (error) => error.gatewayCode === 'RECOVERY_REQUIRED');
+    assert.throws(() => gateway.endSession(),
+      (error) => error.gatewayCode === 'RECOVERY_REQUIRED',
+      'review-only session closure also publishes and deletes its ownership ledger');
+    assert.equal(sent.length, before, 'nothing may reach Core while the first is unsettled');
+  });
+
+  await test('recovery is shared by every V2 method, not only capture and Garden', async () => {
+    // stage.progress.update carries caller-supplied guards rather than a
+    // request-scoped one, so it is the case a Capture-only implementation
+    // would silently miss.
+    const { gateway, sent, recovery } = scriptedGateway([
+      answerWith('', new Error('interrupted')),
+      answerWith((stdin) => gatewayConfirmation(stdin, SNAPSHOT, { replayed: true })),
+    ]);
+    const confirmation = await gateway.progress('unit-a', 'stage-a', 'complete', { 'unit-a': 2 });
+    assert.equal(confirmation.replayed, true);
+    assert.equal(sent[0], sent[1]);
+    assert.deepEqual(JSON.parse(sent[0]).expected_revisions, { 'unit-a': 2 },
+      'the caller-supplied guard survives the replay unchanged');
+    assert.equal(recovery.replayable().record.phase, 'confirmed');
+  });
+
+  await test('a tampered persisted record is refused and nothing is sent', async () => {
+    const { gateway, recovery, sent } = scriptedGateway([
+      answerWith((stdin) => gatewayConfirmation(stdin)),
+    ]);
+    await gateway.captureText('a thought');
+    const stored = recovery.replayable().record;
+    const envelope = JSON.parse(stored.envelope_json);
+    // The payload is edited without re-signing — which is exactly what an
+    // attacker or a clumsy editor of data.json would produce.
+    envelope.payload.text = 'a different thought';
+    const tampered = await validateGatewayRecoveryRecord({
+      ...stored, phase: 'prepared', confirmation: null,
+      envelope_json: JSON.stringify(envelope),
+    });
+    assert.equal(tampered.ok, false);
+    assert.match(tampered.error, /approval/);
+    const sentBefore = sent.length;
+    await assert.rejects(recovery.begin({
+      ...stored, phase: 'prepared', confirmation: null,
+      envelope_json: JSON.stringify(envelope),
+    }), /invalid recovery record/);
+    assert.equal(sent.length, sentBefore, 'a record that cannot be trusted starts no process');
+  });
+
+  await test('recovery record validation is closed against shape and phase', async () => {
+    const { gateway, recovery } = scriptedGateway([
+      answerWith((stdin) => gatewayConfirmation(stdin)),
+    ]);
+    await gateway.captureText('a thought');
+    const good = recovery.replayable().record;
+    assert.equal((await validateGatewayRecoveryRecord(good)).ok, true);
+    const broken = [
+      [{ ...good, schema_version: 2 }, /schema_version/],
+      [{ ...good, phase: 'finished' }, /phase/],
+      [{ ...good, created_at: 'the other day' }, /timestamp/],
+      [{ ...good, envelope_json: '{' }, /readable JSON/],
+      [{ ...good, extra: true }, /exactly/],
+      [{ ...good, phase: 'confirmed', confirmation: null }, /carry its receipt/],
+      [{ ...good, phase: 'prepared' }, /cannot already carry a receipt/],
+      [{ ...good, last_error: { code: 'X' } }, /code, message/],
+      [null, /not an object/],
+    ];
+    for (const [candidate, pattern] of broken) {
+      const result = await validateGatewayRecoveryRecord(candidate);
+      assert.equal(result.ok, false, `expected a refusal for ${JSON.stringify(candidate)?.slice(0, 60)}`);
+      assert.match(result.error, pattern);
+    }
+  });
+
+  await test('an obsolete persisted recovery shape blocks startup writes and is preserved', async () => {
+    // A record written by an older shape (schema_version 0, retired phase
+    // vocabulary) must never normalise to "nothing in flight": startup
+    // keeps it unresolved, refuses fresh writes, and leaves the durable
+    // bytes untouched for operator recovery.
+    const obsolete = {
+      schema_version: 0,
+      phase: 'done',
+      envelope: '{"legacy":true}',
+    };
+    let saves = 0;
+    const settings = { gatewayRecovery: obsolete, uiDrafts: emptyUiDrafts() };
+    const store = new SettingsGatewayRecoveryStore(settings, async () => { saves += 1; });
+    const state = await store.load();
+    assert.equal(state.kind, 'malformed');
+    assert.equal(store.unresolved, true);
+    assert.equal(store.replayable(), null, 'an obsolete record is never replayed');
+    let invoked = false;
+    const gateway = new GatewayClient({
+      runLos: () => { invoked = true; },
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+    assert.throws(() => gateway.captureText('a fresh write'), /unresolved Gateway write/);
+    assert.equal(invoked, false);
+    assert.equal(settings.gatewayRecovery, obsolete, 'the obsolete record is not rewritten');
+    assert.equal(saves, 0, 'startup must not persist over the evidence');
+  });
+
+  await test('only the draft the envelope carried is cleared', async () => {
+    const envelope = (capability, payload) => ({
+      schema_version: 2,
+      request_id: 'r', idempotency_key: 'k', capability, channel: 'ui',
+      expected_snapshot: SNAPSHOT, expected_revisions: {},
+      approval: { kind: 'direct-user-gesture', subject_sha256: SNAPSHOT },
+      payload,
+    });
+
+    const matching = emptyUiDrafts();
+    matching.inbox = { title: 'Title', text: 'the captured thought' };
+    clearDraftsOwnedBy(matching, envelope('capture.create', { title: 'Title', text: 'the captured thought' }));
+    assert.deepEqual(matching.inbox, { title: '', text: '' });
+
+    const edited = emptyUiDrafts();
+    edited.inbox = { title: 'Title', text: 'the captured thought, plus a new sentence' };
+    clearDraftsOwnedBy(edited, envelope('capture.create', { title: 'Title', text: 'the captured thought' }));
+    assert.equal(edited.inbox.text, 'the captured thought, plus a new sentence',
+      'text written while the write ran is newer, and survives');
+
+    const garden = emptyUiDrafts();
+    garden.garden = { title: '', text: 'a loose thought' };
+    clearDraftsOwnedBy(garden, envelope('garden.seed.create', { text: 'a loose thought' }));
+    assert.deepEqual(garden.garden, { title: '', text: '' });
+
+    const note = emptyUiDrafts();
+    note.unitNotes['unit-a'] = { title: 'Session', text: 'body', expectedRevisions: {}, recoveredStages: { 'stage-a': 'scratch', 'stage-b': 'context scratch' } };
+    note.stages['unit-a::stage-a'] = { text: 'scratch' };
+    note.stages['unit-a::stage-b'] = { text: 'changed scratch' };
+    note.stages['unit-a::stage-c'] = { text: 'unrelated scratch' };
+
+    clearDraftsOwnedBy(note, envelope('unit.note.append', {
+      unit_id: 'unit-a', title: 'Session', text: 'body', stage_id: ['stage-a', 'stage-b', 'stage-c'],
+    }));
+    assert.equal('unit-a' in note.unitNotes, false);
+    assert.equal('unit-a::stage-a' in note.stages, false, 'exact matching recovered scratch clears');
+    assert.equal(note.stages['unit-a::stage-b'].text, 'changed scratch', 'changed scratch survives');
+    assert.equal(note.stages['unit-a::stage-c'].text, 'unrelated scratch', 'unrelated/context-only scratch survives');
+
+    // missing legacy provenance preserves
+    const legacy = emptyUiDrafts();
+    legacy.unitNotes['unit-a'] = { title: 'Session', text: 'body', expectedRevisions: {} }; // no recoveredStages
+    legacy.stages['unit-a::stage-a'] = { text: 'scratch' };
+    clearDraftsOwnedBy(legacy, envelope('unit.note.append', {
+      unit_id: 'unit-a', title: 'Session', text: 'body', stage_id: ['stage-a'],
+    }));
+    assert.equal('unit-a' in legacy.unitNotes, false);
+    assert.equal(legacy.stages['unit-a::stage-a'].text, 'scratch', 'missing legacy provenance preserves');
+
+    // changed unit draft preserves its stage drafts
+    const changedUnit = emptyUiDrafts();
+    changedUnit.unitNotes['unit-a'] = { title: 'Session', text: 'body PLUS NEWER TEXT', expectedRevisions: {}, recoveredStages: { 'stage-a': 'scratch' } };
+    changedUnit.stages['unit-a::stage-a'] = { text: 'scratch' };
+    clearDraftsOwnedBy(changedUnit, envelope('unit.note.append', {
+      unit_id: 'unit-a', title: 'Session', text: 'body', stage_id: ['stage-a'],
+    }));
+    assert.equal(changedUnit.unitNotes['unit-a'].text, 'body PLUS NEWER TEXT');
+    assert.equal(changedUnit.stages['unit-a::stage-a'].text, 'scratch', 'changed unit draft preserves its stage drafts');
+
+    // repeated cleanup after settlement preserves a newer stage draft
+    const repeated = emptyUiDrafts();
+    repeated.stages['unit-a::stage-a'] = { text: 'newer scratch' };
+    clearDraftsOwnedBy(repeated, envelope('unit.note.append', {
+      unit_id: 'unit-a', title: 'Session', text: 'body', stage_id: ['stage-a'],
+    }));
+    assert.equal(repeated.stages['unit-a::stage-a'].text, 'newer scratch', 'repeated cleanup after settlement preserves a newer stage draft');
+
+    const done = emptyUiDrafts();
+    done.doneWhen['unit-a::stage-a'] = [true];
+    done.doneWhen['unit-a::stage-b'] = [true];
+    clearDraftsOwnedBy(done, envelope('stage.progress.update', {
+      unit_id: 'unit-a', stage_id: 'stage-a', status: 'complete',
+    }));
+    assert.deepEqual(Object.keys(done.doneWhen), ['unit-a::stage-b']);
+
+    const picker = emptyUiDrafts();
+    picker.inbox = { title: '', text: 'unrelated typing' };
+    clearDraftsOwnedBy(picker, envelope('capture.create', { file: '/tmp/x.pdf', file_sha256: SNAPSHOT }));
+    assert.equal(picker.inbox.text, 'unrelated typing',
+      'a file capture owns no composer draft');
+  });
+
+  await test('the Diagnostics summary carries metadata and never the payload', async () => {
+    const { gateway, recovery } = scriptedGateway([
+      answerWith('', new Error('interrupted')),
+    ]);
+    await assert.rejects(gateway.captureText('a private thought about a private thing'));
+    const rows = gatewayRecoverySummary(recovery.state);
+    const rendered = JSON.stringify(rows);
+    assert.match(rendered, /capture\.create/);
+    assert.match(rendered, /blocked/);
+    assert.doesNotMatch(rendered, /private thought/,
+      'the screen a learner screenshots must not carry their captured text');
+    assert.deepEqual(rows.map(([label]) => label), [
+      'Capability', 'Phase', 'Created', 'Request ID', 'Idempotency key', 'Last error',
+    ]);
+    assert.equal(gatewayRecoverySummary({ kind: 'clear' }), null);
+  });
+
+  /* --------------------------------------------------------------------
+   * Failure-atomic recovery transitions (release-hardening 2026-08-29).
+   *
+   * Memory used to be mutated before the save was awaited, so a rejected
+   * `data.json` write left memory clear while disk still held a prepared
+   * record: the fresh-write gate opened, and the next startup could replay a
+   * gesture already treated as refused.
+   * ------------------------------------------------------------------ */
+
+  /** A settings store whose save can be made to reject on demand. */
+  async function preparedStore() {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    let failing = false;
+    const store = new SettingsGatewayRecoveryStore(settings, async () => {
+      if (failing) throw new Error('data.json could not be written');
+    });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+    return { settings, store, gateway, fail: () => { failing = true; } };
+  }
+
+  await test('a failed discardRefused keeps the record in memory and on disk', async () => {
+    const { settings, store, gateway, fail } = await preparedStore();
+    await gateway.captureText('a refused gesture');
+    assert.equal(store.replayable().record.phase, 'confirmed');
+    const onDisk = JSON.parse(JSON.stringify(settings.gatewayRecovery));
+
+    fail();
+    await assert.rejects(store.discardRefused(), /data\.json could not be written/);
+
+    assert.equal(store.unresolved, true,
+      'a clear that never reached disk must not open the fresh-write gate');
+    assert.ok(store.replayable(), 'the unresolved record must survive in memory');
+    assert.deepEqual(settings.gatewayRecovery, onDisk,
+      'the durable slot must still hold the record the save failed to remove');
+    // The gate is enforced before the envelope is built, so this throws
+    // synchronously rather than returning a rejected promise.
+    assert.throws(() => gateway.captureText('the next write'),
+      /unresolved Gateway write/);
+  });
+
+  await test('a failed settleConfirmed restores the record and its cleared drafts', async () => {
+    const { settings, store, gateway, fail } = await preparedStore();
+    settings.uiDrafts.inbox = { title: '', text: 'a captured thought' };
+    await gateway.captureText('a captured thought');
+    const onDisk = JSON.parse(JSON.stringify(settings.gatewayRecovery));
+
+    fail();
+    await assert.rejects(store.settleConfirmed(), /data\.json could not be written/);
+
+    assert.equal(store.unresolved, true);
+    assert.equal(store.replayable().record.phase, 'confirmed',
+      'the confirmed record must be restored, not silently retired');
+    assert.deepEqual(settings.gatewayRecovery, onDisk);
+    assert.equal(settings.uiDrafts.inbox.text, 'a captured thought',
+      'a settlement that never landed must restore the cleared draft');
+  });
+
+  await test('a failed settleConfirmed preserves newer edits in the cleared composer', async () => {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    settings.uiDrafts.inbox = { title: '', text: 'a captured thought' };
+
+    let failAndEdit = false;
+    const store = new SettingsGatewayRecoveryStore(settings, async () => {
+      if (failAndEdit) {
+        settings.uiDrafts.inbox = { title: '', text: 'a captured thought and more' };
+        throw new Error('data.json could not be written');
+      }
+    });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+
+    await gateway.captureText('a captured thought');
+    failAndEdit = true;
+
+    await assert.rejects(store.settleConfirmed(), /data\.json could not be written/);
+
+    assert.equal(settings.uiDrafts.inbox.text, 'a captured thought and more',
+      'newer text typed during the save must survive the failure rollback');
+    assert.equal(store.unresolved, true, 'recovery must remain unresolved on failure');
+  });
+
+  await test('a failed settleConfirmed preserves unrelated drafts added during the await', async () => {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    settings.uiDrafts.inbox = { title: '', text: 'a captured thought' };
+
+    let failAndEdit = false;
+    const store = new SettingsGatewayRecoveryStore(settings, async () => {
+      if (failAndEdit) {
+        settings.uiDrafts.unitNotes['unit-1'] = { title: 'Unit Note', text: 'New note' };
+        throw new Error('data.json could not be written');
+      }
+    });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+
+    await gateway.captureText('a captured thought');
+    failAndEdit = true;
+
+    await assert.rejects(store.settleConfirmed(), /data\.json could not be written/);
+
+    assert.equal(settings.uiDrafts.inbox.text, 'a captured thought', 'cleared draft is restored');
+    assert.equal(settings.uiDrafts.unitNotes['unit-1'].text, 'New note',
+      'unrelated drafts added during the save must survive the failure rollback');
+  });
+
+  await test('a failed settleConfirmed preserves existing unrelated drafts', async () => {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    settings.uiDrafts.inbox = { title: '', text: 'a captured thought' };
+    settings.uiDrafts.garden = { title: 'Seed', text: 'Existing garden seed' };
+
+    let failing = false;
+    const store = new SettingsGatewayRecoveryStore(settings, async () => {
+      if (failing) throw new Error('data.json could not be written');
+    });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+
+    await gateway.captureText('a captured thought');
+    failing = true;
+
+    await assert.rejects(store.settleConfirmed(), /data\.json could not be written/);
+
+    assert.equal(settings.uiDrafts.inbox.text, 'a captured thought', 'cleared draft is restored');
+    assert.equal(settings.uiDrafts.garden.text, 'Existing garden seed', 'unrelated draft is untouched');
+  });
+
+  await test('subsequent successful settlement remains safe and idempotent', async () => {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    settings.uiDrafts.inbox = { title: '', text: 'a captured thought' };
+
+    let failAndEdit = false;
+    const store = new SettingsGatewayRecoveryStore(settings, async () => {
+      if (failAndEdit) {
+        settings.uiDrafts.inbox = { title: '', text: 'a captured thought and more' };
+        throw new Error('data.json could not be written');
+      }
+    });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+
+    await gateway.captureText('a captured thought');
+    failAndEdit = true;
+
+    await assert.rejects(store.settleConfirmed(), /data\.json could not be written/);
+    assert.equal(store.unresolved, true);
+
+    failAndEdit = false;
+    await store.settleConfirmed();
+
+    assert.equal(store.unresolved, false, 'recovery must clear on success');
+    assert.equal(settings.uiDrafts.inbox.text, 'a captured thought and more',
+      'idempotent success leaves changed drafts alone');
+  });
+
+  await test('a failed transition enables no fresh write and no startup replay', async () => {
+    const { settings, store, gateway, fail } = await preparedStore();
+    await gateway.captureText('the only gesture');
+    fail();
+    await assert.rejects(store.discardRefused());
+
+    // What a restart would actually read back: still a full, replayable
+    // record, exactly as it was before the failed clear.
+    const reloaded = new SettingsGatewayRecoveryStore(settings, async () => {});
+    const state = await reloaded.load();
+    assert.equal(state.kind, 'record');
+    assert.equal(reloaded.unresolved, true);
+    assert.equal(reloaded.replayable().record.phase, 'confirmed');
+  });
+
+  await test('an older settings save cannot overwrite newer recovery state', async () => {
+    // The store hands its writes to whatever `persist` it was given; the
+    // plugin's is a serialized queue. This proves the store awaits that
+    // promise before believing a phase, so a slow save cannot be overtaken.
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    const saved = [];
+    let release = null;
+    const store = new SettingsGatewayRecoveryStore(settings, () => {
+      const captured = settings.gatewayRecovery
+        ? JSON.parse(JSON.stringify(settings.gatewayRecovery)) : null;
+      return new Promise((resolve) => {
+        release = () => { saved.push(captured); resolve(); };
+      });
+    });
+    const gateway = new GatewayClient({
+      runLos: (_args, callback, stdin) => callback(null, gatewayConfirmation(stdin), ''),
+      store: { snapshotId: SNAPSHOT },
+      recovery: store,
+    });
+    const until = async (predicate) => {
+      for (let attempt = 0; attempt < 200 && !predicate(); attempt += 1) {
+        await new Promise((resolve) => setImmediate(resolve));
+      }
+      assert.ok(predicate(), 'the awaited condition never arrived');
+    };
+    const write = gateway.captureText('serialized');
+    await until(() => release !== null);
+    assert.equal(saved.length, 0, 'the prepared record is not believed until its save resolves');
+    const first = release;
+    release = null;
+    first();
+    await until(() => release !== null);
+    release();
+    await write;
+    assert.deepEqual(saved.map((entry) => entry && entry.phase), ['prepared', 'confirmed'],
+      'each save serialized the newest state, in order');
+  });
+
+  await test('ApplicationRouter converts legacy leaves to product routes', async () => {
+    const router = new ApplicationRouter(routerPlugin({
+      lastView: { type: constants.VIEW_MODULE, state: { screen: 'list', groupId: 'group-ml', query: 'regression' } },
+    }));
+    assert.deepEqual(router.navigation.current,
+      { name: 'module-list', groupId: 'group-ml', query: 'regression' });
+  });
+
+  await test('ApplicationRouter descriptors centralize all leaf knowledge', async () => {
+    const router = new ApplicationRouter(routerPlugin({}));
+    assert.deepEqual(router.descriptor({ name: 'project-detail', projectId: 'project-a' }), {
+      type: constants.VIEW_PROJECT,
+      state: { screen: 'detail', projectId: 'project-a', tab: 'structure' },
+      nav: 'projects',
+    });
+    assert.deepEqual(router.descriptor({ name: 'garden' }), {
+      type: constants.VIEW_GARDEN,
+      state: {},
+      nav: 'garden',
+    });
+    assert.equal(router.descriptor({ name: 'unknown' }).type, constants.VIEW_HOME);
+  });
+
+  await test('ApplicationRouter overlay state is transient and snapshot-safe', async () => {
+    const router = new ApplicationRouter(routerPlugin({}));
+    router.openOverlay({ kind: 'global-search', query: 'ml', filter: 'all' });
+    router.updateOverlay({ query: 'systems' });
+    const snapshot = router.snapshot();
+    assert.equal(snapshot.overlay.query, 'systems');
+    router.clearOverlay();
+    assert.equal(router.snapshot().overlay, null);
+    assert.equal(snapshot.overlay.query, 'systems');
+  });
+
+  /* ----------------------------------------------------------------------
+   * Global search ranking and matching.
+   *
+   * These exercise the pure query logic directly, with no DOM. The defect
+   * that made "SaD Lecture 06" return nothing was a crash in renderTabs(),
+   * not a matching failure — but nothing in the suite proved the pipeline
+   * returned that unit for that query shape, so the data was suspected first.
+   * These tests make that question answerable without opening Obsidian.
+   * -------------------------------------------------------------------- */
+
+  async function searchStore() {
+    const store = new ManifestStore(manifestApp());
+    await store.load();
+    return store;
+  }
+
+  function searchModal(store, query, filter = 'all') {
+    const modal = new GlobalSearchModal({}, { store, router: { clearOverlay() {} } }, query);
+    modal.filter = filter;
+    return modal;
+  }
+
+  await test('search matches every query word, not just the first', async () => {
+    const modal = searchModal(await searchStore(), 'sad lecture 02');
+    const candidate = {
+      id: 'unit-fixture-sad-l02', title: 'SaD Lecture 02 — Descriptive statistics',
+      subtitle: 'Unit', aliases: [], authors: [],
+    };
+    assert.equal(modal.matches(candidate), true);
+    modal.query = 'sad lecture 99';
+    assert.equal(modal.matches(candidate), false, 'one absent word must reject the candidate');
+  });
+
+  await test('search reads aliases and authors, not only the title', async () => {
+    const modal = searchModal(await searchStore(), 'wahrscheinlichkeitsbuch');
+    const byAlias = {
+      id: 'source-fixture-book', title: 'A fixture book', subtitle: 'Learning source',
+      aliases: ['Wahrscheinlichkeitsbuch'], authors: [],
+    };
+    assert.equal(modal.matches(byAlias), true, 'German alias must be reachable');
+    modal.query = 'fixture';
+    assert.equal(modal.matches({ ...byAlias, aliases: [], authors: ['B. Fixture'] }), true);
+  });
+
+  await test('an empty query matches everything rather than nothing', async () => {
+    const modal = searchModal(await searchStore(), '   ');
+    assert.equal(modal.matches({ id: 'x', title: 'y', subtitle: '', aliases: [], authors: [] }), true);
+    assert.ok(modal.rankedCandidates().length > 0);
+  });
+
+  await test('regression: a lecture query returns its unit', async () => {
+    // The exact query shape that appeared to fail in Obsidian. The fixture's
+    // own SaD unit stands in for SaD Lecture 06 in the live vault; adding a
+    // unit here would break the fixture's atomic collection counts.
+    const rows = searchModal(await searchStore(), 'SaD Lecture 02').rankedCandidates();
+    assert.ok(rows.length > 0, 'the query must return at least one row');
+    assert.ok(
+      rows.some((row) => row.id === 'unit-fixture-sad-l02'),
+      `expected unit-fixture-sad-l02 in [${rows.map((r) => r.id).join(', ')}]`,
+    );
+  });
+
+  await test('ranking prefers an exact title, then a prefix, then alphabetical', async () => {
+    const modal = searchModal(await searchStore(), 'sad lecture');
+    const titles = modal.rankedCandidates().map((row) => row.title);
+    const sorted = [...titles].sort((a, b) => a.localeCompare(b));
+    assert.deepEqual(titles, sorted, 'equal-rank rows must be alphabetical');
+  });
+
+  await test('a kind filter narrows results without changing the query', async () => {
+    const store = await searchStore();
+    const all = searchModal(store, '', 'all').rankedCandidates();
+    const sources = searchModal(store, '', 'sources').rankedCandidates();
+    assert.ok(sources.length > 0 && sources.length < all.length);
+    assert.ok(sources.every((row) => row.kind === 'sources'));
+  });
+
+  await test('a query matching nothing returns an empty list, not everything', async () => {
+    assert.deepEqual(
+      searchModal(await searchStore(), 'zzzz-no-such-record').rankedCandidates(),
+      [],
+    );
+  });
+
+  /* Focused ability answers belong to the requested identity and horizon. */
+  async function settledExpansion(horizon, id) {
+    horizon.ensureExpansion(id);
+    for (let attempt = 0; attempt < 20 && horizon.expanding(id); attempt++) {
+      await new Promise((resolve) => setImmediate(resolve));
+    }
+    assert.equal(horizon.expanding(id), false, 'focused read settles');
+  }
+
+  for (const kind of ['focus', 'unmapped']) for (const mismatch of ['identity', 'snapshot']) {
+    await test(`ability horizon refuses a shape-valid ${kind} response with another ${mismatch}`, async () => {
+      const requested = kind === 'focus' ? 'ability-fixture-conditional' : 'ability-fixture-unmapped-request';
+      const answer = abilityFixtures.abilityFocus(mismatch === 'identity'
+        ? kind === 'focus' ? 'ability-fixture-bayes-m2' : 'ability-fixture-other-unmapped' : requested);
+      if (mismatch === 'snapshot') answer.snapshot_id = `sha256:${'a'.repeat(64)}`;
+      const reads = [];
+      const horizon = new AbilityHorizon({
+        store: { snapshotId: SNAPSHOT }, horizonChanged() {},
+        gateway: { async abilityContext(options) {
+          reads.push(options); return options.abilityId ? answer : abilityFixtures.abilityBrief();
+        } },
+      });
+      await horizon.refresh();
+      await settledExpansion(horizon, requested);
+      assert.equal(horizon.expansion(requested), null, 'foreign response is never cached');
+      assert.match(horizon.expansionError(requested), mismatch === 'identity' ? /different ability/ : /different snapshot/);
+      assert.equal(horizon.current().snapshot_id, SNAPSHOT, 'valid bounded horizon remains independent');
+      assert.equal(reads.length, 2, 'a mismatched response does not start an automatic refresh loop');
+      assert.deepEqual(reads[1], { abilityId: requested, expectedSnapshot: SNAPSHOT });
+      horizon.ensureExpansion(requested);
+      assert.equal(reads.length, 2, 'the visible error waits for an explicit retry');
+      const correct = abilityFixtures.abilityFocus(requested);
+      Object.keys(answer).forEach((key) => delete answer[key]); Object.assign(answer, correct);
+      horizon.retryExpansion(requested);
+      for (let attempt = 0; attempt < 20 && horizon.expanding(requested); attempt++) await new Promise((resolve) => setImmediate(resolve));
+      assert.equal(horizon.expansion(requested).focus, requested, 'explicit corrected retry admits matching response');
+      assert.equal(horizon.expansionError(requested), null);
+    });
+  }
+
+  /* ----------------------------------------------------------------------
+   * Snapshot guard. guard() refuses rather than sending the string "null"
+   * when no manifest has loaded — a guarded write with no snapshot cannot be
+   * refused by the core, which is the whole point of the guard.
+   * -------------------------------------------------------------------- */
+
+  await test('the snapshot guard refuses to build without a loaded snapshot', async () => {
+    const unloaded = new GatewayClient({ runLos: () => {}, store: { snapshotId: null } });
+    assert.throws(() => unloaded.guard(), /no loaded snapshot/);
+    const loaded = new GatewayClient({ runLos: () => {}, store: { snapshotId: SNAPSHOT } });
+    assert.deepEqual(loaded.guard(), ['--expected-snapshot', SNAPSHOT]);
+  });
+
+  await test('a stale snapshot never authorizes a fresh write', async () => {
+    let invoked = false;
+    const gateway = new GatewayClient({
+      runLos: () => { invoked = true; },
+      store: { snapshotId: SNAPSHOT, stale: true },
+    });
+    assert.throws(() => gateway.guard(), /stale snapshot/);
+    assert.throws(() => gateway.progress('unit-a', 'stage-a', 'complete'), /stale snapshot/);
+    assert.equal(invoked, false, 'the CLI must not be invoked at all');
+  });
+
+  await test('a guarded write never reaches the CLI without a snapshot', async () => {
+    let invoked = false;
+    const gateway = new GatewayClient({
+      runLos: () => { invoked = true; },
+      store: { snapshotId: null },
+    });
+    assert.throws(() => gateway.progress('unit-a', 'stage-a', 'complete'), /no loaded snapshot/);
+    assert.equal(invoked, false, 'the CLI must not be invoked at all');
+  });
+
+  await test('GatewayClient.call parses CLI --json refusals from stderr when stdout is empty', async () => {
+    const gateway = new GatewayClient({
+      runLos: (_args, cb) => {
+        const err = Object.assign(new Error('Command failed'), { code: 2 });
+        cb(
+          err,
+          '',
+          JSON.stringify({
+            error: {
+              code: 'INVALID_REQUEST',
+              message: 'record not found: missing-id',
+              retryable: false,
+              details: {},
+            },
+          }),
+        );
+      },
+      store: { snapshotId: SNAPSHOT },
+    });
+    await assert.rejects(
+      () => gateway.call(['inspect', 'missing-id', '--json']),
+      (err) => {
+        assert.equal(err.message, 'record not found: missing-id');
+        assert.equal(err.exitCode, 2);
+        assert.equal(err.gatewayCode, 'INVALID_REQUEST');
+        assert.equal(err.retryable, false);
+        return true;
+      },
+    );
+  });
+
+  async function ownedRecoveryRecord(id) {
+    const client = new GatewayClient({ store: { snapshotId: SNAPSHOT }, runLos() {} });
+    await client.prepareCapability('capture.create', { text: id, title: id }, SNAPSHOT, {});
+    return client.recovery.replayable().record;
+  }
+
+  await test('stale write admission also checks an explicit reviewed snapshot', async () => {
+    let invoked = false;
+    const gateway = new GatewayClient({
+      store: { snapshotId: SNAPSHOT, stale: true },
+      runLos() { invoked = true; },
+    });
+    assert.throws(() => gateway.capability('capture.create', { text: 'x' }, {
+      expectedSnapshot: SNAPSHOT,
+    }), /stale/);
+    await assert.rejects(gateway.prepareCapability('capture.create', { text: 'x' }, SNAPSHOT, {}), /stale/);
+    assert.equal(invoked, false);
+    assert.equal(gateway.recovery.replayable(), null);
+  });
+
+  await test('late confirmed refused and ambiguous responses cannot change a newer request', async () => {
+    for (const kind of ['confirmed', 'refused', 'ambiguous']) {
+      const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+      const recovery = new SettingsGatewayRecoveryStore(settings, async () => {});
+      await recovery.load();
+      const a = await ownedRecoveryRecord('A');
+      await recovery.begin(a);
+      const gateway = new GatewayClient({ store: { snapshotId: SNAPSHOT }, recovery,
+        runLos(_args, callback, stdin) {
+          if (kind === 'confirmed') callback(null, gatewayConfirmation(stdin), '');
+          else if (kind === 'ambiguous') callback(new Error('lost response'), '', '');
+          else callback(Object.assign(new Error('refused'), { code: 2 }), gatewayConfirmation(stdin, SNAPSHOT, {
+            ok: false, transaction_id: null, receipt_path: null, snapshot_after: null,
+            error: { code: 'INVALID_REQUEST', message: 'A refused', retryable: false, details: {} },
+          }), '');
+        },
+      });
+      const response = await gateway.dispatchPreparedEnvelope(a.envelope_json);
+      assert.equal(response.outcome, kind);
+      await recovery.discardRefused();
+      const b = await ownedRecoveryRecord('B');
+      await recovery.begin(b);
+      const before = structuredClone(settings);
+      await assert.rejects(gateway.settle(response), /older response/);
+      assert.deepEqual(settings, before);
+      assert.equal(recovery.replayable().record.envelope_json, b.envelope_json);
+      assert.equal((await validateGatewayRecoveryRecord(settings.gatewayRecovery)).ok, true);
+    }
+  });
+
+  await test('a delayed response cannot resurrect a cleared recovery slot', async () => {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    const recovery = new SettingsGatewayRecoveryStore(settings, async () => {});
+    await recovery.load();
+    const a = await ownedRecoveryRecord('A'); await recovery.begin(a);
+    const gateway = new GatewayClient({ store: { snapshotId: SNAPSHOT }, recovery,
+      runLos(_args, callback, stdin) { callback(null, gatewayConfirmation(stdin), ''); },
+    });
+    const response = await gateway.dispatchPreparedEnvelope(a.envelope_json);
+    await recovery.discardRefused();
+    await assert.rejects(gateway.settle(response));
+    assert.equal(settings.gatewayRecovery, null);
+    assert.equal(recovery.unresolved, false);
+  });
+
+  await test('stale display state does not block exact prepared-envelope recovery', async () => {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    const recovery = new SettingsGatewayRecoveryStore(settings, async () => {});
+    await recovery.load();
+    const prepared = await ownedRecoveryRecord('replay'); await recovery.begin(prepared);
+    const sent = [];
+    const gateway = new GatewayClient({ store: { snapshotId: SNAPSHOT, stale: true }, recovery,
+      runLos(_args, callback, stdin) {
+        sent.push(stdin); callback(null, gatewayConfirmation(stdin, SNAPSHOT, { replayed: true }), '');
+      },
+    });
+    const result = await gateway.recoverPreparedEnvelope();
+    await gateway.settle(result);
+    assert.deepEqual(sent, [prepared.envelope_json]);
+    assert.equal(recovery.replayable().record.phase, 'confirmed');
+  });
+
+  await test('an old failed phase save cannot roll back a newer request', async () => {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    let defer = false, rejectOld;
+    const recovery = new SettingsGatewayRecoveryStore(settings, () => {
+      if (!defer) return Promise.resolve();
+      defer = false;
+      return new Promise((_resolve, reject) => { rejectOld = reject; });
+    });
+    await recovery.load(); await recovery.begin(await ownedRecoveryRecord('A'));
+    defer = true;
+    const old = recovery.markBlocked({ code: 'OLD', message: 'A' }).catch(error => error);
+    await recovery.discardRefused();
+    await recovery.begin(await ownedRecoveryRecord('B'));
+    const before = structuredClone(settings);
+    rejectOld(new Error('old save failed')); await old;
+    assert.deepEqual(settings, before);
+    assert.equal(recovery.replayable().envelope.payload.text, 'B');
+  });
+
+  await test('old settlement save failures cannot restore a retired request or its draft', async () => {
+    const settings = { gatewayRecovery: null, uiDrafts: emptyUiDrafts() };
+    let defer = false, rejectOld;
+    const recovery = new SettingsGatewayRecoveryStore(settings, () => {
+      if (!defer) return Promise.resolve();
+      defer = false;
+      return new Promise((_resolve, reject) => { rejectOld = reject; });
+    });
+    await recovery.load();
+    const a = await ownedRecoveryRecord('A'); await recovery.begin(a);
+    await recovery.markConfirmed(JSON.parse(gatewayConfirmation(a.envelope_json)));
+    const owner = recovery.replayable();
+    settings.uiDrafts.inbox = { text: 'A', title: 'A' };
+    defer = true;
+    const old = recovery.settleConfirmed(owner).catch(error => error);
+    await recovery.begin(await ownedRecoveryRecord('B'));
+    const before = structuredClone(settings);
+    rejectOld(new Error('old settlement failed')); await old;
+    assert.deepEqual(settings, before);
+    await assert.rejects(recovery.settleConfirmed(owner), /older result/);
+    await assert.rejects(recovery.settleConfirmed(), /Only a confirmed/);
+    assert.deepEqual(settings, before);
+  });
+
+  if (failures) {
+    console.error(`\n${failures} module test failure(s)`);
+    process.exit(1);
+  }
+  console.log(`\n${checks} direct module tests passed`);
+})();

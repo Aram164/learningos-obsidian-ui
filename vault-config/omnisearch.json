@@ -1,0 +1,10 @@
+{
+  "_comment": "LearningOS-managed search boundary and local extraction keys. Other Omnisearch preferences survive install.",
+  "PDFIndexing": true,
+  "imagesIndexing": true,
+  "officeIndexing": false,
+  "aiImageIndexing": false,
+  "hideExcluded": true,
+  "httpApiEnabled": false,
+  "ignoreDiacritics": true
+}

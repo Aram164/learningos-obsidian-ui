@@ -1,0 +1,281 @@
+import { GatewayError } from './gateway-v1';
+
+export const GATEWAY_SCHEMA_VERSION = 2 as const;
+
+import { validateGatewaySuccessV2, validateGatewayFailureV2, validateGatewayRequestV2 } from './generated/responses.validator.cjs';
+import type { GatewayApprovalV2, GatewayRequestV2, GatewaySuccessV2, GatewayFailureV2 } from './generated/responses.types';
+export type { GatewayApprovalV2, GatewayRequestV2, GatewayErrorBodyV2,
+  GatewaySuccessV2, GatewayFailureV2 } from './generated/responses.types';
+export type GatewayChannelV2 = GatewayRequestV2['channel'];
+export type GatewayApprovalKindV2 = GatewayApprovalV2['kind'];
+
+/**
+ * Codes that mean, definitively, that nothing was committed.
+ *
+ * Each of these is produced by Core *before* the transaction, or by a guard
+ * that aborts it whole — so an interrupted retry that receives one of them has
+ * learned that the original attempt cannot have landed either. Everything
+ * else, including every code not on this list, leaves the question open.
+ *
+ * `INTERNAL_FAILURE` and `IDEMPOTENCY_CONFLICT` are deliberately absent:
+ * Core raises the first from inside the write path and the second when a
+ * previous transaction with this key exists but cannot be reconciled. Both are
+ * exactly the situations where "did it commit?" is the question.
+ */
+export const DEFINITIVE_NO_COMMIT_CODES: readonly string[] = [
+  'INVALID_REQUEST',
+  'UNKNOWN_CAPABILITY',
+  'STALE_SNAPSHOT',
+  'REVISION_CONFLICT',
+  'OUT_OF_SCOPE',
+  'AMBIGUOUS_MIGRATION',
+  'VALIDATION_FAILED',
+  'PROJECTION_FAILED',
+  'UNCONFIRMED',
+];
+
+export function isDefinitiveNoCommitCode(code: unknown): boolean {
+  return typeof code === 'string' && DEFINITIVE_NO_COMMIT_CODES.includes(code);
+}
+
+export interface GatewayResponseIdentityV2 {
+  requestId: string;
+  idempotencyKey: string;
+  capability: string;
+}
+
+function record(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function nonEmpty(value: unknown): value is string {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+
+export function isSha256(value: unknown): value is string {
+  return typeof value === 'string' && /^sha256:[0-9a-f]{64}$/.test(value);
+}
+
+/**
+ * Capabilities this interface may authorize with a direct user gesture.
+ *
+ * This is the producer half of one policy whose enforcing copy is Core's
+ * `GESTURE_ALLOWLIST`, and `scripts/check-contract.mjs` fails when the two
+ * disagree. A gesture is sufficient authority when the record written is the
+ * learner's own study activity, or her own choice among material someone
+ * already authored. It is never sufficient for canonical semantics or plan
+ * content, however genuine the click — those go through a reviewed operator
+ * request, and this app does not have one.
+ *
+ * Until 2026-09-13 the client claimed a gesture for every capability it sent,
+ * so Core refused Revisit stage, Report prerequisite gap, Save session note
+ * and Rate explanation with `direct-user-gesture is not admitted for …` —
+ * internal approval vocabulary, in front of a learner who had done nothing
+ * wrong (audit `synthetic-learner-2026-09-12`, F01). Sending what will be
+ * refused is now caught here, before an envelope exists.
+ */
+export const UI_GESTURE_CAPABILITIES: readonly string[] = [
+  // The learner's own study record, admitted from any channel in Core.
+  'atlas.question.save',
+  'capture.create',
+  'detour.create',
+  'detour.resolve',
+  'garden.seed.create',
+  'source.feedback.record',
+  'stage.attachment.add',
+  'stage.progress.update',
+  'unit.note.append',
+  'unit.source-selection.set',
+  /*
+   * Canonical changes this app may authorize, and only this app: Core admits
+   * these to a gesture over `channel: "ui"` alone. Each is applied from a
+   * screen that shows the exact change first, and that deliberate Save or
+   * Apply is the explicit approval their contracts always required — ADR-017
+   * designed the Atlas for exactly this, and a readable refusal was still a
+   * refusal of a current architecture decision (review
+   * workbench/audits/repair-review-2026-09-13, D1).
+   *
+   * A capability reaching this list must have a screen that renders the
+   * concrete change before the control that sends it. Adding one here because
+   * "the app needs it" reintroduces the thing the allowlist exists to stop.
+   */
+  'concept.relations.change',
+  'review.apply',
+  'review.prepare',
+  'unit.map.import',
+  /*
+   * Added 2026-09-23 (Aram): the two append-only ability records, sent only
+   * from Review, where the exact claim or connection is on screen above
+   * "Confirm & record". Core admits both over `ui` only.
+   */
+  'ability.candidate.append',
+  'learner.ability-observation.append',
+];
+
+const UI_GESTURE_SET: ReadonlySet<string> = new Set(UI_GESTURE_CAPABILITIES);
+
+export function isGestureCapability(capability: string): boolean {
+  return UI_GESTURE_SET.has(capability);
+}
+
+/**
+ * What to do instead, for the write paths this app can still reach from a
+ * click but cannot authorize. Saying "needs approval" and stopping would leave
+ * the learner exactly where the raw Core refusal did.
+ */
+const GESTURE_UNAVAILABLE_RECOVERY: Readonly<Record<string, string>> = {
+  'module.plan.import':
+    'A module plan is applied from a reviewed file after its preflight, '
+    + 'through an operator request. Nothing was changed.',
+  'route.patch':
+    'Material details change through the reviewed route-patch preflight and '
+    + 'an operator request. Nothing was changed.',
+  'note.revise':
+    'Rewriting a note body is a semantic edit: it needs an explicit request '
+    + 'and a reviewable diff. Your text is kept here; nothing was changed.',
+  'stage.note.write':
+    'Stage notes are a retired surface. Save the note against the unit '
+    + 'instead; nothing was changed.',
+};
+
+/** The message shown when this app may not authorize a capability itself. */
+export function gestureUnavailableMessage(capability: string): string {
+  return GESTURE_UNAVAILABLE_RECOVERY[capability]
+    ?? `LearningOS does not accept ${capability} from a direct action in this `
+      + 'app, because it writes canonical content. It needs a reviewed '
+      + 'operator request. Nothing was changed.';
+}
+
+/**
+ * Capabilities whose write target is named by Core, not by the caller.
+ *
+ * A capture cannot be guarded as `capture:work/inbox/<name>.md`, because the
+ * filename does not exist until Core picks it. Both of these guard the
+ * *request* instead, and Core requires the envelope's `expected_revisions` to
+ * cover exactly the artifacts the transaction touches — so an empty map is a
+ * refusal, not a permissive default. This mirrors
+ * `REQUEST_SCOPED_ARTIFACT_PREFIXES` in Core's `contracts/gateway.py`; the two
+ * must derive the identical string.
+ */
+export const REQUEST_SCOPED_ARTIFACT_PREFIXES: Readonly<Record<string, string>> = {
+  'capture.create': 'capture-request',
+  'garden.seed.create': 'garden-request',
+};
+
+export function isRequestScopedCapability(capability: string): boolean {
+  return Object.prototype.hasOwnProperty.call(
+    REQUEST_SCOPED_ARTIFACT_PREFIXES, capability,
+  );
+}
+
+/** The one request-scoped artifact id, derived from this request's own key. */
+export function requestArtifactId(
+  capability: string,
+  idempotencyKey: string,
+): string {
+  const prefix = REQUEST_SCOPED_ARTIFACT_PREFIXES[capability];
+  if (!prefix) {
+    throw new GatewayError(
+      `${capability} does not use request-scoped artifacts; nothing was written.`,
+      null,
+      { code: 'INVALID_REQUEST', retryable: false },
+    );
+  }
+  if (!nonEmpty(idempotencyKey)) {
+    throw new GatewayError(
+      `${capability} needs an idempotency key to guard its request; nothing was written.`,
+      null,
+      { code: 'INVALID_REQUEST', retryable: false },
+    );
+  }
+  return `${prefix}:${idempotencyKey}`;
+}
+
+/**
+ * Core signs this exact object using sorted, compact JSON and UTF-8. Request
+ * identifiers and approval are deliberately excluded so replay identity can
+ * change without changing what the learner approved. Core additionally
+ * covers the optional `session_id` when an envelope carries one; this
+ * interface never sends it (the UI names its session through the child
+ * environment instead), so the six fields below stay the whole subject
+ * here.
+ */
+export function gatewayApprovalSubject(
+  capability: string,
+  expectedSnapshot: string,
+  expectedRevisions: Readonly<Record<string, number>>,
+  payload: Record<string, unknown>,
+): Record<string, unknown> {
+  return {
+    schema_version: GATEWAY_SCHEMA_VERSION,
+    capability,
+    channel: 'ui',
+    expected_snapshot: expectedSnapshot,
+    expected_revisions: expectedRevisions,
+    payload,
+  };
+}
+
+function canonical(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonical);
+  const object = record(value);
+  if (!object) return value;
+  return Object.fromEntries(
+    Object.keys(object).sort(unicodeCodePointCompare)
+      .map((key) => [key, canonical(object[key])]),
+  );
+}
+
+/** Python's sort_keys compares Unicode code points, not UTF-16 code units. */
+function unicodeCodePointCompare(left: string, right: string): number {
+  const leftPoints = [...left].map((value) => value.codePointAt(0) ?? 0);
+  const rightPoints = [...right].map((value) => value.codePointAt(0) ?? 0);
+  const shared = Math.min(leftPoints.length, rightPoints.length);
+  for (let index = 0; index < shared; index += 1) {
+    const leftPoint = leftPoints[index] ?? 0;
+    const rightPoint = rightPoints[index] ?? 0;
+    if (leftPoint !== rightPoint) {
+      return leftPoint - rightPoint;
+    }
+  }
+  return leftPoints.length - rightPoints.length;
+}
+
+/** Match Core's ensure_ascii=False UTF-8 serialization byte-for-byte. */
+export async function gatewaySubjectSha256(
+  subject: Record<string, unknown>,
+): Promise<string> {
+  const bytes = new TextEncoder().encode(JSON.stringify(canonical(subject)));
+  const digest = await globalThis.crypto.subtle.digest('SHA-256', bytes);
+  return `sha256:${[...new Uint8Array(digest)]
+    .map((byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+}
+
+/** A valid shape is a confirmation only when every request identity matches. */
+export function asGatewaySuccessV2(value: unknown, expected: GatewayResponseIdentityV2): GatewaySuccessV2 {
+  if (!validateGatewaySuccessV2(value)
+    || value.request_id !== expected.requestId
+    || value.idempotency_key !== expected.idempotencyKey
+    || value.capability !== expected.capability) {
+    throw new GatewayError(
+      'LearningOS did not return a complete Gateway V2 receipt, so the change is unconfirmed. Your draft was kept.',
+      null, { code: 'UNCONFIRMED', retryable: false });
+  }
+  return value;
+}
+
+export function asGatewayFailureV2(value: unknown, expected: GatewayResponseIdentityV2): GatewayFailureV2 | null {
+  return validateGatewayFailureV2(value)
+    && value.request_id === expected.requestId
+    && value.idempotency_key === expected.idempotencyKey
+    && value.capability === expected.capability ? value : null;
+}
+
+/** Persisted requests must also belong to this interface's authorization policy. */
+export function asGatewayRequestV2(value: unknown): GatewayRequestV2 | null {
+  return validateGatewayRequestV2(value) && value.channel === 'ui'
+    && value.approval.kind === 'direct-user-gesture' ? value : null;
+}

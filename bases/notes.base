@@ -1,0 +1,92 @@
+# LearningOS note shelves (installed by obsidian-ui/install.py; the canonical
+# data lives in each note's frontmatter — this file is pure presentation).
+filters:
+  and:
+    - 'note.type == "note"'
+properties:
+  note.state:
+    displayName: State
+  note.role:
+    displayName: Role
+  note.reviewed:
+    displayName: Reviewed
+  file.folder:
+    displayName: Domain folder
+  file.mtime:
+    displayName: Modified
+views:
+  - type: table
+    name: All notes
+    order:
+      - file.name
+      - title
+      - state
+      - role
+      - reviewed
+      - file.folder
+      - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
+  - type: table
+    name: Recently changed
+    limit: 20
+    order:
+      - file.name
+      - state
+      - role
+      - file.mtime
+    sort:
+      - property: file.mtime
+        direction: DESC
+  - type: table
+    name: Needs review (no reviewed date)
+    filters:
+      and:
+        - '!reviewed'
+    order:
+      - file.name
+      - state
+      - role
+      - file.mtime
+    sort:
+      - property: file.mtime
+        direction: ASC
+  - type: table
+    name: Rough or evolving
+    filters:
+      and:
+        - 'state == "rough" || state == "evolving"'
+    order:
+      - file.name
+      - state
+      - role
+      - file.mtime
+  - type: table
+    name: Exam artifacts
+    filters:
+      and:
+        - 'role == "exercise-bank" || role == "mock-exam"'
+    order:
+      - file.name
+      - role
+      - state
+      - file.folder
+  - type: table
+    name: With evidence
+    filters:
+      and:
+        - 'evidence'
+    order:
+      - file.name
+      - state
+      - reviewed
+  - type: table
+    name: By domain
+    groupBy:
+      property: file.folder
+      direction: ASC
+    order:
+      - file.name
+      - state
+      - role

@@ -1,0 +1,38 @@
+/* Spacing polish: breathing room between authored copy and adjacent
+ * controls. No columns, widths, positioning, navigation, or workspace
+ * geometry change. Scoped on .los-root like every other rule here, so it
+ * reaches modals as well as leaf views. */
+
+.los-root .los-actions,
+.los-root .los-tabs,
+.los-root .los-stack-actions {
+  column-gap: var(--los-3);
+  row-gap: var(--los-2);
+}
+
+.los-root .los-card > .los-actions,
+.los-root .los-workspace-card > .los-actions,
+.los-root .los-resource-copy + .los-actions,
+.los-root .los-date-copy > .los-actions,
+.los-root .los-stage-goal + .los-actions,
+.los-root .los-empty > .los-actions {
+  margin-top: var(--los-3);
+}
+
+.los-root .los-card p + .los-actions,
+.los-root .los-detail-page p + .los-actions,
+.los-root .los-garden-card p + .los-garden-actions {
+  margin-top: var(--los-3);
+}
+
+.los-root .los-resource-copy > *:last-child,
+.los-root .los-date-copy > *:last-child,
+.los-root .los-row > p:last-child {
+  margin-bottom: 0;
+}
+
+.los-root .los-unit-note-actions,
+.los-root .los-garden-actions {
+  gap: var(--los-3);
+}
+

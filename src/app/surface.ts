@@ -1,0 +1,186 @@
+/**
+ * What the application exposes to views and feature modules.
+ *
+ * Every view and five feature packages used to reach this surface by importing
+ * `LearningOSUI` from `../main` and narrowing it with `Pick<>`. The narrowing
+ * was real and deliberate — a view that needs two methods asked for two — but
+ * the *dependency* was not narrowed at all: the declared type of a feature
+ * module's host was the plugin class, so the module could not be read, typed or
+ * tested without the entire plugin, and nothing stopped the next edit from
+ * widening the Pick.
+ *
+ * The members below are exactly the union of what those `Pick<>` lists already
+ * asked for — 58 of them, derived from the source rather than chosen, by
+ * `scripts/emit-app-surface.mjs`. Nothing was added for symmetry, and the
+ * things only the composition root needs (`registerView`, `addCommand`,
+ * `addRibbonIcon`, `addSettingTab`) are deliberately absent: `app/registration.ts`
+ * still takes the concrete `LearningOSUI`, which is correct, because wiring the
+ * Obsidian host together is the one job that legitimately knows the whole thing.
+ *
+ * `LearningOSUI implements AppSurface` in main.ts is what keeps the two in
+ * step. Remove a method the class still needs and the class stops compiling;
+ * add one here that the class does not have and the same. That check is the
+ * point of the file — a port nothing verifies is just a second place to edit.
+ *
+ * Navigation returns are `unknown` on purpose: callers navigate for the effect,
+ * and a view that cannot see the leaf it opened cannot start depending on it.
+ */
+import type { UnitNoteModal } from './unit-note-modal';
+import type { AppNavigator } from './navigator';
+import type { ApplicationRouter } from './router';
+import type { ComposerDraft, UnitNoteDraft } from '../application/draft-store';
+import type { AbilityDraft } from '../application/ability-drafts';
+import type { AbilityHorizon } from '../application/ability-horizon';
+import type { GatewayRecoveryState } from '../application/gateway-recovery';
+import type { ProjectionRecord } from '../contracts/manifest';
+import type { MaterialEntry } from '../infrastructure/material-tree';
+import type { PageDestination } from '../infrastructure/resource-target';
+import type { GatewayClient } from '../gateway-client';
+import type { AIActionClient } from '../infrastructure/ai-action-client';
+import type { PythonResolution } from '../infrastructure/los-runtime';
+import type { ResourceOpener } from '../infrastructure/resource-opener';
+import type { ManifestStore } from '../manifest-store';
+import type { LearningOSSettings } from './settings-contract';
+
+export type { LearningOSSettings } from './settings-contract';
+
+export interface AppSurface {
+  // ------------------------------------------------------------ collaborators
+  readonly store: ManifestStore;
+  readonly gateway: GatewayClient;
+  readonly aiActions: AIActionClient;
+  readonly resources: ResourceOpener;
+  readonly router: ApplicationRouter;
+  /**
+   * Every destination the app can open. A module that navigates declares
+   * `Pick<AppNavigator, …>` here rather than inheriting twenty-eight methods
+   * it does not use — which is the whole point of item 11.
+   */
+  readonly nav: AppNavigator;
+  readonly settings: LearningOSSettings;
+  /**
+   * Core's ability horizon for the projection on screen, shared by the Atlas,
+   * Review and the navigator so they cannot disagree. Read-only.
+   */
+  readonly abilityHorizon: AbilityHorizon;
+  /**
+   * Obsidian's own plugin manifest — read for the version in Diagnostics.
+   * Optional at both levels because that is how the host declares it
+   * (`runtime.d.ts`: `readonly manifest?: PluginManifest`). Declaring it
+   * required was the first thing the `implements` clause rejected, which is a
+   * fair demonstration of why the clause is there: the previous `Pick<>` had
+   * inherited the optionality silently and Diagnostics already handles absence.
+   */
+  readonly manifest?: { version?: string };
+
+  // ------------------------------------------------------------- the write path
+  mutate<T>(
+    action: () => T | PromiseLike<T>,
+    options?: { reload?: boolean; healStaleProjection?: boolean },
+  ): Promise<T>;
+  /**
+   * The single writer for `data.json`. Nothing calls `saveData` directly any
+   * more: two unordered saves of the same settings object is a lost update,
+   * and the record that says a write may be in flight is the one value that
+   * cannot survive losing one.
+   */
+  persistSettings(): Promise<void>;
+  notify(message: string): void;
+  gatewayRecoveryState(): GatewayRecoveryState;
+  retryRecoveredWrite(): Promise<void>;
+  generate(): Promise<void>;
+  reviewSessionEnd(): Promise<unknown>;
+  askAiScoped(
+    request: string,
+    context?: Record<string, string | undefined>,
+  ): Promise<string>;
+
+  // -------------------------------------------------------------- diagnostics
+  uiVersion(): string;
+  /** The fingerprint and contract version compiled into this running bundle. */
+  runtimeBuildIdentity(): { fingerprint: string; contractVersion: number };
+  resolvePython(): PythonResolution;
+
+  // ------------------------------------------ opening things outside the app
+  openResource(resource: ProjectionRecord): unknown;
+  /*
+   * A stage can name where in a document its work is. The destination has to
+   * survive the whole call path or it is not carried at all: these two
+   * delegates accepted and forwarded only `path`, so the page option and the
+   * external-viewer instruction were dropped on the real plugin route while
+   * ResourceOpener's own tests passed (review
+   * workbench/audits/repair-review-2026-09-13, R2).
+   */
+  openVaultPath(path: string, destination?: PageDestination | null): unknown;
+  openAuthoredPath(path: string): unknown;
+  openMaterialPath(path: string, destination?: PageDestination | null): unknown;
+  copyText(value: string): void;
+
+  /*
+   * Browsing `materials/` — the three reads the Library's folder browser needs.
+   *
+   * A source record carries ONE material URI, so the projection cannot say that
+   * `source-aml-ss26-lectures` holds `lecture-slides/` beside
+   * `exercise-slides/`. That distinction exists only on disk, and it is exactly
+   * the one a learner navigates by, so the folder browser descends past the
+   * record. Containment is enforced host-side in `MaterialTree`; a path that
+   * escapes `materials/` reads as empty rather than throwing.
+   */
+  isMaterialFolder(path: string): boolean;
+  listMaterialFolder(path: string): MaterialEntry[];
+  materialFolderCount(path: string): number;
+
+  // ------------------------------------------------------------------- drafts
+  scheduleDraftSave(): void;
+  getSelectedStage(unitId: string): string | null;
+  setSelectedStage(unitId: string, stageId: string | null): void;
+  /**
+   * `criteria` is what the ticks certify. Marks are stored against the text of
+   * each criterion, so a revision that rewords one drops its mark instead of
+   * carrying it over to a different requirement (2026-09-05 audit, F08).
+   */
+  getDoneWhen(unitId: string, stageId: string, criteria?: readonly string[]): boolean[];
+  setDoneWhen(
+    unitId: string,
+    stageId: string,
+    index: number,
+    checked: boolean,
+    criteria?: readonly string[],
+  ): void;
+  clearDoneWhen(unitId: string, stageId: string): void;
+  getUnitNoteDraft(unitId: string, stages?: ProjectionRecord[]): UnitNoteDraft;
+  setUnitNoteDraft(
+    unitId: string,
+    title: string,
+    text: string,
+    expectedRevisions?: Readonly<Record<string, number>>,
+  ): void;
+  /**
+   * `match` is what makes clearing safe after an awaited write: the draft goes
+   * only if it is still the text that was sent, so a learner who kept typing
+   * while the note saved does not lose the newer version to the success path.
+   */
+  clearUnitNoteDraft(
+    unitId: string,
+    recoveredStages?: Readonly<Record<string, string>>,
+    match?: { title: string; text: string } | null,
+  ): void;
+  openUnitNote(
+    unit: ProjectionRecord,
+    studyMap: ProjectionRecord | null,
+  ): UnitNoteModal;
+  getInboxDraft(): ComposerDraft;
+  setInboxDraft(title: string, text: string): void;
+  clearInboxDraft(match?: ComposerDraft | null): void;
+  getGardenDraft(): ComposerDraft;
+  setGardenDraft(title: string, text: string): void;
+  clearGardenDraft(match?: ComposerDraft | null): void;
+  /*
+   * Ability claims and possible connections drafted but not yet confirmed.
+   * UI-owned: a draft is never a learner attempt, and only Review's
+   * "Confirm & record" turns one into a Core record.
+   */
+  listAbilityDrafts(): AbilityDraft[];
+  saveAbilityDraft(draft: AbilityDraft): void;
+  discardAbilityDraft(id: string, updatedAt?: string | null): void;
+}

@@ -1,0 +1,148 @@
+import type { Plugin, WorkspaceLeaf } from 'obsidian';
+import {
+  LEGACY_VIEW_TYPES,
+  VIEW_ABILITIES,
+  VIEW_ATLAS,
+  VIEW_BOUNDARY,
+  VIEW_DIAGNOSTICS,
+  VIEW_GARDEN,
+  VIEW_HOME,
+  VIEW_LIBRARY,
+  VIEW_MODULE,
+  VIEW_NAV,
+  VIEW_PROGRAM,
+  VIEW_PROJECT,
+  VIEW_REVIEW,
+  VIEW_SHELVING,
+  VIEW_UNIT,
+} from '../constants';
+import type { AppSurface } from './surface';
+import { applyPalette, clearPalette } from './palette';
+import { LearningOSSettingsTab } from '../settings';
+import { AbilitiesView } from '../views/abilities-view';
+import { AtlasView } from '../views/atlas-view';
+import { BoundaryView } from '../views/boundary-view';
+import { GardenView } from '../views/garden-view';
+import { HomeView } from '../views/home-view';
+import { LibraryView } from '../views/library-view';
+import { ModuleView } from '../views/module-view';
+import { NavView } from '../views/nav-view';
+import { ProgramView } from '../views/program-view';
+import { ProjectView } from '../views/project-view';
+import { DiagnosticsView, ReviewView } from '../views/review-view';
+import { ShelvingView } from '../views/shelving-view';
+import { UnitView } from '../views/unit-view';
+
+export const APPLICATION_VIEW_TYPES = [
+  VIEW_HOME,
+  VIEW_NAV,
+  VIEW_PROGRAM,
+  VIEW_MODULE,
+  VIEW_PROJECT,
+  VIEW_UNIT,
+  VIEW_LIBRARY,
+  VIEW_ATLAS,
+  VIEW_ABILITIES,
+  VIEW_SHELVING,
+  VIEW_BOUNDARY,
+  VIEW_REVIEW,
+  VIEW_GARDEN,
+  VIEW_DIAGNOSTICS,
+] as const;
+
+type ApplicationPlugin = Plugin & AppSurface & {
+  readonly activeNav: string;
+  setActiveNav(key: string): void;
+  isLifecycleActive(): boolean;
+  requestManifestRefresh(): void;
+};
+
+export function detachLegacyViews(plugin: ApplicationPlugin): void {
+  for (const type of LEGACY_VIEW_TYPES) plugin.app.workspace.detachLeavesOfType(type);
+}
+
+/** Register the Obsidian host surface; feature behavior remains in its module. */
+export function registerApplication(plugin: ApplicationPlugin): void {
+  if (!plugin.isLifecycleActive()) return;
+  detachLegacyViews(plugin);
+  plugin.registerView(VIEW_HOME, (leaf: WorkspaceLeaf) => new HomeView(leaf, plugin));
+  plugin.registerView(VIEW_NAV, (leaf: WorkspaceLeaf) => new NavView(leaf, plugin));
+  plugin.registerView(VIEW_PROGRAM, (leaf: WorkspaceLeaf) => new ProgramView(leaf, plugin));
+  plugin.registerView(VIEW_MODULE, (leaf: WorkspaceLeaf) => new ModuleView(leaf, plugin));
+  plugin.registerView(VIEW_PROJECT, (leaf: WorkspaceLeaf) => new ProjectView(leaf, plugin));
+  plugin.registerView(VIEW_UNIT, (leaf: WorkspaceLeaf) => new UnitView(leaf, plugin));
+  plugin.registerView(VIEW_LIBRARY, (leaf: WorkspaceLeaf) => new LibraryView(leaf, plugin));
+  plugin.registerView(VIEW_ATLAS, (leaf: WorkspaceLeaf) => new AtlasView(leaf, plugin));
+  plugin.registerView(VIEW_ABILITIES, (leaf: WorkspaceLeaf) => new AbilitiesView(leaf, plugin));
+  plugin.registerView(VIEW_SHELVING, (leaf: WorkspaceLeaf) => new ShelvingView(leaf, plugin));
+  plugin.registerView(VIEW_BOUNDARY, (leaf: WorkspaceLeaf) => new BoundaryView(leaf, plugin));
+  plugin.registerView(VIEW_REVIEW, (leaf: WorkspaceLeaf) => new ReviewView(leaf, plugin));
+  plugin.registerView(VIEW_GARDEN, (leaf: WorkspaceLeaf) => new GardenView(leaf, plugin));
+  plugin.registerView(VIEW_DIAGNOSTICS, (leaf: WorkspaceLeaf) => new DiagnosticsView(leaf, plugin));
+
+  // Native tab attention is a display fact, not a navigation or persistence action.
+  plugin.registerEvent(plugin.app.workspace.on('active-leaf-change', (leaf) => {
+    if (!plugin.isLifecycleActive()) return;
+    const state = leaf?.getViewState();
+    if (!state || state.type === VIEW_NAV
+      || !APPLICATION_VIEW_TYPES.some((type) => type === state.type)) return;
+    const route = plugin.router.fromLegacy(state);
+    const nav = plugin.router.descriptor(route).nav;
+    if (nav !== plugin.activeNav) plugin.setActiveNav(nav);
+  }));
+
+  for (const event of ['create', 'modify', 'delete'] as const) {
+    plugin.registerEvent(plugin.app.vault.on(event, (file) => {
+      if (file.path === 'generated/manifest.json') plugin.requestManifestRefresh();
+    }));
+  }
+  plugin.registerEvent(plugin.app.vault.on('rename', (file, oldPath) => {
+    if (file.path === 'generated/manifest.json' || oldPath === 'generated/manifest.json') {
+      plugin.requestManifestRefresh();
+    }
+  }));
+  if (typeof window !== 'undefined') {
+    plugin.registerDomEvent(window, 'focus', () => plugin.requestManifestRefresh());
+  }
+
+  plugin.addSettingTab(new LearningOSSettingsTab(plugin.app, plugin));
+  plugin.addRibbonIcon('route', 'Open LearningOS', () => plugin.nav.openHome());
+  plugin.addCommand({ id: 'open-home', name: 'Open Home', callback: () => plugin.nav.openHome() });
+  plugin.addCommand({ id: 'open-current-stage', name: 'Open current stage', callback: () => plugin.nav.openResume() });
+  plugin.addCommand({ id: 'open-modules', name: 'Open Modules', callback: () => plugin.nav.openModules() });
+  plugin.addCommand({ id: 'open-projects', name: 'Open Projects', callback: () => plugin.nav.openProjects() });
+  plugin.addCommand({ id: 'open-library', name: 'Open Library', callback: () => plugin.nav.openLibrary() });
+  plugin.addCommand({ id: 'open-global-search', name: 'Search LearningOS', callback: () => plugin.nav.openGlobalSearch() });
+  plugin.addCommand({ id: 'open-ability-map', name: 'Open Atlas (ability map)', callback: () => plugin.nav.openAbilities() });
+  plugin.addCommand({ id: 'open-atlas', name: 'Open Atlas', callback: () => plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' }) });
+  plugin.addCommand({ id: 'open-garden', name: 'Open Garden', callback: () => plugin.nav.openGarden() });
+  plugin.addCommand({ id: 'open-review', name: 'Open Review', callback: () => plugin.nav.openReview() });
+  // The live-app verification driver (scripts/check-live-app.mjs) needs a
+  // stable command id to open Diagnostics from outside the app — otherwise
+  // it can only ever prove Home works. Read-only: it navigates, nothing more.
+  plugin.addCommand({ id: 'open-diagnostics', name: 'Open Diagnostics', callback: () => plugin.nav.openDiagnostics() });
+  plugin.addCommand({ id: 'rebuild-projection', name: 'Validate and rebuild projection', callback: () => plugin.generate() });
+  plugin.addCommand({ id: 'end-learning-session', name: 'End learning session safely', callback: () => plugin.reviewSessionEnd() });
+
+  applyPalette(document.body, plugin.settings.palette);
+
+  plugin.app.workspace.onLayoutReady(async () => {
+    if (!plugin.isLifecycleActive()) return;
+    // Applied again once the layout exists. The call above runs during
+    // registration, before any view is mounted; repeating it here costs one
+    // attribute write and removes a whole class of "the setting is saved but
+    // the screen never changed" that is otherwise invisible to a reader.
+    applyPalette(document.body, plugin.settings.palette);
+    detachLegacyViews(plugin);
+    await plugin.router.openNavigator();
+    if (!plugin.isLifecycleActive()) return;
+    plugin.app.workspace.leftSplit?.setSize?.(280);
+    if (plugin.settings.collapseSidebars) plugin.app.workspace.rightSplit?.collapse();
+    if (plugin.settings.openHomeOnStartup) await plugin.router.restore();
+  });
+}
+
+export function detachApplication(plugin: ApplicationPlugin): void {
+  clearPalette(document.body);
+  for (const type of APPLICATION_VIEW_TYPES) plugin.app.workspace.detachLeavesOfType(type);
+}

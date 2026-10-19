@@ -1,0 +1,9 @@
+{
+  "id": "learningos-ui",
+  "name": "LearningOS UI",
+  "version": "2.0.0",
+  "minAppVersion": "1.9.0",
+  "description": "Module-first LearningOS desktop for programs, modules, units, stage workspaces, scoped AI, and selected-only shelving. Reads one atomic manifest and writes only through the guarded los.py gateway.",
+  "author": "Aram + operator",
+  "isDesktopOnly": true
+}

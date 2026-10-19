@@ -1,0 +1,1019 @@
+'use strict';
+
+const {
+  path,
+  fs,
+  makeApp,
+  Notice,
+  stub,
+  ROOT,
+  FIXTURE,
+  LearningOSUI,
+  FIXTURE_GROUP_COUNT,
+  FIXTURE_SNAPSHOT,
+  NOTE_ATTACHMENT_FIXTURE_PATH,
+  fileDigest,
+  VIEW,
+  tick,
+  frame,
+  waitFor,
+  check,
+  heading,
+  build,
+  boot,
+} = require('./support');
+
+module.exports = async function run() {
+  heading('module and component ownership');
+  {
+    const { app, plugin } = await boot();
+    await plugin.nav.openModules();
+    let view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    let text = view.contentEl.allText();
+    check('Modules contains only the current semester',
+      view.screen === 'groups'
+      && view.contentEl.find('los-semester-module-row').length === 2
+      && text.includes('SoSe 2099')
+      && text.includes('Fixture Statistics & Analysis')
+      && text.includes('Fixture Advanced ML')
+      && !text.includes('Python')
+      && view.contentEl.find('los-group-card').length === 0);
+    view.contentEl.findText('los-semester-module-row', 'Fixture Statistics & Analysis')
+      .fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    text = view.contentEl.allText();
+    check('a module opens as a full-page detail route',
+      view.screen === 'detail' && plugin.router.snapshot().current.name === 'module-detail');
+    /* Units is the default: a learner opens a module to study, not to read a
+     * credit count. Administration is one tab away, never in the header. */
+    check('the module opens on Units, not on administration',
+      view.contentEl.find('los-module-unit-list').length === 1
+      && view.contentEl.find('los-record-row').length > 0);
+    check('the header carries one line of facts, not six labelled rows',
+      view.contentEl.find('los-module-facts').length === 1
+      && !text.includes('Institution') && !text.includes('Credits'));
+    check('structured component controls render', text.includes('SaD') && text.includes('Analysis'));
+    check('Lecture 02 and Lecture 04 retain distinct state', text.includes('Lecture 02') && text.includes('Lecture 04')
+      && text.includes('ready') && text.includes('active'));
+    const orderedUnitText = view.contentEl.find('los-module-unit-list')[0].allText();
+    check('module units follow canonical unit_order instead of status or title',
+      orderedUnitText.indexOf('Lecture 02') < orderedUnitText.indexOf('Lecture 04')
+      && orderedUnitText.indexOf('Lecture 04') < orderedUnitText.indexOf('Analysis exam prep'));
+    check('needs-map is explicit', text.includes('needs map') || text.includes('needs-map'));
+    view.contentEl.findText('los-btn', 'Analysis').fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    const unitText = view.contentEl.find('los-module-unit-list')[0].allText();
+    check('component selection filters units without merging state', unitText.includes('Analysis exam prep') && !unitText.includes('Lecture 04'));
+    view.contentEl.findText('los-btn', 'Logistics').fire('click'); await tick();
+    view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    text = view.contentEl.allText();
+    check('academic facts stay on the academic module with human labels',
+      text.includes('Fixture University')
+      && text.includes('Written exam')
+      && text.includes('Summer semester 2099')
+      && !text.includes('klausur')
+      && !text.includes('sose-2099')
+      && text.includes('10'));
+    check('logistics does not block unit browsing',
+      view.contentEl.find('los-module-unit-list').length === 0);
+    view.contentEl.findText('los-btn', 'Overview').fire('click'); await tick();
+    text = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl.allText();
+    check('related workspaces render their next action instead of a raw CONTEXT link',
+      text.includes('Next action') && text.includes('Work the Conditional probability and Bayes stage'));
+    await plugin.nav.back();
+    view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    check('Back restores the current-semester module list',
+      view.screen === 'groups'
+      && view.contentEl.find('los-semester-module-row').length === 2);
+    plugin.onunload();
+  }
+
+  heading('first-class project navigation');
+  {
+    const { app, plugin } = await boot();
+    await plugin.nav.openProjects();
+    const listLeaf = app.workspace.getLeavesOfType(VIEW.project)[0];
+    const listText = listLeaf.view.contentEl.allText();
+    check('Projects opens as a full-page first-class list',
+      plugin.router.snapshot().current.name === 'project-list'
+      && listText.includes('Bachelor thesis') && listLeaf.view.contentEl.find('los-project-row').length === 1);
+    check('the project list does not render a universal completion percentage', !/\d+%/.test(listText));
+    listLeaf.view.contentEl.scrollTop = 177;
+    listLeaf.view.selectedElementId = 'project-fixture-thesis';
+    listLeaf.view.contentEl.find('los-project-row')[0].fire('click');
+    await tick(); await tick();
+    const detail = app.workspace.getLeavesOfType(VIEW.project)[0].view;
+    check('opening a project replaces the route rather than splitting the screen',
+      plugin.router.snapshot().current.name === 'project-detail'
+      && detail.contentEl.allText().includes('Structure')
+      && detail.contentEl.find('los-project-list').length === 0);
+    check('project detail exposes the approved five tabs',
+      ['Structure', 'Decisions', 'Materials', 'Files', 'Logistics']
+        .every((label) => detail.contentEl.allText().includes(label)));
+    detail.contentEl.findText('los-chip', 'Thesis landscape').fire('click'); await tick();
+    const projectUnit = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    check('project-owned units retain first-class project context',
+      projectUnit.contentEl.allText().includes('Bachelor thesis')
+      && projectUnit.contentEl.findText('los-btn', 'Back to project'));
+    projectUnit.contentEl.findText('los-btn', 'Back to project').fire('click'); await tick();
+    await plugin.nav.openProject('project-fixture-thesis', 'structure');
+    const structure = app.workspace.getLeavesOfType(VIEW.project)[0].view.contentEl.allText();
+    check('parallel and nested project structure renders without a percentage',
+      structure.includes('Landscape and scope') && structure.includes('Confirm scope')
+      && structure.includes('Experiments') && structure.includes('Baseline map') && !/\d+%/.test(structure));
+    await plugin.nav.openProject('project-fixture-thesis', 'linked-materials');
+    const linked = app.workspace.getLeavesOfType(VIEW.project)[0].view.contentEl;
+    check('linked modules and Topic Packs render from projected relationships',
+      linked.allText().includes('Fixture Advanced ML') && linked.allText().includes('Fixture ML evaluation pack'));
+    linked.findText('los-btn', 'Why linked').fire('click');
+    check('Why linked is an inspect-only temporary drawer/modal with a core-authored reason',
+      stub.Modal.last?.contentEl?.allText().includes('Advanced ML supplies the evaluation vocabulary')
+      && stub.Modal.last?.contentEl?.allText().includes('Provides evaluation vocabulary and systems methods')
+      && stub.Modal.last?.contentEl?.findText('los-btn', 'Open target')
+      && stub.Modal.last?.contentEl?.getAttribute('role') === 'dialog'
+      && stub.Modal.last?.contentEl?.getAttribute('aria-modal') === 'true'
+      && plugin.router.snapshot().overlay?.kind === 'linked-material-reason');
+    stub.Modal.last.close();
+    check('closing Why linked restores the project route and clears transient state',
+      plugin.router.snapshot().current.name === 'project-detail' && plugin.router.snapshot().overlay === null);
+    await plugin.nav.back();
+    const restored = app.workspace.getLeavesOfType(VIEW.project)[0];
+    check('Back restores the project list selection and scroll position',
+      plugin.router.snapshot().current.name === 'project-list'
+      && restored.view.contentEl.scrollTop === 177
+      && restored.view.selectedElementId === 'project-fixture-thesis');
+    plugin.onunload();
+  }
+
+  heading('unit stage workspace and guarded actions');
+  {
+    const { app, plugin, calls } = await boot();
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    let element = view.contentEl;
+    let text = element.allText();
+    check('ordered stages and one current workspace render', element.find('los-stage-row').length === 3
+      && text.includes('medical-test fixture'));
+    /* Figma 05 · 36:5. The stage shows ONE current action; the catalogue moved
+     * into the comparison drawer. What must not happen is a material becoming
+     * unreachable, so the page states the full total and the triage split, and
+     * the drawer below is asserted to contain every row. */
+    check('the stage promotes exactly one current action',
+      element.find('los-current-work-card').length === 1
+      && element.find('los-current-work-card')[0].find('los-resource-row').length === 1
+      && text.includes('Explain the medical-test result cold'));
+    /* Both totals, each owned. The stage's count and the unit's are different
+     * questions, and a single "All N materials" line let them be read as one
+     * (2026-09-05 audit, F04). */
+    check('collapsing the catalogue still counts every material, on both scopes',
+      text.includes('3 materials on this stage')
+      && element.find('los-stage-materials-summary')[0].allText().includes('required')
+      && element.find('los-stage-materials-summary')[0].allText().includes('on the unit'));
+    check('no permanent stage note editor remains', element.find('los-note-editor').length === 0);
+    /* Fidelity against Figma 04 · Unit workspace (14:462). Each of these was
+       a visible difference from the frame, so each is pinned by what renders
+       rather than by the CSS that renders it. */
+    check('rail rows carry a state dot and the ordinal inside the title',
+      element.find('los-stage-marker').length === 3
+      && element.find('los-stage-index').length === 0
+      && element.findText('los-stage-title', '2 · ') !== null);
+    check('the rail is labelled Stages and states the completed total once',
+      element.find('los-stage-rail-summary')[0].allText().includes('Stages')
+      && element.find('los-stage-progress').length === 0
+      && element.find('los-stage-rail-summary')[0].allText().includes('of 3 complete'));
+    check('the stage head is one accent eyebrow naming position and state',
+      element.find('los-stage-heading')[0].findText('los-kicker', 'Stage 2 of 3') !== null
+      && element.find('los-stage-order-context').length === 0);
+    check('stage concepts render as typed chips resolved from their records',
+      element.find('los-stage-concepts')[0].find('los-chip').length === 2
+      && element.find('los-stage-concepts')[0].allText().includes('Conditional probability')
+      && element.find('los-stage-concepts')[0].allText().includes('Bayes theorem'));
+    check('the current action and the catalogue are named separately',
+      text.includes('Current work') && text.includes('Compare all'));
+    check('the completion rule is stated beside the completion action',
+      text.includes('Finish only when the criterion above is true.'));
+    check('completing a stage is stated as progress, never as a learner attempt',
+      text.includes('Completing it records progress, not a learner attempt.'));
+    const currentCard = element.find('los-current-work-card')[0].find('los-material-card')[0];
+    check('Current work is one prominent card with purpose, locator and availability',
+      Boolean(currentCard?.classes.has('is-prominent'))
+      && currentCard.find('los-material-purpose').length === 1
+      && currentCard.find('los-material-availability')[0].allText().includes('Remote')
+      && element.find('los-current-work-count')[0]?.allText().endsWith('required'));
+    check('Add note follows the final stage in the rail', element.find('los-stage-rail')[0].findText('los-btn', 'Add note'));
+    check('existing unit note sections are projected', plugin.store.get('unit-fixture-sad-l04').note_sections[0].title === 'Foundations session');
+    check('durable unit artifact remains a reference', text.includes('Ultimate Reference') && text.includes('Fixture probability reference'));
+    /* Three visible actions, one of them a menu. Sixteen equally-weighted
+     * buttons is a control panel, not a workspace. */
+    const bar = element.find('los-unit-actionbar')[0];
+    check('the action bar carries one primary button and one overflow',
+      bar.children.filter((child) => child.classes.has('los-btn')).length === 1
+      && bar.find('los-overflow').length === 1);
+    /* Figma 14:600 names it "Complete stage" and paints it bg/accent, not
+       green: Primary is the one action the screen exists for, and a second
+       decisive colour would have competed with the brand accent for it. */
+    check('only one action on the screen is a filled completion action',
+      element.find('los-btn--cta').length === 1
+      && bar.findText('los-btn', 'Complete stage').classes.has('los-btn--cta'));
+    check('secondary operations are discoverable in one menu',
+      ['Pause unit', 'Skip stage', 'Report prerequisite gap', 'Prepare shelving']
+        .every((label) => bar.find('los-overflow')[0].allText().includes(label)));
+    /* 14:502 lists End session once, at the top right. It used to sit sixth in
+       the overflow, so the check is that it is in exactly one of the two. */
+    check('End session is a header action and not also an overflow item',
+      element.find('los-page-header')[0].findText('los-btn', 'End session') !== null
+      && !bar.find('los-overflow')[0].allText().includes('End session'));
+    check('one filled action per context survives the promotion',
+      element.find('los-resource-actions').every((row) =>
+        row.children.filter((child) => child.classes.has('los-btn')).length <= 1));
+
+    /* "Compare all" (Figma B1a, 70:985): the stage's placements by need, one
+     * group at a time, then the lecture's full menu and the rest of the
+     * course. Showing one group may never make a material unreachable or
+     * uncounted, so every group is opened here and the cards are counted
+     * across them. */
+    element.findText('los-btn', 'Compare all').fire('click');
+    await frame();
+    const drawer = stub.Modal.last.contentEl;
+    const drawerGroup = (key) => drawer.find('los-compare-group')
+      .find((node) => node.getAttribute('data-compare-group') === key);
+    check('the drawer is a named dialog carrying the honesty note',
+      drawer.getAttribute('role') === 'dialog'
+      && drawer.getAttribute('aria-labelledby') === 'los-material-drawer-heading'
+      && drawer.allText().includes('Compare materials')
+      && drawer.allText().includes('never deletes or hides the complete source record'));
+    check('the rail partitions the stage by need and reconciles with its total',
+      ['required', 'stuck', 'reference', 'lecture', 'course'].every((key) => Boolean(drawerGroup(key)))
+      && drawer.find('los-compare-reconcile')[0].allText().startsWith('2 + 0 + 1 = 3 on this stage')
+      && drawerGroup('required').getAttribute('aria-pressed') === 'true'
+      && drawerGroup('stuck').classes.has('is-empty'));
+    const placements = [];
+    for (const key of ['required', 'stuck', 'reference']) {
+      drawerGroup(key).fire('click');
+      placements.push(...drawer.find('los-compare-body')[0].find('los-resource-row').map((card) => [key, card]));
+    }
+    check('every material the page counted is reachable in the drawer',
+      placements.length === 3);
+
+    /* ADR-008/009 integration. The Core has carried resource rank and resource
+     * identity since contract v2/v3; until the UI read them, a required stage
+     * still showed the deck, the depth paper and the preserved bibliography at
+     * one weight, and every verdict still landed on the whole source. */
+    check('resource triage tiers are visible, not just stored',
+      placements.some(([key, card]) => key === 'required'
+        && card.classes.has('los-triage-required-now') && card.allText().includes('Do this'))
+      && placements.some(([key, card]) => key === 'reference'
+        && card.classes.has('los-triage-deferred') && card.allText().includes('Depth — not now')));
+    check('unranked resources stay visible and count as required',
+      placements.filter(([key, card]) => key === 'required' && card.classes.has('los-triage-unranked')).length === 1
+      && placements.find(([, card]) => card.classes.has('los-triage-unranked'))[1].allText().includes('Primary · unranked'));
+    check('resource feedback collapses into a rate menu instead of three buttons',
+      placements.some(([, card]) => card.find('los-overflow').length === 1)
+      && placements.every(([, card]) => card.find('los-resource-actions').every((row) =>
+        row.children.filter((child) => child.classes.has('los-btn')).length <= 1)));
+    stub.Modal.last.close();
+    check('done-when criteria are interactive checkboxes',
+      element.find('los-donewhen-row').length >= 1
+      && element.find('los-donewhen-row')[0].children[0].getAttribute('type') === 'checkbox');
+    const criterionRow = element.find('los-donewhen-row')[0];
+    const criterion = criterionRow.children[0];
+    const criterionText = criterion.getAttribute('aria-label');
+    criterion.checked = true; criterion.fire('change');
+    check('a ticked criterion is UI-owned state, never a second completion record',
+      plugin.getDoneWhen(
+        'unit-fixture-sad-l04', 'stage-fixture-conditioning', [criterionText],
+      )[0] === true
+      && !calls.some((args) => args[0] === 'stage-progress'));
+    /* F08 (2026-09-05 audit): the mark certifies that sentence, so a stage
+     * revision that replaces the criterion does not inherit it. */
+    check('a tick does not survive a revision of the criterion it certifies',
+      plugin.getDoneWhen(
+        'unit-fixture-sad-l04', 'stage-fixture-conditioning',
+        ['Derive the normal equation instead'],
+      )[0] === false);
+
+    const noteModal = plugin.openUnitNote(plugin.store.get('unit-fixture-sad-l04'), plugin.store.mapForUnit('unit-fixture-sad-l04'));
+    await frame();
+    check('the note modal references completed stages not already recorded',
+      noteModal.referencedStageIds.length === 0 && noteModal.contentEl.allText().includes('unit-level observation'));
+    check('the note modal is a named dialog and blocks an empty save',
+      noteModal.contentEl.getAttribute('role') === 'dialog'
+      && noteModal.contentEl.getAttribute('aria-modal') === 'true'
+      && noteModal.contentEl.findText('los-btn', 'Save note').disabled === true);
+    check('the learning-session note opens ready for writing',
+      global.document.activeElement === noteModal.editor);
+    noteModal.editor.value = 'Updated fixture session synthesis.';
+    noteModal.editor.fire('input');
+    check('the note save enables when required text is present',
+      noteModal.contentEl.findText('los-btn', 'Save note').disabled === false);
+    noteModal.fileInput.files = [{
+      name: 'notes.png', __path: NOTE_ATTACHMENT_FIXTURE_PATH,
+    }];
+    noteModal.fileInput.fire('change');
+    noteModal.contentEl.findText('los-btn', 'Save note').fire('click');
+    await waitFor(() => Boolean(calls.envelope('unit.note.append'))
+      && !plugin.gateway.isBusy);
+    const noteCall = calls.find((args) => args[0] === 'unit-note');
+    const noteEnvelope = calls.envelope('unit.note.append');
+    check('session note save uses the unit-level action-specific gateway',
+      noteEnvelope?.payload.unit_id === 'unit-fixture-sad-l04'
+      && noteEnvelope?.payload.text === 'Updated fixture session synthesis.');
+    check('unit note attachments use Electron webUtils instead of the removed File.path',
+      (noteEnvelope?.payload.attachment || []).includes(NOTE_ATTACHMENT_FIXTURE_PATH)
+      && (noteEnvelope?.payload.attachment_sha256 || [])[0]
+        === fileDigest(NOTE_ATTACHMENT_FIXTURE_PATH));
+    check('mutation carries optimistic snapshot token',
+      noteEnvelope?.expected_snapshot === FIXTURE_SNAPSHOT);
+
+    /* Rating a material the stage is not currently on belongs where the
+     * comparison happens. The capability, the scope and the payload are
+     * unchanged — only the surface moved. */
+    element.findText('los-btn', 'Compare all').fire('click');
+    await frame();
+    stub.Modal.last.contentEl.findText('los-btn', 'Helpful').fire('click');
+    await waitFor(() => Boolean(calls.envelope('source.feedback.record'))
+      && !plugin.gateway.isBusy);
+    element = view.contentEl;
+    const feedback = calls.envelope('source.feedback.record')?.payload;
+    check('source feedback is unit/stage/source-specific',
+      feedback?.unit_id === 'unit-fixture-sad-l04'
+      && feedback?.stage_id === 'stage-fixture-conditioning'
+      && feedback?.source_id === 'source-fixture-islp' && feedback?.feedback === 'helpful');
+    element = view.contentEl;
+    element.findText('los-btn', 'Report prerequisite gap').fire('click');
+    await waitFor(() => Boolean(calls.envelope('detour.create'))
+      && !plugin.gateway.isBusy);
+    const detour = calls.envelope('detour.create')?.payload;
+    check('gap action creates a scoped detour',
+      detour?.stage_id === 'stage-fixture-conditioning' && detour?.classification === 'required-now');
+    element = view.contentEl;
+    element.findText('los-btn', 'Complete stage').fire('click');
+    await waitFor(() => Boolean(calls.envelope('stage.progress.update')) && !plugin.gateway.isBusy);
+    check('completing the stage sends stage progress and no ability evidence',
+      calls.envelope('stage.progress.update')?.payload.stage_id === 'stage-fixture-conditioning'
+      && !calls.envelopes.some((envelope) => envelope.capability.startsWith('learner.')
+        || envelope.capability.startsWith('ability.')));
+    await plugin.reviewSessionEnd();
+    check('session closure first requests an exact change review',
+      calls.some((args) => args[0] === 'session-end'
+        && args.includes('--session-id') && args.includes('ui'))
+      && stub.Modal.last?.contentEl?.getAttribute('role') === 'dialog'
+      && stub.Modal.last?.contentEl?.getAttribute('aria-labelledby') === 'los-session-end-heading');
+    plugin.onunload();
+  }
+
+  heading('the stage comparison drawer');
+  {
+    const { app, plugin, calls } = await boot({
+      patchManifest: (manifest) => {
+        const sourceMap = manifest.module_source_maps.find(
+          (row) => row.module_id === 'module-fixture-m2');
+        sourceMap.sources[0].unit_routes = [
+          {
+            id: 'route-drawer-deck', unit_id: 'unit-fixture-sad-l04',
+            title: 'Current L02 lecture deck', format: 'book',
+            angle: 'Scope authority for the current unit.',
+            angle_detail: 'Derives the geometry and connects scaling and validation.',
+            covers: ['knowledge-fixture-conditioning'],
+            depth: 'derivation', scope: 'current',
+            locator: 'lecture-slides/VL_02.pdf', source_id: 'source-fixture-book',
+            material_uri: 'material://source-fixture-book/lecture-slides/VL_02.pdf',
+            material_path: 'materials/source-fixture-book/lecture-slides/VL_02.pdf',
+            material_exists: true,
+          },
+          {
+            id: 'route-drawer-intuition', unit_id: 'unit-fixture-sad-l04',
+            title: 'Domingos perspective', format: 'article',
+            angle: 'Why similarity deteriorates in high dimensions.',
+            angle_detail: 'Argues the geometry informally and assumes no measure theory.',
+            covers: ['knowledge-fixture-conditioning'],
+            depth: 'intuition', scope: 'complementary',
+            locator: 'papers/domingos.pdf', source_id: 'source-fixture-book',
+          },
+          {
+            id: 'route-drawer-remote', unit_id: 'unit-fixture-sad-l04',
+            title: 'Recorded remote lecture', format: 'video',
+            angle: 'The same conditioning argument, recorded.',
+            covers: ['knowledge-fixture-conditioning'],
+            depth: 'orientation', scope: 'complementary',
+            locator: 'Lecture recording', source_id: 'source-fixture-book',
+            url: 'https://example.org/fixture-remote-lecture',
+          },
+        ];
+        sourceMap.sources[0].unit_routes.push({
+          ...sourceMap.sources[0].unit_routes[1], id: 'route-drawer-unknown',
+          title: 'Source appendix', format: 'future-format', locator: 'Appendix A',
+        });
+        const foreign = { ...sourceMap.sources[0].unit_routes[1], id: 'route-foreign', unit_id: 'unit-fixture-sad-l02', title: 'Foreign lecture entry', covers: ['knowledge-foreign-only'] };
+        sourceMap.sources[0].unit_routes.push(foreign, { ...foreign, id: 'route-analysis-hidden', unit_id: 'unit-fixture-analysis', title: 'Analysis must stay outside SaD' });
+        const owner = manifest.units.find(row => row.id === 'unit-fixture-sad-l02');
+        owner.source_selections = [{ route_id: foreign.id, source_id: foreign.source_id, locator: foreign.locator, purpose: "Existing learner choice" }];
+        owner.knowledge_map = { summary: 'Foreign lecture scope', nodes: [{ id: 'knowledge-foreign-only', title: 'Foreign coverage name', summary: 'Owned by the foreign lecture.' }] };
+        const stage = manifest.study_maps.find(row => row.unit_id === 'unit-fixture-sad-l04').stages.find(row => row.id === 'stage-fixture-conditioning');
+        stage.resources.push(...['first', 'second'].map((name, index) => ({
+          id: `resource-distinct-${name}`, route_id: 'route-drawer-deck', source_id: 'source-fixture-book',
+          kind: 'watch', label: `${name} exact video`, locator: `Lecture ${index + 1}`,
+          url: `https://example.org/video-${name}`, angle: `${name} stage instruction`, scope_triage: 'reference-only',
+        })));
+      },
+    });
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+
+    if (!view.contentEl.findText('los-btn', 'Compare all')) throw new Error(view.contentEl.allText() + ' STORE ' + plugin.store.error);
+    view.contentEl.findText('los-btn', 'Compare all').fire('click');
+    await frame();
+    const drawer = stub.Modal.last.contentEl;
+    const group = (key) => drawer.find('los-compare-group')
+      .find((node) => node.getAttribute('data-compare-group') === key);
+    const cards = () => drawer.find('los-compare-body')[0].find('los-source-entry');
+    /* F05 (2026-09-05 audit): focusing Close sent the learner to the end of a
+     * long list, so the drawer opened showing its bottom rather than its
+     * heading and recommendation. */
+    check('the drawer opens at its heading, not at the foot of the list',
+      global.document.activeElement?.getAttribute('id') === 'los-material-drawer-heading');
+    check('source browsing preserves the host modal keyboard scope',
+      typeof stub.Modal.last.scope.handleKey === 'function');
+    check('every group states a count that reconciles with the stage and the lecture',
+      drawer.find('los-compare-reconcile')[0].allText().startsWith('2 + 0 + 3 = 5 on this stage')
+      && group('required').allText().includes('2 materials')
+      && group('reference').allText().includes('3 materials')
+      && group('lecture').allText().includes('4 routes')
+      && group('course').allText().includes('1 route'));
+    const reachable = [];
+    for (const key of ['required', 'stuck', 'reference']) {
+      group(key).fire('click');
+      reachable.push(...cards());
+    }
+    check('every placement is reachable through its group, one group at a time',
+      reachable.length === 5
+      && group('reference').getAttribute('aria-pressed') === 'true'
+      && group('required').getAttribute('aria-pressed') === 'false');
+    const firstCard = cards().find((card) => card.allText().includes('first exact video'));
+    check('a card states its title once',
+      firstCard.allText().split('first exact video').length - 1 === 1);
+    const opened = [];
+    plugin.openResource = record => opened.push(record);
+    const firstVideo = cards().find(row => row.allText().includes('first exact video'));
+    const secondVideo = cards().find(row => row.allText().includes('second exact video'));
+    firstVideo.findText('los-btn', 'Open').fire('click');
+    secondVideo.findText('los-btn', 'Open').fire('click');
+    check('same-route stage placements preserve separate instructions and direct targets',
+      firstVideo.allText().includes('first stage instruction') && secondVideo.allText().includes('second stage instruction')
+      && opened[0].url === 'https://example.org/video-first' && opened[1].url === 'https://example.org/video-second');
+    check('a placement names its purpose, exact locator and where it is, in words',
+      firstVideo.find('los-material-purpose')[0].allText() === 'Derive it'
+      && firstVideo.allText().includes('Lecture 1')
+      && firstVideo.find('los-material-availability')[0].allText().includes('Remote')
+      && firstVideo.allText().includes('LearningOS never fetches it'));
+
+    group('lecture').fire('click');
+    const lecture = () => drawer.find('los-compare-body')[0];
+    const deck = () => cards().find((card) => card.allText().includes('Current L02 lecture deck'));
+    const types = () => lecture().find('los-material-type-group');
+    const rows = () => lecture().find('los-material-list-row');
+    const expandRows = () => rows().forEach((row) => { row.open = true; row.fire('toggle'); });
+    check('every lecture route is in a counted type, including unknown formats',
+      rows().length === 4
+      && types().map((node) => node.find('los-material-type-label')[0].allText()).join('|')
+        === 'Books|Videos|Articles|Other materials'
+      && lecture().allText().includes('4 of 4 materials'));
+    check('types and material details start closed, without reading or choosing anything',
+      types().every((node) => !node.open)
+      && rows().every((node) => !node.open)
+      && cards().length === 0
+      && !calls.some((args) => args[0] === 'material-span')
+      && !calls.envelope('unit.source-selection.set'));
+    const bookType = types()[0];
+    bookType.open = true; bookType.fire('toggle');
+    expandRows();
+    check('opening a material reveals its details without losing the other routes',
+      cards().length === 4 && rows().length === 4);
+
+    check('route cards carry the source chip, the exact locator and the angle',
+      cards().every((card) => card.find('los-chip').length >= 1)
+      && deck().allText().includes('lecture-slides/VL_02.pdf')
+      && deck().allText().includes('Scope authority for the current unit.'));
+    const why = deck().findText('los-btn', 'Why this one');
+    check('"Why this one" is on demand and keeps coverage with the rationale',
+      Boolean(why)
+      && deck().find('los-resource-angle-detail')[0].hasAttribute('hidden')
+      && deck().find('los-resource-angle-detail')[0].allText().includes('Derives the geometry and connects scaling and validation.'));
+    why.fire('click');
+    check('"Why this one" opens in place',
+      !deck().find('los-resource-angle-detail')[0].hasAttribute('hidden'));
+    const remote = cards().find((card) => card.allText().includes('Recorded remote lecture'));
+    check('remote material is said to be remote and is never inspected',
+      remote.find('los-material-availability')[0].allText().includes('Remote')
+      && !remote.findText('los-btn', 'Inspect span'));
+    check('material with no copy and no link says so',
+      cards().find((card) => card.allText().includes('Domingos perspective'))
+        .find('los-material-availability')[0].allText().includes('Not available'));
+    check('a local span is inspectable, and nothing is read before it is asked for',
+      Boolean(deck().findText('los-btn', 'Inspect span'))
+      && deck().find('los-material-availability')[0].allText().includes('Local file')
+      && !calls.some((args) => args[0] === 'material-span'));
+    deck().findText('los-btn', 'Inspect span').fire('click');
+    await waitFor(() => deck()?.find('los-span-excerpt').length === 1);
+    const span = deck().find('los-span-panel')[0];
+    check('the material excerpt comes from Core, snapshot-bound and bounded',
+      calls.some((args) => args.join(' ')
+        === `material-span unit-fixture-sad-l04 route-drawer-deck --extract --expected-snapshot ${FIXTURE_SNAPSHOT}`)
+      && span.allText().includes('Local file read just now')
+      && span.find('los-span-excerpt')[0].allText().includes('Conditioning on an event')
+      && span.allText().includes('pages 1–2 of 12')
+      && span.allText().includes('Preview covers pages 1–2 of 12')
+      && span.allText().includes('2 analysis notes read this route.')
+      && Boolean(deck().findText('los-btn', 'Inspect again')));
+
+    const search = drawer.find('los-source-search')[0];
+    search.focus(); search.value = 'Dom'; search.fire('input');
+    search.value = 'Domingos'; search.fire('input');
+    check('multi-character search preserves its input node and focus',
+      drawer.find('los-source-search')[0] === search && global.document.activeElement === search
+      && cards().length === 1 && drawer.allText().includes('1 of 4 materials'));
+    search.value = plugin.store.get('source-fixture-book').title; search.fire('input');
+    check('search also matches the parent source title', cards().length === 4);
+    search.value = 'video'; search.fire('input');
+    check('search reveals matching types and retains exact routes',
+      types().length === 1 && types()[0].open && rows().length === 1
+      && rows()[0].getAttribute('data-route-id') === 'route-drawer-remote');
+    search.value = ''; search.fire('input');
+    check('clearing search restores the learner type state and the complete menu',
+      rows().length === 4 && types()[0].open && !types()[1].open);
+    lecture().findText('los-btn', 'Collapse types').fire('click');
+    check('Collapse types closes every group while all routes remain reachable',
+      types().every((node) => !node.open) && rows().length === 4);
+    search.value = 'does not exist'; search.fire('input');
+    check('no-result state keeps the totals and says how to recover',
+      drawer.allText().includes('0 of 4 materials') && drawer.allText().includes('No material matches')
+      && drawer.allText().includes('Clear the search'));
+    group('lecture').fire('click');
+    check('choosing the group again clears the search and recovers every route', rows().length === 4 && cards().length === 4);
+
+    group('course').fire('click');
+    expandRows();
+    const foreignRow = cards().find(row => row.allText().includes('Foreign lecture entry'));
+    check('the rest of the course is one click away, without cross-unit mutation',
+      cards().length === 1 && !drawer.allText().includes('Analysis must stay outside SaD')
+      && foreignRow.allText().includes('Chosen for this lecture') && foreignRow.allText().includes('Foreign coverage name')
+      && foreignRow.findText('los-btn', 'Go to lecture') && !foreignRow.findText('los-btn', 'Choose')
+      && !foreignRow.findText('los-btn', 'Remove choice'));
+    check('browsing and filtering never change canonical selection', !calls.envelope('unit.source-selection.set'));
+
+    /* D4: the surface moved, the governed write did not. */
+    group('lecture').fire('click');
+    cards().find((card) => card.allText().includes('Domingos perspective')).findText('los-btn', 'Choose').fire('click');
+    await waitFor(() => Boolean(calls.envelope('unit.source-selection.set'))
+      && !plugin.gateway.isBusy);
+    const selection = calls.envelope('unit.source-selection.set');
+    check('choosing from the drawer sends the unchanged governed selection',
+      selection?.payload.unit_id === 'unit-fixture-sad-l04'
+      && selection?.payload.route_id === 'route-drawer-intuition'
+      && selection?.payload.source_id === 'source-fixture-book'
+      && selection?.payload.locator === 'papers/domingos.pdf'
+      && selection?.payload.action === 'select'
+      && selection?.payload.purpose === 'Why similarity deteriorates in high dimensions.'
+      && selection?.expected_snapshot === FIXTURE_SNAPSHOT);
+    plugin.onunload();
+  }
+
+  /* The L07 shape: stage-sad-l07-geometric is authored `helpful-now` with nothing
+     required of the learner at all. A drawer that opened on an empty "Required
+     now" group would read as empty — the one thing this surface must never do —
+     so it opens on the most urgent group actually present. */
+  heading('the drawer on a stage with nothing required now');
+  {
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        const sourceMap = manifest.module_source_maps.find(
+          (row) => row.module_id === 'module-fixture-m2');
+        sourceMap.sources[0].unit_routes = [
+          {
+            id: 'route-optional-derivation', unit_id: 'unit-fixture-sad-l04',
+            title: 'Waiting-time derivation', format: 'book',
+            angle: 'Derives the waiting time formally.',
+            covers: ['knowledge-fixture-conditioning'],
+            depth: 'derivation', scope: 'complementary',
+            locator: 'ch 4', source_id: 'source-fixture-book',
+          },
+          {
+            id: 'route-optional-orientation', unit_id: 'unit-fixture-sad-l04',
+            title: 'Waiting-time picture', format: 'video',
+            angle: 'The same waiting time, drawn.',
+            covers: ['knowledge-fixture-conditioning'],
+            depth: 'orientation', scope: 'complementary',
+            locator: 'clip', source_id: 'source-fixture-book',
+          },
+          {
+            id: 'route-optional-solutions', unit_id: 'unit-fixture-sad-l04',
+            title: 'Waiting-time worked answers', format: 'solutions',
+            angle: 'The answers, worked in full.',
+            covers: ['knowledge-fixture-conditioning'],
+            depth: 'practice', scope: 'complementary',
+            locator: 'pp. 20-24', source_id: 'source-fixture-book',
+          },
+        ];
+        const stage = manifest.study_maps.find((row) => row.unit_id === 'unit-fixture-sad-l04')
+          .stages.find((row) => row.id === 'stage-fixture-conditioning');
+        stage.scope_triage = 'helpful-now';
+        stage.resources = [
+          {
+            id: 'resource-optional-helpful', route_id: 'route-optional-derivation',
+            source_id: 'source-fixture-book', kind: 'read',
+            label: 'Waiting-time derivation', locator: 'ch 4', scope_triage: 'helpful-now',
+          },
+          {
+            id: 'resource-optional-reference', route_id: 'route-optional-orientation',
+            source_id: 'source-fixture-book', kind: 'watch',
+            label: 'Waiting-time picture', locator: 'clip', scope_triage: 'reference-only',
+          },
+          {
+            id: 'resource-optional-solutions', route_id: 'route-optional-solutions',
+            source_id: 'source-fixture-book', kind: 'practise',
+            label: 'Waiting-time worked answers', locator: 'pp. 20-24',
+            scope_triage: 'helpful-now',
+          },
+        ];
+      },
+    });
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    view.contentEl.findText('los-btn', 'Compare all').fire('click');
+    await frame();
+    const drawer = stub.Modal.last.contentEl;
+    const group = (key) => drawer.find('los-compare-group')
+      .find((node) => node.getAttribute('data-compare-group') === key);
+    const cards = () => drawer.find('los-compare-body')[0].find('los-source-entry');
+    check('a stage with nothing required still opens at the most urgent group present',
+      group('stuck').getAttribute('aria-pressed') === 'true'
+      && cards().length === 2
+      && group('required').classes.has('is-empty'));
+    check('nothing is hidden by the fallback: the count line still reconciles',
+      drawer.find('los-compare-reconcile')[0].allText().startsWith('0 + 2 + 1 = 3 on this stage'));
+    group('required').fire('click');
+    check('an empty group says where the materials are instead of reading as empty',
+      cards().length === 0 && drawer.allText().includes('Nothing on this stage is required now'));
+    group('stuck').fire('click');
+    /* The working kind names the ACTIVITY, not the material: a solutions PDF
+       placed as `practise` is still worked solutions, and letting the kind win
+       would call it an exercise sheet. */
+    const answers = cards().find((card) => card.allText().includes('Waiting-time worked answers'));
+    check('an authored format outranks the working kind on the card',
+      answers.find('los-material-kind')[0].allText() === 'Solutions'
+      && answers.find('los-material-purpose')[0].allText() === 'Practise');
+    plugin.onunload();
+  }
+
+  heading('lecture knowledge map and material choice');
+  {
+    const { app, plugin, calls } = await boot({
+      patchManifest: (manifest) => {
+        const unit = manifest.units.find((row) => row.id === 'unit-fixture-analysis');
+        unit.knowledge_map = {
+          summary: 'Two connected ideas define this lecture.',
+          nodes: [
+            {
+              id: 'knowledge-fixture-formulation',
+              title: 'Problem formulation',
+              summary: 'State the inputs, target, and learning objective.',
+            },
+            {
+              id: 'knowledge-fixture-generalization',
+              title: 'Generalization',
+              summary: 'Separate fitting the sample from performing on new data.',
+              builds_on: ['knowledge-fixture-formulation'],
+            },
+          ],
+        };
+        unit.source_selections = [{
+          route_id: 'route-fixture-analysis-video',
+          source_id: 'source-fixture-islp',
+          locator: 'Episode 4',
+          purpose: 'Use the visual train-versus-test explanation.',
+        }];
+        const sourceMap = manifest.module_source_maps.find((row) => row.module_id === 'module-fixture-m2');
+        sourceMap.sources[0].unit_routes.push({
+          id: 'route-fixture-analysis-book',
+          unit_id: 'unit-fixture-analysis',
+          title: 'Fixture book — derivation angle',
+          format: 'book',
+          angle: 'Builds the generalization argument from a worked mathematical example.',
+          covers: ['knowledge-fixture-formulation', 'knowledge-fixture-generalization'],
+          depth: 'derivation',
+          scope: 'current',
+          locator: 'Chapter 2 §§2.1–2.3',
+          source_id: 'source-fixture-book',
+          material_path: '.flat/source-fixture-book/chapter-2.pdf',
+        });
+        sourceMap.sources.push({
+          source_id: 'source-fixture-islp',
+          role: 'intuition',
+          why: 'Alternate visual explanation.',
+          priority: 2,
+          unit_routes: [{
+            id: 'route-fixture-analysis-video',
+            unit_id: 'unit-fixture-analysis',
+            title: 'Fixture video — intuition angle',
+            format: 'video',
+            angle: 'Uses a visual train-versus-test story without the derivation.',
+            covers: ['knowledge-fixture-generalization'],
+            depth: 'intuition',
+            scope: 'complementary',
+            locator: 'Episode 4',
+            source_id: 'source-fixture-islp',
+            url: 'https://example.org/generalization',
+          }],
+        });
+      },
+    });
+    await plugin.nav.openUnit('unit-fixture-analysis');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const text = view.contentEl.allText();
+    check('knowledge nodes render as a dependency-aware lecture overview',
+      view.contentEl.find('los-knowledge-node').length === 2
+      && text.includes('Lecture knowledge map')
+      && text.includes('Builds on: Problem formulation'));
+    check('all material options are grouped by type with source identity available',
+      view.contentEl.find('los-material-option').length === 2
+      && text.includes('Choose your learning material')
+      && view.contentEl.find('los-source-group').length === 2
+      && view.contentEl.find('los-source-entry').length === 2);
+    check('material cards preserve the source angle, locator, coverage, depth, and scope',
+      text.includes('Builds the generalization argument from a worked mathematical example.')
+      && text.includes('Chapter 2 §§2.1–2.3')
+      && text.includes('derivation') && text.includes('current')
+      && text.includes('Generalization'));
+    check('the complete material menu renders alongside an unmet map obligation',
+      text.includes('Choose your learning material')
+      && text.includes('Study map required')
+      && text.includes('This unit has no ordered study map')
+      // The menu says what may be used; the map says in what order and against
+      // what proof. Rendering the first must never be read as discharging the
+      // second (OPERATOR.md rule 6).
+      && text.includes('A map says in what order and against what proof'));
+    check('openable material choices expose a direct action',
+      view.contentEl.findText('los-btn', 'Open') !== null);
+    const choose = view.contentEl.findText('los-btn', 'Choose');
+    check('material choice is an explicit pressed-state control',
+      choose !== null && choose.getAttribute('aria-pressed') === 'false'
+      && choose.classes.has('los-btn--choice')
+      && view.contentEl.findText('los-btn', 'Open')?.classes.has('los-btn--info')
+      && view.contentEl.findText('los-btn', 'Remove choice')?.getAttribute('aria-pressed') === 'true');
+    choose.fire('click');
+    await waitFor(() => Boolean(calls.envelope('unit.source-selection.set'))
+      && !plugin.gateway.isBusy);
+    const selection = calls.envelope('unit.source-selection.set');
+    check('choosing a material persists the exact lecture option through the guarded gateway',
+      selection?.payload.unit_id === 'unit-fixture-analysis'
+      && selection?.payload.route_id === 'route-fixture-analysis-book'
+      && selection?.payload.source_id === 'source-fixture-book'
+      && selection?.payload.locator === 'Chapter 2 §§2.1–2.3'
+      && selection?.payload.action === 'select'
+      && selection?.payload.purpose === 'Builds the generalization argument from a worked mathematical example.');
+    await plugin.askAiScoped('Build a path from my choices.', {
+      moduleId: 'module-fixture-m2',
+      unitId: 'unit-fixture-analysis',
+    });
+    check('optional-path AI context uses unit choices when no stage exists',
+      plugin.lastAiPrompt.includes('source-fixture-islp')
+      && plugin.lastAiPrompt.includes('Episode 4'));
+    plugin.onunload();
+  }
+
+  heading('the stage workspace leads a unit that has a map');
+  {
+    /* Handoff §7.5: `/learn/:unit` is ordered stages plus the selected stage.
+     * The knowledge map and the complete menu are Figma screen 11 and belong
+     * after it, not stacked on top pushing the workspace off the first screen.
+     * Order is asserted on rendered text position because that is what the
+     * learner actually meets; a presence check passed throughout the period
+     * this was wrong. */
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        const unit = manifest.units.find((row) => row.id === 'unit-fixture-sad-l04');
+        unit.knowledge_map = {
+          summary: 'One idea defines this lecture.',
+          nodes: [{
+            id: 'knowledge-fixture-conditioning',
+            title: 'Conditioning',
+            summary: 'Update belief once evidence arrives.',
+          }],
+        };
+        const sourceMap = manifest.module_source_maps.find(
+          (row) => row.module_id === 'module-fixture-m2');
+        sourceMap.sources[0].unit_routes.push({
+          id: 'route-fixture-sad-l04-book',
+          unit_id: 'unit-fixture-sad-l04',
+          title: 'Fixture book — conditioning angle',
+          format: 'book',
+          angle: 'Works the conditioning rule through a medical-test example.',
+          covers: ['knowledge-fixture-conditioning'],
+          depth: 'derivation',
+          scope: 'current',
+          locator: 'Chapter 3 §3.1',
+          source_id: 'source-fixture-book',
+          material_path: '.flat/source-fixture-book/chapter-3.pdf',
+        });
+      },
+    });
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const text = view.contentEl.allText();
+    const route = text.indexOf('Stages');
+    const knowledge = text.indexOf('Lecture knowledge map');
+    /* The stage leads the route it is named after. The choose-a-source menu is
+     * no longer on the page beneath it — Figma 05 moved it into the comparison
+     * drawer so the stage shows one current action — so what is checked here is
+     * that the workspace comes first and the menu is not competing with it. */
+    check('the ordered stages and the selected stage lead the page',
+      route !== -1 && knowledge !== -1 && route < knowledge
+      && text.indexOf('Choose your learning material') === -1);
+    check('the complete menu is still rendered in full, not truncated',
+      view.contentEl.find('los-knowledge-node').length === 1
+      && (() => {
+        view.contentEl.findText('los-btn', 'Compare all').fire('click');
+        const drawer = stub.Modal.last.contentEl;
+        drawer.find('los-compare-group')
+          .find((node) => node.getAttribute('data-compare-group') === 'lecture').fire('click');
+        drawer.find('los-material-list-row').forEach((row) => { row.open = true; row.fire('toggle'); });
+        const shown = drawer.allText().includes(
+          'Works the conditioning rule through a medical-test example.',
+        );
+        stub.Modal.last.close();
+        return shown;
+      })());
+    check('approved material synthesis stays distinct from the option menu',
+      text.includes('Approved material synthesis')
+      && text.includes('current basis')
+      && text.includes('complete route coverage')
+      && text.includes('1/1 current routes assessed')
+      && text.includes('screened')
+      && text.includes('The route was screened for scope')
+      && text.includes('Concept bridges'));
+    plugin.onunload();
+  }
+
+  {
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        const synthesis = manifest.unit_material_syntheses[0];
+        synthesis.freshness = {
+          status: 'stale',
+          reasons: ['source_map_revision', 'material_checksums'],
+        };
+        synthesis.completeness = {
+          ...synthesis.completeness,
+          complete: false,
+          current_route_count: 2,
+          missing_route_ids: ['route-fixture-new-current'],
+        };
+      },
+    });
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const text = app.workspace.getLeavesOfType(VIEW.unit)[0].view.contentEl.allText();
+    check('stale synthesis is labelled while its approved dossier remains visible',
+      text.includes('stale basis')
+      && text.includes('incomplete route coverage')
+      && text.includes('source map revision, material checksums')
+      && text.includes('Missing: route-fixture-new-current')
+      && text.includes('The route was screened for scope'));
+    plugin.onunload();
+  }
+
+  /* Cross-module relationships live in the Atlas (2026-09-23): a concept
+   * bridge to another module is counted in the session with the way there,
+   * never listed as a second navigation surface inside the lecture. */
+  heading('the session keeps cross-module relationships in the Atlas');
+  {
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        manifest.unit_material_syntheses[0].concept_groups[0].related_unit_ids = [
+          'unit-fixture-sad-l02', 'unit-fixture-aml-l03', 'unit-fixture-aml-l04',
+        ];
+      },
+    });
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const root = app.workspace.getLeavesOfType(VIEW.unit)[0].view.contentEl;
+    const row = root.find('los-synthesis-comparison')
+      .find((node) => node.allText().includes('The screened route connects the lecture'));
+    const elsewhere = ['unit-fixture-aml-l03', 'unit-fixture-aml-l04']
+      .map((id) => plugin.store.get(id).title);
+    check('same-module relations stay chips; other modules are only counted',
+      Boolean(row)
+      && row.find('los-chip').some((chip) => chip.allText().includes(plugin.store.get('unit-fixture-sad-l02').title))
+      && row.find('los-chip').some((chip) => chip.allText().includes(plugin.store.get('note-fixture-probability').title))
+      && elsewhere.every((title) => !row.allText().includes(title))
+      && row.find('los-synthesis-beyond')[0]?.allText().includes('2 connections in other modules'));
+    row.findText('los-btn', 'Open in Atlas').fire('click');
+    await frame();
+    const current = plugin.router.snapshot().current;
+    check('the count opens the Atlas on that concept',
+      current?.name === 'atlas' && current?.concept === 'concept-bedingte-wahrscheinlichkeit');
+    plugin.onunload();
+  }
+
+  heading('missing map and explicit AI context');
+  {
+    const { app, plugin } = await boot();
+    await plugin.nav.openUnit('unit-fixture-analysis');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    check('unit owed a map says so and offers both routes to one',
+      view.contentEl.allText().includes('Study map required')
+      && view.contentEl.allText().includes('Create map with AI')
+      && view.contentEl.findText('los-btn', 'Import reviewed map') !== null);
+    await plugin.askAiScoped('Propose a scoped next action.', {
+      moduleId: 'module-fixture-m2', componentId: 'component-fixture-sad',
+      unitId: 'unit-fixture-sad-l04', stageId: 'stage-fixture-conditioning',
+    });
+    const prompt = plugin.lastAiPrompt;
+    check('AI prompt names area/module/component/unit/stage', ['program-bachelors', 'module-fixture-m2',
+      'component-fixture-sad', 'unit-fixture-sad-l04', 'stage-fixture-conditioning'].every((id) => prompt.includes(id)));
+    check('AI prompt carries sources and snapshot', prompt.includes('source-fixture-islp')
+      && prompt.includes(FIXTURE_SNAPSHOT));
+    check('active file is supplementary only', prompt.includes('knowledge/notes/supplementary.md')
+      && prompt.includes('supplementary context only'));
+    plugin.onunload();
+  }
+
+  heading('reviewed map replacement stays near the top of an existing map');
+  {
+    const { app, plugin } = await boot();
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const root = app.workspace.getLeavesOfType(VIEW.unit)[0].view.contentEl;
+    const children = root.children;
+    const provenance = children.findIndex((child) => child.classes.has('los-map-provenance'));
+    const layout = children.findIndex((child) => child.classes.has('los-unit-layout'));
+    check('replacement is visible before the stage layout and outside the extras disclosure',
+      provenance >= 0 && provenance < layout
+      && Boolean(children[provenance].findText('los-btn', 'Replace with reviewed map')));
+    plugin.onunload();
+  }
+
+  heading('the assigned page survives the whole plugin route');
+  {
+    /*
+     * The delegate probe the review ran, kept as a test.
+     *
+     * `ResourceOpener` accepted a destination and its own tests passed, while
+     * `main.ts` accepted and forwarded only `path` — so on the real plugin
+     * route the page option and the external-viewer instruction were dropped
+     * before they reached any opener. Calling ResourceOpener directly cannot
+     * see that, which is the point of going through the built plugin here
+     * (review workbench/audits/repair-review-2026-09-13, R2).
+     */
+    const { app, plugin } = await boot();
+    const seen = [];
+    // The real opener still derives the destination; only the two boundaries
+    // the delegates reach are recorded, exactly as the review probed them.
+    const real = plugin.resources;
+    plugin.resources = {
+      openResource: (record, ports) => real.openResource(record, ports),
+      openVaultPath: (path, destination) => { seen.push(['vault', path, destination]); },
+      openMaterialPath: (path, destination) => { seen.push(['material', path, destination]); },
+      openExternalPath: (path, message) => { seen.push(['external', path, message]); },
+      openAuthoredPath: (path) => { seen.push(['authored', path]); },
+    };
+
+    const destination = { page: 20, label: 'physical pages 20\u201322' };
+    await plugin.openVaultPath('knowledge/attachments/deck.pdf', destination);
+    plugin.openMaterialPath('materials/lecture.pdf', destination);
+    check('both plugin delegates forward the destination, not just the path',
+      JSON.stringify(seen) === JSON.stringify([
+        ['vault', 'knowledge/attachments/deck.pdf', destination],
+        ['material', 'materials/lecture.pdf', destination],
+      ]));
+
+    seen.length = 0;
+    plugin.openResource({
+      material_path: 'materials/sad/08_normal_distribution.pdf',
+      material_exists: true,
+      locator: 'lecture-slides/08_normal_distribution.pdf, PDF pp. 20-22',
+    });
+    check('openResource derives the destination and hands it on',
+      seen.length === 1 && seen[0][0] === 'material'
+      && seen[0][2] && seen[0][2].page === 20);
+
+    seen.length = 0;
+    plugin.openResource({
+      material_path: 'materials/sad/UE6.pdf',
+      material_exists: true,
+      locator: 'exercise-slides/UE6.pdf, slides 5-20',
+    });
+    check('an unqualified locator hands on no destination rather than a guess',
+      seen.length === 1 && seen[0][2] === null);
+
+    /* The mixed-numbering case F07 named: Analysis Chapter 01 declares both
+     * numberings, and the printed page came first. */
+    seen.length = 0;
+    plugin.openResource({
+      material_path: 'materials/analysis/skript.pdf',
+      material_exists: true,
+      locator: 'unser skript.pdf Kapitel 1, printed p. 1 (PDF p. 11)\u2013printed p. 6 (PDF p. 16)',
+    });
+    check('a printed page beside a physical one never becomes the destination',
+      seen.length === 1 && seen[0][2] && seen[0][2].page === 11);
+
+    plugin.onunload();
+  }
+};

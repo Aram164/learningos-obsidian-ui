@@ -1,0 +1,163 @@
+/* ── Philosophy-locked application shell ────────────────────────────────
+ * Figma's content frame is 1200px with a 48px inset, a 1104px header and a
+ * 900px reading/decision column. Keeping those proportions at wider Obsidian
+ * leaf sizes prevents every screen from turning into a wall-to-wall admin
+ * dashboard. The layout still collapses naturally in narrow leaves. */
+.los-root:not(.los-app-nav) {
+  padding: var(--los-5) clamp(var(--los-3), 4%, 48px) var(--los-6);
+  container-type: inline-size;
+  container-name: los-view;
+}
+
+.los-root:not(.los-app-nav) > .los-page-header {
+  width: min(1104px, 100%);
+  max-width: none;
+  margin: 0 0 20px;
+}
+
+.los-root:not(.los-app-nav) > .los-section,
+.los-root:not(.los-app-nav) > .los-actions,
+.los-root:not(.los-app-nav) > .los-empty {
+  width: min(900px, 100%);
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-root:not(.los-app-nav) > .los-actions {
+  margin-bottom: var(--los-4);
+}
+
+/* Home stays a single quiet reading column. */
+.los-home > .los-page-header,
+.los-home > .los-continue,
+.los-home > .los-section {
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-home > .los-page-header { width: min(1104px, 100%); }
+.los-home > .los-continue,
+.los-home > .los-section { width: min(900px, 100%); }
+
+.los-home > .los-continue {
+  margin-bottom: 30px;
+  padding: 18px 20px;
+}
+
+.los-home > .los-section {
+  margin-bottom: 28px;
+}
+
+.los-home-row {
+  min-height: 68px;
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+.los-home-list { gap: var(--los-2); border-top: 0; }
+
+/* Modules is the current semester, not another subject browser. */
+.los-semester-summary,
+.los-semester-module-list {
+  width: min(900px, 100%);
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-semester-summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--los-4);
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--los-rule);
+}
+
+.los-semester-summary span {
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+
+.los-semester-module-list {
+  gap: var(--los-2);
+}
+
+.los-root .los-semester-module-row,
+.los-root .los-library-route-list .los-route-row {
+  min-height: 72px;
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface);
+}
+
+.los-root .los-semester-module-row:hover,
+.los-root .los-library-route-list .los-route-row:hover {
+  background: var(--los-paper-2);
+}
+
+/* Library is the global collection. Its five facets remain peers. */
+.los-collection-switch,
+.los-library-browser,
+.los-library-toolbar,
+.los-detail-page,
+.los-library-group-grid {
+  width: min(900px, 100%);
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-collection-switch {
+  margin-bottom: 16px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.los-collection-switch .los-btn--cta {
+  border-color: transparent;
+  background: var(--los-accent-wash);
+  color: var(--los-accent);
+  font-weight: 650;
+}
+
+.los-library-browser-toolbar {
+  margin-bottom: 16px;
+}
+
+.los-library-browser-toolbar .los-route-search {
+  min-height: 38px;
+  margin-bottom: 0;
+}
+
+.los-library-peer-facets {
+  gap: 5px;
+  margin-bottom: 18px;
+}
+
+.los-library-facet-select {
+  min-height: 38px;
+  background: var(--los-surface-raised);
+}
+
+.los-library-route-list {
+  gap: var(--los-2);
+}
+
+@container los-view (max-width: 850px) {
+  .los-home-header { padding-right: 0; }
+  .los-home-header-actions { position: static; flex-wrap: wrap; margin-top: var(--los-3); }
+  .los-root .los-home-search-launcher { width: min(100%, 330px); }
+  .los-review-split { grid-template-columns: minmax(0, 1fr); }
+  .los-review-detail { padding: var(--los-4); }
+}
+
+@container los-view (max-width: 560px) {
+  .los-home-row { grid-template-columns: minmax(0, 1fr); }
+  .los-home-row > .los-btn { justify-self: start; }
+}

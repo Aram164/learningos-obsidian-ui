@@ -1,0 +1,8 @@
+node_modules/
+__pycache__/
+.DS_Store
+fixture-vault/.obsidian/plugins/
+fixture-vault/bases/
+fixture-vault/operations/diagnostics/
+.build/
+plugin/build-info.json

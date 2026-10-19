@@ -1,0 +1,1065 @@
+'use strict';
+
+const {
+  path,
+  fs,
+  makeApp,
+  Notice,
+  stub,
+  ROOT,
+  FIXTURE,
+  LearningOSUI,
+  FIXTURE_GROUP_COUNT,
+  CAPTURE_FIXTURE_PATH,
+  fileDigest,
+  VIEW,
+  tick,
+  frame,
+  waitFor,
+  requestGuardFor,
+  check,
+  heading,
+  build,
+  boot,
+} = require('./support');
+
+module.exports = async function run() {
+  heading('library navigability');
+  {
+    const { app, plugin } = await boot();
+
+    // The Library's front door is the folder browser: "open the Library" with
+    // no record named means "show me the shelf", and a shelf is a place you
+    // walk. The faceted browser below is still the whole registry in one flat
+    // list, and is now reached by name rather than by default.
+    await plugin.nav.openLibrary();
+
+    let view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    check(
+      'opening the Library lands in the folder browser',
+      view.screen === 'folder'
+        && view.folderPath.length === 0
+        && view.contentEl.find('los-finder').length === 1
+        && view.contentEl.find('los-finder-row').length > 0
+        && plugin.router.snapshot().current.name === 'library-folder',
+    );
+
+    check(
+      'the folder root offers places and a domain folder per thematic group',
+      view.contentEl.find('los-finder-place').length > 0
+        && view.contentEl.allText().includes('Domains'),
+    );
+
+    // Walking down, and back up onto the folder just left.
+    const domainRow = view.contentEl.find('los-finder-row').find(
+      (row) => (row.getAttribute('data-segment') || '').startsWith('domain:'),
+    );
+    const domainSegment = domainRow.getAttribute('data-segment');
+    domainRow.fire('click');
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+
+    check(
+      'one click selects rather than navigating, and fills the inspector',
+      view.folderPath.length === 0
+        && view.folderSelection === domainSegment
+        && view.contentEl.find('los-finder-inspector').length === 1,
+    );
+
+    check(
+      'the moved selection takes focus, so a second arrow key has somewhere to go',
+      global.document.activeElement
+        && global.document.activeElement.getAttribute('data-segment')
+          === domainSegment,
+    );
+
+    view.contentEl.find('los-finder-row').find(
+      (row) => row.getAttribute('data-segment') === domainSegment,
+    ).fire('click');
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+
+    check(
+      'a click on the selected row opens it',
+      view.folderPath.length === 1
+        && view.folderPath[0] === domainSegment
+        && plugin.router.snapshot().current.name === 'library-folder',
+    );
+
+    await view.openEnclosingFolder();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+
+    check(
+      'the enclosing folder lands back on the folder just left',
+      view.folderPath.length === 0
+        && view.folderSelection === domainSegment,
+    );
+
+    await plugin.nav.openLibraryHome('sources');
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    let text =
+      view.contentEl.allText();
+
+    check(
+      'Learning Sources opens as one global faceted browser',
+      view.screen === 'home'
+        && view.collection === 'sources'
+        && view.contentEl.find(
+          'los-group-card',
+        ).length === 0
+        && view.contentEl.find(
+          'los-route-row',
+        ).length > 0
+        && view.contentEl.find(
+          'los-library-peer-facets',
+        ).length === 1,
+    );
+
+    check(
+      'the five semantic facets are peers',
+      ['Domain', 'Topic', 'Purpose', 'Form', 'Current use']
+        .every(
+          (label) =>
+            text.includes(label),
+        )
+        && view.contentEl.find(
+          'los-library-facet-select',
+        ).length === 5,
+    );
+
+    check(
+      'Sources and Curated packs remain separate collections',
+      view.contentEl.find(
+        'los-collection-switch',
+      ).length === 1
+        && text.includes('Sources')
+        && text.includes('Curated packs'),
+    );
+
+    const select = (dimension) =>
+      view.contentEl.find(
+        'los-library-facet-select',
+      ).find(
+        (candidate) =>
+          candidate.getAttribute(
+            'data-facet',
+          ) === dimension,
+      );
+
+    const domain = select('domain');
+    domain.value =
+      'thematic-group-mathematics';
+    domain.fire('change');
+
+    await tick();
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    const expectedMathSources =
+      plugin.store.sources().filter(
+        (source) =>
+          Array.isArray(
+            source.thematic_group_ids,
+          )
+          && source.thematic_group_ids.includes(
+            'thematic-group-mathematics',
+          ),
+      ).length;
+
+    check(
+      'Domain is a filter rather than a required first navigation level',
+      view.filters.domain
+        === 'thematic-group-mathematics'
+        && plugin.router.snapshot().current.name
+          === 'library-home'
+        && plugin.router.snapshot().current.filters?.domain
+          === 'thematic-group-mathematics'
+        && view.contentEl.find(
+          'los-route-row',
+        ).length === expectedMathSources
+        && view.contentEl.find(
+          'los-library-filter-chip',
+        ).length === 1,
+    );
+
+    const topic =
+      view.contentEl.find(
+        'los-library-facet-select',
+      ).find(
+        (candidate) =>
+          candidate.getAttribute(
+            'data-facet',
+          ) === 'topic',
+      );
+
+    topic.value =
+      'topic-probability';
+    topic.fire('change');
+
+    await tick();
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    check(
+      'peer facets combine conjunctively without replacing one another',
+      view.filters.domain
+        === 'thematic-group-mathematics'
+        && view.filters.topic
+          === 'topic-probability'
+        && view.contentEl.find(
+          'los-route-row',
+        ).length === 2
+        && view.contentEl.find(
+          'los-library-filter-chip',
+        ).length === 2,
+    );
+
+    const route =
+      plugin.router.snapshot().current;
+
+    check(
+      'the complete facet combination is persisted on the product route',
+      route.name === 'library-home'
+        && route.filters?.domain
+          === 'thematic-group-mathematics'
+        && route.filters?.topic
+          === 'topic-probability'
+        && route.filters?.purpose === ''
+        && route.filters?.form === ''
+        && route.filters?.use === '',
+    );
+
+    view.contentEl
+      .findText(
+        'los-btn',
+        'Clear filters',
+      )
+      .fire('click');
+
+    await tick();
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    check(
+      'clearing facet state does not change source identity or collection',
+      Object.values(
+        view.filters,
+      ).every(
+        (value) => value === '',
+      )
+        && view.collection === 'sources',
+    );
+
+    const math =
+      view.contentEl.find(
+        'los-library-facet-select',
+      ).find(
+        (candidate) =>
+          candidate.getAttribute(
+            'data-facet',
+          ) === 'domain',
+      );
+
+    math.value =
+      'thematic-group-mathematics';
+    math.fire('change');
+
+    await tick();
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    const book =
+      view.contentEl.find(
+        'los-route-row',
+      ).find(
+        (row) =>
+          row.getAttribute(
+            'data-record-id',
+          ) === 'source-fixture-book',
+      );
+
+    check(
+      'no source is automatically selected',
+      view.resourceId === null
+        && Boolean(book),
+    );
+
+    book.fire('click');
+
+    await tick();
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    text =
+      view.contentEl.allText();
+
+    check(
+      'source detail stays a full page and preserves shelf rationale',
+      view.screen === 'source-detail'
+        && view.contentEl.find(
+          'los-detail-page',
+        ).length === 1
+        && text.includes(
+          'Fixture math bookshelf',
+        )
+        && text.includes(
+          'The spine — read this before anything else on the shelf.',
+        ),
+    );
+
+    const firstShelfIndex =
+      view.shelfIndex();
+    plugin.store.data = {
+      ...plugin.store.data,
+    };
+    const refreshedShelfIndex =
+      view.shelfIndex();
+    check(
+      'shelf membership cache refreshes for a new manifest with the same snapshot',
+      refreshedShelfIndex !== firstShelfIndex,
+    );
+
+    const technical =
+      view.contentEl.find(
+        'los-technical-details',
+      )[0];
+
+    check(
+      'record ID and Copy ID stay under Technical details',
+      Boolean(technical)
+        && technical.allText()
+          .includes('Copy ID')
+        && technical.find(
+          'los-detail-id',
+        )[0]?.text
+          === 'source-fixture-book',
+    );
+
+    await plugin.nav.back();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    check(
+      'Back restores the exact global facet state',
+      plugin.router.snapshot().current.name
+        === 'library-home'
+        && view.filters.domain
+          === 'thematic-group-mathematics'
+        && view.filters.topic === ''
+        && view.contentEl.find(
+          'los-library-filter-chip',
+        ).length === 1,
+    );
+
+    await plugin.nav.openLibraryHome(
+      'topic-packs',
+    );
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    check(
+      'Topic Packs intentionally retain thematic-group navigation',
+      view.collection === 'topic-packs'
+        && view.contentEl.find(
+          'los-group-card',
+        ).length
+          === FIXTURE_GROUP_COUNT
+        && view.contentEl.find(
+          'los-route-row',
+        ).length === 0,
+    );
+
+    view.contentEl
+      .findText(
+        'los-group-card',
+        'Machine Learning',
+      )
+      .fire('click');
+
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    check(
+      'a Topic Pack group still opens its ordered pack list',
+      view.screen === 'group'
+        && view.collection
+          === 'topic-packs'
+        && view.contentEl.find(
+          'los-route-row',
+        ).length === 1
+        && view.contentEl.allText()
+          .includes(
+            'Fixture ML evaluation pack',
+          ),
+    );
+
+    view.contentEl.find(
+      'los-route-row',
+    )[0].fire('click');
+
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    text =
+      view.contentEl.allText();
+
+    check(
+      'Topic Pack detail keeps one explicit purpose and canonical order',
+      view.screen
+        === 'topic-pack-detail'
+        && text.includes(
+          'Compare one bounded set of model-evaluation choices.',
+        )
+        && view.contentEl.find(
+          'los-pack-entry',
+        ).length === 2
+        && view.contentEl.find(
+          'los-pack-order',
+        ).map(
+          (el) => el.text,
+        ).join(',') === '1,2',
+    );
+
+    plugin.onunload();
+  }
+
+  {
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        // If the UI accidentally reconstructs Current use through units,
+        // this test goes empty. source_to_modules is the authority.
+        manifest.indexes.source_to_units = {};
+        manifest.indexes.source_to_modules[
+          'source-fixture-islp'
+        ] = [
+          'module-fixture-m2',
+        ];
+      },
+    });
+
+    await plugin.nav.openLibraryHome('sources');
+
+    let view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    const use =
+      view.contentEl.find(
+        'los-library-facet-select',
+      ).find(
+        (candidate) =>
+          candidate.getAttribute(
+            'data-facet',
+          ) === 'use',
+      );
+
+    use.value = 'module-fixture-m2';
+    use.fire('change');
+
+    await tick();
+    await tick();
+
+    view =
+      app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0].view;
+
+    const ids =
+      view.contentEl.find(
+        'los-route-row',
+      ).map(
+        (row) =>
+          row.getAttribute(
+            'data-record-id',
+          ),
+      );
+
+    check(
+      'Current use reads authoritative source_to_modules even with source_to_units empty',
+      view.filters.use
+        === 'module-fixture-m2'
+        && ids.includes(
+          'source-fixture-islp',
+        ),
+    );
+
+    plugin.onunload();
+  }
+
+  {
+    const first = await boot();
+
+    await first.plugin.nav.openLibraryHome(
+      'sources',
+      'probability',
+      {
+        domain:
+          'thematic-group-mathematics',
+        topic:
+          'topic-probability',
+        purpose: '',
+        form: '',
+        use: '',
+      },
+    );
+
+    const persisted = {
+      ...first.plugin._data,
+    };
+
+    first.plugin.onunload();
+
+    const second = await build({
+      settings: persisted,
+    });
+
+    await second.app.workspace._ready();
+
+    const leaf =
+      second.app.workspace.getLeavesOfType(
+        VIEW.library,
+      )[0];
+
+    check(
+      'reload restores query and all five source-facet fields exactly',
+      leaf?.view?.screen === 'home'
+        && leaf.view.query
+          === 'probability'
+        && leaf.view.filters.domain
+          === 'thematic-group-mathematics'
+        && leaf.view.filters.topic
+          === 'topic-probability'
+        && leaf.view.filters.purpose === ''
+        && leaf.view.filters.form === ''
+        && leaf.view.filters.use === '',
+    );
+
+    second.plugin.onunload();
+  }
+
+  {
+    const { app, plugin } = await boot();
+
+    await plugin.nav.openLibraryHome(
+      'sources',
+      'definitely-unfindable-library-source',
+    );
+
+    let view = app.workspace.getLeavesOfType(
+      VIEW.library,
+    )[0].view;
+
+    check(
+      'a text-only Library zero result offers a search-specific recovery',
+      view.query === 'definitely-unfindable-library-source'
+        && Boolean(
+          view.contentEl.findText(
+            'los-btn',
+            'Clear search',
+          ),
+        ),
+    );
+
+    view.contentEl.findText(
+      'los-btn',
+      'Clear search',
+    ).fire('click');
+
+    await tick();
+    await tick();
+
+    view = app.workspace.getLeavesOfType(
+      VIEW.library,
+    )[0].view;
+
+    check(
+      'Library recovery clears the persisted query and restores sources',
+      view.query === ''
+        && plugin.router.snapshot().current.query === ''
+        && view.contentEl.find('los-route-row').length > 0,
+    );
+
+    plugin.onunload();
+  }
+
+  heading('library native double-click');
+  {
+    const { app, plugin, calls } = await boot();
+    const domain = 'domain:thematic-group-mathematics';
+    const books = 'type:book';
+    const view = () => app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    const listRow = (segment) => view().contentEl.find('los-finder-row').find(
+      (row) => row.getAttribute('data-segment') === segment,
+    );
+    const settle = async () => { await tick(); await tick(); };
+    const doubleClick = (row) => {
+      row.fire('click', { detail: 1 });
+      row.fire('click', { detail: 2 });
+      row.fire('dblclick', { detail: 2 });
+    };
+    const at = (segments) => JSON.stringify(view().folderPath) === JSON.stringify(segments)
+      && !view().contentEl.allText().includes('Folder unavailable');
+
+    await plugin.nav.openLibraryFolder([]);
+    const originalRow = listRow(domain);
+    originalRow.fire('click', { detail: 1 });
+    await settle();
+    const replacementRow = listRow(domain);
+    replacementRow.fire('click', { detail: 2 });
+    replacementRow.fire('dblclick', { detail: 2 });
+    await settle();
+    check('a native double-click across a selection redraw opens the domain once', at([domain]));
+    originalRow.fire('dblclick', { detail: 2 });
+    await settle();
+    check('a departed parent row cannot append its segment inside the opened domain', at([domain]));
+
+    await plugin.nav.openLibraryFolder([]);
+    doubleClick(listRow(domain));
+    await settle();
+    check('a double-click before selection persistence finishes still opens one domain', at([domain]));
+
+    await plugin.nav.openLibraryFolder([], domain);
+    doubleClick(listRow(domain));
+    await settle();
+    check('double-clicking an already selected domain cannot create a duplicate path', at([domain]));
+
+    await plugin.nav.openLibraryFolder([], domain);
+    const openFolder = view().contentEl.findText('los-btn', 'Open folder');
+    doubleClick(openFolder);
+    await settle();
+    check('the inspector Open folder button also remains bound to its rendered parent', at([domain]));
+
+    await plugin.nav.openLibraryFolder([domain, books]);
+    let openCount = 0;
+    const openResource = plugin.openResource;
+    plugin.openResource = () => { openCount += 1; };
+    let leaf = view().contentEl.find('los-finder-row')[0];
+    const leafSegment = leaf.getAttribute('data-segment');
+    leaf.fire('click', { detail: 1 });
+    await settle();
+    leaf = listRow(leafSegment);
+    leaf.fire('click', { detail: 2 });
+    leaf.fire('dblclick', { detail: 2 });
+    await settle();
+    check('an unselected leaf opens once across the native selection redraw', openCount === 1);
+    doubleClick(listRow(leafSegment));
+    await settle();
+    check('an already selected leaf opens once per native double-click', openCount === 2);
+    listRow(leafSegment).fire('click', { detail: 1 });
+    check('a later ordinary click can reopen the selected leaf', openCount === 3);
+
+    await plugin.nav.openLibraryFolder([], null, 'columns');
+    const columnRow = (column, title) => view().contentEl.find('los-finder-column')[column]
+      .find('los-finder-column-row').find((row) => row.allText().includes(title));
+    doubleClick(columnRow(0, 'Mathematics'));
+    await settle();
+    check('Columns double-click enters Mathematics without appending it twice', at([domain]));
+    doubleClick(columnRow(0, 'Mathematics'));
+    await settle();
+    check('double-clicking the retained ancestor column remains in Mathematics', at([domain]));
+    doubleClick(columnRow(1, 'Books'));
+    await settle();
+    check('Columns double-click also opens a material-type child exactly once', at([domain, books]));
+    doubleClick(view().contentEl.find('los-finder-column')[2].find('los-finder-column-row')[0]);
+    await settle();
+    check('a Columns leaf still opens once after its selection clicks', openCount === 4 && at([domain, books]));
+    plugin.openResource = openResource;
+    check('native folder browsing and opening never issue canonical writes', calls.envelopes.length === 0);
+    plugin.onunload();
+  }
+
+  heading('library persisted folder recovery');
+  {
+    const domain = 'domain:thematic-group-mathematics';
+    const { app, plugin, calls } = await boot({ settings: {
+      navigation: { version: 1, current: { name: 'home' }, history: [{
+        route: { name: 'library-folder', path: [domain, domain], layout: 'list', query: 'book' },
+        scrollTop: 37,
+      }] },
+    } });
+    await plugin.router.back();
+    const view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check('Back repairs duplicated folder history in the visible and persisted current route',
+      JSON.stringify(view.folderPath) === JSON.stringify([domain])
+        && JSON.stringify(plugin.router.snapshot().current.path) === JSON.stringify([domain])
+        && JSON.stringify(plugin._data.navigation.current.path) === JSON.stringify([domain])
+        && view.query === 'book' && view.contentEl.scrollTop === 37
+        && plugin.router.snapshot().history.length === 0 && calls.envelopes.length === 0);
+    plugin.onunload();
+  }
+  {
+    const domain = 'domain:thematic-group-mathematics';
+    const path = [domain, domain, 'type:book', 'type:book'];
+    const { app, plugin, calls } = await boot({ settings: {
+      navigation: { version: 1, current: {
+        name: 'library-folder', path, layout: 'columns', query: 'prob', selected: 'source-fixture-book',
+      }, history: [] },
+    } });
+    const view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    const expected = [domain, 'type:book'];
+    check('reload recovers only adjacent duplicated folder segments and preserves attention',
+      JSON.stringify(view.folderPath) === JSON.stringify(expected)
+        && view.folderLayout === 'columns' && view.query === 'prob'
+        && view.folderSelection === 'source-fixture-book'
+        && !view.contentEl.allText().includes('Folder unavailable'));
+    check('reload saves the repaired route without adding history or canonical writes',
+      JSON.stringify(plugin._data.navigation.current.path) === JSON.stringify(expected)
+        && plugin.router.snapshot().history.length === 0 && calls.envelopes.length === 0);
+    await plugin.nav.openLibraryFolder([domain, 'type:missing']);
+    check('a genuinely missing folder remains visible as unavailable',
+      view.contentEl.allText().includes('Folder unavailable')
+        && view.folderPath[1] === 'type:missing');
+    await plugin.nav.openLibraryFolder([domain, 'type:book', domain]);
+    check('non-adjacent invalid repetitions are preserved as unavailable',
+      view.contentEl.allText().includes('Folder unavailable') && view.folderPath.length === 3);
+    plugin.onunload();
+  }
+
+  heading('library folder filter');
+  {
+    const { app, plugin } = await boot();
+    await plugin.nav.openLibrary();
+    await tick();
+    await tick();
+    let view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+
+    // Walk to Mathematics → Books, the folder from the report: two books.
+    const openSegment = async (segment) => {
+      view.contentEl.find('los-finder-row').find(
+        (row) => row.getAttribute('data-segment') === segment,
+      ).fire('click');
+      await tick();
+      await tick();
+      view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+      view.contentEl.find('los-finder-row').find(
+        (row) => row.getAttribute('data-segment') === segment,
+      ).fire('click');
+      await tick();
+      await tick();
+      view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    };
+    const mathSegment = view.contentEl.find('los-finder-row').find(
+      (row) => (row.getAttribute('data-segment') || '').includes('mathematics'),
+    ).getAttribute('data-segment');
+    await openSegment(mathSegment);
+    await openSegment('type:book');
+
+    check(
+      'the report folder holds two books to filter',
+      view.folderPath.join('/') === `${mathSegment}/type:book`
+        && view.contentEl.find('los-finder-row').length === 2,
+    );
+
+    // Continuous typing must not rebuild the field it is typed into: focus,
+    // text, caret and selection survive every keystroke while results update.
+    let search = view.contentEl.find('los-finder-filter')[0];
+    search.focus();
+    search.typeText('p');
+    await tick();
+    search.typeText('r');
+    await tick();
+    search.typeText('o');
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check(
+      'three keystrokes without re-clicking keep the same focused field',
+      view.contentEl.find('los-finder-filter')[0] === search
+        && global.document.activeElement === search
+        && search.value === 'pro'
+        && view.query === 'pro'
+        && search.selectionStart === 3
+        && search.selectionEnd === 3,
+    );
+    check(
+      'typing narrows the rows and the count while scoped to the folder',
+      view.contentEl.find('los-finder-row').length === 1
+        && view.contentEl.find('los-finder-count')[0].allText().includes('1 of 2')
+        && plugin.router.snapshot().current.query === 'pro',
+    );
+
+    // Editing in the middle inserts at the caret rather than appending.
+    search.setSelectionRange(1, 1);
+    search.typeText('X');
+    await tick();
+    check(
+      'a middle edit keeps focus and lands at the caret',
+      global.document.activeElement === search
+        && search.value === 'pXro'
+        && search.selectionStart === 2
+        && search.selectionEnd === 2,
+    );
+
+    // Backspace deletes before the caret.
+    search.value = 'pXro'.slice(0, 1) + 'pXro'.slice(2);
+    search.selectionStart = search.selectionEnd = 1;
+    search.fire('input');
+    await tick();
+    check(
+      'backspace keeps focus and deletes before the caret',
+      global.document.activeElement === search
+        && search.value === 'pro'
+        && view.query === 'pro',
+    );
+
+    // Paste replaces the selection.
+    search.setSelectionRange(0, 3);
+    search.value = 'prob';
+    search.selectionStart = search.selectionEnd = 4;
+    search.fire('input');
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check(
+      'paste keeps focus and replaces the selection while results update',
+      global.document.activeElement === search
+        && search.value === 'prob'
+        && view.contentEl.find('los-finder-row').length === 1,
+    );
+
+    // No match offers Clear, which empties the field and hands focus back.
+    search.value = 'zzz-no-match';
+    search.selectionStart = search.selectionEnd = 12;
+    search.fire('input');
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    view.contentEl.findText('los-btn', 'Clear filter').fire('click');
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    search = view.contentEl.find('los-finder-filter')[0];
+    check(
+      'Clear filter restores the rows and focuses the emptied field',
+      view.query === ''
+        && search.value === ''
+        && global.document.activeElement === search
+        && view.contentEl.find('los-finder-row').length === 2,
+    );
+
+    // The columns layout filters its current column under the same field.
+    // Supply the two native DOM queries missing from this fixture's DOM shim.
+    view.contentEl.querySelector = (selector) => {
+      const group = view.contentEl.find('los-finder-layouts')[0];
+      if (selector === '.los-finder-layouts') return group;
+      if (selector === '.los-finder-layouts button[aria-pressed="true"]') {
+        return group.find('los-btn').find(
+          (control) => control.getAttribute('aria-pressed') === 'true',
+        ) || null;
+      }
+      return null;
+    };
+    const columnsControl = view.contentEl.findText('los-btn', 'Columns');
+    columnsControl.focus();
+    columnsControl.fire('click');
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check(
+      'changing layout keeps the current folder and returns focus to its selected segment',
+      view.folderLayout === 'columns'
+        && view.folderPath.join('/') === `${mathSegment}/type:book`
+        && global.document.activeElement !== columnsControl
+        && global.document.activeElement === view.contentEl.findText('los-btn', 'Columns')
+        && global.document.activeElement.getAttribute('aria-pressed') === 'true',
+    );
+    search = view.contentEl.find('los-finder-filter')[0];
+    search.focus();
+    search.typeText('isl');
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    const currentColumn = view.contentEl.find('los-finder-column').find(
+      (column) => column.classes.has('is-current'),
+    );
+    check(
+      'columns typing keeps the same focused field and narrows its column',
+      view.contentEl.find('los-finder-filter')[0] === search
+        && global.document.activeElement === search
+        && view.query === 'isl'
+        && currentColumn.find('los-finder-column-row').length === 1,
+    );
+
+    // A manifest refresh is not a reason to interrupt a half-typed query: the
+    // field is rebuilt by the redraw, so focus and caret cross it deliberately.
+    search.setSelectionRange(1, 1);
+    await plugin.reloadStore();
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    let refreshed = view.contentEl.find('los-finder-filter')[0];
+    check(
+      'an unrelated refresh preserves the query, the focus and the caret',
+      refreshed !== search
+        && refreshed.value === 'isl'
+        && view.query === 'isl'
+        && global.document.activeElement === refreshed
+        && refreshed.selectionStart === 1
+        && refreshed.selectionEnd === 1,
+    );
+
+    refreshed.setSelectionRange(0, 2, 'backward');
+    await plugin.reloadStore();
+    await tick();
+    await tick();
+    refreshed = view.contentEl.find('los-finder-filter')[0];
+    check(
+      'a refresh preserves both selection endpoints and its direction',
+      global.document.activeElement === refreshed
+        && refreshed.value === 'isl'
+        && refreshed.selectionStart === 0
+        && refreshed.selectionEnd === 2
+        && refreshed.selectionDirection === 'backward',
+    );
+
+    // Rendering another Library leaf must not claim the first leaf's input.
+    const otherLeaf = app.workspace.getLeaf(true);
+    await otherLeaf.setViewState({ type: VIEW.library, state: view.getState() });
+    check(
+      'another Library leaf cannot steal a focused filter during rendering',
+      global.document.activeElement === refreshed,
+    );
+    otherLeaf.detach();
+    refreshed.focus();
+
+    // Filtering changes neither selection nor navigation.
+    refreshed.value = '';
+    refreshed.selectionStart = refreshed.selectionEnd = 0;
+    refreshed.fire('input');
+    await tick();
+    await view.setFolderLayout('list');
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    const firstRow = view.contentEl.find('los-finder-row')[0];
+    const segment = firstRow.getAttribute('data-segment');
+    firstRow.fire('click');
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check(
+      'selection still takes focus after filtering',
+      view.folderSelection === segment
+        && global.document.activeElement
+        && global.document.activeElement.getAttribute('data-segment') === segment,
+    );
+
+    // The filter is scoped to its folder and does not travel with navigation.
+    view.contentEl.find('los-finder-filter')[0].typeText('x');
+    await tick();
+    await view.openEnclosingFolder();
+    await tick();
+    await tick();
+    view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    check(
+      'leaving the folder clears its filter',
+      view.query === ''
+        && view.contentEl.find('los-finder-filter')[0].value === '',
+    );
+
+    plugin.onunload();
+  }
+
+  heading('zero-friction inbox capture');
+  {
+    const { app, plugin, calls } = await boot();
+    await plugin.nav.openProgram('inbox');
+    const view = app.workspace.getLeavesOfType(VIEW.program)[0].view;
+    let element = view.contentEl;
+    check('Capture identifies itself in the Obsidian tab',
+      view.getDisplayText() === 'LearningOS · Capture');
+    check('empty Capture actions are disabled consistently',
+      element.findText('los-btn', 'Capture text').disabled === true
+      && element.findText('los-btn', 'Capture selected file').disabled === true);
+    element.find('los-capture-title')[0].value = 'Fixture thought';
+    element.find('los-capture-title')[0].fire('input');
+    element.find('los-capture-editor')[0].value = 'A half-formed synthetic idea.';
+    element.find('los-capture-editor')[0].fire('input');
+    check('Capture text enables only after required content is present',
+      element.findText('los-btn', 'Capture text').disabled === false);
+    element.findText('los-btn', 'Capture text').fire('click');
+    await waitFor(() => Boolean(calls.envelope('capture.create'))
+      && !plugin.gateway.isBusy);
+    const textEnvelope = calls.envelope('capture.create');
+    const textCapture = textEnvelope?.payload;
+    check('text capture delegates exact wording and optional title to los.py',
+      textCapture?.text === 'A half-formed synthetic idea.' && textCapture?.title === 'Fixture thought');
+    // Core names the inbox file itself, so the write is guarded against this
+    // request rather than a path. An empty guard is refused by Core, and the
+    // fixture now refuses it too — reaching this line at all means a real
+    // capture would have been accepted.
+    check('text capture carries the request-scoped guard Core requires',
+      JSON.stringify(textEnvelope?.expected_revisions)
+        === JSON.stringify(requestGuardFor(textEnvelope)),
+      `sent ${JSON.stringify(textEnvelope?.expected_revisions)}`);
+    check('capture refreshes the atomic projection after the write',
+      calls.some((args) => args.length === 1 && args[0] === 'generate'));
+
+    element = view.contentEl;
+    element.find('los-capture-file')[0].files = [{
+      name: 'handwriting.png', __path: CAPTURE_FIXTURE_PATH,
+    }];
+    element.find('los-capture-file')[0].fire('change');
+    check('file capture enables only after a local file is selected',
+      element.findText('los-btn', 'Capture selected file').disabled === false);
+    element.findText('los-btn', 'Capture selected file').fire('click');
+    await waitFor(() => calls.envelopes.some(
+      (envelope) => envelope.capability === 'capture.create'
+        && envelope.payload.file === CAPTURE_FIXTURE_PATH,
+    ) && !plugin.gateway.isBusy);
+    check('file capture resolves the Electron File through webUtils',
+      calls.envelopes.some((e) => e.capability === 'capture.create'
+        && e.payload.file === CAPTURE_FIXTURE_PATH
+        && e.payload.file_sha256 === fileDigest(CAPTURE_FIXTURE_PATH)));
+    const fileEnvelope = calls.envelopes.find(
+      (e) => e.capability === 'capture.create' && e.payload.file === CAPTURE_FIXTURE_PATH,
+    );
+    check('file capture carries the request-scoped guard Core requires',
+      JSON.stringify(fileEnvelope?.expected_revisions)
+        === JSON.stringify(requestGuardFor(fileEnvelope)),
+      `sent ${JSON.stringify(fileEnvelope?.expected_revisions)}`);
+    plugin.onunload();
+  }
+};

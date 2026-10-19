@@ -1,0 +1,511 @@
+/**
+ * Minimal host declarations used for offline typechecking.
+ *
+ * Production builds resolve the real runtime modules from
+ * Obsidian, Electron and Node. These declarations intentionally expose only
+ * the host surface exercised by the checked source.
+ */
+
+interface ObsidianDomElementOptions {
+  cls?: string | string[];
+  text?: string;
+  attr?: Record<string, string>;
+}
+
+interface HTMLElement {
+  createEl<K extends keyof HTMLElementTagNameMap>(
+    tag: K,
+    options?: ObsidianDomElementOptions,
+  ): HTMLElementTagNameMap[K];
+
+  createDiv(
+    options?: ObsidianDomElementOptions,
+  ): HTMLDivElement;
+
+  createSpan(
+    options?: ObsidianDomElementOptions,
+  ): HTMLSpanElement;
+
+  empty(): void;
+  addClass(...classNames: string[]): void;
+  removeClass(...classNames: string[]): void;
+  toggleClass(className: string, value: boolean): void;
+  setText(text: string): void;
+  setAttr(name: string, value: string): void;
+  setAttrs(attributes: Record<string, string>): void;
+}
+
+declare module 'obsidian' {
+  /** Opaque subscription owned by the host's event lifecycle. */
+  export type EventRef = object;
+
+  export interface TAbstractFile {
+    readonly path: string;
+  }
+
+  export interface PluginManifest {
+    readonly version?: string;
+  }
+
+  export interface WorkspaceView {
+    readonly file?: TAbstractFile;
+
+    /* Every leaf view is a View, which owns a scrollable content element. */
+    readonly contentEl?: HTMLElement;
+
+    render?(): unknown;
+  }
+
+  export interface WorkspaceSplit {
+    collapse(): void;
+    setSize?(pixels: number): void;
+  }
+
+  export interface Workspace {
+    readonly leftSplit?: WorkspaceSplit;
+    readonly rightSplit?: WorkspaceSplit;
+
+    detachLeavesOfType(
+      viewType: string,
+    ): void;
+
+    on(
+      name: 'active-leaf-change',
+      callback: (leaf: WorkspaceLeaf | null) => unknown,
+    ): EventRef;
+
+    onLayoutReady(
+      callback: () => unknown,
+    ): void;
+
+    iterateAllLeaves(
+      callback: (
+        leaf: WorkspaceLeaf,
+      ) => unknown,
+    ): void;
+
+    getLeavesOfType(
+      viewType: string,
+    ): WorkspaceLeaf[];
+
+    getLeaf(
+      newLeaf?: boolean | string,
+    ): WorkspaceLeaf;
+
+    getLeftLeaf?(
+      split?: boolean,
+    ): WorkspaceLeaf | null;
+
+    getRightLeaf?(
+      split?: boolean,
+    ): WorkspaceLeaf | null;
+
+    revealLeaf(
+      leaf: WorkspaceLeaf,
+    ): void;
+
+    setActiveLeaf?(
+      leaf: WorkspaceLeaf,
+      options?: {
+        focus?: boolean;
+      },
+    ): void;
+
+    getActiveFile?():
+      TAbstractFile | null;
+  }
+
+  export interface VaultAdapter {
+    getBasePath(): string;
+
+    exists(
+      path: string,
+    ): Promise<boolean>;
+
+    read(
+      path: string,
+    ): Promise<string>;
+  }
+
+  export interface Vault {
+    readonly adapter: VaultAdapter;
+
+    on(name: 'create' | 'modify' | 'delete', callback: (file: TAbstractFile) => unknown): EventRef;
+    on(name: 'rename', callback: (file: TAbstractFile, oldPath: string) => unknown): EventRef;
+
+    getAbstractFileByPath(
+      path: string,
+    ): TAbstractFile | null;
+  }
+
+  export interface CommandManager {
+    executeCommandById?(
+      commandId: string,
+    ): boolean | void;
+  }
+
+  export interface ChatAgent {
+    sendToChat?(
+      prompt: string,
+    ): Promise<unknown> | unknown;
+  }
+
+  export interface PluginRegistry {
+    readonly plugins?:
+      Record<
+        string,
+        ChatAgent | undefined
+      >;
+  }
+
+  export interface App {
+    readonly workspace: Workspace;
+    readonly vault: Vault;
+    readonly commands?: CommandManager;
+    readonly plugins?: PluginRegistry;
+  }
+
+  export interface Command {
+    readonly id: string;
+    readonly name: string;
+    readonly callback: () => unknown;
+  }
+
+  export class Plugin {
+    readonly app: App;
+    readonly manifest?: PluginManifest;
+
+    constructor(app: App);
+
+    registerView(
+      viewType: string,
+      viewCreator: (
+        leaf: WorkspaceLeaf,
+      ) => ItemView,
+    ): void;
+
+    registerEvent(event: EventRef): void;
+    registerDomEvent(target: Window, name: 'focus', callback: (event: FocusEvent) => unknown): void;
+
+    addSettingTab(
+      tab: PluginSettingTab,
+    ): void;
+
+    addRibbonIcon(
+      icon: string,
+      title: string,
+      callback: () => unknown,
+    ): HTMLElement;
+
+    addCommand(
+      command: Command,
+    ): void;
+
+    loadData<T = unknown>():
+      Promise<T>;
+
+    saveData<T>(
+      data: T,
+    ): Promise<void>;
+  }
+
+  export interface ToggleComponent {
+    setValue(value: boolean): this;
+    onChange(
+      callback: (value: boolean) => unknown,
+    ): this;
+  }
+
+  export interface DropdownComponent {
+    addOption(value: string, display: string): this;
+    setValue(value: string): this;
+    onChange(
+      callback: (value: string) => unknown,
+    ): this;
+  }
+
+  export interface TextComponent {
+    setValue(value: string): this;
+    onChange(
+      callback: (value: string) => unknown,
+    ): this;
+  }
+
+  export interface ButtonComponent {
+    setButtonText(text: string): this;
+    setCta(): this;
+    onClick(
+      callback: () => unknown,
+    ): this;
+  }
+
+  export class PluginSettingTab {
+    readonly app: App;
+    readonly plugin: Plugin;
+    readonly containerEl: HTMLElement;
+
+    constructor(
+      app: App,
+      plugin: Plugin,
+    );
+
+    display(): void;
+  }
+
+  export interface WorkspaceLeaf {
+    readonly app: App;
+    readonly view?: WorkspaceView;
+
+    getViewState(): {
+      type: string;
+      state?: Record<string, unknown>;
+    };
+
+    setViewState(viewState: {
+      type: string;
+      active?: boolean;
+      state?: Record<string, unknown>;
+    }): Promise<void> | void;
+
+    setPinned?(
+      pinned: boolean,
+    ): void;
+
+    updateHeader?(): void;
+
+    openFile(
+      file: TAbstractFile,
+      /**
+       * Optional view state. `eState.page` positions Obsidian's own PDF view;
+       * a view that does not understand the key ignores it, so an unsupported
+       * destination still opens the file (audit synthetic-learner-2026-09-12,
+       * F07).
+       */
+      state?: { eState?: Record<string, unknown> },
+    ): Promise<void> | void;
+  }
+
+  export class ItemView {
+    readonly app: App;
+    readonly leaf: WorkspaceLeaf;
+    readonly contentEl: HTMLElement;
+
+    constructor(leaf: WorkspaceLeaf);
+  }
+
+  export class Modal {
+    readonly app: App;
+    readonly contentEl: HTMLElement;
+
+    constructor(app: App);
+
+    open(): void;
+    close(): void;
+  }
+
+  export class Notice {
+    constructor(message: string, timeout?: number);
+  }
+
+  export class Setting {
+    constructor(containerEl: HTMLElement);
+
+    setName(name: string): this;
+    setDesc(description: string): this;
+
+    addToggle(
+      callback: (
+        component: ToggleComponent,
+      ) => unknown,
+    ): this;
+
+    addDropdown(
+      callback: (
+        component: DropdownComponent,
+      ) => unknown,
+    ): this;
+
+    addText(
+      callback: (
+        component: TextComponent,
+      ) => unknown,
+    ): this;
+
+    addButton(
+      callback: (
+        component: ButtonComponent,
+      ) => unknown,
+    ): this;
+  }
+
+  export function setIcon(
+    element: Element,
+    iconId: string,
+  ): void;
+}
+
+declare module 'electron' {
+  export const shell: {
+    openExternal(url: string): Promise<void> | void;
+    openPath(path: string): Promise<string> | string;
+  };
+
+  export const webUtils: {
+    getPathForFile(file: unknown): string;
+  };
+}
+
+declare module 'node:child_process' {
+  export interface ExecFileOptions {
+    cwd?: string;
+    timeout?: number;
+    maxBuffer?: number;
+    env?: Record<string, string | undefined>;
+  }
+
+  /** Node closes a writable stream with `end`; `stdin` is null if not piped. */
+  export interface WritableChildStream {
+    end(chunk: string): void;
+  }
+
+  export interface ChildProcess {
+    readonly stdin?: WritableChildStream | null;
+  }
+
+  export type ExecFileCallback = (
+    error: Error | null,
+    stdout: string,
+    stderr: string,
+  ) => void;
+
+  export function execFile(
+    file: string,
+    args: readonly string[],
+    options: ExecFileOptions,
+    callback: ExecFileCallback,
+  ): ChildProcess;
+}
+
+declare module 'node:fs' {
+  export function existsSync(
+    path: string,
+  ): boolean;
+
+  export function readFileSync(
+    path: string,
+    encoding: 'utf8',
+  ): string;
+
+  export function realpathSync(
+    path: string,
+  ): string;
+
+  /*
+   * Directory reading, for the Library's folder browser.
+   *
+   * Declared to the shape this app actually calls — the two `readdirSync`
+   * overloads it uses and the three `Stats` members it reads — rather than by
+   * pulling in @types/node, which would also make every other Node API look
+   * available to code that must keep running inside Obsidian's renderer.
+   */
+  export interface Dirent {
+    readonly name: string;
+    isDirectory(): boolean;
+    isSymbolicLink(): boolean;
+  }
+
+  export interface Stats {
+    readonly size: number;
+    isDirectory(): boolean;
+    isFile(): boolean;
+  }
+
+  export function statSync(
+    path: string,
+  ): Stats;
+
+  export function mkdirSync(
+    path: string,
+    options?: { recursive?: boolean },
+  ): string | undefined;
+
+  export function appendFileSync(
+    path: string,
+    data: string,
+    encoding: 'utf8',
+  ): void;
+
+  export function readdirSync(
+    path: string,
+  ): string[];
+
+  export function readdirSync(
+    path: string,
+    options: { withFileTypes: true },
+  ): Dirent[];
+}
+
+declare module 'node:fs/promises' {
+  export function readFile(
+    path: string,
+  ): Promise<Uint8Array>;
+}
+
+declare module 'node:crypto' {
+  export interface Hash {
+    update(data: Uint8Array): Hash;
+    digest(encoding: 'hex'): string;
+  }
+
+  export function createHash(
+    algorithm: string,
+  ): Hash;
+
+  export interface RandomBytes {
+    toString(encoding: 'hex'): string;
+  }
+
+  export function randomBytes(size: number): RandomBytes;
+}
+
+declare module 'node:os' {
+  export function homedir(): string;
+}
+
+declare module 'node:path' {
+  export const sep: string;
+
+  export function join(
+    ...paths: string[]
+  ): string;
+
+  export function dirname(
+    path: string,
+  ): string;
+
+  export function resolve(
+    ...paths: string[]
+  ): string;
+
+  export function relative(
+    from: string,
+    to: string,
+  ): string;
+
+  export function isAbsolute(
+    path: string,
+  ): boolean;
+
+  export function extname(
+    path: string,
+  ): string;
+}
+
+declare module 'node:process' {
+  const process: {
+    readonly platform: string;
+    readonly env: Record<string, string | undefined>;
+  };
+
+  export default process;
+}

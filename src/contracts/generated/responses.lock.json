@@ -1,0 +1,19 @@
+{
+  "root": "system/schema/ui-responses.schema.json",
+  "closure_sha256": "sha256:4968d43555f2478eea1d4775377ce1cbd42cdaa4951cedee98828fdf7eaf86d2",
+  "endpoints": [
+    "HealthReportV1",
+    "LegacyArchiveLockV1",
+    "LegacyArchiveStatusV1",
+    "MastersPlanningDashboardV1",
+    "OperationsListV1",
+    "OperationDetailV1",
+    "GatewaySuccessV2",
+    "GatewayFailureV2",
+    "GatewayRequestV2",
+    "MaterialSpanWire",
+    "AbilityBriefWire",
+    "AbilityFocusWire",
+    "AbilityUnmappedWire"
+  ]
+}

@@ -1,0 +1,186 @@
+/* One grouped control grammar, adapted from Apple's macOS segmented control.
+ * Native buttons retain their labels, pressed state and keyboard semantics. */
+.los-filter-tabs,
+.los-root .los-search-tabs,
+.los-root .los-tabs,
+.los-root .los-subtabs,
+.los-root .los-project-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2px;
+  width: fit-content;
+  max-width: 100%;
+  padding: 2px;
+  margin: 0 0 var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-sm);
+  background: var(--los-paper-3);
+}
+.los-root .los-filter-tab,
+.los-root .los-search-tab,
+.los-root .los-tabs > .los-btn,
+.los-root .los-subtabs > .los-btn,
+.los-root .los-project-tabs > .los-btn {
+  min-height: 32px;
+  padding: var(--los-1) var(--los-3);
+  border: 1px solid transparent;
+  border-radius: calc(var(--los-r-sm) - 2px);
+  background: transparent;
+  color: var(--los-ink-soft);
+  box-shadow: none;
+}
+.los-root .los-filter-tab:hover,
+.los-root .los-search-tab:hover,
+.los-root .los-tabs > .los-btn:hover,
+.los-root .los-subtabs > .los-btn:hover,
+.los-root .los-project-tabs > .los-btn:hover {
+  background: var(--los-selected);
+  color: var(--los-ink);
+}
+.los-root .los-filter-tab.is-active,
+.los-root .los-search-tab.is-active,
+.los-root .los-tabs > .los-btn[aria-pressed="true"],
+.los-root .los-subtabs > .los-btn[aria-pressed="true"],
+.los-root .los-project-tabs > .los-btn[aria-pressed="true"] {
+  border-color: var(--los-rule);
+  background: var(--los-surface-raised);
+  color: var(--los-ink);
+  box-shadow: 0 1px 3px var(--los-shadow-soft);
+  font-weight: 650;
+}
+
+/* Garden is an incubation list, not an AI configuration panel. */
+.los-garden-seed-composer,
+.los-garden-list-header,
+.los-garden-list,
+.los-garden-view > .los-empty,
+.los-garden-view > .los-utility-disclosure {
+  width: min(900px, 100%);
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-garden-seed-composer {
+  margin-bottom: 14px;
+  padding: 16px 18px;
+  background: var(--los-surface-raised);
+}
+
+.los-garden-seed-editor {
+  min-height: 48px;
+  resize: vertical;
+}
+
+.los-garden-composer-actions {
+  align-items: center;
+  margin-top: 10px;
+}
+
+.los-garden-composer-actions .los-garden-seed-title {
+  flex: 0 1 260px;
+  min-height: 32px;
+  margin: 0 !important;
+}
+
+.los-garden-composer-actions .los-btn {
+  margin-left: auto;
+}
+
+.los-garden-list-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--los-4);
+  margin-bottom: 8px;
+}
+
+.los-garden-list-header h2 {
+  margin: 0;
+}
+
+.los-garden-list {
+  gap: var(--los-2);
+  margin-bottom: 20px;
+}
+
+.los-garden-card {
+  padding: var(--los-4);
+  border: 1px solid var(--los-rule);
+  border-radius: var(--los-r-md);
+  background: var(--los-surface-raised);
+}
+
+.los-garden-card::before {
+  display: none;
+}
+
+.los-garden-card:hover {
+  transform: none;
+  background: var(--los-paper-2);
+}
+
+.los-garden-actions {
+  padding-top: 8px;
+  border-top: 0;
+}
+
+.los-ai-action-row {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+}
+
+.los-utility-disclosure {
+  margin-top: 18px;
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+
+.los-utility-disclosure > summary {
+  cursor: pointer;
+}
+
+.los-utility-disclosure > .los-disclosure-body {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* Review is a filtered decision queue with an explicit Core-owned count. */
+.los-review-view > .los-page-header {
+  position: relative;
+}
+
+.los-review-count-badge {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.los-review-queue-note,
+.los-review-list {
+  width: min(900px, 100%);
+  max-width: none;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+.los-review-queue-note {
+  margin-bottom: 14px;
+}
+
+.los-review-list {
+  border-top: 0;
+}
+
+.los-review-decision-row {
+  min-height: 96px;
+  padding: var(--los-4);
+  background: var(--los-surface-raised);
+}
+
+.los-review-decision-row:hover {
+  background: var(--los-paper-2);
+}

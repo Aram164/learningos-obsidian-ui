@@ -1,0 +1,22 @@
+{
+  "_generated": {
+    "generated_at": "2026-08-03",
+    "generator": "fixture",
+    "warning": "SYNTHETIC. Mirrors learning_os.genout.build_backlinks."
+  },
+  "concept_relations": {
+    "concept-demo": {
+      "incoming": [{ "from": "concept-downstream", "type": "builds-on" }],
+      "outgoing": []
+    },
+    "concept-downstream": {
+      "incoming": [],
+      "outgoing": [{ "to": "concept-demo", "type": "builds-on" }]
+    }
+  },
+  "concept_to_notes": { "concept-demo": ["note-fixture-demo"] },
+  "module_to_workspaces": { "module-fixture": ["workspace-fixture"] },
+  "note_incoming": {},
+  "source_to_notes": { "source-fixture-online": ["note-fixture-demo"] },
+  "workspace_to_notes": { "workspace-fixture": ["note-fixture-demo"] }
+}

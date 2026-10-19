@@ -1,0 +1,25 @@
+{
+  "_comment": "Managed CORE-plugin states for the LearningOS vault (ADR-006). install.py merges ONLY these keys into .obsidian/core-plugins.json — every other core plugin keeps whatever state Aram set. Rationale per key below; each is a boundary or usability decision, not a preference.",
+  "_rationale": {
+    "webviewer": "ON — 136 of the registered sources have URLs. The Source Explorer opens them in a tab instead of throwing the reader out of the app.",
+    "daily-notes": "OFF — the anti-goal list forbids a second inbox. work/inbox/ is the only capture surface (ARCHITECTURE 3.3.5); Daily Notes silently creates a competing one.",
+    "bases": "ON — the shelves in bases/ are installed by this project and are dead without it.",
+    "canvas": "ON — generated/concept-canvas.canvas is a generated view.",
+    "properties": "ON — frontmatter IS the canonical data; the properties editor is how a human reads it.",
+    "graph": "OFF — the concept canvas is the curated graph. Obsidian's link graph shows file links, which are NOT the OS's relation registry, so it invites reading a second, wrong graph (anti-goal: no competing graph system).",
+    "sync": "OFF — no Obsidian Sync account; git is the sync mechanism. Leaving it on advertises a second, conflicting one.",
+    "publish": "OFF — nothing here is published.",
+    "zk-prefixer": "OFF — filenames are ids assigned by the operator, never timestamps.",
+    "markdown-importer": "OFF — intake goes through work/inbox/ and the operator, not an importer."
+  },
+  "webviewer": true,
+  "daily-notes": false,
+  "bases": true,
+  "canvas": true,
+  "properties": true,
+  "graph": false,
+  "sync": false,
+  "publish": false,
+  "zk-prefixer": false,
+  "markdown-importer": false
+}

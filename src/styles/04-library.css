@@ -1,0 +1,84 @@
+/* Library: three panes, and only the middle one is dense. The five modes used
+ * to be pills above a facet bar above a filter chip above the list — four
+ * stacked control strips before any content appeared. */
+.los-search { width: 100%; min-width: 0; min-height: 30px; padding: var(--los-1) var(--los-2); border: 1px solid var(--los-line); background: var(--los-paper); }
+.los-library-layout {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) minmax(280px, 34%);
+  gap: var(--los-3);
+  max-width: 1320px;
+  margin: 0 auto var(--los-5);
+  align-items: start;
+}
+.los-library-rail { display: flex; min-width: 0; flex-direction: column; gap: 2px; }
+.los-root .los-library-mode {
+  display: flex;
+  width: 100%;
+  min-height: 30px;
+  gap: var(--los-2);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--los-1) var(--los-2);
+  border: 0;
+  border-radius: var(--los-r-sm);
+  background: transparent;
+  color: var(--los-ink-soft);
+  text-align: left;
+}
+.los-root .los-library-mode:hover { background: var(--los-paper-3); color: var(--los-ink); }
+.los-root .los-library-mode.is-active {
+  background: var(--los-paper-3);
+  color: var(--los-ink);
+  box-shadow: inset 2px 0 0 var(--los-accent);
+}
+.los-library-filters { margin-top: var(--los-3); }
+.los-library-filters .los-disclosure-body { display: flex; flex-direction: column; align-items: flex-start; gap: var(--los-1); }
+.los-library-centre { display: flex; min-width: 0; flex-direction: column; gap: var(--los-2); }
+.los-library-list, .los-library-detail { min-width: 0; border: 1px solid var(--los-line); border-radius: var(--los-r-md); background: var(--los-surface); }
+.los-library-list { max-height: 70vh; overflow: auto; padding: var(--los-1); }
+.los-library-detail { padding: var(--los-4); overflow-wrap: break-word; word-break: normal; }
+.los-detail-id { overflow-wrap: anywhere; font-family: var(--font-monospace); font-size: 12px; }
+.los-related-group { margin-bottom: var(--los-3); }
+.los-related-chips { display: flex; flex-wrap: wrap; gap: var(--los-1); }
+.los-technical-details { margin-top: var(--los-4); padding-top: var(--los-2); border-top: 1px solid var(--los-line); }
+.los-root .los-item { display: flex; width: 100%; min-height: 36px; gap: var(--los-2); align-items: center; padding: var(--los-2); border: 0; background: transparent; }
+.los-root .los-item:hover, .los-root .los-item.is-selected { background: var(--los-paper-3); }
+.los-item-copy { display: flex; min-width: 0; flex-direction: column; overflow-wrap: break-word; }
+/* Library modes, facets and shelves */
+.los-library-tabs, .los-library-facets, .los-library-filter {
+  display: flex;
+  max-width: 1180px;
+  margin: 0 auto var(--los-2);
+  gap: var(--los-1);
+  align-items: center;
+  flex-wrap: wrap;
+}
+.los-library-facets .los-kicker, .los-library-filter { color: var(--los-ink-soft); }
+.los-list-group {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: var(--los-2) var(--los-2) var(--los-1);
+  background: var(--los-surface);
+  color: var(--los-ink-soft);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.los-shelf-entry { margin: var(--los-2) 0; padding: var(--los-2) 0; border-top: 1px solid var(--los-line); }
+.los-shelf-entry:first-of-type { border-top: 0; }
+.los-root .los-shelf-entry-title {
+  display: flex;
+  width: 100%;
+  gap: var(--los-2);
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--los-ink);
+  font-weight: 600;
+  text-align: left;
+}
+.los-root .los-shelf-entry-title:hover { color: var(--los-accent); }
+.los-shelf-why { margin-top: var(--los-1); color: var(--los-ink-soft); }
+

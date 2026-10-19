@@ -1,0 +1,288 @@
+/* Selectable colour schemes.
+ *
+ * DESIGN.md principle 2 says colour is defined at the root and no component
+ * may name one. That is what makes this file possible at all: a scheme is a
+ * palette swap, so every screen follows without a single component change.
+ *
+ * ── WHAT A SCHEME MAY CHANGE ───────────────────────────────────────────────
+ * Canvas and brand only. `--los-success`, `--los-info` and `--los-warning`
+ * (and their washes) are deliberately NOT varied by the light schemes: sage
+ * still means applied, slate still means information, amber still means
+ * attention. A skin the learner picks must not move what a colour MEANS, or
+ * the vocabulary principle 2 establishes would be worth nothing. The dark
+ * scheme is the one exception and it re-states the semantics rather than
+ * inheriting washes designed to sit on paper.
+ *
+ * ── THE RULE A NEW SCHEME MUST SATISFY ─────────────────────────────────────
+ * The brand accent must stay distinguishable from all three semantic hues, so
+ * "decisive action" is never mistaken for "applied", "information" or
+ * "attention". That is why there is no green or amber scheme here: Graphite
+ * solves it by having no hue at all, Indigo by being far more saturated than
+ * slate. Every block below is checked by the same numeric WCAG gate that
+ * already guarded light and dark (tests/dashboard/runtime-integrity.js) — a
+ * scheme that fails contrast cannot ship.
+ *
+ * Wine is the default and lives in 00-tokens.css as the base palette; it needs
+ * no block here. Every block restates the full paper/ink/rule/accent/st token
+ * set so the palettes cannot drift apart in shape.
+ */
+
+/* ── Graphite — warm paper, no brand hue ──────────────────────────────────
+ * Colour reserved entirely for meaning: the only hues on screen are sage,
+ * slate and amber, each of which says something. Decisive action is carried
+ * by weight and fill rather than by a fourth hue competing with them. */
+body[data-los-palette="graphite"] .los-root {
+  --los-paper:          #f2eee6;
+  --los-paper-2:        #fffdf8;
+  --los-paper-3:        #ece6da;
+  --los-ink:            #16130f;
+  --los-ink-soft:       #544d42;
+  --los-ink-faint:      #62594d;
+  --los-rule:           #d3c9b9;
+  --los-rule-strong:    #847969;
+  --los-accent:         #302c24;
+  --los-accent-strong:  #211e18;
+  --los-accent-soft:    #4d4437;
+  --los-accent-wash:    #ded5c5;
+  --los-st-active:      var(--los-success);
+  --los-st-ready:       var(--los-accent);
+  --los-st-attention:   var(--los-warning);
+  --los-st-paused:      #80652b;
+  --los-st-done:        var(--los-success);
+  --los-st-shelve:      var(--los-info);
+
+  --los-sidebar:        #e5decf;
+  --los-selected:       #e6dece;
+  --los-shadow-soft:    rgba(40, 34, 26, .09);
+}
+
+/* ── Indigo — cool paper, saturated blue-violet brand ─────────────────────
+ * The cool counterpart to Wine, for anyone who reads longer on a neutral
+ * ground. Brand is far more saturated than the slate used for information,
+ * so the two never read as the same signal. */
+body[data-los-palette="indigo"] .los-root {
+  --los-paper:          #eff0fc;
+  --los-paper-2:        #fcfcff;
+  --los-paper-3:        #e9ebfa;
+  --los-ink:            #14151c;
+  --los-ink-soft:       #4d526c;
+  --los-ink-faint:      #5d627c;
+  --los-rule:           #d2d3e9;
+  --los-rule-strong:    #7d809c;
+  --los-accent:         #4930b5;
+  --los-accent-strong:  #37228f;
+  --los-accent-soft:    #6448cd;
+  --los-accent-wash:    #e2dafa;
+  --los-st-active:      var(--los-success);
+  --los-st-ready:       var(--los-accent);
+  --los-st-attention:   var(--los-warning);
+  --los-st-paused:      #80652b;
+  --los-st-done:        var(--los-success);
+  --los-st-shelve:      var(--los-info);
+
+  --los-sidebar:        #dedff5;
+  --los-selected:       #e9e2fc;
+  --los-shadow-soft:    rgba(26, 28, 48, .09);
+}
+
+/* ── Ink — dark canvas ────────────────────────────────────────────────────
+ * Dark schemes are explicit reader choices, independent of host mode.
+ * Everything principle 2 requires still holds — one
+ * palette at the root, no component names a colour, every semantic role is
+ * preserved, and the same numeric contrast gate applies.
+ *
+ * `--los-on-accent` inverts here: on a dark canvas the brand fill must be
+ * light to be visible at all, so the text that sits on it is ink, not white.
+ * The washes invert with it — a wash is a tinted panel, and on this ground a
+ * tinted panel remains distinct from the near-black canvas. */
+body[data-los-palette="ink"] .los-root {
+  --los-paper:          #0b080c;
+  --los-paper-2:        #171016;
+  --los-paper-3:        #221822;
+  --los-ink:            #fff1f7;
+  --los-ink-soft:       #d7bdcd;
+  --los-ink-faint:      #baa1b1;
+  --los-rule:           #382738;
+  --los-rule-strong:    #907990;
+  --los-accent:         #f078ad;
+  --los-accent-strong:  #ff97c3;
+  --los-accent-soft:    #d85f92;
+  --los-accent-wash:    #301223;
+  --los-st-active:      var(--los-success);
+  --los-st-ready:       var(--los-accent);
+  --los-st-attention:   var(--los-warning);
+  --los-st-paused:      #f4bf5f;
+  --los-st-done:        var(--los-success);
+  --los-st-shelve:      var(--los-info);
+
+  --los-sidebar:        #100b11;
+  --los-selected:       #3b172b;
+  --los-on-accent:      #0b080c;
+  --los-success:        #66d99c;
+  --los-success-strong: #9fedbd;
+  --los-success-wash:   #0b291b;
+  --los-info:           #78bcff;
+  --los-info-strong:    #a8d3ff;
+  --los-info-wash:      #0b2138;
+  --los-warning:        #f4bf5f;
+  --los-warning-strong: #ffd58a;
+  --los-warning-wash:   #30200b;
+  --los-shadow-soft:    rgba(0, 0, 0, .32);
+
+  --los-surface-raised: #251923;
+  --los-color-scheme: dark;
+
+}
+
+/* ── Midnight — navy canvas, violet brand ─────────────────────────────────
+ * The first of the cool darks. Brand is violet rather than blue so it stays
+ * clear of the blue-grey that means "information": on a cool ground those
+ * two are the pair most at risk of reading as one signal. */
+body[data-los-palette="midnight"] .los-root {
+  --los-paper:          #07091b;
+  --los-paper-2:        #10142d;
+  --los-paper-3:        #191e3d;
+  --los-ink:            #f1f0ff;
+  --los-ink-soft:       #c4c7e8;
+  --los-ink-faint:      #adadd0;
+  --los-rule:           #2e3459;
+  --los-rule-strong:    #7f86bb;
+  --los-accent:         #b194ff;
+  --los-accent-strong:  #cdb9ff;
+  --los-accent-soft:    #a182f0;
+  --los-accent-wash:    #281749;
+  --los-st-active:      var(--los-success);
+  --los-st-ready:       var(--los-accent);
+  --los-st-attention:   var(--los-warning);
+  --los-st-paused:      #f4bf5f;
+  --los-st-done:        var(--los-success);
+  --los-st-shelve:      var(--los-info);
+
+  --los-sidebar:        #0b0e24;
+  --los-selected:       #302052;
+  --los-on-accent:      #07091b;
+  --los-success:        #66d99c;
+  --los-success-strong: #9fedbd;
+  --los-success-wash:   #0b291b;
+  --los-info:           #78bcff;
+  --los-info-strong:    #a8d3ff;
+  --los-info-wash:      #0b2138;
+  --los-warning:        #f4bf5f;
+  --los-warning-strong: #ffd58a;
+  --los-warning-wash:   #30200b;
+  --los-shadow-soft:    rgba(0, 0, 0, .40);
+  --los-surface-raised: #1c2146;
+  --los-color-scheme: dark;
+
+}
+
+/* ── Slate — blue-grey canvas, cyan brand ─────────────────────────────────
+ * Cooler and flatter than Midnight. Because the brand is cyan, "information"
+ * moves off blue-grey onto periwinkle: the rule is that the brand must stay
+ * distinguishable from all three semantic hues, and here it is the semantic
+ * that yields, not the brand. */
+body[data-los-palette="slate"] .los-root {
+  --los-paper:          #061318;
+  --los-paper-2:        #0d2229;
+  --los-paper-3:        #12313a;
+  --los-ink:            #e9fbff;
+  --los-ink-soft:       #acd1d9;
+  --los-ink-faint:      #96b9c2;
+  --los-rule:           #29434c;
+  --los-rule-strong:    #6f929a;
+  --los-accent:         #37d7ea;
+  --los-accent-strong:  #78eaff;
+  --los-accent-soft:    #23bccf;
+  --los-accent-wash:    #083440;
+  --los-st-active:      var(--los-success);
+  --los-st-ready:       var(--los-accent);
+  --los-st-attention:   var(--los-warning);
+  --los-st-paused:      #f4bf5f;
+  --los-st-done:        var(--los-success);
+  --los-st-shelve:      var(--los-info);
+
+  --los-sidebar:        #091b21;
+  --los-selected:       #0c3d49;
+  --los-on-accent:      #061318;
+  --los-success:        #66d99c;
+  --los-success-strong: #9fedbd;
+  --los-success-wash:   #0b291b;
+  --los-info:           #b1adff;
+  --los-info-strong:    #d0ccff;
+  --los-info-wash:      #211b3c;
+  --los-warning:        #f4bf5f;
+  --los-warning-strong: #ffd58a;
+  --los-warning-wash:   #30200b;
+  --los-shadow-soft:    rgba(0, 0, 0, .40);
+  --los-surface-raised: #173641;
+  --los-color-scheme: dark;
+
+}
+
+/* ── Carbon — near-black, cool cast, no brand hue ─────────────────────────
+ * Graphite's dark counterpart: the only hues on screen are the three that
+ * mean something. Decisive action is carried by a near-white fill, so it is
+ * the brightest thing on the page without being a fourth colour competing
+ * with sage, periwinkle-blue and amber. */
+body[data-los-palette="carbon"] .los-root {
+  --los-paper:          #050607;
+  --los-paper-2:        #101216;
+  --los-paper-3:        #1b1e24;
+  --los-ink:            #f4f7fc;
+  --los-ink-soft:       #c0cadb;
+  --los-ink-faint:      #9caac0;
+  --los-rule:           #2a2e36;
+  --los-rule-strong:    #747e90;
+  --los-accent:         #f1f5ff;
+  --los-accent-strong:  #ffffff;
+  --los-accent-soft:    #c4d0e5;
+  --los-accent-wash:    #202631;
+  --los-st-active:      var(--los-success);
+  --los-st-ready:       var(--los-accent);
+  --los-st-attention:   var(--los-warning);
+  --los-st-paused:      #f4bf5f;
+  --los-st-done:        var(--los-success);
+  --los-st-shelve:      var(--los-info);
+
+  --los-sidebar:        #090b0e;
+  --los-selected:       #252e3e;
+  --los-on-accent:      #050607;
+  --los-success:        #66d99c;
+  --los-success-strong: #9fedbd;
+  --los-success-wash:   #0b291b;
+  --los-info:           #78bcff;
+  --los-info-strong:    #a8d3ff;
+  --los-info-wash:      #0b2138;
+  --los-warning:        #f4bf5f;
+  --los-warning-strong: #ffd58a;
+  --los-warning-wash:   #30200b;
+  --los-shadow-soft:    rgba(0, 0, 0, .45);
+  --los-surface-raised: #20242b;
+  --los-color-scheme: dark;
+
+}
+
+/* ── Custom — the reader's own, defined outside this file ─────────────────
+ * Selecting "Custom" sets `data-los-palette="custom"` and the plugin ships no
+ * rules for it, so the base palette renders until a CSS snippet says otherwise
+ * (Settings → Appearance → CSS snippets). Because nothing here declares those
+ * tokens, a snippet is the only rule at that specificity and needs no
+ * `!important` to win:
+ *
+ *   body[data-los-palette="custom"] .los-root {
+ *     --los-paper:     <canvas>;
+ *     --los-paper-2:   <surface>;
+ *     --los-ink:       <body text>;
+ *     --los-accent:    <brand>;
+ *     --los-on-accent: <text that sits on the brand fill>;
+ *     ...
+ *   }
+ *
+ * (Written with placeholders rather than literal values on purpose: raw colour
+ * is legal in this file only inside a palette block, and the gate that enforces
+ * that reads the file as text, comments included.)
+ *
+ * Nothing checks a custom palette's contrast. Every scheme above clears its
+ * WCAG pairs before it can ship; this one is the deliberate exception, and the
+ * dropdown label says so rather than letting the gate look wider than it is.
+ * `src/styles/00-tokens.css` lists every token worth setting. */

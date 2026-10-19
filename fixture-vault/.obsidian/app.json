@@ -1,0 +1,19 @@
+{
+  "alwaysUpdateLinks": false,
+  "attachmentFolderPath": "work/inbox",
+  "newLinkFormat": "relative",
+  "readableLineLength": true,
+  "trashOption": "local",
+  "useMarkdownLinks": true,
+  "userIgnoreFilters": [
+    "archive/",
+    ".venv/",
+    ".trash/",
+    "migration/",
+    "generated/",
+    "system/",
+    "sources/",
+    "records/",
+    "curriculum/quarantine/"
+  ]
+}

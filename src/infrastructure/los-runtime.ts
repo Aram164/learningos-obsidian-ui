@@ -1,0 +1,116 @@
+import { execFile } from 'node:child_process';
+import * as fs from 'node:fs';
+import * as nodePath from 'node:path';
+import process from 'node:process';
+import { runtimeSourceFingerprint } from '../build-identity';
+import { TRACE_OWNERSHIP_ENV, ownershipMarkerForTraceparent } from './trace-context';
+
+export interface PythonResolution {
+  readonly path: string;
+  readonly origin: string;
+  readonly attempted: string[];
+}
+
+export type LosCallback = (
+  error: Error | null,
+  stdout: string,
+  stderr: string,
+) => void;
+
+/** The environment variable naming the calling session to Core. */
+export const SESSION_ID_ENV = 'LOS_SESSION_ID';
+
+/**
+ * This UI's session identity, stamped on every Core child it spawns. One
+ * stable value — not per launch — so writes from an earlier launch are still
+ * this session's rows when the learner reviews them, and so no UI write ever
+ * lands in an agent session's ledger (or vice versa).
+ */
+export const UI_SESSION_ID = 'ui';
+
+/** The environment variable naming the Core client and its build. */
+export const CLIENT_ENV = 'LOS_CLIENT';
+
+/**
+ * This running bundle's client marker, stamped on every Core child it
+ * spawns. The build is the compiled-in source fingerprint, so Core can
+ * tell a current UI from an outdated installed build (or an unmarked
+ * terminal agent) instead of guessing its identity. An unmarked call
+ * stays valid — the marker is informational, never a refusal input.
+ */
+export function uiClientMarker(): string {
+  return `obsidian-ui/${runtimeSourceFingerprint()}`;
+}
+
+interface LosRuntimeHost {
+  readonly vault: {
+    readonly adapter: {
+      getBasePath(): string;
+    };
+  };
+}
+
+/** Host-process adapter for the stable LearningOS CLI. */
+export class LosRuntime {
+  constructor(
+    private readonly app: LosRuntimeHost,
+    private readonly configuredPython: () => string,
+  ) {}
+
+  resolvePython(): PythonResolution {
+    const base = this.app.vault.adapter.getBasePath();
+    const configured = this.configuredPython().trim();
+    const searchOrder: Array<readonly [string, string]> = [
+      [configured, 'configured in settings'],
+      [nodePath.join(base, '.venv', 'bin', 'python'), 'project virtual environment'],
+      [nodePath.join(base, '.venv', 'Scripts', 'python.exe'), 'project virtual environment (Windows)'],
+    ];
+    const candidates = searchOrder.filter(([path]) => path);
+    const attempted = candidates.map(([path]) => path);
+    for (const [path, origin] of candidates) {
+      if (fs.existsSync(path)) return { path, origin, attempted };
+    }
+    const fallback = process.platform === 'win32' ? 'python' : 'python3';
+    return { path: fallback, origin: 'PATH fallback', attempted: [...attempted, fallback] };
+  }
+
+  /**
+   * Run the CLI. Every child carries this UI's session identity and client
+   * marker. `traceParent` carries one W3C traceparent for this exact
+   * dispatch (research track #2, Phase 1): it travels as child-process
+   * environment, never as CLI arguments or payload, and an absent value
+   * leaves the child environment exactly as before. A present value also
+   * carries the LearningOS-ownership marker, so Core adopts this
+   * dispatch's operation as its own instead of minting a second one
+   * (JF-04, Option A).
+   */
+  run(args: string[], callback: LosCallback, stdin?: string, traceParent?: string): void {
+    const base = this.app.vault.adapter.getBasePath();
+    const script = nodePath.join(base, 'tools', 'los.py');
+    const owned = traceParent === undefined
+      ? null
+      : ownershipMarkerForTraceparent(traceParent);
+    const child = execFile(
+      this.resolvePython().path,
+      [script, ...args],
+      {
+        cwd: base,
+        timeout: 180000,
+        maxBuffer: 8 * 1024 * 1024,
+        env: {
+          ...process.env,
+          [SESSION_ID_ENV]: UI_SESSION_ID,
+          [CLIENT_ENV]: uiClientMarker(),
+          ...(traceParent === undefined
+            ? {}
+            : {
+              TRACEPARENT: traceParent,
+              ...(owned === null ? {} : { [TRACE_OWNERSHIP_ENV]: owned }),
+            }),
+        },
+      },
+      callback,
+    );
+    if (stdin !== undefined) child.stdin?.end(stdin);
+  }
+}

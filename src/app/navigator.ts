@@ -1,0 +1,349 @@
+/**
+ * Every destination the application can open.
+ *
+ * These twenty-eight methods lived on `LearningOSUI` until 2026-08-21, where
+ * they made up the largest part of a 523-line file that the engineering review
+ * described as "almost none of it behaviour". They were not behaviourless —
+ * `openLearn` remembers the area, `openUnit` restores the selected stage,
+ * `openLibrary` and `openRecord` dispatch on record type — but that behaviour
+ * belongs to navigation, not to being an Obsidian plugin, and putting it here
+ * is what lets a view depend on navigation without depending on the plugin.
+ *
+ * The dependency list is deliberately explicit rather than "the plugin": the
+ * router to move, the store to resolve a record into a destination, settings
+ * and drafts for the two destinations that remember something, and the
+ * resource opener for the one record type that opens a file instead of a view.
+ * Six collaborators is not narrow, but each one is here because a named method
+ * below needs it, which is the property the plugin reference never had.
+ *
+ * It also satisfies `GlobalSearchPlugin` on its own — that modal wants the
+ * router, the store, and five open methods — so the extraction needed no
+ * back-reference to the plugin. That was the test of whether this seam was
+ * real: a facade that has to be handed the whole object it was carved out of
+ * has not been carved out of anything.
+ */
+import { Notice, type App, type WorkspaceLeaf } from 'obsidian';
+import { GlobalSearchModal } from './global-search';
+import type { ApplicationRouter } from './router';
+import type { DraftStore } from '../application/draft-store';
+import { LEARN_AREAS } from '../constants';
+import type { ProjectionRecord } from '../contracts/manifest';
+import {
+  asAbilityLayout,
+  asAtlasDepth,
+  asAtlasLens,
+  asLibraryCollection,
+  asLibraryFolderPath,
+  asProjectDetailTab,
+  type AbilityLayoutV1,
+  type AtlasDepthV1,
+  type AtlasLensV1,
+  type LibraryFolderLayoutV1,
+  type LibrarySourceFiltersV1,
+} from '../contracts/route-v1';
+import type { ResourceOpener } from '../infrastructure/resource-opener';
+import type { ManifestStore } from '../manifest-store';
+import { asString } from '../projection/readers';
+import type { LearningOSSettings } from './settings-contract';
+
+/** Where the Atlas should open, named rather than positional. */
+export interface AtlasTarget {
+  readonly concept?: string | null;
+  readonly module?: string | null;
+  readonly lens?: AtlasLensV1;
+  readonly depth?: AtlasDepthV1;
+}
+
+/** Where the Ability map should open. */
+export interface AbilityTarget {
+  readonly group?: string | null;
+  readonly ability?: string | null;
+  readonly layout?: AbilityLayoutV1;
+  readonly detail?: boolean;
+}
+
+export class AppNavigator {
+  constructor(
+    private readonly app: App,
+    readonly router: ApplicationRouter,
+    readonly store: ManifestStore,
+    private readonly settings: LearningOSSettings,
+    private readonly drafts: DraftStore,
+    private readonly resources: ResourceOpener,
+  ) {}
+
+  async openNavigator() { return this.router.openNavigator(); }
+  async openHome() { return this.router.navigate({ name: 'home' }); }
+
+  /** Learn is one destination; the areas are sub-areas inside it. */
+  openLearn(programId: string | null = null) {
+    const area = programId || this.settings.learnArea || LEARN_AREAS[0][0];
+    this.settings.learnArea = area;
+    this.drafts.scheduleSave();
+    return this.router.navigate({ name: 'learn', programId: area });
+  }
+
+  openCapture() { return this.router.navigate({ name: 'capture' }); }
+  /** Review, optionally with one item already selected. */
+  openReview(item: string | null = null) {
+    return this.router.navigate({ name: 'review', item });
+  }
+  openGarden() { return this.router.navigate({ name: 'garden' }); }
+  openDiagnostics() { return this.router.navigate({ name: 'diagnostics' }); }
+
+  openGlobalSearch(query = '') {
+    const modal = new GlobalSearchModal(this.app, this, query);
+    modal.open();
+    return modal;
+  }
+
+  openProgram(programId: string) {
+    return this.router.navigate({ name: 'program', programId });
+  }
+
+  openModules() { return this.router.navigate({ name: 'module-groups' }); }
+  openProjects(query = '') { return this.router.navigate({ name: 'project-list', query }); }
+
+  openProject(projectId: string, tab = 'structure') {
+    const current = this.router.snapshot().current;
+    const changingTab = current?.name === 'project-detail' && current.projectId === projectId;
+    return this.router.navigate(
+      { name: 'project-detail', projectId, tab: asProjectDetailTab(tab) },
+      { pushHistory: !changingTab },
+    );
+  }
+
+  openModuleDetail(
+    moduleId: string,
+    componentId: string | null = null,
+    tab: string | null = null,
+  ) {
+    return this.router.navigate({ name: 'module-detail', moduleId, componentId, tab });
+  }
+
+  /** Compatibility alias used by Learn, Home and existing deep links. */
+  openModule(moduleId: string, componentId: string | null = null) {
+    return this.openModuleDetail(moduleId, componentId);
+  }
+
+  openUnit(unitId: string, stageId: string | null = null) {
+    const selectedStage = stageId || this.drafts.getSelectedStage(unitId);
+    if (selectedStage) this.drafts.setSelectedStage(unitId, selectedStage);
+    return this.router.navigate({ name: 'unit', unitId, stageId: selectedStage });
+  }
+
+  openLibrary(
+    recordId: string | null | undefined = undefined,
+    recordType: string | undefined = undefined,
+  ) {
+    if (recordId === undefined || recordId === null) {
+      // No record asked for means "open the Library", and the Library's front
+      // door is the folder browser. A caller that wants the flat all-sources
+      // list asks for it by name through `openLibraryHome`.
+      return recordType === 'topic-pack'
+        ? this.openLibraryHome('topic-packs')
+        : this.openLibraryFolder([]);
+    }
+    const record = this.store.get(recordId);
+    if (record?.type === 'source' || recordType === 'source') return this.openSourceDetail(recordId);
+    if (record?.type === 'topic-pack' || recordType === 'topic-pack') return this.openTopicPackDetail(recordId);
+    if (record?.type === 'collection' || recordType === 'collection') return this.openCatalogueDetail(recordId);
+    return this.router.navigate({ name: 'legacy-library-list', recordType: recordType || record?.type || 'note', query: '' });
+  }
+
+  /**
+   * Open one folder of the Library's folder browser.
+   *
+   * `path` is the whole address: a folder is a position in a projection rather
+   * than a record, so the route it took to get there is the only durable way
+   * to name it. `selected` survives a trip up one level, which is what makes
+   * "enclosing folder" land on the folder you just left.
+   */
+  openLibraryFolder(
+    path: readonly string[] = [],
+    selected: string | null = null,
+    layout?: LibraryFolderLayoutV1,
+    query = '',
+  ) {
+    return this.router.navigate({
+      name: 'library-folder',
+      path: asLibraryFolderPath([...path]),
+      selected,
+      ...(layout ? { layout } : {}),
+      query,
+    });
+  }
+
+  openLibraryHome(
+    collection = 'sources',
+    query = '',
+    filters?: LibrarySourceFiltersV1,
+  ) {
+    return this.router.navigate({
+      name: 'library-home',
+      collection: asLibraryCollection(collection),
+      query,
+      ...(filters ? { filters } : {}),
+    });
+  }
+
+  openLibraryGroup(
+    collection: string,
+    groupId: string,
+    query = '',
+    facet = 'all',
+    filters?: LibrarySourceFiltersV1,
+  ) {
+    return this.router.navigate({
+      name: 'library-group',
+      collection: asLibraryCollection(collection),
+      groupId,
+      query,
+      facet,
+      ...(filters ? { filters } : {}),
+    });
+  }
+
+  openSourceDetail(
+    resourceId: string,
+    fromGroupId: string | null = null,
+    query = '',
+    facet = 'all',
+    filters?: LibrarySourceFiltersV1,
+  ) {
+    return this.router.navigate({
+      name: 'source-detail',
+      resourceId,
+      fromGroupId,
+      query,
+      facet,
+      ...(filters ? { filters } : {}),
+    });
+  }
+
+  openTopicPackDetail(
+    topicPackId: string,
+    fromGroupId: string | null = null,
+    query = '',
+  ) {
+    return this.router.navigate({ name: 'topic-pack-detail', topicPackId, fromGroupId, query });
+  }
+
+  openCatalogueDetail(catalogueId: string) {
+    return this.router.navigate({ name: 'catalogue-detail', catalogueId });
+  }
+
+  /** Hidden compatibility surface used by Atlas and pre-migration deep links. */
+  openLibraryFiltered(recordType: string, domain = '') {
+    return this.router.navigate({ name: 'legacy-library-list', recordType, domain, query: '' });
+  }
+
+  /**
+   * Open the Atlas (ADR-016).
+   *
+   * A named target rather than positional arguments: `lens` and `depth` join
+   * `concept` and `module`, and four bare positions at one call site is how a
+   * concept ends up in the depth slot. Unknown values are coerced by the route
+   * contract rather than rejected here.
+   */
+  openAtlas(target: AtlasTarget = {}, preferredLeaf?: WorkspaceLeaf) {
+    const current = this.router.snapshot().current;
+    const changingAtlasState = current?.name === 'atlas';
+
+    return this.router.navigate(
+      {
+        name: 'atlas',
+        concept: target.concept ?? null,
+        module: target.module ?? null,
+        lens: asAtlasLens(target.lens),
+        depth: asAtlasDepth(target.depth),
+      },
+      { pushHistory: !changingAtlasState, ...(preferredLeaf ? { preferredLeaf } : {}) },
+    );
+  }
+
+  /**
+   * Open the Ability map — the Atlas destination.
+   *
+   * Moving the selection inside the map changes attention, not place, so it
+   * replaces the current entry; opening the full detail is a place Back should
+   * return from, so it pushes one.
+   */
+  openAbilities(target: AbilityTarget = {}, preferredLeaf?: WorkspaceLeaf) {
+    const current = this.router.snapshot().current;
+    const inMap = current?.name === 'abilities';
+    const detail = target.detail === true && Boolean(target.ability);
+    const enteringDetail = detail && !(inMap && current.detail === true);
+    return this.router.navigate(
+      {
+        name: 'abilities',
+        group: target.group ?? null,
+        ability: target.ability ?? null,
+        layout: asAbilityLayout(target.layout),
+        detail,
+      },
+      { pushHistory: !inMap || enteringDetail, ...(preferredLeaf ? { preferredLeaf } : {}) },
+    );
+  }
+
+  openShelving(unitId: string | null = null) {
+    return this.router.navigate({ name: 'shelving', unitId });
+  }
+
+  openBoundary(boundaryId: string) {
+    return this.router.navigate({ name: 'boundary', boundaryId });
+  }
+
+  back() { return this.router.back(); }
+
+  openResume() {
+    const pointer = this.store.data?.resume_pointer;
+    const unitId = asString(pointer?.unit_id);
+    const stageId = asString(pointer?.stage_id);
+    return unitId ? this.openUnit(unitId, stageId) : this.openHome();
+  }
+
+  openRecord(record: ProjectionRecord | null | undefined) {
+    if (!record) return;
+    const recordId = asString(record.id);
+    if (record.type === 'unit' && recordId) return this.openUnit(recordId);
+    if (record.type === 'module' && recordId) return this.openModule(recordId);
+    if (record.type === 'project' && recordId) return this.openProject(recordId);
+    if (record.type === 'program' && recordId) return this.openProgram(recordId);
+    if (record.type === 'source' && recordId) return this.openSourceDetail(recordId);
+    if (record.type === 'topic-pack' && recordId) return this.openTopicPackDetail(recordId);
+    if (record.type === 'collection' && recordId) return this.openCatalogueDetail(recordId);
+    if (record.type === 'note' || record.type === 'concept') {
+      if (record.path) return this.resources.openAuthoredPath(record.path);
+      return this.openLibraryFiltered(record.type);
+    }
+    if (record.type === 'workspace') {
+      if (record.project_id) return this.openProject(record.project_id);
+      const unit = (record.unit_ids || [])
+        .map((id: string) => this.store.get(id))
+        .find(Boolean);
+      if (unit?.id) return this.openUnit(unit.id);
+      const module = (record.module_ids || [])
+        .map((id: string) => this.store.get(id))
+        .find(Boolean);
+      return module?.id ? this.openModule(module.id) : this.openHome();
+    }
+    if (record.path) return this.resources.openAuthoredPath(record.path);
+  }
+
+  /**
+   * Omnisearch's modal is another plugin's DOM, and reaching into it to seed
+   * a query was the one place this interface depended on internals it does
+   * not own: a private input-field selector, polled for up to a second, then
+   * fed a synthetic keystroke event. Any Omnisearch DOM change could break
+   * that silently, and no test here could catch it.
+   *
+   * Only the registered public command remains. The convenience loss is
+   * small and explicit: Omnisearch opens without automatic query prefill.
+   * LearningOS's own structural Library search is unaffected either way.
+   */
+  openFullTextSearch(): void {
+    const ok = this.app.commands?.executeCommandById?.('omnisearch:show-modal');
+    if (!ok) new Notice('Omnisearch is unavailable; structural Library search still works.');
+  }
+}

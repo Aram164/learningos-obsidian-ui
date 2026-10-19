@@ -1,0 +1,4 @@
+{
+  "_comment": "English and German OCR for local PDF/image discovery; no remote image AI is configured.",
+  "ocrLanguages": ["eng", "deu"]
+}

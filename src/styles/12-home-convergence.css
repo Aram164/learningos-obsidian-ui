@@ -1,0 +1,44 @@
+/* Home convergence: one resumable session, a short Today list, then a short
+ * Continue elsewhere list. Home is not a module catalogue or queue dashboard. */
+.los-home-header { position: relative; padding-right: 430px; }
+.los-home-header-actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  align-items: center;
+}
+.los-root .los-home-search-launcher {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 330px;
+  min-height: 38px;
+  color: var(--los-ink-soft);
+  white-space: nowrap;
+}
+.los-home-search-launcher svg { flex: 0 0 auto; }
+.los-home-search-label {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.los-home-search-launcher kbd {
+  color: var(--los-ink-faint);
+  font: inherit;
+}
+.los-continue-context { margin-top: var(--los-2); color: var(--los-ink-soft); font-size: 12px; }
+.los-home-list { display: grid; border-top: 1px solid var(--los-line-strong); }
+.los-home-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--los-3);
+  align-items: center;
+  min-width: 0;
+  padding: var(--los-3) 0;
+  border-bottom: 1px solid var(--los-line);
+}
+.los-home-row-copy { min-width: 0; }
+.los-home-row-copy > strong { display: block; overflow-wrap: break-word; }
+.los-home-row-copy .los-micro { margin-top: 2px; }
+

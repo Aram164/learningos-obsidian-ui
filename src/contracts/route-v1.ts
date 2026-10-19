@@ -1,0 +1,290 @@
+/** Persisted application navigation contract, independent of Obsidian leaves. */
+export type LibraryCollectionV1 = "sources" | "topic-packs";
+
+/**
+ * How the folder browser draws one folder.
+ *
+ * `list` is one folder at a time with a Kind column; `columns` keeps every
+ * ancestor on screen, which is what makes a six-level tree walkable without
+ * losing the branch you came down.
+ */
+export type LibraryFolderLayoutV1 = "list" | "columns";
+
+export interface LibrarySourceFiltersV1 {
+  domain: string;
+  topic: string;
+  purpose: string;
+  form: string;
+  use: string;
+}
+
+/**
+ * The Atlas lens (ADR-016 decision 8).
+ *
+ * One field carries the concept and corpus lenses even though the shell splits them across
+ * two controls, because two fields would make `lens=prerequisites` with
+ * `scope=diagnostics` expressible and it means nothing.
+ */
+export type AtlasLensV1 =
+  | "prerequisites"
+  | "path"
+  | "semantic"
+  | "bridges"
+  | "diagnostics"
+  | "domains";
+
+/** How far the focused graph reaches. Depth 1 is the default. */
+export type AtlasDepthV1 = 1 | 2;
+
+/** How the Ability map draws its groups: the directed plane, or a list. */
+export type AbilityLayoutV1 = "plane" | "list";
+
+export type ProjectDetailTabV1 =
+  | "overview"
+  | "structure"
+  | "linked-materials"
+  | "files"
+  | "decisions";
+
+export type ApplicationRouteV1 =
+  | { name: "home" }
+  | { name: "learn"; programId: string }
+  | { name: "capture" }
+  | { name: "review"; item?: string | null }
+  | { name: "garden" }
+  | { name: "diagnostics" }
+  | { name: "program"; programId: string }
+  | { name: "module-groups" }
+  | { name: "project-list"; query?: string }
+  | { name: "project-detail"; projectId: string; tab?: ProjectDetailTabV1 }
+  | { name: "module-list"; groupId: string; query?: string }
+  | { name: "module-detail"; moduleId: string; componentId?: string | null; tab?: string | null }
+  | { name: "unit"; unitId: string; stageId?: string | null }
+  | {
+      name: "library-home";
+      collection: LibraryCollectionV1;
+      query?: string;
+      filters?: LibrarySourceFiltersV1;
+    }
+  /**
+   * One folder of the Library's folder browser.
+   *
+   * `path` is the whole address rather than a single id, because a folder here
+   * has no record of its own to point at — it is a position in a projection,
+   * and the only durable way to name a position is the route you took to it.
+   */
+  | {
+      name: "library-folder";
+      path: string[];
+      selected?: string | null;
+      layout?: LibraryFolderLayoutV1;
+      query?: string;
+    }
+  | {
+      name: "library-group";
+      collection: LibraryCollectionV1;
+      groupId: string;
+      query?: string;
+      facet?: string;
+      filters?: LibrarySourceFiltersV1;
+    }
+  | {
+      name: "source-detail";
+      resourceId: string;
+      fromGroupId?: string | null;
+      query?: string;
+      facet?: string;
+      filters?: LibrarySourceFiltersV1;
+    }
+  | { name: "topic-pack-detail"; topicPackId: string; fromGroupId?: string | null; query?: string }
+  | { name: "catalogue-detail"; catalogueId: string }
+  | { name: "legacy-library-list"; recordType: string; query?: string; domain?: string }
+  | {
+      name: "library";
+      recordId?: string | null;
+      recordType?: string | null;
+      query?: string;
+      facet?: string;
+      domain?: string;
+    }
+  | {
+      name: "atlas";
+      concept?: string | null;
+      module?: string | null;
+      lens?: AtlasLensV1;
+      depth?: AtlasDepthV1;
+    }
+  /**
+   * The Ability map (Atlas). `group` and `ability` name what is selected;
+   * `detail` opens the full ability page. The search text is working state
+   * and never enters the route.
+   */
+  | {
+      name: "abilities";
+      group?: string | null;
+      ability?: string | null;
+      layout?: AbilityLayoutV1;
+      detail?: boolean;
+    }
+  | { name: "shelving"; unitId?: string | null }
+  | { name: "boundary"; boundaryId: string };
+
+export interface NavigationEntryV1 {
+  route: ApplicationRouteV1;
+  scrollTop: number;
+  selectedElementId?: string | undefined;
+}
+
+export interface GlobalSearchOverlayV1 {
+  kind: "global-search";
+  query: string;
+  filter: "all" | "learning" | "sources" | "projects";
+}
+
+export type OverlayStateV1 =
+  | GlobalSearchOverlayV1
+  | { kind: "linked-material-reason"; relationshipId: string }
+  // The stage material-comparison drawer. Registered so Escape and Back
+  // restore the route the learner was on, rather than dropping them
+  // somewhere the drawer never came from.
+  | { kind: "material-comparison"; unitId: string; stageId: string }
+  | null;
+
+export interface NavigationStateV1 {
+  version: 1;
+  current: ApplicationRouteV1;
+  history: NavigationEntryV1[];
+}
+
+/*
+ * Narrowing boundary.
+ *
+ * Persisted Obsidian state and product call sites hand over loose values
+ * (`unknown`, plain `string`). Routes are strict. These functions are the only
+ * sanctioned crossing: loose in, contract-valid out, never a cast at the call
+ * site.
+ */
+
+const LIBRARY_COLLECTIONS: readonly LibraryCollectionV1[] = [
+  "sources",
+  "topic-packs",
+];
+
+const ATLAS_LENSES: readonly AtlasLensV1[] = [
+  "prerequisites",
+  "path",
+  "semantic",
+  "bridges",
+  "diagnostics",
+  "domains",
+];
+
+const ATLAS_DEPTHS: readonly AtlasDepthV1[] = [1, 2];
+
+const PROJECT_DETAIL_TABS: readonly ProjectDetailTabV1[] = [
+  "overview",
+  "structure",
+  "linked-materials",
+  "files",
+  "decisions",
+];
+
+export function isLibraryCollection(value: unknown): value is LibraryCollectionV1 {
+  return LIBRARY_COLLECTIONS.includes(value as LibraryCollectionV1);
+}
+
+export function isAtlasLens(value: unknown): value is AtlasLensV1 {
+  return ATLAS_LENSES.includes(value as AtlasLensV1);
+}
+
+export function isAtlasDepth(value: unknown): value is AtlasDepthV1 {
+  return ATLAS_DEPTHS.includes(value as AtlasDepthV1);
+}
+
+export function isProjectDetailTab(value: unknown): value is ProjectDetailTabV1 {
+  return PROJECT_DETAIL_TABS.includes(value as ProjectDetailTabV1);
+}
+
+export function asLibrarySourceFilters(
+  value: unknown,
+): LibrarySourceFiltersV1 {
+  const record: Record<string, unknown> =
+    typeof value === "object"
+      && value !== null
+      && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : {};
+
+  const read = (key: keyof LibrarySourceFiltersV1): string =>
+    typeof record[key] === "string"
+      ? record[key] as string
+      : "";
+
+  return {
+    domain: read("domain"),
+    topic: read("topic"),
+    purpose: read("purpose"),
+    form: read("form"),
+    use: read("use"),
+  };
+}
+
+/** Coerce a loose collection value; anything unrecognised falls back to sources. */
+export function asLibraryCollection(value: unknown): LibraryCollectionV1 {
+  return isLibraryCollection(value) ? value : "sources";
+}
+
+/** Coerce a loose layout value; anything unrecognised falls back to the list. */
+export function asLibraryFolderLayout(value: unknown): LibraryFolderLayoutV1 {
+  return value === "columns" ? "columns" : "list";
+}
+
+/**
+ * Coerce a loose folder path.
+ *
+ * Persisted state, a hand-edited workspace file and a stale deep link all
+ * arrive here, so this drops anything that is not a non-empty string and
+ * bounds the depth: resolution refuses a path longer than the taxonomy can
+ * produce, and an unbounded array from disk should not reach it at all. An
+ * empty result is the Library root, which always exists — so a corrupt path
+ * degrades to "you are at the top" rather than to a broken view.
+ */
+export function asLibraryFolderPath(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((segment): segment is string =>
+      typeof segment === "string" && segment.length > 0)
+    // A former click/dblclick handler could append the folder just opened a
+    // second time. No valid tree edge repeats its parent segment: even `at:`
+    // carries the complete material path, so same-name nested folders differ.
+    // Recover only this exact duplication; other missing paths stay visible.
+    .filter((segment, index, path) => index === 0 || segment !== path[index - 1])
+    .slice(0, 12);
+}
+
+/**
+ * Coerce a loose lens value; anything unrecognised falls back to the default.
+ *
+ * A stale deep link or a hand-edited workspace file is a routine event, and
+ * ADR-016 decision 8 answers it: the Atlas opens on its default lens rather
+ * than refusing to open.
+ */
+export function asAtlasLens(value: unknown): AtlasLensV1 {
+  return isAtlasLens(value) ? value : "prerequisites";
+}
+
+/** Coerce a loose depth value; anything outside the bound falls back to 1. */
+export function asAtlasDepth(value: unknown): AtlasDepthV1 {
+  const numeric = typeof value === "string" ? Number(value) : value;
+  return isAtlasDepth(numeric) ? numeric : 1;
+}
+
+/** Coerce a loose layout value; anything unrecognised falls back to the plane. */
+export function asAbilityLayout(value: unknown): AbilityLayoutV1 {
+  return value === "list" ? "list" : "plane";
+}
+
+/** Coerce a loose project tab value; anything unrecognised falls back to overview. */
+export function asProjectDetailTab(value: unknown): ProjectDetailTabV1 {
+  return isProjectDetailTab(value) ? value : "overview";
+}

@@ -1,0 +1,168 @@
+/* LearningOS compact command centre: quiet, module-first.
+ *
+ * ── PALETTE ────────────────────────────────────────────────────────────────
+ * Warm daylight paper with a berry-wine identity and a restrained semantic
+ * supporting palette. Everything you would want to change lives in the two
+ * blocks below; the rest of this file only ever refers to --los-* tokens,
+ * never to raw colour.
+ *
+ * This replaces the previous "no palette at all" behaviour, where every colour
+ * resolved straight to an Obsidian theme variable and the plugin looked like
+ * whatever theme was installed. The REASON for that old rule was sound —
+ * host themes had to remain legible without component-level overrides — so the
+ * rule is kept in spirit: colours are semantic tokens and LearningOS keeps its
+ * chosen identity independently of the surrounding Obsidian chrome.
+ * See DESIGN.md principle 2.
+ *
+ * Accent is used for emphasis, never as the only signal: state is carried by
+ * text and shape too, so a red/green deficiency loses nothing.
+ */
+.los-root {
+  --los-1: 4px;
+  --los-2: 8px;
+  --los-3: 12px;
+  --los-4: 16px;
+  --los-5: 24px;
+  --los-6: 32px;
+  --los-r-sm: 8px;
+  --los-r-md: 12px;
+  --los-r-lg: 18px;
+  --los-r-pill: 999px;
+
+  /* ── Light: the Figma foundation palette ── */
+  --los-paper:          #f5eee7;  /* canvas */
+  --los-sidebar:        #ecdfd8;
+  --los-paper-2:        #fffdf9;  /* surface */
+  --los-paper-3:        #faf8f4;  /* subtle hover/inset */
+  --los-ink:            #16130f;
+  --los-ink-soft:       #625a4f;  /* muted text remains 4.5:1 on token washes */
+  --los-ink-faint:      #6c6359;  /* strengthened from Figma muted for 4.5:1 */
+  --los-rule:           #e0d8c9;
+  --los-rule-strong:    #91897d;  /* 3:1 non-text boundary contrast on paper */
+  --los-accent:         #8c1649;  /* brand / decisive action */
+  --los-accent-strong:  #701038;
+  --los-accent-soft:    #a32659;
+  --los-accent-wash:    #f4dce7;
+  --los-selected:       #f9e6ef;
+  --los-on-accent:      #ffffff;
+  --los-success:        #24613e;
+  --los-success-strong: #1e4d31;
+  --los-success-wash:   #e1eee5;
+  --los-info:           #345a85;
+  --los-info-strong:    #28496e;
+  --los-info-wash:      #e0eaf6;
+  --los-warning:        #77500d;
+  --los-warning-strong: #604008;
+  --los-warning-wash:   #f8ebce;
+  --los-shadow-soft:    rgba(54, 38, 27, .08);
+
+  /* State hues, warmed to sit on paper. These carry MEANING, so they stay
+     distinguishable from the brand accent and from each other — and every
+     place they are used also carries a text label, never colour alone. */
+  --los-st-active:    var(--los-success);
+  --los-st-ready:     var(--los-accent);
+  --los-st-attention: var(--los-warning);
+  --los-st-paused:    #80652b;
+  --los-st-done:      var(--los-success);
+  --los-st-shelve:    var(--los-info);
+
+  --los-surface: var(--los-paper-2);
+  --los-surface-raised: #ffffff;
+  --los-line: var(--los-rule-strong);
+  --los-line-strong: var(--los-ink-faint);
+
+  min-height: 100%;
+  padding: var(--los-4);
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: var(--los-paper);
+  color: var(--los-ink);
+  color-scheme: var(--los-color-scheme);
+  font-size: 14px;
+  line-height: 1.5;
+  --los-color-scheme: light;
+
+}
+
+/* Restate the base Wine palette in dark host chrome; the explicit scheme
+ * selector below owns the learning surface independently of host appearance. */
+.theme-dark .los-root {
+  --los-paper:          #f5eee7;
+  --los-sidebar:        #ecdfd8;
+  --los-paper-2:        #fffdf9;
+  --los-paper-3:        #faf8f4;
+  --los-ink:            #16130f;
+  --los-ink-soft:       #625a4f;
+  --los-ink-faint:      #6c6359;
+  --los-rule:           #e0d8c9;
+  --los-rule-strong:    #91897d;
+  --los-accent:         #8c1649;
+  --los-accent-strong:  #701038;
+  --los-accent-soft:    #a32659;
+  --los-accent-wash:    #f4dce7;
+  --los-selected:       #f9e6ef;
+  --los-on-accent:      #ffffff;
+  --los-success:        #24613e;
+  --los-success-strong: #1e4d31;
+  --los-success-wash:   #e1eee5;
+  --los-info:           #345a85;
+  --los-info-strong:    #28496e;
+  --los-info-wash:      #e0eaf6;
+  --los-warning:        #77500d;
+  --los-warning-strong: #604008;
+  --los-warning-wash:   #f8ebce;
+  --los-shadow-soft:    rgba(54, 38, 27, .08);
+  --los-st-active:      var(--los-success);
+  --los-st-ready:       var(--los-accent);
+  --los-st-attention:   var(--los-warning);
+  --los-st-paused:      #80652b;
+  --los-st-done:        var(--los-success);
+  --los-st-shelve:      var(--los-info);
+
+  --los-color-scheme: light;
+
+}
+
+/* The host's dark view rule has the same cascade weight as `.los-root`, so the
+ * application surface has to out-specify it. The doubled class is exactly one
+ * step of specificity and nothing more.
+ *
+ * This used to be `!important`, which won the same argument but also blocked
+ * the one override that should always win: a reader's own CSS snippet. Obsidian's
+ * styling guidance says as much — `!important` in a plugin is what makes a
+ * snippet unable to fix it. Kept out of the token block above so that block
+ * stays exactly a palette: tokens, no declarations. */
+.theme-dark .los-root.los-root {
+  background: var(--los-paper);
+  color: var(--los-ink);
+}
+
+.los-root *, .los-root *::before, .los-root *::after { box-sizing: border-box; }
+.los-root .is-clickable { cursor: pointer; }
+.los-root h1, .los-root h2, .los-root h3 {
+  color: var(--los-ink);
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+.los-root h1 {
+  margin: 0 0 var(--los-1);
+  font-size: clamp(24px, 2.2vw, 28px) !important;
+  line-height: 1.15;
+  letter-spacing: -0.018em;
+}
+.los-root h2 { margin: 0 0 var(--los-2); font-size: 17px !important; line-height: 1.28; }
+.los-root h3 { margin: 0 0 var(--los-1); font-size: 15px !important; line-height: 1.32; }
+.los-root p { max-width: 74ch; overflow-wrap: break-word; word-break: normal; }
+.los-muted, .los-micro, .los-progress-copy, .los-detail-id { color: var(--los-ink-soft); }
+.los-micro, .los-detail-id { font-size: 12px; }
+.los-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
