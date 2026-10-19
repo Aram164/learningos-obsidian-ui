@@ -47658,7 +47658,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:e7a88e56c7873b1c4e9f51374443ca66ebf2e193406911dc54aff66136dd1ed7" : "unavailable";
+  return true ? "sha256:602f53d1e64cc6bfd3eaad9e79c6c2bad84a89466e5cf3db166df6d8c3e9322d" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
@@ -54745,9 +54745,9 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
    * that is a mild annoyance; for the record that says a write may be in
    * flight, it is the difference between recovering and duplicating.
    *
-   * Each queued task calls `saveData` only when its turn begins, so it
-   * serializes the newest in-memory settings rather than an old snapshot — the
-   * queue orders the writes without freezing what they contain.
+   * Each queued task serializes settings only when its turn begins, then
+   * awaits the rejecting adapter write. The queue orders saves without
+   * capturing an obsolete settings object before their turn begins.
    */
   settingsCoordinator = null;
   lifecycleGeneration = 0;
@@ -54765,7 +54765,14 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
       if (requireOwner && (!this.lifecycleLive || coordinator.generation !== generation)) {
         return Promise.resolve();
       }
-      return this.saveData(value);
+      const { dir: directory } = this.manifest ?? {};
+      if (!directory) {
+        return Promise.reject(new Error("Obsidian did not provide the plugin settings directory."));
+      }
+      return this.app.vault.adapter.write(
+        `${directory}/data.json`,
+        JSON.stringify(value, null, 2)
+      );
     };
     const run = coordinator.tail.then(save, save);
     coordinator.tail = run.then(() => void 0, () => void 0);

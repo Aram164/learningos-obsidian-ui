@@ -58,10 +58,31 @@ module.exports = async function run() {
   const { prepared, envelopeJson } = await preparedFixture();
 
   {
+    const { app, plugin, calls } = await build();
+    plugin.settings.uiDrafts.inbox = { title: 'Keep', text: 'Save failed before dispatch' };
+    // Obsidian 1.14.4's writeJson catches adapter.write errors and resolves
+    // saveData anyway. Reproduce the real host boundary, not a rejecting
+    // saveData double which hid the native failure.
+    plugin.saveData = async () => undefined;
+    const originalWrite = app.vault.adapter.write;
+    app.vault.adapter.write = async () => { throw new Error('EISDIR: blocked settings destination'); };
+    let refused = null;
+    try { await plugin.gateway.captureText('Save failed before dispatch', 'Keep'); }
+    catch (error) { refused = error; }
+    check('a host-swallowed settings error cannot authorize Core dispatch',
+      refused !== null && calls.envelopes.length === 0);
+    check('settings-save refusal preserves the draft and leaves no prepared record',
+      plugin.settings.uiDrafts.inbox.text === 'Save failed before dispatch'
+      && plugin.settings.gatewayRecovery === null);
+    app.vault.adapter.write = originalWrite;
+    plugin.onunload();
+  }
+
+  {
     const { plugin } = await build();
     const savesBeforeSend = [];
     const saved = [];
-    plugin.saveData = async (data) => { saved.push(clone(data)); };
+    plugin.app.vault.adapter.write = async (_path, text) => { saved.push(JSON.parse(text)); };
     const original = plugin.runLos;
     plugin.runLos = (args, callback, stdin) => {
       if (stdin) savesBeforeSend.push(saved.length);
@@ -319,7 +340,8 @@ module.exports = async function run() {
     const started = [];
     const written = [];
     const releases = [];
-    plugin.saveData = (data) => {
+    plugin.app.vault.adapter.write = (_path, text) => {
+      const data = JSON.parse(text);
       started.push(data.uiDrafts.inbox.text);
       return new Promise((resolve) => {
         releases.push(() => {
@@ -352,10 +374,10 @@ module.exports = async function run() {
       `wrote ${written.join('|')}`);
 
     // A failed save must reject its own caller and leave the queue usable.
-    plugin.saveData = async () => { throw new Error('disk full'); };
+    plugin.app.vault.adapter.write = async () => { throw new Error('disk full'); };
     let rejected = null;
     await plugin.persistSettings().catch((error) => { rejected = error; });
-    plugin.saveData = async () => undefined;
+    plugin.app.vault.adapter.write = async () => undefined;
     let recovered = true;
     await plugin.persistSettings().catch(() => { recovered = false; });
     check('a failed save rejects its caller without poisoning later ones',
@@ -372,7 +394,7 @@ module.exports = async function run() {
     const oldPlugin = new LearningOSUI(appA, { id: 'learningos-ui', version: 'test' });
     appA._plugin = oldPlugin;
     oldPlugin.loadData = async () => clone(disk);
-    oldPlugin.saveData = async (data) => { disk = clone(data); };
+    oldPlugin.app.vault.adapter.write = async (_path, text) => { disk = JSON.parse(text); };
     await oldPlugin.onload();
 
     let oldCallback = null;
@@ -397,7 +419,7 @@ module.exports = async function run() {
     const newPlugin = new LearningOSUI(appB, { id: 'learningos-ui', version: 'test' });
     appB._plugin = newPlugin;
     newPlugin.loadData = async () => clone(disk);
-    newPlugin.saveData = async (data) => { disk = clone(data); };
+    newPlugin.app.vault.adapter.write = async (_path, text) => { disk = JSON.parse(text); };
     newPlugin.runLos = (_args, callback) => {
       callback(Object.assign(new Error('response unavailable'), { code: null }), '', '');
     };
@@ -433,7 +455,7 @@ module.exports = async function run() {
     editor.value = 'a captured thought';
     editor.fire('input');
     const saves = [];
-    plugin.saveData = async (data) => { saves.push(clone(data)); };
+    plugin.app.vault.adapter.write = async (_path, text) => { saves.push(JSON.parse(text)); };
     view.contentEl.findText('los-btn', 'Capture text').fire('click');
     await waitFor(() => plugin.settings.gatewayRecovery === null && !plugin.gateway.isBusy);
     const settling = saves.filter(

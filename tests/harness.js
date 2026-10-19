@@ -208,8 +208,9 @@ class PluginSettingTab {
 }
 
 class Plugin {
-  constructor(app) {
+  constructor(app, manifest = {}) {
     this.app = app;
+    this.manifest = { ...manifest, dir: manifest.dir || '.obsidian/plugins/learningos-ui' };
     this.views = {};
     this.commands = [];
     this.ribbons = [];
@@ -350,6 +351,11 @@ function makeApp(vaultRoot) {
         getBasePath: () => vaultRoot,
         exists: async (p) => fs.existsSync(path.join(vaultRoot, p)),
         read: async (p) => fs.readFileSync(path.join(vaultRoot, p), 'utf8'),
+        write: async (p, data) => {
+          const expected = `${app._plugin?.manifest?.dir || '.obsidian/plugins/learningos-ui'}/data.json`;
+          if (p !== expected) throw new Error(`test vault is read-only: ${p}`);
+          if (app._plugin) app._plugin._data = JSON.parse(data);
+        },
       },
       getMarkdownFiles: () => files.filter((f) => f.extension === 'md'),
       getAbstractFileByPath: (p) => byPath.get(p) || folders.get(p) || null,

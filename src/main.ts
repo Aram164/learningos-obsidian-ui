@@ -129,9 +129,9 @@ export class LearningOSUI extends Plugin implements AppSurface {
    * that is a mild annoyance; for the record that says a write may be in
    * flight, it is the difference between recovering and duplicating.
    *
-   * Each queued task calls `saveData` only when its turn begins, so it
-   * serializes the newest in-memory settings rather than an old snapshot — the
-   * queue orders the writes without freezing what they contain.
+   * Each queued task serializes settings only when its turn begins, then
+   * awaits the rejecting adapter write. The queue orders saves without
+   * capturing an obsolete settings object before their turn begins.
    */
   private settingsCoordinator: SettingsSaveCoordinator | null = null;
   private lifecycleGeneration = 0;
@@ -155,7 +155,16 @@ export class LearningOSUI extends Plugin implements AppSurface {
       if (requireOwner && (!this.lifecycleLive || coordinator.generation !== generation)) {
         return Promise.resolve();
       }
-      return this.saveData(value);
+      const { dir: directory } = this.manifest ?? {};
+      if (!directory) {
+        return Promise.reject(new Error('Obsidian did not provide the plugin settings directory.'));
+      }
+      // Obsidian's saveData/writeJson catches adapter errors and resolves.
+      // Recovery must await the rejecting write primitive before dispatch.
+      return this.app.vault.adapter.write(
+        `${directory}/data.json`,
+        JSON.stringify(value, null, 2),
+      );
     };
     const run = coordinator.tail.then(save, save);
     coordinator.tail = run.then(() => undefined, () => undefined);

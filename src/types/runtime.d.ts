@@ -45,6 +45,7 @@ declare module 'obsidian' {
 
   export interface PluginManifest {
     readonly version?: string;
+    readonly dir?: string;
   }
 
   export interface WorkspaceView {
@@ -125,6 +126,11 @@ declare module 'obsidian' {
     read(
       path: string,
     ): Promise<string>;
+
+    write(
+      path: string,
+      data: string,
+    ): Promise<void>;
   }
 
   export interface Vault {
