@@ -346,29 +346,13 @@ export class ManifestStore {
       .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))[0]
       || null;
   }
-  /**
-   * Modules is a semester surface, not a second subject catalogue.
-   *
-   * Semester records use ids such as `semester-sose-2026`, while authored
-   * modules retain the shorter `sose-2026` value. Both spellings are accepted
-   * at this read boundary; the UI does not infer membership from thematic
-   * groups or from source usage.
-   */
-  currentSemesterModules(): ProjectionRecord[] {
-    const semester = this.currentSemester();
-    const semesterIds = new Set<string>();
-
-    if (typeof semester?.id === 'string') {
-      semesterIds.add(semester.id);
-      semesterIds.add(semester.id.replace(/^semester-/, ''));
-    }
-
+  /** Open academic modules remain reachable across semester changes. */
+  openAcademicModules(): ProjectionRecord[] {
     return this.modules()
       .filter((row) => {
         if (row.kind !== 'academic') return false;
         if (['completed', 'archived', 'dropped'].includes(String(row.status || ''))) return false;
-        if (!semesterIds.size) return row.status === 'enrolled';
-        return semesterIds.has(String(row.semester || ''));
+        return true;
       })
       .sort((a, b) => compareStrings(String(a.title || a.id || ''), String(b.title || b.id || '')))
   }

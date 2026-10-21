@@ -40454,7 +40454,7 @@ function renderElsewhere(view, root) {
     view.plugin.store.data?.resume_pointer
   );
   const rows = [];
-  for (const record7 of view.plugin.store.currentSemesterModules()) {
+  for (const record7 of view.plugin.store.openAcademicModules()) {
     const recordId = asString(record7.id);
     if (!recordId || recordId === pointer2.module_id) {
       continue;
@@ -45187,21 +45187,20 @@ function renderUnits(view, root, module2) {
 
 // src/features/module/navigation.ts
 function renderGroups(view, root) {
-  const semester = view.plugin.store.currentSemester();
-  const modules = view.plugin.store.currentSemesterModules().map(
+  const modules = view.plugin.store.openAcademicModules().map(
     (record7) => readModuleRecord(record7)
   ).filter(nonNull);
   pageHeader(
     root,
-    typeof semester?.title === "string" ? `Modules \xB7 ${semester.title}` : "Modules",
     "Modules",
-    "The modules you are taking this semester. Your complete source collection lives in Library."
+    "Modules",
+    "Your academic modules across semesters. Your complete source collection lives in Library."
   );
   if (!modules.length) {
     empty(
       root,
-      "No current-semester modules",
-      "The Core projection does not currently identify any enrolled academic modules for this semester."
+      "No open modules",
+      "Your academic modules will appear here across semesters."
     );
     return;
   }
@@ -45209,10 +45208,10 @@ function renderGroups(view, root) {
     cls: "los-semester-summary"
   });
   summary.createEl("strong", {
-    text: typeof semester?.title === "string" ? semester.title : "Current semester"
+    text: "Across semesters"
   });
   summary.createSpan({
-    text: `${modules.length} enrolled module${modules.length === 1 ? "" : "s"}`
+    text: `${modules.length} module${modules.length === 1 ? "" : "s"}`
   });
   const list3 = root.createDiv({
     cls: "los-route-list los-semester-module-list"
@@ -47853,7 +47852,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:8adc498244a27cd16bb77ffb9eee131e2905dcfa8a4172271ed276ad14af3dc0" : "unavailable";
+  return true ? "sha256:02f3a93572c5fadcc035f68c470eb60eb4adafe2c3b104296939fad0d1a5b180" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
@@ -54658,26 +54657,12 @@ var ManifestStore = class {
   currentSemester() {
     return this.rows("semesters").filter((row2) => row2.status === "current").sort((a, b) => Number(a.order || 0) - Number(b.order || 0))[0] || null;
   }
-  /**
-   * Modules is a semester surface, not a second subject catalogue.
-   *
-   * Semester records use ids such as `semester-sose-2026`, while authored
-   * modules retain the shorter `sose-2026` value. Both spellings are accepted
-   * at this read boundary; the UI does not infer membership from thematic
-   * groups or from source usage.
-   */
-  currentSemesterModules() {
-    const semester = this.currentSemester();
-    const semesterIds = /* @__PURE__ */ new Set();
-    if (typeof semester?.id === "string") {
-      semesterIds.add(semester.id);
-      semesterIds.add(semester.id.replace(/^semester-/, ""));
-    }
+  /** Open academic modules remain reachable across semester changes. */
+  openAcademicModules() {
     return this.modules().filter((row2) => {
       if (row2.kind !== "academic") return false;
       if (["completed", "archived", "dropped"].includes(String(row2.status || ""))) return false;
-      if (!semesterIds.size) return row2.status === "enrolled";
-      return semesterIds.has(String(row2.semester || ""));
+      return true;
     }).sort((a, b) => compareStrings(String(a.title || a.id || ""), String(b.title || b.id || "")));
   }
   projects() {

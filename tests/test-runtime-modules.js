@@ -875,7 +875,7 @@ function routerPlugin(settings = {}) {
     assert.deepEqual(store.units(), []);
     assert.deepEqual(store.studyMaps(), []);
     assert.equal(store.currentSemester(), null);
-    assert.deepEqual(store.currentSemesterModules(), []);
+    assert.deepEqual(store.openAcademicModules(), []);
     assert.deepEqual(store.projects(), []);
     assert.deepEqual(store.projectRelationships(), []);
     assert.deepEqual(store.thematicGroups(), []);

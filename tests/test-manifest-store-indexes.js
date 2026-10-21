@@ -275,6 +275,38 @@ function fixtureManifest() {
   assert.equal(leased.snapshotId, null);
   assert.deepEqual(leased.modules(), []);
 
+  const crossSemesterModules = [
+    { id: 'module-m2', title: 'Statistics & Analysis', kind: 'academic', status: 'enrolled', semester: 'sose-2099' },
+    { id: 'module-os', title: 'Operating Systems', kind: 'academic', status: 'enrolled', semester: 'wise-2099' },
+    { id: 'module-icop', title: 'Combinatorial Optimization', kind: 'academic', status: 'enrolled', semester: 'wise-2099' },
+    { id: 'module-undated', title: 'Undated course', kind: 'academic', status: 'enrolled', semester: null },
+    { id: 'module-completed', title: 'Completed course', kind: 'academic', status: 'completed', semester: 'wise-2099' },
+    { id: 'module-dropped', title: 'Dropped course', kind: 'academic', status: 'dropped', semester: 'wise-2099' },
+    { id: 'module-archived', title: 'Archived course', kind: 'academic', status: 'archived', semester: 'wise-2099' },
+    { id: 'module-skill', title: 'Python', kind: 'skill', status: 'active', semester: null },
+  ].map(row => ({ ...row, type: 'module' }));
+  const acrossSemesters = {
+    ...fixtureManifest(),
+    modules: crossSemesterModules,
+    records: crossSemesterModules,
+    semesters: [],
+  };
+  const courseStore = new ManifestStore({ vault: { adapter: {
+    exists: async () => true,
+    read: async () => JSON.stringify(acrossSemesters),
+  } } });
+  for (const current of ['sose-2099', 'wise-2099', null]) {
+    acrossSemesters.semesters = current
+      ? [{ id: `semester-${current}`, status: 'current', order: 209901 }]
+      : [];
+    assert.equal(await courseStore.load(), true);
+    assert.deepEqual(
+      courseStore.openAcademicModules().map(row => row.id),
+      ['module-icop', 'module-os', 'module-m2', 'module-undated'],
+      `open courses stay visible with current semester ${current}`,
+    );
+  }
+
   console.log('ManifestStore indexes OK: cached reads preserve filtering, search, and atomic failure semantics.');
 })().catch((error) => {
   console.error(error.stack || error);

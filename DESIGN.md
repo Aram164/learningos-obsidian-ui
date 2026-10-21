@@ -51,8 +51,8 @@ The interface carries usability while the core carries meaning.
 Eight permanent destinations: **Home, Modules, Learn, Projects, Library,
 Atlas, Garden, Review.** (Amended 2026-10-01: Atlas opens on Concepts;
 Review carries a live count, which is the length of the same
-queue Review lists and never a second tally.) Modules begins with explicit thematic groups and opens
-full-page lists/details. Bachelor's, Skills, Job, and Thesis & projects remain
+queue Review lists and never a second tally.) Modules begins with open academic
+modules across semesters and opens full-page details. Bachelor's, Skills, Job, and Thesis & projects remain
 sub-areas inside Learn. Capture, the Future Master's Planning
 boundary, Diagnostics, and *Rebuild projection* live under **More** —
 maintenance is never mixed with study destinations.
@@ -67,9 +67,12 @@ maintenance is never mixed with study destinations.
   *not* on Home.
 - **Program**: current/past semester facts and module cards. Academic status is
   never applied to skills/projects.
-- **Modules**: thematic groups → full-page module list → full-page module detail.
-  Group membership is projected by the core, never inferred from titles or
-  paths. Back restores the group query, selected row and scroll position. The
+- **Modules**: open academic module list → full-page module detail. The list is
+  independent of the current semester: enrolled courses from earlier semesters
+  stay visible until their own status becomes completed, dropped or archived.
+  Semester is context in the detail, never a gate on the list. Thematic-group
+  routes remain available, with membership projected by Core rather than
+  inferred from titles or paths. Back restores the list, selected row and scroll position. The
   detail keeps four tabs — Overview / Units / Resources / Logistics — with
   **Units** the default for any module that has them. The header carries one
   line of facts (`semester · credits · exam`); institution, code, status and

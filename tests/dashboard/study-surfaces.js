@@ -26,18 +26,43 @@ const {
 module.exports = async function run() {
   heading('module and component ownership');
   {
-    const { app, plugin } = await boot();
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        manifest.resume_pointer = {};
+        const m2 = manifest.modules.find(row => row.id === 'module-fixture-m2');
+        m2.semester = 'wise-2098';
+        for (const [id, title] of [
+          ['module-fixture-os', 'Fixture Operating Systems'],
+          ['module-fixture-icop', 'Fixture Combinatorial Optimization'],
+        ]) {
+          const module = {
+            ...m2, id, title, code: null, semester: 'wise-2099',
+            unit_order: [], components: [], is_actionable: false,
+            path: `curriculum/modules/${id}/module.yaml`,
+          };
+          manifest.modules.push(module);
+        }
+      },
+    });
     await plugin.nav.openModules();
     let view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
     let text = view.contentEl.allText();
-    check('Modules contains only the current semester',
+    check('Modules keeps earlier Math2 alongside modules from another semester',
       view.screen === 'groups'
-      && view.contentEl.find('los-semester-module-row').length === 2
-      && text.includes('SoSe 2099')
+      && view.contentEl.find('los-semester-module-row').length === 4
+      && text.includes('Across semesters')
+      && !text.includes('SoSe 2099')
       && text.includes('Fixture Statistics & Analysis')
       && text.includes('Fixture Advanced ML')
+      && text.includes('Fixture Operating Systems')
+      && text.includes('Fixture Combinatorial Optimization')
       && !text.includes('Python')
       && view.contentEl.find('los-group-card').length === 0);
+    check('Home keeps earlier-semester Math2 available to continue',
+      app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl
+        .find('los-home-row').some(row =>
+          row.allText().includes('Fixture Statistics & Analysis')
+          && row.allText().includes('Module ·')));
     view.contentEl.findText('los-semester-module-row', 'Fixture Statistics & Analysis')
       .fire('click'); await tick();
     view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
@@ -70,7 +95,7 @@ module.exports = async function run() {
     check('academic facts stay on the academic module with human labels',
       text.includes('Fixture University')
       && text.includes('Written exam')
-      && text.includes('Summer semester 2099')
+      && text.includes('Winter semester 2098')
       && !text.includes('klausur')
       && !text.includes('sose-2099')
       && text.includes('10'));
@@ -82,9 +107,9 @@ module.exports = async function run() {
       text.includes('Next action') && text.includes('Work the Conditional probability and Bayes stage'));
     await plugin.nav.back();
     view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
-    check('Back restores the current-semester module list',
+    check('Back restores the complete module list across semesters',
       view.screen === 'groups'
-      && view.contentEl.find('los-semester-module-row').length === 2);
+      && view.contentEl.find('los-semester-module-row').length === 4);
     plugin.onunload();
   }
 

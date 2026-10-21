@@ -38,7 +38,7 @@ export function renderElsewhere(
 
     for (
       const record of
-      view.plugin.store.currentSemesterModules()
+      view.plugin.store.openAcademicModules()
     ) {
       const recordId =
         projectedString(record.id);

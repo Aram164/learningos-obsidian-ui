@@ -17,11 +17,8 @@ export function renderGroups(
 
     root: HTMLElement,
   ): void {
-    const semester =
-      view.plugin.store.currentSemester();
-
     const modules = view.plugin.store
-      .currentSemesterModules()
+      .openAcademicModules()
       .map((record) =>
         readModuleRecord(record),
       )
@@ -29,18 +26,16 @@ export function renderGroups(
 
     pageHeader(
       root,
-      typeof semester?.title === 'string'
-        ? `Modules · ${semester.title}`
-        : 'Modules',
       'Modules',
-      'The modules you are taking this semester. Your complete source collection lives in Library.',
+      'Modules',
+      'Your academic modules across semesters. Your complete source collection lives in Library.',
     );
 
     if (!modules.length) {
       empty(
         root,
-        'No current-semester modules',
-        'The Core projection does not currently identify any enrolled academic modules for this semester.',
+        'No open modules',
+        'Your academic modules will appear here across semesters.',
       );
       return;
     }
@@ -50,15 +45,12 @@ export function renderGroups(
     });
 
     summary.createEl('strong', {
-      text:
-        typeof semester?.title === 'string'
-          ? semester.title
-          : 'Current semester',
+      text: 'Across semesters',
     });
 
     summary.createSpan({
       text:
-        `${modules.length} enrolled module${
+        `${modules.length} module${
           modules.length === 1 ? '' : 's'
         }`,
     });
