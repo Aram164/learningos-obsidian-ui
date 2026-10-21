@@ -40,6 +40,10 @@ interface ConceptAttention {
   readonly query: string;
   readonly browseAll: boolean;
   readonly visibleLimit: number;
+  readonly domain: string | null;
+  readonly subdomain: string | null;
+  readonly selected: string | null;
+  readonly recentsOnly: boolean;
   readonly tab: AtlasInspectorTab;
   readonly semanticOpen: boolean;
   readonly remainderOpen: boolean;
@@ -67,7 +71,10 @@ export class AtlasView extends ItemView implements AtlasHost {
     query: '', selected: null, collection: 'notes', role: null, authorship: null,
     selectedNote: null, selectedShelf: null, limits: new Map(), disclosures: new Map(),
   };
-  readonly concepts: ConceptAtlasState = { browseAll: false, visibleLimit: 30, disclosures: new Map() };
+  readonly concepts: ConceptAtlasState = {
+    browseAll: false, visibleLimit: 30, domain: null, subdomain: null,
+    selected: null, recentsOnly: false, disclosures: new Map(),
+  };
   tab: AtlasInspectorTab = 'summary';
   semanticOpen = false;
   remainderOpen = false;
@@ -77,6 +84,7 @@ export class AtlasView extends ItemView implements AtlasHost {
   private renderCleanups: Array<() => void> = [];
   private conceptAttention = new Map<string | null, ConceptAttention>();
   private pendingConceptBrowse = false;
+  private pendingConceptPlace: { domain: string | null; browseAll: boolean; recentsOnly: boolean } | null = null;
   private routeAdopted = false;
   private readonly conceptPast: AtlasRouteState[] = [];
   private readonly conceptFuture: AtlasRouteState[] = [];
@@ -145,6 +153,11 @@ export class AtlasView extends ItemView implements AtlasHost {
     this.go({ concept: null, lens: 'prerequisites' });
   }
 
+  showConceptOverview(domain: string | null, browseAll = false, recentsOnly = false): void {
+    this.pendingConceptPlace = { domain, browseAll, recentsOnly };
+    this.go({ concept: null, lens: 'prerequisites' });
+  }
+
   get canConceptBack(): boolean { return !this.pendingConceptTraversal && this.conceptPast.length > 0; }
   get canConceptForward(): boolean { return !this.pendingConceptTraversal && this.conceptFuture.length > 0; }
 
@@ -169,6 +182,8 @@ export class AtlasView extends ItemView implements AtlasHost {
     const previous = this.concept;
     const attention: ConceptAttention = {
       query: this.query, browseAll: this.concepts.browseAll, visibleLimit: this.concepts.visibleLimit,
+      domain: this.concepts.domain, subdomain: this.concepts.subdomain,
+      selected: this.concepts.selected, recentsOnly: this.concepts.recentsOnly,
       tab: this.tab, semanticOpen: this.semanticOpen, remainderOpen: this.remainderOpen,
       edgeId: this.edgeId, disclosures: new Map(this.concepts.disclosures),
     };
@@ -207,6 +222,10 @@ export class AtlasView extends ItemView implements AtlasHost {
       this.query = restored?.query ?? '';
       this.concepts.browseAll = restored?.browseAll ?? false;
       this.concepts.visibleLimit = restored?.visibleLimit ?? 30;
+      this.concepts.domain = restored ? restored.domain : attention.domain;
+      this.concepts.subdomain = restored ? restored.subdomain : attention.subdomain;
+      this.concepts.selected = restored?.selected ?? this.concept;
+      this.concepts.recentsOnly = restored?.recentsOnly ?? false;
       this.concepts.disclosures.clear();
       for (const [key, open] of restored?.disclosures ?? []) this.concepts.disclosures.set(key, open);
       this.edgeId = restored?.edgeId ?? null;
@@ -220,6 +239,13 @@ export class AtlasView extends ItemView implements AtlasHost {
     }
     this.routeAdopted = true;
     this.pendingConceptTraversal = null;
+    if (this.pendingConceptPlace && this.concept === null) {
+      const place = this.pendingConceptPlace;
+      this.pendingConceptPlace = null;
+      Object.assign(this.concepts, place, { selected: null, visibleLimit: 30 });
+      if (!place.browseAll) this.concepts.subdomain = null;
+      this.query = '';
+    }
     // Explicit exploration takes precedence over remembered entry attention.
     // Applying it before adopting the route would be overwritten on re-centre.
     if (this.pendingConceptBrowse && this.concept === null && this.lens === 'prerequisites') {
@@ -227,6 +253,10 @@ export class AtlasView extends ItemView implements AtlasHost {
       this.query = '';
       this.concepts.browseAll = true;
       this.concepts.visibleLimit = 30;
+      this.concepts.domain = null;
+      this.concepts.subdomain = null;
+      this.concepts.selected = null;
+      this.concepts.recentsOnly = false;
     }
   }
 

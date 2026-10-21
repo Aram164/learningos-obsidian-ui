@@ -956,7 +956,7 @@ module.exports = async function run() {
     await plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' });
     let root = browserDom(atlas().contentEl);
     check('fresh Concepts has compact entry and no graph/depth/lens controls before selection',
-      root.allText().includes('Choose a concept') && root.find('los-atlas-node').length === 0
+      root.allText().includes('Explore by domain') && root.find('los-atlas-node').length === 0
       && root.find('los-atlas-depth').length === 0 && root.find('los-filter-tabs').length === 1);
     root.find('los-atlas-browse-all')[0].fire('click');
     while (root.find('los-atlas-show-more').length) root.find('los-atlas-show-more')[0].fire('click');

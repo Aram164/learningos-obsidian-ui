@@ -27,6 +27,16 @@ const abilityNode = (root, id) => root.find('los-ability-node')
   .find((node) => node.getAttribute('data-ability') === id) ?? null;
 const { browserDom } = require('./browser-dom');
 const { abilityFocus } = require('../ability-fixtures');
+const selectionFits = (view) => {
+  const camera = view.attention.camera;
+  const node = view.contentEl.find('los-ability-node').find((row) => row.classes.has('is-selected'));
+  const style = node?.getAttribute('style') ?? '';
+  const number = (key) => Number(style.match(new RegExp(`${key}:([0-9.]+)px`))?.[1]);
+  return camera && node && number('left') * camera.scale + camera.x >= 0
+    && (number('left') + number('width')) * camera.scale + camera.x <= 900
+    && number('top') * camera.scale + camera.y >= 0
+    && (number('top') + number('height')) * camera.scale + camera.y <= 560;
+};
 const reviewRow = (root, text) => root.find('los-review-item').find((row) => row.allText().includes(text)) ?? null;
 
 module.exports = async function run() {
@@ -68,7 +78,7 @@ module.exports = async function run() {
       root().find('los-ability-inspector')[0].allText().includes('Apply the probability axioms to finite events')
       && root().find('los-ability-inspector')[0].allText().includes('Compute a conditional probability from a joint table')
       && root().find('los-ability-inspector')[0].allText().includes('All members of a route are required together')
-      && JSON.stringify(leafOf(app, VIEW.abilities).attention.camera) === cameraBefore);
+      && selectionFits(leafOf(app, VIEW.abilities)));
     root().findText('los-btn', 'Close routes').fire('click');
     root().findText('los-btn', 'Bridges · 1').fire('click');
     check('reviewed immediate bridge peer has separate styling and count',
@@ -105,7 +115,8 @@ module.exports = async function run() {
       inspector.allText().includes('Compute P(A|B) from a joint table and name the conditioning event.')
       && inspector.allText().includes('No learner attempt has been recorded.')
       && calls.some((args) => args.join(' ') === `ability-context ability-fixture-conditional --expected-snapshot ${FIXTURE_SNAPSHOT}`)
-      && JSON.stringify(leafOf(app, VIEW.abilities).attention.camera) === cameraBefore);
+      && selectionFits(leafOf(app, VIEW.abilities)));
+    const detailsCamera = JSON.stringify(leafOf(app, VIEW.abilities).attention.camera);
     root().findText('los-btn', 'Open full ability detail').fire('click');
     await waitFor(() => root().find('los-ability-detail').length === 1);
     const detail = root().find('los-ability-detail')[0];
@@ -117,7 +128,7 @@ module.exports = async function run() {
     root().findText('los-btn', 'Back to map').fire('click');
     await waitFor(() => root().find('los-ability-viewport').length === 1);
     check('return from full detail restores presentation camera without persisting it into the route',
-      JSON.stringify(leafOf(app, VIEW.abilities).attention.camera) === cameraBefore
+      JSON.stringify(leafOf(app, VIEW.abilities).attention.camera) === detailsCamera
       && !Object.hasOwn(leafOf(app, VIEW.abilities).getState(), 'camera'));
     const beforeFold = root().find('los-ability-node').map((node) => [node.getAttribute('data-ability'), node.getAttribute('style')]);
     root().find('los-ability-endcap').find((cap) => cap.getAttribute('data-fold-ability') === 'ability-fixture-conditional').fire('click');
@@ -125,7 +136,7 @@ module.exports = async function run() {
       root().find('los-ability-node').length === 4 && Boolean(abilityNode(root(), 'ability-fixture-conditional'))
       && !abilityNode(root(), 'ability-fixture-bayes-m2')
       && root().allText().includes('2 folded preparation connections')
-      && JSON.stringify(leafOf(app, VIEW.abilities).attention.camera) === cameraBefore);
+      && JSON.stringify(leafOf(app, VIEW.abilities).attention.camera) === detailsCamera);
     root().find('los-ability-endcap').find((cap) => cap.getAttribute('data-fold-ability') === 'ability-fixture-conditional').fire('click');
     check('reopening restores same unique identities at stable positions',
       JSON.stringify(root().find('los-ability-node').map((node) => [node.getAttribute('data-ability'), node.getAttribute('style')])) === JSON.stringify(beforeFold));

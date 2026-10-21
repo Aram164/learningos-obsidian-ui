@@ -33417,10 +33417,10 @@ function icon(el, name) {
   (0, import_obsidian.setIcon)(el, name || "circle");
   return el;
 }
-function button(parent, label, onClick, variant = "") {
+function button(parent, label2, onClick, variant = "") {
   const el = parent.createEl("button", {
     cls: `los-btn is-clickable ${variant ? `los-btn--${variant}` : ""}`,
-    text: label,
+    text: label2,
     attr: { type: "button" }
   });
   el.addEventListener("click", (event) => {
@@ -33476,10 +33476,10 @@ function section(parent, title2, description = "") {
 }
 function factList(parent, facts) {
   const list3 = parent.createDiv({ cls: "los-fact-list" });
-  for (const [label, value] of facts) {
+  for (const [label2, value] of facts) {
     if (value === null || value === void 0 || value === "") continue;
     const row2 = list3.createDiv({ cls: "los-fact-row" });
-    row2.createDiv({ cls: "los-fact-label", text: label });
+    row2.createDiv({ cls: "los-fact-label", text: label2 });
     row2.createDiv({ cls: "los-fact-value", text: String(value) });
   }
   return list3;
@@ -33488,11 +33488,11 @@ function filterTabs(parent, ariaLabel, tabs, active, choose, countOf = null) {
   const row2 = parent.createDiv({ cls: "los-filter-tabs" });
   row2.setAttrs({ role: "group", "aria-label": ariaLabel });
   enableButtonGroupKeyboardNavigation(row2);
-  for (const [value, label] of tabs) {
+  for (const [value, label2] of tabs) {
     const count3 = countOf ? countOf(value) : 0;
     const control = button(
       row2,
-      count3 ? `${label} ${count3}` : label,
+      count3 ? `${label2} ${count3}` : label2,
       () => choose(value),
       "quiet"
     );
@@ -33507,12 +33507,12 @@ function disclosure(parent, summaryText, cls = "") {
   details.createEl("summary", { text: summaryText });
   return details.createDiv({ cls: "los-disclosure-body" });
 }
-function overflowMenu(parent, items, label = "More actions") {
+function overflowMenu(parent, items, label2 = "More actions") {
   const rows = items.filter(Boolean);
   if (!rows.length) return null;
   const details = parent.createEl("details", { cls: "los-overflow" });
   const summary = details.createEl("summary", { cls: "los-overflow-trigger", text: "\u2022\u2022\u2022" });
-  summary.setAttrs({ "aria-label": label, role: "button" });
+  summary.setAttrs({ "aria-label": label2, role: "button" });
   const body = details.createDiv({ cls: "los-overflow-body" });
   for (const [itemLabel, action] of rows) {
     button(body, itemLabel, () => {
@@ -33787,7 +33787,7 @@ var LearningOSSettingsTab = class extends import_obsidian2.PluginSettingTab {
     new import_obsidian2.Setting(root).setName("Colour scheme").setDesc(
       "Choose a richer light or dark palette. Wine, Graphite and Indigo have light surfaces; Ink, Midnight, Slate and Carbon have dark canvases. Green marks applied, blue information and amber attention. Every scheme meets the same contrast floor."
     ).addDropdown((dropdown) => {
-      for (const [id, label] of PALETTES) dropdown.addOption(id, label);
+      for (const [id, label2] of PALETTES) dropdown.addOption(id, label2);
       return dropdown.setValue(this.plugin.settings.palette).onChange(async (value) => {
         this.plugin.settings.palette = applyPaletteEverywhere(
           // The settings tab's own document is not necessarily the one the
@@ -33890,8 +33890,8 @@ function captureRenderFocus(root) {
   const selector = 'input[type="search"], input.los-route-search, input.los-search, textarea.los-garden-seed-editor, input.los-garden-seed-title';
   const input = typeof focused.matches === "function" && focused.matches(selector) ? focused : null;
   const group = focused.tagName === "BUTTON" && typeof focused.closest === "function" ? focused.closest('[role="group"]') : null;
-  const label = group?.getAttribute("aria-label");
-  if (!input && !label) return () => {
+  const label2 = group?.getAttribute("aria-label");
+  if (!input && !label2) return () => {
   };
   const value = input?.value;
   const start = input?.selectionStart ?? null;
@@ -33907,8 +33907,8 @@ function captureRenderFocus(root) {
     let replacement = null;
     if (input && typeof root.querySelectorAll === "function") {
       replacement = Array.from(root.querySelectorAll(selector)).find((node) => node.tagName === input.tagName && node.className === input.className && node.value === value) ?? null;
-    } else if (label && typeof root.querySelectorAll === "function") {
-      const nextGroup = Array.from(root.querySelectorAll('[role="group"]')).find((node) => node.getAttribute("aria-label") === label);
+    } else if (label2 && typeof root.querySelectorAll === "function") {
+      const nextGroup = Array.from(root.querySelectorAll('[role="group"]')).find((node) => node.getAttribute("aria-label") === label2);
       replacement = nextGroup ? Array.from(nextGroup.querySelectorAll("button")).find((node) => !node.disabled && (tab ? node.getAttribute("data-los-tab") === tab : node.textContent === text4)) ?? null : null;
     }
     if (!replacement) return;
@@ -33925,9 +33925,17 @@ function captureRenderFocus(root) {
 }
 function withRenderFocus(root, render2) {
   const restore = captureRenderFocus(root);
+  const scroll = new Map((typeof root.querySelectorAll === "function" ? Array.from(root.querySelectorAll("[data-los-scroll]")) : []).map((node) => [node.getAttribute("data-los-scroll"), { top: node.scrollTop, left: node.scrollLeft }]));
   try {
     render2();
   } finally {
+    for (const node of typeof root.querySelectorAll === "function" ? Array.from(root.querySelectorAll("[data-los-scroll]")) : []) {
+      const position = scroll.get(node.getAttribute("data-los-scroll"));
+      if (position) {
+        node.scrollTop = position.top;
+        node.scrollLeft = position.left;
+      }
+    }
     restore();
   }
 }
@@ -34138,10 +34146,10 @@ function renderAtlasVariants(parent, nav, active, go) {
   });
   variants.addClass("los-atlas-variant-switch");
 }
-function disclosure2(parent, state, key, label, cls) {
+function disclosure2(parent, state, key, label2, cls) {
   const details = parent.createEl("details", { cls });
   details.open = state.disclosures.get(key) === true;
-  details.createEl("summary", { cls: "los-domain-disclosure-summary", text: label }).addEventListener("click", () => state.disclosures.set(key, !details.open));
+  details.createEl("summary", { cls: "los-domain-disclosure-summary", text: label2 }).addEventListener("click", () => state.disclosures.set(key, !details.open));
   details.addEventListener("toggle", () => state.disclosures.set(key, details.open));
   return details.createDiv({ cls: "los-domain-disclosure-body" });
 }
@@ -34217,7 +34225,11 @@ function renderNotes(parent, host, index, domain, notes, redraw) {
   const selected = domain.notes.find((note) => note.id === state.selectedNote);
   const workspace = parent.createDiv({ cls: "los-domain-note-workspace" });
   workspace.toggleClass("has-selection", Boolean(selected));
-  const list3 = workspace.createDiv({ cls: "los-domain-notes", attr: { role: "group", "aria-label": `Notes in ${domain.title}` } });
+  const list3 = workspace.createDiv({ cls: "los-domain-notes", attr: {
+    role: "group",
+    "aria-label": `Notes in ${domain.title}`,
+    "data-los-scroll": `notes:${domain.id}:${state.role ?? ""}:${state.authorship ?? ""}:${state.query}`
+  } });
   enableButtonGroupKeyboardNavigation(list3, "vertical");
   if (!notes.length) empty(
     list3,
@@ -34235,7 +34247,7 @@ function renderNotes(parent, host, index, domain, notes, redraw) {
       redraw();
     }, "quiet");
     choice.addClass("los-domain-select-note");
-    choice.setAttrs({ "aria-pressed": String(note === selected), "data-los-tab": id });
+    choice.setAttrs({ "aria-pressed": String(note === selected), "data-los-tab": id, "aria-label": `Preview note: ${title(note)}` });
     choice.createSpan({ cls: "los-domain-note-meta", text: `${roleLabel(roleOf(note))} \xB7 ${authorLabel(authorOf(note))}` });
     button(row2, "Open", () => host.plugin.nav.openRecord(note), "tertiary").addClass("los-domain-row-open");
   }
@@ -34273,7 +34285,7 @@ function renderShelves(parent, host, index, domain, shelves, redraw) {
   }
   const shelf = shelves.find((row2) => row2.id === state.selectedShelf) ?? first;
   const shelfId = asText(shelf.id) ?? "";
-  const body = section3.createDiv({ cls: "los-domain-shelf", attr: { "data-shelf-id": shelfId } });
+  const body = section3.createDiv({ cls: "los-domain-shelf", attr: { "data-shelf-id": shelfId, "data-los-scroll": `shelf:${shelfId}` } });
   body.createEl("h3", { text: title(shelf) });
   body.createDiv({ cls: "los-domain-counts", text: shelfCounts(shelf) });
   const actions = body.createDiv({ cls: "los-actions" });
@@ -34287,6 +34299,7 @@ function renderShelves(parent, host, index, domain, shelves, redraw) {
     const id = asText(entry.source) ?? "";
     const source = index.sources.get(id);
     const row2 = body.createDiv({ cls: "los-domain-entry-row", attr: { "data-entry-index": String(position), "data-source-id": id } });
+    row2.createSpan({ cls: "los-domain-entry-number", text: String(position + 1), attr: { "aria-label": `Position ${position + 1}` } });
     row2.createEl("h4", {
       text: source ? title(source) : `${id || "Source"} \xB7 unavailable in this projection`,
       cls: source ? "los-domain-entry-title" : "los-domain-source-unavailable"
@@ -34333,7 +34346,7 @@ function renderResults(results, host, index) {
         state.selectedShelf = null;
       }
       state.selected = domain2.id;
-      redraw();
+      host.render();
     }, "quiet");
     choice.addClass("los-domain-choice");
     choice.toggleClass("is-active", domain2.id === state.selected);
@@ -34430,6 +34443,15 @@ function renderDomains(root, host) {
     state.query = search.value;
     update();
   });
+  const domainSelect = controls.createEl("select", { cls: "los-domain-picker", attr: { "aria-label": "Knowledge domain" } });
+  for (const domain of index.domains) domainSelect.createEl("option", { text: domain.title, attr: { value: domain.id } });
+  domainSelect.value = state.selected ?? "";
+  domainSelect.addEventListener("change", () => {
+    state.selected = domainSelect.value;
+    state.selectedNote = null;
+    state.selectedShelf = null;
+    update();
+  });
   noteFilter(
     controls,
     "los-domain-author-filter",
@@ -34464,8 +34486,8 @@ function renderDomains(root, host) {
 
 // src/features/abilities/model.ts
 var PLANE = {
-  nodeWidth: 208,
-  nodeHeight: 40,
+  nodeWidth: 280,
+  nodeHeight: 96,
   columnGap: 104,
   rowGap: 82,
   pad: 8,
@@ -35182,16 +35204,16 @@ var CONNECTION_KINDS = [
   ["equivalence", "Equivalent \u2014 the same ability in another course"]
 ];
 var fieldSequence = 0;
-function field(parent, label, hint = "") {
+function field(parent, label2, hint = "") {
   fieldSequence += 1;
   const id = `los-ability-field-${fieldSequence}`;
   const wrap = parent.createDiv({ cls: "los-ability-form-field" });
-  wrap.createEl("label", { cls: "los-ability-form-label", text: label, attr: { for: id } });
+  wrap.createEl("label", { cls: "los-ability-form-label", text: label2, attr: { for: id } });
   if (hint) wrap.createDiv({ cls: "los-micro los-ability-form-hint", text: hint });
   return { wrap, id };
 }
-function textInput(parent, label, value, placeholder = "", hint = "") {
-  const { wrap, id } = field(parent, label, hint);
+function textInput(parent, label2, value, placeholder = "", hint = "") {
+  const { wrap, id } = field(parent, label2, hint);
   const input = wrap.createEl("input", {
     cls: "los-ability-form-input",
     attr: { type: "text", id, placeholder, value }
@@ -35199,8 +35221,8 @@ function textInput(parent, label, value, placeholder = "", hint = "") {
   input.value = value;
   return input;
 }
-function textArea(parent, label, value, placeholder = "", hint = "") {
-  const { wrap, id } = field(parent, label, hint);
+function textArea(parent, label2, value, placeholder = "", hint = "") {
+  const { wrap, id } = field(parent, label2, hint);
   const area = wrap.createEl("textarea", {
     cls: "los-ability-form-textarea",
     attr: { id, placeholder, rows: "3" }
@@ -35208,8 +35230,8 @@ function textArea(parent, label, value, placeholder = "", hint = "") {
   area.value = value;
   return area;
 }
-function select(parent, label, options, value, hint = "") {
-  const { wrap, id } = field(parent, label, hint);
+function select(parent, label2, options, value, hint = "") {
+  const { wrap, id } = field(parent, label2, hint);
   const control = wrap.createEl("select", { cls: "los-ability-form-select", attr: { id } });
   for (const [optionValue, optionLabel] of options) {
     control.createEl("option", { text: optionLabel, attr: { value: optionValue } });
@@ -35939,6 +35961,21 @@ function mountAbilityViewport(options) {
     }
   }));
   let frame = null;
+  let previousSize = size();
+  const resize = typeof ResizeObserver === "function" ? new ResizeObserver(() => {
+    if (disposed) return;
+    const next = size();
+    const camera = current();
+    if (next.width !== previousSize.width || next.height !== previousSize.height) {
+      apply({
+        ...camera,
+        x: camera.x + (next.width - previousSize.width) / 2,
+        y: camera.y + (next.height - previousSize.height) / 2
+      });
+      previousSize = next;
+    }
+  }) : null;
+  resize?.observe(element);
   const initial = options.camera();
   apply(initial ?? fitCamera(options.bounds, size()));
   if (!initial && typeof requestAnimationFrame === "function") {
@@ -35957,6 +35994,7 @@ function mountAbilityViewport(options) {
     },
     dispose: () => {
       disposed = true;
+      resize?.disconnect();
       if (frame !== null) cancelAnimationFrame(frame);
       if (drag && element.hasPointerCapture?.(drag.pointer)) element.releasePointerCapture(drag.pointer);
       drag = null;
@@ -36116,11 +36154,11 @@ function renderToolbar(root, host, plane) {
   );
   switcher.addClass("los-ability-layout-switch");
   const right = bar.createDiv({ cls: "los-ability-toolbar-right" });
-  const label = right.createEl("label", {
+  const label2 = right.createEl("label", {
     cls: "los-ability-search-label"
   });
-  label.createSpan({ cls: "los-sr-only", text: "Find an ability" });
-  const search = label.createEl("input", {
+  label2.createSpan({ cls: "los-sr-only", text: "Find an ability" });
+  const search = label2.createEl("input", {
     cls: "los-ability-search",
     attr: {
       type: "search",
@@ -36201,8 +36239,17 @@ function renderPlane(root, host, plane, brief, selected) {
   const visibility = foldedVisibility(overview, host.attention.folded, selected, host.attention.retained);
   const bridge2 = host.attention.bridgesVisible && host.bridgeKey ? plane.bridges.find((row2) => bridgeKey(row2) === host.bridgeKey) ?? null : null;
   const inspecting = Boolean(bridge2 || selected && (host.attention.inspector || host.attention.routes));
+  const neighbours = preparationNeighbours(overview.edges, selected);
+  const bridgePeers = /* @__PURE__ */ new Set();
+  if (selected && host.attention.bridgesVisible) for (const row2 of plane.bridges) {
+    if (row2.review.state !== "reviewed") continue;
+    if (row2.from === selected) bridgePeers.add(row2.to);
+    if (row2.to === selected) bridgePeers.add(row2.from);
+  }
+  const highlighted = /* @__PURE__ */ new Set([...neighbours.prerequisites, ...neighbours.dependents]);
   const surface = root.createDiv({ cls: `los-ability-plane${inspecting ? " has-inspector" : ""}` });
   const panel = surface.createDiv({ cls: "los-ability-graph" });
+  if (selected) renderSelectionDock(panel, host, plane, selected, neighbours, bridgePeers, visibility.hiddenIncident.get(selected) ?? 0, visibility.nodes);
   const controls = panel.createDiv({ cls: "los-ability-camera-controls", attr: { role: "group", "aria-label": "Ability camera" } });
   const overviewNav = panel.createDiv({ cls: "los-ability-overview-nav", attr: { role: "group", "aria-label": "Ability groups at overview scale" } });
   overviewNav.createDiv({ cls: "los-micro los-ability-overview-hint", text: "Overview \xB7 fit a group to read its abilities" });
@@ -36223,14 +36270,6 @@ function renderPlane(root, host, plane, brief, selected) {
   } });
   const canvas = viewport.createDiv({ cls: "los-ability-canvas" });
   canvas.setAttr("style", `width:${overview.width}px;height:${overview.height}px`);
-  const neighbours = preparationNeighbours(overview.edges, selected);
-  const bridgePeers = /* @__PURE__ */ new Set();
-  if (selected && host.attention.bridgesVisible) for (const row2 of plane.bridges) {
-    if (row2.review.state !== "reviewed") continue;
-    if (row2.from === selected) bridgePeers.add(row2.to);
-    if (row2.to === selected) bridgePeers.add(row2.from);
-  }
-  const highlighted = /* @__PURE__ */ new Set([...neighbours.prerequisites, ...neighbours.dependents]);
   for (const region of overview.regions) {
     const group = region.group;
     const heading = canvas.createDiv({ cls: "los-ability-region-head", attr: { "data-ability-group": group.key } });
@@ -36261,7 +36300,7 @@ function renderPlane(root, host, plane, brief, selected) {
         "data-ability": node.id,
         "data-los-tab": `ability-${node.id}`,
         "aria-pressed": String(active),
-        "aria-label": `${attention ? attention + ". " : ""}${nodeLabel(node, plane)}`,
+        "aria-label": `${attention ? attention + ". " : ""}${nodeLabel(node)}`,
         title: `${node.row.title} \xB7 ${STATE_LABEL[node.row.state]}`
       }
     });
@@ -36354,7 +36393,7 @@ function renderPlane(root, host, plane, brief, selected) {
     camera: () => host.attention.camera,
     changed: (value) => {
       host.attention.camera = value;
-      const distant = value.scale < 0.65;
+      const distant = value.scale < 0.45;
       viewport.toggleClass("is-distant", distant);
       overviewNav.hidden = !distant;
     },
@@ -36408,7 +36447,6 @@ function renderPlane(root, host, plane, brief, selected) {
       host.go({ ability: null, detail: false });
     }
   });
-  if (selected) renderSelectionDock(panel, host, plane, selected, neighbours, bridgePeers, visibility.hiddenIncident.get(selected) ?? 0, visibility.nodes);
   const foot = panel.createDiv({ cls: "los-ability-graph-foot" });
   if (![...plane.rowOf.values()].some((row2) => row2.evidence.length)) foot.createEl("p", { text: "No learner attempt recorded. Ability states stay uncertain until confirmed work exists." });
   if (plane.crossGroupCandidates.length) foot.createEl("p", { text: `${plane.crossGroupCandidates.length} tentative connection${plane.crossGroupCandidates.length === 1 ? "" : "s"} crosses groups; tentative connections carry nothing.` });
@@ -36424,10 +36462,8 @@ function renderPlane(root, host, plane, brief, selected) {
   }
   if (brief.truncated) root.createDiv({ cls: "los-micro los-ability-truncated", text: `Showing ${brief.abilities.length} of ${brief.total} abilities. Search locates loaded records; Details explicitly expands one record under this snapshot. Unloaded prerequisites remain named in Routes.` });
 }
-function nodeLabel(node, plane) {
+function nodeLabel(node) {
   const parts = [`${node.row.title}. ${STATE_LABEL[node.row.state]}. ${node.meta}.`];
-  const preparation = preparationSentence(node.row, (id) => plane.rowOf.get(id)?.title ?? id);
-  if (preparation) parts.push(`Complete preparation routes: ${preparation}`);
   if (node.bridgeCount) parts.push(`${node.bridgeCount} bridge connections, separately disclosed.`);
   return parts.join(" ");
 }
@@ -36491,7 +36527,6 @@ function renderBridgeBands(canvas, host, plane, overview, visible, suppressClick
 }
 function renderSelectionDock(parent, host, plane, selected, neighbours, bridgePeers, hidden2, visible) {
   const row2 = plane.rowOf.get(selected);
-  if (!row2) return;
   const dock = parent.createDiv({ cls: "los-ability-selection-dock", attr: { role: "group", "aria-label": "Selected ability actions" } });
   const info = dock.createDiv();
   info.createEl("strong", { text: row2.title });
@@ -36501,17 +36536,20 @@ function renderSelectionDock(parent, host, plane, selected, neighbours, bridgePe
   button(dock, "Details", () => {
     host.attention.inspector = !host.attention.inspector;
     host.attention.routes = false;
+    host.attention.fitRequest = "selection";
     host.render();
   }, "quiet").setAttr("aria-expanded", String(host.attention.inspector));
   button(dock, "Routes", () => {
     host.attention.routes = !host.attention.routes;
     host.attention.inspector = false;
+    host.attention.fitRequest = "selection";
     host.render();
   }, "quiet").setAttr("aria-expanded", String(host.attention.routes));
   button(dock, "Clear selection", () => {
     host.bridgeKey = null;
     host.go({ ability: null, detail: false });
   }, "tertiary");
+  return dock;
 }
 function renderRoutes(surface, host, plane, selected) {
   const row2 = plane.rowOf.get(selected);
@@ -36835,8 +36873,8 @@ function relationPhrase(type) {
 function moduleConceptKey(moduleId, conceptId) {
   return `${moduleId}\0${conceptId}`;
 }
-function normalizedSortKey(label) {
-  return foldCase(label.trim());
+function normalizedSortKey(label2) {
+  return foldCase(label2.trim());
 }
 function compareConcepts(left, right) {
   return compareStrings(left.sortKey, right.sortKey) || compareStrings(left.id, right.id);
@@ -36845,11 +36883,11 @@ function compareModules(left, right) {
   if (left.actionable !== right.actionable) return left.actionable ? -1 : 1;
   return compareStrings(left.sortKey, right.sortKey) || compareStrings(left.id, right.id);
 }
-function shortModuleLabel2(record7, label) {
+function shortModuleLabel2(record7, label2) {
   const code = asString(record7.code);
   if (code) return code;
-  const words2 = label.split(/\s+/).filter(Boolean);
-  return words2.length > 2 ? words2.map((word) => word.charAt(0)).join("").toUpperCase() : label;
+  const words2 = label2.split(/\s+/).filter(Boolean);
+  return words2.length > 2 ? words2.map((word) => word.charAt(0)).join("").toUpperCase() : label2;
 }
 function edgeIdentity(relation) {
   return `${relation.from}--${relation.type}--${relation.to}`;
@@ -36883,11 +36921,11 @@ function buildAtlasGraph(store) {
     const known = conceptById.get(id);
     if (known) return known;
     const record7 = store.get(id);
-    const label = record7 ? asLabel(record7, id) : id;
+    const label2 = record7 ? asLabel(record7, id) : id;
     const concept = {
       id,
-      label,
-      sortKey: normalizedSortKey(label),
+      label: label2,
+      sortKey: normalizedSortKey(label2),
       record: record7 ?? null
     };
     conceptById.set(id, concept);
@@ -36943,12 +36981,12 @@ function buildAtlasGraph(store) {
   const modules = store.modules().flatMap((record7) => {
     const id = asString(record7.id);
     if (!id) return [];
-    const label = asLabel(record7, id);
+    const label2 = asLabel(record7, id);
     return [{
       id,
-      label,
-      shortLabel: shortModuleLabel2(record7, label),
-      sortKey: normalizedSortKey(label),
+      label: label2,
+      shortLabel: shortModuleLabel2(record7, label2),
+      sortKey: normalizedSortKey(label2),
       actionable: record7.is_actionable === true,
       conceptCount: conceptsByModule.get(id)?.length ?? 0
     }];
@@ -37516,11 +37554,11 @@ function mountEdges(canvas, host, graph, edges) {
 }
 
 // src/features/atlas/disclosure.ts
-function conceptDisclosure(parent, host, key, label, cls = "") {
+function conceptDisclosure(parent, host, key, label2, cls = "") {
   const details = parent.createEl("details", {
     cls: `los-disclosure los-atlas-disclosure ${cls}`.trim()
   });
-  details.createEl("summary", { text: label });
+  details.createEl("summary", { text: label2 });
   details.open = host.concepts.disclosures.get(key) === true;
   details.setAttribute("data-atlas-disclosure", key);
   details.addEventListener("toggle", () => {
@@ -38362,10 +38400,10 @@ function renderConnections(parent, host, graph, conceptId) {
   const dependents = graph.dependentEdges.get(conceptId) ?? [];
   const semantic = graph.semanticEdges.get(conceptId) ?? [];
   const unrecognized = graph.unrecognizedEdges.get(conceptId) ?? [];
-  const label = conceptLabel(graph, conceptId);
+  const label2 = conceptLabel(graph, conceptId);
   parent.createDiv({
     cls: "los-micro los-atlas-group-head",
-    text: `Prerequisites of ${label} \xB7 ${plural(prerequisites.length, "authored", "authored")}`
+    text: `Prerequisites of ${label2} \xB7 ${plural(prerequisites.length, "authored", "authored")}`
   });
   if (prerequisites.length) {
     const group = parent.createDiv({ cls: "los-atlas-connections" });
@@ -38887,6 +38925,225 @@ function renderDiagnostics(parent, host, graph) {
   );
 }
 
+// src/features/atlas/browser.ts
+var label = (id) => KNOWN_DOMAINS.find(([key]) => key === id)?.[1] ?? id.split("-").map((part2) => part2.charAt(0).toUpperCase() + part2.slice(1)).join(" ");
+function conceptPlaces(host, graph) {
+  const places = /* @__PURE__ */ new Map();
+  const place = (id) => {
+    if (!places.has(id)) places.set(id, { id, title: label(id), concepts: /* @__PURE__ */ new Set(), folders: /* @__PURE__ */ new Map(), notes: 0, shelves: 0 });
+    return places.get(id);
+  };
+  for (const [id] of KNOWN_DOMAINS) place(id);
+  const assigned = /* @__PURE__ */ new Set();
+  for (const note of host.plugin.store.of("note")) {
+    const bucket = place(noteBucket(note));
+    bucket.notes++;
+    const path = asText(note.path)?.split("/") ?? [];
+    const folder2 = path.length > 4 ? path.slice(3, -1).join("/") : "ungrouped";
+    if (!bucket.folders.has(folder2)) bucket.folders.set(folder2, /* @__PURE__ */ new Set());
+    for (const id of asStrings(note.concepts)) {
+      if (!graph.conceptById.get(id)?.record) continue;
+      bucket.concepts.add(id);
+      bucket.folders.get(folder2).add(id);
+      assigned.add(id);
+    }
+  }
+  for (const shelf of [...host.plugin.store.catalogues(), ...host.plugin.store.topicPacks()]) {
+    place(asText(shelf.domain) ?? "cross-domain").shelves++;
+  }
+  const ungrouped = place("ungrouped");
+  for (const concept of graph.concepts) if (concept.record && !assigned.has(concept.id)) ungrouped.concepts.add(concept.id);
+  return [...places.values()].map((row2) => row2.id === "ungrouped" ? { ...row2, title: "Not yet grouped" } : row2);
+}
+function chooseDomain(host, id) {
+  if (host.state.concept) {
+    host.showConceptOverview(id);
+    return;
+  }
+  Object.assign(host.concepts, { domain: id, subdomain: null, selected: null, recentsOnly: false, browseAll: false, visibleLimit: 30 });
+  host.query = "";
+  host.render();
+}
+function renderConceptRail(parent, host, graph) {
+  const rail = parent.createEl("nav", { cls: "los-atlas-place-rail", attr: { "aria-label": "Browse knowledge domains" } });
+  rail.createDiv({ cls: "los-atlas-group-head los-micro", text: "Browse" });
+  const overview = button(rail, "All domains", () => chooseDomain(host, null), "quiet");
+  overview.setAttr("aria-pressed", String(!host.concepts.domain && !host.concepts.recentsOnly));
+  button(rail, "Recently visited", () => {
+    if (host.state.concept) {
+      host.showConceptOverview(null, false, true);
+      return;
+    }
+    Object.assign(host.concepts, { domain: null, subdomain: null, browseAll: false, recentsOnly: true, selected: null });
+    host.query = "";
+    host.render();
+  }, "quiet");
+  rail.createDiv({ cls: "los-atlas-group-head los-micro", text: "Domains" });
+  for (const place of conceptPlaces(host, graph)) {
+    const control = button(rail, place.title, () => chooseDomain(host, place.id), "quiet");
+    control.addClass("los-atlas-place");
+    control.setAttrs({ "data-domain": place.id, "aria-pressed": String(host.concepts.domain === place.id) });
+    control.createSpan({ cls: "los-micro", text: plural(place.concepts.size, "concept") });
+  }
+  enableButtonGroupKeyboardNavigation(rail, "vertical");
+}
+function renderConceptBreadcrumb(parent, host) {
+  const crumbs = parent.createEl("nav", { cls: "los-atlas-breadcrumb", attr: { "aria-label": "Concept browse location" } });
+  button(crumbs, "All domains", () => chooseDomain(host, null), "tertiary");
+  if (host.concepts.domain) {
+    crumbs.createSpan({ text: " / ", attr: { "aria-hidden": "true" } });
+    button(
+      crumbs,
+      host.concepts.domain === "ungrouped" ? "Not yet grouped" : label(host.concepts.domain),
+      () => chooseDomain(host, host.concepts.domain),
+      "tertiary"
+    );
+  }
+  if (host.concepts.subdomain) {
+    crumbs.createSpan({ text: ` / ${host.concepts.subdomain === "ungrouped" ? "Not yet grouped" : label(host.concepts.subdomain)}` });
+  }
+}
+function renderConceptDomainFilter(parent, host, graph) {
+  const select2 = parent.createEl("select", { cls: "los-atlas-domain-filter", attr: { "aria-label": "Browse domain" } });
+  select2.createEl("option", { text: "All domains", attr: { value: "" } });
+  for (const place of conceptPlaces(host, graph)) select2.createEl("option", { text: place.title, attr: { value: place.id } });
+  select2.value = host.concepts.domain ?? "";
+  select2.addEventListener("change", () => chooseDomain(host, select2.value || null));
+}
+function conceptRow2(parent, host, graph, id, update, recent = false) {
+  const concept = conceptOf(graph, id);
+  const notes = linkedConceptNotes(host.plugin.store, id);
+  const row2 = parent.createDiv({ cls: "los-atlas-browse-row" });
+  row2.toggleClass("is-selected", host.concepts.selected === id);
+  const preview = button(row2, concept.label, () => {
+    if (recent) host.go({ concept: id, lens: "prerequisites" });
+    else {
+      host.concepts.selected = id;
+      update();
+    }
+  }, "quiet");
+  preview.addClass("los-atlas-concept-select");
+  preview.setAttrs({ "data-preview-concept": id, "aria-pressed": String(host.concepts.selected === id), "data-los-tab": `preview:${id}` });
+  preview.createSpan({ cls: "los-micro", text: plural(notes.length, "linked note") });
+  const open = button(row2, "Map", () => host.go({
+    concept: id,
+    lens: host.state.lens === "bridges" || host.state.lens === "diagnostics" ? "prerequisites" : host.state.lens
+  }), "tertiary");
+  open.addClass("los-atlas-concept-seed");
+  open.setAttrs({ "data-concept-id": id, "data-linked-note-count": String(notes.length), "aria-label": `Open map: ${concept.label}` });
+}
+function previewConcept(parent, host, graph, id) {
+  const view = neighbourhood(graph, id, { depth: 1, includeSemanticNeighbours: false });
+  const panel = parent.createEl("aside", { cls: "los-atlas-concept-preview", attr: { "aria-label": "Selected concept preview" } });
+  panel.createDiv({ cls: "los-micro los-atlas-group-head", text: "Selected concept" });
+  panel.createEl("h3", { text: view.focus.label });
+  panel.createDiv({ cls: "los-micro", text: `${plural(linkedConceptNotes(host.plugin.store, id).length, "linked note")} \xB7 ${moduleTrail(graph, id)}` });
+  button(panel, "Open concept map", () => host.go({ concept: id, lens: "prerequisites" }), "cta");
+  const prerequisites = graph.prerequisiteEdges.get(id) ?? [];
+  const dependents = graph.dependentEdges.get(id) ?? [];
+  for (const [title2, edges, endpoint] of [
+    ["Before this", prerequisites, "prerequisiteId"],
+    ["Builds on this", dependents, "dependentId"]
+  ]) {
+    panel.createEl("h4", { text: title2 });
+    if (!edges.length) panel.createDiv({ cls: "los-micro", text: `No authored ${title2 === "Before this" ? "prerequisites" : "dependents"} recorded.` });
+    for (const edge of edges) {
+      const target = edge[endpoint];
+      if (target) button(panel, conceptOf(graph, target).label, () => host.go({ concept: target, lens: "prerequisites" }), "tertiary");
+    }
+  }
+  panel.createDiv({ cls: "los-micro", text: "Browse paths follow linked note folders. Authored connections stay complete across domains." });
+}
+function renderConceptBrowser(parent, host, graph) {
+  const layout = parent.createDiv({ cls: "los-atlas-browser-layout" });
+  renderConceptRail(layout, host, graph);
+  const content = layout.createDiv({ cls: "los-atlas-browser-content" });
+  const update = () => host.render();
+  renderConceptBreadcrumb(content, host);
+  const places = conceptPlaces(host, graph);
+  const place = places.find((row2) => row2.id === host.concepts.domain);
+  const query = host.query.trim();
+  const recentIds = host.plugin.settings.atlasRecentConcepts.filter((id) => graph.conceptById.get(id)?.record && (!host.state.module || (graph.modulesByConcept.get(id) ?? []).includes(host.state.module)));
+  const overview = !place && !query && !host.concepts.browseAll && !host.concepts.recentsOnly;
+  if (overview) {
+    content.createEl("h2", { text: "Explore by domain" });
+    content.createDiv({ cls: "los-micro", text: "Browse your knowledge, then explore its connections." });
+    const split2 = content.createDiv({ cls: "los-atlas-browser-split" });
+    const domains = split2.createDiv({ cls: "los-atlas-browse-panel" });
+    for (const domain of places) {
+      const choice = button(domains, domain.title, () => chooseDomain(host, domain.id), "quiet");
+      choice.addClass("los-atlas-domain-row");
+      choice.setAttr("data-browse-domain", domain.id);
+      choice.createSpan({ cls: "los-micro", text: `${plural(domain.concepts.size, "concept")} \xB7 ${plural(domain.notes, "note")} \xB7 ${plural(domain.shelves, "source shelf", "source shelves")}` });
+    }
+    const recents = split2.createDiv({ cls: "los-atlas-browse-panel" });
+    recents.createEl("h3", { text: "Recently visited" });
+    if (!recentIds.length) recents.createDiv({ cls: "los-micro", text: "No concepts visited yet. Search above or browse all concepts." });
+    for (const id of recentIds.slice(0, 4)) conceptRow2(recents, host, graph, id, update, true);
+    button(recents, `Browse all ${graph.concepts.filter((concept) => concept.record).length} concepts`, () => {
+      host.concepts.browseAll = true;
+      host.concepts.visibleLimit = 30;
+      host.render();
+    }, "quiet").addClass("los-atlas-browse-all");
+    return;
+  }
+  const nested = place && [...place.folders.keys()].filter((id) => id !== "ungrouped");
+  if (place && nested && nested.length && !query && !host.concepts.browseAll && !host.concepts.subdomain) {
+    content.createEl("h2", { text: place.title });
+    content.createDiv({ cls: "los-micro", text: "Subdomains from linked note folders. A concept can appear in more than one place." });
+    const list4 = content.createDiv({ cls: "los-atlas-browse-panel" });
+    for (const [id, ids2] of place.folders) {
+      button(list4, `${id === "ungrouped" ? "Not yet grouped" : label(id)} \xB7 ${plural(ids2.size, "concept")}`, () => {
+        host.concepts.subdomain = id;
+        host.concepts.selected = null;
+        host.render();
+      }, "quiet").addClass("los-atlas-subdomain");
+    }
+    button(list4, `All concepts in ${place.title}`, () => {
+      host.concepts.browseAll = true;
+      host.render();
+    }, "quiet");
+    return;
+  }
+  const heading = query ? "Concept results" : host.concepts.recentsOnly ? "Recently visited" : host.concepts.subdomain ? label(host.concepts.subdomain) : place?.title ?? "Browse concepts";
+  content.createEl("h2", { text: heading });
+  const related = content.createDiv({ cls: "los-actions los-atlas-browser-related" });
+  if (place && place.id !== "ungrouped") for (const [collection, title2] of [["notes", "Notes"], ["shelves", "Source shelves"]]) {
+    button(related, title2, () => {
+      host.domains.selected = place.id;
+      host.domains.collection = collection;
+      host.go({ concept: null, lens: "domains" });
+    }, "quiet");
+  }
+  const searched = query ? new Set(host.plugin.store.search(query, ["concept"]).map((record7) => asText(record7.id))) : null;
+  const folder2 = host.concepts.subdomain ? place?.folders.get(host.concepts.subdomain) : null;
+  let ids = graph.concepts.filter((concept) => concept.record && (!searched || searched.has(concept.id)) && (!place || place.concepts.has(concept.id)) && (!folder2 || folder2.has(concept.id)) && (!host.state.module || (graph.modulesByConcept.get(concept.id) ?? []).includes(host.state.module)) && (!host.concepts.recentsOnly || recentIds.includes(concept.id))).map((concept) => concept.id);
+  ids = host.concepts.recentsOnly ? recentIds.filter((id) => ids.includes(id)) : ids.sort((a, b) => compareStrings(conceptOf(graph, a).label, conceptOf(graph, b).label) || compareStrings(a, b));
+  const shown = Math.min(host.concepts.visibleLimit, ids.length);
+  content.createDiv({ cls: "los-micro los-atlas-browser-scope", attr: { role: "status" }, text: `${shown} of ${plural(ids.length, "concept")} shown${host.state.module ? " in this module" : ""}` });
+  const split = content.createDiv({ cls: "los-atlas-browser-split" });
+  const list3 = split.createDiv({ cls: "los-atlas-browse-panel los-atlas-records", attr: {
+    role: "group",
+    "aria-label": "Concept results",
+    "data-los-scroll": `concepts:${place?.id ?? ""}:${host.concepts.subdomain ?? ""}:${query}:${host.state.module ?? ""}`
+  } });
+  enableButtonGroupKeyboardNavigation(list3, "vertical");
+  if (!ids.length) list3.createDiv({ cls: "los-atlas-absence", text: query ? `Nothing matches \u201C${query}\u201D in this scope. Try another concept, domain or module.` : "No explicitly linked concepts in this area yet. Browse all concepts or Not yet grouped." });
+  for (const id of ids.slice(0, shown)) conceptRow2(list3, host, graph, id, update);
+  if (shown < ids.length) button(list3, `Show more \xB7 ${ids.length - shown} remaining`, () => {
+    host.concepts.visibleLimit += 30;
+    host.render();
+  }, "quiet").addClass("los-atlas-show-more");
+  const selected = host.concepts.selected;
+  if (selected && ids.includes(selected)) previewConcept(split, host, graph, selected);
+  else {
+    const preview = split.createDiv({ cls: "los-atlas-concept-preview" });
+    preview.createEl("h3", { text: "Choose a concept" });
+    preview.createDiv({ cls: "los-micro", text: "Select a title to preview its connections, or Map to explore it." });
+  }
+  button(content, "Close browser", () => chooseDomain(host, null), "quiet");
+}
+
 // src/features/atlas/shell.ts
 var CONCEPT_LENSES = [
   ["prerequisites", "Direct connections"],
@@ -38902,11 +39159,11 @@ function rememberConcept(recents, conceptId) {
 }
 function renderSearch(parent, host, update) {
   const field2 = parent.createDiv({ cls: "los-atlas-search" });
-  const label = field2.createEl("label", {
+  const label2 = field2.createEl("label", {
     cls: "los-atlas-search-label"
   });
-  label.createSpan({ cls: "los-sr-only", text: "Find a concept" });
-  const input = label.createEl("input", {
+  label2.createSpan({ cls: "los-sr-only", text: "Find a concept" });
+  const input = label2.createEl("input", {
     cls: "los-atlas-search-input",
     attr: {
       type: "search",
@@ -38923,35 +39180,11 @@ function renderSearch(parent, host, update) {
 function renderModuleFilter(parent, host, graph) {
   const publishing = graph.modules.filter((module2) => module2.conceptCount > 0);
   if (!publishing.length) return;
-  const wrap = conceptDisclosure(
-    parent,
-    host,
-    "module-filter",
-    host.state.module ? graph.modules.find((module2) => module2.id === host.state.module)?.shortLabel ?? "Selected module" : "All modules",
-    "los-atlas-module-filter"
-  );
-  const row2 = wrap.createDiv({ cls: "los-atlas-module-chips" });
-  row2.setAttrs({ role: "group", "aria-label": "Filter by module" });
-  enableButtonGroupKeyboardNavigation(row2, "horizontal");
-  button(row2, "All modules", () => host.go({ module: null }), "quiet").setAttribute("aria-pressed", String(host.state.module === null));
-  for (const module2 of publishing) {
-    const active = host.state.module === module2.id;
-    const chip2 = row2.createEl("button", {
-      cls: "los-atlas-module-chip is-clickable",
-      attr: { type: "button" },
-      text: `${module2.shortLabel} ${module2.conceptCount}`
-    });
-    chip2.toggleClass("is-active", active);
-    chip2.setAttrs({
-      "aria-pressed": String(active),
-      "aria-label": `${module2.label} \u2014 ${plural(module2.conceptCount, "concept")}`
-    });
-    chip2.addEventListener("click", () => host.go({ module: active ? null : module2.id }));
-  }
-  wrap.createDiv({
-    cls: "los-micro",
-    text: "Filters concept lists. Authored graph connections stay complete across modules."
-  });
+  const select2 = parent.createEl("select", { cls: "los-atlas-module-filter", attr: { "aria-label": "Filter by module" } });
+  select2.createEl("option", { text: "All modules", attr: { value: "" } });
+  for (const module2 of publishing) select2.createEl("option", { text: `${module2.shortLabel} \xB7 ${module2.conceptCount}`, attr: { value: module2.id } });
+  select2.value = host.state.module ?? "";
+  select2.addEventListener("change", () => host.go({ module: select2.value || null }));
 }
 function renderDepth(parent, host, remainder) {
   const wrap = parent.createDiv({ cls: "los-atlas-depth" });
@@ -39003,68 +39236,6 @@ function renderAtlasTools(parent, host, graph) {
   renderOpenQuestions(conceptDisclosure(tools, host, "open-questions", "My open questions"), host, graph);
   if (!host.state.concept) renderConnectAction(tools, host, null);
 }
-function renderEntry(parent, host, graph, searchOnly = false) {
-  const entry = parent.createDiv({ cls: "los-atlas-entry" });
-  const query = host.query.trim();
-  const browsing = host.concepts.browseAll;
-  if (query || browsing) {
-    const candidates = query ? host.plugin.store.search(query, ["concept"]) : graph.concepts.flatMap((concept) => concept.record ? [concept.record] : []);
-    const results = candidates.filter((record7) => {
-      const id = asString(record7.id);
-      return Boolean(id) && (!host.state.module || (graph.modulesByConcept.get(id) ?? []).includes(host.state.module));
-    }).sort((left, right) => compareStrings(
-      conceptOf(graph, asString(left.id)).label,
-      conceptOf(graph, asString(right.id)).label
-    ) || compareStrings(asString(left.id), asString(right.id)));
-    const group2 = entry.createDiv({ cls: "los-atlas-entry-group" });
-    group2.createEl("h2", { text: browsing ? "Browse concepts" : "Concept results" });
-    const shown = Math.min(host.concepts.visibleLimit, results.length);
-    group2.createDiv({
-      cls: "los-micro los-atlas-browser-scope",
-      text: `${shown} of ${plural(results.length, "concept")} shown${host.state.module ? " in this module" : ""}`
-    });
-    if (!results.length) {
-      group2.createDiv({ cls: "los-atlas-absence", text: query ? `Nothing matches \u201C${query}\u201D. Try another concept or module.` : "No concepts are published for this module." });
-    } else {
-      const list3 = group2.createDiv({ cls: "los-atlas-records" });
-      list3.setAttribute("aria-label", "Concept results");
-      enableButtonGroupKeyboardNavigation(list3, "vertical");
-      for (const record7 of results.slice(0, shown)) {
-        renderConceptSeed(list3, host, graph, asString(record7.id));
-      }
-      if (shown < results.length) {
-        button(group2, `Show more \xB7 ${results.length - shown} remaining`, () => {
-          host.concepts.visibleLimit += 30;
-          host.render();
-        }, "quiet").addClass("los-atlas-show-more");
-      }
-    }
-    if (browsing) button(group2, "Close browser", () => {
-      host.concepts.browseAll = false;
-      host.query = "";
-      host.concepts.visibleLimit = 30;
-      host.render();
-    }, "quiet");
-    return;
-  }
-  if (searchOnly) return;
-  entry.createEl("h2", { text: "Choose a concept" });
-  entry.createDiv({ cls: "los-atlas-entry-lead", text: "Open a concept\u2019s map and linked notes." });
-  const recents = host.plugin.settings.atlasRecentConcepts.filter((id) => graph.conceptById.has(id) && (!host.state.module || (graph.modulesByConcept.get(id) ?? []).includes(host.state.module)));
-  const group = entry.createDiv({ cls: "los-atlas-entry-group" });
-  group.createDiv({ cls: "los-micro los-atlas-group-head", text: "Recently visited" });
-  if (!recents.length) group.createDiv({ cls: "los-micro", text: "No concepts visited yet. Search above or browse all concepts." });
-  else {
-    const list3 = group.createDiv({ cls: "los-atlas-records" });
-    enableButtonGroupKeyboardNavigation(list3, "vertical");
-    for (const id of recents) renderConceptSeed(list3, host, graph, id);
-  }
-  button(entry, `Browse all ${graph.concepts.filter((concept) => concept.record).length} concepts`, () => {
-    host.concepts.browseAll = true;
-    host.concepts.visibleLimit = 30;
-    host.render();
-  }, "quiet").addClass("los-atlas-browse-all");
-}
 function renderOpenQuestions(parent, host, graph) {
   const open = openQuestions(collectQuestions(host.plugin.store, graph));
   if (!open.length) return;
@@ -39113,24 +39284,6 @@ function renderConnectAction(parent, host, focusId) {
   );
   control.addClass("los-atlas-connect-action");
 }
-function renderConceptSeed(parent, host, graph, conceptId) {
-  const concept = conceptOf(graph, conceptId);
-  const notes = linkedConceptNotes(host.plugin.store, conceptId);
-  const row2 = parent.createEl("button", {
-    cls: "los-atlas-record los-atlas-concept-seed is-clickable",
-    attr: { type: "button" }
-  });
-  row2.setAttribute("data-concept-id", conceptId);
-  row2.setAttribute("data-linked-note-count", String(notes.length));
-  const copy = row2.createDiv({ cls: "los-atlas-record-copy" });
-  copy.createDiv({ cls: "los-atlas-record-title", text: concept.label });
-  copy.createDiv({ cls: "los-micro", text: plural(notes.length, "linked note") });
-  row2.createSpan({ cls: "los-atlas-record-open", text: "Open" });
-  row2.addEventListener("click", () => host.go({
-    concept: conceptId,
-    lens: isCorpusLens(host.state.lens) ? "prerequisites" : host.state.lens
-  }));
-}
 function renderAtlas(root, host) {
   const domainLens = host.state.lens === "domains";
   root.empty();
@@ -39154,7 +39307,9 @@ function renderAtlas(root, host) {
   }
   const graph = buildAtlasGraph(host.plugin.store);
   const heading = root.createDiv({ cls: "los-atlas-heading" });
-  heading.createEl("h1", { text: "Atlas" });
+  const headingCopy = heading.createDiv();
+  headingCopy.createEl("h1", { text: "Atlas" });
+  headingCopy.createDiv({ cls: "los-micro", text: "Browse your knowledge, then explore its connections." });
   const about = conceptDisclosure(heading, host, "atlas-about", "About Atlas");
   about.createDiv({ text: "Explore authored concepts, their linked notes and learning order. Modules show where teaching is mapped. Semantic connections explain related ideas; only prerequisites order learning." });
   renderAtlasVariants(root, host.plugin.nav, "concepts", (target) => host.go(target));
@@ -39174,13 +39329,14 @@ function renderAtlas(root, host) {
   let entryRegion = null;
   const updateSearch = () => {
     results.empty();
-    if (host.query.trim()) renderEntry(results, host, graph, true);
+    if (host.query.trim()) renderConceptBrowser(results, host, graph);
     if (entryRegion) {
       entryRegion.empty();
-      if (!host.query.trim()) renderEntry(entryRegion, host, graph);
+      if (!host.query.trim()) renderConceptBrowser(entryRegion, host, graph);
     }
   };
   renderSearch(controls, host, updateSearch);
+  renderConceptDomainFilter(controls, host, graph);
   renderModuleFilter(controls, host, graph);
   button(controls, "Explore", () => host.openConceptBrowser(), "quiet");
   results = root.createDiv({ cls: "los-atlas-search-results" });
@@ -39205,17 +39361,25 @@ function renderAtlas(root, host) {
   }
   if (!view) {
     entryRegion = root.createDiv({ cls: "los-atlas-entry-region" });
-    if (!host.query.trim()) renderEntry(entryRegion, host, graph);
+    if (!host.query.trim()) renderConceptBrowser(entryRegion, host, graph);
     if (host.editor) renderRelationEditor(root, host, graph, host.editor);
     renderAtlasTools(root, host, graph);
     return;
   }
-  const focusHead = root.createDiv({ cls: "los-atlas-focus-heading" });
+  const workspace = root.createDiv({ cls: "los-atlas-browser-layout los-atlas-map-workspace" });
+  renderConceptRail(workspace, host, graph);
+  const detail = workspace.createDiv({ cls: "los-atlas-browser-content" });
+  renderConceptBreadcrumb(detail, host);
+  button(detail, "Back to concepts", () => host.go({ concept: null, lens: "prerequisites" }), "quiet");
+  const focusHead = detail.createDiv({ cls: "los-atlas-focus-heading" });
   const copy = focusHead.createDiv();
   copy.createEl("h2", { text: view.focus.label });
   copy.createDiv({ cls: "los-micro", text: `${moduleTrail(graph, view.focus.id)} \xB7 ${host.state.lens === "prerequisites" ? "Direct connections" : host.state.lens === "semantic" ? "Related ideas" : "Learning path"}` });
   renderConnectAction(focusHead, host, view.focus.id);
-  const body = root.createDiv({ cls: "los-atlas-body" });
+  const mapControls = detail.createDiv({ cls: "los-atlas-map-controls" });
+  renderLensBar(mapControls, host);
+  renderDepth(mapControls, host, view.beyond.prerequisites.length + view.beyond.dependents.length);
+  const body = detail.createDiv({ cls: "los-atlas-body" });
   const main = body.createDiv({ cls: "los-atlas-main" });
   if (host.editor) renderRelationEditor(main, host, graph, host.editor);
   if (host.state.lens === "path") renderPath(main, host, graph, view.focus.id);
@@ -39223,8 +39387,7 @@ function renderAtlas(root, host) {
   const scope = main.createDiv({ cls: "los-atlas-focused-scope" });
   scope.createDiv({ cls: "los-micro", attr: { role: "status" }, text: subgraphSummary(graph, view) });
   const further = conceptDisclosure(scope, host, `${view.focus.id}:explore`, "Explore further");
-  renderDepth(further, host, view.beyond.prerequisites.length + view.beyond.dependents.length);
-  renderLensBar(main, host);
+  button(further, "Show further connections", () => host.go({ depth: 2 }), "quiet");
   if (host.state.lens !== "path") {
     renderOutline(conceptDisclosure(main, host, `${view.focus.id}:outline`, "Text outline"), host, graph, view);
   }
@@ -39252,7 +39415,15 @@ var AtlasView = class extends import_obsidian5.ItemView {
     limits: /* @__PURE__ */ new Map(),
     disclosures: /* @__PURE__ */ new Map()
   };
-  concepts = { browseAll: false, visibleLimit: 30, disclosures: /* @__PURE__ */ new Map() };
+  concepts = {
+    browseAll: false,
+    visibleLimit: 30,
+    domain: null,
+    subdomain: null,
+    selected: null,
+    recentsOnly: false,
+    disclosures: /* @__PURE__ */ new Map()
+  };
   tab = "summary";
   semanticOpen = false;
   remainderOpen = false;
@@ -39262,6 +39433,7 @@ var AtlasView = class extends import_obsidian5.ItemView {
   renderCleanups = [];
   conceptAttention = /* @__PURE__ */ new Map();
   pendingConceptBrowse = false;
+  pendingConceptPlace = null;
   routeAdopted = false;
   conceptPast = [];
   conceptFuture = [];
@@ -39314,6 +39486,10 @@ var AtlasView = class extends import_obsidian5.ItemView {
     this.pendingConceptBrowse = true;
     this.go({ concept: null, lens: "prerequisites" });
   }
+  showConceptOverview(domain, browseAll = false, recentsOnly = false) {
+    this.pendingConceptPlace = { domain, browseAll, recentsOnly };
+    this.go({ concept: null, lens: "prerequisites" });
+  }
   get canConceptBack() {
     return !this.pendingConceptTraversal && this.conceptPast.length > 0;
   }
@@ -39345,6 +39521,10 @@ var AtlasView = class extends import_obsidian5.ItemView {
       query: this.query,
       browseAll: this.concepts.browseAll,
       visibleLimit: this.concepts.visibleLimit,
+      domain: this.concepts.domain,
+      subdomain: this.concepts.subdomain,
+      selected: this.concepts.selected,
+      recentsOnly: this.concepts.recentsOnly,
       tab: this.tab,
       semanticOpen: this.semanticOpen,
       remainderOpen: this.remainderOpen,
@@ -39380,6 +39560,10 @@ var AtlasView = class extends import_obsidian5.ItemView {
       this.query = restored?.query ?? "";
       this.concepts.browseAll = restored?.browseAll ?? false;
       this.concepts.visibleLimit = restored?.visibleLimit ?? 30;
+      this.concepts.domain = restored ? restored.domain : attention.domain;
+      this.concepts.subdomain = restored ? restored.subdomain : attention.subdomain;
+      this.concepts.selected = restored?.selected ?? this.concept;
+      this.concepts.recentsOnly = restored?.recentsOnly ?? false;
       this.concepts.disclosures.clear();
       for (const [key, open] of restored?.disclosures ?? []) this.concepts.disclosures.set(key, open);
       this.edgeId = restored?.edgeId ?? null;
@@ -39394,11 +39578,22 @@ var AtlasView = class extends import_obsidian5.ItemView {
     }
     this.routeAdopted = true;
     this.pendingConceptTraversal = null;
+    if (this.pendingConceptPlace && this.concept === null) {
+      const place = this.pendingConceptPlace;
+      this.pendingConceptPlace = null;
+      Object.assign(this.concepts, place, { selected: null, visibleLimit: 30 });
+      if (!place.browseAll) this.concepts.subdomain = null;
+      this.query = "";
+    }
     if (this.pendingConceptBrowse && this.concept === null && this.lens === "prerequisites") {
       this.pendingConceptBrowse = false;
       this.query = "";
       this.concepts.browseAll = true;
       this.concepts.visibleLimit = 30;
+      this.concepts.domain = null;
+      this.concepts.subdomain = null;
+      this.concepts.selected = null;
+      this.concepts.recentsOnly = false;
     }
   }
   async setState(state = {}) {
@@ -39750,10 +39945,10 @@ var BoundaryView = class extends import_obsidian6.ItemView {
               const address = source.url;
               button(row2, "Open online", () => this.plugin.openResource({ url: address }), "info");
             }
-            for (const [label, address] of Object.entries(source.identifiers ?? {})) {
+            for (const [label2, address] of Object.entries(source.identifiers ?? {})) {
               button(
                 row2,
-                source.child_titles?.[label] ?? label,
+                source.child_titles?.[label2] ?? label2,
                 () => this.plugin.openResource({ url: address }),
                 "info"
               );
@@ -40554,8 +40749,8 @@ function renderToday(view, root) {
       deadline.modules
     );
     const kind = asString(deadline.kind);
-    const label = asString(deadline.label);
-    const title2 = kind === "registration-window" ? label ?? asLabel(deadline) : asString(deadline.title) ?? label ?? asLabel(deadline);
+    const label2 = asString(deadline.label);
+    const title2 = kind === "registration-window" ? label2 ?? asLabel(deadline) : asString(deadline.title) ?? label2 ?? asLabel(deadline);
     const startDate = asString(deadline.start_date);
     const endDate = asString(deadline.end_date);
     const date = endDate && startDate && endDate !== startDate ? `${startDate} \u2192 ${endDate}` : startDate ?? endDate ?? "Date pending";
@@ -41198,7 +41393,7 @@ function renderSourceDetail(view, detail, record7) {
     ]
   ];
   for (const [
-    label,
+    label2,
     value
   ] of factRows) {
     if (!value) {
@@ -41209,7 +41404,7 @@ function renderSourceDetail(view, detail, record7) {
     });
     row2.createSpan({
       cls: "los-fact-label",
-      text: label
+      text: label2
     });
     row2.createSpan({
       cls: "los-fact-value",
@@ -41239,8 +41434,8 @@ function renderSourceDetail(view, detail, record7) {
   const knownLinks = Object.entries(identifiers).filter(([, value]) => typeof value === "string" && /^https?:\/\//i.test(value));
   if (knownLinks.length) {
     const links = disclosure(detail, `Known links (${knownLinks.length})`);
-    for (const [label, address] of knownLinks) {
-      const title2 = typeof titles[label] === "string" ? titles[label] : label;
+    for (const [label2, address] of knownLinks) {
+      const title2 = typeof titles[label2] === "string" ? titles[label2] : label2;
       button(links, title2, () => view.plugin.openResource({ url: address }), "info");
     }
   }
@@ -41340,7 +41535,7 @@ function renderSourceDetail(view, detail, record7) {
         for (const role of evaluation.roles) badge(purpose, role, "role");
         if (evaluation.level) badge(purpose, evaluation.level, "level");
       }
-      for (const [label, values] of [
+      for (const [label2, values] of [
         ["Strengths", evaluation.strengths],
         ["Weaknesses", evaluation.weaknesses],
         ["Assumes", evaluation.prerequisites],
@@ -41348,7 +41543,7 @@ function renderSourceDetail(view, detail, record7) {
       ]) {
         if (!values.length) continue;
         const block2 = card.createDiv({ cls: "los-row" });
-        block2.createEl("strong", { text: `${label}: ` });
+        block2.createEl("strong", { text: `${label2}: ` });
         block2.createSpan({ text: values.join(" \xB7 ") });
       }
       for (const selection of evaluation.usefulSections) {
@@ -41915,11 +42110,11 @@ function renderCollectionSwitch(view, root) {
   );
   for (const [
     id,
-    label
+    label2
   ] of LIBRARY_COLLECTIONS2) {
     const control = button(
       switcher,
-      label,
+      label2,
       () => view.plugin.nav.openLibraryHome(id),
       view.collection === id ? "cta" : "quiet"
     );
@@ -42199,10 +42394,10 @@ var MODULE_BUCKETS = [
   ["other", "Other", "file-question"]
 ];
 var MATERIAL_TYPE_BY_ID = new Map(
-  MATERIAL_TYPES.map(([type, label, icon2]) => [type, { label, icon: icon2 }])
+  MATERIAL_TYPES.map(([type, label2, icon2]) => [type, { label: label2, icon: icon2 }])
 );
 var MODULE_BUCKET_BY_ID = new Map(
-  MODULE_BUCKETS.map(([bucket, label, icon2]) => [bucket, { label, icon: icon2 }])
+  MODULE_BUCKETS.map(([bucket, label2, icon2]) => [bucket, { label: label2, icon: icon2 }])
 );
 var FILE_KINDS = {
   pdf: ["PDF document", "file-text"],
@@ -42654,13 +42849,13 @@ function domainEntries(context, groupId) {
     sourcesInGroup(index, groupId),
     (source) => typeIdOf(index, source)
   );
-  for (const [type, label, icon2] of MATERIAL_TYPES) {
+  for (const [type, label2, icon2] of MATERIAL_TYPES) {
     const count3 = counts.get(type) ?? 0;
     if (!count3) continue;
     entries2.push(folderEntry({
       segment: segment("type", type),
       kind: "bucket",
-      name: label,
+      name: label2,
       icon: icon2,
       kindLabel: "Folder",
       count: count3
@@ -42675,13 +42870,13 @@ function moduleBucketEntries(context, moduleId) {
     (source) => bucketIdOf(index, source)
   );
   const entries2 = [];
-  for (const [bucket, label, icon2] of MODULE_BUCKETS) {
+  for (const [bucket, label2, icon2] of MODULE_BUCKETS) {
     const count3 = counts.get(bucket) ?? 0;
     if (!count3) continue;
     entries2.push(folderEntry({
       segment: segment("bucket", bucket),
       kind: "bucket",
-      name: label,
+      name: label2,
       icon: icon2,
       kindLabel: "Folder",
       count: count3
@@ -43075,11 +43270,11 @@ function renderToolbar2(view, parent, folder2, shown, onQuery) {
     attr: { role: "group", "aria-label": "Folder layout" }
   });
   enableButtonGroupKeyboardNavigation(layouts);
-  for (const [id, label] of LAYOUTS2) {
+  for (const [id, label2] of LAYOUTS2) {
     const active = view.folderLayout === id;
     const control = button(
       layouts,
-      label,
+      label2,
       () => void view.setFolderLayout(id),
       "quiet"
     );
@@ -43262,8 +43457,8 @@ function renderEntryInspector(view, panel, entry) {
   if (entry.sourceId) facts.push(["Registry id", entry.sourceId]);
   if (facts.length) {
     const list3 = panel.createEl("dl", { cls: "los-finder-inspector-facts" });
-    for (const [label, value] of facts) {
-      list3.createEl("dt", { text: label });
+    for (const [label2, value] of facts) {
+      list3.createEl("dt", { text: label2 });
       list3.createEl("dd", { text: value });
     }
   }
@@ -43581,7 +43776,7 @@ function renderSourceBrowser(view, root) {
   });
   for (const [
     dimension,
-    label
+    label2
   ] of SOURCE_FILTER_DIMENSIONS) {
     const control = facets.createDiv({
       cls: "los-library-peer-facet"
@@ -43590,7 +43785,7 @@ function renderSourceBrowser(view, root) {
       "label",
       {
         cls: "los-library-facet-label",
-        text: label
+        text: label2
       }
     );
     const select2 = control.createEl(
@@ -43599,7 +43794,7 @@ function renderSourceBrowser(view, root) {
         cls: "los-library-facet-select",
         attr: {
           "data-facet": dimension,
-          "aria-label": `Filter by ${label}`
+          "aria-label": `Filter by ${label2}`
         }
       }
     );
@@ -43610,7 +43805,7 @@ function renderSourceBrowser(view, root) {
     select2.createEl(
       "option",
       {
-        text: `All ${label.toLocaleLowerCase()}`,
+        text: `All ${label2.toLocaleLowerCase()}`,
         attr: {
           value: ""
         }
@@ -43674,12 +43869,12 @@ function renderSourceBrowser(view, root) {
     });
     for (const [
       dimension,
-      label
+      label2
     ] of active) {
       const value = view.filters[dimension];
       const control = button(
         activeWrap,
-        `${label}: ${view.sourceFilterLabel(
+        `${label2}: ${view.sourceFilterLabel(
           dimension,
           value
         )} \xD7`,
@@ -44761,10 +44956,10 @@ function renderModuleDetail(view, root) {
     }
   });
   enableButtonGroupKeyboardNavigation(tabs);
-  for (const [key, label] of MODULE_TABS) {
+  for (const [key, label2] of MODULE_TABS) {
     const control = button(
       tabs,
-      label,
+      label2,
       () => view.selectTab(key),
       key === tab ? "cta" : "quiet"
     );
@@ -45418,17 +45613,17 @@ var NavView = class extends import_obsidian12.ItemView {
   async onOpen() {
     this.render();
   }
-  nav(parent, iconName, label, key, action, count3 = null) {
+  nav(parent, iconName, label2, key, action, count3 = null) {
     const active = this.plugin.activeNav === key;
     const row2 = parent.createEl("button", {
       cls: `los-app-nav-item is-clickable${active ? " is-active" : ""}`,
       attr: { type: "button", "aria-current": active ? "page" : "false" }
     });
     icon(row2.createSpan(), iconName);
-    row2.createSpan({ text: label });
+    row2.createSpan({ text: label2 });
     if (count3) {
       row2.createSpan({ cls: "los-nav-count", text: String(count3) });
-      row2.setAttr("aria-label", `${label}, ${count3} waiting`);
+      row2.setAttr("aria-label", `${label2}, ${count3} waiting`);
     }
     row2.addEventListener("click", action);
     return row2;
@@ -45988,7 +46183,7 @@ function renderFiles(view, root, project) {
   }
   for (const file of files) {
     const path = asString(file.path);
-    const label = asString(file.label) ?? path ?? asString(file.id) ?? "Untitled file";
+    const label2 = asString(file.label) ?? path ?? asString(file.id) ?? "Untitled file";
     const kind = asString(file.kind) ?? "file";
     const row2 = wrap.createDiv({
       cls: "los-record-row los-project-file"
@@ -45997,7 +46192,7 @@ function renderFiles(view, root, project) {
       cls: "los-record-copy los-project-link-copy"
     });
     copy.createEl("strong", {
-      text: label
+      text: label2
     });
     copy.createDiv({
       cls: "los-record-meta",
@@ -46248,10 +46443,10 @@ function renderDetail(view, root) {
     }
   });
   enableButtonGroupKeyboardNavigation(tabs);
-  for (const [tabId, label] of PROJECT_TABS) {
+  for (const [tabId, label2] of PROJECT_TABS) {
     const tab = button(
       tabs,
-      label,
+      label2,
       () => view.plugin.nav.openProject(
         projectId,
         tabId
@@ -46357,13 +46552,13 @@ function renderOverview2(view, root, project) {
       boundaries.externalCodeAccess
     ]
   ];
-  for (const [label, value] of metadata) {
+  for (const [label2, value] of metadata) {
     const row2 = meta.createDiv({
       cls: "los-project-meta"
     });
     row2.createDiv({
       cls: "los-kicker",
-      text: label
+      text: label2
     });
     row2.createEl("strong", {
       text: value
@@ -47658,7 +47853,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:602f53d1e64cc6bfd3eaad9e79c6c2bad84a89466e5cf3db166df6d8c3e9322d" : "unavailable";
+  return true ? "sha256:8adc498244a27cd16bb77ffb9eee131e2905dcfa8a4172271ed276ad14af3dc0" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
@@ -48408,14 +48603,14 @@ Last response: ${result.error.message}`,
     if (resolution) payload.resolution = resolution;
     return this.capability("detour.resolve", payload, { expectedRevisions });
   }
-  async attach(unitId, stageId, filePath, label = "", expectedRevisions = {}) {
+  async attach(unitId, stageId, filePath, label2 = "", expectedRevisions = {}) {
     const payload = {
       unit_id: unitId,
       stage_id: stageId,
       file: filePath,
       file_sha256: await fileSha256(filePath)
     };
-    if (label) payload.label = label;
+    if (label2) payload.label = label2;
     return this.capability("stage.attachment.add", payload, { expectedRevisions });
   }
   captureText(text4, title2 = "") {
@@ -49297,12 +49492,12 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
     }
     for (const row2 of rows) {
       const glyph = row2.recovery_requirement !== "none" ? "!" : row2.replayed ? "\u27F3" : row2.canonical_outcome === "COMMITTED" ? "\u2713" : "\u2715";
-      const label = row2.recovery_requirement !== "none" ? "Ambiguous" : row2.replayed ? "Replayed" : row2.canonical_outcome === "COMMITTED" ? "Settled" : "Refused";
+      const label2 = row2.recovery_requirement !== "none" ? "Ambiguous" : row2.replayed ? "Replayed" : row2.canonical_outcome === "COMMITTED" ? "Settled" : "Refused";
       const time = row2.started_at === null ? "--:--" : new Date(row2.started_at * 1e3).toTimeString().slice(0, 5);
       const duration = row2.duration_ms === null ? "" : ` \xB7 ${Math.round(row2.duration_ms)} ms`;
       const item = button(
         root,
-        `${time}  ${row2.capability}  ${glyph} ${label}${duration}`,
+        `${time}  ${row2.capability}  ${glyph} ${label2}${duration}`,
         () => {
           if (row2.request_id) void this.loadOperationDetail(row2.request_id);
         },
@@ -49463,8 +49658,8 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
     root.addClass("los-root", "los-diagnostics-view");
     pageHeader(root, "More", "Diagnostics");
     const tabs = root.createDiv({ cls: "los-subtabs", attr: { "aria-label": "Diagnostics sections" } });
-    for (const [key, label] of [["health", "Health"], ["operations", "Operations"], ["legacy", "Legacy Archive"]]) {
-      const tab = button(tabs, label, () => this.selectScreen(key), key === this.screen ? "info" : "quiet");
+    for (const [key, label2] of [["health", "Health"], ["operations", "Operations"], ["legacy", "Legacy Archive"]]) {
+      const tab = button(tabs, label2, () => this.selectScreen(key), key === this.screen ? "info" : "quiet");
       tab.setAttr("aria-pressed", key === this.screen ? "true" : "false");
     }
     const generated = this.plugin.store.data?._generated ?? {};
@@ -49623,7 +49818,7 @@ var DiagnosticsView = class extends import_obsidian16.ItemView {
       actions,
       "Copy recovery summary",
       () => this.plugin.copyText(
-        rows.map(([label, value]) => `${label}: ${value}`).join("\n")
+        rows.map(([label2, value]) => `${label2}: ${value}`).join("\n")
       ),
       "quiet"
     );
@@ -50074,12 +50269,12 @@ function readMaterialOptions(value, unitId, selectionsValue) {
   return options;
 }
 function readResource(record7) {
-  const label = asString(record7.label) ?? asString(record7.title) ?? asString(record7.source_id) ?? "Resource";
+  const label2 = asString(record7.label) ?? asString(record7.title) ?? asString(record7.source_id) ?? "Resource";
   return {
     record: record7,
     id: asString(record7.id),
     kind: asString(record7.kind) ?? "read",
-    label,
+    label: label2,
     locator: asText(record7.locator),
     sourceId: asString(record7.source_id),
     scopeTriage: asString(record7.scope_triage),
@@ -50882,7 +51077,7 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
       text: `${split.join(" + ")} = ${total} on this stage. Every material stays accessible from these groups.`
     });
   }
-  railButton(parent, key, label) {
+  railButton(parent, key, label2) {
     const count3 = this.count(key);
     const active = this.group === key;
     const control = parent.createEl("button", {
@@ -50890,7 +51085,7 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
       attr: { type: "button", "aria-pressed": String(active), "data-compare-group": key }
     });
     this.railControls.set(key, control);
-    control.createSpan({ cls: "los-compare-group-title", text: label });
+    control.createSpan({ cls: "los-compare-group-title", text: label2 });
     control.createSpan({
       cls: "los-compare-group-count",
       text: `${count3} ${key === "lecture" || key === "course" ? count3 === 1 ? "route" : "routes" : count3 === 1 ? "material" : "materials"}`
@@ -50949,8 +51144,8 @@ var MaterialComparisonModal = class extends import_obsidian19.Modal {
       cls: "los-micro",
       text: lecture ? "All materials for this lecture. Open a type, then a material to see its exact pages, source and explanation angle." : "Materials from the other lectures of this course, by type. Each material links back to its own lecture."
     });
-    const label = body.createEl("label", { cls: "los-compare-search-label", text: "Search" });
-    const search = label.createEl("input", {
+    const label2 = body.createEl("label", { cls: "los-compare-search-label", text: "Search" });
+    const search = label2.createEl("input", {
       cls: "los-source-search",
       attr: { type: "search", placeholder: "Source, chapter or lecture", "aria-label": "Search materials", value: this.query }
     });
@@ -51476,9 +51671,9 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
     "Choose your learning material",
     "This is a complete menu, not a sequence. Pick the explanation angle and depth that fit your current need."
   );
-  for (const { label, entries: entries2 } of groupMaterialsByType(options, (option) => option.format)) {
+  for (const { label: label2, entries: entries2 } of groupMaterialsByType(options, (option) => option.format)) {
     const group = materials.createEl("details", { cls: "los-disclosure los-source-group" });
-    group.createEl("summary", { text: `${label} \xB7 ${entries2.length} materials` });
+    group.createEl("summary", { text: `${label2} \xB7 ${entries2.length} materials` });
     for (const option of entries2) {
       const materialType = materialTypeOf(option.format);
       const row2 = group.createDiv({
@@ -51526,11 +51721,11 @@ function renderMaterialOverview(view, root, unit, options, synthesis, includeMen
         option.scope === "current" ? "status" : "role"
       );
       for (const knowledgeId of option.covers) {
-        const label2 = titleById.get(knowledgeId);
-        if (label2) {
+        const label3 = titleById.get(knowledgeId);
+        if (label3) {
           metadata.createSpan({
             cls: "los-knowledge-chip",
-            text: label2
+            text: label3
           });
         }
       }
@@ -51670,10 +51865,10 @@ function renderMaterialSynthesis(view, root, synthesis, options, moduleId) {
       ["Inspected", assessment.scope_of_absence],
       ["Review note", assessment.reason]
     ];
-    for (const [label, value] of details) {
+    for (const [label2, value] of details) {
       if (!value) continue;
       const row2 = card.createDiv({ cls: "los-synthesis-detail" });
-      row2.createSpan({ cls: "los-micro", text: label });
+      row2.createSpan({ cls: "los-micro", text: label2 });
       row2.createEl("p", { text: value });
     }
     if (assessment.concept_ids.length) {
@@ -52608,13 +52803,13 @@ var GlobalSearchModal = class extends import_obsidian23.Modal {
     const tabs = root.createDiv({ cls: "los-search-tabs", attr: { role: "group", "aria-label": "Search result type" } });
     enableButtonGroupKeyboardNavigation(tabs);
     this.tabButtons = [];
-    for (const [id, label] of [
+    for (const [id, label2] of [
       ["all", "All"],
       ["learning", "Modules & units"],
       ["sources", "Learning sources"],
       ["projects", "Projects"]
     ]) {
-      const tab = button(tabs, label, () => {
+      const tab = button(tabs, label2, () => {
         this.filter = id;
         this.plugin.router.updateOverlay({ filter: id });
         this.renderTabs();

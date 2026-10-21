@@ -45,5 +45,13 @@ export function captureRenderFocus(root: HTMLElement): () => void {
 /** The render callback stays synchronous; view state remains with its owner. */
 export function withRenderFocus(root: HTMLElement, render: () => void): void {
   const restore = captureRenderFocus(root);
-  try { render(); } finally { restore(); }
+  const scroll = new Map((typeof root.querySelectorAll === 'function' ? Array.from(root.querySelectorAll<HTMLElement>('[data-los-scroll]')) : []).map((node) =>
+    [node.getAttribute('data-los-scroll'), { top: node.scrollTop, left: node.scrollLeft }]));
+  try { render(); } finally {
+    for (const node of (typeof root.querySelectorAll === 'function' ? Array.from(root.querySelectorAll<HTMLElement>('[data-los-scroll]')) : [])) {
+      const position = scroll.get(node.getAttribute('data-los-scroll'));
+      if (position) { node.scrollTop = position.top; node.scrollLeft = position.left; }
+    }
+    restore();
+  }
 }

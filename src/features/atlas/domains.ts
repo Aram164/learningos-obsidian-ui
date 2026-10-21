@@ -7,7 +7,7 @@ import { asStrings, asText, isRecord } from '../../projection/readers';
 import { compareStrings, foldCase } from '../../sorting';
 import type { AtlasHost, DomainAtlasState } from './ports';
 
-const KNOWN_DOMAINS: ReadonlyArray<readonly [string, string]> = [
+export const KNOWN_DOMAINS: ReadonlyArray<readonly [string, string]> = [
   ['mathematics', 'Mathematics'], ['machine-learning', 'Machine learning'],
   ['systems', 'Systems'], ['data-systems', 'Data systems'], ['algorithms', 'Algorithms'],
   ['programming', 'Programming'], ['cross-domain', 'Across domains'],
@@ -49,7 +49,7 @@ const byTitle = (a: ProjectionRecord, b: ProjectionRecord) => compareStrings(tit
   || compareStrings(asText(a.id) ?? '', asText(b.id) ?? '');
 
 /** Match the generated atlas's buckets using published path metadata only. */
-function noteBucket(record: ProjectionRecord): string {
+export function noteBucket(record: ProjectionRecord): string {
   const parts = asText(record.path)?.split('/') ?? [];
   return parts[0] === 'knowledge' && parts[1] === 'notes' && parts[2] && !parts[2].endsWith('.md')
     ? parts[2] : 'cross-domain';
@@ -191,7 +191,8 @@ function renderNotes(parent: HTMLElement, host: AtlasHost, index: DomainIndex, d
   const selected = domain.notes.find((note) => note.id === state.selectedNote);
   const workspace = parent.createDiv({ cls: 'los-domain-note-workspace' });
   workspace.toggleClass('has-selection', Boolean(selected));
-  const list = workspace.createDiv({ cls: 'los-domain-notes', attr: { role: 'group', 'aria-label': `Notes in ${domain.title}` } });
+  const list = workspace.createDiv({ cls: 'los-domain-notes', attr: { role: 'group', 'aria-label': `Notes in ${domain.title}`,
+    'data-los-scroll': `notes:${domain.id}:${state.role ?? ''}:${state.authorship ?? ''}:${state.query}` } });
   enableButtonGroupKeyboardNavigation(list, 'vertical');
   if (!notes.length) empty(list, domain.notes.length ? 'No notes match these filters' : 'No notes published in this domain',
     'Choose another domain, adjust the note filters, or browse Source shelves.');
@@ -203,7 +204,7 @@ function renderNotes(parent: HTMLElement, host: AtlasHost, index: DomainIndex, d
     row.toggleClass('is-selected', note === selected);
     const choice = button(row, title(note), () => { state.selectedNote = id; redraw(); }, 'quiet');
     choice.addClass('los-domain-select-note');
-    choice.setAttrs({ 'aria-pressed': String(note === selected), 'data-los-tab': id });
+    choice.setAttrs({ 'aria-pressed': String(note === selected), 'data-los-tab': id, 'aria-label': `Preview note: ${title(note)}` });
     choice.createSpan({ cls: 'los-domain-note-meta', text: `${roleLabel(roleOf(note))} · ${authorLabel(authorOf(note))}` });
     button(row, 'Open', () => host.plugin.nav.openRecord(note), 'tertiary').addClass('los-domain-row-open');
   }
@@ -235,7 +236,7 @@ function renderShelves(parent: HTMLElement, host: AtlasHost, index: DomainIndex,
   }
   const shelf = shelves.find((row) => row.id === state.selectedShelf) ?? first;
   const shelfId = asText(shelf.id) ?? '';
-  const body = section.createDiv({ cls: 'los-domain-shelf', attr: { 'data-shelf-id': shelfId } });
+  const body = section.createDiv({ cls: 'los-domain-shelf', attr: { 'data-shelf-id': shelfId, 'data-los-scroll': `shelf:${shelfId}` } });
   body.createEl('h3', { text: title(shelf) });
   body.createDiv({ cls: 'los-domain-counts', text: shelfCounts(shelf) });
   const actions = body.createDiv({ cls: 'los-actions' });
@@ -250,6 +251,7 @@ function renderShelves(parent: HTMLElement, host: AtlasHost, index: DomainIndex,
     const id = asText(entry.source) ?? '';
     const source = index.sources.get(id);
     const row = body.createDiv({ cls: 'los-domain-entry-row', attr: { 'data-entry-index': String(position), 'data-source-id': id } });
+    row.createSpan({ cls: 'los-domain-entry-number', text: String(position + 1), attr: { 'aria-label': `Position ${position + 1}` } });
     row.createEl('h4', { text: source ? title(source) : `${id || 'Source'} · unavailable in this projection`,
       cls: source ? 'los-domain-entry-title' : 'los-domain-source-unavailable' });
     const controls = row.createDiv({ cls: 'los-domain-entry-actions' });
@@ -293,7 +295,7 @@ function renderResults(results: HTMLElement, host: AtlasHost, index: DomainIndex
   for (const domain of index.domains.filter((row) => visible.includes(row) || row.id === state.selected)) {
     const choice = button(rail, domain.title, () => {
       if (state.selected !== domain.id) { state.selectedNote = null; state.selectedShelf = null; }
-      state.selected = domain.id; redraw();
+      state.selected = domain.id; host.render();
     }, 'quiet');
     choice.addClass('los-domain-choice');
     choice.toggleClass('is-active', domain.id === state.selected);
@@ -375,6 +377,12 @@ export function renderDomains(root: HTMLElement, host: AtlasHost): void {
   const results = root.createDiv({ cls: 'los-domain-results' });
   const update = () => { results.empty(); renderResults(results, host, index); };
   search.addEventListener('input', () => { state.query = search.value; update(); });
+  const domainSelect = controls.createEl('select', { cls: 'los-domain-picker', attr: { 'aria-label': 'Knowledge domain' } });
+  for (const domain of index.domains) domainSelect.createEl('option', { text: domain.title, attr: { value: domain.id } });
+  domainSelect.value = state.selected ?? '';
+  domainSelect.addEventListener('change', () => {
+    state.selected = domainSelect.value; state.selectedNote = null; state.selectedShelf = null; update();
+  });
   noteFilter(controls, 'los-domain-author-filter', 'Note authorship', 'All authors', [...new Set(index.notes.map(authorOf))].sort(compareStrings), state.authorship, authorLabel,
     (value) => { state.authorship = value; update(); }, state.collection === 'shelves');
   noteFilter(controls, 'los-domain-role-filter', 'Note type', 'All note types', [...new Set(index.notes.map(roleOf))].sort(compareStrings), state.role, roleLabel,

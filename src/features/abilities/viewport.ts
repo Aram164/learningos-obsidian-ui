@@ -133,6 +133,19 @@ export function mountAbilityViewport(options: {
     }
   }) as EventListener);
   let frame: number | null = null;
+  let previousSize = size();
+  const resize = typeof ResizeObserver === 'function' ? new ResizeObserver(() => {
+    if (disposed) return;
+    const next = size();
+    const camera = current();
+    // Retain the world point at the pane centre as an inspector or split changes size.
+    if (next.width !== previousSize.width || next.height !== previousSize.height) {
+      apply({ ...camera, x: camera.x + (next.width - previousSize.width) / 2,
+        y: camera.y + (next.height - previousSize.height) / 2 });
+      previousSize = next;
+    }
+  }) : null;
+  resize?.observe(element);
   const initial = options.camera();
   apply(initial ?? fitCamera(options.bounds, size()));
   if (!initial && typeof requestAnimationFrame === 'function') {
@@ -143,6 +156,7 @@ export function mountAbilityViewport(options: {
     suppressClick: () => { const value = suppress; suppress = false; return value; },
     dispose: () => {
       disposed = true;
+      resize?.disconnect();
       if (frame !== null) cancelAnimationFrame(frame);
       if (drag && element.hasPointerCapture?.(drag.pointer)) element.releasePointerCapture(drag.pointer);
       drag = null;

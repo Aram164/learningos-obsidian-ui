@@ -112,6 +112,10 @@ export interface DomainAtlasState {
 export interface ConceptAtlasState {
   browseAll: boolean;
   visibleLimit: number;
+  domain: string | null;
+  subdomain: string | null;
+  selected: string | null;
+  recentsOnly: boolean;
   readonly disclosures: Map<string, boolean>;
 }
 
@@ -134,6 +138,7 @@ export interface AtlasHost {
   go(target: Partial<AtlasRouteState>): void;
   /** Open complete concept browsing after route attention has been restored. */
   openConceptBrowser(): void;
+  showConceptOverview(domain: string | null, browseAll?: boolean, recentsOnly?: boolean): void;
   /** Per-leaf concept selections, separate from application route history. */
   readonly canConceptBack: boolean;
   readonly canConceptForward: boolean;

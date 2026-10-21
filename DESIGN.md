@@ -318,6 +318,22 @@ Reduced motion removes hover transitions.
 
 ## Anti-patterns
 
+Atlas uses the Library browsing pattern: persistent domains, breadcrumbs,
+compact rows and an adjacent preview. A title previews a concept; Map opens
+its authored connections, with Back to concepts retaining the browse path.
+The domain picker remains available when the place rail collapses at 900 px;
+list and preview stack below 600 px. Notes and ordered shelves scroll within
+their panels so choosing a record does not send the workspace header away.
+
+Concept browse paths come only from explicit note links and projected note
+folders. Nested folders offer subdomains; flat domains open their concepts
+directly. Not yet grouped retains every concept with no linked note folder.
+These overlapping browse aliases never classify the concept canonically,
+create graph edges, filter authored prerequisites, or imply learner evidence.
+Ability selection actions precede the canvas; Details and Routes refit the
+selected neighbourhood to the space beside the inspector. Full titles wrap
+inside the camera nodes, and viewport resizing preserves its centre.
+
 - one learning path dominating or hiding the curriculum;
 - a metric wall, generic source sea, or raw wikilink list;
 - direct canonical parsing/writing in UI code;

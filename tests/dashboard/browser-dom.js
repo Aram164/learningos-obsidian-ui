@@ -14,6 +14,7 @@ function browserDom(root) {
     node.matches = (selector) => selector.split(',').some((part) => {
       part = part.trim();
       if (part === '[role="group"]') return node.getAttribute('role') === 'group';
+      if (part === '[data-los-scroll]') return node.getAttribute('data-los-scroll') !== null;
       if (part === 'button') return node.tag === 'button';
       if (part === 'input[type="search"]') return node.tag === 'input' && node.getAttribute('type') === 'search';
       const match = part.match(/^(input|textarea)\.([a-z-]+)$/);

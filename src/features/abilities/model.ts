@@ -121,8 +121,8 @@ export interface AbilityPlane {
 }
 
 export const PLANE = {
-  nodeWidth: 208,
-  nodeHeight: 40,
+  nodeWidth: 280,
+  nodeHeight: 96,
   columnGap: 104,
   rowGap: 82,
   pad: 8,

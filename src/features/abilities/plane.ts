@@ -309,8 +309,17 @@ function renderPlane(
   const bridge = host.attention.bridgesVisible && host.bridgeKey
     ? plane.bridges.find((row) => bridgeKey(row) === host.bridgeKey) ?? null : null;
   const inspecting = Boolean(bridge || (selected && (host.attention.inspector || host.attention.routes)));
+  const neighbours = preparationNeighbours(overview.edges, selected);
+  const bridgePeers = new Set<string>();
+  if (selected && host.attention.bridgesVisible) for (const row of plane.bridges) {
+    if (row.review.state !== 'reviewed') continue;
+    if (row.from === selected) bridgePeers.add(row.to);
+    if (row.to === selected) bridgePeers.add(row.from);
+  }
+  const highlighted = new Set([...neighbours.prerequisites, ...neighbours.dependents]);
   const surface = root.createDiv({ cls: `los-ability-plane${inspecting ? ' has-inspector' : ''}` });
   const panel = surface.createDiv({ cls: 'los-ability-graph' });
+  if (selected) renderSelectionDock(panel, host, plane, selected, neighbours, bridgePeers, visibility.hiddenIncident.get(selected) ?? 0, visibility.nodes);
   const controls = panel.createDiv({ cls: 'los-ability-camera-controls', attr: { role: 'group', 'aria-label': 'Ability camera' } });
   const overviewNav = panel.createDiv({ cls: 'los-ability-overview-nav', attr: { role: 'group', 'aria-label': 'Ability groups at overview scale' } });
   overviewNav.createDiv({ cls: 'los-micro los-ability-overview-hint', text: 'Overview · fit a group to read its abilities' });
@@ -329,14 +338,6 @@ function renderPlane(
   } });
   const canvas = viewport.createDiv({ cls: 'los-ability-canvas' });
   canvas.setAttr('style', `width:${overview.width}px;height:${overview.height}px`);
-  const neighbours = preparationNeighbours(overview.edges, selected);
-  const bridgePeers = new Set<string>();
-  if (selected && host.attention.bridgesVisible) for (const row of plane.bridges) {
-    if (row.review.state !== 'reviewed') continue;
-    if (row.from === selected) bridgePeers.add(row.to);
-    if (row.to === selected) bridgePeers.add(row.from);
-  }
-  const highlighted = new Set([...neighbours.prerequisites, ...neighbours.dependents]);
   for (const region of overview.regions) {
     const group = region.group;
     const heading = canvas.createDiv({ cls: 'los-ability-region-head', attr: { 'data-ability-group': group.key } });
@@ -364,7 +365,7 @@ function renderPlane(
     const card = nodes.createEl('button', {
       cls: `los-ability-node is-clickable los-ability-state-${node.row.state}${active ? ' is-selected' : near ? ' is-neighbour' : peer ? ' is-bridged' : selected ? ' is-muted' : ''}`,
       attr: { type: 'button', 'data-ability': node.id, 'data-los-tab': `ability-${node.id}`, 'aria-pressed': String(active),
-        'aria-label': `${attention ? attention + '. ' : ''}${nodeLabel(node, plane)}`, title: `${node.row.title} · ${STATE_LABEL[node.row.state]}` },
+        'aria-label': `${attention ? attention + '. ' : ''}${nodeLabel(node)}`, title: `${node.row.title} · ${STATE_LABEL[node.row.state]}` },
     });
     card.setAttr('style', `left:${node.x}px;top:${node.y}px;width:${PLANE.nodeWidth}px;height:${PLANE.nodeHeight}px`);
     card.createSpan({ cls: 'los-ability-node-title', text: node.row.title });
@@ -430,7 +431,7 @@ function renderPlane(
   const camera = mountAbilityViewport({ element: viewport, world: canvas, bounds: overview,
     camera: () => host.attention.camera, changed: (value) => {
       host.attention.camera = value;
-      const distant = value.scale < 0.65;
+      const distant = value.scale < 0.45;
       viewport.toggleClass('is-distant', distant);
       overviewNav.hidden = !distant;
     }, percentage });
@@ -469,7 +470,6 @@ function renderPlane(
   viewport.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && !event.defaultPrevented) { host.bridgeKey = null; host.go({ ability: null, detail: false }); }
   });
-  if (selected) renderSelectionDock(panel, host, plane, selected, neighbours, bridgePeers, visibility.hiddenIncident.get(selected) ?? 0, visibility.nodes);
   const foot = panel.createDiv({ cls: 'los-ability-graph-foot' });
   if (![...plane.rowOf.values()].some((row) => row.evidence.length)) foot.createEl('p', { text: 'No learner attempt recorded. Ability states stay uncertain until confirmed work exists.' });
   if (plane.crossGroupCandidates.length) foot.createEl('p', { text: `${plane.crossGroupCandidates.length} tentative connection${plane.crossGroupCandidates.length === 1 ? '' : 's'} crosses groups; tentative connections carry nothing.` });
@@ -486,10 +486,8 @@ function renderPlane(
   if (brief.truncated) root.createDiv({ cls: 'los-micro los-ability-truncated', text: `Showing ${brief.abilities.length} of ${brief.total} abilities. Search locates loaded records; Details explicitly expands one record under this snapshot. Unloaded prerequisites remain named in Routes.` });
 }
 
-function nodeLabel(node: PlaneNode, plane: AbilityPlane): string {
+function nodeLabel(node: PlaneNode): string {
   const parts = [`${node.row.title}. ${STATE_LABEL[node.row.state]}. ${node.meta}.`];
-  const preparation = preparationSentence(node.row, (id) => plane.rowOf.get(id)?.title ?? id);
-  if (preparation) parts.push(`Complete preparation routes: ${preparation}`);
   if (node.bridgeCount) parts.push(`${node.bridgeCount} bridge connections, separately disclosed.`);
   return parts.join(' ');
 }
@@ -539,18 +537,19 @@ function renderBridgeBands(canvas: HTMLElement, host: AbilityHost, plane: Abilit
 }
 
 function renderSelectionDock(parent: HTMLElement, host: AbilityHost, plane: AbilityPlane, selected: string,
-  neighbours: ReturnType<typeof preparationNeighbours>, bridgePeers: ReadonlySet<string>, hidden: number, visible: ReadonlySet<string>): void {
-  const row = plane.rowOf.get(selected); if (!row) return;
+  neighbours: ReturnType<typeof preparationNeighbours>, bridgePeers: ReadonlySet<string>, hidden: number, visible: ReadonlySet<string>): HTMLElement {
+  const row = plane.rowOf.get(selected)!;
   const dock = parent.createDiv({ cls: 'los-ability-selection-dock', attr: { role: 'group', 'aria-label': 'Selected ability actions' } });
   const info = dock.createDiv(); info.createEl('strong', { text: row.title });
   const outside = new Set(row.preparation_routes.flatMap((route) => [...route.supported, ...route.missing_or_uncertain]).filter((id) => !plane.rowOf.has(id)));
   const hiddenPeers = [...bridgePeers].filter((id) => !visible.has(id)).length;
   info.createDiv({ cls: 'los-micro', text: `${neighbours.prerequisites.size} loaded immediate prerequisites · ${neighbours.dependents.size} loaded immediate dependents${host.attention.bridgesVisible ? ` · ${bridgePeers.size} reviewed bridge peers${hiddenPeers ? ` (${hiddenPeers} hidden by folding)` : ''}` : ''}${hidden ? ` · ${hidden} folded incident connections` : ''}${outside.size ? ` · ${outside.size} complete route members outside loaded horizon` : ''}` });
-  button(dock, 'Details', () => { host.attention.inspector = !host.attention.inspector; host.attention.routes = false; host.render(); }, 'quiet')
+  button(dock, 'Details', () => { host.attention.inspector = !host.attention.inspector; host.attention.routes = false; host.attention.fitRequest = 'selection'; host.render(); }, 'quiet')
     .setAttr('aria-expanded', String(host.attention.inspector));
-  button(dock, 'Routes', () => { host.attention.routes = !host.attention.routes; host.attention.inspector = false; host.render(); }, 'quiet')
+  button(dock, 'Routes', () => { host.attention.routes = !host.attention.routes; host.attention.inspector = false; host.attention.fitRequest = 'selection'; host.render(); }, 'quiet')
     .setAttr('aria-expanded', String(host.attention.routes));
   button(dock, 'Clear selection', () => { host.bridgeKey = null; host.go({ ability: null, detail: false }); }, 'tertiary');
+  return dock;
 }
 
 function renderRoutes(surface: HTMLElement, host: AbilityHost, plane: AbilityPlane, selected: string): void {
