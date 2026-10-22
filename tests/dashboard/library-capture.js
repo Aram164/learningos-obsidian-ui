@@ -628,6 +628,40 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
+  heading('collection context before opening a source');
+  {
+    const { app, plugin } = await boot({
+      patchManifest: (manifest) => {
+        const first = manifest.records.find((row) => row.id === 'fixture-math-bookshelf');
+        manifest.records.push({
+          ...first, id: 'fixture-other-shelf', title: 'Other collection',
+          path: 'sources/collections/fixture-other-shelf.yaml',
+          entries: [{ source: 'source-fixture-book', group: 'Reference only', why: 'A different collection note.' }],
+          sources: ['source-fixture-book'],
+        });
+      },
+    });
+    const inspector = async (id) => {
+      await plugin.nav.openLibraryFolder(['shelf:catalogues', `catalogue:${id}`]);
+      const view = app.workspace.getLeavesOfType(VIEW.library)[0].view;
+      view.contentEl.find('los-finder-row').find(
+        (row) => row.getAttribute('data-segment') === 'source:source-fixture-book',
+      ).fire('click');
+      await tick(); await tick();
+      return view.contentEl.find('los-finder-inspector')[0].allText();
+    };
+    const first = await inspector('fixture-math-bookshelf');
+    check('collection preview shows group and why alongside the source actions',
+      first.includes('tier-1-now')
+        && first.includes('The spine — read this before anything else on the shelf.')
+        && first.includes('Source record'));
+    const second = await inspector('fixture-other-shelf');
+    check('the same source shows only the current collection annotations',
+      second.includes('Reference only') && second.includes('A different collection note.')
+        && !second.includes('The spine — read this before anything else on the shelf.'));
+    plugin.onunload();
+  }
+
   heading('library native double-click');
   {
     const { app, plugin, calls } = await boot();

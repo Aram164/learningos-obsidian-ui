@@ -42718,7 +42718,14 @@ function shelfSources(store, shelf) {
     if (!id || seen.has(id)) continue;
     seen.add(id);
     const source = store.get(id);
-    if (source?.type === "source") sources.push(source);
+    if (source?.type === "source") {
+      const annotation = entry && typeof entry === "object" ? entry : null;
+      sources.push({
+        source,
+        group: asText(annotation?.group) ?? "",
+        why: asText(annotation?.why) ?? ""
+      });
+    }
   }
   return sources;
 }
@@ -43071,7 +43078,10 @@ function shelfFolder(context, shelf, rest, full) {
       icon: iconName,
       kindLabel: isPacks ? "Pack" : "Catalogue",
       description: asText(record7.purpose) ?? "",
-      entries: shelfSources(store, record7).map((source) => sourceEntry(context, source))
+      entries: shelfSources(store, record7).map(({ source, group, why }) => ({
+        ...sourceEntry(context, source),
+        ...group || why ? { collectionContext: { group, why } } : {}
+      }))
     });
   }
   return sourceFolder(context, tail, full);
@@ -43455,6 +43465,8 @@ function renderEntryInspector(view, panel, entry) {
   if (entry.materialPath) facts.push(["Where", entry.materialPath]);
   if (entry.url) facts.push(["Link", entry.url]);
   if (entry.sourceId) facts.push(["Registry id", entry.sourceId]);
+  if (entry.collectionContext?.group) facts.push(["Collection group", entry.collectionContext.group]);
+  if (entry.collectionContext?.why) facts.push(["Collection note", entry.collectionContext.why]);
   if (facts.length) {
     const list3 = panel.createEl("dl", { cls: "los-finder-inspector-facts" });
     for (const [label2, value] of facts) {
@@ -47852,7 +47864,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:02f3a93572c5fadcc035f68c470eb60eb4adafe2c3b104296939fad0d1a5b180" : "unavailable";
+  return true ? "sha256:a9b85ba15c01ad7ff2136b6e5d0256d172caca1f0f4b1fe115d33efe9b44c8ac" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;

@@ -102,6 +102,8 @@ export interface FinderEntry {
   readonly url: string | null;
   /** How many domains hold this same source; >1 means the entry is an alias. */
   readonly alsoIn: number;
+  /** Authored by the current collection, never a global source evaluation. */
+  readonly collectionContext?: { readonly group: string; readonly why: string };
 }
 
 export interface FinderFolder {
@@ -651,9 +653,9 @@ function moduleEntry(
 function shelfSources(
   store: FinderStore,
   shelf: ProjectionRecord,
-): ProjectionRecord[] {
+): Array<{ source: ProjectionRecord; group: string; why: string }> {
   const entries = Array.isArray(shelf.entries) ? shelf.entries : [];
-  const sources: ProjectionRecord[] = [];
+  const sources: Array<{ source: ProjectionRecord; group: string; why: string }> = [];
   const seen = new Set<string>();
   for (const entry of entries) {
     const id = typeof entry === 'string'
@@ -664,7 +666,14 @@ function shelfSources(
     if (!id || seen.has(id)) continue;
     seen.add(id);
     const source = store.get(id);
-    if (source?.type === 'source') sources.push(source);
+    if (source?.type === 'source') {
+      const annotation = entry && typeof entry === 'object' ? entry as ProjectionRecord : null;
+      sources.push({
+        source,
+        group: projectedText(annotation?.group) ?? '',
+        why: projectedText(annotation?.why) ?? '',
+      });
+    }
   }
   return sources;
 }
@@ -1120,7 +1129,10 @@ function shelfFolder(
       kindLabel: isPacks ? 'Pack' : 'Catalogue',
       description: projectedText(record.purpose) ?? '',
       entries: shelfSources(store, record)
-        .map((source) => sourceEntry(context, source)),
+        .map(({ source, group, why }) => ({
+          ...sourceEntry(context, source),
+          ...(group || why ? { collectionContext: { group, why } } : {}),
+        })),
     });
   }
 

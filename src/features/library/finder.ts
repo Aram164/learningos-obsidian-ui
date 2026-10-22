@@ -466,6 +466,8 @@ function renderEntryInspector(
   if (entry.materialPath) facts.push(['Where', entry.materialPath]);
   if (entry.url) facts.push(['Link', entry.url]);
   if (entry.sourceId) facts.push(['Registry id', entry.sourceId]);
+  if (entry.collectionContext?.group) facts.push(['Collection group', entry.collectionContext.group]);
+  if (entry.collectionContext?.why) facts.push(['Collection note', entry.collectionContext.why]);
 
   if (facts.length) {
     const list = panel.createEl('dl', { cls: 'los-finder-inspector-facts' });

@@ -700,3 +700,28 @@ console.log(
   `library-finder: fixture OK — ${totalSourceCount(fixture.context)} sources across `
   + `${fixture.folders.length} folders`,
 );
+
+// Collection annotations belong to the collection being browsed, even when
+// the same source is shared; a plain source or an unannotated entry has none.
+{
+  const source = { id: 'shared-course', type: 'source', title: 'Shared course',
+    source_type: 'course', url: 'https://example.org/course' };
+  const manifest = { records: [source,
+    { id: 'first', type: 'collection', title: 'First', entries: [
+      { source: source.id, group: 'Learning platforms', why: 'Selected six-month bundle' },
+    ] },
+    { id: 'second', type: 'collection', title: 'Second', entries: [
+      { source: source.id, group: 'Reference', why: 'Public reference access' },
+    ] },
+    { id: 'plain', type: 'collection', title: 'Plain', entries: [source.id] },
+  ] };
+  const context = createFinderContext(storeFor(manifest), NO_MATERIALS);
+  const member = (id) => folderAt(context, ['shelf:catalogues', `catalogue:${id}`]).entries[0];
+  assert.deepEqual(member('first').collectionContext,
+    { group: 'Learning platforms', why: 'Selected six-month bundle' });
+  assert.deepEqual(member('second').collectionContext,
+    { group: 'Reference', why: 'Public reference access' });
+  assert.equal(member('plain').collectionContext, undefined);
+  assert.equal(source.collectionContext, undefined);
+  assert.equal(member('first').url, source.url);
+}
