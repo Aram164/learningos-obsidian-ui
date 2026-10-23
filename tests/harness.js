@@ -280,6 +280,7 @@ try {
 
 const fs = require('fs');
 const path = require('path');
+const { fixtureWorkspace } = require('./fixture-workspace');
 
 class TFile {
   constructor(vaultRoot, rel) {
@@ -320,6 +321,7 @@ function parseFrontmatter(text) {
 }
 
 function makeApp(vaultRoot) {
+  vaultRoot = fixtureWorkspace(vaultRoot);
   const rels = walk(vaultRoot);
   const files = rels.map((r) => new TFile(vaultRoot, r));
   const byPath = new Map(files.map((f) => [f.path, f]));
