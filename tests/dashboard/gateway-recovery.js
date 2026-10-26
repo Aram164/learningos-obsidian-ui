@@ -26,6 +26,7 @@ const {
   tick,
   waitFor,
   gatewayConfirmation,
+  answerProjectionObservation,
   gatewayRefusal,
   FIXTURE_SNAPSHOT,
 } = require('./support');
@@ -56,6 +57,20 @@ module.exports = async function run() {
   heading('gateway recovery across a restart');
 
   const { prepared, envelopeJson } = await preparedFixture();
+
+  {
+    const { plugin, calls } = await build({ projectionObservation: {
+      write_completed: false, settled: false, reason: 'receipt-missing-or-unbound',
+    } });
+    plugin.settings.uiDrafts.inbox = { title: 'Keep', text: 'Core settlement refused' };
+    await plugin.mutate(() => plugin.gateway.captureText('Core settlement refused', 'Keep')).catch(() => undefined);
+    check('confirmed UI writes consult the shared Core observation query',
+      calls.some((args) => args[0] === 'projection-observe' && args.includes('--confirmation')));
+    check('Core settlement refusal preserves recovery and the learner draft',
+      plugin.settings.gatewayRecovery?.phase === 'blocked'
+      && plugin.settings.uiDrafts.inbox.text === 'Core settlement refused');
+    plugin.onunload();
+  }
 
   {
     const { app, plugin, calls } = await build();
@@ -670,6 +685,7 @@ module.exports = async function run() {
       && replay.idempotency_key === stuckEnvelope.idempotency_key
       && replay.capability === stuckEnvelope.capability);
     journey.plugin.runLos = (args, callback, stdin) => {
+      if (answerProjectionObservation(journey.plugin, args, callback)) return;
       if (stdin) sent.push(stdin);
       if (!stdin) return callback(null, JSON.stringify({ ok: true }), '');
       return callback(null, JSON.stringify(replay), '');

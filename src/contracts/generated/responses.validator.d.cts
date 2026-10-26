@@ -13,3 +13,4 @@ export function validateMaterialSpanWire(value: unknown): value is Wire.Material
 export function validateAbilityBriefWire(value: unknown): value is Wire.AbilityBriefWire;
 export function validateAbilityFocusWire(value: unknown): value is Wire.AbilityFocusWire;
 export function validateAbilityUnmappedWire(value: unknown): value is Wire.AbilityUnmappedWire;
+export function validateProjectionSettlementWire(value: unknown): value is Wire.ProjectionSettlementWire;

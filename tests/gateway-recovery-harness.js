@@ -215,6 +215,11 @@ scenarios.restartRecovery = async () => {
   assert.equal(replayed.length, 1);
   assert.equal(replayed[0], sent[0], 'the restarted app resends the persisted bytes');
   assert.equal(confirmation.replayed, true);
+  const observation = await restarted.gateway.projectionObservation(confirmation);
+  assert.equal(observation.write_completed, true);
+  assert.equal(observation.settled, true);
+  assert.equal(observation.current_snapshot_id, restarted.snapshot);
+
   return {
     capability: 'capture.create',
     transaction_id: confirmation.transaction_id,

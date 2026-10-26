@@ -592,8 +592,16 @@ export type UiResponses_OperationTimelineRowV1 = {
   readonly state: "passed" | "failed" | "skipped" | "missing";
 };
 
+/** ui-responses.schema.json#/$defs/ProjectionSettlementWire */
+export type UiResponses_ProjectionSettlementWire = {
+  readonly current_snapshot_id: string | null;
+  readonly reason: string;
+  readonly settled: boolean;
+  readonly write_completed: boolean;
+};
+
 /** ui-responses.schema.json#/ */
-export type UiResponsesSchema = UiResponses_HealthReportV1 | UiResponses_LegacyArchiveLockV1 | UiResponses_LegacyArchiveStatusV1 | UiResponses_MastersPlanningDashboardV1 | UiResponses_OperationsListV1 | UiResponses_OperationDetailV1 | UiResponses_GatewaySuccessV2 | UiResponses_GatewayFailureV2 | UiResponses_GatewayRequestV2 | UiResponses_MaterialSpanWire | UiResponses_AbilityBriefWire | UiResponses_AbilityFocusWire | UiResponses_AbilityUnmappedWire;
+export type UiResponsesSchema = UiResponses_HealthReportV1 | UiResponses_LegacyArchiveLockV1 | UiResponses_LegacyArchiveStatusV1 | UiResponses_MastersPlanningDashboardV1 | UiResponses_OperationsListV1 | UiResponses_OperationDetailV1 | UiResponses_GatewaySuccessV2 | UiResponses_GatewayFailureV2 | UiResponses_GatewayRequestV2 | UiResponses_MaterialSpanWire | UiResponses_AbilityBriefWire | UiResponses_AbilityFocusWire | UiResponses_AbilityUnmappedWire | UiResponses_ProjectionSettlementWire;
 
 // The UI's public names, each pinned to one schema resource and pointer
 // (scripts/contract-type-aliases.json).
@@ -630,3 +638,4 @@ export type OperationFactsV1 = UiResponses_OperationFactsV1;
 export type OperationRowV1 = UiResponses_OperationRowV1;
 export type OperationsListV1 = UiResponses_OperationsListV1;
 export type OperationTimelineRowV1 = UiResponses_OperationTimelineRowV1;
+export type ProjectionSettlementWire = UiResponses_ProjectionSettlementWire;

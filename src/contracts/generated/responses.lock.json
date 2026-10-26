@@ -1,6 +1,6 @@
 {
   "root": "system/schema/ui-responses.schema.json",
-  "closure_sha256": "sha256:4968d43555f2478eea1d4775377ce1cbd42cdaa4951cedee98828fdf7eaf86d2",
+  "closure_sha256": "sha256:57ec8fb85d2a7e7e2a6ee20bd2cc9414d36402f6a0ad037fb53f9f3a5d248cc3",
   "endpoints": [
     "HealthReportV1",
     "LegacyArchiveLockV1",
@@ -14,6 +14,7 @@
     "MaterialSpanWire",
     "AbilityBriefWire",
     "AbilityFocusWire",
-    "AbilityUnmappedWire"
+    "AbilityUnmappedWire",
+    "ProjectionSettlementWire"
   ]
 }
