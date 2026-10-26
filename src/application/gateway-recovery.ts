@@ -548,3 +548,24 @@ export function gatewayRecoverySummary(
       : 'none'],
   ];
 }
+
+/** Core settlement facts (D07 UI mode): historical completion of the prior
+ * write is distinct from the presence of a valid current projection. Core
+ * decides the facts; this only presents them. A historically completed
+ * write may still be superseded by newer canonical state. */
+export interface ProjectionSettlement {
+  readonly writeCompleted: boolean;
+  readonly currentSnapshotId: string | null;
+  readonly settled: boolean;
+}
+
+export function projectionSettlement(
+  writeCompleted: boolean,
+  currentSnapshotId: string | null,
+): ProjectionSettlement {
+  return {
+    writeCompleted,
+    currentSnapshotId,
+    settled: writeCompleted && currentSnapshotId !== null,
+  };
+}
