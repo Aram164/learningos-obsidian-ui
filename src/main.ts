@@ -587,6 +587,16 @@ export class LearningOSUI extends Plugin implements AppSurface {
     let facts: ReturnType<typeof projectionSettlement>;
     try {
       facts = projectionSettlement(await this.gateway.projectionObservation(confirmation));
+      // Core's observation can be newer than the preflight reload above.
+      // Load that publication before comparing; one further observation handles
+      // a publication that advances while this reload is in flight.
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        if (!facts.writeCompleted || !facts.settled || facts.currentSnapshotId === null) break;
+        observed = await this.observedSnapshot();
+        this.gateway.assertLifecycleActive();
+        if (observed === facts.currentSnapshotId || attempt === 1) break;
+        facts = projectionSettlement(await this.gateway.projectionObservation(confirmation));
+      }
     } catch (error: unknown) {
       rebuildError = error;
       facts = { writeCompleted: false, settled: false, currentSnapshotId: null,

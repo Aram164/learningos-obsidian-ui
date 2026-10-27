@@ -312,8 +312,8 @@ var require_manifest_validator = __commonJS({
     "use strict";
     module2.exports = validate20;
     module2.exports.default = validate20;
-    var schema31 = { "$defs": { "academicDeadline": { "additionalProperties": false, "properties": { "end_date": { "format": "date", "type": "string" }, "kind": { "minLength": 1, "type": "string" }, "label": { "minLength": 1, "type": "string" }, "module_id": { "type": "string" }, "modules": { "items": { "$ref": "#/$defs/deadlineModule" }, "type": "array" }, "notes": { "type": ["string", "null"] }, "registration_state": { "type": "string" }, "start_date": { "format": "date", "type": "string" }, "termin": { "minimum": 1, "type": "integer" }, "time": { "type": ["string", "null"] }, "title": { "type": "string" } }, "required": ["kind", "label", "start_date", "end_date"], "type": "object" }, "aiAction": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "interaction_mode": { "minLength": 1, "type": "string" }, "status": { "enum": ["planned", "implemented"] }, "supported_providers": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "target_kinds": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "description", "target_kinds", "interaction_mode", "status", "supported_providers"], "type": "object" }, "aiActions": { "additionalProperties": false, "properties": { "available": { "items": { "$ref": "#/$defs/aiAction" }, "type": "array" }, "contract_version": { "const": 1 }, "provider_adapters": { "items": { "$ref": "#/$defs/aiProviderAdapter" }, "type": "array" }, "requests": { "items": { "$ref": "#/$defs/aiRequest" }, "type": "array" } }, "required": ["available", "contract_version", "provider_adapters", "requests"], "type": "object" }, "aiProviderAdapter": { "additionalProperties": false, "properties": { "adapter": { "minLength": 1, "type": "string" }, "available": { "type": "boolean" }, "id": { "minLength": 1, "type": "string" }, "supported_modes": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "supports_direct_delivery": { "type": "boolean" } }, "required": ["id", "adapter", "available", "supported_modes", "supports_direct_delivery"], "type": "object" }, "aiRequest": { "additionalProperties": false, "properties": { "action_id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "bundle_path": { "pattern": "^operations/ai-actions/requests/[^/]+$", "type": "string" }, "created_at": { "format": "date-time", "type": "string" }, "delivery_id": { "type": ["string", "null"] }, "id": { "pattern": "^ai-request-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "provider": { "minLength": 1, "type": "string" }, "receipt_id": { "type": ["string", "null"] }, "status": { "enum": ["prepared", "delivery-ready", "completed"] }, "target": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "kind": { "minLength": 1, "type": "string" } }, "required": ["kind", "id"], "type": "object" } }, "required": ["id", "action_id", "target", "provider", "status", "created_at", "delivery_id", "receipt_id", "bundle_path"], "type": "object" }, "backlinks": { "additionalProperties": false, "properties": { "concept_relations": { "$ref": "#/$defs/jsonObject" }, "concept_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "note_incoming": { "$ref": "#/$defs/stringArrayMap" }, "source_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_notes": { "$ref": "#/$defs/stringArrayMap" } }, "type": "object" }, "collectionRecord": { "additionalProperties": false, "properties": { "collection_kind": { "enum": ["catalogue", "topic-pack"] }, "domain": { "minLength": 1, "type": "string" }, "entries": { "items": { "additionalProperties": false, "properties": { "group": { "type": ["string", "null"] }, "source": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "why": { "type": ["string", "null"] } }, "required": ["source", "group", "why"], "type": "object" }, "type": "array" }, "id": { "minLength": 1, "type": "string" }, "path": { "pattern": "^sources/collections/.+\\.yaml$", "type": "string" }, "purpose": { "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "enum": ["collection", "topic-pack"] } }, "required": ["id", "type", "revision", "collection_kind", "title", "path", "thematic_group_ids", "purpose", "sources", "summary", "domain", "entries"], "type": "object" }, "compatibilityAlias": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "path": { "const": "projects/aliases.yaml" }, "target_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "target_type": { "const": "project" }, "type": { "const": "compatibility-alias" } }, "required": ["id", "type", "target_id", "target_type", "path"], "type": "object" }, "conceptRecord": { "additionalProperties": false, "properties": { "aliases": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "deprecated": { "type": "boolean" }, "id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "concept" } }, "required": ["id", "type", "title", "path", "aliases", "deprecated"], "type": "object" }, "coordinationRecord": { "additionalProperties": false, "properties": { "id": { "const": "coordination" }, "path": { "const": "work/COORDINATION.md" }, "sections": { "additionalProperties": false, "properties": { "Commitments": { "type": "string" }, "Deferrals": { "type": "string" }, "Dependencies": { "type": "string" }, "Priorities": { "type": "string" } }, "required": ["Commitments", "Priorities", "Dependencies", "Deferrals"], "type": "object" }, "type": { "const": "coordination" } }, "required": ["id", "type", "path", "sections"], "type": "object" }, "counts": { "additionalProperties": false, "properties": { "ai_action_requests": { "minimum": 0, "type": "integer" }, "collections": { "minimum": 0, "type": "integer" }, "concepts": { "minimum": 0, "type": "integer" }, "garden_entries": { "minimum": 0, "type": "integer" }, "inbox_items": { "minimum": 0, "type": "integer" }, "learning_paths": { "minimum": 0, "type": "integer" }, "learning_paths_active": { "minimum": 0, "type": "integer" }, "modules": { "minimum": 0, "type": "integer" }, "notes": { "minimum": 0, "type": "integer" }, "notes_reviewed": { "minimum": 0, "type": "integer" }, "notes_with_evidence": { "minimum": 0, "type": "integer" }, "programs": { "minimum": 0, "type": "integer" }, "projects": { "minimum": 0, "type": "integer" }, "relations": { "minimum": 0, "type": "integer" }, "source_feedback_records": { "minimum": 0, "type": "integer" }, "sources": { "minimum": 0, "type": "integer" }, "sources_with_topics": { "minimum": 0, "type": "integer" }, "stages": { "minimum": 0, "type": "integer" }, "stages_complete": { "minimum": 0, "type": "integer" }, "study_maps": { "minimum": 0, "type": "integer" }, "thematic_groups": { "minimum": 0, "type": "integer" }, "topic_packs": { "minimum": 0, "type": "integer" }, "topics": { "minimum": 0, "type": "integer" }, "units": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "workspaces_active": { "minimum": 0, "type": "integer" }, "workspaces_archived": { "minimum": 0, "type": "integer" } }, "required": ["ai_action_requests", "collections", "concepts", "garden_entries", "inbox_items", "learning_paths", "learning_paths_active", "modules", "notes", "notes_reviewed", "notes_with_evidence", "programs", "projects", "relations", "source_feedback_records", "sources", "sources_with_topics", "stages", "stages_complete", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "units_needing_map", "workspaces_active", "workspaces_archived"], "type": "object" }, "deadlineModule": { "additionalProperties": false, "properties": { "action": { "type": ["string", "null"] }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "termins": { "items": { "maximum": 3, "minimum": 1, "type": "integer" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["module_id", "title", "action", "termins"], "type": "object" }, "flatStage": { "allOf": [{ "$ref": "#/$defs/projectedStage" }, { "required": ["study_map_id", "unit_id", "module_id"] }] }, "gardenEntry": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "last_ai_request_id": { "type": ["string", "null"] }, "path": { "type": "string" }, "revision": { "type": "string" }, "state": { "type": "string" }, "tags": { "items": { "type": "string" }, "type": "array" }, "title": { "type": "string" }, "transcription_path": { "type": ["string", "null"] }, "type": { "const": "garden-note" } }, "required": ["id", "last_ai_request_id", "path", "revision", "state", "tags", "title", "transcription_path", "type"], "type": "object" }, "generated": { "additionalProperties": false, "properties": { "contract_version": { "const": 15 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" }, "indexes": { "additionalProperties": false, "properties": { "component_to_units": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "project_to_relationships": { "$ref": "#/$defs/stringArrayMap" }, "project_to_units": { "$ref": "#/$defs/stringArrayMap" }, "project_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "source_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_material_synthesis": { "additionalProperties": { "pattern": "^material-synthesis-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "object" }, "unit_to_study_map": { "$ref": "#/$defs/stringMap" }, "workspace_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_units": { "$ref": "#/$defs/stringArrayMap" } }, "required": ["component_to_units", "concept_to_modules", "concept_to_units", "module_to_concepts", "module_to_units", "project_aliases", "project_to_relationships", "project_to_units", "project_to_workspaces", "source_to_modules", "source_to_units", "unit_to_concepts", "unit_to_material_synthesis", "unit_to_study_map", "workspace_to_modules", "workspace_to_units"], "type": "object" }, "integerMap": { "additionalProperties": { "minimum": 0, "type": "integer" }, "type": "object" }, "jsonObject": { "additionalProperties": { "$ref": "#/$defs/jsonValue" }, "propertyNames": { "type": "string" }, "type": "object" }, "jsonValue": { "oneOf": [{ "type": "null" }, { "type": "boolean" }, { "type": "number" }, { "type": "string" }, { "items": { "$ref": "#/$defs/jsonValue" }, "type": "array" }, { "$ref": "#/$defs/jsonObject" }] }, "knowledgeNode": { "additionalProperties": false, "properties": { "builds_on": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "concept_ids": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "summary": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "summary"], "type": "object" }, "knowledgeNodeEvidence": { "additionalProperties": false, "description": "A knowledge-map node's reviewed `concept_ids`. Retains unit and node identity.", "properties": { "kind": { "const": "knowledge-node" }, "node_id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "node_id"], "type": "object" }, "learningPathRecord": { "additionalProperties": false, "properties": { "archived": { "type": "boolean" }, "area": { "enum": ["university", "personal"] }, "created": { "format": "date", "type": "string" }, "current_stage": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "id": { "pattern": "^path-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "objective": { "type": "string" }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "shelving": { "$ref": "https://learningos.local/schema/learning-path.schema.json#/properties/shelving" }, "source_plan": { "type": ["string", "null"] }, "stages": { "items": { "$ref": "#/$defs/projectedPathStage" }, "minItems": 1, "type": "array" }, "status": { "enum": ["active", "paused", "ready-to-shelve", "complete"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "learning-path" }, "updated": { "format": "date", "type": ["string", "null"] }, "workspace_id": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["id", "type", "revision", "title", "path", "workspace_id", "area", "module_id", "status", "current_stage", "created", "updated", "objective", "source_plan", "stages", "shelving", "archived"], "type": "object" }, "moduleConceptEdge": { "additionalProperties": false, "properties": { "concept_id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "evidence": { "description": "Why this cell is filled. At least one item: an edge with no evidence is an inferred edge, and this projection does not publish those.", "items": { "oneOf": [{ "$ref": "#/$defs/stageConceptEvidence" }, { "$ref": "#/$defs/knowledgeNodeEvidence" }] }, "minItems": 1, "type": "array" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["module_id", "concept_id", "evidence"], "type": "object" }, "moduleRecord": { "additionalProperties": false, "properties": { "administrative_status": { "enum": ["planned", "enrolled", "awaiting-grade", "completed", "dropped", "archived", null], "type": ["string", "null"] }, "area_id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "attempts": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/attempts" }, "code": { "type": ["string", "null"] }, "components": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/components" }, "credits": { "minimum": 0, "type": ["number", "null"] }, "examination": { "oneOf": [{ "type": "null" }, { "$ref": "https://learningos.local/schema/module.schema.json#/properties/examination" }] }, "grade": { "maximum": 5, "minimum": 1, "type": ["number", "null"] }, "id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "institution": { "type": ["string", "null"] }, "is_actionable": { "type": "boolean" }, "kind": { "enum": ["academic", "skill", "project", "foundation"] }, "operational_state": { "enum": ["none", "complete", "active", "paused"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester": { "pattern": "^(sose|wise)-[0-9]{4}$", "type": ["string", "null"] }, "source_map": { "oneOf": [{ "const": "source-map.yaml" }, { "type": "null" }] }, "status": { "enum": ["planned", "enrolled", "active", "paused", "awaiting-grade", "completed", "dropped", "archived"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "module" }, "unit_order": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/unit_order" } }, "required": ["id", "type", "title", "revision", "path", "kind", "area_id", "thematic_group_ids", "status", "administrative_status", "operational_state", "is_actionable", "institution", "code", "credits", "semester", "components", "examination", "attempts", "grade", "unit_order", "source_map"], "type": "object" }, "moduleSourceMap": { "additionalProperties": false, "properties": { "id": { "pattern": "^source-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "additionalProperties": false, "properties": { "priority": { "minimum": 0, "type": "integer" }, "role": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_routes": { "items": { "oneOf": [{ "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, { "$ref": "#/$defs/projectedRoute" }] }, "type": "array" }, "when": { "type": "string" }, "why": { "minLength": 1, "type": "string" } }, "required": ["source_id", "role", "why", "priority", "unit_routes"], "type": "object" }, "type": "array" }, "type": { "const": "module-source-map" } }, "required": ["id", "type", "module_id", "sources", "revision", "path"], "type": "object" }, "noteRecord": { "additionalProperties": false, "properties": { "atlas_question": { "additionalProperties": false, "properties": { "answer_notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["open", "resolved"] }, "target": { "oneOf": [{ "additionalProperties": false, "properties": { "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "maxItems": 2, "minItems": 1, "type": "array", "uniqueItems": true } }, "required": ["concepts"], "type": "object" }, { "additionalProperties": false, "properties": { "from": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "to": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": { "enum": ["requires", "builds-on", "derives", "generalizes", "contrasts-with", "equivalent-to", "applies-in", "motivates"] } }, "required": ["from", "type", "to"], "type": "object" }] } }, "required": ["state", "target"], "type": ["object", "null"] }, "attachments": { "items": { "type": "string" }, "type": "array" }, "authorship": { "enum": ["user", "mixed", "external", "operator-drafted", null], "type": ["string", "null"] }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "contexts": { "items": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "domain": { "type": "string" }, "evidence": { "$ref": "https://learningos.local/schema/note.schema.json#/properties/evidence" }, "id": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "material_analysis": { "additionalProperties": false, "allOf": [{ "else": { "not": { "required": ["source_id"] } }, "if": { "properties": { "resolution": { "const": "resolved" } } }, "then": { "required": ["source_id"] } }], "properties": { "anchors": { "items": { "additionalProperties": false, "properties": { "locator": { "minLength": 1, "type": "string" }, "note": { "type": "string" }, "purpose": { "minLength": 1, "type": "string" }, "topic": { "minLength": 1, "type": "string" } }, "required": ["topic", "purpose", "locator"], "type": "object" }, "type": "array" }, "built": { "format": "date", "type": "string" }, "frozen_input_bytes": { "minimum": 1, "type": "integer" }, "frozen_input_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "inspected_range": { "additionalProperties": false, "properties": { "end": { "minimum": 1, "type": "integer" }, "start": { "minimum": 1, "type": "integer" } }, "required": ["start", "end"], "type": "object" }, "live_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "material": { "minLength": 1, "type": "string" }, "model": { "type": "string" }, "recorded_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "resolution": { "enum": ["resolved", "unresolved", "unavailable", "stale"] }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["resolution", "material", "recorded_source_digest", "inspected_range", "frozen_input_sha256", "frozen_input_bytes"], "type": ["object", "null"] }, "path": { "minLength": 1, "type": "string" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "role": { "enum": ["synthesis", "reference", "derivation", "exercise-bank", "mock-exam", "implementation", "question", "crosswalk"] }, "semantic_review": { "enum": ["unreviewed", "user-reviewed", null], "type": ["string", "null"] }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["rough", "evolving", "mature", "deprecated", null], "type": ["string", "null"] }, "summary": { "type": "string" }, "supersedes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "transcription": { "enum": ["none", "manual", "ai-assisted", null], "type": ["string", "null"] }, "type": { "const": "note" } }, "required": ["id", "type", "title", "path", "domain", "summary", "role", "state", "authorship", "concepts", "sources", "contexts", "attachments", "evidence", "supersedes", "reviewed", "transcription", "semantic_review", "atlas_question", "material_analysis"], "type": "object" }, "programRecord": { "additionalProperties": false, "properties": { "boundary_action": { "type": "string" }, "default": { "type": "boolean" }, "description": { "type": "string" }, "id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "enum": ["academic", "skills", "projects"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester_bound": { "type": "boolean" }, "semesters": { "items": { "$ref": "#/$defs/programSemester" }, "type": "array" }, "status": { "enum": ["active", "metadata-only", "archived"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "program" } }, "required": ["id", "type", "title", "kind", "status", "default", "semester_bound", "revision", "path"], "type": "object" }, "programSemester": { "additionalProperties": false, "properties": { "id": { "pattern": "^semester-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "order": { "minimum": 0, "type": "integer" }, "status": { "enum": ["current", "previous", "future", "archived"] }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "status", "order"], "type": "object" }, "progress": { "additionalProperties": { "additionalProperties": false, "properties": { "stages_complete": { "minimum": 0, "type": "integer" }, "stages_total": { "minimum": 0, "type": "integer" }, "units_complete": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "units_total": { "minimum": 0, "type": "integer" } }, "required": ["stages_complete", "stages_total", "units_complete", "units_needing_map", "units_total"], "type": "object" }, "type": "object" }, "projectRecord": { "additionalProperties": false, "properties": { "boundaries": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/boundaries" }, "decisions": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/decisions" }, "files": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/files" }, "id": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/id" }, "linked_module_ids": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/linked_module_ids" }, "migrated_at": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/migrated_at" }, "migrated_from": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/migrated_from" }, "migration": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/migration" }, "milestone_ids": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/milestone_ids" }, "objective": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/objective" }, "path": { "minLength": 1, "type": "string" }, "project_type": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/project_type" }, "relationship_ids": { "items": { "pattern": "^relationship-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "revision": { "minimum": 0, "type": "integer" }, "root_uri": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/root_uri" }, "schema_version": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/schema_version" }, "source_sha256": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/source_sha256" }, "status": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/status" }, "structure": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/structure" }, "thematic_group_ids": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/thematic_group_ids" }, "title": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/title" }, "type": { "const": "project" }, "unit_ids": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/unit_ids" }, "workspace_ids": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/workspace_ids" } }, "required": ["schema_version", "id", "type", "title", "project_type", "status", "root_uri", "objective", "milestone_ids", "linked_module_ids", "unit_ids", "workspace_ids", "thematic_group_ids", "boundaries", "revision", "path", "relationship_ids"], "type": "object" }, "projectRelationship": { "additionalProperties": false, "properties": { "contribution": { "minLength": 1, "type": "string" }, "from_project_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "id": { "pattern": "^relationship-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "minLength": 1, "type": "string" }, "reason": { "minLength": 1, "type": "string" }, "relation_type": { "enum": ["uses", "informs", "depends-on", "produces", "related"] }, "to_id": { "minLength": 1, "type": "string" }, "to_type": { "enum": ["module", "source", "topic-pack", "note", "file"] }, "type": { "const": "project-relationship" } }, "required": ["id", "type", "from_project_id", "to_id", "to_type", "relation_type", "reason", "contribution", "path"], "type": "object" }, "projectedPathStage": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "completed": { "format": "date", "type": "string" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "done_when": { "items": { "minLength": 1, "type": "string" }, "minItems": 1, "type": "array" }, "estimate_minutes": { "minimum": 1, "type": "integer" }, "exam_critical": { "type": "boolean" }, "id": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "notes_path": { "type": "string" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "number": { "minimum": 1, "type": "integer" }, "objective": { "minLength": 1, "type": "string" }, "resources": { "items": { "$ref": "#/$defs/resource" }, "type": "array" }, "status": { "enum": ["pending", "active", "complete", "skipped"] }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "status", "objective", "done_when", "resources", "notes_text", "notes_updated"], "type": "object" }, "projectedRecord": { "oneOf": [{ "$ref": "#/$defs/noteRecord" }, { "$ref": "#/$defs/conceptRecord" }, { "$ref": "#/$defs/sourceRecord" }, { "$ref": "#/$defs/projectRecord" }, { "$ref": "#/$defs/projectRelationship" }, { "$ref": "#/$defs/compatibilityAlias" }, { "$ref": "#/$defs/moduleRecord" }, { "$ref": "#/$defs/collectionRecord" }, { "$ref": "#/$defs/workspaceRecord" }, { "$ref": "#/$defs/learningPathRecord" }, { "$ref": "#/$defs/programRecord" }, { "$ref": "#/$defs/projectedUnit" }, { "$ref": "#/$defs/studyMap" }, { "$ref": "#/$defs/moduleSourceMap" }, { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, { "$ref": "#/$defs/coordinationRecord" }] }, "projectedRoute": { "additionalProperties": false, "properties": { "angle": { "minLength": 1, "type": "string" }, "angle_detail": { "minLength": 1, "type": "string" }, "covers": { "items": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "minItems": 1, "type": "array", "uniqueItems": true }, "depth": { "minLength": 1, "type": "string" }, "exposes_solutions_for": { "description": "Route ids whose activities this material answers \u2014 a verifiable claim about content, that opening this hands over the worked solutions to those tasks, never a judgment of quality. The session compiler refuses to put such a route in the same proposal as an evidence step it answers: explaining with the answer key and then asking for unaided transfer on that same task measures nothing (audit workbench/audits/synthetic-learner-2026-09-12, F03).", "items": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "format": { "minLength": 1, "type": "string" }, "id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "requires_assets": { "description": "Files the activity itself needs before it can be done \u2014 a dataset it analyses, a code template it fills in. Distinct from the material being reachable: `_resource_available` answers 'can he open the worksheet', and this answers 'can he do what the worksheet asks'. Blatt 4 Aufgabe 3(b) needs International_Education_Costs.csv and aufgabe3.py from Moodle, neither registered here, and the session still reported the route ready (audit workbench/audits/synthetic-learner-2026-09-12, F06). An entry with no `material_uri` is by definition unregistered; the session keeps the route and names the parts that cannot be attempted, rather than dropping the runnable work or inventing a substitute dataset.", "items": { "additionalProperties": false, "properties": { "material_uri": { "pattern": "^material://", "type": "string" }, "name": { "minLength": 1, "type": "string" }, "needed_for": { "description": "Which part of the activity, in the sheet's own numbering.", "minLength": 1, "type": "string" }, "obtain_from": { "description": "Where the exact file comes from. Never a substitute.", "minLength": 1, "type": "string" } }, "required": ["name"], "type": "object" }, "minItems": 1, "type": "array" }, "scope": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "title": { "minLength": 1, "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["id", "unit_id", "source_id", "title", "format", "angle", "covers", "depth", "scope"], "type": "object" }, "projectedStage": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "completed": { "type": "string" }, "concepts": { "items": { "type": "string" }, "type": "array" }, "detour_id": { "type": "string" }, "done_when": { "items": { "type": "string" }, "type": "array" }, "estimate_minutes": { "minimum": 1, "type": "integer" }, "exam_critical": { "type": "boolean" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "number": { "minimum": 1, "type": "integer" }, "objective": { "type": "string" }, "resources": { "items": { "$ref": "#/$defs/resource" }, "type": "array" }, "scope_triage": { "type": "string" }, "source_feedback": { "items": { "$ref": "#/$defs/sourceFeedback" }, "type": "array" }, "status": { "type": "string" }, "study_map_id": { "type": "string" }, "title": { "type": "string" }, "unit_id": { "type": "string" }, "working_note": { "type": "string" } }, "required": ["id", "title", "status", "objective", "done_when", "resources", "working_note", "attachments", "source_feedback", "scope_triage", "notes_text", "notes_updated"], "type": "object" }, "projectedUnit": { "additionalProperties": false, "properties": { "artifacts": { "$ref": "https://learningos.local/schema/unit.schema.json#/properties/artifacts" }, "child_unit_ids": { "items": { "type": "string" }, "type": "array" }, "component_id": { "type": "string" }, "current_study_map": { "type": "string" }, "id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "type": "string" }, "knowledge_map": { "additionalProperties": false, "properties": { "nodes": { "items": { "$ref": "#/$defs/knowledgeNode" }, "type": "array" }, "summary": { "type": "string" } }, "required": ["summary", "nodes"], "type": "object" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "needs_study_map": { "type": "boolean" }, "note_sections": { "items": { "$ref": "#/$defs/unitNoteSection" }, "type": "array" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "order": { "minimum": 0, "type": "integer" }, "parent_unit_id": { "type": "string" }, "path": { "type": "string" }, "project_ids": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "related_module_ids": { "items": { "type": "string" }, "type": "array" }, "revision": { "minimum": 0, "type": "integer" }, "scope": { "type": "string" }, "scope_sources": { "items": { "additionalProperties": false, "properties": { "authority": { "type": "string" }, "locator": { "type": "string" }, "source_id": { "type": "string" } }, "required": ["source_id", "authority"], "type": "object" }, "type": "array" }, "source_selections": { "items": { "additionalProperties": false, "properties": { "locator": { "type": "string" }, "purpose": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "type": "string" }, "stage_ids": { "items": { "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["source_id", "locator", "purpose"], "type": "object" }, "type": "array" }, "status": { "type": "string" }, "title": { "type": "string" }, "type": { "const": "unit" }, "working_note": { "type": "string" }, "workspace_ids": { "items": { "type": "string" }, "type": "array" } }, "required": ["id", "type", "module_id", "kind", "title", "order", "scope", "status", "artifacts", "workspace_ids", "source_selections", "scope_sources", "revision", "path", "project_ids", "needs_study_map", "notes_text", "note_sections", "notes_updated"], "type": "object" }, "relation": { "additionalProperties": false, "properties": { "context": { "type": ["string", "null"] }, "from": { "type": ["string", "null"] }, "source": { "type": ["string", "null"] }, "to": { "type": ["string", "null"] }, "type": { "type": ["string", "null"] } }, "required": ["from", "type", "to", "context", "source"], "type": "object" }, "resource": { "additionalProperties": false, "properties": { "angle": { "type": "string" }, "angle_detail": { "type": "string" }, "id": { "type": "string" }, "kind": { "type": "string" }, "label": { "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "scope_triage": { "type": "string" }, "source_id": { "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["kind", "label"], "type": "object" }, "resumePointer": { "oneOf": [{ "maxProperties": 0, "type": "object" }, { "additionalProperties": false, "properties": { "module_id": { "type": "string" }, "stage_id": { "type": "string" }, "study_map_id": { "type": "string" }, "type": { "const": "resume-pointer" }, "unit_id": { "type": "string" }, "updated": { "type": "string" } }, "required": ["type", "module_id", "unit_id", "study_map_id", "stage_id", "updated"], "type": "object" }] }, "reviewItem": { "additionalProperties": false, "properties": { "category": { "type": "string" }, "context": { "type": "string" }, "id": { "type": "string" }, "reason": { "type": "string" }, "target": { "$ref": "#/$defs/jsonObject" }, "title": { "type": "string" } }, "required": ["category", "context", "id", "reason", "target", "title"], "type": "object" }, "routeId": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "semester": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "order": { "type": "integer" }, "program_id": { "type": "string" }, "status": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "order", "program_id", "status", "title"], "type": "object" }, "sourceEvaluation": { "additionalProperties": false, "properties": { "audience": { "items": { "type": "string" }, "type": "array" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "level": { "enum": ["introductory", "intermediate", "advanced", "reference", null], "type": ["string", "null"] }, "prerequisites": { "items": { "type": "string" }, "type": "array" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "roles": { "items": { "type": "string" }, "type": "array" }, "strengths": { "items": { "type": "string" }, "type": "array" }, "useful_sections": { "items": { "additionalProperties": false, "properties": { "note": { "type": "string" }, "section": { "type": "string" } }, "required": ["section", "note"], "type": "object" }, "type": "array" }, "weaknesses": { "items": { "type": "string" }, "type": "array" } }, "required": ["roles", "level", "audience", "prerequisites", "strengths", "weaknesses", "reviewed", "concepts", "useful_sections"], "type": "object" }, "sourceExamination": { "additionalProperties": false, "properties": { "approved_analysis_count": { "minimum": 0, "type": "integer" }, "evaluated": { "type": "boolean" }, "metadata_placed": { "type": "boolean" } }, "required": ["evaluated", "approved_analysis_count", "metadata_placed"], "type": "object" }, "sourceFeedback": { "additionalProperties": false, "properties": { "feedback": { "enum": ["helpful", "too-advanced", "wrong-perspective", "useful-for-derivation", "useful-for-review", "skipped"] }, "note": { "type": "string" }, "recorded": { "format": "date", "type": "string" }, "resource_id": { "pattern": "^resource-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["source_id", "feedback", "recorded"], "type": "object" }, "sourceRecord": { "additionalProperties": false, "properties": { "authors": { "items": { "type": "string" }, "type": "array" }, "discovery": { "anyOf": [{ "$ref": "https://learningos.local/schema/sources.schema.json#/properties/sources/items/properties/discovery" }, { "type": "null" }] }, "evaluations": { "items": { "$ref": "#/$defs/sourceEvaluation" }, "type": "array" }, "examination": { "$ref": "#/$defs/sourceExamination" }, "id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "identifiers": { "additionalProperties": { "type": "string" }, "type": "object" }, "material": { "pattern": "^material://.+", "type": ["string", "null"] }, "material_exists": { "type": "boolean" }, "material_path": { "type": ["string", "null"] }, "organization": { "type": ["string", "null"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "roles": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "source_type": { "enum": ["book", "paper", "lecture", "course", "video", "website", "documentation", "software", "conversation", "other"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "topics": { "items": { "pattern": "^topic-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "type": { "const": "source" }, "url": { "format": "uri", "type": ["string", "null"] }, "year": { "maximum": 2100, "minimum": 1800, "type": ["integer", "null"] } }, "required": ["id", "type", "title", "revision", "path", "source_type", "thematic_group_ids", "topics", "url", "material", "material_path", "material_exists", "authors", "organization", "year", "identifiers", "roles", "evaluations", "discovery", "examination"], "type": "object" }, "stageAttachment": { "additionalProperties": false, "properties": { "label": { "minLength": 1, "type": "string" }, "path": { "minLength": 1, "type": "string" } }, "required": ["path", "label"], "type": "object" }, "stageConceptEvidence": { "additionalProperties": false, "description": "A stage's explicit `concepts` tag. Retains unit, study-map and stage identity, so a filled cell drills into the exact stage.", "properties": { "kind": { "const": "stage-concept" }, "stage_id": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "study_map_id": { "pattern": "^study-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "study_map_id", "stage_id"], "type": "object" }, "stringArrayMap": { "additionalProperties": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "type": "object" }, "stringMap": { "additionalProperties": { "type": "string" }, "type": "object" }, "studyMap": { "additionalProperties": false, "properties": { "current_stage": { "type": "string" }, "detours": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/detours" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "path": { "type": "string" }, "plan_template_version": { "minimum": 1, "type": "integer" }, "revision": { "minimum": 0, "type": "integer" }, "shelving": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/shelving" }, "source_plan": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/source_plan" }, "stages": { "items": { "$ref": "#/$defs/projectedStage" }, "type": "array" }, "status": { "type": "string" }, "type": { "const": "study-map" }, "unit_id": { "type": "string" } }, "required": ["id", "type", "unit_id", "module_id", "status", "current_stage", "source_plan", "stages", "shelving", "revision", "path"], "type": "object" }, "thematicGroup": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "type": "string" }, "order": { "type": "integer" }, "title": { "type": "string" } }, "required": ["id", "title", "description", "order"], "type": "object" }, "topic": { "additionalProperties": false, "properties": { "domain": { "type": "string" }, "id": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "title", "domain"], "type": "object" }, "unitMaterialSynthesisProjection": { "allOf": [{ "$ref": "https://learningos.local/schema/unit-material-synthesis.schema.json#/$defs/canonicalRecord" }, { "properties": { "completeness": { "additionalProperties": false, "properties": { "assessed_route_count": { "minimum": 0, "type": "integer" }, "complete": { "type": "boolean" }, "current_route_count": { "minimum": 0, "type": "integer" }, "deep_reviewed_count": { "minimum": 0, "type": "integer" }, "duplicate_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "missing_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "orphaned_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "screened_count": { "minimum": 0, "type": "integer" }, "unavailable_count": { "minimum": 0, "type": "integer" }, "unevaluated_count": { "minimum": 0, "type": "integer" } }, "required": ["complete", "current_route_count", "assessed_route_count", "deep_reviewed_count", "screened_count", "unevaluated_count", "unavailable_count", "missing_route_ids", "orphaned_route_ids", "duplicate_route_ids"], "type": "object" }, "freshness": { "additionalProperties": false, "properties": { "reasons": { "items": { "enum": ["source_map_revision", "source_map_checksum", "route_set_checksum", "material_checksums", "policy", "current-basis-unavailable", "analysis-refs-stale"] }, "type": "array", "uniqueItems": true }, "status": { "enum": ["current", "stale"] } }, "required": ["status", "reasons"], "type": "object" } }, "required": ["freshness", "completeness"], "type": "object" }], "unevaluatedProperties": false }, "unitNoteSection": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "recorded_at": { "type": ["string", "null"] }, "stage_ids": { "items": { "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "text": { "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["recorded_at", "title", "stage_ids", "attachments", "text", "summary"], "type": "object" }, "workspaceRecord": { "additionalProperties": false, "properties": { "archived": { "type": "boolean" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "deadline": { "format": "date", "type": ["string", "null"] }, "id": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_ids": { "items": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "next_action": { "type": "string" }, "notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "objective": { "type": "string" }, "path": { "minLength": 1, "type": "string" }, "program_ids": { "items": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "project_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "standing": { "type": "boolean" }, "status": { "enum": ["active", "blocked", "complete"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "workspace" }, "unit_ids": { "items": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["id", "type", "title", "revision", "path", "status", "standing", "archived", "deadline", "objective", "next_action", "concepts", "notes", "sources", "program_ids", "module_ids", "unit_ids", "project_id"], "type": "object" } }, "$id": "https://learningos.local/contracts/manifest-v15.schema.json", "$schema": "https://json-schema.org/draft/2020-12/schema", "additionalProperties": false, "properties": { "_generated": { "$ref": "#/$defs/generated" }, "academic_deadlines": { "items": { "$ref": "#/$defs/academicDeadline" }, "type": "array" }, "ai_actions": { "$ref": "#/$defs/aiActions" }, "artifact_revisions": { "$ref": "#/$defs/integerMap" }, "backlinks": { "$ref": "#/$defs/backlinks" }, "counts": { "$ref": "#/$defs/counts" }, "garden_entries": { "items": { "$ref": "#/$defs/gardenEntry" }, "type": "array" }, "indexes": { "$ref": "#/$defs/indexes" }, "module_concept_edges": { "description": "The Module x Concept crossing. One row per (module, concept) pair for which at least one EXPLICIT authored tag exists - a stage's `concepts` tag or a knowledge-map node's reviewed `concept_ids`. Never inferred from titles, prose, notes, sources, or similarity; absence means not mapped, never that no relationship exists. Ordered by (module_id, concept_id).", "items": { "$ref": "#/$defs/moduleConceptEdge" }, "type": "array" }, "module_source_maps": { "items": { "$ref": "#/$defs/moduleSourceMap" }, "type": "array" }, "modules": { "items": { "$ref": "#/$defs/moduleRecord" }, "type": "array" }, "programs": { "items": { "$ref": "#/$defs/programRecord" }, "type": "array" }, "progress": { "$ref": "#/$defs/progress" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "project_relationships": { "items": { "$ref": "#/$defs/projectRelationship" }, "type": "array" }, "projects": { "items": { "$ref": "#/$defs/projectRecord" }, "type": "array" }, "records": { "items": { "$ref": "#/$defs/projectedRecord" }, "type": "array" }, "relations": { "items": { "$ref": "#/$defs/relation" }, "type": "array" }, "resume_pointer": { "$ref": "#/$defs/resumePointer" }, "review_items": { "items": { "$ref": "#/$defs/reviewItem" }, "type": "array" }, "semesters": { "items": { "$ref": "#/$defs/semester" }, "type": "array" }, "stages": { "items": { "$ref": "#/$defs/flatStage" }, "type": "array" }, "study_maps": { "items": { "$ref": "#/$defs/studyMap" }, "type": "array" }, "thematic_groups": { "items": { "$ref": "#/$defs/thematicGroup" }, "type": "array" }, "topic_packs": { "items": { "$ref": "#/$defs/collectionRecord" }, "type": "array" }, "topics": { "items": { "$ref": "#/$defs/topic" }, "type": "array" }, "unit_material_syntheses": { "items": { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, "type": "array" }, "units": { "items": { "$ref": "#/$defs/projectedUnit" }, "type": "array" } }, "required": ["_generated", "academic_deadlines", "ai_actions", "artifact_revisions", "backlinks", "counts", "garden_entries", "indexes", "module_concept_edges", "module_source_maps", "modules", "programs", "progress", "project_aliases", "project_relationships", "projects", "records", "relations", "resume_pointer", "review_items", "semesters", "stages", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "unit_material_syntheses"], "title": "LearningOS atomic manifest v15", "type": "object" };
-    var schema32 = { "additionalProperties": false, "properties": { "contract_version": { "const": 15 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" };
+    var schema31 = { "$defs": { "academicDeadline": { "additionalProperties": false, "properties": { "end_date": { "format": "date", "type": "string" }, "kind": { "minLength": 1, "type": "string" }, "label": { "minLength": 1, "type": "string" }, "module_id": { "type": "string" }, "modules": { "items": { "$ref": "#/$defs/deadlineModule" }, "type": "array" }, "notes": { "type": ["string", "null"] }, "registration_state": { "type": "string" }, "start_date": { "format": "date", "type": "string" }, "termin": { "minimum": 1, "type": "integer" }, "time": { "type": ["string", "null"] }, "title": { "type": "string" } }, "required": ["kind", "label", "start_date", "end_date"], "type": "object" }, "aiAction": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "interaction_mode": { "minLength": 1, "type": "string" }, "status": { "enum": ["planned", "implemented"] }, "supported_providers": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "target_kinds": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "description", "target_kinds", "interaction_mode", "status", "supported_providers"], "type": "object" }, "aiActions": { "additionalProperties": false, "properties": { "available": { "items": { "$ref": "#/$defs/aiAction" }, "type": "array" }, "contract_version": { "const": 1 }, "provider_adapters": { "items": { "$ref": "#/$defs/aiProviderAdapter" }, "type": "array" }, "requests": { "items": { "$ref": "#/$defs/aiRequest" }, "type": "array" } }, "required": ["available", "contract_version", "provider_adapters", "requests"], "type": "object" }, "aiProviderAdapter": { "additionalProperties": false, "properties": { "adapter": { "minLength": 1, "type": "string" }, "available": { "type": "boolean" }, "id": { "minLength": 1, "type": "string" }, "supported_modes": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "supports_direct_delivery": { "type": "boolean" } }, "required": ["id", "adapter", "available", "supported_modes", "supports_direct_delivery"], "type": "object" }, "aiRequest": { "additionalProperties": false, "properties": { "action_id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "bundle_path": { "pattern": "^operations/ai-actions/requests/[^/]+$", "type": "string" }, "created_at": { "format": "date-time", "type": "string" }, "delivery_id": { "type": ["string", "null"] }, "id": { "pattern": "^ai-request-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "provider": { "minLength": 1, "type": "string" }, "receipt_id": { "type": ["string", "null"] }, "status": { "enum": ["prepared", "delivery-ready", "completed"] }, "target": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "kind": { "minLength": 1, "type": "string" } }, "required": ["kind", "id"], "type": "object" } }, "required": ["id", "action_id", "target", "provider", "status", "created_at", "delivery_id", "receipt_id", "bundle_path"], "type": "object" }, "backlinks": { "additionalProperties": false, "properties": { "concept_relations": { "$ref": "#/$defs/jsonObject" }, "concept_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "note_incoming": { "$ref": "#/$defs/stringArrayMap" }, "source_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_notes": { "$ref": "#/$defs/stringArrayMap" } }, "type": "object" }, "collectionRecord": { "additionalProperties": false, "properties": { "collection_kind": { "enum": ["catalogue", "topic-pack"] }, "domain": { "minLength": 1, "type": "string" }, "entries": { "items": { "additionalProperties": false, "properties": { "group": { "type": ["string", "null"] }, "source": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "why": { "type": ["string", "null"] } }, "required": ["source", "group", "why"], "type": "object" }, "type": "array" }, "id": { "minLength": 1, "type": "string" }, "path": { "pattern": "^sources/collections/.+\\.yaml$", "type": "string" }, "purpose": { "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "enum": ["collection", "topic-pack"] } }, "required": ["id", "type", "revision", "collection_kind", "title", "path", "thematic_group_ids", "purpose", "sources", "summary", "domain", "entries"], "type": "object" }, "compatibilityAlias": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "path": { "const": "projects/aliases.yaml" }, "target_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "target_type": { "const": "project" }, "type": { "const": "compatibility-alias" } }, "required": ["id", "type", "target_id", "target_type", "path"], "type": "object" }, "conceptRecord": { "additionalProperties": false, "properties": { "aliases": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "deprecated": { "type": "boolean" }, "id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "concept" } }, "required": ["id", "type", "title", "path", "aliases", "deprecated"], "type": "object" }, "coordinationRecord": { "additionalProperties": false, "properties": { "id": { "const": "coordination" }, "path": { "const": "work/COORDINATION.md" }, "sections": { "additionalProperties": false, "properties": { "Commitments": { "type": "string" }, "Deferrals": { "type": "string" }, "Dependencies": { "type": "string" }, "Priorities": { "type": "string" } }, "required": ["Commitments", "Priorities", "Dependencies", "Deferrals"], "type": "object" }, "type": { "const": "coordination" } }, "required": ["id", "type", "path", "sections"], "type": "object" }, "counts": { "additionalProperties": false, "properties": { "ai_action_requests": { "minimum": 0, "type": "integer" }, "collections": { "minimum": 0, "type": "integer" }, "concepts": { "minimum": 0, "type": "integer" }, "garden_entries": { "minimum": 0, "type": "integer" }, "inbox_items": { "minimum": 0, "type": "integer" }, "learning_paths": { "minimum": 0, "type": "integer" }, "learning_paths_active": { "minimum": 0, "type": "integer" }, "modules": { "minimum": 0, "type": "integer" }, "notes": { "minimum": 0, "type": "integer" }, "notes_reviewed": { "minimum": 0, "type": "integer" }, "notes_with_evidence": { "minimum": 0, "type": "integer" }, "programs": { "minimum": 0, "type": "integer" }, "projects": { "minimum": 0, "type": "integer" }, "relations": { "minimum": 0, "type": "integer" }, "source_feedback_records": { "minimum": 0, "type": "integer" }, "sources": { "minimum": 0, "type": "integer" }, "sources_with_topics": { "minimum": 0, "type": "integer" }, "stages": { "minimum": 0, "type": "integer" }, "stages_complete": { "minimum": 0, "type": "integer" }, "study_maps": { "minimum": 0, "type": "integer" }, "thematic_groups": { "minimum": 0, "type": "integer" }, "topic_packs": { "minimum": 0, "type": "integer" }, "topics": { "minimum": 0, "type": "integer" }, "units": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "workspaces_active": { "minimum": 0, "type": "integer" }, "workspaces_archived": { "minimum": 0, "type": "integer" } }, "required": ["ai_action_requests", "collections", "concepts", "garden_entries", "inbox_items", "learning_paths", "learning_paths_active", "modules", "notes", "notes_reviewed", "notes_with_evidence", "programs", "projects", "relations", "source_feedback_records", "sources", "sources_with_topics", "stages", "stages_complete", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "units_needing_map", "workspaces_active", "workspaces_archived"], "type": "object" }, "deadlineModule": { "additionalProperties": false, "properties": { "action": { "type": ["string", "null"] }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "termins": { "items": { "maximum": 3, "minimum": 1, "type": "integer" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["module_id", "title", "action", "termins"], "type": "object" }, "flatStage": { "allOf": [{ "$ref": "#/$defs/projectedStage" }, { "required": ["study_map_id", "unit_id", "module_id"], "type": "object" }] }, "gardenEntry": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "last_ai_request_id": { "type": ["string", "null"] }, "path": { "type": "string" }, "revision": { "type": "string" }, "state": { "type": "string" }, "tags": { "items": { "type": "string" }, "type": "array" }, "title": { "type": "string" }, "transcription_path": { "type": ["string", "null"] }, "type": { "const": "garden-note" } }, "required": ["id", "last_ai_request_id", "path", "revision", "state", "tags", "title", "transcription_path", "type"], "type": "object" }, "generated": { "additionalProperties": false, "properties": { "contract_version": { "const": 16 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" }, "indexes": { "additionalProperties": false, "properties": { "component_to_units": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "project_to_relationships": { "$ref": "#/$defs/stringArrayMap" }, "project_to_units": { "$ref": "#/$defs/stringArrayMap" }, "project_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "source_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_material_synthesis": { "additionalProperties": { "pattern": "^material-synthesis-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "object" }, "unit_to_study_map": { "$ref": "#/$defs/stringMap" }, "workspace_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_units": { "$ref": "#/$defs/stringArrayMap" } }, "required": ["component_to_units", "concept_to_modules", "concept_to_units", "module_to_concepts", "module_to_units", "project_aliases", "project_to_relationships", "project_to_units", "project_to_workspaces", "source_to_modules", "source_to_units", "unit_to_concepts", "unit_to_material_synthesis", "unit_to_study_map", "workspace_to_modules", "workspace_to_units"], "type": "object" }, "integerMap": { "additionalProperties": { "minimum": 0, "type": "integer" }, "type": "object" }, "jsonObject": { "additionalProperties": { "$ref": "#/$defs/jsonValue" }, "propertyNames": { "type": "string" }, "type": "object" }, "jsonValue": { "oneOf": [{ "type": "null" }, { "type": "boolean" }, { "type": "number" }, { "type": "string" }, { "items": { "$ref": "#/$defs/jsonValue" }, "type": "array" }, { "$ref": "#/$defs/jsonObject" }] }, "knowledgeNode": { "additionalProperties": false, "properties": { "builds_on": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "concept_ids": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "summary": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "summary"], "type": "object" }, "knowledgeNodeEvidence": { "additionalProperties": false, "description": "A knowledge-map node's reviewed `concept_ids`. Retains unit and node identity.", "properties": { "kind": { "const": "knowledge-node" }, "node_id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "node_id"], "type": "object" }, "learningPathRecord": { "additionalProperties": false, "properties": { "archived": { "type": "boolean" }, "area": { "enum": ["university", "personal"] }, "created": { "format": "date", "type": "string" }, "current_stage": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "id": { "pattern": "^path-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "objective": { "type": "string" }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "shelving": { "$ref": "https://learningos.local/schema/learning-path.schema.json#/properties/shelving" }, "source_plan": { "type": ["string", "null"] }, "stages": { "items": { "$ref": "#/$defs/projectedPathStage" }, "minItems": 1, "type": "array" }, "status": { "enum": ["active", "paused", "ready-to-shelve", "complete"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "learning-path" }, "updated": { "format": "date", "type": ["string", "null"] }, "workspace_id": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["id", "type", "revision", "title", "path", "workspace_id", "area", "module_id", "status", "current_stage", "created", "updated", "objective", "source_plan", "stages", "shelving", "archived"], "type": "object" }, "moduleConceptEdge": { "additionalProperties": false, "properties": { "concept_id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "evidence": { "description": "Why this cell is filled. At least one item: an edge with no evidence is an inferred edge, and this projection does not publish those.", "items": { "oneOf": [{ "$ref": "#/$defs/stageConceptEvidence" }, { "$ref": "#/$defs/knowledgeNodeEvidence" }] }, "minItems": 1, "type": "array" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["module_id", "concept_id", "evidence"], "type": "object" }, "moduleRecord": { "additionalProperties": false, "properties": { "administrative_status": { "enum": ["planned", "enrolled", "awaiting-grade", "completed", "dropped", "archived", null], "type": ["string", "null"] }, "area_id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "attempts": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/attempts" }, "code": { "type": ["string", "null"] }, "components": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/components" }, "credits": { "minimum": 0, "type": ["number", "null"] }, "examination": { "oneOf": [{ "type": "null" }, { "$ref": "https://learningos.local/schema/module.schema.json#/properties/examination" }] }, "grade": { "maximum": 5, "minimum": 1, "type": ["number", "null"] }, "id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "institution": { "type": ["string", "null"] }, "is_actionable": { "type": "boolean" }, "kind": { "enum": ["academic", "skill", "project", "foundation"] }, "operational_state": { "enum": ["none", "complete", "active", "paused"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester": { "pattern": "^(sose|wise)-[0-9]{4}$", "type": ["string", "null"] }, "source_map": { "oneOf": [{ "const": "source-map.yaml" }, { "type": "null" }] }, "status": { "enum": ["planned", "enrolled", "active", "paused", "awaiting-grade", "completed", "dropped", "archived"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "module" }, "unit_order": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/unit_order" } }, "required": ["id", "type", "title", "revision", "path", "kind", "area_id", "thematic_group_ids", "status", "administrative_status", "operational_state", "is_actionable", "institution", "code", "credits", "semester", "components", "examination", "attempts", "grade", "unit_order", "source_map"], "type": "object" }, "moduleSourceMap": { "additionalProperties": false, "properties": { "id": { "pattern": "^source-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "additionalProperties": false, "properties": { "priority": { "minimum": 0, "type": "integer" }, "role": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_routes": { "items": { "oneOf": [{ "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, { "$ref": "#/$defs/projectedRoute" }] }, "type": "array" }, "when": { "type": "string" }, "why": { "minLength": 1, "type": "string" } }, "required": ["source_id", "role", "why", "priority", "unit_routes"], "type": "object" }, "type": "array" }, "type": { "const": "module-source-map" } }, "required": ["id", "type", "module_id", "sources", "revision", "path"], "type": "object" }, "noteRecord": { "additionalProperties": false, "properties": { "atlas_question": { "additionalProperties": false, "properties": { "answer_notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["open", "resolved"] }, "target": { "oneOf": [{ "additionalProperties": false, "properties": { "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "maxItems": 2, "minItems": 1, "type": "array", "uniqueItems": true } }, "required": ["concepts"], "type": "object" }, { "additionalProperties": false, "properties": { "from": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "to": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": { "enum": ["requires", "builds-on", "derives", "generalizes", "contrasts-with", "equivalent-to", "applies-in", "motivates"] } }, "required": ["from", "type", "to"], "type": "object" }] } }, "required": ["state", "target"], "type": ["object", "null"] }, "attachments": { "items": { "type": "string" }, "type": "array" }, "authorship": { "enum": ["user", "mixed", "external", "operator-drafted", null], "type": ["string", "null"] }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "contexts": { "items": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "domain": { "type": "string" }, "evidence": { "$ref": "https://learningos.local/schema/note.schema.json#/properties/evidence" }, "id": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "material_analysis": { "additionalProperties": false, "allOf": [{ "else": { "not": { "required": ["source_id"] } }, "if": { "properties": { "resolution": { "const": "resolved" } } }, "then": { "required": ["source_id"] } }], "properties": { "anchors": { "items": { "additionalProperties": false, "properties": { "locator": { "minLength": 1, "type": "string" }, "note": { "type": "string" }, "purpose": { "minLength": 1, "type": "string" }, "topic": { "minLength": 1, "type": "string" } }, "required": ["topic", "purpose", "locator"], "type": "object" }, "type": "array" }, "built": { "format": "date", "type": "string" }, "frozen_input_bytes": { "minimum": 1, "type": "integer" }, "frozen_input_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "inspected_range": { "additionalProperties": false, "properties": { "end": { "minimum": 1, "type": "integer" }, "start": { "minimum": 1, "type": "integer" } }, "required": ["start", "end"], "type": "object" }, "live_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "material": { "minLength": 1, "type": "string" }, "model": { "type": "string" }, "recorded_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "resolution": { "enum": ["resolved", "unresolved", "unavailable", "stale"] }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["resolution", "material", "recorded_source_digest", "inspected_range", "frozen_input_sha256", "frozen_input_bytes"], "type": ["object", "null"] }, "path": { "minLength": 1, "type": "string" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "role": { "enum": ["synthesis", "reference", "derivation", "exercise-bank", "mock-exam", "implementation", "question", "crosswalk"] }, "semantic_review": { "enum": ["unreviewed", "user-reviewed", null], "type": ["string", "null"] }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["rough", "evolving", "mature", "deprecated", null], "type": ["string", "null"] }, "summary": { "type": "string" }, "supersedes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "transcription": { "enum": ["none", "manual", "ai-assisted", null], "type": ["string", "null"] }, "type": { "const": "note" } }, "required": ["id", "type", "title", "path", "domain", "summary", "role", "state", "authorship", "concepts", "sources", "contexts", "attachments", "evidence", "supersedes", "reviewed", "transcription", "semantic_review", "atlas_question", "material_analysis"], "type": "object" }, "programRecord": { "additionalProperties": false, "properties": { "boundary_action": { "type": "string" }, "default": { "type": "boolean" }, "description": { "type": "string" }, "id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "enum": ["academic", "skills", "projects"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester_bound": { "type": "boolean" }, "semesters": { "items": { "$ref": "#/$defs/programSemester" }, "type": "array" }, "status": { "enum": ["active", "metadata-only", "archived"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "program" } }, "required": ["id", "type", "title", "kind", "status", "default", "semester_bound", "revision", "path"], "type": "object" }, "programSemester": { "additionalProperties": false, "properties": { "id": { "pattern": "^semester-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "order": { "minimum": 0, "type": "integer" }, "status": { "enum": ["current", "previous", "future", "archived"] }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "status", "order"], "type": "object" }, "progress": { "additionalProperties": { "additionalProperties": false, "properties": { "stages_complete": { "minimum": 0, "type": "integer" }, "stages_total": { "minimum": 0, "type": "integer" }, "units_complete": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "units_total": { "minimum": 0, "type": "integer" } }, "required": ["stages_complete", "stages_total", "units_complete", "units_needing_map", "units_total"], "type": "object" }, "type": "object" }, "projectRecord": { "additionalProperties": false, "properties": { "boundaries": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/boundaries" }, "decisions": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/decisions" }, "files": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/files" }, "id": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/id" }, "linked_module_ids": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/linked_module_ids" }, "migrated_at": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/migrated_at" }, "migrated_from": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/migrated_from" }, "migration": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/migration" }, "milestone_ids": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/milestone_ids" }, "objective": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/objective" }, "path": { "minLength": 1, "type": "string" }, "project_type": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/project_type" }, "relationship_ids": { "items": { "pattern": "^relationship-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "revision": { "minimum": 0, "type": "integer" }, "root_uri": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/root_uri" }, "schema_version": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/schema_version" }, "source_sha256": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/source_sha256" }, "status": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/status" }, "structure": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/structure" }, "thematic_group_ids": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/thematic_group_ids" }, "title": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/title" }, "type": { "const": "project" }, "unit_ids": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/unit_ids" }, "workspace_ids": { "$ref": "https://learningos.local/schema/project.schema.json#/properties/workspace_ids" } }, "required": ["schema_version", "id", "type", "title", "project_type", "status", "root_uri", "objective", "milestone_ids", "linked_module_ids", "unit_ids", "workspace_ids", "thematic_group_ids", "boundaries", "revision", "path", "relationship_ids"], "type": "object" }, "projectRelationship": { "additionalProperties": false, "properties": { "contribution": { "minLength": 1, "type": "string" }, "from_project_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "id": { "pattern": "^relationship-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "minLength": 1, "type": "string" }, "reason": { "minLength": 1, "type": "string" }, "relation_type": { "enum": ["uses", "informs", "depends-on", "produces", "related"] }, "to_id": { "minLength": 1, "type": "string" }, "to_type": { "enum": ["module", "source", "topic-pack", "note", "file"] }, "type": { "const": "project-relationship" } }, "required": ["id", "type", "from_project_id", "to_id", "to_type", "relation_type", "reason", "contribution", "path"], "type": "object" }, "projectedPathStage": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "completed": { "format": "date", "type": "string" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "done_when": { "items": { "minLength": 1, "type": "string" }, "minItems": 1, "type": "array" }, "estimate_minutes": { "minimum": 1, "type": "integer" }, "exam_critical": { "type": "boolean" }, "id": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "notes_path": { "type": "string" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "number": { "minimum": 1, "type": "integer" }, "objective": { "minLength": 1, "type": "string" }, "resources": { "items": { "$ref": "#/$defs/resource" }, "type": "array" }, "status": { "enum": ["pending", "active", "complete", "skipped"] }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "status", "objective", "done_when", "resources", "notes_text", "notes_updated"], "type": "object" }, "projectedRecord": { "oneOf": [{ "$ref": "#/$defs/noteRecord" }, { "$ref": "#/$defs/conceptRecord" }, { "$ref": "#/$defs/sourceRecord" }, { "$ref": "#/$defs/projectRecord" }, { "$ref": "#/$defs/projectRelationship" }, { "$ref": "#/$defs/compatibilityAlias" }, { "$ref": "#/$defs/moduleRecord" }, { "$ref": "#/$defs/collectionRecord" }, { "$ref": "#/$defs/workspaceRecord" }, { "$ref": "#/$defs/learningPathRecord" }, { "$ref": "#/$defs/programRecord" }, { "$ref": "#/$defs/projectedUnit" }, { "$ref": "#/$defs/studyMap" }, { "$ref": "#/$defs/moduleSourceMap" }, { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, { "$ref": "#/$defs/coordinationRecord" }] }, "projectedRoute": { "additionalProperties": false, "properties": { "angle": { "minLength": 1, "type": "string" }, "angle_detail": { "minLength": 1, "type": "string" }, "covers": { "items": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "minItems": 1, "type": "array", "uniqueItems": true }, "depth": { "minLength": 1, "type": "string" }, "exposes_solutions_for": { "description": "Route ids whose activities this material answers \u2014 a verifiable claim about content, that opening this hands over the worked solutions to those tasks, never a judgment of quality. The session compiler refuses to put such a route in the same proposal as an evidence step it answers: explaining with the answer key and then asking for unaided transfer on that same task measures nothing (audit workbench/audits/synthetic-learner-2026-09-12, F03).", "items": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "format": { "minLength": 1, "type": "string" }, "id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "requires_assets": { "description": "Files the activity itself needs before it can be done \u2014 a dataset it analyses, a code template it fills in. Distinct from the material being reachable: `_resource_available` answers 'can he open the worksheet', and this answers 'can he do what the worksheet asks'. Blatt 4 Aufgabe 3(b) needs International_Education_Costs.csv and aufgabe3.py from Moodle, neither registered here, and the session still reported the route ready (audit workbench/audits/synthetic-learner-2026-09-12, F06). An entry with no `material_uri` is by definition unregistered; the session keeps the route and names the parts that cannot be attempted, rather than dropping the runnable work or inventing a substitute dataset.", "items": { "additionalProperties": false, "properties": { "material_uri": { "pattern": "^material://", "type": "string" }, "name": { "minLength": 1, "type": "string" }, "needed_for": { "description": "Which part of the activity, in the sheet's own numbering.", "minLength": 1, "type": "string" }, "obtain_from": { "description": "Where the exact file comes from. Never a substitute.", "minLength": 1, "type": "string" } }, "required": ["name"], "type": "object" }, "minItems": 1, "type": "array" }, "scope": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "title": { "minLength": 1, "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["id", "unit_id", "source_id", "title", "format", "angle", "covers", "depth", "scope"], "type": "object" }, "projectedStage": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "completed": { "type": "string" }, "concepts": { "items": { "type": "string" }, "type": "array" }, "detour_id": { "type": "string" }, "done_when": { "items": { "type": "string" }, "type": "array" }, "estimate_minutes": { "minimum": 1, "type": "integer" }, "exam_critical": { "type": "boolean" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "number": { "minimum": 1, "type": "integer" }, "objective": { "type": "string" }, "resources": { "items": { "$ref": "#/$defs/resource" }, "type": "array" }, "scope_triage": { "type": "string" }, "source_feedback": { "items": { "$ref": "#/$defs/sourceFeedback" }, "type": "array" }, "status": { "type": "string" }, "study_map_id": { "type": "string" }, "title": { "type": "string" }, "unit_id": { "type": "string" }, "working_note": { "type": "string" } }, "required": ["id", "title", "status", "objective", "done_when", "resources", "working_note", "attachments", "source_feedback", "scope_triage", "notes_text", "notes_updated"], "type": "object" }, "projectedUnit": { "additionalProperties": false, "properties": { "artifacts": { "$ref": "https://learningos.local/schema/unit.schema.json#/properties/artifacts" }, "child_unit_ids": { "items": { "type": "string" }, "type": "array" }, "component_id": { "type": "string" }, "current_study_map": { "type": "string" }, "id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "type": "string" }, "knowledge_map": { "additionalProperties": false, "properties": { "nodes": { "items": { "$ref": "#/$defs/knowledgeNode" }, "type": "array" }, "summary": { "type": "string" } }, "required": ["summary", "nodes"], "type": "object" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "needs_study_map": { "type": "boolean" }, "note_sections": { "items": { "$ref": "#/$defs/unitNoteSection" }, "type": "array" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "order": { "minimum": 0, "type": "integer" }, "parent_unit_id": { "type": "string" }, "path": { "type": "string" }, "project_ids": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "related_module_ids": { "items": { "type": "string" }, "type": "array" }, "revision": { "minimum": 0, "type": "integer" }, "scope": { "type": "string" }, "scope_sources": { "items": { "additionalProperties": false, "properties": { "authority": { "type": "string" }, "locator": { "type": "string" }, "source_id": { "type": "string" } }, "required": ["source_id", "authority"], "type": "object" }, "type": "array" }, "source_selections": { "items": { "additionalProperties": false, "properties": { "locator": { "type": "string" }, "purpose": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "type": "string" }, "stage_ids": { "items": { "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["source_id", "locator", "purpose"], "type": "object" }, "type": "array" }, "status": { "type": "string" }, "title": { "type": "string" }, "type": { "const": "unit" }, "working_note": { "type": "string" }, "workspace_ids": { "items": { "type": "string" }, "type": "array" } }, "required": ["id", "type", "module_id", "kind", "title", "order", "scope", "status", "artifacts", "workspace_ids", "source_selections", "scope_sources", "revision", "path", "project_ids", "needs_study_map", "notes_text", "note_sections", "notes_updated"], "type": "object" }, "relation": { "additionalProperties": false, "properties": { "context": { "type": ["string", "null"] }, "from": { "type": ["string", "null"] }, "source": { "type": ["string", "null"] }, "to": { "type": ["string", "null"] }, "type": { "type": ["string", "null"] } }, "required": ["from", "type", "to", "context", "source"], "type": "object" }, "resource": { "additionalProperties": false, "properties": { "angle": { "type": "string" }, "angle_detail": { "type": "string" }, "id": { "type": "string" }, "kind": { "type": "string" }, "label": { "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "scope_triage": { "type": "string" }, "source_id": { "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["kind", "label"], "type": "object" }, "resumePointer": { "oneOf": [{ "maxProperties": 0, "type": "object" }, { "additionalProperties": false, "properties": { "module_id": { "type": "string" }, "stage_id": { "type": "string" }, "study_map_id": { "type": "string" }, "type": { "const": "resume-pointer" }, "unit_id": { "type": "string" }, "updated": { "type": "string" } }, "required": ["type", "module_id", "unit_id", "study_map_id", "stage_id", "updated"], "type": "object" }] }, "reviewItem": { "additionalProperties": false, "properties": { "category": { "type": "string" }, "context": { "type": "string" }, "id": { "type": "string" }, "reason": { "type": "string" }, "target": { "$ref": "#/$defs/jsonObject" }, "title": { "type": "string" } }, "required": ["category", "context", "id", "reason", "target", "title"], "type": "object" }, "routeId": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "semester": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "order": { "type": "integer" }, "program_id": { "type": "string" }, "status": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "order", "program_id", "status", "title"], "type": "object" }, "sourceEvaluation": { "additionalProperties": false, "properties": { "audience": { "items": { "type": "string" }, "type": "array" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "level": { "enum": ["introductory", "intermediate", "advanced", "reference", null], "type": ["string", "null"] }, "prerequisites": { "items": { "type": "string" }, "type": "array" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "roles": { "items": { "type": "string" }, "type": "array" }, "strengths": { "items": { "type": "string" }, "type": "array" }, "useful_sections": { "items": { "additionalProperties": false, "properties": { "note": { "type": "string" }, "section": { "type": "string" } }, "required": ["section", "note"], "type": "object" }, "type": "array" }, "weaknesses": { "items": { "type": "string" }, "type": "array" } }, "required": ["roles", "level", "audience", "prerequisites", "strengths", "weaknesses", "reviewed", "concepts", "useful_sections"], "type": "object" }, "sourceExamination": { "additionalProperties": false, "properties": { "approved_analysis_count": { "minimum": 0, "type": "integer" }, "evaluated": { "type": "boolean" }, "metadata_placed": { "type": "boolean" } }, "required": ["evaluated", "approved_analysis_count", "metadata_placed"], "type": "object" }, "sourceFeedback": { "additionalProperties": false, "properties": { "feedback": { "enum": ["helpful", "too-advanced", "wrong-perspective", "useful-for-derivation", "useful-for-review", "skipped"] }, "note": { "type": "string" }, "recorded": { "format": "date", "type": "string" }, "resource_id": { "pattern": "^resource-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["source_id", "feedback", "recorded"], "type": "object" }, "sourceRecord": { "additionalProperties": false, "properties": { "authors": { "items": { "type": "string" }, "type": "array" }, "discovery": { "anyOf": [{ "$ref": "https://learningos.local/schema/sources.schema.json#/properties/sources/items/properties/discovery" }, { "type": "null" }] }, "evaluations": { "items": { "$ref": "#/$defs/sourceEvaluation" }, "type": "array" }, "examination": { "$ref": "#/$defs/sourceExamination" }, "id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "identifiers": { "additionalProperties": { "type": "string" }, "type": "object" }, "material": { "pattern": "^material://.+", "type": ["string", "null"] }, "material_exists": { "type": "boolean" }, "material_path": { "type": ["string", "null"] }, "organization": { "type": ["string", "null"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "roles": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "source_type": { "enum": ["book", "paper", "lecture", "course", "video", "website", "documentation", "software", "conversation", "other"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "topics": { "items": { "pattern": "^topic-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "type": { "const": "source" }, "url": { "format": "uri", "type": ["string", "null"] }, "year": { "maximum": 2100, "minimum": 1800, "type": ["integer", "null"] } }, "required": ["id", "type", "title", "revision", "path", "source_type", "thematic_group_ids", "topics", "url", "material", "material_path", "material_exists", "authors", "organization", "year", "identifiers", "roles", "evaluations", "discovery", "examination"], "type": "object" }, "stageAttachment": { "additionalProperties": false, "properties": { "label": { "minLength": 1, "type": "string" }, "path": { "minLength": 1, "type": "string" } }, "required": ["path", "label"], "type": "object" }, "stageConceptEvidence": { "additionalProperties": false, "description": "A stage's explicit `concepts` tag. Retains unit, study-map and stage identity, so a filled cell drills into the exact stage.", "properties": { "kind": { "const": "stage-concept" }, "stage_id": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "study_map_id": { "pattern": "^study-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "study_map_id", "stage_id"], "type": "object" }, "stringArrayMap": { "additionalProperties": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "type": "object" }, "stringMap": { "additionalProperties": { "type": "string" }, "type": "object" }, "studyMap": { "additionalProperties": false, "properties": { "current_stage": { "type": "string" }, "detours": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/detours" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "path": { "type": "string" }, "plan_template_version": { "minimum": 1, "type": "integer" }, "revision": { "minimum": 0, "type": "integer" }, "shelving": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/shelving" }, "source_plan": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/source_plan" }, "stages": { "items": { "$ref": "#/$defs/projectedStage" }, "type": "array" }, "status": { "type": "string" }, "type": { "const": "study-map" }, "unit_id": { "type": "string" } }, "required": ["id", "type", "unit_id", "module_id", "status", "current_stage", "source_plan", "stages", "shelving", "revision", "path"], "type": "object" }, "thematicGroup": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "type": "string" }, "order": { "type": "integer" }, "title": { "type": "string" } }, "required": ["id", "title", "description", "order"], "type": "object" }, "topic": { "additionalProperties": false, "properties": { "domain": { "type": "string" }, "id": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "title", "domain"], "type": "object" }, "unitMaterialSynthesisProjection": { "allOf": [{ "$ref": "https://learningos.local/schema/unit-material-synthesis.schema.json#/$defs/canonicalRecord" }, { "properties": { "completeness": { "additionalProperties": false, "properties": { "assessed_route_count": { "minimum": 0, "type": "integer" }, "complete": { "type": "boolean" }, "current_route_count": { "minimum": 0, "type": "integer" }, "deep_reviewed_count": { "minimum": 0, "type": "integer" }, "duplicate_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "missing_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "orphaned_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "screened_count": { "minimum": 0, "type": "integer" }, "unavailable_count": { "minimum": 0, "type": "integer" }, "unevaluated_count": { "minimum": 0, "type": "integer" } }, "required": ["complete", "current_route_count", "assessed_route_count", "deep_reviewed_count", "screened_count", "unevaluated_count", "unavailable_count", "missing_route_ids", "orphaned_route_ids", "duplicate_route_ids"], "type": "object" }, "freshness": { "additionalProperties": false, "properties": { "reasons": { "items": { "enum": ["source_map_revision", "source_map_checksum", "route_set_checksum", "material_checksums", "policy", "current-basis-unavailable", "analysis-refs-stale"] }, "type": "array", "uniqueItems": true }, "status": { "enum": ["current", "stale"] } }, "required": ["status", "reasons"], "type": "object" } }, "required": ["freshness", "completeness"], "type": "object" }], "type": "object", "unevaluatedProperties": false }, "unitNoteSection": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "recorded_at": { "type": ["string", "null"] }, "stage_ids": { "items": { "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "text": { "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["recorded_at", "title", "stage_ids", "attachments", "text", "summary"], "type": "object" }, "workspaceRecord": { "additionalProperties": false, "properties": { "archived": { "type": "boolean" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "deadline": { "format": "date", "type": ["string", "null"] }, "id": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_ids": { "items": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "next_action": { "type": "string" }, "notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "objective": { "type": "string" }, "path": { "minLength": 1, "type": "string" }, "program_ids": { "items": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "project_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "standing": { "type": "boolean" }, "status": { "enum": ["active", "blocked", "complete"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "workspace" }, "unit_ids": { "items": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["id", "type", "title", "revision", "path", "status", "standing", "archived", "deadline", "objective", "next_action", "concepts", "notes", "sources", "program_ids", "module_ids", "unit_ids", "project_id"], "type": "object" } }, "$id": "https://learningos.local/contracts/manifest-v16.schema.json", "$schema": "https://json-schema.org/draft/2020-12/schema", "additionalProperties": false, "properties": { "_generated": { "$ref": "#/$defs/generated" }, "academic_deadlines": { "items": { "$ref": "#/$defs/academicDeadline" }, "type": "array" }, "ai_actions": { "$ref": "#/$defs/aiActions" }, "artifact_revisions": { "$ref": "#/$defs/integerMap" }, "backlinks": { "$ref": "#/$defs/backlinks" }, "counts": { "$ref": "#/$defs/counts" }, "garden_entries": { "items": { "$ref": "#/$defs/gardenEntry" }, "type": "array" }, "indexes": { "$ref": "#/$defs/indexes" }, "module_concept_edges": { "description": "The Module x Concept crossing. One row per (module, concept) pair for which at least one EXPLICIT authored tag exists - a stage's `concepts` tag or a knowledge-map node's reviewed `concept_ids`. Never inferred from titles, prose, notes, sources, or similarity; absence means not mapped, never that no relationship exists. Ordered by (module_id, concept_id).", "items": { "$ref": "#/$defs/moduleConceptEdge" }, "type": "array" }, "module_source_maps": { "items": { "$ref": "#/$defs/moduleSourceMap" }, "type": "array" }, "modules": { "items": { "$ref": "#/$defs/moduleRecord" }, "type": "array" }, "programs": { "items": { "$ref": "#/$defs/programRecord" }, "type": "array" }, "progress": { "$ref": "#/$defs/progress" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "project_relationships": { "items": { "$ref": "#/$defs/projectRelationship" }, "type": "array" }, "projects": { "items": { "$ref": "#/$defs/projectRecord" }, "type": "array" }, "records": { "items": { "$ref": "#/$defs/projectedRecord" }, "type": "array" }, "relations": { "items": { "$ref": "#/$defs/relation" }, "type": "array" }, "resume_pointer": { "$ref": "#/$defs/resumePointer" }, "review_items": { "items": { "$ref": "#/$defs/reviewItem" }, "type": "array" }, "semesters": { "items": { "$ref": "#/$defs/semester" }, "type": "array" }, "stages": { "items": { "$ref": "#/$defs/flatStage" }, "type": "array" }, "study_maps": { "items": { "$ref": "#/$defs/studyMap" }, "type": "array" }, "thematic_groups": { "items": { "$ref": "#/$defs/thematicGroup" }, "type": "array" }, "topic_packs": { "items": { "$ref": "#/$defs/collectionRecord" }, "type": "array" }, "topics": { "items": { "$ref": "#/$defs/topic" }, "type": "array" }, "unit_material_syntheses": { "items": { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, "type": "array" }, "units": { "items": { "$ref": "#/$defs/projectedUnit" }, "type": "array" } }, "required": ["_generated", "academic_deadlines", "ai_actions", "artifact_revisions", "backlinks", "counts", "garden_entries", "indexes", "module_concept_edges", "module_source_maps", "modules", "programs", "progress", "project_aliases", "project_relationships", "projects", "records", "relations", "resume_pointer", "review_items", "semesters", "stages", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "unit_material_syntheses"], "title": "LearningOS atomic manifest v16", "type": "object" };
+    var schema32 = { "additionalProperties": false, "properties": { "contract_version": { "const": 16 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" };
     var schema51 = { "additionalProperties": false, "properties": { "ai_action_requests": { "minimum": 0, "type": "integer" }, "collections": { "minimum": 0, "type": "integer" }, "concepts": { "minimum": 0, "type": "integer" }, "garden_entries": { "minimum": 0, "type": "integer" }, "inbox_items": { "minimum": 0, "type": "integer" }, "learning_paths": { "minimum": 0, "type": "integer" }, "learning_paths_active": { "minimum": 0, "type": "integer" }, "modules": { "minimum": 0, "type": "integer" }, "notes": { "minimum": 0, "type": "integer" }, "notes_reviewed": { "minimum": 0, "type": "integer" }, "notes_with_evidence": { "minimum": 0, "type": "integer" }, "programs": { "minimum": 0, "type": "integer" }, "projects": { "minimum": 0, "type": "integer" }, "relations": { "minimum": 0, "type": "integer" }, "source_feedback_records": { "minimum": 0, "type": "integer" }, "sources": { "minimum": 0, "type": "integer" }, "sources_with_topics": { "minimum": 0, "type": "integer" }, "stages": { "minimum": 0, "type": "integer" }, "stages_complete": { "minimum": 0, "type": "integer" }, "study_maps": { "minimum": 0, "type": "integer" }, "thematic_groups": { "minimum": 0, "type": "integer" }, "topic_packs": { "minimum": 0, "type": "integer" }, "topics": { "minimum": 0, "type": "integer" }, "units": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "workspaces_active": { "minimum": 0, "type": "integer" }, "workspaces_archived": { "minimum": 0, "type": "integer" } }, "required": ["ai_action_requests", "collections", "concepts", "garden_entries", "inbox_items", "learning_paths", "learning_paths_active", "modules", "notes", "notes_reviewed", "notes_with_evidence", "programs", "projects", "relations", "source_feedback_records", "sources", "sources_with_topics", "stages", "stages_complete", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "units_needing_map", "workspaces_active", "workspaces_archived"], "type": "object" };
     var schema52 = { "additionalProperties": false, "properties": { "id": { "type": "string" }, "last_ai_request_id": { "type": ["string", "null"] }, "path": { "type": "string" }, "revision": { "type": "string" }, "state": { "type": "string" }, "tags": { "items": { "type": "string" }, "type": "array" }, "title": { "type": "string" }, "transcription_path": { "type": ["string", "null"] }, "type": { "const": "garden-note" } }, "required": ["id", "last_ai_request_id", "path", "revision", "state", "tags", "title", "transcription_path", "type"], "type": "object" };
     var schema84 = { "additionalProperties": false, "properties": { "contribution": { "minLength": 1, "type": "string" }, "from_project_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "id": { "pattern": "^relationship-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "minLength": 1, "type": "string" }, "reason": { "minLength": 1, "type": "string" }, "relation_type": { "enum": ["uses", "informs", "depends-on", "produces", "related"] }, "to_id": { "minLength": 1, "type": "string" }, "to_type": { "enum": ["module", "source", "topic-pack", "note", "file"] }, "type": { "const": "project-relationship" } }, "required": ["id", "type", "from_project_id", "to_id", "to_type", "relation_type", "reason", "contribution", "path"], "type": "object" };
@@ -14384,8 +14384,8 @@ var require_manifest_validator = __commonJS({
       return errors === 0;
     }
     validate70.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    var schema160 = { "allOf": [{ "$ref": "https://learningos.local/schema/unit-material-synthesis.schema.json#/$defs/canonicalRecord" }, { "properties": { "completeness": { "additionalProperties": false, "properties": { "assessed_route_count": { "minimum": 0, "type": "integer" }, "complete": { "type": "boolean" }, "current_route_count": { "minimum": 0, "type": "integer" }, "deep_reviewed_count": { "minimum": 0, "type": "integer" }, "duplicate_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "missing_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "orphaned_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "screened_count": { "minimum": 0, "type": "integer" }, "unavailable_count": { "minimum": 0, "type": "integer" }, "unevaluated_count": { "minimum": 0, "type": "integer" } }, "required": ["complete", "current_route_count", "assessed_route_count", "deep_reviewed_count", "screened_count", "unevaluated_count", "unavailable_count", "missing_route_ids", "orphaned_route_ids", "duplicate_route_ids"], "type": "object" }, "freshness": { "additionalProperties": false, "properties": { "reasons": { "items": { "enum": ["source_map_revision", "source_map_checksum", "route_set_checksum", "material_checksums", "policy", "current-basis-unavailable", "analysis-refs-stale"] }, "type": "array", "uniqueItems": true }, "status": { "enum": ["current", "stale"] } }, "required": ["status", "reasons"], "type": "object" } }, "required": ["freshness", "completeness"], "type": "object" }], "unevaluatedProperties": false };
-    var schema162 = { "properties": { "basis": { "additionalProperties": false, "properties": { "ai_provenance": { "additionalProperties": false, "properties": { "delivery_id": { "minLength": 1, "type": "string" }, "provider": { "enum": ["manual-bundle", "local"] }, "request_id": { "minLength": 1, "type": "string" } }, "required": ["request_id", "delivery_id", "provider"], "type": "object" }, "material_checksums": { "additionalProperties": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/sha256" }, "propertyNames": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$" }, "type": "object" }, "policy": { "const": "tiered-v2" }, "route_set_checksum": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/sha256" }, "source_map_checksum": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/sha256" }, "source_map_revision": { "minimum": 0, "type": "integer" }, "unit_revision": { "minimum": 0, "type": "integer" } }, "required": ["unit_revision", "source_map_revision", "source_map_checksum", "route_set_checksum", "material_checksums", "policy", "ai_provenance"], "type": "object" }, "comparisons": { "items": { "additionalProperties": false, "properties": { "concept_ids": { "allOf": [{ "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/conceptIds" }, { "minItems": 1 }] }, "evidence": { "additionalProperties": false, "properties": { "left": { "items": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/evidence" }, "minItems": 1, "type": "array" }, "right": { "items": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/evidence" }, "minItems": 1, "type": "array" } }, "required": ["left", "right"], "type": "object" }, "left_route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "narrative": { "minLength": 1, "type": "string" }, "relation": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/comparisonRelation" }, "right_route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["left_route_id", "right_route_id", "relation", "narrative", "concept_ids", "evidence"], "type": "object" }, "type": "array" }, "concept_groups": { "items": { "additionalProperties": false, "properties": { "bridge_note_ids": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "concept_id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "local_node_ids": { "items": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "narrative": { "minLength": 1, "type": "string" }, "related_unit_ids": { "items": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["concept_id", "local_node_ids", "related_unit_ids", "bridge_note_ids", "narrative"], "type": "object" }, "type": "array" }, "id": { "pattern": "^material-synthesis-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "route_assessments": { "items": { "additionalProperties": false, "allOf": [{ "else": { "not": { "anyOf": [{ "required": ["contribution"] }, { "required": ["assumptions"] }, { "required": ["notation"] }, { "required": ["exercise_value"] }, { "required": ["best_for"] }, { "required": ["limitations"] }, { "required": ["scope_of_absence"] }] }, "required": ["reason"] }, "if": { "properties": { "review_status": { "const": "deep-reviewed" } }, "required": ["review_status"] }, "then": { "properties": { "evidence": { "minItems": 1 } }, "required": ["contribution", "assumptions", "notation", "exercise_value", "best_for", "limitations", "scope_of_absence", "evidence"] } }], "properties": { "analysis_refs": { "description": "References to durable source-analysis notes whose prose this assessment reuses instead of copying. Each ref pins the note revision the approver saw; a later note edit stales the dossier until re-review.", "items": { "$ref": "#/$defs/analysisRef" }, "type": "array" }, "assumptions": { "minLength": 1, "type": "string" }, "best_for": { "minLength": 1, "type": "string" }, "concept_ids": { "allOf": [{ "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/conceptIds" }, { "minItems": 1 }] }, "contribution": { "minLength": 1, "type": "string" }, "evidence": { "items": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/evidence" }, "type": "array" }, "exercise_value": { "minLength": 1, "type": "string" }, "limitations": { "minLength": 1, "type": "string" }, "locator": { "minLength": 1, "type": "string" }, "notation": { "minLength": 1, "type": "string" }, "reason": { "minLength": 1, "type": "string" }, "review_status": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/routeReviewStatus" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "scope_of_absence": { "description": 'Exactly what this deep review inspected, in house-style page citations (e.g. "UE3.pdf, PDF pp. 15-38 of 54"). Every negative claim in `contribution` or `limitations` is bounded by this and by nothing wider: absence from inspected pages is not absence from the material.', "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["route_id", "source_id", "locator", "review_status", "concept_ids"], "type": "object" }, "minItems": 1, "type": "array" }, "schema_version": { "const": 1 }, "status": { "const": "approved" }, "type": { "const": "unit-material-synthesis" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["schema_version", "id", "type", "unit_id", "status", "basis", "route_assessments", "comparisons", "concept_groups"], "type": "object" };
+    var schema160 = { "allOf": [{ "$ref": "https://learningos.local/schema/unit-material-synthesis.schema.json#/$defs/canonicalRecord" }, { "properties": { "completeness": { "additionalProperties": false, "properties": { "assessed_route_count": { "minimum": 0, "type": "integer" }, "complete": { "type": "boolean" }, "current_route_count": { "minimum": 0, "type": "integer" }, "deep_reviewed_count": { "minimum": 0, "type": "integer" }, "duplicate_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "missing_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "orphaned_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "screened_count": { "minimum": 0, "type": "integer" }, "unavailable_count": { "minimum": 0, "type": "integer" }, "unevaluated_count": { "minimum": 0, "type": "integer" } }, "required": ["complete", "current_route_count", "assessed_route_count", "deep_reviewed_count", "screened_count", "unevaluated_count", "unavailable_count", "missing_route_ids", "orphaned_route_ids", "duplicate_route_ids"], "type": "object" }, "freshness": { "additionalProperties": false, "properties": { "reasons": { "items": { "enum": ["source_map_revision", "source_map_checksum", "route_set_checksum", "material_checksums", "policy", "current-basis-unavailable", "analysis-refs-stale"] }, "type": "array", "uniqueItems": true }, "status": { "enum": ["current", "stale"] } }, "required": ["status", "reasons"], "type": "object" } }, "required": ["freshness", "completeness"], "type": "object" }], "type": "object", "unevaluatedProperties": false };
+    var schema162 = { "properties": { "basis": { "additionalProperties": false, "properties": { "ai_provenance": { "additionalProperties": false, "properties": { "delivery_id": { "minLength": 1, "type": "string" }, "provider": { "enum": ["manual-bundle", "local"] }, "request_id": { "minLength": 1, "type": "string" } }, "required": ["request_id", "delivery_id", "provider"], "type": "object" }, "material_checksums": { "additionalProperties": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/sha256" }, "propertyNames": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$" }, "type": "object" }, "policy": { "const": "tiered-v2" }, "route_set_checksum": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/sha256" }, "source_map_checksum": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/sha256" }, "source_map_revision": { "minimum": 0, "type": "integer" }, "unit_revision": { "minimum": 0, "type": "integer" } }, "required": ["unit_revision", "source_map_revision", "source_map_checksum", "route_set_checksum", "material_checksums", "policy", "ai_provenance"], "type": "object" }, "comparisons": { "items": { "additionalProperties": false, "properties": { "concept_ids": { "allOf": [{ "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/conceptIds" }, { "minItems": 1, "type": "array" }] }, "evidence": { "additionalProperties": false, "properties": { "left": { "items": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/evidence" }, "minItems": 1, "type": "array" }, "right": { "items": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/evidence" }, "minItems": 1, "type": "array" } }, "required": ["left", "right"], "type": "object" }, "left_route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "narrative": { "minLength": 1, "type": "string" }, "relation": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/comparisonRelation" }, "right_route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["left_route_id", "right_route_id", "relation", "narrative", "concept_ids", "evidence"], "type": "object" }, "type": "array" }, "concept_groups": { "items": { "additionalProperties": false, "properties": { "bridge_note_ids": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "concept_id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "local_node_ids": { "items": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "narrative": { "minLength": 1, "type": "string" }, "related_unit_ids": { "items": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["concept_id", "local_node_ids", "related_unit_ids", "bridge_note_ids", "narrative"], "type": "object" }, "type": "array" }, "id": { "pattern": "^material-synthesis-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "route_assessments": { "items": { "additionalProperties": false, "allOf": [{ "else": { "not": { "anyOf": [{ "required": ["contribution"] }, { "required": ["assumptions"] }, { "required": ["notation"] }, { "required": ["exercise_value"] }, { "required": ["best_for"] }, { "required": ["limitations"] }, { "required": ["scope_of_absence"] }] }, "required": ["reason"] }, "if": { "properties": { "review_status": { "const": "deep-reviewed" } }, "required": ["review_status"] }, "then": { "properties": { "evidence": { "minItems": 1, "type": "array" } }, "required": ["contribution", "assumptions", "notation", "exercise_value", "best_for", "limitations", "scope_of_absence", "evidence"] } }], "properties": { "analysis_refs": { "description": "References to durable source-analysis notes whose prose this assessment reuses instead of copying. Each ref pins the note revision the approver saw; a later note edit stales the dossier until re-review.", "items": { "$ref": "#/$defs/analysisRef" }, "type": "array" }, "assumptions": { "minLength": 1, "type": "string" }, "best_for": { "minLength": 1, "type": "string" }, "concept_ids": { "allOf": [{ "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/conceptIds" }, { "minItems": 1, "type": "array" }] }, "contribution": { "minLength": 1, "type": "string" }, "evidence": { "items": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/evidence" }, "type": "array" }, "exercise_value": { "minLength": 1, "type": "string" }, "limitations": { "minLength": 1, "type": "string" }, "locator": { "minLength": 1, "type": "string" }, "notation": { "minLength": 1, "type": "string" }, "reason": { "minLength": 1, "type": "string" }, "review_status": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/routeReviewStatus" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "scope_of_absence": { "description": 'Exactly what this deep review inspected, in house-style page citations (e.g. "UE3.pdf, PDF pp. 15-38 of 54"). Every negative claim in `contribution` or `limitations` is bounded by this and by nothing wider: absence from inspected pages is not absence from the material.', "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["route_id", "source_id", "locator", "review_status", "concept_ids"], "type": "object" }, "minItems": 1, "type": "array" }, "schema_version": { "const": 1 }, "status": { "const": "approved" }, "type": { "const": "unit-material-synthesis" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["schema_version", "id", "type", "unit_id", "status", "basis", "route_assessments", "comparisons", "concept_groups"], "type": "object" };
     var schema170 = { "enum": ["duplicates", "overlaps", "complements", "extends", "contrasts", "alternate-notation"] };
     var schema174 = { "enum": ["deep-reviewed", "screened", "unevaluated", "unavailable"] };
     var pattern192 = new RegExp("^sha256:[a-f0-9]{64}$", "u");
@@ -15136,9 +15136,14 @@ var require_manifest_validator = __commonJS({
                                 var valid10 = _errs36 === errors;
                                 if (valid10) {
                                   const _errs41 = errors;
-                                  if (Array.isArray(data14)) {
-                                    if (data14.length < 1) {
-                                      validate98.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/concept_ids", schemaPath: "#/properties/comparisons/items/properties/concept_ids/allOf/1/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
+                                  if (errors === _errs41) {
+                                    if (Array.isArray(data14)) {
+                                      if (data14.length < 1) {
+                                        validate98.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/concept_ids", schemaPath: "#/properties/comparisons/items/properties/concept_ids/allOf/1/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
+                                        return false;
+                                      }
+                                    } else {
+                                      validate98.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/concept_ids", schemaPath: "#/properties/comparisons/items/properties/concept_ids/allOf/1/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                       return false;
                                     }
                                   }
@@ -15151,15 +15156,15 @@ var require_manifest_validator = __commonJS({
                               if (valid9) {
                                 if (data13.evidence !== void 0) {
                                   let data16 = data13.evidence;
-                                  const _errs42 = errors;
-                                  if (errors === _errs42) {
+                                  const _errs43 = errors;
+                                  if (errors === _errs43) {
                                     if (data16 && typeof data16 == "object" && !Array.isArray(data16)) {
                                       let missing4;
                                       if (data16.left === void 0 && (missing4 = "left") || data16.right === void 0 && (missing4 = "right")) {
                                         validate98.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/evidence", schemaPath: "#/properties/comparisons/items/properties/evidence/required", keyword: "required", params: { missingProperty: missing4 }, message: "must have required property '" + missing4 + "'" }];
                                         return false;
                                       } else {
-                                        const _errs44 = errors;
+                                        const _errs45 = errors;
                                         for (const key5 in data16) {
                                           if (!(key5 === "left" || key5 === "right")) {
                                             validate98.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/evidence", schemaPath: "#/properties/comparisons/items/properties/evidence/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key5 }, message: "must NOT have additional properties" }];
@@ -15167,11 +15172,11 @@ var require_manifest_validator = __commonJS({
                                             break;
                                           }
                                         }
-                                        if (_errs44 === errors) {
+                                        if (_errs45 === errors) {
                                           if (data16.left !== void 0) {
                                             let data17 = data16.left;
-                                            const _errs45 = errors;
-                                            if (errors === _errs45) {
+                                            const _errs46 = errors;
+                                            if (errors === _errs46) {
                                               if (Array.isArray(data17)) {
                                                 if (data17.length < 1) {
                                                   validate98.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/evidence/left", schemaPath: "#/properties/comparisons/items/properties/evidence/properties/left/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
@@ -15180,12 +15185,12 @@ var require_manifest_validator = __commonJS({
                                                   var valid15 = true;
                                                   const len2 = data17.length;
                                                   for (let i3 = 0; i3 < len2; i3++) {
-                                                    const _errs47 = errors;
+                                                    const _errs48 = errors;
                                                     if (!validate91(data17[i3], { instancePath: instancePath + "/comparisons/" + i0 + "/evidence/left/" + i3, parentData: data17, parentDataProperty: i3, rootData, dynamicAnchors })) {
                                                       vErrors = vErrors === null ? validate91.errors : vErrors.concat(validate91.errors);
                                                       errors = vErrors.length;
                                                     }
-                                                    var valid15 = _errs47 === errors;
+                                                    var valid15 = _errs48 === errors;
                                                     if (!valid15) {
                                                       break;
                                                     }
@@ -15196,15 +15201,15 @@ var require_manifest_validator = __commonJS({
                                                 return false;
                                               }
                                             }
-                                            var valid14 = _errs45 === errors;
+                                            var valid14 = _errs46 === errors;
                                           } else {
                                             var valid14 = true;
                                           }
                                           if (valid14) {
                                             if (data16.right !== void 0) {
                                               let data19 = data16.right;
-                                              const _errs48 = errors;
-                                              if (errors === _errs48) {
+                                              const _errs49 = errors;
+                                              if (errors === _errs49) {
                                                 if (Array.isArray(data19)) {
                                                   if (data19.length < 1) {
                                                     validate98.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/evidence/right", schemaPath: "#/properties/comparisons/items/properties/evidence/properties/right/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
@@ -15213,12 +15218,12 @@ var require_manifest_validator = __commonJS({
                                                     var valid16 = true;
                                                     const len3 = data19.length;
                                                     for (let i4 = 0; i4 < len3; i4++) {
-                                                      const _errs50 = errors;
+                                                      const _errs51 = errors;
                                                       if (!validate91(data19[i4], { instancePath: instancePath + "/comparisons/" + i0 + "/evidence/right/" + i4, parentData: data19, parentDataProperty: i4, rootData, dynamicAnchors })) {
                                                         vErrors = vErrors === null ? validate91.errors : vErrors.concat(validate91.errors);
                                                         errors = vErrors.length;
                                                       }
-                                                      var valid16 = _errs50 === errors;
+                                                      var valid16 = _errs51 === errors;
                                                       if (!valid16) {
                                                         break;
                                                       }
@@ -15229,7 +15234,7 @@ var require_manifest_validator = __commonJS({
                                                   return false;
                                                 }
                                               }
-                                              var valid14 = _errs48 === errors;
+                                              var valid14 = _errs49 === errors;
                                             } else {
                                               var valid14 = true;
                                             }
@@ -15241,15 +15246,15 @@ var require_manifest_validator = __commonJS({
                                       return false;
                                     }
                                   }
-                                  var valid9 = _errs42 === errors;
+                                  var valid9 = _errs43 === errors;
                                 } else {
                                   var valid9 = true;
                                 }
                                 if (valid9) {
                                   if (data13.left_route_id !== void 0) {
                                     let data21 = data13.left_route_id;
-                                    const _errs51 = errors;
-                                    if (errors === _errs51) {
+                                    const _errs52 = errors;
+                                    if (errors === _errs52) {
                                       if (typeof data21 === "string") {
                                         if (!pattern25.test(data21)) {
                                           validate98.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/left_route_id", schemaPath: "#/properties/comparisons/items/properties/left_route_id/pattern", keyword: "pattern", params: { pattern: "^route-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^route-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -15260,15 +15265,15 @@ var require_manifest_validator = __commonJS({
                                         return false;
                                       }
                                     }
-                                    var valid9 = _errs51 === errors;
+                                    var valid9 = _errs52 === errors;
                                   } else {
                                     var valid9 = true;
                                   }
                                   if (valid9) {
                                     if (data13.narrative !== void 0) {
                                       let data22 = data13.narrative;
-                                      const _errs53 = errors;
-                                      if (errors === _errs53) {
+                                      const _errs54 = errors;
+                                      if (errors === _errs54) {
                                         if (typeof data22 === "string") {
                                           if (func3(data22) < 1) {
                                             validate98.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/narrative", schemaPath: "#/properties/comparisons/items/properties/narrative/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -15279,27 +15284,27 @@ var require_manifest_validator = __commonJS({
                                           return false;
                                         }
                                       }
-                                      var valid9 = _errs53 === errors;
+                                      var valid9 = _errs54 === errors;
                                     } else {
                                       var valid9 = true;
                                     }
                                     if (valid9) {
                                       if (data13.relation !== void 0) {
                                         let data23 = data13.relation;
-                                        const _errs55 = errors;
+                                        const _errs56 = errors;
                                         if (!(data23 === "duplicates" || data23 === "overlaps" || data23 === "complements" || data23 === "extends" || data23 === "contrasts" || data23 === "alternate-notation")) {
                                           validate98.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/relation", schemaPath: "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/comparisonRelation/enum", keyword: "enum", params: { allowedValues: schema170.enum }, message: "must be equal to one of the allowed values" }];
                                           return false;
                                         }
-                                        var valid9 = _errs55 === errors;
+                                        var valid9 = _errs56 === errors;
                                       } else {
                                         var valid9 = true;
                                       }
                                       if (valid9) {
                                         if (data13.right_route_id !== void 0) {
                                           let data24 = data13.right_route_id;
-                                          const _errs57 = errors;
-                                          if (errors === _errs57) {
+                                          const _errs58 = errors;
+                                          if (errors === _errs58) {
                                             if (typeof data24 === "string") {
                                               if (!pattern25.test(data24)) {
                                                 validate98.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/right_route_id", schemaPath: "#/properties/comparisons/items/properties/right_route_id/pattern", keyword: "pattern", params: { pattern: "^route-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^route-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -15310,7 +15315,7 @@ var require_manifest_validator = __commonJS({
                                               return false;
                                             }
                                           }
-                                          var valid9 = _errs57 === errors;
+                                          var valid9 = _errs58 === errors;
                                         } else {
                                           var valid9 = true;
                                         }
@@ -15343,22 +15348,22 @@ var require_manifest_validator = __commonJS({
               if (valid0) {
                 if (data.concept_groups !== void 0) {
                   let data25 = data.concept_groups;
-                  const _errs59 = errors;
-                  if (errors === _errs59) {
+                  const _errs60 = errors;
+                  if (errors === _errs60) {
                     if (Array.isArray(data25)) {
                       var valid18 = true;
                       const len4 = data25.length;
                       for (let i5 = 0; i5 < len4; i5++) {
                         let data26 = data25[i5];
-                        const _errs61 = errors;
-                        if (errors === _errs61) {
+                        const _errs62 = errors;
+                        if (errors === _errs62) {
                           if (data26 && typeof data26 == "object" && !Array.isArray(data26)) {
                             let missing5;
                             if (data26.concept_id === void 0 && (missing5 = "concept_id") || data26.local_node_ids === void 0 && (missing5 = "local_node_ids") || data26.related_unit_ids === void 0 && (missing5 = "related_unit_ids") || data26.bridge_note_ids === void 0 && (missing5 = "bridge_note_ids") || data26.narrative === void 0 && (missing5 = "narrative")) {
                               validate98.errors = [{ instancePath: instancePath + "/concept_groups/" + i5, schemaPath: "#/properties/concept_groups/items/required", keyword: "required", params: { missingProperty: missing5 }, message: "must have required property '" + missing5 + "'" }];
                               return false;
                             } else {
-                              const _errs63 = errors;
+                              const _errs64 = errors;
                               for (const key6 in data26) {
                                 if (!(key6 === "bridge_note_ids" || key6 === "concept_id" || key6 === "local_node_ids" || key6 === "narrative" || key6 === "related_unit_ids")) {
                                   validate98.errors = [{ instancePath: instancePath + "/concept_groups/" + i5, schemaPath: "#/properties/concept_groups/items/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key6 }, message: "must NOT have additional properties" }];
@@ -15366,18 +15371,18 @@ var require_manifest_validator = __commonJS({
                                   break;
                                 }
                               }
-                              if (_errs63 === errors) {
+                              if (_errs64 === errors) {
                                 if (data26.bridge_note_ids !== void 0) {
                                   let data27 = data26.bridge_note_ids;
-                                  const _errs64 = errors;
-                                  if (errors === _errs64) {
+                                  const _errs65 = errors;
+                                  if (errors === _errs65) {
                                     if (Array.isArray(data27)) {
                                       var valid20 = true;
                                       const len5 = data27.length;
                                       for (let i6 = 0; i6 < len5; i6++) {
                                         let data28 = data27[i6];
-                                        const _errs66 = errors;
-                                        if (errors === _errs66) {
+                                        const _errs67 = errors;
+                                        if (errors === _errs67) {
                                           if (typeof data28 === "string") {
                                             if (!pattern69.test(data28)) {
                                               validate98.errors = [{ instancePath: instancePath + "/concept_groups/" + i5 + "/bridge_note_ids/" + i6, schemaPath: "#/properties/concept_groups/items/properties/bridge_note_ids/items/pattern", keyword: "pattern", params: { pattern: "^note-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^note-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -15388,7 +15393,7 @@ var require_manifest_validator = __commonJS({
                                             return false;
                                           }
                                         }
-                                        var valid20 = _errs66 === errors;
+                                        var valid20 = _errs67 === errors;
                                         if (!valid20) {
                                           break;
                                         }
@@ -15418,15 +15423,15 @@ var require_manifest_validator = __commonJS({
                                       return false;
                                     }
                                   }
-                                  var valid19 = _errs64 === errors;
+                                  var valid19 = _errs65 === errors;
                                 } else {
                                   var valid19 = true;
                                 }
                                 if (valid19) {
                                   if (data26.concept_id !== void 0) {
                                     let data29 = data26.concept_id;
-                                    const _errs68 = errors;
-                                    if (errors === _errs68) {
+                                    const _errs69 = errors;
+                                    if (errors === _errs69) {
                                       if (typeof data29 === "string") {
                                         if (!pattern13.test(data29)) {
                                           validate98.errors = [{ instancePath: instancePath + "/concept_groups/" + i5 + "/concept_id", schemaPath: "#/properties/concept_groups/items/properties/concept_id/pattern", keyword: "pattern", params: { pattern: "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -15437,22 +15442,22 @@ var require_manifest_validator = __commonJS({
                                         return false;
                                       }
                                     }
-                                    var valid19 = _errs68 === errors;
+                                    var valid19 = _errs69 === errors;
                                   } else {
                                     var valid19 = true;
                                   }
                                   if (valid19) {
                                     if (data26.local_node_ids !== void 0) {
                                       let data30 = data26.local_node_ids;
-                                      const _errs70 = errors;
-                                      if (errors === _errs70) {
+                                      const _errs71 = errors;
+                                      if (errors === _errs71) {
                                         if (Array.isArray(data30)) {
                                           var valid22 = true;
                                           const len6 = data30.length;
                                           for (let i8 = 0; i8 < len6; i8++) {
                                             let data31 = data30[i8];
-                                            const _errs72 = errors;
-                                            if (errors === _errs72) {
+                                            const _errs73 = errors;
+                                            if (errors === _errs73) {
                                               if (typeof data31 === "string") {
                                                 if (!pattern17.test(data31)) {
                                                   validate98.errors = [{ instancePath: instancePath + "/concept_groups/" + i5 + "/local_node_ids/" + i8, schemaPath: "#/properties/concept_groups/items/properties/local_node_ids/items/pattern", keyword: "pattern", params: { pattern: "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -15463,7 +15468,7 @@ var require_manifest_validator = __commonJS({
                                                 return false;
                                               }
                                             }
-                                            var valid22 = _errs72 === errors;
+                                            var valid22 = _errs73 === errors;
                                             if (!valid22) {
                                               break;
                                             }
@@ -15493,15 +15498,15 @@ var require_manifest_validator = __commonJS({
                                           return false;
                                         }
                                       }
-                                      var valid19 = _errs70 === errors;
+                                      var valid19 = _errs71 === errors;
                                     } else {
                                       var valid19 = true;
                                     }
                                     if (valid19) {
                                       if (data26.narrative !== void 0) {
                                         let data32 = data26.narrative;
-                                        const _errs74 = errors;
-                                        if (errors === _errs74) {
+                                        const _errs75 = errors;
+                                        if (errors === _errs75) {
                                           if (typeof data32 === "string") {
                                             if (func3(data32) < 1) {
                                               validate98.errors = [{ instancePath: instancePath + "/concept_groups/" + i5 + "/narrative", schemaPath: "#/properties/concept_groups/items/properties/narrative/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -15512,22 +15517,22 @@ var require_manifest_validator = __commonJS({
                                             return false;
                                           }
                                         }
-                                        var valid19 = _errs74 === errors;
+                                        var valid19 = _errs75 === errors;
                                       } else {
                                         var valid19 = true;
                                       }
                                       if (valid19) {
                                         if (data26.related_unit_ids !== void 0) {
                                           let data33 = data26.related_unit_ids;
-                                          const _errs76 = errors;
-                                          if (errors === _errs76) {
+                                          const _errs77 = errors;
+                                          if (errors === _errs77) {
                                             if (Array.isArray(data33)) {
                                               var valid24 = true;
                                               const len7 = data33.length;
                                               for (let i10 = 0; i10 < len7; i10++) {
                                                 let data34 = data33[i10];
-                                                const _errs78 = errors;
-                                                if (errors === _errs78) {
+                                                const _errs79 = errors;
+                                                if (errors === _errs79) {
                                                   if (typeof data34 === "string") {
                                                     if (!pattern16.test(data34)) {
                                                       validate98.errors = [{ instancePath: instancePath + "/concept_groups/" + i5 + "/related_unit_ids/" + i10, schemaPath: "#/properties/concept_groups/items/properties/related_unit_ids/items/pattern", keyword: "pattern", params: { pattern: "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -15538,7 +15543,7 @@ var require_manifest_validator = __commonJS({
                                                     return false;
                                                   }
                                                 }
-                                                var valid24 = _errs78 === errors;
+                                                var valid24 = _errs79 === errors;
                                                 if (!valid24) {
                                                   break;
                                                 }
@@ -15568,7 +15573,7 @@ var require_manifest_validator = __commonJS({
                                               return false;
                                             }
                                           }
-                                          var valid19 = _errs76 === errors;
+                                          var valid19 = _errs77 === errors;
                                         } else {
                                           var valid19 = true;
                                         }
@@ -15583,7 +15588,7 @@ var require_manifest_validator = __commonJS({
                             return false;
                           }
                         }
-                        var valid18 = _errs61 === errors;
+                        var valid18 = _errs62 === errors;
                         if (!valid18) {
                           break;
                         }
@@ -15593,15 +15598,15 @@ var require_manifest_validator = __commonJS({
                       return false;
                     }
                   }
-                  var valid0 = _errs59 === errors;
+                  var valid0 = _errs60 === errors;
                 } else {
                   var valid0 = true;
                 }
                 if (valid0) {
                   if (data.id !== void 0) {
                     let data35 = data.id;
-                    const _errs80 = errors;
-                    if (errors === _errs80) {
+                    const _errs81 = errors;
+                    if (errors === _errs81) {
                       if (typeof data35 === "string") {
                         if (!pattern12.test(data35)) {
                           validate98.errors = [{ instancePath: instancePath + "/id", schemaPath: "#/properties/id/pattern", keyword: "pattern", params: { pattern: "^material-synthesis-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^material-synthesis-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -15612,15 +15617,15 @@ var require_manifest_validator = __commonJS({
                         return false;
                       }
                     }
-                    var valid0 = _errs80 === errors;
+                    var valid0 = _errs81 === errors;
                   } else {
                     var valid0 = true;
                   }
                   if (valid0) {
                     if (data.route_assessments !== void 0) {
                       let data36 = data.route_assessments;
-                      const _errs82 = errors;
-                      if (errors === _errs82) {
+                      const _errs83 = errors;
+                      if (errors === _errs83) {
                         if (Array.isArray(data36)) {
                           if (data36.length < 1) {
                             validate98.errors = [{ instancePath: instancePath + "/route_assessments", schemaPath: "#/properties/route_assessments/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
@@ -15630,10 +15635,10 @@ var require_manifest_validator = __commonJS({
                             const len8 = data36.length;
                             for (let i12 = 0; i12 < len8; i12++) {
                               let data37 = data36[i12];
-                              const _errs84 = errors;
-                              const _errs87 = errors;
-                              let valid28 = true;
+                              const _errs85 = errors;
                               const _errs88 = errors;
+                              let valid28 = true;
+                              const _errs89 = errors;
                               if (data37 && typeof data37 == "object" && !Array.isArray(data37)) {
                                 let missing6;
                                 if (data37.review_status === void 0 && (missing6 = "review_status")) {
@@ -15658,18 +15663,18 @@ var require_manifest_validator = __commonJS({
                                   }
                                 }
                               }
-                              var _valid0 = _errs88 === errors;
-                              errors = _errs87;
+                              var _valid0 = _errs89 === errors;
+                              errors = _errs88;
                               if (vErrors !== null) {
-                                if (_errs87) {
-                                  vErrors.length = _errs87;
+                                if (_errs88) {
+                                  vErrors.length = _errs88;
                                 } else {
                                   vErrors = null;
                                 }
                               }
                               let ifClause0;
                               if (_valid0) {
-                                const _errs90 = errors;
+                                const _errs91 = errors;
                                 if (data37 && typeof data37 == "object" && !Array.isArray(data37)) {
                                   let missing7;
                                   if (data37.contribution === void 0 && (missing7 = "contribution") || data37.assumptions === void 0 && (missing7 = "assumptions") || data37.notation === void 0 && (missing7 = "notation") || data37.exercise_value === void 0 && (missing7 = "exercise_value") || data37.best_for === void 0 && (missing7 = "best_for") || data37.limitations === void 0 && (missing7 = "limitations") || data37.scope_of_absence === void 0 && (missing7 = "scope_of_absence") || data37.evidence === void 0 && (missing7 = "evidence")) {
@@ -15678,16 +15683,22 @@ var require_manifest_validator = __commonJS({
                                   } else {
                                     if (data37.evidence !== void 0) {
                                       let data39 = data37.evidence;
-                                      if (Array.isArray(data39)) {
-                                        if (data39.length < 1) {
-                                          validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/evidence", schemaPath: "#/properties/route_assessments/items/allOf/0/then/properties/evidence/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
+                                      const _errs92 = errors;
+                                      if (errors === _errs92) {
+                                        if (Array.isArray(data39)) {
+                                          if (data39.length < 1) {
+                                            validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/evidence", schemaPath: "#/properties/route_assessments/items/allOf/0/then/properties/evidence/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
+                                            return false;
+                                          }
+                                        } else {
+                                          validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/evidence", schemaPath: "#/properties/route_assessments/items/allOf/0/then/properties/evidence/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                           return false;
                                         }
                                       }
                                     }
                                   }
                                 }
-                                var _valid0 = _errs90 === errors;
+                                var _valid0 = _errs91 === errors;
                                 valid28 = _valid0;
                                 if (valid28) {
                                   var props0 = {};
@@ -15696,12 +15707,12 @@ var require_manifest_validator = __commonJS({
                                 }
                                 ifClause0 = "then";
                               } else {
-                                const _errs92 = errors;
-                                const _errs93 = errors;
                                 const _errs94 = errors;
                                 const _errs95 = errors;
-                                let valid32 = false;
                                 const _errs96 = errors;
+                                const _errs97 = errors;
+                                let valid32 = false;
+                                const _errs98 = errors;
                                 if (data37 && typeof data37 == "object" && !Array.isArray(data37)) {
                                   let missing8;
                                   if (data37.contribution === void 0 && (missing8 = "contribution")) {
@@ -15714,9 +15725,9 @@ var require_manifest_validator = __commonJS({
                                     errors++;
                                   }
                                 }
-                                var _valid1 = _errs96 === errors;
+                                var _valid1 = _errs98 === errors;
                                 valid32 = valid32 || _valid1;
-                                const _errs97 = errors;
+                                const _errs99 = errors;
                                 if (data37 && typeof data37 == "object" && !Array.isArray(data37)) {
                                   let missing9;
                                   if (data37.assumptions === void 0 && (missing9 = "assumptions")) {
@@ -15729,9 +15740,9 @@ var require_manifest_validator = __commonJS({
                                     errors++;
                                   }
                                 }
-                                var _valid1 = _errs97 === errors;
+                                var _valid1 = _errs99 === errors;
                                 valid32 = valid32 || _valid1;
-                                const _errs98 = errors;
+                                const _errs100 = errors;
                                 if (data37 && typeof data37 == "object" && !Array.isArray(data37)) {
                                   let missing10;
                                   if (data37.notation === void 0 && (missing10 = "notation")) {
@@ -15744,9 +15755,9 @@ var require_manifest_validator = __commonJS({
                                     errors++;
                                   }
                                 }
-                                var _valid1 = _errs98 === errors;
+                                var _valid1 = _errs100 === errors;
                                 valid32 = valid32 || _valid1;
-                                const _errs99 = errors;
+                                const _errs101 = errors;
                                 if (data37 && typeof data37 == "object" && !Array.isArray(data37)) {
                                   let missing11;
                                   if (data37.exercise_value === void 0 && (missing11 = "exercise_value")) {
@@ -15759,9 +15770,9 @@ var require_manifest_validator = __commonJS({
                                     errors++;
                                   }
                                 }
-                                var _valid1 = _errs99 === errors;
+                                var _valid1 = _errs101 === errors;
                                 valid32 = valid32 || _valid1;
-                                const _errs100 = errors;
+                                const _errs102 = errors;
                                 if (data37 && typeof data37 == "object" && !Array.isArray(data37)) {
                                   let missing12;
                                   if (data37.best_for === void 0 && (missing12 = "best_for")) {
@@ -15774,9 +15785,9 @@ var require_manifest_validator = __commonJS({
                                     errors++;
                                   }
                                 }
-                                var _valid1 = _errs100 === errors;
+                                var _valid1 = _errs102 === errors;
                                 valid32 = valid32 || _valid1;
-                                const _errs101 = errors;
+                                const _errs103 = errors;
                                 if (data37 && typeof data37 == "object" && !Array.isArray(data37)) {
                                   let missing13;
                                   if (data37.limitations === void 0 && (missing13 = "limitations")) {
@@ -15789,9 +15800,9 @@ var require_manifest_validator = __commonJS({
                                     errors++;
                                   }
                                 }
-                                var _valid1 = _errs101 === errors;
+                                var _valid1 = _errs103 === errors;
                                 valid32 = valid32 || _valid1;
-                                const _errs102 = errors;
+                                const _errs104 = errors;
                                 if (data37 && typeof data37 == "object" && !Array.isArray(data37)) {
                                   let missing14;
                                   if (data37.scope_of_absence === void 0 && (missing14 = "scope_of_absence")) {
@@ -15804,7 +15815,7 @@ var require_manifest_validator = __commonJS({
                                     errors++;
                                   }
                                 }
-                                var _valid1 = _errs102 === errors;
+                                var _valid1 = _errs104 === errors;
                                 valid32 = valid32 || _valid1;
                                 if (!valid32) {
                                   const err11 = {};
@@ -15815,6 +15826,20 @@ var require_manifest_validator = __commonJS({
                                   }
                                   errors++;
                                 } else {
+                                  errors = _errs97;
+                                  if (vErrors !== null) {
+                                    if (_errs97) {
+                                      vErrors.length = _errs97;
+                                    } else {
+                                      vErrors = null;
+                                    }
+                                  }
+                                }
+                                var valid31 = _errs96 === errors;
+                                if (valid31) {
+                                  validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12, schemaPath: "#/properties/route_assessments/items/allOf/0/else/not", keyword: "not", params: {}, message: "must NOT be valid" }];
+                                  return false;
+                                } else {
                                   errors = _errs95;
                                   if (vErrors !== null) {
                                     if (_errs95) {
@@ -15824,21 +15849,7 @@ var require_manifest_validator = __commonJS({
                                     }
                                   }
                                 }
-                                var valid31 = _errs94 === errors;
-                                if (valid31) {
-                                  validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12, schemaPath: "#/properties/route_assessments/items/allOf/0/else/not", keyword: "not", params: {}, message: "must NOT be valid" }];
-                                  return false;
-                                } else {
-                                  errors = _errs93;
-                                  if (vErrors !== null) {
-                                    if (_errs93) {
-                                      vErrors.length = _errs93;
-                                    } else {
-                                      vErrors = null;
-                                    }
-                                  }
-                                }
-                                if (errors === _errs92) {
+                                if (errors === _errs94) {
                                   if (data37 && typeof data37 == "object" && !Array.isArray(data37)) {
                                     let missing15;
                                     if (data37.reason === void 0 && (missing15 = "reason")) {
@@ -15847,7 +15858,7 @@ var require_manifest_validator = __commonJS({
                                     }
                                   }
                                 }
-                                var _valid0 = _errs92 === errors;
+                                var _valid0 = _errs94 === errors;
                                 valid28 = _valid0;
                                 ifClause0 = "else";
                               }
@@ -15862,14 +15873,14 @@ var require_manifest_validator = __commonJS({
                                 validate98.errors = vErrors;
                                 return false;
                               }
-                              if (errors === _errs84) {
+                              if (errors === _errs85) {
                                 if (data37 && typeof data37 == "object" && !Array.isArray(data37)) {
                                   let missing16;
                                   if (data37.route_id === void 0 && (missing16 = "route_id") || data37.source_id === void 0 && (missing16 = "source_id") || data37.locator === void 0 && (missing16 = "locator") || data37.review_status === void 0 && (missing16 = "review_status") || data37.concept_ids === void 0 && (missing16 = "concept_ids")) {
                                     validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12, schemaPath: "#/properties/route_assessments/items/required", keyword: "required", params: { missingProperty: missing16 }, message: "must have required property '" + missing16 + "'" }];
                                     return false;
                                   } else {
-                                    const _errs103 = errors;
+                                    const _errs105 = errors;
                                     for (const key7 in data37) {
                                       if (!func1.call(schema162.properties.route_assessments.items.properties, key7)) {
                                         validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12, schemaPath: "#/properties/route_assessments/items/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key7 }, message: "must NOT have additional properties" }];
@@ -15877,21 +15888,21 @@ var require_manifest_validator = __commonJS({
                                         break;
                                       }
                                     }
-                                    if (_errs103 === errors) {
+                                    if (_errs105 === errors) {
                                       if (data37.analysis_refs !== void 0) {
                                         let data40 = data37.analysis_refs;
-                                        const _errs104 = errors;
-                                        if (errors === _errs104) {
+                                        const _errs106 = errors;
+                                        if (errors === _errs106) {
                                           if (Array.isArray(data40)) {
                                             var valid34 = true;
                                             const len9 = data40.length;
                                             for (let i13 = 0; i13 < len9; i13++) {
-                                              const _errs106 = errors;
+                                              const _errs108 = errors;
                                               if (!validate94(data40[i13], { instancePath: instancePath + "/route_assessments/" + i12 + "/analysis_refs/" + i13, parentData: data40, parentDataProperty: i13, rootData, dynamicAnchors })) {
                                                 vErrors = vErrors === null ? validate94.errors : vErrors.concat(validate94.errors);
                                                 errors = vErrors.length;
                                               }
-                                              var valid34 = _errs106 === errors;
+                                              var valid34 = _errs108 === errors;
                                               if (!valid34) {
                                                 break;
                                               }
@@ -15901,15 +15912,15 @@ var require_manifest_validator = __commonJS({
                                             return false;
                                           }
                                         }
-                                        var valid33 = _errs104 === errors;
+                                        var valid33 = _errs106 === errors;
                                       } else {
                                         var valid33 = true;
                                       }
                                       if (valid33) {
                                         if (data37.assumptions !== void 0) {
                                           let data42 = data37.assumptions;
-                                          const _errs107 = errors;
-                                          if (errors === _errs107) {
+                                          const _errs109 = errors;
+                                          if (errors === _errs109) {
                                             if (typeof data42 === "string") {
                                               if (func3(data42) < 1) {
                                                 validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/assumptions", schemaPath: "#/properties/route_assessments/items/properties/assumptions/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -15920,15 +15931,15 @@ var require_manifest_validator = __commonJS({
                                               return false;
                                             }
                                           }
-                                          var valid33 = _errs107 === errors;
+                                          var valid33 = _errs109 === errors;
                                         } else {
                                           var valid33 = true;
                                         }
                                         if (valid33) {
                                           if (data37.best_for !== void 0) {
                                             let data43 = data37.best_for;
-                                            const _errs109 = errors;
-                                            if (errors === _errs109) {
+                                            const _errs111 = errors;
+                                            if (errors === _errs111) {
                                               if (typeof data43 === "string") {
                                                 if (func3(data43) < 1) {
                                                   validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/best_for", schemaPath: "#/properties/route_assessments/items/properties/best_for/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -15939,24 +15950,24 @@ var require_manifest_validator = __commonJS({
                                                 return false;
                                               }
                                             }
-                                            var valid33 = _errs109 === errors;
+                                            var valid33 = _errs111 === errors;
                                           } else {
                                             var valid33 = true;
                                           }
                                           if (valid33) {
                                             if (data37.concept_ids !== void 0) {
                                               let data44 = data37.concept_ids;
-                                              const _errs111 = errors;
-                                              const _errs112 = errors;
                                               const _errs113 = errors;
-                                              if (errors === _errs113) {
+                                              const _errs114 = errors;
+                                              const _errs115 = errors;
+                                              if (errors === _errs115) {
                                                 if (Array.isArray(data44)) {
                                                   var valid37 = true;
                                                   const len10 = data44.length;
                                                   for (let i14 = 0; i14 < len10; i14++) {
                                                     let data45 = data44[i14];
-                                                    const _errs115 = errors;
-                                                    if (errors === _errs115) {
+                                                    const _errs117 = errors;
+                                                    if (errors === _errs117) {
                                                       if (typeof data45 === "string") {
                                                         if (!pattern13.test(data45)) {
                                                           validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/concept_ids/" + i14, schemaPath: "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/conceptIds/items/pattern", keyword: "pattern", params: { pattern: "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -15967,7 +15978,7 @@ var require_manifest_validator = __commonJS({
                                                         return false;
                                                       }
                                                     }
-                                                    var valid37 = _errs115 === errors;
+                                                    var valid37 = _errs117 === errors;
                                                     if (!valid37) {
                                                       break;
                                                     }
@@ -15997,26 +16008,31 @@ var require_manifest_validator = __commonJS({
                                                   return false;
                                                 }
                                               }
-                                              var valid35 = _errs112 === errors;
+                                              var valid35 = _errs114 === errors;
                                               if (valid35) {
-                                                const _errs117 = errors;
-                                                if (Array.isArray(data44)) {
-                                                  if (data44.length < 1) {
-                                                    validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/concept_ids", schemaPath: "#/properties/route_assessments/items/properties/concept_ids/allOf/1/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
+                                                const _errs119 = errors;
+                                                if (errors === _errs119) {
+                                                  if (Array.isArray(data44)) {
+                                                    if (data44.length < 1) {
+                                                      validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/concept_ids", schemaPath: "#/properties/route_assessments/items/properties/concept_ids/allOf/1/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
+                                                      return false;
+                                                    }
+                                                  } else {
+                                                    validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/concept_ids", schemaPath: "#/properties/route_assessments/items/properties/concept_ids/allOf/1/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                                     return false;
                                                   }
                                                 }
-                                                var valid35 = _errs117 === errors;
+                                                var valid35 = _errs119 === errors;
                                               }
-                                              var valid33 = _errs111 === errors;
+                                              var valid33 = _errs113 === errors;
                                             } else {
                                               var valid33 = true;
                                             }
                                             if (valid33) {
                                               if (data37.contribution !== void 0) {
                                                 let data46 = data37.contribution;
-                                                const _errs118 = errors;
-                                                if (errors === _errs118) {
+                                                const _errs121 = errors;
+                                                if (errors === _errs121) {
                                                   if (typeof data46 === "string") {
                                                     if (func3(data46) < 1) {
                                                       validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/contribution", schemaPath: "#/properties/route_assessments/items/properties/contribution/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -16027,25 +16043,25 @@ var require_manifest_validator = __commonJS({
                                                     return false;
                                                   }
                                                 }
-                                                var valid33 = _errs118 === errors;
+                                                var valid33 = _errs121 === errors;
                                               } else {
                                                 var valid33 = true;
                                               }
                                               if (valid33) {
                                                 if (data37.evidence !== void 0) {
                                                   let data47 = data37.evidence;
-                                                  const _errs120 = errors;
-                                                  if (errors === _errs120) {
+                                                  const _errs123 = errors;
+                                                  if (errors === _errs123) {
                                                     if (Array.isArray(data47)) {
                                                       var valid39 = true;
                                                       const len11 = data47.length;
                                                       for (let i16 = 0; i16 < len11; i16++) {
-                                                        const _errs122 = errors;
+                                                        const _errs125 = errors;
                                                         if (!validate91(data47[i16], { instancePath: instancePath + "/route_assessments/" + i12 + "/evidence/" + i16, parentData: data47, parentDataProperty: i16, rootData, dynamicAnchors })) {
                                                           vErrors = vErrors === null ? validate91.errors : vErrors.concat(validate91.errors);
                                                           errors = vErrors.length;
                                                         }
-                                                        var valid39 = _errs122 === errors;
+                                                        var valid39 = _errs125 === errors;
                                                         if (!valid39) {
                                                           break;
                                                         }
@@ -16055,15 +16071,15 @@ var require_manifest_validator = __commonJS({
                                                       return false;
                                                     }
                                                   }
-                                                  var valid33 = _errs120 === errors;
+                                                  var valid33 = _errs123 === errors;
                                                 } else {
                                                   var valid33 = true;
                                                 }
                                                 if (valid33) {
                                                   if (data37.exercise_value !== void 0) {
                                                     let data49 = data37.exercise_value;
-                                                    const _errs123 = errors;
-                                                    if (errors === _errs123) {
+                                                    const _errs126 = errors;
+                                                    if (errors === _errs126) {
                                                       if (typeof data49 === "string") {
                                                         if (func3(data49) < 1) {
                                                           validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/exercise_value", schemaPath: "#/properties/route_assessments/items/properties/exercise_value/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -16074,15 +16090,15 @@ var require_manifest_validator = __commonJS({
                                                         return false;
                                                       }
                                                     }
-                                                    var valid33 = _errs123 === errors;
+                                                    var valid33 = _errs126 === errors;
                                                   } else {
                                                     var valid33 = true;
                                                   }
                                                   if (valid33) {
                                                     if (data37.limitations !== void 0) {
                                                       let data50 = data37.limitations;
-                                                      const _errs125 = errors;
-                                                      if (errors === _errs125) {
+                                                      const _errs128 = errors;
+                                                      if (errors === _errs128) {
                                                         if (typeof data50 === "string") {
                                                           if (func3(data50) < 1) {
                                                             validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/limitations", schemaPath: "#/properties/route_assessments/items/properties/limitations/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -16093,15 +16109,15 @@ var require_manifest_validator = __commonJS({
                                                           return false;
                                                         }
                                                       }
-                                                      var valid33 = _errs125 === errors;
+                                                      var valid33 = _errs128 === errors;
                                                     } else {
                                                       var valid33 = true;
                                                     }
                                                     if (valid33) {
                                                       if (data37.locator !== void 0) {
                                                         let data51 = data37.locator;
-                                                        const _errs127 = errors;
-                                                        if (errors === _errs127) {
+                                                        const _errs130 = errors;
+                                                        if (errors === _errs130) {
                                                           if (typeof data51 === "string") {
                                                             if (func3(data51) < 1) {
                                                               validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/locator", schemaPath: "#/properties/route_assessments/items/properties/locator/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -16112,15 +16128,15 @@ var require_manifest_validator = __commonJS({
                                                             return false;
                                                           }
                                                         }
-                                                        var valid33 = _errs127 === errors;
+                                                        var valid33 = _errs130 === errors;
                                                       } else {
                                                         var valid33 = true;
                                                       }
                                                       if (valid33) {
                                                         if (data37.notation !== void 0) {
                                                           let data52 = data37.notation;
-                                                          const _errs129 = errors;
-                                                          if (errors === _errs129) {
+                                                          const _errs132 = errors;
+                                                          if (errors === _errs132) {
                                                             if (typeof data52 === "string") {
                                                               if (func3(data52) < 1) {
                                                                 validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/notation", schemaPath: "#/properties/route_assessments/items/properties/notation/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -16131,15 +16147,15 @@ var require_manifest_validator = __commonJS({
                                                               return false;
                                                             }
                                                           }
-                                                          var valid33 = _errs129 === errors;
+                                                          var valid33 = _errs132 === errors;
                                                         } else {
                                                           var valid33 = true;
                                                         }
                                                         if (valid33) {
                                                           if (data37.reason !== void 0) {
                                                             let data53 = data37.reason;
-                                                            const _errs131 = errors;
-                                                            if (errors === _errs131) {
+                                                            const _errs134 = errors;
+                                                            if (errors === _errs134) {
                                                               if (typeof data53 === "string") {
                                                                 if (func3(data53) < 1) {
                                                                   validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/reason", schemaPath: "#/properties/route_assessments/items/properties/reason/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -16150,27 +16166,27 @@ var require_manifest_validator = __commonJS({
                                                                 return false;
                                                               }
                                                             }
-                                                            var valid33 = _errs131 === errors;
+                                                            var valid33 = _errs134 === errors;
                                                           } else {
                                                             var valid33 = true;
                                                           }
                                                           if (valid33) {
                                                             if (data37.review_status !== void 0) {
                                                               let data54 = data37.review_status;
-                                                              const _errs133 = errors;
+                                                              const _errs136 = errors;
                                                               if (!(data54 === "deep-reviewed" || data54 === "screened" || data54 === "unevaluated" || data54 === "unavailable")) {
                                                                 validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/review_status", schemaPath: "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/routeReviewStatus/enum", keyword: "enum", params: { allowedValues: schema174.enum }, message: "must be equal to one of the allowed values" }];
                                                                 return false;
                                                               }
-                                                              var valid33 = _errs133 === errors;
+                                                              var valid33 = _errs136 === errors;
                                                             } else {
                                                               var valid33 = true;
                                                             }
                                                             if (valid33) {
                                                               if (data37.route_id !== void 0) {
                                                                 let data55 = data37.route_id;
-                                                                const _errs135 = errors;
-                                                                if (errors === _errs135) {
+                                                                const _errs138 = errors;
+                                                                if (errors === _errs138) {
                                                                   if (typeof data55 === "string") {
                                                                     if (!pattern25.test(data55)) {
                                                                       validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/route_id", schemaPath: "#/properties/route_assessments/items/properties/route_id/pattern", keyword: "pattern", params: { pattern: "^route-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^route-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -16181,15 +16197,15 @@ var require_manifest_validator = __commonJS({
                                                                     return false;
                                                                   }
                                                                 }
-                                                                var valid33 = _errs135 === errors;
+                                                                var valid33 = _errs138 === errors;
                                                               } else {
                                                                 var valid33 = true;
                                                               }
                                                               if (valid33) {
                                                                 if (data37.scope_of_absence !== void 0) {
                                                                   let data56 = data37.scope_of_absence;
-                                                                  const _errs137 = errors;
-                                                                  if (errors === _errs137) {
+                                                                  const _errs140 = errors;
+                                                                  if (errors === _errs140) {
                                                                     if (typeof data56 === "string") {
                                                                       if (func3(data56) < 1) {
                                                                         validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/scope_of_absence", schemaPath: "#/properties/route_assessments/items/properties/scope_of_absence/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -16200,15 +16216,15 @@ var require_manifest_validator = __commonJS({
                                                                       return false;
                                                                     }
                                                                   }
-                                                                  var valid33 = _errs137 === errors;
+                                                                  var valid33 = _errs140 === errors;
                                                                 } else {
                                                                   var valid33 = true;
                                                                 }
                                                                 if (valid33) {
                                                                   if (data37.source_id !== void 0) {
                                                                     let data57 = data37.source_id;
-                                                                    const _errs139 = errors;
-                                                                    if (errors === _errs139) {
+                                                                    const _errs142 = errors;
+                                                                    if (errors === _errs142) {
                                                                       if (typeof data57 === "string") {
                                                                         if (!pattern22.test(data57)) {
                                                                           validate98.errors = [{ instancePath: instancePath + "/route_assessments/" + i12 + "/source_id", schemaPath: "#/properties/route_assessments/items/properties/source_id/pattern", keyword: "pattern", params: { pattern: "^source-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^source-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -16219,7 +16235,7 @@ var require_manifest_validator = __commonJS({
                                                                         return false;
                                                                       }
                                                                     }
-                                                                    var valid33 = _errs139 === errors;
+                                                                    var valid33 = _errs142 === errors;
                                                                   } else {
                                                                     var valid33 = true;
                                                                   }
@@ -16244,7 +16260,7 @@ var require_manifest_validator = __commonJS({
                                   return false;
                                 }
                               }
-                              var valid26 = _errs84 === errors;
+                              var valid26 = _errs85 === errors;
                               if (!valid26) {
                                 break;
                               }
@@ -16255,48 +16271,48 @@ var require_manifest_validator = __commonJS({
                           return false;
                         }
                       }
-                      var valid0 = _errs82 === errors;
+                      var valid0 = _errs83 === errors;
                     } else {
                       var valid0 = true;
                     }
                     if (valid0) {
                       if (data.schema_version !== void 0) {
-                        const _errs141 = errors;
+                        const _errs144 = errors;
                         if (1 !== data.schema_version) {
                           validate98.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
                           return false;
                         }
-                        var valid0 = _errs141 === errors;
+                        var valid0 = _errs144 === errors;
                       } else {
                         var valid0 = true;
                       }
                       if (valid0) {
                         if (data.status !== void 0) {
-                          const _errs142 = errors;
+                          const _errs145 = errors;
                           if ("approved" !== data.status) {
                             validate98.errors = [{ instancePath: instancePath + "/status", schemaPath: "#/properties/status/const", keyword: "const", params: { allowedValue: "approved" }, message: "must be equal to constant" }];
                             return false;
                           }
-                          var valid0 = _errs142 === errors;
+                          var valid0 = _errs145 === errors;
                         } else {
                           var valid0 = true;
                         }
                         if (valid0) {
                           if (data.type !== void 0) {
-                            const _errs143 = errors;
+                            const _errs146 = errors;
                             if ("unit-material-synthesis" !== data.type) {
                               validate98.errors = [{ instancePath: instancePath + "/type", schemaPath: "#/properties/type/const", keyword: "const", params: { allowedValue: "unit-material-synthesis" }, message: "must be equal to constant" }];
                               return false;
                             }
-                            var valid0 = _errs143 === errors;
+                            var valid0 = _errs146 === errors;
                           } else {
                             var valid0 = true;
                           }
                           if (valid0) {
                             if (data.unit_id !== void 0) {
                               let data61 = data.unit_id;
-                              const _errs144 = errors;
-                              if (errors === _errs144) {
+                              const _errs147 = errors;
+                              if (errors === _errs147) {
                                 if (typeof data61 === "string") {
                                   if (!pattern16.test(data61)) {
                                     validate98.errors = [{ instancePath: instancePath + "/unit_id", schemaPath: "#/properties/unit_id/pattern", keyword: "pattern", params: { pattern: "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -16307,7 +16323,7 @@ var require_manifest_validator = __commonJS({
                                   return false;
                                 }
                               }
-                              var valid0 = _errs144 === errors;
+                              var valid0 = _errs147 === errors;
                             } else {
                               var valid0 = true;
                             }
@@ -16340,15 +16356,15 @@ var require_manifest_validator = __commonJS({
       if (evaluated0.dynamicItems) {
         evaluated0.items = void 0;
       }
-      const _errs0 = errors;
+      const _errs1 = errors;
       if (!validate98(data, { instancePath, parentData, parentDataProperty, rootData, dynamicAnchors })) {
         vErrors = vErrors === null ? validate98.errors : vErrors.concat(validate98.errors);
         errors = vErrors.length;
       }
-      var valid0 = _errs0 === errors;
+      var valid0 = _errs1 === errors;
       if (valid0) {
-        const _errs1 = errors;
-        if (errors === _errs1) {
+        const _errs2 = errors;
+        if (errors === _errs2) {
           if (data && typeof data == "object" && !Array.isArray(data)) {
             let missing0;
             if (data.freshness === void 0 && (missing0 = "freshness") || data.completeness === void 0 && (missing0 = "completeness")) {
@@ -16357,15 +16373,15 @@ var require_manifest_validator = __commonJS({
             } else {
               if (data.completeness !== void 0) {
                 let data0 = data.completeness;
-                const _errs3 = errors;
-                if (errors === _errs3) {
+                const _errs4 = errors;
+                if (errors === _errs4) {
                   if (data0 && typeof data0 == "object" && !Array.isArray(data0)) {
                     let missing1;
                     if (data0.complete === void 0 && (missing1 = "complete") || data0.current_route_count === void 0 && (missing1 = "current_route_count") || data0.assessed_route_count === void 0 && (missing1 = "assessed_route_count") || data0.deep_reviewed_count === void 0 && (missing1 = "deep_reviewed_count") || data0.screened_count === void 0 && (missing1 = "screened_count") || data0.unevaluated_count === void 0 && (missing1 = "unevaluated_count") || data0.unavailable_count === void 0 && (missing1 = "unavailable_count") || data0.missing_route_ids === void 0 && (missing1 = "missing_route_ids") || data0.orphaned_route_ids === void 0 && (missing1 = "orphaned_route_ids") || data0.duplicate_route_ids === void 0 && (missing1 = "duplicate_route_ids")) {
                       validate87.errors = [{ instancePath: instancePath + "/completeness", schemaPath: "#/allOf/1/properties/completeness/required", keyword: "required", params: { missingProperty: missing1 }, message: "must have required property '" + missing1 + "'" }];
                       return false;
                     } else {
-                      const _errs5 = errors;
+                      const _errs6 = errors;
                       for (const key0 in data0) {
                         if (!func1.call(schema160.allOf[1].properties.completeness.properties, key0)) {
                           validate87.errors = [{ instancePath: instancePath + "/completeness", schemaPath: "#/allOf/1/properties/completeness/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
@@ -16373,15 +16389,15 @@ var require_manifest_validator = __commonJS({
                           break;
                         }
                       }
-                      if (_errs5 === errors) {
+                      if (_errs6 === errors) {
                         if (data0.assessed_route_count !== void 0) {
                           let data1 = data0.assessed_route_count;
-                          const _errs6 = errors;
+                          const _errs7 = errors;
                           if (!(typeof data1 == "number" && (!(data1 % 1) && !isNaN(data1)) && isFinite(data1))) {
                             validate87.errors = [{ instancePath: instancePath + "/completeness/assessed_route_count", schemaPath: "#/allOf/1/properties/completeness/properties/assessed_route_count/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
                             return false;
                           }
-                          if (errors === _errs6) {
+                          if (errors === _errs7) {
                             if (typeof data1 == "number" && isFinite(data1)) {
                               if (data1 < 0 || isNaN(data1)) {
                                 validate87.errors = [{ instancePath: instancePath + "/completeness/assessed_route_count", schemaPath: "#/allOf/1/properties/completeness/properties/assessed_route_count/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
@@ -16389,30 +16405,30 @@ var require_manifest_validator = __commonJS({
                               }
                             }
                           }
-                          var valid2 = _errs6 === errors;
+                          var valid2 = _errs7 === errors;
                         } else {
                           var valid2 = true;
                         }
                         if (valid2) {
                           if (data0.complete !== void 0) {
-                            const _errs8 = errors;
+                            const _errs9 = errors;
                             if (typeof data0.complete !== "boolean") {
                               validate87.errors = [{ instancePath: instancePath + "/completeness/complete", schemaPath: "#/allOf/1/properties/completeness/properties/complete/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                               return false;
                             }
-                            var valid2 = _errs8 === errors;
+                            var valid2 = _errs9 === errors;
                           } else {
                             var valid2 = true;
                           }
                           if (valid2) {
                             if (data0.current_route_count !== void 0) {
                               let data3 = data0.current_route_count;
-                              const _errs10 = errors;
+                              const _errs11 = errors;
                               if (!(typeof data3 == "number" && (!(data3 % 1) && !isNaN(data3)) && isFinite(data3))) {
                                 validate87.errors = [{ instancePath: instancePath + "/completeness/current_route_count", schemaPath: "#/allOf/1/properties/completeness/properties/current_route_count/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
                                 return false;
                               }
-                              if (errors === _errs10) {
+                              if (errors === _errs11) {
                                 if (typeof data3 == "number" && isFinite(data3)) {
                                   if (data3 < 0 || isNaN(data3)) {
                                     validate87.errors = [{ instancePath: instancePath + "/completeness/current_route_count", schemaPath: "#/allOf/1/properties/completeness/properties/current_route_count/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
@@ -16420,19 +16436,19 @@ var require_manifest_validator = __commonJS({
                                   }
                                 }
                               }
-                              var valid2 = _errs10 === errors;
+                              var valid2 = _errs11 === errors;
                             } else {
                               var valid2 = true;
                             }
                             if (valid2) {
                               if (data0.deep_reviewed_count !== void 0) {
                                 let data4 = data0.deep_reviewed_count;
-                                const _errs12 = errors;
+                                const _errs13 = errors;
                                 if (!(typeof data4 == "number" && (!(data4 % 1) && !isNaN(data4)) && isFinite(data4))) {
                                   validate87.errors = [{ instancePath: instancePath + "/completeness/deep_reviewed_count", schemaPath: "#/allOf/1/properties/completeness/properties/deep_reviewed_count/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
                                   return false;
                                 }
-                                if (errors === _errs12) {
+                                if (errors === _errs13) {
                                   if (typeof data4 == "number" && isFinite(data4)) {
                                     if (data4 < 0 || isNaN(data4)) {
                                       validate87.errors = [{ instancePath: instancePath + "/completeness/deep_reviewed_count", schemaPath: "#/allOf/1/properties/completeness/properties/deep_reviewed_count/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
@@ -16440,23 +16456,23 @@ var require_manifest_validator = __commonJS({
                                     }
                                   }
                                 }
-                                var valid2 = _errs12 === errors;
+                                var valid2 = _errs13 === errors;
                               } else {
                                 var valid2 = true;
                               }
                               if (valid2) {
                                 if (data0.duplicate_route_ids !== void 0) {
                                   let data5 = data0.duplicate_route_ids;
-                                  const _errs14 = errors;
-                                  if (errors === _errs14) {
+                                  const _errs15 = errors;
+                                  if (errors === _errs15) {
                                     if (Array.isArray(data5)) {
                                       var valid3 = true;
                                       const len0 = data5.length;
                                       for (let i0 = 0; i0 < len0; i0++) {
                                         let data6 = data5[i0];
-                                        const _errs16 = errors;
                                         const _errs17 = errors;
-                                        if (errors === _errs17) {
+                                        const _errs18 = errors;
+                                        if (errors === _errs18) {
                                           if (typeof data6 === "string") {
                                             if (!pattern25.test(data6)) {
                                               validate87.errors = [{ instancePath: instancePath + "/completeness/duplicate_route_ids/" + i0, schemaPath: "#/$defs/routeId/pattern", keyword: "pattern", params: { pattern: "^route-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^route-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -16467,7 +16483,7 @@ var require_manifest_validator = __commonJS({
                                             return false;
                                           }
                                         }
-                                        var valid3 = _errs16 === errors;
+                                        var valid3 = _errs17 === errors;
                                         if (!valid3) {
                                           break;
                                         }
@@ -16492,23 +16508,23 @@ var require_manifest_validator = __commonJS({
                                       return false;
                                     }
                                   }
-                                  var valid2 = _errs14 === errors;
+                                  var valid2 = _errs15 === errors;
                                 } else {
                                   var valid2 = true;
                                 }
                                 if (valid2) {
                                   if (data0.missing_route_ids !== void 0) {
                                     let data7 = data0.missing_route_ids;
-                                    const _errs19 = errors;
-                                    if (errors === _errs19) {
+                                    const _errs20 = errors;
+                                    if (errors === _errs20) {
                                       if (Array.isArray(data7)) {
                                         var valid6 = true;
                                         const len1 = data7.length;
                                         for (let i2 = 0; i2 < len1; i2++) {
                                           let data8 = data7[i2];
-                                          const _errs21 = errors;
                                           const _errs22 = errors;
-                                          if (errors === _errs22) {
+                                          const _errs23 = errors;
+                                          if (errors === _errs23) {
                                             if (typeof data8 === "string") {
                                               if (!pattern25.test(data8)) {
                                                 validate87.errors = [{ instancePath: instancePath + "/completeness/missing_route_ids/" + i2, schemaPath: "#/$defs/routeId/pattern", keyword: "pattern", params: { pattern: "^route-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^route-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -16519,7 +16535,7 @@ var require_manifest_validator = __commonJS({
                                               return false;
                                             }
                                           }
-                                          var valid6 = _errs21 === errors;
+                                          var valid6 = _errs22 === errors;
                                           if (!valid6) {
                                             break;
                                           }
@@ -16544,23 +16560,23 @@ var require_manifest_validator = __commonJS({
                                         return false;
                                       }
                                     }
-                                    var valid2 = _errs19 === errors;
+                                    var valid2 = _errs20 === errors;
                                   } else {
                                     var valid2 = true;
                                   }
                                   if (valid2) {
                                     if (data0.orphaned_route_ids !== void 0) {
                                       let data9 = data0.orphaned_route_ids;
-                                      const _errs24 = errors;
-                                      if (errors === _errs24) {
+                                      const _errs25 = errors;
+                                      if (errors === _errs25) {
                                         if (Array.isArray(data9)) {
                                           var valid9 = true;
                                           const len2 = data9.length;
                                           for (let i4 = 0; i4 < len2; i4++) {
                                             let data10 = data9[i4];
-                                            const _errs26 = errors;
                                             const _errs27 = errors;
-                                            if (errors === _errs27) {
+                                            const _errs28 = errors;
+                                            if (errors === _errs28) {
                                               if (typeof data10 === "string") {
                                                 if (!pattern25.test(data10)) {
                                                   validate87.errors = [{ instancePath: instancePath + "/completeness/orphaned_route_ids/" + i4, schemaPath: "#/$defs/routeId/pattern", keyword: "pattern", params: { pattern: "^route-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^route-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -16571,7 +16587,7 @@ var require_manifest_validator = __commonJS({
                                                 return false;
                                               }
                                             }
-                                            var valid9 = _errs26 === errors;
+                                            var valid9 = _errs27 === errors;
                                             if (!valid9) {
                                               break;
                                             }
@@ -16596,19 +16612,19 @@ var require_manifest_validator = __commonJS({
                                           return false;
                                         }
                                       }
-                                      var valid2 = _errs24 === errors;
+                                      var valid2 = _errs25 === errors;
                                     } else {
                                       var valid2 = true;
                                     }
                                     if (valid2) {
                                       if (data0.screened_count !== void 0) {
                                         let data11 = data0.screened_count;
-                                        const _errs29 = errors;
+                                        const _errs30 = errors;
                                         if (!(typeof data11 == "number" && (!(data11 % 1) && !isNaN(data11)) && isFinite(data11))) {
                                           validate87.errors = [{ instancePath: instancePath + "/completeness/screened_count", schemaPath: "#/allOf/1/properties/completeness/properties/screened_count/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
                                           return false;
                                         }
-                                        if (errors === _errs29) {
+                                        if (errors === _errs30) {
                                           if (typeof data11 == "number" && isFinite(data11)) {
                                             if (data11 < 0 || isNaN(data11)) {
                                               validate87.errors = [{ instancePath: instancePath + "/completeness/screened_count", schemaPath: "#/allOf/1/properties/completeness/properties/screened_count/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
@@ -16616,19 +16632,19 @@ var require_manifest_validator = __commonJS({
                                             }
                                           }
                                         }
-                                        var valid2 = _errs29 === errors;
+                                        var valid2 = _errs30 === errors;
                                       } else {
                                         var valid2 = true;
                                       }
                                       if (valid2) {
                                         if (data0.unavailable_count !== void 0) {
                                           let data12 = data0.unavailable_count;
-                                          const _errs31 = errors;
+                                          const _errs32 = errors;
                                           if (!(typeof data12 == "number" && (!(data12 % 1) && !isNaN(data12)) && isFinite(data12))) {
                                             validate87.errors = [{ instancePath: instancePath + "/completeness/unavailable_count", schemaPath: "#/allOf/1/properties/completeness/properties/unavailable_count/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
                                             return false;
                                           }
-                                          if (errors === _errs31) {
+                                          if (errors === _errs32) {
                                             if (typeof data12 == "number" && isFinite(data12)) {
                                               if (data12 < 0 || isNaN(data12)) {
                                                 validate87.errors = [{ instancePath: instancePath + "/completeness/unavailable_count", schemaPath: "#/allOf/1/properties/completeness/properties/unavailable_count/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
@@ -16636,19 +16652,19 @@ var require_manifest_validator = __commonJS({
                                               }
                                             }
                                           }
-                                          var valid2 = _errs31 === errors;
+                                          var valid2 = _errs32 === errors;
                                         } else {
                                           var valid2 = true;
                                         }
                                         if (valid2) {
                                           if (data0.unevaluated_count !== void 0) {
                                             let data13 = data0.unevaluated_count;
-                                            const _errs33 = errors;
+                                            const _errs34 = errors;
                                             if (!(typeof data13 == "number" && (!(data13 % 1) && !isNaN(data13)) && isFinite(data13))) {
                                               validate87.errors = [{ instancePath: instancePath + "/completeness/unevaluated_count", schemaPath: "#/allOf/1/properties/completeness/properties/unevaluated_count/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
                                               return false;
                                             }
-                                            if (errors === _errs33) {
+                                            if (errors === _errs34) {
                                               if (typeof data13 == "number" && isFinite(data13)) {
                                                 if (data13 < 0 || isNaN(data13)) {
                                                   validate87.errors = [{ instancePath: instancePath + "/completeness/unevaluated_count", schemaPath: "#/allOf/1/properties/completeness/properties/unevaluated_count/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
@@ -16656,7 +16672,7 @@ var require_manifest_validator = __commonJS({
                                                 }
                                               }
                                             }
-                                            var valid2 = _errs33 === errors;
+                                            var valid2 = _errs34 === errors;
                                           } else {
                                             var valid2 = true;
                                           }
@@ -16676,22 +16692,22 @@ var require_manifest_validator = __commonJS({
                     return false;
                   }
                 }
-                var valid1 = _errs3 === errors;
+                var valid1 = _errs4 === errors;
               } else {
                 var valid1 = true;
               }
               if (valid1) {
                 if (data.freshness !== void 0) {
                   let data14 = data.freshness;
-                  const _errs35 = errors;
-                  if (errors === _errs35) {
+                  const _errs36 = errors;
+                  if (errors === _errs36) {
                     if (data14 && typeof data14 == "object" && !Array.isArray(data14)) {
                       let missing2;
                       if (data14.status === void 0 && (missing2 = "status") || data14.reasons === void 0 && (missing2 = "reasons")) {
                         validate87.errors = [{ instancePath: instancePath + "/freshness", schemaPath: "#/allOf/1/properties/freshness/required", keyword: "required", params: { missingProperty: missing2 }, message: "must have required property '" + missing2 + "'" }];
                         return false;
                       } else {
-                        const _errs37 = errors;
+                        const _errs38 = errors;
                         for (const key1 in data14) {
                           if (!(key1 === "reasons" || key1 === "status")) {
                             validate87.errors = [{ instancePath: instancePath + "/freshness", schemaPath: "#/allOf/1/properties/freshness/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key1 }, message: "must NOT have additional properties" }];
@@ -16699,22 +16715,22 @@ var require_manifest_validator = __commonJS({
                             break;
                           }
                         }
-                        if (_errs37 === errors) {
+                        if (_errs38 === errors) {
                           if (data14.reasons !== void 0) {
                             let data15 = data14.reasons;
-                            const _errs38 = errors;
-                            if (errors === _errs38) {
+                            const _errs39 = errors;
+                            if (errors === _errs39) {
                               if (Array.isArray(data15)) {
                                 var valid13 = true;
                                 const len3 = data15.length;
                                 for (let i6 = 0; i6 < len3; i6++) {
                                   let data16 = data15[i6];
-                                  const _errs40 = errors;
+                                  const _errs41 = errors;
                                   if (!(data16 === "source_map_revision" || data16 === "source_map_checksum" || data16 === "route_set_checksum" || data16 === "material_checksums" || data16 === "policy" || data16 === "current-basis-unavailable" || data16 === "analysis-refs-stale")) {
                                     validate87.errors = [{ instancePath: instancePath + "/freshness/reasons/" + i6, schemaPath: "#/allOf/1/properties/freshness/properties/reasons/items/enum", keyword: "enum", params: { allowedValues: schema160.allOf[1].properties.freshness.properties.reasons.items.enum }, message: "must be equal to one of the allowed values" }];
                                     return false;
                                   }
-                                  var valid13 = _errs40 === errors;
+                                  var valid13 = _errs41 === errors;
                                   if (!valid13) {
                                     break;
                                   }
@@ -16739,19 +16755,19 @@ var require_manifest_validator = __commonJS({
                                 return false;
                               }
                             }
-                            var valid12 = _errs38 === errors;
+                            var valid12 = _errs39 === errors;
                           } else {
                             var valid12 = true;
                           }
                           if (valid12) {
                             if (data14.status !== void 0) {
                               let data17 = data14.status;
-                              const _errs41 = errors;
+                              const _errs42 = errors;
                               if (!(data17 === "current" || data17 === "stale")) {
                                 validate87.errors = [{ instancePath: instancePath + "/freshness/status", schemaPath: "#/allOf/1/properties/freshness/properties/status/enum", keyword: "enum", params: { allowedValues: schema160.allOf[1].properties.freshness.properties.status.enum }, message: "must be equal to one of the allowed values" }];
                                 return false;
                               }
-                              var valid12 = _errs41 === errors;
+                              var valid12 = _errs42 === errors;
                             } else {
                               var valid12 = true;
                             }
@@ -16763,7 +16779,7 @@ var require_manifest_validator = __commonJS({
                       return false;
                     }
                   }
-                  var valid1 = _errs35 === errors;
+                  var valid1 = _errs36 === errors;
                 } else {
                   var valid1 = true;
                 }
@@ -16774,7 +16790,7 @@ var require_manifest_validator = __commonJS({
             return false;
           }
         }
-        var valid0 = _errs1 === errors;
+        var valid0 = _errs2 === errors;
       }
       if (errors === 0) {
         if (data && typeof data == "object" && !Array.isArray(data)) {
@@ -16785,6 +16801,9 @@ var require_manifest_validator = __commonJS({
               break;
             }
           }
+        } else {
+          validate87.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          return false;
         }
       }
       validate87.errors = vErrors;
@@ -19363,10 +19382,15 @@ var require_manifest_validator = __commonJS({
       var valid0 = _errs0 === errors;
       if (valid0) {
         const _errs1 = errors;
-        if (data && typeof data == "object" && !Array.isArray(data)) {
-          let missing0;
-          if (data.study_map_id === void 0 && (missing0 = "study_map_id") || data.unit_id === void 0 && (missing0 = "unit_id") || data.module_id === void 0 && (missing0 = "module_id")) {
-            validate109.errors = [{ instancePath, schemaPath: "#/allOf/1/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+        if (errors === _errs1) {
+          if (data && typeof data == "object" && !Array.isArray(data)) {
+            let missing0;
+            if (data.study_map_id === void 0 && (missing0 = "study_map_id") || data.unit_id === void 0 && (missing0 = "unit_id") || data.module_id === void 0 && (missing0 = "module_id")) {
+              validate109.errors = [{ instancePath, schemaPath: "#/allOf/1/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+              return false;
+            }
+          } else {
+            validate109.errors = [{ instancePath, schemaPath: "#/allOf/1/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
             return false;
           }
         }
@@ -19425,8 +19449,8 @@ var require_manifest_validator = __commonJS({
                       if (_errs5 === errors) {
                         if (data0.contract_version !== void 0) {
                           const _errs6 = errors;
-                          if (15 !== data0.contract_version) {
-                            validate20.errors = [{ instancePath: instancePath + "/_generated/contract_version", schemaPath: "#/$defs/generated/properties/contract_version/const", keyword: "const", params: { allowedValue: 15 }, message: "must be equal to constant" }];
+                          if (16 !== data0.contract_version) {
+                            validate20.errors = [{ instancePath: instancePath + "/_generated/contract_version", schemaPath: "#/$defs/generated/properties/contract_version/const", keyword: "const", params: { allowedValue: 16 }, message: "must be equal to constant" }];
                             return false;
                           }
                           var valid2 = _errs6 === errors;
@@ -25986,7 +26010,7 @@ var require_responses_validator = __commonJS({
       return errors === 0;
     }
     validate32.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    var schema44 = { "$id": "https://learningos.local/schema/candidate-source-comparison.schema.json", "$schema": "https://json-schema.org/draft/2020-12/schema", "additionalProperties": false, "properties": { "basis": { "additionalProperties": false, "properties": { "candidate_set_checksum": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/sha256" }, "catalog_revision": { "minimum": 0, "type": "integer" }, "delivery_id": { "minLength": 1, "type": "string" }, "policy": { "const": "tiered-v1" }, "request_id": { "minLength": 1, "type": "string" } }, "required": ["catalog_revision", "candidate_set_checksum", "policy", "request_id", "delivery_id"], "type": "object" }, "candidate_module_id": { "pattern": "^candidate-module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "comparisons": { "items": { "additionalProperties": false, "properties": { "concept_ids": { "allOf": [{ "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/conceptIds" }, { "minItems": 1 }] }, "evidence": { "additionalProperties": false, "properties": { "left": { "items": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/evidence" }, "minItems": 1, "type": "array" }, "right": { "items": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/evidence" }, "minItems": 1, "type": "array" } }, "required": ["left", "right"], "type": "object" }, "left_candidate_source_id": { "pattern": "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "narrative": { "minLength": 1, "type": "string" }, "relation": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/comparisonRelation" }, "right_candidate_source_id": { "pattern": "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["left_candidate_source_id", "right_candidate_source_id", "relation", "narrative", "concept_ids", "evidence"], "type": "object" }, "type": "array" }, "id": { "pattern": "^candidate-comparison-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "schema_version": { "const": 1 }, "source_assessments": { "items": { "additionalProperties": false, "allOf": [{ "else": { "not": { "anyOf": [{ "required": ["contribution"] }, { "required": ["assumptions"] }, { "required": ["notation"] }, { "required": ["exercise_value"] }, { "required": ["best_for"] }, { "required": ["limitations"] }] }, "required": ["reason"] }, "if": { "properties": { "review_status": { "const": "deep-reviewed" } }, "required": ["review_status"] }, "then": { "properties": { "evidence": { "minItems": 1 } }, "required": ["contribution", "assumptions", "notation", "exercise_value", "best_for", "limitations", "evidence"] } }], "properties": { "assumptions": { "minLength": 1, "type": "string" }, "best_for": { "minLength": 1, "type": "string" }, "candidate_source_id": { "pattern": "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "concept_ids": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/conceptIds" }, "contribution": { "minLength": 1, "type": "string" }, "evidence": { "items": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/evidence" }, "type": "array" }, "exercise_value": { "minLength": 1, "type": "string" }, "limitations": { "minLength": 1, "type": "string" }, "notation": { "minLength": 1, "type": "string" }, "reason": { "minLength": 1, "type": "string" }, "review_status": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/routeReviewStatus" }, "role": { "enum": ["selected", "current", "prerequisite", "comparison"] } }, "required": ["candidate_source_id", "role", "review_status", "concept_ids"], "type": "object" }, "minItems": 1, "type": "array" }, "status": { "const": "approved" }, "type": { "const": "candidate-source-comparison" } }, "required": ["schema_version", "id", "type", "candidate_module_id", "status", "basis", "source_assessments", "comparisons"], "title": "Approved prospective source comparison", "type": "object", "x-governs": "record" };
+    var schema44 = { "$id": "https://learningos.local/schema/candidate-source-comparison.schema.json", "$schema": "https://json-schema.org/draft/2020-12/schema", "additionalProperties": false, "properties": { "basis": { "additionalProperties": false, "properties": { "candidate_set_checksum": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/sha256" }, "catalog_revision": { "minimum": 0, "type": "integer" }, "delivery_id": { "minLength": 1, "type": "string" }, "policy": { "const": "tiered-v1" }, "request_id": { "minLength": 1, "type": "string" } }, "required": ["catalog_revision", "candidate_set_checksum", "policy", "request_id", "delivery_id"], "type": "object" }, "candidate_module_id": { "pattern": "^candidate-module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "comparisons": { "items": { "additionalProperties": false, "properties": { "concept_ids": { "allOf": [{ "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/conceptIds" }, { "minItems": 1, "type": "array" }] }, "evidence": { "additionalProperties": false, "properties": { "left": { "items": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/evidence" }, "minItems": 1, "type": "array" }, "right": { "items": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/evidence" }, "minItems": 1, "type": "array" } }, "required": ["left", "right"], "type": "object" }, "left_candidate_source_id": { "pattern": "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "narrative": { "minLength": 1, "type": "string" }, "relation": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/comparisonRelation" }, "right_candidate_source_id": { "pattern": "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["left_candidate_source_id", "right_candidate_source_id", "relation", "narrative", "concept_ids", "evidence"], "type": "object" }, "type": "array" }, "id": { "pattern": "^candidate-comparison-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "schema_version": { "const": 1 }, "source_assessments": { "items": { "additionalProperties": false, "allOf": [{ "else": { "not": { "anyOf": [{ "required": ["contribution"] }, { "required": ["assumptions"] }, { "required": ["notation"] }, { "required": ["exercise_value"] }, { "required": ["best_for"] }, { "required": ["limitations"] }] }, "required": ["reason"] }, "if": { "properties": { "review_status": { "const": "deep-reviewed" } }, "required": ["review_status"] }, "then": { "properties": { "evidence": { "minItems": 1, "type": "array" } }, "required": ["contribution", "assumptions", "notation", "exercise_value", "best_for", "limitations", "evidence"] } }], "properties": { "assumptions": { "minLength": 1, "type": "string" }, "best_for": { "minLength": 1, "type": "string" }, "candidate_source_id": { "pattern": "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "concept_ids": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/conceptIds" }, "contribution": { "minLength": 1, "type": "string" }, "evidence": { "items": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/evidence" }, "type": "array" }, "exercise_value": { "minLength": 1, "type": "string" }, "limitations": { "minLength": 1, "type": "string" }, "notation": { "minLength": 1, "type": "string" }, "reason": { "minLength": 1, "type": "string" }, "review_status": { "$ref": "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/routeReviewStatus" }, "role": { "enum": ["selected", "current", "prerequisite", "comparison"] } }, "required": ["candidate_source_id", "role", "review_status", "concept_ids"], "type": "object" }, "minItems": 1, "type": "array" }, "status": { "const": "approved" }, "type": { "const": "candidate-source-comparison" } }, "required": ["schema_version", "id", "type", "candidate_module_id", "status", "basis", "source_assessments", "comparisons"], "title": "Approved prospective source comparison", "type": "object", "x-governs": "record" };
     var schema50 = { "enum": ["duplicates", "overlaps", "complements", "extends", "contrasts", "alternate-notation"] };
     var schema52 = { "enum": ["deep-reviewed", "screened", "unevaluated", "unavailable"] };
     var pattern31 = new RegExp("^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "u");
@@ -26337,9 +26361,14 @@ var require_responses_validator = __commonJS({
                                     var valid5 = _errs23 === errors;
                                     if (valid5) {
                                       const _errs28 = errors;
-                                      if (Array.isArray(data9)) {
-                                        if (data9.length < 1) {
-                                          validate34.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/concept_ids", schemaPath: "#/properties/comparisons/items/properties/concept_ids/allOf/1/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
+                                      if (errors === _errs28) {
+                                        if (Array.isArray(data9)) {
+                                          if (data9.length < 1) {
+                                            validate34.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/concept_ids", schemaPath: "#/properties/comparisons/items/properties/concept_ids/allOf/1/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
+                                            return false;
+                                          }
+                                        } else {
+                                          validate34.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/concept_ids", schemaPath: "#/properties/comparisons/items/properties/concept_ids/allOf/1/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                           return false;
                                         }
                                       }
@@ -26352,15 +26381,15 @@ var require_responses_validator = __commonJS({
                                   if (valid4) {
                                     if (data8.evidence !== void 0) {
                                       let data11 = data8.evidence;
-                                      const _errs29 = errors;
-                                      if (errors === _errs29) {
+                                      const _errs30 = errors;
+                                      if (errors === _errs30) {
                                         if (data11 && typeof data11 == "object" && !Array.isArray(data11)) {
                                           let missing3;
                                           if (data11.left === void 0 && (missing3 = "left") || data11.right === void 0 && (missing3 = "right")) {
                                             validate34.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/evidence", schemaPath: "#/properties/comparisons/items/properties/evidence/required", keyword: "required", params: { missingProperty: missing3 }, message: "must have required property '" + missing3 + "'" }];
                                             return false;
                                           } else {
-                                            const _errs31 = errors;
+                                            const _errs32 = errors;
                                             for (const key3 in data11) {
                                               if (!(key3 === "left" || key3 === "right")) {
                                                 validate34.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/evidence", schemaPath: "#/properties/comparisons/items/properties/evidence/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key3 }, message: "must NOT have additional properties" }];
@@ -26368,11 +26397,11 @@ var require_responses_validator = __commonJS({
                                                 break;
                                               }
                                             }
-                                            if (_errs31 === errors) {
+                                            if (_errs32 === errors) {
                                               if (data11.left !== void 0) {
                                                 let data12 = data11.left;
-                                                const _errs32 = errors;
-                                                if (errors === _errs32) {
+                                                const _errs33 = errors;
+                                                if (errors === _errs33) {
                                                   if (Array.isArray(data12)) {
                                                     if (data12.length < 1) {
                                                       validate34.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/evidence/left", schemaPath: "#/properties/comparisons/items/properties/evidence/properties/left/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
@@ -26381,12 +26410,12 @@ var require_responses_validator = __commonJS({
                                                       var valid10 = true;
                                                       const len2 = data12.length;
                                                       for (let i3 = 0; i3 < len2; i3++) {
-                                                        const _errs34 = errors;
+                                                        const _errs35 = errors;
                                                         if (!validate36(data12[i3], { instancePath: instancePath + "/comparisons/" + i0 + "/evidence/left/" + i3, parentData: data12, parentDataProperty: i3, rootData, dynamicAnchors })) {
                                                           vErrors = vErrors === null ? validate36.errors : vErrors.concat(validate36.errors);
                                                           errors = vErrors.length;
                                                         }
-                                                        var valid10 = _errs34 === errors;
+                                                        var valid10 = _errs35 === errors;
                                                         if (!valid10) {
                                                           break;
                                                         }
@@ -26397,15 +26426,15 @@ var require_responses_validator = __commonJS({
                                                     return false;
                                                   }
                                                 }
-                                                var valid9 = _errs32 === errors;
+                                                var valid9 = _errs33 === errors;
                                               } else {
                                                 var valid9 = true;
                                               }
                                               if (valid9) {
                                                 if (data11.right !== void 0) {
                                                   let data14 = data11.right;
-                                                  const _errs35 = errors;
-                                                  if (errors === _errs35) {
+                                                  const _errs36 = errors;
+                                                  if (errors === _errs36) {
                                                     if (Array.isArray(data14)) {
                                                       if (data14.length < 1) {
                                                         validate34.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/evidence/right", schemaPath: "#/properties/comparisons/items/properties/evidence/properties/right/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
@@ -26414,12 +26443,12 @@ var require_responses_validator = __commonJS({
                                                         var valid11 = true;
                                                         const len3 = data14.length;
                                                         for (let i4 = 0; i4 < len3; i4++) {
-                                                          const _errs37 = errors;
+                                                          const _errs38 = errors;
                                                           if (!validate36(data14[i4], { instancePath: instancePath + "/comparisons/" + i0 + "/evidence/right/" + i4, parentData: data14, parentDataProperty: i4, rootData, dynamicAnchors })) {
                                                             vErrors = vErrors === null ? validate36.errors : vErrors.concat(validate36.errors);
                                                             errors = vErrors.length;
                                                           }
-                                                          var valid11 = _errs37 === errors;
+                                                          var valid11 = _errs38 === errors;
                                                           if (!valid11) {
                                                             break;
                                                           }
@@ -26430,7 +26459,7 @@ var require_responses_validator = __commonJS({
                                                       return false;
                                                     }
                                                   }
-                                                  var valid9 = _errs35 === errors;
+                                                  var valid9 = _errs36 === errors;
                                                 } else {
                                                   var valid9 = true;
                                                 }
@@ -26442,15 +26471,15 @@ var require_responses_validator = __commonJS({
                                           return false;
                                         }
                                       }
-                                      var valid4 = _errs29 === errors;
+                                      var valid4 = _errs30 === errors;
                                     } else {
                                       var valid4 = true;
                                     }
                                     if (valid4) {
                                       if (data8.left_candidate_source_id !== void 0) {
                                         let data16 = data8.left_candidate_source_id;
-                                        const _errs38 = errors;
-                                        if (errors === _errs38) {
+                                        const _errs39 = errors;
+                                        if (errors === _errs39) {
                                           if (typeof data16 === "string") {
                                             if (!pattern25.test(data16)) {
                                               validate34.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/left_candidate_source_id", schemaPath: "#/properties/comparisons/items/properties/left_candidate_source_id/pattern", keyword: "pattern", params: { pattern: "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -26461,15 +26490,15 @@ var require_responses_validator = __commonJS({
                                             return false;
                                           }
                                         }
-                                        var valid4 = _errs38 === errors;
+                                        var valid4 = _errs39 === errors;
                                       } else {
                                         var valid4 = true;
                                       }
                                       if (valid4) {
                                         if (data8.narrative !== void 0) {
                                           let data17 = data8.narrative;
-                                          const _errs40 = errors;
-                                          if (errors === _errs40) {
+                                          const _errs41 = errors;
+                                          if (errors === _errs41) {
                                             if (typeof data17 === "string") {
                                               if (func1(data17) < 1) {
                                                 validate34.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/narrative", schemaPath: "#/properties/comparisons/items/properties/narrative/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -26480,27 +26509,27 @@ var require_responses_validator = __commonJS({
                                               return false;
                                             }
                                           }
-                                          var valid4 = _errs40 === errors;
+                                          var valid4 = _errs41 === errors;
                                         } else {
                                           var valid4 = true;
                                         }
                                         if (valid4) {
                                           if (data8.relation !== void 0) {
                                             let data18 = data8.relation;
-                                            const _errs42 = errors;
+                                            const _errs43 = errors;
                                             if (!(data18 === "duplicates" || data18 === "overlaps" || data18 === "complements" || data18 === "extends" || data18 === "contrasts" || data18 === "alternate-notation")) {
                                               validate34.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/relation", schemaPath: "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/comparisonRelation/enum", keyword: "enum", params: { allowedValues: schema50.enum }, message: "must be equal to one of the allowed values" }];
                                               return false;
                                             }
-                                            var valid4 = _errs42 === errors;
+                                            var valid4 = _errs43 === errors;
                                           } else {
                                             var valid4 = true;
                                           }
                                           if (valid4) {
                                             if (data8.right_candidate_source_id !== void 0) {
                                               let data19 = data8.right_candidate_source_id;
-                                              const _errs44 = errors;
-                                              if (errors === _errs44) {
+                                              const _errs45 = errors;
+                                              if (errors === _errs45) {
                                                 if (typeof data19 === "string") {
                                                   if (!pattern25.test(data19)) {
                                                     validate34.errors = [{ instancePath: instancePath + "/comparisons/" + i0 + "/right_candidate_source_id", schemaPath: "#/properties/comparisons/items/properties/right_candidate_source_id/pattern", keyword: "pattern", params: { pattern: "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -26511,7 +26540,7 @@ var require_responses_validator = __commonJS({
                                                   return false;
                                                 }
                                               }
-                                              var valid4 = _errs44 === errors;
+                                              var valid4 = _errs45 === errors;
                                             } else {
                                               var valid4 = true;
                                             }
@@ -26544,8 +26573,8 @@ var require_responses_validator = __commonJS({
                   if (valid0) {
                     if (data.id !== void 0) {
                       let data20 = data.id;
-                      const _errs46 = errors;
-                      if (errors === _errs46) {
+                      const _errs47 = errors;
+                      if (errors === _errs47) {
                         if (typeof data20 === "string") {
                           if (!pattern28.test(data20)) {
                             validate34.errors = [{ instancePath: instancePath + "/id", schemaPath: "#/properties/id/pattern", keyword: "pattern", params: { pattern: "^candidate-comparison-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^candidate-comparison-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -26556,26 +26585,26 @@ var require_responses_validator = __commonJS({
                           return false;
                         }
                       }
-                      var valid0 = _errs46 === errors;
+                      var valid0 = _errs47 === errors;
                     } else {
                       var valid0 = true;
                     }
                     if (valid0) {
                       if (data.schema_version !== void 0) {
-                        const _errs48 = errors;
+                        const _errs49 = errors;
                         if (1 !== data.schema_version) {
                           validate34.errors = [{ instancePath: instancePath + "/schema_version", schemaPath: "#/properties/schema_version/const", keyword: "const", params: { allowedValue: 1 }, message: "must be equal to constant" }];
                           return false;
                         }
-                        var valid0 = _errs48 === errors;
+                        var valid0 = _errs49 === errors;
                       } else {
                         var valid0 = true;
                       }
                       if (valid0) {
                         if (data.source_assessments !== void 0) {
                           let data22 = data.source_assessments;
-                          const _errs49 = errors;
-                          if (errors === _errs49) {
+                          const _errs50 = errors;
+                          if (errors === _errs50) {
                             if (Array.isArray(data22)) {
                               if (data22.length < 1) {
                                 validate34.errors = [{ instancePath: instancePath + "/source_assessments", schemaPath: "#/properties/source_assessments/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
@@ -26585,10 +26614,10 @@ var require_responses_validator = __commonJS({
                                 const len4 = data22.length;
                                 for (let i5 = 0; i5 < len4; i5++) {
                                   let data23 = data22[i5];
-                                  const _errs51 = errors;
-                                  const _errs54 = errors;
-                                  let valid15 = true;
+                                  const _errs52 = errors;
                                   const _errs55 = errors;
+                                  let valid15 = true;
+                                  const _errs56 = errors;
                                   if (data23 && typeof data23 == "object" && !Array.isArray(data23)) {
                                     let missing4;
                                     if (data23.review_status === void 0 && (missing4 = "review_status")) {
@@ -26613,18 +26642,18 @@ var require_responses_validator = __commonJS({
                                       }
                                     }
                                   }
-                                  var _valid0 = _errs55 === errors;
-                                  errors = _errs54;
+                                  var _valid0 = _errs56 === errors;
+                                  errors = _errs55;
                                   if (vErrors !== null) {
-                                    if (_errs54) {
-                                      vErrors.length = _errs54;
+                                    if (_errs55) {
+                                      vErrors.length = _errs55;
                                     } else {
                                       vErrors = null;
                                     }
                                   }
                                   let ifClause0;
                                   if (_valid0) {
-                                    const _errs57 = errors;
+                                    const _errs58 = errors;
                                     if (data23 && typeof data23 == "object" && !Array.isArray(data23)) {
                                       let missing5;
                                       if (data23.contribution === void 0 && (missing5 = "contribution") || data23.assumptions === void 0 && (missing5 = "assumptions") || data23.notation === void 0 && (missing5 = "notation") || data23.exercise_value === void 0 && (missing5 = "exercise_value") || data23.best_for === void 0 && (missing5 = "best_for") || data23.limitations === void 0 && (missing5 = "limitations") || data23.evidence === void 0 && (missing5 = "evidence")) {
@@ -26633,16 +26662,22 @@ var require_responses_validator = __commonJS({
                                       } else {
                                         if (data23.evidence !== void 0) {
                                           let data25 = data23.evidence;
-                                          if (Array.isArray(data25)) {
-                                            if (data25.length < 1) {
-                                              validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/evidence", schemaPath: "#/properties/source_assessments/items/allOf/0/then/properties/evidence/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
+                                          const _errs59 = errors;
+                                          if (errors === _errs59) {
+                                            if (Array.isArray(data25)) {
+                                              if (data25.length < 1) {
+                                                validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/evidence", schemaPath: "#/properties/source_assessments/items/allOf/0/then/properties/evidence/minItems", keyword: "minItems", params: { limit: 1 }, message: "must NOT have fewer than 1 items" }];
+                                                return false;
+                                              }
+                                            } else {
+                                              validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/evidence", schemaPath: "#/properties/source_assessments/items/allOf/0/then/properties/evidence/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                               return false;
                                             }
                                           }
                                         }
                                       }
                                     }
-                                    var _valid0 = _errs57 === errors;
+                                    var _valid0 = _errs58 === errors;
                                     valid15 = _valid0;
                                     if (valid15) {
                                       var props0 = {};
@@ -26651,12 +26686,12 @@ var require_responses_validator = __commonJS({
                                     }
                                     ifClause0 = "then";
                                   } else {
-                                    const _errs59 = errors;
-                                    const _errs60 = errors;
                                     const _errs61 = errors;
                                     const _errs62 = errors;
-                                    let valid19 = false;
                                     const _errs63 = errors;
+                                    const _errs64 = errors;
+                                    let valid19 = false;
+                                    const _errs65 = errors;
                                     if (data23 && typeof data23 == "object" && !Array.isArray(data23)) {
                                       let missing6;
                                       if (data23.contribution === void 0 && (missing6 = "contribution")) {
@@ -26669,9 +26704,9 @@ var require_responses_validator = __commonJS({
                                         errors++;
                                       }
                                     }
-                                    var _valid1 = _errs63 === errors;
+                                    var _valid1 = _errs65 === errors;
                                     valid19 = valid19 || _valid1;
-                                    const _errs64 = errors;
+                                    const _errs66 = errors;
                                     if (data23 && typeof data23 == "object" && !Array.isArray(data23)) {
                                       let missing7;
                                       if (data23.assumptions === void 0 && (missing7 = "assumptions")) {
@@ -26684,9 +26719,9 @@ var require_responses_validator = __commonJS({
                                         errors++;
                                       }
                                     }
-                                    var _valid1 = _errs64 === errors;
+                                    var _valid1 = _errs66 === errors;
                                     valid19 = valid19 || _valid1;
-                                    const _errs65 = errors;
+                                    const _errs67 = errors;
                                     if (data23 && typeof data23 == "object" && !Array.isArray(data23)) {
                                       let missing8;
                                       if (data23.notation === void 0 && (missing8 = "notation")) {
@@ -26699,9 +26734,9 @@ var require_responses_validator = __commonJS({
                                         errors++;
                                       }
                                     }
-                                    var _valid1 = _errs65 === errors;
+                                    var _valid1 = _errs67 === errors;
                                     valid19 = valid19 || _valid1;
-                                    const _errs66 = errors;
+                                    const _errs68 = errors;
                                     if (data23 && typeof data23 == "object" && !Array.isArray(data23)) {
                                       let missing9;
                                       if (data23.exercise_value === void 0 && (missing9 = "exercise_value")) {
@@ -26714,9 +26749,9 @@ var require_responses_validator = __commonJS({
                                         errors++;
                                       }
                                     }
-                                    var _valid1 = _errs66 === errors;
+                                    var _valid1 = _errs68 === errors;
                                     valid19 = valid19 || _valid1;
-                                    const _errs67 = errors;
+                                    const _errs69 = errors;
                                     if (data23 && typeof data23 == "object" && !Array.isArray(data23)) {
                                       let missing10;
                                       if (data23.best_for === void 0 && (missing10 = "best_for")) {
@@ -26729,9 +26764,9 @@ var require_responses_validator = __commonJS({
                                         errors++;
                                       }
                                     }
-                                    var _valid1 = _errs67 === errors;
+                                    var _valid1 = _errs69 === errors;
                                     valid19 = valid19 || _valid1;
-                                    const _errs68 = errors;
+                                    const _errs70 = errors;
                                     if (data23 && typeof data23 == "object" && !Array.isArray(data23)) {
                                       let missing11;
                                       if (data23.limitations === void 0 && (missing11 = "limitations")) {
@@ -26744,7 +26779,7 @@ var require_responses_validator = __commonJS({
                                         errors++;
                                       }
                                     }
-                                    var _valid1 = _errs68 === errors;
+                                    var _valid1 = _errs70 === errors;
                                     valid19 = valid19 || _valid1;
                                     if (!valid19) {
                                       const err8 = {};
@@ -26755,6 +26790,20 @@ var require_responses_validator = __commonJS({
                                       }
                                       errors++;
                                     } else {
+                                      errors = _errs64;
+                                      if (vErrors !== null) {
+                                        if (_errs64) {
+                                          vErrors.length = _errs64;
+                                        } else {
+                                          vErrors = null;
+                                        }
+                                      }
+                                    }
+                                    var valid18 = _errs63 === errors;
+                                    if (valid18) {
+                                      validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5, schemaPath: "#/properties/source_assessments/items/allOf/0/else/not", keyword: "not", params: {}, message: "must NOT be valid" }];
+                                      return false;
+                                    } else {
                                       errors = _errs62;
                                       if (vErrors !== null) {
                                         if (_errs62) {
@@ -26764,21 +26813,7 @@ var require_responses_validator = __commonJS({
                                         }
                                       }
                                     }
-                                    var valid18 = _errs61 === errors;
-                                    if (valid18) {
-                                      validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5, schemaPath: "#/properties/source_assessments/items/allOf/0/else/not", keyword: "not", params: {}, message: "must NOT be valid" }];
-                                      return false;
-                                    } else {
-                                      errors = _errs60;
-                                      if (vErrors !== null) {
-                                        if (_errs60) {
-                                          vErrors.length = _errs60;
-                                        } else {
-                                          vErrors = null;
-                                        }
-                                      }
-                                    }
-                                    if (errors === _errs59) {
+                                    if (errors === _errs61) {
                                       if (data23 && typeof data23 == "object" && !Array.isArray(data23)) {
                                         let missing12;
                                         if (data23.reason === void 0 && (missing12 = "reason")) {
@@ -26787,7 +26822,7 @@ var require_responses_validator = __commonJS({
                                         }
                                       }
                                     }
-                                    var _valid0 = _errs59 === errors;
+                                    var _valid0 = _errs61 === errors;
                                     valid15 = _valid0;
                                     ifClause0 = "else";
                                   }
@@ -26802,14 +26837,14 @@ var require_responses_validator = __commonJS({
                                     validate34.errors = vErrors;
                                     return false;
                                   }
-                                  if (errors === _errs51) {
+                                  if (errors === _errs52) {
                                     if (data23 && typeof data23 == "object" && !Array.isArray(data23)) {
                                       let missing13;
                                       if (data23.candidate_source_id === void 0 && (missing13 = "candidate_source_id") || data23.role === void 0 && (missing13 = "role") || data23.review_status === void 0 && (missing13 = "review_status") || data23.concept_ids === void 0 && (missing13 = "concept_ids")) {
                                         validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5, schemaPath: "#/properties/source_assessments/items/required", keyword: "required", params: { missingProperty: missing13 }, message: "must have required property '" + missing13 + "'" }];
                                         return false;
                                       } else {
-                                        const _errs69 = errors;
+                                        const _errs71 = errors;
                                         for (const key4 in data23) {
                                           if (!func13.call(schema44.properties.source_assessments.items.properties, key4)) {
                                             validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5, schemaPath: "#/properties/source_assessments/items/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key4 }, message: "must NOT have additional properties" }];
@@ -26817,11 +26852,11 @@ var require_responses_validator = __commonJS({
                                             break;
                                           }
                                         }
-                                        if (_errs69 === errors) {
+                                        if (_errs71 === errors) {
                                           if (data23.assumptions !== void 0) {
                                             let data26 = data23.assumptions;
-                                            const _errs70 = errors;
-                                            if (errors === _errs70) {
+                                            const _errs72 = errors;
+                                            if (errors === _errs72) {
                                               if (typeof data26 === "string") {
                                                 if (func1(data26) < 1) {
                                                   validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/assumptions", schemaPath: "#/properties/source_assessments/items/properties/assumptions/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -26832,15 +26867,15 @@ var require_responses_validator = __commonJS({
                                                 return false;
                                               }
                                             }
-                                            var valid20 = _errs70 === errors;
+                                            var valid20 = _errs72 === errors;
                                           } else {
                                             var valid20 = true;
                                           }
                                           if (valid20) {
                                             if (data23.best_for !== void 0) {
                                               let data27 = data23.best_for;
-                                              const _errs72 = errors;
-                                              if (errors === _errs72) {
+                                              const _errs74 = errors;
+                                              if (errors === _errs74) {
                                                 if (typeof data27 === "string") {
                                                   if (func1(data27) < 1) {
                                                     validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/best_for", schemaPath: "#/properties/source_assessments/items/properties/best_for/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -26851,15 +26886,15 @@ var require_responses_validator = __commonJS({
                                                   return false;
                                                 }
                                               }
-                                              var valid20 = _errs72 === errors;
+                                              var valid20 = _errs74 === errors;
                                             } else {
                                               var valid20 = true;
                                             }
                                             if (valid20) {
                                               if (data23.candidate_source_id !== void 0) {
                                                 let data28 = data23.candidate_source_id;
-                                                const _errs74 = errors;
-                                                if (errors === _errs74) {
+                                                const _errs76 = errors;
+                                                if (errors === _errs76) {
                                                   if (typeof data28 === "string") {
                                                     if (!pattern25.test(data28)) {
                                                       validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/candidate_source_id", schemaPath: "#/properties/source_assessments/items/properties/candidate_source_id/pattern", keyword: "pattern", params: { pattern: "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^candidate-source-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -26870,23 +26905,23 @@ var require_responses_validator = __commonJS({
                                                     return false;
                                                   }
                                                 }
-                                                var valid20 = _errs74 === errors;
+                                                var valid20 = _errs76 === errors;
                                               } else {
                                                 var valid20 = true;
                                               }
                                               if (valid20) {
                                                 if (data23.concept_ids !== void 0) {
                                                   let data29 = data23.concept_ids;
-                                                  const _errs76 = errors;
-                                                  const _errs77 = errors;
-                                                  if (errors === _errs77) {
+                                                  const _errs78 = errors;
+                                                  const _errs79 = errors;
+                                                  if (errors === _errs79) {
                                                     if (Array.isArray(data29)) {
                                                       var valid22 = true;
                                                       const len5 = data29.length;
                                                       for (let i6 = 0; i6 < len5; i6++) {
                                                         let data30 = data29[i6];
-                                                        const _errs79 = errors;
-                                                        if (errors === _errs79) {
+                                                        const _errs81 = errors;
+                                                        if (errors === _errs81) {
                                                           if (typeof data30 === "string") {
                                                             if (!pattern31.test(data30)) {
                                                               validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/concept_ids/" + i6, schemaPath: "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/conceptIds/items/pattern", keyword: "pattern", params: { pattern: "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
@@ -26897,7 +26932,7 @@ var require_responses_validator = __commonJS({
                                                             return false;
                                                           }
                                                         }
-                                                        var valid22 = _errs79 === errors;
+                                                        var valid22 = _errs81 === errors;
                                                         if (!valid22) {
                                                           break;
                                                         }
@@ -26927,15 +26962,15 @@ var require_responses_validator = __commonJS({
                                                       return false;
                                                     }
                                                   }
-                                                  var valid20 = _errs76 === errors;
+                                                  var valid20 = _errs78 === errors;
                                                 } else {
                                                   var valid20 = true;
                                                 }
                                                 if (valid20) {
                                                   if (data23.contribution !== void 0) {
                                                     let data31 = data23.contribution;
-                                                    const _errs81 = errors;
-                                                    if (errors === _errs81) {
+                                                    const _errs83 = errors;
+                                                    if (errors === _errs83) {
                                                       if (typeof data31 === "string") {
                                                         if (func1(data31) < 1) {
                                                           validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/contribution", schemaPath: "#/properties/source_assessments/items/properties/contribution/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -26946,25 +26981,25 @@ var require_responses_validator = __commonJS({
                                                         return false;
                                                       }
                                                     }
-                                                    var valid20 = _errs81 === errors;
+                                                    var valid20 = _errs83 === errors;
                                                   } else {
                                                     var valid20 = true;
                                                   }
                                                   if (valid20) {
                                                     if (data23.evidence !== void 0) {
                                                       let data32 = data23.evidence;
-                                                      const _errs83 = errors;
-                                                      if (errors === _errs83) {
+                                                      const _errs85 = errors;
+                                                      if (errors === _errs85) {
                                                         if (Array.isArray(data32)) {
                                                           var valid24 = true;
                                                           const len6 = data32.length;
                                                           for (let i8 = 0; i8 < len6; i8++) {
-                                                            const _errs85 = errors;
+                                                            const _errs87 = errors;
                                                             if (!validate36(data32[i8], { instancePath: instancePath + "/source_assessments/" + i5 + "/evidence/" + i8, parentData: data32, parentDataProperty: i8, rootData, dynamicAnchors })) {
                                                               vErrors = vErrors === null ? validate36.errors : vErrors.concat(validate36.errors);
                                                               errors = vErrors.length;
                                                             }
-                                                            var valid24 = _errs85 === errors;
+                                                            var valid24 = _errs87 === errors;
                                                             if (!valid24) {
                                                               break;
                                                             }
@@ -26974,15 +27009,15 @@ var require_responses_validator = __commonJS({
                                                           return false;
                                                         }
                                                       }
-                                                      var valid20 = _errs83 === errors;
+                                                      var valid20 = _errs85 === errors;
                                                     } else {
                                                       var valid20 = true;
                                                     }
                                                     if (valid20) {
                                                       if (data23.exercise_value !== void 0) {
                                                         let data34 = data23.exercise_value;
-                                                        const _errs86 = errors;
-                                                        if (errors === _errs86) {
+                                                        const _errs88 = errors;
+                                                        if (errors === _errs88) {
                                                           if (typeof data34 === "string") {
                                                             if (func1(data34) < 1) {
                                                               validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/exercise_value", schemaPath: "#/properties/source_assessments/items/properties/exercise_value/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -26993,15 +27028,15 @@ var require_responses_validator = __commonJS({
                                                             return false;
                                                           }
                                                         }
-                                                        var valid20 = _errs86 === errors;
+                                                        var valid20 = _errs88 === errors;
                                                       } else {
                                                         var valid20 = true;
                                                       }
                                                       if (valid20) {
                                                         if (data23.limitations !== void 0) {
                                                           let data35 = data23.limitations;
-                                                          const _errs88 = errors;
-                                                          if (errors === _errs88) {
+                                                          const _errs90 = errors;
+                                                          if (errors === _errs90) {
                                                             if (typeof data35 === "string") {
                                                               if (func1(data35) < 1) {
                                                                 validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/limitations", schemaPath: "#/properties/source_assessments/items/properties/limitations/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -27012,15 +27047,15 @@ var require_responses_validator = __commonJS({
                                                               return false;
                                                             }
                                                           }
-                                                          var valid20 = _errs88 === errors;
+                                                          var valid20 = _errs90 === errors;
                                                         } else {
                                                           var valid20 = true;
                                                         }
                                                         if (valid20) {
                                                           if (data23.notation !== void 0) {
                                                             let data36 = data23.notation;
-                                                            const _errs90 = errors;
-                                                            if (errors === _errs90) {
+                                                            const _errs92 = errors;
+                                                            if (errors === _errs92) {
                                                               if (typeof data36 === "string") {
                                                                 if (func1(data36) < 1) {
                                                                   validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/notation", schemaPath: "#/properties/source_assessments/items/properties/notation/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -27031,15 +27066,15 @@ var require_responses_validator = __commonJS({
                                                                 return false;
                                                               }
                                                             }
-                                                            var valid20 = _errs90 === errors;
+                                                            var valid20 = _errs92 === errors;
                                                           } else {
                                                             var valid20 = true;
                                                           }
                                                           if (valid20) {
                                                             if (data23.reason !== void 0) {
                                                               let data37 = data23.reason;
-                                                              const _errs92 = errors;
-                                                              if (errors === _errs92) {
+                                                              const _errs94 = errors;
+                                                              if (errors === _errs94) {
                                                                 if (typeof data37 === "string") {
                                                                   if (func1(data37) < 1) {
                                                                     validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/reason", schemaPath: "#/properties/source_assessments/items/properties/reason/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
@@ -27050,31 +27085,31 @@ var require_responses_validator = __commonJS({
                                                                   return false;
                                                                 }
                                                               }
-                                                              var valid20 = _errs92 === errors;
+                                                              var valid20 = _errs94 === errors;
                                                             } else {
                                                               var valid20 = true;
                                                             }
                                                             if (valid20) {
                                                               if (data23.review_status !== void 0) {
                                                                 let data38 = data23.review_status;
-                                                                const _errs94 = errors;
+                                                                const _errs96 = errors;
                                                                 if (!(data38 === "deep-reviewed" || data38 === "screened" || data38 === "unevaluated" || data38 === "unavailable")) {
                                                                   validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/review_status", schemaPath: "https://learningos.local/schema/material-comparison-defs.schema.json#/$defs/routeReviewStatus/enum", keyword: "enum", params: { allowedValues: schema52.enum }, message: "must be equal to one of the allowed values" }];
                                                                   return false;
                                                                 }
-                                                                var valid20 = _errs94 === errors;
+                                                                var valid20 = _errs96 === errors;
                                                               } else {
                                                                 var valid20 = true;
                                                               }
                                                               if (valid20) {
                                                                 if (data23.role !== void 0) {
                                                                   let data39 = data23.role;
-                                                                  const _errs96 = errors;
+                                                                  const _errs98 = errors;
                                                                   if (!(data39 === "selected" || data39 === "current" || data39 === "prerequisite" || data39 === "comparison")) {
                                                                     validate34.errors = [{ instancePath: instancePath + "/source_assessments/" + i5 + "/role", schemaPath: "#/properties/source_assessments/items/properties/role/enum", keyword: "enum", params: { allowedValues: schema44.properties.source_assessments.items.properties.role.enum }, message: "must be equal to one of the allowed values" }];
                                                                     return false;
                                                                   }
-                                                                  var valid20 = _errs96 === errors;
+                                                                  var valid20 = _errs98 === errors;
                                                                 } else {
                                                                   var valid20 = true;
                                                                 }
@@ -27096,7 +27131,7 @@ var require_responses_validator = __commonJS({
                                       return false;
                                     }
                                   }
-                                  var valid13 = _errs51 === errors;
+                                  var valid13 = _errs52 === errors;
                                   if (!valid13) {
                                     break;
                                   }
@@ -27107,29 +27142,29 @@ var require_responses_validator = __commonJS({
                               return false;
                             }
                           }
-                          var valid0 = _errs49 === errors;
+                          var valid0 = _errs50 === errors;
                         } else {
                           var valid0 = true;
                         }
                         if (valid0) {
                           if (data.status !== void 0) {
-                            const _errs97 = errors;
+                            const _errs99 = errors;
                             if ("approved" !== data.status) {
                               validate34.errors = [{ instancePath: instancePath + "/status", schemaPath: "#/properties/status/const", keyword: "const", params: { allowedValue: "approved" }, message: "must be equal to constant" }];
                               return false;
                             }
-                            var valid0 = _errs97 === errors;
+                            var valid0 = _errs99 === errors;
                           } else {
                             var valid0 = true;
                           }
                           if (valid0) {
                             if (data.type !== void 0) {
-                              const _errs98 = errors;
+                              const _errs100 = errors;
                               if ("candidate-source-comparison" !== data.type) {
                                 validate34.errors = [{ instancePath: instancePath + "/type", schemaPath: "#/properties/type/const", keyword: "const", params: { allowedValue: "candidate-source-comparison" }, message: "must be equal to constant" }];
                                 return false;
                               }
-                              var valid0 = _errs98 === errors;
+                              var valid0 = _errs100 === errors;
                             } else {
                               var valid0 = true;
                             }
@@ -33250,8 +33285,8 @@ var nodePath5 = __toESM(require("node:path"));
 
 // src/contracts/manifest.ts
 var import_manifest_validator = __toESM(require_manifest_validator());
-var MANIFEST_CONTRACT_VERSION = 15;
-var MANIFEST_SCHEMA_SHA256 = "sha256:c487c6ed2e05c05425c6b41bd291e566b16a7e1ee3af667ae00763608d7e121f";
+var MANIFEST_CONTRACT_VERSION = 16;
+var MANIFEST_SCHEMA_SHA256 = "sha256:ff2a123d01db72982e538d7e73f21ff2fc5d2f24fb4ec9474ada834952c02c55";
 function formatAjvErrors(errors) {
   if (!Array.isArray(errors) || errors.length === 0) {
     return "unknown validation error";
@@ -47959,10 +47994,10 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:e01a004e8eead8f5113a94d0c6b24b02927af11895d04962f0cdc2be822f02fd" : "unavailable";
+  return true ? "sha256:a62b25ea5bfb6bd4e0adaa2141a61810ed35cf51bea69650f3ff428213964db6" : "unavailable";
 }
 function runtimeContractVersion() {
-  return true ? 15 : 0;
+  return true ? 16 : 0;
 }
 
 // src/infrastructure/los-runtime.ts
@@ -55433,6 +55468,13 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
     let facts;
     try {
       facts = projectionSettlement(await this.gateway.projectionObservation(confirmation));
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        if (!facts.writeCompleted || !facts.settled || facts.currentSnapshotId === null) break;
+        observed = await this.observedSnapshot();
+        this.gateway.assertLifecycleActive();
+        if (observed === facts.currentSnapshotId || attempt === 1) break;
+        facts = projectionSettlement(await this.gateway.projectionObservation(confirmation));
+      }
     } catch (error) {
       rebuildError = error;
       facts = {

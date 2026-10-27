@@ -1,6 +1,6 @@
 {
   "root": "system/schema/ui-responses.schema.json",
-  "closure_sha256": "sha256:57ec8fb85d2a7e7e2a6ee20bd2cc9414d36402f6a0ad037fb53f9f3a5d248cc3",
+  "closure_sha256": "sha256:d2e58c4d9c8c4d45f6ac20ad40322a64b7a4440653e24fff0f2c10c06caff97e",
   "endpoints": [
     "HealthReportV1",
     "LegacyArchiveLockV1",
