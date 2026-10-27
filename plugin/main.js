@@ -33148,6 +33148,92 @@ var require_responses_validator = __commonJS({
       return errors === 0;
     }
     validate94.evaluated = { "props": { "contract": true, "focus": true, "reason": true, "schema_version": true, "snapshot_id": true, "state": true }, "dynamicProps": false, "dynamicItems": false };
+    exports2.validateProjectionSettlementWire = validate95;
+    var schema87 = { "additionalProperties": false, "properties": { "current_snapshot_id": { "type": ["string", "null"] }, "reason": { "type": "string" }, "settled": { "type": "boolean" }, "write_completed": { "type": "boolean" } }, "required": ["write_completed", "current_snapshot_id", "settled", "reason"], "type": "object" };
+    function validate95(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
+      let vErrors = null;
+      let errors = 0;
+      const evaluated0 = validate95.evaluated;
+      if (evaluated0.dynamicProps) {
+        evaluated0.props = void 0;
+      }
+      if (evaluated0.dynamicItems) {
+        evaluated0.items = void 0;
+      }
+      if (errors === 0) {
+        if (data && typeof data == "object" && !Array.isArray(data)) {
+          let missing0;
+          if (data.write_completed === void 0 && (missing0 = "write_completed") || data.current_snapshot_id === void 0 && (missing0 = "current_snapshot_id") || data.settled === void 0 && (missing0 = "settled") || data.reason === void 0 && (missing0 = "reason")) {
+            validate95.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
+            return false;
+          } else {
+            const _errs1 = errors;
+            for (const key0 in data) {
+              if (!(key0 === "current_snapshot_id" || key0 === "reason" || key0 === "settled" || key0 === "write_completed")) {
+                validate95.errors = [{ instancePath, schemaPath: "#/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key0 }, message: "must NOT have additional properties" }];
+                return false;
+                break;
+              }
+            }
+            if (_errs1 === errors) {
+              if (data.current_snapshot_id !== void 0) {
+                let data0 = data.current_snapshot_id;
+                const _errs2 = errors;
+                if (typeof data0 !== "string" && data0 !== null) {
+                  validate95.errors = [{ instancePath: instancePath + "/current_snapshot_id", schemaPath: "#/properties/current_snapshot_id/type", keyword: "type", params: { type: schema87.properties.current_snapshot_id.type }, message: "must be string,null" }];
+                  return false;
+                }
+                var valid0 = _errs2 === errors;
+              } else {
+                var valid0 = true;
+              }
+              if (valid0) {
+                if (data.reason !== void 0) {
+                  const _errs4 = errors;
+                  if (typeof data.reason !== "string") {
+                    validate95.errors = [{ instancePath: instancePath + "/reason", schemaPath: "#/properties/reason/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                    return false;
+                  }
+                  var valid0 = _errs4 === errors;
+                } else {
+                  var valid0 = true;
+                }
+                if (valid0) {
+                  if (data.settled !== void 0) {
+                    const _errs6 = errors;
+                    if (typeof data.settled !== "boolean") {
+                      validate95.errors = [{ instancePath: instancePath + "/settled", schemaPath: "#/properties/settled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
+                      return false;
+                    }
+                    var valid0 = _errs6 === errors;
+                  } else {
+                    var valid0 = true;
+                  }
+                  if (valid0) {
+                    if (data.write_completed !== void 0) {
+                      const _errs8 = errors;
+                      if (typeof data.write_completed !== "boolean") {
+                        validate95.errors = [{ instancePath: instancePath + "/write_completed", schemaPath: "#/properties/write_completed/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
+                        return false;
+                      }
+                      var valid0 = _errs8 === errors;
+                    } else {
+                      var valid0 = true;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        } else {
+          validate95.errors = [{ instancePath, schemaPath: "#/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+          return false;
+        }
+      }
+      validate95.errors = vErrors;
+      return errors === 0;
+    }
+    validate95.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
   }
 });
 
@@ -47003,6 +47089,7 @@ var nodePath3 = __toESM(require("node:path"));
 var import_obsidian15 = require("obsidian");
 
 // src/gateway-client.ts
+var import_responses_validator3 = __toESM(require_responses_validator());
 var import_node_crypto2 = require("node:crypto");
 var import_promises = require("node:fs/promises");
 var import_node_os = require("node:os");
@@ -47792,6 +47879,14 @@ function gatewayRecoverySummary(state) {
     ["Last error", stored.last_error ? `${stored.last_error.code}: ${stored.last_error.message}` : "none"]
   ];
 }
+function projectionSettlement(facts) {
+  return {
+    writeCompleted: facts.write_completed,
+    currentSnapshotId: facts.current_snapshot_id,
+    settled: facts.settled,
+    reason: facts.reason
+  };
+}
 
 // src/infrastructure/trace-context.ts
 var import_node_crypto = require("node:crypto");
@@ -47864,7 +47959,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:d01404bb095b928090c37255e0c492a9c6be81c9c8a71b22a1c9450ffa103be1" : "unavailable";
+  return true ? "sha256:e01a004e8eead8f5113a94d0c6b24b02927af11895d04962f0cdc2be822f02fd" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 15 : 0;
@@ -48813,6 +48908,20 @@ Last response: ${result.error.message}`,
   healthReport() {
     return this.call(["health-report", "--json"]);
   }
+  async projectionObservation(confirmation) {
+    const result = await this.call(["projection-observe", "--confirmation", JSON.stringify({
+      receipt_path: confirmation.receipt_path,
+      snapshot_after: confirmation.snapshot_after
+    })]);
+    if (!(0, import_responses_validator3.validateProjectionSettlementWire)(result)) {
+      throw new GatewayError(
+        "Core returned an invalid projection observation; recovery remains pending.",
+        null,
+        { code: "PROJECTION_FAILED", retryable: true }
+      );
+    }
+    return result;
+  }
   /** Recent causal operations, newest first (Diagnostics → Operations). */
   operationsList(limit = 30) {
     return this.call(["operations", "--limit", String(limit)]);
@@ -49183,27 +49292,27 @@ function renderReviewEntry(parent, host, entry) {
 }
 
 // src/contracts/health-report.ts
-var import_responses_validator3 = __toESM(require_responses_validator());
+var import_responses_validator4 = __toESM(require_responses_validator());
 function asHealthReport(value) {
-  if (!(0, import_responses_validator3.validateHealthReportV1)(value)) return null;
+  if (!(0, import_responses_validator4.validateHealthReportV1)(value)) return null;
   const aggregate = value.checks.every((check) => check.status === "ok") ? "healthy" : "attention-required";
   return value.status === aggregate ? value : null;
 }
 
 // src/contracts/legacy-archive.ts
-var import_responses_validator4 = __toESM(require_responses_validator());
+var import_responses_validator5 = __toESM(require_responses_validator());
 function asLegacyArchiveStatus(value) {
-  if (!(0, import_responses_validator4.validateLegacyArchiveStatusV1)(value)) return null;
+  if (!(0, import_responses_validator5.validateLegacyArchiveStatusV1)(value)) return null;
   return value.available === (value.lock !== null) ? value : null;
 }
 
 // src/contracts/operations.ts
-var import_responses_validator5 = __toESM(require_responses_validator());
+var import_responses_validator6 = __toESM(require_responses_validator());
 function asOperationsList(value) {
-  return (0, import_responses_validator5.validateOperationsListV1)(value) ? value : null;
+  return (0, import_responses_validator6.validateOperationsListV1)(value) ? value : null;
 }
 function asOperationDetail(value) {
-  return (0, import_responses_validator5.validateOperationDetailV1)(value) ? value : null;
+  return (0, import_responses_validator6.validateOperationDetailV1)(value) ? value : null;
 }
 
 // src/views/review-view.ts
@@ -50678,7 +50787,7 @@ function groupMaterialsByType(rows, formatOf) {
 var import_obsidian18 = require("obsidian");
 
 // src/contracts/material-span.ts
-var import_responses_validator6 = __toESM(require_responses_validator());
+var import_responses_validator7 = __toESM(require_responses_validator());
 function record5(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
 }
@@ -50703,7 +50812,7 @@ function spanFile(item) {
   };
 }
 function asMaterialSpan(value) {
-  if (!(0, import_responses_validator6.validateMaterialSpanWire)(value)) return null;
+  if (!(0, import_responses_validator7.validateMaterialSpanWire)(value)) return null;
   const response = value;
   const unitId = response.unit_id;
   const moduleId = response.module_id;
@@ -53774,7 +53883,7 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
 };
 
 // src/contracts/ability-context.ts
-var import_responses_validator7 = __toESM(require_responses_validator());
+var import_responses_validator8 = __toESM(require_responses_validator());
 var FRESHNESS = /* @__PURE__ */ new Set(["current", "stale", "unavailable", "not-reviewed"]);
 function record6(value) {
   return typeof value === "object" && value !== null && !Array.isArray(value) ? value : null;
@@ -53916,7 +54025,7 @@ function definition(item) {
   } : null;
 }
 function asAbilityBrief(value) {
-  if (!(0, import_responses_validator7.validateAbilityBriefWire)(value)) return null;
+  if (!(0, import_responses_validator8.validateAbilityBriefWire)(value)) return null;
   const abilities = list2(value.abilities, row);
   if (abilities.some((item) => item === null)) return null;
   const candidates = list2(value.candidate_connections, candidate);
@@ -53931,7 +54040,7 @@ function asAbilityBrief(value) {
   };
 }
 function asAbilityFocus(value) {
-  if (!(0, import_responses_validator7.validateAbilityFocusWire)(value)) return null;
+  if (!(0, import_responses_validator8.validateAbilityFocusWire)(value)) return null;
   const ability = definition(value.ability);
   if (!ability || ability.id !== value.focus) return null;
   const related = list2(value.related_encounters, relatedEncounter);
@@ -53948,7 +54057,7 @@ function asAbilityFocus(value) {
   };
 }
 function asAbilityUnmapped(value) {
-  return (0, import_responses_validator7.validateAbilityUnmappedWire)(value) ? { snapshot_id: value.snapshot_id, focus: value.focus, reason: value.reason } : null;
+  return (0, import_responses_validator8.validateAbilityUnmappedWire)(value) ? { snapshot_id: value.snapshot_id, focus: value.focus, reason: value.reason } : null;
 }
 
 // src/application/ability-horizon.ts
@@ -55310,22 +55419,33 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
     }
     let observed = await this.observedSnapshot();
     this.gateway.assertLifecycleActive();
-    let rebuildSucceeded = false;
     let rebuildError = null;
     if (observed !== confirmation.snapshot_after) {
       new import_obsidian27.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
       try {
         await this.gateway.call(["generate"], { expectJson: false });
-        rebuildSucceeded = true;
       } catch (error) {
         rebuildError = error;
       }
       observed = await this.observedSnapshot();
       this.gateway.assertLifecycleActive();
     }
-    const failedToEstablishCurrentProjection = observed === null || observed !== confirmation.snapshot_after && !rebuildSucceeded;
+    let facts;
+    try {
+      facts = projectionSettlement(await this.gateway.projectionObservation(confirmation));
+    } catch (error) {
+      rebuildError = error;
+      facts = {
+        writeCompleted: false,
+        settled: false,
+        currentSnapshotId: null,
+        reason: "projection-observation-failed"
+      };
+    }
+    this.gateway.assertLifecycleActive();
+    const failedToEstablishCurrentProjection = observed === null || !facts.writeCompleted || !facts.settled || facts.currentSnapshotId !== observed;
     if (failedToEstablishCurrentProjection) {
-      const detail = observed === null ? this.store.error || "the projection could not be reloaded" : `the projection rebuild failed and the readable manifest is still at ${observed}: ${errorMessage4(rebuildError)}`;
+      const detail = observed === null ? this.store.error || "the projection could not be reloaded" : `Core could not establish settlement at ${observed}: ${facts.reason}; ${errorMessage4(rebuildError)}`;
       await this.recovery.markBlocked({
         code: "PROJECTION_FAILED",
         message: detail

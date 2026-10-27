@@ -21,6 +21,7 @@ import type { AbilityDraft } from './application/ability-drafts';
 import { AbilityHorizon } from './application/ability-horizon';
 import {
   SettingsGatewayRecoveryStore,
+  projectionSettlement,
   type GatewayRecoveryState,
 } from './application/gateway-recovery';
 import type { AppSurface, LearningOSSettings } from './app/surface';
@@ -570,13 +571,11 @@ export class LearningOSUI extends Plugin implements AppSurface {
     }
     let observed = await this.observedSnapshot();
     this.gateway.assertLifecycleActive();
-    let rebuildSucceeded = false;
     let rebuildError: unknown = null;
     if (observed !== confirmation.snapshot_after) {
       new Notice('LearningOS is rebuilding the projection so the confirmed write becomes visible.');
       try {
         await this.gateway.call(['generate'], { expectJson: false });
-        rebuildSucceeded = true;
       } catch (error: unknown) {
         rebuildError = error;
         // Reload once anyway: another process may already have published the
@@ -585,12 +584,22 @@ export class LearningOSUI extends Plugin implements AppSurface {
       observed = await this.observedSnapshot();
       this.gateway.assertLifecycleActive();
     }
+    let facts: ReturnType<typeof projectionSettlement>;
+    try {
+      facts = projectionSettlement(await this.gateway.projectionObservation(confirmation));
+    } catch (error: unknown) {
+      rebuildError = error;
+      facts = { writeCompleted: false, settled: false, currentSnapshotId: null,
+        reason: 'projection-observation-failed' };
+    }
+    this.gateway.assertLifecycleActive();
     const failedToEstablishCurrentProjection = observed === null
-      || (observed !== confirmation.snapshot_after && !rebuildSucceeded);
+      || !facts.writeCompleted || !facts.settled
+      || facts.currentSnapshotId !== observed;
     if (failedToEstablishCurrentProjection) {
       const detail = observed === null
         ? (this.store.error || 'the projection could not be reloaded')
-        : `the projection rebuild failed and the readable manifest is still at ${observed}: ${errorMessage(rebuildError)}`;
+        : `Core could not establish settlement at ${observed}: ${facts.reason}; ${errorMessage(rebuildError)}`;
       await this.recovery.markBlocked({
         code: 'PROJECTION_FAILED',
         message: detail,

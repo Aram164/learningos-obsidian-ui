@@ -1,3 +1,5 @@
+import { validateProjectionSettlementWire } from './contracts/generated/responses.validator.cjs';
+import type { ProjectionSettlementWire } from './contracts/generated/responses.types';
 import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -1199,6 +1201,17 @@ export class GatewayClient {
    *  exact producer schemas before rendering any field. */
   healthReport() {
     return this.call(['health-report', '--json']);
+  }
+
+  async projectionObservation(confirmation: { receipt_path: string; snapshot_after: string }): Promise<ProjectionSettlementWire> {
+    const result: unknown = await this.call(['projection-observe', '--confirmation', JSON.stringify({
+      receipt_path: confirmation.receipt_path, snapshot_after: confirmation.snapshot_after,
+    })]);
+    if (!validateProjectionSettlementWire(result)) {
+      throw new GatewayError('Core returned an invalid projection observation; recovery remains pending.', null,
+        { code: 'PROJECTION_FAILED', retryable: true });
+    }
+    return result;
   }
 
   /** Recent causal operations, newest first (Diagnostics → Operations). */

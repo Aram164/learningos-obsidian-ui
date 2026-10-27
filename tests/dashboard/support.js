@@ -316,6 +316,12 @@ async function build(options = {}) {
     const envelope = stdin ? JSON.parse(stdin) : null;
     if (envelope) envelopes.push(envelope);
     options.spy?.(args, stdin);
+    if (args[0] === 'projection-observe') {
+      return callback(null, JSON.stringify({
+        write_completed: true, current_snapshot_id: plugin.store.snapshotId,
+        settled: true, reason: 'ready', ...options.projectionObservation,
+      }), '');
+    }
     if (options.runLosOverride) {
       return options.runLosOverride(args, callback, stdin);
     }
@@ -352,6 +358,13 @@ async function build(options = {}) {
   return { app, plugin, calls };
 }
 
+function answerProjectionObservation(plugin, args, callback) {
+  if (args[0] !== 'projection-observe') return false;
+  callback(null, JSON.stringify({ write_completed: true,
+    current_snapshot_id: plugin.store.snapshotId, settled: true, reason: 'ready' }), '');
+  return true;
+}
+
 async function boot(options = {}) {
   const context = await build(options);
   context.app.workspace.activeFile = { path: 'knowledge/notes/supplementary.md' };
@@ -371,6 +384,7 @@ function result() {
 }
 
 module.exports = {
+  answerProjectionObservation,
   path,
   fs,
   makeApp,

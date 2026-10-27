@@ -19,6 +19,7 @@ const {
   build,
   boot,
   gatewayConfirmation,
+  answerProjectionObservation,
   gatewayRefusal,
 } = require('./support');
 
@@ -222,6 +223,11 @@ module.exports = async function run() {
     await app.workspace._ready();
     const order = [];
     plugin.runLos = (args, callback, stdin) => {
+      if (args[0] === 'projection-observe') {
+        order.push(args[0]);
+        callback(null, JSON.stringify({ write_completed: true, current_snapshot_id: null, settled: false, reason: 'projection-not-current' }), '');
+        return;
+      }
       const envelope = stdin ? JSON.parse(stdin) : null;
       order.push(envelope ? envelope.capability : args[0]);
       if (!envelope) {
@@ -238,7 +244,7 @@ module.exports = async function run() {
       .catch((error) => { blocked = error; });
     check('a failed rebuild cannot bless a still-mismatched readable manifest',
       blocked?.gatewayCode === 'PROJECTION_FAILED'
-      && order.join('|') === 'capture.create|generate'
+      && order.join('|') === 'capture.create|generate|projection-observe'
       && plugin.settings.gatewayRecovery.phase === 'blocked');
     check('the failed rebuild does not claim newer canonical changes were observed',
       !Notice.log.some((line) => line.includes('newer canonical changes are also present')));
@@ -341,6 +347,7 @@ module.exports = async function run() {
     const order = [];
     let settle = null;
     plugin.runLos = (args, callback, stdin) => {
+      if (answerProjectionObservation(plugin, args, callback)) return;
       const envelope = stdin ? JSON.parse(stdin) : null;
       const name = envelope ? envelope.capability : args[0];
       order.push(`start:${name}`);
@@ -381,6 +388,7 @@ module.exports = async function run() {
     const order = [];
     let settle = null;
     plugin.runLos = (args, callback, stdin) => {
+      if (answerProjectionObservation(plugin, args, callback)) return;
       const envelope = stdin ? JSON.parse(stdin) : null;
       const name = envelope ? envelope.capability : args[0];
       order.push(name);
@@ -423,6 +431,7 @@ module.exports = async function run() {
     await app.workspace._ready();
     const order = [];
     plugin.runLos = (args, callback, stdin) => {
+      if (answerProjectionObservation(plugin, args, callback)) return;
       const envelope = stdin ? JSON.parse(stdin) : null;
       order.push(envelope ? envelope.capability : args[0]);
       if (!envelope) { callback(null, 'rebuilt', ''); return; }
@@ -451,6 +460,7 @@ module.exports = async function run() {
     const { app, plugin } = await build();
     await app.workspace._ready();
     plugin.runLos = (args, callback, stdin) => {
+      if (answerProjectionObservation(plugin, args, callback)) return;
       const envelope = stdin ? JSON.parse(stdin) : null;
       if (!envelope) { callback(null, 'rebuilt', ''); return; }
       const confirmation = gatewayConfirmation(envelope);
@@ -480,6 +490,7 @@ module.exports = async function run() {
     const order = [];
     let refuse = true;
     plugin.runLos = (args, callback, stdin) => {
+      if (answerProjectionObservation(plugin, args, callback)) return;
       const envelope = stdin ? JSON.parse(stdin) : null;
       const name = envelope ? envelope.capability : args[0];
       order.push(name);
@@ -516,6 +527,7 @@ module.exports = async function run() {
      * never replayed with freshly adopted artifact revisions. */
     const seen = [];
     plugin.runLos = (args, callback, stdin) => {
+      if (answerProjectionObservation(plugin, args, callback)) return;
       const envelope = stdin ? JSON.parse(stdin) : null;
       const name = envelope ? envelope.capability : args[0];
       seen.push(name);
