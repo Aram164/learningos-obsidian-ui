@@ -702,7 +702,7 @@ function routerPlugin(settings = {}) {
     const wrongContractStore = new InstrumentedManifestStore(manifestApp((text) =>
       text.replace(`"contract_version": ${CONTRACT}`, '"contract_version": 1')));
     assert.equal(await wrongContractStore.load(), false);
-    assert.match(wrongContractStore.error, /requires contract 15/);
+    assert.match(wrongContractStore.error, new RegExp(`requires contract ${CONTRACT}`));
 
     // E. Wrong schema SHA-256 values remain refused
     const wrongPin = JSON.parse(JSON.stringify(rawFixture));
