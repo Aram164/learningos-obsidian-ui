@@ -19,15 +19,19 @@ export function createAjv2020() {
    * strictSchema is off for one reason only: the closure carries the
    * annotation keyword `x-governs` (9 occurrences), which Python's plain
    * Draft202012Validator ignores and Ajv's strict mode rejects. Every other
-   * strict check stays on, so any further strictness finding is real and
-   * must be investigated, never silenced here.
+   * existing strict check is enforced. Type and tuple findings must throw,
+   * rather than using Ajv's default warning-only mode. strictRequired keeps
+   * its default: required fields declared in another allOf clause are valid
+   * JSON Schema and already validated by both producer and consumer.
    *
    * The standalone module is CJS (Ajv's default), not ESM: with ESM output
    * the ajv-formats code snippet still emits require(), which is unusable
    * in module scope (verified 2026-09-20). Module format is irrelevant to
    * the equivalence experiment; revisit ESM only at a production cutover.
    */
-  const ajv = new Ajv2020({ code: { source: true }, strictSchema: false });
+  const ajv = new Ajv2020({
+    code: { source: true }, strictSchema: false, strictTypes: true, strictTuples: true,
+  });
   addFormats(ajv);
   return ajv;
 }

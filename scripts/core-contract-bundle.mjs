@@ -2,7 +2,7 @@
  * Shared Core contract bundling and interpreter selection helper.
  *
  * Provides reproducible bundle generation from Core's authoritative
- * manifest schema (manifest-v15.schema.json) into isolated disposable storage.
+ * manifest schema (manifest-v16.schema.json) into isolated disposable storage.
  *
  * Used by:
  *   - scripts/check-contract-production.mjs (production artifact comparison)
@@ -57,7 +57,7 @@ export function findCorePython(coreRoot) {
 }
 
 export function generateCoreBundle(coreRoot, outDir) {
-  const schemaPath = path.join(coreRoot, 'system/contracts/manifest-v15.schema.json');
+  const schemaPath = path.join(coreRoot, 'system/contracts/manifest-v16.schema.json');
   if (!fs.existsSync(coreRoot) || !fs.existsSync(schemaPath)) {
     throw new Error(`Core repository or manifest schema not found at ${schemaPath}`);
   }
@@ -76,7 +76,7 @@ export function generateCoreBundle(coreRoot, outDir) {
 
   const bundleResult = spawnSync(python, [
     'tools/contract_bundle.py', 'build',
-    '--schema', 'system/contracts/manifest-v15.schema.json',
+    '--schema', 'system/contracts/manifest-v16.schema.json',
     '--out', outDir,
   ], { encoding: 'utf8', cwd: coreRoot, env });
 

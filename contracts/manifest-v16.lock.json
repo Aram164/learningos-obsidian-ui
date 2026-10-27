@@ -1,16 +1,12 @@
 {
   "_comment": [
-    "MIRROR, not original. The manifest contract is declared by Core in",
-    "system/contracts/manifest-contract.yaml and enforced by Core itself.",
-    "",
-    "v15 adds bounded discovery provenance and examination",
-    "({evaluated, approved_analysis_count, metadata_placed}) to every source",
-    "so agents can inspect the provisional shelf and Library can label it."
+    "MIRROR of Core system/contracts/manifest-contract.yaml.",
+    "v16 makes the existing object constraints explicit for strict compilation; projection keys are unchanged."
   ],
-  "contract_version": 15,
+  "contract_version": 16,
   "mirrors": "../repository/system/contracts/manifest-contract.yaml",
-  "schema_path": "system/contracts/manifest-v15.schema.json",
-  "schema_sha256": "sha256:c487c6ed2e05c05425c6b41bd291e566b16a7e1ee3af667ae00763608d7e121f",
+  "schema_path": "system/contracts/manifest-v16.schema.json",
+  "schema_sha256": "sha256:ff2a123d01db72982e538d7e73f21ff2fc5d2f24fb4ec9474ada834952c02c55",
   "top_level_keys": [
     "_generated",
     "academic_deadlines",

@@ -13,7 +13,7 @@ export type CandidateSourceComparisonSchema = {
   };
   readonly candidate_module_id: string;
   readonly comparisons: readonly {
-      readonly concept_ids: MaterialComparisonDefs_ConceptIds & unknown;
+      readonly concept_ids: MaterialComparisonDefs_ConceptIds & readonly unknown[];
       readonly evidence: {
         readonly left: readonly MaterialComparisonDefs_Evidence[];
         readonly right: readonly MaterialComparisonDefs_Evidence[];
