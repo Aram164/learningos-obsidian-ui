@@ -14,10 +14,10 @@
  * The module and type names are deliberately stable. Contract version is data:
  * a bump changes this constant and the mirrored lock, not every import path.
  */
-export const MANIFEST_CONTRACT_VERSION = 15 as const;
+export const MANIFEST_CONTRACT_VERSION = 16 as const;
 import validateManifest from './generated/manifest.validator.cjs';
 
-export const MANIFEST_SCHEMA_SHA256 = 'sha256:c487c6ed2e05c05425c6b41bd291e566b16a7e1ee3af667ae00763608d7e121f' as const;
+export const MANIFEST_SCHEMA_SHA256 = 'sha256:b417ce7295711108d0825901907536f83dd11e8e579e311252647dd3421cadad' as const;
 
 interface AjvErrorLike {
   readonly instancePath?: string;
