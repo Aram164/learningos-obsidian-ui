@@ -702,7 +702,7 @@ function routerPlugin(settings = {}) {
     const wrongContractStore = new InstrumentedManifestStore(manifestApp((text) =>
       text.replace(`"contract_version": ${CONTRACT}`, '"contract_version": 1')));
     assert.equal(await wrongContractStore.load(), false);
-    assert.match(wrongContractStore.error, /requires contract 15/);
+    assert.match(wrongContractStore.error, new RegExp(`requires contract ${CONTRACT}\\.`));
 
     // E. Wrong schema SHA-256 values remain refused
     const wrongPin = JSON.parse(JSON.stringify(rawFixture));
@@ -828,7 +828,7 @@ function routerPlugin(settings = {}) {
   });
 
   await test('ManifestStore refuses wrong schema-pin while generated Ajv accepts, clearing all state (S31-08)', async () => {
-    // 1. Load the valid v15 fixture
+    // 1. Load the valid current-contract fixture
     const rawFixture = JSON.parse(fs.readFileSync(FIXTURE_MANIFEST, 'utf8'));
 
     // 2. Replace only _generated.schema_sha256 with 64 zeroes
