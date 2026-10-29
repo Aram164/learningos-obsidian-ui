@@ -1,4 +1,5 @@
 import type { App } from 'obsidian';
+import type { TemporaryStudySequence } from './sequence';
 import type {
   StageRecordView,
   StudyMapView,
@@ -44,6 +45,8 @@ export interface UnitShellHost
   extends UnitMaterialsHost {
   readonly app: App;
   readonly contentEl: HTMLElement;
+  readonly temporarySequence: TemporaryStudySequence;
+  render(): void;
   unitId: string | null;
   stageId: string | null;
   renderArtifacts(

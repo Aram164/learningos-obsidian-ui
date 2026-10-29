@@ -23,6 +23,7 @@ import { renderMaterialOverview } from './materials';
 import { renderLearningRouteRail } from '../learning-route';
 import { StructuralEditModal, UnitMapImportModal } from './map-import';
 import { asPlanTemplate } from '../plan-template';
+import { readStudySequence, StudySequenceModal } from './sequence';
 
 export function render(
   view: UnitShellHost,
@@ -234,10 +235,13 @@ export function render(
       return;
     }
 
-    const studyMap =
-      readStudyMap(
-        projectedStudyMap,
-      );
+    const durableStudyMap = readStudyMap(projectedStudyMap);
+    const mapId = String(durableStudyMap.record.id);
+    const durableIds = durableStudyMap.stages.map(s => s.id);
+    const temporary = view.temporarySequence.current(unit.id, mapId, durableIds,
+      view.plugin.store.snapshotId, view.plugin.store.stale);
+    const studyMap = temporary ? { ...durableStudyMap,
+      stages: temporary.stages.map(s => durableStudyMap.stages.find(stage => stage.id === s.id)!) } : durableStudyMap;
 
     /* Deriving the first stage here rather than testing `.length` is what lets
      * the compiler carry "this map has stages" through the rest of the render;
@@ -286,10 +290,7 @@ export function render(
           ? studyMap.currentStageId
           : firstStage.id;
 
-      view.plugin.setSelectedStage(
-        unit.id,
-        view.stageId,
-      );
+      if (!temporary) view.plugin.setSelectedStage(unit.id, view.stageId);
     }
 
     const stage =
@@ -321,8 +322,26 @@ export function render(
       true,
     );
 
+    if (temporary) {
+      provenance.createEl('p', { text: `Temporary sequence: ${studyMap.stages.length} of ${durableStudyMap.stages.length} stages for this sitting. Recording work or changing the snapshot expires this choice.` });
+      button(provenance, 'Show full durable plan', () => { view.temporarySequence.clear(); view.render(); }, 'quiet');
+    } else if (view.temporarySequence.notice) provenance.createEl('p', { text: view.temporarySequence.notice });
+    button(provenance, 'Sequence for this sitting', () => {
+      const snapshot = view.plugin.store.snapshotId;
+      if (!snapshot || view.plugin.store.stale) return;
+      new StudySequenceModal(view.app, {
+        studyMap: durableStudyMap,
+        check: async ids => readStudySequence(await view.plugin.gateway.studySequence(unit.id, ids, snapshot), unit.id, mapId, snapshot, ids, durableIds),
+        use: async preview => {
+          if (view.unitId !== unit.id) throw new Error('The Unit view changed. Check a fresh sequence.');
+          view.temporarySequence.use(preview, view.plugin.store.snapshotId, view.plugin.store.stale);
+          view.render();
+        },
+      }).open();
+    }, 'quiet');
+
     button(provenance, 'Adjust study plan', () => new StructuralEditModal(view.app, {
-      studyMap, materials: materialOptions,
+      studyMap: durableStudyMap, materials: materialOptions,
       check: edit => view.plugin.gateway.checkStructuralEdit(unit.id, edit),
       submit: review => view.plugin.mutate(() => view.plugin.gateway.importUnitMap(review)),
     }).open(), 'quiet');
@@ -436,7 +455,7 @@ export function renderRail(
       (stage) => stage.id === current.id,
     );
     const rail = renderLearningRouteRail(layout, {
-      title: 'Stages',
+      title: view.temporarySequence.active ? 'For this sitting' : 'Stages',
       ariaLabel: 'Ordered learning stages',
       progressLabel: 'Overall learning route progress',
       showProgress: false,

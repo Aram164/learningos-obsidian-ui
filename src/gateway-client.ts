@@ -1116,6 +1116,11 @@ export class GatewayClient {
       expectedRevisions: revisions as Record<string, number>, result };
   }
 
+  /** Read-only temporary Unit-stage order, pinned to the displayed snapshot. */
+  studySequence(unitId: string, stageIds: readonly string[], expectedSnapshot: string) {
+    return this.call(['study-sequence', unitId, '--stage-ids-json', JSON.stringify(stageIds), '--expected-snapshot', expectedSnapshot]);
+  }
+
   /** Temporary intent only; canonical state is written exclusively by Core.
    * Keep the file for the recovery envelope if a response is interrupted.
    * It contains no copied learner notes or unchanged plan records. */

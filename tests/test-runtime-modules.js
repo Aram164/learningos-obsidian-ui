@@ -2455,6 +2455,41 @@ function routerPlugin(settings = {}) {
     fs.rmSync(path.dirname(checkedFile), { recursive: true });
   });
 
+  await test('temporary sequence memory expires on snapshot, day, stale projection and Unit changes', async () => {
+    const { TemporaryStudySequence, berlinStudyDay } = loadWithHost('src/features/unit/sequence.ts');
+    const today = berlinStudyDay();
+    const state = new TemporaryStudySequence();
+    const preview = { snapshot_id: SNAPSHOT, valid_on_date: today, unit_id: 'unit-a', study_map_id: 'map-a', durable_stage_ids: ['a', 'b'], stages: [{ id: 'b', title: 'B', status: 'pending' }], omitted_stage_ids: ['a'], prerequisite_edges: [], limitations: [] };
+    const activate = () => state.use(preview, SNAPSHOT, false);
+    activate();
+    assert.equal(state.current('unit-a', 'map-a', ['a', 'b'], SNAPSHOT, false).stages[0].id, 'b');
+    assert.equal(state.current('unit-a', 'map-a', ['a', 'b'], 'sha256:other', false), null);
+    activate(); assert.equal(state.current('unit-a', 'map-a', ['a', 'b'], SNAPSHOT, true), null);
+    activate(); assert.equal(state.current('unit-a', 'map-a', ['a', 'b'], SNAPSHOT, false, '2099-01-01'), null);
+    activate(); assert.equal(state.current('unit-b', 'map-a', ['a', 'b'], SNAPSHOT, false), null);
+    activate(); assert.equal(state.current('unit-a', 'map-b', ['a', 'b'], SNAPSHOT, false), null);
+    activate(); assert.equal(state.current('unit-a', 'map-a', ['b', 'a'], SNAPSHOT, false), null);
+    activate(); state.clear(); assert.equal(state.active, false);
+    assert.throws(() => state.use(preview, null, false), /expired/);
+    assert.throws(() => state.use(preview, SNAPSHOT, false, '2099-01-01'), /expired/);
+  });
+
+  await test('temporary sequence decoder refuses stale, partial and mixed reviews', async () => {
+    const { readStudySequence, berlinStudyDay } = loadWithHost('src/features/unit/sequence.ts');
+    const packet = { contract: 'study-sequence-v1', canonical_files_written: 0, lifetime: 'unit-view-and-snapshot', timezone: 'Europe/Berlin', valid_on_date: berlinStudyDay(), snapshot_id: SNAPSHOT, unit_id: 'u', study_map_id: 'm', durable_stage_ids: ['a', 'b'], stages: [{ id: 'b', title: 'B', status: 'pending' }], omitted_stage_ids: ['a'], prerequisite_edges: [], limitations: ['Only authored prerequisites are checked.'] };
+    assert.equal(readStudySequence(packet, 'u', 'm', SNAPSHOT, ['b'], ['a', 'b']), packet);
+    for (const patch of [{ snapshot_id: 'other' }, { valid_on_date: '2000-01-01' }, { unit_id: 'other' }, { study_map_id: 'other' }, { stages: [] }, { omitted_stage_ids: [] }, { limitations: undefined }, { canonical_files_written: 1 }]) {
+      assert.throws(() => readStudySequence({ ...packet, ...patch }, 'u', 'm', SNAPSHOT, ['b'], ['a', 'b']), /could not be verified/);
+    }
+  });
+
+  await test('temporary sequence uses only the public snapshot-bound read', async () => {
+    const calls = [];
+    const gateway = new GatewayClient({ runLos(args, cb, stdin) { calls.push({ args, stdin }); cb(null, '{}', ''); }, store: { snapshotId: SNAPSHOT } });
+    await gateway.studySequence('unit-a', ['b', 'a'], SNAPSHOT);
+    assert.deepEqual(calls, [{ args: ['study-sequence', 'unit-a', '--stage-ids-json', '["b","a"]', '--expected-snapshot', SNAPSHOT], stdin: undefined }]);
+  });
+
   await test('the four reviewed workflows send, and nothing else does', async () => {
     const sent = [];
     const gateway = new GatewayClient({

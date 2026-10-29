@@ -10,6 +10,8 @@ import { detachApplication, registerApplication } from './app/registration';
 import { AppNavigator } from './app/navigator';
 import { ApplicationRouter } from './app/router';
 import { UnitNoteModal } from './app/unit-note-modal';
+import type { UnitView } from './views/unit-view';
+import { VIEW_UNIT } from './constants';
 import { runtimeContractVersion, runtimeSourceFingerprint } from './build-identity';
 import {
   DraftStore,
@@ -713,6 +715,9 @@ export class LearningOSUI extends Plugin implements AppSurface {
   }
 
   async reviewSessionEnd() {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_UNIT)) {
+      (leaf.view as UnitView).clearTemporarySequence();
+    }
     try {
       const review = asSessionReview(await this.mutate(
         () => this.gateway.endSession(),

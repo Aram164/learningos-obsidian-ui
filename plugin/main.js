@@ -33247,7 +33247,7 @@ __export(main_exports, {
   default: () => main_default
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian26 = require("obsidian");
+var import_obsidian27 = require("obsidian");
 var fs5 = __toESM(require("node:fs"));
 var nodePath5 = __toESM(require("node:path"));
 
@@ -47130,7 +47130,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:b98f15d91e839d5d2bcb3314364978b37e03cd624e49ff3013905ea4dc433c53" : "unavailable";
+  return true ? "sha256:648b2c1b74881b157fb589f8493e90efdb472261dcea6e065f704f786210a452" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 16 : 0;
@@ -48015,6 +48015,10 @@ Last response: ${result.error.message}`,
       expectedRevisions: revisions,
       result
     };
+  }
+  /** Read-only temporary Unit-stage order, pinned to the displayed snapshot. */
+  studySequence(unitId, stageIds2, expectedSnapshot) {
+    return this.call(["study-sequence", unitId, "--stage-ids-json", JSON.stringify(stageIds2), "--expected-snapshot", expectedSnapshot]);
   }
   /** Temporary intent only; canonical state is written exclusively by Core.
    * Keep the file for the recovery envelope if a response is interrupted.
@@ -51645,6 +51649,130 @@ function asPlanTemplate(result) {
   };
 }
 
+// src/features/unit/sequence.ts
+var import_obsidian21 = require("obsidian");
+function berlinStudyDay() {
+  const parts = new Intl.DateTimeFormat("en", { timeZone: "Europe/Berlin", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(/* @__PURE__ */ new Date());
+  const part2 = (type) => parts.find((p) => p.type === type)?.value ?? "";
+  return `${part2("year")}-${part2("month")}-${part2("day")}`;
+}
+var strings = (value) => Array.isArray(value) && value.every((v) => typeof v === "string" && v.length > 0);
+function readStudySequence(value, unitId, mapId, snapshot, ids, durableIds) {
+  if (!isRecord(value) || value.contract !== "study-sequence-v1" || value.canonical_files_written !== 0 || value.timezone !== "Europe/Berlin" || value.lifetime !== "unit-view-and-snapshot" || value.unit_id !== unitId || value.study_map_id !== mapId || value.snapshot_id !== snapshot || value.valid_on_date !== berlinStudyDay() || !strings(value.durable_stage_ids) || JSON.stringify(value.durable_stage_ids) !== JSON.stringify(durableIds) || !strings(value.omitted_stage_ids) || !strings(value.limitations) || !Array.isArray(value.stages) || value.stages.length !== ids.length || !value.stages.every((s, i) => isRecord(s) && s.id === ids[i] && typeof s.title === "string" && typeof s.status === "string") || !Array.isArray(value.prerequisite_edges) || !value.prerequisite_edges.every((e) => isRecord(e) && typeof e.prerequisite_stage_id === "string" && typeof e.dependent_stage_id === "string") || JSON.stringify(value.omitted_stage_ids) !== JSON.stringify(durableIds.filter((id) => !ids.includes(id)))) {
+    throw new Error("The complete temporary sequence could not be verified. Reload and check again.");
+  }
+  return value;
+}
+var TemporaryStudySequence = class {
+  selected = null;
+  notice = "";
+  get active() {
+    return this.selected !== null;
+  }
+  clear(reason = "") {
+    this.selected = null;
+    this.notice = reason;
+  }
+  use(preview, snapshot, stale, day = berlinStudyDay()) {
+    if (stale || !snapshot || preview.snapshot_id !== snapshot || preview.valid_on_date !== day) {
+      throw new Error("The temporary sequence expired. Reload and check it again.");
+    }
+    this.selected = JSON.parse(JSON.stringify(preview));
+    this.notice = "";
+  }
+  current(unitId, mapId, durableIds, snapshot, stale, day = berlinStudyDay()) {
+    const value = this.selected;
+    if (value && (stale || value.unit_id !== unitId || value.study_map_id !== mapId || value.snapshot_id !== snapshot || value.valid_on_date !== day || JSON.stringify(value.durable_stage_ids) !== JSON.stringify(durableIds))) {
+      this.clear("The temporary sequence expired. The full durable plan is shown.");
+    }
+    return this.selected;
+  }
+};
+var StudySequenceModal = class extends import_obsidian21.Modal {
+  constructor(app, options) {
+    super(app);
+    this.options = options;
+  }
+  generation = 0;
+  restoreAccessibility = null;
+  onOpen() {
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-map-import-modal");
+    const heading = root.createEl("h2", { text: "Sequence for this sitting" });
+    heading.id = "los-study-sequence-heading";
+    this.restoreAccessibility = makeModalAccessible(root, { close: () => this.close(), hostClass: "los-modal--map-import", labelledBy: heading.id });
+    root.createEl("p", { text: "Choose stages and their order for this Unit view. The durable plan and recorded work stay unchanged. This choice expires when the snapshot or Berlin date changes, the view closes, or you end the sitting." });
+    const fields = this.options.studyMap.stages.map((stage, i) => {
+      const label2 = root.createEl("label", { text: stage.title });
+      const include = label2.createEl("input", { attr: { type: "checkbox", "aria-label": `Include ${stage.title}` } });
+      include.checked = true;
+      const position = label2.createEl("input", { attr: { type: "number", min: "1", value: String(i + 1), "aria-label": `Position of ${stage.title}` } });
+      return { id: stage.id, include, position };
+    });
+    const status = root.createDiv({ attr: { "aria-live": "polite" } });
+    const preview = root.createDiv({ attr: { "aria-live": "polite" } });
+    const actions = root.createDiv({ cls: "los-actions" });
+    let checked = null;
+    const use = button(actions, "Use for this sitting", async () => {
+      if (!checked) return;
+      const approved = checked;
+      const ticket = ++this.generation;
+      checked = null;
+      use.disabled = true;
+      try {
+        const current = await this.options.check(approved.stages.map((s) => s.id));
+        if (ticket !== this.generation) return;
+        if (JSON.stringify(current) !== JSON.stringify(approved)) throw new Error("The preview changed. Check the sequence again.");
+        await this.options.use(approved);
+        this.close();
+      } catch (error) {
+        if (ticket === this.generation) status.setText(errorMessage(error));
+      }
+    }, "cta");
+    use.disabled = true;
+    const invalidate = () => {
+      ++this.generation;
+      checked = null;
+      use.disabled = true;
+      preview.empty();
+      status.setText("Check the temporary sequence before using it.");
+    };
+    for (const field2 of fields) {
+      field2.include.addEventListener("change", invalidate);
+      field2.position.addEventListener("input", invalidate);
+    }
+    button(actions, "Check sequence", async () => {
+      invalidate();
+      const ticket = this.generation;
+      try {
+        const selected = fields.filter((f) => f.include.checked).map((f) => ({ id: f.id, rank: Number(f.position.value) }));
+        if (!selected.length || selected.some((f) => !Number.isInteger(f.rank) || f.rank < 1) || new Set(selected.map((f) => f.rank)).size !== selected.length) throw new Error("Choose at least one stage and distinct positive positions.");
+        const answer = await this.options.check(selected.sort((a, b) => a.rank - b.rank).map((f) => f.id));
+        if (ticket !== this.generation) return;
+        preview.createEl("h3", { text: "Order for this sitting" });
+        const order = preview.createEl("ol");
+        for (const stage of answer.stages) order.createEl("li", { text: `${stage.title} (${stage.id})` });
+        preview.createEl("p", { text: `Omitted for this sitting: ${answer.omitted_stage_ids.join(", ") || "none"}. Their status is unchanged.` });
+        for (const edge of answer.prerequisite_edges) preview.createEl("p", { text: `${edge.prerequisite_stage_id} before ${edge.dependent_stage_id}, unless already recorded complete.` });
+        for (const note of answer.limitations) preview.createEl("p", { text: note });
+        checked = answer;
+        use.disabled = false;
+        status.setText("Checked only. Review the order and omissions, then use it for this sitting.");
+      } catch (error) {
+        if (ticket === this.generation) status.setText(errorMessage(error));
+      }
+    });
+    button(actions, "Cancel", () => this.close(), "quiet");
+  }
+  onClose() {
+    ++this.generation;
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+  }
+};
+
 // src/features/unit/shell.ts
 function render(view) {
   const root = view.contentEl;
@@ -51777,9 +51905,20 @@ function render(view) {
     );
     return;
   }
-  const studyMap = readStudyMap(
-    projectedStudyMap
+  const durableStudyMap = readStudyMap(projectedStudyMap);
+  const mapId = String(durableStudyMap.record.id);
+  const durableIds = durableStudyMap.stages.map((s) => s.id);
+  const temporary = view.temporarySequence.current(
+    unit.id,
+    mapId,
+    durableIds,
+    view.plugin.store.snapshotId,
+    view.plugin.store.stale
   );
+  const studyMap = temporary ? {
+    ...durableStudyMap,
+    stages: temporary.stages.map((s) => durableStudyMap.stages.find((stage2) => stage2.id === s.id))
+  } : durableStudyMap;
   const firstStage = studyMap.stages[0];
   if (!firstStage) {
     renderMaterials();
@@ -51807,10 +51946,7 @@ function render(view) {
     view.stageId = studyMap.currentStageId && stageIds2.has(
       studyMap.currentStageId
     ) ? studyMap.currentStageId : firstStage.id;
-    view.plugin.setSelectedStage(
-      unit.id,
-      view.stageId
-    );
+    if (!temporary) view.plugin.setSelectedStage(unit.id, view.stageId);
   }
   const stage = studyMap.stages.find(
     (candidate2) => candidate2.id === view.stageId
@@ -51828,8 +51964,28 @@ function render(view) {
     unit,
     true
   );
+  if (temporary) {
+    provenance.createEl("p", { text: `Temporary sequence: ${studyMap.stages.length} of ${durableStudyMap.stages.length} stages for this sitting. Recording work or changing the snapshot expires this choice.` });
+    button(provenance, "Show full durable plan", () => {
+      view.temporarySequence.clear();
+      view.render();
+    }, "quiet");
+  } else if (view.temporarySequence.notice) provenance.createEl("p", { text: view.temporarySequence.notice });
+  button(provenance, "Sequence for this sitting", () => {
+    const snapshot = view.plugin.store.snapshotId;
+    if (!snapshot || view.plugin.store.stale) return;
+    new StudySequenceModal(view.app, {
+      studyMap: durableStudyMap,
+      check: async (ids) => readStudySequence(await view.plugin.gateway.studySequence(unit.id, ids, snapshot), unit.id, mapId, snapshot, ids, durableIds),
+      use: async (preview) => {
+        if (view.unitId !== unit.id) throw new Error("The Unit view changed. Check a fresh sequence.");
+        view.temporarySequence.use(preview, view.plugin.store.snapshotId, view.plugin.store.stale);
+        view.render();
+      }
+    }).open();
+  }, "quiet");
   button(provenance, "Adjust study plan", () => new StructuralEditModal(view.app, {
-    studyMap,
+    studyMap: durableStudyMap,
     materials: materialOptions,
     check: (edit) => view.plugin.gateway.checkStructuralEdit(unit.id, edit),
     submit: (review2) => view.plugin.mutate(() => view.plugin.gateway.importUnitMap(review2))
@@ -51906,7 +52062,7 @@ function renderRail(view, layout, unit, studyMap, current) {
     (stage) => stage.id === current.id
   );
   const rail = renderLearningRouteRail(layout, {
-    title: "Stages",
+    title: view.temporarySequence.active ? "For this sitting" : "Stages",
     ariaLabel: "Ordered learning stages",
     progressLabel: "Overall learning route progress",
     showProgress: false,
@@ -51952,12 +52108,20 @@ function renderRail(view, layout, unit, studyMap, current) {
 }
 
 // src/views/unit-view.ts
-var import_obsidian21 = require("obsidian");
-var UnitView = class extends import_obsidian21.ItemView {
+var import_obsidian22 = require("obsidian");
+var UnitView = class extends import_obsidian22.ItemView {
   plugin;
   unitId;
   stageId;
   mutationPending = false;
+  temporarySequence = new TemporaryStudySequence();
+  clearTemporarySequence() {
+    this.temporarySequence.clear();
+    this.render();
+  }
+  async onClose() {
+    this.temporarySequence.clear();
+  }
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -51974,6 +52138,7 @@ var UnitView = class extends import_obsidian21.ItemView {
     const parsed = readUnitViewState(state);
     const nextUnitId = parsed.unitId ?? this.unitId;
     if (nextUnitId !== this.unitId) {
+      this.temporarySequence.clear();
       this.stageId = null;
     }
     this.unitId = nextUnitId;
@@ -51987,7 +52152,7 @@ var UnitView = class extends import_obsidian21.ItemView {
   getState() {
     return {
       unitId: this.unitId,
-      stageId: this.stageId
+      stageId: this.temporarySequence.active && this.unitId ? this.plugin.getSelectedStage(this.unitId) : this.stageId
     };
   }
   async onOpen() {
@@ -52029,13 +52194,13 @@ var UnitView = class extends import_obsidian21.ItemView {
    */
   async mutate(action, onConfirmed = null) {
     if (this.mutationPending) {
-      new import_obsidian21.Notice(
+      new import_obsidian22.Notice(
         "A LearningOS write is already running."
       );
       return;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian21.Notice(
+      new import_obsidian22.Notice(
         "Queued behind the running LearningOS write."
       );
     }
@@ -52047,7 +52212,7 @@ var UnitView = class extends import_obsidian21.ItemView {
       onConfirmed?.();
       this.render();
     } catch (error) {
-      new import_obsidian21.Notice(
+      new import_obsidian22.Notice(
         errorMessage3(error)
       );
     } finally {
@@ -52057,12 +52222,16 @@ var UnitView = class extends import_obsidian21.ItemView {
   async selectStage(stageId) {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian21.Notice(
+      new import_obsidian22.Notice(
         "This unit is no longer available."
       );
       return;
     }
     this.stageId = stageId;
+    if (this.temporarySequence.active) {
+      this.render();
+      return;
+    }
     this.plugin.setSelectedStage(
       unitId,
       stageId
@@ -52167,11 +52336,11 @@ function detachApplication(plugin) {
 }
 
 // src/app/navigator.ts
-var import_obsidian23 = require("obsidian");
+var import_obsidian24 = require("obsidian");
 
 // src/app/global-search.ts
-var import_obsidian22 = require("obsidian");
-var GlobalSearchModal = class extends import_obsidian22.Modal {
+var import_obsidian23 = require("obsidian");
+var GlobalSearchModal = class extends import_obsidian23.Modal {
   plugin;
   query;
   filter;
@@ -52608,7 +52777,7 @@ var AppNavigator = class {
    */
   openFullTextSearch() {
     const ok = this.app.commands?.executeCommandById?.("omnisearch:show-modal");
-    if (!ok) new import_obsidian23.Notice("Omnisearch is unavailable; structural Library search still works.");
+    if (!ok) new import_obsidian24.Notice("Omnisearch is unavailable; structural Library search still works.");
   }
 };
 
@@ -53032,8 +53201,8 @@ var ApplicationRouter = class {
 };
 
 // src/app/unit-note-modal.ts
-var import_obsidian24 = require("obsidian");
-var UnitNoteModal = class extends import_obsidian24.Modal {
+var import_obsidian25 = require("obsidian");
+var UnitNoteModal = class extends import_obsidian25.Modal {
   plugin;
   unit;
   studyMap;
@@ -53171,25 +53340,25 @@ var UnitNoteModal = class extends import_obsidian24.Modal {
   async save() {
     const text4 = String(this.editor?.value || "");
     if (!text4.trim()) {
-      new import_obsidian24.Notice("Write a note before saving.");
+      new import_obsidian25.Notice("Write a note before saving.");
       this.editor?.focus();
       return;
     }
     if (this.saving) {
-      new import_obsidian24.Notice("This note is already being saved.");
+      new import_obsidian25.Notice("This note is already being saved.");
       return;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian24.Notice("Queued behind the running LearningOS write.");
+      new import_obsidian25.Notice("Queued behind the running LearningOS write.");
     }
     const unitId = this.unit.id;
     if (!unitId) {
-      new import_obsidian24.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
+      new import_obsidian25.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
       return;
     }
     const filePaths = this.files.map((file) => localFilePath(file)).filter((value) => Boolean(value));
     if (filePaths.length !== this.files.length) {
-      new import_obsidian24.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
+      new import_obsidian25.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
       return;
     }
     this.saving = true;
@@ -53201,10 +53370,10 @@ var UnitNoteModal = class extends import_obsidian24.Modal {
         filePaths
       }, this.expectedRevisions));
       this.plugin.clearUnitNoteDraft(unitId, this.recoveredStages, sent);
-      new import_obsidian24.Notice("Learning-session note saved.");
+      new import_obsidian25.Notice("Learning-session note saved.");
       this.close();
     } catch (error) {
-      new import_obsidian24.Notice(errorMessage(error));
+      new import_obsidian25.Notice(errorMessage(error));
     } finally {
       this.saving = false;
     }
@@ -53585,7 +53754,7 @@ var AIActionClient = class {
 var import_electron2 = require("electron");
 var fs4 = __toESM(require("node:fs"));
 var nodePath4 = __toESM(require("node:path"));
-var import_obsidian25 = require("obsidian");
+var import_obsidian26 = require("obsidian");
 var CODE_EXTENSIONS = /* @__PURE__ */ new Set([
   ".c",
   ".cc",
@@ -53666,7 +53835,7 @@ var ResourceOpener = class {
   async openVaultPath(path, destination = null) {
     const target = normalizedVaultPath(path);
     if (!target || target.startsWith("/") || target.split("/").includes("..")) {
-      new import_obsidian25.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return void 0;
     }
     const candidate2 = nodePath4.resolve(this.app.vault.adapter.getBasePath(), target);
@@ -53674,7 +53843,7 @@ var ResourceOpener = class {
       try {
         fs4.realpathSync(candidate2);
       } catch (_) {
-        new import_obsidian25.Notice(`File unavailable: ${target}`);
+        new import_obsidian26.Notice(`File unavailable: ${target}`);
         return void 0;
       }
       const realPath = resolvedWithin(
@@ -53682,13 +53851,13 @@ var ResourceOpener = class {
         candidate2
       );
       if (!realPath) {
-        new import_obsidian25.Notice(`Unsafe vault symlink refused: ${target}`);
+        new import_obsidian26.Notice(`Unsafe vault symlink refused: ${target}`);
         return void 0;
       }
     }
     const file = this.app.vault.getAbstractFileByPath(target);
     if (!file) {
-      new import_obsidian25.Notice(`File unavailable: ${target}`);
+      new import_obsidian26.Notice(`File unavailable: ${target}`);
       return void 0;
     }
     let existing = null;
@@ -53723,16 +53892,16 @@ var ResourceOpener = class {
       try {
         view.setEphemeralState({ page: destination.page });
       } catch (_) {
-        new import_obsidian25.Notice(`Go to ${destination.label}.`);
+        new import_obsidian26.Notice(`Go to ${destination.label}.`);
         return;
       }
-      new import_obsidian25.Notice(`Page requested \u2014 go to ${destination.label} if the viewer did not move.`);
+      new import_obsidian26.Notice(`Page requested \u2014 go to ${destination.label} if the viewer did not move.`);
       return;
     }
     try {
       await leaf.openFile(file, { eState: { page: destination.page } });
     } catch (_) {
-      new import_obsidian25.Notice(`Go to ${destination.label}.`);
+      new import_obsidian26.Notice(`Go to ${destination.label}.`);
       return;
     }
     this.announceDestination(leaf, destination);
@@ -53740,7 +53909,7 @@ var ResourceOpener = class {
   /** Only a viewer that can be positioned is told it landed there. */
   announceDestination(leaf, destination) {
     void leaf;
-    new import_obsidian25.Notice(`Opened \u2014 go to ${destination.label}.`);
+    new import_obsidian26.Notice(`Opened \u2014 go to ${destination.label}.`);
   }
   isCodePath(path) {
     if (!fs4.existsSync(path)) return false;
@@ -53750,19 +53919,19 @@ var ResourceOpener = class {
   async openSystemPath(path, successMessage) {
     const error = await import_electron2.shell.openPath(path);
     if (error) {
-      new import_obsidian25.Notice(`Could not open file: ${error}`);
+      new import_obsidian26.Notice(`Could not open file: ${error}`);
       return false;
     }
-    new import_obsidian25.Notice(successMessage);
+    new import_obsidian26.Notice(successMessage);
     return true;
   }
   async openCodePath(path) {
     try {
       await import_electron2.shell.openExternal(visualStudioCodeUrl(path));
-      new import_obsidian25.Notice("Opened in Visual Studio Code.");
+      new import_obsidian26.Notice("Opened in Visual Studio Code.");
       return true;
     } catch (_) {
-      new import_obsidian25.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
+      new import_obsidian26.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
       return this.openSystemPath(path, "Opened in the system app.");
     }
   }
@@ -53771,21 +53940,21 @@ var ResourceOpener = class {
     try {
       realPath = fs4.realpathSync(path);
     } catch (_) {
-      new import_obsidian25.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`File unavailable: ${path || "unknown path"}`);
       return Promise.resolve(false);
     }
     return this.isCodePath(realPath) ? this.openCodePath(realPath) : this.openSystemPath(realPath, systemMessage);
   }
   async openExternalPath(path, successMessage = "Opened in the default app.") {
     if (!path || !fs4.existsSync(path)) {
-      new import_obsidian25.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     let realPath = "";
     try {
       realPath = fs4.realpathSync(path);
     } catch (_) {
-      new import_obsidian25.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     return this.openSystemPath(realPath, successMessage);
@@ -53797,12 +53966,12 @@ var ResourceOpener = class {
     const fullPath = nodePath4.resolve(learningRoot, path || "");
     const relative3 = nodePath4.relative(materialsRoot, fullPath);
     if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
-      new import_obsidian25.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
       return false;
     }
     const realPath = resolvedWithin(materialsRoot, fullPath);
     if (!realPath) {
-      new import_obsidian25.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openExternalPath(
@@ -53817,16 +53986,16 @@ var ResourceOpener = class {
     const fullPath = nodePath4.resolve(base, path || "");
     const relative3 = nodePath4.relative(base, fullPath);
     if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
-      new import_obsidian25.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return false;
     }
     if (!fs4.existsSync(fullPath)) {
-      new import_obsidian25.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     const realPath = resolvedWithin(base, fullPath);
     if (!realPath) {
-      new import_obsidian25.Notice(`Unsafe vault symlink refused: ${path || "unknown path"}`);
+      new import_obsidian26.Notice(`Unsafe vault symlink refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openPreferredLocalPath(
@@ -53850,29 +54019,29 @@ var ResourceOpener = class {
     if (resource.url) {
       const url = safeWebUrl(resource.url);
       if (!url) {
-        new import_obsidian25.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
+        new import_obsidian26.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
         return false;
       }
       return Promise.resolve(import_electron2.shell.openExternal(url.href)).catch(() => {
-        new import_obsidian25.Notice("Could not open the link in your browser.");
+        new import_obsidian26.Notice("Could not open the link in your browser.");
         return false;
       });
     }
     if (materialPath.trim()) {
-      new import_obsidian25.Notice(resource.material_exists === false ? `File unavailable: ${materialPath.trim()}` : "Choose an exact file from this material collection.");
+      new import_obsidian26.Notice(resource.material_exists === false ? `File unavailable: ${materialPath.trim()}` : "Choose an exact file from this material collection.");
     } else if (vaultPath.trim().toLowerCase().startsWith("material://")) {
-      new import_obsidian25.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
+      new import_obsidian26.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
     } else if (vaultPath.trim()) {
-      new import_obsidian25.Notice("Choose an exact file from this vault collection.");
+      new import_obsidian26.Notice("Choose an exact file from this vault collection.");
     }
     return false;
   }
   copyText(value) {
     try {
       void navigator.clipboard.writeText(value);
-      new import_obsidian25.Notice(`Copied ${value}`);
+      new import_obsidian26.Notice(`Copied ${value}`);
     } catch (_) {
-      new import_obsidian25.Notice(value);
+      new import_obsidian26.Notice(value);
     }
   }
 };
@@ -54367,7 +54536,7 @@ function settingsCoordinator(vaultRoot) {
 function cloneSettings(settings) {
   return JSON.parse(JSON.stringify(settings));
 }
-var LearningOSUI = class extends import_obsidian26.Plugin {
+var LearningOSUI = class extends import_obsidian27.Plugin {
   lastAiPrompt = "";
   /** Set when startup found an unusable record; the app registers read-only. */
   recoveryBlocked = false;
@@ -54471,7 +54640,7 @@ var LearningOSUI = class extends import_obsidian26.Plugin {
   /** Every Notice the gateway and recovery paths raise goes through here. */
   notify(message2) {
     if (!this.isLifecycleActive()) return;
-    new import_obsidian26.Notice(message2);
+    new import_obsidian27.Notice(message2);
   }
   /**
    * Finish, or refuse to finish, whatever the last session left in flight.
@@ -54624,11 +54793,11 @@ var LearningOSUI = class extends import_obsidian26.Plugin {
    */
   async retryRecoveredWrite() {
     if (!this.recovery.unresolved) {
-      new import_obsidian26.Notice("There is no unresolved Gateway write.");
+      new import_obsidian27.Notice("There is no unresolved Gateway write.");
       return;
     }
     if (this.recovery.state.kind === "malformed") {
-      new import_obsidian26.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
+      new import_obsidian27.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
       return;
     }
     try {
@@ -54639,10 +54808,10 @@ var LearningOSUI = class extends import_obsidian26.Plugin {
         await this.finishConfirmedWrite(confirmation);
       });
       this.recoveryBlocked = this.recovery.unresolved;
-      new import_obsidian26.Notice("The recovered Gateway write is settled.");
+      new import_obsidian27.Notice("The recovered Gateway write is settled.");
     } catch (error) {
       this.recoveryBlocked = this.recovery.unresolved;
-      new import_obsidian26.Notice(errorMessage4(error));
+      new import_obsidian27.Notice(errorMessage4(error));
     }
   }
   /**
@@ -54756,7 +54925,7 @@ var LearningOSUI = class extends import_obsidian26.Plugin {
     this.gateway.assertLifecycleActive();
     let rebuildError = null;
     if (observed !== confirmation.snapshot_after) {
-      new import_obsidian26.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
+      new import_obsidian27.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
       try {
         await this.gateway.call(["generate"], { expectJson: false });
       } catch (error) {
@@ -54793,7 +54962,7 @@ var LearningOSUI = class extends import_obsidian26.Plugin {
       );
     }
     if (observed !== confirmation.snapshot_after) {
-      new import_obsidian26.Notice("Recovered the prior write; newer canonical changes are also present.");
+      new import_obsidian27.Notice("Recovered the prior write; newer canonical changes are also present.");
     }
     await this.recovery.settleConfirmed(owner);
     this.gateway.noteSettlementObserved(confirmation);
@@ -54855,7 +55024,7 @@ var LearningOSUI = class extends import_obsidian26.Plugin {
    * draft stays intact for one deliberate reconciliation and retry.
    */
   async refreshAfterConflict() {
-    new import_obsidian26.Notice("Canonical files changed since this view loaded \u2014 refreshing them. Your draft was kept; review it before retrying.");
+    new import_obsidian27.Notice("Canonical files changed since this view loaded \u2014 refreshing them. Your draft was kept; review it before retrying.");
     await this.gateway.call(["generate"], { expectJson: false });
     await this.reloadStore();
   }
@@ -54867,12 +55036,15 @@ var LearningOSUI = class extends import_obsidian26.Plugin {
         await this.gateway.call(["generate"], { expectJson: false });
         await this.reloadStore();
       });
-      new import_obsidian26.Notice("LearningOS projection rebuilt.");
+      new import_obsidian27.Notice("LearningOS projection rebuilt.");
     } catch (error) {
-      new import_obsidian26.Notice(errorMessage4(error));
+      new import_obsidian27.Notice(errorMessage4(error));
     }
   }
   async reviewSessionEnd() {
+    for (const leaf of this.app.workspace.getLeavesOfType(VIEW_UNIT)) {
+      leaf.view.clearTemporarySequence();
+    }
     try {
       const review2 = asSessionReview(await this.mutate(
         () => this.gateway.endSession()
@@ -54880,7 +55052,7 @@ var LearningOSUI = class extends import_obsidian26.Plugin {
       new SessionEndModal(this.app, this, review2).open();
       return review2;
     } catch (error) {
-      new import_obsidian26.Notice(errorMessage4(error));
+      new import_obsidian27.Notice(errorMessage4(error));
       return null;
     }
   }
@@ -54947,7 +55119,7 @@ The active file is supplementary context only. Use only action-specific Learning
     if (agent?.sendToChat) await agent.sendToChat(prompt);
     else {
       this.copyText(prompt);
-      new import_obsidian26.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
+      new import_obsidian27.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
     }
     return prompt;
   }

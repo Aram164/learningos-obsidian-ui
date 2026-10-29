@@ -1020,6 +1020,62 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
+  heading('temporary sequence review, lifecycle and no persistence');
+  {
+    const { app, plugin } = await boot();
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const map = plugin.store.mapForUnit(view.unitId);
+    const stages = map.stages;
+    const { Modal } = require('../harness').stub;
+    const todayParts = new Intl.DateTimeFormat('en', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const part = type => todayParts.find(p => p.type === type).value;
+    const today = `${part('year')}-${part('month')}-${part('day')}`;
+    let reads = 0;
+    plugin.gateway.studySequence = async (unitId, ids, snapshot) => {
+      reads += 1;
+      return { contract: 'study-sequence-v1', canonical_files_written: 0, lifetime: 'unit-view-and-snapshot', timezone: 'Europe/Berlin', valid_on_date: today,
+        unit_id: unitId, study_map_id: map.id, snapshot_id: snapshot, durable_stage_ids: stages.map(s => s.id),
+        stages: ids.map(id => stages.find(s => s.id === id)), omitted_stage_ids: stages.filter(s => !ids.includes(s.id)).map(s => s.id), prerequisite_edges: [], limitations: ['Only authored prerequisites are checked.'] };
+    };
+    view.contentEl.findText('los-btn', 'Sequence for this sitting').fire('click');
+    let modal = Modal.last;
+    let use = modal.contentEl.findText('los-btn', 'Use for this sitting');
+    check('temporary sequence requires its own visible check', use.disabled === true);
+    const labels = modal.contentEl.children.filter(e => e.tag === 'label');
+    labels[0].children[0].checked = false; labels[0].children[0].fire('change');
+    const savedBefore = JSON.stringify(plugin.settings);
+    modal.contentEl.findText('los-btn', 'Check sequence').fire('click'); await frame();
+    check('omissions and exact temporary order are visible before use', use.disabled === false && modal.contentEl.allText().includes('Omitted for this sitting:'));
+    use.fire('click'); await frame();
+    check('using a temporary sequence rechecks Core and changes only view memory', reads === 2 && view.temporarySequence.active
+      && view.contentEl.allText().includes('Temporary sequence:') && JSON.stringify(plugin.settings) === savedBefore);
+    check('the saved route does not serialize the temporary order', !JSON.stringify(view.getState()).includes('durable_stage_ids'));
+    view.contentEl.findText('los-btn', 'Show full durable plan').fire('click');
+    check('explicit reset restores the complete durable stage list', !view.temporarySequence.active && !view.contentEl.allText().includes('Temporary sequence:'));
+    // A pending read cannot revive a closed or edited review.
+    let finish;
+    plugin.gateway.studySequence = (unitId, ids, snapshot) => new Promise(resolve => { finish = () => resolve({ contract: 'study-sequence-v1', canonical_files_written: 0, lifetime: 'unit-view-and-snapshot', timezone: 'Europe/Berlin', valid_on_date: today, unit_id: unitId, study_map_id: map.id, snapshot_id: snapshot, durable_stage_ids: stages.map(s => s.id), stages: ids.map(id => stages.find(s => s.id === id)), omitted_stage_ids: [], prerequisite_edges: [], limitations: [] }); });
+    view.contentEl.findText('los-btn', 'Sequence for this sitting').fire('click'); modal = Modal.last;
+    use = modal.contentEl.findText('los-btn', 'Use for this sitting');
+    modal.contentEl.findText('los-btn', 'Check sequence').fire('click');
+    const position = modal.contentEl.children.find(e => e.tag === 'label').children[1];
+    position.fire('input'); finish(); await frame();
+    check('late preview cannot authorize edited sequence controls', use.disabled === true && !view.temporarySequence.active);
+    modal.contentEl.findText('los-btn', 'Check sequence').fire('click'); finish(); await frame();
+    use.fire('click'); modal.close(); finish(); await frame();
+    check('closing during the final read cannot activate a late sequence', !view.temporarySequence.active);
+    // Ending and closing a view clear any memory selection.
+    const packet = { snapshot_id: plugin.store.snapshotId, valid_on_date: today, unit_id: view.unitId, study_map_id: map.id, durable_stage_ids: stages.map(s => s.id), stages: [stages[0]], omitted_stage_ids: stages.slice(1).map(s => s.id), prerequisite_edges: [], limitations: [] };
+    view.temporarySequence.use(packet, plugin.store.snapshotId, false);
+    await plugin.reviewSessionEnd();
+    check('End session discards the temporary sequence', !view.temporarySequence.active);
+    view.temporarySequence.use(packet, plugin.store.snapshotId, false);
+    await view.onClose();
+    check('closing the Unit view discards the temporary sequence', !view.temporarySequence.active);
+    plugin.onunload();
+  }
+
   heading('the assigned page survives the whole plugin route');
   {
     /*

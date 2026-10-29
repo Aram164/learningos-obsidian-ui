@@ -7,6 +7,7 @@ import {
   type WorkspaceLeaf,
 } from 'obsidian';
 import { VIEW_UNIT } from '../constants';
+import { TemporaryStudySequence } from '../features/unit/sequence';
 
 import {
   UnitRecordView,
@@ -31,6 +32,10 @@ export class UnitView extends ItemView {
   stageId: string | null;
 
   private mutationPending = false;
+  readonly temporarySequence = new TemporaryStudySequence();
+
+  clearTemporarySequence(): void { this.temporarySequence.clear(); this.render(); }
+  async onClose(): Promise<void> { this.temporarySequence.clear(); }
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -62,6 +67,7 @@ export class UnitView extends ItemView {
       ?? this.unitId;
 
     if (nextUnitId !== this.unitId) {
+      this.temporarySequence.clear();
       this.stageId = null;
     }
 
@@ -93,7 +99,7 @@ export class UnitView extends ItemView {
   } {
     return {
       unitId: this.unitId,
-      stageId: this.stageId,
+      stageId: this.temporarySequence.active && this.unitId ? this.plugin.getSelectedStage(this.unitId) : this.stageId,
     };
   }
 
@@ -233,6 +239,7 @@ export class UnitView extends ItemView {
     }
 
     this.stageId = stageId;
+    if (this.temporarySequence.active) { this.render(); return; }
 
     this.plugin.setSelectedStage(
       unitId,
