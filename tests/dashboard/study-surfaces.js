@@ -1042,14 +1042,15 @@ module.exports = async function run() {
     let modal = Modal.last;
     let use = modal.contentEl.findText('los-btn', 'Use for this sitting');
     check('temporary sequence requires its own visible check', use.disabled === true);
-    const labels = modal.contentEl.children.filter(e => e.tag === 'label');
-    labels[0].children[0].checked = false; labels[0].children[0].fire('change');
+    const include = modal.contentEl.find('los-sequence-include')[0];
+    include.checked = false; include.fire('change');
     const savedBefore = JSON.stringify(plugin.settings);
     modal.contentEl.findText('los-btn', 'Check sequence').fire('click'); await frame();
     check('omissions and exact temporary order are visible before use', use.disabled === false && modal.contentEl.allText().includes('Omitted for this sitting:'));
     use.fire('click'); await frame();
     check('using a temporary sequence rechecks Core and changes only view memory', reads === 2 && view.temporarySequence.active
       && view.contentEl.allText().includes('Temporary sequence:') && JSON.stringify(plugin.settings) === savedBefore);
+    check('temporary and full-plan completion have distinct explicit scopes', view.contentEl.allText().includes('For this sitting: 0 of 2 complete') && view.contentEl.allText().includes('Full plan: 1 of 3 complete'));
     check('the saved route does not serialize the temporary order', !JSON.stringify(view.getState()).includes('durable_stage_ids'));
     view.contentEl.findText('los-btn', 'Show full durable plan').fire('click');
     check('explicit reset restores the complete durable stage list', !view.temporarySequence.active && !view.contentEl.allText().includes('Temporary sequence:'));
@@ -1059,8 +1060,8 @@ module.exports = async function run() {
     view.contentEl.findText('los-btn', 'Sequence for this sitting').fire('click'); modal = Modal.last;
     use = modal.contentEl.findText('los-btn', 'Use for this sitting');
     modal.contentEl.findText('los-btn', 'Check sequence').fire('click');
-    const position = modal.contentEl.children.find(e => e.tag === 'label').children[1];
-    position.fire('input'); finish(); await frame();
+    const before = modal.contentEl.find('los-sequence-before')[0];
+    before.fire('change'); finish(); await frame();
     check('late preview cannot authorize edited sequence controls', use.disabled === true && !view.temporarySequence.active);
     modal.contentEl.findText('los-btn', 'Check sequence').fire('click'); finish(); await frame();
     use.fire('click'); modal.close(); finish(); await frame();
@@ -1074,6 +1075,85 @@ module.exports = async function run() {
     await view.onClose();
     check('closing the Unit view discards the temporary sequence', !view.temporarySequence.active);
     plugin.onunload();
+  }
+
+  heading('temporary modal cannot revive an ended sitting');
+  {
+    const { app, plugin } = await boot();
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const map = plugin.store.mapForUnit(view.unitId);
+    const { Modal } = require('../harness').stub;
+    const parts = new Intl.DateTimeFormat('en', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+    const part = key => parts.find(p => p.type === key).value;
+    const today = `${part('year')}-${part('month')}-${part('day')}`;
+    plugin.gateway.studySequence = async (unitId, ids, snapshot) => ({ contract: 'study-sequence-v1', canonical_files_written: 0, lifetime: 'unit-view-and-snapshot', timezone: 'Europe/Berlin', valid_on_date: today, unit_id: unitId, study_map_id: map.id, snapshot_id: snapshot, durable_stage_ids: map.stages.map(s => s.id), stages: ids.map(id => map.stages.find(s => s.id === id)), omitted_stage_ids: map.stages.filter(s => !ids.includes(s.id)).map(s => s.id), prerequisite_edges: [], limitations: [] });
+    view.contentEl.findText('los-btn', 'Sequence for this sitting').fire('click');
+    const modal = Modal.last;
+    modal.contentEl.findText('los-btn', 'Check sequence').fire('click'); await frame();
+    const use = modal.contentEl.findText('los-btn', 'Use for this sitting');
+    await plugin.reviewSessionEnd();
+    use.fire('click'); await frame();
+    check('an earlier checked modal cannot reactivate after End session', !view.temporarySequence.active);
+    modal.close(); await view.onClose(); plugin.onunload();
+  }
+
+  heading('pending temporary reviews follow the owning lifetime');
+  for (const boundary of ['end', 'close', 'reset', 'switch-back']) {
+    for (const pending of ['preview', 'activation']) {
+      const { app, plugin } = await boot();
+      await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+      const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+      const map = plugin.store.mapForUnit(view.unitId);
+      const { Modal } = require('../harness').stub;
+      const parts = new Intl.DateTimeFormat('en', { timeZone: 'Europe/Berlin', year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date());
+      const part = key => parts.find(p => p.type === key).value;
+      const today = `${part('year')}-${part('month')}-${part('day')}`;
+      let finish;
+      let calls = 0;
+      plugin.gateway.studySequence = (unitId, ids, snapshot) => {
+        calls += 1;
+        const packet = { contract: 'study-sequence-v1', canonical_files_written: 0, lifetime: 'unit-view-and-snapshot', timezone: 'Europe/Berlin', valid_on_date: today, unit_id: unitId, study_map_id: map.id, snapshot_id: snapshot, durable_stage_ids: map.stages.map(s => s.id), stages: ids.map(id => map.stages.find(s => s.id === id)), omitted_stage_ids: map.stages.filter(s => !ids.includes(s.id)).map(s => s.id), prerequisite_edges: [], limitations: [] };
+        return pending === 'activation' && calls === 1 ? Promise.resolve(packet) : new Promise(resolve => { finish = () => resolve(packet); });
+      };
+      view.contentEl.findText('los-btn', 'Sequence for this sitting').fire('click');
+      const modal = Modal.last;
+      const use = modal.contentEl.findText('los-btn', 'Use for this sitting');
+      modal.contentEl.findText('los-btn', 'Check sequence').fire('click'); await frame();
+      if (pending === 'activation') { use.fire('click'); await frame(); }
+      if (boundary === 'end') await plugin.reviewSessionEnd();
+      if (boundary === 'close') await view.onClose();
+      if (boundary === 'reset') view.clearTemporarySequence();
+      if (boundary === 'switch-back') {
+        await view.setState({ unitId: 'unit-fixture-analysis' });
+        await view.setState({ unitId: 'unit-fixture-sad-l04' });
+      }
+      finish(); await frame();
+      check(`${boundary} invalidates an asynchronous ${pending}`, use.disabled === true && !view.temporarySequence.active);
+      modal.close(); await view.onClose(); plugin.onunload();
+    }
+  }
+
+  heading('proportional temporary reorder on 10 and 50 stages');
+  {
+    const { createSourceModuleLoader } = require('../source-module-loader');
+    const load = createSourceModuleLoader(ROOT, { obsidian: require('../harness').stub });
+    const { StudySequenceModal } = load('src/features/unit/sequence.ts');
+    for (const count of [10, 50]) {
+      const stages = Array.from({ length: count }, (_, i) => ({ id: `stage-order-${i + 1}`, title: `Activity ${i + 1}`, status: 'pending' }));
+      let received;
+      const modal = new StudySequenceModal(makeApp(FIXTURE), {
+        studyMap: { stages }, isCurrent: () => true,
+        check: async ids => { received = ids; return { stages: ids.map(id => stages.find(s => s.id === id)), omitted_stage_ids: [], prerequisite_edges: [], limitations: [] }; },
+        use: async () => {},
+      });
+      modal.open();
+      const last = modal.contentEl.find('los-sequence-row').at(-1);
+      last.findText('los-btn', 'Move before').fire('click');
+      modal.contentEl.findText('los-btn', 'Check sequence').fire('click'); await frame();
+      check(`one move action puts stage ${count} first without renumbering other controls`, JSON.stringify(received) === JSON.stringify([stages.at(-1).id, ...stages.slice(0, -1).map(s => s.id)]) && modal.contentEl.find('los-sequence-row').length === count);
+      modal.close();
+    }
   }
 
   heading('the assigned page survives the whole plugin route');

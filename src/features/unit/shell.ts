@@ -328,12 +328,15 @@ export function render(
     } else if (view.temporarySequence.notice) provenance.createEl('p', { text: view.temporarySequence.notice });
     button(provenance, 'Sequence for this sitting', () => {
       const snapshot = view.plugin.store.snapshotId;
+      const lifetime = view.temporarySequence.generation;
+      const isCurrent = () => view.unitId === unit.id && view.temporarySequence.generation === lifetime;
       if (!snapshot || view.plugin.store.stale) return;
       new StudySequenceModal(view.app, {
         studyMap: durableStudyMap,
+        isCurrent,
         check: async ids => readStudySequence(await view.plugin.gateway.studySequence(unit.id, ids, snapshot), unit.id, mapId, snapshot, ids, durableIds),
         use: async preview => {
-          if (view.unitId !== unit.id) throw new Error('The Unit view changed. Check a fresh sequence.');
+          if (!isCurrent()) throw new Error('The Unit view or sitting ended. Check a fresh sequence.');
           view.temporarySequence.use(preview, view.plugin.store.snapshotId, view.plugin.store.stale);
           view.render();
         },
@@ -451,15 +454,21 @@ export function renderRail(
           stage.status === 'complete',
       ).length;
 
+    const temporary = view.temporarySequence.active;
+    const fullMap = readStudyMap(view.plugin.store.mapForUnit(unit.id)!);
+    const fullCompleted = fullMap.stages.filter(stage => stage.status === 'complete').length;
     const currentIndex = studyMap.stages.findIndex(
       (stage) => stage.id === current.id,
     );
     const rail = renderLearningRouteRail(layout, {
       title: view.temporarySequence.active ? 'For this sitting' : 'Stages',
       ariaLabel: 'Ordered learning stages',
-      progressLabel: 'Overall learning route progress',
+      progressLabel: temporary ? 'Completion for this sitting' : 'Overall learning route progress',
       showProgress: false,
-      titleMeta: `${completedCount} of ${studyMap.stages.length} complete`,
+      titleMeta: temporary ? [
+        `For this sitting: ${completedCount} of ${studyMap.stages.length} complete`,
+        `Full plan: ${fullCompleted} of ${fullMap.stages.length} complete`,
+      ] : `${completedCount} of ${studyMap.stages.length} complete`,
       completed: completedCount,
       selectedId: current.id,
       items: studyMap.stages.map((stage, index) => ({

@@ -34,7 +34,7 @@ export interface LearningRouteOptions {
    * completed total was stated. Six rows each saying "Complete" is not the
    * same as being told the total.
    */
-  readonly titleMeta?: string;
+  readonly titleMeta?: string | readonly string[];
 }
 
 export function renderLearningProgress(
@@ -86,7 +86,11 @@ export function renderLearningRouteRail(
   } else {
     summary.addClass('is-label-only');
     if (options.titleMeta) {
-      summary.createSpan({ cls: 'los-micro', text: options.titleMeta });
+      if (typeof options.titleMeta === 'string') summary.createSpan({ cls: 'los-micro', text: options.titleMeta });
+      else {
+        summary.addClass('has-scoped-progress');
+        for (const text of options.titleMeta) summary.createDiv({ cls: 'los-micro', text });
+      }
     }
   }
 

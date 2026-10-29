@@ -2460,6 +2460,8 @@ function routerPlugin(settings = {}) {
     const today = berlinStudyDay();
     const state = new TemporaryStudySequence();
     const preview = { snapshot_id: SNAPSHOT, valid_on_date: today, unit_id: 'unit-a', study_map_id: 'map-a', durable_stage_ids: ['a', 'b'], stages: [{ id: 'b', title: 'B', status: 'pending' }], omitted_stage_ids: ['a'], prerequisite_edges: [], limitations: [] };
+    const initialLifetime = state.generation;
+    state.clear(); assert.ok(state.generation > initialLifetime, 'reset invalidates an open modal even without an active choice');
     const activate = () => state.use(preview, SNAPSHOT, false);
     activate();
     assert.equal(state.current('unit-a', 'map-a', ['a', 'b'], SNAPSHOT, false).stages[0].id, 'b');

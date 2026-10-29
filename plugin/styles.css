@@ -3188,6 +3188,9 @@
   border-bottom: 0;
 }
 .los-stage-rail-summary.is-label-only h2 { margin-bottom: 0; }
+.los-stage-rail-summary.is-label-only.has-scoped-progress { display: block; }
+.los-stage-rail-summary.has-scoped-progress h2 { margin-bottom: 6px; }
+.los-stage-rail-summary.has-scoped-progress .los-micro { margin-top: 4px; }
 .los-stage-progress-copy {
   display: flex;
   align-items: baseline;

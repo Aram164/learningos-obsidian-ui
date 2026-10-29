@@ -46,12 +46,15 @@ export function readStudySequence(value: unknown, unitId: string, mapId: string,
 export class TemporaryStudySequence {
   private selected: StudySequencePreview | null = null;
   notice = '';
+  private lifetimeGeneration = 0;
+  get generation(): number { return this.lifetimeGeneration; }
   get active(): boolean { return this.selected !== null; }
-  clear(reason = ''): void { this.selected = null; this.notice = reason; }
+  clear(reason = ''): void { ++this.lifetimeGeneration; this.selected = null; this.notice = reason; }
   use(preview: StudySequencePreview, snapshot: string | null, stale: boolean, day = berlinStudyDay()): void {
     if (stale || !snapshot || preview.snapshot_id !== snapshot || preview.valid_on_date !== day) {
       throw new Error('The temporary sequence expired. Reload and check it again.');
     }
+    ++this.lifetimeGeneration;
     this.selected = JSON.parse(JSON.stringify(preview)) as StudySequencePreview;
     this.notice = '';
   }
@@ -70,6 +73,7 @@ export class StudySequenceModal extends Modal {
   private restoreAccessibility: (() => void) | null = null;
   constructor(app: App, private readonly options: {
     studyMap: StudyMapView;
+    isCurrent: () => boolean;
     check: (ids: readonly string[]) => Promise<StudySequencePreview>;
     use: (preview: StudySequencePreview) => Promise<void>;
   }) { super(app); }
@@ -80,13 +84,10 @@ export class StudySequenceModal extends Modal {
     heading.id = 'los-study-sequence-heading';
     this.restoreAccessibility = makeModalAccessible(root, { close: () => this.close(), hostClass: 'los-modal--map-import', labelledBy: heading.id });
     root.createEl('p', { text: 'Choose stages and their order for this Unit view. The durable plan and recorded work stay unchanged. This choice expires when the snapshot or Berlin date changes, the view closes, or you end the sitting.' });
-    const fields = this.options.studyMap.stages.map((stage, i) => {
-      const label = root.createEl('label', { text: stage.title });
-      const include = label.createEl('input', { attr: { type: 'checkbox', 'aria-label': `Include ${stage.title}` } });
-      include.checked = true;
-      const position = label.createEl('input', { attr: { type: 'number', min: '1', value: String(i + 1), 'aria-label': `Position of ${stage.title}` } });
-      return { id: stage.id, include, position };
-    });
+    const stageById = new Map(this.options.studyMap.stages.map(stage => [stage.id, stage]));
+    let orderedIds = this.options.studyMap.stages.map(stage => stage.id);
+    const included = new Set(orderedIds);
+    const rows = root.createDiv({ cls: 'los-sequence-rows' });
     const status = root.createDiv({ attr: { 'aria-live': 'polite' } });
     const preview = root.createDiv({ attr: { 'aria-live': 'polite' } });
     const actions = root.createDiv({ cls: 'los-actions' });
@@ -97,10 +98,12 @@ export class StudySequenceModal extends Modal {
       const ticket = ++this.generation;
       checked = null; use.disabled = true;
       try {
+        ensureCurrent();
         // Recheck against the exact reviewed snapshot; this is another read,
         // never a gateway mutation or refreshed approval.
         const current = await this.options.check(approved.stages.map(s => s.id));
         if (ticket !== this.generation) return;
+        ensureCurrent();
         if (JSON.stringify(current) !== JSON.stringify(approved)) throw new Error('The preview changed. Check the sequence again.');
         await this.options.use(approved);
         this.close();
@@ -108,18 +111,48 @@ export class StudySequenceModal extends Modal {
     }, 'cta');
     use.disabled = true;
     const invalidate = () => { ++this.generation; checked = null; use.disabled = true; preview.empty(); status.setText('Check the temporary sequence before using it.'); };
-    for (const field of fields) {
-      field.include.addEventListener('change', invalidate);
-      field.position.addEventListener('input', invalidate);
-    }
+    const ensureCurrent = () => {
+      if (!this.options.isCurrent()) throw new Error('This Unit view or sitting ended. Open and check a fresh sequence.');
+    };
+    const renderRows = (focusId?: string) => {
+      rows.empty();
+      for (const [index, id] of orderedIds.entries()) {
+        const stage = stageById.get(id)!;
+        const row = rows.createDiv({ cls: 'los-sequence-row', attr: { 'data-stage-id': id } });
+        const label = row.createEl('label', { text: `${index + 1} · ${stage.title}` });
+        const include = label.createEl('input', { cls: 'los-sequence-include', attr: { type: 'checkbox', 'aria-label': `Include ${stage.title}` } });
+        include.checked = included.has(id);
+        include.addEventListener('change', () => {
+          if (include.checked) included.add(id); else included.delete(id);
+          invalidate(); renderRows(id);
+        });
+        const before = row.createEl('select', { cls: 'los-sequence-before', attr: { 'aria-label': `Move ${stage.title} before` } });
+        const anchors = orderedIds.filter(candidate => candidate !== id && included.has(candidate));
+        for (const anchor of anchors) before.createEl('option', { attr: { value: anchor }, text: stageById.get(anchor)!.title });
+        before.value = anchors[0] ?? '';
+        before.disabled = !include.checked || !anchors.length;
+        before.addEventListener('change', invalidate);
+        const move = button(row, 'Move before', () => {
+          if (!included.has(id) || !included.has(before.value) || before.value === id) return;
+          const next = orderedIds.filter(candidate => candidate !== id);
+          next.splice(next.indexOf(before.value), 0, id);
+          orderedIds = next; invalidate(); renderRows(id);
+        }, 'quiet');
+        move.setAttr('aria-label', `Move ${stage.title} before the selected stage`);
+        move.disabled = before.disabled;
+        if (id === focusId) include.focus();
+      }
+    };
+    renderRows();
     button(actions, 'Check sequence', async () => {
       invalidate(); const ticket = this.generation;
       try {
-        const selected = fields.filter(f => f.include.checked).map(f => ({ id: f.id, rank: Number(f.position.value) }));
-        if (!selected.length || selected.some(f => !Number.isInteger(f.rank) || f.rank < 1)
-          || new Set(selected.map(f => f.rank)).size !== selected.length) throw new Error('Choose at least one stage and distinct positive positions.');
-        const answer = await this.options.check(selected.sort((a, b) => a.rank - b.rank).map(f => f.id));
+        ensureCurrent();
+        const selected = orderedIds.filter(id => included.has(id));
+        if (!selected.length) throw new Error('Choose at least one stage.');
+        const answer = await this.options.check(selected);
         if (ticket !== this.generation) return;
+        ensureCurrent();
         preview.createEl('h3', { text: 'Order for this sitting' });
         const order = preview.createEl('ol');
         for (const stage of answer.stages) order.createEl('li', { text: `${stage.title} (${stage.id})` });

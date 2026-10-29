@@ -47130,7 +47130,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:648b2c1b74881b157fb589f8493e90efdb472261dcea6e065f704f786210a452" : "unavailable";
+  return true ? "sha256:3d43e1548b1095ca597858c709b386a827d10dde27ba50e19155c7596d5c57ef" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 16 : 0;
@@ -51286,7 +51286,11 @@ function renderLearningRouteRail(parent, options) {
   } else {
     summary.addClass("is-label-only");
     if (options.titleMeta) {
-      summary.createSpan({ cls: "los-micro", text: options.titleMeta });
+      if (typeof options.titleMeta === "string") summary.createSpan({ cls: "los-micro", text: options.titleMeta });
+      else {
+        summary.addClass("has-scoped-progress");
+        for (const text4 of options.titleMeta) summary.createDiv({ cls: "los-micro", text: text4 });
+      }
     }
   }
   const list3 = rail.createDiv({ cls: "los-stage-list", attr: { role: "list" } });
@@ -51666,10 +51670,15 @@ function readStudySequence(value, unitId, mapId, snapshot, ids, durableIds) {
 var TemporaryStudySequence = class {
   selected = null;
   notice = "";
+  lifetimeGeneration = 0;
+  get generation() {
+    return this.lifetimeGeneration;
+  }
   get active() {
     return this.selected !== null;
   }
   clear(reason = "") {
+    ++this.lifetimeGeneration;
     this.selected = null;
     this.notice = reason;
   }
@@ -51677,6 +51686,7 @@ var TemporaryStudySequence = class {
     if (stale || !snapshot || preview.snapshot_id !== snapshot || preview.valid_on_date !== day) {
       throw new Error("The temporary sequence expired. Reload and check it again.");
     }
+    ++this.lifetimeGeneration;
     this.selected = JSON.parse(JSON.stringify(preview));
     this.notice = "";
   }
@@ -51703,13 +51713,10 @@ var StudySequenceModal = class extends import_obsidian21.Modal {
     heading.id = "los-study-sequence-heading";
     this.restoreAccessibility = makeModalAccessible(root, { close: () => this.close(), hostClass: "los-modal--map-import", labelledBy: heading.id });
     root.createEl("p", { text: "Choose stages and their order for this Unit view. The durable plan and recorded work stay unchanged. This choice expires when the snapshot or Berlin date changes, the view closes, or you end the sitting." });
-    const fields = this.options.studyMap.stages.map((stage, i) => {
-      const label2 = root.createEl("label", { text: stage.title });
-      const include = label2.createEl("input", { attr: { type: "checkbox", "aria-label": `Include ${stage.title}` } });
-      include.checked = true;
-      const position = label2.createEl("input", { attr: { type: "number", min: "1", value: String(i + 1), "aria-label": `Position of ${stage.title}` } });
-      return { id: stage.id, include, position };
-    });
+    const stageById = new Map(this.options.studyMap.stages.map((stage) => [stage.id, stage]));
+    let orderedIds = this.options.studyMap.stages.map((stage) => stage.id);
+    const included = new Set(orderedIds);
+    const rows = root.createDiv({ cls: "los-sequence-rows" });
     const status = root.createDiv({ attr: { "aria-live": "polite" } });
     const preview = root.createDiv({ attr: { "aria-live": "polite" } });
     const actions = root.createDiv({ cls: "los-actions" });
@@ -51721,8 +51728,10 @@ var StudySequenceModal = class extends import_obsidian21.Modal {
       checked = null;
       use.disabled = true;
       try {
+        ensureCurrent();
         const current = await this.options.check(approved.stages.map((s) => s.id));
         if (ticket !== this.generation) return;
+        ensureCurrent();
         if (JSON.stringify(current) !== JSON.stringify(approved)) throw new Error("The preview changed. Check the sequence again.");
         await this.options.use(approved);
         this.close();
@@ -51738,18 +51747,53 @@ var StudySequenceModal = class extends import_obsidian21.Modal {
       preview.empty();
       status.setText("Check the temporary sequence before using it.");
     };
-    for (const field2 of fields) {
-      field2.include.addEventListener("change", invalidate);
-      field2.position.addEventListener("input", invalidate);
-    }
+    const ensureCurrent = () => {
+      if (!this.options.isCurrent()) throw new Error("This Unit view or sitting ended. Open and check a fresh sequence.");
+    };
+    const renderRows = (focusId) => {
+      rows.empty();
+      for (const [index, id] of orderedIds.entries()) {
+        const stage = stageById.get(id);
+        const row2 = rows.createDiv({ cls: "los-sequence-row", attr: { "data-stage-id": id } });
+        const label2 = row2.createEl("label", { text: `${index + 1} \xB7 ${stage.title}` });
+        const include = label2.createEl("input", { cls: "los-sequence-include", attr: { type: "checkbox", "aria-label": `Include ${stage.title}` } });
+        include.checked = included.has(id);
+        include.addEventListener("change", () => {
+          if (include.checked) included.add(id);
+          else included.delete(id);
+          invalidate();
+          renderRows(id);
+        });
+        const before = row2.createEl("select", { cls: "los-sequence-before", attr: { "aria-label": `Move ${stage.title} before` } });
+        const anchors = orderedIds.filter((candidate2) => candidate2 !== id && included.has(candidate2));
+        for (const anchor of anchors) before.createEl("option", { attr: { value: anchor }, text: stageById.get(anchor).title });
+        before.value = anchors[0] ?? "";
+        before.disabled = !include.checked || !anchors.length;
+        before.addEventListener("change", invalidate);
+        const move = button(row2, "Move before", () => {
+          if (!included.has(id) || !included.has(before.value) || before.value === id) return;
+          const next = orderedIds.filter((candidate2) => candidate2 !== id);
+          next.splice(next.indexOf(before.value), 0, id);
+          orderedIds = next;
+          invalidate();
+          renderRows(id);
+        }, "quiet");
+        move.setAttr("aria-label", `Move ${stage.title} before the selected stage`);
+        move.disabled = before.disabled;
+        if (id === focusId) include.focus();
+      }
+    };
+    renderRows();
     button(actions, "Check sequence", async () => {
       invalidate();
       const ticket = this.generation;
       try {
-        const selected = fields.filter((f) => f.include.checked).map((f) => ({ id: f.id, rank: Number(f.position.value) }));
-        if (!selected.length || selected.some((f) => !Number.isInteger(f.rank) || f.rank < 1) || new Set(selected.map((f) => f.rank)).size !== selected.length) throw new Error("Choose at least one stage and distinct positive positions.");
-        const answer = await this.options.check(selected.sort((a, b) => a.rank - b.rank).map((f) => f.id));
+        ensureCurrent();
+        const selected = orderedIds.filter((id) => included.has(id));
+        if (!selected.length) throw new Error("Choose at least one stage.");
+        const answer = await this.options.check(selected);
         if (ticket !== this.generation) return;
+        ensureCurrent();
         preview.createEl("h3", { text: "Order for this sitting" });
         const order = preview.createEl("ol");
         for (const stage of answer.stages) order.createEl("li", { text: `${stage.title} (${stage.id})` });
@@ -51973,12 +52017,15 @@ function render(view) {
   } else if (view.temporarySequence.notice) provenance.createEl("p", { text: view.temporarySequence.notice });
   button(provenance, "Sequence for this sitting", () => {
     const snapshot = view.plugin.store.snapshotId;
+    const lifetime = view.temporarySequence.generation;
+    const isCurrent = () => view.unitId === unit.id && view.temporarySequence.generation === lifetime;
     if (!snapshot || view.plugin.store.stale) return;
     new StudySequenceModal(view.app, {
       studyMap: durableStudyMap,
+      isCurrent,
       check: async (ids) => readStudySequence(await view.plugin.gateway.studySequence(unit.id, ids, snapshot), unit.id, mapId, snapshot, ids, durableIds),
       use: async (preview) => {
-        if (view.unitId !== unit.id) throw new Error("The Unit view changed. Check a fresh sequence.");
+        if (!isCurrent()) throw new Error("The Unit view or sitting ended. Check a fresh sequence.");
         view.temporarySequence.use(preview, view.plugin.store.snapshotId, view.plugin.store.stale);
         view.render();
       }
@@ -52058,15 +52105,21 @@ function renderRail(view, layout, unit, studyMap, current) {
   const completedCount = studyMap.stages.filter(
     (stage) => stage.status === "complete"
   ).length;
+  const temporary = view.temporarySequence.active;
+  const fullMap = readStudyMap(view.plugin.store.mapForUnit(unit.id));
+  const fullCompleted = fullMap.stages.filter((stage) => stage.status === "complete").length;
   const currentIndex = studyMap.stages.findIndex(
     (stage) => stage.id === current.id
   );
   const rail = renderLearningRouteRail(layout, {
     title: view.temporarySequence.active ? "For this sitting" : "Stages",
     ariaLabel: "Ordered learning stages",
-    progressLabel: "Overall learning route progress",
+    progressLabel: temporary ? "Completion for this sitting" : "Overall learning route progress",
     showProgress: false,
-    titleMeta: `${completedCount} of ${studyMap.stages.length} complete`,
+    titleMeta: temporary ? [
+      `For this sitting: ${completedCount} of ${studyMap.stages.length} complete`,
+      `Full plan: ${fullCompleted} of ${fullMap.stages.length} complete`
+    ] : `${completedCount} of ${studyMap.stages.length} complete`,
     completed: completedCount,
     selectedId: current.id,
     items: studyMap.stages.map((stage, index) => ({
