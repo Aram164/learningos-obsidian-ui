@@ -42,7 +42,7 @@ module.exports = async function run() {
       plugin.store.ready && plugin.store.contractVersion === CONTRACT, plugin.store.error);
     check('snapshot guard is loaded', plugin.store.snapshotId === FIXTURE_SNAPSHOT);
     check('program/module/unit/map collections load atomically', plugin.store.programs().length === 3
-      && plugin.store.modules().length === 3 && plugin.store.projects().length === 1 && plugin.store.units().length === 7
+      && plugin.store.modules().length === 4 && plugin.store.projects().length === 0 && plugin.store.units().length === 7
       && plugin.store.studyMaps().length === 6);
     check('reverse indexes resolve the active unit map',
       plugin.store.mapForUnit('unit-fixture-sad-l04').id === 'study-map-fixture-sad-l04');
@@ -316,24 +316,28 @@ module.exports = async function run() {
     const projectSearch = plugin.nav.openGlobalSearch('Bachelor thesis');
     const projectResult = projectSearch.contentEl.find('los-search-result')
       .find((row) => row.allText().includes('Bachelor thesis'));
-    check('global search returns first-class projects', Boolean(projectResult));
+    check('global search returns the consolidated thesis once',
+      Boolean(projectResult) && projectSearch.contentEl.find('los-search-result')
+        .filter((row) => row.getAttribute('aria-label') === 'Open Bachelor thesis').length === 1);
     projectResult.fire('click'); await tick(); await tick();
-    check('a project search result opens the project route',
-      plugin.router.snapshot().current.name === 'project-detail'
-      && plugin.router.snapshot().current.projectId === 'project-fixture-thesis');
+    const current = plugin.router.snapshot().current;
+    check('the historical thesis title opens its canonical Module',
+      current.name === 'module-detail' && current.moduleId === 'module-fixture-thesis');
 
     const emptySearch = plugin.nav.openGlobalSearch('definitely-unfindable-fixture');
     check('no-results is explicit and offers a clear action',
       emptySearch.contentEl.allText().includes('No structural results')
       && Boolean(emptySearch.contentEl.findText('los-btn', 'Clear search')));
     emptySearch.contentEl.findText('los-btn', 'Clear search').fire('click');
+    const afterClear = plugin.router.snapshot().current;
+    const clearMatches = afterClear.name === 'module-detail' && afterClear.moduleId === 'module-fixture-thesis';
     check('clearing search restores quick access without changing the route',
-      emptySearch.contentEl.allText().includes('Quick access')
-      && plugin.router.snapshot().current.projectId === 'project-fixture-thesis');
+      emptySearch.contentEl.allText().includes('Quick access') && clearMatches);
     emptySearch.close();
+    const afterClose = plugin.router.snapshot().current;
+    const closeMatches = afterClose.name === 'module-detail' && afterClose.moduleId === 'module-fixture-thesis';
     check('closing search clears only overlay state',
-      plugin.router.snapshot().overlay === null
-      && plugin.router.snapshot().current.projectId === 'project-fixture-thesis');
+      plugin.router.snapshot().overlay === null && closeMatches);
 
     const command = plugin.commands.find((row) => row.id === 'open-global-search');
     check('global search is available as an Obsidian command', Boolean(command));

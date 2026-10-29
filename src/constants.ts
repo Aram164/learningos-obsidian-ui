@@ -25,11 +25,10 @@ export const LEARN_AREAS = [
   ['program-bachelors', 'Bachelor’s'],
   ['program-skills', 'Skills'],
   ['program-job', 'Job'],
-  ['program-thesis-projects', 'Thesis & projects'],
 ] as const;
 export const LEGACY_VIEW_TYPES = [
   'learningos-dashboard', 'learningos-explorer', 'learningos-learning-path',
-  'learningos-shelve-review', 'learningos-job-boundary',
+  'learningos-shelve-review', 'learningos-job-boundary', 'learningos-project',
 ];
 
 export const DEFAULT_SETTINGS = {

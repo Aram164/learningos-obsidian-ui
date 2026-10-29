@@ -207,6 +207,9 @@
     "module_to_workspaces": {
       "module-fixture-m2": [
         "workspace-fixture-m2"
+      ],
+      "module-fixture-thesis": [
+        "workspace-fixture-thesis"
       ]
     },
     "note_incoming": {},
@@ -245,12 +248,12 @@
     "inbox_items": 2,
     "learning_paths": 6,
     "learning_paths_active": 6,
-    "modules": 3,
+    "modules": 4,
     "notes": 6,
     "notes_reviewed": 1,
     "notes_with_evidence": 1,
     "programs": 5,
-    "projects": 1,
+    "projects": 0,
     "relations": 5,
     "source_feedback_records": 0,
     "sources": 3,
@@ -263,7 +266,7 @@
     "topics": 2,
     "units": 7,
     "units_needing_map": 1,
-    "workspaces_active": 1,
+    "workspaces_active": 2,
     "workspaces_archived": 0
   },
   "garden_entries": [
@@ -337,22 +340,20 @@
       ]
     },
     "project_aliases": {
-      "module-fixture-thesis": "project-fixture-thesis"
+      "project-fixture-thesis": "module-fixture-thesis",
+      "milestone-fixture-scope": "unit-fixture-thesis-landscape",
+      "workstream-fixture-landscape": "workspace-fixture-thesis",
+      "step-fixture-scope": "workspace-fixture-thesis",
+      "workstream-fixture-experiments": "workspace-fixture-thesis",
+      "step-map-fixture-baseline": "workspace-fixture-thesis",
+      "step-fixture-baseline": "workspace-fixture-thesis",
+      "decision-fixture-budget": "workspace-fixture-thesis",
+      "relationship-fixture-thesis-aml": "workspace-fixture-thesis",
+      "relationship-fixture-thesis-pack": "workspace-fixture-thesis"
     },
-    "project_to_relationships": {
-      "project-fixture-thesis": [
-        "relationship-fixture-thesis-aml",
-        "relationship-fixture-thesis-pack"
-      ]
-    },
-    "project_to_units": {
-      "project-fixture-thesis": [
-        "unit-fixture-thesis-landscape"
-      ]
-    },
-    "project_to_workspaces": {
-      "project-fixture-thesis": []
-    },
+    "project_to_relationships": {},
+    "project_to_units": {},
+    "project_to_workspaces": {},
     "source_to_modules": {
       "source-fixture-book": [
         "module-fixture-m2"
@@ -396,11 +397,17 @@
     "workspace_to_modules": {
       "workspace-fixture-m2": [
         "module-fixture-m2"
+      ],
+      "workspace-fixture-thesis": [
+        "module-fixture-thesis"
       ]
     },
     "workspace_to_units": {
       "workspace-fixture-m2": [
         "unit-fixture-sad-l04"
+      ],
+      "workspace-fixture-thesis": [
+        "unit-fixture-thesis-landscape"
       ]
     }
   },
@@ -605,6 +612,34 @@
       "unit_order": [
         "unit-fixture-python-oop"
       ]
+    },
+    {
+      "id": "module-fixture-thesis",
+      "type": "module",
+      "title": "Bachelor thesis",
+      "revision": 2,
+      "path": "curriculum/modules/module-fixture-thesis/module.yaml",
+      "kind": "project",
+      "area_id": "program-bachelors",
+      "thematic_group_ids": [
+        "thematic-group-machine-learning"
+      ],
+      "status": "active",
+      "administrative_status": null,
+      "operational_state": "active",
+      "is_actionable": true,
+      "institution": null,
+      "code": null,
+      "credits": null,
+      "semester": null,
+      "components": [],
+      "examination": null,
+      "attempts": [],
+      "grade": null,
+      "unit_order": [
+        "unit-fixture-thesis-landscape"
+      ],
+      "source_map": "source-map.yaml"
     }
   ],
   "programs": [
@@ -684,124 +719,19 @@
     }
   },
   "project_aliases": {
-    "module-fixture-thesis": "project-fixture-thesis"
+    "project-fixture-thesis": "module-fixture-thesis",
+    "milestone-fixture-scope": "unit-fixture-thesis-landscape",
+    "workstream-fixture-landscape": "workspace-fixture-thesis",
+    "step-fixture-scope": "workspace-fixture-thesis",
+    "workstream-fixture-experiments": "workspace-fixture-thesis",
+    "step-map-fixture-baseline": "workspace-fixture-thesis",
+    "step-fixture-baseline": "workspace-fixture-thesis",
+    "decision-fixture-budget": "workspace-fixture-thesis",
+    "relationship-fixture-thesis-aml": "workspace-fixture-thesis",
+    "relationship-fixture-thesis-pack": "workspace-fixture-thesis"
   },
-  "project_relationships": [
-    {
-      "contribution": "Provides evaluation vocabulary and systems methods for the thesis experiments.",
-      "from_project_id": "project-fixture-thesis",
-      "id": "relationship-fixture-thesis-aml",
-      "path": "projects/relations/project-relations.yaml",
-      "reason": "Advanced ML supplies the evaluation vocabulary.",
-      "relation_type": "informs",
-      "to_id": "module-fixture-aml",
-      "to_type": "module",
-      "type": "project-relationship"
-    },
-    {
-      "contribution": "Keeps the selected evaluation materials in deliberate working order.",
-      "from_project_id": "project-fixture-thesis",
-      "id": "relationship-fixture-thesis-pack",
-      "path": "projects/relations/project-relations.yaml",
-      "reason": "The pack provides a narrow experiment support shelf.",
-      "relation_type": "uses",
-      "to_id": "fixture-evaluation-pack",
-      "to_type": "topic-pack",
-      "type": "project-relationship"
-    }
-  ],
-  "projects": [
-    {
-      "boundaries": {
-        "confidentiality": "private",
-        "external_code_access": "approved",
-        "notes": "External code access is task-scoped and never indexed as LearningOS data."
-      },
-      "decisions": [
-        {
-          "id": "decision-fixture-budget",
-          "status": "open",
-          "summary": "Confirm the bounded compute budget.",
-          "title": "Compute budget"
-        }
-      ],
-      "files": [
-        {
-          "kind": "working",
-          "label": "Landscape plan",
-          "path": "work/active/fixture-thesis-plan.md"
-        }
-      ],
-      "id": "project-fixture-thesis",
-      "linked_module_ids": [
-        "module-fixture-aml"
-      ],
-      "milestone_ids": [
-        "milestone-fixture-scope"
-      ],
-      "objective": "Explore and optimize MLE agents for medical use cases.",
-      "path": "projects/registry/project-fixture-thesis.yaml",
-      "project_type": "thesis",
-      "relationship_ids": [
-        "relationship-fixture-thesis-aml",
-        "relationship-fixture-thesis-pack"
-      ],
-      "revision": 1,
-      "root_uri": "github://Aram164/LearningOS",
-      "schema_version": 1,
-      "status": "active",
-      "structure": {
-        "kind": "parallel",
-        "nodes": [
-          {
-            "children": [
-              {
-                "id": "step-fixture-scope",
-                "kind": "step",
-                "status": "active",
-                "title": "Confirm scope"
-              }
-            ],
-            "id": "workstream-fixture-landscape",
-            "kind": "workstream",
-            "status": "active",
-            "title": "Landscape and scope"
-          },
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "id": "step-fixture-baseline",
-                    "kind": "step",
-                    "status": "planned",
-                    "title": "Run baseline"
-                  }
-                ],
-                "id": "step-map-fixture-baseline",
-                "kind": "step-map",
-                "status": "planned",
-                "title": "Baseline map"
-              }
-            ],
-            "id": "workstream-fixture-experiments",
-            "kind": "workstream",
-            "status": "planned",
-            "title": "Experiments"
-          }
-        ]
-      },
-      "thematic_group_ids": [
-        "thematic-group-machine-learning"
-      ],
-      "title": "Bachelor thesis",
-      "type": "project",
-      "unit_ids": [
-        "unit-fixture-thesis-landscape"
-      ],
-      "workspace_ids": []
-    }
-  ],
+  "project_relationships": [],
+  "projects": [],
   "records": [
     {
       "authors": [
@@ -1160,96 +1090,6 @@
       "type": "topic-pack"
     },
     {
-      "boundaries": {
-        "confidentiality": "private",
-        "external_code_access": "approved",
-        "notes": "External code access is task-scoped and never indexed as LearningOS data."
-      },
-      "decisions": [
-        {
-          "id": "decision-fixture-budget",
-          "status": "open",
-          "summary": "Confirm the bounded compute budget.",
-          "title": "Compute budget"
-        }
-      ],
-      "files": [
-        {
-          "kind": "working",
-          "label": "Landscape plan",
-          "path": "work/active/fixture-thesis-plan.md"
-        }
-      ],
-      "id": "project-fixture-thesis",
-      "linked_module_ids": [
-        "module-fixture-aml"
-      ],
-      "milestone_ids": [
-        "milestone-fixture-scope"
-      ],
-      "objective": "Explore and optimize MLE agents for medical use cases.",
-      "path": "projects/registry/project-fixture-thesis.yaml",
-      "project_type": "thesis",
-      "relationship_ids": [
-        "relationship-fixture-thesis-aml",
-        "relationship-fixture-thesis-pack"
-      ],
-      "revision": 1,
-      "root_uri": "github://Aram164/LearningOS",
-      "schema_version": 1,
-      "status": "active",
-      "structure": {
-        "kind": "parallel",
-        "nodes": [
-          {
-            "children": [
-              {
-                "id": "step-fixture-scope",
-                "kind": "step",
-                "status": "active",
-                "title": "Confirm scope"
-              }
-            ],
-            "id": "workstream-fixture-landscape",
-            "kind": "workstream",
-            "status": "active",
-            "title": "Landscape and scope"
-          },
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "id": "step-fixture-baseline",
-                    "kind": "step",
-                    "status": "planned",
-                    "title": "Run baseline"
-                  }
-                ],
-                "id": "step-map-fixture-baseline",
-                "kind": "step-map",
-                "status": "planned",
-                "title": "Baseline map"
-              }
-            ],
-            "id": "workstream-fixture-experiments",
-            "kind": "workstream",
-            "status": "planned",
-            "title": "Experiments"
-          }
-        ]
-      },
-      "thematic_group_ids": [
-        "thematic-group-machine-learning"
-      ],
-      "title": "Bachelor thesis",
-      "type": "project",
-      "unit_ids": [
-        "unit-fixture-thesis-landscape"
-      ],
-      "workspace_ids": []
-    },
-    {
       "aliases": [
         "Wahrscheinlichkeit"
       ],
@@ -1396,6 +1236,102 @@
       "title": "Settled: probability before conditioning",
       "transcription": null,
       "type": "note"
+    },
+    {
+      "archived": false,
+      "concepts": [],
+      "deadline": null,
+      "id": "workspace-fixture-thesis",
+      "module_ids": [
+        "module-fixture-thesis"
+      ],
+      "next_action": "Confirm the bounded compute budget.",
+      "notes": [],
+      "objective": "Explore and optimize MLE agents for medical use cases.",
+      "path": "work/active/workspace-fixture-thesis/CONTEXT.md",
+      "program_ids": [
+        "program-bachelors"
+      ],
+      "project_id": null,
+      "revision": 0,
+      "sources": [],
+      "standing": false,
+      "status": "active",
+      "title": "Thesis research workspace",
+      "type": "workspace",
+      "unit_ids": [
+        "unit-fixture-thesis-landscape"
+      ]
+    },
+    {
+      "id": "project-fixture-thesis",
+      "type": "compatibility-alias",
+      "target_id": "module-fixture-thesis",
+      "target_type": "module",
+      "path": "projects/aliases.yaml"
+    },
+    {
+      "id": "milestone-fixture-scope",
+      "type": "compatibility-alias",
+      "target_id": "unit-fixture-thesis-landscape",
+      "target_type": "unit",
+      "path": "projects/aliases.yaml"
+    },
+    {
+      "id": "workstream-fixture-landscape",
+      "type": "compatibility-alias",
+      "target_id": "workspace-fixture-thesis",
+      "target_type": "workspace",
+      "path": "projects/aliases.yaml"
+    },
+    {
+      "id": "step-fixture-scope",
+      "type": "compatibility-alias",
+      "target_id": "workspace-fixture-thesis",
+      "target_type": "workspace",
+      "path": "projects/aliases.yaml"
+    },
+    {
+      "id": "workstream-fixture-experiments",
+      "type": "compatibility-alias",
+      "target_id": "workspace-fixture-thesis",
+      "target_type": "workspace",
+      "path": "projects/aliases.yaml"
+    },
+    {
+      "id": "step-map-fixture-baseline",
+      "type": "compatibility-alias",
+      "target_id": "workspace-fixture-thesis",
+      "target_type": "workspace",
+      "path": "projects/aliases.yaml"
+    },
+    {
+      "id": "step-fixture-baseline",
+      "type": "compatibility-alias",
+      "target_id": "workspace-fixture-thesis",
+      "target_type": "workspace",
+      "path": "projects/aliases.yaml"
+    },
+    {
+      "id": "decision-fixture-budget",
+      "type": "compatibility-alias",
+      "target_id": "workspace-fixture-thesis",
+      "target_type": "workspace",
+      "path": "projects/aliases.yaml"
+    },
+    {
+      "id": "relationship-fixture-thesis-aml",
+      "type": "compatibility-alias",
+      "target_id": "workspace-fixture-thesis",
+      "target_type": "workspace",
+      "path": "projects/aliases.yaml"
+    },
+    {
+      "id": "relationship-fixture-thesis-pack",
+      "type": "compatibility-alias",
+      "target_id": "workspace-fixture-thesis",
+      "target_type": "workspace",
+      "path": "projects/aliases.yaml"
     }
   ],
   "relations": [
@@ -2360,9 +2296,7 @@
       "notes_updated": null,
       "order": 1,
       "path": "curriculum/modules/module-fixture-thesis/units/unit-fixture-thesis-landscape.yaml",
-      "project_ids": [
-        "project-fixture-thesis"
-      ],
+      "project_ids": [],
       "revision": 1,
       "scope": "Build the verified evidence landscape.",
       "scope_sources": [],
@@ -2370,7 +2304,9 @@
       "status": "ready-to-shelve",
       "title": "Thesis landscape",
       "type": "unit",
-      "workspace_ids": []
+      "workspace_ids": [
+        "workspace-fixture-thesis"
+      ]
     }
   ]
 }

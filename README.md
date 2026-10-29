@@ -57,7 +57,7 @@ immediate preparation neighbours, `E` folds or expands, `F` fits its neighbourho
 outline expose the same records without the camera. Search locates loaded records;
 focused expansion remains explicit and bound to the horizon snapshot.
 
-The current primary navigation is **Home · Modules · Learn · Projects · Library · Atlas · Garden · Review** (Review shows its live count), with structural Search available from the navigator and command palette. Modules and Library use explicit full-page application routes; Library separates Learning Sources from purpose-built Topic Packs. Future Master's Planning remains a policy-only boundary. Job learning uses the same projected module, unit, study-map, note, search, and AI surfaces as every other learning area, with a small visual badge for `program-job`.
+The current primary navigation is **Home · Modules · Learn · Library · Atlas · Garden · Review** (Review shows its live count), with structural Search available from the navigator and command palette. Thesis work is an ordinary Module under Bachelor’s; its Overview opens the full research workspace context, and historical Project links resolve to their canonical owners. Modules and Library use explicit full-page application routes; Library separates Learning Sources from purpose-built Topic Packs. Future Master's Planning remains a policy-only boundary. Job learning uses the same projected module, unit, study-map, note, search, and AI surfaces as every other learning area, with a small visual badge for `program-job`.
 
 [`ARCHITECTURE.md`](ARCHITECTURE.md) is the concise source map: runtime flow,
 directory ownership, dependency direction, compatibility surfaces, artifacts,

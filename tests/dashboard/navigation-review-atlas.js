@@ -30,10 +30,10 @@ module.exports = async function run() {
     const { app, plugin, calls } = await boot();
     const nav = app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
     const text = nav.allText();
-    /* Eight permanent destinations; Atlas opens the compact Concepts entry. */
-    check('eight permanent destinations, no more',
-      nav.find('los-nav-primary')[0].find('los-app-nav-item').length === 8
-      && ['Home', 'Modules', 'Learn', 'Projects', 'Library', 'Atlas', 'Garden', 'Review']
+    /* Seven permanent destinations; Atlas opens the compact Concepts entry. */
+    check('seven permanent destinations, no more',
+      nav.find('los-nav-primary')[0].find('los-app-nav-item').length === 7
+      && ['Home', 'Modules', 'Learn', 'Library', 'Atlas', 'Garden', 'Review']
         .every((label) => text.includes(label)));
     check('Review carries its live count: the same queue Review lists',
       nav.findText('los-app-nav-item', 'Review').find('los-nav-count')[0]?.allText()

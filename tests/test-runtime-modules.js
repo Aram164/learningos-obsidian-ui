@@ -3088,9 +3088,9 @@ function routerPlugin(settings = {}) {
   await test('ApplicationRouter descriptors centralize all leaf knowledge', async () => {
     const router = new ApplicationRouter(routerPlugin({}));
     assert.deepEqual(router.descriptor({ name: 'project-detail', projectId: 'project-a' }), {
-      type: constants.VIEW_PROJECT,
-      state: { screen: 'detail', projectId: 'project-a', tab: 'structure' },
-      nav: 'projects',
+      type: constants.VIEW_MODULE,
+      state: { screen: 'detail', moduleId: 'project-a', componentId: null, tab: null },
+      nav: 'modules',
     });
     assert.deepEqual(router.descriptor({ name: 'garden' }), {
       type: constants.VIEW_GARDEN,

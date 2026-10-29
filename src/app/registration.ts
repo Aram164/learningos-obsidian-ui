@@ -28,7 +28,6 @@ import { LibraryView } from '../views/library-view';
 import { ModuleView } from '../views/module-view';
 import { NavView } from '../views/nav-view';
 import { ProgramView } from '../views/program-view';
-import { ProjectView } from '../views/project-view';
 import { DiagnosticsView, ReviewView } from '../views/review-view';
 import { ShelvingView } from '../views/shelving-view';
 import { UnitView } from '../views/unit-view';
@@ -38,7 +37,6 @@ export const APPLICATION_VIEW_TYPES = [
   VIEW_NAV,
   VIEW_PROGRAM,
   VIEW_MODULE,
-  VIEW_PROJECT,
   VIEW_UNIT,
   VIEW_LIBRARY,
   VIEW_ATLAS,
@@ -58,18 +56,19 @@ type ApplicationPlugin = Plugin & AppSurface & {
 };
 
 export function detachLegacyViews(plugin: ApplicationPlugin): void {
+  const legacyProjects = plugin.app.workspace.getLeavesOfType(VIEW_PROJECT)
+    .map((leaf) => plugin.router.fromLegacy(leaf.getViewState()));
   for (const type of LEGACY_VIEW_TYPES) plugin.app.workspace.detachLeavesOfType(type);
+  for (const route of legacyProjects) void plugin.router.navigate(route);
 }
 
 /** Register the Obsidian host surface; feature behavior remains in its module. */
 export function registerApplication(plugin: ApplicationPlugin): void {
   if (!plugin.isLifecycleActive()) return;
-  detachLegacyViews(plugin);
   plugin.registerView(VIEW_HOME, (leaf: WorkspaceLeaf) => new HomeView(leaf, plugin));
   plugin.registerView(VIEW_NAV, (leaf: WorkspaceLeaf) => new NavView(leaf, plugin));
   plugin.registerView(VIEW_PROGRAM, (leaf: WorkspaceLeaf) => new ProgramView(leaf, plugin));
   plugin.registerView(VIEW_MODULE, (leaf: WorkspaceLeaf) => new ModuleView(leaf, plugin));
-  plugin.registerView(VIEW_PROJECT, (leaf: WorkspaceLeaf) => new ProjectView(leaf, plugin));
   plugin.registerView(VIEW_UNIT, (leaf: WorkspaceLeaf) => new UnitView(leaf, plugin));
   plugin.registerView(VIEW_LIBRARY, (leaf: WorkspaceLeaf) => new LibraryView(leaf, plugin));
   plugin.registerView(VIEW_ATLAS, (leaf: WorkspaceLeaf) => new AtlasView(leaf, plugin));
@@ -79,6 +78,8 @@ export function registerApplication(plugin: ApplicationPlugin): void {
   plugin.registerView(VIEW_REVIEW, (leaf: WorkspaceLeaf) => new ReviewView(leaf, plugin));
   plugin.registerView(VIEW_GARDEN, (leaf: WorkspaceLeaf) => new GardenView(leaf, plugin));
   plugin.registerView(VIEW_DIAGNOSTICS, (leaf: WorkspaceLeaf) => new DiagnosticsView(leaf, plugin));
+
+  detachLegacyViews(plugin);
 
   // Native tab attention is a display fact, not a navigation or persistence action.
   plugin.registerEvent(plugin.app.workspace.on('active-leaf-change', (leaf) => {
@@ -110,7 +111,6 @@ export function registerApplication(plugin: ApplicationPlugin): void {
   plugin.addCommand({ id: 'open-home', name: 'Open Home', callback: () => plugin.nav.openHome() });
   plugin.addCommand({ id: 'open-current-stage', name: 'Open current stage', callback: () => plugin.nav.openResume() });
   plugin.addCommand({ id: 'open-modules', name: 'Open Modules', callback: () => plugin.nav.openModules() });
-  plugin.addCommand({ id: 'open-projects', name: 'Open Projects', callback: () => plugin.nav.openProjects() });
   plugin.addCommand({ id: 'open-library', name: 'Open Library', callback: () => plugin.nav.openLibrary() });
   plugin.addCommand({ id: 'open-global-search', name: 'Search LearningOS', callback: () => plugin.nav.openGlobalSearch() });
   plugin.addCommand({ id: 'open-ability-map', name: 'Open Atlas (ability map)', callback: () => plugin.nav.openAbilities() });
@@ -133,8 +133,7 @@ export function registerApplication(plugin: ApplicationPlugin): void {
     // attribute write and removes a whole class of "the setting is saved but
     // the screen never changed" that is otherwise invisible to a reader.
     applyPalette(document.body, plugin.settings.palette);
-    detachLegacyViews(plugin);
-    await plugin.router.openNavigator();
+      await plugin.router.openNavigator();
     if (!plugin.isLifecycleActive()) return;
     plugin.app.workspace.leftSplit?.setSize?.(280);
     if (plugin.settings.collapseSidebars) plugin.app.workspace.rightSplit?.collapse();

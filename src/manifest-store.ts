@@ -346,11 +346,12 @@ export class ManifestStore {
       .sort((a, b) => Number(a.order || 0) - Number(b.order || 0))[0]
       || null;
   }
-  /** Open academic modules remain reachable across semester changes. */
+  /** Open learning modules remain reachable across semester changes. */
   openAcademicModules(): ProjectionRecord[] {
     return this.modules()
       .filter((row) => {
-        if (row.kind !== 'academic') return false;
+        if (row.compatibility_only) return false;
+        if (row.kind !== 'academic' && row.kind !== 'project') return false;
         if (['completed', 'archived', 'dropped'].includes(String(row.status || ''))) return false;
         return true;
       })

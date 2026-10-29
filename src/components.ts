@@ -11,13 +11,17 @@ export { safeWebUrl } from './security/safe-url';
  * The card components read the projection and navigate. That is the whole
  * surface they need — they must not reach further into the plugin.
  */
-type CardHost = {
+export type CardHost = {
   readonly store: Pick<ManifestStore, 'get' | 'mapForUnit'>;
   readonly nav: {
     openModule(moduleId: string): unknown;
     openUnit(unitId: string): unknown;
   };
 };
+
+export interface WorkspaceCardHost extends CardHost {
+  openAuthoredPath(path: string): unknown;
+}
 
 /** Keep retained projection data visibly distinct from a successful refresh. */
 export function manifestFreshness(
@@ -302,7 +306,7 @@ export function projectedExcerpt(
 
 export function workspaceCard(
   parent: UiNode,
-  plugin: CardHost,
+  plugin: WorkspaceCardHost,
   workspace: ProjectionRecord,
   moduleContext: string | null = null,
 ): UiNode {
@@ -318,6 +322,9 @@ export function workspaceCard(
   next.createEl('p', { text: projectedExcerpt(workspace.next_action, 1600) || 'No next action recorded.' });
   if (workspace.deadline) badge(next, `Deadline ${workspace.deadline}`, 'needs-map');
   const actions = card.createDiv({ cls: 'los-actions' });
+  if (typeof workspace.path === 'string' && workspace.path) {
+    button(actions, 'Open workspace context', () => plugin.openAuthoredPath(workspace.path as string), 'quiet');
+  }
   const moduleIds: string[] = (workspace.module_ids || []).filter(
     (id: string) => id !== moduleContext,
   );

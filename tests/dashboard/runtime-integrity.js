@@ -735,7 +735,6 @@ module.exports = async function run() {
       'src/views/garden-view.ts',
       'src/views/program-view.ts',
       'src/features/library/home.ts',
-      'src/features/project/detail.ts',
       'src/features/module/detail.ts',
     ].map((file) => fs.readFileSync(path.join(ROOT, file), 'utf8')).join('\n');
     check('button filters do not claim incomplete ARIA tab semantics',

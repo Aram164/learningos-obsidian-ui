@@ -122,6 +122,7 @@ export type ModulePlugin = Pick<
   AppSurface,
   | 'router'
   | 'store'
+  | 'openAuthoredPath'
 > & {
   readonly nav: Pick<
     AppNavigator,

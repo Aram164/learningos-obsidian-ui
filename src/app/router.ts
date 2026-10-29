@@ -16,7 +16,6 @@ import {
   asLibraryFolderLayout,
   asLibraryFolderPath,
   asLibrarySourceFilters,
-  asProjectDetailTab,
 } from '../contracts/route-v1';
 
 /*
@@ -116,6 +115,7 @@ interface RouterHost {
     get?(id: string): {
       type?: string;
     } | null;
+    resolveProjectAlias?(id: string): string;
   };
   /**
    * Navigation shares `data.json` with the drafts and the Gateway recovery
@@ -138,9 +138,42 @@ export class ApplicationRouter {
     this.plugin = plugin;
     const saved = plugin.settings.navigation;
     this.navigation = saved?.version === 1 && saved.current
-      ? saved
-      : { version: 1, current: this.fromLegacy(plugin.settings.lastView), history: [] };
+      ? {
+        version: 1,
+        current: this.normalizeRoute(saved.current),
+        history: (saved.history || []).map((entry) => ({
+          ...entry,
+          route: this.normalizeRoute(entry.route),
+        })),
+      }
+      : { version: 1, current: this.normalizeRoute(this.fromLegacy(plugin.settings.lastView)), history: [] };
     this.overlay = null;
+  }
+
+  normalizeRoute(route: ApplicationRouteV1): ApplicationRouteV1 {
+    if (!route || typeof route !== 'object') return { name: 'home' };
+    if ((route.name === 'learn' || route.name === 'program') && route.programId === 'program-thesis-projects') {
+      return { ...route, programId: 'program-bachelors' };
+    }
+    if (route.name === 'module-detail') {
+      return { ...route, moduleId: this.plugin.store?.resolveProjectAlias?.(route.moduleId) || route.moduleId };
+    }
+    if (route.name === 'project-list') {
+      return { name: 'module-groups' };
+    }
+    if (route.name === 'project-detail') {
+      const rawId = asText(route.projectId);
+      const resolvedId = this.plugin.store?.resolveProjectAlias
+        ? this.plugin.store.resolveProjectAlias(rawId)
+        : rawId;
+      return {
+        name: 'module-detail',
+        moduleId: resolvedId,
+        componentId: null,
+        tab: null,
+      };
+    }
+    return route;
   }
 
   fromLegacy(legacy: unknown): ApplicationRouteV1 {
@@ -148,9 +181,10 @@ export class ApplicationRouter {
     const type = asText(input.type);
     const state = asLegacyState(input.state);
     if (type === VIEW_PROGRAM) {
+      const programId = asText(state.programId, LEARN_AREAS[0][0]);
       return state.programId === 'inbox'
         ? { name: 'capture' }
-        : { name: 'learn', programId: asText(state.programId, LEARN_AREAS[0][0]) };
+        : { name: 'learn', programId: programId === 'program-thesis-projects' ? 'program-bachelors' : programId };
     }
     if (type === VIEW_MODULE) {
       if (state.screen === 'groups') return { name: 'module-groups' };
@@ -163,9 +197,21 @@ export class ApplicationRouter {
       };
     }
     if (type === VIEW_UNIT) return { name: 'unit', unitId: asText(state.unitId), stageId: asNullableText(state.stageId) };
-    if (type === VIEW_PROJECT) return state.projectId
-      ? { name: 'project-detail', projectId: asText(state.projectId), tab: asProjectDetailTab(state.tab) }
-      : { name: 'project-list', query: asText(state.query) };
+    if (type === VIEW_PROJECT) {
+      if (state.projectId) {
+        const rawId = asText(state.projectId);
+        const resolvedId = this.plugin.store?.resolveProjectAlias
+          ? this.plugin.store.resolveProjectAlias(rawId)
+          : rawId;
+        return {
+          name: 'module-detail',
+          moduleId: resolvedId,
+          componentId: null,
+          tab: null,
+        };
+      }
+      return { name: 'module-groups' };
+    }
     if (type === VIEW_LIBRARY) return this.libraryRouteFromState(state);
     if (type === VIEW_ATLAS) return {
       name: 'atlas',
@@ -248,6 +294,7 @@ export class ApplicationRouter {
   }
 
   descriptor(route: ApplicationRouteV1): RouteDescriptor {
+    route = this.normalizeRoute(route);
     switch (route?.name) {
       case 'home': return { type: VIEW_HOME, state: {}, nav: 'home', pin: true };
       case 'learn': return { type: VIEW_PROGRAM, state: { programId: route.programId }, nav: 'learn' };
@@ -273,10 +320,6 @@ export class ApplicationRouter {
           tab: route.tab || null,
         },
         nav: 'modules',
-      };
-      case 'project-list': return { type: VIEW_PROJECT, state: { screen: 'list', query: route.query || '' }, nav: 'projects' };
-      case 'project-detail': return {
-        type: VIEW_PROJECT, state: { screen: 'detail', projectId: route.projectId, tab: route.tab || 'structure' }, nav: 'projects',
       };
       case 'unit': return {
         type: VIEW_UNIT,
@@ -421,14 +464,14 @@ export class ApplicationRouter {
 
   /** Replace restorable route state without opening a leaf or adding history. */
   async remember(route: ApplicationRouteV1): Promise<ApplicationRouteV1> {
-    route = normalizeFolderRoute(route);
+    route = this.normalizeRoute(normalizeFolderRoute(route));
     this.navigation.current = route;
     await this.persist();
     return route;
   }
 
   async navigate(route: ApplicationRouteV1, options: NavigationOptions = {}) {
-    route = normalizeFolderRoute(route);
+    route = this.normalizeRoute(normalizeFolderRoute(route));
     if (!options.preserveOverlay) this.clearOverlay();
     const descriptor = this.descriptor(route);
     const remember = options.remember !== false;

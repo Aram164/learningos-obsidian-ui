@@ -283,6 +283,10 @@ function fixtureManifest() {
     { id: 'module-completed', title: 'Completed course', kind: 'academic', status: 'completed', semester: 'wise-2099' },
     { id: 'module-dropped', title: 'Dropped course', kind: 'academic', status: 'dropped', semester: 'wise-2099' },
     { id: 'module-archived', title: 'Archived course', kind: 'academic', status: 'archived', semester: 'wise-2099' },
+    { id: 'module-thesis', title: 'Z thesis', kind: 'project', status: 'active' },
+    { id: 'module-old-thesis', title: 'Old thesis', kind: 'project', status: 'completed' },
+    { id: 'module-compat-thesis', title: 'Compatibility thesis', kind: 'project', status: 'active', compatibility_only: true },
+    { id: 'module-boundary', title: 'Boundary', kind: 'boundary', status: 'active' },
     { id: 'module-skill', title: 'Python', kind: 'skill', status: 'active', semester: null },
   ].map(row => ({ ...row, type: 'module' }));
   const acrossSemesters = {
@@ -302,7 +306,7 @@ function fixtureManifest() {
     assert.equal(await courseStore.load(), true);
     assert.deepEqual(
       courseStore.openAcademicModules().map(row => row.id),
-      ['module-icop', 'module-os', 'module-m2', 'module-undated'],
+      ['module-icop', 'module-os', 'module-m2', 'module-undated', 'module-thesis'],
       `open courses stay visible with current semester ${current}`,
     );
   }

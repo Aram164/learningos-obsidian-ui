@@ -49,13 +49,14 @@ module.exports = async function run() {
     let text = view.contentEl.allText();
     check('Modules keeps earlier Math2 alongside modules from another semester',
       view.screen === 'groups'
-      && view.contentEl.find('los-semester-module-row').length === 4
+      && view.contentEl.find('los-semester-module-row').length === 5
       && text.includes('Across semesters')
       && !text.includes('SoSe 2099')
       && text.includes('Fixture Statistics & Analysis')
       && text.includes('Fixture Advanced ML')
       && text.includes('Fixture Operating Systems')
       && text.includes('Fixture Combinatorial Optimization')
+      && text.includes('Bachelor thesis')
       && !text.includes('Python')
       && view.contentEl.find('los-group-card').length === 0);
     check('Home keeps earlier-semester Math2 available to continue',
@@ -109,64 +110,75 @@ module.exports = async function run() {
     view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
     check('Back restores the complete module list across semesters',
       view.screen === 'groups'
-      && view.contentEl.find('los-semester-module-row').length === 4);
+      && view.contentEl.find('los-semester-module-row').length === 5);
     plugin.onunload();
   }
 
-  heading('first-class project navigation');
+  heading('consolidated project to module navigation and historical redirection');
   {
     const { app, plugin } = await boot();
     await plugin.nav.openProjects();
-    const listLeaf = app.workspace.getLeavesOfType(VIEW.project)[0];
-    const listText = listLeaf.view.contentEl.allText();
-    check('Projects opens as a full-page first-class list',
-      plugin.router.snapshot().current.name === 'project-list'
-      && listText.includes('Bachelor thesis') && listLeaf.view.contentEl.find('los-project-row').length === 1);
-    check('the project list does not render a universal completion percentage', !/\d+%/.test(listText));
-    listLeaf.view.contentEl.scrollTop = 177;
-    listLeaf.view.selectedElementId = 'project-fixture-thesis';
-    listLeaf.view.contentEl.find('los-project-row')[0].fire('click');
+    const listLeaf = app.workspace.getLeavesOfType(VIEW.module)[0];
+    check('Projects navigation redirects to the consolidated modules list',
+      plugin.router.snapshot().current.name === 'module-groups'
+      && listLeaf.view.screen === 'groups');
+    await plugin.nav.openProject('project-fixture-thesis');
     await tick(); await tick();
-    const detail = app.workspace.getLeavesOfType(VIEW.project)[0].view;
-    check('opening a project replaces the route rather than splitting the screen',
-      plugin.router.snapshot().current.name === 'project-detail'
-      && detail.contentEl.allText().includes('Structure')
-      && detail.contentEl.find('los-project-list').length === 0);
-    check('project detail exposes the approved five tabs',
-      ['Structure', 'Decisions', 'Materials', 'Files', 'Logistics']
-        .every((label) => detail.contentEl.allText().includes(label)));
-    detail.contentEl.findText('los-chip', 'Thesis landscape').fire('click'); await tick();
-    const projectUnit = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
-    check('project-owned units retain first-class project context',
-      projectUnit.contentEl.allText().includes('Bachelor thesis')
-      && projectUnit.contentEl.findText('los-btn', 'Back to project'));
-    projectUnit.contentEl.findText('los-btn', 'Back to project').fire('click'); await tick();
-    await plugin.nav.openProject('project-fixture-thesis', 'structure');
-    const structure = app.workspace.getLeavesOfType(VIEW.project)[0].view.contentEl.allText();
-    check('parallel and nested project structure renders without a percentage',
-      structure.includes('Landscape and scope') && structure.includes('Confirm scope')
-      && structure.includes('Experiments') && structure.includes('Baseline map') && !/\d+%/.test(structure));
-    await plugin.nav.openProject('project-fixture-thesis', 'linked-materials');
-    const linked = app.workspace.getLeavesOfType(VIEW.project)[0].view.contentEl;
-    check('linked modules and Topic Packs render from projected relationships',
-      linked.allText().includes('Fixture Advanced ML') && linked.allText().includes('Fixture ML evaluation pack'));
-    linked.findText('los-btn', 'Why linked').fire('click');
-    check('Why linked is an inspect-only temporary drawer/modal with a core-authored reason',
-      stub.Modal.last?.contentEl?.allText().includes('Advanced ML supplies the evaluation vocabulary')
-      && stub.Modal.last?.contentEl?.allText().includes('Provides evaluation vocabulary and systems methods')
-      && stub.Modal.last?.contentEl?.findText('los-btn', 'Open target')
-      && stub.Modal.last?.contentEl?.getAttribute('role') === 'dialog'
-      && stub.Modal.last?.contentEl?.getAttribute('aria-modal') === 'true'
-      && plugin.router.snapshot().overlay?.kind === 'linked-material-reason');
-    stub.Modal.last.close();
-    check('closing Why linked restores the project route and clears transient state',
-      plugin.router.snapshot().current.name === 'project-detail' && plugin.router.snapshot().overlay === null);
-    await plugin.nav.back();
-    const restored = app.workspace.getLeavesOfType(VIEW.project)[0];
-    check('Back restores the project list selection and scroll position',
-      plugin.router.snapshot().current.name === 'project-list'
-      && restored.view.contentEl.scrollTop === 177
-      && restored.view.selectedElementId === 'project-fixture-thesis');
+    const current = plugin.router.snapshot().current;
+    check('opening a historical project resolves to the owning module detail route',
+      current.name === 'module-detail'
+      && current.moduleId === 'module-fixture-thesis');
+    check('legacy project leaves are not spawned',
+      app.workspace.getLeavesOfType(VIEW.project).length === 0);
+    app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl
+      .findText('los-btn', 'Overview').fire('click'); await tick();
+    const detail = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl;
+    check('the canonical Module renders its thesis workspace',
+      detail.allText().includes('Thesis research workspace'));
+    const opener = detail.findText('los-btn', 'Open workspace context');
+    check('the workspace context can be opened from the Module', Boolean(opener));
+    let opened = null;
+    plugin.openAuthoredPath = (path) => { opened = path; };
+    opener.fire('click');
+    check('the workspace action opens the exact authored research context',
+      opened === 'work/active/workspace-fixture-thesis/CONTEXT.md');
+    const research = fs.readFileSync(path.join(FIXTURE, opened), 'utf8');
+    check('ordinary workspace context retains workstreams, decisions, files and boundaries',
+      ['Landscape and scope', 'Baseline map', 'Compute budget', 'Landscape plan',
+        'External code access is task-scoped'].every((value) => research.includes(value)));
+    check('canonical Module identity never resolves backwards',
+      plugin.store.resolveProjectAlias('module-fixture-thesis') === 'module-fixture-thesis');
+    check('retired Projects command is not registered',
+      !plugin.commands.some((command) => command.id === 'open-projects'));
+    const byLegacyId = plugin.nav.openGlobalSearch('project-fixture-thesis');
+    check('the legacy Project ID has exactly one Module destination',
+      byLegacyId.contentEl.find('los-search-result').length === 1
+      && byLegacyId.contentEl.allText().includes('Bachelor thesis'));
+    byLegacyId.close();
+    plugin.onunload();
+  }
+
+  {
+    const app = makeApp(FIXTURE);
+    const oldLeaf = app.workspace.getLeaf(true);
+    oldLeaf.viewType = VIEW.project;
+    oldLeaf.state = { projectId: 'project-fixture-thesis' };
+    const plugin = new LearningOSUI(app, { id: 'learningos-ui', version: 'test' });
+    app._plugin = plugin;
+    plugin._data = {
+      learnArea: 'program-thesis-projects',
+      navigation: { version: 1,
+        current: { name: 'project-detail', projectId: 'project-fixture-thesis' }, history: [] },
+    };
+    await plugin.onload(); await app.workspace._ready(); await tick(); await tick();
+    check('restored legacy Project leaves redirect after the manifest loads',
+      oldLeaf.detached && app.workspace.getLeavesOfType(VIEW.project).length === 0
+      && plugin.router.snapshot().current.name === 'module-detail'
+      && plugin.router.snapshot().current.moduleId === 'module-fixture-thesis');
+    await plugin.nav.openLearn();
+    check('obsolete thesis area selections normalize to Bachelor’s',
+      plugin.settings.learnArea === 'program-bachelors'
+      && plugin.router.snapshot().current.programId === 'program-bachelors');
     plugin.onunload();
   }
 

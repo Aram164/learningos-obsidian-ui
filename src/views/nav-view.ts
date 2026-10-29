@@ -114,7 +114,6 @@ export class NavView extends ItemView {
     this.nav(primary, 'home', 'Home', 'home', () => this.plugin.nav.openHome());
     this.nav(primary, 'layout-grid', 'Modules', 'modules', () => this.plugin.nav.openModules());
     this.nav(primary, 'graduation-cap', 'Learn', 'learn', () => this.plugin.nav.openLearn());
-    this.nav(primary, 'briefcase-business', 'Projects', 'projects', () => this.plugin.nav.openProjects());
     this.nav(primary, 'library', 'Library', 'library', () => this.plugin.nav.openLibrary());
     this.nav(primary, 'map', 'Atlas', 'abilities', () => this.plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' }));
     this.nav(primary, 'sprout', 'Garden', 'garden', () => this.plugin.nav.openGarden());

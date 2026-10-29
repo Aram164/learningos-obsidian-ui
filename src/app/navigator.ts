@@ -34,7 +34,6 @@ import {
   asAtlasLens,
   asLibraryCollection,
   asLibraryFolderPath,
-  asProjectDetailTab,
   type AbilityLayoutV1,
   type AtlasDepthV1,
   type AtlasLensV1,
@@ -77,7 +76,8 @@ export class AppNavigator {
 
   /** Learn is one destination; the areas are sub-areas inside it. */
   openLearn(programId: string | null = null) {
-    const area = programId || this.settings.learnArea || LEARN_AREAS[0][0];
+    const requested = programId || this.settings.learnArea || LEARN_AREAS[0][0];
+    const area = requested === 'program-thesis-projects' ? 'program-bachelors' : requested;
     this.settings.learnArea = area;
     this.drafts.scheduleSave();
     return this.router.navigate({ name: 'learn', programId: area });
@@ -102,15 +102,12 @@ export class AppNavigator {
   }
 
   openModules() { return this.router.navigate({ name: 'module-groups' }); }
-  openProjects(query = '') { return this.router.navigate({ name: 'project-list', query }); }
+  openProjects(_query = '') { return this.openModules(); }
 
-  openProject(projectId: string, tab = 'structure') {
-    const current = this.router.snapshot().current;
-    const changingTab = current?.name === 'project-detail' && current.projectId === projectId;
-    return this.router.navigate(
-      { name: 'project-detail', projectId, tab: asProjectDetailTab(tab) },
-      { pushHistory: !changingTab },
-    );
+  openProject(projectId: string, _tab = 'structure') {
+    const rawId = asString(projectId) || '';
+    const resolvedId = this.store.resolveProjectAlias(rawId);
+    return this.openModuleDetail(resolvedId);
   }
 
   openModuleDetail(

@@ -20,8 +20,7 @@ interface SearchCandidate {
 type SearchFilter =
   | 'all'
   | 'learning'
-  | 'sources'
-  | 'projects';
+  | 'sources';
 
 type SearchStore = Pick<
   ManifestStore,
@@ -32,6 +31,7 @@ type SearchStore = Pick<
   | 'topicPacks'
   | 'of'
   | 'get'
+  | 'resolveProjectAlias'
 >;
 
 type SearchRouter = Pick<
@@ -90,7 +90,7 @@ export class GlobalSearchModal extends Modal {
     const copy = header.createDiv();
     copy.createDiv({ cls: 'los-kicker', text: 'Search LearningOS' });
     copy.createEl('h2', {
-      text: 'Find a module, unit, source, or project',
+      text: 'Find a module, unit, source, or workspace',
       attr: { id: 'los-global-search-heading' },
     });
     this.restoreAccessibility = makeModalAccessible(root, {
@@ -124,7 +124,6 @@ export class GlobalSearchModal extends Modal {
       ['all', 'All'],
       ['learning', 'Modules & units'],
       ['sources', 'Learning sources'],
-      ['projects', 'Projects'],
     ] as const) {
       const tab = button(tabs, label, () => {
         this.filter = id;
@@ -169,7 +168,7 @@ export class GlobalSearchModal extends Modal {
       rows.push({
         id: record.id,
         title: record.title,
-        aliases: [...(record.aliases || [])],
+        aliases: [...(record.aliases || []), ...(aliasesByTarget.get(record.id) || [])],
         authors: [...(record.authors || [])],
         kind,
         subtitle,
@@ -177,17 +176,20 @@ export class GlobalSearchModal extends Modal {
       });
     };
 
+    const aliasesByTarget = new Map<string, string[]>();
+    for (const alias of this.plugin.store.of('compatibility-alias')) {
+      if (typeof alias.id !== 'string' || typeof alias.target_id !== 'string') continue;
+      const aliases = aliasesByTarget.get(alias.target_id) || [];
+      aliases.push(alias.id);
+      aliasesByTarget.set(alias.target_id, aliases);
+    }
+
     for (const module of this.plugin.store.modules()) {
       if (!module.id) continue;
       const area = module.area_id
         ? this.plugin.store.get(module.area_id)?.title || module.code || 'Module'
         : module.code || 'Module';
       add(module, 'learning', `Module · ${area}`, () => this.plugin.openModule(module.id!));
-    }
-    for (const project of this.plugin.store.projects()) {
-      if (!project.id) continue;
-      add(project, 'projects', `Project · ${project.project_type || project.status || 'active'}`,
-        () => this.plugin.openProject(project.id!));
     }
     for (const unit of this.plugin.store.units()) {
       if (!unit.id || !unit.module_id) continue;
@@ -205,10 +207,14 @@ export class GlobalSearchModal extends Modal {
         () => this.plugin.openTopicPackDetail(pack.id!));
     }
     for (const workspace of this.plugin.store.of('workspace')) {
-      const linkedProject = workspace.project_id ? this.plugin.store.get(workspace.project_id) : null;
-      if (!linkedProject) continue;
-      if (!linkedProject.id) continue;
-      add(workspace, 'projects', `Project workspace · ${linkedProject.title || linkedProject.id}`, () => this.plugin.openProject(linkedProject.id!));
+      const moduleIds: string[] = Array.isArray(workspace.module_ids) ? workspace.module_ids : [];
+      let linkedModule = moduleIds.map((id) => this.plugin.store.get(id)).find(Boolean);
+      if (!linkedModule && typeof workspace.project_id === 'string' && workspace.project_id) {
+        const resolvedId = this.plugin.store.resolveProjectAlias(workspace.project_id);
+        linkedModule = this.plugin.store.get(resolvedId);
+      }
+      if (!linkedModule?.id) continue;
+      add(workspace, 'learning', `Workspace · ${linkedModule.title || linkedModule.id}`, () => this.plugin.openModule(linkedModule.id!));
     }
     return rows;
   }
