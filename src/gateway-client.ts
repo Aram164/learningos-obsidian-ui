@@ -1,8 +1,8 @@
 import { validateProjectionSettlementWire } from './contracts/generated/responses.validator.cjs';
 import type { ProjectionSettlementWire } from './contracts/generated/responses.types';
 import { createHash } from 'node:crypto';
-import { readFile } from 'node:fs/promises';
-import { homedir } from 'node:os';
+import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
+import { homedir, tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import type { PlanProfile } from './contracts/plan-template';
 import type {
@@ -1114,6 +1114,16 @@ export class GatewayClient {
     return { unitId, file, replace, fileSha256: digest,
       expectedSnapshot: result.snapshot_id,
       expectedRevisions: revisions as Record<string, number>, result };
+  }
+
+  /** Temporary intent only; canonical state is written exclusively by Core.
+   * Keep the file for the recovery envelope if a response is interrupted.
+   * It contains no copied learner notes or unchanged plan records. */
+  async checkStructuralEdit(unitId: string, edit: Record<string, unknown>): Promise<UnitMapImportReview> {
+    const directory = await mkdtemp(join(tmpdir(), 'learningos-structural-'));
+    const file = join(directory, 'intent.json');
+    await writeFile(file, JSON.stringify({ unit_id: unitId, structural_edit: edit }), { mode: 0o600 });
+    return this.checkUnitMapImport(unitId, file, true);
   }
 
   /**

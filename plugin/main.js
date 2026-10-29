@@ -47130,7 +47130,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:0f91db9199ba8ac34f733828f22baa06e28c6bc19c32614cd31e66c433a7c855" : "unavailable";
+  return true ? "sha256:b98f15d91e839d5d2bcb3314364978b37e03cd624e49ff3013905ea4dc433c53" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 16 : 0;
@@ -48015,6 +48015,15 @@ Last response: ${result.error.message}`,
       expectedRevisions: revisions,
       result
     };
+  }
+  /** Temporary intent only; canonical state is written exclusively by Core.
+   * Keep the file for the recovery envelope if a response is interrupted.
+   * It contains no copied learner notes or unchanged plan records. */
+  async checkStructuralEdit(unitId, edit) {
+    const directory = await (0, import_promises.mkdtemp)((0, import_node_path.join)((0, import_node_os.tmpdir)(), "learningos-structural-"));
+    const file = (0, import_node_path.join)(directory, "intent.json");
+    await (0, import_promises.writeFile)(file, JSON.stringify({ unit_id: unitId, structural_edit: edit }), { mode: 384 });
+    return this.checkUnitMapImport(unitId, file, true);
   }
   /**
    * The declared read-only `plan.template` query. Core generates and validates
@@ -51328,6 +51337,9 @@ function renderImportDiff(root, answer) {
   });
   const list3 = root.createEl("ul", { cls: "los-map-import-diff" });
   const line = (text4) => list3.createEl("li", { text: text4 });
+  if (diff.structural_reason) line(`Reason: ${String(diff.structural_reason)}`);
+  if (replacement) line(`Previous order: ${stageIds(diff.stages_before).join(" \u2192 ")}.`);
+  line(`Resulting order: ${after.join(" \u2192 ")}.`);
   line(`${after.length} stage${after.length === 1 ? "" : "s"} after the import.`);
   if (added.length) line(`Adds: ${added.join(", ")}.`);
   if (retired.length) line(`Retires: ${retired.join(", ")}.`);
@@ -51487,6 +51499,118 @@ var UnitMapImportModal = class extends import_obsidian20.Modal {
   onClose() {
     this.reviewGeneration += 1;
     this.checked = null;
+    this.restoreAccessibility?.();
+    this.restoreAccessibility = null;
+    this.contentEl.empty();
+  }
+};
+var StructuralEditModal = class extends import_obsidian20.Modal {
+  constructor(app, options) {
+    super(app);
+    this.options = options;
+  }
+  restoreAccessibility = null;
+  onOpen() {
+    const root = this.contentEl;
+    root.empty();
+    root.addClass("los-root", "los-map-import-modal");
+    const heading = root.createEl("h2", { text: "Adjust study plan" });
+    heading.id = "los-structural-heading";
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(),
+      hostClass: "los-modal--map-import",
+      labelledBy: heading.id
+    });
+    root.createEl("p", { text: "Choose one change, check its exact result, then apply. Recorded work stays with its stage." });
+    const select2 = (label2, rows) => {
+      const field2 = root.createEl("label", { text: label2 });
+      const input = field2.createEl("select");
+      for (const [value, text4] of rows) input.createEl("option", { attr: { value }, text: text4 });
+      input.value = rows[0]?.[0] ?? "";
+      return input;
+    };
+    const action = select2("Change", [["stage_move", "Move stage"], ["resource_move", "Move resource within stage"], ["resource_insert", "Insert material in stage"]]);
+    const stage = select2("Stage", this.options.studyMap.stages.map((s) => [s.id, s.title]));
+    const resource = select2("Resource to move", []);
+    const side = select2("Position", [["before_id", "Before"], ["after_id", "After"]]);
+    const anchor = select2("Relative to", []);
+    const route2 = select2("Material to insert", this.options.materials.map((m) => [m.routeId, m.title]));
+    const kind = select2("Activity", [["read", "Read"], ["watch", "Watch"], ["practise", "Practice"]]);
+    const triage = select2("Priority", [["helpful-now", "Helpful now"], ["required-now", "Required now"], ["reference-only", "Reference only"]]);
+    const reasonField = root.createEl("label", { text: "Reason for this change" });
+    const reason = reasonField.createEl("input", { attr: { type: "text" } });
+    const status = root.createDiv({ attr: { "aria-live": "polite" } });
+    const preview = root.createDiv();
+    const actions = root.createDiv({ cls: "los-actions" });
+    let generation = 0;
+    let checked = null;
+    const apply = button(actions, "Apply reviewed change", async () => {
+      if (!checked) return;
+      const approved = checked;
+      checked = null;
+      apply.disabled = true;
+      try {
+        await this.options.submit(approved);
+        this.close();
+      } catch (error) {
+        status.setText(errorMessage(error));
+      }
+    }, "cta");
+    apply.disabled = true;
+    const invalidate = () => {
+      generation += 1;
+      checked = null;
+      apply.disabled = true;
+      preview.empty();
+      status.setText("Check this change before applying.");
+    };
+    const populate = () => {
+      resource.empty();
+      anchor.empty();
+      const selected = this.options.studyMap.stages.find((s) => s.id === stage.value);
+      const rows = selected?.resources.filter((r) => asString(r.id)) ?? [];
+      for (const row2 of rows) resource.createEl("option", { attr: { value: String(row2.id) }, text: String(row2.label || row2.id) });
+      if (action.value === "stage_move") {
+        for (const s of this.options.studyMap.stages) anchor.createEl("option", { attr: { value: s.id }, text: s.title });
+      } else {
+        for (const row2 of rows) anchor.createEl("option", { attr: { value: String(row2.id) }, text: String(row2.label || row2.id) });
+      }
+      resource.value = String(rows[0]?.id ?? "");
+      anchor.value = action.value === "stage_move" ? this.options.studyMap.stages[0]?.id ?? "" : String(rows[0]?.id ?? "");
+      for (const field2 of [route2, kind, triage]) field2.parentElement?.toggleClass("is-hidden", action.value !== "resource_insert");
+      resource.parentElement?.toggleClass("is-hidden", action.value !== "resource_move");
+      invalidate();
+    };
+    for (const field2 of [action, stage]) field2.addEventListener("change", populate);
+    for (const field2 of [resource, side, anchor, route2, kind, triage]) field2.addEventListener("change", invalidate);
+    reason.addEventListener("input", invalidate);
+    button(actions, "Check change", async () => {
+      invalidate();
+      const ticket = generation;
+      const op = { stage_id: stage.value, [side.value]: anchor.value };
+      if (action.value === "resource_move") op.resource_id = resource.value;
+      if (action.value === "resource_insert") op.resource = {
+        id: `resource-ui-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`,
+        kind: kind.value,
+        scope_triage: triage.value,
+        material_ref: { route_id: route2.value, inherit: ["label", "source_id", "locator", "angle", "angle_detail"] }
+      };
+      status.setText("Checking \u2014 nothing is written\u2026");
+      try {
+        const review2 = await this.options.check({ reason: reason.value, [action.value]: op });
+        if (ticket !== generation) return;
+        if (!renderImportDiff(preview, review2.result)) throw new Error("The complete review could not be read.");
+        checked = review2;
+        apply.disabled = false;
+        status.setText("Review the exact result below before applying.");
+      } catch (error) {
+        if (ticket === generation) status.setText(errorMessage(error));
+      }
+    });
+    button(actions, "Cancel", () => this.close(), "quiet");
+    populate();
+  }
+  onClose() {
     this.restoreAccessibility?.();
     this.restoreAccessibility = null;
     this.contentEl.empty();
@@ -51704,6 +51828,12 @@ function render(view) {
     unit,
     true
   );
+  button(provenance, "Adjust study plan", () => new StructuralEditModal(view.app, {
+    studyMap,
+    materials: materialOptions,
+    check: (edit) => view.plugin.gateway.checkStructuralEdit(unit.id, edit),
+    submit: (review2) => view.plugin.mutate(() => view.plugin.gateway.importUnitMap(review2))
+  }).open(), "quiet");
   const layout = root.createDiv({
     cls: "los-unit-layout"
   });

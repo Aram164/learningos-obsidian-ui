@@ -452,6 +452,8 @@ declare module 'node:fs' {
 }
 
 declare module 'node:fs/promises' {
+  export function mkdtemp(prefix: string): Promise<string>;
+  export function writeFile(path: string, data: string, options?: { mode?: number }): Promise<void>;
   export function readFile(
     path: string,
   ): Promise<Uint8Array>;
@@ -475,6 +477,7 @@ declare module 'node:crypto' {
 }
 
 declare module 'node:os' {
+  export function tmpdir(): string;
   export function homedir(): string;
 }
 

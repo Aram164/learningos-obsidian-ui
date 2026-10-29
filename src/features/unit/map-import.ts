@@ -4,6 +4,7 @@ import { button } from '../../components';
 import type { PlanTemplate } from '../../contracts/plan-template';
 import type { UnitMapImportReview } from '../../gateway-client';
 import { asString, errorMessage, isRecord } from '../../projection/readers';
+import type { MaterialOptionView, StudyMapView } from './model';
 
 function stageIds(value: unknown): string[] {
   return Array.isArray(value)
@@ -48,6 +49,9 @@ export function renderImportDiff(root: HTMLElement, answer: unknown): boolean {
   const list = root.createEl('ul', { cls: 'los-map-import-diff' });
   const line = (text: string) => list.createEl('li', { text });
 
+  if (diff.structural_reason) line(`Reason: ${String(diff.structural_reason)}`);
+  if (replacement) line(`Previous order: ${stageIds(diff.stages_before).join(' → ')}.`);
+  line(`Resulting order: ${after.join(' → ')}.`);
   line(`${after.length} stage${after.length === 1 ? '' : 's'} after the import.`);
   if (added.length) line(`Adds: ${added.join(', ')}.`);
   if (retired.length) line(`Retires: ${retired.join(', ')}.`);
@@ -266,4 +270,105 @@ export class UnitMapImportModal extends Modal {
     this.restoreAccessibility = null;
     this.contentEl.empty();
   }
+}
+
+
+/** Stable-ID controls author a small intent; Core supplies the exact result. */
+export class StructuralEditModal extends Modal {
+  private restoreAccessibility: (() => void) | null = null;
+  constructor(app: App, private readonly options: {
+    studyMap: StudyMapView;
+    materials: readonly MaterialOptionView[];
+    check: (edit: Record<string, unknown>) => Promise<UnitMapImportReview>;
+    submit: (review: UnitMapImportReview) => Promise<unknown>;
+  }) { super(app); }
+
+  onOpen(): void {
+    const root = this.contentEl;
+    root.empty();
+    root.addClass('los-root', 'los-map-import-modal');
+    const heading = root.createEl('h2', { text: 'Adjust study plan' });
+    heading.id = 'los-structural-heading';
+    this.restoreAccessibility = makeModalAccessible(root, {
+      close: () => this.close(), hostClass: 'los-modal--map-import', labelledBy: heading.id,
+    });
+    root.createEl('p', { text: 'Choose one change, check its exact result, then apply. Recorded work stays with its stage.' });
+    const select = (label: string, rows: readonly (readonly [string, string])[]) => {
+      const field = root.createEl('label', { text: label });
+      const input = field.createEl('select');
+      for (const [value, text] of rows) input.createEl('option', { attr: { value }, text });
+      input.value = rows[0]?.[0] ?? '';
+      return input;
+    };
+    const action = select('Change', [['stage_move', 'Move stage'], ['resource_move', 'Move resource within stage'], ['resource_insert', 'Insert material in stage']]);
+    const stage = select('Stage', this.options.studyMap.stages.map(s => [s.id, s.title]));
+    const resource = select('Resource to move', []);
+    const side = select('Position', [['before_id', 'Before'], ['after_id', 'After']]);
+    const anchor = select('Relative to', []);
+    const route = select('Material to insert', this.options.materials.map(m => [m.routeId, m.title]));
+    const kind = select('Activity', [['read', 'Read'], ['watch', 'Watch'], ['practise', 'Practice']]);
+    const triage = select('Priority', [['helpful-now', 'Helpful now'], ['required-now', 'Required now'], ['reference-only', 'Reference only']]);
+    const reasonField = root.createEl('label', { text: 'Reason for this change' });
+    const reason = reasonField.createEl('input', { attr: { type: 'text' } });
+    const status = root.createDiv({ attr: { 'aria-live': 'polite' } });
+    const preview = root.createDiv();
+    const actions = root.createDiv({ cls: 'los-actions' });
+    let generation = 0;
+    let checked: UnitMapImportReview | null = null;
+    const apply = button(actions, 'Apply reviewed change', async () => {
+      if (!checked) return;
+      const approved = checked;
+      checked = null;
+      apply.disabled = true;
+      try { await this.options.submit(approved); this.close(); }
+      catch (error) { status.setText(errorMessage(error)); }
+    }, 'cta');
+    apply.disabled = true;
+    const invalidate = () => {
+      generation += 1; checked = null; apply.disabled = true; preview.empty();
+      status.setText('Check this change before applying.');
+    };
+    const populate = () => {
+      resource.empty(); anchor.empty();
+      const selected = this.options.studyMap.stages.find(s => s.id === stage.value);
+      const rows = selected?.resources.filter(r => asString(r.id)) ?? [];
+      for (const row of rows) resource.createEl('option', { attr: { value: String(row.id) }, text: String(row.label || row.id) });
+      if (action.value === 'stage_move') {
+        for (const s of this.options.studyMap.stages) anchor.createEl('option', { attr: { value: s.id }, text: s.title });
+      } else {
+        for (const row of rows) anchor.createEl('option', { attr: { value: String(row.id) }, text: String(row.label || row.id) });
+      }
+      resource.value = String(rows[0]?.id ?? '');
+      anchor.value = action.value === 'stage_move' ? (this.options.studyMap.stages[0]?.id ?? '') : String(rows[0]?.id ?? '');
+      for (const field of [route, kind, triage]) field.parentElement?.toggleClass('is-hidden', action.value !== 'resource_insert');
+      resource.parentElement?.toggleClass('is-hidden', action.value !== 'resource_move');
+      invalidate();
+    };
+    for (const field of [action, stage]) field.addEventListener('change', populate);
+    for (const field of [resource, side, anchor, route, kind, triage]) field.addEventListener('change', invalidate);
+    reason.addEventListener('input', invalidate);
+    button(actions, 'Check change', async () => {
+      invalidate();
+      const ticket = generation;
+      const op: Record<string, unknown> = { stage_id: stage.value, [side.value]: anchor.value };
+      if (action.value === 'resource_move') op.resource_id = resource.value;
+      if (action.value === 'resource_insert') op.resource = {
+        id: `resource-ui-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`,
+        kind: kind.value, scope_triage: triage.value,
+        material_ref: { route_id: route.value, inherit: ['label', 'source_id', 'locator', 'angle', 'angle_detail'] },
+      };
+      status.setText('Checking — nothing is written…');
+      try {
+        const review = await this.options.check({ reason: reason.value, [action.value]: op });
+        if (ticket !== generation) return;
+        if (!renderImportDiff(preview, review.result)) throw new Error('The complete review could not be read.');
+        checked = review; apply.disabled = false;
+        status.setText('Review the exact result below before applying.');
+      } catch (error) { if (ticket === generation) status.setText(errorMessage(error)); }
+    });
+    button(actions, 'Cancel', () => this.close(), 'quiet');
+    populate();
+  }
+
+  onClose(): void { this.restoreAccessibility?.(); this.restoreAccessibility = null; this.contentEl.empty(); }
 }

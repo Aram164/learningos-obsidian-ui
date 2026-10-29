@@ -21,7 +21,7 @@ import {
 } from './model';
 import { renderMaterialOverview } from './materials';
 import { renderLearningRouteRail } from '../learning-route';
-import { UnitMapImportModal } from './map-import';
+import { StructuralEditModal, UnitMapImportModal } from './map-import';
 import { asPlanTemplate } from '../plan-template';
 
 export function render(
@@ -320,6 +320,12 @@ export function render(
       unit,
       true,
     );
+
+    button(provenance, 'Adjust study plan', () => new StructuralEditModal(view.app, {
+      studyMap, materials: materialOptions,
+      check: edit => view.plugin.gateway.checkStructuralEdit(unit.id, edit),
+      submit: review => view.plugin.mutate(() => view.plugin.gateway.importUnitMap(review)),
+    }).open(), 'quiet');
 
     /* 14:502 is an eyebrow, a title and one action — no third line. The
      * summary that stood here restated the stage count, the completed count

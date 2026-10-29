@@ -987,6 +987,39 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
+  heading('structural plan review and invalidation');
+  {
+    const { app, plugin } = await boot();
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const root = app.workspace.getLeavesOfType(VIEW.unit)[0].view.contentEl;
+    const { Modal } = require('../harness').stub;
+    let submitted = 0;
+    let resolveCheck;
+    plugin.gateway.checkStructuralEdit = () => new Promise(resolve => { resolveCheck = resolve; });
+    plugin.gateway.importUnitMap = async () => { submitted += 1; };
+    root.findText('los-btn', 'Adjust study plan').fire('click');
+    const modal = Modal.last;
+    const apply = modal.contentEl.findText('los-btn', 'Apply reviewed change');
+    const checkButton = modal.contentEl.findText('los-btn', 'Check change');
+    const reason = modal.contentEl.children.find(e => e.tag === 'label' && e.text === 'Reason for this change').children[0];
+    const review = { result: { canonical_files_written: 0, diff: { replacement: true,
+      stages_before: ['a', 'b'], stages_after: ['b', 'a'], content_changes: [], map_changes: [] } } };
+    check('structural apply starts disabled', apply.disabled === true);
+    checkButton.fire('click');
+    reason.value = 'New reason'; reason.fire('input');
+    resolveCheck(review); await frame();
+    check('an old async check cannot enable a changed draft', apply.disabled === true);
+    checkButton.fire('click'); resolveCheck(review); await frame();
+    check('the exact resulting order is visible before apply', apply.disabled === false
+      && modal.contentEl.allText().includes('Resulting order: b → a'));
+    reason.fire('input');
+    check('editing after review withdraws approval', apply.disabled === true && submitted === 0);
+    checkButton.fire('click'); resolveCheck(review); await frame();
+    apply.fire('click'); await frame();
+    check('only the deliberate apply submits the reviewed intent', submitted === 1);
+    plugin.onunload();
+  }
+
   heading('the assigned page survives the whole plugin route');
   {
     /*

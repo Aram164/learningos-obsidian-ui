@@ -2428,6 +2428,33 @@ function routerPlugin(settings = {}) {
     assert.equal(envelopes[1].payload.replace, true);
   });
 
+  await test('a structural intent uses the existing exact-file map review and preserves its guards', async () => {
+    let checkedFile;
+    const calls = [];
+    const gateway = new GatewayClient({
+      runLos(args, callback, stdin) {
+        calls.push({ args, stdin });
+        if (args[0] === 'capability') { callback(null, gatewayConfirmation(stdin), ''); return; }
+        checkedFile = args[args.indexOf('--file') + 1];
+        callback(null, JSON.stringify({ ok: true, mode: 'check', canonical_files_written: 0,
+          unit_id: 'unit-demo', study_map_id: 'map-demo', file_sha256: fileDigest(checkedFile),
+          snapshot_id: SNAPSHOT, expected_revisions: { 'unit-demo': 4, 'map-demo': 7 },
+          diff: { stages_after: ['b', 'a'], content_changes: [], map_changes: [] } }), '');
+      }, store: { snapshotId: SNAPSHOT },
+    });
+    const edit = { reason: 'Study B first', stage_move: { stage_id: 'b', before_id: 'a' } };
+    const review = await gateway.checkStructuralEdit('unit-demo', edit);
+    assert.deepEqual(JSON.parse(fs.readFileSync(checkedFile, 'utf8')), { unit_id: 'unit-demo', structural_edit: edit });
+    assert.equal(calls.length, 1, 'checking sends no canonical write');
+    await gateway.importUnitMap(review);
+    const envelope = JSON.parse(calls.at(-1).stdin);
+    assert.equal(envelope.payload.file_sha256, fileDigest(checkedFile));
+    assert.equal(envelope.expected_snapshot, SNAPSHOT);
+    assert.deepEqual(envelope.expected_revisions, { 'unit-demo': 4, 'map-demo': 7 });
+    assert.equal(envelope.channel, 'ui');
+    fs.rmSync(path.dirname(checkedFile), { recursive: true });
+  });
+
   await test('the four reviewed workflows send, and nothing else does', async () => {
     const sent = [];
     const gateway = new GatewayClient({
