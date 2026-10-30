@@ -296,7 +296,7 @@ export function projectedExcerpt(
 ): string {
   const [paragraph = ''] = String(value || '').split(/\n\s*\n/);
   const first = paragraph
-    .replace(/\*{1,2}/g, '').replace(/`/g, '')
+    .replace(/\*{1,2}/g, '').replace(/`/g, '').replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
     .replace(/(^|\n)\s*-\s*/g, '$1').replace(/\s+/g, ' ').trim();
   if (first.length <= limit) return first;
   // Slice by code point: a plain .slice() could cut an emoji in half and leak a

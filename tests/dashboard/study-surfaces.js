@@ -1098,6 +1098,14 @@ module.exports = async function run() {
           stages_before: ['stage-fixture-conditioning'],
           stages_after: ['stage-fixture-conditioning'],
           preserved_stage_state: ['stage-fixture-conditioning'],
+          resource_changes: [{
+            stage_id: 'stage-fixture-conditioning',
+            before_count: 0,
+            after_count: 1,
+            added: [{ id: 'resource-reviewed-row', label: 'The reviewed new row' }],
+            removed: [],
+            reordered: false,
+          }],
           content_changes: [{
             stage_id: 'stage-fixture-conditioning',
             field: 'resources',
@@ -1114,6 +1122,9 @@ module.exports = async function run() {
     check('preflight diff enables apply button and renders diff preview',
       apply.disabled === false
       && modal.contentEl.allText().includes('Review the exact result below before applying.'));
+    check('the review names the added row without comparing two arrays',
+      modal.contentEl.allText().includes(': The reviewed new row.')
+      && !modal.contentEl.allText().includes('Adds to stage-fixture-conditioning'));
     check('a compact edit is not described as replacing the map',
       modal.contentEl.allText().includes('This adjusts the current map')
       && !modal.contentEl.allText().includes('This replaces the current map'));

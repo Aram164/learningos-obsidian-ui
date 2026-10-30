@@ -33625,7 +33625,7 @@ function localFilePath(file) {
 }
 function projectedExcerpt(value, limit = 900) {
   const [paragraph = ""] = String(value || "").split(/\n\s*\n/);
-  const first = paragraph.replace(/\*{1,2}/g, "").replace(/`/g, "").replace(/(^|\n)\s*-\s*/g, "$1").replace(/\s+/g, " ").trim();
+  const first = paragraph.replace(/\*{1,2}/g, "").replace(/`/g, "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/(^|\n)\s*-\s*/g, "$1").replace(/\s+/g, " ").trim();
   if (first.length <= limit) return first;
   return `${Array.from(first).slice(0, limit - 1).join("")}\u2026`;
 }
@@ -47130,7 +47130,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:1a054608efbf3f36fa327e983f74d4a849b196109e544702e46e6cae8233756c" : "unavailable";
+  return true ? "sha256:72b215d60f7f3ba954032f711e0dce3278cddc4203978e45965e0181216aa5f7" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 16 : 0;
@@ -51323,7 +51323,11 @@ var import_obsidian20 = require("obsidian");
 function stageIds(value) {
   return Array.isArray(value) ? value.map((row2) => asString(row2)).filter((row2) => Boolean(row2)) : [];
 }
-function renderImportDiff(root, answer) {
+function resourceName(row2) {
+  if (!isRecord(row2)) return "an unnamed row";
+  return asString(row2.label) ?? asString(row2.id) ?? "an unnamed row";
+}
+function renderImportDiff(root, answer, stageTitles = /* @__PURE__ */ new Map()) {
   root.empty();
   const payload = isRecord(answer) ? answer : null;
   const diff = payload && isRecord(payload.diff) ? payload.diff : null;
@@ -51338,7 +51342,10 @@ function renderImportDiff(root, answer) {
   const retired = stageIds(diff.stages_retired);
   const preserved = stageIds(diff.preserved_stage_state);
   const after = stageIds(diff.stages_after);
+  const before = stageIds(diff.stages_before);
   const replacement = diff.replacement === true;
+  const named = (id) => stageTitles.get(id) ?? id;
+  const order = (ids) => ids.map(named).join(" \u2192 ");
   root.createDiv({
     cls: "los-kicker",
     text: diff.structural_reason ? "This adjusts the current map" : replacement ? "This replaces the current map" : "This creates the first map"
@@ -51346,8 +51353,8 @@ function renderImportDiff(root, answer) {
   const list3 = root.createEl("ul", { cls: "los-map-import-diff" });
   const line = (text4) => list3.createEl("li", { text: text4 });
   if (diff.structural_reason) line(`Reason: ${String(diff.structural_reason)}`);
-  if (replacement) line(`Previous order: ${stageIds(diff.stages_before).join(" \u2192 ")}.`);
-  line(`Resulting order: ${after.join(" \u2192 ")}.`);
+  if (replacement && order(before) !== order(after)) line(`Previous order: ${order(before)}.`);
+  line(`Resulting order: ${order(after)}.`);
   line(`${after.length} stage${after.length === 1 ? "" : "s"} after the import.`);
   if (added.length) line(`Adds: ${added.join(", ")}.`);
   if (retired.length) line(`Retires: ${retired.join(", ")}.`);
@@ -51362,17 +51369,25 @@ function renderImportDiff(root, answer) {
     line(`Recorded work carried forward on ${preserved.length} stage${preserved.length === 1 ? "" : "s"}.`);
   }
   const resume = asString(diff.resume_stage);
-  if (resume) line(`Resumes at ${resume}.`);
+  if (resume) line(`Resumes at ${named(resume)}.`);
   const reset = asString(diff.state_reset_reason);
   if (reset) line(`Recorded stage state is reset: ${reset}.`);
   const evidence2 = stageIds(diff.retired_stage_evidence);
   if (evidence2.length) {
     line(`Evidence exists on retired stage${evidence2.length === 1 ? "" : "s"}: ${evidence2.join(", ")}.`);
   }
+  for (const value of diff.resource_changes === void 0 ? [] : diff.resource_changes) {
+    if (!isRecord(value) || typeof value.stage_id !== "string" || !Array.isArray(value.added) || !Array.isArray(value.removed)) return false;
+    const stage = named(value.stage_id);
+    for (const row2 of value.added) line(`Adds to ${stage}: ${resourceName(row2)}.`);
+    for (const row2 of value.removed) line(`Removes from ${stage}: ${resourceName(row2)}.`);
+    if (value.reordered === true) line(`Reorders resources in ${stage}.`);
+  }
   for (const value of [...diff.content_changes, ...diff.map_changes]) {
     if (!isRecord(value) || "stage_id" in value && typeof value.stage_id !== "string" || typeof value.field !== "string" || !("before" in value) || !("after" in value)) return false;
     const change = root.createEl("details");
-    change.createEl("summary", { text: `${value.stage_id ?? "Map"}: ${value.field.replaceAll("_", " ")}` });
+    const owner = typeof value.stage_id === "string" ? named(value.stage_id) : "Map";
+    change.createEl("summary", { text: `${owner}: ${value.field.replaceAll("_", " ")}` });
     change.createEl("div", { text: "Before" });
     change.createEl("pre", { text: JSON.stringify(value.before, null, 2) });
     change.createEl("div", { text: "After" });
@@ -51531,7 +51546,7 @@ var StructuralEditModal = class extends import_obsidian20.Modal {
     });
     root.createEl("p", { text: "Choose one change, check its exact result, then apply. Recorded work stays with its stage." });
     const select2 = (label2, rows) => {
-      const field2 = root.createEl("label", { text: label2 });
+      const field2 = root.createEl("label", { cls: "los-map-import-field", text: label2 });
       const input = field2.createEl("select");
       for (const [value, text4] of rows) input.createEl("option", { attr: { value }, text: text4 });
       input.value = rows[0]?.[0] ?? "";
@@ -51551,10 +51566,10 @@ var StructuralEditModal = class extends import_obsidian20.Modal {
     const kind = select2("Activity", [["read", "Read"], ["watch", "Watch"], ["practise", "Practice"]]);
     const triage = select2("Priority", [["helpful-now", "Helpful now"], ["required-now", "Required now"], ["reference-only", "Reference only"]]);
     const addsMaterial = () => action.value === "resource_insert" || action.value === "resource_append";
-    const groundworkField = root.createEl("label", { text: "Groundwork note (optional)" });
+    const groundworkField = root.createEl("label", { cls: "los-map-import-field", text: "Groundwork note (optional)" });
     const groundwork = groundworkField.createEl("input", { attr: { type: "text" } });
     groundwork.placeholder = "Why this helps when it does not cover the stage topic";
-    const reasonField = root.createEl("label", { text: "Reason for this change" });
+    const reasonField = root.createEl("label", { cls: "los-map-import-field", text: "Reason for this change" });
     const reason = reasonField.createEl("input", { attr: { type: "text" } });
     const status = root.createDiv({ attr: { "aria-live": "polite" } });
     const preview = root.createDiv();
@@ -51622,7 +51637,8 @@ var StructuralEditModal = class extends import_obsidian20.Modal {
       try {
         const review2 = await this.options.check({ reason: reason.value, [action.value]: op });
         if (ticket !== generation) return;
-        if (!renderImportDiff(preview, review2.result)) throw new Error("The complete review could not be read.");
+        const titles = new Map(this.options.studyMap.stages.map((s) => [s.id, s.title]));
+        if (!renderImportDiff(preview, review2.result, titles)) throw new Error("The complete review could not be read.");
         checked = review2;
         apply.disabled = false;
         status.setText("Review the exact result below before applying.");
