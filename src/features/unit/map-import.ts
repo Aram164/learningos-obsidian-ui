@@ -44,7 +44,8 @@ export function renderImportDiff(root: HTMLElement, answer: unknown): boolean {
 
   root.createDiv({
     cls: 'los-kicker',
-    text: replacement ? 'This replaces the current map' : 'This creates the first map',
+    text: diff.structural_reason ? 'This adjusts the current map'
+      : replacement ? 'This replaces the current map' : 'This creates the first map',
   });
   const list = root.createEl('ul', { cls: 'los-map-import-diff' });
   const line = (text: string) => list.createEl('li', { text });
@@ -300,14 +301,23 @@ export class StructuralEditModal extends Modal {
       input.value = rows[0]?.[0] ?? '';
       return input;
     };
-    const action = select('Change', [['stage_move', 'Move stage'], ['resource_move', 'Move resource within stage'], ['resource_insert', 'Insert material in stage']]);
+    const action = select('Change', [
+      ['stage_move', 'Move stage'],
+      ['resource_move', 'Move resource within stage'],
+      ['resource_insert', 'Insert material in stage'],
+      ['resource_append', 'Append material to stage'],
+    ]);
     const stage = select('Stage', this.options.studyMap.stages.map(s => [s.id, s.title]));
     const resource = select('Resource to move', []);
     const side = select('Position', [['before_id', 'Before'], ['after_id', 'After']]);
     const anchor = select('Relative to', []);
-    const route = select('Material to insert', this.options.materials.map(m => [m.routeId, m.title]));
+    const route = select('Material', this.options.materials.map(m => [m.routeId, m.title]));
     const kind = select('Activity', [['read', 'Read'], ['watch', 'Watch'], ['practise', 'Practice']]);
     const triage = select('Priority', [['helpful-now', 'Helpful now'], ['required-now', 'Required now'], ['reference-only', 'Reference only']]);
+    const addsMaterial = () => action.value === 'resource_insert' || action.value === 'resource_append';
+    const groundworkField = root.createEl('label', { text: 'Groundwork note (optional)' });
+    const groundwork = groundworkField.createEl('input', { attr: { type: 'text' } });
+    groundwork.placeholder = 'Why this helps when it does not cover the stage topic';
     const reasonField = root.createEl('label', { text: 'Reason for this change' });
     const reason = reasonField.createEl('input', { attr: { type: 'text' } });
     const status = root.createDiv({ attr: { 'aria-live': 'polite' } });
@@ -340,23 +350,29 @@ export class StructuralEditModal extends Modal {
       }
       resource.value = String(rows[0]?.id ?? '');
       anchor.value = action.value === 'stage_move' ? (this.options.studyMap.stages[0]?.id ?? '') : String(rows[0]?.id ?? '');
-      for (const field of [route, kind, triage]) field.parentElement?.toggleClass('is-hidden', action.value !== 'resource_insert');
+      for (const field of [route, kind, triage, groundwork]) field.parentElement?.toggleClass('is-hidden', !addsMaterial());
       resource.parentElement?.toggleClass('is-hidden', action.value !== 'resource_move');
+      for (const field of [side, anchor]) field.parentElement?.toggleClass('is-hidden', action.value === 'resource_append');
       invalidate();
     };
     for (const field of [action, stage]) field.addEventListener('change', populate);
     for (const field of [resource, side, anchor, route, kind, triage]) field.addEventListener('change', invalidate);
-    reason.addEventListener('input', invalidate);
+    for (const field of [groundwork, reason]) field.addEventListener('input', invalidate);
     button(actions, 'Check change', async () => {
       invalidate();
       const ticket = generation;
-      const op: Record<string, unknown> = { stage_id: stage.value, [side.value]: anchor.value };
+      const op: Record<string, unknown> = { stage_id: stage.value };
+      if (action.value !== 'resource_append') op[side.value] = anchor.value;
       if (action.value === 'resource_move') op.resource_id = resource.value;
-      if (action.value === 'resource_insert') op.resource = {
-        id: `resource-ui-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`,
-        kind: kind.value, scope_triage: triage.value,
-        material_ref: { route_id: route.value, inherit: ['label', 'source_id', 'locator', 'angle', 'angle_detail'] },
-      };
+      if (addsMaterial()) {
+        const note = groundwork.value.trim();
+        op.resource = {
+          id: `resource-ui-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`,
+          kind: kind.value, scope_triage: triage.value,
+          ...(note ? { node_scaffold_note: note } : {}),
+          material_ref: { route_id: route.value, inherit: ['label', 'source_id', 'locator', 'angle', 'angle_detail'] },
+        };
+      }
       status.setText('Checking — nothing is written…');
       try {
         const review = await this.options.check({ reason: reason.value, [action.value]: op });

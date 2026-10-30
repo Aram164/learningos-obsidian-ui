@@ -367,6 +367,46 @@ scenarios.faultedPublicationReplay = async () => {
   };
 };
 
+scenarios.compactAppendReplay = async () => {
+  const sent = [];
+  const settingsFile = path.join(workspace, 'compact-append.json');
+  const { gateway } = await session(settingsFile, interruptOnce(sent));
+  const review = await gateway.checkStructuralEdit('unit-demo-l01', {
+    reason: 'Supplementary reading for this stage.',
+    resource_append: {
+      stage_id: 'stage-demo',
+      resource: {
+        id: 'resource-ui-interrupted-append',
+        kind: 'read',
+        scope_triage: 'helpful-now',
+        material_ref: {
+          route_id: 'route-demo-book',
+          inherit: ['label', 'source_id', 'locator', 'angle', 'angle_detail'],
+        },
+      },
+    },
+  });
+  assert.equal(review.result.canonical_files_written, 0, 'the check writes nothing');
+  assert.equal(sent.length, 0, 'the check sends no write request');
+  const confirmation = await gateway.importUnitMap(review);
+  assert.equal(sent.length, 2, 'exactly one replay');
+  assert.equal(sent[0], sent[1], 'the replay is the identical stdin, byte for byte');
+  assert.equal(confirmation.replayed, true,
+    'Core must recognise the retry as the write it already performed');
+  const envelope = JSON.parse(sent[0]);
+  return {
+    capability: 'unit.map.import',
+    transaction_id: confirmation.transaction_id,
+    receipt_path: confirmation.receipt_path,
+    idempotency_key: envelope.idempotency_key,
+    approval_kind: envelope.approval.kind,
+    replayed: confirmation.replayed,
+    attempts: sent.length,
+    identical: sent[0] === sent[1],
+    result: confirmation.result,
+  };
+};
+
 (async () => {
   const results = {};
   for (const [name, run] of Object.entries(scenarios)) {

@@ -47130,7 +47130,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:3d43e1548b1095ca597858c709b386a827d10dde27ba50e19155c7596d5c57ef" : "unavailable";
+  return true ? "sha256:1a054608efbf3f36fa327e983f74d4a849b196109e544702e46e6cae8233756c" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 16 : 0;
@@ -51341,7 +51341,7 @@ function renderImportDiff(root, answer) {
   const replacement = diff.replacement === true;
   root.createDiv({
     cls: "los-kicker",
-    text: replacement ? "This replaces the current map" : "This creates the first map"
+    text: diff.structural_reason ? "This adjusts the current map" : replacement ? "This replaces the current map" : "This creates the first map"
   });
   const list3 = root.createEl("ul", { cls: "los-map-import-diff" });
   const line = (text4) => list3.createEl("li", { text: text4 });
@@ -51537,14 +51537,23 @@ var StructuralEditModal = class extends import_obsidian20.Modal {
       input.value = rows[0]?.[0] ?? "";
       return input;
     };
-    const action = select2("Change", [["stage_move", "Move stage"], ["resource_move", "Move resource within stage"], ["resource_insert", "Insert material in stage"]]);
+    const action = select2("Change", [
+      ["stage_move", "Move stage"],
+      ["resource_move", "Move resource within stage"],
+      ["resource_insert", "Insert material in stage"],
+      ["resource_append", "Append material to stage"]
+    ]);
     const stage = select2("Stage", this.options.studyMap.stages.map((s) => [s.id, s.title]));
     const resource = select2("Resource to move", []);
     const side = select2("Position", [["before_id", "Before"], ["after_id", "After"]]);
     const anchor = select2("Relative to", []);
-    const route2 = select2("Material to insert", this.options.materials.map((m) => [m.routeId, m.title]));
+    const route2 = select2("Material", this.options.materials.map((m) => [m.routeId, m.title]));
     const kind = select2("Activity", [["read", "Read"], ["watch", "Watch"], ["practise", "Practice"]]);
     const triage = select2("Priority", [["helpful-now", "Helpful now"], ["required-now", "Required now"], ["reference-only", "Reference only"]]);
+    const addsMaterial = () => action.value === "resource_insert" || action.value === "resource_append";
+    const groundworkField = root.createEl("label", { text: "Groundwork note (optional)" });
+    const groundwork = groundworkField.createEl("input", { attr: { type: "text" } });
+    groundwork.placeholder = "Why this helps when it does not cover the stage topic";
     const reasonField = root.createEl("label", { text: "Reason for this change" });
     const reason = reasonField.createEl("input", { attr: { type: "text" } });
     const status = root.createDiv({ attr: { "aria-live": "polite" } });
@@ -51585,24 +51594,30 @@ var StructuralEditModal = class extends import_obsidian20.Modal {
       }
       resource.value = String(rows[0]?.id ?? "");
       anchor.value = action.value === "stage_move" ? this.options.studyMap.stages[0]?.id ?? "" : String(rows[0]?.id ?? "");
-      for (const field2 of [route2, kind, triage]) field2.parentElement?.toggleClass("is-hidden", action.value !== "resource_insert");
+      for (const field2 of [route2, kind, triage, groundwork]) field2.parentElement?.toggleClass("is-hidden", !addsMaterial());
       resource.parentElement?.toggleClass("is-hidden", action.value !== "resource_move");
+      for (const field2 of [side, anchor]) field2.parentElement?.toggleClass("is-hidden", action.value === "resource_append");
       invalidate();
     };
     for (const field2 of [action, stage]) field2.addEventListener("change", populate);
     for (const field2 of [resource, side, anchor, route2, kind, triage]) field2.addEventListener("change", invalidate);
-    reason.addEventListener("input", invalidate);
+    for (const field2 of [groundwork, reason]) field2.addEventListener("input", invalidate);
     button(actions, "Check change", async () => {
       invalidate();
       const ticket = generation;
-      const op = { stage_id: stage.value, [side.value]: anchor.value };
+      const op = { stage_id: stage.value };
+      if (action.value !== "resource_append") op[side.value] = anchor.value;
       if (action.value === "resource_move") op.resource_id = resource.value;
-      if (action.value === "resource_insert") op.resource = {
-        id: `resource-ui-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`,
-        kind: kind.value,
-        scope_triage: triage.value,
-        material_ref: { route_id: route2.value, inherit: ["label", "source_id", "locator", "angle", "angle_detail"] }
-      };
+      if (addsMaterial()) {
+        const note = groundwork.value.trim();
+        op.resource = {
+          id: `resource-ui-${Date.now()}-${Math.random().toString(16).slice(2, 10)}`,
+          kind: kind.value,
+          scope_triage: triage.value,
+          ...note ? { node_scaffold_note: note } : {},
+          material_ref: { route_id: route2.value, inherit: ["label", "source_id", "locator", "angle", "angle_detail"] }
+        };
+      }
       status.setText("Checking \u2014 nothing is written\u2026");
       try {
         const review2 = await this.options.check({ reason: reason.value, [action.value]: op });

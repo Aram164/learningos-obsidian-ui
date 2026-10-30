@@ -22,6 +22,7 @@ const {
   build,
   boot,
 } = require('./support');
+const { browserDom } = require('./browser-dom');
 
 module.exports = async function run() {
   heading('module and component ownership');
@@ -999,6 +1000,7 @@ module.exports = async function run() {
     plugin.gateway.importUnitMap = async () => { submitted += 1; };
     root.findText('los-btn', 'Adjust study plan').fire('click');
     const modal = Modal.last;
+    browserDom(modal.contentEl);
     const apply = modal.contentEl.findText('los-btn', 'Apply reviewed change');
     const checkButton = modal.contentEl.findText('los-btn', 'Check change');
     const reason = modal.contentEl.children.find(e => e.tag === 'label' && e.text === 'Reason for this change').children[0];
@@ -1017,6 +1019,130 @@ module.exports = async function run() {
     checkButton.fire('click'); resolveCheck(review); await frame();
     apply.fire('click'); await frame();
     check('only the deliberate apply submits the reviewed intent', submitted === 1);
+    plugin.onunload();
+  }
+
+  heading('structural resource append review, invalidation and application');
+  {
+    const { app, plugin } = await boot();
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const root = app.workspace.getLeavesOfType(VIEW.unit)[0].view.contentEl;
+    const { Modal } = require('../harness').stub;
+    let submitted = 0;
+    let submittedReview = null;
+    let lastCheckedUnit = null;
+    let lastCheckedEdit = null;
+    let resolveCheck;
+    plugin.gateway.checkStructuralEdit = (unitId, edit) => {
+      lastCheckedUnit = unitId;
+      lastCheckedEdit = edit;
+      return new Promise(resolve => { resolveCheck = resolve; });
+    };
+    plugin.gateway.importUnitMap = async (review) => {
+      submitted += 1;
+      submittedReview = review;
+    };
+    root.findText('los-btn', 'Adjust study plan').fire('click');
+    const modal = Modal.last;
+    browserDom(modal.contentEl);
+    const apply = modal.contentEl.findText('los-btn', 'Apply reviewed change');
+    const checkButton = modal.contentEl.findText('los-btn', 'Check change');
+    const findLabel = text => modal.contentEl.children.find(e => e.tag === 'label' && e.text.startsWith(text));
+    const actionSelect = findLabel('Change').children[0];
+    const stageSelect = findLabel('Stage').children[0];
+    const sideSelect = findLabel('Position').children[0];
+    const anchorSelect = findLabel('Relative to').children[0];
+    const resourceSelect = findLabel('Resource to move').children[0];
+    const groundworkInput = findLabel('Groundwork note').children[0];
+    const reasonInput = findLabel('Reason for this change').children[0];
+
+    check('resource_append option exists in Change select',
+      actionSelect.children.some(o => o.value === 'resource_append' || o._attrs.value === 'resource_append'));
+
+    // Switch action to resource_append and target stage-fixture-conditioning
+    actionSelect.value = 'resource_append';
+    actionSelect.fire('change');
+    stageSelect.value = 'stage-fixture-conditioning';
+    stageSelect.fire('change');
+
+    check('resource_append hides positional anchors and resource selector',
+      sideSelect.parentElement.classList.contains('is-hidden')
+      && anchorSelect.parentElement.classList.contains('is-hidden')
+      && resourceSelect.parentElement.classList.contains('is-hidden')
+      && !groundworkInput.parentElement.classList.contains('is-hidden'));
+
+    reasonInput.value = 'Supplementary matrix calculus';
+    reasonInput.fire('input');
+    groundworkInput.value = 'Foundational groundwork';
+    groundworkInput.fire('input');
+
+    check('apply starts disabled before check', apply.disabled === true);
+
+    checkButton.fire('click');
+    check('checking sends unit-scoped resource_append intent without anchors',
+      lastCheckedUnit === 'unit-fixture-sad-l04'
+      && lastCheckedEdit.reason === 'Supplementary matrix calculus'
+      && Boolean(lastCheckedEdit.resource_append)
+      && lastCheckedEdit.resource_append.stage_id === 'stage-fixture-conditioning'
+      && lastCheckedEdit.resource_append.resource.id.startsWith('resource-ui-')
+      && lastCheckedEdit.resource_append.resource.node_scaffold_note === 'Foundational groundwork'
+      && !('before_id' in lastCheckedEdit.resource_append)
+      && !('after_id' in lastCheckedEdit.resource_append));
+
+    const appendReview = {
+      result: {
+        canonical_files_written: 0,
+        diff: {
+          replacement: true,
+          structural_reason: 'Supplementary matrix calculus',
+          stages_before: ['stage-fixture-conditioning'],
+          stages_after: ['stage-fixture-conditioning'],
+          preserved_stage_state: ['stage-fixture-conditioning'],
+          content_changes: [{
+            stage_id: 'stage-fixture-conditioning',
+            field: 'resources',
+            before: [],
+            after: [lastCheckedEdit.resource_append.resource],
+          }],
+          map_changes: [],
+        },
+      },
+    };
+    resolveCheck(appendReview);
+    await frame();
+
+    check('preflight diff enables apply button and renders diff preview',
+      apply.disabled === false
+      && modal.contentEl.allText().includes('Review the exact result below before applying.'));
+    check('a compact edit is not described as replacing the map',
+      modal.contentEl.allText().includes('This adjusts the current map')
+      && !modal.contentEl.allText().includes('This replaces the current map'));
+
+    // Invalidation: changing the groundwork note after check immediately disables apply
+    groundworkInput.value = 'Changed groundwork note';
+    groundworkInput.fire('input');
+    check('editing the groundwork note withdraws approval immediately', apply.disabled === true && submitted === 0);
+
+    // Invalidation: changing reason after check also keeps apply disabled
+    reasonInput.value = 'Changed reason';
+    reasonInput.fire('input');
+    check('editing reason keeps approval withdrawn', apply.disabled === true);
+
+    // Re-check with updated inputs
+    checkButton.fire('click');
+    check('re-check sends the updated groundwork note',
+      lastCheckedEdit.resource_append.resource.node_scaffold_note === 'Changed groundwork note'
+      && lastCheckedEdit.reason === 'Changed reason');
+    resolveCheck(appendReview);
+    await frame();
+    check('re-check re-enables apply', apply.disabled === false);
+
+    // Apply
+    apply.fire('click');
+    await frame();
+    check('apply submits the approved review through gateway',
+      submitted === 1 && submittedReview === appendReview);
+
     plugin.onunload();
   }
 
