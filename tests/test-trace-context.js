@@ -88,8 +88,21 @@ function testRuntimeCarriesParentAsEnv() {
   return (async () => {
     const parent = `00-${TRACE_ID}-${SPAN_ID}-01`;
     assert.equal(await run(parent), `TP:${parent} OWN:${TRACE_ID}`);
-    assert.equal(await run(undefined), 'TP:unset OWN:unset');
-    assert.equal(await run('garbage'), 'TP:garbage OWN:unset');
+    // These two cases assert what the runtime itself passes for an absent
+    // or invalid parent, so an ambient trace context in the calling shell
+    // (a traced pre-push, for example) must not leak into the child
+    // (issue #7).
+    const savedParent = process.env.TRACEPARENT;
+    const savedOwned = process.env.LOS_TRACE_OWNED;
+    delete process.env.TRACEPARENT;
+    delete process.env.LOS_TRACE_OWNED;
+    try {
+      assert.equal(await run(undefined), 'TP:unset OWN:unset');
+      assert.equal(await run('garbage'), 'TP:garbage OWN:unset');
+    } finally {
+      if (savedParent !== undefined) process.env.TRACEPARENT = savedParent;
+      if (savedOwned !== undefined) process.env.LOS_TRACE_OWNED = savedOwned;
+    }
   })().finally(() => fs.rmSync(dir, { recursive: true, force: true }));
 }
 
