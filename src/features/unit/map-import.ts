@@ -12,6 +12,11 @@ function stageIds(value: unknown): string[] {
     : [];
 }
 
+function resourceName(row: unknown): string {
+  if (!isRecord(row)) return 'an unnamed row';
+  return asString(row.label) ?? asString(row.id) ?? 'an unnamed row';
+}
+
 /**
  * Render Core's preflight answer, in Core's own terms.
  *
@@ -21,7 +26,11 @@ function stageIds(value: unknown): string[] {
  * changes" — an empty review that looks like a clean one is exactly the
  * failure a preflight exists to prevent.
  */
-export function renderImportDiff(root: HTMLElement, answer: unknown): boolean {
+export function renderImportDiff(
+  root: HTMLElement,
+  answer: unknown,
+  stageTitles: ReadonlyMap<string, string> = new Map(),
+): boolean {
   root.empty();
   const payload = isRecord(answer) ? answer : null;
   const diff = payload && isRecord(payload.diff) ? payload.diff : null;
@@ -40,7 +49,10 @@ export function renderImportDiff(root: HTMLElement, answer: unknown): boolean {
   const retired = stageIds(diff.stages_retired);
   const preserved = stageIds(diff.preserved_stage_state);
   const after = stageIds(diff.stages_after);
+  const before = stageIds(diff.stages_before);
   const replacement = diff.replacement === true;
+  const named = (id: string) => stageTitles.get(id) ?? id;
+  const order = (ids: readonly string[]) => ids.map(named).join(' → ');
 
   root.createDiv({
     cls: 'los-kicker',
@@ -51,8 +63,8 @@ export function renderImportDiff(root: HTMLElement, answer: unknown): boolean {
   const line = (text: string) => list.createEl('li', { text });
 
   if (diff.structural_reason) line(`Reason: ${String(diff.structural_reason)}`);
-  if (replacement) line(`Previous order: ${stageIds(diff.stages_before).join(' → ')}.`);
-  line(`Resulting order: ${after.join(' → ')}.`);
+  if (replacement && order(before) !== order(after)) line(`Previous order: ${order(before)}.`);
+  line(`Resulting order: ${order(after)}.`);
   line(`${after.length} stage${after.length === 1 ? '' : 's'} after the import.`);
   if (added.length) line(`Adds: ${added.join(', ')}.`);
   if (retired.length) line(`Retires: ${retired.join(', ')}.`);
@@ -68,7 +80,7 @@ export function renderImportDiff(root: HTMLElement, answer: unknown): boolean {
       + `${preserved.length === 1 ? '' : 's'}.`);
   }
   const resume = asString(diff.resume_stage);
-  if (resume) line(`Resumes at ${resume}.`);
+  if (resume) line(`Resumes at ${named(resume)}.`);
   const reset = asString(diff.state_reset_reason);
   if (reset) line(`Recorded stage state is reset: ${reset}.`);
   const evidence = stageIds(diff.retired_stage_evidence);
@@ -76,11 +88,20 @@ export function renderImportDiff(root: HTMLElement, answer: unknown): boolean {
     line(`Evidence exists on retired stage${evidence.length === 1 ? '' : 's'}: `
       + `${evidence.join(', ')}.`);
   }
+  for (const value of diff.resource_changes === undefined ? [] : diff.resource_changes as unknown[]) {
+    if (!isRecord(value) || typeof value.stage_id !== 'string' || !Array.isArray(value.added)
+      || !Array.isArray(value.removed)) return false;
+    const stage = named(value.stage_id);
+    for (const row of value.added) line(`Adds to ${stage}: ${resourceName(row)}.`);
+    for (const row of value.removed) line(`Removes from ${stage}: ${resourceName(row)}.`);
+    if (value.reordered === true) line(`Reorders resources in ${stage}.`);
+  }
   for (const value of [...diff.content_changes, ...diff.map_changes]) {
     if (!isRecord(value) || ('stage_id' in value && typeof value.stage_id !== 'string') || typeof value.field !== 'string'
       || !('before' in value) || !('after' in value)) return false;
     const change = root.createEl('details');
-    change.createEl('summary', { text: `${value.stage_id ?? 'Map'}: ${value.field.replaceAll('_', ' ')}` });
+    const owner = typeof value.stage_id === 'string' ? named(value.stage_id) : 'Map';
+    change.createEl('summary', { text: `${owner}: ${value.field.replaceAll('_', ' ')}` });
     change.createEl('div', { text: 'Before' });
     change.createEl('pre', { text: JSON.stringify(value.before, null, 2) });
     change.createEl('div', { text: 'After' });
@@ -295,7 +316,7 @@ export class StructuralEditModal extends Modal {
     });
     root.createEl('p', { text: 'Choose one change, check its exact result, then apply. Recorded work stays with its stage.' });
     const select = (label: string, rows: readonly (readonly [string, string])[]) => {
-      const field = root.createEl('label', { text: label });
+      const field = root.createEl('label', { cls: 'los-map-import-field', text: label });
       const input = field.createEl('select');
       for (const [value, text] of rows) input.createEl('option', { attr: { value }, text });
       input.value = rows[0]?.[0] ?? '';
@@ -315,10 +336,10 @@ export class StructuralEditModal extends Modal {
     const kind = select('Activity', [['read', 'Read'], ['watch', 'Watch'], ['practise', 'Practice']]);
     const triage = select('Priority', [['helpful-now', 'Helpful now'], ['required-now', 'Required now'], ['reference-only', 'Reference only']]);
     const addsMaterial = () => action.value === 'resource_insert' || action.value === 'resource_append';
-    const groundworkField = root.createEl('label', { text: 'Groundwork note (optional)' });
+    const groundworkField = root.createEl('label', { cls: 'los-map-import-field', text: 'Groundwork note (optional)' });
     const groundwork = groundworkField.createEl('input', { attr: { type: 'text' } });
     groundwork.placeholder = 'Why this helps when it does not cover the stage topic';
-    const reasonField = root.createEl('label', { text: 'Reason for this change' });
+    const reasonField = root.createEl('label', { cls: 'los-map-import-field', text: 'Reason for this change' });
     const reason = reasonField.createEl('input', { attr: { type: 'text' } });
     const status = root.createDiv({ attr: { 'aria-live': 'polite' } });
     const preview = root.createDiv();
@@ -377,7 +398,8 @@ export class StructuralEditModal extends Modal {
       try {
         const review = await this.options.check({ reason: reason.value, [action.value]: op });
         if (ticket !== generation) return;
-        if (!renderImportDiff(preview, review.result)) throw new Error('The complete review could not be read.');
+        const titles = new Map(this.options.studyMap.stages.map(s => [s.id, s.title] as const));
+        if (!renderImportDiff(preview, review.result, titles)) throw new Error('The complete review could not be read.');
         checked = review; apply.disabled = false;
         status.setText('Review the exact result below before applying.');
       } catch (error) { if (ticket === generation) status.setText(errorMessage(error)); }

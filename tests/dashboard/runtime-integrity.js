@@ -432,6 +432,11 @@ module.exports = async function run() {
     const text = home.view.contentEl.allText();
     check('excerpt truncation never leaves half an emoji in the DOM',
       text.includes('😀') && !/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/.test(text));
+    workspace.next_action = 'Start under [coordination](../../COORDINATION.md), then read **this**.';
+    home.view.render();
+    const linked = home.view.contentEl.allText();
+    check('an excerpt shows a Markdown link as its text',
+      linked.includes('Start under coordination, then read this.') && !linked.includes(']('));
     plugin.onunload();
   }
   {

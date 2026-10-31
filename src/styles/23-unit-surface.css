@@ -567,8 +567,10 @@
   overflow-y: auto;
 }
 .los-map-import-field { display: grid; gap: 6px; margin-top: var(--los-3); }
+.los-map-import-field.is-hidden { display: none; }
 .los-map-import-field label { color: var(--los-ink); font-size: 12px; font-weight: 700; }
-.los-map-import-field input {
+.los-map-import-field input,
+.los-map-import-field select {
   width: 100%;
   min-height: 38px;
   padding: var(--los-2);
