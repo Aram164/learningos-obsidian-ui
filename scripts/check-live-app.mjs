@@ -262,9 +262,15 @@ export function extractDiagnostics(html) {
 }
 
 /**
- * The live app must be the exact clean pair the caller named, on the current
- * contract, with nothing unresolved. Each condition refuses on its own; an
- * "unknown" dirty flag is a refusal too, because unknown is never clean.
+ * The live app must be the exact pair the caller named, on the current
+ * contract, with nothing unresolved. Each condition refuses on its own.
+ * Dirtiness is deliberately not one of them: the live vault legitimately
+ * carries preserved uncommitted learner files, so gating on a dirty flag
+ * made `ok: true` unreachable in exactly the state the promotion procedure
+ * must preserve (UI #8). Dirty values are reported as observed facts by
+ * `dirtyFacts` below and stay in the verdict; the identity checks here
+ * (revisions, fingerprint, manifest contract, gateway recovery, plugin
+ * version) still catch a stale or foreign build.
  */
 export function assertLiveIdentity(diagnostics, { coreSha, uiSha, manifestContract }) {
   if (diagnostics.coreRevision !== coreSha) {
@@ -280,16 +286,6 @@ export function assertLiveIdentity(diagnostics, { coreSha, uiSha, manifestContra
   if (diagnostics.runtimeFingerprintMatches !== 'yes') {
     throw new LiveAppCheckError(
       'the running code does not match the installed build-info; reload learningos-ui',
-    );
-  }
-  if (diagnostics.coreDirty !== 'false') {
-    throw new LiveAppCheckError(
-      `the Core working tree is not proven clean (reported ${diagnostics.coreDirty})`,
-    );
-  }
-  if (diagnostics.sourceDirty !== 'false') {
-    throw new LiveAppCheckError(
-      `the UI working tree is not proven clean (reported ${diagnostics.sourceDirty})`,
     );
   }
   if (diagnostics.manifestContract !== manifestContract) {
@@ -309,6 +305,22 @@ export function assertLiveIdentity(diagnostics, { coreSha, uiSha, manifestContra
       + `${diagnostics.uiPluginVersion}, expected exactly ${REQUIRED_PLUGIN_VERSION}`,
     );
   }
+}
+
+/**
+ * The dirty flags as observed facts, one printed line per non-clean tree.
+ * Never a failure: a dirty source checkout is still named, and the
+ * revision/fingerprint assertions above still catch a stale build.
+ */
+export function dirtyFacts(diagnostics) {
+  const facts = [];
+  if (diagnostics.coreDirty !== 'false') {
+    facts.push(`Core working tree reported dirty=${diagnostics.coreDirty}`);
+  }
+  if (diagnostics.sourceDirty !== 'false') {
+    facts.push(`UI working tree reported dirty=${diagnostics.sourceDirty}`);
+  }
+  return facts;
 }
 
 /**
@@ -491,6 +503,12 @@ async function main() {
   const introduced = newErrors(errorsBefore, errorsAfter);
   if (introduced.length) {
     throw new LiveAppCheckError(`new JavaScript error(s) during the check: ${introduced.join('; ')}`);
+  }
+
+  // Dirtiness is an observed fact, never an identity failure (UI #8): print
+  // every non-clean tree, and the verdict below still carries both values.
+  for (const fact of dirtyFacts(diagnostics)) {
+    console.log(`check-live-app: ${fact} (observed fact, not an identity failure)`);
   }
 
   // The extracted live values, never the caller's arguments: echoing the

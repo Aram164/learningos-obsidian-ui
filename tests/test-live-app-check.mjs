@@ -26,6 +26,7 @@ import {
   cliRefusal,
   countDomClass,
   declaredManifestContract,
+  dirtyFacts,
   extractDiagnostics,
   newErrors,
   parseCommandList,
@@ -296,10 +297,6 @@ test('dirty, unknown, mismatched, stale and unresolved states all fail', () => {
     ),
     LiveAppCheckError,
   );
-  refuse({ coreDirty: 'true' });
-  refuse({ coreDirty: 'unknown' });
-  refuse({ sourceDirty: 'true' });
-  refuse({ sourceDirty: 'unknown' });
   refuse({ runtimeFingerprintMatches: 'no' });
   refuse({ manifestContract: '7' });
   refuse({ gatewayRecoveryClear: 'no' });
@@ -307,6 +304,34 @@ test('dirty, unknown, mismatched, stale and unresolved states all fail', () => {
   // running build is read from Diagnostics. A mismatch there must refuse.
   refuse({ uiPluginVersion: '1.9.0' });
   refuse({ uiPluginVersion: 'unknown' });
+});
+
+test('a dirty working tree is an observed fact, not an identity failure', () => {
+  // UI #8: the live vault legitimately carries the preserved uncommitted
+  // learner files, so refusing on a dirty flag made ok:true unreachable in
+  // exactly the state the promotion procedure must preserve. Dirtiness is
+  // reported as a fact; identity checks stay gating.
+  const dirty = { coreDirty: 'true', sourceDirty: 'unknown' };
+  assert.doesNotThrow(() => assertLiveIdentity(
+    extractDiagnostics(diagnosticsDom(dirty)),
+    { coreSha: CORE_SHA, uiSha: UI_SHA, manifestContract: '8' },
+  ));
+  const facts = dirtyFacts(extractDiagnostics(diagnosticsDom(dirty)));
+  assert.equal(facts.length, 2);
+  assert.match(facts[0], /Core working tree reported dirty=true/);
+  assert.match(facts[1], /UI working tree reported dirty=unknown/);
+  assert.deepEqual(
+    dirtyFacts(extractDiagnostics(diagnosticsDom())),
+    [],
+  );
+  // A wrong revision still fails with dirtiness present.
+  assert.throws(
+    () => assertLiveIdentity(
+      extractDiagnostics(diagnosticsDom({ ...dirty, coreRevision: 'e'.repeat(40) })),
+      { coreSha: CORE_SHA, uiSha: UI_SHA, manifestContract: '8' },
+    ),
+    LiveAppCheckError,
+  );
 });
 
 // ---- metadata redaction -----------------------------------------------
