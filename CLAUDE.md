@@ -43,7 +43,8 @@ here.
    or installation. An already accepted hosted artifact may instead use
    `install.py --accepted-artifact`, which independently verifies its Core
    receipt, all hosted gates and the UI gate's actual producer checkout before
-   transactionally copying receipt-bound assets. It preserves source outputs
+   transactionally copying receipt-bound assets and aligning declared build
+   outputs with the published ZIP. It preserves implementation source
    and vault-owned settings; it is not `--skip-tests`. An explicitly bounded source-only tranche may use the
    targeted gates in `ARCHITECTURE.md`; that is not build, installation, or live
    proof. `install.py` independently reruns the runtime build and synthetic

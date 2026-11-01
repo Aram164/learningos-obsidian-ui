@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import importlib.util
+import hashlib
+import io
 import json
 import shutil
 import subprocess
@@ -11,6 +13,7 @@ import sys
 import tempfile
 import threading
 import unittest
+import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 from pathlib import Path
@@ -919,8 +922,15 @@ class AcceptedArtifactTests(unittest.TestCase):
             'source_dirty': False, 'core_dirty': False,
         }))
         receipt = {'core_sha': 'b' * 40, 'ui_sha': 'a' * 40,
+                   'workflow_run_id': '12',
                    'shipped_asset_sha256': {name: 'sha256:' + INSTALLER._sha256(source / name)
                                             for name in SHIPPED}}
+        self.fake_ui = base / 'obsidian-ui'
+        (self.fake_ui / 'plugin').mkdir(parents=True)
+        shutil.copytree(ROOT / 'bases', self.fake_ui / 'bases')
+        shutil.copytree(ROOT / 'vault-config', self.fake_ui / 'vault-config')
+        for name in SHIPPED:
+            shutil.copy2(source / name, self.fake_ui / 'plugin' / name)
         return vault, artifact, receipt
 
     def test_accepted_mode_installs_verified_bytes_without_local_rebuild_or_source_changes(self):
@@ -928,6 +938,8 @@ class AcceptedArtifactTests(unittest.TestCase):
             vault, artifact, receipt = self._release(Path(directory))
             with mock.patch.object(INSTALLER, 'verified_artifact', return_value=receipt), \
                     mock.patch.object(INSTALLER, 'corroborate_hosted_pair') as hosted, \
+                    mock.patch.object(INSTALLER, 'verify_published_artifact'), \
+                    mock.patch.object(INSTALLER, 'HERE', self.fake_ui), \
                     mock.patch.object(INSTALLER, '_git_rev_parse', side_effect=lambda root:
                                       receipt['core_sha'] if root == vault else receipt['ui_sha']), \
                     mock.patch.object(INSTALLER.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, b'', b'')), \
@@ -939,6 +951,34 @@ class AcceptedArtifactTests(unittest.TestCase):
             self.assertEqual({p.name for p in installed.iterdir()}, set(SHIPPED))
             for name in SHIPPED:
                 self.assertEqual((installed / name).read_bytes(), (artifact / 'plugin' / name).read_bytes())
+                self.assertEqual((self.fake_ui / 'plugin' / name).read_bytes(), (artifact / 'plugin' / name).read_bytes())
+
+    def test_local_bytes_must_equal_the_published_zip(self):
+        with tempfile.TemporaryDirectory() as directory:
+            _, artifact, receipt = self._release(Path(directory))
+            (artifact / 'pair-receipt.json').write_text(json.dumps(receipt))
+            buffer = io.BytesIO()
+            with zipfile.ZipFile(buffer, 'w') as archive:
+                archive.writestr('pair-receipt.json', (artifact / 'pair-receipt.json').read_bytes())
+                for name in SHIPPED:
+                    archive.writestr('plugin/' + name, (artifact / 'plugin' / name).read_bytes())
+            published = buffer.getvalue()
+            metadata = {'total_count': 1, 'artifacts': [{
+                'name': 'learningos-pair-' + receipt['core_sha'][:12] + '-' + receipt['ui_sha'][:12],
+                'expired': False, 'id': 99, 'digest': 'sha256:' + hashlib.sha256(published).hexdigest(),
+            }]}
+
+            def github(args, **kwargs):
+                if args[-1].endswith('/zip'):
+                    kwargs['stdout'].write(published)
+                    return subprocess.CompletedProcess(args, 0, None, b'')
+                return subprocess.CompletedProcess(args, 0, json.dumps(metadata), '')
+
+            with mock.patch.object(INSTALLER.subprocess, 'run', side_effect=github):
+                INSTALLER.verify_published_artifact(artifact, receipt)
+                (artifact / 'plugin' / SHIPPED[0]).write_bytes(b'forged-local-bundle')
+                with self.assertRaisesRegex(INSTALLER.PluginAssetsError, 'differs from the published'):
+                    INSTALLER.verify_published_artifact(artifact, receipt)
 
     def test_stale_pair_refuses_before_creating_any_install_state(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -949,6 +989,43 @@ class AcceptedArtifactTests(unittest.TestCase):
                 with self.assertRaisesRegex(INSTALLER.PluginAssetsError, 'current source pair'):
                     INSTALLER.install_accepted_artifact(vault, artifact, None, '13', '14', dry=False)
             self.assertFalse((vault / '.obsidian').exists())
+
+    def test_retry_recovers_when_source_output_alignment_failed_after_vault_promotion(self):
+        with tempfile.TemporaryDirectory() as directory:
+            vault, artifact, receipt = self._release(Path(directory))
+            previous = Path(directory) / 'previous-artifact'
+            installed = vault / '.obsidian/plugins/learningos-ui'
+            installed.mkdir(parents=True)
+            (installed / 'data.json').write_bytes(b'{"draft":"keep"}')
+            (self.fake_ui / 'plugin/main.js').write_bytes(b'previous bundle')
+            for name in SHIPPED:
+                shutil.copy2(self.fake_ui / 'plugin' / name, installed / name)
+            old = {**receipt, 'shipped_asset_sha256': {
+                name: 'sha256:' + INSTALLER._sha256(installed / name) for name in SHIPPED}}
+            original = INSTALLER.os.replace
+
+            def fail_source_manifest(source, destination):
+                if Path(source).parent.name == 'staged' and Path(destination) == self.fake_ui / 'plugin/manifest.json':
+                    raise OSError('injected source promotion failure')
+                return original(source, destination)
+
+            with mock.patch.object(INSTALLER, 'verified_artifact', side_effect=lambda _, path:
+                                   receipt if path == artifact else old), \
+                    mock.patch.object(INSTALLER, 'corroborate_hosted_pair'), \
+                    mock.patch.object(INSTALLER, 'verify_published_artifact'), \
+                    mock.patch.object(INSTALLER, 'HERE', self.fake_ui), \
+                    mock.patch.object(INSTALLER, '_git_rev_parse', side_effect=lambda root:
+                                      receipt['core_sha'] if root == vault else receipt['ui_sha']), \
+                    mock.patch.object(INSTALLER.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, b'', b'')), \
+                    mock.patch.object(INSTALLER, 'smoke_test_cli'):
+                with mock.patch.object(INSTALLER.os, 'replace', side_effect=fail_source_manifest):
+                    with self.assertRaises(INSTALLER.PluginAssetsError):
+                        INSTALLER.install_accepted_artifact(vault, artifact, previous, '13', '14', dry=False)
+                self.assertEqual((installed / 'main.js').read_bytes(), (artifact / 'plugin/main.js').read_bytes())
+                self.assertEqual((self.fake_ui / 'plugin/main.js').read_bytes(), b'previous bundle')
+                INSTALLER.install_accepted_artifact(vault, artifact, previous, '13', '14', dry=False)
+            self.assertEqual((installed / 'data.json').read_bytes(), b'{"draft":"keep"}')
+            self.assertEqual((self.fake_ui / 'plugin/main.js').read_bytes(), (artifact / 'plugin/main.js').read_bytes())
 
     def test_artifact_transaction_preserves_settings_and_source_checkout(self):
         with tempfile.TemporaryDirectory() as directory:

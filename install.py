@@ -48,6 +48,7 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+import zipfile
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -1202,6 +1203,42 @@ def verified_artifact(vault: Path, artifact: Path) -> dict:
     return json.loads(receipt_path.read_text(encoding="utf-8"))
 
 
+def verify_published_artifact(artifact: Path, receipt: dict) -> None:
+    """Bind the local bytes to the artifact actually published by the green run."""
+    expected_name = f"learningos-pair-{receipt['core_sha'][:12]}-{receipt['ui_sha'][:12]}"
+    result = subprocess.run(
+        ["gh", "api", f"repos/Aram164/LearningOS/actions/runs/{receipt['workflow_run_id']}/artifacts?per_page=100"],
+        capture_output=True, text=True, timeout=60,
+    )
+    try:
+        payload = json.loads(result.stdout)
+        matches = [row for row in payload["artifacts"] if row["name"] == expected_name and not row["expired"]]
+        if result.returncode != 0 or len(matches) != 1 or payload["total_count"] > 100:
+            raise ValueError("published artifact is unavailable or ambiguous")
+        published = matches[0]
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", published.get("digest", "")):
+            raise ValueError("published ZIP has no verifiable digest")
+    except (ValueError, KeyError, TypeError) as exc:
+        raise PluginAssetsError("published release artifact could not be established") from exc
+    with tempfile.TemporaryDirectory(prefix="learningos-accepted-artifact-") as directory:
+        archive_path = Path(directory) / "release.zip"
+        with archive_path.open("wb") as stream:
+            download = subprocess.run(
+                ["gh", "api", f"repos/Aram164/LearningOS/actions/artifacts/{published['id']}/zip"],
+                stdout=stream, stderr=subprocess.PIPE, timeout=120,
+            )
+        if download.returncode != 0 or "sha256:" + _sha256(archive_path) != published["digest"]:
+            raise PluginAssetsError("published artifact ZIP digest could not be verified")
+        expected = {"pair-receipt.json", *(f"plugin/{name}" for name in receipt["shipped_asset_sha256"])}
+        with zipfile.ZipFile(archive_path) as archive:
+            files = [info.filename for info in archive.infolist() if not info.is_dir()]
+            if len(files) != len(set(files)) or set(files) != expected:
+                raise PluginAssetsError("published artifact inventory differs from the receipt")
+            for name in sorted(expected):
+                if hashlib.sha256(archive.read(name)).hexdigest() != _sha256(artifact / name):
+                    raise PluginAssetsError(f"local {name} differs from the published artifact")
+
+
 def install_accepted_artifact(vault: Path, artifact: Path, previous: Path | None,
                              validate_run: str, ui_run: str, *, dry: bool) -> None:
     receipt = verified_artifact(vault, artifact)
@@ -1212,6 +1249,16 @@ def install_accepted_artifact(vault: Path, artifact: Path, previous: Path | None
     problems = real_vault_install_problems(vault, info)
     if receipt["core_sha"] != _git_rev_parse(vault) or receipt["ui_sha"] != _git_rev_parse(HERE):
         problems.append("artifact receipt does not name the current source pair")
+    if problems:
+        raise PluginAssetsError("; ".join(problems))
+    old = verified_artifact(vault, previous) if previous is not None else None
+    corroborate_hosted_pair(receipt, validate_run, ui_run)
+    verify_published_artifact(artifact, receipt)
+    source_journal = HERE / INSTALL_TRANSACTION
+    if source_journal.exists() or source_journal.is_symlink():
+        if dry:
+            raise PluginAssetsError("dry-run will not recover an interrupted source-output transaction")
+        recover_interrupted_install(HERE, HERE / "plugin", shipped)
     for root, permitted in ((vault, set()), (HERE, {"plugin/main.js", "plugin/styles.css", "plugin/build-info.json"})):
         result = subprocess.run(["git", "status", "--porcelain=v1", "-z"], cwd=root,
                                 capture_output=True, timeout=30)
@@ -1221,8 +1268,8 @@ def install_accepted_artifact(vault: Path, artifact: Path, previous: Path | None
             problems.append(f"source checkout has unexpected or unknown changes: {root}")
     if problems:
         raise PluginAssetsError("; ".join(problems))
-    old = verified_artifact(vault, previous) if previous is not None else None
-    corroborate_hosted_pair(receipt, validate_run, ui_run)
+    if unknown_installed_entries(HERE / "plugin", set(shipped)):
+        raise PluginAssetsError("source plugin outputs contain undeclared entries")
     destination = vault / ".obsidian/plugins" / PLUGIN_ID
     # Complete any fully recorded prior transaction only after the new release
     # and previous receipt have been independently checked. Dry-run never recovers.
@@ -1230,18 +1277,25 @@ def install_accepted_artifact(vault: Path, artifact: Path, previous: Path | None
     present = [name for name in shipped if (destination / name).exists()]
     if present and (old is None or set(old["shipped_asset_sha256"]) != set(shipped)):
         raise PluginAssetsError("an existing installation requires its previous verified artifact")
-    if present and any("sha256:" + _sha256(destination / name) != old["shipped_asset_sha256"][name]
-                       for name in shipped):
+    installed_hashes = {name: "sha256:" + _sha256(destination / name) for name in shipped} if present else {}
+    if present and installed_hashes not in (old["shipped_asset_sha256"], receipt["shipped_asset_sha256"]):
         raise PluginAssetsError("installed before-state differs from the previous receipt")
     before_owned = {name: _hash_or_missing(destination / name) for name in owned}
     expected = {name: receipt["shipped_asset_sha256"][name].removeprefix("sha256:") for name in shipped}
+    if _sha256(HERE / "plugin/manifest.json") != expected["manifest.json"]:
+        raise PluginAssetsError("accepted artifact would change the source manifest")
     copy_shipped_plugin(destination, shipped, dry, source_dir=artifact / "plugin", expected_hashes=expected)
+    # Keep the checkout's declared build outputs aligned: Core Diagnostics and
+    # the ordinary install-status command compare against these exact files.
+    # No implementation source is copied from the artifact.
+    copy_shipped_plugin(HERE / "plugin", shipped, dry,
+                        source_dir=artifact / "plugin", expected_hashes=expected)
     if not dry:
         if before_owned != {name: _hash_or_missing(destination / name) for name in owned}:
             raise PluginAssetsError("vault-owned settings changed during artifact installation")
         smoke_test_cli(vault)
     log("accepted artifact installed" if not dry else "accepted artifact dry-run passed")
-    log("source plugin outputs were preserved; compare with install:status -- --artifact PATH")
+    log("declared source build outputs match the receipt; implementation source and vault settings were preserved")
 
 
 def main() -> int:
@@ -1256,7 +1310,7 @@ def main() -> int:
     ap.add_argument("--ecosystem", action="store_true",
                     help="install pinned Agentic Copilot, Omnisearch, Text Extractor, and PDF++")
     ap.add_argument("--accepted-artifact", type=Path,
-                    help="install a receipt-bound hosted release without rebuilding source outputs")
+                    help="install a published receipt-bound hosted release without a local rebuild")
     ap.add_argument("--previous-artifact", type=Path,
                     help="verified before-state authority for an existing installation")
     ap.add_argument("--validate-run", help="successful hosted validate run for the accepted Core SHA")

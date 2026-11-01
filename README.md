@@ -190,12 +190,15 @@ An update also requires `--previous-artifact DIRECTORY` as the installed
 before-state authority. `--dry-run` performs the same provenance checks without
 copying or recovering an interrupted transaction. GitHub CLI access is required
 so successful run results and the UI gate's actual Core checkout can be checked
-independently of the receipt. No local rebuild or full local test gate runs in
-this mode.
+independently of the receipt. The downloaded published ZIP is checked against GitHub's digest and the local
+artifact must match every published byte. No local rebuild or full local test
+gate runs in this mode.
 
-The mode changes only the declared installed plugin assets, using the existing
-recoverable transaction. It preserves `data.json`, vault configuration, learner
-records and the source checkout's build outputs. Check the result with
+The mode updates the declared installed plugin assets and the UI checkout's
+corresponding build outputs using the existing recoverable transaction. Every
+output is bound to the ZIP digest published by GitHub and to the verified receipt;
+implementation source is preserved. It preserves `data.json`, vault configuration
+and learner records. Check the result with
 `npm run install:status -- --artifact DIRECTORY`; the ordinary status command
 continues to compare against local build outputs. Installed bytes and running
 Obsidian identity remain separate checks: reload and inspect Diagnostics after
