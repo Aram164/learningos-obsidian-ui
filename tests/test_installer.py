@@ -906,5 +906,101 @@ class RealVaultInstallEndToEndTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
+class AcceptedArtifactTests(unittest.TestCase):
+    def _release(self, base):
+        vault, artifact = base / 'vault', base / 'artifact'
+        vault.mkdir()
+        source = artifact / 'plugin'
+        source.mkdir(parents=True)
+        for name in SHIPPED:
+            (source / name).write_bytes(name.encode())
+        (source / 'build-info.json').write_text(json.dumps({
+            'source_revision': 'a' * 40, 'core_revision': 'b' * 40,
+            'source_dirty': False, 'core_dirty': False,
+        }))
+        receipt = {'core_sha': 'b' * 40, 'ui_sha': 'a' * 40,
+                   'shipped_asset_sha256': {name: 'sha256:' + INSTALLER._sha256(source / name)
+                                            for name in SHIPPED}}
+        return vault, artifact, receipt
+
+    def test_accepted_mode_installs_verified_bytes_without_local_rebuild_or_source_changes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            vault, artifact, receipt = self._release(Path(directory))
+            with mock.patch.object(INSTALLER, 'verified_artifact', return_value=receipt), \
+                    mock.patch.object(INSTALLER, 'corroborate_hosted_pair') as hosted, \
+                    mock.patch.object(INSTALLER, '_git_rev_parse', side_effect=lambda root:
+                                      receipt['core_sha'] if root == vault else receipt['ui_sha']), \
+                    mock.patch.object(INSTALLER.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, b'', b'')), \
+                    mock.patch.object(INSTALLER, 'smoke_test_cli'), \
+                    mock.patch.object(INSTALLER, 'run_ui_tests', side_effect=AssertionError('local rebuild forbidden')):
+                INSTALLER.install_accepted_artifact(vault, artifact, None, '13', '14', dry=False)
+            hosted.assert_called_once_with(receipt, '13', '14')
+            installed = vault / '.obsidian/plugins/learningos-ui'
+            self.assertEqual({p.name for p in installed.iterdir()}, set(SHIPPED))
+            for name in SHIPPED:
+                self.assertEqual((installed / name).read_bytes(), (artifact / 'plugin' / name).read_bytes())
+
+    def test_stale_pair_refuses_before_creating_any_install_state(self):
+        with tempfile.TemporaryDirectory() as directory:
+            vault, artifact, receipt = self._release(Path(directory))
+            with mock.patch.object(INSTALLER, 'verified_artifact', return_value=receipt), \
+                    mock.patch.object(INSTALLER, '_git_rev_parse', return_value='c' * 40), \
+                    mock.patch.object(INSTALLER.subprocess, 'run', return_value=subprocess.CompletedProcess([], 0, b'', b'')):
+                with self.assertRaisesRegex(INSTALLER.PluginAssetsError, 'current source pair'):
+                    INSTALLER.install_accepted_artifact(vault, artifact, None, '13', '14', dry=False)
+            self.assertFalse((vault / '.obsidian').exists())
+
+    def test_artifact_transaction_preserves_settings_and_source_checkout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            source, target = base / 'artifact/plugin', base / 'vault/.obsidian/plugins/learningos-ui'
+            source.mkdir(parents=True)
+            target.mkdir(parents=True)
+            (target / 'data.json').write_bytes(b'{"learner":"preserve exactly"}')
+            source_before = {name: (ROOT / 'plugin' / name).read_bytes() for name in SHIPPED}
+            for name in SHIPPED:
+                (source / name).write_bytes(b'accepted-' + name.encode())
+                (target / name).write_bytes(b'previous-' + name.encode())
+            expected = {name: INSTALLER._sha256(source / name) for name in SHIPPED}
+            INSTALLER.copy_shipped_plugin(target, SHIPPED, False,
+                                          source_dir=source, expected_hashes=expected)
+            self.assertEqual((target / 'data.json').read_bytes(), b'{"learner":"preserve exactly"}')
+            for name in SHIPPED:
+                self.assertEqual((target / name).read_bytes(), (source / name).read_bytes())
+                self.assertEqual((ROOT / 'plugin' / name).read_bytes(), source_before[name])
+
+    def test_changed_receipted_source_refuses_before_creating_install_directory(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            source, target = base / 'artifact/plugin', base / 'vault/.obsidian/plugins/learningos-ui'
+            source.mkdir(parents=True)
+            for name in SHIPPED:
+                (source / name).write_bytes(name.encode())
+            expected = {name: INSTALLER._sha256(source / name) for name in SHIPPED}
+            (source / SHIPPED[0]).write_bytes(b'tampered')
+            with self.assertRaisesRegex(INSTALLER.PluginAssetsError, 'receipt'):
+                INSTALLER.copy_shipped_plugin(target, SHIPPED, False,
+                                              source_dir=source, expected_hashes=expected)
+            self.assertFalse(target.exists())
+
+    def test_hosted_pair_requires_the_ui_actual_producer_checkout(self):
+        core, ui = 'a' * 40, 'b' * 40
+        receipt = {'core_sha': core, 'ui_sha': ui, 'workflow_run_id': '12'}
+        with mock.patch.object(INSTALLER, '_hosted_run', return_value={
+            'jobs': [{'databaseId': 77, 'conclusion': 'success'}],
+        }), mock.patch.object(INSTALLER.subprocess, 'run', return_value=subprocess.CompletedProcess(
+            [], 0, 'Core commit checked out: ' + 'c' * 40, '')):
+            with self.assertRaisesRegex(INSTALLER.PluginAssetsError, 'producer'):
+                INSTALLER.corroborate_hosted_pair(receipt, '13', '14')
+
+    def test_hosted_run_rejects_skipped_jobs_even_when_overall_run_succeeded(self):
+        payload = {'status': 'completed', 'conclusion': 'success', 'headSha': 'a' * 40,
+                   'jobs': [{'conclusion': 'skipped'}]}
+        with mock.patch.object(INSTALLER.subprocess, 'run', return_value=subprocess.CompletedProcess(
+            [], 0, json.dumps(payload), '')):
+            with self.assertRaisesRegex(INSTALLER.PluginAssetsError, 'hosted'):
+                INSTALLER._hosted_run('Aram164/LearningOS', '12', 'a' * 40)
+
+
 if __name__ == "__main__":
     unittest.main()

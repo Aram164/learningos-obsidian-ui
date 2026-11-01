@@ -126,9 +126,36 @@ export function provenanceFacts({ builtInfo: built }) {
 
 function main() {
   const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
-  const vault = process.argv[2]
-    ? path.resolve(process.argv[2])
+  const args = process.argv.slice(2);
+  let artifact = null;
+  const artifactAt = args.indexOf('--artifact');
+  if (artifactAt !== -1) {
+    if (!args[artifactAt + 1]) {
+      console.error('install: --artifact requires a release artifact directory');
+      process.exit(1);
+    }
+    artifact = path.resolve(args[artifactAt + 1]);
+    args.splice(artifactAt, 2);
+  }
+  if (args.length > 1 || args.some((arg) => arg.startsWith('--'))) {
+    console.error('install: usage: install:status -- [VAULT] [--artifact DIRECTORY]');
+    process.exit(1);
+  }
+  const vault = args[0]
+    ? path.resolve(args[0])
     : path.join(path.dirname(root), 'repository');
+  const buildRoot = artifact ?? root;
+  if (artifact) {
+    const proof = spawnSync(path.join(vault, '.venv/bin/python'), [
+      path.join(vault, 'tools/release_pair_receipt.py'), 'verify',
+      '--receipt', path.join(artifact, 'pair-receipt.json'), '--artifact-dir', artifact,
+    ], { encoding: 'utf8' });
+    if (proof.status !== 0) {
+      console.error(`install: accepted artifact receipt could not be verified: ${proof.stderr ?? proof.error ?? ''}`);
+      process.exit(1);
+    }
+    console.log(`install: comparing installed files with verified artifact ${artifact}`);
+  }
   const obsidianDir = path.join(vault, '.obsidian');
   const pluginsDir = path.join(obsidianDir, 'plugins');
   const installedDir = path.join(pluginsDir, 'learningos-ui');
@@ -161,7 +188,7 @@ function main() {
     process.exit(1);
   }
 
-  const builtDirectoryProblem = directoryProblem(path.join(root, 'plugin'));
+  const builtDirectoryProblem = directoryProblem(path.join(buildRoot, 'plugin'));
   if (builtDirectoryProblem) {
     console.log(`install: plugin/ ${builtDirectoryProblem}; refusing an indirect or misshapen build source.`);
     process.exit(1);
@@ -178,12 +205,12 @@ function main() {
     }
   };
 
-  const builtInfo = json(path.join(root, 'plugin', 'build-info.json')) ?? {};
+  const builtInfo = json(path.join(buildRoot, 'plugin', 'build-info.json')) ?? {};
   const installedInfo = json(path.join(installedDir, 'build-info.json')) ?? {};
 
   const assetRows = assets.shipped.map((name) => ({
     name,
-    built: sha(path.join(root, 'plugin', name)),
+    built: sha(path.join(buildRoot, 'plugin', name)),
     installed: sha(path.join(installedDir, name)),
     installedProblem: shippedFileProblem(path.join(installedDir, name)),
   }));
@@ -191,13 +218,13 @@ function main() {
   const missingBuilt = assetRows.filter((asset) => !asset.built);
   if (missingBuilt.length) {
     for (const asset of missingBuilt) {
-      console.log(`install: no built ${asset.name} — plugin/${asset.name} ${shippedFileProblem(path.join(root, 'plugin', asset.name))}.`);
+      console.log(`install: no built ${asset.name} — plugin/${asset.name} ${shippedFileProblem(path.join(buildRoot, 'plugin', asset.name))}.`);
     }
     console.log('install: run `npm run build` (and `npm run build:info`).');
     process.exit(1);
   }
 
-  const surplusBuilt = unexpectedEntries(path.join(root, 'plugin'), assets.shipped);
+  const surplusBuilt = unexpectedEntries(path.join(buildRoot, 'plugin'), assets.shipped);
   if (surplusBuilt.length) {
     console.log('install: plugin/ holds files the shipping manifest does not declare:');
     for (const entry of surplusBuilt) console.log(`install:   ${entry}`);
@@ -256,7 +283,7 @@ function main() {
   // to the current pair. Compare the built record's revisions against the
   // sibling checkouts' HEADs; an unavailable Git state is unknown and fails —
   // never silently clean. Recorded dirtiness prints as a fact.
-  const targets = provenanceTargets(root);
+  const targets = artifact ? { coreRepository: vault, uiCheckout: root } : provenanceTargets(root);
   const coreHead = currentGitHead(targets.coreRepository);
   const uiHead = currentGitHead(targets.uiCheckout);
   const provenance = provenanceProblems({ builtInfo, coreHead, uiHead });

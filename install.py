@@ -181,7 +181,8 @@ def unknown_installed_entries(directory: Path, owned: set[str]) -> list[Path]:
     return sorted(entry for entry in directory.iterdir() if entry.name not in owned)
 
 
-def preflight_plugin_directory(vault: Path, *, recover: bool = True) -> None:
+def preflight_plugin_directory(vault: Path, *, recover: bool = True,
+                               source_dir: Path | None = None) -> None:
     """Refuse the whole install before new configuration is written.
 
     Order matters here and is the reason this is a separate step: the installer
@@ -191,20 +192,20 @@ def preflight_plugin_directory(vault: Path, *, recover: bool = True) -> None:
     fully recorded rollback left by a killed prior install; a dry run never does.
     """
     shipped, vault_owned = read_plugin_assets()
-    source_dir = HERE / "plugin"
+    source_dir = source_dir if source_dir is not None else HERE / "plugin"
     source_problem = directory_problem(source_dir)
     if source_problem:
         sys.exit(
             f"install: plugin/ {source_problem}; refusing a build source that is "
             "missing, misshapen, or indirect. Nothing was written."
         )
-    broken = [(name, shipped_file_problem(HERE / "plugin" / name)) for name in shipped]
+    broken = [(name, shipped_file_problem(source_dir / name)) for name in shipped]
     broken = [(name, problem) for name, problem in broken if problem]
     if broken:
         sys.exit("install: this checkout cannot ship a complete plugin:\n"
                  + "\n".join(f"  plugin/{name} {problem}" for name, problem in broken)
                  + "\n  Run `npm run build` first; nothing was written.")
-    surplus = unknown_installed_entries(HERE / "plugin", set(shipped))
+    surplus = unknown_installed_entries(source_dir, set(shipped))
     if surplus:
         sys.exit("install: plugin/ holds files the shipping manifest does not declare:\n"
                  + "\n".join(f"  {entry}" for entry in surplus)
@@ -760,7 +761,9 @@ def recover_interrupted_install(parent: Path, dst: Path, shipped: list[str]) -> 
         handle.close()
 
 
-def copy_shipped_plugin(dst: Path, shipped: list[str], dry: bool) -> None:
+def copy_shipped_plugin(dst: Path, shipped: list[str], dry: bool, *,
+                        source_dir: Path | None = None,
+                        expected_hashes: dict[str, str] | None = None) -> None:
     """Stage and verify the complete build before promoting any live asset.
 
     Promotion replaces names rather than writing through them, keeps
@@ -771,13 +774,19 @@ def copy_shipped_plugin(dst: Path, shipped: list[str], dry: bool) -> None:
     the recorded hashes and either accepts the complete new set or rolls a
     mixed set back to the complete previous one.
     """
-    log(f"copy {len(shipped)} declared file(s): plugin/ -> {dst}")
+    source_dir = source_dir if source_dir is not None else HERE / "plugin"
+    source_hashes = None
+    if expected_hashes is not None:
+        source_hashes = {name: _sha256(source_dir / name) for name in shipped}
+        if source_hashes != expected_hashes:
+            raise PluginAssetsError("artifact source differs from its verified receipt")
+    log(f"copy {len(shipped)} declared file(s): {source_dir} -> {dst}")
     if dry:
         return
     dst.mkdir(parents=True, exist_ok=True)
     parent = dst.parent
     journal = parent / INSTALL_TRANSACTION
-    source_hashes = {name: _sha256(HERE / "plugin" / name) for name in shipped}
+    source_hashes = source_hashes or {name: _sha256(source_dir / name) for name in shipped}
     old_hashes = {name: _hash_or_missing(dst / name) for name in shipped}
     workspace = parent / f"{INSTALL_WORKSPACE_PREFIX}{secrets.token_hex(12)}"
     journal_payload = _transaction_payload(
@@ -802,7 +811,7 @@ def copy_shipped_plugin(dst: Path, shipped: list[str], dry: bool) -> None:
             # workspace directory entry itself was never persisted.
             _sync_directory(parent)
             for name in shipped:
-                source = HERE / "plugin" / name
+                source = source_dir / name
                 target = staged / name
                 _copy_regular_file(source, target)
                 if _sha256(target) != source_hashes[name]:
@@ -1131,6 +1140,110 @@ def smoke_test_cli(vault: Path) -> None:
             f"  cd {vault} && make setup\n{proc.stderr.strip()[:300]}")
 
 
+def _hosted_run(repository: str, run_id: str, expected_sha: str,
+                workflow_path: str | None = None) -> dict:
+    if not re.fullmatch(r"[1-9][0-9]*", str(run_id)):
+        raise PluginAssetsError("hosted run id must be a positive decimal id")
+    result = subprocess.run(
+        ["gh", "run", "view", str(run_id), "--repo", repository, "--json",
+         "databaseId,status,conclusion,headSha,jobs"],
+        capture_output=True, text=True, timeout=60,
+    )
+    try:
+        data = json.loads(result.stdout)
+        if (result.returncode != 0 or data["status"] != "completed"
+                or data["conclusion"] != "success" or data["headSha"] != expected_sha
+                or not data["jobs"]
+                or any(job["conclusion"] != "success" for job in data["jobs"])):
+            raise ValueError("incomplete, failed, skipped or different source")
+    except (ValueError, KeyError, TypeError) as exc:
+        raise PluginAssetsError(f"hosted acceptance could not be corroborated: {repository}/{run_id}") from exc
+    if workflow_path is not None:
+        metadata = subprocess.run(["gh", "api", f"repos/{repository}/actions/runs/{run_id}"],
+                                  capture_output=True, text=True, timeout=60)
+        try:
+            if metadata.returncode != 0 or json.loads(metadata.stdout)["path"].split("@")[0] != workflow_path:
+                raise ValueError("different workflow")
+        except (ValueError, KeyError, TypeError) as exc:
+            raise PluginAssetsError("hosted run does not belong to the required workflow") from exc
+    return data
+
+
+def corroborate_hosted_pair(receipt: dict, validate_run: str, ui_run: str) -> None:
+    """A receipt authenticates bytes internally; actual hosted runs prove execution."""
+    _hosted_run("Aram164/LearningOS", validate_run, receipt["core_sha"], ".github/workflows/validate.yml")
+    _hosted_run("Aram164/LearningOS", receipt["workflow_run_id"], receipt["core_sha"], ".github/workflows/release-pair.yml")
+    ui = _hosted_run("Aram164/learningos-obsidian-ui", ui_run, receipt["ui_sha"], ".github/workflows/ui-ci.yml")
+    if len(ui["jobs"]) != 1:
+        raise PluginAssetsError("UI hosted producer proof has an unexpected job population")
+    result = subprocess.run(
+        ["gh", "api", f"repos/Aram164/learningos-obsidian-ui/actions/jobs/{ui['jobs'][0]['databaseId']}/logs"],
+        capture_output=True, text=True, timeout=60,
+    )
+    observed = set(re.findall(r"Core commit checked out: ([0-9a-f]{40})", result.stdout))
+    if result.returncode != 0 or observed != {receipt["core_sha"]}:
+        raise PluginAssetsError("UI hosted gate did not prove the exact producer checkout")
+
+
+def verified_artifact(vault: Path, artifact: Path) -> dict:
+    for directory in (artifact, artifact / "plugin"):
+        if directory_problem(directory):
+            raise PluginAssetsError(f"artifact directory is missing, indirect or misshapen: {directory}")
+    receipt_path = artifact / "pair-receipt.json"
+    if shipped_file_problem(receipt_path):
+        raise PluginAssetsError("artifact receipt must be a regular file")
+    result = subprocess.run(
+        [str(vault / ".venv/bin/python"), str(vault / "tools/release_pair_receipt.py"),
+         "verify", "--receipt", str(receipt_path), "--artifact-dir", str(artifact)],
+        capture_output=True, text=True, timeout=60,
+    )
+    if result.returncode != 0:
+        raise PluginAssetsError("Core refused the artifact receipt: " + result.stderr.strip())
+    return json.loads(receipt_path.read_text(encoding="utf-8"))
+
+
+def install_accepted_artifact(vault: Path, artifact: Path, previous: Path | None,
+                             validate_run: str, ui_run: str, *, dry: bool) -> None:
+    receipt = verified_artifact(vault, artifact)
+    shipped, owned = read_plugin_assets()
+    if set(receipt["shipped_asset_sha256"]) != set(shipped):
+        raise PluginAssetsError("receipt and shipping manifest inventories differ")
+    info = json.loads((artifact / "plugin/build-info.json").read_text(encoding="utf-8"))
+    problems = real_vault_install_problems(vault, info)
+    if receipt["core_sha"] != _git_rev_parse(vault) or receipt["ui_sha"] != _git_rev_parse(HERE):
+        problems.append("artifact receipt does not name the current source pair")
+    for root, permitted in ((vault, set()), (HERE, {"plugin/main.js", "plugin/styles.css", "plugin/build-info.json"})):
+        result = subprocess.run(["git", "status", "--porcelain=v1", "-z"], cwd=root,
+                                capture_output=True, timeout=30)
+        entries = result.stdout.split(b"\0")[:-1]
+        if result.returncode != 0 or any(
+                entry[:3] != b" M " or os.fsdecode(entry[3:]) not in permitted for entry in entries):
+            problems.append(f"source checkout has unexpected or unknown changes: {root}")
+    if problems:
+        raise PluginAssetsError("; ".join(problems))
+    old = verified_artifact(vault, previous) if previous is not None else None
+    corroborate_hosted_pair(receipt, validate_run, ui_run)
+    destination = vault / ".obsidian/plugins" / PLUGIN_ID
+    # Complete any fully recorded prior transaction only after the new release
+    # and previous receipt have been independently checked. Dry-run never recovers.
+    preflight_plugin_directory(vault, recover=not dry, source_dir=artifact / "plugin")
+    present = [name for name in shipped if (destination / name).exists()]
+    if present and (old is None or set(old["shipped_asset_sha256"]) != set(shipped)):
+        raise PluginAssetsError("an existing installation requires its previous verified artifact")
+    if present and any("sha256:" + _sha256(destination / name) != old["shipped_asset_sha256"][name]
+                       for name in shipped):
+        raise PluginAssetsError("installed before-state differs from the previous receipt")
+    before_owned = {name: _hash_or_missing(destination / name) for name in owned}
+    expected = {name: receipt["shipped_asset_sha256"][name].removeprefix("sha256:") for name in shipped}
+    copy_shipped_plugin(destination, shipped, dry, source_dir=artifact / "plugin", expected_hashes=expected)
+    if not dry:
+        if before_owned != {name: _hash_or_missing(destination / name) for name in owned}:
+            raise PluginAssetsError("vault-owned settings changed during artifact installation")
+        smoke_test_cli(vault)
+    log("accepted artifact installed" if not dry else "accepted artifact dry-run passed")
+    log("source plugin outputs were preserved; compare with install:status -- --artifact PATH")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--vault", default=None,
@@ -1142,7 +1255,27 @@ def main() -> int:
                     help="absolute Node executable for the UI test gate")
     ap.add_argument("--ecosystem", action="store_true",
                     help="install pinned Agentic Copilot, Omnisearch, Text Extractor, and PDF++")
+    ap.add_argument("--accepted-artifact", type=Path,
+                    help="install a receipt-bound hosted release without rebuilding source outputs")
+    ap.add_argument("--previous-artifact", type=Path,
+                    help="verified before-state authority for an existing installation")
+    ap.add_argument("--validate-run", help="successful hosted validate run for the accepted Core SHA")
+    ap.add_argument("--ui-run", help="successful UI CI run that checked the accepted Core SHA")
     args = ap.parse_args()
+
+    if args.accepted_artifact:
+        if args.skip_tests or args.ecosystem or not args.validate_run or not args.ui_run:
+            ap.error("--accepted-artifact requires --validate-run and --ui-run and cannot combine with --skip-tests or --ecosystem")
+        vault = Path(args.vault).resolve() if args.vault else (HERE.parent / "repository").resolve()
+        try:
+            install_accepted_artifact(vault, args.accepted_artifact.absolute(),
+                                      args.previous_artifact.absolute() if args.previous_artifact else None,
+                                      args.validate_run, args.ui_run, dry=args.dry_run)
+        except (PluginAssetsError, OSError, ValueError, subprocess.SubprocessError) as exc:
+            sys.exit(f"install: accepted artifact refused: {exc}")
+        return 0
+    if args.previous_artifact or args.validate_run or args.ui_run:
+        ap.error("artifact provenance options require --accepted-artifact")
 
     if not args.skip_tests:
         run_ui_tests(args.node)

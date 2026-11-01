@@ -181,3 +181,22 @@ This repository has its own history and GitHub remote. Core and UI remain
 separate ownership layers; the core remains portable plain files and Git.
 
 Implementation handoff: [source navigation and the SaD L05 pilot](docs/source-navigation-replication.md), including host integration failure, gateway provenance, verification and safe repetition.
+
+### Install an accepted hosted release
+
+Use the existing installer with `--accepted-artifact DIRECTORY --validate-run ID
+--ui-run ID` after both source checkouts have reached the exact release pair.
+An update also requires `--previous-artifact DIRECTORY` as the installed
+before-state authority. `--dry-run` performs the same provenance checks without
+copying or recovering an interrupted transaction. GitHub CLI access is required
+so successful run results and the UI gate's actual Core checkout can be checked
+independently of the receipt. No local rebuild or full local test gate runs in
+this mode.
+
+The mode changes only the declared installed plugin assets, using the existing
+recoverable transaction. It preserves `data.json`, vault configuration, learner
+records and the source checkout's build outputs. Check the result with
+`npm run install:status -- --artifact DIRECTORY`; the ordinary status command
+continues to compare against local build outputs. Installed bytes and running
+Obsidian identity remain separate checks: reload and inspect Diagnostics after
+checking pending Gateway recovery.
