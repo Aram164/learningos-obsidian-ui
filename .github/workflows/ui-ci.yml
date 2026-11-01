@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Phase 4 Linux pytest alone took 86 minutes; the complete local
     # source gate took 130 minutes. Keep complete paired coverage with
     # a bounded allowance for extraction tests and the UI checks.
