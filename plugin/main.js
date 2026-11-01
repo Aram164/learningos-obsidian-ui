@@ -47130,7 +47130,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:72b215d60f7f3ba954032f711e0dce3278cddc4203978e45965e0181216aa5f7" : "unavailable";
+  return true ? "sha256:eb2630dbbb09375957e637e7390f529b056ea2490726da4b67265eb2ed0309be" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 16 : 0;
@@ -55021,6 +55021,13 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
     let facts;
     try {
       facts = projectionSettlement(await this.gateway.projectionObservation(confirmation));
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        if (!facts.writeCompleted || !facts.settled || facts.currentSnapshotId === null) break;
+        observed = await this.observedSnapshot();
+        this.gateway.assertLifecycleActive();
+        if (observed === facts.currentSnapshotId || attempt === 1) break;
+        facts = projectionSettlement(await this.gateway.projectionObservation(confirmation));
+      }
     } catch (error) {
       rebuildError = error;
       facts = {

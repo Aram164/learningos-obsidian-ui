@@ -49,6 +49,8 @@ test('UI CI policy', () => {
     // environment — the exact interpreter patch and Core's repository venv
     // the procedure transcripts invoke — never the runner's interpreter.
     assert.match(yml, /python-version: "3\.14\.4"/);
+    assert.match(yml, /runs-on: ubuntu-24\.04/);
+    assert.ok(!yml.includes('runs-on: ubuntu-latest'), 'the release image must stay pinned');
     assert.ok(!/python-version: "3\.14"/.test(yml), 'unpinned python-version "3.14" silently selects a new patch');
     const pipInstalls = runScripts(yml).filter((script) => script.includes('pip install'));
     assert.equal(pipInstalls.length, 1);

@@ -59,6 +59,45 @@ module.exports = async function run() {
   const { prepared, envelopeJson } = await preparedFixture();
 
   {
+    const newer = `sha256:${'a'.repeat(64)}`;
+    let published = null;
+    const { plugin, calls } = await build({
+      patchManifest: (manifest) => {
+        if (published) manifest._generated.snapshot_id = published;
+      },
+      spy: (args) => { if (args[0] === 'projection-observe') published = newer; },
+      projectionObservation: { current_snapshot_id: newer },
+    });
+    await plugin.mutate(() => plugin.gateway.captureText('Concurrent publication'));
+    check('a newer Core observation is loaded before settling a confirmed write',
+      plugin.store.snapshotId === newer && plugin.settings.gatewayRecovery === null
+      && calls.filter((args) => args[0] === 'projection-observe').length === 1);
+    plugin.onunload();
+  }
+
+  {
+    const snapshots = ['a', 'b'].map((value) => `sha256:${value.repeat(64)}`);
+    let published = null;
+    const { plugin } = await build({ patchManifest: (manifest) => {
+      if (published) manifest._generated.snapshot_id = published;
+    } });
+    const original = plugin.runLos;
+    let observations = 0;
+    plugin.runLos = (args, callback, stdin) => {
+      if (args[0] !== 'projection-observe') return original(args, callback, stdin);
+      const current = snapshots[Math.min(observations++, 1)];
+      published = snapshots[1]; // another publication lands before the reload
+      callback(null, JSON.stringify({ write_completed: true, settled: true,
+        current_snapshot_id: current, reason: 'ready' }), '');
+    };
+    await plugin.mutate(() => plugin.gateway.captureText('Publication during reload'));
+    check('settlement retries observation once when publication advances during reload',
+      observations === 2 && plugin.store.snapshotId === snapshots[1]
+      && plugin.settings.gatewayRecovery === null);
+    plugin.onunload();
+  }
+
+  {
     const { plugin, calls } = await build({ projectionObservation: {
       write_completed: false, settled: false, reason: 'receipt-missing-or-unbound',
     } });
@@ -69,6 +108,20 @@ module.exports = async function run() {
     check('Core settlement refusal preserves recovery and the learner draft',
       plugin.settings.gatewayRecovery?.phase === 'blocked'
       && plugin.settings.uiDrafts.inbox.text === 'Core settlement refused');
+    plugin.onunload();
+  }
+
+  {
+    const observed = `sha256:${'a'.repeat(64)}`;
+    const loaded = `sha256:${'b'.repeat(64)}`;
+    const { plugin, calls } = await build({
+      patchManifest: (manifest) => { manifest._generated.snapshot_id = loaded; },
+      projectionObservation: { current_snapshot_id: observed },
+    });
+    await plugin.mutate(() => plugin.gateway.captureText('Unstable publication')).catch(() => undefined);
+    check('repeated disagreement with the loaded publication stays blocked after one retry',
+      calls.filter((args) => args[0] === 'projection-observe').length === 2
+      && plugin.settings.gatewayRecovery?.phase === 'blocked');
     plugin.onunload();
   }
 
