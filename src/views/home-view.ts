@@ -12,6 +12,7 @@ import {
   pageHeader,
 } from '../components';
 import { VIEW_HOME } from '../constants';
+import { drawDesignScreen } from '../designs/registry';
 import type {
   ProjectionRecord,
 } from '../contracts/manifest';
@@ -70,6 +71,7 @@ export class HomeView extends ItemView {
   }
 
   render(): void {
+    if (drawDesignScreen(this.plugin, 'home', this)) return;
     const root = this.contentEl;
 
     root.empty();

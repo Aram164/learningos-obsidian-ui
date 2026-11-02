@@ -19,17 +19,9 @@ import {
   readResumePointer,
 } from './model';
 
-export function renderElsewhere(
-  view: HomeElsewhereHost,
-
-    root: HTMLElement,
-  ): void {
-    const sectionEl = section(
-      root,
-      'Continue elsewhere',
-      'Other active modules and projects, kept secondary to the current session.',
-    );
-
+export function elsewhereRows(
+  view: Pick<HomeElsewhereHost, 'plugin'>,
+): ElsewhereRow[] {
     const pointer = readResumePointer(
       view.plugin.store.data?.resume_pointer,
     );
@@ -113,7 +105,21 @@ export function renderElsewhere(
       });
     }
 
-    const visibleRows = rows.slice(0, 5);
+    return rows;
+  }
+
+export function renderElsewhere(
+  view: HomeElsewhereHost,
+
+    root: HTMLElement,
+  ): void {
+    const sectionEl = section(
+      root,
+      'Continue elsewhere',
+      'Other active modules and projects, kept secondary to the current session.',
+    );
+
+    const visibleRows = elsewhereRows(view).slice(0, 5);
 
     if (!visibleRows.length) {
       empty(

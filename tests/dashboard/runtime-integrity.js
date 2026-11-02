@@ -564,7 +564,11 @@ module.exports = async function run() {
      * have and it lacks. */
     const tokenBlocks = css.match(
       /(?:^|\n)(?:body\[data-los-palette="[a-z]+"\] )?(?:\.theme-dark )?\.los-root \{[\s\S]*?\n\}/g) || [];
-    const cssOutsideTokens = tokenBlocks.reduce(
+    /* A design may restate its schemes for Obsidian's own frame, in Obsidian's
+     * variable names. Those blocks are palette blocks too, and nothing else is. */
+    const frameBlocks = css.match(
+      /(?:^|\n)body\[data-los-ui="[a-z-]+"\](?:\[data-los-palette="[a-z]+"\])? :is\([^)]*\) \{[\s\S]*?\n\}/g) || [];
+    const cssOutsideTokens = [...tokenBlocks, ...frameBlocks].reduce(
       (rest, block) => rest.replace(block, ''), css);
     const tokenNames = tokenBlocks.map((block) =>
       (block.match(/--los-[a-z0-9-]+(?=\s*:)/g) || [])
@@ -670,6 +674,25 @@ module.exports = async function run() {
           contrastFailures.push(
             `${palette.name} ${foreground}/${background} ${ratio.toFixed(2)} < ${minimum}`,
           );
+        }
+      }
+    }
+    /* Spine colours are drawn only by the design that offers these two schemes.
+     * A spine is a non-text mark on its surface; a book cover carries a title. */
+    for (const palette of palettes.filter((row) => row.name === 'light' || row.name === 'lamplight')) {
+      for (const cover of ['wine', 'teal', 'ochre', 'moss', 'slate', 'plum', 'stone']) {
+        for (const [foreground, background, minimum] of [
+          [`--los-cover-${cover}`, '--los-paper', 3],
+          [`--los-cover-${cover}`, '--los-paper-2', 3],
+          ['--los-on-accent', `--los-cover-${cover}`, 4.5],
+        ]) {
+          const ratio = contrastRatio(
+            resolvePaletteToken(palette.tokens, foreground) ?? '#000000',
+            resolvePaletteToken(palette.tokens, background) ?? '#000000',
+          );
+          if (ratio + Number.EPSILON < minimum) {
+            contrastFailures.push(`${palette.name} ${foreground}/${background} ${ratio.toFixed(2)} < ${minimum}`);
+          }
         }
       }
     }

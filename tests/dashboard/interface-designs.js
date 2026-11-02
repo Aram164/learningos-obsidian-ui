@@ -1,0 +1,162 @@
+'use strict';
+
+const { path, fs, ROOT, VIEW, waitFor, check, heading, boot } = require('./support');
+const { createSourceModuleLoader } = require('../source-module-loader');
+
+/** The body the plugin writes to in this harness, however a test reached it. */
+const body = () => global.document.body;
+
+module.exports = async function run() {
+  heading('interface designs: the switch');
+  {
+    const { app, plugin } = await boot();
+    const home = () => app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
+    const nav = () => app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
+    check('a vault that never chose keeps Classic, with no attribute at all',
+      plugin.settings.uiDesign === 'classic' && !body().hasAttribute('data-los-ui'));
+    check('Classic draws its own screens', home().find('los-continue').length === 1 && home().find('sd-hero').length === 0);
+    check('Classic offers the toggle under More', nav().find('los-design-switch').length === 1
+      && nav().find('los-design-switch-option').length >= 2);
+
+    plugin.settings.palette = 'carbon';
+    await plugin.setInterfaceDesign('study-desk');
+    check('switching sets the attribute and redraws in place',
+      body().getAttribute('data-los-ui') === 'study-desk'
+      && home().find('sd-hero').length === 1 && nav().find('sd-nav-search').length === 1);
+    check('Study Desk does not inherit Classic’s scheme',
+      !body().hasAttribute('data-los-palette') && plugin.settings.palette === 'carbon');
+    check('every design’s sidebar offers the way back',
+      nav().find('los-design-switch').length >= 1
+      && nav().findText('los-design-switch-option', 'Classic') !== null);
+
+    await plugin.setDesignPalette('lamplight');
+    check('a design keeps its own scheme', body().getAttribute('data-los-palette') === 'lamplight'
+      && plugin.settings.uiDesignPalettes['study-desk'] === 'lamplight' && plugin.settings.palette === 'carbon');
+    await plugin.setInterfaceDesign('classic');
+    check('coming back restores Classic and its scheme exactly',
+      !body().hasAttribute('data-los-ui') && body().getAttribute('data-los-palette') === 'carbon'
+      && home().find('los-continue').length === 1);
+    await plugin.setInterfaceDesign('study-desk');
+    check('and going again restores that design’s scheme', body().getAttribute('data-los-palette') === 'lamplight');
+    await plugin.setDesignPalette('carbon');
+    check('a scheme a design was not drawn for falls back to its default', !body().hasAttribute('data-los-palette'));
+    await plugin.setInterfaceDesign('no-such-design');
+    check('an unknown design degrades to Classic', plugin.settings.uiDesign === 'classic' && !body().hasAttribute('data-los-ui'));
+    check('the switch is reachable as commands',
+      ['next-interface-design', 'use-interface-design-classic', 'use-interface-design-study-desk']
+        .every((id) => plugin.commands.some((command) => command.id === id)));
+    plugin.onunload();
+    check('unloading leaves the body clean', !body().hasAttribute('data-los-ui'));
+  }
+
+  heading('interface designs: Study Desk keeps every write path');
+  {
+    const { app, plugin, calls } = await boot();
+    await plugin.setInterfaceDesign('study-desk');
+    await plugin.nav.openUnit('unit-fixture-sad-l04');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    check('opening a unit shows its plan', view.contentEl.find('sd-route').length === 1);
+    const filled = () => view.contentEl.find('los-btn--cta');
+    check('the plan has one filled action', filled().length === 1);
+    check('the plan keeps the import, sequence and adjust controls',
+      view.contentEl.allText().includes('Sequence for this sitting')
+      && view.contentEl.allText().includes('Adjust study plan'));
+    check('every stage lists all its own materials, counted',
+      view.contentEl.find('sd-stop-materials').length > 0);
+    view.contentEl.findText('los-filter-tab', 'Materials').fire('click');
+    check('the lecture’s materials open as a grid with the full menu beside it',
+      view.contentEl.find('sd-material-grid').length === 1 && view.contentEl.allText().includes('full menu'));
+    view.contentEl.findText('los-filter-tab', 'Stages').fire('click');
+
+    view.contentEl.findText('los-btn', 'Continue stage').fire('click');
+    await waitFor(() => view.contentEl.find('sd-book-spread').length === 1);
+    const spread = view.contentEl;
+    check('choosing to work opens the open-book session',
+      spread.find('sd-page-left').length === 1 && spread.find('sd-page-right').length === 1
+      && spread.find('sd-strip-tab').length > 1);
+    check('the session has one filled action', filled().length === 1);
+    check('stage history and every secondary action stay reachable',
+      ['Pause unit', 'Skip stage', 'Report prerequisite gap', 'Prepare shelving'].every((label) => spread.allText().includes(label))
+      && spread.allText().includes('Stage notes and history'));
+
+    const boxes = spread.find('sd-proof').map((row) => row.children.find((child) => child.tag === 'input'));
+    const before = calls.envelopes.length;
+    for (const box of boxes) { box.checked = true; box.fire('change'); }
+    check('ticking a proof writes nothing to Core', calls.envelopes.length === before);
+    const complete = spread.findText('los-btn', 'Complete stage');
+    check('once every proof is true, Complete becomes the filled action',
+      boxes.length > 0 && complete.classes.has('los-btn--cta') && filled().length === 1);
+    complete.fire('click');
+    await waitFor(() => Boolean(calls.envelope('stage.progress.update')) && !plugin.gateway.isBusy);
+    check('completing sends the same stage progress write and no ability evidence',
+      Boolean(calls.envelope('stage.progress.update'))
+      && !calls.envelopes.some((envelope) => envelope.capability.startsWith('learner.')
+        || envelope.capability.startsWith('ability.')));
+    plugin.onunload();
+  }
+
+  heading('interface designs: the Atlas as a map');
+  {
+    const { app, plugin } = await boot();
+    await plugin.setInterfaceDesign('study-desk');
+    await plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' });
+    const view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    check('Atlas opens on the map, not on a global graph',
+      view.contentEl.find('sd-map-canvas').length === 1 && view.contentEl.find('sd-region').length > 0);
+    const region = view.contentEl.find('sd-region-head').find((node) => node.allText().includes('Mathematics'));
+    region.fire('click');
+    await waitFor(() => view.contentEl.find('sd-region-sheet').length === 1);
+    check('a region opens in study order', view.contentEl.find('sd-region-sheet').length === 1);
+    await plugin.nav.openAtlas({ concept: null, lens: 'domains' });
+    await waitFor(() => view.contentEl.find('sd-map-canvas').length === 0);
+    check('Notes & shelves keeps its complete classic screen',
+      view.contentEl.allText().includes('Notes') && view.contentEl.find('sd-map-canvas').length === 0);
+    plugin.onunload();
+  }
+
+  heading('interface designs: the model and the stylesheet');
+  {
+    const load = createSourceModuleLoader(ROOT);
+    const { buildConceptMap, studyOrderLayout, moduleOverlap, overlapKey, UNGROUPED } = load('src/designs/study-desk/atlas-model.ts');
+    const concept = (id) => ({ id, label: id, sortKey: id, record: { id } });
+    const edge = (from, to, layer = 'strict') => ({ id: `${from}--requires--${to}`, from, to, type: 'requires', layer, studyFrom: from, studyTo: to, prerequisiteId: from, dependentId: to, context: null, source: null });
+    const concepts = ['a', 'b', 'c', 'd', 'lonely'].map(concept);
+    const edges = [edge('a', 'b'), edge('b', 'c'), edge('c', 'd')];
+    const graph = {
+      concepts, conceptById: new Map(concepts.map((row) => [row.id, row])), edges,
+      modulesByConcept: new Map([['a', ['m1', 'm2']], ['b', ['m1']]]),
+    };
+    const note = (folder, ...ids) => ({ path: `knowledge/notes/${folder}/n.md`, concepts: ids });
+    const map = buildConceptMap([note('mathematics', 'a', 'b'), note('systems', 'b'), note('mathematics', 'b'), note('systems', 'c', 'd')], graph);
+    check('a concept is placed where most of its notes live', map.regionOf.get('b') === 'mathematics' && map.regionOf.get('c') === 'systems');
+    check('a concept with no note stays Not yet grouped, never guessed', map.regionOf.get('lonely') === UNGROUPED);
+    check('links between regions are counted from authored relations',
+      map.links.length === 1 && map.links[0].count === 1);
+    const order = studyOrderLayout(['a', 'b', 'lonely'], graph);
+    const at = (id) => order.placed.find((row) => row.id === id);
+    check('reading left to right never asks for something not yet introduced',
+      at('a').column < at('b').column && at('b').column < at('c').column);
+    check('what lies outside the region is marked and goes beyond it',
+      at('c').visiting && order.beyond === at('c').column && !at('a').visiting);
+    check('an unlinked member is listed, not floated', order.unlinked.includes('lonely') && !at('lonely'));
+    const cycle = studyOrderLayout(['x', 'y'], {
+      ...graph, edges: [edge('x', 'y'), edge('y', 'x')],
+    });
+    check('a cycle in the records cannot hang the layout', cycle.placed.length === 2);
+    check('overlap counts concepts two modules share, in either order',
+      moduleOverlap(graph).get(overlapKey('m2', 'm1')).join() === 'a');
+
+    const stylesDir = path.join(ROOT, 'src', 'styles');
+    const designSheets = fs.readdirSync(stylesDir).filter((name) => /^\d\d-design-(?!switch)/.test(name));
+    check('there is a stylesheet per design', designSheets.length >= 1);
+    for (const name of designSheets) {
+      const css = fs.readFileSync(path.join(stylesDir, name), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
+      let depth = 0; let top = ''; const selectors = [];
+      for (const char of css) {
+        if (char === '{') { if (depth === 0) selectors.push(top.trim()); depth += 1; } else if (char === '}') { depth -= 1; top = ''; } else if (depth === 0) top += char;
+      }
+      check(`${name}: every rule sits inside its design's one block`,
+        selectors.length === 1 && /^body\[data-los-ui="[a-z-]+"\]$/.test(selectors[0]), selectors.join(' | '));
+    }
+  }
+};

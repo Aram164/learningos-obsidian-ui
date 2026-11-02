@@ -10,6 +10,7 @@ export function mountEdges(
   host: AtlasHost,
   graph: AtlasGraph,
   edges: readonly AtlasEdge[],
+  emphasized?: (edge: AtlasEdge) => boolean,
 ): void {
   const doc = canvas.ownerDocument;
   if (!doc?.createElementNS || typeof canvas.getBoundingClientRect !== 'function') return;
@@ -62,7 +63,7 @@ export function mountEdges(
         path.setAttribute('data-from', edge.studyFrom);
         path.setAttribute('data-to', edge.studyTo);
         path.setAttribute('class', hit ? 'los-atlas-edge-hit' :
-          `los-atlas-edge los-atlas-edge--${edge.type}${host.edgeId === edge.id ? ' is-selected' : ''}`);
+          `los-atlas-edge los-atlas-edge--${edge.type}${host.edgeId === edge.id || emphasized?.(edge) ? ' is-selected' : ''}`);
         if (!hit) path.setAttribute('marker-end', `url(#${markerId})`);
         else {
           const title = doc.createElementNS(SVG, 'title');

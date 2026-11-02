@@ -30,6 +30,7 @@ export interface HomeResumePointer {
 export type HomePlugin = Pick<
   AppSurface,
   | 'generate'
+  | 'settings'
   | 'store'
 > & {
   readonly nav: Pick<

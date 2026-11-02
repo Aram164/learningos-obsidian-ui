@@ -21,6 +21,7 @@ import type {
   AtlasRouteState,
 } from '../features/atlas/ports';
 import { renderAtlas, rememberConcept } from '../features/atlas/shell';
+import { drawDesignScreen } from '../designs/registry';
 import type {
   RelationDraft,
   RelationOperation,
@@ -388,6 +389,7 @@ export class AtlasView extends ItemView implements AtlasHost {
 
   private renderContent(): void {
     this.clearRenderEffects();
+    if (drawDesignScreen(this.plugin, 'atlas', this)) return;
     renderAtlas(this.contentEl, this);
   }
 }

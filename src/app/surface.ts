@@ -86,6 +86,10 @@ export interface AppSurface {
    */
   persistSettings(): Promise<void>;
   notify(message: string): void;
+  /** Switch the interface design and redraw every open LearningOS view. */
+  setInterfaceDesign(id: string): Promise<void>;
+  /** Choose the colour scheme for the design on screen. */
+  setDesignPalette(palette: string): Promise<void>;
   gatewayRecoveryState(): GatewayRecoveryState;
   retryRecoveredWrite(): Promise<void>;
   generate(): Promise<void>;

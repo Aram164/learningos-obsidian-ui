@@ -1,0 +1,60 @@
+# Interface designs
+
+LearningOS can be drawn by more than one interface. The learner flips between them
+at will, so two designs can be compared on the same screen with the same data. A
+design changes how things are drawn and nothing else: same manifest, routes, gateway
+writes and drafts. It may not add a write path, a route, or a fact of its own.
+
+## Adding a design
+
+1. **Register it** in `src/app/interface-design.ts`: one row in `INTERFACE_DESIGNS`
+   with an id, a label, a description, the colour schemes it is drawn for, and its
+   default scheme. The Settings dropdown, the sidebar toggle and the commands all
+   read this list, so nothing else needs to know the design exists.
+2. **Register its screens** in `src/designs/registry.ts`, from a new folder
+   `src/designs/<id>/`. `src/designs/screens.ts` lists what can be replaced: `nav`,
+   `home`, `learn`, `moduleList`, `moduleDetail`, `unit`, `atlas`.
+   Every one is optional. Anything left out, and any screen that returns `false`,
+   falls through to the classic renderer. That is how a design ships part-built
+   without losing a capability.
+3. **Add its stylesheet** as `src/styles/4x-design-<id>.css` and list it in
+   `STYLESHEET_MODULES` in `build-styles.mjs`. Put every rule inside one block,
+   `body[data-los-ui="<id>"] { … }`, using native nesting. A test enforces this: it
+   is what guarantees that switching away removes the whole design and leaves
+   Classic untouched. Colours come from `--los-*` tokens only.
+4. **Draw the toggle** in your `nav` screen with `renderDesignSwitch` from
+   `src/app/design-switch.ts`, if you replace the sidebar. No design may strand the
+   learner inside it.
+
+A new colour scheme goes in `src/styles/25-palettes.css` and `PALETTES` in
+`src/app/palette.ts`, where the existing contrast gate checks it automatically.
+
+## Rules a design keeps
+
+- **Reuse the feature logic.** Writes go through the helpers the classic screens
+  use, such as `completeStage`, `stageMenuItems`, `openMaterialComparison` and
+  `renderPlanControls`. If a classic renderer holds logic you need, extract it into
+  a function both can call rather than copying it, and keep Classic's behaviour
+  identical.
+- **Everything stays reachable.** A capability the design does not redraw must still
+  be one click away, usually by calling the classic section renderer inside a
+  disclosure.
+- **Classic's hard rules still bind:** `CLAUDE.md` and the anti-patterns in
+  `DESIGN.md`. Regions, spines and similar groupings are presentation; they never
+  become a graph edge, an evidence claim or a record.
+- **View-owned attention stays view-owned.** Which tab is open is not a route.
+
+## Looking at it
+
+```bash
+npm run preview:design
+```
+
+This runs the real plugin code in a browser against the fixture manifest, read-only
+(`--manifest PATH` for another one, `--port N`). Add `?design=<id>` to the URL. It has
+no Obsidian chrome and no Obsidian stylesheet, so it speeds up design work but does
+not replace checking the real app.
+
+Two sessions building designs at once should each work on their own branch from
+`main`. They meet in only two registry files and the `build-styles.mjs` list, one row
+each, so merging them is trivial.

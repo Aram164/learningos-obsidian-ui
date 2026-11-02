@@ -35,7 +35,8 @@
     "test:build-fingerprint": "node tests/test-build-fingerprint.mjs",
     "test:install-current": "node tests/test-install-current.mjs",
     "contract:responses": "node scripts/generate-responses.mjs",
-    "test:response-validation-diff": "node tests/test-response-validation-diff.js"
+    "test:response-validation-diff": "node tests/test-response-validation-diff.js",
+    "preview:design": "node scripts/design-preview/serve.mjs"
   },
   "devDependencies": {
     "ajv": "^8.20.0",

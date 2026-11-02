@@ -3,6 +3,7 @@ import { withRenderFocus } from '../accessibility/render-focus';
 import { selectTab, selectComponent, renderSources } from '../features/module/actions';
 import { renderLogistics, deadlinesFor, renderAcademicDates, renderDeadlineRows } from '../features/module/logistics';
 import { renderModuleDetail, headline, renderOverview, renderUnits } from '../features/module/detail';
+import { drawDesignScreen } from '../designs/registry';
 import { renderGroups, renderGroupList } from '../features/module/navigation';
 import {
   ItemView,
@@ -130,6 +131,9 @@ export class ModuleView extends ItemView {
   }
 
   private renderContent(): void {
+    if (this.screen === 'detail'
+      ? drawDesignScreen(this.plugin, 'moduleDetail', this)
+      : this.screen !== 'list' && drawDesignScreen(this.plugin, 'moduleList', this)) return;
     const root = this.contentEl;
 
     root.empty();

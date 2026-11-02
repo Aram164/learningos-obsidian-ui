@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>LearningOS design preview</title>
+<link rel="stylesheet" href="styles.css">
+<style>
+  html, body { height: 100%; margin: 0; }
+  body { display: grid; grid-template-columns: 216px minmax(0, 1fr); font: 13px -apple-system, sans-serif; }
+  #nav, #main { height: 100vh; overflow: auto; }
+  .workspace-leaf-content, .view-content { height: 100%; }
+  .view-header { display: none; }
+  .modal-container { position: fixed; inset: 0; display: grid; place-items: center; background: #0006; z-index: 50; }
+  .modal { max-width: 80vw; max-height: 80vh; overflow: auto; padding: 16px; background: #fff; border-radius: 12px; }
+</style>
+</head>
+<body>
+<div id="nav"></div>
+<div id="main"></div>
+<script type="module" src="bundle.js"></script>
+</body>
+</html>

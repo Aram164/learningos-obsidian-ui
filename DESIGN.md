@@ -46,10 +46,22 @@ The interface carries usability while the core carries meaning.
    Secondary operations live in a `•••` overflow rather than competing with the
    two the learner came for.
 
+## Interface designs
+
+The system can be drawn by more than one interface design, and the learner flips
+between them at will (Settings → Interface, under More in the sidebar, or the
+*Switch to the next interface design* command). A design changes how things are
+drawn and nothing else: the same manifest, routes, gateway writes and drafts.
+Each design remembers its own colour scheme. **Classic** is everything else in
+this document. **Study Desk** (Figma `OYWzCiANiWjVWwwu5GTYrz`) is warm paper with
+Literata for reading, an open-book session and a map-first Atlas; its rules are
+that file's frame 15, and it departs from this document deliberately where the
+two differ. How to add one: [docs/interface-designs.md](docs/interface-designs.md).
+
 ## Navigation
 
-Eight permanent destinations: **Home, Modules, Learn, Projects, Library,
-Atlas, Garden, Review.** (Amended 2026-10-01: Atlas opens on Concepts;
+Seven permanent destinations: **Home, Modules, Learn, Library, Atlas, Garden,
+Review.** Projects routes to Modules. (Amended 2026-10-01: Atlas opens on Concepts;
 Review carries a live count, which is the length of the same
 queue Review lists and never a second tally.) Modules begins with open academic
 modules across semesters and opens full-page details. Bachelor's, Skills, Job, and Thesis & projects remain

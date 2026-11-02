@@ -15,6 +15,7 @@ import {
   type UnitRecordView,
   type StageRecordView,
   type StudyMapView,
+  type MaterialOptionView,
   readUnitRecord,
   readStudyMap,
   readMaterialOptions,
@@ -236,12 +237,7 @@ export function render(
     }
 
     const durableStudyMap = readStudyMap(projectedStudyMap);
-    const mapId = String(durableStudyMap.record.id);
-    const durableIds = durableStudyMap.stages.map(s => s.id);
-    const temporary = view.temporarySequence.current(unit.id, mapId, durableIds,
-      view.plugin.store.snapshotId, view.plugin.store.stale);
-    const studyMap = temporary ? { ...durableStudyMap,
-      stages: temporary.stages.map(s => durableStudyMap.stages.find(stage => stage.id === s.id)!) } : durableStudyMap;
+    const { studyMap, temporary } = sittingStudyMap(view, unit.id, durableStudyMap);
 
     /* Deriving the first stage here rather than testing `.length` is what lets
      * the compiler carry "this map has stages" through the rest of the render;
@@ -270,84 +266,17 @@ export function render(
       return;
     }
 
-    const stageIds = new Set(
-      studyMap.stages.map(
-        (stage) => stage.id,
-      ),
-    );
+    const stage = selectedStage(view, unit.id, studyMap, firstStage, Boolean(temporary));
 
-    if (
-      !view.stageId
-      || !stageIds.has(view.stageId)
-    ) {
-      view.stageId =
-        (
-          studyMap.currentStageId
-          && stageIds.has(
-            studyMap.currentStageId,
-          )
-        )
-          ? studyMap.currentStageId
-          : firstStage.id;
-
-      if (!temporary) view.plugin.setSelectedStage(unit.id, view.stageId);
-    }
-
-    const stage =
-      studyMap.stages.find(
-        (candidate) =>
-          candidate.id
-          === view.stageId,
-      )
-      ?? firstStage;
-
-    const provenance = root.createDiv({
-      cls: 'los-map-provenance',
-    });
-
-    /* Keep the replacement gate visible with the map it replaces, including
-     * at an 800 px window height. */
-    provenance.createSpan({
-      cls: 'los-micro',
-      text:
-        studyMap.planTemplateVersion === null
-          ? 'This study map predates plan template v1. It stays readable; a replacement is imported from the current template.'
-          : `Study map on plan template v${studyMap.planTemplateVersion}.`,
-    });
-
-    openMapImport(
+    renderPlanControls(
       view,
-      provenance,
+      root,
       unit,
-      true,
+      durableStudyMap,
+      studyMap,
+      Boolean(temporary),
+      materialOptions,
     );
-
-    if (temporary) {
-      provenance.createEl('p', { text: `Temporary sequence: ${studyMap.stages.length} of ${durableStudyMap.stages.length} stages for this sitting. Recording work or changing the snapshot expires this choice.` });
-      button(provenance, 'Show full durable plan', () => { view.temporarySequence.clear(); view.render(); }, 'quiet');
-    } else if (view.temporarySequence.notice) provenance.createEl('p', { text: view.temporarySequence.notice });
-    button(provenance, 'Sequence for this sitting', () => {
-      const snapshot = view.plugin.store.snapshotId;
-      const lifetime = view.temporarySequence.generation;
-      const isCurrent = () => view.unitId === unit.id && view.temporarySequence.generation === lifetime;
-      if (!snapshot || view.plugin.store.stale) return;
-      new StudySequenceModal(view.app, {
-        studyMap: durableStudyMap,
-        isCurrent,
-        check: async ids => readStudySequence(await view.plugin.gateway.studySequence(unit.id, ids, snapshot), unit.id, mapId, snapshot, ids, durableIds),
-        use: async preview => {
-          if (!isCurrent()) throw new Error('The Unit view or sitting ended. Check a fresh sequence.');
-          view.temporarySequence.use(preview, view.plugin.store.snapshotId, view.plugin.store.stale);
-          view.render();
-        },
-      }).open();
-    }, 'quiet');
-
-    button(provenance, 'Adjust study plan', () => new StructuralEditModal(view.app, {
-      studyMap: durableStudyMap, materials: materialOptions,
-      check: edit => view.plugin.gateway.checkStructuralEdit(unit.id, edit),
-      submit: review => view.plugin.mutate(() => view.plugin.gateway.importUnitMap(review)),
-    }).open(), 'quiet');
 
     /* 14:502 is an eyebrow, a title and one action — no third line. The
      * summary that stood here restated the stage count, the completed count
@@ -438,6 +367,120 @@ function openMapImport(
     ).open(),
     replacing ? 'quiet' : 'cta',
   );
+}
+
+/** Replace, re-sequence or adjust a plan: the same controls whichever design draws the plan. */
+export function renderPlanControls(
+  view: UnitShellHost,
+  parent: HTMLElement,
+  unit: UnitRecordView,
+  durableStudyMap: StudyMapView,
+  studyMap: StudyMapView,
+  temporary: boolean,
+  materialOptions: readonly MaterialOptionView[],
+): void {
+    const mapId = String(durableStudyMap.record.id);
+    const durableIds = durableStudyMap.stages.map(s => s.id);
+    const provenance = parent.createDiv({
+      cls: 'los-map-provenance',
+    });
+
+    /* Keep the replacement gate visible with the map it replaces, including
+     * at an 800 px window height. */
+    provenance.createSpan({
+      cls: 'los-micro',
+      text:
+        studyMap.planTemplateVersion === null
+          ? 'This study map predates plan template v1. It stays readable; a replacement is imported from the current template.'
+          : `Study map on plan template v${studyMap.planTemplateVersion}.`,
+    });
+
+    openMapImport(
+      view,
+      provenance,
+      unit,
+      true,
+    );
+
+    if (temporary) {
+      provenance.createEl('p', { text: `Temporary sequence: ${studyMap.stages.length} of ${durableStudyMap.stages.length} stages for this sitting. Recording work or changing the snapshot expires this choice.` });
+      button(provenance, 'Show full durable plan', () => { view.temporarySequence.clear(); view.render(); }, 'quiet');
+    } else if (view.temporarySequence.notice) provenance.createEl('p', { text: view.temporarySequence.notice });
+    button(provenance, 'Sequence for this sitting', () => {
+      const snapshot = view.plugin.store.snapshotId;
+      const lifetime = view.temporarySequence.generation;
+      const isCurrent = () => view.unitId === unit.id && view.temporarySequence.generation === lifetime;
+      if (!snapshot || view.plugin.store.stale) return;
+      new StudySequenceModal(view.app, {
+        studyMap: durableStudyMap,
+        isCurrent,
+        check: async ids => readStudySequence(await view.plugin.gateway.studySequence(unit.id, ids, snapshot), unit.id, mapId, snapshot, ids, durableIds),
+        use: async preview => {
+          if (!isCurrent()) throw new Error('The Unit view or sitting ended. Check a fresh sequence.');
+          view.temporarySequence.use(preview, view.plugin.store.snapshotId, view.plugin.store.stale);
+          view.render();
+        },
+      }).open();
+    }, 'quiet');
+
+    button(provenance, 'Adjust study plan', () => new StructuralEditModal(view.app, {
+      studyMap: durableStudyMap, materials: materialOptions,
+      check: edit => view.plugin.gateway.checkStructuralEdit(unit.id, edit),
+      submit: review => view.plugin.mutate(() => view.plugin.gateway.importUnitMap(review)),
+    }).open(), 'quiet');
+
+}
+
+/** The durable map, or the temporary order chosen for this sitting. */
+export function sittingStudyMap(
+  view: Pick<UnitShellHost, 'plugin' | 'temporarySequence'>,
+  unitId: string,
+  durable: StudyMapView,
+) {
+  const temporary = view.temporarySequence.current(unitId, String(durable.record.id),
+    durable.stages.map(s => s.id), view.plugin.store.snapshotId, view.plugin.store.stale);
+  const studyMap: StudyMapView = temporary ? { ...durable,
+    stages: temporary.stages.map(s => durable.stages.find(stage => stage.id === s.id)!) } : durable;
+  return { studyMap, temporary };
+}
+
+/** The stage on screen: the view's choice if it still exists, else the map's current one. */
+export function selectedStage(
+  view: Pick<UnitShellHost, 'plugin' | 'stageId'>,
+  unitId: string,
+  studyMap: StudyMapView,
+  firstStage: StageRecordView,
+  temporary: boolean,
+): StageRecordView {
+    const stageIds = new Set(
+      studyMap.stages.map(
+        (stage) => stage.id,
+      ),
+    );
+
+    if (
+      !view.stageId
+      || !stageIds.has(view.stageId)
+    ) {
+      view.stageId =
+        (
+          studyMap.currentStageId
+          && stageIds.has(
+            studyMap.currentStageId,
+          )
+        )
+          ? studyMap.currentStageId
+          : firstStage.id;
+
+      if (!temporary) view.plugin.setSelectedStage(unitId, view.stageId);
+    }
+
+    return studyMap.stages.find(
+        (candidate) =>
+          candidate.id
+          === view.stageId,
+      )
+      ?? firstStage;
 }
 
 export function renderRail(

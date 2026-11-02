@@ -6,10 +6,8 @@ import type { AppSurface } from '../app/surface';
 import type { AppNavigator } from '../app/navigator';
 import { enableButtonGroupKeyboardNavigation } from '../accessibility/button-group';
 import { reviewQueueCount } from '../features/review/queue';
-
-interface NavSettings {
-  navMoreOpen: boolean;
-}
+import { renderDesignSwitch } from '../app/design-switch';
+import { drawDesignScreen } from '../designs/registry';
 
 type NavPlugin = Pick<
   AppSurface,
@@ -17,6 +15,9 @@ type NavPlugin = Pick<
   | 'generate'
   | 'listAbilityDrafts'
   | 'scheduleDraftSave'
+  | 'setDesignPalette'
+  | 'setInterfaceDesign'
+  | 'settings'
   | 'store'
 > & {
   readonly nav: Pick<
@@ -37,7 +38,6 @@ type NavPlugin = Pick<
   >;
 } & {
   readonly activeNav: string;
-  readonly settings: NavSettings;
 };
 
 /**
@@ -49,7 +49,7 @@ type NavPlugin = Pick<
  * obvious, not to prove the system is large.
  */
 export class NavView extends ItemView {
-  private readonly plugin: NavPlugin;
+  readonly plugin: NavPlugin;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -97,6 +97,7 @@ export class NavView extends ItemView {
   }
 
   render() {
+    if (drawDesignScreen(this.plugin, 'nav', this)) return;
     const root = this.contentEl; root.empty();
     manifestFreshness(root, this.plugin.store); root.addClass('los-root', 'los-app-nav');
     const brand = root.createDiv({ cls: 'los-nav-brand' });
@@ -134,5 +135,6 @@ export class NavView extends ItemView {
       () => this.plugin.nav.openBoundary('program-masters-planning'));
     this.nav(secondary, 'activity', 'Diagnostics', 'diagnostics', () => this.plugin.nav.openDiagnostics());
     this.nav(secondary, 'refresh-cw', 'Rebuild projection', 'rebuild', () => this.plugin.generate());
+    renderDesignSwitch(secondary, this.plugin);
   }
 }

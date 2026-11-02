@@ -51,6 +51,13 @@ export const DEFAULT_SETTINGS = {
    * value falls back to 'wine' rather than leaving the app unstyled.
    */
   palette: 'wine',
+  /**
+   * Which interface design is on screen (`app/interface-design.ts`). 'classic'
+   * sets no attribute. An unknown value falls back to 'classic'.
+   */
+  uiDesign: 'classic',
+  /** The colour scheme each non-classic design last showed, by design id. */
+  uiDesignPalettes: {} as Record<string, string>,
   pythonPath: '',
   preferredAiProvider: 'manual-bundle',
   /**

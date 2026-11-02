@@ -34,6 +34,7 @@ the same import graph and emits one CommonJS plugin bundle.
 | `src/features/` | Domain read models, rendering, and interactions | Obsidian leaf classes |
 | `src/features/*/ports.ts` | Narrow feature-owned host contracts | Implementations |
 | `src/views/` | Leaf lifecycle and feature composition | New domain logic |
+| `src/designs/` | Alternative interface designs: screens drawn from the same features and store | Any write path, route or fact of its own |
 | `src/app/` | Routes, navigation state, view registration, global overlays | Canonical meaning |
 | `src/application/` | UI-owned drafts and recovery state | Canonical records |
 | `src/infrastructure/` | Host/process/resource adapters | Business rules |

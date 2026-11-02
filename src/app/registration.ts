@@ -17,7 +17,8 @@ import {
   VIEW_UNIT,
 } from '../constants';
 import type { AppSurface } from './surface';
-import { applyPalette, clearPalette } from './palette';
+import { clearPalette } from './palette';
+import { applyInterfaceDesign, clearInterfaceDesign, INTERFACE_DESIGNS } from './interface-design';
 import { LearningOSSettingsTab } from '../settings';
 import { AbilitiesView } from '../views/abilities-view';
 import { AtlasView } from '../views/atlas-view';
@@ -123,8 +124,17 @@ export function registerApplication(plugin: ApplicationPlugin): void {
   plugin.addCommand({ id: 'open-diagnostics', name: 'Open Diagnostics', callback: () => plugin.nav.openDiagnostics() });
   plugin.addCommand({ id: 'rebuild-projection', name: 'Validate and rebuild projection', callback: () => plugin.generate() });
   plugin.addCommand({ id: 'end-learning-session', name: 'End learning session safely', callback: () => plugin.reviewSessionEnd() });
+  plugin.addCommand({ id: 'next-interface-design', name: 'Switch to the next interface design', callback: () => {
+    const index = INTERFACE_DESIGNS.findIndex((design) => design.id === plugin.settings.uiDesign);
+    const next = INTERFACE_DESIGNS[(index + 1) % INTERFACE_DESIGNS.length];
+    if (next) void plugin.setInterfaceDesign(next.id);
+  } });
+  for (const design of INTERFACE_DESIGNS) {
+    plugin.addCommand({ id: `use-interface-design-${design.id}`, name: `Use the ${design.label} interface`,
+      callback: () => plugin.setInterfaceDesign(design.id) });
+  }
 
-  applyPalette(document.body, plugin.settings.palette);
+  applyInterfaceDesign([document.body], plugin.settings);
 
   plugin.app.workspace.onLayoutReady(async () => {
     if (!plugin.isLifecycleActive()) return;
@@ -132,7 +142,7 @@ export function registerApplication(plugin: ApplicationPlugin): void {
     // registration, before any view is mounted; repeating it here costs one
     // attribute write and removes a whole class of "the setting is saved but
     // the screen never changed" that is otherwise invisible to a reader.
-    applyPalette(document.body, plugin.settings.palette);
+    applyInterfaceDesign([document.body], plugin.settings);
       await plugin.router.openNavigator();
     if (!plugin.isLifecycleActive()) return;
     plugin.app.workspace.leftSplit?.setSize?.(280);
@@ -143,5 +153,6 @@ export function registerApplication(plugin: ApplicationPlugin): void {
 
 export function detachApplication(plugin: ApplicationPlugin): void {
   clearPalette(document.body);
+  clearInterfaceDesign(document.body);
   for (const type of APPLICATION_VIEW_TYPES) plugin.app.workspace.detachLeavesOfType(type);
 }

@@ -16,7 +16,8 @@ import type { SessionReviewV1 } from './contracts/gateway-v1';
 import type { AppSurface } from './app/surface';
 import type { AppNavigator } from './app/navigator';
 import { makeModalAccessible } from './accessibility/modal';
-import { applyPaletteEverywhere, PALETTES } from './app/palette';
+import { PALETTES } from './app/palette';
+import { applyInterfaceDesign, designPalette, INTERFACE_DESIGNS, interfaceDesign, rememberDesignPalette } from './app/interface-design';
 
 type ToggleSettingKey =
   | 'openHomeOnStartup'
@@ -30,6 +31,7 @@ type SettingsPlugin =
   AppSurface,
   | 'generate'
   | 'persistSettings'
+  | 'setInterfaceDesign'
   | 'settings'
 > & {
   readonly nav: Pick<
@@ -86,28 +88,44 @@ export class LearningOSSettingsTab extends PluginSettingTab {
         }),
       );
     }
+    const active = interfaceDesign(this.plugin.settings.uiDesign);
+    new Setting(root).setName('Interface')
+      .setDesc(`${active.description} Switching only changes how things are drawn; every record stays where it is. Also under More in the sidebar, and as commands.`)
+      .addDropdown((dropdown: DropdownComponent) => {
+        for (const design of INTERFACE_DESIGNS) dropdown.addOption(design.id, design.label);
+        return dropdown
+          .setValue(active.id)
+          .onChange(async (value: string) => {
+            await this.plugin.setInterfaceDesign(value);
+            // This tab may live in its own window, whose body the plugin cannot name.
+            applyInterfaceDesign([this.containerEl.ownerDocument?.body], this.plugin.settings);
+            this.display();
+          });
+      });
     new Setting(root).setName('Colour scheme')
       .setDesc(
-        'Choose a richer light or dark palette. Wine, Graphite and Indigo have light surfaces; '
-        + 'Ink, Midnight, Slate and Carbon have dark canvases. Green marks applied, blue information '
-        + 'and amber attention. Every scheme meets the same contrast floor.',
+        active.id === 'classic'
+          ? 'Choose a richer light or dark palette. Wine, Graphite and Indigo have light surfaces; '
+            + 'Ink, Midnight, Slate and Carbon have dark canvases. Green marks applied, blue information '
+            + 'and amber attention. Every scheme meets the same contrast floor.'
+          : `${active.label} remembers its own scheme, separately from any other interface.`,
       )
       .addDropdown((dropdown: DropdownComponent) => {
-        for (const [id, label] of PALETTES) dropdown.addOption(id, label);
+        for (const [id, label] of PALETTES) {
+          if (active.palettes.includes(id)) dropdown.addOption(id, label);
+        }
         return dropdown
-          .setValue(this.plugin.settings.palette)
+          .setValue(designPalette(this.plugin.settings))
           .onChange(async (value: string) => {
             // Apply first so the choice is visible while the write happens,
             // and store what was actually applied rather than what was asked
             // for — an unknown id resolves to the default palette.
-            this.plugin.settings.palette = applyPaletteEverywhere(
-              // The settings tab's own document is not necessarily the one the
-              // app is rendered into (Obsidian opens Settings in its own
-              // window), so name both rather than trusting whichever `document`
-              // this code happens to see.
-              [this.containerEl.ownerDocument?.body, document.body],
-              value,
-            );
+            rememberDesignPalette(this.plugin.settings, value);
+            // The settings tab's own document is not necessarily the one the
+            // app is rendered into (Obsidian opens Settings in its own
+            // window), so name both rather than trusting whichever `document`
+            // this code happens to see.
+            applyInterfaceDesign([this.containerEl.ownerDocument?.body, document.body], this.plugin.settings);
             await this.plugin.persistSettings();
           });
       });

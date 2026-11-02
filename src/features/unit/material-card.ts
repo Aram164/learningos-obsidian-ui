@@ -289,6 +289,11 @@ export interface CardOptions {
   readonly actions?: (actions: HTMLElement) => void;
 }
 
+/** Where one placement is, in words: its own target if it names one, else its route's. */
+export function placementAvailability(resource: StageResourceView, route: MaterialOptionView | null): Availability {
+  return projectedAvailability(route && !hasOwnTarget(resource.record) ? route.record : resource.record);
+}
+
 /** A stage placement as a card. The placement keeps its own target and feedback identity. */
 export function renderPlacementCard(
   parent: HTMLElement,

@@ -8,6 +8,7 @@ import {
 } from 'obsidian';
 import { VIEW_UNIT } from '../constants';
 import { TemporaryStudySequence } from '../features/unit/sequence';
+import { drawDesignScreen } from '../designs/registry';
 
 import {
   UnitRecordView,
@@ -133,6 +134,7 @@ export class UnitView extends ItemView {
   }
 
     render(): void {
+    if (drawDesignScreen(this.plugin, 'unit', this)) return;
     render(this);
   }
 

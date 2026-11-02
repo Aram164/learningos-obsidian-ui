@@ -66,6 +66,17 @@
   --los-st-done:      var(--los-success);
   --los-st-shelve:    var(--los-info);
 
+  /* Spine colours: one per module or Atlas region, and always beside its name.
+     Only a design that draws spines reads them; a scheme that design offers
+     restates them for its own canvas. */
+  --los-cover-wine:   #8c1649;
+  --los-cover-teal:   #1f5f5b;
+  --los-cover-ochre:  #94590f;
+  --los-cover-moss:   #3f5f2c;
+  --los-cover-slate:  #3d4f73;
+  --los-cover-plum:   #6a4a7b;
+  --los-cover-stone:  #6c6359;
+
   --los-surface: var(--los-paper-2);
   --los-surface-raised: #ffffff;
   --los-line: var(--los-rule-strong);

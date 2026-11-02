@@ -1,0 +1,44 @@
+/* The interface toggle, drawn in every design's sidebar. Unscoped on purpose: it
+ * has to look like the same control whichever design you are about to leave. */
+.los-design-switch {
+  margin-top: var(--los-2);
+  padding: var(--los-1) var(--los-2);
+}
+.los-design-switch-label {
+  margin-bottom: var(--los-1);
+  color: var(--los-ink-soft);
+  font-size: 11px;
+  font-weight: 600;
+}
+.los-design-switch-options {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--los-r-sm);
+  background: var(--los-paper-3);
+}
+.los-root .los-design-switch-option {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 26px;
+  padding: 2px var(--los-1);
+  border: 0;
+  border-radius: calc(var(--los-r-sm) - 2px);
+  background: transparent;
+  box-shadow: none;
+  color: var(--los-ink-soft);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: normal;
+}
+.los-root .los-design-switch-option:hover { color: var(--los-ink); }
+.los-root .los-design-switch-option.is-active {
+  background: var(--los-surface-raised);
+  box-shadow: 0 1px 2px var(--los-shadow-soft);
+  color: var(--los-ink);
+  font-weight: 650;
+}
+.los-root .los-design-switch-option:focus-visible {
+  outline: 2px solid var(--los-accent);
+  outline-offset: 1px;
+}

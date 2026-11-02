@@ -19,6 +19,7 @@ import type { AppSurface } from '../app/surface';
 import type { AppNavigator } from '../app/navigator';
 import { errorMessage, isRecord } from '../projection/readers';
 import { enableButtonGroupKeyboardNavigation } from '../accessibility/button-group';
+import { drawDesignScreen } from '../designs/registry';
 
 interface ProgramViewState {
   programId?: string | null;
@@ -37,12 +38,14 @@ type ProgramPlugin = Pick<
   | 'getInboxDraft'
   | 'mutate'
   | 'setInboxDraft'
+  | 'settings'
   | 'store'
 > & {
   readonly nav: Pick<
     AppNavigator,
     | 'openLearn'
     | 'openModule'
+    | 'openModules'
     | 'openProjects'
     | 'openUnit'
   >;
@@ -83,8 +86,8 @@ function readProgramSemesters(
 }
 
 export class ProgramView extends ItemView {
-  private readonly plugin: ProgramPlugin;
-  private programId: string | null = null;
+  readonly plugin: ProgramPlugin;
+  programId: string | null = null;
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -150,6 +153,7 @@ export class ProgramView extends ItemView {
   }
 
   private renderContent(): void {
+    if (drawDesignScreen(this.plugin, 'learn', this)) return;
     const root = this.contentEl;
     root.empty();
     manifestFreshness(root, this.plugin.store);

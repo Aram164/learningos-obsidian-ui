@@ -49,6 +49,8 @@ export const STYLESHEET_MODULES = [
   '28-review-split.css',
   '29-material-compare.css',
   '30-domain-atlas.css',
+  '31-design-switch.css',
+  '40-design-study-desk.css',
 ];
 
 /*

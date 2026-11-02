@@ -121,6 +121,7 @@ export interface SourceEntryView {
 export type ModulePlugin = Pick<
   AppSurface,
   | 'router'
+  | 'settings'
   | 'store'
   | 'openAuthoredPath'
 > & {
@@ -130,6 +131,7 @@ export type ModulePlugin = Pick<
     | 'openLibrary'
     | 'openModule'
     | 'openModuleDetail'
+    | 'openModules'
     | 'openUnit'
   >;
 };

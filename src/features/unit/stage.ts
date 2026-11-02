@@ -13,10 +13,12 @@ import {
   type UnitRecordView,
   type StageRecordView,
   type StudyMapView,
+  type MaterialOptionView,
 } from './model';
 import {
   currentWorkResource,
   triageSummary,
+  type StageResourceRenderer,
   type StageResourceView,
 } from '../stage-resources';
 import { readMaterialOptions } from './model';
@@ -253,37 +255,8 @@ export function renderStage(
      * DESIGN.md principle 8 holds throughout — `Complete stage` is the only
      * filled action on this screen, so `Compare all` is a plain control and the
      * current-work card carries `Open` alone. */
-    const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
-    const materialOptions = readMaterialOptions(sourceMap?.sources, unit.id, unit.record.source_selections);
-    const resourceRenderer = {
-      emptyDetail: 'Use the unit scope and ask AI for a proposal.',
-      sourceRecord: (sourceId: string) => view.plugin.store.get(sourceId),
-      routeRecord: (routeId: string) => materialOptions.find(option => option.routeId === routeId)?.record ?? null,
-      openSource: (source: ProjectionRecord) => {
-        const sourceId = projectedString(source.id);
-        return sourceId ? view.plugin.nav.openLibrary(sourceId) : undefined;
-      },
-      openSourceResource: (source: ProjectionRecord) =>
-        view.plugin.openResource(source),
-      openResource: (resource: StageResourceView) =>
-        view.plugin.openResource(resource.record),
-      // ADR-009: when an id exists, feedback lands on the exact resource;
-      // otherwise it deliberately describes the whole source.
-      rateResource: (
-        sourceId: string,
-        resourceId: string | null,
-        verdict: string,
-      ) => view.mutate(
-        () => view.plugin.gateway.feedback(
-          unit.id,
-          stage.id,
-          sourceId,
-          verdict,
-          resourceId,
-          expectedRevisions,
-        ),
-      ),
-    };
+    const materialOptions = stageMaterialOptions(view, unit);
+    const resourceRenderer = stageResourceRenderer(view, unit, stage, expectedRevisions, materialOptions);
 
     const current = currentWorkResource(stage.resources);
     const requiredCount = stage.resources.filter(
@@ -379,18 +352,7 @@ export function renderStage(
       button(
         catalogueActions,
         'Compare all',
-        () => {
-          new MaterialComparisonModal(view.app, {
-            plugin: view.plugin,
-            unit,
-            stage,
-            resources: stage.resources,
-            materialOptions,
-            expectedRevisions,
-            renderer: resourceRenderer,
-            onChanged: () => view.render(),
-          }).open();
-        },
+        () => openMaterialComparison(view, unit, stage, expectedRevisions),
       );
     }
 
@@ -408,6 +370,95 @@ export function renderStage(
       expectedRevisions,
     );
   }
+
+/** The unit's complete material menu, as the stage and its comparison drawer read it. */
+export function stageMaterialOptions(
+  view: Pick<UnitStageHost, 'plugin'>,
+  unit: UnitRecordView,
+): MaterialOptionView[] {
+  const sourceMap = view.plugin.store.sourceMap(unit.moduleId);
+  return readMaterialOptions(sourceMap?.sources, unit.id, unit.record.source_selections);
+}
+
+export function stageResourceRenderer(
+  view: UnitStageHost,
+  unit: UnitRecordView,
+  stage: StageRecordView,
+  expectedRevisions: Readonly<Record<string, number>>,
+  materialOptions: readonly MaterialOptionView[],
+): StageResourceRenderer & { readonly emptyDetail: string } {
+  return {
+      emptyDetail: 'Use the unit scope and ask AI for a proposal.',
+      sourceRecord: (sourceId: string) => view.plugin.store.get(sourceId),
+      routeRecord: (routeId: string) => materialOptions.find(option => option.routeId === routeId)?.record ?? null,
+      openSource: (source: ProjectionRecord) => {
+        const sourceId = projectedString(source.id);
+        return sourceId ? view.plugin.nav.openLibrary(sourceId) : undefined;
+      },
+      openSourceResource: (source: ProjectionRecord) =>
+        view.plugin.openResource(source),
+      openResource: (resource: StageResourceView) =>
+        view.plugin.openResource(resource.record),
+      // ADR-009: when an id exists, feedback lands on the exact resource;
+      // otherwise it deliberately describes the whole source.
+      rateResource: (
+        sourceId: string,
+        resourceId: string | null,
+        verdict: string,
+      ) => view.mutate(
+        () => view.plugin.gateway.feedback(
+          unit.id,
+          stage.id,
+          sourceId,
+          verdict,
+          resourceId,
+          expectedRevisions,
+        ),
+      ),
+  };
+}
+
+export function openMaterialComparison(
+  view: UnitStageHost,
+  unit: UnitRecordView,
+  stage: StageRecordView,
+  expectedRevisions: Readonly<Record<string, number>>,
+): void {
+  const materialOptions = stageMaterialOptions(view, unit);
+  new MaterialComparisonModal(view.app, {
+    plugin: view.plugin,
+    unit,
+    stage,
+    resources: stage.resources,
+    materialOptions,
+    expectedRevisions,
+    renderer: stageResourceRenderer(view, unit, stage, expectedRevisions, materialOptions),
+    onChanged: () => view.render(),
+  }).open();
+}
+
+/** The one completion write, whichever design draws its button. */
+export function completeStage(
+  view: UnitStageHost,
+  unit: UnitRecordView,
+  stage: StageRecordView,
+  expectedRevisions: Readonly<Record<string, number>>,
+): Promise<void> {
+  return view.mutate(
+    () =>
+      view.plugin.gateway.progress(
+        unit.id,
+        stage.id,
+        'complete',
+        expectedRevisions,
+      ),
+    () =>
+      view.plugin.clearDoneWhen(
+        unit.id,
+        stage.id,
+      ),
+  );
+}
 
 export function renderActionBar(
   view: UnitStageHost,
@@ -447,26 +498,25 @@ export function renderActionBar(
     button(
       bar,
       'Complete stage',
-      () => view.mutate(
-        () =>
-          view.plugin.gateway.progress(
-            unit.id,
-            stage.id,
-            'complete',
-            expectedRevisions,
-          ),
-        () =>
-          view.plugin.clearDoneWhen(
-            unit.id,
-            stage.id,
-          ),
-      ),
+      () => completeStage(view, unit, stage, expectedRevisions),
       'cta',
     );
 
-    const menuItems: Array<
-      [string, () => unknown] | false
-    > = [
+    overflowMenu(
+      bar,
+      stageMenuItems(view, unit, stage, expectedRevisions),
+      'More unit actions',
+    );
+  }
+
+/** Everything a stage can do besides completing it: pause, skip, gap, shelve, ask. */
+export function stageMenuItems(
+  view: UnitStageHost,
+  unit: UnitRecordView,
+  stage: StageRecordView,
+  expectedRevisions: Readonly<Record<string, number>>,
+): Array<[string, () => unknown] | false> {
+    return [
       stage.status !== 'active'
       && [
         'Revisit stage',
@@ -554,10 +604,4 @@ export function renderActionBar(
         },
       ],
     ];
-
-    overflowMenu(
-      bar,
-      menuItems,
-      'More unit actions',
-    );
   }

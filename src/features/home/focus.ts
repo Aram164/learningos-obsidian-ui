@@ -153,17 +153,9 @@ export function renderContinue(
     );
   }
 
-export function renderToday(
-  view: HomeFocusHost,
-
-    root: HTMLElement,
-  ): void {
-    const sectionEl = section(
-      root,
-      'Today',
-      'Only items likely to affect the next decision.',
-    );
-
+export function todayItems(
+  view: Pick<HomeFocusHost, 'plugin'>,
+): HomeItem[] {
     const items: HomeItem[] = [];
 
     const today =
@@ -321,6 +313,22 @@ export function renderToday(
           () => view.plugin.nav.openReview(),
       });
     }
+
+    return items;
+  }
+
+export function renderToday(
+  view: HomeFocusHost,
+
+    root: HTMLElement,
+  ): void {
+    const sectionEl = section(
+      root,
+      'Today',
+      'Only items likely to affect the next decision.',
+    );
+
+    const items = todayItems(view);
 
     if (!items.length) {
       empty(

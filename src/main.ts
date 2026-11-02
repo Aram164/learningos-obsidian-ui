@@ -6,7 +6,8 @@ import {
 import * as fs from 'node:fs';
 import * as nodePath from 'node:path';
 
-import { detachApplication, registerApplication } from './app/registration';
+import { APPLICATION_VIEW_TYPES, detachApplication, registerApplication } from './app/registration';
+import { applyInterfaceDesign, normalizeInterfaceDesign, rememberDesignPalette } from './app/interface-design';
 import { AppNavigator } from './app/navigator';
 import { ApplicationRouter } from './app/router';
 import { UnitNoteModal } from './app/unit-note-modal';
@@ -629,6 +630,32 @@ export class LearningOSUI extends Plugin implements AppSurface {
     // The record retired, so the recovery actually settled: only now may the
     // stream claim it. Restart paths stashed no trace and emit nothing here.
     this.gateway.noteSettlementObserved(confirmation);
+  }
+
+  /**
+   * Switching design changes how things are drawn and nothing else, so it writes
+   * only `data.json`. It redraws every open view in place: routes, scroll-owning
+   * leaves and drafts stay where they are, so a learner can compare two designs
+   * of the same screen by flipping back and forth.
+   */
+  async setInterfaceDesign(id: string): Promise<void> {
+    this.settings.uiDesign = normalizeInterfaceDesign(id);
+    this.redrawForDesign();
+    await this.persistSettings();
+  }
+
+  async setDesignPalette(palette: string): Promise<void> {
+    rememberDesignPalette(this.settings, palette);
+    this.redrawForDesign();
+    await this.persistSettings();
+  }
+
+  private redrawForDesign(): void {
+    applyInterfaceDesign([document.body], this.settings);
+    if (!this.isLifecycleActive()) return;
+    for (const type of APPLICATION_VIEW_TYPES) {
+      for (const leaf of this.app.workspace.getLeavesOfType(type)) leaf.view?.render?.();
+    }
   }
 
   /** The active destination is a display fact, so the Navigator is the only

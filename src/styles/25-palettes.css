@@ -286,3 +286,136 @@ body[data-los-palette="carbon"] .los-root {
  * WCAG pairs before it can ship; this one is the deliberate exception, and the
  * dropdown label says so rather than letting the gate look wider than it is.
  * `src/styles/00-tokens.css` lists every token worth setting. */
+
+/* ── Lamplight — warm dark for the evening, drawn for Study Desk ───────────
+ * The Figma variable collection's second mode. The same room with the lights
+ * down: warm brown canvas, the wine brand lifted to rose so it holds its
+ * contrast. The semantic hues are restated for a dark canvas like every other
+ * dark scheme here. */
+body[data-los-palette="lamplight"] .los-root {
+  --los-paper:          #1a1411;
+  --los-paper-2:        #241c18;
+  --los-paper-3:        #2e2520;
+  --los-ink:            #f4eadf;
+  --los-ink-soft:       #cdbfb0;
+  --los-ink-faint:      #ad9f90;
+  --los-rule:           #3a2f29;
+  --los-rule-strong:    #85766a;
+  --los-accent:         #ef9dbd;
+  --los-accent-strong:  #f8bdd3;
+  --los-accent-soft:    #d882a4;
+  --los-accent-wash:    #43202f;
+  --los-st-active:      var(--los-success);
+  --los-st-ready:       var(--los-accent);
+  --los-st-attention:   var(--los-warning);
+  --los-st-paused:      #eec27a;
+  --los-st-done:        var(--los-success);
+  --los-st-shelve:      var(--los-info);
+
+  --los-sidebar:        #14100d;
+  --los-selected:       #3a1d2a;
+  --los-on-accent:      #23101a;
+  --los-success:        #8fd3a8;
+  --los-success-strong: #b3e6c5;
+  --los-success-wash:   #1c3226;
+  --los-info:           #9cc2ea;
+  --los-info-strong:    #bfd8f3;
+  --los-info-wash:      #1e2d3e;
+  --los-warning:        #eec27a;
+  --los-warning-strong: #f5d6a1;
+  --los-warning-wash:   #3b2e15;
+  --los-shadow-soft:    rgba(0, 0, 0, .36);
+  --los-surface:        var(--los-paper-2);
+  --los-surface-raised: #2e2520;
+  --los-line:           var(--los-rule-strong);
+  --los-line-strong:    var(--los-ink-faint);
+  --los-color-scheme: dark;
+
+  --los-cover-wine:   #ef9dbd;
+  --los-cover-teal:   #86d0c9;
+  --los-cover-ochre:  #e8b56c;
+  --los-cover-moss:   #a9cf8e;
+  --los-cover-slate:  #a9bbdf;
+  --los-cover-plum:   #cdb0de;
+  --los-cover-stone:  #ad9f90;
+}
+
+/* ── Obsidian's own frame, while Study Desk is on ───────────────────────────
+ * Tabs, ribbon, title bar and status bar read Obsidian's variables, not ours, so
+ * these state the two schemes again in its vocabulary. Only the frame: a note
+ * opened in a pane keeps the host theme, and Classic never matches this. */
+body[data-los-ui="study-desk"] :is(.titlebar, .workspace-ribbon, .workspace-tab-header-container, .workspace-sidedock-vault-profile, .status-bar) {
+  --titlebar-background: #ecdfd8;
+  --titlebar-background-focused: #ecdfd8;
+  --titlebar-text-color: #625a4f;
+  --titlebar-text-color-focused: #16130f;
+  --tab-container-background: #ecdfd8;
+  --tab-background-active: #f5eee7;
+  --tab-text-color: #625a4f;
+  --tab-text-color-active: #16130f;
+  --tab-text-color-focused: #625a4f;
+  --tab-text-color-focused-active: #16130f;
+  --tab-text-color-focused-active-current: #16130f;
+  --tab-divider-color: #e0d8c9;
+  --tab-outline-color: #e0d8c9;
+  --ribbon-background: #ecdfd8;
+  --ribbon-background-collapsed: #ecdfd8;
+  --background-primary: #f5eee7;
+  --background-secondary: #ecdfd8;
+  --background-secondary-alt: #ecdfd8;
+  --background-modifier-border: #e0d8c9;
+  --background-modifier-hover: #e0d8c9;
+  --divider-color: #e0d8c9;
+  --status-bar-background: #ecdfd8;
+  --status-bar-text-color: #625a4f;
+  --status-bar-border-color: #e0d8c9;
+  --text-normal: #16130f;
+  --text-muted: #625a4f;
+  --text-faint: #6c6359;
+  --icon-color: #625a4f;
+  --icon-color-hover: #16130f;
+  --icon-color-active: #8c1649;
+  --icon-color-focused: #16130f;
+  --vault-profile-color: #16130f;
+  --vault-profile-color-hover: #16130f;
+  background-color: #ecdfd8;
+  color-scheme: light;
+}
+
+body[data-los-ui="study-desk"][data-los-palette="lamplight"] :is(.titlebar, .workspace-ribbon, .workspace-tab-header-container, .workspace-sidedock-vault-profile, .status-bar) {
+  --titlebar-background: #14100d;
+  --titlebar-background-focused: #14100d;
+  --titlebar-text-color: #cdbfb0;
+  --titlebar-text-color-focused: #f4eadf;
+  --tab-container-background: #14100d;
+  --tab-background-active: #1a1411;
+  --tab-text-color: #cdbfb0;
+  --tab-text-color-active: #f4eadf;
+  --tab-text-color-focused: #cdbfb0;
+  --tab-text-color-focused-active: #f4eadf;
+  --tab-text-color-focused-active-current: #f4eadf;
+  --tab-divider-color: #3a2f29;
+  --tab-outline-color: #3a2f29;
+  --ribbon-background: #14100d;
+  --ribbon-background-collapsed: #14100d;
+  --background-primary: #1a1411;
+  --background-secondary: #14100d;
+  --background-secondary-alt: #14100d;
+  --background-modifier-border: #3a2f29;
+  --background-modifier-hover: #3a2f29;
+  --divider-color: #3a2f29;
+  --status-bar-background: #14100d;
+  --status-bar-text-color: #cdbfb0;
+  --status-bar-border-color: #3a2f29;
+  --text-normal: #f4eadf;
+  --text-muted: #cdbfb0;
+  --text-faint: #ad9f90;
+  --icon-color: #cdbfb0;
+  --icon-color-hover: #f4eadf;
+  --icon-color-active: #ef9dbd;
+  --icon-color-focused: #f4eadf;
+  --vault-profile-color: #f4eadf;
+  --vault-profile-color-hover: #f4eadf;
+  background-color: #14100d;
+  color-scheme: dark;
+}

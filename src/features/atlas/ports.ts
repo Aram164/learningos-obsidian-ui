@@ -32,6 +32,7 @@ export type AtlasPlugin = Pick<
     | 'openLibraryFolder'
     | 'openLibraryHome'
     | 'openAtlas'
+    | 'openDiagnostics'
     | 'openModule'
     | 'openRecord'
     | 'openSourceDetail'
