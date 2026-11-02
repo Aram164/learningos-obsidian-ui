@@ -51,6 +51,7 @@ export const STYLESHEET_MODULES = [
   '30-domain-atlas.css',
   '31-design-switch.css',
   '40-design-study-desk.css',
+  '41-design-focus.css',
 ];
 
 /*

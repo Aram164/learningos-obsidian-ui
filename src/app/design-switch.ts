@@ -8,7 +8,7 @@ interface SwitchHost {
   setDesignPalette(palette: string): Promise<void>;
 }
 
-const SHORT_PALETTE: Readonly<Record<string, string>> = { wine: 'Paper', lamplight: 'Lamplight' };
+const SHORT_PALETTE: Readonly<Record<string, string>> = { wine: 'Paper', lamplight: 'Lamplight', daylight: 'Light', nightfall: 'Dark' };
 
 function group(
   parent: HTMLElement,

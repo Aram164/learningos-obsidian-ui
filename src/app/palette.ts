@@ -23,6 +23,8 @@ export const PALETTES = [
   ['slate', 'Slate — dark blue-grey, cyan brand'],
   ['carbon', 'Carbon — dark near-black, no brand hue'],
   ['lamplight', 'Lamplight — warm dark, for the evening'],
+  ['daylight', 'Daylight — native light, blue actions'],
+  ['nightfall', 'Nightfall — native dark, blue actions'],
   ['custom', 'Custom — your own, via a CSS snippet (not contrast-checked)'],
 ] as const;
 

@@ -140,6 +140,7 @@ export type UnitPlugin = Pick<
   | 'reviewSessionEnd'
   | 'router'
   | 'setDoneWhen'
+  | 'setUnitNoteDraft'
   | 'setSelectedStage'
   | 'settings'
   | 'store'

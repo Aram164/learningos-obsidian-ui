@@ -419,3 +419,158 @@ body[data-los-ui="study-desk"][data-los-palette="lamplight"] :is(.titlebar, .wor
   background-color: #14100d;
   color-scheme: dark;
 }
+
+/* Focus — the native light/dark pair from the Learn redesign. */
+body[data-los-palette="daylight"] .los-root {
+  --los-paper: #ffffff;
+  --los-paper-2: #ffffff;
+  --los-paper-3: #f3f5f8;
+  --los-sidebar: #edeff4;
+  --los-ink: #202124;
+  --los-ink-soft: #555e6b;
+  --los-ink-faint: #5a6370;
+  --los-rule: #e1e4eb;
+  --los-rule-strong: #858d9a;
+  --los-accent: #075fcb;
+  --los-accent-strong: #064b9f;
+  --los-accent-soft: #226fd3;
+  --los-accent-wash: #e8f0fe;
+  --los-selected: #e8f0fe;
+  --los-on-accent: #ffffff;
+  --los-success: #24613e;
+  --los-success-strong: #1e4d31;
+  --los-success-wash: #ebf5ee;
+  --los-info: #345a85;
+  --los-info-strong: #28496e;
+  --los-info-wash: #e8f0fe;
+  --los-warning: #77500d;
+  --los-warning-strong: #604008;
+  --los-warning-wash: #fff5de;
+  --los-st-paused: #77500d;
+  --los-shadow-soft: rgba(20, 28, 48, .06);
+  --los-surface-raised: #ffffff;
+  --los-color-scheme: light;
+  --los-surface: var(--los-paper-2);
+  --los-line: var(--los-rule-strong);
+  --los-line-strong: var(--los-ink-faint);
+  --los-st-active: var(--los-success);
+  --los-st-ready: var(--los-accent);
+  --los-st-attention: var(--los-warning);
+  --los-st-done: var(--los-success);
+  --los-st-shelve: var(--los-info);
+}
+
+body[data-los-palette="nightfall"] .los-root {
+  --los-paper: #22252b;
+  --los-paper-2: #22252b;
+  --los-paper-3: #2b2f38;
+  --los-sidebar: #1c1f25;
+  --los-ink: #f1f3f6;
+  --los-ink-soft: #b5becb;
+  --los-ink-faint: #aab5c5;
+  --los-rule: #3d434f;
+  --los-rule-strong: #7d899b;
+  --los-accent: #8cbdff;
+  --los-accent-strong: #b9d6ff;
+  --los-accent-soft: #9bc7ff;
+  --los-accent-wash: #203753;
+  --los-selected: #203753;
+  --los-on-accent: #101927;
+  --los-success: #98d7ac;
+  --los-success-strong: #b6e5c4;
+  --los-success-wash: #1d3527;
+  --los-info: #9fc8f1;
+  --los-info-strong: #c3def8;
+  --los-info-wash: #233347;
+  --los-warning: #efc780;
+  --los-warning-strong: #f5d9a7;
+  --los-warning-wash: #3d321e;
+  --los-st-paused: #efc780;
+  --los-shadow-soft: rgba(0, 0, 0, .24);
+  --los-surface-raised: #2d323c;
+  --los-color-scheme: dark;
+  --los-surface: var(--los-paper-2);
+  --los-line: var(--los-rule-strong);
+  --los-line-strong: var(--los-ink-faint);
+  --los-st-active: var(--los-success);
+  --los-st-ready: var(--los-accent);
+  --los-st-attention: var(--los-warning);
+  --los-st-done: var(--los-success);
+  --los-st-shelve: var(--los-info);
+}
+
+body[data-los-ui="focus"][data-los-palette="daylight"] :is(.titlebar, .workspace-ribbon, .workspace-tab-header-container, .workspace-sidedock-vault-profile, .status-bar) {
+  --titlebar-background: #edeff4;
+  --titlebar-background-focused: #edeff4;
+  --titlebar-text-color: #555e6b;
+  --titlebar-text-color-focused: #202124;
+  --tab-container-background: #edeff4;
+  --tab-background-active: #ffffff;
+  --tab-text-color: #555e6b;
+  --tab-text-color-active: #202124;
+  --tab-text-color-focused: #555e6b;
+  --tab-text-color-focused-active: #202124;
+  --tab-text-color-focused-active-current: #202124;
+  --tab-divider-color: #e1e4eb;
+  --tab-outline-color: #e1e4eb;
+  --ribbon-background: #edeff4;
+  --ribbon-background-collapsed: #edeff4;
+  --background-primary: #ffffff;
+  --background-secondary: #edeff4;
+  --background-secondary-alt: #edeff4;
+  --background-modifier-border: #e1e4eb;
+  --background-modifier-hover: #e1e4eb;
+  --divider-color: #e1e4eb;
+  --status-bar-background: #edeff4;
+  --status-bar-text-color: #555e6b;
+  --status-bar-border-color: #e1e4eb;
+  --text-normal: #202124;
+  --text-muted: #555e6b;
+  --text-faint: #5a6370;
+  --icon-color: #555e6b;
+  --icon-color-hover: #202124;
+  --icon-color-active: #075fcb;
+  --icon-color-focused: #202124;
+  --vault-profile-color: #202124;
+  --vault-profile-color-hover: #202124;
+  background-color: #edeff4;
+  color-scheme: light;
+}
+
+body[data-los-ui="focus"][data-los-palette="nightfall"] :is(.titlebar, .workspace-ribbon, .workspace-tab-header-container, .workspace-sidedock-vault-profile, .status-bar) {
+  --titlebar-background: #1c1f25;
+  --titlebar-background-focused: #1c1f25;
+  --titlebar-text-color: #b5becb;
+  --titlebar-text-color-focused: #f1f3f6;
+  --tab-container-background: #1c1f25;
+  --tab-background-active: #22252b;
+  --tab-text-color: #b5becb;
+  --tab-text-color-active: #f1f3f6;
+  --tab-text-color-focused: #b5becb;
+  --tab-text-color-focused-active: #f1f3f6;
+  --tab-text-color-focused-active-current: #f1f3f6;
+  --tab-divider-color: #3d434f;
+  --tab-outline-color: #3d434f;
+  --ribbon-background: #1c1f25;
+  --ribbon-background-collapsed: #1c1f25;
+  --background-primary: #22252b;
+  --background-secondary: #1c1f25;
+  --background-secondary-alt: #1c1f25;
+  --background-modifier-border: #3d434f;
+  --background-modifier-hover: #3d434f;
+  --divider-color: #3d434f;
+  --status-bar-background: #1c1f25;
+  --status-bar-text-color: #b5becb;
+  --status-bar-border-color: #3d434f;
+  --text-normal: #f1f3f6;
+  --text-muted: #b5becb;
+  --text-faint: #aab5c5;
+  --icon-color: #b5becb;
+  --icon-color-hover: #f1f3f6;
+  --icon-color-active: #8cbdff;
+  --icon-color-focused: #f1f3f6;
+  --vault-profile-color: #f1f3f6;
+  --vault-profile-color-hover: #f1f3f6;
+  background-color: #1c1f25;
+  color-scheme: dark;
+}

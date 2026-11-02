@@ -18,6 +18,7 @@ const suites = [
   require('./dashboard/runtime-integrity'),
   require('./dashboard/session-end-flow'),
   require('./dashboard/interface-designs'),
+  require('./dashboard/focus-interface'),
 ];
 
 async function main() {

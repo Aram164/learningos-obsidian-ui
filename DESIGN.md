@@ -60,6 +60,14 @@ two differ. How to add one: [docs/interface-designs.md](docs/interface-designs.m
 
 ## Navigation
 
+**Focus** is the native Mac alternative from the Learn redesign in Figma
+`gVh0ebCrqHsxpyaDBX5pzf`, page `2026-11-02 · Learn redesign`. It uses SF Pro
+through the system font stack, cool light/dark surfaces, complete row targets,
+an ordered plan and a focused stage rail. Its full-page material groups and
+explicit wrap-up retain the existing feature actions and local drafts. Its
+presentation rules live in `src/styles/41-design-focus.css`; the interface
+registration and shared behavior remain governed by `docs/interface-designs.md`.
+
 Seven permanent destinations: **Home, Modules, Learn, Library, Atlas, Garden,
 Review.** Projects routes to Modules. (Amended 2026-10-01: Atlas opens on Concepts;
 Review carries a live count, which is the length of the same

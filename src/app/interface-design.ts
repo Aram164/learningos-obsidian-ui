@@ -32,7 +32,7 @@ export const INTERFACE_DESIGNS: readonly InterfaceDesignInfo[] = [
     id: 'classic',
     label: 'Classic',
     description: 'The interface LearningOS shipped with. Every colour scheme stays available.',
-    palettes: PALETTES.map(([id]) => id).filter((id) => id !== 'lamplight'),
+    palettes: PALETTES.map(([id]) => id).filter((id) => !['lamplight', 'daylight', 'nightfall'].includes(id)),
     defaultPalette: 'wine',
   },
   {
@@ -41,6 +41,13 @@ export const INTERFACE_DESIGNS: readonly InterfaceDesignInfo[] = [
     description: 'Warm paper, an open-book session, and an Atlas you walk through as a map.',
     palettes: ['wine', 'lamplight'],
     defaultPalette: 'wine',
+  },
+  {
+    id: 'focus',
+    label: 'Focus',
+    description: 'A native Mac study workspace: a clear plan, one focused stage, and a useful stopping point.',
+    palettes: ['daylight', 'nightfall'],
+    defaultPalette: 'daylight',
   },
 ];
 

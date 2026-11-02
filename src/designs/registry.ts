@@ -2,10 +2,12 @@ import type { ManifestStore } from '../manifest-store';
 import { normalizeInterfaceDesign } from '../app/interface-design';
 import type { DesignScreens } from './screens';
 import { studyDeskScreens } from './study-desk';
+import { focusScreens } from './focus';
 
 /** Classic has no entry on purpose: it is what every view draws when no design answers. */
 const SCREENS: Readonly<Record<string, DesignScreens>> = {
   'study-desk': studyDeskScreens,
+  focus: focusScreens,
 };
 
 /**

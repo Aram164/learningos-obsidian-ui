@@ -58,3 +58,23 @@ not replace checking the real app.
 Two sessions building designs at once should each work on their own branch from
 `main`. They meet in only two registry files and the `build-styles.mjs` list, one row
 each, so merging them is trivial.
+
+## Focus
+
+Focus implements the [Learn redesign](https://www.figma.com/design/gVh0ebCrqHsxpyaDBX5pzf?node-id=116-3628)
+in `src/designs/focus/`: Home/Learn, whole-row Modules, module detail, study plan,
+focused session, grouped material comparison and session wrap-up. Light and Dark
+are remembered independently of Classic and Study Desk. Other destinations keep
+their existing feature renderer, with Focus tokens and typography.
+
+The stage rail becomes an explicit Study plan control below 800px of pane width.
+Plan, materials, overview and wrap-up attention belongs to the leaf, not the
+route. Criteria use the existing local marks. Wrap-up edits the existing local
+unit-note draft; Review and save note opens the existing guarded note dialog,
+and Review session changes opens the existing exact-change review. Entering
+wrap-up never advances progress, saves a note, commits or pushes.
+
+The Figma macOS kit's Swift components are adapted to the existing DOM controls
+and bundled Obsidian icons; no Swift runtime or copied bitmap screen is shipped.
+The light blue action colour is strengthened to satisfy the existing contrast
+gate. No illustrative Figma progress is copied into learner state.
