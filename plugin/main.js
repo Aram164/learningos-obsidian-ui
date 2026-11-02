@@ -52046,7 +52046,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:34bbacb82b89dc66eb8e1f85a866ba640e3a9b0878c3899a16b7adbec6eafebb" : "unavailable";
+  return true ? "sha256:29990b2e459a1aaf74419d9415a06fdfbe99a15187d3cef786575585e1d995e9" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 16 : 0;
