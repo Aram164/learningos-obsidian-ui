@@ -159,4 +159,77 @@ module.exports = async function run() {
         selectors.length === 1 && /^body\[data-los-ui="[a-z-]+"\]$/.test(selectors[0]), selectors.join(' | '));
     }
   }
+
+  heading('interface designs: Study Desk catalogue, view-owned mode, completed stage');
+  {
+    const { app, plugin } = await boot();
+    await plugin.setInterfaceDesign('study-desk');
+    await plugin.nav.openModules();
+    const modulesView = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    check('the Study Desk module catalogue is not empty',
+      modulesView.contentEl.find('sd-module-list').length > 0
+      && modulesView.contentEl.allText().includes('Fixture Statistics'));
+
+    await plugin.nav.openUnit('unit-fixture-sad-l04');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const completed = view.contentEl.find('sd-stop-head')
+      .find((node) => node.getAttribute?.('aria-label') === 'Open stage: Event spaces')
+      ?? view.contentEl.findText('sd-stop-head', 'Event spaces');
+    completed.fire('click');
+    await waitFor(() => view.contentEl.find('sd-book-spread').length === 1);
+    check('a completed stage offers no Complete action',
+      view.contentEl.findText('los-btn', 'Complete stage') === null
+      && view.contentEl.findText('los-btn', 'Stage complete') !== null
+      && view.contentEl.findText('los-btn', 'Stage complete').disabled === true);
+    check('the completed session keeps one filled action',
+      view.contentEl.find('los-btn--cta').length === 1);
+    plugin.onunload();
+  }
+  {
+    const load = createSourceModuleLoader(ROOT);
+    const mode = load('src/designs/study-desk/unit-mode.ts');
+    const hostA = {};
+    const hostB = {};
+    mode.setUnitMode(hostA, 'unit-x', 'session');
+    check('unit mode belongs to its view, not the module',
+      mode.unitMode(hostA, 'unit-x') === 'session' && mode.unitMode(hostB, 'unit-x') === 'plan');
+    mode.clearUnitMode(hostA, 'unit-x');
+    check('clearing a view mode leaves the default plan',
+      mode.unitMode(hostA, 'unit-x') === 'plan');
+    mode.requestSession('unit-y');
+    check('a session request is consumed once by the next view',
+      mode.unitMode(hostB, 'unit-y') === 'session' && mode.unitMode(hostA, 'unit-y') === 'plan');
+    mode.setUnitMode(hostA, 'unit-z', 'plan');
+    mode.requestSession('unit-z');
+    check('a session request overrides a mode its view already recorded, without leaking',
+      mode.unitMode(hostA, 'unit-z') === 'session' && mode.unitMode(hostB, 'unit-z') === 'plan');
+  }
+
+  heading('interface designs: StructuralEditModal reference defaults');
+  {
+    const { app, plugin } = await boot();
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const root = app.workspace.getLeavesOfType(VIEW.unit)[0].view.contentEl;
+    const { Modal } = require('../harness').stub;
+    const { browserDom } = require('./browser-dom');
+    plugin.gateway.checkStructuralEdit = async () => ({
+      result: { canonical_files_written: 0, diff: { replacement: false, content_changes: [], map_changes: [] } },
+    });
+    plugin.gateway.importUnitMap = async () => {};
+    root.findText('los-btn', 'Adjust study plan').fire('click');
+    const modal = Modal.last;
+    browserDom(modal.contentEl);
+    const findLabel = (text) => modal.contentEl.children.find((e) => e.tag === 'label' && e.text.startsWith(text));
+    const action = findLabel('Change').children[0];
+    const kind = findLabel('Activity').children[0];
+    const triage = findLabel('Priority').children[0];
+    check('the Activity select offers Reference',
+      kind.children.some((o) => (o.value ?? o._attrs?.value) === 'reference'));
+    action.value = 'resource_append';
+    action.fire('change');
+    check('appending defaults to a reference placement',
+      kind.value === 'reference' && triage.value === 'reference-only');
+    plugin.onunload();
+  }
 };
+

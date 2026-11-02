@@ -97,7 +97,7 @@ export function renderDeskHome(view: HomeScreenHost): void {
 function renderAreas(parent: HTMLElement, view: LearnScreenHost): void {
   const { store, nav } = view.plugin;
   const grid = parent.createDiv({ cls: 'sd-area-grid' });
-  const open = store.of('module').filter((module) => module.is_actionable === true);
+  const open = store.modules().filter((module) => module.is_actionable === true);
   const isThesis = (id: string | null) => Boolean(id?.startsWith('module-project-'));
   for (const [areaId, title] of LEARN_AREAS) {
     const count = open.filter((module) => asString(module.area_id) === areaId && !isThesis(asString(module.id))).length;

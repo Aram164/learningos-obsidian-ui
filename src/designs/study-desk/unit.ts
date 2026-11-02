@@ -80,7 +80,7 @@ export function renderDeskUnit(view: UnitScreenHost): boolean {
     view, unit, durable, studyMap, temporary: Boolean(temporary), stage,
     options: stageMaterialOptions(view, unit),
   };
-  const mode = unitMode(unit.id);
+  const mode = unitMode(view, unit.id);
   if (mode === 'session') renderSession(context);
   else renderPlan(context, mode);
   return true;
@@ -89,7 +89,7 @@ export function renderDeskUnit(view: UnitScreenHost): boolean {
 /* ─────────────────────────────── the study plan ─────────────────────────── */
 
 function openStage(context: UnitContext, stageId: string): void {
-  setUnitMode(context.unit.id, 'session');
+  setUnitMode(context.view, context.unit.id, 'session');
   if (context.stage.id === stageId) context.view.render();
   else void context.view.selectStage(stageId);
 }
@@ -110,7 +110,7 @@ function renderPlan(context: UnitContext, mode: 'plan' | 'materials'): void {
     allCritical ? 'Every stage in this lecture is exam-critical.' : '',
   ].filter(Boolean).join(' ') });
   filterTabs(main, 'Plan view', [['plan', 'Stages'], ['materials', 'Materials']] as const, mode, (next) => {
-    setUnitMode(unit.id, next);
+    setUnitMode(view, unit.id, next);
     view.render();
   });
   if (context.temporary) {
@@ -190,7 +190,7 @@ function renderPlanSide(layout: HTMLElement, context: UnitContext): void {
   const placements = studyMap.stages.reduce((sum, stage) => sum + stage.resources.length, 0);
   const about = sideGroup(side, 'Materials');
   about.createEl('p', { cls: 'sd-note', text: `${count(materials.size, 'different material')} across the ${count(studyMap.stages.length, 'stage')}, placed ${placements} time${placements === 1 ? '' : 's'}.` });
-  textLink(about, `See all ${materials.size}`, () => { setUnitMode(unit.id, 'materials'); view.render(); });
+  textLink(about, `See all ${materials.size}`, () => { setUnitMode(view, unit.id, 'materials'); view.render(); });
 
   const notes = sideGroup(side, 'Notes');
   notes.createEl('p', { cls: 'sd-note', text: 'One session note stays with this lecture.' });
@@ -258,7 +258,7 @@ function renderSession(context: UnitContext): void {
   const expected = view.plugin.store.artifactGuard(unit.id, typeof studyMap.record.id === 'string' ? studyMap.record.id : null);
   const root = deskPage(view.contentEl, 'session', view.plugin.store);
   const actions = deskHead(root, crumbsFor(context, 'full'));
-  button(actions, 'Study plan', () => { setUnitMode(unit.id, 'plan'); view.render(); }, 'quiet');
+  const studyPlanButton = button(actions, 'Study plan', () => { setUnitMode(view, unit.id, 'plan'); view.render(); }, 'quiet');
   button(actions, 'Add note', () => view.plugin.openUnitNote(unit.record, studyMap.record), 'quiet');
   button(actions, 'End session', () => view.plugin.reviewSessionEnd(), 'quiet');
 
@@ -317,7 +317,7 @@ function renderSession(context: UnitContext): void {
   title.createSpan({ cls: 'sd-row-facts', text: [need ? `${need} required` : '', stage.resources.length - need ? `${stage.resources.length - need} that help` : ''].filter(Boolean).join(' + ') });
   const links = listHead.createDiv({ cls: 'sd-section-links' });
   textLink(links, 'Compare', () => openMaterialComparison(view, unit, stage, expected));
-  textLink(links, `All ${distinctMaterials(studyMap).size} in this lecture`, () => { setUnitMode(unit.id, 'materials'); view.render(); });
+  textLink(links, `All ${distinctMaterials(studyMap).size} in this lecture`, () => { setUnitMode(view, unit.id, 'materials'); view.render(); });
   const list = left.createDiv({ cls: 'sd-material-list' });
   for (const resource of others) renderMaterialRow(list, context, resource);
 
@@ -334,9 +334,15 @@ function renderSession(context: UnitContext): void {
     const rule = total === 1 ? 'The stage is finished when it is true.' : total === 2 ? 'The stage is finished when both are true.' : `The stage is finished when all ${total} are true.`;
     tally.setText(total ? `${ticked} of ${total} · ${rule}` : 'This stage declares no proof.');
     // One filled action: Open until the proofs are all true, then Complete.
-    const ready = total > 0 ? ticked === total : !openButton;
+    // A completed stage has no Complete left to offer: Open stays primary,
+    // or Study plan when there is nothing to open.
+    const done = stage.status === 'complete';
+    const ready = !done && (total > 0 ? ticked === total : !openButton);
     complete?.toggleClass('los-btn--cta', ready);
-    openButton?.toggleClass('los-btn--cta', !ready);
+    openButton?.toggleClass('los-btn--cta', done ? true : !ready);
+    const promotePlan = done && !openButton;
+    studyPlanButton.toggleClass('los-btn--cta', promotePlan);
+    studyPlanButton.toggleClass('los-btn--quiet', !promotePlan);
   };
   stage.doneWhen.forEach((criterion, index) => {
     const row = proofs.createEl('label', { cls: `sd-proof${marks[index] ? ' is-checked' : ''}` });
@@ -381,6 +387,11 @@ function renderSession(context: UnitContext): void {
   const footActions = foot.createDiv({ cls: 'sd-foot-actions' });
   overflowMenu(footActions, stageMenuItems(view, unit, stage, expected), 'More stage actions');
   if (before) button(footActions, 'Previous stage', () => { void view.selectStage(before.id); }, 'quiet');
-  complete = button(footActions, 'Complete stage', () => completeStage(view, unit, stage, expected));
+  if (stage.status === 'complete') {
+    complete = button(footActions, 'Stage complete', () => undefined, 'quiet');
+    complete.disabled = true;
+  } else {
+    complete = button(footActions, 'Complete stage', () => completeStage(view, unit, stage, expected));
+  }
   refresh();
 }

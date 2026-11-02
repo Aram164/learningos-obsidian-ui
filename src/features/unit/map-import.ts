@@ -333,7 +333,7 @@ export class StructuralEditModal extends Modal {
     const side = select('Position', [['before_id', 'Before'], ['after_id', 'After']]);
     const anchor = select('Relative to', []);
     const route = select('Material', this.options.materials.map(m => [m.routeId, m.title]));
-    const kind = select('Activity', [['read', 'Read'], ['watch', 'Watch'], ['practise', 'Practice']]);
+    const kind = select('Activity', [['read', 'Read'], ['watch', 'Watch'], ['practise', 'Practice'], ['reference', 'Reference']]);
     const triage = select('Priority', [['helpful-now', 'Helpful now'], ['required-now', 'Required now'], ['reference-only', 'Reference only']]);
     const addsMaterial = () => action.value === 'resource_insert' || action.value === 'resource_append';
     const groundworkField = root.createEl('label', { cls: 'los-map-import-field', text: 'Groundwork note (optional)' });
@@ -376,7 +376,17 @@ export class StructuralEditModal extends Modal {
       for (const field of [side, anchor]) field.parentElement?.toggleClass('is-hidden', action.value === 'resource_append');
       invalidate();
     };
-    for (const field of [action, stage]) field.addEventListener('change', populate);
+    action.addEventListener('change', () => {
+      // An append without a chosen activity is a reference placement, not a
+      // study obligation (Core's resource_append defaults, OPERATOR
+      // boundary 2); explicit choices afterwards are preserved.
+      if (action.value === 'resource_append') {
+        kind.value = 'reference';
+        triage.value = 'reference-only';
+      }
+      populate();
+    });
+    stage.addEventListener('change', populate);
     for (const field of [resource, side, anchor, route, kind, triage]) field.addEventListener('change', invalidate);
     for (const field of [groundwork, reason]) field.addEventListener('input', invalidate);
     button(actions, 'Check change', async () => {

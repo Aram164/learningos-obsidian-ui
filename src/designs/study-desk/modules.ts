@@ -44,7 +44,7 @@ export function renderDeskModuleList(view: ModuleListScreenHost): boolean {
   const draw = () => {
     body.empty();
     const needle = foldCase(view.query.trim());
-    const all = plugin.store.of('module')
+    const all = plugin.store.modules()
       .filter((module) => !needle || foldCase(String(module.title ?? '')).includes(needle))
       .sort((a, b) => compareStrings(String(a.title ?? ''), String(b.title ?? '')));
     const academic = new Set(plugin.store.openAcademicModules().map((module) => module.id));

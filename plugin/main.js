@@ -41644,15 +41644,28 @@ function renderMaterialCautions(parent, record7) {
 }
 
 // src/designs/study-desk/unit-mode.ts
-var modes = /* @__PURE__ */ new Map();
-function unitMode(unitId) {
+var modesByHost = /* @__PURE__ */ new WeakMap();
+var pendingSessions = /* @__PURE__ */ new Set();
+function modesFor(host) {
+  let modes = modesByHost.get(host);
+  if (!modes) {
+    modes = /* @__PURE__ */ new Map();
+    modesByHost.set(host, modes);
+  }
+  return modes;
+}
+function unitMode(host, unitId) {
+  const modes = modesFor(host);
+  if (pendingSessions.delete(unitId)) {
+    modes.set(unitId, "session");
+  }
   return modes.get(unitId) ?? "plan";
 }
-function setUnitMode(unitId, mode) {
-  modes.set(unitId, mode);
+function setUnitMode(host, unitId, mode) {
+  modesFor(host).set(unitId, mode);
 }
 function requestSession(unitId) {
-  modes.set(unitId, "session");
+  pendingSessions.add(unitId);
 }
 
 // src/designs/study-desk/home.ts
@@ -41724,7 +41737,7 @@ function renderDeskHome(view) {
 function renderAreas(parent, view) {
   const { store, nav } = view.plugin;
   const grid = parent.createDiv({ cls: "sd-area-grid" });
-  const open = store.of("module").filter((module2) => module2.is_actionable === true);
+  const open = store.modules().filter((module2) => module2.is_actionable === true);
   const isThesis = (id) => Boolean(id?.startsWith("module-project-"));
   for (const [areaId, title3] of LEARN_AREAS) {
     const count4 = open.filter((module2) => asString(module2.area_id) === areaId && !isThesis(asString(module2.id))).length;
@@ -41796,7 +41809,7 @@ function renderDeskModuleList(view) {
   const draw = () => {
     body.empty();
     const needle = foldCase(view.query.trim());
-    const all = plugin.store.of("module").filter((module2) => !needle || foldCase(String(module2.title ?? "")).includes(needle)).sort((a, b) => compareStrings(String(a.title ?? ""), String(b.title ?? "")));
+    const all = plugin.store.modules().filter((module2) => !needle || foldCase(String(module2.title ?? "")).includes(needle)).sort((a, b) => compareStrings(String(a.title ?? ""), String(b.title ?? "")));
     const academic = new Set(plugin.store.openAcademicModules().map((module2) => module2.id));
     const enrolled = all.filter((module2) => academic.has(module2.id) && module2.is_actionable === true && asString(module2.area_id) === "program-bachelors" && !asString(module2.id)?.startsWith("module-project-"));
     const shown = new Set(enrolled.map((module2) => module2.id));
@@ -43026,7 +43039,7 @@ var StructuralEditModal = class extends import_obsidian7.Modal {
     const side = select2("Position", [["before_id", "Before"], ["after_id", "After"]]);
     const anchor = select2("Relative to", []);
     const route2 = select2("Material", this.options.materials.map((m) => [m.routeId, m.title]));
-    const kind = select2("Activity", [["read", "Read"], ["watch", "Watch"], ["practise", "Practice"]]);
+    const kind = select2("Activity", [["read", "Read"], ["watch", "Watch"], ["practise", "Practice"], ["reference", "Reference"]]);
     const triage = select2("Priority", [["helpful-now", "Helpful now"], ["required-now", "Required now"], ["reference-only", "Reference only"]]);
     const addsMaterial = () => action.value === "resource_insert" || action.value === "resource_append";
     const groundworkField = root.createEl("label", { cls: "los-map-import-field", text: "Groundwork note (optional)" });
@@ -43077,7 +43090,14 @@ var StructuralEditModal = class extends import_obsidian7.Modal {
       for (const field2 of [side, anchor]) field2.parentElement?.toggleClass("is-hidden", action.value === "resource_append");
       invalidate();
     };
-    for (const field2 of [action, stage]) field2.addEventListener("change", populate);
+    action.addEventListener("change", () => {
+      if (action.value === "resource_append") {
+        kind.value = "reference";
+        triage.value = "reference-only";
+      }
+      populate();
+    });
+    stage.addEventListener("change", populate);
     for (const field2 of [resource, side, anchor, route2, kind, triage]) field2.addEventListener("change", invalidate);
     for (const field2 of [groundwork, reason]) field2.addEventListener("input", invalidate);
     button(actions, "Check change", async () => {
@@ -44400,13 +44420,13 @@ function renderDeskUnit(view) {
     stage,
     options: stageMaterialOptions(view, unit)
   };
-  const mode = unitMode(unit.id);
+  const mode = unitMode(view, unit.id);
   if (mode === "session") renderSession(context);
   else renderPlan(context, mode);
   return true;
 }
 function openStage(context, stageId) {
-  setUnitMode(context.unit.id, "session");
+  setUnitMode(context.view, context.unit.id, "session");
   if (context.stage.id === stageId) context.view.render();
   else void context.view.selectStage(stageId);
 }
@@ -44426,7 +44446,7 @@ function renderPlan(context, mode) {
     allCritical ? "Every stage in this lecture is exam-critical." : ""
   ].filter(Boolean).join(" ") });
   filterTabs(main, "Plan view", [["plan", "Stages"], ["materials", "Materials"]], mode, (next) => {
-    setUnitMode(unit.id, next);
+    setUnitMode(view, unit.id, next);
     view.render();
   });
   if (context.temporary) {
@@ -44502,7 +44522,7 @@ function renderPlanSide(layout, context) {
   const about = sideGroup(side, "Materials");
   about.createEl("p", { cls: "sd-note", text: `${count2(materials2.size, "different material")} across the ${count2(studyMap.stages.length, "stage")}, placed ${placements} time${placements === 1 ? "" : "s"}.` });
   textLink(about, `See all ${materials2.size}`, () => {
-    setUnitMode(unit.id, "materials");
+    setUnitMode(view, unit.id, "materials");
     view.render();
   });
   const notes = sideGroup(side, "Notes");
@@ -44567,8 +44587,8 @@ function renderSession(context) {
   const expected = view.plugin.store.artifactGuard(unit.id, typeof studyMap.record.id === "string" ? studyMap.record.id : null);
   const root = deskPage(view.contentEl, "session", view.plugin.store);
   const actions = deskHead(root, crumbsFor(context, "full"));
-  button(actions, "Study plan", () => {
-    setUnitMode(unit.id, "plan");
+  const studyPlanButton = button(actions, "Study plan", () => {
+    setUnitMode(view, unit.id, "plan");
     view.render();
   }, "quiet");
   button(actions, "Add note", () => view.plugin.openUnitNote(unit.record, studyMap.record), "quiet");
@@ -44627,7 +44647,7 @@ function renderSession(context) {
   const links = listHead.createDiv({ cls: "sd-section-links" });
   textLink(links, "Compare", () => openMaterialComparison(view, unit, stage, expected));
   textLink(links, `All ${distinctMaterials(studyMap).size} in this lecture`, () => {
-    setUnitMode(unit.id, "materials");
+    setUnitMode(view, unit.id, "materials");
     view.render();
   });
   const list3 = left.createDiv({ cls: "sd-material-list" });
@@ -44642,9 +44662,13 @@ function renderSession(context) {
     const ticked = marks.filter(Boolean).length;
     const rule2 = total === 1 ? "The stage is finished when it is true." : total === 2 ? "The stage is finished when both are true." : `The stage is finished when all ${total} are true.`;
     tally2.setText(total ? `${ticked} of ${total} \xB7 ${rule2}` : "This stage declares no proof.");
-    const ready = total > 0 ? ticked === total : !openButton;
+    const done = stage.status === "complete";
+    const ready = !done && (total > 0 ? ticked === total : !openButton);
     complete?.toggleClass("los-btn--cta", ready);
-    openButton?.toggleClass("los-btn--cta", !ready);
+    openButton?.toggleClass("los-btn--cta", done ? true : !ready);
+    const promotePlan = done && !openButton;
+    studyPlanButton.toggleClass("los-btn--cta", promotePlan);
+    studyPlanButton.toggleClass("los-btn--quiet", !promotePlan);
   };
   stage.doneWhen.forEach((criterion, index) => {
     const row3 = proofs.createEl("label", { cls: `sd-proof${marks[index] ? " is-checked" : ""}` });
@@ -44691,7 +44715,12 @@ function renderSession(context) {
   if (before) button(footActions, "Previous stage", () => {
     void view.selectStage(before.id);
   }, "quiet");
-  complete = button(footActions, "Complete stage", () => completeStage(view, unit, stage, expected));
+  if (stage.status === "complete") {
+    complete = button(footActions, "Stage complete", () => void 0, "quiet");
+    complete.disabled = true;
+  } else {
+    complete = button(footActions, "Complete stage", () => completeStage(view, unit, stage, expected));
+  }
   refresh();
 }
 
@@ -52046,7 +52075,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:29990b2e459a1aaf74419d9415a06fdfbe99a15187d3cef786575585e1d995e9" : "unavailable";
+  return true ? "sha256:a89b17c16acd94081e794b133a2d00202577d6b009878c7add65645311870abd" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 16 : 0;
