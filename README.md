@@ -115,6 +115,17 @@ npm run check       # build, typed contract check, contract lock, fixture suites
 npm run build:info  # print the exact source and bundle identity
 ```
 
+Dashboard suites can be selected by name or substring with
+`node tests/test-dashboard.js --suite=focus-interface` or `LOS_UI_SUITE`.
+An unmatched selection fails. Set `LOS_UI_TIMING=1` to print each suite's
+duration during a full dashboard run.
+
+Source-module tests cache transpiled JavaScript across processes in the
+temporary directory. Cache keys include the source bytes, file path, compiler
+version and options; cache misses load TypeScript lazily, and an unavailable
+cache falls back to ordinary transpilation. `npm run test:modules` includes
+the cache's invalidation and fallback checks.
+
 The source-only command remains useful during small refactors and is also part
 of the complete gate, so unreachable runtime code, reversed feature/view
 dependencies, and indexed-store regressions cannot bypass release checks. The

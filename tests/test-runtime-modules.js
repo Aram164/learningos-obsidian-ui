@@ -70,10 +70,14 @@ const REQUEST_SCOPED_PREFIXES = {
   'garden.seed.create': 'garden-request',
 };
 
-function guardRefusal(request) {
+function requestGuardFor(request) {
   const prefix = REQUEST_SCOPED_PREFIXES[request.capability];
-  if (!prefix) return null;
-  const expected = { [`${prefix}:${request.idempotency_key}`]: 0 };
+  return prefix ? { [`${prefix}:${request.idempotency_key}`]: 0 } : null;
+}
+
+function guardRefusal(request) {
+  const expected = requestGuardFor(request);
+  if (!expected) return null;
   const actual = request.expected_revisions || {};
   const same = Object.keys(expected).length === Object.keys(actual).length
     && Object.entries(expected).every(([id, revision]) => actual[id] === revision);
@@ -120,9 +124,9 @@ function gatewayConfirmation(stdin, snapshotAfter = SNAPSHOT, overrides = {}) {
 
 /** The guard Core will compute for this envelope, from the envelope itself. */
 function expectedRequestGuard(envelope) {
-  const prefix = REQUEST_SCOPED_PREFIXES[envelope.capability];
-  assert.ok(prefix, `${envelope.capability} is not request-scoped`);
-  return { [`${prefix}:${envelope.idempotency_key}`]: 0 };
+  const guard = requestGuardFor(envelope);
+  assert.ok(guard, `${envelope.capability} is not request-scoped`);
+  return guard;
 }
 
 /** Core's approval subject, recomputed here from what actually travelled. */

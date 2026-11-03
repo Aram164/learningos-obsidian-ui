@@ -22,7 +22,7 @@
     "install:status": "node scripts/check-install-current.mjs",
     "typecheck:contracts": "tsc -p tsconfig.contract.json --noEmit",
     "test:installer": "python3 tests/test_installer.py",
-    "test:modules": "node tests/test-runtime-modules.js",
+    "test:modules": "node tests/test-source-module-loader.js && node tests/test-runtime-modules.js",
     "test:manifest-store-indexes": "node tests/test-manifest-store-indexes.js",
     "test:atlas-graph": "node tests/test-atlas-graph.js",
     "test:live-app-check": "node tests/test-live-app-check.mjs",
