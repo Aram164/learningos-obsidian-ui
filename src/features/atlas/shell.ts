@@ -126,14 +126,14 @@ function renderDepth(
   remainder: number,
 ): void {
   const wrap = parent.createDiv({ cls: 'los-atlas-depth' });
-  wrap.createDiv({ cls: 'los-micro', text: 'Depth' });
+  wrap.createDiv({ cls: 'los-micro', text: 'Connection depth' });
 
   const stepper = wrap.createDiv({ cls: 'los-atlas-stepper' });
   stepper.setAttrs({ role: 'group', 'aria-label': 'Graph depth' });
   enableButtonGroupKeyboardNavigation(stepper, 'horizontal');
 
   const down = button(stepper, '−', () => host.go({ depth: 1 }), 'quiet');
-  down.setAttrs({ 'aria-label': 'Depth 1' });
+  down.setAttrs({ 'aria-label': 'Depth 1', 'aria-pressed': String(host.state.depth === 1) });
   down.toggleClass('is-active', host.state.depth === 1);
 
   stepper.createSpan({
@@ -142,7 +142,7 @@ function renderDepth(
   }).setAttrs({ 'aria-hidden': 'true' });
 
   const up = button(stepper, '+', () => host.go({ depth: 2 }), 'quiet');
-  up.setAttrs({ 'aria-label': 'Depth 2' });
+  up.setAttrs({ 'aria-label': 'Depth 2', 'aria-pressed': String(host.state.depth === 2) });
   up.toggleClass('is-active', host.state.depth === 2);
 
   wrap.createDiv({
@@ -151,6 +151,24 @@ function renderDepth(
       ? `${plural(remainder, 'concept')} beyond depth ${host.state.depth} — counted, never dropped`
       : `Nothing lies beyond depth ${host.state.depth} here`,
   });
+}
+
+function renderMapMeaning(parent: HTMLElement, host: AtlasHost, graph: AtlasGraph, focus: string): void {
+  const meaning = parent.createDiv({ cls: 'los-atlas-mode-meaning', attr: { role: 'status' } });
+  const semanticCount = graph.semanticEdges.get(focus)?.length ?? 0;
+  meaning.createDiv({ text: host.state.lens === 'path'
+    ? 'Learning path follows the complete authored prerequisite order leading to this concept.'
+    : host.state.lens === 'semantic'
+      ? semanticCount
+        ? 'Related ideas adds authored associations to the prerequisite context. Associations do not set learning order.'
+        : 'No additional related-idea connections are recorded for this concept. Its prerequisite context remains visible.'
+      : 'Direct connections shows what comes before this concept and what builds on it.' });
+  meaning.createDiv({ cls: 'los-micro', text: host.state.lens === 'path'
+    ? 'Select a concept to inspect it. Explore from here changes the centre of exploration.'
+    : `Depth ${host.state.depth} includes ${host.state.depth === 1 ? 'immediate connections' : 'connections up to two steps away'}. Depth changes which neighbours are included. Select a concept to inspect it without moving the map.` });
+  if (host.state.module) {
+    meaning.createDiv({ cls: 'los-micro', text: 'The module choice filters browsing lists and marks teaching context. Authored connections across modules remain on the map.' });
+  }
 }
 
 function renderLensBar(parent: HTMLElement, host: AtlasHost): void {
@@ -327,6 +345,13 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   renderConceptDomainFilter(controls, host, graph);
   renderModuleFilter(controls, host, graph);
   button(controls, 'Explore', () => host.openConceptBrowser(), 'quiet');
+  if (host.query.trim() || host.state.module || host.concepts.domain) {
+    button(controls, 'Reset browsing', () => {
+      host.query = '';
+      Object.assign(host.concepts, { domain: null, subdomain: null, recentsOnly: false, browseAll: true });
+      host.go({ module: null });
+    }, 'tertiary');
+  }
   results = root.createDiv({ cls: 'los-atlas-search-results' });
   results.setAttrs({ 'aria-live': 'polite' });
   updateSearch();
@@ -359,7 +384,7 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   renderConceptRail(workspace, host, graph);
   const detail = workspace.createDiv({ cls: 'los-atlas-browser-content' });
   renderConceptBreadcrumb(detail, host);
-  button(detail, 'Back to concepts', () => host.go({ concept: null, lens: 'prerequisites' }), 'quiet');
+  button(detail, 'Back to concepts', () => host.go({ concept: null, lens: 'prerequisites' }), 'quiet').addClass('los-atlas-back');
   const focusHead = detail.createDiv({ cls: 'los-atlas-focus-heading' });
   const copy = focusHead.createDiv();
   copy.createEl('h2', { text: view.focus.label });
@@ -367,19 +392,35 @@ export function renderAtlas(root: HTMLElement, host: AtlasHost): void {
   renderConnectAction(focusHead, host, view.focus.id);
   const mapControls = detail.createDiv({ cls: 'los-atlas-map-controls' });
   renderLensBar(mapControls, host);
-  renderDepth(mapControls, host, view.beyond.prerequisites.length + view.beyond.dependents.length);
+  if (host.state.lens !== 'path') renderDepth(mapControls, host, view.beyond.prerequisites.length + view.beyond.dependents.length);
+  renderMapMeaning(detail, host, graph, view.focus.id);
   const body = detail.createDiv({ cls: 'los-atlas-body' });
   const main = body.createDiv({ cls: 'los-atlas-main' });
   if (host.editor) renderRelationEditor(main, host, graph, host.editor);
   if (host.state.lens === 'path') renderPath(main, host, graph, view.focus.id);
   else renderFocusedGraph(main, host, graph, view);
-  const scope = main.createDiv({ cls: 'los-atlas-focused-scope' });
-  scope.createDiv({ cls: 'los-micro', attr: { role: 'status' }, text: subgraphSummary(graph, view) });
-  const further = conceptDisclosure(scope, host, `${view.focus.id}:explore`, 'Explore further');
-  button(further, 'Show further connections', () => host.go({ depth: 2 }), 'quiet');
   if (host.state.lens !== 'path') {
+    const scope = main.createDiv({ cls: 'los-atlas-focused-scope' });
+    scope.createDiv({ cls: 'los-micro', attr: { role: 'status' }, text: subgraphSummary(graph, view) });
+    const further = conceptDisclosure(scope, host, `${view.focus.id}:explore`, 'Explore further');
+    button(further, 'Show further connections', () => host.go({ depth: 2 }), 'quiet');
     renderOutline(conceptDisclosure(main, host, `${view.focus.id}:outline`, 'Text outline'), host, graph, view);
   }
-  renderInspector(body, host, graph, view);
+  const inspectedId = host.concepts.inspections?.get(view.focus.id);
+  const inspected = inspectedId && graph.conceptById.has(inspectedId)
+    ? neighbourhood(graph, inspectedId, { depth: host.state.depth, includeSemanticNeighbours: host.state.lens === 'semantic' })
+    : view;
+  const inspectorRegion = body.createDiv({ cls: 'los-atlas-inspection-region' });
+  if (inspected.focus.id !== view.focus.id) {
+    const actions = inspectorRegion.createDiv({ cls: 'los-atlas-inspection-actions', attr: { role: 'group', 'aria-label': 'Inspection and exploration' } });
+    actions.createDiv({ cls: 'los-micro', attr: { role: 'status' }, text: `Inspecting ${inspected.focus.label} · map centred on ${view.focus.label}` });
+    button(actions, 'Explore from here', () => host.go({ concept: inspected.focus.id }), 'quiet');
+    button(actions, 'Return to centre', () => {
+      host.concepts.inspections?.delete(view.focus.id);
+      host.edgeId = null;
+      host.render();
+    }, 'tertiary');
+  }
+  renderInspector(inspectorRegion, host, graph, inspected);
   renderAtlasTools(root, host, graph);
 }

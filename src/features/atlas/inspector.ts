@@ -133,7 +133,7 @@ function connectionRow(
   }
 
   const action = row.createDiv({ cls: 'los-atlas-connection-action' });
-  button(action, 'Focus', () => host.go({ concept: other }), 'quiet');
+  button(action, 'Explore from here', () => host.go({ concept: other }), 'quiet');
 }
 
 function renderConnections(
@@ -586,6 +586,8 @@ export function renderInspector(
     button(panel, 'Close connection', () => { host.edgeId = null; host.tab = 'summary'; host.render(); }, 'quiet');
     return;
   }
+  panel.createDiv({ cls: 'los-micro', text: 'Selected concept' });
+  panel.createEl('h2', { text: view.focus.label });
   const notes = buildConceptContext(host.plugin.store, view.focus.id).notes;
   panel.createEl('h3', { text: `Linked notes · ${notes.length}` });
   const list = panel.createDiv({ cls: 'los-atlas-records los-atlas-linked-notes' });

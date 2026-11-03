@@ -662,6 +662,39 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
+  heading('library preview and keyboard opening');
+  {
+    const { app, plugin, calls } = await boot();
+    await plugin.nav.openLibraryFolder([]);
+    const view = () => app.workspace.getLeavesOfType(VIEW.library)[0].view;
+    const domain = 'domain:thematic-group-mathematics';
+    const row = () => view().contentEl.find('los-finder-row').find(
+      (entry) => entry.getAttribute('data-segment') === domain,
+    );
+    check('Library explains its preview and open contract beside the list',
+      view().contentEl.allText().includes('Click to preview.')
+      && row().getAttribute('aria-label').startsWith('Preview Mathematics'));
+    row().fire('click');
+    await tick(); await tick();
+    check('one click previews a folder without navigating',
+      view().folderPath.length === 0 && view().folderSelection === domain
+      && row().getAttribute('aria-label').startsWith('Open Mathematics')
+      && Boolean(view().contentEl.findText('los-btn', 'Open folder')));
+    await plugin.nav.openLibraryFolder([]);
+    const first = row();
+    let prevented = false;
+    first.fire('keydown', { key: 'Enter', preventDefault() { prevented = true; } });
+    await tick(); await tick();
+    check('Enter opens an unselected folder immediately and suppresses a duplicate native click',
+      prevented && JSON.stringify(view().folderPath) === JSON.stringify([domain]));
+    first.fire('keydown', { key: 'Enter' });
+    await tick(); await tick();
+    check('a departed row cannot open its folder inside the new parent',
+      JSON.stringify(view().folderPath) === JSON.stringify([domain])
+      && calls.envelopes.length === 0);
+    plugin.onunload();
+  }
+
   heading('library native double-click');
   {
     const { app, plugin, calls } = await boot();
@@ -1044,6 +1077,11 @@ module.exports = async function run() {
     let element = view.contentEl;
     check('Capture identifies itself in the Obsidian tab',
       view.getDisplayText() === 'LearningOS · Capture');
+    check('Capture states the destination and distinguishes Garden and unit notes before writing',
+      element.allText().includes('Destination: Inbox.')
+      && element.allText().includes('use Garden')
+      && element.allText().includes('use Add note in the unit')
+      && element.find('los-capture-feedback').length === 0);
     check('empty Capture actions are disabled consistently',
       element.findText('los-btn', 'Capture text').disabled === true
       && element.findText('los-btn', 'Capture selected file').disabled === true);
@@ -1070,6 +1108,10 @@ module.exports = async function run() {
       `sent ${JSON.stringify(textEnvelope?.expected_revisions)}`);
     check('capture refreshes the atomic projection after the write',
       calls.some((args) => args.length === 1 && args[0] === 'generate'));
+    check('confirmed text capture keeps a visible destination receipt after redraw',
+      view.contentEl.find('los-capture-feedback')[0]?.allText()
+        .includes('Text captured to Inbox. It is awaiting routing.')
+      && view.contentEl.find('los-capture-feedback')[0]?.getAttribute('role') === 'status');
 
     element = view.contentEl;
     element.find('los-capture-file')[0].files = [{
@@ -1094,6 +1136,10 @@ module.exports = async function run() {
       JSON.stringify(fileEnvelope?.expected_revisions)
         === JSON.stringify(requestGuardFor(fileEnvelope)),
       `sent ${JSON.stringify(fileEnvelope?.expected_revisions)}`);
+    check('confirmed file capture names the copy and preserves the original',
+      view.contentEl.find('los-capture-feedback')[0]?.allText()
+        .includes('The original remains in place; the copy is awaiting routing.')
+      && fs.existsSync(CAPTURE_FIXTURE_PATH));
     plugin.onunload();
   }
 };

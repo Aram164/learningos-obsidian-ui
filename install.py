@@ -764,7 +764,8 @@ def recover_interrupted_install(parent: Path, dst: Path, shipped: list[str]) -> 
 
 def copy_shipped_plugin(dst: Path, shipped: list[str], dry: bool, *,
                         source_dir: Path | None = None,
-                        expected_hashes: dict[str, str] | None = None) -> None:
+                        expected_hashes: dict[str, str] | None = None,
+                        expected_old_hashes: dict[str, str | None] | None = None) -> None:
     """Stage and verify the complete build before promoting any live asset.
 
     Promotion replaces names rather than writing through them, keeps
@@ -789,6 +790,8 @@ def copy_shipped_plugin(dst: Path, shipped: list[str], dry: bool, *,
     journal = parent / INSTALL_TRANSACTION
     source_hashes = source_hashes or {name: _sha256(source_dir / name) for name in shipped}
     old_hashes = {name: _hash_or_missing(dst / name) for name in shipped}
+    if expected_old_hashes is not None and old_hashes != expected_old_hashes:
+        raise PluginAssetsError("installed before-state changed after acceptance preflight")
     workspace = parent / f"{INSTALL_WORKSPACE_PREFIX}{secrets.token_hex(12)}"
     journal_payload = _transaction_payload(
         workspace.name, shipped, old_hashes, source_hashes,
@@ -1239,8 +1242,93 @@ def verify_published_artifact(artifact: Path, receipt: dict) -> None:
                     raise PluginAssetsError(f"local {name} differs from the published artifact")
 
 
+def verify_legacy_local_metadata(destination: Path, previous: Path, old: dict,
+                                 installed_hashes: dict[str, str]) -> None:
+    """Admit only a local Node-version stamp beside hosted-identical runtime bytes.
+
+    This is a before-state classification, never a replacement release receipt.
+    Every other metadata value (including source inventories and clean flags)
+    must equal the previous hosted artifact, whose publication is checked by the
+    caller before this classification can authorize an update.
+    """
+    expected = old["shipped_asset_sha256"]
+    if (set(expected) != {"main.js", "styles.css", "manifest.json", "build-info.json"}
+            or any(installed_hashes[name] != digest for name, digest in expected.items()
+                   if name != "build-info.json")):
+        raise PluginAssetsError("installed before-state differs from the previous receipt's runtime assets")
+    try:
+        local = json.loads((destination / "build-info.json").read_text(encoding="utf-8"))
+        hosted = json.loads((previous / "plugin/build-info.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        raise PluginAssetsError("legacy local build metadata could not be read") from exc
+    if not isinstance(local, dict) or not isinstance(hosted, dict):
+        raise PluginAssetsError("legacy local build metadata must be an object")
+    identities = {
+        "schema_version": 5, "source_revision": old["ui_sha"], "core_revision": old["core_sha"],
+        "source_dirty": False, "core_dirty": False,
+        "source_fingerprint": old["runtime_source_fingerprint"],
+        "bundle_sha256": expected["main.js"], "stylesheet_sha256": expected["styles.css"],
+    }
+    without_node = lambda value: {key: item for key, item in value.items() if key != "node_version"}
+    node_versions = (local.get("node_version"), hosted.get("node_version"))
+    inventories = (hosted.get("modules"), hosted.get("stylesheet_modules"))
+    if (any(local.get(key) != value or type(local.get(key)) is not type(value)
+            for key, value in identities.items())
+            or without_node(local) != without_node(hosted)
+            or any(not isinstance(value, str) or not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", value)
+                   for value in node_versions)
+            or node_versions[0] == node_versions[1]
+            or any(not isinstance(items, list) or not items
+                   or any(not isinstance(item, str) or not item for item in items)
+                   for items in inventories)):
+        raise PluginAssetsError("legacy local build metadata differs beyond its Node version")
+
+
+def legacy_rollback_destination(rollback: Path, roots: tuple[Path, ...]) -> None:
+    """Require a new, explicit evidence directory outside every managed source."""
+    if not rollback.is_absolute():
+        raise PluginAssetsError("legacy rollback directory must be an absolute path")
+    if any(rollback.resolve().is_relative_to(root.resolve()) for root in roots):
+        raise PluginAssetsError("legacy rollback directory must be outside source, vault and artifacts")
+    if rollback.exists() or rollback.is_symlink():
+        raise PluginAssetsError("legacy rollback directory already exists; existing evidence is preserved")
+    if any(directory_problem(parent) for parent in rollback.parents):
+        raise PluginAssetsError("legacy rollback directory requires existing, real parent directories")
+
+
+def preserve_legacy_rollback(destination: Path, previous: Path, rollback: Path,
+                             old: dict, hashes: dict[str, str]) -> None:
+    """Retain original bytes durably; partial evidence is never discarded."""
+    try:
+        rollback.mkdir(mode=0o700)
+        plugin = rollback / "plugin"
+        plugin.mkdir(mode=0o700)
+        for name, digest in hashes.items():
+            _copy_regular_file(destination / name, plugin / name)
+            if "sha256:" + _sha256(plugin / name) != digest:
+                raise PluginAssetsError("legacy before-state changed while preserving rollback bytes")
+        _copy_regular_file(previous / "pair-receipt.json", rollback / "previous-hosted-pair-receipt.json")
+        if {name: "sha256:" + _sha256(destination / name) for name in hashes} != hashes:
+            raise PluginAssetsError("legacy before-state changed while preserving rollback bytes")
+        _sync_directory(plugin)
+        _write_json_durable(rollback / "before-state.json", {
+            "schema_version": 1, "type": "learningos-ui-legacy-local-before-state",
+            "core_sha": old["core_sha"], "ui_sha": old["ui_sha"],
+            "previous_hosted_workflow_run_id": old["workflow_run_id"],
+            "previous_hosted_receipt_sha256": "sha256:" + _sha256(rollback / "previous-hosted-pair-receipt.json"),
+            "shipped_asset_sha256": hashes,
+            "accepted_difference": "build-info.json node_version only",
+        })
+        _sync_directory(rollback)
+        _sync_directory(rollback.parent)
+    except OSError as exc:
+        raise PluginAssetsError(f"legacy rollback could not be preserved at {rollback}: {exc}") from exc
+    log(f"original legacy plugin bytes preserved at {rollback}")
+
+
 def install_accepted_artifact(vault: Path, artifact: Path, previous: Path | None,
-                             validate_run: str, ui_run: str, *, dry: bool) -> None:
+                             validate_run: str, ui_run: str, *, dry: bool,
+                             legacy_rollback: Path | None = None) -> None:
     receipt = verified_artifact(vault, artifact)
     shipped, owned = read_plugin_assets()
     if set(receipt["shipped_asset_sha256"]) != set(shipped):
@@ -1278,13 +1366,28 @@ def install_accepted_artifact(vault: Path, artifact: Path, previous: Path | None
     if present and (old is None or set(old["shipped_asset_sha256"]) != set(shipped)):
         raise PluginAssetsError("an existing installation requires its previous verified artifact")
     installed_hashes = {name: "sha256:" + _sha256(destination / name) for name in shipped} if present else {}
+    legacy = False
     if present and installed_hashes not in (old["shipped_asset_sha256"], receipt["shipped_asset_sha256"]):
-        raise PluginAssetsError("installed before-state differs from the previous receipt")
+        verify_legacy_local_metadata(destination, previous, old, installed_hashes)
+        if legacy_rollback is None:
+            raise PluginAssetsError("legacy local installation requires --legacy-rollback DIRECTORY to preserve its original bytes")
+        _hosted_run("Aram164/LearningOS", old["workflow_run_id"], old["core_sha"], ".github/workflows/release-pair.yml")
+        verify_published_artifact(previous, old)
+        legacy_rollback_destination(legacy_rollback, (vault, HERE, artifact, previous))
+        legacy = True
     before_owned = {name: _hash_or_missing(destination / name) for name in owned}
     expected = {name: receipt["shipped_asset_sha256"][name].removeprefix("sha256:") for name in shipped}
     if _sha256(HERE / "plugin/manifest.json") != expected["manifest.json"]:
         raise PluginAssetsError("accepted artifact would change the source manifest")
-    copy_shipped_plugin(destination, shipped, dry, source_dir=artifact / "plugin", expected_hashes=expected)
+    if legacy:
+        if dry:
+            log(f"legacy Node-version metadata transition verified; original bytes would be preserved at {legacy_rollback}")
+        else:
+            preserve_legacy_rollback(destination, previous, legacy_rollback, old, installed_hashes)
+    before_hashes = {name: installed_hashes[name].removeprefix("sha256:") if present else None
+                     for name in shipped}
+    copy_shipped_plugin(destination, shipped, dry, source_dir=artifact / "plugin", expected_hashes=expected,
+                        expected_old_hashes=before_hashes)
     # Keep the checkout's declared build outputs aligned: Core Diagnostics and
     # the ordinary install-status command compare against these exact files.
     # No implementation source is copied from the artifact.
@@ -1313,6 +1416,8 @@ def main() -> int:
                     help="install a published receipt-bound hosted release without a local rebuild")
     ap.add_argument("--previous-artifact", type=Path,
                     help="verified before-state authority for an existing installation")
+    ap.add_argument("--legacy-rollback", type=Path,
+                    help="new absolute directory preserving a legacy local install whose only hosted metadata difference is Node version")
     ap.add_argument("--validate-run", help="successful hosted validate run for the accepted Core SHA")
     ap.add_argument("--ui-run", help="successful UI CI run that checked the accepted Core SHA")
     args = ap.parse_args()

@@ -304,6 +304,10 @@ module.exports = async function run() {
     check('search returns projected module identities',
       modal.contentEl.allText().includes('Fixture Advanced ML')
       && modal.contentEl.find('los-search-result').length >= 1);
+    check('search names its actual object scope without claiming concept or full-text coverage',
+      modal.contentEl.allText().includes('Modules, units, sources, topic packs and linked workspaces')
+      && modal.contentEl.allText().includes('Concepts and abilities have their own search in Atlas')
+      && !modal.contentEl.allText().includes('Manifest identities only'));
     const moduleResult = modal.contentEl.find('los-search-result')
       .find((row) => row.children[0]?.children[0]?.text === 'Fixture Advanced ML');
     moduleResult.fire('click');
@@ -326,18 +330,39 @@ module.exports = async function run() {
 
     const emptySearch = plugin.nav.openGlobalSearch('definitely-unfindable-fixture');
     check('no-results is explicit and offers a clear action',
-      emptySearch.contentEl.allText().includes('No structural results')
-      && Boolean(emptySearch.contentEl.findText('los-btn', 'Clear search')));
+      emptySearch.contentEl.allText().includes('No matching learning records')
+      && Boolean(emptySearch.contentEl.findText('los-btn', 'Clear search'))
+      && Boolean(emptySearch.contentEl.findText('los-btn', 'Find concepts in Atlas'))
+      && Boolean(emptySearch.contentEl.findText('los-btn', 'Find abilities in Atlas')));
     emptySearch.contentEl.findText('los-btn', 'Clear search').fire('click');
     const afterClear = plugin.router.snapshot().current;
     const clearMatches = afterClear.name === 'module-detail' && afterClear.moduleId === 'module-fixture-thesis';
-    check('clearing search restores quick access without changing the route',
-      emptySearch.contentEl.allText().includes('Quick access') && clearMatches);
+    check('clearing search restores the named browse scope without changing the route',
+      emptySearch.contentEl.allText().includes('Browse learning records') && clearMatches);
     emptySearch.close();
     const afterClose = plugin.router.snapshot().current;
     const closeMatches = afterClose.name === 'module-detail' && afterClose.moduleId === 'module-fixture-thesis';
     check('closing search clears only overlay state',
       plugin.router.snapshot().overlay === null && closeMatches);
+
+    const conceptSearch = plugin.nav.openGlobalSearch('entropy');
+    conceptSearch.contentEl.findText('los-btn', 'Find concepts in Atlas').fire('click');
+    await tick(); await tick();
+    check('concept search handoff closes the overlay and opens the owning Atlas browser',
+      plugin.router.snapshot().overlay === null
+      && plugin.router.snapshot().current.name === 'atlas'
+      && !plugin.router.snapshot().current.concept);
+    await plugin.nav.back();
+    check('Back from the Atlas search handoff restores the source application route',
+      plugin.router.snapshot().current.name === 'module-detail'
+      && plugin.router.snapshot().current.moduleId === 'module-fixture-thesis');
+    const abilitySearch = plugin.nav.openGlobalSearch('explain entropy');
+    abilitySearch.contentEl.findText('los-btn', 'Find abilities in Atlas').fire('click');
+    await tick(); await tick();
+    check('ability search handoff uses the bounded ability browser without inventing a match',
+      plugin.router.snapshot().overlay === null
+      && plugin.router.snapshot().current.name === 'abilities'
+      && !plugin.router.snapshot().current.ability);
 
     const command = plugin.commands.find((row) => row.id === 'open-global-search');
     check('global search is available as an Obsidian command', Boolean(command));

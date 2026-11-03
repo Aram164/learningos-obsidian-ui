@@ -10,6 +10,7 @@ import type { AppNavigator } from '../../app/navigator';
 import { asLabel, asString } from '../../projection/readers';
 import { heading, moduleRow, page, progress, row, toolbar } from './parts';
 import { requestFocusSession } from './unit';
+import { openFocusCollection } from './collection';
 
 function resume(parent: HTMLElement, plugin: { store: ManifestStore; nav: Pick<AppNavigator, 'openUnit'> }): boolean {
   const pointer = readResumePointer(plugin.store.data?.resume_pointer);
@@ -39,14 +40,11 @@ export function renderFocusLearn(view: LearnScreenHost): boolean {
   heading(body, 'Your learning', 'Pick up where you left off.', 'Resume a session, or choose another module.');
   const areas = body.createDiv({ cls: 'focus-area-tabs' });
   filterTabs(areas, 'Study areas', LEARN_AREAS, view.programId, id => plugin.nav.openLearn(id));
-  button(areas, 'Thesis & projects', () => {
-    const thesis = plugin.store.modules().find(module => asString(module.id)?.startsWith('module-project-') && module.is_actionable === true);
-    return thesis ? plugin.nav.openModule(asString(thesis.id) ?? '') : plugin.nav.openModules();
-  }, 'quiet');
+  button(areas, 'Thesis & projects', () => openFocusCollection(plugin.nav, 'projects'), 'quiet');
   if (!resume(body, plugin)) empty(body.createDiv({ cls: 'focus-resume is-empty' }), 'Choose where to begin', 'No previous study session has been recorded. Open a module below.');
   const head = body.createDiv({ cls: 'focus-section-head' });
   head.createEl('h2', { text: 'Continue elsewhere' });
-  button(head, 'All modules', () => plugin.nav.openModules(), 'quiet');
+  button(head, 'All modules', () => openFocusCollection(plugin.nav, 'all'), 'quiet');
   const list = body.createDiv({ cls: 'focus-module-list' });
   const modules = plugin.store.modulesFor(view.programId).filter(module => module.is_actionable === true);
   for (const module of modules) moduleRow(list, plugin.store, module, () => plugin.nav.openModule(asString(module.id) ?? ''));

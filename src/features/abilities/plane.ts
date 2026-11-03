@@ -130,7 +130,7 @@ export function renderAbilityMap(root: HTMLElement, host: AbilityHost): void {
 
   root.createDiv({ cls: 'los-micro los-ability-scope', text: `${brief.abilities.length} of ${brief.total} abilities loaded${brief.truncated ? ' · bounded horizon' : ''}${horizon.recordsAhead ? ' · projection is behind the records' : ''}` });
   if (host.state.layout === 'list') {
-    renderList(root, host, plane, brief);
+    renderList(root, host, plane, brief, selected);
     return;
   }
   renderPlane(root, host, plane, brief, selected);
@@ -235,6 +235,8 @@ function renderToolbar(root: HTMLElement, host: AbilityHost, plane: AbilityPlane
     host.render();
 
   });
+  if (host.query.trim()) button(right, 'Clear search', () => { host.query = ''; host.render(); }, 'tertiary');
+  bar.createDiv({ cls: 'los-micro los-ability-search-scope', text: 'Search locates loaded abilities. It leaves the map and list complete.' });
 }
 
 function renderUnread(root: HTMLElement, host: AbilityHost): void {
@@ -260,7 +262,7 @@ function renderSearchResults(
   const hits = searchAbilities(plane, host.query, labels);
   const box = root.createDiv({ cls: 'los-ability-search-results', attr: { 'aria-live': 'polite' } });
   if (!hits.length) {
-    box.createDiv({ cls: 'los-micro', text: `No ability matches “${host.query.trim()}”.` });
+    box.createDiv({ cls: 'los-micro', text: `No loaded ability matches “${host.query.trim()}”. Clear search to browse the complete loaded view; records outside this horizon are not searched.` });
     return;
   }
   box.createDiv({ cls: 'los-micro', text: `${hits.length} ${hits.length === 1 ? 'ability matches' : 'abilities match'}` });
@@ -424,6 +426,8 @@ function renderPlane(
   }
   if (host.attention.bridgesVisible) renderBridgeBands(canvas, host, plane, overview, visibility.nodes, () => camera.suppressClick());
   const outline = panel.createEl('details', { cls: 'los-ability-outline-disclosure' });
+  outline.open = host.attention.outlineOpen ?? false;
+  outline.addEventListener('toggle', () => { host.attention.outlineOpen = outline.open; });
   outline.createEl('summary', { text: 'Preparation connections as text' });
   const outlineList = outline.createEl('ul', { cls: 'los-ability-edge-outline' });
   for (const edge of overview.edges) outlineList.createEl('li', { text: `${plane.rowOf.get(edge.from)?.title ?? edge.from} prepares ${plane.rowOf.get(edge.to)?.title ?? edge.to}${edge.alternative ? ' (one of several routes)' : ''}${visibility.edges.includes(edge) ? '' : ' · folded'}` });
@@ -450,6 +454,10 @@ function renderPlane(
   }, 'quiet');
   const fitSelection = button(controls, 'Fit selection', () => { if (selected) camera.fit(selectionBounds(selected)); }, 'quiet');
   fitSelection.disabled = !selected;
+  if (host.attention.folded.size) button(controls, 'Expand all branches', () => {
+    host.attention.folded.clear();
+    host.render();
+  }, 'quiet');
   const bridges = button(controls, `Bridges · ${plane.bridges.filter((row) => row.review.state === 'reviewed').length}`, () => {
     host.attention.bridgesVisible = !host.attention.bridgesVisible;
     if (!host.attention.bridgesVisible) host.bridgeKey = null;
@@ -471,6 +479,7 @@ function renderPlane(
     if (event.key === 'Escape' && !event.defaultPrevented) { host.bridgeKey = null; host.go({ ability: null, detail: false }); }
   });
   const foot = panel.createDiv({ cls: 'los-ability-graph-foot' });
+  foot.createDiv({ cls: 'los-micro', text: 'Arrows show preparation → dependent. Zoom changes the view scale; folding changes visible branches. Details keeps the current view; use Fit selection to bring its neighbourhood into view.' });
   if (![...plane.rowOf.values()].some((row) => row.evidence.length)) foot.createEl('p', { text: 'No learner attempt recorded. Ability states stay uncertain until confirmed work exists.' });
   if (plane.crossGroupCandidates.length) foot.createEl('p', { text: `${plane.crossGroupCandidates.length} tentative connection${plane.crossGroupCandidates.length === 1 ? '' : 's'} crosses groups; tentative connections carry nothing.` });
   foot.createDiv({ cls: 'los-micro', text: `${visibility.nodes.size} visible of ${brief.abilities.length} loaded abilities · ${overview.edges.length - visibility.edges.length} folded preparation connections` });
@@ -544,9 +553,9 @@ function renderSelectionDock(parent: HTMLElement, host: AbilityHost, plane: Abil
   const outside = new Set(row.preparation_routes.flatMap((route) => [...route.supported, ...route.missing_or_uncertain]).filter((id) => !plane.rowOf.has(id)));
   const hiddenPeers = [...bridgePeers].filter((id) => !visible.has(id)).length;
   info.createDiv({ cls: 'los-micro', text: `${neighbours.prerequisites.size} loaded immediate prerequisites · ${neighbours.dependents.size} loaded immediate dependents${host.attention.bridgesVisible ? ` · ${bridgePeers.size} reviewed bridge peers${hiddenPeers ? ` (${hiddenPeers} hidden by folding)` : ''}` : ''}${hidden ? ` · ${hidden} folded incident connections` : ''}${outside.size ? ` · ${outside.size} complete route members outside loaded horizon` : ''}` });
-  button(dock, 'Details', () => { host.attention.inspector = !host.attention.inspector; host.attention.routes = false; host.attention.fitRequest = 'selection'; host.render(); }, 'quiet')
+  button(dock, 'Details', () => { host.attention.inspector = !host.attention.inspector; host.attention.routes = false; host.render(); }, 'quiet')
     .setAttr('aria-expanded', String(host.attention.inspector));
-  button(dock, 'Routes', () => { host.attention.routes = !host.attention.routes; host.attention.inspector = false; host.attention.fitRequest = 'selection'; host.render(); }, 'quiet')
+  button(dock, 'Routes', () => { host.attention.routes = !host.attention.routes; host.attention.inspector = false; host.render(); }, 'quiet')
     .setAttr('aria-expanded', String(host.attention.routes));
   button(dock, 'Clear selection', () => { host.bridgeKey = null; host.go({ ability: null, detail: false }); }, 'tertiary');
   return dock;
@@ -740,7 +749,16 @@ function renderList(
   host: AbilityHost,
   plane: AbilityPlane,
   brief: AbilityBriefV1,
+  selected: string | null,
 ): void {
+  const overview = abilityOverview(plane);
+  const bridgePeers = new Set<string>();
+  if (selected && host.attention.bridgesVisible) for (const bridge of plane.bridges) {
+    if (bridge.review.state !== 'reviewed') continue;
+    if (bridge.from === selected) bridgePeers.add(bridge.to);
+    if (bridge.to === selected) bridgePeers.add(bridge.from);
+  }
+  if (selected) renderSelectionDock(root, host, plane, selected, preparationNeighbours(overview.edges, selected), bridgePeers, 0, new Set(plane.rowOf.keys()));
   const table = root.createDiv({ cls: 'los-ability-list' });
   for (const group of plane.groups) {
     const block = table.createDiv({ cls: 'los-ability-list-group' });
@@ -757,8 +775,9 @@ function renderList(
     for (const node of group.nodes) {
       const row = rows.createEl('button', {
         cls: 'los-ability-list-row is-clickable',
-        attr: { type: 'button', 'data-ability': node.id },
+        attr: { type: 'button', 'data-ability': node.id, 'data-los-tab': `ability-list-${node.id}`, 'aria-pressed': String(node.id === selected) },
       });
+      row.toggleClass('is-selected', node.id === selected);
       row.createSpan({ cls: 'los-ability-list-title', text: node.row.title });
       row.createSpan({ cls: 'los-ability-list-meta', text: node.meta });
       row.createSpan({ cls: `los-ability-list-state is-${node.row.state}`, text: STATE_LABEL[node.row.state] });
@@ -766,7 +785,7 @@ function renderList(
         cls: 'los-ability-list-meta',
         text: `${node.row.preparation_routes.length} ${node.row.preparation_routes.length === 1 ? 'route' : 'routes'} · ${node.bridgeCount} ${node.bridgeCount === 1 ? 'bridge' : 'bridges'}`,
       });
-      row.addEventListener('click', () => host.go({ group: group.key, ability: node.id, detail: true }));
+      row.addEventListener('click', () => host.go({ group: group.key, ability: node.id, detail: false }));
     }
   }
   if (brief.truncated) {
@@ -775,4 +794,6 @@ function renderList(
       text: `Showing ${brief.abilities.length} of ${brief.total} abilities.`,
     });
   }
+  if (selected && host.attention.routes) renderRoutes(root, host, plane, selected);
+  else if (selected && host.attention.inspector) renderInspector(root, host, plane, brief, selected);
 }

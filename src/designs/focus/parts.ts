@@ -39,8 +39,9 @@ export function progress(parent: HTMLElement, complete: number, total: number): 
   bar.max = Math.max(total, 1);
   wrap.createSpan({ cls: 'focus-muted', text: `${complete} of ${total} stages complete` });
 }
-export function moduleRow(parent: HTMLElement, store: ManifestStore, module: ProjectionRecord, open: () => unknown): void {
+export function moduleRow(parent: HTMLElement, store: ManifestStore, module: ProjectionRecord, open: () => unknown): HTMLButtonElement {
   const target = row(parent, `Open module: ${asLabel(module)}`, open);
+  target.setAttr('data-record-id', asString(module.id) ?? '');
   icon(target.createSpan({ cls: 'focus-record-icon', attr: { 'aria-hidden': 'true' } }), 'library');
   const copy = target.createDiv({ cls: 'focus-row-copy' });
   copy.createEl('strong', { text: asLabel(module) });
@@ -50,4 +51,5 @@ export function moduleRow(parent: HTMLElement, store: ManifestStore, module: Pro
   copy.createSpan({ cls: 'focus-muted', text: [semesterLabel(asString(module.semester) ?? ''), `${units.length} unit${units.length === 1 ? '' : 's'}`].filter(Boolean).join(' · ') });
   target.createSpan({ cls: 'focus-row-state', text: done ? `${done} of ${stages.length} stages complete` : asString(module.status)?.replaceAll('-', ' ') ?? 'Open module' });
   chevron(target);
+  return target;
 }

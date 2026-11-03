@@ -15,6 +15,7 @@ import {
   type StageResourceView,
 } from '../stage-resources';
 import type { MaterialOptionView, UnitPlugin } from './model';
+import { learningActionLabel } from './material-types';
 
 /**
  * One material card, shared by "Current work" and "Compare materials"
@@ -125,13 +126,15 @@ const TYPE_LABEL: Readonly<Record<string, string>> = {
   website: 'Web page',
   documentation: 'Documentation',
   code: 'Code',
+  notebook: 'Notebook',
+  software: 'Code',
   course: 'Course',
   article: 'Article',
 };
 
 /** "Course PDF", "Exercise PDF", "Video": what the thing is, in two words. */
-export function materialKind(record: ProjectionRecord, route: MaterialOptionView | null, workingKind: string): string {
-  const declared = (asString(record.format) ?? route?.format ?? '').toLowerCase();
+export function materialKind(record: ProjectionRecord, route: MaterialOptionView | null, workingKind: string, source: ProjectionRecord | null = null): string {
+  const declared = (asString(record.format) ?? route?.format ?? asString(source?.source_type) ?? '').toLowerCase();
   const base = TYPE_LABEL[declared]
     ?? (workingKind === 'practise' ? 'Exercise' : workingKind === 'watch' ? 'Video' : 'Material');
   const file = asString(record.material_uri) ?? asString(record.material_path)
@@ -285,13 +288,23 @@ export interface CardOptions {
   /** The owning lecture's titles for what a route covers, kept with its rationale. */
   readonly coverage?: readonly string[];
   readonly selected?: boolean;
+  /** Keep authored task instructions readable when a missing file cannot be opened. */
+  readonly showInstructions?: boolean;
+  /** A design may lead with the authored action when no route purpose is recorded. */
+  readonly purposeFallback?: string;
+  readonly missingLocationLabel?: string;
   /** Extra actions after Open, e.g. Choose or Go to lecture. */
   readonly actions?: (actions: HTMLElement) => void;
 }
 
 /** Where one placement is, in words: its own target if it names one, else its route's. */
-export function placementAvailability(resource: StageResourceView, route: MaterialOptionView | null): Availability {
-  return projectedAvailability(route && !hasOwnTarget(resource.record) ? route.record : resource.record);
+export function placementAvailability(resource: StageResourceView, route: MaterialOptionView | null, source: ProjectionRecord | null = null): Availability {
+  const availability = projectedAvailability(route && !hasOwnTarget(resource.record) ? route.record : resource.record);
+  if (availability.kind === 'none' && source && hasDirectResourceTarget(source)) {
+    const parent = projectedAvailability(source);
+    return { ...parent, detail: `${parent.detail} Open the source and use the section named on this task.` };
+  }
+  return availability;
 }
 
 /** A stage placement as a card. The placement keeps its own target and feedback identity. */
@@ -309,12 +322,15 @@ export function renderPlacementCard(
   const card = parent.createDiv({
     cls: `los-resource-row los-material-card los-triage-${resource.scopeTriage || 'unranked'}${options.prominent ? ' is-prominent' : ''}`,
   });
-  icon(card.createSpan({ cls: 'los-material-card-icon' }), materialTypeIcon(asString(resource.record.format) ?? route?.format ?? resource.kind));
+  icon(card.createSpan({ cls: 'los-material-card-icon' }), materialTypeIcon(asString(resource.record.format) ?? route?.format ?? asString(source?.source_type) ?? resource.kind));
   const copy = card.createDiv({ cls: 'los-resource-copy' });
-  copy.createDiv({ cls: 'los-material-purpose', text: purposeLabel(route?.depth ?? asString(resource.record.depth)) });
+  const purpose = route?.depth ?? asString(resource.record.depth);
+  copy.createDiv({ cls: 'los-material-purpose', text: !normalisePurpose(purpose) && options.purposeFallback
+    ? options.purposeFallback : purposeLabel(purpose) });
   copy.createEl('strong', { cls: 'los-material-title', text: resource.label });
   const meta = copy.createDiv({ cls: 'los-resource-row-meta' });
-  meta.createSpan({ cls: 'los-material-kind', text: materialKind(resource.record, route, resource.kind) });
+  meta.createSpan({ cls: 'los-material-action', text: learningActionLabel(resource.kind) });
+  meta.createSpan({ cls: 'los-material-kind', text: materialKind(resource.record, route, resource.kind, source) });
   if (resource.locator) meta.createSpan({ cls: 'los-micro los-resource-locator', text: resource.locator });
   meta.createSpan({
     cls: `los-resource-priority los-resource-priority-${resource.scopeTriage || 'unranked'}`,
@@ -324,15 +340,30 @@ export function renderPlacementCard(
   });
   for (const badge of options.badges ?? []) meta.createSpan({ cls: 'los-micro los-resource-badge', text: badge });
   if (source) chip(meta, source, deps.renderer.openSource);
+  const projected = placementAvailability(resource, route, source);
+  const availability = projected.kind === 'none' && options.missingLocationLabel
+    ? { ...projected, label: options.missingLocationLabel } : projected;
   const angle = asText(resource.record.angle) ?? route?.angle ?? null;
-  if (angle) copy.createDiv({ cls: 'los-resource-angle', text: angle });
-  renderMaterialCautions(copy, route?.record ?? resource.record);
-  renderAvailability(copy, projectedAvailability(route && !hasOwnTarget(resource.record)
-    ? route.record
-    : resource.record), route, deps, placement);
-  if (route) renderSpan(copy, deps, route.routeId, placement);
   const detail = asText(resource.record.angle_detail) ?? asText(route?.record.angle_detail);
-  if (detail) whyThisOne(copy, detail);
+  const instructions = Boolean(options.showInstructions && (angle || detail));
+  if (instructions) {
+    const task = copy.createDiv({ cls: 'los-material-instructions', attr: { role: 'region', 'aria-label': 'Task instructions' } });
+    task.createEl('h3', { text: 'Authored task details' });
+    if (angle) task.createEl('p', { text: angle });
+    if (detail && detail !== angle) task.createDiv({ cls: 'los-material-instruction-body', text: detail });
+  } else if (angle) copy.createDiv({ cls: 'los-resource-angle', text: angle });
+  renderMaterialCautions(copy, route?.record ?? resource.record);
+  renderAvailability(copy, availability, route, deps, placement);
+  if (availability.kind === 'none' || availability.kind === 'local-missing') {
+    const access = copy.createEl('details', { cls: 'los-material-access' });
+    access.createEl('summary', { text: 'Access details' });
+    access.createEl('p', { text: availability.kind === 'local-missing'
+      ? 'Restore the registered local copy, then try opening it again. Browsing or reading these instructions does not finish the required task.'
+      : 'This task has no registered file or link. Read the authored instructions here; a source that needs a file must have its location resolved before you can use it. The required work stays unresolved.' });
+    if (resource.locator) access.createEl('p', { cls: 'los-micro', text: `Named location: ${resource.locator}` });
+  }
+  if (route) renderSpan(copy, deps, route.routeId, placement);
+  if (detail && !instructions) whyThisOne(copy, detail);
 
   const actions = card.createDiv({ cls: 'los-actions los-resource-actions' });
   if (resource.canOpen && deps.renderer.openResource) {
@@ -378,7 +409,9 @@ export function renderRouteCard(
   if (source) chip(meta, source, deps.renderer.openSource);
   if (option.angle) copy.createDiv({ cls: 'los-resource-angle', text: option.angle });
   renderMaterialCautions(copy, option.record);
-  renderAvailability(copy, projectedAvailability(option.record), option, deps);
+  const availability = projectedAvailability(option.record);
+  renderAvailability(copy, availability.kind === 'none' && options.missingLocationLabel
+    ? { ...availability, label: options.missingLocationLabel } : availability, option, deps);
   renderSpan(copy, deps, option.routeId);
   // Coverage belongs with the rationale: both answer "why this one", and the
   // owning lecture's node titles are what make it readable.

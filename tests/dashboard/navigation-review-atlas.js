@@ -69,6 +69,16 @@ module.exports = async function run() {
       && review.includes('This unit needs a study map')
       && reviewRoot.find('los-review-count').length === 1
       && reviewRoot.find('los-filter-tabs').length === 0);
+    reviewRoot.find('los-chip')[0].fire('click');
+    await tick(); await tick();
+    check('Review evidence opens the named unit without recording progress',
+      plugin.router.snapshot().current.name === 'unit'
+      && plugin.router.snapshot().current.unitId === 'unit-fixture-analysis'
+      && calls.envelopes.length === 0);
+    await plugin.nav.back();
+    check('returning from evidence restores the decision surface',
+      plugin.router.snapshot().current.name === 'review'
+      && reviewRoot.find('los-review-detail').length === 1);
     await plugin.nav.openDiagnostics();
     await tick(); await tick();
     const diagnosticsRoot = app.workspace.getLeavesOfType(VIEW.diagnostics)[0].view.contentEl;
@@ -1028,6 +1038,7 @@ module.exports = async function run() {
       .find((row) => row.getAttribute('data-atlas-disclosure') === key);
     const select = async (id) => {
       root.find('los-atlas-node').find((node) => node.getAttribute('data-atlas-concept') === id).fire('click');
+      root.find('los-atlas-inspection-actions')[0].findText('los-btn', 'Explore from here').fire('click');
       await waitFor(() => atlas().state.concept === id);
     };
     check('a fresh semantic deep link has no invented previous selection and native history controls',

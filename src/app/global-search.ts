@@ -50,6 +50,8 @@ interface GlobalSearchPlugin {
   openUnit(id: string): unknown;
   openLibrary(id: string, recordType: string): unknown;
   openTopicPackDetail(id: string): unknown;
+  openAtlas(): unknown;
+  openAbilities(): unknown;
 }
 
 /**
@@ -90,7 +92,7 @@ export class GlobalSearchModal extends Modal {
     const copy = header.createDiv();
     copy.createDiv({ cls: 'los-kicker', text: 'Search LearningOS' });
     copy.createEl('h2', {
-      text: 'Find a module, unit, source, or workspace',
+      text: 'Find your learning materials',
       attr: { id: 'los-global-search-heading' },
     });
     this.restoreAccessibility = makeModalAccessible(root, {
@@ -137,6 +139,20 @@ export class GlobalSearchModal extends Modal {
     }
 
     this.results = root.createDiv({ cls: 'los-search-results', attr: { 'aria-live': 'polite' } });
+    const atlas = root.createDiv({ cls: 'los-search-atlas' });
+    atlas.createEl('p', {
+      cls: 'los-muted',
+      text: 'Looking for an idea or a capability? Concepts and abilities have their own search in Atlas.',
+    });
+    const destinations = atlas.createDiv({ cls: 'los-actions' });
+    button(destinations, 'Find concepts in Atlas', () => {
+      this.close();
+      this.plugin.openAtlas();
+    }, 'quiet');
+    button(destinations, 'Find abilities in Atlas', () => {
+      this.close();
+      this.plugin.openAbilities();
+    }, 'quiet');
     this.renderTabs();
     this.renderResults();
   }
@@ -249,12 +265,12 @@ export class GlobalSearchModal extends Modal {
     this.results.empty();
     const rows = this.rankedCandidates();
     const summary = this.results.createDiv({ cls: 'los-search-summary' });
-    summary.createSpan({ text: this.query.trim() ? `${rows.length} result${rows.length === 1 ? '' : 's'}` : 'Quick access' });
-    summary.createSpan({ cls: 'los-micro', text: 'Manifest identities only' });
+    summary.createSpan({ text: this.query.trim() ? `${rows.length} result${rows.length === 1 ? '' : 's'}` : 'Browse learning records' });
+    summary.createSpan({ cls: 'los-micro', text: 'Modules, units, sources, topic packs and linked workspaces · Titles, aliases and authors' });
 
     if (!rows.length) {
-      empty(this.results, 'No structural results',
-        `Nothing in the current LearningOS projection matches “${this.query.trim()}”.`,
+      empty(this.results, 'No matching learning records',
+        `No module, unit, source, topic pack or linked workspace matches “${this.query.trim()}”. Try fewer words or use Atlas for concepts and abilities.`,
         'Clear search', () => {
           this.query = '';
           this.input.value = '';

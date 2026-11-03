@@ -20,6 +20,9 @@ module.exports = async function run() {
   const seedIds = () => root().find('los-atlas-concept-seed').map((row) => row.getAttribute('data-concept-id'));
   check('domain overview exposes complete browsing and an explicit ungrouped destination',
     root().allText().includes('Explore by domain') && domain('ungrouped') && root().find('los-atlas-browse-all').length === 1);
+  check('the complete domain inventory retains Programming alongside Not yet grouped',
+    Boolean(domain('programming')) && Boolean(root().find('los-atlas-domain-row').find((row) => row.getAttribute('data-browse-domain') === 'programming'))
+    && root().allText().includes('A concept can appear in more than one domain'));
   domain('data-systems').fire('click');
   check('only published nested folders become subdomains', root().find('los-atlas-subdomain').length === 1
     && root().allText().includes('Dataframe Semantics') && !root().allText().includes('Probability & statistics'));
@@ -33,6 +36,32 @@ module.exports = async function run() {
   check('opening the map retains browse breadcrumbs and all authored prerequisites', view().state.concept === 'concept-bayes'
     && root().find('los-atlas-breadcrumb')[0].allText().includes('Dataframe Semantics')
     && root().find('los-atlas-node').some((node) => node.getAttribute('data-atlas-concept') === 'concept-bedingte-wahrscheinlichkeit'));
+  const originalNodes = root().find('los-atlas-node').map((node) => node.getAttribute('data-atlas-concept')).join('|');
+  const originalRoute = JSON.stringify(view().getState());
+  browserDom(root());
+  root().find('los-atlas-lanes')[0].scrollLeft = 140;
+  root().find('los-atlas-node').find((node) => node.getAttribute('data-atlas-concept') === 'concept-bedingte-wahrscheinlichkeit').focus();
+  root().find('los-atlas-node').find((node) => node.getAttribute('data-atlas-concept') === 'concept-bedingte-wahrscheinlichkeit').fire('click');
+  check('selecting a map node inspects it without moving the exploration centre or changing history',
+    JSON.stringify(view().getState()) === originalRoute
+    && root().find('los-atlas-node').map((node) => node.getAttribute('data-atlas-concept')).join('|') === originalNodes
+    && root().find('los-atlas-inspection-actions')[0].allText().includes('Inspecting Conditional probability · map centred on Bayes theorem')
+    && root().find('los-atlas-inspector')[0].allText().includes('bedingte Wahrscheinlichkeit')
+    && root().find('los-atlas-node').find((node) => node.getAttribute('data-atlas-concept') === 'concept-bedingte-wahrscheinlichkeit').getAttribute('aria-pressed') === 'true');
+  check('inspection retains the graph scroll and keyboard focus on the selected node',
+    root().find('los-atlas-lanes')[0].scrollLeft === 140
+    && global.document.activeElement === root().find('los-atlas-node').find((node) => node.getAttribute('data-atlas-concept') === 'concept-bedingte-wahrscheinlichkeit'));
+  root().findText('los-btn', 'Return to centre').fire('click');
+  check('return to centre restores the original inspection without navigating',
+    JSON.stringify(view().getState()) === originalRoute && !root().find('los-atlas-inspection-actions').length);
+  root().findText('los-filter-tab', 'Related ideas').fire('click'); await tick();
+  check('a related-ideas view explains the prerequisite context when associations are absent',
+    root().find('los-atlas-mode-meaning')[0].allText().includes('Related ideas') || root().find('los-atlas-mode-meaning')[0].allText().includes('No additional related-idea'));
+  root().findText('los-filter-tab', 'Learning path').fire('click'); await tick();
+  check('learning path explains complete prerequisite order and offers no misleading depth control',
+    !root().find('los-atlas-depth').length && !root().findText('los-btn', 'Show further connections')
+    && !root().find('los-atlas-focused-scope').length
+    && root().find('los-atlas-mode-meaning')[0].allText().includes('complete authored prerequisite order'));
   root().findText('los-btn', 'Back to concepts').fire('click'); await tick();
   check('Back to concepts restores the same domain, subdomain and concept list', view().state.concept === null
     && view().concepts.domain === 'data-systems' && view().concepts.subdomain === 'dataframe-semantics'
@@ -56,6 +85,12 @@ module.exports = async function run() {
   check('full search includes unassigned concepts by their actual title', seedIds().join('|') === 'concept-unassigned');
   search.value = ''; search.fire('input');
   check('clearing search restores exact browse parity', seedIds().sort().join('|') === before);
+  const emptyQuery = root().find('los-atlas-search-input')[0]; emptyQuery.value = 'absolutely no recorded concept'; emptyQuery.fire('input');
+  check('empty results name the active query while keeping the full inventory visible',
+    seedIds().length === 0 && root().allText().includes('concepts remain in the full Atlas'));
+  root().findText('los-btn', 'Clear filters and search').fire('click'); await tick();
+  check('explicit reset recovers the full Atlas inventory from an empty result',
+    root().find('los-atlas-search-input')[0].value === '' && new Set(seedIds()).size === plugin.store.of('concept').length);
   check('all preview, browse, map and return actions are read only', calls.envelopes.length === 0);
   plugin.onunload();
 };

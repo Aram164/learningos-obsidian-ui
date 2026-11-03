@@ -1,4 +1,5 @@
 import { groupMaterialsByType } from './source-browser';
+import { projectedAvailability } from './material-card';
 import { renderMaterialCautions, whyThisOne } from '../stage-resources';
 import { asText } from '../../projection/readers';
 import type { UnitMaterialsHost } from './ports';
@@ -78,11 +79,6 @@ export function renderMaterialOverview(
    */
   includeMenu = true,
 ): void {
-  const studyMap = view.plugin.store.mapForUnit(unit.id);
-  const expectedRevisions = view.plugin.store.artifactGuard(
-    unit.id,
-    typeof studyMap?.id === 'string' ? studyMap.id : null,
-  );
   const titleById = new Map(
     unit.knowledgeNodes.map(
       (node) => [node.id, node.title],
@@ -116,7 +112,22 @@ export function renderMaterialOverview(
     renderMaterialSynthesis(view, root, synthesis, options, unit.moduleId);
   }
 
-  if (!options.length || !includeMenu) return;
+  if (includeMenu && options.length) renderMaterialMenu(view, root, unit, options);
+}
+
+/** The existing guarded route choices, with an optional flat comparison view. */
+export function renderMaterialMenu(
+  view: UnitMaterialsHost,
+  root: HTMLElement,
+  unit: UnitRecordView,
+  options: readonly MaterialOptionView[],
+  flat = false,
+): void {
+  const studyMap = view.plugin.store.mapForUnit(unit.id);
+  const expectedRevisions = view.plugin.store.artifactGuard(
+    unit.id, typeof studyMap?.id === 'string' ? studyMap.id : null,
+  );
+  const titleById = new Map(unit.knowledgeNodes.map(node => [node.id, node.title]));
 
   const materials = section(
     root,
@@ -124,9 +135,13 @@ export function renderMaterialOverview(
     'This is a complete menu, not a sequence. Pick the explanation angle and depth that fit your current need.',
   );
 
-  for (const { label, entries } of groupMaterialsByType(options, (option) => option.format)) {
-    const group = materials.createEl('details', { cls: 'los-disclosure los-source-group' });
-    group.createEl('summary', { text: `${label} · ${entries.length} materials` });
+  if (!options.length) {
+    materials.createEl('p', { cls: 'los-micro', text: 'No materials match these filters. Clear the filters to restore the complete menu.' });
+  }
+  const groups = flat ? [{ label: '', entries: options }] : groupMaterialsByType(options, (option) => option.format);
+  for (const { label, entries } of groups) {
+    const group = flat ? materials.createDiv({ cls: 'los-material-flat-list' }) : materials.createEl('details', { cls: 'los-disclosure los-source-group' });
+    if (!flat) group.createEl('summary', { text: `${label} · ${entries.length} materials` });
     for (const option of entries) {
       const materialType = materialTypeOf(option.format);
       // No disclosure around the card: its own heading is the title, so a
@@ -196,6 +211,10 @@ export function renderMaterialOverview(
 
       const source = option.sourceId ? view.plugin.store.get(option.sourceId) : null;
       if (source) chip(metadata, source, (record) => view.plugin.nav.openRecord(record));
+      if (flat) {
+        const access = projectedAvailability(option.record);
+        copy.createDiv({ cls: `los-material-availability is-${access.kind}`, text: `${access.kind === 'none' ? 'Location needed' : access.label} · ${access.detail}` });
+      }
       // The type heading is for scanning; each material retains its source.
       if (fullDetail) whyThisOne(copy, fullDetail);
 

@@ -6,35 +6,50 @@ import { compareStrings, foldCase } from '../../sorting';
 import type { ModuleDetailScreenHost, ModuleListScreenHost } from '../screens';
 import { chevron, heading, moduleRow, page, row, toolbar } from './parts';
 import { requestFocusSession } from './unit';
+import { focusCollection, openFocusCollection, type FocusCollection } from './collection';
 
-const showAll = new WeakMap<ModuleListScreenHost, boolean>();
 export function renderFocusModules(view: ModuleListScreenHost): boolean {
   if (view.groupId) return false;
   const { plugin } = view;
+  const state = focusCollection(view.contentEl);
+  state.refresh = () => view.render();
   const root = page(view.contentEl, 'modules', plugin.store);
-  toolbar(root, 'Modules', 'Across semesters');
+  root.setAttr('data-focus-collection', state.scope);
+  toolbar(root, 'Modules', state.scope === 'projects' ? 'Thesis & projects' : 'Across semesters');
   const body = root.createDiv({ cls: 'focus-page' });
-  heading(body, 'Your curriculum', 'Modules', 'Keep every open module within reach.');
+  heading(body, state.scope === 'projects' ? 'Your projects' : 'Your curriculum', state.scope === 'projects' ? 'Thesis & projects' : 'Modules', state.scope === 'projects' ? 'Every project, with its units, materials and study plan.' : 'Keep every open module within reach.');
   const filters = body.createDiv({ cls: 'focus-filters' });
-  filterTabs(filters, 'Module status', [['open', 'Open'], ['all', 'All']], showAll.get(view) ? 'all' : 'open', key => { showAll.set(view, key === 'all'); view.render(); });
+  filterTabs<FocusCollection>(filters, 'Module collection', [['open', 'Open'], ['all', 'All'], ['projects', 'Thesis & projects']], state.scope, key => {
+    Object.assign(state, { scope: key, query: '', scroll: 0, selected: null }); view.render();
+  });
   const input = filters.createEl('input', { cls: 'los-search focus-search', attr: { type: 'search', placeholder: 'Find a module', 'aria-label': 'Find a module' } });
-  input.value = view.query;
+  input.value = state.query;
+  const result = body.createDiv({ cls: 'focus-muted', attr: { role: 'status', 'aria-live': 'polite' } });
   const list = body.createDiv({ cls: 'focus-module-list' });
   const draw = () => {
     list.empty();
     const academicIds = new Set(plugin.store.openAcademicModules().map(module => module.id));
-    const modules = (showAll.get(view) ? plugin.store.modules() : plugin.store.modules().filter(module => academicIds.has(module.id) || module.is_actionable === true))
-      .filter(module => foldCase(asLabel(module)).includes(foldCase(view.query.trim())))
+    const collection = state.scope === 'projects' ? plugin.store.modules().filter(module => module.kind === 'project')
+      : state.scope === 'all' ? plugin.store.modules() : plugin.store.modules().filter(module => academicIds.has(module.id) || module.is_actionable === true);
+    const modules = collection
+      .filter(module => foldCase(asLabel(module)).includes(foldCase(state.query.trim())))
       .sort((a, b) => compareStrings(asLabel(a), asLabel(b)));
-    for (const module of modules) moduleRow(list, plugin.store, module, () => {
-      view.selectedElementId = asString(module.id);
-      return plugin.nav.openModuleDetail(asString(module.id) ?? '');
-    });
-    if (!modules.length) list.createEl('p', { cls: 'focus-muted', text: 'No modules match. Try another search or choose All.' });
+    result.setText(`${modules.length} of ${collection.length} ${state.scope === 'projects' ? 'projects' : 'modules'}${state.query ? ' match your search' : ''}`);
+    for (const module of modules) {
+      const target = moduleRow(list, plugin.store, module, () => {
+        view.selectedElementId = asString(module.id);
+        state.selected = view.selectedElementId;
+        state.scroll = root.scrollTop;
+        return plugin.nav.openModuleDetail(asString(module.id) ?? '');
+      });
+      target.toggleClass('is-current', state.selected === asString(module.id));
+    }
+    if (!modules.length) list.createEl('p', { cls: 'focus-muted', text: collection.length ? 'No matches. Clear the search to see the complete collection.' : state.scope === 'projects' ? 'No projects are recorded yet. All modules remains available above.' : 'No modules in this collection. Choose All to browse the curriculum.' });
   };
-  input.addEventListener('input', () => { view.query = input.value; draw(); });
+  input.addEventListener('input', () => { state.query = view.query = input.value; draw(); });
   draw();
   body.createEl('p', { cls: 'focus-muted', text: 'Click anywhere on a row to open the module.' });
+  root.scrollTop = state.scroll;
   return true;
 }
 export function renderFocusModule(view: ModuleDetailScreenHost): boolean {
@@ -43,7 +58,8 @@ export function renderFocusModule(view: ModuleDetailScreenHost): boolean {
   if (!module) return false;
   const { plugin } = view;
   const root = page(view.contentEl, 'module', plugin.store);
-  toolbar(root, 'Modules', module.title, () => plugin.nav.openModules());
+  const collection = focusCollection(root);
+  toolbar(root, collection.scope === 'projects' ? 'Thesis & projects' : 'Modules', module.title, () => openFocusCollection(plugin.nav));
   const body = root.createDiv({ cls: 'focus-page' });
   heading(body, module.kind === 'academic' ? 'Academic module' : 'Module', module.title, view.headline(module));
   const controls = body.createDiv({ cls: 'focus-filters' });
@@ -73,6 +89,6 @@ export function renderFocusModule(view: ModuleDetailScreenHost): boolean {
     }
     if (!units.length) body.createEl('p', { cls: 'focus-muted', text: 'No units in this component. Choose All components.' });
   }
-  button(body, 'Back to modules', () => plugin.nav.openModules(), 'quiet');
+  button(body, collection.scope === 'projects' ? 'Back to projects' : 'Back to modules', () => openFocusCollection(plugin.nav), 'quiet');
   return true;
 }

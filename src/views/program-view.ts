@@ -88,6 +88,7 @@ function readProgramSemesters(
 export class ProgramView extends ItemView {
   readonly plugin: ProgramPlugin;
   programId: string | null = null;
+  private captureFeedback = '';
 
   constructor(
     leaf: WorkspaceLeaf,
@@ -467,8 +468,16 @@ export class ProgramView extends ItemView {
       root,
       '',
       'Capture',
-      'You capture; the operator files.',
+      'Save incoming material to Inbox. It will be routed later.',
     );
+
+    if (this.captureFeedback) {
+      root.createDiv({
+        cls: 'los-callout los-capture-feedback',
+        text: this.captureFeedback,
+        attr: { role: 'status', 'aria-live': 'polite' },
+      });
+    }
 
     const count =
       this.plugin.store.data?.counts?.inbox_items || 0;
@@ -488,6 +497,10 @@ export class ProgramView extends ItemView {
 
     textPanel.createEl('h3', {
       text: 'Quick text',
+    });
+    textPanel.createEl('p', {
+      cls: 'los-muted',
+      text: 'Destination: Inbox. For a thought you want to keep developing, use Garden; for study notes, use Add note in the unit.',
     });
 
     const title = textPanel.createEl('input', {
@@ -554,6 +567,7 @@ export class ProgramView extends ItemView {
             editor.value = draft.text;
             title.value = draft.title;
           },
+          'Text captured to Inbox. It is awaiting routing.',
         );
       },
       'cta',
@@ -653,6 +667,7 @@ export class ProgramView extends ItemView {
           () => {
             picker.value = '';
           },
+          'File copied to Inbox. The original remains in place; the copy is awaiting routing.',
         );
       },
       'quiet',
@@ -677,6 +692,7 @@ export class ProgramView extends ItemView {
   async capture(
     action: () => Promise<unknown>,
     clear: (() => void) | null = null,
+    feedback = 'Captured to Inbox. It is awaiting routing.',
   ): Promise<void> {
     if (this.plugin.gateway.isBusy) {
       new Notice(
@@ -701,6 +717,7 @@ export class ProgramView extends ItemView {
       // Only after the core confirmed the capture in JSON — clearing earlier
       // is what used to lose the thought when the CLI answered with garbage.
       clear?.();
+      this.captureFeedback = feedback;
 
       new Notice(
         'Captured to the LearningOS inbox.',

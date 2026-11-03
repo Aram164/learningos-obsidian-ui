@@ -54,6 +54,10 @@ This runs the real plugin code in a browser against the fixture manifest, read-o
 (`--manifest PATH` for another one, `--port N`). Add `?design=<id>` to the URL. It has
 no Obsidian chrome and no Obsidian stylesheet, so it speeds up design work but does
 not replace checking the real app.
+The default synthetic fixture also supplies the existing test-only ability and
+material-span reads, so graph inspection can be checked visually. Every write
+and unsupported command fails explicitly. A custom manifest receives no
+synthetic ability state or evidence.
 
 Two sessions building designs at once should each work on their own branch from
 `main`. They meet in only two registry files and the `build-styles.mjs` list, one row
@@ -61,11 +65,34 @@ each, so merging them is trivial.
 
 ## Focus
 
-Focus implements the [Learn redesign](https://www.figma.com/design/gVh0ebCrqHsxpyaDBX5pzf?node-id=116-3628)
+Focus implements the [refined Learn design](https://www.figma.com/design/gVh0ebCrqHsxpyaDBX5pzf?node-id=149-1057)
 in `src/designs/focus/`: Home/Learn, whole-row Modules, module detail, study plan,
 focused session, grouped material comparison and session wrap-up. Light and Dark
 are remembered independently of Classic and Study Desk. Other destinations keep
 their existing feature renderer, with Focus tokens and typography.
+
+The refined foundation uses warm paper, forest navigation and one teal interaction
+family in Light and Dark. An inset marker distinguishes persistent selection from
+keyboard focus; named warnings retain their amber treatment. The same controls,
+spacing and reading surfaces carry through the inherited feature renderers.
+
+Both **Thesis & projects** entries open the complete collection of projected
+`kind: project` modules. The existing Modules route and leaf-owned collection
+attention retain search, selection and scroll on return from a detail. No first
+project is selected automatically. The empty state offers the full curriculum.
+
+Session leads with the current authored task, its instructions and access state,
+then exact criteria and the completion action. Optional material facets separate
+action/purpose, medium and access while retaining authored order, triage, complete
+inventory counts and reset. Short unit menus stay flat with the existing explicit
+route-choice controls. Criteria remain local working marks; completion remains
+study progress; learner evidence remains a separate reviewed record.
+
+Atlas retains its complete domain inventory, graph/outline and Plane/List views.
+Selecting a concept inspects it in place; **Explore from here** changes the centre.
+Mode meanings, depth and active scope are visible. Details/Routes retain the
+ability camera; **Fit selection** explicitly changes its framing. Global search
+names its supported record types and offers separate Atlas destinations.
 
 The stage rail becomes an explicit Study plan control below 800px of pane width.
 Plan, materials, overview and wrap-up attention belongs to the leaf, not the
@@ -76,5 +103,5 @@ wrap-up never advances progress, saves a note, commits or pushes.
 
 The Figma macOS kit's Swift components are adapted to the existing DOM controls
 and bundled Obsidian icons; no Swift runtime or copied bitmap screen is shipped.
-The light blue action colour is strengthened to satisfy the existing contrast
-gate. No illustrative Figma progress is copied into learner state.
+The semantic control and navigation pairs pass the existing contrast gate.
+No illustrative Figma progress is copied into learner state.

@@ -48,6 +48,15 @@ const COLUMN_HEADINGS: Readonly<Record<string, string>> = {
   related: 'Semantic neighbours',
 };
 
+/** Inspect in place. Exploring outward is a separate, explicit action. */
+export function inspectConcept(host: AtlasHost, origin: string, concept: string): void {
+  host.concepts.inspections ??= new Map();
+  host.concepts.inspections.set(origin, concept);
+  host.edgeId = null;
+  host.tab = 'summary';
+  host.render();
+}
+
 function nodeAttachment(
   graph: AtlasGraph,
   view: AtlasNeighbourhood,
@@ -94,6 +103,9 @@ function renderNode(
   control.addClass(`los-atlas-node--${node.direction}`);
   control.setAttribute('data-atlas-concept', node.concept.id);
   control.toggleClass('is-focus', node.direction === 'focus');
+  const inspected = host.concepts.inspections?.get(view.focus.id) ?? view.focus.id;
+  control.toggleClass('is-selected', node.concept.id === inspected);
+  control.setAttribute('aria-pressed', String(node.concept.id === inspected));
 
   if (node.concept.record === null) {
     control.addClass('is-unresolved');
@@ -121,7 +133,7 @@ function renderNode(
 
   control.setAttrs({
     'aria-label':
-      `${node.concept.label} — ${COLUMN_HEADINGS[node.direction] ?? 'Concept'}. ${nodeAttachment(graph, view, node)}`,
+      `Inspect ${node.concept.label} — ${COLUMN_HEADINGS[node.direction] ?? 'Concept'}. ${nodeAttachment(graph, view, node)}`,
   });
 
   if (node.direction === 'focus') {
@@ -129,8 +141,7 @@ function renderNode(
   }
 
   control.addEventListener('click', () => {
-    if (node.direction === 'focus') return;
-    host.go({ concept: node.concept.id });
+    inspectConcept(host, view.focus.id, node.concept.id);
   });
 }
 
@@ -183,7 +194,7 @@ function renderRemainder(
       attr: { type: 'button' },
       text: concept.label,
     });
-    row.addEventListener('click', () => host.go({ concept: concept.id }));
+    row.addEventListener('click', () => inspectConcept(host, view.focus.id, concept.id));
   }
 }
 
@@ -193,12 +204,13 @@ export function renderFocusedGraph(
   graph: AtlasGraph,
   view: AtlasNeighbourhood,
 ): void {
-  const canvas = parent.createDiv({ cls: 'los-atlas-canvas' });
+  const canvas = parent.createDiv({ cls: 'los-atlas-canvas', attr: { 'data-los-scroll': `concept-map:${view.focus.id}` } });
   const slice = conceptPlaneSlice(view);
   const lanes = canvas.createDiv({ cls: 'los-atlas-lanes' });
   lanes.setAttrs({
     role: 'group',
     'aria-label': `Concepts around ${view.focus.label}`,
+    'data-los-scroll': `concept-lanes:${view.focus.id}`,
   });
   enableButtonGroupKeyboardNavigation(lanes, 'both');
 
@@ -276,7 +288,7 @@ export function renderFocusedGraph(
       cls: 'los-micro',
       text: view.beyond.semantic.length
         ? `${plural(view.beyond.semantic.length, 'semantic link')} not drawn by this lens: ${view.beyond.semantic.map((concept) => concept.label).join(' · ')}`
-        : 'Turning this layer off removes nothing from a path, because it was never in one; turning it on never reorders a prerequisite.',
+        : 'Related ideas add authored associations. They do not change prerequisite order.',
     });
   }
 
@@ -299,7 +311,7 @@ export function renderFocusedGraph(
       `Show ${slice.omitted.length} more concepts at this depth`, 'los-atlas-crowded-remainder');
     for (const node of slice.omitted) {
       const row = button(remainder, `${node.concept.label} · ${COLUMN_HEADINGS[node.direction]}`,
-        () => host.go({ concept: node.concept.id }), 'row');
+        () => inspectConcept(host, view.focus.id, node.concept.id), 'row');
       row.setAttribute('data-omitted-concept', node.concept.id);
     }
     remainder.createDiv({ cls: 'los-micro', text: 'Every connection at this depth remains inspectable in Text outline.' });
@@ -500,7 +512,7 @@ export function renderPath(
     return;
   }
 
-  const canvas = parent.createDiv({ cls: 'los-atlas-canvas los-atlas-canvas--path' });
+  const canvas = parent.createDiv({ cls: 'los-atlas-canvas los-atlas-canvas--path', attr: { 'data-los-scroll': `concept-path:${focusId}` } });
 
   if (path.total === 1) {
     empty(
@@ -515,6 +527,7 @@ export function renderPath(
   lanes.setAttrs({
     role: 'group',
     'aria-label': `Study order to ${conceptLabel(graph, focusId)}`,
+    'data-los-scroll': `concept-path-lanes:${focusId}`,
   });
   enableButtonGroupKeyboardNavigation(lanes, 'both');
 
@@ -533,13 +546,16 @@ export function renderPath(
         attr: { type: 'button' },
       });
       control.toggleClass('is-focus', concept.id === focusId);
+      const inspected = host.concepts.inspections?.get(focusId) ?? focusId;
+      control.toggleClass('is-selected', concept.id === inspected);
+      control.setAttrs({ 'aria-pressed': String(concept.id === inspected), 'aria-label': `Inspect ${concept.label}` });
       control.setAttribute('data-atlas-concept', concept.id);
       control.createDiv({ cls: 'los-atlas-node-title', text: concept.label });
       control.createDiv({
         cls: 'los-micro los-atlas-node-trail',
         text: moduleTrail(graph, concept.id),
       });
-      control.addEventListener('click', () => host.go({ concept: concept.id }));
+      control.addEventListener('click', () => inspectConcept(host, focusId, concept.id));
     }
   });
 
@@ -548,7 +564,7 @@ export function renderPath(
   const note = canvas.createDiv({ cls: 'los-atlas-path-note' });
   note.createDiv({
     cls: 'los-micro',
-    text: `${plural(path.total, 'concept')} in ${plural(path.layers.length, 'step')}, ordered by the strict layer alone. Semantic relations are not in this order and never were.`,
+    text: `${plural(path.total, 'concept')} in ${plural(path.layers.length, 'step')}, ordered by authored prerequisites. Related ideas do not set learning order.`,
   });
 
   const list = canvas.createDiv({ cls: 'los-atlas-outline-list' });

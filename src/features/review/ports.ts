@@ -26,6 +26,7 @@ export type ReviewPlugin = Pick<
     | 'openAbilities'
     | 'openGarden'
     | 'openReview'
+    | 'openRecord'
     | 'openShelving'
     | 'openUnit'
   >;

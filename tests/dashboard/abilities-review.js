@@ -79,6 +79,8 @@ module.exports = async function run() {
       && root().find('los-ability-inspector')[0].allText().includes('Compute a conditional probability from a joint table')
       && root().find('los-ability-inspector')[0].allText().includes('All members of a route are required together')
       && selectionFits(leafOf(app, VIEW.abilities)));
+    check('opening routes preserves the camera until the learner explicitly asks to fit',
+      JSON.stringify(leafOf(app, VIEW.abilities).attention.camera) === cameraBefore);
     root().findText('los-btn', 'Close routes').fire('click');
     root().findText('los-btn', 'Bridges · 1').fire('click');
     check('reviewed immediate bridge peer has separate styling and count',
@@ -130,6 +132,25 @@ module.exports = async function run() {
     check('return from full detail restores presentation camera without persisting it into the route',
       JSON.stringify(leafOf(app, VIEW.abilities).attention.camera) === detailsCamera
       && !Object.hasOwn(leafOf(app, VIEW.abilities).getState(), 'camera'));
+    root().findText('los-filter-tab', 'List').fire('click');
+    await waitFor(() => root().find('los-ability-list-row').length === 6);
+    check('switching to the list retains the selected ability, evidence detail and camera',
+      root().find('los-ability-list-row').find((row) => row.getAttribute('data-ability') === 'ability-fixture-conditional').getAttribute('aria-pressed') === 'true'
+      && root().find('los-ability-inspector')[0].allText().includes('Compute P(A|B)')
+      && JSON.stringify(leafOf(app, VIEW.abilities).attention.camera) === detailsCamera);
+    root().find('los-ability-list-row').find((row) => row.getAttribute('data-ability') === 'ability-fixture-logistic').fire('click');
+    await waitFor(() => leafOf(app, VIEW.abilities).state.ability === 'ability-fixture-logistic');
+    check('a list row selects in place and offers explicit details without opening a different page',
+      !leafOf(app, VIEW.abilities).state.detail && root().find('los-ability-list-row').find((row) => row.getAttribute('data-ability') === 'ability-fixture-logistic').getAttribute('aria-pressed') === 'true'
+      && Boolean(root().find('los-ability-selection-dock')[0].findText('los-btn', 'Details'))
+      && root().find('los-ability-detail').length === 0);
+    root().find('los-ability-list-row').find((row) => row.getAttribute('data-ability') === 'ability-fixture-conditional').fire('click');
+    await waitFor(() => leafOf(app, VIEW.abilities).state.ability === 'ability-fixture-conditional');
+    root().findText('los-filter-tab', 'Plane').fire('click');
+    await waitFor(() => root().find('los-ability-viewport').length === 1);
+    check('returning to the plane restores the same selected identity and unchanged camera',
+      abilityNode(root(), 'ability-fixture-conditional').getAttribute('aria-pressed') === 'true'
+      && JSON.stringify(leafOf(app, VIEW.abilities).attention.camera) === detailsCamera);
     const beforeFold = root().find('los-ability-node').map((node) => [node.getAttribute('data-ability'), node.getAttribute('style')]);
     root().find('los-ability-endcap').find((cap) => cap.getAttribute('data-fold-ability') === 'ability-fixture-conditional').fire('click');
     check('folding hides only records without another expanded claim while preserving selected anchor',

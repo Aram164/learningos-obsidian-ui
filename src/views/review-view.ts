@@ -6,6 +6,7 @@ import * as nodePath from 'node:path';
 import {
   badge,
   button,
+  disclosure,
   empty,
   factList,
   filterTabs,
@@ -201,7 +202,7 @@ export class ReviewView extends ItemView implements ReviewHost {
       cls: 'los-micro',
       text: brief
         ? (brief.abilities.some((row) => row.evidence.length)
-          ? `${brief.abilities.filter((row) => row.evidence.length).length} abilities have recorded work`
+          ? `${brief.abilities.filter((row) => row.evidence.length).length} ${brief.abilities.filter((row) => row.evidence.length).length === 1 ? 'ability has' : 'abilities have'} recorded work`
           : 'No learner attempt recorded')
         : horizon.error
           ? 'Ability records unavailable'
@@ -212,7 +213,7 @@ export class ReviewView extends ItemView implements ReviewHost {
       empty(
         root,
         'Nothing waiting',
-        'Core has projected no decision, no ability reports conflicting work, and you have no ability drafts.',
+        'There are no decisions, conflicting ability records or unconfirmed drafts to review.',
       );
       root.createDiv({
         cls: 'los-micro los-review-queue-note',
@@ -639,16 +640,16 @@ export class DiagnosticsView extends ItemView {
   }
 
   state(): [string, string, string] {
-    if (this.healthLoading) return ['…', 'Checking LearningOS health', 'Waiting for the bounded Core health report.'];
+    if (this.healthLoading) return ['…', 'Checking LearningOS health', 'Checking the current health report. You can keep browsing while this runs.'];
     if (this.health?.status === 'healthy') {
-      return ['✓', 'Healthy', `Core verified ${this.health.checks.length} registered checks at ${this.health.generated_at}.`];
+      return ['✓', 'Health checks passed', `All ${this.health.checks.length} checks passed. Checked ${this.health.generated_at}.`];
     }
     if (this.health?.status === 'attention-required') {
       const count = this.health.checks.filter((check) => check.status !== 'ok').length;
-      return ['!', 'Attention required', `${count} check${count === 1 ? '' : 's'} need an owner or remedy.`];
+      return ['!', 'Attention required', `${count} check${count === 1 ? '' : 's'} need attention. Review the next action shown for each check below.`];
     }
-    if (this.healthError) return ['?', 'Health unavailable', this.healthError];
-    return ['?', 'Health not checked', 'Run the bounded health report before trusting a green state.'];
+    if (this.healthError) return ['?', 'Health unavailable', 'The current checks could not be read. Refresh health to try again, or open Technical details to inspect the reported error.'];
+    return ['?', 'Health not checked', 'Refresh health to check the current system state.'];
   }
 
   render(): void {
@@ -696,6 +697,13 @@ export class DiagnosticsView extends ItemView {
     copy.createEl('strong', { text: title });
     copy.createDiv({ cls: 'los-micro', text: detail });
 
+    this.renderGatewayRecovery(root);
+
+    const actions = root.createDiv({ cls: 'los-actions los-diagnostic-actions' });
+    const refresh = button(actions, 'Refresh health', () => void this.loadHealth(), 'cta');
+    refresh.disabled = this.healthLoading;
+    button(actions, 'Validate and rebuild', () => this.plugin.generate());
+
     if (this.health) {
       const checks = section(root, 'Health checks', `Generated ${this.health.generated_at}`);
       for (const check of this.health.checks) {
@@ -703,7 +711,10 @@ export class DiagnosticsView extends ItemView {
         const heading = row.createDiv({ cls: 'los-health-check-head' });
         heading.createEl('strong', { text: check.summary });
         badge(heading, check.status, check.status === 'ok' ? 'status' : 'role');
-        factList(row, [
+        if (check.status !== 'ok') {
+          row.createEl('p', { cls: 'los-health-remedy', text: `Next action: ${check.remedy}` });
+        }
+        factList(disclosure(row, 'Check details'), [
           ['Check', check.id],
           ['Owner', check.owner],
           ['Remedy', check.remedy],
@@ -711,7 +722,11 @@ export class DiagnosticsView extends ItemView {
       }
     }
 
-    const facts = section(root, 'Contract and versions');
+    const technical = disclosure(root, 'Technical details · versions, interpreter and report', 'los-diagnostic-technical');
+    if (this.healthError) {
+      technical.createEl('pre', { cls: 'los-diagnostic-report', text: this.healthError });
+    }
+    const facts = section(technical, 'Contract and versions');
     const factRows: ReadonlyArray<
       readonly [string, unknown]
     > = [
@@ -745,14 +760,10 @@ export class DiagnosticsView extends ItemView {
 
     factList(facts, factRows);
 
-    this.renderGatewayRecovery(root);
-
-    const actions = root.createDiv({ cls: 'los-actions' });
-    button(actions, 'Refresh health', () => void this.loadHealth(), 'info');
-    button(actions, 'Validate and rebuild', () => this.plugin.generate(), 'success');
-    button(actions, 'Test the interpreter', () => this.testInterpreter(), 'info');
-    button(actions, 'Copy build identity', () => this.plugin.copyText(JSON.stringify(build, null, 2)), 'quiet');
-    if (this.report) root.createEl('pre', { cls: 'los-diagnostic-report', text: this.report });
+    const tools = technical.createDiv({ cls: 'los-actions' });
+    button(tools, 'Test the interpreter', () => this.testInterpreter(), 'quiet');
+    button(tools, 'Copy build identity', () => this.plugin.copyText(JSON.stringify(build, null, 2)), 'quiet');
+    if (this.report) technical.createEl('pre', { cls: 'los-diagnostic-report', text: this.report });
 
     const policy = section(root, 'About LearningOS');
     policy.createEl('p', { text: OWNERSHIP_STATEMENT });

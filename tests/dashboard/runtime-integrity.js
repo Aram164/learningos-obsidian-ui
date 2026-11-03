@@ -133,6 +133,50 @@ module.exports = async function run() {
       && app.workspace.getLeavesOfType(VIEW.nav).length === 0);
   }
 
+  heading('Diagnostics puts consequences before technical detail');
+  {
+    const { app, plugin, calls } = await boot();
+    plugin.gateway.healthReport = async () => ({
+      schema_version: 1,
+      type: 'health-report',
+      generated_at: '2099-04-01T12:00:00Z',
+      status: 'attention-required',
+      checks: [{
+        id: 'fixture-check', status: 'warning',
+        summary: 'Fixture projection needs attention', owner: 'Core',
+        remedy: 'Rebuild the fixture projection.', details: {},
+      }],
+    });
+    await plugin.nav.openDiagnostics();
+    await tick(); await tick();
+    const root = app.workspace.getLeavesOfType(VIEW.diagnostics)[0].view.contentEl;
+    const technical = root.find('los-diagnostic-technical')[0];
+    const actions = root.find('los-diagnostic-actions')[0];
+    check('Diagnostics leads with the actual next action and report timestamp',
+      root.allText().includes('Next action: Rebuild the fixture projection.')
+      && root.allText().includes('2099-04-01T12:00:00Z')
+      && root.children.indexOf(actions) < root.children.indexOf(technical));
+    check('technical versions and interpreter remain reachable in a closed disclosure',
+      technical?.tag === 'details' && technical.getAttribute('open') === null
+      && technical.allText().includes('Python interpreter')
+      && technical.allText().includes('Copy build identity')
+      && Boolean(actions.findText('los-btn', 'Refresh health')));
+    check('reading Diagnostics never mutates learner records', calls.envelopes.length === 0);
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    plugin.gateway.healthReport = async () => { throw new Error('fixture diagnostic detail'); };
+    await plugin.nav.openDiagnostics();
+    await tick(); await tick();
+    const root = app.workspace.getLeavesOfType(VIEW.diagnostics)[0].view.contentEl;
+    check('an unavailable health report explains recovery and discloses the raw failure',
+      root.find('los-diagnostic-status')[0]?.allText().includes('Refresh health to try again')
+      && !root.find('los-diagnostic-status')[0]?.allText().includes('fixture diagnostic detail')
+      && root.find('los-diagnostic-technical')[0]?.allText().includes('fixture diagnostic detail'));
+    plugin.onunload();
+  }
+
   heading('material consumer contract (red gate)');
   {
     const { plugin } = await boot();
@@ -694,6 +738,20 @@ module.exports = async function run() {
             contrastFailures.push(`${palette.name} ${foreground}/${background} ${ratio.toFixed(2)} < ${minimum}`);
           }
         }
+      }
+    }
+    for (const palette of palettes.filter((row) => row.name === 'daylight' || row.name === 'nightfall')) {
+      for (const [foreground, background, minimum] of [
+        ['--los-nav-ink', '--los-nav-surface', 4.5],
+        ['--los-nav-muted', '--los-nav-surface', 4.5],
+        ['--los-nav-ink', '--los-nav-selected', 4.5],
+        ['--los-nav-focus', '--los-nav-surface', 3],
+        ['--los-nav-focus', '--los-nav-selected', 3],
+      ]) {
+        const front = resolvePaletteToken(palette.tokens, foreground);
+        const back = resolvePaletteToken(palette.tokens, background);
+        const ratio = front && back ? contrastRatio(front, back) : 0;
+        if (ratio < minimum) contrastFailures.push(`${palette.name} ${foreground}/${background} ${ratio.toFixed(2)} < ${minimum}`);
       }
     }
     check('every selectable palette meets numeric WCAG 2.2 AA contrast',

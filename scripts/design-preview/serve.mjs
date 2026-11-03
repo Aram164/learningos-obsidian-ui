@@ -21,7 +21,8 @@ const option = (name, fallback) => {
   const at = process.argv.indexOf(`--${name}`);
   return at >= 0 ? process.argv[at + 1] : fallback;
 };
-const manifestPath = path.resolve(option('manifest', path.join(root, 'fixture-vault/generated/manifest.json')));
+const fixturePath = path.join(root, 'fixture-vault/generated/manifest.json');
+const manifestPath = path.resolve(option('manifest', fixturePath));
 const port = Number(option('port', '8765'));
 const out = fs.mkdtempSync(path.join(os.tmpdir(), 'los-design-preview-'));
 
@@ -57,6 +58,7 @@ http.createServer(async (request, response) => {
     if (name === 'bundle.js') { await context.rebuild(); body = fs.readFileSync(path.join(out, name)); }
     else if (name === 'styles.css') body = composeStylesheet();
     else if (name === 'manifest.json') body = fs.readFileSync(manifestPath);
+    else if (name === 'preview-config.json') body = JSON.stringify({ synthetic: manifestPath === fixturePath });
     else if (name === 'index.html') body = fs.readFileSync(path.join(here, name));
     else { response.writeHead(404).end(); return; }
     response.writeHead(200, { 'content-type': types[path.extname(name)] ?? 'text/plain', 'cache-control': 'no-store' }).end(body);

@@ -252,8 +252,8 @@ function renderRow(
       type: 'button',
       'data-segment': entry.segment,
       'aria-label': entry.isFolder
-        ? `${entry.name}, folder`
-        : `${entry.name}, ${entry.kindLabel}`,
+        ? `${selected ? 'Open' : 'Preview'} ${entry.name}, folder. Enter to open.`
+        : `${selected ? 'Open' : 'Preview'} ${entry.name}, ${entry.kindLabel}. Enter to open.`,
     },
   });
   if (selected) row.setAttribute('aria-current', 'true');
@@ -298,6 +298,12 @@ function renderRow(
       void view.activateEntry(entry);
     }
     openedOnClick = false;
+  });
+  row.addEventListener('keydown', (event: KeyboardEvent) => {
+    if (event.key !== 'Enter' || event.altKey || event.ctrlKey || event.metaKey
+      || !isCurrentFolder(view, parentPath)) return;
+    event.preventDefault();
+    void view.activateEntry(entry);
   });
   return row;
 }
@@ -405,7 +411,10 @@ function renderColumns(
         cls: 'los-finder-column-row is-clickable'
           + (opened ? ' is-open' : '')
           + (selected ? ' is-selected' : ''),
-        attr: { type: 'button' },
+        attr: {
+          type: 'button',
+          'aria-label': `${entry.isFolder ? 'Open' : 'Preview'} ${entry.name}, ${entry.kindLabel}. Enter to open.`,
+        },
       });
       if (opened || selected) row.setAttribute('aria-current', 'true');
       icon(row.createSpan({ cls: 'los-finder-row-icon' }), entry.icon);
@@ -424,6 +433,12 @@ function renderColumns(
         if (!entry.isFolder && isCurrentFolder(view, folder.path)) {
           void view.activateEntry(entry);
         }
+      });
+      row.addEventListener('keydown', (event: KeyboardEvent) => {
+        if (event.key !== 'Enter' || event.altKey || event.ctrlKey || event.metaKey) return;
+        event.preventDefault();
+        if (entry.isFolder) void view.openFolder([...folder.path, entry.segment]);
+        else if (isCurrentFolder(view, folder.path)) void view.activateEntry(entry);
       });
     }
   });
@@ -688,6 +703,13 @@ export function renderFinder(
   const toolbar = renderToolbar(view, main, folder, entries.length, onQuery);
   input = toolbar.input;
   count = toolbar.count;
+
+  main.createEl('p', {
+    cls: 'los-micro los-finder-interaction-hint',
+    text: view.folderLayout === 'columns'
+      ? 'Choose a folder to open it. Select a file to preview; press Enter or use its Open action to open it.'
+      : 'Click to preview. Click the selected row again, double-click, or press Enter to open. Arrow keys move the selection.',
+  });
 
   noteWrap = main.createDiv({ cls: 'los-finder-note' });
   body = main.createDiv({ cls: 'los-finder-body' });

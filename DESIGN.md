@@ -60,13 +60,17 @@ two differ. How to add one: [docs/interface-designs.md](docs/interface-designs.m
 
 ## Navigation
 
-**Focus** is the native Mac alternative from the Learn redesign in Figma
-`gVh0ebCrqHsxpyaDBX5pzf`, page `2026-11-02 · Learn redesign`. It uses SF Pro
-through the system font stack, cool light/dark surfaces, complete row targets,
+**Focus** is the native Mac alternative from the refined Learn design in Figma
+`gVh0ebCrqHsxpyaDBX5pzf`, page `149:92`. It uses SF Pro
+through the system font stack, warm paper and forest Light/Dark surfaces, complete row targets,
 an ordered plan and a focused stage rail. Its full-page material groups and
 explicit wrap-up retain the existing feature actions and local drafts. Its
 presentation rules live in `src/styles/41-design-focus.css`; the interface
 registration and shared behavior remain governed by `docs/interface-designs.md`.
+Focus places current work before criteria, retains blocked task instructions,
+and offers optional material facets without changing authored order or obligation.
+Both project entries open the complete project-module collection. Its detailed
+interaction decisions are recorded in `docs/interface-designs.md`.
 
 Seven permanent destinations: **Home, Modules, Learn, Library, Atlas, Garden,
 Review.** Projects routes to Modules. (Amended 2026-10-01: Atlas opens on Concepts;
@@ -353,8 +357,8 @@ folders. Nested folders offer subdomains; flat domains open their concepts
 directly. Not yet grouped retains every concept with no linked note folder.
 These overlapping browse aliases never classify the concept canonically,
 create graph edges, filter authored prerequisites, or imply learner evidence.
-Ability selection actions precede the canvas; Details and Routes refit the
-selected neighbourhood to the space beside the inspector. Full titles wrap
+Ability selection actions precede the canvas; Details and Routes retain the
+camera, while Fit selection explicitly frames the selected neighbourhood. Full titles wrap
 inside the camera nodes, and viewport resizing preserves its centre.
 
 - one learning path dominating or hiding the curriculum;

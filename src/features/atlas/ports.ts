@@ -118,6 +118,8 @@ export interface ConceptAtlasState {
   selected: string | null;
   recentsOnly: boolean;
   readonly disclosures: Map<string, boolean>;
+  /** Inspected nodes per exploration centre; inspecting never changes a route. */
+  inspections?: Map<string, string>;
 }
 
 export interface AtlasHost {

@@ -69,4 +69,5 @@ export interface AbilityAttention {
   fitRequest: 'all' | 'selection' | 'group' | 'reveal' | null;
   fitGroup: string | null;
   lastActivation: { id: string; at: number } | null;
+  outlineOpen?: boolean;
 }

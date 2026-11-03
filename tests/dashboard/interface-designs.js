@@ -231,5 +231,56 @@ module.exports = async function run() {
       kind.value === 'reference' && triage.value === 'reference-only');
     plugin.onunload();
   }
+
+  heading('Focus projects: one complete collection and a reliable return');
+  for (const projectCount of [0, 2]) {
+    const { app, plugin, calls } = await boot({ patchManifest(manifest) {
+      for (const record of [...manifest.modules, ...manifest.records]) {
+        if (record.id === 'module-fixture-thesis' && projectCount === 0) record.kind = 'skill';
+        if (record.id === 'module-fixture-python' && projectCount === 2) record.kind = 'project';
+      }
+    } });
+    await plugin.setInterfaceDesign('focus');
+    const nav = app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
+    nav.findText('focus-nav-item', 'Thesis & projects').fire('click');
+    await waitFor(() => app.workspace.getLeavesOfType(VIEW.module)[0]?.view.contentEl.getAttribute('data-focus-collection') === 'projects');
+    const view = app.workspace.getLeavesOfType(VIEW.module)[0].view;
+    check(`sidebar opens all ${projectCount} projected projects without choosing one`,
+      view.contentEl.getAttribute('data-focus-screen') === 'modules'
+      && view.contentEl.find('focus-row').length === projectCount
+      && view.contentEl.allText().includes(`${projectCount} of ${projectCount} projects`));
+    if (!projectCount) check('an empty project collection has an honest recovery',
+      view.contentEl.allText().includes('No projects are recorded yet')
+      && view.contentEl.findText('los-filter-tab', 'All') !== null);
+    else {
+      const input = view.contentEl.find('focus-search')[0];
+      input.value = 'thesis'; input.fire('input');
+      view.contentEl.scrollTop = 173;
+      view.contentEl.find('focus-row')[0].fire('click');
+      await waitFor(() => view.contentEl.getAttribute('data-focus-screen') === 'module');
+      view.contentEl.findText('los-btn', 'Back to projects').fire('click');
+      await waitFor(() => view.contentEl.getAttribute('data-focus-screen') === 'modules');
+      check('project detail returns to the selected collection, query, row and position',
+        view.contentEl.getAttribute('data-focus-collection') === 'projects'
+        && view.contentEl.find('focus-search')[0].value === 'thesis'
+        && view.contentEl.find('focus-row').length === 1
+        && view.contentEl.find('focus-row')[0].classes.has('is-current')
+        && view.contentEl.scrollTop === 173);
+      const other = app.workspace.getLeaf(true);
+      await other.setViewState({ type: VIEW.module, state: { screen: 'groups' } });
+      check('a separate module leaf keeps independent collection attention',
+        other.view.contentEl.getAttribute('data-focus-collection') === 'open'
+        && view.contentEl.getAttribute('data-focus-collection') === 'projects');
+    }
+    await plugin.nav.openLearn('program-bachelors');
+    const learn = app.workspace.getLeavesOfType(VIEW.program)[0].view;
+    learn.contentEl.findText('los-btn', 'Thesis & projects').fire('click');
+    await waitFor(() => view.contentEl.getAttribute('data-focus-collection') === 'projects');
+    check('Learn uses the same project collection as the sidebar',
+      view.contentEl.getAttribute('data-focus-screen') === 'modules'
+      && view.contentEl.getAttribute('data-focus-collection') === 'projects'
+      && calls.envelopes.length === 0);
+    plugin.onunload();
+  }
 };
 

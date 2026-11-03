@@ -131,7 +131,8 @@ function previewConcept(parent: HTMLElement, host: AtlasHost, graph: AtlasGraph,
     if (!edges.length) panel.createDiv({ cls: 'los-micro', text: `No authored ${title === 'Before this' ? 'prerequisites' : 'dependents'} recorded.` });
     for (const edge of edges) {
       const target = edge[endpoint];
-      if (target) button(panel, conceptOf(graph, target).label, () => host.go({ concept: target, lens: 'prerequisites' }), 'tertiary');
+      if (target) button(panel, `Explore ${conceptOf(graph, target).label}`,
+        () => host.go({ concept: target, lens: 'prerequisites' }), 'tertiary');
     }
   }
   panel.createDiv({ cls: 'los-micro', text: 'Browse paths follow linked note folders. Authored connections stay complete across domains.' });
@@ -151,7 +152,7 @@ export function renderConceptBrowser(parent: HTMLElement, host: AtlasHost, graph
   const overview = !place && !query && !host.concepts.browseAll && !host.concepts.recentsOnly;
   if (overview) {
     content.createEl('h2', { text: 'Explore by domain' });
-    content.createDiv({ cls: 'los-micro', text: 'Browse your knowledge, then explore its connections.' });
+    content.createDiv({ cls: 'los-micro', text: 'Browse your knowledge, then explore its connections. A concept can appear in more than one domain; Not yet grouped keeps unfiled concepts reachable.' });
     const split = content.createDiv({ cls: 'los-atlas-browser-split' });
     const domains = split.createDiv({ cls: 'los-atlas-browse-panel' });
     for (const domain of places) {
@@ -204,6 +205,19 @@ export function renderConceptBrowser(parent: HTMLElement, host: AtlasHost, graph
   ids = host.concepts.recentsOnly ? recentIds.filter((id) => ids.includes(id)) : ids.sort((a, b) => compareStrings(conceptOf(graph, a).label, conceptOf(graph, b).label) || compareStrings(a, b));
   const shown = Math.min(host.concepts.visibleLimit, ids.length);
   content.createDiv({ cls: 'los-micro los-atlas-browser-scope', attr: { role: 'status' }, text: `${shown} of ${plural(ids.length, 'concept')} shown${host.state.module ? ' in this module' : ''}` });
+  if (query || place || host.state.module || host.concepts.recentsOnly) {
+    const scope = content.createDiv({ cls: 'los-atlas-active-scope' });
+    const module = graph.modules.find((row) => row.id === host.state.module);
+    scope.createDiv({ cls: 'los-micro', text: `Browsing ${[
+      place?.title, host.concepts.subdomain, module?.label,
+      host.concepts.recentsOnly ? 'recently visited' : null, query ? `matching “${query}”` : null,
+    ].filter(Boolean).join(' · ')}. ${graph.concepts.filter((concept) => concept.record).length} concepts remain in the full Atlas.` });
+    button(scope, 'Clear filters and search', () => {
+      host.query = '';
+      Object.assign(host.concepts, { domain: null, subdomain: null, recentsOnly: false, browseAll: true, visibleLimit: 30 });
+      host.go({ module: null });
+    }, 'tertiary');
+  }
   const split = content.createDiv({ cls: 'los-atlas-browser-split' });
   const list = split.createDiv({ cls: 'los-atlas-browse-panel los-atlas-records', attr: { role: 'group', 'aria-label': 'Concept results',
     'data-los-scroll': `concepts:${place?.id ?? ''}:${host.concepts.subdomain ?? ''}:${query}:${host.state.module ?? ''}` } });

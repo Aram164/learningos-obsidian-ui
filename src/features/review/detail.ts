@@ -306,7 +306,7 @@ function renderConflict(parent: HTMLElement, host: ReviewHost, row: AbilityRowV1
   });
   rule(parent);
   const actions = parent.createDiv({ cls: 'los-actions los-review-actions' });
-  button(actions, 'Open the ability', () => host.plugin.nav.openAbilities({ ability: row.id, detail: true }), 'quiet');
+  button(actions, 'Open the ability', () => host.plugin.nav.openAbilities({ ability: row.id, detail: true }), 'cta');
 }
 
 function coreAction(host: ReviewHost, target: Record<string, unknown> | null): [string, () => unknown] | null {
@@ -330,7 +330,7 @@ const CORE_EFFECT: Readonly<Record<string, string>> = {
 };
 
 function renderCore(parent: HTMLElement, host: ReviewHost, entry: Extract<ReviewEntry, { kind: 'core' }>): void {
-  parent.createDiv({ cls: 'los-review-eyebrow', text: `${categoryLabel(entry.category)} · Core decision` });
+  parent.createDiv({ cls: 'los-review-eyebrow', text: `${categoryLabel(entry.category)} · Needs review` });
   parent.createEl('h2', { text: entry.title });
   const context = asString(entry.item.context);
   if (context) parent.createEl('p', { cls: 'los-review-lede', text: context });
@@ -341,7 +341,7 @@ function renderCore(parent: HTMLElement, host: ReviewHost, entry: Extract<Review
   const target = isRecord(entry.item.target) ? entry.item.target : null;
   const targetId = asString(target?.unit_id) ?? asString(target?.id);
   const record = targetId ? host.plugin.store.get(targetId) : null;
-  if (record) chip(evidence, record);
+  if (record) chip(evidence, record, target => host.plugin.nav.openRecord(target));
   const path = asString(target?.path);
   if (path) evidence.createDiv({ cls: 'los-review-pointer-text', text: path });
   const proposals = Array.isArray(target?.proposal_ids) ? target?.proposal_ids.length ?? 0 : 0;
@@ -353,7 +353,7 @@ function renderCore(parent: HTMLElement, host: ReviewHost, entry: Extract<Review
   rule(parent);
   const actions = parent.createDiv({ cls: 'los-actions los-review-actions' });
   const action = coreAction(host, target);
-  if (action) button(actions, action[0], action[1], 'quiet');
+  if (action) button(actions, action[0], action[1], 'cta');
   else actions.createSpan({ cls: 'los-micro', text: 'No supported action' });
 }
 

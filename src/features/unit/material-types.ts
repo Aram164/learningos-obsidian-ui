@@ -26,6 +26,12 @@ export function materialTypeLabel(format: string): string {
   return TYPES.find((type) => type.formats.includes(value))?.label ?? 'Other materials';
 }
 
+/** Stable presentation key for a facet; unknown formats stay reachable as Other. */
+export function materialTypeKey(format: string): string {
+  const value = format.trim().toLowerCase();
+  return TYPES.find((type) => type.formats.includes(value))?.key ?? 'other';
+}
+
 export function groupMaterialsByType<T>(rows: readonly T[], formatOf: (row: T) => string): Array<MaterialTypeGroup & { entries: T[] }> {
   const groups = TYPES.map((type) => ({ ...type, entries: [] as T[] }));
   for (const row of rows) {
@@ -34,4 +40,14 @@ export function groupMaterialsByType<T>(rows: readonly T[], formatOf: (row: T) =
     group.entries.push(row);
   }
   return groups.filter((group) => group.entries.length > 0);
+}
+
+export function learningActionLabel(kind: string): string {
+  const labels: Readonly<Record<string, string>> = {
+    read: 'Read', watch: 'Watch', practise: 'Practise', practice: 'Practise',
+    derive: 'Derive', implement: 'Implement', exercise: 'Exercise',
+    check: 'Check', explain: 'Explain', recall: 'Recall', write: 'Write',
+    setup: 'Set up', reflect: 'Reflect', solve: 'Solve',
+  };
+  return labels[kind] ?? (kind ? kind.replaceAll('-', ' ').replace(/^./, character => character.toUpperCase()) : 'Not assigned');
 }
