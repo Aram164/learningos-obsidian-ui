@@ -169,6 +169,19 @@ module.exports = async function run() {
     check('the Study Desk module catalogue is not empty',
       modulesView.contentEl.find('sd-module-list').length > 0
       && modulesView.contentEl.allText().includes('Fixture Statistics'));
+    const moduleRow = modulesView.contentEl.find('sd-module-list')[0].children
+      .find(row => row.allText().includes('Fixture Statistics'));
+    moduleRow.fire('click');
+    await waitFor(() => modulesView.contentEl.find('sd-module-head').length === 1);
+    check('the whole Study Desk module row opens its detail',
+      modulesView.contentEl.find('sd-module-head').length === 1
+      && modulesView.contentEl.allText().includes('Fixture Statistics'));
+    await plugin.nav.openModules();
+    const search = modulesView.contentEl.find('sd-search-input')[0];
+    search.value = 'no such fixture module'; search.fire('input');
+    check('a genuinely unmatched Study Desk module query keeps its empty state',
+      modulesView.contentEl.find('sd-module-list').length === 0
+      && modulesView.contentEl.allText().includes('No module matches “no such fixture module”.'));
 
     await plugin.nav.openUnit('unit-fixture-sad-l04');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
