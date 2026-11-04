@@ -1170,6 +1170,22 @@ class AcceptedArtifactTests(unittest.TestCase):
                 self.assertEqual((installed / name).read_bytes(), (artifact / 'plugin' / name).read_bytes())
                 self.assertEqual((self.fake_ui / 'plugin' / name).read_bytes(), (artifact / 'plugin' / name).read_bytes())
 
+    def test_cli_passes_legacy_rollback_to_accepted_install(self):
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            artifact, previous, rollback = base / 'artifact', base / 'previous', base / 'rollback'
+            argv = ["install.py", "--accepted-artifact", str(artifact),
+                    "--previous-artifact", str(previous),
+                    "--legacy-rollback", str(rollback),
+                    "--validate-run", "13", "--ui-run", "14", "--dry-run"]
+            with mock.patch.object(sys, "argv", argv), mock.patch.object(
+                    INSTALLER, "install_accepted_artifact") as accepted:
+                self.assertEqual(INSTALLER.main(), 0)
+            accepted.assert_called_once()
+            _, kwargs = accepted.call_args
+            self.assertEqual(kwargs["legacy_rollback"], rollback)
+            self.assertTrue(kwargs["dry"])
+
     def test_local_bytes_must_equal_the_published_zip(self):
         with tempfile.TemporaryDirectory() as directory:
             _, artifact, receipt = self._release(Path(directory))

@@ -1459,7 +1459,8 @@ def main() -> int:
         try:
             install_accepted_artifact(vault, args.accepted_artifact.absolute(),
                                       args.previous_artifact.absolute() if args.previous_artifact else None,
-                                      args.validate_run, args.ui_run, dry=args.dry_run)
+                                      args.validate_run, args.ui_run, dry=args.dry_run,
+                                      legacy_rollback=args.legacy_rollback.absolute() if args.legacy_rollback else None)
         except (PluginAssetsError, OSError, ValueError, subprocess.SubprocessError) as exc:
             sys.exit(f"install: accepted artifact refused: {exc}")
         return 0
