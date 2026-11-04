@@ -41869,6 +41869,291 @@ function renderDeskLearn(view) {
   return true;
 }
 
+// src/features/module/detail.ts
+function renderModuleDetail(view, root) {
+  const moduleRecord = view.moduleId ? view.plugin.store.get(
+    view.moduleId
+  ) : null;
+  const module2 = readModuleRecord(
+    moduleRecord,
+    view.moduleId
+  );
+  const back = button(
+    root,
+    "\u2039 Back",
+    () => view.plugin.nav.back(),
+    "quiet"
+  );
+  back.addClass("los-route-back");
+  if (!module2) {
+    empty(
+      root,
+      "Module unavailable",
+      "Return to Modules and choose another module."
+    );
+    return;
+  }
+  const tab = view.tab ?? view.defaultTab(module2);
+  const header = pageHeader(
+    root,
+    module2.kind,
+    module2.title
+  );
+  if (module2.areaId === "program-job") {
+    badge(header, "Job", "role");
+  }
+  header.createDiv({
+    cls: "los-module-facts",
+    text: view.headline(module2)
+  });
+  const tabs = root.createDiv({
+    cls: "los-tabs",
+    attr: {
+      role: "group",
+      "aria-label": "Module sections"
+    }
+  });
+  enableButtonGroupKeyboardNavigation(tabs);
+  for (const [key, label2] of MODULE_TABS) {
+    const control = button(
+      tabs,
+      label2,
+      () => view.selectTab(key),
+      key === tab ? "cta" : "quiet"
+    );
+    control.setAttrs({
+      "aria-pressed": String(key === tab)
+    });
+  }
+  if (tab === "overview") {
+    view.renderOverview(
+      root,
+      module2
+    );
+  } else if (tab === "units") {
+    view.renderUnits(
+      root,
+      module2
+    );
+  } else if (tab === "resources") {
+    view.renderSources(
+      root,
+      module2
+    );
+  } else {
+    view.renderLogistics(
+      root,
+      module2
+    );
+  }
+}
+function headline(view, module2) {
+  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const nextDate = view.deadlinesFor(module2).filter(
+    (row3) => (row3.endDate || row3.startDate) >= today
+  ).map((row3) => row3.startDate)[0];
+  return [
+    semesterLabel(module2.semester),
+    module2.credits ? `${module2.credits} LP` : "",
+    module2.examination.type ? `${examinationLabel(
+      module2.examination.type
+    )}${nextDate ? ` ${nextDate}` : ""}` : ""
+  ].filter(Boolean).join(" \xB7 ");
+}
+function renderOverview(view, root, module2) {
+  const progress2 = readProgress(
+    view.plugin.store.progress(
+      module2.id
+    )
+  );
+  const wrap = root.createDiv({
+    cls: "los-overview"
+  });
+  wrap.createDiv({
+    cls: "los-overview-progress",
+    text: `${progress2.stagesComplete} of ${progress2.stagesTotal} stages complete across ${progress2.unitsTotal} unit${progress2.unitsTotal === 1 ? "" : "s"}`
+  });
+  const workspaces = view.plugin.store.workspacesForModule(module2.id).map(
+    (record7) => normalizeWorkspaceRecord(record7)
+  );
+  for (const workspace of workspaces) {
+    workspaceCard(
+      wrap,
+      view.plugin,
+      workspace,
+      module2.id
+    );
+  }
+  if (!workspaces.length) {
+    empty(
+      wrap,
+      "No active coordination workspace",
+      "The module/unit tree still owns study state."
+    );
+  }
+  const units = orderModuleUnits(
+    module2,
+    view.plugin.store.unitsFor(module2.id).map(
+      (record7) => normalizeUnitRecord(record7)
+    ).filter(nonNull)
+  );
+  const next = units.find(
+    (unit) => unit.status === "active"
+  ) ?? units.find((unit) => unit.status !== "paused");
+  if (next) {
+    button(
+      wrap,
+      `Continue ${next.title}`,
+      () => view.plugin.nav.openUnit(next.id),
+      "cta"
+    );
+  }
+  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
+  const ahead = view.deadlinesFor(module2).filter(
+    (row3) => (row3.endDate || row3.startDate) >= today
+  );
+  if (ahead.length) {
+    view.renderDeadlineRows(
+      wrap,
+      module2,
+      ahead.slice(0, 1)
+    );
+  }
+}
+function renderModuleUnitGroups(parent, units, renderUnit) {
+  for (const unit of units.filter((unit2) => unit2.status !== "paused")) {
+    renderUnit(parent, unit);
+  }
+  const paused = units.filter((unit) => unit.status === "paused");
+  if (!paused.length) return;
+  const details = parent.createEl("details", { cls: "los-disclosure los-paused-units" });
+  details.createEl("summary", { text: `Paused sessions \xB7 ${paused.length}` });
+  const body = details.createDiv({ cls: "los-disclosure-body" });
+  for (const unit of paused) renderUnit(body, unit);
+}
+function renderUnits(view, root, module2) {
+  if (module2.components.length) {
+    const tabs = root.createDiv({
+      cls: "los-subtabs",
+      attr: {
+        role: "group",
+        "aria-label": "Module components"
+      }
+    });
+    enableButtonGroupKeyboardNavigation(tabs);
+    const allTab = button(
+      tabs,
+      "All components",
+      () => view.selectComponent(null),
+      view.componentId ? "quiet" : "row"
+    );
+    allTab.setAttrs({
+      "aria-pressed": String(!view.componentId)
+    });
+    for (const component of module2.components) {
+      const control = button(
+        tabs,
+        component.title,
+        () => view.selectComponent(
+          component.id
+        ),
+        view.componentId === component.id ? "row" : "quiet"
+      );
+      control.setAttrs({
+        "aria-pressed": String(
+          view.componentId === component.id
+        )
+      });
+    }
+  }
+  const units = view.plugin.store.unitsFor(
+    module2.id,
+    view.componentId
+  ).map(
+    (record7) => normalizeUnitRecord(record7)
+  ).filter(nonNull);
+  if (!units.length) {
+    empty(
+      root,
+      "No units in this component",
+      "Return to all components."
+    );
+    return;
+  }
+  const ordered = orderModuleUnits(
+    module2,
+    units
+  );
+  const heading2 = root.createDiv({
+    cls: "los-section-heading los-module-units-heading"
+  });
+  heading2.createEl("h2", {
+    text: "Units"
+  });
+  heading2.createSpan({
+    text: `${ordered.length} unit${ordered.length === 1 ? "" : "s"} \xB7 ${ordered.filter(
+      (unit) => unit.status === "active"
+    ).length} in progress`
+  });
+  const list3 = root.createDiv({
+    cls: "los-record-list los-module-unit-list"
+  });
+  renderModuleUnitGroups(list3, ordered, (parent, unit) => {
+    const map = view.plugin.store.mapForUnit(
+      unit.id
+    );
+    const stages = map ? asRecords(map.stages) : [];
+    const complete = stages.filter(
+      (stage) => stage.status === "complete"
+    ).length;
+    const currentStageId = map ? asString(map.current_stage) : null;
+    const currentStage = currentStageId ? stages.find(
+      (stage) => stage.id === currentStageId
+    ) : null;
+    const row3 = parent.createEl("button", {
+      cls: "los-record-row is-clickable",
+      attr: {
+        type: "button",
+        "aria-label": `Open unit: ${unit.title}`
+      }
+    });
+    const copy = row3.createDiv({
+      cls: "los-record-copy"
+    });
+    copy.createEl("strong", {
+      text: unit.title
+    });
+    const meta = [
+      unit.status.replaceAll("-", " "),
+      map ? `${complete} of ${stages.length} stages` : "No study map yet",
+      currentStage ? `Current \xB7 ${asString(currentStage.title) ?? currentStageId}` : ""
+    ].filter(Boolean).join(" \xB7 ");
+    copy.createDiv({
+      cls: "los-record-meta",
+      text: meta
+    });
+    if (map) {
+      row3.createSpan({
+        cls: "los-record-action",
+        text: "Open \u2192"
+      });
+    } else {
+      badge(
+        row3,
+        "No map",
+        "needs-map"
+      );
+    }
+    row3.addEventListener(
+      "click",
+      () => {
+        view.selectedElementId = unit.id;
+        return view.plugin.nav.openUnit(unit.id);
+      }
+    );
+  });
+}
+
 // src/designs/study-desk/modules.ts
 var JOB_VISIBLE = 5;
 function group(parent, title3, count4) {
@@ -41980,13 +42265,13 @@ function renderUnitSheet(root, view, record7, module2) {
   }
   const pointer2 = readResumePointer(plugin.store.data?.resume_pointer);
   const sheet = root.createDiv({ cls: "sd-sheet sd-unit-sheet" });
-  for (const unit of units) {
+  renderModuleUnitGroups(sheet, units, (parent, unit) => {
     const map = plugin.store.mapForUnit(unit.id);
     const stages = asRecords(map?.stages);
     const done = stages.filter((stage) => stage.status === "complete").length;
     const label2 = unitLabel(plugin.store.get(unit.id), record7);
     const here = pointer2.unit_id === unit.id;
-    const row3 = deskRow(sheet, `sd-unit-row${here ? " is-here" : ""}`, `Open unit: ${unit.title}`, () => {
+    const row3 = deskRow(parent, `sd-unit-row${here ? " is-here" : ""}`, `Open unit: ${unit.title}`, () => {
       view.selectedElementId = unit.id;
       return plugin.nav.openUnit(unit.id);
     });
@@ -41998,7 +42283,7 @@ function renderUnitSheet(root, view, record7, module2) {
       text: !map ? "No study plan yet" : done === stages.length && stages.length ? "Done" : done ? `${done} of ${stages.length}` : `${stages.length} stage${stages.length === 1 ? "" : "s"}`
     });
     chevron(row3);
-  }
+  });
 }
 
 // src/app/design-switch.ts
@@ -45640,10 +45925,10 @@ function renderFocusModule(view) {
     if (module2.components.length) filterTabs(body, "Module components", [["", "All components"], ...module2.components.map((item) => [item.id, item.title])], view.componentId ?? "", (id) => view.selectComponent(id || null));
     body.createEl("h2", { text: "Units" });
     const units = orderModuleUnits(module2, plugin.store.unitsFor(module2.id, view.componentId).map(normalizeUnitRecord).filter(nonNull));
-    for (const unit of units) {
+    renderModuleUnitGroups(body, units, (parent, unit) => {
       const stages = asRecords(plugin.store.mapForUnit(unit.id)?.stages);
       const done = stages.filter((stage) => stage.status === "complete").length;
-      const target = row(body, `Open unit: ${unit.title}`, () => {
+      const target = row(parent, `Open unit: ${unit.title}`, () => {
         view.selectedElementId = unit.id;
         return plugin.nav.openUnit(unit.id);
       });
@@ -45652,7 +45937,7 @@ function renderFocusModule(view) {
       copy.createSpan({ cls: "focus-muted", text: stages.length ? `${stages.length} stages \xB7 ${done} complete` : "No study map yet" });
       target.createSpan({ cls: "focus-row-state", text: unit.status.replaceAll("-", " ") });
       chevron2(target);
-    }
+    });
     if (!units.length) body.createEl("p", { cls: "focus-muted", text: "No units in this component. Choose All components." });
   }
   button(body, collection.scope === "projects" ? "Back to projects" : "Back to modules", () => openFocusCollection(plugin.nav), "quiet");
@@ -50422,280 +50707,6 @@ function renderSources2(view, root, module2) {
   }
 }
 
-// src/features/module/detail.ts
-function renderModuleDetail(view, root) {
-  const moduleRecord = view.moduleId ? view.plugin.store.get(
-    view.moduleId
-  ) : null;
-  const module2 = readModuleRecord(
-    moduleRecord,
-    view.moduleId
-  );
-  const back = button(
-    root,
-    "\u2039 Back",
-    () => view.plugin.nav.back(),
-    "quiet"
-  );
-  back.addClass("los-route-back");
-  if (!module2) {
-    empty(
-      root,
-      "Module unavailable",
-      "Return to Modules and choose another module."
-    );
-    return;
-  }
-  const tab = view.tab ?? view.defaultTab(module2);
-  const header = pageHeader(
-    root,
-    module2.kind,
-    module2.title
-  );
-  if (module2.areaId === "program-job") {
-    badge(header, "Job", "role");
-  }
-  header.createDiv({
-    cls: "los-module-facts",
-    text: view.headline(module2)
-  });
-  const tabs = root.createDiv({
-    cls: "los-tabs",
-    attr: {
-      role: "group",
-      "aria-label": "Module sections"
-    }
-  });
-  enableButtonGroupKeyboardNavigation(tabs);
-  for (const [key, label2] of MODULE_TABS) {
-    const control = button(
-      tabs,
-      label2,
-      () => view.selectTab(key),
-      key === tab ? "cta" : "quiet"
-    );
-    control.setAttrs({
-      "aria-pressed": String(key === tab)
-    });
-  }
-  if (tab === "overview") {
-    view.renderOverview(
-      root,
-      module2
-    );
-  } else if (tab === "units") {
-    view.renderUnits(
-      root,
-      module2
-    );
-  } else if (tab === "resources") {
-    view.renderSources(
-      root,
-      module2
-    );
-  } else {
-    view.renderLogistics(
-      root,
-      module2
-    );
-  }
-}
-function headline(view, module2) {
-  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-  const nextDate = view.deadlinesFor(module2).filter(
-    (row3) => (row3.endDate || row3.startDate) >= today
-  ).map((row3) => row3.startDate)[0];
-  return [
-    semesterLabel(module2.semester),
-    module2.credits ? `${module2.credits} LP` : "",
-    module2.examination.type ? `${examinationLabel(
-      module2.examination.type
-    )}${nextDate ? ` ${nextDate}` : ""}` : ""
-  ].filter(Boolean).join(" \xB7 ");
-}
-function renderOverview(view, root, module2) {
-  const progress2 = readProgress(
-    view.plugin.store.progress(
-      module2.id
-    )
-  );
-  const wrap = root.createDiv({
-    cls: "los-overview"
-  });
-  wrap.createDiv({
-    cls: "los-overview-progress",
-    text: `${progress2.stagesComplete} of ${progress2.stagesTotal} stages complete across ${progress2.unitsTotal} unit${progress2.unitsTotal === 1 ? "" : "s"}`
-  });
-  const workspaces = view.plugin.store.workspacesForModule(module2.id).map(
-    (record7) => normalizeWorkspaceRecord(record7)
-  );
-  for (const workspace of workspaces) {
-    workspaceCard(
-      wrap,
-      view.plugin,
-      workspace,
-      module2.id
-    );
-  }
-  if (!workspaces.length) {
-    empty(
-      wrap,
-      "No active coordination workspace",
-      "The module/unit tree still owns study state."
-    );
-  }
-  const units = orderModuleUnits(
-    module2,
-    view.plugin.store.unitsFor(module2.id).map(
-      (record7) => normalizeUnitRecord(record7)
-    ).filter(nonNull)
-  );
-  const next = units.find(
-    (unit) => unit.status === "active"
-  ) ?? units[0];
-  if (next) {
-    button(
-      wrap,
-      `Continue ${next.title}`,
-      () => view.plugin.nav.openUnit(next.id),
-      "cta"
-    );
-  }
-  const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-  const ahead = view.deadlinesFor(module2).filter(
-    (row3) => (row3.endDate || row3.startDate) >= today
-  );
-  if (ahead.length) {
-    view.renderDeadlineRows(
-      wrap,
-      module2,
-      ahead.slice(0, 1)
-    );
-  }
-}
-function renderUnits(view, root, module2) {
-  if (module2.components.length) {
-    const tabs = root.createDiv({
-      cls: "los-subtabs",
-      attr: {
-        role: "group",
-        "aria-label": "Module components"
-      }
-    });
-    enableButtonGroupKeyboardNavigation(tabs);
-    const allTab = button(
-      tabs,
-      "All components",
-      () => view.selectComponent(null),
-      view.componentId ? "quiet" : "row"
-    );
-    allTab.setAttrs({
-      "aria-pressed": String(!view.componentId)
-    });
-    for (const component of module2.components) {
-      const control = button(
-        tabs,
-        component.title,
-        () => view.selectComponent(
-          component.id
-        ),
-        view.componentId === component.id ? "row" : "quiet"
-      );
-      control.setAttrs({
-        "aria-pressed": String(
-          view.componentId === component.id
-        )
-      });
-    }
-  }
-  const units = view.plugin.store.unitsFor(
-    module2.id,
-    view.componentId
-  ).map(
-    (record7) => normalizeUnitRecord(record7)
-  ).filter(nonNull);
-  if (!units.length) {
-    empty(
-      root,
-      "No units in this component",
-      "Return to all components."
-    );
-    return;
-  }
-  const ordered = orderModuleUnits(
-    module2,
-    units
-  );
-  const heading2 = root.createDiv({
-    cls: "los-section-heading los-module-units-heading"
-  });
-  heading2.createEl("h2", {
-    text: "Units"
-  });
-  heading2.createSpan({
-    text: `${ordered.length} unit${ordered.length === 1 ? "" : "s"} \xB7 ${ordered.filter(
-      (unit) => unit.status === "active"
-    ).length} in progress`
-  });
-  const list3 = root.createDiv({
-    cls: "los-record-list los-module-unit-list"
-  });
-  for (const unit of ordered) {
-    const map = view.plugin.store.mapForUnit(
-      unit.id
-    );
-    const stages = map ? asRecords(map.stages) : [];
-    const complete = stages.filter(
-      (stage) => stage.status === "complete"
-    ).length;
-    const currentStageId = map ? asString(map.current_stage) : null;
-    const currentStage = currentStageId ? stages.find(
-      (stage) => stage.id === currentStageId
-    ) : null;
-    const row3 = list3.createEl("button", {
-      cls: "los-record-row is-clickable",
-      attr: {
-        type: "button",
-        "aria-label": `Open unit: ${unit.title}`
-      }
-    });
-    const copy = row3.createDiv({
-      cls: "los-record-copy"
-    });
-    copy.createEl("strong", {
-      text: unit.title
-    });
-    const meta = [
-      unit.status.replaceAll("-", " "),
-      map ? `${complete} of ${stages.length} stages` : "No study map yet",
-      currentStage ? `Current \xB7 ${asString(currentStage.title) ?? currentStageId}` : ""
-    ].filter(Boolean).join(" \xB7 ");
-    copy.createDiv({
-      cls: "los-record-meta",
-      text: meta
-    });
-    if (map) {
-      row3.createSpan({
-        cls: "los-record-action",
-        text: "Open \u2192"
-      });
-    } else {
-      badge(
-        row3,
-        "No map",
-        "needs-map"
-      );
-    }
-    row3.addEventListener(
-      "click",
-      () => {
-        view.selectedElementId = unit.id;
-        return view.plugin.nav.openUnit(unit.id);
-      }
-    );
-  }
-}
-
 // src/features/module/navigation.ts
 function renderGroups(view, root) {
   const modules = view.plugin.store.openAcademicModules().map(
@@ -52509,7 +52520,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:88f869a726f82158b85f7d5c30dbf57cb1378d2a9138255c55aec370f4e0ff05" : "unavailable";
+  return true ? "sha256:d1ef1bf9d7eb828c2b08c3693c251184061532c6df3f98497eabacf39f706b8d" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 16 : 0;

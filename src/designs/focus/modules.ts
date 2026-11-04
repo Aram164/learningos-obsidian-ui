@@ -1,5 +1,6 @@
 import { button, filterTabs } from '../../components';
 import { MODULE_TABS, nonNull, normalizeUnitRecord, orderModuleUnits, readModuleRecord } from '../../features/module/model';
+import { renderModuleUnitGroups } from '../../features/module/detail';
 import { readResumePointer } from '../../features/home/model';
 import { asLabel, asRecords, asString } from '../../projection/readers';
 import { compareStrings, foldCase } from '../../sorting';
@@ -77,16 +78,16 @@ export function renderFocusModule(view: ModuleDetailScreenHost): boolean {
     if (module.components.length) filterTabs(body, 'Module components', [['', 'All components'], ...module.components.map(item => [item.id, item.title] as const)], view.componentId ?? '', id => view.selectComponent(id || null));
     body.createEl('h2', { text: 'Units' });
     const units = orderModuleUnits(module, plugin.store.unitsFor(module.id, view.componentId).map(normalizeUnitRecord).filter(nonNull));
-    for (const unit of units) {
+    renderModuleUnitGroups(body, units, (parent, unit) => {
       const stages = asRecords(plugin.store.mapForUnit(unit.id)?.stages);
       const done = stages.filter(stage => stage.status === 'complete').length;
-      const target = row(body, `Open unit: ${unit.title}`, () => { view.selectedElementId = unit.id; return plugin.nav.openUnit(unit.id); });
+      const target = row(parent, `Open unit: ${unit.title}`, () => { view.selectedElementId = unit.id; return plugin.nav.openUnit(unit.id); });
       const copy = target.createDiv({ cls: 'focus-row-copy' });
       copy.createEl('strong', { text: unit.title });
       copy.createSpan({ cls: 'focus-muted', text: stages.length ? `${stages.length} stages · ${done} complete` : 'No study map yet' });
       target.createSpan({ cls: 'focus-row-state', text: unit.status.replaceAll('-', ' ') });
       chevron(target);
-    }
+    });
     if (!units.length) body.createEl('p', { cls: 'focus-muted', text: 'No units in this component. Choose All components.' });
   }
   button(body, collection.scope === 'projects' ? 'Back to projects' : 'Back to modules', () => openFocusCollection(plugin.nav), 'quiet');

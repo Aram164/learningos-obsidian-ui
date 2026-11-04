@@ -13,6 +13,7 @@ import {
 import {
   MODULE_TABS,
   type ModuleRecordView,
+  type UnitRecordView,
   nonNull,
   readModuleRecord,
   normalizeUnitRecord,
@@ -237,7 +238,7 @@ export function renderOverview(
         (unit) =>
           unit.status === 'active',
       )
-      ?? units[0];
+      ?? units.find((unit) => unit.status !== 'paused');
 
     if (next) {
       button(
@@ -271,6 +272,23 @@ export function renderOverview(
       );
     }
   }
+
+/** Keep authored order within each group; paused work remains explicitly openable. */
+export function renderModuleUnitGroups(
+  parent: HTMLElement,
+  units: readonly UnitRecordView[],
+  renderUnit: (parent: HTMLElement, unit: UnitRecordView) => void,
+): void {
+  for (const unit of units.filter((unit) => unit.status !== 'paused')) {
+    renderUnit(parent, unit);
+  }
+  const paused = units.filter((unit) => unit.status === 'paused');
+  if (!paused.length) return;
+  const details = parent.createEl('details', { cls: 'los-disclosure los-paused-units' });
+  details.createEl('summary', { text: `Paused sessions · ${paused.length}` });
+  const body = details.createDiv({ cls: 'los-disclosure-body' });
+  for (const unit of paused) renderUnit(body, unit);
+}
 
 export function renderUnits(
   view: ModuleDetailHost,
@@ -376,7 +394,7 @@ export function renderUnits(
       cls: 'los-record-list los-module-unit-list',
     });
 
-    for (const unit of ordered) {
+    renderModuleUnitGroups(list, ordered, (parent, unit) => {
       const map = view.plugin.store.mapForUnit(
         unit.id,
       );
@@ -399,7 +417,7 @@ export function renderUnits(
         )
         : null;
 
-      const row = list.createEl('button', {
+      const row = parent.createEl('button', {
         cls: 'los-record-row is-clickable',
         attr: {
           type: 'button',
@@ -455,5 +473,5 @@ export function renderUnits(
           return view.plugin.nav.openUnit(unit.id);
         },
       );
-    }
+    });
   }

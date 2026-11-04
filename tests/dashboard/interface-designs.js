@@ -205,6 +205,40 @@ module.exports = async function run() {
       mode.unitMode(hostA, 'unit-z') === 'session' && mode.unitMode(hostB, 'unit-z') === 'plan');
   }
 
+  heading('interface designs: paused sessions stay quiet and explicitly reachable');
+  for (const design of ['classic', 'study-desk', 'focus']) {
+    const { app, plugin, calls } = await boot({ patchManifest(manifest) {
+      manifest.modules.find(row => row.id === 'module-fixture-m2').unit_order = [
+        'unit-fixture-sad-l04', 'unit-fixture-analysis', 'unit-fixture-sad-l02',
+      ];
+      manifest.units.find(row => row.id === 'unit-fixture-sad-l04').status = 'paused';
+      manifest.study_maps.find(row => row.unit_id === 'unit-fixture-sad-l04').status = 'paused';
+    } });
+    await plugin.setInterfaceDesign(design);
+    const before = calls.envelopes.length;
+    await plugin.nav.openModuleDetail('module-fixture-m2', null, 'units');
+    const root = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl;
+    const paused = root.find('los-paused-units')[0];
+    const elements = node => [node, ...node.children.flatMap(elements)];
+    const unitRows = elements(root).filter(node => node.tag === 'button'
+      && node.getAttribute('aria-label')?.startsWith('Open unit: '));
+    const current = unitRows.filter(node => !paused?.contains(node));
+    check(`${design}: current sessions retain authored order before the paused disclosure`,
+      current.map(row => row.getAttribute('aria-label')).join('|')
+        === 'Open unit: Analysis exam prep|Open unit: SaD Lecture 02 — Descriptive statistics'
+      && unitRows.length === 3 && unitRows[2] === unitRows.find(row => paused?.contains(row)));
+    check(`${design}: paused sessions use a closed native disclosure and remain labelled`,
+      paused?.tag === 'details' && !paused.hasAttribute('open')
+      && paused.children[0].allText() === 'Paused sessions · 1');
+    if (paused) paused.open = true;
+    unitRows.find(row => paused?.contains(row))?.fire('click');
+    await waitFor(() => app.workspace.getLeavesOfType(VIEW.unit).length > 0);
+    check(`${design}: opening paused work preserves its route and creates no learning write`,
+      app.workspace.getLeavesOfType(VIEW.unit)[0]?.view.contentEl.allText().includes('Probability & Bayes')
+      && calls.envelopes.length === before);
+    plugin.onunload();
+  }
+
   heading('interface designs: StructuralEditModal reference defaults');
   {
     const { app, plugin } = await boot();

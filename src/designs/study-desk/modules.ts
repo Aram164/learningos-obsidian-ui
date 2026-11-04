@@ -1,6 +1,7 @@
 import { filterTabs, icon } from '../../components';
 import { readResumePointer } from '../../features/home/model';
 import { MODULE_TABS, nonNull, normalizeUnitRecord, orderModuleUnits, readModuleRecord } from '../../features/module/model';
+import { renderModuleUnitGroups } from '../../features/module/detail';
 import type { ProjectionRecord } from '../../contracts/manifest';
 import { asRecords, asString } from '../../projection/readers';
 import { compareStrings, foldCase } from '../../sorting';
@@ -136,13 +137,13 @@ function renderUnitSheet(
   }
   const pointer = readResumePointer(plugin.store.data?.resume_pointer);
   const sheet = root.createDiv({ cls: 'sd-sheet sd-unit-sheet' });
-  for (const unit of units) {
+  renderModuleUnitGroups(sheet, units, (parent, unit) => {
     const map = plugin.store.mapForUnit(unit.id);
     const stages = asRecords(map?.stages);
     const done = stages.filter((stage) => stage.status === 'complete').length;
     const label = unitLabel(plugin.store.get(unit.id), record);
     const here = pointer.unit_id === unit.id;
-    const row = deskRow(sheet, `sd-unit-row${here ? ' is-here' : ''}`, `Open unit: ${unit.title}`, () => {
+    const row = deskRow(parent, `sd-unit-row${here ? ' is-here' : ''}`, `Open unit: ${unit.title}`, () => {
       view.selectedElementId = unit.id;
       return plugin.nav.openUnit(unit.id);
     });
@@ -157,5 +158,5 @@ function renderUnitSheet(
             : `${stages.length} stage${stages.length === 1 ? '' : 's'}`,
     });
     chevron(row);
-  }
+  });
 }
