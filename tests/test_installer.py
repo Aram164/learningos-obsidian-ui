@@ -61,17 +61,25 @@ class InstallStatusTests(unittest.TestCase):
                 "run `npm run build` and `npm run build:info`"
             )
 
-    def _vault(self, directory: str) -> Path:
-        """A temporary vault holding a byte-identical copy of this build."""
+    def _core_vault(self, directory: str) -> Path:
+        """A temporary vault that is a checkout of the paired Core HEAD.
+
+        An explicit VAULT also selects Core provenance, so every fixture
+        vault needs its own refs at the paired Core HEAD; never point its
+        .git at a live checkout or let status fall back to an unrelated
+        sibling.
+        """
         vault = Path(directory) / "vault"
-        # Explicit VAULT also selects Core provenance. Give the fixture its
-        # own refs at the paired Core HEAD; never point its .git at a live
-        # checkout or let status fall back to an unrelated sibling.
         subprocess.run(
             ["git", "clone", "--quiet", "--shared", "--no-checkout",
              str(ROOT.parent / "repository"), str(vault)],
             capture_output=True, text=True, timeout=120, check=True,
         )
+        return vault
+
+    def _vault(self, directory: str) -> Path:
+        """A temporary vault holding a byte-identical copy of this build."""
+        vault = self._core_vault(directory)
         installed = vault / ".obsidian" / "plugins" / "learningos-ui"
         installed.mkdir(parents=True)
         for name in SHIPPED:
@@ -672,8 +680,7 @@ class InstallStatusTests(unittest.TestCase):
 
     def test_the_installer_copies_only_the_declared_files(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
-            vault = Path(directory) / "vault"
-            vault.mkdir()
+            vault = self._core_vault(directory)
             result = subprocess.run(
                 [sys.executable, str(ROOT / "install.py"),
                  "--vault", str(vault), "--skip-tests"],
@@ -684,7 +691,7 @@ class InstallStatusTests(unittest.TestCase):
             self.assertEqual(sorted(p.name for p in installed.iterdir()), sorted(SHIPPED))
             status = self._check(vault)
         self.assertEqual(status.returncode, 0, status.stdout + status.stderr)
-        self.assertIn("running this build", status.stdout)
+        self.assertIn("installed files match this build", status.stdout)
 
     def test_the_checker_names_unknown_entries_even_when_all_assets_are_missing(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
