@@ -1,5 +1,5 @@
 /*
- * Is the plugin running in the vault the plugin this source builds?
+ * Do the installed plugin assets match this source build and selected pair?
  *
  * Nothing answered that question before. The vault ran a build from 32 commits
  * back for a day without a word, because the app can only ever read the
@@ -29,8 +29,9 @@
  * Matching assets still do not prove the build belongs to the current pair:
  * the record beside a green checkmark could name a Core commit the sibling
  * checkout left long ago (UI #5). The provenance verdict below compares the
- * built build-info.json revisions against the sibling checkouts' HEADs, by
- * install.py's own `../repository` convention; an unavailable Git state is
+ * built build-info.json revisions against the selected Core vault and UI
+ * checkout HEADs, defaulting to install.py's `../repository` convention;
+ * an unavailable Git state is
  * `unknown` and fails, never silently clean. Recorded dirtiness is printed
  * as a fact, the way the live-app check reports it.
  *
@@ -67,13 +68,13 @@ export function currentGitHead(directory, { git = spawnGit } = {}) {
 }
 
 /**
- * The sibling checkouts whose HEADs the built record is compared against,
- * resolved by install.py's own convention: the Core checkout is this
- * repository's `../repository` sibling (the default vault's root).
+ * The selected checkouts whose HEADs the built record is compared against.
+ * An explicit vault is the Core authority for both asset and provenance
+ * checks; only an omitted vault defaults to the `../repository` sibling.
  */
-export function provenanceTargets(uiRoot) {
+export function provenanceTargets(uiRoot, vaultRoot = path.join(path.dirname(uiRoot), 'repository')) {
   return {
-    coreRepository: path.join(path.dirname(uiRoot), 'repository'),
+    coreRepository: vaultRoot,
     uiCheckout: uiRoot,
   };
 }
@@ -281,9 +282,11 @@ function main() {
 
   // Provenance (UI #5): matching assets still do not prove the build belongs
   // to the current pair. Compare the built record's revisions against the
-  // sibling checkouts' HEADs; an unavailable Git state is unknown and fails —
+  // selected checkouts' HEADs; an unavailable Git state is unknown and fails —
   // never silently clean. Recorded dirtiness prints as a fact.
-  const targets = artifact ? { coreRepository: vault, uiCheckout: root } : provenanceTargets(root);
+  const targets = provenanceTargets(root, vault);
+  console.log(`install: Core comparison checkout ${targets.coreRepository}`);
+  console.log(`install: UI comparison checkout ${targets.uiCheckout}`);
   const coreHead = currentGitHead(targets.coreRepository);
   const uiHead = currentGitHead(targets.uiCheckout);
   const provenance = provenanceProblems({ builtInfo, coreHead, uiHead });
@@ -292,14 +295,14 @@ function main() {
   }
 
   if (!problems.length && !provenance.length) {
-    console.log(`install: the vault is running this build ✓ (${assetRows.length} shipped files match; `
+    console.log(`install: installed files match this build ✓ (${assetRows.length} shipped files match; `
       + 'provenance matches the current pair)');
     process.exit(0);
   }
 
   console.log('');
   if (problems.length) {
-    console.log('install: THE VAULT IS RUNNING A DIFFERENT BUILD.');
+    console.log('install: THE INSTALLED PLUGIN HAS A DIFFERENT BUILD.');
     for (const asset of problems) {
       console.log(asset.installed
         ? `install:   ${asset.name} differs (built ${short(asset.built.slice(7))}, in vault ${short(asset.installed.slice(7))})`
@@ -323,7 +326,7 @@ function main() {
       console.log(`install:   ${problem}`);
     }
     console.log('install: rebuild from the current pair (`npm run build && npm run build:info`),');
-    console.log('install: or move the sibling checkouts back to the recorded revisions.');
+    console.log('install: or select the checkouts at the recorded revisions.');
   }
   if (problems.length) {
     console.log('install: run `python3 install.py`, then reload Obsidian with Cmd+R.');

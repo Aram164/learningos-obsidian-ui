@@ -64,6 +64,14 @@ class InstallStatusTests(unittest.TestCase):
     def _vault(self, directory: str) -> Path:
         """A temporary vault holding a byte-identical copy of this build."""
         vault = Path(directory) / "vault"
+        # Explicit VAULT also selects Core provenance. Give the fixture its
+        # own refs at the paired Core HEAD; never point its .git at a live
+        # checkout or let status fall back to an unrelated sibling.
+        subprocess.run(
+            ["git", "clone", "--quiet", "--shared", "--no-checkout",
+             str(ROOT.parent / "repository"), str(vault)],
+            capture_output=True, text=True, timeout=120, check=True,
+        )
         installed = vault / ".obsidian" / "plugins" / "learningos-ui"
         installed.mkdir(parents=True)
         for name in SHIPPED:
@@ -80,7 +88,7 @@ class InstallStatusTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             result = self._check(self._vault(directory))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("running this build", result.stdout)
+        self.assertIn("installed files match this build", result.stdout)
 
     def test_each_missing_shipped_asset_fails_and_names_the_file(self) -> None:
         for name in SHIPPED:
@@ -126,7 +134,7 @@ class InstallStatusTests(unittest.TestCase):
             )
             result = self._check(vault)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("running this build", result.stdout)
+        self.assertIn("installed files match this build", result.stdout)
 
     def test_an_unexpected_installed_file_fails_and_names_its_exact_path(self) -> None:
         """Reporting "current ✓" beside a file nobody ships is the false
