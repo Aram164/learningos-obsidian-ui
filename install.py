@@ -1243,16 +1243,19 @@ def verify_published_artifact(artifact: Path, receipt: dict) -> None:
 
 
 def verify_legacy_local_metadata(destination: Path, previous: Path, old: dict,
-                                 installed_hashes: dict[str, str]) -> None:
-    """Admit only a local Node-version stamp beside hosted-identical runtime bytes.
+                                 installed_hashes: dict[str, str], *, core_root: Path) -> dict:
+    """Classify local stamps beside hosted-identical runtime bytes.
 
     This is a before-state classification, never a replacement release receipt.
-    Every other metadata value (including source inventories and clean flags)
-    must equal the previous hosted artifact, whose publication is checked by the
-    caller before this classification can authorize an update.
+    A local Core stamp must name the same commit or a verified ancestor of the
+    previous hosted Core. Apart from that stamp and Node version, every metadata
+    value (including inventories and clean flags) must equal the previous hosted
+    artifact. The caller still verifies that artifact's publication before any
+    update and preserves the exact local bytes in an explicit rollback directory.
     """
     expected = old["shipped_asset_sha256"]
     if (set(expected) != {"main.js", "styles.css", "manifest.json", "build-info.json"}
+            or set(installed_hashes) != set(expected)
             or any(installed_hashes[name] != digest for name, digest in expected.items()
                    if name != "build-info.json")):
         raise PluginAssetsError("installed before-state differs from the previous receipt's runtime assets")
@@ -1269,19 +1272,43 @@ def verify_legacy_local_metadata(destination: Path, previous: Path, old: dict,
         "source_fingerprint": old["runtime_source_fingerprint"],
         "bundle_sha256": expected["main.js"], "stylesheet_sha256": expected["styles.css"],
     }
-    without_node = lambda value: {key: item for key, item in value.items() if key != "node_version"}
+    stamps = {"node_version", "core_revision"}
+    without_stamps = lambda value: json.dumps(
+        {key: item for key, item in value.items() if key not in stamps}, sort_keys=True)
     node_versions = (local.get("node_version"), hosted.get("node_version"))
     inventories = (hosted.get("modules"), hosted.get("stylesheet_modules"))
-    if (any(local.get(key) != value or type(local.get(key)) is not type(value)
+    if (any(hosted.get(key) != value or type(hosted.get(key)) is not type(value)
             for key, value in identities.items())
-            or without_node(local) != without_node(hosted)
+            or any(local.get(key) != value or type(local.get(key)) is not type(value)
+                   for key, value in identities.items() if key != "core_revision")
+            or without_stamps(local) != without_stamps(hosted)
             or any(not isinstance(value, str) or not re.fullmatch(r"v[0-9]+\.[0-9]+\.[0-9]+", value)
                    for value in node_versions)
-            or node_versions[0] == node_versions[1]
             or any(not isinstance(items, list) or not items
                    or any(not isinstance(item, str) or not item for item in items)
                    for items in inventories)):
-        raise PluginAssetsError("legacy local build metadata differs beyond its Node version")
+        raise PluginAssetsError("legacy local build metadata differs beyond permitted Core and Node stamps")
+    local_core, hosted_core = local.get("core_revision"), old["core_sha"]
+    try:
+        for revision in (local_core, hosted_core):
+            if not isinstance(revision, str) or not re.fullmatch(r"[0-9a-f]{40}", revision):
+                raise PluginAssetsError("legacy Core stamps must name full commit revisions")
+            result = subprocess.run(["git", "cat-file", "-t", revision], cwd=core_root,
+                                    capture_output=True, text=True, timeout=30)
+            if result.returncode != 0 or result.stdout.strip() != "commit":
+                raise PluginAssetsError("legacy Core stamp is not a known commit in the selected vault")
+        ancestor = subprocess.run(["git", "merge-base", "--is-ancestor", local_core, hosted_core],
+                                  cwd=core_root, capture_output=True, timeout=30)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise PluginAssetsError("legacy Core ancestry could not be verified in the selected vault") from exc
+    if ancestor.returncode != 0:
+        raise PluginAssetsError("legacy local Core stamp is not an ancestor of the previous hosted Core")
+    differences = sorted(key for key in stamps if local.get(key) != hosted.get(key))
+    if not differences:
+        raise PluginAssetsError("legacy local metadata has no permitted stamp difference")
+    return {"local_core_sha": local_core, "previous_hosted_core_sha": hosted_core,
+            "core_relation": "same" if local_core == hosted_core else "ancestor",
+            "metadata_fields": differences}
 
 
 def legacy_rollback_destination(rollback: Path, roots: tuple[Path, ...]) -> None:
@@ -1297,7 +1324,7 @@ def legacy_rollback_destination(rollback: Path, roots: tuple[Path, ...]) -> None
 
 
 def preserve_legacy_rollback(destination: Path, previous: Path, rollback: Path,
-                             old: dict, hashes: dict[str, str]) -> None:
+                             old: dict, hashes: dict[str, str], classification: dict) -> None:
     """Retain original bytes durably; partial evidence is never discarded."""
     try:
         rollback.mkdir(mode=0o700)
@@ -1313,11 +1340,13 @@ def preserve_legacy_rollback(destination: Path, previous: Path, rollback: Path,
         _sync_directory(plugin)
         _write_json_durable(rollback / "before-state.json", {
             "schema_version": 1, "type": "learningos-ui-legacy-local-before-state",
-            "core_sha": old["core_sha"], "ui_sha": old["ui_sha"],
+            "core_sha": classification["local_core_sha"], "ui_sha": old["ui_sha"],
+            "previous_hosted_core_sha": classification["previous_hosted_core_sha"],
+            "core_relation": classification["core_relation"],
             "previous_hosted_workflow_run_id": old["workflow_run_id"],
             "previous_hosted_receipt_sha256": "sha256:" + _sha256(rollback / "previous-hosted-pair-receipt.json"),
             "shipped_asset_sha256": hashes,
-            "accepted_difference": "build-info.json node_version only",
+            "accepted_difference": "build-info.json " + " and ".join(classification["metadata_fields"]) + " only",
         })
         _sync_directory(rollback)
         _sync_directory(rollback.parent)
@@ -1366,24 +1395,25 @@ def install_accepted_artifact(vault: Path, artifact: Path, previous: Path | None
     if present and (old is None or set(old["shipped_asset_sha256"]) != set(shipped)):
         raise PluginAssetsError("an existing installation requires its previous verified artifact")
     installed_hashes = {name: "sha256:" + _sha256(destination / name) for name in shipped} if present else {}
-    legacy = False
+    legacy = None
     if present and installed_hashes not in (old["shipped_asset_sha256"], receipt["shipped_asset_sha256"]):
-        verify_legacy_local_metadata(destination, previous, old, installed_hashes)
+        legacy = verify_legacy_local_metadata(destination, previous, old, installed_hashes,
+                                               core_root=vault)
         if legacy_rollback is None:
             raise PluginAssetsError("legacy local installation requires --legacy-rollback DIRECTORY to preserve its original bytes")
         _hosted_run("Aram164/LearningOS", old["workflow_run_id"], old["core_sha"], ".github/workflows/release-pair.yml")
         verify_published_artifact(previous, old)
         legacy_rollback_destination(legacy_rollback, (vault, HERE, artifact, previous))
-        legacy = True
     before_owned = {name: _hash_or_missing(destination / name) for name in owned}
     expected = {name: receipt["shipped_asset_sha256"][name].removeprefix("sha256:") for name in shipped}
     if _sha256(HERE / "plugin/manifest.json") != expected["manifest.json"]:
         raise PluginAssetsError("accepted artifact would change the source manifest")
     if legacy:
         if dry:
-            log(f"legacy Node-version metadata transition verified; original bytes would be preserved at {legacy_rollback}")
+            log(f"legacy local metadata transition verified ({', '.join(legacy['metadata_fields'])}); "
+                f"original bytes would be preserved at {legacy_rollback}")
         else:
-            preserve_legacy_rollback(destination, previous, legacy_rollback, old, installed_hashes)
+            preserve_legacy_rollback(destination, previous, legacy_rollback, old, installed_hashes, legacy)
     before_hashes = {name: installed_hashes[name].removeprefix("sha256:") if present else None
                      for name in shipped}
     copy_shipped_plugin(destination, shipped, dry, source_dir=artifact / "plugin", expected_hashes=expected,
@@ -1417,7 +1447,7 @@ def main() -> int:
     ap.add_argument("--previous-artifact", type=Path,
                     help="verified before-state authority for an existing installation")
     ap.add_argument("--legacy-rollback", type=Path,
-                    help="new absolute directory preserving a legacy local install whose only hosted metadata difference is Node version")
+                    help="new absolute directory preserving a legacy local install with only Node-version or verified ancestral Core stamps")
     ap.add_argument("--validate-run", help="successful hosted validate run for the accepted Core SHA")
     ap.add_argument("--ui-run", help="successful UI CI run that checked the accepted Core SHA")
     args = ap.parse_args()

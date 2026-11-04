@@ -214,3 +214,12 @@ and learner records. Check the result with
 continues to compare against local build outputs. Installed bytes and running
 Obsidian identity remain separate checks: reload and inspect Diagnostics after
 checking pending Gateway recovery.
+
+For a legacy local installation, `--legacy-rollback /absolute/new/directory`
+can preserve its exact original plugin bytes before an accepted-artifact update.
+Its runtime assets and UI identity must match the previous published artifact;
+only a Node-version stamp or a Core stamp proven to be that hosted Core's
+ancestor may differ. Every other metadata field and both recorded clean flags
+remain strict. This classifies the local before-state for a recoverable update;
+it does not claim that the local Core pair passed hosted acceptance. The previous
+and new artifact receipts and published bytes are still verified independently.

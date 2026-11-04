@@ -917,6 +917,208 @@ class RealVaultInstallEndToEndTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
+class LegacyLocalMetadataTests(unittest.TestCase):
+    """Local stamps classify rollback bytes; they never become a release receipt."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="learningos-legacy-metadata-")
+        self.addCleanup(temporary.cleanup)
+        self.base = Path(temporary.name).resolve()
+        self.core = self.base / "selected-core"
+        self.core.mkdir()
+        self._git("init", "-q")
+        (self.core / ".gitignore").write_text(".obsidian/\n")
+        self.ancestor = self._commit("local Core")
+        self.hosted_core = self._commit("hosted Core")
+        self.previous = self.base / "previous"
+        self.destination = self.core / ".obsidian/plugins/learningos-ui"
+        (self.previous / "plugin").mkdir(parents=True)
+        self.destination.mkdir(parents=True)
+        for name in SHIPPED:
+            if name != "build-info.json":
+                content = ("hosted runtime " + name).encode()
+                (self.previous / "plugin" / name).write_bytes(content)
+                (self.destination / name).write_bytes(content)
+        self.hosted_info = {
+            "schema_version": 5, "source_revision": "a" * 40,
+            "core_revision": self.hosted_core, "source_dirty": False, "core_dirty": False,
+            "source_fingerprint": "sha256:" + "f" * 64,
+            "bundle_sha256": "sha256:" + INSTALLER._sha256(self.destination / "main.js"),
+            "stylesheet_sha256": "sha256:" + INSTALLER._sha256(self.destination / "styles.css"),
+            "node_version": "v22.1.0", "modules": ["src/main.ts"],
+            "stylesheet_modules": ["src/styles/00-tokens.css"], "manifest_contract_version": 16,
+        }
+        (self.previous / "plugin/build-info.json").write_text(json.dumps(self.hosted_info))
+        self.local_info = {**self.hosted_info, "core_revision": self.ancestor,
+                           "node_version": "v26.6.0"}
+        self._write_local()
+        self.old = {
+            "core_sha": self.hosted_core, "ui_sha": self.hosted_info["source_revision"],
+            "workflow_run_id": "12", "runtime_source_fingerprint": self.hosted_info["source_fingerprint"],
+            "shipped_asset_sha256": {
+                name: "sha256:" + INSTALLER._sha256(self.previous / "plugin" / name)
+                for name in SHIPPED},
+        }
+        (self.previous / "pair-receipt.json").write_text(json.dumps(self.old))
+
+    def _git(self, *args):
+        result = subprocess.run(["git", "-C", str(self.core), *args],
+                                capture_output=True, text=True, timeout=30, check=True)
+        return result.stdout.strip()
+
+    def _commit(self, label):
+        (self.core / "identity.txt").write_text(label)
+        self._git("add", ".gitignore", "identity.txt")
+        self._git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                  "commit", "-qm", label)
+        return self._git("rev-parse", "HEAD")
+
+    def _write_local(self):
+        (self.destination / "build-info.json").write_text(json.dumps(self.local_info, indent=2))
+
+    def _hashes(self):
+        return {name: "sha256:" + INSTALLER._sha256(self.destination / name) for name in SHIPPED}
+
+    def _check(self):
+        return INSTALLER.verify_legacy_local_metadata(
+            self.destination, self.previous, self.old, self._hashes(), core_root=self.core)
+
+    def test_known_ancestor_and_node_stamps_are_classified_without_claiming_acceptance(self):
+        result = self._check()
+        self.assertEqual(result, {
+            "local_core_sha": self.ancestor, "previous_hosted_core_sha": self.hosted_core,
+            "core_relation": "ancestor", "metadata_fields": ["core_revision", "node_version"],
+        })
+        self.local_info["node_version"] = self.hosted_info["node_version"]
+        self._write_local()
+        self.assertEqual(self._check()["metadata_fields"], ["core_revision"])
+        self.local_info.update(core_revision=self.hosted_core, node_version="v26.6.0")
+        self._write_local()
+        self.assertEqual(self._check(), {
+            "local_core_sha": self.hosted_core, "previous_hosted_core_sha": self.hosted_core,
+            "core_relation": "same", "metadata_fields": ["node_version"],
+        })
+
+    def test_future_unrelated_unknown_and_noncommit_core_stamps_refuse(self):
+        future = self._commit("later Core")
+        tree = self._git("rev-parse", "HEAD^{tree}")
+        unrelated = self._git("-c", "user.name=Fixture", "-c", "user.email=fixture@example.invalid",
+                              "commit-tree", tree, "-m", "unrelated Core")
+        blob = self._git("rev-parse", "HEAD:identity.txt")
+        for revision in (future, unrelated, "e" * 40, blob, "HEAD~1"):
+            with self.subTest(revision=revision):
+                self.local_info["core_revision"] = revision
+                self._write_local()
+                with self.assertRaisesRegex(INSTALLER.PluginAssetsError,
+                                            "ancestor|known commit|full commit"):
+                    self._check()
+
+    def test_unavailable_git_refuses_with_a_typed_classification_error(self):
+        with mock.patch.object(INSTALLER.subprocess, "run", side_effect=FileNotFoundError("no git")):
+            with self.assertRaisesRegex(INSTALLER.PluginAssetsError, "ancestry could not be verified"):
+                self._check()
+
+    def test_other_metadata_and_clean_flag_changes_stay_strict(self):
+        original = dict(self.local_info)
+        for key, value in (
+                ("core_dirty", True), ("core_dirty", 0), ("source_dirty", True),
+                ("schema_version", 5.0), ("source_revision", "b" * 40),
+                ("source_fingerprint", "sha256:" + "0" * 64), ("modules", []),
+                ("stylesheet_modules", ["different.css"]), ("node_version", "v26.x"),
+                ("manifest_contract_version", True), ("unexpected", "extra")):
+            with self.subTest(field=key, value=value):
+                self.local_info = {**original, key: value}
+                self._write_local()
+                with self.assertRaisesRegex(INSTALLER.PluginAssetsError, "beyond permitted"):
+                    self._check()
+
+    def test_runtime_drift_and_no_stamp_difference_refuse(self):
+        self.local_info = dict(self.hosted_info)
+        self._write_local()
+        with self.assertRaisesRegex(INSTALLER.PluginAssetsError, "no permitted stamp difference"):
+            self._check()
+        (self.destination / "main.js").write_bytes(b"changed runtime")
+        with self.assertRaisesRegex(INSTALLER.PluginAssetsError, "runtime assets"):
+            self._check()
+
+    def test_rollback_preserves_exact_local_bytes_and_distinguishes_core_stamps(self):
+        classification = self._check()
+        before = {name: (self.destination / name).read_bytes() for name in SHIPPED}
+        hashes = self._hashes()
+        rollback = self.base / "original-local-before-state"
+        INSTALLER.legacy_rollback_destination(rollback, (self.core, self.previous, ROOT))
+        INSTALLER.preserve_legacy_rollback(
+            self.destination, self.previous, rollback, self.old, hashes, classification)
+        self.assertEqual({name: (rollback / "plugin" / name).read_bytes() for name in SHIPPED}, before)
+        self.assertEqual({name: (self.destination / name).read_bytes() for name in SHIPPED}, before)
+        record = json.loads((rollback / "before-state.json").read_text())
+        self.assertEqual(record["core_sha"], self.ancestor)
+        self.assertEqual(record["previous_hosted_core_sha"], self.hosted_core)
+        self.assertEqual(record["core_relation"], "ancestor")
+        self.assertEqual(record["accepted_difference"], "build-info.json core_revision and node_version only")
+        self.assertEqual(record["shipped_asset_sha256"], hashes)
+        self.assertEqual((rollback / "previous-hosted-pair-receipt.json").read_bytes(),
+                         (self.previous / "pair-receipt.json").read_bytes())
+
+    def test_accepted_update_requires_and_preserves_local_rollback_with_publication_checks(self):
+        artifact, ui = self.base / "new-artifact", self.base / "selected-ui"
+        shutil.copytree(self.previous / "plugin", artifact / "plugin")
+        shutil.copytree(self.previous / "plugin", ui / "plugin")
+        shutil.copytree(ROOT / "bases", ui / "bases")
+        shutil.copytree(ROOT / "vault-config", ui / "vault-config")
+        shutil.copy2(ROOT / "plugin-assets.json", ui / "plugin-assets.json")
+        info = {**self.hosted_info, "source_revision": "b" * 40,
+                "source_fingerprint": "sha256:" + "d" * 64}
+        (artifact / "plugin/main.js").write_bytes(b"new accepted runtime")
+        info["bundle_sha256"] = "sha256:" + INSTALLER._sha256(artifact / "plugin/main.js")
+        (artifact / "plugin/build-info.json").write_text(json.dumps(info))
+        receipt = {**self.old, "ui_sha": info["source_revision"], "workflow_run_id": "13",
+                   "runtime_source_fingerprint": info["source_fingerprint"],
+                   "shipped_asset_sha256": {
+                       name: "sha256:" + INSTALLER._sha256(artifact / "plugin" / name)
+                       for name in SHIPPED}}
+        before = {name: (self.destination / name).read_bytes() for name in SHIPPED}
+        (self.destination / "data.json").write_bytes(b'{"working-draft":"keep exactly"}')
+        rollback = self.base / "original-before-update"
+        actual_run = subprocess.run
+
+        def run(args, **kwargs):
+            # Release cleanliness and remote proof are separate tested owners.
+            # Keep actual Git object/ancestry calls in the selected Core fixture.
+            if args[:3] == ["git", "status", "--porcelain=v1"]:
+                return subprocess.CompletedProcess(args, 0, b"", b"")
+            return actual_run(args, **kwargs)
+
+        with mock.patch.object(INSTALLER, "HERE", ui), \
+                mock.patch.object(INSTALLER, "verified_artifact", side_effect=lambda _, directory:
+                                  receipt if directory == artifact else self.old), \
+                mock.patch.object(INSTALLER, "real_vault_install_problems", return_value=[]), \
+                mock.patch.object(INSTALLER, "_git_rev_parse", side_effect=lambda directory:
+                                  self.hosted_core if directory == self.core else receipt["ui_sha"]), \
+                mock.patch.object(INSTALLER, "corroborate_hosted_pair") as hosted, \
+                mock.patch.object(INSTALLER, "verify_published_artifact") as published, \
+                mock.patch.object(INSTALLER, "_hosted_run") as previous_run, \
+                mock.patch.object(INSTALLER.subprocess, "run", side_effect=run), \
+                mock.patch.object(INSTALLER, "smoke_test_cli"):
+            with self.assertRaisesRegex(INSTALLER.PluginAssetsError, "requires --legacy-rollback"):
+                INSTALLER.install_accepted_artifact(
+                    self.core, artifact, self.previous, "14", "15", dry=False)
+            self.assertFalse(rollback.exists())
+            self.assertEqual({name: (self.destination / name).read_bytes() for name in SHIPPED}, before)
+            INSTALLER.install_accepted_artifact(
+                self.core, artifact, self.previous, "14", "15", dry=False, legacy_rollback=rollback)
+        self.assertEqual({name: (rollback / "plugin" / name).read_bytes() for name in SHIPPED}, before)
+        for name in SHIPPED:
+            self.assertEqual((self.destination / name).read_bytes(), (artifact / "plugin" / name).read_bytes())
+        self.assertEqual((self.destination / "data.json").read_bytes(), b'{"working-draft":"keep exactly"}')
+        hosted.assert_called_with(receipt, "14", "15")
+        previous_run.assert_called_once_with(
+            "Aram164/LearningOS", self.old["workflow_run_id"], self.old["core_sha"],
+            ".github/workflows/release-pair.yml")
+        published.assert_has_calls([mock.call(artifact, receipt),
+                                    mock.call(artifact, receipt), mock.call(self.previous, self.old)])
+
+
 class AcceptedArtifactTests(unittest.TestCase):
     def _release(self, base):
         vault, artifact = base / 'vault', base / 'artifact'
