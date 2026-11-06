@@ -219,3 +219,62 @@ export function moduleOverlap(graph: AtlasGraph): Map<string, string[]> {
 }
 
 export const overlapKey = (a: string, b: string) => (a < b ? `${a}\u0000${b}` : `${b}\u0000${a}`);
+
+/* ───────────────────────── F5 · a lecture's ideas, laid out ─────────────── */
+
+export interface LectureIdea {
+  readonly id: string;
+  readonly title: string;
+  readonly buildsOn: readonly string[];
+}
+
+export interface LectureMapLayout {
+  /** Columns left to right, each holding idea ids top to bottom. */
+  readonly columns: readonly (readonly string[])[];
+  /** "builds on" inside this lecture: `to` builds on `from`. */
+  readonly links: readonly { readonly from: string; readonly to: string }[];
+}
+
+/**
+ * Lay one lecture's idea map out left to right (Figma F5, decision D14).
+ *
+ * An idea sits one column after the deepest idea it builds on, so reading a row
+ * never asks for an idea not yet met. Inside a column, an idea follows the rows
+ * of what it builds on, then the map's own order. Nothing but the data decides
+ * a place, so the map is the same on every visit. A link to an idea outside the
+ * lecture is not drawn (Core has none today; the map says links between
+ * lectures are not drawn yet), and a cycle cannot hang the walk.
+ */
+export function layoutLectureMap(ideas: readonly LectureIdea[]): LectureMapLayout {
+  const order = new Map(ideas.map((idea, index) => [idea.id, index]));
+  const links = ideas.flatMap((idea) => [...new Set(idea.buildsOn)]
+    .filter((from) => from !== idea.id && order.has(from))
+    .map((from) => ({ from, to: idea.id })));
+  const column = new Map(ideas.map((idea) => [idea.id, 0]));
+  for (let pass = 0; pass < ideas.length; pass += 1) {
+    let moved = false;
+    for (const link of links) {
+      const next = (column.get(link.from) ?? 0) + 1;
+      if (next > (column.get(link.to) ?? 0) && next < ideas.length) {
+        column.set(link.to, next);
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  const width = ideas.length ? Math.max(...column.values()) + 1 : 0;
+  const row = new Map<string, number>();
+  const columns: string[][] = [];
+  for (let at = 0; at < width; at += 1) {
+    const weight = (id: string) => {
+      const rows = links.filter((link) => link.to === id).map((link) => row.get(link.from))
+        .filter((value): value is number => value !== undefined);
+      return rows.length ? rows.reduce((sum, value) => sum + value, 0) / rows.length : 0;
+    };
+    const here = ideas.filter((idea) => column.get(idea.id) === at)
+      .sort((a, b) => weight(a.id) - weight(b.id) || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    here.forEach((idea, index) => row.set(idea.id, index));
+    columns.push(here.map((idea) => idea.id));
+  }
+  return { columns, links };
+}

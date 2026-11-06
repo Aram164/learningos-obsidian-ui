@@ -13,7 +13,8 @@ import { asLabel, asString, asStrings } from '../../projection/readers';
 import { compareStrings } from '../../sorting';
 import type { AtlasScreenHost } from '../screens';
 import { buildConceptMap, moduleOverlap, overlapKey, studyOrderLayout, UNGROUPED, type ConceptMap, type Region } from './atlas-model';
-import { chevron, deskHead, deskPage, deskRow, moduleShort, sideGroup, textLink, unitLabel, type Cover } from './parts';
+import { chevron, deskHead, deskPage, deskRow, moduleName, moduleShort, sideGroup, textLink, unitLabel, type Cover } from './parts';
+import { leaveModuleMap, moduleMap, moduleMapFacts, moduleMaps, openModuleMap, renderModuleMap } from './module-map';
 
 /** Each region's place on the map, from Figma frame E1, as percentages of the canvas. */
 const REGION_PLACES: Readonly<Record<string, { x: number; y: number; w: number; h: number; cover: Cover; designed: number }>> = {
@@ -197,6 +198,16 @@ function renderSideColumn(parent: HTMLElement, context: AtlasContext): void {
   question('Where do modules overlap?', `${plural(overlap, 'concept')} in two or more`, () => host.go({ concept: null, lens: 'bridges' }));
   question('What has no links yet?', `${concepts.filter((concept) => !touched.has(concept.id)).length} of ${concepts.length} concepts`, () => host.go({ concept: null, lens: 'diagnostics' }));
   question('Which records need care?', 'Open Diagnostics', () => host.plugin.nav.openDiagnostics());
+  const maps = moduleMaps(host.plugin.store);
+  if (maps.length) {
+    const revise = sideGroup(side, 'Revise a module');
+    for (const map of maps) {
+      const label = `${moduleName(host.plugin.store.get(map.moduleId))} module map`;
+      const row = deskRow(revise, 'sd-side-row', `Open the ${label}`, () => openModuleMap(host, map.moduleId));
+      row.createEl('strong', { text: label });
+      row.createDiv({ cls: 'sd-row-facts', text: moduleMapFacts(map) });
+    }
+  }
 }
 
 function renderMap(root: HTMLElement, context: AtlasContext): void {
@@ -418,7 +429,12 @@ function renderConnections(root: HTMLElement, context: AtlasContext, id: string)
       return column;
     };
     const first = lane('You need first');
-    for (const edge of before) if (edge.prerequisiteId) conceptCard(first, context, edge, edge.prerequisiteId, id);
+    for (const edge of before) {
+      if (!edge.prerequisiteId) continue;
+      const need = first.createDiv({ cls: 'sd-need' });
+      conceptCard(need, context, edge, edge.prerequisiteId, id);
+      if (edge.context) need.createDiv({ cls: 'sd-need-why', text: edge.context });
+    }
     if (!before.length) first.createDiv({ cls: 'sd-node-gap', text: 'Nothing recorded comes before this.' });
     const middle = lane('This concept');
     const self = middle.createDiv({ cls: 'sd-node sd-focus-node is-selected', attr: { 'data-atlas-concept': id } });
@@ -484,6 +500,7 @@ function renderConceptSide(layout: HTMLElement, context: AtlasContext, id: strin
     label: unitLabel(unit, store.get(asString(unit.module_id) ?? '')).title,
     open: () => nav.openUnit(asString(unit.id) ?? ''),
   })));
+  renderModuleSignposts(side, context, id, units);
   list('Notes', known.notes.map((note) => ({ label: asLabel(note), open: () => nav.openRecord(note) })));
   list('Sources', known.sources.map((source) => ({ label: asLabel(source), open: () => nav.openSourceDetail(asString(source.id) ?? '') })));
 
@@ -495,6 +512,36 @@ function renderConceptSide(layout: HTMLElement, context: AtlasContext, id: strin
   renderInspector(disclosure(side, 'Where each link comes from, and questions', 'sd-side-disclosure'), host, graph, view);
   renderOutline(disclosure(side, 'Full text outline', 'sd-side-disclosure'), host, graph, view);
   if (!host.editor) textLink(side, 'Connect this concept', () => { host.editor = newDraft(id); host.render(); });
+}
+
+/** F1's "See it in its module": a landmark back to the whole module, at the lecture that teaches this. */
+function renderModuleSignposts(side: HTMLElement, context: AtlasContext, id: string, units: readonly Record<string, unknown>[]): void {
+  const { host, graph } = context;
+  const { store } = host.plugin;
+  // A lecture teaches the concept when a stage of its own plan names it.
+  const teaches = (unitId: string) => {
+    const plan = store.mapForUnit(unitId);
+    return (Array.isArray(plan?.stages) ? plan!.stages as Array<Record<string, unknown>> : [])
+      .some((stage) => asStrings(stage.concepts).includes(id));
+  };
+  const moduleIds = [...new Set([
+    ...modulesFor(graph, id).map((module) => module.id),
+    ...units.map((unit) => asString(unit.module_id)).filter((moduleId): moduleId is string => Boolean(moduleId)),
+  ])];
+  const maps = moduleIds.map((moduleId) => moduleMap(store, moduleId)).filter((map): map is NonNullable<typeof map> => map !== null);
+  if (!maps.length) return;
+  const group = sideGroup(side, 'See it in its module');
+  for (const map of maps) {
+    const row = map.rows.find((entry) => teaches(entry.unit.id)) ?? null;
+    const label = `${moduleName(host.plugin.store.get(map.moduleId))} module map`;
+    // "Lecture 08 of 11" only when the number is also its row; in a mixed module the number alone.
+    const position = row ? map.rows.indexOf(row) + 1 : 0;
+    const where = !row ? '' : !row.label.number ? row.label.title
+      : Number(row.label.number) === position ? `${row.label.place} of ${map.rows.length}` : row.label.place;
+    const link = deskRow(group, 'sd-side-row sd-signpost', `Open the ${label}`, () => openModuleMap(host, map.moduleId, row?.unit.id ?? null));
+    link.createEl('strong', { text: label });
+    link.createDiv({ cls: 'sd-row-facts', text: [where, `all ${map.ideas} ideas, one row per lecture`].filter(Boolean).join(' · ') });
+  }
 }
 
 /* ────────────────────────── E4 · the route to a concept ─────────────────── */
@@ -642,9 +689,16 @@ export function renderDeskAtlas(host: AtlasScreenHost): boolean {
   if (!graph.concepts.length) return false;
   const map = buildConceptMap(host.plugin.store.of('note'), graph);
   const context: AtlasContext = { host, graph, map };
-  const root = deskPage(host.contentEl, 'atlas', host.plugin.store);
-  const atlas = { label: 'Atlas', go: () => host.showConceptOverview(null) };
   const conceptId = host.state.concept;
+  // A module named on the route, with no concept in focus, draws that module's map (F5).
+  const glance = host.state.module && !conceptId && lens !== 'bridges' ? moduleMap(host.plugin.store, host.state.module) : null;
+  const root = deskPage(host.contentEl, 'atlas', host.plugin.store);
+  if (glance) {
+    deskHead(root, [{ label: 'Atlas', go: () => leaveModuleMap(host) }, { label: moduleName(host.plugin.store.get(glance.moduleId)) }]);
+    renderModuleMap(root, host, glance);
+    return true;
+  }
+  const atlas = { label: 'Atlas', go: () => host.showConceptOverview(null) };
   if (conceptId && lens !== 'bridges') {
     const crumb = regionCrumb(context, conceptId);
     deskHead(root, [atlas, ...(crumb ? [crumb] : []), { label: conceptOf(graph, conceptId).label }]);

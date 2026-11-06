@@ -64,8 +64,9 @@ module.exports = async function run() {
     check('every stage lists all its own materials, counted',
       view.contentEl.find('sd-stop-materials').length > 0);
     view.contentEl.findText('los-filter-tab', 'Materials').fire('click');
-    check('the lecture’s materials open as a grid with the full menu beside it',
-      view.contentEl.find('sd-material-grid').length === 1 && view.contentEl.allText().includes('full menu'));
+    check('the lecture’s materials open as one counted list, every placement once',
+      view.contentEl.find('sd-mat-sheet').length === 1 && view.contentEl.find('sd-mrow').length === 4
+      && view.contentEl.find('sd-material-grid').length === 0 && view.contentEl.findText('sd-mat-count', '4 of 4') !== null);
     view.contentEl.findText('los-filter-tab', 'Stages').fire('click');
 
     view.contentEl.findText('los-btn', 'Continue stage').fire('click');
@@ -114,10 +115,71 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
+  heading('interface designs: a module at a glance, and why a prerequisite comes first (F5, F1)');
+  {
+    const lectureMaps = (manifest) => {
+      const unit = (id) => manifest.units.find((row) => row.id === id);
+      const node = (id, title, ...builds) => ({ id, title, summary: `${title}: one sentence.`, ...(builds.length ? { builds_on: builds } : {}) });
+      unit('unit-fixture-sad-l02').knowledge_map = { summary: 'Probability from first principles.', nodes: [
+        node('knowledge-fx-l02-space', 'Sample spaces'), node('knowledge-fx-l02-axioms', 'Probability axioms', 'knowledge-fx-l02-space')] };
+      unit('unit-fixture-sad-l04').knowledge_map = { summary: 'Bayes from conditioning.', nodes: [
+        node('knowledge-fx-l04-cond', 'Conditioning'), node('knowledge-fx-l04-total', 'Total probability', 'knowledge-fx-l04-cond'),
+        node('knowledge-fx-l04-bayes', 'Bayes theorem', 'knowledge-fx-l04-cond', 'knowledge-fx-l04-total'), node('knowledge-fx-l04-update', 'Updating beliefs', 'knowledge-fx-l04-bayes', 'knowledge-fx-l04-cond')] };
+      unit('unit-fixture-analysis').kind = 'exam-block';
+      unit('unit-fixture-analysis').knowledge_map = { summary: 'Exam practice.', nodes: [node('knowledge-fx-an-mock', 'Mixed mocks')] };
+    };
+    const { app, plugin, calls } = await boot({ patchManifest: lectureMaps });
+    await plugin.setInterfaceDesign('study-desk');
+    const before = calls.envelopes.length;
+    await plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' });
+    const view = app.workspace.getLeavesOfType(VIEW.atlas)[0].view;
+    const root = () => view.contentEl;
+    const group = (title) => root().find('sd-side-group').find((node) => node.allText().startsWith(title));
+    check('the Atlas offers each module that has lecture maps, to revise it',
+      group('Revise a module')?.allText().includes('M2F module map') && group('Revise a module').allText().includes('2 lectures · 6 ideas'));
+    group('Revise a module').find('sd-side-row')[0].fire('click');
+    await waitFor(() => root().find('sd-mm-sheet').length === 1);
+    const lectures = () => root().find('sd-mm-lecture');
+    check('the module map has one row per lecture, in course order',
+      lectures().length === 2 && lectures()[0].allText().includes('Sample spaces') && lectures()[1].allText().includes('Bayes theorem'));
+    const columns = lectures()[1].find('sd-mm-column').map((column) => column.find('sd-mm-idea').map((node) => node.children[0].allText()).join('|'));
+    check('a lecture’s ideas sit left to right by what they build on',
+      columns.join(' / ') === 'Conditioning / Total probability / Bayes theorem / Updating beliefs', columns.join(' / '));
+    const bayes = lectures()[1].find('sd-mm-idea').find((node) => node.children[0].allText() === 'Bayes theorem');
+    check('each idea tells a screen reader what it builds on',
+      bayes.find('los-sr-only')[0]?.allText() === ', builds on Conditioning and Total probability', bayes.allText());
+    check('ideas are not links: the map is for study (D14)', root().find('sd-mm-idea').every((node) => node.tag === 'div'));
+    check('an exam block is named under the map, not drawn as a lecture',
+      root().allText().includes('is an exam block, not a lecture, so it has no row here.') && !root().allText().includes('Mixed mocks'));
+    check('the map is drawn from the route’s existing module field', view.state.module === 'module-fixture-m2' && view.state.concept === null);
+    root().find('sd-crumb').find((node) => node.allText() === 'Atlas').fire('click');
+    await waitFor(() => root().find('sd-map-canvas').length === 1);
+    check('the Atlas crumb leaves the module map', view.state.module === null && root().find('sd-mm-sheet').length === 0);
+
+    await plugin.nav.openAtlas({ concept: 'concept-bayes', lens: 'prerequisites' });
+    await waitFor(() => root().find('sd-need').length > 0);
+    check('each prerequisite says why it comes first, in its relation’s own words (D15)',
+      root().find('sd-need-why').map((node) => node.allText()).join() === 'Bayes rewrites a conditional, so the conditional comes first.');
+    const signpost = group('See it in its module');
+    check('the concept page leads to the map of each module that teaches it, at its lecture',
+      signpost?.allText().includes('M2F module map') && signpost.allText().includes('Lecture 04 · all 6 ideas, one row per lecture'),
+      signpost?.allText());
+    signpost.find('sd-side-row')[0].fire('click');
+    await waitFor(() => root().find('sd-mm-sheet').length === 1);
+    check('the module map opens marked at that lecture',
+      lectures().find((node) => node.classes.has('is-here'))?.allText().includes('Bayes theorem') === true);
+    await plugin.nav.openAtlas({ concept: 'concept-bedingte-wahrscheinlichkeit', lens: 'prerequisites' });
+    await waitFor(() => root().find('sd-need').length > 0);
+    check('a prerequisite with no recorded reason shows none, never an invented one',
+      root().find('sd-need').length === 1 && root().find('sd-need-why').length === 0);
+    check('reading maps and reasons writes nothing to Core', calls.envelopes.length === before);
+    plugin.onunload();
+  }
+
   heading('interface designs: the model and the stylesheet');
   {
     const load = createSourceModuleLoader(ROOT);
-    const { buildConceptMap, studyOrderLayout, moduleOverlap, overlapKey, UNGROUPED } = load('src/designs/study-desk/atlas-model.ts');
+    const { buildConceptMap, studyOrderLayout, moduleOverlap, overlapKey, UNGROUPED, layoutLectureMap } = load('src/designs/study-desk/atlas-model.ts');
     const concept = (id) => ({ id, label: id, sortKey: id, record: { id } });
     const edge = (from, to, layer = 'strict') => ({ id: `${from}--requires--${to}`, from, to, type: 'requires', layer, studyFrom: from, studyTo: to, prerequisiteId: from, dependentId: to, context: null, source: null });
     const concepts = ['a', 'b', 'c', 'd', 'lonely'].map(concept);
@@ -145,6 +207,19 @@ module.exports = async function run() {
     check('a cycle in the records cannot hang the layout', cycle.placed.length === 2);
     check('overlap counts concepts two modules share, in either order',
       moduleOverlap(graph).get(overlapKey('m2', 'm1')).join() === 'a');
+
+    // F5: one lecture's ideas, shaped like AML L02's map.
+    const idea = (id, ...buildsOn) => ({ id, title: id, buildsOn });
+    const lecture = layoutLectureMap([idea('rep'), idea('alg', 'rep'), idea('dist', 'rep'), idea('dim', 'dist'), idea('bias', 'alg'), idea('val', 'bias')]);
+    check('a lecture map reads left to right by what each idea builds on',
+      JSON.stringify(lecture.columns) === JSON.stringify([['rep'], ['alg', 'dist'], ['bias', 'dim'], ['val']]), JSON.stringify(lecture.columns));
+    check('inside a column an idea follows the row of what it builds on, not only the map order',
+      lecture.columns[2][0] === 'bias' && lecture.links.length === 5);
+    const loose = layoutLectureMap([idea('a', 'a', 'elsewhere'), idea('b', 'a', 'a')]);
+    check('a link to itself or to an idea outside the lecture is not drawn',
+      loose.links.length === 1 && JSON.stringify(loose.columns) === '[["a"],["b"]]');
+    check('a cycle in a lecture map cannot hang the layout',
+      layoutLectureMap([idea('x', 'y'), idea('y', 'x')]).columns.flat().length === 2);
 
     const stylesDir = path.join(ROOT, 'src', 'styles');
     const designSheets = fs.readdirSync(stylesDir).filter((name) => /^\d\d-design-(?!switch)/.test(name));

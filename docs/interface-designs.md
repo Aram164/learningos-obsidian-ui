@@ -59,6 +59,10 @@ material-span reads, so graph inspection can be checked visually. Every write
 and unsupported command fails explicitly. A custom manifest receives no
 synthetic ability state or evidence.
 
+Arrows in the Atlas (concept links and the module map) are drawn on an animation
+frame. A browser never runs one in a hidden or background tab, so keep the preview
+tab visible when checking them.
+
 Two sessions building designs at once should each work on their own branch from
 `main`. They meet in only two registry files and the `build-styles.mjs` list, one row
 each, so merging them is trivial.
@@ -105,3 +109,46 @@ The Figma macOS kit's Swift components are adapted to the existing DOM controls
 and bundled Obsidian icons; no Swift runtime or copied bitmap screen is shipped.
 The semantic control and navigation pairs pass the existing contrast gate.
 No illustrative Figma progress is copied into learner state.
+
+## Study Desk
+
+Study Desk implements the [Study Desk design](https://www.figma.com/design/OYWzCiANiWjVWwwu5GTYrz)
+in `src/designs/study-desk/`: warm paper, a serif reading voice, Wine and Lamplight.
+It draws Home, Modules, the lecture, the open-book session and the Atlas; every
+other destination keeps its feature renderer with Study Desk tokens.
+
+**A lecture's materials** (v2 frames C2–C4). The Materials view lists every
+material of the lecture once: each placement target across the plan, then every
+route no stage uses. Materials are grouped by what they are for (The lecture,
+Intuition, Theory, Practice, Build it, Going deeper, Reference), then by type in
+one fixed order, best first. `src/features/unit/material-purpose.ts` decides purpose,
+type and rank from structured fields only: provenance, route depth and format, the
+working kind, the source's role and the stage triage. It never reads a title. Best
+fit marks a group's top row only when that row strictly leads and nothing in the
+group is the learner's pick. Up to 6 materials make one flat list; above 30, groups
+start folded with their counts. Search and the Stage, Type and Where filters are
+view attention.
+
+**One Material row** (`material-row.ts`) is used on the lecture page, in the
+session and in each stage's list on the plan. The row opens the material; the
+chevron opens its details with existing actions only: Open, Inspect the pages,
+Show in Library, Choose for this lecture (the guarded source selection) and, when
+the row stands for one stage's placement, Rate (stage feedback).
+
+**The session** (frame D1) shows Start here, then the rest of what the stage
+requires, then "If you get stuck", split by purpose. What the stage keeps for
+reference waits in one folded line. Compare stays until a module-wide materials
+view carries every course material.
+
+**Atlas.** The route's existing `module` field, with no concept in focus, draws
+that module at a glance (frame F5). It has one row per lecture in course order, each
+lecture's `knowledge_map` ideas left to right by `builds_on`; exam blocks are named,
+not drawn. Positions come from the data alone, so the map is the same on every
+visit. Ideas are not links: the map is for revising, and finding stays in Search
+and the lists. Links between lectures are not drawn, because Core records none yet.
+On a concept, each prerequisite shows its relation's own `context` note, and "See
+it in its module" opens the map at the lecture that teaches the concept.
+
+No new write path or route. Filters, open rows, folds, the session's purpose tab and
+the lecture a map opens at are held per view (`materials-state.ts`,
+`module-map.ts`), never in a route.

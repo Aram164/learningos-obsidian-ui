@@ -1,6 +1,5 @@
 import { button, disclosure, filterTabs, icon, overflowMenu } from '../../components';
 import { placementAvailability, routeForResource } from '../../features/unit/material-card';
-import { renderMaterialOverview } from '../../features/unit/materials';
 import { readStudyMap, readUnitRecord, type MaterialOptionView, type StageRecordView, type StudyMapView, type UnitRecordView } from '../../features/unit/model';
 import { renderPlanControls, selectedStage, sittingStudyMap } from '../../features/unit/shell';
 import { completeStage, openMaterialComparison, stageMaterialOptions, stageMenuItems } from '../../features/unit/stage';
@@ -8,8 +7,11 @@ import { currentWorkResource, type StageResourceView } from '../../features/stag
 import { hasDirectResourceTarget } from '../../infrastructure/resource-target';
 import { asLabel, asString, asText } from '../../projection/readers';
 import type { UnitScreenHost } from '../screens';
-import { chevron, deskHead, deskPage, moduleShort, sideGroup, textLink, unitLabel } from './parts';
+import { deskHead, deskPage, moduleName, sideGroup, textLink, unitLabel } from './parts';
 import { setUnitMode, unitMode } from './unit-mode';
+import { lectureMaterialsFacts, lectureMaterialsFor, renderLectureMaterials } from './lecture-materials';
+import { renderSessionMaterials, renderStageMaterialList, type StageMaterialsContext } from './stage-materials';
+import type { LectureMaterial } from '../../features/unit/material-purpose';
 
 interface UnitContext {
   readonly view: UnitScreenHost;
@@ -19,6 +21,10 @@ interface UnitContext {
   readonly temporary: boolean;
   readonly stage: StageRecordView;
   readonly options: MaterialOptionView[];
+  /** The plan's write guard, for every write a row or stage offers. */
+  readonly expected: Readonly<Record<string, number>>;
+  /** Every material of the lecture, built once per render and only when drawn. */
+  readonly materials: () => readonly LectureMaterial[];
 }
 
 const required = (resource: StageResourceView) => resource.scopeTriage === 'required-now' || !resource.scopeTriage;
@@ -35,7 +41,7 @@ function crumbsFor(context: UnitContext, last?: string) {
   const here = unitLabel(unit.record, module);
   return [
     { label: 'Modules', go: () => view.plugin.nav.openModule(unit.moduleId) },
-    { label: moduleShort(module), go: () => view.plugin.nav.openModule(unit.moduleId) },
+    { label: moduleName(module), go: () => view.plugin.nav.openModule(unit.moduleId) },
     { label: last ? `${here.place} · ${here.title}` : here.place },
   ];
 }
@@ -50,21 +56,6 @@ function opener(context: UnitContext, resource: StageResourceView): (() => unkno
   return source && hasDirectResourceTarget(source) ? () => view.plugin.openResource(source) : null;
 }
 
-function materialKey(resource: StageResourceView): string {
-  return asString(resource.record.route_id) ?? `${resource.sourceId ?? ''}\u0000${resource.locator ?? ''}\u0000${resource.label}`;
-}
-
-function distinctMaterials(map: StudyMapView): Map<string, StageResourceView> {
-  const materials = new Map<string, StageResourceView>();
-  for (const stage of map.stages) {
-    for (const resource of stage.resources) {
-      const key = materialKey(resource);
-      if (!materials.has(key)) materials.set(key, resource);
-    }
-  }
-  return materials;
-}
-
 export function renderDeskUnit(view: UnitScreenHost): boolean {
   const projectedUnit = view.unitId ? view.plugin.store.get(view.unitId) : null;
   const unit = readUnitRecord(projectedUnit, view.unitId);
@@ -76,9 +67,12 @@ export function renderDeskUnit(view: UnitScreenHost): boolean {
   const first = studyMap.stages[0];
   if (!first) return false;
   const stage = selectedStage(view, unit.id, studyMap, first, Boolean(temporary));
+  const options = stageMaterialOptions(view, unit);
+  let materials: readonly LectureMaterial[] | null = null;
   const context: UnitContext = {
-    view, unit, durable, studyMap, temporary: Boolean(temporary), stage,
-    options: stageMaterialOptions(view, unit),
+    view, unit, durable, studyMap, temporary: Boolean(temporary), stage, options,
+    expected: view.plugin.store.artifactGuard(unit.id, typeof studyMap.record.id === 'string' ? studyMap.record.id : null),
+    materials: () => (materials ??= lectureMaterialsFor(view, unit, durable, options)),
   };
   const mode = unitMode(view, unit.id);
   if (mode === 'session') renderSession(context);
@@ -101,23 +95,33 @@ function renderPlan(context: UnitContext, mode: 'plan' | 'materials'): void {
   button(actions, 'End session', () => view.plugin.reviewSessionEnd(), 'quiet');
   const module = view.plugin.store.get(unit.moduleId);
   const done = studyMap.stages.filter((stage) => stage.status === 'complete').length;
-  const layout = root.createDiv({ cls: 'sd-plan-layout' });
-  const main = layout.createDiv({ cls: 'sd-plan-main' });
-  main.createEl('h1', { cls: 'sd-title', text: unitLabel(unit.record, module).title });
+  // Title on the left, the lecture's views on the right (Figma C1, C2).
+  const head = root.createDiv({ cls: 'sd-title-row sd-plan-head' });
+  const copy = head.createDiv({ cls: 'sd-title-copy' });
+  copy.createEl('h1', { cls: 'sd-title', text: unitLabel(unit.record, module).title });
   const allCritical = studyMap.stages.every((stage) => stage.examCritical);
-  main.createDiv({ cls: 'sd-facts', text: [
-    `${done} of ${count(studyMap.stages.length, 'stage')} done.`,
-    allCritical ? 'Every stage in this lecture is exam-critical.' : '',
-  ].filter(Boolean).join(' ') });
-  filterTabs(main, 'Plan view', [['plan', 'Stages'], ['materials', 'Materials']] as const, mode, (next) => {
+  copy.createDiv({ cls: 'sd-facts', text: mode === 'materials'
+    ? lectureMaterialsFacts(context.materials(), context.durable.stages.length)
+    : [
+      `${done} of ${count(studyMap.stages.length, 'stage')} done.`,
+      allCritical ? 'Every stage in this lecture is exam-critical.' : '',
+    ].filter(Boolean).join(' ') });
+  filterTabs(head.createDiv({ cls: 'sd-title-tools' }), 'Plan view', [['plan', 'Stages'], ['materials', 'Materials']] as const, mode, (next) => {
     setUnitMode(view, unit.id, next);
     view.render();
   });
+  const layout = root.createDiv({ cls: `sd-plan-layout${mode === 'materials' ? ' is-materials' : ''}` });
+  const main = layout.createDiv({ cls: 'sd-plan-main' });
   if (context.temporary) {
     main.createDiv({ cls: 'sd-callout', text: `For this sitting: ${studyMap.stages.length} of ${context.durable.stages.length} stages. Recording work or a new snapshot ends this order.` });
   }
-  if (mode === 'materials') renderMaterialGrid(main, context);
-  else renderRoute(main, context);
+  if (mode === 'materials') {
+    renderLectureMaterials(main, layout.createDiv({ cls: 'sd-side sd-mat-side' }), {
+      view, unit, durable: context.durable, options: context.options, expected: context.expected,
+    });
+    return;
+  }
+  renderRoute(main, context);
   renderPlanSide(layout, context);
 }
 
@@ -140,7 +144,7 @@ function renderRoute(parent: HTMLElement, context: UnitContext): void {
       const foot = body.createDiv({ cls: 'sd-stop-foot' });
       foot.createSpan({ cls: 'sd-row-facts', text: [materialsLine(stage), stage.doneWhen.length ? `${count(stage.doneWhen.length, 'thing')} to prove` : ''].filter(Boolean).join(' · ') });
       button(foot, 'Continue stage', () => openStage(context, stage.id), 'cta');
-      renderStopMaterials(body, context, stage);
+      renderStageMaterialList(body, stageMaterials(context, stage));
       return;
     }
     const head = body.createEl('button', {
@@ -152,45 +156,23 @@ function renderRoute(parent: HTMLElement, context: UnitContext): void {
     if (stage.objective) copy.createDiv({ cls: 'sd-row-facts', text: stage.objective });
     head.addEventListener('click', () => openStage(context, stage.id));
     head.createSpan({ cls: 'sd-row-next', text: stage.status === 'skipped' ? `Skipped · ${materialsLine(stage)}` : materialsLine(stage) });
-    renderStopMaterials(body, context, stage);
+    renderStageMaterialList(body, stageMaterials(context, stage));
   });
 }
 
-/** Each stage opens to its own full list in place: counted, and never only the first few. */
-function renderStopMaterials(parent: HTMLElement, context: UnitContext, stage: StageRecordView): void {
-  if (!stage.resources.length) return;
-  const details = parent.createEl('details', { cls: 'sd-stop-materials' });
-  details.createEl('summary', { cls: 'sd-stop-summary', text: `Materials for this stage · ${stage.resources.length}` });
-  const list = details.createDiv({ cls: 'sd-material-list' });
-  for (const resource of stage.resources) renderMaterialRow(list, context, resource);
-}
-
-function renderMaterialRow(parent: HTMLElement, context: UnitContext, resource: StageResourceView): void {
-  const route = routeForResource(resource, context.options);
-  const open = opener(context, resource);
-  const row = parent.createEl('button', {
-    cls: `sd-material-row is-clickable${required(resource) ? ' is-required' : ''}`,
-    attr: { type: 'button', 'aria-label': `Open ${resource.label}` },
-  });
-  const copy = row.createDiv({ cls: 'sd-row-copy' });
-  copy.createSpan({ cls: 'sd-material-title', text: resource.label });
-  copy.createDiv({
-    cls: 'sd-row-facts',
-    text: [required(resource) ? 'Required' : '', resource.locator, placementAvailability(resource, route).label].filter(Boolean).join(' · '),
-  });
-  chevron(row);
-  if (open) row.addEventListener('click', () => open());
-  else row.disabled = true;
+/** Each stage opens to its own full list in place, with the one Material row: counted, triage first, every material once. */
+function stageMaterials(context: UnitContext, stage: StageRecordView): StageMaterialsContext {
+  return { view: context.view, unit: context.unit, durable: context.durable, stage, materials: context.materials(), expected: context.expected };
 }
 
 function renderPlanSide(layout: HTMLElement, context: UnitContext): void {
   const { view, unit, durable, studyMap } = context;
   const side = layout.createDiv({ cls: 'sd-side' });
-  const materials = distinctMaterials(studyMap);
+  const materials = context.materials().length;
   const placements = studyMap.stages.reduce((sum, stage) => sum + stage.resources.length, 0);
   const about = sideGroup(side, 'Materials');
-  about.createEl('p', { cls: 'sd-note', text: `${count(materials.size, 'different material')} across the ${count(studyMap.stages.length, 'stage')}, placed ${placements} time${placements === 1 ? '' : 's'}.` });
-  textLink(about, `See all ${materials.size}`, () => { setUnitMode(view, unit.id, 'materials'); view.render(); });
+  about.createEl('p', { cls: 'sd-note', text: `${count(materials, 'different material')} for the ${count(durable.stages.length, 'stage')}, placed ${placements} time${placements === 1 ? '' : 's'}, grouped by what each is for.` });
+  textLink(about, `See all ${materials}`, () => { setUnitMode(view, unit.id, 'materials'); view.render(); });
 
   const notes = sideGroup(side, 'Notes');
   notes.createEl('p', { cls: 'sd-note', text: 'One session note stays with this lecture.' });
@@ -215,47 +197,10 @@ function renderPlanSide(layout: HTMLElement, context: UnitContext): void {
   view.renderArtifacts(disclosure(side, 'Unit artifacts and evidence', 'sd-side-disclosure'), unit);
 }
 
-/** Every material against every stage: what each is for, and where it is used. */
-function renderMaterialGrid(parent: HTMLElement, context: UnitContext): void {
-  const { view, unit, studyMap } = context;
-  const materials = [...distinctMaterials(studyMap).entries()];
-  const placementIn = (stage: StageRecordView, key: string) => stage.resources.find((resource) => materialKey(resource) === key) ?? null;
-  const uses = (key: string) => studyMap.stages.filter((stage) => placementIn(stage, key)).length;
-  materials.sort(([a], [b]) => uses(b) - uses(a));
-  parent.createDiv({ cls: 'sd-row-facts sd-grid-legend', text: 'Filled: required for that stage. Ring: there to help. Empty: not placed on that stage.' });
-  const scroll = parent.createDiv({ cls: 'sd-sheet sd-grid-scroll' });
-  const table = scroll.createEl('table', { cls: 'sd-material-grid' });
-  const head = table.createEl('thead').createEl('tr');
-  head.createEl('th', { cls: 'sd-grid-corner', text: 'Material', attr: { scope: 'col' } });
-  studyMap.stages.forEach((stage, index) => {
-    head.createEl('th', { text: String(index + 1), attr: { scope: 'col', title: stage.title, 'aria-label': `Stage ${index + 1}: ${stage.title}` } });
-  });
-  const body = table.createEl('tbody');
-  for (const [key, resource] of materials) {
-    const tr = body.createEl('tr');
-    const cell = tr.createEl('th', { attr: { scope: 'row' } });
-    const open = opener(context, resource);
-    const title = cell.createEl('button', { cls: 'sd-grid-title is-clickable', text: resource.label, attr: { type: 'button' } });
-    if (open) title.addEventListener('click', () => open());
-    else title.disabled = true;
-    if (resource.locator) cell.createDiv({ cls: 'sd-row-facts', text: resource.locator });
-    for (const stage of studyMap.stages) {
-      const placed = placementIn(stage, key);
-      const td = tr.createEl('td');
-      if (!placed) { td.createSpan({ cls: 'los-sr-only', text: 'Not placed' }); continue; }
-      td.createSpan({ cls: `sd-grid-mark${required(placed) ? ' is-required' : ''}`, attr: { 'aria-hidden': 'true' } });
-      td.createSpan({ cls: 'los-sr-only', text: required(placed) ? 'Required' : 'Helps' });
-    }
-  }
-  const full = disclosure(parent, 'This lecture’s full menu', 'sd-side-disclosure');
-  renderMaterialOverview(view, full, unit, context.options, view.plugin.store.materialSynthesisForUnit(unit.id), true);
-}
-
 /* ───────────────────────────── the open-book session ─────────────────────── */
 
 function renderSession(context: UnitContext): void {
-  const { view, unit, studyMap, stage } = context;
-  const expected = view.plugin.store.artifactGuard(unit.id, typeof studyMap.record.id === 'string' ? studyMap.record.id : null);
+  const { view, unit, studyMap, stage, expected } = context;
   const root = deskPage(view.contentEl, 'session', view.plugin.store);
   const actions = deskHead(root, crumbsFor(context, 'full'));
   const studyPlanButton = button(actions, 'Study plan', () => { setUnitMode(view, unit.id, 'plan'); view.render(); }, 'quiet');
@@ -291,7 +236,6 @@ function renderSession(context: UnitContext): void {
   if (stage.objective) left.createEl('p', { cls: 'sd-lede', text: stage.objective });
 
   const current = currentWorkResource(stage.resources);
-  const others = stage.resources.filter((resource) => resource !== current);
   let openButton: HTMLButtonElement | null = null;
   if (current) {
     left.createEl('h2', { cls: 'sd-heading', text: 'Start here' });
@@ -307,19 +251,13 @@ function renderSession(context: UnitContext): void {
   } else if (stage.resources.length) {
     left.createEl('p', { cls: 'sd-quiet', text: 'Nothing is marked required for this stage. Everything below is there for depth and reference.' });
   } else {
-    left.createEl('p', { cls: 'sd-quiet', text: 'No material is placed on this stage. The lecture’s full menu is still one click away.' });
+    left.createEl('p', { cls: 'sd-quiet', text: 'No material is placed on this stage. All of the lecture’s materials are one click away.' });
   }
 
-  const listHead = left.createDiv({ cls: 'sd-section-head' });
-  const title = listHead.createDiv({ cls: 'sd-section-title' });
-  title.createEl('h2', { cls: 'sd-heading', text: current ? 'All materials for this stage' : 'Materials for this stage' });
-  const need = stage.resources.filter(required).length;
-  title.createSpan({ cls: 'sd-row-facts', text: [need ? `${need} required` : '', stage.resources.length - need ? `${stage.resources.length - need} that help` : ''].filter(Boolean).join(' + ') });
-  const links = listHead.createDiv({ cls: 'sd-section-links' });
-  textLink(links, 'Compare', () => openMaterialComparison(view, unit, stage, expected));
-  textLink(links, `All ${distinctMaterials(studyMap).size} in this lecture`, () => { setUnitMode(view, unit.id, 'materials'); view.render(); });
-  const list = left.createDiv({ cls: 'sd-material-list' });
-  for (const resource of others) renderMaterialRow(list, context, resource);
+  renderSessionMaterials(left, stageMaterials(context, stage), current, (links) => {
+    textLink(links, 'Compare', () => openMaterialComparison(view, unit, stage, expected));
+    textLink(links, `All ${context.materials().length} in this lecture`, () => { setUnitMode(view, unit.id, 'materials'); view.render(); });
+  });
 
   /* The proof page. Ticks are the same UI-owned working state as Classic's; they
    * never reach Core and they do not gate Complete, which Core alone decides. */

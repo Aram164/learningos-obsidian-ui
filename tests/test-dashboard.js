@@ -19,6 +19,7 @@ const SUITE_NAMES = [
   'runtime-integrity',
   'session-end-flow',
   'interface-designs',
+  'study-desk-materials',
   'focus-interface',
 ];
 

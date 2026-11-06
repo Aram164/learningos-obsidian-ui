@@ -2,7 +2,7 @@ import { App, Modal, Notice } from 'obsidian';
 import { makeModalAccessible } from '../../accessibility/modal';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 import { foldCase } from '../../sorting';
-import { asString, asText } from '../../projection/readers';
+import { asString } from '../../projection/readers';
 import { button, empty, icon } from '../../components';
 import { groupMaterialsByType, materialTypeLabel } from './source-browser';
 import type { StageResourceRenderer, StageResourceView } from '../stage-resources';
@@ -13,6 +13,7 @@ import {
   renderPlacementCard,
   renderRouteCard,
   routeForResource,
+  toggleRouteChoice,
   type MaterialCardDeps,
 } from './material-card';
 
@@ -352,7 +353,7 @@ export class MaterialComparisonModal extends Modal {
     if (!option.canChoose || !option.sourceId || !option.locator) return;
     const { plugin, unit, expectedRevisions, onChanged } = this.options;
     const choice = button(actions, option.selected ? 'Remove choice' : 'Choose', () => {
-      void plugin.mutate(() => plugin.gateway.sourceSelection(unit.id, option.routeId, option.sourceId ?? '', option.locator ?? '', asText(option.angle) ?? option.angle, !option.selected, expectedRevisions))
+      void toggleRouteChoice(plugin, unit.id, option, expectedRevisions)
         .then(() => { new Notice(option.selected ? 'Material choice removed.' : 'Material chosen for this lecture.'); onChanged(); this.close(); })
         .catch((error: unknown) => { new Notice(error instanceof Error ? error.message : String(error)); });
     }, 'choice');

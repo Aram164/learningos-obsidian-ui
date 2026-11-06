@@ -1,5 +1,5 @@
 import { groupMaterialsByType } from './source-browser';
-import { projectedAvailability } from './material-card';
+import { projectedAvailability, toggleRouteChoice } from './material-card';
 import { renderMaterialCautions, whyThisOne } from '../stage-resources';
 import { asText } from '../../projection/readers';
 import type { UnitMaterialsHost } from './ports';
@@ -234,16 +234,11 @@ export function renderMaterialMenu(
               ? 'Remove choice'
               : 'Choose',
             () => {
-              void view.plugin.mutate(
-                () => view.plugin.gateway.sourceSelection(
-                  unit.id,
-                  option.routeId,
-                  option.sourceId ?? '',
-                  option.locator ?? '',
-                  option.angle,
-                  !option.selected,
-                  expectedRevisions,
-                ),
+              void toggleRouteChoice(
+                view.plugin,
+                unit.id,
+                option,
+                expectedRevisions,
               ).then(
                 () => new Notice(
                   option.selected

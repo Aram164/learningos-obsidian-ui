@@ -33247,7 +33247,7 @@ __export(main_exports, {
   default: () => main_default
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian27 = require("obsidian");
+var import_obsidian28 = require("obsidian");
 var fs5 = __toESM(require("node:fs"));
 var nodePath5 = __toESM(require("node:path"));
 
@@ -33664,13 +33664,13 @@ function disclosure(parent, summaryText, cls = "") {
   return details.createDiv({ cls: "los-disclosure-body" });
 }
 function overflowMenu(parent, items, label2 = "More actions") {
-  const rows = items.filter(Boolean);
-  if (!rows.length) return null;
+  const rows2 = items.filter(Boolean);
+  if (!rows2.length) return null;
   const details = parent.createEl("details", { cls: "los-overflow" });
   const summary = details.createEl("summary", { cls: "los-overflow-trigger", text: "\u2022\u2022\u2022" });
   summary.setAttrs({ "aria-label": label2, role: "button" });
   const body = details.createDiv({ cls: "los-overflow-body" });
-  for (const [itemLabel, action] of rows) {
+  for (const [itemLabel, action] of rows2) {
     button(body, itemLabel, () => {
       details.removeAttribute?.("open");
       action();
@@ -34206,7 +34206,7 @@ var AUTHOR_LABELS = {
   unrecorded: "Authorship unrecorded"
 };
 var INITIAL_ROWS = 20;
-var count = (amount, singular, plural4 = singular.endsWith("shelf") ? `${singular.slice(0, -5)}shelves` : `${singular}s`) => `${amount} ${amount === 1 ? singular : plural4}`;
+var count = (amount, singular, plural7 = singular.endsWith("shelf") ? `${singular.slice(0, -5)}shelves` : `${singular}s`) => `${amount} ${amount === 1 ? singular : plural7}`;
 var roleOf = (record7) => asText(record7.role) ?? "unrecorded";
 var authorOf = (record7) => asText(record7.authorship) ?? "unrecorded";
 var roleLabel = (role) => ROLE_LABELS[role] ?? role;
@@ -34248,13 +34248,13 @@ function entries(shelf) {
   return Array.isArray(shelf.entries) ? shelf.entries.filter(isRecord) : [];
 }
 function shelfCounts(shelf) {
-  const rows = entries(shelf);
-  return `${count(rows.length, "ordered entry", "ordered entries")} \xB7 ${count(new Set(rows.map((row3) => asText(row3.source)).filter(Boolean)).size, "source")}`;
+  const rows2 = entries(shelf);
+  return `${count(rows2.length, "ordered entry", "ordered entries")} \xB7 ${count(new Set(rows2.map((row3) => asText(row3.source)).filter(Boolean)).size, "source")}`;
 }
 function matches(query, fields) {
   const words2 = foldCase(query).split(/\s+/).filter(Boolean);
-  const haystack = foldCase(fields.map((field2) => typeof field2 === "string" ? field2 : "").join(" "));
-  return words2.every((word) => haystack.includes(word));
+  const haystack2 = foldCase(fields.map((field2) => typeof field2 === "string" ? field2 : "").join(" "));
+  return words2.every((word) => haystack2.includes(word));
 }
 function noteMatches(note2, state, wholeDomainMatches) {
   return (!state.role || roleOf(note2) === state.role) && (!state.authorship || authorOf(note2) === state.authorship) && (wholeDomainMatches || matches(state.query, [
@@ -34443,10 +34443,10 @@ function renderShelves(parent, host, index, domain, shelves, redraw) {
   button(actions, "Open shelf", () => host.plugin.nav.openRecord(shelf), "tertiary").addClass("los-domain-open-shelf");
   const about = disclosure2(body, state, `shelf:${shelfId}:about`, "About this source shelf", "los-domain-shelf-about");
   for (const text4 of new Set([prose(shelf.purpose), prose(shelf.summary)].filter(Boolean))) about.createEl("p", { text: text4 });
-  const rows = entries(shelf);
+  const rows2 = entries(shelf);
   const key = `shelf:${shelfId}:entries`;
   const limit = state.limits.get(key) ?? INITIAL_ROWS;
-  for (const [position, entry] of rows.slice(0, limit).entries()) {
+  for (const [position, entry] of rows2.slice(0, limit).entries()) {
     const id = asText(entry.source) ?? "";
     const source = index.sources.get(id);
     const row3 = body.createDiv({ cls: "los-domain-entry-row", attr: { "data-entry-index": String(position), "data-source-id": id } });
@@ -34462,8 +34462,8 @@ function renderShelves(parent, host, index, domain, shelves, redraw) {
     why.createEl("p", { cls: "los-domain-entry-why", text: prose(entry.why) || "No rationale recorded for this placement." });
     if (source) button(controls, "Open source", () => host.plugin.nav.openSourceDetail(id), "tertiary").addClass("los-domain-open-source");
   }
-  const footer = body.createDiv({ cls: "los-domain-list-footer", text: `${Math.min(limit, rows.length)} of ${count(rows.length, "ordered entry", "ordered entries")} shown` });
-  showMore(footer, state, key, rows.length, redraw, "entries");
+  const footer = body.createDiv({ cls: "los-domain-list-footer", text: `${Math.min(limit, rows2.length)} of ${count(rows2.length, "ordered entry", "ordered entries")} shown` });
+  showMore(footer, state, key, rows2.length, redraw, "entries");
   button(footer, "All source folders", () => host.plugin.nav.openLibraryFolder([]), "tertiary");
 }
 function renderResults(results, host, index) {
@@ -34736,10 +34736,10 @@ function routeMembers(route2) {
 function unique(values) {
   return [...new Set(values)];
 }
-function byTitle2(rows) {
+function byTitle2(rows2) {
   return (left, right) => {
-    const a = rows.get(left)?.title ?? left;
-    const b = rows.get(right)?.title ?? right;
+    const a = rows2.get(left)?.title ?? left;
+    const b = rows2.get(right)?.title ?? right;
     return compareStrings(a, b) || compareStrings(left, right);
   };
 }
@@ -34747,9 +34747,9 @@ function slugTitle(id) {
   const words2 = id.replace(/^concept-/, "").split("-").filter(Boolean).join(" ");
   return words2 ? words2.charAt(0).toUpperCase() + words2.slice(1) : id;
 }
-function groupTitle(rows, labels) {
+function groupTitle(rows2, labels) {
   const score = /* @__PURE__ */ new Map();
-  for (const row3 of rows) {
+  for (const row3 of rows2) {
     row3.concept_ids.forEach((conceptId, position) => {
       const entry = score.get(conceptId) ?? { count: 0, position: 0 };
       entry.count += 1;
@@ -34758,7 +34758,7 @@ function groupTitle(rows, labels) {
     });
   }
   const best = [...score.entries()].sort(([leftId, left], [rightId, right]) => right.count - left.count || left.position - right.position || compareStrings(leftId, rightId))[0];
-  if (!best) return rows[0]?.title ?? "Abilities";
+  if (!best) return rows2[0]?.title ?? "Abilities";
   return labels.concept(best[0]) ?? slugTitle(best[0]);
 }
 function components(ids, links) {
@@ -34836,11 +34836,11 @@ function stack(wanted, step) {
     merged = false;
     for (let index = 0; index < blocks.length - 1; index += 1) {
       const upper = blocks[index];
-      const lower = blocks[index + 1];
-      if (!upper || !lower) continue;
-      if (upper.top + upper.ids.length * step > lower.top + 0.5) {
-        const ids = [...upper.ids, ...lower.ids];
-        const want = [...upper.want, ...lower.want];
+      const lower2 = blocks[index + 1];
+      if (!upper || !lower2) continue;
+      if (upper.top + upper.ids.length * step > lower2.top + 0.5) {
+        const ids = [...upper.ids, ...lower2.ids];
+        const want = [...upper.want, ...lower2.want];
         const top = mean(want.map((value, position) => value - position * step));
         blocks.splice(index, 2, { ids, want, top });
         merged = true;
@@ -34888,12 +34888,12 @@ function nodeMeta(role, modules) {
   }
   return courses || "No module named";
 }
-function buildGroup(memberIds, rows, bridges2, candidates, labels) {
+function buildGroup(memberIds, rows2, bridges2, candidates, labels) {
   const members = new Set(memberIds);
   const prerequisites = /* @__PURE__ */ new Map();
   const routes = /* @__PURE__ */ new Map();
   for (const id of memberIds) {
-    const row3 = rows.get(id);
+    const row3 = rows2.get(id);
     const routeSets = (row3?.preparation_routes ?? []).map((route2) => routeMembers(route2).filter((member) => members.has(member)));
     routes.set(id, routeSets);
     prerequisites.set(id, unique(routeSets.flat()));
@@ -34916,7 +34916,7 @@ function buildGroup(memberIds, rows, bridges2, candidates, labels) {
     }
   }
   const columnCount = memberIds.length ? Math.max(...memberIds.map((id) => column.get(id) ?? 0)) + 1 : 0;
-  const titleOrder = byTitle2(rows);
+  const titleOrder = byTitle2(rows2);
   const byColumn = Array.from({ length: columnCount }, () => []);
   for (const id of memberIds) byColumn[column.get(id) ?? 0]?.push(id);
   const order = /* @__PURE__ */ new Map();
@@ -34961,7 +34961,7 @@ function buildGroup(memberIds, rows, bridges2, candidates, labels) {
   const nodes = [];
   for (let index = 0; index < columnCount; index += 1) {
     for (const id of byColumn[index] ?? []) {
-      const row3 = rows.get(id);
+      const row3 = rows2.get(id);
       if (!row3) continue;
       const hasSources = (prerequisites.get(id) ?? []).length > 0;
       const hasTargets = (dependents.get(id) ?? []).length > 0;
@@ -35035,7 +35035,7 @@ function buildGroup(memberIds, rows, bridges2, candidates, labels) {
   const graphHeight = nodes.length ? Math.max(...nodes.map((node) => node.y + PLANE.nodeHeight)) + PLANE.pad : PLANE.nodeHeight + 2 * PLANE.pad;
   const bandsHeight = bandEnds.length ? PLANE.bandTop + bandEnds.length * (PLANE.bandHeight + PLANE.bandGap) : 0;
   const width = columnCount ? PLANE.pad * 2 + columnCount * PLANE.nodeWidth + (columnCount - 1) * PLANE.columnGap : PLANE.nodeWidth + 2 * PLANE.pad;
-  const groupRows = memberIds.map((id) => rows.get(id)).filter((row3) => Boolean(row3));
+  const groupRows = memberIds.map((id) => rows2.get(id)).filter((row3) => Boolean(row3));
   return {
     key: [...memberIds].sort()[0] ?? "group",
     title: groupTitle(groupRows, labels),
@@ -35053,8 +35053,8 @@ function buildGroup(memberIds, rows, bridges2, candidates, labels) {
   };
 }
 function buildAbilityPlane(brief, labels) {
-  const rows = new Map(brief.abilities.map((row3) => [row3.id, row3]));
-  const ids = [...rows.keys()].sort();
+  const rows2 = new Map(brief.abilities.map((row3) => [row3.id, row3]));
+  const ids = [...rows2.keys()].sort();
   const links = [];
   for (const row3 of brief.abilities) {
     for (const route2 of row3.preparation_routes) {
@@ -35062,7 +35062,7 @@ function buildAbilityPlane(brief, labels) {
     }
   }
   for (const bridge2 of brief.bridges) links.push([bridge2.from, bridge2.to]);
-  const groups = components(ids, links).map((members) => buildGroup(members, rows, brief.bridges, brief.candidate_connections, labels)).sort((left, right) => right.nodes.length - left.nodes.length || compareStrings(left.title, right.title) || compareStrings(left.key, right.key));
+  const groups = components(ids, links).map((members) => buildGroup(members, rows2, brief.bridges, brief.candidate_connections, labels)).sort((left, right) => right.nodes.length - left.nodes.length || compareStrings(left.title, right.title) || compareStrings(left.key, right.key));
   const groupOfAbility = /* @__PURE__ */ new Map();
   for (const group3 of groups) {
     for (const node of group3.nodes) groupOfAbility.set(node.id, group3.key);
@@ -35070,7 +35070,7 @@ function buildAbilityPlane(brief, labels) {
   return {
     groups,
     groupOfAbility,
-    rowOf: rows,
+    rowOf: rows2,
     crossGroupCandidates: brief.candidate_connections.filter((row3) => groupOfAbility.get(row3.from) !== groupOfAbility.get(row3.to)),
     bridges: brief.bridges
   };
@@ -35096,13 +35096,13 @@ function searchAbilities(plane, query, labels) {
   const hits = [];
   for (const group3 of plane.groups) {
     for (const node of group3.nodes) {
-      const haystack = [
+      const haystack2 = [
         node.row.title,
         group3.title,
         ...node.modules,
         ...node.row.concept_ids.map((id) => labels.concept(id) ?? id)
       ].join(" ").toLowerCase();
-      if (words2.every((word) => haystack.includes(word))) hits.push(node.id);
+      if (words2.every((word) => haystack2.includes(word))) hits.push(node.id);
     }
   }
   return hits;
@@ -35746,7 +35746,7 @@ function renderEvidenceRow(parent, host, item, correctedBy, onCorrect) {
   if (item.conditions.length) facts.push(`Met: ${item.conditions.join("; ")}`);
   if (item.conditions_not_met.length) facts.push(`Not met: ${item.conditions_not_met.join("; ")}`);
   if (item.evidence_tags.length) facts.push(`Shows: ${item.evidence_tags.join("; ")}`);
-  for (const fact of facts) row3.createDiv({ cls: "los-micro", text: fact });
+  for (const fact2 of facts) row3.createDiv({ cls: "los-micro", text: fact2 });
   const refs = row3.createDiv({ cls: "los-ability-evidence-refs" });
   refs.createSpan({ cls: "los-micro", text: "Work: " });
   pointer(refs, host, item.work_ref);
@@ -35863,13 +35863,13 @@ function renderAbilityDetail(root, host, brief, plane, abilityId) {
     }
   });
   const ledger = block(page2, "Evidence", "Every recorded attempt, corrections included. Conflicting work stays visible.");
-  const rows = focus2?.ability.evidence ?? row3.evidence;
-  if (!rows.length) {
+  const rows2 = focus2?.ability.evidence ?? row3.evidence;
+  if (!rows2.length) {
     ledger.createEl("p", { text: "No learner attempt has been recorded. Confirmed work can change this state." });
   } else {
     const correctedBy = /* @__PURE__ */ new Map();
-    for (const item of rows) if (item.supersedes) correctedBy.set(item.supersedes, item.id);
-    for (const item of [...rows].reverse()) {
+    for (const item of rows2) if (item.supersedes) correctedBy.set(item.supersedes, item.id);
+    for (const item of [...rows2].reverse()) {
       renderEvidenceRow(ledger, host, item, correctedBy, (id) => openDraft(host, row3, focus2, id));
     }
   }
@@ -36887,13 +36887,13 @@ function renderList(root, host, plane, brief, selected) {
       cls: "los-micro",
       text: `${group3.nodes.length} ${group3.nodes.length === 1 ? "ability" : "abilities"} \xB7 ${group3.reviewedBridgeCount} reviewed ${group3.reviewedBridgeCount === 1 ? "bridge" : "bridges"}`
     });
-    const rows = block2.createDiv({
+    const rows2 = block2.createDiv({
       cls: "los-ability-list-rows",
       attr: { role: "group", "aria-label": `${group3.title} abilities` }
     });
-    enableButtonGroupKeyboardNavigation(rows, "vertical");
+    enableButtonGroupKeyboardNavigation(rows2, "vertical");
     for (const node of group3.nodes) {
-      const row3 = rows.createEl("button", {
+      const row3 = rows2.createEl("button", {
         cls: "los-ability-list-row is-clickable",
         attr: { type: "button", "data-ability": node.id, "data-los-tab": `ability-list-${node.id}`, "aria-pressed": String(node.id === selected) }
       });
@@ -37012,7 +37012,7 @@ var AbilitiesView = class extends import_obsidian4.ItemView {
 };
 
 // src/views/atlas-view.ts
-var import_obsidian10 = require("obsidian");
+var import_obsidian11 = require("obsidian");
 
 // src/features/atlas/graph.ts
 var STRICT_RELATION_TYPES = ["builds-on", "requires"];
@@ -38859,9 +38859,9 @@ function renderSummary(parent, host, graph, view) {
     ["Dependents", plural(graph.dependentEdges.get(concept.id)?.length ?? 0, "authored", "authored")],
     ["Semantic", plural(graph.semanticEdges.get(concept.id)?.length ?? 0, "authored", "authored")]
   ]) {
-    const fact = facts.createDiv({ cls: "los-atlas-fact" });
-    fact.createDiv({ cls: "los-micro", text: term });
-    fact.createDiv({ cls: "los-atlas-fact-value", text: value });
+    const fact2 = facts.createDiv({ cls: "los-atlas-fact" });
+    fact2.createDiv({ cls: "los-micro", text: term });
+    fact2.createDiv({ cls: "los-atlas-fact-value", text: value });
   }
   renderQuestionNote(
     parent,
@@ -39009,18 +39009,18 @@ function conceptRow(parent, host, graph, conceptId, detail) {
 function renderBridges(parent, host, graph) {
   const all = bridges(graph);
   const moduleFilter = host.state.module;
-  const rows = moduleFilter ? all.filter((bridge2) => bridge2.modules.some((module2) => module2.id === moduleFilter)) : all;
+  const rows2 = moduleFilter ? all.filter((bridge2) => bridge2.modules.some((module2) => module2.id === moduleFilter)) : all;
   const panel = parent.createDiv({ cls: "los-atlas-lens-panel" });
   const summary = summarize(graph);
   panel.createDiv({
     cls: "los-atlas-lens-lead",
-    text: moduleFilter ? `${plural(rows.length, "concept")} taught in ${conceptLabel(graph, moduleFilter) === moduleFilter ? "the selected module" : moduleFilter} and at least one other, of ${plural(all.length, "bridge")} in the registry.` : `${plural(all.length, "concept")} carry evidence from more than one module, out of ${plural(summary.concepts, "concept")} in the registry.`
+    text: moduleFilter ? `${plural(rows2.length, "concept")} taught in ${conceptLabel(graph, moduleFilter) === moduleFilter ? "the selected module" : moduleFilter} and at least one other, of ${plural(all.length, "bridge")} in the registry.` : `${plural(all.length, "concept")} carry evidence from more than one module, out of ${plural(summary.concepts, "concept")} in the registry.`
   });
   panel.createDiv({
     cls: "los-micro",
     text: "A bridge says where a concept is taught. It is never a relation between the modules, and no prerequisite is derived from one."
   });
-  if (!rows.length) {
+  if (!rows2.length) {
     empty(
       panel,
       "No concept crosses more than one module here",
@@ -39030,7 +39030,7 @@ function renderBridges(parent, host, graph) {
   }
   const list3 = panel.createDiv({ cls: "los-atlas-records" });
   enableButtonGroupKeyboardNavigation(list3, "vertical");
-  for (const bridge2 of rows) {
+  for (const bridge2 of rows2) {
     const detail = bridge2.modules.map((module2) => `${module2.label} (${plural(evidenceFor(graph, module2.id, bridge2.concept.id).length, "tag")})`).join(" \xB7 ");
     conceptRow(list3, host, graph, bridge2.concept.id, detail);
   }
@@ -39757,8 +39757,8 @@ function studyOrderLayout(members, graph) {
   const pull = (lane, neighbours) => {
     if (!lane) return;
     const weight = new Map(lane.map((id) => {
-      const rows = neighbours(id).map((other) => rowOf2.get(other) ?? 0);
-      return [id, rows.length ? rows.reduce((sum, value) => sum + value, 0) / rows.length : rowOf2.get(id) ?? 0];
+      const rows2 = neighbours(id).map((other) => rowOf2.get(other) ?? 0);
+      return [id, rows2.length ? rows2.reduce((sum, value) => sum + value, 0) / rows2.length : rowOf2.get(id) ?? 0];
     }));
     lane.sort((a, b) => (weight.get(a) ?? 0) - (weight.get(b) ?? 0));
     lane.forEach((id, index) => rowOf2.set(id, index));
@@ -39774,8 +39774,8 @@ function studyOrderLayout(members, graph) {
   lanes.forEach((lane) => {
     let floor = 0;
     lane?.forEach((id) => {
-      const rows = before(id).map((other) => finalRow.get(other)).filter((row4) => row4 !== void 0);
-      const wanted = rows.length ? Math.round(rows.reduce((sum, value) => sum + value, 0) / rows.length) : floor;
+      const rows2 = before(id).map((other) => finalRow.get(other)).filter((row4) => row4 !== void 0);
+      const wanted = rows2.length ? Math.round(rows2.reduce((sum, value) => sum + value, 0) / rows2.length) : floor;
       const row3 = Math.max(floor, wanted);
       finalRow.set(id, row3);
       floor = row3 + 1;
@@ -39809,6 +39809,35 @@ function moduleOverlap(graph) {
   return shared;
 }
 var overlapKey = (a, b) => a < b ? `${a}\0${b}` : `${b}\0${a}`;
+function layoutLectureMap(ideas) {
+  const order = new Map(ideas.map((idea, index) => [idea.id, index]));
+  const links = ideas.flatMap((idea) => [...new Set(idea.buildsOn)].filter((from) => from !== idea.id && order.has(from)).map((from) => ({ from, to: idea.id })));
+  const column = new Map(ideas.map((idea) => [idea.id, 0]));
+  for (let pass = 0; pass < ideas.length; pass += 1) {
+    let moved = false;
+    for (const link of links) {
+      const next = (column.get(link.from) ?? 0) + 1;
+      if (next > (column.get(link.to) ?? 0) && next < ideas.length) {
+        column.set(link.to, next);
+        moved = true;
+      }
+    }
+    if (!moved) break;
+  }
+  const width = ideas.length ? Math.max(...column.values()) + 1 : 0;
+  const row3 = /* @__PURE__ */ new Map();
+  const columns = [];
+  for (let at = 0; at < width; at += 1) {
+    const weight = (id) => {
+      const rows2 = links.filter((link) => link.to === id).map((link) => row3.get(link.from)).filter((value) => value !== void 0);
+      return rows2.length ? rows2.reduce((sum, value) => sum + value, 0) / rows2.length : 0;
+    };
+    const here = ideas.filter((idea) => column.get(idea.id) === at).sort((a, b) => weight(a.id) - weight(b.id) || (order.get(a.id) ?? 0) - (order.get(b.id) ?? 0));
+    here.forEach((idea, index) => row3.set(idea.id, index));
+    columns.push(here.map((idea) => idea.id));
+  }
+  return { columns, links };
+}
 
 // src/features/module/model.ts
 var MODULE_TABS = [
@@ -40101,8 +40130,8 @@ function deadlinesFor(view, module2) {
   );
 }
 function renderAcademicDates(view, root, module2) {
-  const rows = view.deadlinesFor(module2);
-  if (!rows.length) {
+  const rows2 = view.deadlinesFor(module2);
+  if (!rows2.length) {
     return;
   }
   const wrap = section(
@@ -40111,10 +40140,10 @@ function renderAcademicDates(view, root, module2) {
     "Registration windows and exam sittings for this module."
   );
   const today = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
-  const ahead = rows.filter(
+  const ahead = rows2.filter(
     (row3) => (row3.endDate || row3.startDate) >= today
   );
-  const past = rows.filter(
+  const past = rows2.filter(
     (row3) => (row3.endDate || row3.startDate) < today
   );
   if (ahead.length) {
@@ -40143,11 +40172,11 @@ function renderAcademicDates(view, root, module2) {
     );
   }
 }
-function renderDeadlineRows(wrap, module2, rows) {
+function renderDeadlineRows(wrap, module2, rows2) {
   const list3 = wrap.createDiv({
     cls: "los-date-list"
   });
-  for (const row3 of rows) {
+  for (const row3 of rows2) {
     const card = list3.createDiv({
       cls: `los-date-row los-deadline-${row3.kind}`
     });
@@ -40260,6 +40289,10 @@ function moduleShort(module2) {
   if (code) return code;
   return title3.split(/\s+/).filter((word) => /^[A-ZÄÖÜ]/.test(word)).map((word) => word[0]).join("").slice(0, 4) || title3.slice(0, 3);
 }
+function moduleName(module2) {
+  const authored = /\(([^)]{2,10})\)\s*$/.test(asLabel(module2)) || Boolean(asString(module2?.code));
+  return authored ? moduleShort(module2) : moduleLongTitle(module2);
+}
 function moduleLongTitle(module2) {
   return asLabel(module2).replace(/\s*\([^)]{2,10}\)\s*$/, "");
 }
@@ -40322,6 +40355,495 @@ function sideGroup(parent, title3) {
   return group3;
 }
 
+// src/infrastructure/resource-target.ts
+function isFileShapedPath(value) {
+  if (typeof value !== "string") return false;
+  const path = value.trim().split(/[?#]/, 1)[0] ?? "";
+  const name = path.replace(/\\/g, "/").split("/").pop() ?? "";
+  return /^[^./][^/]*\.[^./]+$/.test(name);
+}
+function isDirectMaterialFileTarget(record7) {
+  return record7.material_exists === true && isFileShapedPath(record7.material_path);
+}
+var QUALIFIED_PAGES = /(?:physical\s+PDF|physical|PDF)\s+(?:p{1,2}\.|pages?)\s*(\d{1,4})(?:\s*[-–—]\s*(\d{1,4}))?/i;
+function pageDestination(record7) {
+  const target = typeof record7.material_path === "string" ? record7.material_path : typeof record7.vault_path === "string" ? record7.vault_path : "";
+  if (!/\.pdf$/i.test(target.trim().split(/[?#]/, 1)[0] ?? "")) return null;
+  const locator = typeof record7.locator === "string" ? record7.locator : "";
+  const match = QUALIFIED_PAGES.exec(locator);
+  if (!match) return null;
+  const first = Number(match[1]);
+  const last = match[2] ? Number(match[2]) : null;
+  if (!Number.isInteger(first) || first < 1) return null;
+  if (last !== null && (!Number.isInteger(last) || last <= first)) {
+    return { page: first, label: `physical page ${first}` };
+  }
+  return {
+    page: first,
+    label: last === null ? `physical page ${first}` : `physical pages ${first}\u2013${last}`
+  };
+}
+function hasDirectResourceTarget(record7) {
+  if (isDirectMaterialFileTarget(record7)) return true;
+  const vaultPath = typeof record7.vault_path === "string" ? record7.vault_path.trim() : "";
+  if (vaultPath && !vaultPath.toLowerCase().startsWith("material://") && isFileShapedPath(vaultPath)) return true;
+  return safeWebUrl(record7.url) !== null;
+}
+
+// src/features/unit/model.ts
+var ARTIFACT_LABELS = [
+  [
+    "ultimate_reference",
+    "Ultimate Reference"
+  ],
+  [
+    "exercise_bank",
+    "Exercise Bank"
+  ],
+  [
+    "mock_exam",
+    "Mock Exam"
+  ]
+];
+function errorMessage3(error) {
+  return error instanceof Error ? error.message : String(error);
+}
+function readUnitViewState(value) {
+  if (!isRecord(value)) {
+    return {
+      hasStageId: false
+    };
+  }
+  const hasStageId = Object.prototype.hasOwnProperty.call(
+    value,
+    "stageId"
+  );
+  const unitId = asString(value.unitId) ?? void 0;
+  const stageId = !hasStageId ? void 0 : value.stageId === null ? null : asString(value.stageId);
+  return {
+    unitId,
+    stageId,
+    hasStageId
+  };
+}
+function readUnitRecord(record7, fallbackId) {
+  if (!record7) {
+    return null;
+  }
+  const id = asString(record7.id) ?? fallbackId;
+  const moduleId = asString(record7.module_id);
+  if (!id || !moduleId) {
+    return null;
+  }
+  const knowledgeMap = isRecord(
+    record7.knowledge_map
+  ) ? record7.knowledge_map : null;
+  const knowledgeNodes = asRecords(
+    knowledgeMap?.nodes
+  ).map((node) => {
+    const nodeId = asString(node.id);
+    const title3 = asString(node.title);
+    const summary = asText(node.summary);
+    if (!nodeId || !title3 || !summary) {
+      return null;
+    }
+    return {
+      id: nodeId,
+      title: title3,
+      summary,
+      buildsOn: asStrings(
+        node.builds_on
+      ),
+      conceptIds: asStrings(
+        node.concept_ids
+      )
+    };
+  }).filter(
+    (node) => node !== null
+  );
+  return {
+    record: record7,
+    id,
+    moduleId,
+    componentId: asString(record7.component_id),
+    kind: asString(record7.kind) ?? "unit",
+    title: asString(record7.title) ?? id,
+    scope: asText(record7.scope) ?? "",
+    knowledgeSummary: asText(
+      knowledgeMap?.summary
+    ) ?? "",
+    knowledgeNodes,
+    needsStudyMap: record7.needs_study_map === true
+  };
+}
+function readMaterialOptions(value, unitId, selectionsValue) {
+  const options = [];
+  const selectionKeys = new Set(
+    asRecords(selectionsValue).flatMap((selection) => {
+      const routeId = asString(selection.route_id);
+      const sourceId = asString(selection.source_id);
+      const locator = asText(selection.locator);
+      return routeId && sourceId && locator ? [`${routeId}\0${sourceId}\0${locator}`] : [];
+    })
+  );
+  for (const entry of asRecords(value)) {
+    for (const route2 of asRecords(entry.unit_routes)) {
+      if (asString(route2.unit_id) !== unitId) {
+        continue;
+      }
+      const title3 = asString(route2.title);
+      const format = asString(route2.format);
+      const angle = asText(route2.angle);
+      const routeId = asString(route2.id);
+      if (!routeId || !title3 || !format || !angle) {
+        continue;
+      }
+      const sourceId = asString(route2.source_id) ?? asString(entry.source_id);
+      const locator = asText(route2.locator);
+      options.push({
+        record: route2,
+        title: title3,
+        format,
+        angle,
+        covers: asStrings(route2.covers),
+        depth: asString(route2.depth) ?? "course-aligned",
+        scope: asString(route2.scope) ?? "complementary",
+        locator,
+        sourceId,
+        routeId,
+        canOpen: hasDirectResourceTarget(route2),
+        canChoose: Boolean(sourceId && locator),
+        selected: Boolean(
+          sourceId && locator && selectionKeys.has(
+            `${routeId}\0${sourceId}\0${locator}`
+          )
+        )
+      });
+    }
+  }
+  return options;
+}
+function readResource(record7) {
+  const label2 = asString(record7.label) ?? asString(record7.title) ?? asString(record7.source_id) ?? "Resource";
+  return {
+    record: record7,
+    id: asString(record7.id),
+    kind: asString(record7.kind) ?? "read",
+    label: label2,
+    locator: asText(record7.locator),
+    sourceId: asString(record7.source_id),
+    scopeTriage: asString(record7.scope_triage),
+    canOpen: hasDirectResourceTarget(record7)
+  };
+}
+function readStageAttachment(value) {
+  if (typeof value === "string") {
+    if (!value.length) {
+      return null;
+    }
+    return {
+      path: value,
+      label: value.split("/").pop() || value
+    };
+  }
+  if (!isRecord(value)) {
+    return null;
+  }
+  const path = asString(value.path) ?? asString(value.vault_path);
+  if (!path) {
+    return null;
+  }
+  return {
+    path,
+    label: asString(value.label) ?? path
+  };
+}
+function readStage(record7) {
+  const id = asString(record7.id);
+  if (!id) {
+    return null;
+  }
+  const attachments = Array.isArray(
+    record7.attachments
+  ) ? record7.attachments.map(readStageAttachment).filter(
+    (attachment) => attachment !== null
+  ) : [];
+  return {
+    record: record7,
+    id,
+    title: asString(record7.title) ?? id,
+    status: asString(record7.status) ?? "active",
+    scopeTriage: asText(record7.scope_triage) ?? "",
+    objective: asText(record7.objective),
+    estimateMinutes: asText(record7.estimate_minutes),
+    examCritical: record7.exam_critical === true,
+    concepts: asStrings(record7.concepts),
+    resources: asRecords(
+      record7.resources
+    ).map((resource, resourceIndex) => ({ ...readResource(resource), resourceIndex })),
+    doneWhen: asStrings(
+      record7.done_when
+    ).filter(
+      (criterion) => Boolean(criterion.trim())
+    ),
+    attachments,
+    sourceFeedback: asRecords(
+      record7.source_feedback
+    )
+  };
+}
+function readStudyMap(record7) {
+  const stages = asRecords(
+    record7.stages
+  ).map(readStage).filter(
+    (stage) => stage !== null
+  );
+  return {
+    record: record7,
+    currentStageId: asString(
+      record7.current_stage
+    ),
+    stages,
+    detours: asRecords(record7.detours),
+    planTemplateVersion: asFiniteNumber(
+      record7.plan_template_version
+    )
+  };
+}
+function readArtifacts(value) {
+  if (!isRecord(value)) {
+    return {
+      named: [],
+      other: []
+    };
+  }
+  const named = [];
+  for (const [key] of ARTIFACT_LABELS) {
+    const id = asString(value[key]);
+    if (id) {
+      named.push([key, id]);
+    }
+  }
+  return {
+    named,
+    other: asStrings(value.other)
+  };
+}
+function artifactLabel(key) {
+  return ARTIFACT_LABELS.find(
+    ([candidate2]) => candidate2 === key
+  )?.[1] ?? key;
+}
+function fallbackRecord(id) {
+  return {
+    id,
+    type: "record",
+    title: id
+  };
+}
+
+// src/designs/study-desk/module-map.ts
+function moduleMap(store, moduleId) {
+  const record7 = store.get(moduleId);
+  const module2 = record7 ? readModuleRecord(record7) : null;
+  if (!record7 || !module2) return null;
+  const ordered = orderModuleUnits(module2, store.unitsFor(moduleId).map(normalizeUnitRecord).filter(nonNull));
+  const units = ordered.map((row3) => readUnitRecord(row3.record, row3.id)).filter(nonNull);
+  const blocks = units.filter((unit) => unit.kind === "exam-block");
+  const lectures = units.filter((unit) => unit.kind !== "exam-block");
+  const drawn = lectures.some((unit) => unit.knowledgeNodes.length) ? lectures : blocks;
+  const rows2 = drawn.filter((unit) => unit.knowledgeNodes.length).map((unit) => ({ unit, label: unitLabel(unit.record, record7), ideas: unit.knowledgeNodes }));
+  if (!rows2.length) return null;
+  return {
+    moduleId,
+    rows: rows2,
+    examBlocks: drawn === lectures ? blocks : [],
+    unmapped: drawn.filter((unit) => !unit.knowledgeNodes.length),
+    ideas: rows2.reduce((sum, row3) => sum + row3.ideas.length, 0)
+  };
+}
+function moduleMaps(store) {
+  return store.modules().map((module2) => asString(module2.id)).filter(nonNull).map((id) => moduleMap(store, id)).filter(nonNull);
+}
+var plural2 = (amount, noun) => `${amount} ${noun}${amount === 1 ? "" : "s"}`;
+function moduleMapFacts(map) {
+  return `${plural2(map.rows.length, "lecture")} \xB7 ${plural2(map.ideas, "idea")}`;
+}
+function progressTag(store, unitId) {
+  const projected = store.mapForUnit(unitId);
+  if (!projected) return null;
+  const stages = readStudyMap(projected).stages;
+  const done = stages.filter((stage) => stage.status === "complete").length;
+  if (!stages.length || !done) return null;
+  if (done === stages.length) return { text: "Studied", tone: "success" };
+  return { text: `In progress \xB7 ${done} of ${plural2(stages.length, "stage")}`, tone: "accent" };
+}
+var headings = 0;
+var landing = /* @__PURE__ */ new WeakMap();
+function openModuleMap(host, moduleId, unitId = null) {
+  if (unitId) landing.set(host, unitId);
+  else landing.delete(host);
+  host.go({ concept: null, module: moduleId, lens: "prerequisites" });
+}
+function leaveModuleMap(host) {
+  landing.delete(host);
+  Object.assign(host.concepts, { domain: null, subdomain: null, browseAll: false, recentsOnly: false });
+  host.go({ concept: null, module: null, lens: "prerequisites" });
+}
+function renderModuleMap(root, host, map) {
+  const { store, nav } = host.plugin;
+  const module2 = store.get(map.moduleId);
+  const short = moduleName(module2);
+  const head = root.createDiv({ cls: "sd-title-row" });
+  const copy = head.createDiv({ cls: "sd-title-copy" });
+  copy.createEl("h1", { cls: "sd-title", text: moduleLongTitle(module2) });
+  copy.createDiv({ cls: "sd-facts", text: `The module at a glance \xB7 ${plural2(map.rows.length, "lecture")} \xB7 ${map.ideas} ideas from your lecture maps` });
+  renderAtlasVariants(head.createDiv({ cls: "sd-title-tools" }), nav, "concepts", (target2) => host.go(target2));
+  const sheet = root.createDiv({ cls: "sd-sheet sd-mm-sheet" });
+  const title3 = sheet.createDiv({ cls: "sd-mm-head" });
+  title3.createEl("h2", { cls: "sd-mm-title", text: "The module at a glance" });
+  title3.createSpan({ cls: "sd-mm-subtitle", text: "lectures top to bottom, in course order \xB7 ideas left to right: an arrow means \u201Cbuilds on\u201D" });
+  const guide = sheet.createDiv({ cls: "sd-mm-guide" });
+  for (const [label2, text4] of [
+    ["How to read it", "One row per lecture, in course order. Inside a row, an arrow means the idea on the right builds on the one on the left. Nothing moves between visits, so places stay familiar."],
+    ["Revise with it", "Cover a row and say each idea in a sentence, then open the lecture to check. Start with the lectures you studied longest ago."],
+    ["Not drawn yet", "Links between lectures. Your lecture maps link ideas inside one lecture only; concept pages show the Atlas\u2019s links across lectures."]
+  ]) {
+    const column = sideGroup(guide, label2);
+    column.createEl("p", { cls: "sd-mm-note", text: text4 });
+  }
+  const here = landing.get(host) ?? null;
+  let landed = null;
+  const lectures = sheet.createDiv({ cls: "sd-mm-lectures" });
+  const canvases = [];
+  for (const [index, row3] of map.rows.entries()) {
+    const lecture = lectures.createDiv({ cls: `sd-mm-lecture${row3.unit.id === here ? " is-here" : ""}`, attr: { "data-unit": row3.unit.id } });
+    if (row3.unit.id === here) landed = lecture;
+    const line = lecture.createDiv({ cls: "sd-mm-lecture-head" });
+    line.createSpan({ cls: "sd-mm-number", text: (row3.label.number ?? String(index + 1)).padStart(2, "0") });
+    const heading2 = `sd-mm-lecture-${++headings}`;
+    line.createEl("h3", { cls: "sd-mm-lecture-title", text: row3.label.title, attr: { id: heading2 } });
+    const tag2 = progressTag(store, row3.unit.id);
+    if (tag2) line.createSpan({ cls: `sd-tag is-${tag2.tone}`, text: tag2.text });
+    line.createSpan({ cls: "sd-mat-flex" });
+    textLink(line, "Open lecture", () => nav.openUnit(row3.unit.id)).addClass("sd-mm-open");
+    if (row3.unit.knowledgeSummary) {
+      lecture.createDiv({ cls: "sd-mm-summary", text: row3.unit.knowledgeSummary, attr: { title: row3.unit.knowledgeSummary } });
+    }
+    const layout = layoutLectureMap(row3.ideas);
+    const byId = new Map(row3.ideas.map((idea) => [idea.id, idea]));
+    const canvas = lecture.createDiv({ cls: "sd-mm-ideas", attr: { role: "group", "aria-labelledby": heading2 } });
+    for (const column of layout.columns) {
+      const stack2 = canvas.createDiv({ cls: "sd-mm-column", attr: { role: "list" } });
+      for (const id of column) {
+        const idea = byId.get(id);
+        if (!idea) continue;
+        const node = stack2.createDiv({ cls: "sd-mm-idea", attr: { role: "listitem", "data-idea": id, title: idea.summary } });
+        node.createSpan({ text: idea.title });
+        const before = layout.links.filter((link) => link.to === id).map((link) => byId.get(link.from)?.title).filter(nonNull);
+        if (before.length) node.createSpan({ cls: "los-sr-only", text: `, builds on ${before.join(" and ")}` });
+      }
+    }
+    canvases.push({ canvas, links: layout.links });
+  }
+  if (map.examBlocks.length || map.unmapped.length) {
+    const foot = sheet.createDiv({ cls: "sd-mm-foot" });
+    for (const unit of map.examBlocks) {
+      const note2 = foot.createDiv({ cls: "sd-mm-foot-line" });
+      note2.createSpan({ text: `${short} ${unitLabel(unit.record, module2).place.replace(/^./, (first) => first.toLowerCase())} is an exam block, not a lecture, so it has no row here. ` });
+      textLink(note2, "Open it", () => nav.openUnit(unit.id));
+    }
+    if (map.unmapped.length) {
+      foot.createDiv({ cls: "sd-mm-foot-line", text: `No idea map yet: ${map.unmapped.map((unit) => unitLabel(unit.record, module2).place).join(", ")}.` });
+    }
+  }
+  mountIdeaLinks(host, canvases);
+  const target = landed;
+  if (target && typeof target.scrollIntoView === "function") {
+    root.ownerDocument?.defaultView?.requestAnimationFrame(() => target.scrollIntoView({ block: "center" }));
+  }
+}
+var SVG3 = "http://www.w3.org/2000/svg";
+var sequence2 = 0;
+function mountIdeaLinks(host, canvases) {
+  const first = canvases[0]?.canvas;
+  const doc = first?.ownerDocument;
+  const win = doc?.defaultView;
+  if (!first || !doc?.createElementNS || !win || typeof first.getBoundingClientRect !== "function") return;
+  let frame = 0;
+  let disposed = false;
+  const layers = canvases.map(({ canvas, links }) => {
+    const svg = doc.createElementNS(SVG3, "svg");
+    svg.setAttribute("class", "sd-mm-links");
+    svg.setAttribute("aria-hidden", "true");
+    canvas.prepend(svg);
+    return { canvas, links, svg, marker: `sd-mm-arrow-${++sequence2}` };
+  });
+  const draw = () => {
+    frame = 0;
+    if (disposed) return;
+    for (const { canvas, links, svg, marker } of layers) {
+      if (!canvas.isConnected) continue;
+      svg.replaceChildren();
+      const defs = doc.createElementNS(SVG3, "defs");
+      const head = doc.createElementNS(SVG3, "marker");
+      for (const [key, value] of Object.entries({ id: marker, viewBox: "0 0 8 8", refX: "6.5", refY: "4", markerWidth: "8", markerHeight: "8", markerUnits: "userSpaceOnUse", orient: "auto" })) head.setAttribute(key, value);
+      const chevron3 = doc.createElementNS(SVG3, "path");
+      chevron3.setAttribute("d", "M 2 1 L 6.5 4 L 2 7");
+      chevron3.setAttribute("class", "sd-mm-arrowhead");
+      head.append(chevron3);
+      defs.append(head);
+      svg.append(defs);
+      const base = canvas.getBoundingClientRect();
+      const box = (node) => {
+        const rect = node.getBoundingClientRect();
+        const left = rect.left - base.left + canvas.scrollLeft, top = rect.top - base.top + canvas.scrollTop;
+        return { left, top, right: left + rect.width, bottom: top + rect.height, width: rect.width };
+      };
+      const nodes = new Map(Array.from(canvas.querySelectorAll("[data-idea]")).map((node) => [node.getAttribute("data-idea"), box(node)]));
+      const boxes = [...nodes.values()];
+      svg.setAttribute("width", String(Math.ceil(Math.max(0, ...boxes.map((node) => node.right))) + 4));
+      svg.setAttribute("height", String(Math.ceil(Math.max(0, ...boxes.map((node) => node.bottom))) + 15));
+      let under = 0;
+      for (const link of links) {
+        const a = nodes.get(link.from), b = nodes.get(link.to);
+        if (!a || !b || !a.width || !b.width || b.left <= a.right) continue;
+        const x1 = a.right + 2, y1 = (a.top + a.bottom) / 2, x2 = b.left - 3, y2 = (b.top + b.bottom) / 2;
+        const between = [...nodes.values()].filter((node) => node.left > a.right && node.right < b.left);
+        const yAt = (x) => y1 + (y2 - y1) * (x - x1) / (x2 - x1);
+        const blocked = between.some((node) => {
+          const top = Math.min(yAt(node.left), yAt(node.right)), bottom = Math.max(yAt(node.left), yAt(node.right));
+          return bottom >= node.top - 4 && top <= node.bottom + 4;
+        });
+        let d = `M ${x1} ${y1} L ${x2} ${y2}`;
+        if (blocked) {
+          const below = Math.max(...between.map((node) => node.bottom)) + 5 + Math.min(under, 2) * 4;
+          under += 1;
+          d = `M ${x1} ${y1} C ${x1 + 12} ${y1}, ${x1 + 10} ${below}, ${x1 + 22} ${below} L ${x2 - 22} ${below} C ${x2 - 10} ${below}, ${x2 - 12} ${y2}, ${x2} ${y2}`;
+        }
+        const path = doc.createElementNS(SVG3, "path");
+        path.setAttribute("d", d);
+        path.setAttribute("class", "sd-mm-link");
+        path.setAttribute("marker-end", `url(#${marker})`);
+        svg.append(path);
+      }
+    }
+  };
+  const schedule = () => {
+    if (!disposed && !frame) frame = win.requestAnimationFrame(draw);
+  };
+  const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(schedule);
+  for (const { canvas } of layers) observer?.observe(canvas);
+  win.addEventListener("resize", schedule);
+  schedule();
+  host.addRenderCleanup(() => {
+    disposed = true;
+    if (frame) win.cancelAnimationFrame(frame);
+    observer?.disconnect();
+    win.removeEventListener("resize", schedule);
+  });
+}
+
 // src/designs/study-desk/atlas.ts
 var REGION_PLACES = {
   "cross-domain": { x: 29, y: 1, w: 22, h: 23, cover: "stone", designed: 10 },
@@ -40332,7 +40854,7 @@ var REGION_PLACES = {
   algorithms: { x: 1, y: 63, w: 26, h: 34, cover: "ochre", designed: 23 },
   "data-systems": { x: 73, y: 62, w: 22, h: 26, cover: "slate", designed: 12 }
 };
-var plural2 = (amount, noun) => `${amount} ${noun}${amount === 1 ? "" : "s"}`;
+var plural3 = (amount, noun) => `${amount} ${noun}${amount === 1 ? "" : "s"}`;
 var shortModule = (host, id) => moduleShort(host.plugin.store.get(id));
 var shortModules = (host, graph, concept) => modulesFor(graph, concept).map((module2) => shortModule(host, module2.id));
 var coverFor = (id) => REGION_PLACES[id]?.cover ?? "stone";
@@ -40372,9 +40894,9 @@ function renderSearch2(parent, host, placeholder) {
     results.empty();
     const query = host.query.trim();
     if (!query) return;
-    const rows = host.plugin.store.search(query, ["concept"]).slice(0, 8);
-    if (!rows.length) results.createDiv({ cls: "sd-row-facts sd-search-none", text: `No concept matches \u201C${query}\u201D.` });
-    for (const record7 of rows) {
+    const rows2 = host.plugin.store.search(query, ["concept"]).slice(0, 8);
+    if (!rows2.length) results.createDiv({ cls: "sd-row-facts sd-search-none", text: `No concept matches \u201C${query}\u201D.` });
+    for (const record7 of rows2) {
       const id = asString(record7.id);
       if (id) deskRow(results, "sd-search-row", `Open ${asLabel(record7)}`, () => {
         host.query = "";
@@ -40490,9 +41012,19 @@ function renderSideColumn(parent, context) {
     Object.assign(host.concepts, { browseAll: true, domain: null, visibleLimit: 30 });
     host.render();
   });
-  question("Where do modules overlap?", `${plural2(overlap, "concept")} in two or more`, () => host.go({ concept: null, lens: "bridges" }));
+  question("Where do modules overlap?", `${plural3(overlap, "concept")} in two or more`, () => host.go({ concept: null, lens: "bridges" }));
   question("What has no links yet?", `${concepts.filter((concept) => !touched.has(concept.id)).length} of ${concepts.length} concepts`, () => host.go({ concept: null, lens: "diagnostics" }));
   question("Which records need care?", "Open Diagnostics", () => host.plugin.nav.openDiagnostics());
+  const maps = moduleMaps(host.plugin.store);
+  if (maps.length) {
+    const revise = sideGroup(side, "Revise a module");
+    for (const map of maps) {
+      const label2 = `${moduleName(host.plugin.store.get(map.moduleId))} module map`;
+      const row3 = deskRow(revise, "sd-side-row", `Open the ${label2}`, () => openModuleMap(host, map.moduleId));
+      row3.createEl("strong", { text: label2 });
+      row3.createDiv({ cls: "sd-row-facts", text: moduleMapFacts(map) });
+    }
+  }
 }
 function renderMap(root, context) {
   const { host, graph, map } = context;
@@ -40535,9 +41067,9 @@ function renderMap(root, context) {
         style: `left:${place.x}%;top:${place.y}%;width:${place.w}%;height:${place.h}%`
       }
     });
-    const open = card.createEl("button", { cls: "sd-region-head is-clickable", attr: { type: "button", "aria-label": `Open region: ${region.title}, ${plural2(region.concepts.length, "concept")}` } });
+    const open = card.createEl("button", { cls: "sd-region-head is-clickable", attr: { type: "button", "aria-label": `Open region: ${region.title}, ${plural3(region.concepts.length, "concept")}` } });
     open.createEl("strong", { cls: "sd-heading", text: region.title });
-    open.createDiv({ cls: "sd-row-facts", text: region.linked ? `${plural2(region.concepts.length, "concept")}, ${region.linked} linked` : `${plural2(region.concepts.length, "concept")}, no links yet` });
+    open.createDiv({ cls: "sd-row-facts", text: region.linked ? `${plural3(region.concepts.length, "concept")}, ${region.linked} linked` : `${plural3(region.concepts.length, "concept")}, no links yet` });
     open.addEventListener("click", () => chooseRegion(host, region.id));
     const chips = card.createDiv({ cls: "sd-region-chips" });
     const top = [...region.concepts].filter((id) => degree(id) > 0 && id !== study?.id).sort((a, b) => degree(b) - degree(a) || compareStrings(a, b)).slice(0, region.id === "machine-learning" ? 3 : 2);
@@ -40554,7 +41086,7 @@ function renderMap(root, context) {
     const spot = gapMidpoint(concretePlace(a.id, a.concepts.length), concretePlace(b.id, b.concepts.length));
     canvas.createDiv({
       cls: "sd-map-badge",
-      text: plural2(link.count, "link"),
+      text: plural3(link.count, "link"),
       attr: { style: `left:${spot.x}%;top:${spot.y}%` }
     });
   }
@@ -40564,7 +41096,7 @@ function renderMap(root, context) {
     for (const region of other) {
       const row3 = deskRow(rest, "sd-ungrouped", `Open ${region.title}`, () => chooseRegion(host, region.id));
       row3.createEl("strong", { text: region.title });
-      row3.createSpan({ cls: "sd-row-facts", text: region.id === UNGROUPED ? `${plural2(region.concepts.length, "concept")}, no linked note` : plural2(region.concepts.length, "concept") });
+      row3.createSpan({ cls: "sd-row-facts", text: region.id === UNGROUPED ? `${plural3(region.concepts.length, "concept")}, no linked note` : plural3(region.concepts.length, "concept") });
       chevron(row3);
     }
   }
@@ -40573,7 +41105,7 @@ function renderMap(root, context) {
 }
 function renderRegion(root, context, region) {
   const { host, graph, map } = context;
-  const tools = pageHead(root, region.title, `${plural2(region.concepts.length, "concept")}. Read left to right: what you need first, then what it leads to.`);
+  const tools = pageHead(root, region.title, `${plural3(region.concepts.length, "concept")}. Read left to right: what you need first, then what it leads to.`);
   renderSearch2(tools, host, "Find in this region");
   const layout = root.createDiv({ cls: "sd-atlas-layout is-wide" });
   const sheet = layout.createDiv({ cls: "sd-sheet sd-region-sheet" });
@@ -40630,13 +41162,13 @@ function renderRegionSide(layout, context, region, map) {
     const related = (graph.semanticEdges.get(id) ?? []).length;
     side.createEl("h2", { cls: "sd-heading", text: conceptOf(graph, id).label });
     side.createEl("p", { cls: "sd-note", text: [
-      before ? `Needs ${plural2(before, "concept")} first.` : "Nothing recorded comes first.",
-      after ? `${plural2(after, "concept")} build${after === 1 ? "s" : ""} on it.` : "Nothing recorded builds on it yet.",
-      related ? `${plural2(related, "related link")}.` : ""
+      before ? `Needs ${plural3(before, "concept")} first.` : "Nothing recorded comes first.",
+      after ? `${plural3(after, "concept")} build${after === 1 ? "s" : ""} on it.` : "Nothing recorded builds on it yet.",
+      related ? `${plural3(related, "related link")}.` : ""
     ].filter(Boolean).join(" ") });
     button(side, "Focus on this", () => focus(host, id), "cta");
     const known = buildConceptContext(host.plugin.store, id);
-    side.createDiv({ cls: "sd-row-facts", text: `${plural2(known.notes.length, "note")} \xB7 ${plural2(known.sources.length, "source")}` });
+    side.createDiv({ cls: "sd-row-facts", text: `${plural3(known.notes.length, "note")} \xB7 ${plural3(known.sources.length, "source")}` });
   } else {
     side.createEl("h2", { cls: "sd-heading", text: "Choose a concept" });
     side.createEl("p", { cls: "sd-note", text: "Select one to see what it needs and what builds on it." });
@@ -40708,7 +41240,12 @@ function renderConnections2(root, context, id) {
       return column;
     };
     const first = lane("You need first");
-    for (const edge of before) if (edge.prerequisiteId) conceptCard(first, context, edge, edge.prerequisiteId, id);
+    for (const edge of before) {
+      if (!edge.prerequisiteId) continue;
+      const need = first.createDiv({ cls: "sd-need" });
+      conceptCard(need, context, edge, edge.prerequisiteId, id);
+      if (edge.context) need.createDiv({ cls: "sd-need-why", text: edge.context });
+    }
     if (!before.length) first.createDiv({ cls: "sd-node-gap", text: "Nothing recorded comes before this." });
     const middle = lane("This concept");
     const self = middle.createDiv({ cls: "sd-node sd-focus-node is-selected", attr: { "data-atlas-concept": id } });
@@ -40753,14 +41290,14 @@ function renderConceptSide(layout, context, id) {
   const known = buildConceptContext(store, id);
   const reference = known.notes.find((note2) => asString(note2.role) === "reference") ?? null;
   if (reference) button(side, "Open the reference", () => nav.openRecord(reference), "cta");
-  const list3 = (title3, rows, visible = 3) => {
-    const group3 = sideGroup(side, `${title3} \xB7 ${rows.length}`);
-    if (!rows.length) group3.createEl("p", { cls: "sd-row-facts", text: "None recorded." });
-    for (const row3 of rows.slice(0, visible)) textLink(group3, row3.label, row3.open).addClass("sd-link-quiet");
-    if (rows.length > visible) {
+  const list3 = (title3, rows2, visible = 3) => {
+    const group3 = sideGroup(side, `${title3} \xB7 ${rows2.length}`);
+    if (!rows2.length) group3.createEl("p", { cls: "sd-row-facts", text: "None recorded." });
+    for (const row3 of rows2.slice(0, visible)) textLink(group3, row3.label, row3.open).addClass("sd-link-quiet");
+    if (rows2.length > visible) {
       const more = group3.createEl("details", { cls: "sd-all" });
-      more.createEl("summary", { cls: "sd-link-summary", text: `All ${rows.length}` });
-      for (const row3 of rows.slice(visible)) textLink(more, row3.label, row3.open).addClass("sd-link-quiet");
+      more.createEl("summary", { cls: "sd-link-summary", text: `All ${rows2.length}` });
+      for (const row3 of rows2.slice(visible)) textLink(more, row3.label, row3.open).addClass("sd-link-quiet");
     }
   };
   const units = store.of("unit").filter((unit) => {
@@ -40771,6 +41308,7 @@ function renderConceptSide(layout, context, id) {
     label: unitLabel(unit, store.get(asString(unit.module_id) ?? "")).title,
     open: () => nav.openUnit(asString(unit.id) ?? "")
   })));
+  renderModuleSignposts(side, context, id, units);
   list3("Notes", known.notes.map((note2) => ({ label: asLabel(note2), open: () => nav.openRecord(note2) })));
   list3("Sources", known.sources.map((source) => ({ label: asLabel(source), open: () => nav.openSourceDetail(asString(source.id) ?? "") })));
   const where = side.createDiv({ cls: "sd-where" });
@@ -40783,6 +41321,30 @@ function renderConceptSide(layout, context, id) {
     host.editor = newDraft(id);
     host.render();
   });
+}
+function renderModuleSignposts(side, context, id, units) {
+  const { host, graph } = context;
+  const { store } = host.plugin;
+  const teaches = (unitId) => {
+    const plan2 = store.mapForUnit(unitId);
+    return (Array.isArray(plan2?.stages) ? plan2.stages : []).some((stage) => asStrings(stage.concepts).includes(id));
+  };
+  const moduleIds = [.../* @__PURE__ */ new Set([
+    ...modulesFor(graph, id).map((module2) => module2.id),
+    ...units.map((unit) => asString(unit.module_id)).filter((moduleId) => Boolean(moduleId))
+  ])];
+  const maps = moduleIds.map((moduleId) => moduleMap(store, moduleId)).filter((map) => map !== null);
+  if (!maps.length) return;
+  const group3 = sideGroup(side, "See it in its module");
+  for (const map of maps) {
+    const row3 = map.rows.find((entry) => teaches(entry.unit.id)) ?? null;
+    const label2 = `${moduleName(host.plugin.store.get(map.moduleId))} module map`;
+    const position = row3 ? map.rows.indexOf(row3) + 1 : 0;
+    const where = !row3 ? "" : !row3.label.number ? row3.label.title : Number(row3.label.number) === position ? `${row3.label.place} of ${map.rows.length}` : row3.label.place;
+    const link = deskRow(group3, "sd-side-row sd-signpost", `Open the ${label2}`, () => openModuleMap(host, map.moduleId, row3?.unit.id ?? null));
+    link.createEl("strong", { text: label2 });
+    link.createDiv({ cls: "sd-row-facts", text: [where, `all ${map.ideas} ideas, one row per lecture`].filter(Boolean).join(" \xB7 ") });
+  }
 }
 function renderRoute(root, context, id) {
   const { host, graph, map } = context;
@@ -40801,7 +41363,7 @@ function renderRoute(root, context, id) {
     const open = item.createEl("button", { cls: "sd-route-name is-clickable", text: stop.label, attr: { type: "button" } });
     open.addEventListener("click", () => host.go({ concept: stop.id, lens: "path" }));
     const notes = linkedConceptNotes(store, stop.id).length;
-    item.createDiv({ cls: "sd-row-facts", text: [plural2(notes, "note"), shortModules(host, graph, stop.id).join(", ")].filter(Boolean).join(" \xB7 ") });
+    item.createDiv({ cls: "sd-row-facts", text: [plural3(notes, "note"), shortModules(host, graph, stop.id).join(", ")].filter(Boolean).join(" \xB7 ") });
   });
   const layout = root.createDiv({ cls: "sd-atlas-layout is-wide" });
   const sheet = layout.createDiv({ cls: "sd-sheet" });
@@ -40833,9 +41395,9 @@ function renderList2(root, context) {
   const layout = root.createDiv({ cls: "sd-atlas-layout" });
   const sheet = layout.createDiv({ cls: "sd-sheet" });
   renderViewTabs(sheet, host, "list");
-  const rows = graph.concepts.filter((concept) => concept.record);
-  const shown = rows.slice(0, host.concepts.visibleLimit);
-  sheet.createDiv({ cls: "sd-row-facts", attr: { role: "status" }, text: `${shown.length} of ${plural2(rows.length, "concept")}, in title order` });
+  const rows2 = graph.concepts.filter((concept) => concept.record);
+  const shown = rows2.slice(0, host.concepts.visibleLimit);
+  sheet.createDiv({ cls: "sd-row-facts", attr: { role: "status" }, text: `${shown.length} of ${plural3(rows2.length, "concept")}, in title order` });
   const list3 = sheet.createDiv({ cls: "sd-concept-list", attr: { role: "group", "aria-label": "Concepts" } });
   enableButtonGroupKeyboardNavigation(list3, "vertical");
   for (const concept of shown) {
@@ -40843,11 +41405,11 @@ function renderList2(root, context) {
     row3.createEl("strong", { text: concept.label });
     const region = map.regions.find((entry) => entry.id === map.regionOf.get(concept.id));
     const links = graph.edges.filter((edge) => edge.from === concept.id || edge.to === concept.id).length;
-    row3.createSpan({ cls: "sd-row-next", text: [region?.title, plural2(linkedConceptNotes(host.plugin.store, concept.id).length, "note"), links ? plural2(links, "link") : "no links yet"].filter(Boolean).join(" \xB7 ") });
+    row3.createSpan({ cls: "sd-row-next", text: [region?.title, plural3(linkedConceptNotes(host.plugin.store, concept.id).length, "note"), links ? plural3(links, "link") : "no links yet"].filter(Boolean).join(" \xB7 ") });
     chevron(row3);
   }
-  if (shown.length < rows.length) {
-    button(sheet, `Show more \xB7 ${rows.length - shown.length} remaining`, () => {
+  if (shown.length < rows2.length) {
+    button(sheet, `Show more \xB7 ${rows2.length - shown.length} remaining`, () => {
       host.concepts.visibleLimit += 30;
       host.render();
     }, "quiet");
@@ -40864,7 +41426,7 @@ function renderOverlap(root, context) {
   sheet.createDiv({ cls: "sd-row-facts", text: "How many concepts two modules share. It says where a concept is taught, never that one module depends on another." });
   const modules = graph.modules.filter((module2) => module2.conceptCount > 0);
   const shared = moduleOverlap(graph);
-  const peak = Math.max(1, ...[...shared.values()].map((rows) => rows.length));
+  const peak = Math.max(1, ...[...shared.values()].map((rows2) => rows2.length));
   const selected = overlapSelection.get(host) ?? null;
   const scroll = sheet.createDiv({ cls: "sd-grid-scroll" });
   const table = scroll.createEl("table", { cls: "sd-overlap" });
@@ -40882,19 +41444,19 @@ function renderOverlap(root, context) {
         continue;
       }
       const key = overlapKey(row3.id, column.id);
-      const rows = shared.get(key) ?? [];
-      if (!rows.length) {
+      const rows2 = shared.get(key) ?? [];
+      if (!rows2.length) {
         td.createSpan({ cls: "los-sr-only", text: "None shared" });
         continue;
       }
       const cell = td.createEl("button", {
         cls: `sd-overlap-cell is-clickable${selected === key ? " is-selected" : ""}`,
-        text: String(rows.length),
+        text: String(rows2.length),
         attr: {
           type: "button",
-          "aria-label": `${row3.label} and ${column.label} share ${plural2(rows.length, "concept")}`,
+          "aria-label": `${row3.label} and ${column.label} share ${plural3(rows2.length, "concept")}`,
           "aria-pressed": String(selected === key),
-          style: `--sd-share:${Math.round(12 + rows.length / peak * 48)}%`
+          style: `--sd-share:${Math.round(12 + rows2.length / peak * 48)}%`
         }
       });
       cell.addEventListener("click", () => {
@@ -40906,9 +41468,9 @@ function renderOverlap(root, context) {
   if (selected) {
     const [a, b] = selected.split("\0");
     const label2 = (id) => id ? shortModule(host, id) : "";
-    const rows = shared.get(selected) ?? [];
-    sheet.createEl("h2", { cls: "sd-heading", text: `${label2(a)} and ${label2(b)} \xB7 ${plural2(rows.length, "shared concept")}` });
-    for (const id of rows) {
+    const rows2 = shared.get(selected) ?? [];
+    sheet.createEl("h2", { cls: "sd-heading", text: `${label2(a)} and ${label2(b)} \xB7 ${plural3(rows2.length, "shared concept")}` });
+    for (const id of rows2) {
       const row3 = deskRow(sheet, "sd-study-row", `Open ${conceptOf(graph, id).label}`, () => focus(host, id));
       row3.createEl("strong", { text: conceptOf(graph, id).label });
       chevron(row3);
@@ -40925,9 +41487,15 @@ function renderDeskAtlas(host) {
   if (!graph.concepts.length) return false;
   const map = buildConceptMap(host.plugin.store.of("note"), graph);
   const context = { host, graph, map };
-  const root = deskPage(host.contentEl, "atlas", host.plugin.store);
-  const atlas = { label: "Atlas", go: () => host.showConceptOverview(null) };
   const conceptId = host.state.concept;
+  const glance = host.state.module && !conceptId && lens !== "bridges" ? moduleMap(host.plugin.store, host.state.module) : null;
+  const root = deskPage(host.contentEl, "atlas", host.plugin.store);
+  if (glance) {
+    deskHead(root, [{ label: "Atlas", go: () => leaveModuleMap(host) }, { label: moduleName(host.plugin.store.get(glance.moduleId)) }]);
+    renderModuleMap(root, host, glance);
+    return true;
+  }
+  const atlas = { label: "Atlas", go: () => host.showConceptOverview(null) };
   if (conceptId && lens !== "bridges") {
     const crumb = regionCrumb(context, conceptId);
     deskHead(root, [atlas, ...crumb ? [crumb] : [], { label: conceptOf(graph, conceptId).label }]);
@@ -40960,7 +41528,7 @@ function elsewhereRows(view) {
   const pointer2 = readResumePointer(
     view.plugin.store.data?.resume_pointer
   );
-  const rows = [];
+  const rows2 = [];
   for (const record7 of view.plugin.store.openAcademicModules()) {
     const recordId = asString(record7.id);
     if (!recordId || recordId === pointer2.module_id) {
@@ -40969,7 +41537,7 @@ function elsewhereRows(view) {
     if (record7.is_actionable !== true) {
       continue;
     }
-    rows.push({
+    rows2.push({
       record: record7,
       type: asString(record7.kind) === "skill" ? "Skill" : "Module",
       open: () => view.plugin.nav.openModule(
@@ -40986,7 +41554,7 @@ function elsewhereRows(view) {
     if (status && ["completed", "archived"].includes(status)) {
       continue;
     }
-    rows.push({
+    rows2.push({
       record: record7,
       type: "Project",
       open: () => view.plugin.nav.openProject(
@@ -40994,7 +41562,7 @@ function elsewhereRows(view) {
       )
     });
   }
-  return rows;
+  return rows2;
 }
 function renderElsewhere(view, root) {
   const sectionEl = section(
@@ -41326,293 +41894,6 @@ function renderToday(view, root) {
   }
 }
 
-// src/infrastructure/resource-target.ts
-function isFileShapedPath(value) {
-  if (typeof value !== "string") return false;
-  const path = value.trim().split(/[?#]/, 1)[0] ?? "";
-  const name = path.replace(/\\/g, "/").split("/").pop() ?? "";
-  return /^[^./][^/]*\.[^./]+$/.test(name);
-}
-function isDirectMaterialFileTarget(record7) {
-  return record7.material_exists === true && isFileShapedPath(record7.material_path);
-}
-var QUALIFIED_PAGES = /(?:physical\s+PDF|physical|PDF)\s+(?:p{1,2}\.|pages?)\s*(\d{1,4})(?:\s*[-–—]\s*(\d{1,4}))?/i;
-function pageDestination(record7) {
-  const target = typeof record7.material_path === "string" ? record7.material_path : typeof record7.vault_path === "string" ? record7.vault_path : "";
-  if (!/\.pdf$/i.test(target.trim().split(/[?#]/, 1)[0] ?? "")) return null;
-  const locator = typeof record7.locator === "string" ? record7.locator : "";
-  const match = QUALIFIED_PAGES.exec(locator);
-  if (!match) return null;
-  const first = Number(match[1]);
-  const last = match[2] ? Number(match[2]) : null;
-  if (!Number.isInteger(first) || first < 1) return null;
-  if (last !== null && (!Number.isInteger(last) || last <= first)) {
-    return { page: first, label: `physical page ${first}` };
-  }
-  return {
-    page: first,
-    label: last === null ? `physical page ${first}` : `physical pages ${first}\u2013${last}`
-  };
-}
-function hasDirectResourceTarget(record7) {
-  if (isDirectMaterialFileTarget(record7)) return true;
-  const vaultPath = typeof record7.vault_path === "string" ? record7.vault_path.trim() : "";
-  if (vaultPath && !vaultPath.toLowerCase().startsWith("material://") && isFileShapedPath(vaultPath)) return true;
-  return safeWebUrl(record7.url) !== null;
-}
-
-// src/features/unit/model.ts
-var ARTIFACT_LABELS = [
-  [
-    "ultimate_reference",
-    "Ultimate Reference"
-  ],
-  [
-    "exercise_bank",
-    "Exercise Bank"
-  ],
-  [
-    "mock_exam",
-    "Mock Exam"
-  ]
-];
-function errorMessage3(error) {
-  return error instanceof Error ? error.message : String(error);
-}
-function readUnitViewState(value) {
-  if (!isRecord(value)) {
-    return {
-      hasStageId: false
-    };
-  }
-  const hasStageId = Object.prototype.hasOwnProperty.call(
-    value,
-    "stageId"
-  );
-  const unitId = asString(value.unitId) ?? void 0;
-  const stageId = !hasStageId ? void 0 : value.stageId === null ? null : asString(value.stageId);
-  return {
-    unitId,
-    stageId,
-    hasStageId
-  };
-}
-function readUnitRecord(record7, fallbackId) {
-  if (!record7) {
-    return null;
-  }
-  const id = asString(record7.id) ?? fallbackId;
-  const moduleId = asString(record7.module_id);
-  if (!id || !moduleId) {
-    return null;
-  }
-  const knowledgeMap = isRecord(
-    record7.knowledge_map
-  ) ? record7.knowledge_map : null;
-  const knowledgeNodes = asRecords(
-    knowledgeMap?.nodes
-  ).map((node) => {
-    const nodeId = asString(node.id);
-    const title3 = asString(node.title);
-    const summary = asText(node.summary);
-    if (!nodeId || !title3 || !summary) {
-      return null;
-    }
-    return {
-      id: nodeId,
-      title: title3,
-      summary,
-      buildsOn: asStrings(
-        node.builds_on
-      ),
-      conceptIds: asStrings(
-        node.concept_ids
-      )
-    };
-  }).filter(
-    (node) => node !== null
-  );
-  return {
-    record: record7,
-    id,
-    moduleId,
-    componentId: asString(record7.component_id),
-    kind: asString(record7.kind) ?? "unit",
-    title: asString(record7.title) ?? id,
-    scope: asText(record7.scope) ?? "",
-    knowledgeSummary: asText(
-      knowledgeMap?.summary
-    ) ?? "",
-    knowledgeNodes,
-    needsStudyMap: record7.needs_study_map === true
-  };
-}
-function readMaterialOptions(value, unitId, selectionsValue) {
-  const options = [];
-  const selectionKeys = new Set(
-    asRecords(selectionsValue).flatMap((selection) => {
-      const routeId = asString(selection.route_id);
-      const sourceId = asString(selection.source_id);
-      const locator = asText(selection.locator);
-      return routeId && sourceId && locator ? [`${routeId}\0${sourceId}\0${locator}`] : [];
-    })
-  );
-  for (const entry of asRecords(value)) {
-    for (const route2 of asRecords(entry.unit_routes)) {
-      if (asString(route2.unit_id) !== unitId) {
-        continue;
-      }
-      const title3 = asString(route2.title);
-      const format = asString(route2.format);
-      const angle = asText(route2.angle);
-      const routeId = asString(route2.id);
-      if (!routeId || !title3 || !format || !angle) {
-        continue;
-      }
-      const sourceId = asString(route2.source_id) ?? asString(entry.source_id);
-      const locator = asText(route2.locator);
-      options.push({
-        record: route2,
-        title: title3,
-        format,
-        angle,
-        covers: asStrings(route2.covers),
-        depth: asString(route2.depth) ?? "course-aligned",
-        scope: asString(route2.scope) ?? "complementary",
-        locator,
-        sourceId,
-        routeId,
-        canOpen: hasDirectResourceTarget(route2),
-        canChoose: Boolean(sourceId && locator),
-        selected: Boolean(
-          sourceId && locator && selectionKeys.has(
-            `${routeId}\0${sourceId}\0${locator}`
-          )
-        )
-      });
-    }
-  }
-  return options;
-}
-function readResource(record7) {
-  const label2 = asString(record7.label) ?? asString(record7.title) ?? asString(record7.source_id) ?? "Resource";
-  return {
-    record: record7,
-    id: asString(record7.id),
-    kind: asString(record7.kind) ?? "read",
-    label: label2,
-    locator: asText(record7.locator),
-    sourceId: asString(record7.source_id),
-    scopeTriage: asString(record7.scope_triage),
-    canOpen: hasDirectResourceTarget(record7)
-  };
-}
-function readStageAttachment(value) {
-  if (typeof value === "string") {
-    if (!value.length) {
-      return null;
-    }
-    return {
-      path: value,
-      label: value.split("/").pop() || value
-    };
-  }
-  if (!isRecord(value)) {
-    return null;
-  }
-  const path = asString(value.path) ?? asString(value.vault_path);
-  if (!path) {
-    return null;
-  }
-  return {
-    path,
-    label: asString(value.label) ?? path
-  };
-}
-function readStage(record7) {
-  const id = asString(record7.id);
-  if (!id) {
-    return null;
-  }
-  const attachments = Array.isArray(
-    record7.attachments
-  ) ? record7.attachments.map(readStageAttachment).filter(
-    (attachment) => attachment !== null
-  ) : [];
-  return {
-    record: record7,
-    id,
-    title: asString(record7.title) ?? id,
-    status: asString(record7.status) ?? "active",
-    scopeTriage: asText(record7.scope_triage) ?? "",
-    objective: asText(record7.objective),
-    estimateMinutes: asText(record7.estimate_minutes),
-    examCritical: record7.exam_critical === true,
-    concepts: asStrings(record7.concepts),
-    resources: asRecords(
-      record7.resources
-    ).map((resource, resourceIndex) => ({ ...readResource(resource), resourceIndex })),
-    doneWhen: asStrings(
-      record7.done_when
-    ).filter(
-      (criterion) => Boolean(criterion.trim())
-    ),
-    attachments,
-    sourceFeedback: asRecords(
-      record7.source_feedback
-    )
-  };
-}
-function readStudyMap(record7) {
-  const stages = asRecords(
-    record7.stages
-  ).map(readStage).filter(
-    (stage) => stage !== null
-  );
-  return {
-    record: record7,
-    currentStageId: asString(
-      record7.current_stage
-    ),
-    stages,
-    detours: asRecords(record7.detours),
-    planTemplateVersion: asFiniteNumber(
-      record7.plan_template_version
-    )
-  };
-}
-function readArtifacts(value) {
-  if (!isRecord(value)) {
-    return {
-      named: [],
-      other: []
-    };
-  }
-  const named = [];
-  for (const [key] of ARTIFACT_LABELS) {
-    const id = asString(value[key]);
-    if (id) {
-      named.push([key, id]);
-    }
-  }
-  return {
-    named,
-    other: asStrings(value.other)
-  };
-}
-function artifactLabel(key) {
-  return ARTIFACT_LABELS.find(
-    ([candidate2]) => candidate2 === key
-  )?.[1] ?? key;
-}
-function fallbackRecord(id) {
-  return {
-    id,
-    type: "record",
-    title: id
-  };
-}
-
 // src/features/stage-resources.ts
 var TRIAGE_HEADING = {
   "required-now": "Do this",
@@ -41820,9 +42101,9 @@ function renderDeskHome(view) {
   }
   const elsewhere = columns.createDiv({ cls: "sd-home-elsewhere" });
   elsewhere.createEl("h2", { cls: "sd-heading", text: "Continue elsewhere" });
-  const rows = elsewhereRows(view).slice(0, 5);
-  if (!rows.length) empty(elsewhere, "No other active work", "New modules and projects appear here when they are projected.");
-  for (const row3 of rows) moduleRow(elsewhere, plugin.store, row3.record, row3.open);
+  const rows2 = elsewhereRows(view).slice(0, 5);
+  if (!rows2.length) empty(elsewhere, "No other active work", "New modules and projects appear here when they are projected.");
+  for (const row3 of rows2) moduleRow(elsewhere, plugin.store, row3.record, row3.open);
 }
 function renderAreas(parent, view) {
   const { store, nav } = view.plugin;
@@ -42517,9 +42798,9 @@ function materialTypeKey(format) {
   const value = format.trim().toLowerCase();
   return TYPES.find((type) => type.formats.includes(value))?.key ?? "other";
 }
-function groupMaterialsByType(rows, formatOf) {
+function groupMaterialsByType(rows2, formatOf) {
   const groups = TYPES.map((type) => ({ ...type, entries: [] }));
-  for (const row3 of rows) {
+  for (const row3 of rows2) {
     const format = formatOf(row3).trim().toLowerCase();
     const group3 = groups.find((type) => type.formats.includes(format)) ?? groups[groups.length - 1];
     group3.entries.push(row3);
@@ -42703,6 +42984,26 @@ function renderSpan(parent, deps, routeId, placement) {
   if (span.analysis_notes_total) {
     box.createDiv({ cls: "los-micro", text: `${span.analysis_notes_total} analysis ${span.analysis_notes_total === 1 ? "note reads" : "notes read"} this route.` });
   }
+}
+function inspectRouteSpan(deps, routeId, placement) {
+  inspect(deps, routeId, placement);
+}
+function routeSpanStatus(deps, routeId, placement) {
+  return spans.get(spanKey(deps.plugin.store.snapshotId, deps.unitId, routeId, placement))?.status ?? null;
+}
+function renderRouteSpan(parent, deps, routeId, placement) {
+  renderSpan(parent, deps, routeId, placement);
+}
+function toggleRouteChoice(plugin, unitId, option, expectedRevisions) {
+  return plugin.mutate(() => plugin.gateway.sourceSelection(
+    unitId,
+    option.routeId,
+    option.sourceId ?? "",
+    option.locator ?? "",
+    asText(option.angle) ?? option.angle,
+    !option.selected,
+    expectedRevisions
+  ));
 }
 var SPAN_AVAILABILITY = {
   "local-observed": "Local file read just now",
@@ -42954,16 +43255,11 @@ function renderMaterialMenu(view, root, unit, options, flat = false) {
             actions,
             option.selected ? "Remove choice" : "Choose",
             () => {
-              void view.plugin.mutate(
-                () => view.plugin.gateway.sourceSelection(
-                  unit.id,
-                  option.routeId,
-                  option.sourceId ?? "",
-                  option.locator ?? "",
-                  option.angle,
-                  !option.selected,
-                  expectedRevisions
-                )
+              void toggleRouteChoice(
+                view.plugin,
+                unit.id,
+                option,
+                expectedRevisions
               ).then(
                 () => new import_obsidian6.Notice(
                   option.selected ? "Material choice removed." : "Material chosen for this lecture."
@@ -43454,11 +43750,11 @@ var StructuralEditModal = class extends import_obsidian7.Modal {
       labelledBy: heading2.id
     });
     root.createEl("p", { text: "Choose one change, check its exact result, then apply. Recorded work stays with its stage." });
-    const select2 = (label2, rows) => {
+    const select2 = (label2, rows2) => {
       const field2 = root.createEl("label", { cls: "los-map-import-field", text: label2 });
       const input = field2.createEl("select");
-      for (const [value, text4] of rows) input.createEl("option", { attr: { value }, text: text4 });
-      input.value = rows[0]?.[0] ?? "";
+      for (const [value, text4] of rows2) input.createEl("option", { attr: { value }, text: text4 });
+      input.value = rows2[0]?.[0] ?? "";
       return input;
     };
     const action = select2("Change", [
@@ -43509,15 +43805,15 @@ var StructuralEditModal = class extends import_obsidian7.Modal {
       resource.empty();
       anchor.empty();
       const selected = this.options.studyMap.stages.find((s) => s.id === stage.value);
-      const rows = selected?.resources.filter((r) => asString(r.id)) ?? [];
-      for (const row3 of rows) resource.createEl("option", { attr: { value: String(row3.id) }, text: String(row3.label || row3.id) });
+      const rows2 = selected?.resources.filter((r) => asString(r.id)) ?? [];
+      for (const row3 of rows2) resource.createEl("option", { attr: { value: String(row3.id) }, text: String(row3.label || row3.id) });
       if (action.value === "stage_move") {
         for (const s of this.options.studyMap.stages) anchor.createEl("option", { attr: { value: s.id }, text: s.title });
       } else {
-        for (const row3 of rows) anchor.createEl("option", { attr: { value: String(row3.id) }, text: String(row3.label || row3.id) });
+        for (const row3 of rows2) anchor.createEl("option", { attr: { value: String(row3.id) }, text: String(row3.label || row3.id) });
       }
-      resource.value = String(rows[0]?.id ?? "");
-      anchor.value = action.value === "stage_move" ? this.options.studyMap.stages[0]?.id ?? "" : String(rows[0]?.id ?? "");
+      resource.value = String(rows2[0]?.id ?? "");
+      anchor.value = action.value === "stage_move" ? this.options.studyMap.stages[0]?.id ?? "" : String(rows2[0]?.id ?? "");
       for (const field2 of [route2, kind, triage, groundwork]) field2.parentElement?.toggleClass("is-hidden", !addsMaterial());
       resource.parentElement?.toggleClass("is-hidden", action.value !== "resource_move");
       for (const field2 of [side, anchor]) field2.parentElement?.toggleClass("is-hidden", action.value === "resource_append");
@@ -43663,7 +43959,7 @@ var StudySequenceModal = class extends import_obsidian8.Modal {
     const stageById = new Map(this.options.studyMap.stages.map((stage) => [stage.id, stage]));
     let orderedIds = this.options.studyMap.stages.map((stage) => stage.id);
     const included = new Set(orderedIds);
-    const rows = root.createDiv({ cls: "los-sequence-rows" });
+    const rows2 = root.createDiv({ cls: "los-sequence-rows" });
     const status = root.createDiv({ attr: { "aria-live": "polite" } });
     const preview = root.createDiv({ attr: { "aria-live": "polite" } });
     const actions = root.createDiv({ cls: "los-actions" });
@@ -43698,10 +43994,10 @@ var StudySequenceModal = class extends import_obsidian8.Modal {
       if (!this.options.isCurrent()) throw new Error("This Unit view or sitting ended. Open and check a fresh sequence.");
     };
     const renderRows = (focusId) => {
-      rows.empty();
+      rows2.empty();
       for (const [index, id] of orderedIds.entries()) {
         const stage = stageById.get(id);
-        const row3 = rows.createDiv({ cls: "los-sequence-row", attr: { "data-stage-id": id } });
+        const row3 = rows2.createDiv({ cls: "los-sequence-row", attr: { "data-stage-id": id } });
         const label2 = row3.createEl("label", { text: `${index + 1} \xB7 ${stage.title}` });
         const include = label2.createEl("input", { cls: "los-sequence-include", attr: { type: "checkbox", "aria-label": `Include ${stage.title}` } });
         include.checked = included.has(id);
@@ -44016,14 +44312,14 @@ function renderPlanControls(view, parent, unit, durableStudyMap, studyMap, tempo
   button(provenance, "Sequence for this sitting", () => {
     const snapshot = view.plugin.store.snapshotId;
     const lifetime = view.temporarySequence.generation;
-    const isCurrent = () => view.unitId === unit.id && view.temporarySequence.generation === lifetime;
+    const isCurrent2 = () => view.unitId === unit.id && view.temporarySequence.generation === lifetime;
     if (!snapshot || view.plugin.store.stale) return;
     new StudySequenceModal(view.app, {
       studyMap: durableStudyMap,
-      isCurrent,
+      isCurrent: isCurrent2,
       check: async (ids) => readStudySequence(await view.plugin.gateway.studySequence(unit.id, ids, snapshot), unit.id, mapId, snapshot, ids, durableIds),
       use: async (preview) => {
-        if (!isCurrent()) throw new Error("The Unit view or sitting ended. Check a fresh sequence.");
+        if (!isCurrent2()) throw new Error("The Unit view or sitting ended. Check a fresh sequence.");
         view.temporarySequence.use(preview, view.plugin.store.snapshotId, view.plugin.store.stale);
         view.render();
       }
@@ -44329,8 +44625,8 @@ var MaterialComparisonModal = class extends import_obsidian9.Modal {
     const draw = () => {
       results.empty();
       typeSections.length = 0;
-      const rows = lecture ? this.options.materialOptions.map((option) => ({ owner: this.options.unit, option })) : this.courseRoutes();
-      const visible = rows.filter(({ owner, option }) => this.matches([
+      const rows2 = lecture ? this.options.materialOptions.map((option) => ({ owner: this.options.unit, option })) : this.courseRoutes();
+      const visible = rows2.filter(({ owner, option }) => this.matches([
         option.title,
         option.locator,
         option.angle,
@@ -44340,7 +44636,7 @@ var MaterialComparisonModal = class extends import_obsidian9.Modal {
         purposeLabel(option.depth),
         option.sourceId ? asString(this.options.plugin.store.get(option.sourceId)?.title) : null
       ]));
-      status.setText(`${visible.length} of ${rows.length} materials`);
+      status.setText(`${visible.length} of ${rows2.length} materials`);
       collapse.disabled = !visible.length;
       if (!visible.length) {
         empty(results, "No material matches", "Clear the search to see the complete list.");
@@ -44413,7 +44709,7 @@ var MaterialComparisonModal = class extends import_obsidian9.Modal {
     if (!option.canChoose || !option.sourceId || !option.locator) return;
     const { plugin, unit, expectedRevisions, onChanged } = this.options;
     const choice = button(actions, option.selected ? "Remove choice" : "Choose", () => {
-      void plugin.mutate(() => plugin.gateway.sourceSelection(unit.id, option.routeId, option.sourceId ?? "", option.locator ?? "", asText(option.angle) ?? option.angle, !option.selected, expectedRevisions)).then(() => {
+      void toggleRouteChoice(plugin, unit.id, option, expectedRevisions).then(() => {
         new import_obsidian9.Notice(option.selected ? "Material choice removed." : "Material chosen for this lecture.");
         onChanged();
         this.close();
@@ -44796,6 +45092,1001 @@ function stageMenuItems(view, unit, stage, expectedRevisions) {
   ];
 }
 
+// src/features/unit/material-purpose.ts
+var MATERIAL_PURPOSES = [
+  { key: "lecture", label: "The lecture", says: "What your course gave you for this lecture.", icon: "presentation" },
+  { key: "intuition", label: "Intuition", says: "Why it works, in pictures and plain words. Take one when an idea does not click.", icon: "lightbulb" },
+  { key: "theory", label: "Theory", says: "The textbook account and the formal argument, when you want it exact.", icon: "sigma" },
+  { key: "practice", label: "Practice", says: "Problems to work, with solutions to check yourself against.", icon: "pencil-line" },
+  { key: "build", label: "Build it", says: "Code it and run it.", icon: "code-xml" },
+  { key: "deeper", label: "Going deeper", says: "Beyond this lecture. Kept for later, never required.", icon: "telescope" },
+  { key: "reference", label: "Reference", says: "Look things up. Earlier versions stay here, so nothing is lost.", icon: "book-marked" }
+];
+function purposeDef(key) {
+  return MATERIAL_PURPOSES.find((purpose) => purpose.key === key) ?? MATERIAL_PURPOSES[0];
+}
+var MATERIAL_TYPES = [
+  { key: "slides", plural: "Slides", singular: "Slides", icon: "presentation" },
+  { key: "scripts", plural: "Scripts", singular: "Script", icon: "book-text" },
+  { key: "recordings", plural: "Recordings", singular: "Recording", icon: "circle-play" },
+  { key: "exercise-sheets", plural: "Exercise sheets", singular: "Exercise sheet", icon: "clipboard-list" },
+  { key: "solutions", plural: "Solutions", singular: "Solutions", icon: "clipboard-check" },
+  { key: "past-exams", plural: "Past exams", singular: "Past exam", icon: "graduation-cap" },
+  { key: "problem-sets", plural: "Problem sets", singular: "Problem set", icon: "list-checks" },
+  { key: "tasks", plural: "Tasks", singular: "Task", icon: "list-checks" },
+  { key: "videos", plural: "Videos", singular: "Video", icon: "circle-play" },
+  { key: "web-pages", plural: "Web pages", singular: "Web page", icon: "globe" },
+  { key: "articles", plural: "Articles", singular: "Article", icon: "file-text" },
+  { key: "textbooks", plural: "Textbooks", singular: "Textbook", icon: "book-open" },
+  { key: "notes-docs", plural: "Notes & docs", singular: "Notes & docs", icon: "book-text" },
+  { key: "papers", plural: "Papers", singular: "Paper", icon: "newspaper" },
+  { key: "courses", plural: "Courses", singular: "Course", icon: "library-big" },
+  { key: "code", plural: "Code", singular: "Code", icon: "code" },
+  { key: "older", plural: "Older versions", singular: "Older version", icon: "history" },
+  { key: "other", plural: "Other", singular: "Material", icon: "file-text" }
+];
+function materialTypeDef(key) {
+  return MATERIAL_TYPES.find((type) => type.key === key) ?? MATERIAL_TYPES[MATERIAL_TYPES.length - 1];
+}
+var TYPE_ORDER = new Map(MATERIAL_TYPES.map((type, index) => [type.key, index]));
+var PRACTICE_FORMATS = /* @__PURE__ */ new Set(["exercise", "solutions", "exam"]);
+function isCourseMaterial(facts) {
+  return facts.role === "course-material" || facts.sourceType === "lecture" || facts.format === "course-material";
+}
+function practiceLike(facts) {
+  return facts.kind === "practise" || facts.depth === "practice" || PRACTICE_FORMATS.has(facts.format ?? "");
+}
+function keptOnlyFor(facts, triage) {
+  return facts.triages.length > 0 && facts.triages.every((value) => value === triage);
+}
+function resolvePurpose(facts) {
+  if (isCourseMaterial(facts)) {
+    if (facts.scope === "prior-year" || keptOnlyFor(facts, "reference-only")) return "reference";
+    return practiceLike(facts) ? "practice" : "lecture";
+  }
+  switch (facts.depth) {
+    case "intuition":
+    case "orientation":
+      return "intuition";
+    case "derivation":
+    case "course-aligned":
+      return "theory";
+    case "practice":
+      return "practice";
+    case "implementation":
+      return "build";
+    case "advanced-reference":
+      return "deeper";
+    default:
+      break;
+  }
+  if (PRACTICE_FORMATS.has(facts.format ?? "")) return "practice";
+  if (facts.format === "code" || facts.format === "notebook") return "build";
+  if (facts.kind === "practise" || facts.kind === "practice") return facts.role === "implementation" ? "build" : "practice";
+  switch (facts.role) {
+    case "intuition":
+    case "first-exposure":
+      return "intuition";
+    case "spine":
+    case "derivation":
+      return "theory";
+    case "practice":
+    case "exam-preparation":
+      return "practice";
+    case "implementation":
+      return "build";
+    case "optional-depth":
+      return "deeper";
+    case "reference":
+    case "candidate":
+      return "reference";
+    default:
+      break;
+  }
+  if (keptOnlyFor(facts, "deferred")) return "deeper";
+  if (keptOnlyFor(facts, "reference-only")) return "reference";
+  switch (facts.kind) {
+    case "practise":
+    case "practice":
+      return "practice";
+    case "reference":
+      return "reference";
+    case "watch":
+      return "intuition";
+    default:
+      return "theory";
+  }
+}
+var FORMAT_TYPE = {
+  exam: "past-exams",
+  solutions: "solutions",
+  exercise: "problem-sets",
+  video: "videos",
+  book: "textbooks",
+  textbook: "textbooks",
+  paper: "papers",
+  article: "articles",
+  documentation: "notes-docs",
+  docs: "notes-docs",
+  course: "courses",
+  website: "web-pages",
+  web: "web-pages",
+  "web-page": "web-pages",
+  webpage: "web-pages",
+  code: "code",
+  notebook: "code",
+  software: "code"
+};
+function resolveType(facts) {
+  if (isCourseMaterial(facts)) {
+    if (facts.format === "solutions") return "solutions";
+    if (facts.format === "exam") return "past-exams";
+    if (practiceLike(facts)) return "exercise-sheets";
+    if (facts.scope === "prior-year") return "older";
+    if (facts.kind === "watch" || facts.format === "video") return "recordings";
+    return facts.sourceType === "documentation" ? "scripts" : "slides";
+  }
+  const byFormat = facts.format ? FORMAT_TYPE[facts.format] : void 0;
+  if (byFormat) return byFormat;
+  const practise = facts.kind === "practise" || facts.kind === "practice";
+  if (practise && !facts.hasSource && facts.target === "none") return "tasks";
+  if (practise) return "problem-sets";
+  if (facts.kind === "watch") return "videos";
+  const bySource = facts.sourceType ? FORMAT_TYPE[facts.sourceType] : void 0;
+  if (bySource) return bySource;
+  if (!facts.hasSource && facts.target === "web") return "web-pages";
+  if (!facts.hasSource && facts.target === "vault") return "notes-docs";
+  return "other";
+}
+function targetOf(record7) {
+  if (!record7) return "none";
+  if (asString(record7.url)) return "web";
+  const vault = asString(record7.vault_path);
+  if (vault && !foldCase(vault).startsWith("material://")) return "vault";
+  if (asString(record7.material_uri) ?? asString(record7.material_path)) return "file";
+  return "none";
+}
+function stageUseOf(triage) {
+  if (triage === "helpful-now") return "helps";
+  if (triage === "deferred") return "deferred";
+  if (triage === "reference-only") return "reference";
+  return "required";
+}
+function lower(value) {
+  const text4 = (value ?? "").trim();
+  return text4 ? foldCase(text4) : null;
+}
+function placementKey(resource, route2) {
+  return route2?.routeId ?? asString(resource.record.route_id) ?? `${resource.sourceId ?? ""}\0${resource.locator ?? ""}\0${resource.label}`;
+}
+function buildLectureMaterials(inputs) {
+  const { stages, options, routeOf, roleOf: roleOf2, sourceTypeOf: sourceTypeOf2 } = inputs;
+  const drafts = /* @__PURE__ */ new Map();
+  let order = 0;
+  stages.forEach((stage, index) => {
+    for (const resource of stage.resources) {
+      const route2 = routeOf(resource);
+      const key = placementKey(resource, route2);
+      let draft = drafts.get(key);
+      if (!draft) {
+        draft = {
+          key,
+          first: resource,
+          route: route2,
+          sourceId: resource.sourceId ?? route2?.sourceId ?? null,
+          uses: stages.map(() => null),
+          triages: [],
+          placements: [],
+          order: order++
+        };
+        drafts.set(key, draft);
+      }
+      draft.route ??= route2;
+      draft.triages.push(resource.scopeTriage);
+      draft.placements.push({ stageId: stage.id, resource });
+      const use = stageUseOf(resource.scopeTriage);
+      const before = draft.uses[index] ?? null;
+      if (!before || USE_STRENGTH[use] < USE_STRENGTH[before]) draft.uses[index] = use;
+    }
+  });
+  for (const option of options) {
+    if (drafts.has(option.routeId)) continue;
+    drafts.set(option.routeId, {
+      key: option.routeId,
+      first: null,
+      route: option,
+      sourceId: option.sourceId,
+      uses: stages.map(() => null),
+      triages: [],
+      placements: [],
+      order: order++
+    });
+  }
+  return [...drafts.values()].map((draft) => {
+    const { first, route: route2 } = draft;
+    const facts = {
+      format: lower(asString(route2?.record.format) ?? asString(first?.record.format)),
+      depth: lower(asString(route2?.record.depth) ?? asString(first?.record.depth)),
+      scope: lower(asString(route2?.record.scope) ?? asString(first?.record.scope)),
+      role: lower(draft.sourceId ? roleOf2(draft.sourceId) : null),
+      sourceType: lower(draft.sourceId ? sourceTypeOf2(draft.sourceId) : null),
+      kind: lower(first?.kind),
+      triages: draft.triages,
+      hasSource: Boolean(draft.sourceId),
+      target: first && targetOf(first.record) !== "none" ? targetOf(first.record) : targetOf(route2?.record)
+    };
+    const why = asText(first?.record.angle) ?? route2?.angle ?? null;
+    return {
+      key: draft.key,
+      title: first?.label ?? route2?.title ?? "Untitled material",
+      resource: first,
+      route: route2,
+      sourceId: draft.sourceId,
+      locator: first?.locator ?? route2?.locator ?? null,
+      purpose: resolvePurpose(facts),
+      type: resolveType(facts),
+      course: isCourseMaterial(facts),
+      picked: Boolean(route2?.selected),
+      uses: draft.uses,
+      order: draft.order,
+      why,
+      detail: asText(first?.record.angle_detail) ?? asText(route2?.record.angle_detail) ?? why,
+      placements: draft.placements
+    };
+  });
+}
+var USE_STRENGTH = {
+  required: 0,
+  helps: 1,
+  deferred: 2,
+  reference: 3
+};
+function rankKey(material, stageIndex = null) {
+  const count4 = (test) => material.uses.filter(test).length;
+  const own = stageIndex === null ? null : material.uses[stageIndex] ?? null;
+  return {
+    stage: own ? USE_STRENGTH[own] : 4,
+    picked: material.picked,
+    required: count4((use) => use === "required"),
+    using: count4((use) => use === "required" || use === "helps"),
+    kept: count4((use) => use === "deferred" || use === "reference"),
+    order: material.order
+  };
+}
+function compareMerit(a, b) {
+  return a.stage - b.stage || Number(b.picked) - Number(a.picked) || b.required - a.required || b.using - a.using || b.kept - a.kept;
+}
+function compareRank(a, b) {
+  return compareMerit(a, b) || a.order - b.order;
+}
+function rankMaterials(materials2, stageIndex = null) {
+  return materials2.map((material) => ({ material, key: rankKey(material, stageIndex) })).sort((a, b) => compareRank(a.key, b.key)).map(({ material }) => material);
+}
+function bestFitOf(materials2, stageIndex = null) {
+  if (materials2.length < 2 || materials2.some((material) => material.picked)) return null;
+  const [first, second] = rankMaterials(materials2, stageIndex);
+  if (!first || !second) return null;
+  return compareMerit(rankKey(first, stageIndex), rankKey(second, stageIndex)) < 0 ? first : null;
+}
+function lectureLayout(total) {
+  if (total <= 6) return "flat";
+  return total <= 30 ? "grouped" : "collapsed";
+}
+function showsTypeHeadings(materials2) {
+  return materials2.length >= 4 && new Set(materials2.map((material) => material.type)).size >= 2;
+}
+function groupByPurpose(materials2, stageIndex = null) {
+  return MATERIAL_PURPOSES.flatMap((purpose) => {
+    const members = materials2.filter((material) => material.purpose === purpose.key);
+    if (!members.length) return [];
+    const ranked = rankMaterials(members, stageIndex);
+    const types = MATERIAL_TYPES.flatMap((type) => {
+      const ofType = ranked.filter((material) => material.type === type.key);
+      return ofType.length ? [{ type, materials: ofType }] : [];
+    });
+    return [{
+      purpose,
+      materials: ranked,
+      types,
+      showTypes: showsTypeHeadings(ranked),
+      bestFit: bestFitOf(ranked, stageIndex)
+    }];
+  });
+}
+var NO_FILTER = { query: "", stage: null, type: null, where: "anywhere" };
+function matchesFilter(material, filter, whereOf2, haystack2) {
+  if (filter.stage !== null && !material.uses[filter.stage]) return false;
+  if (filter.type !== null && material.type !== filter.type) return false;
+  if (filter.where !== "anywhere" && whereOf2(material) !== filter.where) return false;
+  const words2 = foldCase(filter.query).split(/\s+/).filter(Boolean);
+  if (!words2.length) return true;
+  const text4 = foldCase(haystack2(material));
+  return words2.every((word) => text4.includes(word));
+}
+function stageRuns(uses) {
+  const used = uses.flatMap((use, index) => use ? [index + 1] : []);
+  if (!used.length) return "No stage yet";
+  const runs = [];
+  let start = used[0];
+  let previous = start;
+  for (const value of [...used.slice(1), Number.NaN]) {
+    if (value === previous + 1) {
+      previous = value;
+      continue;
+    }
+    runs.push(start === previous ? String(start) : `${start}\u2013${previous}`);
+    start = value;
+    previous = value;
+  }
+  return `${used.length === 1 ? "Stage" : "Stages"} ${runs.join(", ")}`;
+}
+
+// src/designs/study-desk/material-row.ts
+var import_obsidian10 = require("obsidian");
+function shortTitle(title3) {
+  const cut = title3.split(/\s+[—–]\s+|:\s+|\s+\(/)[0]?.trim();
+  return cut || title3;
+}
+var FILE_NAME = /\.(?:pdf|tex|md|html?|ipynb|py|txt|epub|djvu|zip)(?=$|[\s,;:)])/i;
+function shortLocator(locator) {
+  const text4 = locator?.trim();
+  if (!text4) return null;
+  const match = FILE_NAME.exec(text4);
+  if (!match) return text4;
+  const rest = text4.slice(match.index + match[0].length).replace(/^[\s,;:)]+/, "").trim();
+  if (rest && !/^(?:and|&|\+)\s/i.test(rest)) return rest;
+  if (rest) return text4;
+  return text4.slice(0, match.index).split("/").pop()?.trim() || text4;
+}
+function whereLabel(availability) {
+  switch (availability.kind) {
+    case "local":
+      return "On this Mac";
+    case "remote":
+      return "Web";
+    case "local-missing":
+      return "Copy missing";
+    default:
+      return "No copy or link";
+  }
+}
+var USE_WORDS = {
+  required: "required in",
+  helps: "helps in",
+  deferred: "deferred in",
+  reference: "kept for reference in"
+};
+function usedInWords(uses) {
+  const parts = Object.keys(USE_WORDS).flatMap((kind) => {
+    const only = uses.map((use) => use === kind ? use : null);
+    if (!only.some(Boolean)) return [];
+    return [`${USE_WORDS[kind]} ${stageRuns(only).replace(/^Stages? /, (word) => word.toLowerCase())}`];
+  });
+  if (!parts.length) return "Not used in any stage yet";
+  const text4 = parts.join(" \xB7 ");
+  return text4.charAt(0).toUpperCase() + text4.slice(1);
+}
+function sourceOf(context, material) {
+  return material.sourceId ? context.view.plugin.store.get(material.sourceId) : null;
+}
+function availabilityOf(context, material) {
+  const source = sourceOf(context, material);
+  if (material.resource) return placementAvailability(material.resource, material.route, source);
+  const projected = projectedAvailability(material.route?.record ?? {});
+  return projected.kind === "none" && source && hasDirectResourceTarget(source) ? projectedAvailability(source) : projected;
+}
+function openerOf(context, material) {
+  const { view } = context;
+  const { resource, route: route2 } = material;
+  const web = availabilityOf(context, material).kind === "remote";
+  if (resource?.canOpen) return { label: web ? "Open on the web" : "Open", go: () => view.plugin.openResource(resource.record) };
+  if (route2?.canOpen) return { label: web ? "Open on the web" : "Open", go: () => view.plugin.openResource(route2.record) };
+  const source = sourceOf(context, material);
+  if (source && hasDirectResourceTarget(source)) return { label: "Open the source", go: () => view.plugin.openResource(source) };
+  return null;
+}
+function originOf(context, material) {
+  if (material.course) return moduleShort(context.view.plugin.store.get(context.unit.moduleId));
+  const source = sourceOf(context, material);
+  if (source) return shortTitle(asLabel(source));
+  const url = safeWebUrl(material.resource?.record.url ?? material.route?.record.url);
+  return url ? url.hostname.replace(/^www\./, "") : null;
+}
+function tag(parent, text4, tone = "neutral") {
+  parent.createSpan({ cls: `sd-tag is-${tone}`, text: text4 });
+}
+function renderStageDots(parent, uses) {
+  if (uses.length > 9) {
+    parent.createSpan({ cls: "sd-mrow-stages", text: stageRuns(uses), attr: { title: usedInWords(uses) } });
+    return;
+  }
+  const strip = parent.createSpan({ cls: "sd-dots", attr: { role: "img", "aria-label": usedInWords(uses) } });
+  for (const use of uses) strip.createSpan({ cls: `sd-dot is-${use ?? "none"}` });
+}
+function renderMaterialRow(parent, material, context, marks = {}) {
+  const type = materialTypeDef(material.type);
+  const availability = availabilityOf(context, material);
+  const opener2 = openerOf(context, material);
+  const isOpen = context.open.has(material.key);
+  const row3 = parent.createDiv({
+    cls: `sd-mrow${isOpen ? " is-open" : ""}${material.picked ? " is-picked" : ""}${marks.compact ? " is-compact" : ""}`,
+    attr: { "data-material-key": material.key }
+  });
+  const main = row3.createDiv({ cls: "sd-mrow-main" });
+  const toggle = () => {
+    if (context.open.has(material.key)) context.open.delete(material.key);
+    else context.open.add(material.key);
+    context.refresh();
+  };
+  const target = main.createEl("button", {
+    cls: "sd-mrow-open is-clickable",
+    attr: {
+      type: "button",
+      "aria-label": opener2 ? `${opener2.label}: ${material.title}` : `Details for ${material.title}`
+    }
+  });
+  target.addEventListener("click", () => {
+    if (opener2) opener2.go();
+    else toggle();
+  });
+  icon(target.createSpan({ cls: "sd-mrow-tile" }), type.icon);
+  const body = target.createSpan({ cls: "sd-mrow-body" });
+  const titleLine = body.createSpan({ cls: "sd-mrow-title-line" });
+  titleLine.createSpan({ cls: "sd-mrow-title", text: material.title });
+  if (marks.bestFit) tag(titleLine, "Best fit", "accent");
+  if (material.picked) tag(titleLine, "Your pick", "accent");
+  if (material.course) tag(titleLine, "Course");
+  if (availability.kind === "local-missing") tag(titleLine, "Copy missing", "warning");
+  if (material.why && !marks.compact) body.createSpan({ cls: "sd-mrow-why", text: material.why });
+  const meta = [marks.purpose, type.singular, originOf(context, material), shortLocator(material.locator), whereLabel(availability)];
+  body.createSpan({ cls: "sd-mrow-meta", text: meta.filter(Boolean).join(" \xB7 ") });
+  const right = main.createSpan({ cls: "sd-mrow-right" });
+  if (!marks.compact) renderStageDots(right, material.uses);
+  const expand = right.createEl("button", {
+    cls: "sd-mrow-expand is-clickable",
+    attr: { type: "button", "aria-expanded": String(isOpen), "aria-label": `${isOpen ? "Hide" : "Show"} details: ${material.title}` }
+  });
+  icon(expand, isOpen ? "chevron-up" : "chevron-down");
+  expand.addEventListener("click", toggle);
+  if (isOpen) renderDetails(row3, material, context, availability, opener2, Boolean(marks.compact));
+  return row3;
+}
+function fact(parent, label2, value) {
+  if (!value) return;
+  const cell = parent.createDiv({ cls: "sd-mrow-fact" });
+  cell.createDiv({ cls: "sd-mrow-fact-label", text: label2 });
+  cell.createDiv({ cls: "sd-mrow-fact-value", text: value });
+}
+function renderDetails(row3, material, context, availability, opener2, compact) {
+  const { view, unit, stage } = context;
+  const details = row3.createDiv({ cls: "sd-mrow-details", attr: { role: "region", "aria-label": `Details: ${material.title}` } });
+  if (compact && material.why && !(material.detail ?? "").includes(material.why)) details.createEl("p", { cls: "sd-mrow-rationale", text: material.why });
+  if (material.detail && !(compact && material.detail === material.why)) details.createEl("p", { cls: "sd-mrow-rationale", text: material.detail });
+  renderMaterialCautions(details, material.route?.record ?? material.resource?.record ?? {});
+  const facts = details.createDiv({ cls: "sd-mrow-facts" });
+  fact(facts, "Pages", material.locator);
+  const url = safeWebUrl(material.resource?.record.url ?? material.route?.record.url);
+  fact(facts, "Where", [whereLabel(availability), url?.hostname.replace(/^www\./, "")].filter(Boolean).join(" \xB7 "));
+  const source = sourceOf(context, material);
+  fact(facts, "Source", source ? asLabel(source) : null);
+  fact(facts, "Used in", usedInWords(material.uses));
+  if (availability.kind === "none" || availability.kind === "local-missing") {
+    details.createDiv({ cls: "sd-mrow-gap", text: availability.detail });
+  }
+  const placement = stage ? material.placements.find((row4) => row4.stageId === stage.id) ?? null : null;
+  const spanPlacement = placement && placement.resource.resourceIndex !== void 0 ? { stageId: placement.stageId, resourceIndex: placement.resource.resourceIndex } : void 0;
+  const deps = {
+    plugin: view.plugin,
+    unitId: unit.id,
+    ...stage ? { stageId: stage.id } : {},
+    renderer: {},
+    refresh: context.refresh
+  };
+  const routeId = material.route?.routeId ?? null;
+  if (routeId) renderRouteSpan(details, deps, routeId, spanPlacement);
+  const actions = details.createDiv({ cls: "sd-mrow-actions" });
+  let actionCount = 0;
+  if (opener2) {
+    button(actions, opener2.label, () => opener2.go(), "cta");
+    actionCount += 1;
+  }
+  if (routeId && availability.kind === "local") {
+    const status = routeSpanStatus(deps, routeId, spanPlacement);
+    const inspect2 = button(actions, status === "ready" ? "Inspect again" : "Inspect the pages", () => inspectRouteSpan(deps, routeId, spanPlacement), "quiet");
+    inspect2.disabled = status === "loading";
+    actionCount += 1;
+  }
+  const sourceId = material.sourceId;
+  if (sourceId && source) {
+    button(actions, "Show in Library", () => view.plugin.nav.openLibrary(sourceId), "quiet");
+    actionCount += 1;
+  }
+  const route2 = material.route;
+  if (route2?.canChoose && route2.sourceId && route2.locator) {
+    const choice = button(actions, route2.selected ? "Remove choice" : "Choose for this lecture", () => {
+      void toggleRouteChoice(view.plugin, unit.id, route2, context.expected).then(() => {
+        new import_obsidian10.Notice(route2.selected ? "Material choice removed." : "Material chosen for this lecture.");
+      }).catch((error) => {
+        new import_obsidian10.Notice(errorMessage(error));
+      });
+    }, "quiet");
+    choice.setAttr("aria-pressed", String(route2.selected));
+    actionCount += 1;
+  }
+  if (stage && placement?.resource.sourceId) {
+    actions.createSpan({ cls: "sd-mrow-actions-gap" });
+    const renderer = stageResourceRenderer(view, unit, stage, context.expected, material.route ? [material.route] : []);
+    const rated = placement.resource;
+    const rate = (verdict) => renderer.rateResource?.(rated.sourceId ?? "", rated.id, verdict);
+    overflowMenu(actions, [
+      ["Helpful", () => rate("helpful")],
+      ["Too advanced", () => rate("too-advanced")],
+      ["Useful for review", () => rate("useful-for-review")]
+    ], rated.id ? `Rate ${material.title}` : `Rate ${material.title} (whole source)`);
+    actionCount += 1;
+  }
+  if (!actionCount) actions.createSpan({ cls: "sd-quiet", text: "Nothing to open here yet; the details above say what is missing." });
+}
+
+// src/designs/study-desk/materials-state.ts
+var statesByHost = /* @__PURE__ */ new WeakMap();
+function materialsState(host, unitId) {
+  let states = statesByHost.get(host);
+  if (!states) {
+    states = /* @__PURE__ */ new Map();
+    statesByHost.set(host, states);
+  }
+  let state = states.get(unitId);
+  if (!state) {
+    state = { filter: NO_FILTER, open: /* @__PURE__ */ new Set(), folded: /* @__PURE__ */ new Map(), whole: /* @__PURE__ */ new Set(), stageOpen: /* @__PURE__ */ new Map(), stuck: /* @__PURE__ */ new Map(), folds: /* @__PURE__ */ new Set() };
+    states.set(unitId, state);
+  }
+  return state;
+}
+function setFilter(state, filter) {
+  state.filter = filter;
+  state.whole.clear();
+  state.folded.clear();
+}
+function openInStage(state, stageId) {
+  let open = state.stageOpen.get(stageId);
+  if (!open) {
+    open = /* @__PURE__ */ new Set();
+    state.stageOpen.set(stageId, open);
+  }
+  return open;
+}
+function keepFold(fold, state, key, openNow = false) {
+  fold.open = openNow || state.folds.has(key);
+  if (fold.open) fold.setAttr("open", "");
+  fold.addEventListener("toggle", () => {
+    if (fold.open) state.folds.add(key);
+    else state.folds.delete(key);
+  });
+}
+
+// src/designs/study-desk/lecture-materials.ts
+function lectureMaterialsFor(view, unit, durable, options) {
+  const roles = /* @__PURE__ */ new Map();
+  for (const entry of asRecords(view.plugin.store.sourceMap(unit.moduleId)?.sources)) {
+    const id = asString(entry.source_id);
+    if (id && !roles.has(id)) roles.set(id, asString(entry.role));
+  }
+  return buildLectureMaterials({
+    stages: durable.stages,
+    options,
+    routeOf: (resource) => routeForResource(resource, options),
+    roleOf: (id) => roles.get(id) ?? null,
+    sourceTypeOf: (id) => asString(view.plugin.store.get(id)?.source_type)
+  });
+}
+var plural4 = (amount, noun) => `${amount} ${noun}${amount === 1 ? "" : "s"}`;
+function lectureMaterialsFacts(materials2, stages) {
+  const course = materials2.filter((material) => material.course).length;
+  const layout = lectureLayout(materials2.length);
+  return [
+    `${plural4(materials2.length, "material")} for ${plural4(stages, "stage")}`,
+    course ? `${course} from your course` : "",
+    layout === "flat" ? "best first" : layout === "grouped" ? "grouped by what they are for, then type, best first" : "grouped by what they are for; search or open a group"
+  ].filter(Boolean).join(" \xB7 ");
+}
+function whereOf(context, material) {
+  const kind = availabilityOf(context, material).kind;
+  return kind === "local" ? "local" : kind === "remote" ? "web" : "missing";
+}
+function haystack(context, material) {
+  const source = material.sourceId ? context.view.plugin.store.get(material.sourceId) : null;
+  return [
+    material.title,
+    asString(source?.title),
+    material.locator,
+    material.why,
+    materialTypeDef(material.type).plural,
+    purposeDef(material.purpose).label
+  ].filter(Boolean).join(" ");
+}
+function renderLectureMaterials(main, side, context) {
+  const { view, unit, durable, options } = context;
+  const state = materialsState(view, unit.id);
+  const all = lectureMaterialsFor(view, unit, durable, options);
+  const layout = lectureLayout(all.length);
+  const rowContext2 = (stageIndex) => ({
+    view,
+    unit,
+    stages: durable.stages,
+    expected: context.expected,
+    stage: stageIndex === null ? null : durable.stages[stageIndex] ?? null,
+    open: state.open,
+    refresh: () => view.render()
+  });
+  if (state.filter.stage !== null && !durable.stages[state.filter.stage]) setFilter(state, { ...state.filter, stage: null });
+  const toolbar2 = main.createDiv({ cls: "sd-mat-toolbar", attr: { role: "search" } });
+  const field2 = toolbar2.createEl("label", { cls: "sd-mat-search" });
+  icon(field2.createSpan({ cls: "sd-search-glyph" }), "search");
+  const input = field2.createEl("input", {
+    cls: "sd-mat-search-input",
+    attr: { type: "search", placeholder: "Find a material, a book, a page", "aria-label": "Find a material in this lecture" }
+  });
+  input.value = state.filter.query;
+  const presentTypes = MATERIAL_TYPES.filter((type) => all.some((material) => material.type === type.key));
+  const stageChoice = chipSelect(toolbar2, "Stage", [
+    ["", `Stage: All ${durable.stages.length}`],
+    ...durable.stages.map((stage, index) => [String(index), `Stage ${index + 1}: ${stage.title}`])
+  ], state.filter.stage === null ? "" : String(state.filter.stage));
+  const typeChoice = chipSelect(toolbar2, "Type", [
+    ["", "Type: All"],
+    ...presentTypes.map((type) => [type.key, `Type: ${type.plural}`])
+  ], state.filter.type ?? "");
+  const whereChoice = chipSelect(toolbar2, "Where", [
+    ["anywhere", "Where: Anywhere"],
+    ["local", "Where: On this Mac"],
+    ["web", "Where: On the web"],
+    ["missing", "Where: Missing a copy"]
+  ], state.filter.where);
+  toolbar2.createSpan({ cls: "sd-mat-flex" });
+  const count4 = toolbar2.createSpan({ cls: "sd-mat-count", attr: { "aria-live": "polite" } });
+  const note2 = main.createDiv({ cls: "sd-mat-note" });
+  const sheet = main.createDiv({ cls: "sd-sheet sd-mat-sheet" });
+  const extras = main.createDiv({ cls: "sd-mat-extras" });
+  const synthesis = view.plugin.store.materialSynthesisForUnit(unit.id);
+  if (unit.knowledgeNodes.length || synthesis) {
+    const more = disclosure(extras, "This lecture\u2019s idea map and reviewed comparison", "sd-side-disclosure");
+    renderMaterialOverview(view, more, unit, [...options], synthesis, false);
+  }
+  const draw = () => {
+    const filter = state.filter;
+    const stageIndex = filter.stage;
+    const context2 = rowContext2(stageIndex);
+    const universe = stageIndex === null ? all : all.filter((material) => material.uses[stageIndex]);
+    const narrowed = filter.query.trim() || filter.type || filter.where !== "anywhere" ? { ...filter, stage: null } : null;
+    const shown = (material) => !narrowed || matchesFilter(material, narrowed, (row3) => whereOf(context2, row3), (row3) => haystack(context2, row3));
+    const visible = universe.filter(shown);
+    count4.setText(`${visible.length} of ${all.length}`);
+    renderNote(note2, state, context2, universe, all.length);
+    sheet.empty();
+    side.empty();
+    const groups = groupByPurpose(universe, stageIndex);
+    if (!universe.length) {
+      sheet.createEl("p", { cls: "sd-quiet", text: "This lecture has no materials yet: no stage places one, and the module offers none for it." });
+    } else if (layout === "flat") {
+      renderFlat(sheet, groups, context2, shown, narrowed);
+    } else {
+      for (const group3 of groups) renderGroup(sheet, group3, context2, state, layout, shown, narrowed);
+    }
+    renderSide(side, state, context2, groups, layout, shown, narrowed, all, durable);
+  };
+  input.addEventListener("input", () => {
+    setFilter(state, { ...state.filter, query: input.value });
+    draw();
+  });
+  stageChoice.addEventListener("change", () => {
+    setFilter(state, { ...state.filter, stage: stageChoice.value === "" ? null : Number(stageChoice.value) });
+    draw();
+  });
+  typeChoice.addEventListener("change", () => {
+    setFilter(state, { ...state.filter, type: typeChoice.value || null });
+    draw();
+  });
+  whereChoice.addEventListener("change", () => {
+    setFilter(state, { ...state.filter, where: whereChoice.value });
+    draw();
+  });
+  draw();
+}
+function chipSelect(parent, label2, choices, value) {
+  const wrap = parent.createEl("label", { cls: "sd-chip-select" });
+  const shown = wrap.createSpan({ cls: "sd-chip-select-text", attr: { "aria-hidden": "true" } });
+  const select2 = wrap.createEl("select", { cls: "sd-chip-select-input", attr: { "aria-label": label2 } });
+  for (const [key, text4] of choices) select2.createEl("option", { text: text4, attr: { value: key } });
+  select2.value = value;
+  icon(wrap.createSpan({ cls: "sd-chip-select-glyph" }), "chevron-down");
+  const sync = () => {
+    shown.setText(choices.find(([key]) => key === select2.value)?.[1] ?? choices[0]?.[1] ?? label2);
+    wrap.toggleClass("is-active", select2.value !== "" && select2.value !== "anywhere");
+  };
+  select2.addEventListener("change", sync);
+  sync();
+  return select2;
+}
+function renderNote(note2, state, context, universe, total) {
+  note2.empty();
+  const index = state.filter.stage;
+  note2.toggleClass("is-empty", index === null);
+  if (index === null) return;
+  const uses = universe.map((material) => material.uses[index]);
+  const required2 = uses.filter((use) => use === "required").length;
+  const helps = uses.filter((use) => use === "helps").length;
+  const kept = uses.filter((use) => use === "deferred" || use === "reference").length;
+  icon(note2.createSpan({ cls: "sd-mat-note-glyph" }), "info");
+  const copy = note2.createSpan({ cls: "sd-mat-note-copy" });
+  copy.createSpan({ text: `Showing what stage ${index + 1} uses: ${[
+    required2 ? `${required2} required` : "",
+    helps ? `${helps} that help` : "",
+    kept ? `${kept} kept for reference` : ""
+  ].filter(Boolean).join(", ") || "nothing yet"}. ` });
+  textLink(copy, `Show all ${total}`, () => {
+    setFilter(state, { ...state.filter, stage: null });
+    context.refresh();
+  });
+}
+function matchWords(filter) {
+  const query = filter.query.trim();
+  return query ? `\u201C${query}\u201D` : "these filters";
+}
+function groupHead(parent, group3, folded, counted, says, toggle) {
+  const head = parent.createEl("button", {
+    cls: "sd-purpose-head is-clickable",
+    attr: { type: "button", "aria-expanded": String(!folded), "aria-label": `${group3.purpose.label}, ${counted}. ${folded ? "Open" : "Fold"} the group.` }
+  });
+  head.addEventListener("click", toggle);
+  icon(head.createSpan({ cls: "sd-purpose-tile" }), group3.purpose.icon);
+  const text4 = head.createSpan({ cls: "sd-purpose-text" });
+  const line = text4.createSpan({ cls: "sd-purpose-title-line" });
+  line.createSpan({ cls: "sd-purpose-title", text: group3.purpose.label });
+  line.createSpan({ cls: "sd-purpose-count", text: counted });
+  text4.createSpan({ cls: "sd-purpose-says", text: says });
+  icon(head.createSpan({ cls: "sd-purpose-chevron" }), folded ? "chevron-right" : "chevron-down");
+}
+function renderGroup(sheet, group3, context, state, layout, shown, narrowed) {
+  const key = group3.purpose.key;
+  const total = group3.materials.length;
+  const matches3 = group3.materials.filter(shown);
+  const whole = !narrowed || state.whole.has(key);
+  const explicit = state.folded.get(key);
+  const folded = explicit ?? (narrowed ? !matches3.length && !whole : layout === "collapsed");
+  const section3 = sheet.createDiv({ cls: "sd-purpose", attr: { "data-purpose": key, id: purposeAnchor(context.unit.id, key) } });
+  const best = total > 1 ? " Best first." : "";
+  let counted = String(total);
+  let says = `${group3.purpose.says}${best}`;
+  if (narrowed && !whole) {
+    counted = matches3.length === total ? String(total) : `${matches3.length} of ${total}`;
+    says = matches3.length ? matches3.length === total ? `All ${total} match ${matchWords(narrowed)}.${best}` : `${matches3.length} match ${matchWords(narrowed)}. The other ${total - matches3.length} stay one click away.${best}` : `No match for ${matchWords(narrowed)}. Open the group to see all of them.`;
+  }
+  groupHead(section3, group3, folded, counted, says, () => {
+    if (folded && narrowed && !matches3.length) state.whole.add(key);
+    state.folded.set(key, !folded);
+    context.refresh();
+  });
+  if (folded) return;
+  const body = section3.createDiv({ cls: "sd-purpose-body" });
+  const include = (material) => whole || shown(material);
+  if (group3.showTypes) {
+    for (const type of group3.types) {
+      const rows2 = type.materials.filter(include);
+      if (!rows2.length) continue;
+      const sub = body.createDiv({ cls: "sd-type-head", attr: { role: "heading", "aria-level": "3" } });
+      sub.createSpan({ cls: "sd-type-label", text: type.type.plural });
+      sub.createSpan({ cls: "sd-type-count", text: rows2.length === type.materials.length ? String(rows2.length) : `${rows2.length} of ${type.materials.length}` });
+      sub.createSpan({ cls: "sd-type-rule", attr: { "aria-hidden": "true" } });
+      for (const material of rows2) renderMaterialRow(body, material, context, { bestFit: group3.bestFit === material });
+    }
+  } else {
+    for (const material of group3.materials.filter(include)) {
+      renderMaterialRow(body, material, context, { bestFit: group3.bestFit === material });
+    }
+  }
+  if (narrowed && !whole && matches3.length < total) {
+    const more = body.createDiv({ cls: "sd-purpose-more" });
+    textLink(more, `Show all ${total} in ${group3.purpose.label}`, () => {
+      state.whole.add(key);
+      context.refresh();
+    });
+  }
+}
+function renderFlat(sheet, groups, context, shown, narrowed) {
+  const list3 = sheet.createDiv({ cls: "sd-mat-flat" });
+  let drawn = 0;
+  for (const group3 of groups) {
+    for (const material of group3.materials.filter(shown)) {
+      const row3 = renderMaterialRow(list3, material, context, { purpose: group3.purpose.label });
+      row3.setAttr("data-purpose", group3.purpose.key);
+      drawn += 1;
+    }
+  }
+  if (!drawn && narrowed) sheet.createEl("p", { cls: "sd-quiet", text: `Nothing here matches ${matchWords(narrowed)}.` });
+}
+function purposeAnchor(unitId, key) {
+  return `sd-materials-${unitId}-${key}`.replace(/[^A-Za-z0-9_-]/g, "-");
+}
+function renderSide(side, state, context, groups, layout, shown, narrowed, all, durable) {
+  if (layout !== "flat" && groups.length) {
+    const index = sideGroup(side, "On this page").createDiv({ cls: "sd-index", attr: { role: "list" } });
+    for (const group3 of groups) {
+      const matches3 = group3.materials.filter(shown).length;
+      const item = index.createEl("button", {
+        cls: "sd-index-item is-clickable",
+        attr: { type: "button", role: "listitem", "aria-label": `Go to ${group3.purpose.label}` }
+      });
+      icon(item.createSpan({ cls: "sd-index-glyph" }), group3.purpose.icon);
+      item.createSpan({ cls: "sd-index-label", text: group3.purpose.label });
+      item.createSpan({ cls: "sd-index-count", text: narrowed && matches3 !== group3.materials.length ? `${matches3} of ${group3.materials.length}` : String(group3.materials.length) });
+      item.addEventListener("click", () => {
+        state.folded.set(group3.purpose.key, false);
+        context.refresh();
+        const anchor = context.view.contentEl.querySelector?.(`#${purposeAnchor(context.unit.id, group3.purpose.key)}`);
+        anchor?.scrollIntoView?.({ block: "start", behavior: "smooth" });
+      });
+    }
+  }
+  if (narrowed && layout === "collapsed") {
+    const byStage = durable.stages.map((stage, index) => ({ stage, index, count: all.filter((material) => material.uses[index] && shown(material)).length })).filter((row3) => row3.count > 0);
+    const group3 = sideGroup(side, "Matches by stage");
+    for (const row3 of byStage) {
+      const item = group3.createEl("button", { cls: "sd-index-item is-clickable", attr: { type: "button", "aria-label": `Show stage ${row3.index + 1}` } });
+      item.createSpan({ cls: "sd-index-label", text: `${row3.index + 1} \xB7 ${row3.stage.title}` });
+      item.createSpan({ cls: "sd-index-count", text: String(row3.count) });
+      item.addEventListener("click", () => {
+        setFilter(state, { ...state.filter, stage: row3.index });
+        context.refresh();
+      });
+    }
+    const rest = durable.stages.length - byStage.length;
+    if (rest) group3.createDiv({ cls: "sd-side-small", text: `${rest === durable.stages.length ? "No" : rest} ${rest === 1 && rest !== durable.stages.length ? "other stage has" : "other stages have"} no match.` });
+  }
+  const legend = sideGroup(side, `Used in stages 1\u2013${durable.stages.length}`).createDiv({ cls: "sd-legend" });
+  for (const [use, words2] of [["required", "Required in that stage"], ["helps", "Helps in that stage"], ["reference", "Kept for reference there"], [null, "Not used in that stage"]]) {
+    const line = legend.createDiv({ cls: "sd-legend-line" });
+    renderStageDots(line, [use]);
+    line.createSpan({ text: words2 });
+  }
+  if (layout === "collapsed") {
+    sideGroup(side, "At this size").createEl("p", { cls: "sd-note", text: "Above 30 materials, groups open only when you search, filter or ask, and every group keeps its count. Nothing is hidden; it is folded." });
+  } else if (layout === "grouped") {
+    sideGroup(side, "A good order").createEl("p", { cls: "sd-note", text: "Start with the lecture. If an idea does not click, take one Intuition source, then go straight to Practice. Theory is for when you want the full argument; Going deeper can wait for after the exam." });
+    sideGroup(side, "How each group is ordered").createEl("p", { cls: "sd-note", text: "Inside each type, best first: your picks, then what this lecture\u2019s stages require, then what more of its stages use. The best row of the whole group is marked Best fit; a tie gets no mark." });
+  } else {
+    sideGroup(side, "How this list is ordered").createEl("p", { cls: "sd-note", text: "In study order, the lecture first and reference last; inside each kind, your picks, then what the stages require, then what more of them use." });
+  }
+  renderPicks(side, context, all);
+}
+function renderPicks(side, context, all) {
+  const group3 = sideGroup(side, "Your picks");
+  const picked = all.filter((material) => material.picked);
+  const pickedRoutes = new Set(picked.map((material) => material.route?.routeId).filter(Boolean));
+  const loose = asRecords(context.unit.record.source_selections).filter((selection) => {
+    const routeId = asString(selection.route_id);
+    return !routeId || !pickedRoutes.has(routeId);
+  });
+  if (!picked.length && !loose.length) {
+    group3.createEl("p", { cls: "sd-note is-faint", text: "None yet. \u201CChoose for this lecture\u201D on any material marks it as yours, and it moves to the top of its type." });
+    return;
+  }
+  for (const material of [...picked].sort((a, b) => compareStrings(a.title, b.title))) {
+    textLink(group3, material.title, () => {
+      context.open.add(material.key);
+      context.refresh();
+    }).addClass("sd-link-quiet");
+  }
+  for (const selection of loose) {
+    const sourceId = asString(selection.source_id);
+    const source = sourceId ? context.view.plugin.store.get(sourceId) : null;
+    const name = source ? shortTitle(String(source.title ?? sourceId)) : sourceId ?? "A material";
+    group3.createDiv({ cls: "sd-side-small", text: [name, asString(selection.locator)].filter(Boolean).join(" \xB7 ") });
+  }
+}
+
+// src/designs/study-desk/stage-materials.ts
+var plural5 = (amount, noun) => `${amount} ${noun}${amount === 1 ? "" : "s"}`;
+function splitStage(materials2, durable, stage) {
+  const index = durable.stages.findIndex((row3) => row3.id === stage.id);
+  const where = (...uses) => index < 0 ? [] : rankMaterials(materials2.filter((material) => uses.includes(material.uses[index] ?? null)), index);
+  return { index, required: where("required"), helps: where("helps"), kept: where("deferred", "reference") };
+}
+function rowContext(context, state) {
+  return {
+    view: context.view,
+    unit: context.unit,
+    stages: context.durable.stages,
+    expected: context.expected,
+    stage: context.stage,
+    open: openInStage(state, context.stage.id),
+    refresh: () => context.view.render()
+  };
+}
+function rows(parent, materials2, context, bestFit = null) {
+  const list3 = parent.createDiv({ cls: "sd-stage-rows" });
+  for (const material of materials2) renderMaterialRow(list3, material, context, { compact: true, bestFit: material === bestFit });
+}
+function namesOf(materials2) {
+  const titles = materials2.map((material) => material.title);
+  if (titles.length <= 2) return titles.join(" and ");
+  return `${titles.slice(0, 2).join(", ")} and ${titles.length - 2} more`;
+}
+function renderKept(parent, kept, context, state) {
+  if (!kept.length) return;
+  const fold = parent.createEl("details", { cls: "sd-kept" });
+  keepFold(fold, state, `kept:${context.stage?.id ?? ""}`, kept.some((material) => context.open.has(material.key)));
+  const summary = fold.createEl("summary", { cls: "sd-kept-summary" });
+  icon(summary.createSpan({ cls: "sd-kept-glyph", attr: { "aria-hidden": "true" } }), "archive");
+  summary.createSpan({ cls: "sd-kept-copy", text: `Kept for reference \xB7 ${kept.length} \u2014 ${namesOf(kept)}` });
+  icon(summary.createSpan({ cls: "sd-kept-chevron", attr: { "aria-hidden": "true" } }), "chevron-down");
+  rows(fold, kept, context);
+}
+function isCurrent(material, stageId, current) {
+  return Boolean(current) && material.placements.some((placement) => placement.stageId === stageId && (placement.resource === current || placement.resource.record === current?.record));
+}
+function renderSessionMaterials(parent, context, current, links) {
+  const { view, unit, stage } = context;
+  const state = materialsState(view, unit.id);
+  const row3 = rowContext(context, state);
+  const split = splitStage(context.materials, context.durable, stage);
+  const also = split.required.filter((material) => !isCurrent(material, stage.id, current));
+  if (also.length) {
+    const title4 = parent.createDiv({ cls: "sd-section-title" });
+    title4.createEl("h2", { cls: "sd-heading", text: current ? "Also required" : "Required for this stage" });
+    title4.createSpan({ cls: "sd-row-facts", text: current ? `${also.length} more this stage asks for` : plural5(also.length, "material") });
+    rows(parent, also, row3);
+  }
+  const head = parent.createDiv({ cls: "sd-section-head" });
+  const title3 = head.createDiv({ cls: "sd-section-title" });
+  title3.createEl("h2", { cls: "sd-heading", text: "If you get stuck" });
+  title3.createSpan({
+    cls: "sd-row-facts",
+    text: split.helps.length ? `${split.helps.length} that ${split.helps.length === 1 ? "helps" : "help"}, by what they are for` : "Nothing else is placed to help with this stage"
+  });
+  links(head.createDiv({ cls: "sd-section-links" }));
+  if (split.helps.length) {
+    const groups = groupByPurpose(split.helps, split.index);
+    const chosen = state.stuck.get(stage.id);
+    const active = groups.find((group3) => group3.purpose.key === chosen) ?? groups[0];
+    if (groups.length > 1) {
+      filterTabs(
+        parent,
+        "What the helping materials are for",
+        groups.map((group3) => [group3.purpose.key, `${group3.purpose.label} \xB7 ${group3.materials.length}`]),
+        active.purpose.key,
+        (key) => {
+          state.stuck.set(stage.id, key);
+          view.render();
+        }
+      );
+    } else {
+      parent.createDiv({ cls: "sd-stage-part", text: `${active.purpose.label} \xB7 ${active.materials.length}` });
+    }
+    rows(parent, active.types.flatMap((type) => type.materials), row3, active.bestFit);
+  }
+  renderKept(parent, split.kept, row3, state);
+}
+function renderStageMaterialList(parent, context) {
+  const { view, unit, stage } = context;
+  const split = splitStage(context.materials, context.durable, stage);
+  const total = split.required.length + split.helps.length + split.kept.length;
+  if (!total) return;
+  const state = materialsState(view, unit.id);
+  const row3 = rowContext(context, state);
+  const fold = parent.createEl("details", { cls: "sd-stop-materials" });
+  keepFold(fold, state, `stage:${stage.id}`, [...split.required, ...split.helps, ...split.kept].some((material) => row3.open.has(material.key)));
+  fold.createEl("summary", { cls: "sd-stop-summary", text: `Materials for this stage \xB7 ${total}` });
+  const part2 = (label2, materials2) => {
+    if (!materials2.length) return;
+    fold.createDiv({ cls: "sd-stage-part", text: `${label2} \xB7 ${materials2.length}` });
+    rows(fold, materials2, row3);
+  };
+  part2("Required", split.required);
+  part2("Helps", split.helps);
+  renderKept(fold, split.kept, row3, state);
+}
+
 // src/designs/study-desk/unit.ts
 var required = (resource) => resource.scopeTriage === "required-now" || !resource.scopeTriage;
 var count2 = (amount, noun) => `${amount} ${noun}${amount === 1 ? "" : "s"}`;
@@ -44809,7 +46100,7 @@ function crumbsFor(context, last) {
   const here = unitLabel(unit.record, module2);
   return [
     { label: "Modules", go: () => view.plugin.nav.openModule(unit.moduleId) },
-    { label: moduleShort(module2), go: () => view.plugin.nav.openModule(unit.moduleId) },
+    { label: moduleName(module2), go: () => view.plugin.nav.openModule(unit.moduleId) },
     { label: last ? `${here.place} \xB7 ${here.title}` : here.place }
   ];
 }
@@ -44821,19 +46112,6 @@ function opener(context, resource) {
   const source = resource.sourceId ? view.plugin.store.get(resource.sourceId) : null;
   return source && hasDirectResourceTarget(source) ? () => view.plugin.openResource(source) : null;
 }
-function materialKey(resource) {
-  return asString(resource.record.route_id) ?? `${resource.sourceId ?? ""}\0${resource.locator ?? ""}\0${resource.label}`;
-}
-function distinctMaterials(map) {
-  const materials2 = /* @__PURE__ */ new Map();
-  for (const stage of map.stages) {
-    for (const resource of stage.resources) {
-      const key = materialKey(resource);
-      if (!materials2.has(key)) materials2.set(key, resource);
-    }
-  }
-  return materials2;
-}
 function renderDeskUnit(view) {
   const projectedUnit = view.unitId ? view.plugin.store.get(view.unitId) : null;
   const unit = readUnitRecord(projectedUnit, view.unitId);
@@ -44844,6 +46122,8 @@ function renderDeskUnit(view) {
   const first = studyMap.stages[0];
   if (!first) return false;
   const stage = selectedStage(view, unit.id, studyMap, first, Boolean(temporary));
+  const options = stageMaterialOptions(view, unit);
+  let materials2 = null;
   const context = {
     view,
     unit,
@@ -44851,7 +46131,9 @@ function renderDeskUnit(view) {
     studyMap,
     temporary: Boolean(temporary),
     stage,
-    options: stageMaterialOptions(view, unit)
+    options,
+    expected: view.plugin.store.artifactGuard(unit.id, typeof studyMap.record.id === "string" ? studyMap.record.id : null),
+    materials: () => materials2 ??= lectureMaterialsFor(view, unit, durable, options)
   };
   const mode = unitMode(view, unit.id);
   if (mode === "session") renderSession(context);
@@ -44870,23 +46152,34 @@ function renderPlan(context, mode) {
   button(actions, "End session", () => view.plugin.reviewSessionEnd(), "quiet");
   const module2 = view.plugin.store.get(unit.moduleId);
   const done = studyMap.stages.filter((stage) => stage.status === "complete").length;
-  const layout = root.createDiv({ cls: "sd-plan-layout" });
-  const main = layout.createDiv({ cls: "sd-plan-main" });
-  main.createEl("h1", { cls: "sd-title", text: unitLabel(unit.record, module2).title });
+  const head = root.createDiv({ cls: "sd-title-row sd-plan-head" });
+  const copy = head.createDiv({ cls: "sd-title-copy" });
+  copy.createEl("h1", { cls: "sd-title", text: unitLabel(unit.record, module2).title });
   const allCritical = studyMap.stages.every((stage) => stage.examCritical);
-  main.createDiv({ cls: "sd-facts", text: [
+  copy.createDiv({ cls: "sd-facts", text: mode === "materials" ? lectureMaterialsFacts(context.materials(), context.durable.stages.length) : [
     `${done} of ${count2(studyMap.stages.length, "stage")} done.`,
     allCritical ? "Every stage in this lecture is exam-critical." : ""
   ].filter(Boolean).join(" ") });
-  filterTabs(main, "Plan view", [["plan", "Stages"], ["materials", "Materials"]], mode, (next) => {
+  filterTabs(head.createDiv({ cls: "sd-title-tools" }), "Plan view", [["plan", "Stages"], ["materials", "Materials"]], mode, (next) => {
     setUnitMode(view, unit.id, next);
     view.render();
   });
+  const layout = root.createDiv({ cls: `sd-plan-layout${mode === "materials" ? " is-materials" : ""}` });
+  const main = layout.createDiv({ cls: "sd-plan-main" });
   if (context.temporary) {
     main.createDiv({ cls: "sd-callout", text: `For this sitting: ${studyMap.stages.length} of ${context.durable.stages.length} stages. Recording work or a new snapshot ends this order.` });
   }
-  if (mode === "materials") renderMaterialGrid(main, context);
-  else renderRoute2(main, context);
+  if (mode === "materials") {
+    renderLectureMaterials(main, layout.createDiv({ cls: "sd-side sd-mat-side" }), {
+      view,
+      unit,
+      durable: context.durable,
+      options: context.options,
+      expected: context.expected
+    });
+    return;
+  }
+  renderRoute2(main, context);
   renderPlanSide(layout, context);
 }
 function renderRoute2(parent, context) {
@@ -44908,7 +46201,7 @@ function renderRoute2(parent, context) {
       const foot = body.createDiv({ cls: "sd-stop-foot" });
       foot.createSpan({ cls: "sd-row-facts", text: [materialsLine(stage), stage.doneWhen.length ? `${count2(stage.doneWhen.length, "thing")} to prove` : ""].filter(Boolean).join(" \xB7 ") });
       button(foot, "Continue stage", () => openStage(context, stage.id), "cta");
-      renderStopMaterials(body, context, stage);
+      renderStageMaterialList(body, stageMaterials(context, stage));
       return;
     }
     const head = body.createEl("button", {
@@ -44920,41 +46213,20 @@ function renderRoute2(parent, context) {
     if (stage.objective) copy.createDiv({ cls: "sd-row-facts", text: stage.objective });
     head.addEventListener("click", () => openStage(context, stage.id));
     head.createSpan({ cls: "sd-row-next", text: stage.status === "skipped" ? `Skipped \xB7 ${materialsLine(stage)}` : materialsLine(stage) });
-    renderStopMaterials(body, context, stage);
+    renderStageMaterialList(body, stageMaterials(context, stage));
   });
 }
-function renderStopMaterials(parent, context, stage) {
-  if (!stage.resources.length) return;
-  const details = parent.createEl("details", { cls: "sd-stop-materials" });
-  details.createEl("summary", { cls: "sd-stop-summary", text: `Materials for this stage \xB7 ${stage.resources.length}` });
-  const list3 = details.createDiv({ cls: "sd-material-list" });
-  for (const resource of stage.resources) renderMaterialRow(list3, context, resource);
-}
-function renderMaterialRow(parent, context, resource) {
-  const route2 = routeForResource(resource, context.options);
-  const open = opener(context, resource);
-  const row3 = parent.createEl("button", {
-    cls: `sd-material-row is-clickable${required(resource) ? " is-required" : ""}`,
-    attr: { type: "button", "aria-label": `Open ${resource.label}` }
-  });
-  const copy = row3.createDiv({ cls: "sd-row-copy" });
-  copy.createSpan({ cls: "sd-material-title", text: resource.label });
-  copy.createDiv({
-    cls: "sd-row-facts",
-    text: [required(resource) ? "Required" : "", resource.locator, placementAvailability(resource, route2).label].filter(Boolean).join(" \xB7 ")
-  });
-  chevron(row3);
-  if (open) row3.addEventListener("click", () => open());
-  else row3.disabled = true;
+function stageMaterials(context, stage) {
+  return { view: context.view, unit: context.unit, durable: context.durable, stage, materials: context.materials(), expected: context.expected };
 }
 function renderPlanSide(layout, context) {
   const { view, unit, durable, studyMap } = context;
   const side = layout.createDiv({ cls: "sd-side" });
-  const materials2 = distinctMaterials(studyMap);
+  const materials2 = context.materials().length;
   const placements = studyMap.stages.reduce((sum, stage) => sum + stage.resources.length, 0);
   const about = sideGroup(side, "Materials");
-  about.createEl("p", { cls: "sd-note", text: `${count2(materials2.size, "different material")} across the ${count2(studyMap.stages.length, "stage")}, placed ${placements} time${placements === 1 ? "" : "s"}.` });
-  textLink(about, `See all ${materials2.size}`, () => {
+  about.createEl("p", { cls: "sd-note", text: `${count2(materials2, "different material")} for the ${count2(durable.stages.length, "stage")}, placed ${placements} time${placements === 1 ? "" : "s"}, grouped by what each is for.` });
+  textLink(about, `See all ${materials2}`, () => {
     setUnitMode(view, unit.id, "materials");
     view.render();
   });
@@ -44978,46 +46250,8 @@ function renderPlanSide(layout, context) {
   renderPlanControls(view, adjust2, unit, durable, studyMap, context.temporary, context.options);
   view.renderArtifacts(disclosure(side, "Unit artifacts and evidence", "sd-side-disclosure"), unit);
 }
-function renderMaterialGrid(parent, context) {
-  const { view, unit, studyMap } = context;
-  const materials2 = [...distinctMaterials(studyMap).entries()];
-  const placementIn = (stage, key) => stage.resources.find((resource) => materialKey(resource) === key) ?? null;
-  const uses = (key) => studyMap.stages.filter((stage) => placementIn(stage, key)).length;
-  materials2.sort(([a], [b]) => uses(b) - uses(a));
-  parent.createDiv({ cls: "sd-row-facts sd-grid-legend", text: "Filled: required for that stage. Ring: there to help. Empty: not placed on that stage." });
-  const scroll = parent.createDiv({ cls: "sd-sheet sd-grid-scroll" });
-  const table = scroll.createEl("table", { cls: "sd-material-grid" });
-  const head = table.createEl("thead").createEl("tr");
-  head.createEl("th", { cls: "sd-grid-corner", text: "Material", attr: { scope: "col" } });
-  studyMap.stages.forEach((stage, index) => {
-    head.createEl("th", { text: String(index + 1), attr: { scope: "col", title: stage.title, "aria-label": `Stage ${index + 1}: ${stage.title}` } });
-  });
-  const body = table.createEl("tbody");
-  for (const [key, resource] of materials2) {
-    const tr = body.createEl("tr");
-    const cell = tr.createEl("th", { attr: { scope: "row" } });
-    const open = opener(context, resource);
-    const title3 = cell.createEl("button", { cls: "sd-grid-title is-clickable", text: resource.label, attr: { type: "button" } });
-    if (open) title3.addEventListener("click", () => open());
-    else title3.disabled = true;
-    if (resource.locator) cell.createDiv({ cls: "sd-row-facts", text: resource.locator });
-    for (const stage of studyMap.stages) {
-      const placed = placementIn(stage, key);
-      const td = tr.createEl("td");
-      if (!placed) {
-        td.createSpan({ cls: "los-sr-only", text: "Not placed" });
-        continue;
-      }
-      td.createSpan({ cls: `sd-grid-mark${required(placed) ? " is-required" : ""}`, attr: { "aria-hidden": "true" } });
-      td.createSpan({ cls: "los-sr-only", text: required(placed) ? "Required" : "Helps" });
-    }
-  }
-  const full = disclosure(parent, "This lecture\u2019s full menu", "sd-side-disclosure");
-  renderMaterialOverview(view, full, unit, context.options, view.plugin.store.materialSynthesisForUnit(unit.id), true);
-}
 function renderSession(context) {
-  const { view, unit, studyMap, stage } = context;
-  const expected = view.plugin.store.artifactGuard(unit.id, typeof studyMap.record.id === "string" ? studyMap.record.id : null);
+  const { view, unit, studyMap, stage, expected } = context;
   const root = deskPage(view.contentEl, "session", view.plugin.store);
   const actions = deskHead(root, crumbsFor(context, "full"));
   const studyPlanButton = button(actions, "Study plan", () => {
@@ -45054,7 +46288,6 @@ function renderSession(context) {
   left.createEl("h1", { cls: "sd-title", text: stage.title });
   if (stage.objective) left.createEl("p", { cls: "sd-lede", text: stage.objective });
   const current = currentWorkResource(stage.resources);
-  const others = stage.resources.filter((resource) => resource !== current);
   let openButton = null;
   if (current) {
     left.createEl("h2", { cls: "sd-heading", text: "Start here" });
@@ -45070,21 +46303,15 @@ function renderSession(context) {
   } else if (stage.resources.length) {
     left.createEl("p", { cls: "sd-quiet", text: "Nothing is marked required for this stage. Everything below is there for depth and reference." });
   } else {
-    left.createEl("p", { cls: "sd-quiet", text: "No material is placed on this stage. The lecture\u2019s full menu is still one click away." });
+    left.createEl("p", { cls: "sd-quiet", text: "No material is placed on this stage. All of the lecture\u2019s materials are one click away." });
   }
-  const listHead = left.createDiv({ cls: "sd-section-head" });
-  const title3 = listHead.createDiv({ cls: "sd-section-title" });
-  title3.createEl("h2", { cls: "sd-heading", text: current ? "All materials for this stage" : "Materials for this stage" });
-  const need = stage.resources.filter(required).length;
-  title3.createSpan({ cls: "sd-row-facts", text: [need ? `${need} required` : "", stage.resources.length - need ? `${stage.resources.length - need} that help` : ""].filter(Boolean).join(" + ") });
-  const links = listHead.createDiv({ cls: "sd-section-links" });
-  textLink(links, "Compare", () => openMaterialComparison(view, unit, stage, expected));
-  textLink(links, `All ${distinctMaterials(studyMap).size} in this lecture`, () => {
-    setUnitMode(view, unit.id, "materials");
-    view.render();
+  renderSessionMaterials(left, stageMaterials(context, stage), current, (links) => {
+    textLink(links, "Compare", () => openMaterialComparison(view, unit, stage, expected));
+    textLink(links, `All ${context.materials().length} in this lecture`, () => {
+      setUnitMode(view, unit.id, "materials");
+      view.render();
+    });
   });
-  const list3 = left.createDiv({ cls: "sd-material-list" });
-  for (const resource of others) renderMaterialRow(list3, context, resource);
   right.createEl("h2", { cls: "sd-heading", text: current ? "Then close it and prove it" : "What proves this stage" });
   const marks = view.plugin.getDoneWhen(unit.id, stage.id, stage.doneWhen);
   const total = stage.doneWhen.length;
@@ -45967,7 +47194,7 @@ function drawDesignScreen(plugin, key, host) {
 
 // src/views/atlas-view.ts
 var RELATION_REGISTRY = "registry-concept-relations";
-var AtlasView = class extends import_obsidian10.ItemView {
+var AtlasView = class extends import_obsidian11.ItemView {
   plugin;
   concept = null;
   module = null;
@@ -46229,11 +47456,11 @@ var AtlasView = class extends import_obsidian10.ItemView {
    */
   async write(action, onRefusal) {
     if (this.mutationPending) {
-      new import_obsidian10.Notice("A LearningOS write is already running.");
+      new import_obsidian11.Notice("A LearningOS write is already running.");
       return false;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian10.Notice("Queued behind the running LearningOS write.");
+      new import_obsidian11.Notice("Queued behind the running LearningOS write.");
     }
     this.mutationPending = true;
     try {
@@ -46243,7 +47470,7 @@ var AtlasView = class extends import_obsidian10.ItemView {
     } catch (error) {
       const message2 = errorMessage(error);
       onRefusal?.(message2);
-      new import_obsidian10.Notice(message2);
+      new import_obsidian11.Notice(message2);
       this.render();
       return false;
     } finally {
@@ -46271,7 +47498,7 @@ var AtlasView = class extends import_obsidian10.ItemView {
 };
 
 // src/views/boundary-view.ts
-var import_obsidian11 = require("obsidian");
+var import_obsidian12 = require("obsidian");
 
 // src/contracts/masters-planning.ts
 var import_responses_validator2 = __toESM(require_responses_validator());
@@ -46316,7 +47543,7 @@ function sourceLists(source) {
     return key ? [MASTER_LIST_LABELS[key] ?? key] : [];
   }))];
 }
-var BoundaryView = class extends import_obsidian11.ItemView {
+var BoundaryView = class extends import_obsidian12.ItemView {
   plugin;
   boundaryId = null;
   mastersDashboard = null;
@@ -46493,7 +47720,7 @@ var BoundaryView = class extends import_obsidian11.ItemView {
           const primary = lists[0] ?? "Other original lists";
           groups.set(primary, [...groups.get(primary) ?? [], source]);
         }
-        const count4 = [...groups.values()].reduce((total, rows) => total + rows.length, 0);
+        const count4 = [...groups.values()].reduce((total, rows2) => total + rows2.length, 0);
         results.createDiv({ cls: "los-micro", text: `${count4} matching source${count4 === 1 ? "" : "s"}` });
         for (const [name, entries2] of [...groups].sort(([a], [b]) => compareStrings(a, b))) {
           const group3 = disclosure(results, `${name} (${entries2.length})`, "los-masters-group");
@@ -46594,10 +47821,10 @@ var BoundaryView = class extends import_obsidian11.ItemView {
 };
 
 // src/views/garden-view.ts
-var import_obsidian13 = require("obsidian");
+var import_obsidian14 = require("obsidian");
 
 // src/features/ai-actions/action-button.ts
-var import_obsidian12 = require("obsidian");
+var import_obsidian13 = require("obsidian");
 function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const wrap = parent.createDiv({ cls: "los-ai-action-row" });
   const providers = plugin.aiActions.providers();
@@ -46614,7 +47841,7 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
   const targetId = target.id;
   const launch = button(wrap, "Refine with AI", async () => {
     if (!targetId) {
-      new import_obsidian12.Notice("This Garden item has no projected identity. Refresh LearningOS and try again.");
+      new import_obsidian13.Notice("This Garden item has no projected identity. Refresh LearningOS and try again.");
       return;
     }
     launch.setAttr("disabled", "disabled");
@@ -46625,10 +47852,10 @@ function renderGardenShelveAction(parent, plugin, target, onChanged = null) {
         provider
       );
       const bundlePath = result.bundle_path || result.request?.bundle_path;
-      new import_obsidian12.Notice(bundlePath ? `AI request prepared: ${bundlePath}` : "AI request prepared.");
+      new import_obsidian13.Notice(bundlePath ? `AI request prepared: ${bundlePath}` : "AI request prepared.");
       onChanged?.(result);
     } catch (error) {
-      new import_obsidian12.Notice(errorMessage(error));
+      new import_obsidian13.Notice(errorMessage(error));
       launch.removeAttribute?.("disabled");
       launch.setText("Refine with AI");
     }
@@ -46645,7 +47872,7 @@ var GARDEN_FILTERS = [
   ["review-due", "Review due"],
   ["harvest-candidate", "Candidates"]
 ];
-var GardenView = class extends import_obsidian13.ItemView {
+var GardenView = class extends import_obsidian14.ItemView {
   plugin;
   planting = false;
   filter = "all";
@@ -46848,7 +48075,7 @@ var GardenView = class extends import_obsidian13.ItemView {
     const text4 = this.seedText;
     const title3 = this.seedTitle.trim();
     if (!text4.trim()) {
-      new import_obsidian13.Notice(
+      new import_obsidian14.Notice(
         "Write something before adding the seed."
       );
       return;
@@ -46863,9 +48090,9 @@ var GardenView = class extends import_obsidian13.ItemView {
         )
       );
       this.plugin.clearGardenDraft({ title: title3, text: text4 });
-      new import_obsidian13.Notice("Garden seed added.");
+      new import_obsidian14.Notice("Garden seed added.");
     } catch (error) {
-      new import_obsidian13.Notice(errorMessage(error));
+      new import_obsidian14.Notice(errorMessage(error));
     } finally {
       this.planting = false;
       this.render();
@@ -46897,10 +48124,10 @@ var GardenView = class extends import_obsidian13.ItemView {
       const tags = card.createDiv({
         cls: "los-garden-tags"
       });
-      for (const tag of target.tags) {
+      for (const tag2 of target.tags) {
         badge(
           tags,
-          `#${tag}`,
+          `#${tag2}`,
           "role"
         );
       }
@@ -46947,12 +48174,12 @@ var GardenView = class extends import_obsidian13.ItemView {
               await this.plugin.aiActions.applyApprovedDelivery(
                 deliveryId
               );
-              new import_obsidian13.Notice(
+              new import_obsidian14.Notice(
                 "Approved AI delivery applied and projection refreshed."
               );
               this.render();
             } catch (error) {
-              new import_obsidian13.Notice(
+              new import_obsidian14.Notice(
                 errorMessage(error)
               );
             }
@@ -46993,8 +48220,8 @@ var GardenView = class extends import_obsidian13.ItemView {
 };
 
 // src/views/home-view.ts
-var import_obsidian14 = require("obsidian");
-var HomeView = class extends import_obsidian14.ItemView {
+var import_obsidian15 = require("obsidian");
+var HomeView = class extends import_obsidian15.ItemView {
   plugin;
   constructor(leaf, plugin) {
     super(leaf);
@@ -47479,19 +48706,19 @@ function renderRelated(view, detail, record7) {
   );
   for (const [
     type,
-    rows
+    rows2
   ] of orderedGroups) {
     const group3 = wrap.createDiv({
       cls: "los-related-group"
     });
     group3.createDiv({
       cls: "los-group-title",
-      text: `${RELATED_LABELS[type] ?? type} \xB7 ${rows.length}`
+      text: `${RELATED_LABELS[type] ?? type} \xB7 ${rows2.length}`
     });
     const shown = group3.createDiv({
       cls: "los-related-chips"
     });
-    for (const relatedRecord of rows.slice(0, 5)) {
+    for (const relatedRecord of rows2.slice(0, 5)) {
       chip(
         shown,
         relatedRecord.record,
@@ -47500,15 +48727,15 @@ function renderRelated(view, detail, record7) {
         )
       );
     }
-    if (rows.length > 5) {
+    if (rows2.length > 5) {
       const rest = disclosure(
         group3,
-        `View all ${rows.length}`
+        `View all ${rows2.length}`
       );
       const restChips = rest.createDiv({
         cls: "los-related-chips"
       });
-      for (const relatedRecord of rows.slice(5)) {
+      for (const relatedRecord of rows2.slice(5)) {
         chip(
           restChips,
           relatedRecord.record,
@@ -48089,24 +49316,24 @@ function renderLegacyList(view, root) {
       view.render();
     }
   );
-  let rows = readLibraryRecords(
+  let rows2 = readLibraryRecords(
     view.plugin.store.search(
       view.query,
       [view.recordType]
     )
   );
   if (view.domain) {
-    rows = rows.filter(
+    rows2 = rows2.filter(
       (record7) => record7.domain === view.domain
     );
   }
-  rows.sort(
+  rows2.sort(
     (left, right) => compareStrings(
       left.title,
       right.title
     )
   );
-  if (!rows.length) {
+  if (!rows2.length) {
     empty(
       root,
       view.query ? "No matching records" : "No records",
@@ -48117,7 +49344,7 @@ function renderLegacyList(view, root) {
   const list3 = root.createDiv({
     cls: "los-route-list"
   });
-  for (const record7 of rows) {
+  for (const record7 of rows2) {
     const row3 = list3.createEl(
       "button",
       {
@@ -48276,7 +49503,7 @@ function renderCollectionSwitch(view, root) {
     });
   }
 }
-function renderGroup(view, root) {
+function renderGroup2(view, root) {
   if (view.collection === "sources") {
     view.renderSourceBrowser(root);
     return;
@@ -48337,7 +49564,7 @@ function renderGroup(view, root) {
   );
   const needle = foldCase(view.query.trim());
   const words2 = needle.split(/\s+/).filter(Boolean);
-  const rows = all.filter((record7) => {
+  const rows2 = all.filter((record7) => {
     if (!words2.length) {
       return true;
     }
@@ -48366,7 +49593,7 @@ function renderGroup(view, root) {
     );
     return;
   }
-  if (!rows.length) {
+  if (!rows2.length) {
     empty(
       root,
       "No matching results",
@@ -48383,7 +49610,7 @@ function renderGroup(view, root) {
   const list3 = root.createDiv({
     cls: "los-route-list los-library-route-list"
   });
-  for (const record7 of rows) {
+  for (const record7 of rows2) {
     view.renderRecordRow(
       list3,
       record7,
@@ -48522,7 +49749,7 @@ function formatBytes(size) {
 }
 
 // src/features/library/finder-tree.ts
-var MATERIAL_TYPES = [
+var MATERIAL_TYPES2 = [
   ["lecture", "Lecture Slides", "presentation"],
   ["book", "Books", "book"],
   ["course", "Courses", "graduation-cap"],
@@ -48545,7 +49772,7 @@ var MODULE_BUCKETS = [
   ["other", "Other", "file-question"]
 ];
 var MATERIAL_TYPE_BY_ID = new Map(
-  MATERIAL_TYPES.map(([type, label2, icon2]) => [type, { label: label2, icon: icon2 }])
+  MATERIAL_TYPES2.map(([type, label2, icon2]) => [type, { label: label2, icon: icon2 }])
 );
 var MODULE_BUCKET_BY_ID = new Map(
   MODULE_BUCKETS.map(([bucket, label2, icon2]) => [bucket, { label: label2, icon: icon2 }])
@@ -48904,7 +50131,7 @@ function unavailable(path) {
     sourceId: null
   };
 }
-function plural3(count4, noun) {
+function plural6(count4, noun) {
   return `${count4} ${noun}${count4 === 1 ? "" : "s"}`;
 }
 function rootEntries(context) {
@@ -48923,8 +50150,8 @@ function rootEntries(context) {
       kindLabel: "Domain",
       count: tally(sources, (source) => typeIdOf(index, source)).size + (modules.length ? 1 : 0),
       detail: [
-        plural3(sources.length, "source"),
-        modules.length ? plural3(modules.length, "module") : ""
+        plural6(sources.length, "source"),
+        modules.length ? plural6(modules.length, "module") : ""
       ].filter(Boolean).join(" \xB7 ")
     }));
   }
@@ -49007,7 +50234,7 @@ function domainEntries(context, groupId) {
     sourcesInGroup(index, groupId),
     (source) => typeIdOf(index, source)
   );
-  for (const [type, label2, icon2] of MATERIAL_TYPES) {
+  for (const [type, label2, icon2] of MATERIAL_TYPES2) {
     const count4 = counts.get(type) ?? 0;
     if (!count4) continue;
     entries2.push(folderEntry({
@@ -49557,10 +50784,10 @@ function renderColumns(view, parent, trail, words2) {
   });
   trail.forEach((folder2, depth) => {
     const openedSegment = view.folderPath[depth] ?? null;
-    const isCurrent = depth === trail.length - 1;
-    const entries2 = isCurrent ? folder2.entries.filter((entry) => matches2(entry, words2)) : folder2.entries;
+    const isCurrent2 = depth === trail.length - 1;
+    const entries2 = isCurrent2 ? folder2.entries.filter((entry) => matches2(entry, words2)) : folder2.entries;
     const column = columns.createDiv({
-      cls: `los-finder-column${isCurrent ? " is-current" : ""}`
+      cls: `los-finder-column${isCurrent2 ? " is-current" : ""}`
     });
     column.createDiv({ cls: "los-finder-column-title", text: folder2.name });
     if (!entries2.length) {
@@ -49572,7 +50799,7 @@ function renderColumns(view, parent, trail, words2) {
     }
     for (const entry of entries2) {
       const opened = entry.segment === openedSegment;
-      const selected = isCurrent && view.folderSelection === entry.segment;
+      const selected = isCurrent2 && view.folderSelection === entry.segment;
       const row3 = column.createEl("button", {
         cls: "los-finder-column-row is-clickable" + (opened ? " is-open" : "") + (selected ? " is-selected" : ""),
         attr: {
@@ -50077,7 +51304,7 @@ function renderSourceBrowser(view, root) {
     );
   }
   const words2 = foldCase(view.query.trim()).split(/\s+/).filter(Boolean);
-  const rows = all.filter(
+  const rows2 = all.filter(
     (source) => view.sourceMatchesFilters(source)
   ).filter(
     (source) => {
@@ -50108,7 +51335,7 @@ function renderSourceBrowser(view, root) {
   );
   browser.createDiv({
     cls: "los-library-result-summary",
-    text: `${rows.length} of ${all.length} source${all.length === 1 ? "" : "s"}`
+    text: `${rows2.length} of ${all.length} source${all.length === 1 ? "" : "s"}`
   });
   if (!all.length) {
     empty(
@@ -50118,7 +51345,7 @@ function renderSourceBrowser(view, root) {
     );
     return;
   }
-  if (!rows.length) {
+  if (!rows2.length) {
     const hasQuery = Boolean(
       view.query.trim()
     );
@@ -50145,7 +51372,7 @@ function renderSourceBrowser(view, root) {
   const list3 = browser.createDiv({
     cls: "los-route-list los-library-route-list"
   });
-  for (const source of rows) {
+  for (const source of rows2) {
     view.renderRecordRow(
       list3,
       source,
@@ -50155,8 +51382,8 @@ function renderSourceBrowser(view, root) {
 }
 
 // src/views/library-view.ts
-var import_obsidian15 = require("obsidian");
-var LibraryView = class extends import_obsidian15.ItemView {
+var import_obsidian16 = require("obsidian");
+var LibraryView = class extends import_obsidian16.ItemView {
   plugin;
   screen = "home";
   collection = "sources";
@@ -50416,7 +51643,7 @@ var LibraryView = class extends import_obsidian15.ItemView {
     renderCollectionSwitch(this, root);
   }
   renderGroup(root) {
-    renderGroup(this, root);
+    renderGroup2(this, root);
   }
   async rememberGroup() {
     if (!this.groupId) {
@@ -50836,7 +52063,7 @@ function renderGroupList(view, root) {
     (record7) => readModuleRecord(record7)
   ).filter(nonNull);
   const needle = foldCase(view.query.trim());
-  const rows = all.filter(
+  const rows2 = all.filter(
     (module2) => {
       if (!needle) {
         return true;
@@ -50857,7 +52084,7 @@ function renderGroupList(view, root) {
     );
     return;
   }
-  if (!rows.length) {
+  if (!rows2.length) {
     empty(
       root,
       "No matching modules",
@@ -50878,7 +52105,7 @@ function renderGroupList(view, root) {
   const list3 = root.createDiv({
     cls: "los-route-list"
   });
-  for (const module2 of rows) {
+  for (const module2 of rows2) {
     const row3 = list3.createEl(
       "button",
       {
@@ -50923,8 +52150,8 @@ function renderGroupList(view, root) {
 }
 
 // src/views/module-view.ts
-var import_obsidian16 = require("obsidian");
-var ModuleView = class extends import_obsidian16.ItemView {
+var import_obsidian17 = require("obsidian");
+var ModuleView = class extends import_obsidian17.ItemView {
   plugin;
   screen;
   groupId;
@@ -51038,8 +52265,8 @@ var ModuleView = class extends import_obsidian16.ItemView {
   renderAcademicDates(root, module2) {
     renderAcademicDates(this, root, module2);
   }
-  renderDeadlineRows(wrap, module2, rows) {
-    renderDeadlineRows(wrap, module2, rows);
+  renderDeadlineRows(wrap, module2, rows2) {
+    renderDeadlineRows(wrap, module2, rows2);
   }
   async selectTab(tab) {
     await selectTab(this, tab);
@@ -51053,8 +52280,8 @@ var ModuleView = class extends import_obsidian16.ItemView {
 };
 
 // src/views/nav-view.ts
-var import_obsidian17 = require("obsidian");
-var NavView = class extends import_obsidian17.ItemView {
+var import_obsidian18 = require("obsidian");
+var NavView = class extends import_obsidian18.ItemView {
   plugin;
   constructor(leaf, plugin) {
     super(leaf);
@@ -51151,7 +52378,7 @@ var NavView = class extends import_obsidian17.ItemView {
 };
 
 // src/views/program-view.ts
-var import_obsidian18 = require("obsidian");
+var import_obsidian19 = require("obsidian");
 var COORDINATION_HEADINGS = [
   "Priorities",
   "Commitments",
@@ -51174,7 +52401,7 @@ function readProgramSemesters(value) {
   }
   return semesters;
 }
-var ProgramView = class extends import_obsidian18.ItemView {
+var ProgramView = class extends import_obsidian19.ItemView {
   plugin;
   programId = null;
   captureFeedback = "";
@@ -51392,7 +52619,7 @@ var ProgramView = class extends import_obsidian18.ItemView {
   renderCoordination(root) {
     const coordination = this.plugin.store.get("coordination");
     const sections = isRecord(coordination?.sections) ? coordination.sections : {};
-    const rows = COORDINATION_HEADINGS.map(
+    const rows2 = COORDINATION_HEADINGS.map(
       (heading2) => [
         heading2,
         projectedExcerpt(
@@ -51401,7 +52628,7 @@ var ProgramView = class extends import_obsidian18.ItemView {
         )
       ]
     ).filter((row3) => Boolean(row3[1]));
-    if (!rows.length) {
+    if (!rows2.length) {
       return;
     }
     const panel = disclosure(
@@ -51409,7 +52636,7 @@ var ProgramView = class extends import_obsidian18.ItemView {
       "Semester coordination",
       "los-coordination-details"
     );
-    for (const [heading2, body] of rows) {
+    for (const [heading2, body] of rows2) {
       const row3 = panel.createDiv({
         cls: "los-coordination-row"
       });
@@ -51499,7 +52726,7 @@ var ProgramView = class extends import_obsidian18.ItemView {
       () => {
         const text4 = editor.value.trim();
         if (!text4) {
-          new import_obsidian18.Notice(
+          new import_obsidian19.Notice(
             "Enter some text before capturing."
           );
           editor.focus();
@@ -51581,7 +52808,7 @@ var ProgramView = class extends import_obsidian18.ItemView {
       () => {
         const localPath = localFilePath(picker.files?.[0]);
         if (!localPath) {
-          new import_obsidian18.Notice(
+          new import_obsidian19.Notice(
             "Choose a local file first."
           );
           return;
@@ -51613,7 +52840,7 @@ var ProgramView = class extends import_obsidian18.ItemView {
   }
   async capture(action, clear = null, feedback = "Captured to Inbox. It is awaiting routing.") {
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian18.Notice(
+      new import_obsidian19.Notice(
         "Queued behind the running LearningOS write."
       );
     }
@@ -51631,23 +52858,23 @@ var ProgramView = class extends import_obsidian18.ItemView {
       );
       clear?.();
       this.captureFeedback = feedback;
-      new import_obsidian18.Notice(
+      new import_obsidian19.Notice(
         "Captured to the LearningOS inbox."
       );
       this.render();
     } catch (error) {
-      new import_obsidian18.Notice(errorMessage(error));
+      new import_obsidian19.Notice(errorMessage(error));
     }
   }
 };
 
 // src/views/review-view.ts
-var import_obsidian20 = require("obsidian");
+var import_obsidian21 = require("obsidian");
 var fs3 = __toESM(require("node:fs"));
 var nodePath3 = __toESM(require("node:path"));
 
 // src/features/review/detail.ts
-var import_obsidian19 = require("obsidian");
+var import_obsidian20 = require("obsidian");
 
 // src/gateway-client.ts
 var import_responses_validator4 = __toESM(require_responses_validator());
@@ -52520,7 +53747,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:d1ef1bf9d7eb828c2b08c3693c251184061532c6df3f98497eabacf39f706b8d" : "unavailable";
+  return true ? "sha256:055f696c6018c91f56868e9389ce152cc909c844f45e037bd71c42771b4f68ad" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 16 : 0;
@@ -53569,10 +54796,10 @@ async function send(host, action, done) {
   host.render();
   try {
     await host.plugin.mutate(action);
-    new import_obsidian19.Notice(done);
+    new import_obsidian20.Notice(done);
     return true;
   } catch (error) {
-    new import_obsidian19.Notice(errorMessage(error));
+    new import_obsidian20.Notice(errorMessage(error));
     return false;
   } finally {
     host.sending = false;
@@ -53609,7 +54836,7 @@ function editConnection(host, draft) {
   const brief = host.plugin.abilityHorizon.current();
   const from = brief?.abilities.find((row3) => row3.id === draft.fromAbility);
   if (!brief || !from) {
-    new import_obsidian19.Notice("The ability map is not loaded, so this connection cannot be edited yet.");
+    new import_obsidian20.Notice("The ability map is not loaded, so this connection cannot be edited yet.");
     return;
   }
   new AbilityConnectionDraftModal(host.app, {
@@ -53623,7 +54850,7 @@ function editConnection(host, draft) {
 function drop(host, id) {
   host.plugin.discardAbilityDraft(id);
   host.select(null);
-  new import_obsidian19.Notice("Draft dropped. Nothing was recorded.");
+  new import_obsidian20.Notice("Draft dropped. Nothing was recorded.");
 }
 function renderClaimDraft(parent, host, draft) {
   ensureAbility(host, draft.abilityId);
@@ -53646,11 +54873,11 @@ function renderClaimDraft(parent, host, draft) {
   const shows = part(parent, "What the attempt shows");
   if (draft.evidenceTags.length) {
     const list3 = shows.createEl("ul");
-    for (const tag of draft.evidenceTags) list3.createEl("li", { text: tag });
+    for (const tag2 of draft.evidenceTags) list3.createEl("li", { text: tag2 });
   } else {
     shows.createEl("p", { cls: "los-micro", text: "No evidence criterion marked." });
   }
-  const missing = definition2?.evidence_spec.filter((tag) => !draft.evidenceTags.includes(tag)) ?? [];
+  const missing = definition2?.evidence_spec.filter((tag2) => !draft.evidenceTags.includes(tag2)) ?? [];
   if (missing.length && draft.result === "correct") {
     shows.createEl("p", {
       cls: "los-micro",
@@ -53707,7 +54934,7 @@ function renderClaimDraft(parent, host, draft) {
   const confirm = button(actions, host.sending ? "Recording\u2026" : "Confirm & record", () => {
     const current = host.plugin.listAbilityDrafts().find((row22) => row22.id === draft.id);
     if (!current || current.kind !== "claim" || current.updatedAt !== draft.updatedAt) {
-      new import_obsidian19.Notice("The draft changed; review it again before confirming.");
+      new import_obsidian20.Notice("The draft changed; review it again before confirming.");
       host.render();
       return;
     }
@@ -53764,7 +54991,7 @@ function renderConnectionDraft(parent, host, draft) {
   const confirm = button(actions, host.sending ? "Recording\u2026" : "Confirm & record", () => {
     const current = host.plugin.listAbilityDrafts().find((row3) => row3.id === draft.id);
     if (!current || current.kind !== "connection" || current.updatedAt !== draft.updatedAt) {
-      new import_obsidian19.Notice("The draft changed; review it again before confirming.");
+      new import_obsidian20.Notice("The draft changed; review it again before confirming.");
       host.render();
       return;
     }
@@ -53890,7 +55117,7 @@ function asOperationDetail(value) {
 }
 
 // src/views/review-view.ts
-var ReviewView = class extends import_obsidian20.ItemView {
+var ReviewView = class extends import_obsidian21.ItemView {
   plugin;
   selectedKey = null;
   sending = false;
@@ -54028,7 +55255,7 @@ var OPERATIONS_FILTERS = [
   ["attention", "Needs attention"],
   ["recoveries", "Recoveries"]
 ];
-var DiagnosticsView = class extends import_obsidian20.ItemView {
+var DiagnosticsView = class extends import_obsidian21.ItemView {
   plugin;
   report = "";
   screen = "health";
@@ -54180,11 +55407,11 @@ var DiagnosticsView = class extends import_obsidian20.ItemView {
       this.operationsFilter = value;
       this.render();
     }, (value) => value === "all" ? this.operations.length : value === "attention" ? this.operations.filter((row3) => row3.needs_attention).length : this.operations.filter((row3) => row3.replayed || row3.attempts > 1).length);
-    const rows = this.filteredOperations();
-    if (rows.length === 0) {
+    const rows2 = this.filteredOperations();
+    if (rows2.length === 0) {
       empty(root, "No operations", this.operationsFilter === "all" ? "No causal operations are on record yet." : "Nothing matches this filter.");
     }
-    for (const row3 of rows) {
+    for (const row3 of rows2) {
       const glyph = row3.recovery_requirement !== "none" ? "!" : row3.replayed ? "\u27F3" : row3.canonical_outcome === "COMMITTED" ? "\u2713" : "\u2715";
       const label2 = row3.recovery_requirement !== "none" ? "Ambiguous" : row3.replayed ? "Replayed" : row3.canonical_outcome === "COMMITTED" ? "Settled" : "Refused";
       const time = row3.started_at === null ? "--:--" : new Date(row3.started_at * 1e3).toTimeString().slice(0, 5);
@@ -54484,8 +55711,8 @@ var DiagnosticsView = class extends import_obsidian20.ItemView {
       panel.createEl("p", { text: "No unresolved Gateway write." });
       return;
     }
-    const rows = gatewayRecoverySummary(state) ?? [];
-    factList(panel, rows);
+    const rows2 = gatewayRecoverySummary(state) ?? [];
+    factList(panel, rows2);
     const actions = root.createDiv({ cls: "los-actions" });
     if (state.kind === "record") {
       let requestId = null;
@@ -54521,7 +55748,7 @@ var DiagnosticsView = class extends import_obsidian20.ItemView {
       actions,
       "Copy recovery summary",
       () => this.plugin.copyText(
-        rows.map(([label2, value]) => `${label2}: ${value}`).join("\n")
+        rows2.map(([label2, value]) => `${label2}: ${value}`).join("\n")
       ),
       "quiet"
     );
@@ -54610,7 +55837,7 @@ Tried: ${resolved.attempted.join(", ")}`;
 };
 
 // src/views/shelving-view.ts
-var import_obsidian21 = require("obsidian");
+var import_obsidian22 = require("obsidian");
 function readShelvingProposal(value) {
   if (!isRecord(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
     return null;
@@ -54636,7 +55863,7 @@ function readShelvingProposal(value) {
     items
   };
 }
-var ShelvingView = class extends import_obsidian21.ItemView {
+var ShelvingView = class extends import_obsidian22.ItemView {
   plugin;
   unitId = null;
   proposal = null;
@@ -54788,16 +56015,16 @@ var ShelvingView = class extends import_obsidian21.ItemView {
   }
   renderQueue(root) {
     const wrap = section(root, "Ready to shelve");
-    const rows = this.plugin.store.units().filter(
+    const rows2 = this.plugin.store.units().filter(
       (row3) => row3.status === "ready-to-shelve"
     );
-    if (!rows.length) empty(wrap, "No unit is waiting", "Keep working from any active unit.");
-    for (const unit of rows) unitCard(wrap, this.plugin, unit);
+    if (!rows2.length) empty(wrap, "No unit is waiting", "Keep working from any active unit.");
+    for (const unit of rows2) unitCard(wrap, this.plugin, unit);
   }
   async prepare() {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian21.Notice("Choose a unit before preparing shelving.");
+      new import_obsidian22.Notice("Choose a unit before preparing shelving.");
       return;
     }
     try {
@@ -54807,17 +56034,17 @@ var ShelvingView = class extends import_obsidian21.ItemView {
       await this.loadProposal();
       this.render();
     } catch (error) {
-      new import_obsidian21.Notice(errorMessage(error));
+      new import_obsidian22.Notice(errorMessage(error));
     }
   }
   async apply() {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian21.Notice("Choose a unit before applying shelving.");
+      new import_obsidian22.Notice("Choose a unit before applying shelving.");
       return;
     }
     if (!this.selected.size) {
-      new import_obsidian21.Notice("Select at least one proposal.");
+      new import_obsidian22.Notice("Select at least one proposal.");
       return;
     }
     try {
@@ -54833,7 +56060,7 @@ var ShelvingView = class extends import_obsidian21.ItemView {
       this.selectionScope = null;
       this.render();
     } catch (error) {
-      new import_obsidian21.Notice(errorMessage(error));
+      new import_obsidian22.Notice(errorMessage(error));
     }
   }
 };
@@ -54963,8 +56190,8 @@ function renderArtifacts(view, root, unit) {
 }
 
 // src/views/unit-view.ts
-var import_obsidian22 = require("obsidian");
-var UnitView = class extends import_obsidian22.ItemView {
+var import_obsidian23 = require("obsidian");
+var UnitView = class extends import_obsidian23.ItemView {
   plugin;
   unitId;
   stageId;
@@ -55050,13 +56277,13 @@ var UnitView = class extends import_obsidian22.ItemView {
    */
   async mutate(action, onConfirmed = null) {
     if (this.mutationPending) {
-      new import_obsidian22.Notice(
+      new import_obsidian23.Notice(
         "A LearningOS write is already running."
       );
       return;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian22.Notice(
+      new import_obsidian23.Notice(
         "Queued behind the running LearningOS write."
       );
     }
@@ -55068,7 +56295,7 @@ var UnitView = class extends import_obsidian22.ItemView {
       onConfirmed?.();
       this.render();
     } catch (error) {
-      new import_obsidian22.Notice(
+      new import_obsidian23.Notice(
         errorMessage3(error)
       );
     } finally {
@@ -55078,7 +56305,7 @@ var UnitView = class extends import_obsidian22.ItemView {
   async selectStage(stageId) {
     const unitId = this.unitId;
     if (!unitId) {
-      new import_obsidian22.Notice(
+      new import_obsidian23.Notice(
         "This unit is no longer available."
       );
       return;
@@ -55205,11 +56432,11 @@ function detachApplication(plugin) {
 }
 
 // src/app/navigator.ts
-var import_obsidian24 = require("obsidian");
+var import_obsidian25 = require("obsidian");
 
 // src/app/global-search.ts
-var import_obsidian23 = require("obsidian");
-var GlobalSearchModal = class extends import_obsidian23.Modal {
+var import_obsidian24 = require("obsidian");
+var GlobalSearchModal = class extends import_obsidian24.Modal {
   plugin;
   query;
   filter;
@@ -55307,10 +56534,10 @@ var GlobalSearchModal = class extends import_obsidian23.Modal {
     }
   }
   candidates() {
-    const rows = [];
+    const rows2 = [];
     const add = (record7, kind, subtitle, open) => {
       if (!record7?.id || !record7?.title) return;
-      rows.push({
+      rows2.push({
         id: record7.id,
         title: record7.title,
         aliases: [...record7.aliases || [], ...aliasesByTarget.get(record7.id) || []],
@@ -55361,12 +56588,12 @@ var GlobalSearchModal = class extends import_obsidian23.Modal {
       if (!linkedModule?.id) continue;
       add(workspace, "learning", `Workspace \xB7 ${linkedModule.title || linkedModule.id}`, () => this.plugin.openModule(linkedModule.id));
     }
-    return rows;
+    return rows2;
   }
   matches(candidate2) {
     const words2 = foldCase(this.query).trim().split(/\s+/).filter(Boolean);
     if (!words2.length) return true;
-    const haystack = foldCase([
+    const haystack2 = foldCase([
       candidate2.id,
       candidate2.title,
       candidate2.subtitle,
@@ -55374,7 +56601,7 @@ var GlobalSearchModal = class extends import_obsidian23.Modal {
       ...candidate2.authors
     ].filter(Boolean).join(" "));
     return words2.every(
-      (word) => haystack.includes(word)
+      (word) => haystack2.includes(word)
     );
   }
   rankedCandidates() {
@@ -55390,11 +56617,11 @@ var GlobalSearchModal = class extends import_obsidian23.Modal {
   renderResults() {
     if (!this.results) return;
     this.results.empty();
-    const rows = this.rankedCandidates();
+    const rows2 = this.rankedCandidates();
     const summary = this.results.createDiv({ cls: "los-search-summary" });
-    summary.createSpan({ text: this.query.trim() ? `${rows.length} result${rows.length === 1 ? "" : "s"}` : "Browse learning records" });
+    summary.createSpan({ text: this.query.trim() ? `${rows2.length} result${rows2.length === 1 ? "" : "s"}` : "Browse learning records" });
     summary.createSpan({ cls: "los-micro", text: "Modules, units, sources, topic packs and linked workspaces \xB7 Titles, aliases and authors" });
-    if (!rows.length) {
+    if (!rows2.length) {
       empty(
         this.results,
         "No matching learning records",
@@ -55411,7 +56638,7 @@ var GlobalSearchModal = class extends import_obsidian23.Modal {
       return;
     }
     const list3 = this.results.createDiv({ cls: "los-search-result-list" });
-    for (const row3 of rows.slice(0, 24)) {
+    for (const row3 of rows2.slice(0, 24)) {
       const result = list3.createEl("button", {
         cls: "los-search-result is-clickable",
         attr: { type: "button", "aria-label": `Open ${row3.title}` }
@@ -55425,8 +56652,8 @@ var GlobalSearchModal = class extends import_obsidian23.Modal {
         row3.open();
       });
     }
-    if (rows.length > 24) {
-      this.results.createDiv({ cls: "los-micro", text: `${rows.length - 24} more results. Refine the query to narrow the list.` });
+    if (rows2.length > 24) {
+      this.results.createDiv({ cls: "los-micro", text: `${rows2.length - 24} more results. Refine the query to narrow the list.` });
     }
   }
 };
@@ -55660,7 +56887,7 @@ var AppNavigator = class {
    */
   openFullTextSearch() {
     const ok = this.app.commands?.executeCommandById?.("omnisearch:show-modal");
-    if (!ok) new import_obsidian24.Notice("Omnisearch is unavailable; structural Library search still works.");
+    if (!ok) new import_obsidian25.Notice("Omnisearch is unavailable; structural Library search still works.");
   }
 };
 
@@ -56084,8 +57311,8 @@ var ApplicationRouter = class {
 };
 
 // src/app/unit-note-modal.ts
-var import_obsidian25 = require("obsidian");
-var UnitNoteModal = class extends import_obsidian25.Modal {
+var import_obsidian26 = require("obsidian");
+var UnitNoteModal = class extends import_obsidian26.Modal {
   plugin;
   unit;
   studyMap;
@@ -56223,25 +57450,25 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
   async save() {
     const text4 = String(this.editor?.value || "");
     if (!text4.trim()) {
-      new import_obsidian25.Notice("Write a note before saving.");
+      new import_obsidian26.Notice("Write a note before saving.");
       this.editor?.focus();
       return;
     }
     if (this.saving) {
-      new import_obsidian25.Notice("This note is already being saved.");
+      new import_obsidian26.Notice("This note is already being saved.");
       return;
     }
     if (this.plugin.gateway.isBusy) {
-      new import_obsidian25.Notice("Queued behind the running LearningOS write.");
+      new import_obsidian26.Notice("Queued behind the running LearningOS write.");
     }
     const unitId = this.unit.id;
     if (!unitId) {
-      new import_obsidian25.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
+      new import_obsidian26.Notice("The unit identity is unavailable. Reload LearningOS and try again.");
       return;
     }
     const filePaths = this.files.map((file) => localFilePath(file)).filter((value) => Boolean(value));
     if (filePaths.length !== this.files.length) {
-      new import_obsidian25.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
+      new import_obsidian26.Notice("One selected attachment has no readable local path. Remove it and choose the file again.");
       return;
     }
     this.saving = true;
@@ -56253,10 +57480,10 @@ var UnitNoteModal = class extends import_obsidian25.Modal {
         filePaths
       }, this.expectedRevisions));
       this.plugin.clearUnitNoteDraft(unitId, this.recoveredStages, sent);
-      new import_obsidian25.Notice("Learning-session note saved.");
+      new import_obsidian26.Notice("Learning-session note saved.");
       this.close();
     } catch (error) {
-      new import_obsidian25.Notice(errorMessage(error));
+      new import_obsidian26.Notice(errorMessage(error));
     } finally {
       this.saving = false;
     }
@@ -56637,7 +57864,7 @@ var AIActionClient = class {
 var import_electron2 = require("electron");
 var fs4 = __toESM(require("node:fs"));
 var nodePath4 = __toESM(require("node:path"));
-var import_obsidian26 = require("obsidian");
+var import_obsidian27 = require("obsidian");
 var CODE_EXTENSIONS = /* @__PURE__ */ new Set([
   ".c",
   ".cc",
@@ -56718,7 +57945,7 @@ var ResourceOpener = class {
   async openVaultPath(path, destination = null) {
     const target = normalizedVaultPath(path);
     if (!target || target.startsWith("/") || target.split("/").includes("..")) {
-      new import_obsidian26.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian27.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return void 0;
     }
     const candidate2 = nodePath4.resolve(this.app.vault.adapter.getBasePath(), target);
@@ -56726,7 +57953,7 @@ var ResourceOpener = class {
       try {
         fs4.realpathSync(candidate2);
       } catch (_) {
-        new import_obsidian26.Notice(`File unavailable: ${target}`);
+        new import_obsidian27.Notice(`File unavailable: ${target}`);
         return void 0;
       }
       const realPath = resolvedWithin(
@@ -56734,13 +57961,13 @@ var ResourceOpener = class {
         candidate2
       );
       if (!realPath) {
-        new import_obsidian26.Notice(`Unsafe vault symlink refused: ${target}`);
+        new import_obsidian27.Notice(`Unsafe vault symlink refused: ${target}`);
         return void 0;
       }
     }
     const file = this.app.vault.getAbstractFileByPath(target);
     if (!file) {
-      new import_obsidian26.Notice(`File unavailable: ${target}`);
+      new import_obsidian27.Notice(`File unavailable: ${target}`);
       return void 0;
     }
     let existing = null;
@@ -56775,16 +58002,16 @@ var ResourceOpener = class {
       try {
         view.setEphemeralState({ page: destination.page });
       } catch (_) {
-        new import_obsidian26.Notice(`Go to ${destination.label}.`);
+        new import_obsidian27.Notice(`Go to ${destination.label}.`);
         return;
       }
-      new import_obsidian26.Notice(`Page requested \u2014 go to ${destination.label} if the viewer did not move.`);
+      new import_obsidian27.Notice(`Page requested \u2014 go to ${destination.label} if the viewer did not move.`);
       return;
     }
     try {
       await leaf.openFile(file, { eState: { page: destination.page } });
     } catch (_) {
-      new import_obsidian26.Notice(`Go to ${destination.label}.`);
+      new import_obsidian27.Notice(`Go to ${destination.label}.`);
       return;
     }
     this.announceDestination(leaf, destination);
@@ -56792,7 +58019,7 @@ var ResourceOpener = class {
   /** Only a viewer that can be positioned is told it landed there. */
   announceDestination(leaf, destination) {
     void leaf;
-    new import_obsidian26.Notice(`Opened \u2014 go to ${destination.label}.`);
+    new import_obsidian27.Notice(`Opened \u2014 go to ${destination.label}.`);
   }
   isCodePath(path) {
     if (!fs4.existsSync(path)) return false;
@@ -56802,19 +58029,19 @@ var ResourceOpener = class {
   async openSystemPath(path, successMessage) {
     const error = await import_electron2.shell.openPath(path);
     if (error) {
-      new import_obsidian26.Notice(`Could not open file: ${error}`);
+      new import_obsidian27.Notice(`Could not open file: ${error}`);
       return false;
     }
-    new import_obsidian26.Notice(successMessage);
+    new import_obsidian27.Notice(successMessage);
     return true;
   }
   async openCodePath(path) {
     try {
       await import_electron2.shell.openExternal(visualStudioCodeUrl(path));
-      new import_obsidian26.Notice("Opened in Visual Studio Code.");
+      new import_obsidian27.Notice("Opened in Visual Studio Code.");
       return true;
     } catch (_) {
-      new import_obsidian26.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
+      new import_obsidian27.Notice("Visual Studio Code was unavailable; opening in the system app instead.");
       return this.openSystemPath(path, "Opened in the system app.");
     }
   }
@@ -56823,21 +58050,21 @@ var ResourceOpener = class {
     try {
       realPath = fs4.realpathSync(path);
     } catch (_) {
-      new import_obsidian26.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian27.Notice(`File unavailable: ${path || "unknown path"}`);
       return Promise.resolve(false);
     }
     return this.isCodePath(realPath) ? this.openCodePath(realPath) : this.openSystemPath(realPath, systemMessage);
   }
   async openExternalPath(path, successMessage = "Opened in the default app.") {
     if (!path || !fs4.existsSync(path)) {
-      new import_obsidian26.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian27.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     let realPath = "";
     try {
       realPath = fs4.realpathSync(path);
     } catch (_) {
-      new import_obsidian26.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian27.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     return this.openSystemPath(realPath, successMessage);
@@ -56849,12 +58076,12 @@ var ResourceOpener = class {
     const fullPath = nodePath4.resolve(learningRoot, path || "");
     const relative3 = nodePath4.relative(materialsRoot, fullPath);
     if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
-      new import_obsidian26.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
+      new import_obsidian27.Notice(`Unsafe material path refused: ${path || "unknown path"}`);
       return false;
     }
     const realPath = resolvedWithin(materialsRoot, fullPath);
     if (!realPath) {
-      new import_obsidian26.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
+      new import_obsidian27.Notice(`Unsafe material symlink refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openExternalPath(
@@ -56869,16 +58096,16 @@ var ResourceOpener = class {
     const fullPath = nodePath4.resolve(base, path || "");
     const relative3 = nodePath4.relative(base, fullPath);
     if (!path || relative3.startsWith("..") || nodePath4.isAbsolute(relative3)) {
-      new import_obsidian26.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
+      new import_obsidian27.Notice(`Unsafe vault path refused: ${path || "unknown path"}`);
       return false;
     }
     if (!fs4.existsSync(fullPath)) {
-      new import_obsidian26.Notice(`File unavailable: ${path || "unknown path"}`);
+      new import_obsidian27.Notice(`File unavailable: ${path || "unknown path"}`);
       return false;
     }
     const realPath = resolvedWithin(base, fullPath);
     if (!realPath) {
-      new import_obsidian26.Notice(`Unsafe vault symlink refused: ${path || "unknown path"}`);
+      new import_obsidian27.Notice(`Unsafe vault symlink refused: ${path || "unknown path"}`);
       return false;
     }
     return this.openPreferredLocalPath(
@@ -56902,29 +58129,29 @@ var ResourceOpener = class {
     if (resource.url) {
       const url = safeWebUrl(resource.url);
       if (!url) {
-        new import_obsidian26.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
+        new import_obsidian27.Notice(`Refused an unsupported link: ${String(resource.url).slice(0, 80)}`);
         return false;
       }
       return Promise.resolve(import_electron2.shell.openExternal(url.href)).catch(() => {
-        new import_obsidian26.Notice("Could not open the link in your browser.");
+        new import_obsidian27.Notice("Could not open the link in your browser.");
         return false;
       });
     }
     if (materialPath.trim()) {
-      new import_obsidian26.Notice(resource.material_exists === false ? `File unavailable: ${materialPath.trim()}` : "Choose an exact file from this material collection.");
+      new import_obsidian27.Notice(resource.material_exists === false ? `File unavailable: ${materialPath.trim()}` : "Choose an exact file from this material collection.");
     } else if (vaultPath.trim().toLowerCase().startsWith("material://")) {
-      new import_obsidian26.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
+      new import_obsidian27.Notice(`Refused an unresolved material link: ${vaultPath.trim().slice(0, 80)}`);
     } else if (vaultPath.trim()) {
-      new import_obsidian26.Notice("Choose an exact file from this vault collection.");
+      new import_obsidian27.Notice("Choose an exact file from this vault collection.");
     }
     return false;
   }
   copyText(value) {
     try {
       void navigator.clipboard.writeText(value);
-      new import_obsidian26.Notice(`Copied ${value}`);
+      new import_obsidian27.Notice(`Copied ${value}`);
     } catch (_) {
-      new import_obsidian26.Notice(value);
+      new import_obsidian27.Notice(value);
     }
   }
 };
@@ -56978,8 +58205,8 @@ function buildStoreIndexes(manifest, records) {
   const rowsByType = /* @__PURE__ */ new Map();
   for (const row3 of visibleRecords) {
     if (typeof row3.type !== "string") continue;
-    const rows = rowsByType.get(row3.type);
-    if (rows) rows.push(row3);
+    const rows2 = rowsByType.get(row3.type);
+    if (rows2) rows2.push(row3);
     else rowsByType.set(row3.type, [row3]);
   }
   const sourceMapByModule = /* @__PURE__ */ new Map();
@@ -57177,8 +58404,8 @@ var ManifestStore = class {
     return this.rows("projects");
   }
   projectRelationships(projectId = null) {
-    const rows = [...this.data?.project_relationships || []];
-    return projectId ? rows.filter((row3) => row3.from_project_id === projectId) : rows;
+    const rows2 = [...this.data?.project_relationships || []];
+    return projectId ? rows2.filter((row3) => row3.from_project_id === projectId) : rows2;
   }
   resolveProjectAlias(id) {
     return this.data?.project_aliases?.[id] || id;
@@ -57194,8 +58421,8 @@ var ManifestStore = class {
     return this.of("source");
   }
   topicPacks() {
-    const rows = this.rows("topic_packs");
-    return rows.length ? rows : this.of("topic-pack");
+    const rows2 = this.rows("topic_packs");
+    return rows2.length ? rows2 : this.of("topic-pack");
   }
   catalogues() {
     return this.of("collection").filter((row3) => row3.collection_kind !== "topic-pack");
@@ -57266,12 +58493,12 @@ var ManifestStore = class {
     return this.rows("ai_actions_available").find((row3) => row3.id === actionId) || (Array.isArray(available) ? available : []).find((row3) => row3?.id === actionId) || null;
   }
   aiProviders() {
-    const rows = this.data?.ai_actions?.provider_adapters;
-    return Array.isArray(rows) ? rows.filter((row3) => row3 && typeof row3 === "object") : [];
+    const rows2 = this.data?.ai_actions?.provider_adapters;
+    return Array.isArray(rows2) ? rows2.filter((row3) => row3 && typeof row3 === "object") : [];
   }
   aiRequestsForTarget(targetId) {
-    const rows = this.data?.ai_actions?.requests;
-    return (Array.isArray(rows) ? rows : []).filter((row3) => row3?.target?.id === targetId);
+    const rows2 = this.data?.ai_actions?.requests;
+    return (Array.isArray(rows2) ? rows2 : []).filter((row3) => row3?.target?.id === targetId);
   }
   latestAiRequest(targetId) {
     return this.aiRequestsForTarget(targetId).slice().sort((a, b) => compareStrings(String(b.created_at || ""), String(a.created_at || "")))[0] || null;
@@ -57280,8 +58507,8 @@ var ManifestStore = class {
     return this.modules().filter((row3) => row3.area_id === programId);
   }
   unitsFor(moduleId, componentId = null) {
-    const rows = this.units().filter((row3) => row3.module_id === moduleId);
-    return componentId ? rows.filter((row3) => row3.component_id === componentId) : rows;
+    const rows2 = this.units().filter((row3) => row3.module_id === moduleId);
+    return componentId ? rows2.filter((row3) => row3.component_id === componentId) : rows2;
   }
   mapForUnit(unitId) {
     const mapId = this.data?.indexes?.unit_to_study_map?.[unitId];
@@ -57419,7 +58646,7 @@ function settingsCoordinator(vaultRoot) {
 function cloneSettings(settings) {
   return JSON.parse(JSON.stringify(settings));
 }
-var LearningOSUI = class extends import_obsidian27.Plugin {
+var LearningOSUI = class extends import_obsidian28.Plugin {
   lastAiPrompt = "";
   /** Set when startup found an unusable record; the app registers read-only. */
   recoveryBlocked = false;
@@ -57523,7 +58750,7 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
   /** Every Notice the gateway and recovery paths raise goes through here. */
   notify(message2) {
     if (!this.isLifecycleActive()) return;
-    new import_obsidian27.Notice(message2);
+    new import_obsidian28.Notice(message2);
   }
   /**
    * Finish, or refuse to finish, whatever the last session left in flight.
@@ -57676,11 +58903,11 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
    */
   async retryRecoveredWrite() {
     if (!this.recovery.unresolved) {
-      new import_obsidian27.Notice("There is no unresolved Gateway write.");
+      new import_obsidian28.Notice("There is no unresolved Gateway write.");
       return;
     }
     if (this.recovery.state.kind === "malformed") {
-      new import_obsidian27.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
+      new import_obsidian28.Notice("The stored record is unreadable, so LearningOS cannot replay it. It is kept exactly as written.");
       return;
     }
     try {
@@ -57691,10 +58918,10 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
         await this.finishConfirmedWrite(confirmation);
       });
       this.recoveryBlocked = this.recovery.unresolved;
-      new import_obsidian27.Notice("The recovered Gateway write is settled.");
+      new import_obsidian28.Notice("The recovered Gateway write is settled.");
     } catch (error) {
       this.recoveryBlocked = this.recovery.unresolved;
-      new import_obsidian27.Notice(errorMessage4(error));
+      new import_obsidian28.Notice(errorMessage4(error));
     }
   }
   /**
@@ -57808,7 +59035,7 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
     this.gateway.assertLifecycleActive();
     let rebuildError = null;
     if (observed !== confirmation.snapshot_after) {
-      new import_obsidian27.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
+      new import_obsidian28.Notice("LearningOS is rebuilding the projection so the confirmed write becomes visible.");
       try {
         await this.gateway.call(["generate"], { expectJson: false });
       } catch (error) {
@@ -57852,7 +59079,7 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
       );
     }
     if (observed !== confirmation.snapshot_after) {
-      new import_obsidian27.Notice("Recovered the prior write; newer canonical changes are also present.");
+      new import_obsidian28.Notice("Recovered the prior write; newer canonical changes are also present.");
     }
     await this.recovery.settleConfirmed(owner);
     this.gateway.noteSettlementObserved(confirmation);
@@ -57937,7 +59164,7 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
    * draft stays intact for one deliberate reconciliation and retry.
    */
   async refreshAfterConflict() {
-    new import_obsidian27.Notice("Canonical files changed since this view loaded \u2014 refreshing them. Your draft was kept; review it before retrying.");
+    new import_obsidian28.Notice("Canonical files changed since this view loaded \u2014 refreshing them. Your draft was kept; review it before retrying.");
     await this.gateway.call(["generate"], { expectJson: false });
     await this.reloadStore();
   }
@@ -57949,9 +59176,9 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
         await this.gateway.call(["generate"], { expectJson: false });
         await this.reloadStore();
       });
-      new import_obsidian27.Notice("LearningOS projection rebuilt.");
+      new import_obsidian28.Notice("LearningOS projection rebuilt.");
     } catch (error) {
-      new import_obsidian27.Notice(errorMessage4(error));
+      new import_obsidian28.Notice(errorMessage4(error));
     }
   }
   async reviewSessionEnd() {
@@ -57965,7 +59192,7 @@ var LearningOSUI = class extends import_obsidian27.Plugin {
       new SessionEndModal(this.app, this, review2).open();
       return review2;
     } catch (error) {
-      new import_obsidian27.Notice(errorMessage4(error));
+      new import_obsidian28.Notice(errorMessage4(error));
       return null;
     }
   }
@@ -58032,7 +59259,7 @@ The active file is supplementary context only. Use only action-specific Learning
     if (agent?.sendToChat) await agent.sendToChat(prompt);
     else {
       this.copyText(prompt);
-      new import_obsidian27.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
+      new import_obsidian28.Notice("Scoped prompt copied. Open Agentic Copilot to continue.");
     }
     return prompt;
   }

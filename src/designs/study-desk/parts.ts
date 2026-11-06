@@ -107,6 +107,12 @@ export function moduleShort(module: ProjectionRecord | null | undefined): string
   return title.split(/\s+/).filter((word) => /^[A-ZÄÖÜ]/.test(word)).map((word) => word[0]).join('').slice(0, 4) || title.slice(0, 3);
 }
 
+/** "AML", or the whole title when the module has no short name of its own: initials would not say which module. */
+export function moduleName(module: ProjectionRecord | null | undefined): string {
+  const authored = /\(([^)]{2,10})\)\s*$/.test(asLabel(module)) || Boolean(asString(module?.code));
+  return authored ? moduleShort(module) : moduleLongTitle(module);
+}
+
 /** The title without its module prefix, since the row already sits inside that module. */
 export function moduleLongTitle(module: ProjectionRecord | null | undefined): string {
   return asLabel(module).replace(/\s*\([^)]{2,10}\)\s*$/, '');

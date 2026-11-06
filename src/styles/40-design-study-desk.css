@@ -418,7 +418,6 @@ body[data-los-ui="study-desk"] {
   /* ── Study plan ───────────────────────────────────────────────────────── */
   .sd-plan-layout { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 28px; align-items: start; }
   .sd-plan-main { display: flex; flex-direction: column; align-items: stretch; gap: 10px; min-width: 0; }
-  .sd-plan-main > .los-filter-tabs { align-self: flex-start; }
   .sd-side { display: flex; flex-direction: column; gap: 20px; min-width: 0; padding-top: 20px; }
   .sd-side-group { display: flex; flex-direction: column; gap: 4px; }
   .sd-side-group .sd-note { margin-bottom: 2px; }
@@ -834,15 +833,385 @@ body[data-los-ui="study-desk"] {
   }
   .sd-overlap-cell.is-selected { box-shadow: inset 0 0 0 2px var(--los-accent); font-weight: 600; }
 
+  /* ── Lecture · Materials (v2, Figma C2–C4) ─────────────────────────────
+   * Purpose groups, then type sub-groups, best first; one Material row shape.
+   * Two derived tints follow whichever scheme the page has: a deep paper for
+   * tags and an opened row's ground. */
+  .sd-page {
+    --sd-deep: color-mix(in srgb, var(--los-ink) 7%, var(--los-paper));
+    --sd-open: color-mix(in srgb, var(--los-ink) 2.5%, var(--los-paper));
+  }
+  .sd-plan-layout.is-materials { grid-template-columns: minmax(0, 1fr) 280px; gap: 40px; }
+  .sd-mat-side { gap: 28px; padding-top: 6px; }
+  .sd-mat-side .sd-side-group { gap: 8px; }
+  .sd-mat-side .sd-eyebrow { color: var(--los-ink-faint); font-weight: 600; letter-spacing: .6px; }
+  .sd-mat-side .sd-note { font-size: 14px; line-height: 22px; }
+  .sd-note.is-faint { color: var(--los-ink-faint); }
+  .sd-side-small { color: var(--los-ink-faint); font-size: 12px; line-height: 16px; }
+
+  .sd-mat-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; }
+  .sd-mat-search {
+    display: flex;
+    flex: 0 1 280px;
+    align-items: center;
+    gap: 8px;
+    min-width: 180px;
+    height: 32px;
+    padding: 0 8px 0 10px;
+    border-radius: 8px;
+    background: var(--los-paper-2);
+    box-shadow: inset 0 0 0 1px var(--los-rule);
+  }
+  .sd-mat-search:focus-within { box-shadow: inset 0 0 0 1px var(--los-accent), 0 0 0 2px var(--los-accent-wash); }
+  .sd-mat-search .sd-search-glyph svg { width: 16px; height: 16px; }
+  /* The base control rule (01-controls.css) outranks a plain class pair; the :not()s match its weight, as .sd-search does. */
+  .los-root .sd-mat-search input.sd-mat-search-input:not([type="checkbox"]):not([type="radio"]) {
+    flex: 1 1 auto;
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: var(--los-ink);
+    font: inherit;
+    font-size: 13px;
+  }
+  .los-root .sd-mat-search input.sd-mat-search-input:focus, .los-root .sd-mat-search input.sd-mat-search-input:focus-visible { outline: none; box-shadow: none; }
+  .sd-chip-select {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    height: 28px;
+    border-radius: 999px;
+    background: var(--los-paper-2);
+    box-shadow: inset 0 0 0 1px var(--los-rule);
+  }
+  .sd-chip-select.is-active { background: var(--los-accent-wash); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--los-accent) 35%, transparent); }
+  .sd-chip-select-text {
+    max-width: 240px;
+    overflow: hidden;
+    padding: 0 28px 0 12px;
+    color: var(--los-ink-soft);
+    font-size: 13px;
+    line-height: 28px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .sd-chip-select.is-active .sd-chip-select-text { color: var(--los-accent-strong); font-weight: 500; }
+  .los-root .sd-chip-select select.sd-chip-select-input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    opacity: 0;
+    cursor: pointer;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  .sd-chip-select:hover { background: var(--los-paper-3); }
+  .sd-chip-select.is-active:hover { background: var(--los-accent-wash); }
+  .sd-chip-select:focus-within { box-shadow: inset 0 0 0 1px var(--los-accent), 0 0 0 2px var(--los-accent-wash); }
+  .sd-chip-select-glyph { position: absolute; right: 10px; display: inline-flex; color: var(--los-ink-soft); pointer-events: none; }
+  .sd-chip-select-glyph svg { width: 14px; height: 14px; }
+  .sd-mat-flex { flex: 1 1 0; }
+  .sd-mat-count { color: var(--los-ink-faint); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .sd-mat-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 16px 12px 12px;
+    border-radius: 12px;
+    background: var(--los-info-wash);
+    color: var(--los-info);
+    font-size: 13px;
+    line-height: 18px;
+  }
+  .sd-mat-note.is-empty { display: none; }
+  .sd-mat-note-glyph { display: inline-flex; flex: none; padding-top: 1px; }
+  .sd-mat-note-glyph svg { width: 16px; height: 16px; }
+  .los-root .sd-mat-note .sd-link, .los-root .sd-mat-note .sd-link:hover { display: inline; color: var(--los-info); text-decoration: underline; }
+
+  .sd-mat-sheet { gap: 0; padding: 8px 20px 12px; }
+  .sd-purpose + .sd-purpose { border-top: 1px solid var(--los-rule); }
+  .sd-purpose-head {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    padding: 16px 12px 8px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    box-shadow: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    white-space: normal;
+    cursor: pointer;
+  }
+  .sd-purpose-head:hover { background: none; box-shadow: none; }
+  .sd-purpose-head:hover .sd-purpose-title { color: var(--los-accent); }
+  .sd-purpose-tile {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--los-accent-wash);
+    color: var(--los-accent);
+  }
+  .sd-purpose-tile svg { width: 18px; height: 18px; }
+  .sd-purpose-text { display: flex; flex: 1 1 auto; flex-direction: column; min-width: 0; }
+  .sd-purpose-title-line { display: flex; align-items: baseline; gap: 8px; }
+  .sd-purpose-title { color: var(--los-ink); font-family: var(--sd-serif); font-size: 20px; font-weight: 500; line-height: 26px; }
+  .sd-purpose-count { color: var(--los-ink-faint); font-size: 13px; line-height: 18px; font-variant-numeric: tabular-nums; }
+  .sd-purpose-says { color: var(--los-ink-soft); font-size: 13px; line-height: 18px; }
+  .sd-purpose-chevron { display: flex; flex: none; align-items: center; justify-content: center; width: 28px; height: 28px; color: var(--los-ink-soft); }
+  .sd-purpose-chevron svg { width: 16px; height: 16px; }
+  .sd-purpose-body { display: flex; flex-direction: column; padding-bottom: 8px; }
+  .sd-type-head { display: flex; align-items: center; gap: 8px; padding: 12px 12px 4px 60px; }
+  .sd-type-label { color: var(--los-ink-faint); font-size: 11px; font-weight: 600; line-height: 14px; letter-spacing: .6px; text-transform: uppercase; }
+  .sd-type-count { color: var(--los-ink-faint); font-size: 12px; line-height: 16px; }
+  .sd-type-rule { flex: 1 1 auto; height: 1px; background: var(--los-rule); }
+  .sd-purpose-more { padding: 4px 12px 8px 60px; }
+  .sd-mat-flat { display: flex; flex-direction: column; }
+  .sd-mat-extras { margin-top: 8px; }
+
+  /* One Material row (Figma `Data / Material row` 35:613): the row opens, the chevron explains. */
+  .sd-mrow { border-radius: 12px; }
+  .sd-mrow.is-open { background: var(--sd-open); }
+  .sd-mrow-main { display: flex; align-items: flex-start; gap: 12px; padding: 12px 8px 12px 12px; }
+  .sd-mrow-open {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 12px;
+    min-width: 0;
+    height: auto;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: none;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    white-space: normal;
+    cursor: pointer;
+  }
+  .sd-mrow-open:hover { background: none; box-shadow: none; }
+  .sd-mrow-open:hover .sd-mrow-title { color: var(--los-accent); }
+  .sd-mrow-tile {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    background: var(--los-paper);
+    color: var(--los-ink-soft);
+  }
+  .sd-mrow.is-open .sd-mrow-tile { background: var(--los-paper-2); }
+  .sd-mrow-tile svg { width: 18px; height: 18px; }
+  .sd-mrow-body { display: flex; flex: 1 1 auto; flex-direction: column; gap: 2px; min-width: 0; }
+  /* Inline flow, so a tag follows the title's last word rather than taking a line of its own. */
+  .sd-mrow-title-line { display: block; min-width: 0; line-height: 20px; }
+  .sd-mrow-title-line .sd-tag { margin-left: 8px; vertical-align: 1px; }
+  .sd-mrow-title { color: var(--los-ink); font-size: 14px; font-weight: 600; line-height: 20px; overflow-wrap: anywhere; }
+  .sd-mrow-why, .sd-mrow-meta { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sd-mrow-why { color: var(--los-ink-soft); font-size: 13px; line-height: 18px; }
+  .sd-mrow-meta { color: var(--los-ink-faint); font-size: 12px; line-height: 16px; }
+  .sd-mrow-right { display: flex; flex: none; align-items: center; gap: 10px; padding-top: 4px; }
+  .sd-mrow-expand {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    box-shadow: none;
+    color: var(--los-ink-soft);
+    cursor: pointer;
+  }
+  .sd-mrow-expand:hover { background: var(--sd-deep); box-shadow: none; }
+  .sd-mrow-expand svg { width: 16px; height: 16px; }
+  .sd-mrow-stages { color: var(--los-ink-faint); font-size: 12px; white-space: nowrap; }
+  .sd-tag {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 6px;
+    background: var(--sd-deep);
+    color: var(--los-ink-soft);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 14px;
+    white-space: nowrap;
+  }
+  .sd-tag.is-accent { background: var(--los-accent-wash); color: var(--los-accent-strong); }
+  .sd-tag.is-warning { background: var(--los-warning-wash); color: var(--los-warning); }
+
+  /* The stage dots (Figma `Data / Stage dot` 35:372): wine required, grey helps, a ring for reference, a speck for none. */
+  .sd-dots { display: inline-flex; align-items: center; gap: 3px; }
+  .sd-dot { position: relative; flex: none; width: 12px; height: 12px; }
+  .sd-dot::after { content: ""; position: absolute; inset: 2.5px; border-radius: 50%; }
+  .sd-dot.is-required::after { inset: 1.5px; background: var(--los-accent); }
+  .sd-dot.is-helps::after { background: var(--los-ink-faint); }
+  .sd-dot.is-reference::after, .sd-dot.is-deferred::after { box-shadow: inset 0 0 0 1.5px var(--los-ink-faint); }
+  .sd-dot.is-none::after { inset: 4.5px; background: var(--los-rule-strong); opacity: .55; }
+
+  .sd-mrow-details { display: flex; flex-direction: column; gap: 12px; padding: 0 16px 16px 60px; }
+  .sd-mrow-rationale { margin: 0; color: var(--los-ink); font-family: var(--sd-serif); font-size: 14px; line-height: 22px; white-space: pre-line; }
+  .sd-mrow-facts { display: flex; flex-wrap: wrap; gap: 10px 28px; }
+  .sd-mrow-fact { display: flex; flex-direction: column; gap: 2px; min-width: 0; max-width: 100%; }
+  .sd-mrow-fact-label { color: var(--los-ink-faint); font-size: 11px; font-weight: 600; line-height: 14px; letter-spacing: .6px; text-transform: uppercase; }
+  .sd-mrow-fact-value { color: var(--los-ink); font-size: 13px; line-height: 18px; overflow-wrap: anywhere; }
+  .sd-mrow-gap { color: var(--los-ink-soft); font-size: 12px; line-height: 16px; }
+  .sd-mrow-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .sd-mrow-actions-gap { flex: 1 1 auto; }
+
+  /* The side column's index, legend and counts. */
+  .sd-index { display: flex; flex-direction: column; gap: 2px; }
+  .sd-index-item {
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+    width: 100%;
+    height: 32px;
+    min-height: 0;
+    padding: 0 10px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    box-shadow: none;
+    color: var(--los-ink);
+    font: inherit;
+    font-size: 13px;
+    text-align: left;
+    cursor: pointer;
+  }
+  .sd-index-item:hover { background: var(--los-paper-2); box-shadow: 0 1px 2px var(--los-shadow-soft); }
+  .sd-index-glyph { display: inline-flex; color: var(--los-ink-soft); }
+  .sd-index-glyph svg { width: 16px; height: 16px; }
+  .sd-index-label { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sd-index-count { color: var(--los-ink-faint); font-size: 12px; font-variant-numeric: tabular-nums; }
+  .sd-legend { display: flex; flex-direction: column; gap: 8px; }
+  .sd-legend-line { display: flex; align-items: center; gap: 10px; color: var(--los-ink-soft); font-size: 13px; line-height: 18px; }
+
+  /* ── A stage's materials (Figma D1): the session and each stage on the plan ── */
+  .sd-plan-head { align-items: flex-end; }
+  .sd-page-left > .los-filter-tabs { align-self: flex-start; margin-top: -6px; }
+  .sd-stage-rows { display: flex; flex-direction: column; }
+  .sd-stage-part {
+    padding: 10px 12px 2px;
+    color: var(--los-ink-faint);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 14px;
+    letter-spacing: .6px;
+    text-transform: uppercase;
+  }
+  .sd-page-left > .sd-stage-part { padding: 0; }
+  .sd-kept { border-radius: 12px; box-shadow: inset 0 0 0 1px var(--los-rule); }
+  .sd-kept[open] { background: var(--sd-open); }
+  .sd-kept-summary {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px;
+    color: var(--los-ink-soft);
+    font-size: 13px;
+    line-height: 18px;
+    list-style: none;
+    cursor: pointer;
+  }
+  .sd-kept-summary::-webkit-details-marker { display: none; }
+  .sd-kept-summary:hover { color: var(--los-ink); }
+  .sd-kept-glyph, .sd-kept-chevron { display: inline-flex; flex: none; color: var(--los-ink-soft); }
+  .sd-kept-glyph svg, .sd-kept-chevron svg { width: 16px; height: 16px; }
+  .sd-kept-copy { flex: 1 1 auto; min-width: 0; }
+  .sd-kept[open] .sd-kept-chevron { transform: rotate(180deg); }
+  .sd-kept > .sd-stage-rows { padding-bottom: 6px; }
+  .sd-stop-materials > .sd-kept { margin: 8px 0 4px; }
+  .sd-stop-materials > .sd-stage-part:first-of-type { padding-top: 6px; }
+
+  /* ── Atlas · a concept explains its links (F1, D15) ──────────────────── */
+  .sd-need { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+  .sd-need-why { max-width: 220px; color: var(--los-ink-soft); font-size: 12px; line-height: 16px; }
+  .sd-signpost .sd-row-facts { font-size: 12px; }
+
+  /* ── Atlas · a module at a glance (F5, D14) ──────────────────────────── */
+  .sd-mm-sheet { gap: 16px; padding: 24px 20px 20px; }
+  .sd-mm-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
+  .sd-mm-title { margin: 0; color: var(--los-ink); font-family: var(--sd-serif); font-size: 20px; font-weight: 500; line-height: 26px; }
+  .sd-mm-subtitle { color: var(--los-ink-faint); font-size: 13px; line-height: 18px; }
+  .sd-mm-guide { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 32px; }
+  .sd-mm-guide .sd-side-group { gap: 6px; }
+  .sd-mm-guide .sd-eyebrow { color: var(--los-ink-faint); font-weight: 600; letter-spacing: .6px; }
+  .sd-mm-note { margin: 0; color: var(--los-ink-soft); font-family: var(--sd-serif); font-size: 14px; line-height: 22px; }
+  .sd-mm-lectures { display: flex; flex-direction: column; }
+  .sd-mm-lecture { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 14px 0 16px; border-top: 1px solid var(--los-rule); }
+  .sd-mm-lecture.is-here { margin: 0 -12px; padding-right: 12px; padding-left: 12px; border-radius: 10px; background: var(--sd-open); }
+  .sd-mm-lecture-head { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .sd-mm-number { flex: none; color: var(--los-ink-faint); font-size: 11px; font-weight: 600; line-height: 14px; font-variant-numeric: tabular-nums; }
+  .sd-mm-lecture-title { margin: 0; overflow: hidden; color: var(--los-ink); font-family: inherit; font-size: 14px; font-weight: 600; line-height: 20px; text-overflow: ellipsis; white-space: nowrap; }
+  .sd-mm-lecture-head .sd-tag { flex: none; }
+  .sd-tag.is-success { background: var(--los-success-wash); color: var(--los-success); }
+  .los-root .sd-mm-open, .los-root .sd-mm-open:hover { flex: none; font-size: 12px; line-height: 16px; }
+  .sd-mm-summary { overflow: hidden; color: var(--los-ink-soft); font-size: 12px; line-height: 16px; text-overflow: ellipsis; white-space: nowrap; }
+  .sd-mm-ideas { position: relative; display: flex; align-items: flex-start; gap: 22px; padding-bottom: 14px; overflow-x: auto; overflow-y: hidden; }
+  .sd-mm-column { position: relative; z-index: 1; display: flex; flex: none; flex-direction: column; gap: 10px; width: 118px; }
+  .sd-mm-idea {
+    padding: 4px 8px;
+    border: 1px solid var(--los-rule-strong);
+    border-radius: 8px;
+    background: var(--los-paper-2);
+    color: var(--los-ink);
+    font-size: 12px;
+    line-height: 16px;
+    overflow-wrap: anywhere;
+  }
+  .sd-mm-links { position: absolute; top: 0; left: 0; overflow: visible; pointer-events: none; }
+  .sd-mm-link, .sd-mm-arrowhead { fill: none; stroke: var(--los-rule-strong); stroke-width: 1.25px; stroke-linecap: round; stroke-linejoin: round; }
+  .sd-mm-foot { display: flex; flex-direction: column; gap: 4px; padding-top: 12px; border-top: 1px solid var(--los-rule); }
+  .sd-mm-foot-line { color: var(--los-ink-soft); font-size: 12px; line-height: 16px; }
+  .sd-mm-foot-line .sd-link { font-size: 12px; }
+
   /* ── Compact panes: maps turn into lists, nothing shrinks below reading size ─ */
   @container sd-page (max-width: 860px) {
-    .sd-plan-layout, .sd-atlas-layout, .sd-atlas-layout.is-wide { grid-template-columns: minmax(0, 1fr); }
+    .sd-plan-layout, .sd-plan-layout.is-materials, .sd-atlas-layout, .sd-atlas-layout.is-wide { grid-template-columns: minmax(0, 1fr); }
+    .sd-mat-search { flex-basis: 100%; }
+    .sd-mrow-details { padding-left: 12px; }
+    .sd-type-head, .sd-purpose-more { padding-left: 12px; }
     .sd-book-spread { grid-template-columns: minmax(0, 1fr); }
     .sd-page-left { padding: 28px 24px 24px; }
     .sd-page-right { padding: 24px; box-shadow: inset 0 1px 0 var(--los-rule); }
     .sd-spread-foot { padding-left: 24px; }
     .sd-home-columns { grid-template-columns: minmax(0, 1fr); }
     .sd-focus-canvas { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .sd-mm-guide { grid-template-columns: minmax(0, 1fr); }
     .sd-focus-canvas .los-atlas-edge-layer { display: none; }
     .sd-map-canvas { display: flex; flex-direction: column; gap: 8px; min-height: 0; aspect-ratio: auto; }
     .sd-map-lines, .sd-map-badge { display: none; }

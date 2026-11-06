@@ -261,6 +261,45 @@ function renderSpan(parent: HTMLElement, deps: MaterialCardDeps, routeId: string
   }
 }
 
+/*
+ * The same inspection for a design's own row. One cache and one gateway read,
+ * so an excerpt asked for on one surface is the excerpt every surface shows.
+ */
+export type { PlacementSpan };
+
+export function inspectRouteSpan(deps: MaterialCardDeps, routeId: string, placement?: PlacementSpan): void {
+  inspect(deps, routeId, placement);
+}
+
+export function routeSpanStatus(deps: MaterialCardDeps, routeId: string, placement?: PlacementSpan): SpanState['status'] | null {
+  return spans.get(spanKey(deps.plugin.store.snapshotId, deps.unitId, routeId, placement))?.status ?? null;
+}
+
+export function renderRouteSpan(parent: HTMLElement, deps: MaterialCardDeps, routeId: string, placement?: PlacementSpan): void {
+  renderSpan(parent, deps, routeId, placement);
+}
+
+/**
+ * Choose a route for this lecture, or remove the choice: the one guarded
+ * source-selection write every surface uses (`unit.source-selection.set`).
+ */
+export function toggleRouteChoice(
+  plugin: Pick<UnitPlugin, 'gateway' | 'mutate'>,
+  unitId: string,
+  option: MaterialOptionView,
+  expectedRevisions: Readonly<Record<string, number>>,
+): Promise<unknown> {
+  return plugin.mutate(() => plugin.gateway.sourceSelection(
+    unitId,
+    option.routeId,
+    option.sourceId ?? '',
+    option.locator ?? '',
+    asText(option.angle) ?? option.angle,
+    !option.selected,
+    expectedRevisions,
+  ));
+}
+
 const SPAN_AVAILABILITY: Readonly<Record<MaterialSpanV1['availability'], string>> = {
   'local-observed': 'Local file read just now',
   'local-unavailable': 'Local copy missing',
