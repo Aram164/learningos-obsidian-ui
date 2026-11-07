@@ -64,6 +64,9 @@ test('UI CI policy', () => {
     assert.match(yml, /echo "LOS_SCRUT_BIN=\$bin" >> "\$GITHUB_ENV"/);
     assert.match(yml, /LOS_RATCHET_BASE: origin\/main/);
     assert.match(yml, /path: repository\n\s*# Full history[^\n]*\n\s*fetch-depth: 0/);
+    // Core's test_flows_pin resolves the UI commit FLOWS.md pins, which a
+    // depth-1 UI checkout cannot reach: UI main's 2026-11-06 run failed on it.
+    assert.match(yml, /path: obsidian-ui\n\s*# Full history[^\n]*\n\s*fetch-depth: 0/);
 });
 
 // These two calls only format display prose; neither supplies a match/sort key.

@@ -23,6 +23,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           path: obsidian-ui
+          # Full history: Core's test_flows_pin needs the UI commit FLOWS.md pins.
+          fetch-depth: 0
 
       - name: Resolve the matching producer branch
         id: producer-ref
