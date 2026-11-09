@@ -25,7 +25,6 @@ type SearchFilter =
 type SearchStore = Pick<
   ManifestStore,
   | 'modules'
-  | 'projects'
   | 'units'
   | 'sources'
   | 'topicPacks'

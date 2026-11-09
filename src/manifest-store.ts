@@ -5,7 +5,6 @@ import type {
   Manifest,
   ModuleConceptEdge,
   ModuleProgress,
-  ProjectRelationship,
   ProjectionRecord,
   RelationRecord,
   UnitMaterialSynthesisV1,
@@ -257,7 +256,6 @@ export class ManifestStore {
       const indexedGroups = [
         'programs',
         'modules',
-        'projects',
         'units',
         'study_maps',
         'stages',
@@ -356,13 +354,6 @@ export class ManifestStore {
         return true;
       })
       .sort((a, b) => compareStrings(String(a.title || a.id || ''), String(b.title || b.id || '')))
-  }
-  projects() { return this.rows('projects'); }
-  projectRelationships(
-    projectId: string | null = null,
-  ): ProjectRelationship[] {
-    const rows = [...(this.data?.project_relationships || [])];
-    return projectId ? rows.filter((row) => row.from_project_id === projectId) : rows;
   }
   resolveProjectAlias(id: string): string { return this.data?.project_aliases?.[id] || id; }
   projectForUnit(
@@ -602,10 +593,6 @@ export class ManifestStore {
           else if (isRecord(value) && typeof value.from === 'string') ids.add(value.from);
         }
       }
-    }
-    for (const relationship of this.projectRelationships()) {
-      if (relationship.from_project_id === id) ids.add(relationship.to_id);
-      if (relationship.to_id === id) ids.add(relationship.from_project_id);
     }
     return [...ids].map((value) => ({ rec: this.get(value) })).filter((row) => row.rec);
   }

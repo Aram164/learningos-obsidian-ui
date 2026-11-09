@@ -72,39 +72,6 @@ export function elsewhereRows(
       });
     }
 
-    for (
-      const record of
-      view.plugin.store.projects()
-    ) {
-      const recordId =
-        projectedString(record.id);
-
-      if (!recordId) {
-        continue;
-      }
-
-      const status =
-        projectedString(record.status);
-
-      if (
-        status
-        && ['completed', 'archived']
-          .includes(status)
-      ) {
-        continue;
-      }
-
-      rows.push({
-        record,
-        type: 'Project',
-        open:
-          () =>
-            view.plugin.nav.openProject(
-              recordId,
-            ),
-      });
-    }
-
     return rows;
   }
 

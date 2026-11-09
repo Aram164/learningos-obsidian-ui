@@ -42,7 +42,7 @@ module.exports = async function run() {
       plugin.store.ready && plugin.store.contractVersion === CONTRACT, plugin.store.error);
     check('snapshot guard is loaded', plugin.store.snapshotId === FIXTURE_SNAPSHOT);
     check('program/module/unit/map collections load atomically', plugin.store.programs().length === 3
-      && plugin.store.modules().length === 4 && plugin.store.projects().length === 0 && plugin.store.units().length === 7
+      && plugin.store.modules().length === 4 && plugin.store.units().length === 7
       && plugin.store.studyMaps().length === 6);
     check('reverse indexes resolve the active unit map',
       plugin.store.mapForUnit('unit-fixture-sad-l04').id === 'study-map-fixture-sad-l04');

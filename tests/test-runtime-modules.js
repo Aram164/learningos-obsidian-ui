@@ -880,8 +880,6 @@ function routerPlugin(settings = {}) {
     assert.deepEqual(store.studyMaps(), []);
     assert.equal(store.currentSemester(), null);
     assert.deepEqual(store.openAcademicModules(), []);
-    assert.deepEqual(store.projects(), []);
-    assert.deepEqual(store.projectRelationships(), []);
     assert.deepEqual(store.thematicGroups(), []);
     assert.deepEqual(store.sources(), []);
     assert.deepEqual(store.topicPacks(), []);
@@ -1551,7 +1549,6 @@ function routerPlugin(settings = {}) {
   await test('ManifestStore list accessors remain safe before load', async () => {
     const store = new ManifestStore({ vault: { adapter: {} } });
     assert.deepEqual(store.modules(), []);
-    assert.deepEqual(store.projects(), []);
     assert.equal(store.get('missing'), null);
   });
 

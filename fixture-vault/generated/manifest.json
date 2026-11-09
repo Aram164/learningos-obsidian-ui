@@ -1,9 +1,9 @@
 {
   "_generated": {
-    "contract_version": 16,
+    "contract_version": 17,
     "generated_at": "2099-04-01",
     "generator": "synthetic-fixture-v8",
-    "schema_sha256": "sha256:b417ce7295711108d0825901907536f83dd11e8e579e311252647dd3421cadad",
+    "schema_sha256": "sha256:fbb36ea2d86abfeac746af6c2dcc12b5d02d2bbd76659d019bbf73cee8382ff7",
     "snapshot_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "source_dirty": false,
     "source_fingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
@@ -246,14 +246,11 @@
     "concepts": 5,
     "garden_entries": 1,
     "inbox_items": 2,
-    "learning_paths": 6,
-    "learning_paths_active": 6,
     "modules": 4,
     "notes": 6,
     "notes_reviewed": 1,
     "notes_with_evidence": 1,
     "programs": 5,
-    "projects": 0,
     "relations": 5,
     "source_feedback_records": 0,
     "sources": 3,
@@ -351,9 +348,6 @@
       "relationship-fixture-thesis-aml": "workspace-fixture-thesis",
       "relationship-fixture-thesis-pack": "workspace-fixture-thesis"
     },
-    "project_to_relationships": {},
-    "project_to_units": {},
-    "project_to_workspaces": {},
     "source_to_modules": {
       "source-fixture-book": [
         "module-fixture-m2"
@@ -730,8 +724,6 @@
     "relationship-fixture-thesis-aml": "workspace-fixture-thesis",
     "relationship-fixture-thesis-pack": "workspace-fixture-thesis"
   },
-  "project_relationships": [],
-  "projects": [],
   "records": [
     {
       "authors": [
@@ -822,11 +814,11 @@
           "useful_sections": [
             {
               "note": "the whole regression argument",
-              "section": "Chapter 3 §§3.1–3.3"
+              "section": "Chapter 3 \u00a7\u00a73.1\u20133.3"
             },
             {
               "note": "exact selections, nothing around them",
-              "section": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2"
+              "section": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2"
             }
           ],
           "weaknesses": [
@@ -1012,7 +1004,7 @@
         {
           "group": "tier-1-now",
           "source": "source-fixture-book",
-          "why": "The spine — read this before anything else on the shelf."
+          "why": "The spine \u2014 read this before anything else on the shelf."
         },
         {
           "group": "tier-2-optional",
@@ -1519,8 +1511,8 @@
       "resources": [
         {
           "kind": "read",
-          "label": "ISLP Chapter 3 §§3.1–3.3",
-          "locator": "Chapter 3 §§3.1–3.3",
+          "label": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3",
+          "locator": "Chapter 3 \u00a7\u00a73.1\u20133.3",
           "source_id": "source-fixture-islp"
         }
       ],
@@ -1546,7 +1538,7 @@
         {
           "kind": "read",
           "label": "ISLP selected sections",
-          "locator": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2",
+          "locator": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2",
           "source_id": "source-fixture-islp"
         }
       ],
@@ -1786,8 +1778,8 @@
           "resources": [
             {
               "kind": "read",
-              "label": "ISLP Chapter 3 §§3.1–3.3",
-              "locator": "Chapter 3 §§3.1–3.3",
+              "label": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3",
+              "locator": "Chapter 3 \u00a7\u00a73.1\u20133.3",
               "source_id": "source-fixture-islp"
             }
           ],
@@ -1830,7 +1822,7 @@
             {
               "kind": "read",
               "label": "ISLP selected sections",
-              "locator": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2",
+              "locator": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2",
               "source_id": "source-fixture-islp"
             }
           ],
@@ -1966,7 +1958,7 @@
       "title": "Mathematics"
     },
     {
-      "description": "Convex, numerical and combinatorial optimization; statistical learning theory and kernel methods — the bridge between mathematics and learning.",
+      "description": "Convex, numerical and combinatorial optimization; statistical learning theory and kernel methods \u2014 the bridge between mathematics and learning.",
       "id": "thematic-group-optimization",
       "order": 20,
       "title": "Optimization & Learning Theory"
@@ -2002,7 +1994,7 @@
       "title": "Software & Languages"
     },
     {
-      "description": "Research method, degree regulations, and dataset catalogues — small, but everything needs a home or it becomes invisible.",
+      "description": "Research method, degree regulations, and dataset catalogues \u2014 small, but everything needs a home or it becomes invisible.",
       "id": "thematic-group-method-admin",
       "order": 80,
       "title": "Method & Administration"
@@ -2147,13 +2139,12 @@
       "notes_updated": null,
       "order": 2,
       "path": "curriculum/modules/module-fixture-m2/units/unit-fixture-sad-l02.yaml",
-      "project_ids": [],
       "revision": 1,
       "scope": "Synthetic Lecture 02 scope.",
       "scope_sources": [],
       "source_selections": [],
       "status": "ready",
-      "title": "SaD Lecture 02 — Descriptive statistics",
+      "title": "SaD Lecture 02 \u2014 Descriptive statistics",
       "type": "unit",
       "workspace_ids": []
     },
@@ -2183,13 +2174,12 @@
       "notes_updated": "2099-03-01",
       "order": 4,
       "path": "curriculum/modules/module-fixture-m2/units/unit-fixture-sad-l04.yaml",
-      "project_ids": [],
       "revision": 1,
       "scope": "Synthetic Lecture 04 scope.",
       "scope_sources": [],
       "source_selections": [],
       "status": "active",
-      "title": "SaD Lecture 04 — Probability & Bayes",
+      "title": "SaD Lecture 04 \u2014 Probability & Bayes",
       "type": "unit",
       "working_note": "curriculum/modules/module-fixture-m2/units/unit-fixture-sad-l04/notes.md",
       "workspace_ids": [
@@ -2208,7 +2198,6 @@
       "notes_updated": null,
       "order": 20,
       "path": "curriculum/modules/module-fixture-m2/units/unit-fixture-analysis.yaml",
-      "project_ids": [],
       "revision": 0,
       "scope": "Needs a map from confirmed course scope.",
       "scope_sources": [],
@@ -2230,13 +2219,12 @@
       "notes_updated": null,
       "order": 3,
       "path": "curriculum/modules/module-fixture-aml/units/unit-fixture-aml-l03.yaml",
-      "project_ids": [],
       "revision": 1,
-      "scope": "ISLP Chapter 3 §§3.1–3.3.",
+      "scope": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3.",
       "scope_sources": [],
       "source_selections": [],
       "status": "ready",
-      "title": "AML Lecture 03 — Linear regression",
+      "title": "AML Lecture 03 \u2014 Linear regression",
       "type": "unit",
       "workspace_ids": []
     },
@@ -2252,13 +2240,12 @@
       "notes_updated": null,
       "order": 4,
       "path": "curriculum/modules/module-fixture-aml/units/unit-fixture-aml-l04.yaml",
-      "project_ids": [],
       "revision": 1,
-      "scope": "ISLP §3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2.",
+      "scope": "ISLP \u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2.",
       "scope_sources": [],
       "source_selections": [],
       "status": "ready",
-      "title": "AML Lecture 04 — Classification",
+      "title": "AML Lecture 04 \u2014 Classification",
       "type": "unit",
       "workspace_ids": []
     },
@@ -2274,7 +2261,6 @@
       "notes_updated": null,
       "order": 1,
       "path": "curriculum/modules/module-fixture-python/units/unit-fixture-python-oop.yaml",
-      "project_ids": [],
       "revision": 1,
       "scope": "Classes and object collaboration; no completion claim.",
       "scope_sources": [],
@@ -2296,7 +2282,6 @@
       "notes_updated": null,
       "order": 1,
       "path": "curriculum/modules/module-fixture-thesis/units/unit-fixture-thesis-landscape.yaml",
-      "project_ids": [],
       "revision": 1,
       "scope": "Build the verified evidence landscape.",
       "scope_sources": [],
