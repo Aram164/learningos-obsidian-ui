@@ -312,8 +312,8 @@ var require_manifest_validator = __commonJS({
     "use strict";
     module2.exports = validate20;
     module2.exports.default = validate20;
-    var schema31 = { "$defs": { "academicDeadline": { "additionalProperties": false, "properties": { "end_date": { "format": "date", "type": "string" }, "kind": { "minLength": 1, "type": "string" }, "label": { "minLength": 1, "type": "string" }, "module_id": { "type": "string" }, "modules": { "items": { "$ref": "#/$defs/deadlineModule" }, "type": "array" }, "notes": { "type": ["string", "null"] }, "registration_state": { "type": "string" }, "start_date": { "format": "date", "type": "string" }, "termin": { "minimum": 1, "type": "integer" }, "time": { "type": ["string", "null"] }, "title": { "type": "string" } }, "required": ["kind", "label", "start_date", "end_date"], "type": "object" }, "aiAction": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "interaction_mode": { "minLength": 1, "type": "string" }, "status": { "enum": ["planned", "implemented"] }, "supported_providers": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "target_kinds": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "description", "target_kinds", "interaction_mode", "status", "supported_providers"], "type": "object" }, "aiActions": { "additionalProperties": false, "properties": { "available": { "items": { "$ref": "#/$defs/aiAction" }, "type": "array" }, "contract_version": { "const": 1 }, "provider_adapters": { "items": { "$ref": "#/$defs/aiProviderAdapter" }, "type": "array" }, "requests": { "items": { "$ref": "#/$defs/aiRequest" }, "type": "array" } }, "required": ["available", "contract_version", "provider_adapters", "requests"], "type": "object" }, "aiProviderAdapter": { "additionalProperties": false, "properties": { "adapter": { "minLength": 1, "type": "string" }, "available": { "type": "boolean" }, "id": { "minLength": 1, "type": "string" }, "supported_modes": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "supports_direct_delivery": { "type": "boolean" } }, "required": ["id", "adapter", "available", "supported_modes", "supports_direct_delivery"], "type": "object" }, "aiRequest": { "additionalProperties": false, "properties": { "action_id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "bundle_path": { "pattern": "^operations/ai-actions/requests/[^/]+$", "type": "string" }, "created_at": { "format": "date-time", "type": "string" }, "delivery_id": { "type": ["string", "null"] }, "id": { "pattern": "^ai-request-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "provider": { "minLength": 1, "type": "string" }, "receipt_id": { "type": ["string", "null"] }, "status": { "enum": ["prepared", "delivery-ready", "completed"] }, "target": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "kind": { "minLength": 1, "type": "string" } }, "required": ["kind", "id"], "type": "object" } }, "required": ["id", "action_id", "target", "provider", "status", "created_at", "delivery_id", "receipt_id", "bundle_path"], "type": "object" }, "backlinks": { "additionalProperties": false, "properties": { "concept_relations": { "$ref": "#/$defs/jsonObject" }, "concept_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "note_incoming": { "$ref": "#/$defs/stringArrayMap" }, "source_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_notes": { "$ref": "#/$defs/stringArrayMap" } }, "type": "object" }, "collectionRecord": { "additionalProperties": false, "properties": { "collection_kind": { "enum": ["catalogue", "topic-pack"] }, "domain": { "minLength": 1, "type": "string" }, "entries": { "items": { "additionalProperties": false, "properties": { "group": { "type": ["string", "null"] }, "source": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "why": { "type": ["string", "null"] } }, "required": ["source", "group", "why"], "type": "object" }, "type": "array" }, "id": { "minLength": 1, "type": "string" }, "path": { "pattern": "^sources/collections/.+\\.yaml$", "type": "string" }, "purpose": { "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "enum": ["collection", "topic-pack"] } }, "required": ["id", "type", "revision", "collection_kind", "title", "path", "thematic_group_ids", "purpose", "sources", "summary", "domain", "entries"], "type": "object" }, "compatibilityAlias": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "path": { "const": "projects/aliases.yaml" }, "target_id": { "pattern": "^(module|unit|workspace)-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "target_type": { "enum": ["module", "unit", "workspace"] }, "type": { "const": "compatibility-alias" } }, "required": ["id", "type", "target_id", "target_type", "path"], "type": "object" }, "conceptRecord": { "additionalProperties": false, "properties": { "aliases": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "deprecated": { "type": "boolean" }, "id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "concept" } }, "required": ["id", "type", "title", "path", "aliases", "deprecated"], "type": "object" }, "coordinationRecord": { "additionalProperties": false, "properties": { "id": { "const": "coordination" }, "path": { "const": "work/COORDINATION.md" }, "sections": { "additionalProperties": false, "properties": { "Commitments": { "type": "string" }, "Deferrals": { "type": "string" }, "Dependencies": { "type": "string" }, "Priorities": { "type": "string" } }, "required": ["Commitments", "Priorities", "Dependencies", "Deferrals"], "type": "object" }, "type": { "const": "coordination" } }, "required": ["id", "type", "path", "sections"], "type": "object" }, "counts": { "additionalProperties": false, "properties": { "ai_action_requests": { "minimum": 0, "type": "integer" }, "collections": { "minimum": 0, "type": "integer" }, "concepts": { "minimum": 0, "type": "integer" }, "garden_entries": { "minimum": 0, "type": "integer" }, "inbox_items": { "minimum": 0, "type": "integer" }, "modules": { "minimum": 0, "type": "integer" }, "notes": { "minimum": 0, "type": "integer" }, "notes_reviewed": { "minimum": 0, "type": "integer" }, "notes_with_evidence": { "minimum": 0, "type": "integer" }, "programs": { "minimum": 0, "type": "integer" }, "relations": { "minimum": 0, "type": "integer" }, "source_feedback_records": { "minimum": 0, "type": "integer" }, "sources": { "minimum": 0, "type": "integer" }, "sources_with_topics": { "minimum": 0, "type": "integer" }, "stages": { "minimum": 0, "type": "integer" }, "stages_complete": { "minimum": 0, "type": "integer" }, "study_maps": { "minimum": 0, "type": "integer" }, "thematic_groups": { "minimum": 0, "type": "integer" }, "topic_packs": { "minimum": 0, "type": "integer" }, "topics": { "minimum": 0, "type": "integer" }, "units": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "workspaces_active": { "minimum": 0, "type": "integer" }, "workspaces_archived": { "minimum": 0, "type": "integer" } }, "required": ["ai_action_requests", "collections", "concepts", "garden_entries", "inbox_items", "modules", "notes", "notes_reviewed", "notes_with_evidence", "programs", "relations", "source_feedback_records", "sources", "sources_with_topics", "stages", "stages_complete", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "units_needing_map", "workspaces_active", "workspaces_archived"], "type": "object" }, "deadlineModule": { "additionalProperties": false, "properties": { "action": { "type": ["string", "null"] }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "termins": { "items": { "maximum": 3, "minimum": 1, "type": "integer" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["module_id", "title", "action", "termins"], "type": "object" }, "flatStage": { "allOf": [{ "$ref": "#/$defs/projectedStage" }, { "required": ["study_map_id", "unit_id", "module_id"] }] }, "gardenEntry": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "last_ai_request_id": { "type": ["string", "null"] }, "path": { "type": "string" }, "revision": { "type": "string" }, "state": { "type": "string" }, "tags": { "items": { "type": "string" }, "type": "array" }, "title": { "type": "string" }, "transcription_path": { "type": ["string", "null"] }, "type": { "const": "garden-note" } }, "required": ["id", "last_ai_request_id", "path", "revision", "state", "tags", "title", "transcription_path", "type"], "type": "object" }, "generated": { "additionalProperties": false, "properties": { "contract_version": { "const": 18 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" }, "indexes": { "additionalProperties": false, "properties": { "component_to_units": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "source_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_material_synthesis": { "additionalProperties": { "pattern": "^material-synthesis-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "object" }, "unit_to_study_map": { "$ref": "#/$defs/stringMap" }, "workspace_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_units": { "$ref": "#/$defs/stringArrayMap" } }, "required": ["component_to_units", "concept_to_modules", "concept_to_units", "module_to_concepts", "module_to_units", "project_aliases", "source_to_modules", "source_to_units", "unit_to_concepts", "unit_to_material_synthesis", "unit_to_study_map", "workspace_to_modules", "workspace_to_units"], "type": "object" }, "integerMap": { "additionalProperties": { "minimum": 0, "type": "integer" }, "type": "object" }, "jsonObject": { "additionalProperties": { "$ref": "#/$defs/jsonValue" }, "propertyNames": { "type": "string" }, "type": "object" }, "jsonValue": { "oneOf": [{ "type": "null" }, { "type": "boolean" }, { "type": "number" }, { "type": "string" }, { "items": { "$ref": "#/$defs/jsonValue" }, "type": "array" }, { "$ref": "#/$defs/jsonObject" }] }, "knowledgeNode": { "additionalProperties": false, "properties": { "builds_on": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "concept_ids": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "summary": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "summary"], "type": "object" }, "knowledgeNodeEvidence": { "additionalProperties": false, "description": "A knowledge-map node's reviewed `concept_ids`. Retains unit and node identity.", "properties": { "kind": { "const": "knowledge-node" }, "node_id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "node_id"], "type": "object" }, "moduleConceptEdge": { "additionalProperties": false, "properties": { "concept_id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "evidence": { "description": "Why this cell is filled. At least one item: an edge with no evidence is an inferred edge, and this projection does not publish those.", "items": { "oneOf": [{ "$ref": "#/$defs/stageConceptEvidence" }, { "$ref": "#/$defs/knowledgeNodeEvidence" }] }, "minItems": 1, "type": "array" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["module_id", "concept_id", "evidence"], "type": "object" }, "moduleRecord": { "additionalProperties": false, "properties": { "administrative_status": { "enum": ["planned", "enrolled", "awaiting-grade", "completed", "dropped", "archived", null], "type": ["string", "null"] }, "area_id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "attempts": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/attempts" }, "code": { "type": ["string", "null"] }, "components": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/components" }, "credits": { "minimum": 0, "type": ["number", "null"] }, "examination": { "oneOf": [{ "type": "null" }, { "$ref": "https://learningos.local/schema/module.schema.json#/properties/examination" }] }, "grade": { "maximum": 5, "minimum": 1, "type": ["number", "null"] }, "id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "institution": { "type": ["string", "null"] }, "is_actionable": { "type": "boolean" }, "kind": { "enum": ["academic", "skill", "project", "foundation"] }, "operational_state": { "enum": ["none", "complete", "active", "paused"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester": { "pattern": "^(sose|wise)-[0-9]{4}$", "type": ["string", "null"] }, "source_map": { "oneOf": [{ "const": "source-map.yaml" }, { "type": "null" }] }, "status": { "enum": ["planned", "enrolled", "active", "paused", "awaiting-grade", "completed", "dropped", "archived"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "module" }, "unit_order": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/unit_order" } }, "required": ["id", "type", "title", "revision", "path", "kind", "area_id", "thematic_group_ids", "status", "administrative_status", "operational_state", "is_actionable", "institution", "code", "credits", "semester", "components", "examination", "attempts", "grade", "unit_order", "source_map"], "type": "object" }, "moduleSourceMap": { "additionalProperties": false, "properties": { "id": { "pattern": "^source-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "additionalProperties": false, "properties": { "priority": { "minimum": 0, "type": "integer" }, "role": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_routes": { "items": { "oneOf": [{ "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, { "$ref": "#/$defs/projectedRoute" }] }, "type": "array" }, "when": { "type": "string" }, "why": { "minLength": 1, "type": "string" } }, "required": ["source_id", "role", "why", "priority", "unit_routes"], "type": "object" }, "type": "array" }, "type": { "const": "module-source-map" } }, "required": ["id", "type", "module_id", "sources", "revision", "path"], "type": "object" }, "noteRecord": { "additionalProperties": false, "properties": { "atlas_question": { "additionalProperties": false, "properties": { "answer_notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["open", "resolved"] }, "target": { "oneOf": [{ "additionalProperties": false, "properties": { "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "maxItems": 2, "minItems": 1, "type": "array", "uniqueItems": true } }, "required": ["concepts"], "type": "object" }, { "additionalProperties": false, "properties": { "from": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "to": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": { "enum": ["requires", "builds-on", "derives", "generalizes", "contrasts-with", "equivalent-to", "applies-in", "motivates"] } }, "required": ["from", "type", "to"], "type": "object" }] } }, "required": ["state", "target"], "type": ["object", "null"] }, "attachments": { "items": { "type": "string" }, "type": "array" }, "authorship": { "enum": ["user", "mixed", "external", "operator-drafted", null], "type": ["string", "null"] }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "contexts": { "items": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "domain": { "type": "string" }, "evidence": { "$ref": "https://learningos.local/schema/note.schema.json#/properties/evidence" }, "id": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "material_analysis": { "additionalProperties": false, "allOf": [{ "else": { "not": { "required": ["source_id"] } }, "if": { "properties": { "resolution": { "const": "resolved" } } }, "then": { "required": ["source_id"] } }], "properties": { "anchors": { "items": { "additionalProperties": false, "properties": { "locator": { "minLength": 1, "type": "string" }, "note": { "type": "string" }, "purpose": { "minLength": 1, "type": "string" }, "topic": { "minLength": 1, "type": "string" } }, "required": ["topic", "purpose", "locator"], "type": "object" }, "type": "array" }, "built": { "format": "date", "type": "string" }, "frozen_input_bytes": { "minimum": 1, "type": "integer" }, "frozen_input_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "inspected_range": { "additionalProperties": false, "properties": { "end": { "minimum": 1, "type": "integer" }, "start": { "minimum": 1, "type": "integer" } }, "required": ["start", "end"], "type": "object" }, "live_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "material": { "minLength": 1, "type": "string" }, "model": { "type": "string" }, "recorded_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "resolution": { "enum": ["resolved", "unresolved", "unavailable", "stale"] }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["resolution", "material", "recorded_source_digest", "inspected_range", "frozen_input_sha256", "frozen_input_bytes"], "type": ["object", "null"] }, "path": { "minLength": 1, "type": "string" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "role": { "enum": ["synthesis", "reference", "derivation", "exercise-bank", "mock-exam", "implementation", "question", "crosswalk"] }, "semantic_review": { "enum": ["unreviewed", "user-reviewed", null], "type": ["string", "null"] }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["rough", "evolving", "mature", "deprecated", null], "type": ["string", "null"] }, "summary": { "type": "string" }, "supersedes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "transcription": { "enum": ["none", "manual", "ai-assisted", null], "type": ["string", "null"] }, "type": { "const": "note" } }, "required": ["id", "type", "title", "path", "domain", "summary", "role", "state", "authorship", "concepts", "sources", "contexts", "attachments", "evidence", "supersedes", "reviewed", "transcription", "semantic_review", "atlas_question", "material_analysis"], "type": "object" }, "programRecord": { "additionalProperties": false, "properties": { "boundary_action": { "type": "string" }, "default": { "type": "boolean" }, "description": { "type": "string" }, "id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "enum": ["academic", "skills", "projects"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester_bound": { "type": "boolean" }, "semesters": { "items": { "$ref": "#/$defs/programSemester" }, "type": "array" }, "status": { "enum": ["active", "metadata-only", "archived"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "program" } }, "required": ["id", "type", "title", "kind", "status", "default", "semester_bound", "revision", "path"], "type": "object" }, "programSemester": { "additionalProperties": false, "properties": { "id": { "pattern": "^semester-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "order": { "minimum": 0, "type": "integer" }, "status": { "enum": ["current", "previous", "future", "archived"] }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "status", "order"], "type": "object" }, "progress": { "additionalProperties": { "additionalProperties": false, "properties": { "stages_complete": { "minimum": 0, "type": "integer" }, "stages_total": { "minimum": 0, "type": "integer" }, "units_complete": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "units_total": { "minimum": 0, "type": "integer" } }, "required": ["stages_complete", "stages_total", "units_complete", "units_needing_map", "units_total"], "type": "object" }, "type": "object" }, "projectedRecord": { "oneOf": [{ "$ref": "#/$defs/noteRecord" }, { "$ref": "#/$defs/conceptRecord" }, { "$ref": "#/$defs/sourceRecord" }, { "$ref": "#/$defs/compatibilityAlias" }, { "$ref": "#/$defs/moduleRecord" }, { "$ref": "#/$defs/collectionRecord" }, { "$ref": "#/$defs/workspaceRecord" }, { "$ref": "#/$defs/programRecord" }, { "$ref": "#/$defs/projectedUnit" }, { "$ref": "#/$defs/studyMap" }, { "$ref": "#/$defs/moduleSourceMap" }, { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, { "$ref": "#/$defs/coordinationRecord" }] }, "projectedRoute": { "additionalProperties": false, "properties": { "angle": { "minLength": 1, "type": "string" }, "angle_detail": { "minLength": 1, "type": "string" }, "covers": { "items": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "minItems": 1, "type": "array", "uniqueItems": true }, "depth": { "minLength": 1, "type": "string" }, "exposes_solutions_for": { "description": "Route ids whose activities this material answers \u2014 a verifiable claim about content, that opening this hands over the worked solutions to those tasks, never a judgment of quality. The session compiler refuses to put such a route in the same proposal as an evidence step it answers: explaining with the answer key and then asking for unaided transfer on that same task measures nothing (audit workbench/audits/synthetic-learner-2026-09-12, F03).", "items": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "format": { "minLength": 1, "type": "string" }, "id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "requires_assets": { "description": "Files the activity itself needs before it can be done \u2014 a dataset it analyses, a code template it fills in. Distinct from the material being reachable: `_resource_available` answers 'can he open the worksheet', and this answers 'can he do what the worksheet asks'. Blatt 4 Aufgabe 3(b) needs International_Education_Costs.csv and aufgabe3.py from Moodle, neither registered here, and the session still reported the route ready (audit workbench/audits/synthetic-learner-2026-09-12, F06). An entry with no `material_uri` is by definition unregistered; the session keeps the route and names the parts that cannot be attempted, rather than dropping the runnable work or inventing a substitute dataset.", "items": { "additionalProperties": false, "properties": { "material_uri": { "pattern": "^material://", "type": "string" }, "name": { "minLength": 1, "type": "string" }, "needed_for": { "description": "Which part of the activity, in the sheet's own numbering.", "minLength": 1, "type": "string" }, "obtain_from": { "description": "Where the exact file comes from. Never a substitute.", "minLength": 1, "type": "string" } }, "required": ["name"], "type": "object" }, "minItems": 1, "type": "array" }, "scope": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "title": { "minLength": 1, "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["id", "unit_id", "source_id", "title", "format", "angle", "covers", "depth", "scope"], "type": "object" }, "projectedStage": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "completed": { "type": "string" }, "concepts": { "items": { "type": "string" }, "type": "array" }, "detour_id": { "type": "string" }, "done_when": { "items": { "type": "string" }, "type": "array" }, "estimate_minutes": { "minimum": 1, "type": "integer" }, "exam_critical": { "type": "boolean" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "number": { "minimum": 1, "type": "integer" }, "objective": { "type": "string" }, "resources": { "items": { "$ref": "#/$defs/resource" }, "type": "array" }, "scope_triage": { "type": "string" }, "source_feedback": { "items": { "$ref": "#/$defs/sourceFeedback" }, "type": "array" }, "status": { "type": "string" }, "study_map_id": { "type": "string" }, "title": { "type": "string" }, "unit_id": { "type": "string" }, "working_note": { "type": "string" } }, "required": ["id", "title", "status", "objective", "done_when", "resources", "working_note", "attachments", "source_feedback", "scope_triage", "notes_text", "notes_updated"], "type": "object" }, "projectedUnit": { "additionalProperties": false, "properties": { "artifacts": { "$ref": "https://learningos.local/schema/unit.schema.json#/properties/artifacts" }, "child_unit_ids": { "items": { "type": "string" }, "type": "array" }, "component_id": { "type": "string" }, "current_study_map": { "type": "string" }, "id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "type": "string" }, "knowledge_map": { "additionalProperties": false, "properties": { "nodes": { "items": { "$ref": "#/$defs/knowledgeNode" }, "type": "array" }, "summary": { "type": "string" } }, "required": ["summary", "nodes"], "type": "object" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "needs_study_map": { "type": "boolean" }, "note_sections": { "items": { "$ref": "#/$defs/unitNoteSection" }, "type": "array" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "order": { "minimum": 0, "type": "integer" }, "parent_unit_id": { "type": "string" }, "path": { "type": "string" }, "related_module_ids": { "items": { "type": "string" }, "type": "array" }, "revision": { "minimum": 0, "type": "integer" }, "scope": { "type": "string" }, "scope_sources": { "items": { "additionalProperties": false, "properties": { "authority": { "type": "string" }, "locator": { "type": "string" }, "source_id": { "type": "string" } }, "required": ["source_id", "authority"], "type": "object" }, "type": "array" }, "source_selections": { "items": { "additionalProperties": false, "properties": { "locator": { "type": "string" }, "purpose": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "type": "string" }, "stage_ids": { "items": { "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["source_id", "locator", "purpose"], "type": "object" }, "type": "array" }, "status": { "type": "string" }, "title": { "type": "string" }, "type": { "const": "unit" }, "working_note": { "type": "string" }, "workspace_ids": { "items": { "type": "string" }, "type": "array" } }, "required": ["id", "type", "module_id", "kind", "title", "order", "scope", "status", "artifacts", "workspace_ids", "source_selections", "scope_sources", "revision", "path", "needs_study_map", "notes_text", "note_sections", "notes_updated"], "type": "object" }, "relation": { "additionalProperties": false, "properties": { "context": { "type": ["string", "null"] }, "from": { "type": ["string", "null"] }, "source": { "type": ["string", "null"] }, "to": { "type": ["string", "null"] }, "type": { "type": ["string", "null"] } }, "required": ["from", "type", "to", "context", "source"], "type": "object" }, "resource": { "additionalProperties": false, "properties": { "angle": { "type": "string" }, "angle_detail": { "type": "string" }, "id": { "type": "string" }, "kind": { "type": "string" }, "label": { "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "scope_triage": { "type": "string" }, "source_id": { "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["kind", "label"], "type": "object" }, "resumePointer": { "oneOf": [{ "maxProperties": 0, "type": "object" }, { "additionalProperties": false, "properties": { "module_id": { "type": "string" }, "stage_id": { "type": "string" }, "study_map_id": { "type": "string" }, "type": { "const": "resume-pointer" }, "unit_id": { "type": "string" }, "updated": { "type": "string" } }, "required": ["type", "module_id", "unit_id", "study_map_id", "stage_id", "updated"], "type": "object" }] }, "reviewItem": { "additionalProperties": false, "properties": { "category": { "type": "string" }, "context": { "type": "string" }, "id": { "type": "string" }, "reason": { "type": "string" }, "target": { "$ref": "#/$defs/jsonObject" }, "title": { "type": "string" } }, "required": ["category", "context", "id", "reason", "target", "title"], "type": "object" }, "routeId": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "semester": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "order": { "type": "integer" }, "program_id": { "type": "string" }, "status": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "order", "program_id", "status", "title"], "type": "object" }, "sourceEvaluation": { "additionalProperties": false, "properties": { "audience": { "items": { "type": "string" }, "type": "array" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "level": { "enum": ["introductory", "intermediate", "advanced", "reference", null], "type": ["string", "null"] }, "prerequisites": { "items": { "type": "string" }, "type": "array" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "roles": { "items": { "type": "string" }, "type": "array" }, "strengths": { "items": { "type": "string" }, "type": "array" }, "useful_sections": { "items": { "additionalProperties": false, "properties": { "note": { "type": "string" }, "section": { "type": "string" } }, "required": ["section", "note"], "type": "object" }, "type": "array" }, "weaknesses": { "items": { "type": "string" }, "type": "array" } }, "required": ["roles", "level", "audience", "prerequisites", "strengths", "weaknesses", "reviewed", "concepts", "useful_sections"], "type": "object" }, "sourceExamination": { "additionalProperties": false, "properties": { "approved_analysis_count": { "minimum": 0, "type": "integer" }, "evaluated": { "type": "boolean" }, "metadata_placed": { "type": "boolean" } }, "required": ["evaluated", "approved_analysis_count", "metadata_placed"], "type": "object" }, "sourceFeedback": { "additionalProperties": false, "properties": { "feedback": { "enum": ["helpful", "too-advanced", "wrong-perspective", "useful-for-derivation", "useful-for-review", "skipped"] }, "note": { "type": "string" }, "recorded": { "format": "date", "type": "string" }, "resource_id": { "pattern": "^resource-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["source_id", "feedback", "recorded"], "type": "object" }, "sourceRecord": { "additionalProperties": false, "properties": { "authors": { "items": { "type": "string" }, "type": "array" }, "discovery": { "anyOf": [{ "$ref": "https://learningos.local/schema/sources.schema.json#/properties/sources/items/properties/discovery" }, { "type": "null" }] }, "evaluations": { "items": { "$ref": "#/$defs/sourceEvaluation" }, "type": "array" }, "examination": { "$ref": "#/$defs/sourceExamination" }, "id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "identifiers": { "additionalProperties": { "type": "string" }, "type": "object" }, "material": { "pattern": "^material://.+", "type": ["string", "null"] }, "material_exists": { "type": "boolean" }, "material_path": { "type": ["string", "null"] }, "organization": { "type": ["string", "null"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "roles": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "source_type": { "enum": ["book", "paper", "lecture", "course", "video", "website", "documentation", "software", "conversation", "other"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "topics": { "items": { "pattern": "^topic-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "type": { "const": "source" }, "url": { "format": "uri", "type": ["string", "null"] }, "year": { "maximum": 2100, "minimum": 1800, "type": ["integer", "null"] } }, "required": ["id", "type", "title", "revision", "path", "source_type", "thematic_group_ids", "topics", "url", "material", "material_path", "material_exists", "authors", "organization", "year", "identifiers", "roles", "evaluations", "discovery", "examination"], "type": "object" }, "stageAttachment": { "additionalProperties": false, "properties": { "label": { "minLength": 1, "type": "string" }, "path": { "minLength": 1, "type": "string" } }, "required": ["path", "label"], "type": "object" }, "stageConceptEvidence": { "additionalProperties": false, "description": "A stage's explicit `concepts` tag. Retains unit, study-map and stage identity, so a filled cell drills into the exact stage.", "properties": { "kind": { "const": "stage-concept" }, "stage_id": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "study_map_id": { "pattern": "^study-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "study_map_id", "stage_id"], "type": "object" }, "stringArrayMap": { "additionalProperties": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "type": "object" }, "stringMap": { "additionalProperties": { "type": "string" }, "type": "object" }, "studyMap": { "additionalProperties": false, "properties": { "current_stage": { "type": "string" }, "detours": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/detours" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "path": { "type": "string" }, "plan_template_version": { "minimum": 1, "type": "integer" }, "revision": { "minimum": 0, "type": "integer" }, "shelving": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/shelving" }, "source_plan": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/source_plan" }, "stages": { "items": { "$ref": "#/$defs/projectedStage" }, "type": "array" }, "status": { "type": "string" }, "type": { "const": "study-map" }, "unit_id": { "type": "string" } }, "required": ["id", "type", "unit_id", "module_id", "status", "current_stage", "source_plan", "stages", "shelving", "revision", "path"], "type": "object" }, "thematicGroup": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "type": "string" }, "order": { "type": "integer" }, "title": { "type": "string" } }, "required": ["id", "title", "description", "order"], "type": "object" }, "topic": { "additionalProperties": false, "properties": { "domain": { "type": "string" }, "id": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "title", "domain"], "type": "object" }, "unitMaterialSynthesisProjection": { "allOf": [{ "$ref": "https://learningos.local/schema/unit-material-synthesis.schema.json#/$defs/canonicalRecord" }, { "properties": { "completeness": { "additionalProperties": false, "properties": { "assessed_route_count": { "minimum": 0, "type": "integer" }, "complete": { "type": "boolean" }, "current_route_count": { "minimum": 0, "type": "integer" }, "deep_reviewed_count": { "minimum": 0, "type": "integer" }, "duplicate_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "missing_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "orphaned_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "screened_count": { "minimum": 0, "type": "integer" }, "unavailable_count": { "minimum": 0, "type": "integer" }, "unevaluated_count": { "minimum": 0, "type": "integer" } }, "required": ["complete", "current_route_count", "assessed_route_count", "deep_reviewed_count", "screened_count", "unevaluated_count", "unavailable_count", "missing_route_ids", "orphaned_route_ids", "duplicate_route_ids"], "type": "object" }, "freshness": { "additionalProperties": false, "properties": { "reasons": { "items": { "enum": ["source_map_revision", "source_map_checksum", "route_set_checksum", "material_checksums", "policy", "current-basis-unavailable", "analysis-refs-stale"] }, "type": "array", "uniqueItems": true }, "status": { "enum": ["current", "stale"] } }, "required": ["status", "reasons"], "type": "object" } }, "required": ["freshness", "completeness"], "type": "object" }], "unevaluatedProperties": false }, "unitNoteSection": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "recorded_at": { "type": ["string", "null"] }, "stage_ids": { "items": { "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "text": { "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["recorded_at", "title", "stage_ids", "attachments", "text", "summary"], "type": "object" }, "workspaceRecord": { "additionalProperties": false, "properties": { "archived": { "type": "boolean" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "deadline": { "format": "date", "type": ["string", "null"] }, "id": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_ids": { "items": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "next_action": { "type": "string" }, "notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "objective": { "type": "string" }, "path": { "minLength": 1, "type": "string" }, "program_ids": { "items": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "project_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "standing": { "type": "boolean" }, "status": { "enum": ["active", "blocked", "complete"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "workspace" }, "unit_ids": { "items": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["id", "type", "title", "revision", "path", "status", "standing", "archived", "deadline", "objective", "next_action", "concepts", "notes", "sources", "program_ids", "module_ids", "unit_ids", "project_id"], "type": "object" } }, "$id": "https://learningos.local/contracts/manifest-v18.schema.json", "$schema": "https://json-schema.org/draft/2020-12/schema", "additionalProperties": false, "properties": { "_generated": { "$ref": "#/$defs/generated" }, "academic_deadlines": { "items": { "$ref": "#/$defs/academicDeadline" }, "type": "array" }, "ai_actions": { "$ref": "#/$defs/aiActions" }, "artifact_revisions": { "$ref": "#/$defs/integerMap" }, "backlinks": { "$ref": "#/$defs/backlinks" }, "counts": { "$ref": "#/$defs/counts" }, "garden_entries": { "items": { "$ref": "#/$defs/gardenEntry" }, "type": "array" }, "indexes": { "$ref": "#/$defs/indexes" }, "module_concept_edges": { "description": "The Module x Concept crossing. One row per (module, concept) pair for which at least one EXPLICIT authored tag exists - a stage's `concepts` tag or a knowledge-map node's reviewed `concept_ids`. Never inferred from titles, prose, notes, sources, or similarity; absence means not mapped, never that no relationship exists. Ordered by (module_id, concept_id).", "items": { "$ref": "#/$defs/moduleConceptEdge" }, "type": "array" }, "module_source_maps": { "items": { "$ref": "#/$defs/moduleSourceMap" }, "type": "array" }, "modules": { "items": { "$ref": "#/$defs/moduleRecord" }, "type": "array" }, "programs": { "items": { "$ref": "#/$defs/programRecord" }, "type": "array" }, "progress": { "$ref": "#/$defs/progress" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "records": { "items": { "$ref": "#/$defs/projectedRecord" }, "type": "array" }, "relations": { "items": { "$ref": "#/$defs/relation" }, "type": "array" }, "resume_pointer": { "$ref": "#/$defs/resumePointer" }, "review_items": { "items": { "$ref": "#/$defs/reviewItem" }, "type": "array" }, "semesters": { "items": { "$ref": "#/$defs/semester" }, "type": "array" }, "stages": { "items": { "$ref": "#/$defs/flatStage" }, "type": "array" }, "study_maps": { "items": { "$ref": "#/$defs/studyMap" }, "type": "array" }, "thematic_groups": { "items": { "$ref": "#/$defs/thematicGroup" }, "type": "array" }, "topic_packs": { "items": { "$ref": "#/$defs/collectionRecord" }, "type": "array" }, "topics": { "items": { "$ref": "#/$defs/topic" }, "type": "array" }, "unit_material_syntheses": { "items": { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, "type": "array" }, "units": { "items": { "$ref": "#/$defs/projectedUnit" }, "type": "array" } }, "required": ["_generated", "academic_deadlines", "ai_actions", "artifact_revisions", "backlinks", "counts", "garden_entries", "indexes", "module_concept_edges", "module_source_maps", "modules", "programs", "progress", "project_aliases", "records", "relations", "resume_pointer", "review_items", "semesters", "stages", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "unit_material_syntheses"], "title": "LearningOS atomic manifest v18", "type": "object" };
-    var schema32 = { "additionalProperties": false, "properties": { "contract_version": { "const": 18 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" };
+    var schema31 = { "$defs": { "academicDeadline": { "additionalProperties": false, "properties": { "end_date": { "format": "date", "type": "string" }, "kind": { "minLength": 1, "type": "string" }, "label": { "minLength": 1, "type": "string" }, "module_id": { "type": "string" }, "modules": { "items": { "$ref": "#/$defs/deadlineModule" }, "type": "array" }, "notes": { "type": ["string", "null"] }, "registration_state": { "type": "string" }, "start_date": { "format": "date", "type": "string" }, "termin": { "minimum": 1, "type": "integer" }, "time": { "type": ["string", "null"] }, "title": { "type": "string" } }, "required": ["kind", "label", "start_date", "end_date"], "type": "object" }, "aiAction": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "interaction_mode": { "minLength": 1, "type": "string" }, "status": { "enum": ["planned", "implemented"] }, "supported_providers": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "target_kinds": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "description", "target_kinds", "interaction_mode", "status", "supported_providers"], "type": "object" }, "aiActions": { "additionalProperties": false, "properties": { "available": { "items": { "$ref": "#/$defs/aiAction" }, "type": "array" }, "contract_version": { "const": 1 }, "provider_adapters": { "items": { "$ref": "#/$defs/aiProviderAdapter" }, "type": "array" }, "requests": { "items": { "$ref": "#/$defs/aiRequest" }, "type": "array" } }, "required": ["available", "contract_version", "provider_adapters", "requests"], "type": "object" }, "aiProviderAdapter": { "additionalProperties": false, "properties": { "adapter": { "minLength": 1, "type": "string" }, "available": { "type": "boolean" }, "id": { "minLength": 1, "type": "string" }, "supported_modes": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "supports_direct_delivery": { "type": "boolean" } }, "required": ["id", "adapter", "available", "supported_modes", "supports_direct_delivery"], "type": "object" }, "aiRequest": { "additionalProperties": false, "properties": { "action_id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "bundle_path": { "pattern": "^operations/ai-actions/requests/[^/]+$", "type": "string" }, "created_at": { "format": "date-time", "type": "string" }, "delivery_id": { "type": ["string", "null"] }, "id": { "pattern": "^ai-request-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "provider": { "minLength": 1, "type": "string" }, "receipt_id": { "type": ["string", "null"] }, "status": { "enum": ["prepared", "delivery-ready", "completed"] }, "target": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "kind": { "minLength": 1, "type": "string" } }, "required": ["kind", "id"], "type": "object" } }, "required": ["id", "action_id", "target", "provider", "status", "created_at", "delivery_id", "receipt_id", "bundle_path"], "type": "object" }, "backlinks": { "additionalProperties": false, "properties": { "concept_relations": { "$ref": "#/$defs/jsonObject" }, "concept_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "note_incoming": { "$ref": "#/$defs/stringArrayMap" }, "source_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_notes": { "$ref": "#/$defs/stringArrayMap" } }, "type": "object" }, "collectionRecord": { "additionalProperties": false, "properties": { "collection_kind": { "enum": ["catalogue", "topic-pack"] }, "domain": { "minLength": 1, "type": "string" }, "entries": { "items": { "additionalProperties": false, "properties": { "group": { "type": ["string", "null"] }, "source": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "why": { "type": ["string", "null"] } }, "required": ["source", "group", "why"], "type": "object" }, "type": "array" }, "id": { "minLength": 1, "type": "string" }, "path": { "pattern": "^sources/collections/.+\\.yaml$", "type": "string" }, "purpose": { "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "enum": ["collection", "topic-pack"] } }, "required": ["id", "type", "revision", "collection_kind", "title", "path", "thematic_group_ids", "purpose", "sources", "summary", "domain", "entries"], "type": "object" }, "compatibilityAlias": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "path": { "const": "projects/aliases.yaml" }, "target_id": { "pattern": "^(module|unit|workspace)-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "target_type": { "enum": ["module", "unit", "workspace"] }, "type": { "const": "compatibility-alias" } }, "required": ["id", "type", "target_id", "target_type", "path"], "type": "object" }, "conceptRecord": { "additionalProperties": false, "properties": { "aliases": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "deprecated": { "type": "boolean" }, "id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "concept" } }, "required": ["id", "type", "title", "path", "aliases", "deprecated"], "type": "object" }, "coordinationRecord": { "additionalProperties": false, "properties": { "id": { "const": "coordination" }, "path": { "const": "work/COORDINATION.md" }, "sections": { "additionalProperties": false, "properties": { "Commitments": { "type": "string" }, "Deferrals": { "type": "string" }, "Dependencies": { "type": "string" }, "Priorities": { "type": "string" } }, "required": ["Commitments", "Priorities", "Dependencies", "Deferrals"], "type": "object" }, "type": { "const": "coordination" } }, "required": ["id", "type", "path", "sections"], "type": "object" }, "counts": { "additionalProperties": false, "properties": { "ai_action_requests": { "minimum": 0, "type": "integer" }, "collections": { "minimum": 0, "type": "integer" }, "concepts": { "minimum": 0, "type": "integer" }, "garden_entries": { "minimum": 0, "type": "integer" }, "inbox_items": { "minimum": 0, "type": "integer" }, "modules": { "minimum": 0, "type": "integer" }, "notes": { "minimum": 0, "type": "integer" }, "notes_reviewed": { "minimum": 0, "type": "integer" }, "notes_with_evidence": { "minimum": 0, "type": "integer" }, "programs": { "minimum": 0, "type": "integer" }, "relations": { "minimum": 0, "type": "integer" }, "source_feedback_records": { "minimum": 0, "type": "integer" }, "sources": { "minimum": 0, "type": "integer" }, "sources_with_topics": { "minimum": 0, "type": "integer" }, "stages": { "minimum": 0, "type": "integer" }, "stages_complete": { "minimum": 0, "type": "integer" }, "study_maps": { "minimum": 0, "type": "integer" }, "thematic_groups": { "minimum": 0, "type": "integer" }, "topic_packs": { "minimum": 0, "type": "integer" }, "topics": { "minimum": 0, "type": "integer" }, "units": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "workspaces_active": { "minimum": 0, "type": "integer" }, "workspaces_archived": { "minimum": 0, "type": "integer" } }, "required": ["ai_action_requests", "collections", "concepts", "garden_entries", "inbox_items", "modules", "notes", "notes_reviewed", "notes_with_evidence", "programs", "relations", "source_feedback_records", "sources", "sources_with_topics", "stages", "stages_complete", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "units_needing_map", "workspaces_active", "workspaces_archived"], "type": "object" }, "deadlineModule": { "additionalProperties": false, "properties": { "action": { "type": ["string", "null"] }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "termins": { "items": { "maximum": 3, "minimum": 1, "type": "integer" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["module_id", "title", "action", "termins"], "type": "object" }, "flatStage": { "allOf": [{ "$ref": "#/$defs/projectedStage" }, { "required": ["study_map_id", "unit_id", "module_id"] }] }, "gardenEntry": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "last_ai_request_id": { "type": ["string", "null"] }, "path": { "type": "string" }, "revision": { "type": "string" }, "state": { "type": "string" }, "tags": { "items": { "type": "string" }, "type": "array" }, "title": { "type": "string" }, "transcription_path": { "type": ["string", "null"] }, "type": { "const": "garden-note" } }, "required": ["id", "last_ai_request_id", "path", "revision", "state", "tags", "title", "transcription_path", "type"], "type": "object" }, "generated": { "additionalProperties": false, "properties": { "contract_version": { "const": 17 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" }, "indexes": { "additionalProperties": false, "properties": { "component_to_units": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "source_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_material_synthesis": { "additionalProperties": { "pattern": "^material-synthesis-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "object" }, "unit_to_study_map": { "$ref": "#/$defs/stringMap" }, "workspace_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_units": { "$ref": "#/$defs/stringArrayMap" } }, "required": ["component_to_units", "concept_to_modules", "concept_to_units", "module_to_concepts", "module_to_units", "project_aliases", "source_to_modules", "source_to_units", "unit_to_concepts", "unit_to_material_synthesis", "unit_to_study_map", "workspace_to_modules", "workspace_to_units"], "type": "object" }, "integerMap": { "additionalProperties": { "minimum": 0, "type": "integer" }, "type": "object" }, "jsonObject": { "additionalProperties": { "$ref": "#/$defs/jsonValue" }, "propertyNames": { "type": "string" }, "type": "object" }, "jsonValue": { "oneOf": [{ "type": "null" }, { "type": "boolean" }, { "type": "number" }, { "type": "string" }, { "items": { "$ref": "#/$defs/jsonValue" }, "type": "array" }, { "$ref": "#/$defs/jsonObject" }] }, "knowledgeNode": { "additionalProperties": false, "properties": { "builds_on": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "concept_ids": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "summary": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "summary"], "type": "object" }, "knowledgeNodeEvidence": { "additionalProperties": false, "description": "A knowledge-map node's reviewed `concept_ids`. Retains unit and node identity.", "properties": { "kind": { "const": "knowledge-node" }, "node_id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "node_id"], "type": "object" }, "moduleConceptEdge": { "additionalProperties": false, "properties": { "concept_id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "evidence": { "description": "Why this cell is filled. At least one item: an edge with no evidence is an inferred edge, and this projection does not publish those.", "items": { "oneOf": [{ "$ref": "#/$defs/stageConceptEvidence" }, { "$ref": "#/$defs/knowledgeNodeEvidence" }] }, "minItems": 1, "type": "array" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["module_id", "concept_id", "evidence"], "type": "object" }, "moduleRecord": { "additionalProperties": false, "properties": { "administrative_status": { "enum": ["planned", "enrolled", "awaiting-grade", "completed", "dropped", "archived", null], "type": ["string", "null"] }, "area_id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "attempts": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/attempts" }, "code": { "type": ["string", "null"] }, "components": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/components" }, "credits": { "minimum": 0, "type": ["number", "null"] }, "examination": { "oneOf": [{ "type": "null" }, { "$ref": "https://learningos.local/schema/module.schema.json#/properties/examination" }] }, "grade": { "maximum": 5, "minimum": 1, "type": ["number", "null"] }, "id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "institution": { "type": ["string", "null"] }, "is_actionable": { "type": "boolean" }, "kind": { "enum": ["academic", "skill", "project", "foundation"] }, "operational_state": { "enum": ["none", "complete", "active", "paused"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester": { "pattern": "^(sose|wise)-[0-9]{4}$", "type": ["string", "null"] }, "source_map": { "oneOf": [{ "const": "source-map.yaml" }, { "type": "null" }] }, "status": { "enum": ["planned", "enrolled", "active", "paused", "awaiting-grade", "completed", "dropped", "archived"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "module" }, "unit_order": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/unit_order" } }, "required": ["id", "type", "title", "revision", "path", "kind", "area_id", "thematic_group_ids", "status", "administrative_status", "operational_state", "is_actionable", "institution", "code", "credits", "semester", "components", "examination", "attempts", "grade", "unit_order", "source_map"], "type": "object" }, "moduleSourceMap": { "additionalProperties": false, "properties": { "id": { "pattern": "^source-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "additionalProperties": false, "properties": { "priority": { "minimum": 0, "type": "integer" }, "role": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_routes": { "items": { "oneOf": [{ "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, { "$ref": "#/$defs/projectedRoute" }] }, "type": "array" }, "when": { "type": "string" }, "why": { "minLength": 1, "type": "string" } }, "required": ["source_id", "role", "why", "priority", "unit_routes"], "type": "object" }, "type": "array" }, "type": { "const": "module-source-map" } }, "required": ["id", "type", "module_id", "sources", "revision", "path"], "type": "object" }, "noteRecord": { "additionalProperties": false, "properties": { "atlas_question": { "additionalProperties": false, "properties": { "answer_notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["open", "resolved"] }, "target": { "oneOf": [{ "additionalProperties": false, "properties": { "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "maxItems": 2, "minItems": 1, "type": "array", "uniqueItems": true } }, "required": ["concepts"], "type": "object" }, { "additionalProperties": false, "properties": { "from": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "to": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": { "enum": ["requires", "builds-on", "derives", "generalizes", "contrasts-with", "equivalent-to", "applies-in", "motivates"] } }, "required": ["from", "type", "to"], "type": "object" }] } }, "required": ["state", "target"], "type": ["object", "null"] }, "attachments": { "items": { "type": "string" }, "type": "array" }, "authorship": { "enum": ["user", "mixed", "external", "operator-drafted", null], "type": ["string", "null"] }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "contexts": { "items": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "domain": { "type": "string" }, "evidence": { "$ref": "https://learningos.local/schema/note.schema.json#/properties/evidence" }, "id": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "material_analysis": { "additionalProperties": false, "allOf": [{ "else": { "not": { "required": ["source_id"] } }, "if": { "properties": { "resolution": { "const": "resolved" } } }, "then": { "required": ["source_id"] } }], "properties": { "anchors": { "items": { "additionalProperties": false, "properties": { "locator": { "minLength": 1, "type": "string" }, "note": { "type": "string" }, "purpose": { "minLength": 1, "type": "string" }, "topic": { "minLength": 1, "type": "string" } }, "required": ["topic", "purpose", "locator"], "type": "object" }, "type": "array" }, "built": { "format": "date", "type": "string" }, "frozen_input_bytes": { "minimum": 1, "type": "integer" }, "frozen_input_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "inspected_range": { "additionalProperties": false, "properties": { "end": { "minimum": 1, "type": "integer" }, "start": { "minimum": 1, "type": "integer" } }, "required": ["start", "end"], "type": "object" }, "live_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "material": { "minLength": 1, "type": "string" }, "model": { "type": "string" }, "recorded_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "resolution": { "enum": ["resolved", "unresolved", "unavailable", "stale"] }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["resolution", "material", "recorded_source_digest", "inspected_range", "frozen_input_sha256", "frozen_input_bytes"], "type": ["object", "null"] }, "path": { "minLength": 1, "type": "string" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "role": { "enum": ["synthesis", "reference", "derivation", "exercise-bank", "mock-exam", "implementation", "question", "crosswalk"] }, "semantic_review": { "enum": ["unreviewed", "user-reviewed", null], "type": ["string", "null"] }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["rough", "evolving", "mature", "deprecated", null], "type": ["string", "null"] }, "summary": { "type": "string" }, "supersedes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "transcription": { "enum": ["none", "manual", "ai-assisted", null], "type": ["string", "null"] }, "type": { "const": "note" } }, "required": ["id", "type", "title", "path", "domain", "summary", "role", "state", "authorship", "concepts", "sources", "contexts", "attachments", "evidence", "supersedes", "reviewed", "transcription", "semantic_review", "atlas_question", "material_analysis"], "type": "object" }, "programRecord": { "additionalProperties": false, "properties": { "boundary_action": { "type": "string" }, "default": { "type": "boolean" }, "description": { "type": "string" }, "id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "enum": ["academic", "skills", "projects"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester_bound": { "type": "boolean" }, "semesters": { "items": { "$ref": "#/$defs/programSemester" }, "type": "array" }, "status": { "enum": ["active", "metadata-only", "archived"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "program" } }, "required": ["id", "type", "title", "kind", "status", "default", "semester_bound", "revision", "path"], "type": "object" }, "programSemester": { "additionalProperties": false, "properties": { "id": { "pattern": "^semester-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "order": { "minimum": 0, "type": "integer" }, "status": { "enum": ["current", "previous", "future", "archived"] }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "status", "order"], "type": "object" }, "progress": { "additionalProperties": { "additionalProperties": false, "properties": { "stages_complete": { "minimum": 0, "type": "integer" }, "stages_total": { "minimum": 0, "type": "integer" }, "units_complete": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "units_total": { "minimum": 0, "type": "integer" } }, "required": ["stages_complete", "stages_total", "units_complete", "units_needing_map", "units_total"], "type": "object" }, "type": "object" }, "projectedRecord": { "oneOf": [{ "$ref": "#/$defs/noteRecord" }, { "$ref": "#/$defs/conceptRecord" }, { "$ref": "#/$defs/sourceRecord" }, { "$ref": "#/$defs/compatibilityAlias" }, { "$ref": "#/$defs/moduleRecord" }, { "$ref": "#/$defs/collectionRecord" }, { "$ref": "#/$defs/workspaceRecord" }, { "$ref": "#/$defs/programRecord" }, { "$ref": "#/$defs/projectedUnit" }, { "$ref": "#/$defs/studyMap" }, { "$ref": "#/$defs/moduleSourceMap" }, { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, { "$ref": "#/$defs/coordinationRecord" }] }, "projectedRoute": { "additionalProperties": false, "properties": { "angle": { "minLength": 1, "type": "string" }, "angle_detail": { "minLength": 1, "type": "string" }, "covers": { "items": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "minItems": 1, "type": "array", "uniqueItems": true }, "depth": { "minLength": 1, "type": "string" }, "exposes_solutions_for": { "description": "Route ids whose activities this material answers \u2014 a verifiable claim about content, that opening this hands over the worked solutions to those tasks, never a judgment of quality. The session compiler refuses to put such a route in the same proposal as an evidence step it answers: explaining with the answer key and then asking for unaided transfer on that same task measures nothing (audit workbench/audits/synthetic-learner-2026-09-12, F03).", "items": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "format": { "minLength": 1, "type": "string" }, "id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "requires_assets": { "description": "Files the activity itself needs before it can be done \u2014 a dataset it analyses, a code template it fills in. Distinct from the material being reachable: `_resource_available` answers 'can he open the worksheet', and this answers 'can he do what the worksheet asks'. Blatt 4 Aufgabe 3(b) needs International_Education_Costs.csv and aufgabe3.py from Moodle, neither registered here, and the session still reported the route ready (audit workbench/audits/synthetic-learner-2026-09-12, F06). An entry with no `material_uri` is by definition unregistered; the session keeps the route and names the parts that cannot be attempted, rather than dropping the runnable work or inventing a substitute dataset.", "items": { "additionalProperties": false, "properties": { "material_uri": { "pattern": "^material://", "type": "string" }, "name": { "minLength": 1, "type": "string" }, "needed_for": { "description": "Which part of the activity, in the sheet's own numbering.", "minLength": 1, "type": "string" }, "obtain_from": { "description": "Where the exact file comes from. Never a substitute.", "minLength": 1, "type": "string" } }, "required": ["name"], "type": "object" }, "minItems": 1, "type": "array" }, "scope": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "title": { "minLength": 1, "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["id", "unit_id", "source_id", "title", "format", "angle", "covers", "depth", "scope"], "type": "object" }, "projectedStage": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "completed": { "type": "string" }, "concepts": { "items": { "type": "string" }, "type": "array" }, "detour_id": { "type": "string" }, "done_when": { "items": { "type": "string" }, "type": "array" }, "estimate_minutes": { "minimum": 1, "type": "integer" }, "exam_critical": { "type": "boolean" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "number": { "minimum": 1, "type": "integer" }, "objective": { "type": "string" }, "resources": { "items": { "$ref": "#/$defs/resource" }, "type": "array" }, "scope_triage": { "type": "string" }, "source_feedback": { "items": { "$ref": "#/$defs/sourceFeedback" }, "type": "array" }, "status": { "type": "string" }, "study_map_id": { "type": "string" }, "title": { "type": "string" }, "unit_id": { "type": "string" }, "working_note": { "type": "string" } }, "required": ["id", "title", "status", "objective", "done_when", "resources", "working_note", "attachments", "source_feedback", "scope_triage", "notes_text", "notes_updated"], "type": "object" }, "projectedUnit": { "additionalProperties": false, "properties": { "artifacts": { "$ref": "https://learningos.local/schema/unit.schema.json#/properties/artifacts" }, "child_unit_ids": { "items": { "type": "string" }, "type": "array" }, "component_id": { "type": "string" }, "current_study_map": { "type": "string" }, "id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "type": "string" }, "knowledge_map": { "additionalProperties": false, "properties": { "nodes": { "items": { "$ref": "#/$defs/knowledgeNode" }, "type": "array" }, "summary": { "type": "string" } }, "required": ["summary", "nodes"], "type": "object" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "needs_study_map": { "type": "boolean" }, "note_sections": { "items": { "$ref": "#/$defs/unitNoteSection" }, "type": "array" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "order": { "minimum": 0, "type": "integer" }, "parent_unit_id": { "type": "string" }, "path": { "type": "string" }, "related_module_ids": { "items": { "type": "string" }, "type": "array" }, "revision": { "minimum": 0, "type": "integer" }, "scope": { "type": "string" }, "scope_sources": { "items": { "additionalProperties": false, "properties": { "authority": { "type": "string" }, "locator": { "type": "string" }, "source_id": { "type": "string" } }, "required": ["source_id", "authority"], "type": "object" }, "type": "array" }, "source_selections": { "items": { "additionalProperties": false, "properties": { "locator": { "type": "string" }, "purpose": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "type": "string" }, "stage_ids": { "items": { "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["source_id", "locator", "purpose"], "type": "object" }, "type": "array" }, "status": { "type": "string" }, "title": { "type": "string" }, "type": { "const": "unit" }, "working_note": { "type": "string" }, "workspace_ids": { "items": { "type": "string" }, "type": "array" } }, "required": ["id", "type", "module_id", "kind", "title", "order", "scope", "status", "artifacts", "workspace_ids", "source_selections", "scope_sources", "revision", "path", "needs_study_map", "notes_text", "note_sections", "notes_updated"], "type": "object" }, "relation": { "additionalProperties": false, "properties": { "context": { "type": ["string", "null"] }, "from": { "type": ["string", "null"] }, "source": { "type": ["string", "null"] }, "to": { "type": ["string", "null"] }, "type": { "type": ["string", "null"] } }, "required": ["from", "type", "to", "context", "source"], "type": "object" }, "resource": { "additionalProperties": false, "properties": { "angle": { "type": "string" }, "angle_detail": { "type": "string" }, "id": { "type": "string" }, "kind": { "type": "string" }, "label": { "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "scope_triage": { "type": "string" }, "source_id": { "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["kind", "label"], "type": "object" }, "resumePointer": { "oneOf": [{ "maxProperties": 0, "type": "object" }, { "additionalProperties": false, "properties": { "module_id": { "type": "string" }, "stage_id": { "type": "string" }, "study_map_id": { "type": "string" }, "type": { "const": "resume-pointer" }, "unit_id": { "type": "string" }, "updated": { "type": "string" } }, "required": ["type", "module_id", "unit_id", "study_map_id", "stage_id", "updated"], "type": "object" }] }, "reviewItem": { "additionalProperties": false, "properties": { "category": { "type": "string" }, "context": { "type": "string" }, "id": { "type": "string" }, "reason": { "type": "string" }, "target": { "$ref": "#/$defs/jsonObject" }, "title": { "type": "string" } }, "required": ["category", "context", "id", "reason", "target", "title"], "type": "object" }, "routeId": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "semester": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "order": { "type": "integer" }, "program_id": { "type": "string" }, "status": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "order", "program_id", "status", "title"], "type": "object" }, "sourceEvaluation": { "additionalProperties": false, "properties": { "audience": { "items": { "type": "string" }, "type": "array" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "level": { "enum": ["introductory", "intermediate", "advanced", "reference", null], "type": ["string", "null"] }, "prerequisites": { "items": { "type": "string" }, "type": "array" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "roles": { "items": { "type": "string" }, "type": "array" }, "strengths": { "items": { "type": "string" }, "type": "array" }, "useful_sections": { "items": { "additionalProperties": false, "properties": { "note": { "type": "string" }, "section": { "type": "string" } }, "required": ["section", "note"], "type": "object" }, "type": "array" }, "weaknesses": { "items": { "type": "string" }, "type": "array" } }, "required": ["roles", "level", "audience", "prerequisites", "strengths", "weaknesses", "reviewed", "concepts", "useful_sections"], "type": "object" }, "sourceExamination": { "additionalProperties": false, "properties": { "approved_analysis_count": { "minimum": 0, "type": "integer" }, "evaluated": { "type": "boolean" }, "metadata_placed": { "type": "boolean" } }, "required": ["evaluated", "approved_analysis_count", "metadata_placed"], "type": "object" }, "sourceFeedback": { "additionalProperties": false, "properties": { "feedback": { "enum": ["helpful", "too-advanced", "wrong-perspective", "useful-for-derivation", "useful-for-review", "skipped"] }, "note": { "type": "string" }, "recorded": { "format": "date", "type": "string" }, "resource_id": { "pattern": "^resource-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["source_id", "feedback", "recorded"], "type": "object" }, "sourceRecord": { "additionalProperties": false, "properties": { "authors": { "items": { "type": "string" }, "type": "array" }, "discovery": { "anyOf": [{ "$ref": "https://learningos.local/schema/sources.schema.json#/properties/sources/items/properties/discovery" }, { "type": "null" }] }, "evaluations": { "items": { "$ref": "#/$defs/sourceEvaluation" }, "type": "array" }, "examination": { "$ref": "#/$defs/sourceExamination" }, "id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "identifiers": { "additionalProperties": { "type": "string" }, "type": "object" }, "material": { "pattern": "^material://.+", "type": ["string", "null"] }, "material_exists": { "type": "boolean" }, "material_path": { "type": ["string", "null"] }, "organization": { "type": ["string", "null"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "roles": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "source_type": { "enum": ["book", "paper", "lecture", "course", "video", "website", "documentation", "software", "conversation", "other"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "topics": { "items": { "pattern": "^topic-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "type": { "const": "source" }, "url": { "format": "uri", "type": ["string", "null"] }, "year": { "maximum": 2100, "minimum": 1800, "type": ["integer", "null"] } }, "required": ["id", "type", "title", "revision", "path", "source_type", "thematic_group_ids", "topics", "url", "material", "material_path", "material_exists", "authors", "organization", "year", "identifiers", "roles", "evaluations", "discovery", "examination"], "type": "object" }, "stageAttachment": { "additionalProperties": false, "properties": { "label": { "minLength": 1, "type": "string" }, "path": { "minLength": 1, "type": "string" } }, "required": ["path", "label"], "type": "object" }, "stageConceptEvidence": { "additionalProperties": false, "description": "A stage's explicit `concepts` tag. Retains unit, study-map and stage identity, so a filled cell drills into the exact stage.", "properties": { "kind": { "const": "stage-concept" }, "stage_id": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "study_map_id": { "pattern": "^study-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "study_map_id", "stage_id"], "type": "object" }, "stringArrayMap": { "additionalProperties": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "type": "object" }, "stringMap": { "additionalProperties": { "type": "string" }, "type": "object" }, "studyMap": { "additionalProperties": false, "properties": { "current_stage": { "type": "string" }, "detours": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/detours" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "path": { "type": "string" }, "plan_template_version": { "minimum": 1, "type": "integer" }, "revision": { "minimum": 0, "type": "integer" }, "shelving": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/shelving" }, "source_plan": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/source_plan" }, "stages": { "items": { "$ref": "#/$defs/projectedStage" }, "type": "array" }, "status": { "type": "string" }, "type": { "const": "study-map" }, "unit_id": { "type": "string" } }, "required": ["id", "type", "unit_id", "module_id", "status", "current_stage", "source_plan", "stages", "shelving", "revision", "path"], "type": "object" }, "thematicGroup": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "type": "string" }, "order": { "type": "integer" }, "title": { "type": "string" } }, "required": ["id", "title", "description", "order"], "type": "object" }, "topic": { "additionalProperties": false, "properties": { "domain": { "type": "string" }, "id": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "title", "domain"], "type": "object" }, "unitMaterialSynthesisProjection": { "allOf": [{ "$ref": "https://learningos.local/schema/unit-material-synthesis.schema.json#/$defs/canonicalRecord" }, { "properties": { "completeness": { "additionalProperties": false, "properties": { "assessed_route_count": { "minimum": 0, "type": "integer" }, "complete": { "type": "boolean" }, "current_route_count": { "minimum": 0, "type": "integer" }, "deep_reviewed_count": { "minimum": 0, "type": "integer" }, "duplicate_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "missing_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "orphaned_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "screened_count": { "minimum": 0, "type": "integer" }, "unavailable_count": { "minimum": 0, "type": "integer" }, "unevaluated_count": { "minimum": 0, "type": "integer" } }, "required": ["complete", "current_route_count", "assessed_route_count", "deep_reviewed_count", "screened_count", "unevaluated_count", "unavailable_count", "missing_route_ids", "orphaned_route_ids", "duplicate_route_ids"], "type": "object" }, "freshness": { "additionalProperties": false, "properties": { "reasons": { "items": { "enum": ["source_map_revision", "source_map_checksum", "route_set_checksum", "material_checksums", "policy", "current-basis-unavailable", "analysis-refs-stale"] }, "type": "array", "uniqueItems": true }, "status": { "enum": ["current", "stale"] } }, "required": ["status", "reasons"], "type": "object" } }, "required": ["freshness", "completeness"], "type": "object" }], "unevaluatedProperties": false }, "unitNoteSection": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "recorded_at": { "type": ["string", "null"] }, "stage_ids": { "items": { "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "text": { "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["recorded_at", "title", "stage_ids", "attachments", "text", "summary"], "type": "object" }, "workspaceRecord": { "additionalProperties": false, "properties": { "archived": { "type": "boolean" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "deadline": { "format": "date", "type": ["string", "null"] }, "id": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_ids": { "items": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "next_action": { "type": "string" }, "notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "objective": { "type": "string" }, "path": { "minLength": 1, "type": "string" }, "program_ids": { "items": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "project_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "standing": { "type": "boolean" }, "status": { "enum": ["active", "blocked", "complete"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "workspace" }, "unit_ids": { "items": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["id", "type", "title", "revision", "path", "status", "standing", "archived", "deadline", "objective", "next_action", "concepts", "notes", "sources", "program_ids", "module_ids", "unit_ids", "project_id"], "type": "object" } }, "$id": "https://learningos.local/contracts/manifest-v17.schema.json", "$schema": "https://json-schema.org/draft/2020-12/schema", "additionalProperties": false, "properties": { "_generated": { "$ref": "#/$defs/generated" }, "academic_deadlines": { "items": { "$ref": "#/$defs/academicDeadline" }, "type": "array" }, "ai_actions": { "$ref": "#/$defs/aiActions" }, "artifact_revisions": { "$ref": "#/$defs/integerMap" }, "backlinks": { "$ref": "#/$defs/backlinks" }, "counts": { "$ref": "#/$defs/counts" }, "garden_entries": { "items": { "$ref": "#/$defs/gardenEntry" }, "type": "array" }, "indexes": { "$ref": "#/$defs/indexes" }, "module_concept_edges": { "description": "The Module x Concept crossing. One row per (module, concept) pair for which at least one EXPLICIT authored tag exists - a stage's `concepts` tag or a knowledge-map node's reviewed `concept_ids`. Never inferred from titles, prose, notes, sources, or similarity; absence means not mapped, never that no relationship exists. Ordered by (module_id, concept_id).", "items": { "$ref": "#/$defs/moduleConceptEdge" }, "type": "array" }, "module_source_maps": { "items": { "$ref": "#/$defs/moduleSourceMap" }, "type": "array" }, "modules": { "items": { "$ref": "#/$defs/moduleRecord" }, "type": "array" }, "programs": { "items": { "$ref": "#/$defs/programRecord" }, "type": "array" }, "progress": { "$ref": "#/$defs/progress" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "records": { "items": { "$ref": "#/$defs/projectedRecord" }, "type": "array" }, "relations": { "items": { "$ref": "#/$defs/relation" }, "type": "array" }, "resume_pointer": { "$ref": "#/$defs/resumePointer" }, "review_items": { "items": { "$ref": "#/$defs/reviewItem" }, "type": "array" }, "semesters": { "items": { "$ref": "#/$defs/semester" }, "type": "array" }, "stages": { "items": { "$ref": "#/$defs/flatStage" }, "type": "array" }, "study_maps": { "items": { "$ref": "#/$defs/studyMap" }, "type": "array" }, "thematic_groups": { "items": { "$ref": "#/$defs/thematicGroup" }, "type": "array" }, "topic_packs": { "items": { "$ref": "#/$defs/collectionRecord" }, "type": "array" }, "topics": { "items": { "$ref": "#/$defs/topic" }, "type": "array" }, "unit_material_syntheses": { "items": { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, "type": "array" }, "units": { "items": { "$ref": "#/$defs/projectedUnit" }, "type": "array" } }, "required": ["_generated", "academic_deadlines", "ai_actions", "artifact_revisions", "backlinks", "counts", "garden_entries", "indexes", "module_concept_edges", "module_source_maps", "modules", "programs", "progress", "project_aliases", "records", "relations", "resume_pointer", "review_items", "semesters", "stages", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "unit_material_syntheses"], "title": "LearningOS atomic manifest v17", "type": "object" };
+    var schema32 = { "additionalProperties": false, "properties": { "contract_version": { "const": 17 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" };
     var schema51 = { "additionalProperties": false, "properties": { "ai_action_requests": { "minimum": 0, "type": "integer" }, "collections": { "minimum": 0, "type": "integer" }, "concepts": { "minimum": 0, "type": "integer" }, "garden_entries": { "minimum": 0, "type": "integer" }, "inbox_items": { "minimum": 0, "type": "integer" }, "modules": { "minimum": 0, "type": "integer" }, "notes": { "minimum": 0, "type": "integer" }, "notes_reviewed": { "minimum": 0, "type": "integer" }, "notes_with_evidence": { "minimum": 0, "type": "integer" }, "programs": { "minimum": 0, "type": "integer" }, "relations": { "minimum": 0, "type": "integer" }, "source_feedback_records": { "minimum": 0, "type": "integer" }, "sources": { "minimum": 0, "type": "integer" }, "sources_with_topics": { "minimum": 0, "type": "integer" }, "stages": { "minimum": 0, "type": "integer" }, "stages_complete": { "minimum": 0, "type": "integer" }, "study_maps": { "minimum": 0, "type": "integer" }, "thematic_groups": { "minimum": 0, "type": "integer" }, "topic_packs": { "minimum": 0, "type": "integer" }, "topics": { "minimum": 0, "type": "integer" }, "units": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "workspaces_active": { "minimum": 0, "type": "integer" }, "workspaces_archived": { "minimum": 0, "type": "integer" } }, "required": ["ai_action_requests", "collections", "concepts", "garden_entries", "inbox_items", "modules", "notes", "notes_reviewed", "notes_with_evidence", "programs", "relations", "source_feedback_records", "sources", "sources_with_topics", "stages", "stages_complete", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "units_needing_map", "workspaces_active", "workspaces_archived"], "type": "object" };
     var schema52 = { "additionalProperties": false, "properties": { "id": { "type": "string" }, "last_ai_request_id": { "type": ["string", "null"] }, "path": { "type": "string" }, "revision": { "type": "string" }, "state": { "type": "string" }, "tags": { "items": { "type": "string" }, "type": "array" }, "title": { "type": "string" }, "transcription_path": { "type": ["string", "null"] }, "type": { "const": "garden-note" } }, "required": ["id", "last_ai_request_id", "path", "revision", "state", "tags", "title", "transcription_path", "type"], "type": "object" };
     var schema153 = { "additionalProperties": false, "properties": { "context": { "type": ["string", "null"] }, "from": { "type": ["string", "null"] }, "source": { "type": ["string", "null"] }, "to": { "type": ["string", "null"] }, "type": { "type": ["string", "null"] } }, "required": ["from", "type", "to", "context", "source"], "type": "object" };
@@ -16467,8 +16467,8 @@ var require_manifest_validator = __commonJS({
                       if (_errs5 === errors) {
                         if (data0.contract_version !== void 0) {
                           const _errs6 = errors;
-                          if (18 !== data0.contract_version) {
-                            validate20.errors = [{ instancePath: instancePath + "/_generated/contract_version", schemaPath: "#/$defs/generated/properties/contract_version/const", keyword: "const", params: { allowedValue: 18 }, message: "must be equal to constant" }];
+                          if (17 !== data0.contract_version) {
+                            validate20.errors = [{ instancePath: instancePath + "/_generated/contract_version", schemaPath: "#/$defs/generated/properties/contract_version/const", keyword: "const", params: { allowedValue: 17 }, message: "must be equal to constant" }];
                             return false;
                           }
                           var valid2 = _errs6 === errors;
@@ -29994,8 +29994,8 @@ var nodePath5 = __toESM(require("node:path"));
 
 // src/contracts/manifest.ts
 var import_manifest_validator = __toESM(require_manifest_validator());
-var MANIFEST_CONTRACT_VERSION = 18;
-var MANIFEST_SCHEMA_SHA256 = "sha256:5d442f3670da4e66266e1eb03ad920ba6b64f2e9d487621303b76736accc8c8f";
+var MANIFEST_CONTRACT_VERSION = 17;
+var MANIFEST_SCHEMA_SHA256 = "sha256:fbb36ea2d86abfeac746af6c2dcc12b5d02d2bbd76659d019bbf73cee8382ff7";
 function formatAjvErrors(errors) {
   if (!Array.isArray(errors) || errors.length === 0) {
     return "unknown validation error";
@@ -30386,10 +30386,10 @@ function filterTabs(parent, ariaLabel, tabs, active, choose, countOf = null) {
   row3.setAttrs({ role: "group", "aria-label": ariaLabel });
   enableButtonGroupKeyboardNavigation(row3);
   for (const [value, label2] of tabs) {
-    const count4 = countOf ? countOf(value) : 0;
+    const count5 = countOf ? countOf(value) : 0;
     const control = button(
       row3,
-      count4 ? `${label2} ${count4}` : label2,
+      count5 ? `${label2} ${count5}` : label2,
       () => choose(value),
       "quiet"
     );
@@ -31613,10 +31613,10 @@ function annotationLabel(annotation) {
   if (annotation === "either") return "either route";
   return "";
 }
-function columnLabel(index, count4) {
-  if (count4 <= 1) return "Abilities";
+function columnLabel(index, count5) {
+  if (count5 <= 1) return "Abilities";
   if (index === 0) return "Foundations";
-  if (index === count4 - 1) return "Extension";
+  if (index === count5 - 1) return "Extension";
   return `Step ${index + 1}`;
 }
 function nodeMeta(role, modules) {
@@ -33273,8 +33273,8 @@ function renderPlane(root, host, plane, brief, selected) {
     }
     const hidden2 = visibility.hiddenIncident.get(node.id) ?? 0;
     if (hidden2) {
-      const count4 = nodes.createDiv({ cls: "los-ability-fold-count", text: `${hidden2} folded`, attr: { "aria-label": `${hidden2} incident preparation connections are folded` } });
-      count4.setAttr("style", `left:${node.x}px;top:${node.y + PLANE.nodeHeight + 4}px`);
+      const count5 = nodes.createDiv({ cls: "los-ability-fold-count", text: `${hidden2} folded`, attr: { "aria-label": `${hidden2} incident preparation connections are folded` } });
+      count5.setAttr("style", `left:${node.x}px;top:${node.y + PLANE.nodeHeight + 4}px`);
     }
   }
   if (host.attention.bridgesVisible) renderBridgeBands(canvas, host, plane, overview, visibility.nodes, () => camera.suppressClick());
@@ -34306,8 +34306,8 @@ function summarize(graph) {
 }
 
 // src/features/atlas/narrative.ts
-function plural(count4, singular, many = `${singular}s`) {
-  return `${count4} ${count4 === 1 ? singular : many}`;
+function plural(count5, singular, many = `${singular}s`) {
+  return `${count5} ${count5 === 1 ? singular : many}`;
 }
 function subgraphSummary(graph, view) {
   const prerequisites = graph.prerequisiteEdges.get(view.focus.id)?.length ?? 0;
@@ -34491,11 +34491,11 @@ function conceptPlaneSlice(view, perLane = 4) {
   for (const node of outward) {
     if (node.direction === "focus") continue;
     const key = `${node.direction}:${node.column}`;
-    const count4 = counts.get(key) ?? 0;
+    const count5 = counts.get(key) ?? 0;
     const connected = node.direction === "related" ? view.semanticEdges.some((edge) => edge.from === node.concept.id && ids.has(edge.to) || edge.to === node.concept.id && ids.has(edge.from)) : view.strictEdges.some((edge) => node.direction === "prerequisite" ? edge.to === node.concept.id && ids.has(edge.from) : edge.from === node.concept.id && ids.has(edge.to));
-    if (count4 >= limit || !connected) continue;
+    if (count5 >= limit || !connected) continue;
     ids.add(node.concept.id);
-    counts.set(key, count4 + 1);
+    counts.set(key, count5 + 1);
   }
   const shown = view.nodes.filter((node) => ids.has(node.concept.id));
   const omitted = view.nodes.filter((node) => !ids.has(node.concept.id));
@@ -37658,10 +37658,10 @@ function pageHead(parent, title3, facts) {
   if (facts) copy.createDiv({ cls: "sd-facts", text: facts });
   return head.createDiv({ cls: "sd-title-tools" });
 }
-function concretePlace(id, count4) {
+function concretePlace(id, count5) {
   const place = REGION_PLACES[id];
   if (!place) return null;
-  const scale = Math.min(1.12, Math.max(0.82, Math.sqrt(Math.max(count4, 1) / place.designed)));
+  const scale = Math.min(1.12, Math.max(0.82, Math.sqrt(Math.max(count5, 1) / place.designed)));
   const w = place.w * scale, h = place.h * scale;
   return { x: place.x + (place.w - w) / 2, y: place.y + (place.h - h) / 2, w, h };
 }
@@ -38581,7 +38581,7 @@ function todayItems(view) {
       );
     }
     const details = [...categories.entries()].map(
-      ([category, count4]) => `${count4} ${category.replaceAll("-", " ")}`
+      ([category, count5]) => `${count5} ${category.replaceAll("-", " ")}`
     );
     items.push({
       title: `${reviewCount} decision${reviewCount === 1 ? "" : "s"} waiting`,
@@ -38626,12 +38626,12 @@ var TRIAGE_HEADING = {
   "reference-only": "Reference \u2014 preserved, not reading for this stage"
 };
 function triageSummary(resources) {
-  const count4 = (rank) => resources.filter(
+  const count5 = (rank) => resources.filter(
     (resource) => resource.scopeTriage === rank
   ).length;
-  const required2 = count4("required-now") + resources.filter((resource) => !resource.scopeTriage).length;
-  const stuck = count4("helpful-now");
-  const preserved = count4("deferred") + count4("reference-only");
+  const required2 = count5("required-now") + resources.filter((resource) => !resource.scopeTriage).length;
+  const stuck = count5("helpful-now");
+  const preserved = count5("deferred") + count5("reference-only");
   const parts = [];
   if (required2) parts.push(`${required2} required now`);
   if (stuck) parts.push(`${stuck} if stuck`);
@@ -38835,13 +38835,13 @@ function renderAreas(parent, view) {
   const open = store.modules().filter((module2) => module2.is_actionable === true);
   const isThesis = (id) => Boolean(id?.startsWith("module-project-"));
   for (const [areaId, title3] of LEARN_AREAS) {
-    const count4 = open.filter((module2) => asString(module2.area_id) === areaId && !isThesis(asString(module2.id))).length;
+    const count5 = open.filter((module2) => asString(module2.area_id) === areaId && !isThesis(asString(module2.id))).length;
     const card2 = grid.createEl("button", {
       cls: `sd-area-card is-clickable${view.programId === areaId ? " is-active" : ""}`,
       attr: { type: "button", "aria-pressed": String(view.programId === areaId) }
     });
     card2.createEl("strong", { cls: "sd-area-title", text: title3 });
-    card2.createDiv({ cls: "sd-row-facts", text: `${count4} ${areaId === "program-bachelors" ? "open " : ""}module${count4 === 1 ? "" : "s"}` });
+    card2.createDiv({ cls: "sd-row-facts", text: `${count5} ${areaId === "program-bachelors" ? "open " : ""}module${count5 === 1 ? "" : "s"}` });
     card2.addEventListener("click", () => nav.openLearn(areaId));
   }
   const thesis = open.filter((module2) => isThesis(asString(module2.id)));
@@ -39161,10 +39161,10 @@ function renderUnits(view, root, module2) {
 
 // src/designs/study-desk/modules.ts
 var JOB_VISIBLE = 5;
-function group(parent, title3, count4) {
+function group(parent, title3, count5) {
   const head = parent.createDiv({ cls: "sd-group-head" });
   head.createSpan({ cls: "sd-group-title", text: title3 });
-  head.createSpan({ cls: "sd-group-count", text: count4 });
+  head.createSpan({ cls: "sd-group-count", text: count5 });
   return parent.createDiv({ cls: "sd-module-list" });
 }
 function renderDeskModuleList(view) {
@@ -39396,7 +39396,7 @@ function renderDeskNav(view) {
   const root = view.contentEl;
   root.empty();
   root.addClass("los-root", "los-app-nav", "sd-nav");
-  const row3 = (parent, iconName, label2, key, action, count4 = 0) => {
+  const row3 = (parent, iconName, label2, key, action, count5 = 0) => {
     const active = plugin.activeNav === key;
     const item = parent.createEl("button", {
       cls: `sd-nav-item is-clickable${active ? " is-active" : ""}`,
@@ -39404,9 +39404,9 @@ function renderDeskNav(view) {
     });
     icon(item.createSpan({ cls: "sd-nav-glyph" }), iconName);
     item.createSpan({ cls: "sd-nav-label", text: label2 });
-    if (count4) {
-      item.createSpan({ cls: "sd-nav-count", text: String(count4) });
-      item.setAttr("aria-label", `${label2}, ${count4} waiting`);
+    if (count5) {
+      item.createSpan({ cls: "sd-nav-count", text: String(count5) });
+      item.setAttr("aria-label", `${label2}, ${count5} waiting`);
     }
     item.addEventListener("click", () => action());
   };
@@ -41264,17 +41264,17 @@ var MaterialComparisonModal = class extends import_obsidian9.Modal {
     });
   }
   railButton(parent, key, label2) {
-    const count4 = this.count(key);
+    const count5 = this.count(key);
     const active = this.group === key;
     const control = parent.createEl("button", {
-      cls: `los-compare-group is-clickable${active ? " is-selected" : ""}${count4 ? "" : " is-empty"}`,
+      cls: `los-compare-group is-clickable${active ? " is-selected" : ""}${count5 ? "" : " is-empty"}`,
       attr: { type: "button", "aria-pressed": String(active), "data-compare-group": key }
     });
     this.railControls.set(key, control);
     control.createSpan({ cls: "los-compare-group-title", text: label2 });
     control.createSpan({
       cls: "los-compare-group-count",
-      text: `${count4} ${key === "lecture" || key === "course" ? count4 === 1 ? "route" : "routes" : count4 === 1 ? "material" : "materials"}`
+      text: `${count5} ${key === "lecture" || key === "course" ? count5 === 1 ? "route" : "routes" : count5 === 1 ? "material" : "materials"}`
     });
     control.addEventListener("click", () => {
       this.group = key;
@@ -41512,7 +41512,7 @@ function renderStage(view, layout, unit, studyMap, stage) {
       stage.doneWhen
     );
     const checkedCount = stage.doneWhen.reduce(
-      (count4, _criterion, index) => count4 + (marks[index] ? 1 : 0),
+      (count5, _criterion, index) => count5 + (marks[index] ? 1 : 0),
       0
     );
     const done = center.createDiv({
@@ -42066,14 +42066,14 @@ var USE_STRENGTH = {
   reference: 3
 };
 function rankKey(material, stageIndex = null) {
-  const count4 = (test) => material.uses.filter(test).length;
+  const count5 = (test) => material.uses.filter(test).length;
   const own = stageIndex === null ? null : material.uses[stageIndex] ?? null;
   return {
     stage: own ? USE_STRENGTH[own] : 4,
     picked: material.picked,
-    required: count4((use) => use === "required"),
-    using: count4((use) => use === "required" || use === "helps"),
-    kept: count4((use) => use === "deferred" || use === "reference"),
+    required: count5((use) => use === "required"),
+    using: count5((use) => use === "required" || use === "helps"),
+    kept: count5((use) => use === "deferred" || use === "reference"),
     order: material.order
   };
 }
@@ -42468,7 +42468,7 @@ function renderLectureMaterials(main, side, context) {
     ["missing", "Where: Missing a copy"]
   ], state.filter.where);
   toolbar2.createSpan({ cls: "sd-mat-flex" });
-  const count4 = toolbar2.createSpan({ cls: "sd-mat-count", attr: { "aria-live": "polite" } });
+  const count5 = toolbar2.createSpan({ cls: "sd-mat-count", attr: { "aria-live": "polite" } });
   const note2 = main.createDiv({ cls: "sd-mat-note" });
   const sheet = main.createDiv({ cls: "sd-sheet sd-mat-sheet" });
   const extras = main.createDiv({ cls: "sd-mat-extras" });
@@ -42485,7 +42485,7 @@ function renderLectureMaterials(main, side, context) {
     const narrowed = filter.query.trim() || filter.type || filter.where !== "anywhere" ? { ...filter, stage: null } : null;
     const shown = (material) => !narrowed || matchesFilter(material, narrowed, (row3) => whereOf(context2, row3), (row3) => haystack(context2, row3));
     const visible = universe.filter(shown);
-    count4.setText(`${visible.length} of ${all.length}`);
+    count5.setText(`${visible.length} of ${all.length}`);
     renderNote(note2, state, context2, universe, all.length);
     sheet.empty();
     side.empty();
@@ -43152,12 +43152,12 @@ function renderFocusNav(view) {
   icon(search.createSpan({ attr: { "aria-hidden": "true" } }), "search");
   search.createSpan({ text: "Search LearningOS" });
   search.addEventListener("click", () => plugin.nav.openGlobalSearch());
-  const item = (parent, glyph, label2, key, go, count4 = 0) => {
+  const item = (parent, glyph, label2, key, go, count5 = 0) => {
     const current = plugin.activeNav === key || plugin.activeNav === "learn" && key === plugin.settings.learnArea;
-    const control = parent.createEl("button", { cls: `focus-nav-item is-clickable${current ? " is-active" : ""}`, attr: { type: "button", "aria-current": current ? "page" : "false", "aria-label": count4 ? `${label2}, ${count4} waiting` : label2 } });
+    const control = parent.createEl("button", { cls: `focus-nav-item is-clickable${current ? " is-active" : ""}`, attr: { type: "button", "aria-current": current ? "page" : "false", "aria-label": count5 ? `${label2}, ${count5} waiting` : label2 } });
     icon(control.createSpan({ cls: "focus-nav-icon", attr: { "aria-hidden": "true" } }), glyph);
     control.createSpan({ text: label2 });
-    if (count4) control.createSpan({ cls: "focus-nav-count", text: String(count4) });
+    if (count5) control.createSpan({ cls: "focus-nav-count", text: String(count5) });
     control.addEventListener("click", () => go());
   };
   const primary = root.createDiv({ cls: "focus-nav-primary", attr: { role: "navigation", "aria-label": "Main destinations" } });
@@ -43292,7 +43292,7 @@ function renderMaterialFilters(parent, facets, filters, changed, actionHeading =
   if (facets.some((item) => item.action)) select2(actionHeading, "action", unique2(facets.map((item) => [item.action, item.actionLabel])));
   select2("Access", "access", unique2(facets.map((item) => [item.access, ACCESS[item.access]])));
   const feedback = root.createDiv({ cls: "los-material-filter-feedback" });
-  const count4 = feedback.createSpan({ cls: "los-micro", attr: { role: "status", "aria-live": "polite" } });
+  const count5 = feedback.createSpan({ cls: "los-micro", attr: { role: "status", "aria-live": "polite" } });
   const reset = button(feedback, "Clear filters", () => {
     Object.assign(filters, emptyMaterialFilters());
     search.value = "";
@@ -43305,12 +43305,50 @@ function renderMaterialFilters(parent, facets, filters, changed, actionHeading =
   };
   updateReset();
   return { updateCount(visible, total) {
-    count4.setText(`${visible} of ${total} materials${hasMaterialFilters(filters) ? " \xB7 Filters active. Clear to restore the full list." : " \xB7 Complete list. Authored order is preserved."}`);
+    count5.setText(`${visible} of ${total} materials${hasMaterialFilters(filters) ? " \xB7 Filters active. Clear to restore the full list." : " \xB7 Complete list. Authored order is preserved."}`);
   } };
 }
 
 // src/designs/focus/unit.ts
+var ATTENTION_LIMIT = 8;
 var attention = /* @__PURE__ */ new WeakMap();
+function hostAttention(view) {
+  let host = attention.get(view);
+  if (!host) {
+    host = { units: /* @__PURE__ */ new Map(), shownUnitId: null, detour: null };
+    attention.set(view, host);
+  }
+  return host;
+}
+function freshAttention(unitId) {
+  return {
+    unitId,
+    mode: "plan",
+    materialScope: "stage",
+    filters: { stage: emptyMaterialFilters(), unit: emptyMaterialFilters(), course: emptyMaterialFilters() },
+    scroll: /* @__PURE__ */ new Map(),
+    materialsReturn: "plan",
+    materialsVisited: false
+  };
+}
+function copyAttention(state) {
+  const copy = {
+    ...state,
+    scroll: new Map(state.scroll),
+    filters: { stage: { ...state.filters.stage }, unit: { ...state.filters.unit }, course: { ...state.filters.course } }
+  };
+  delete copy.lastKey;
+  return copy;
+}
+function rememberAttention(host, unitId, state = host.units.get(unitId) ?? freshAttention(unitId)) {
+  host.units.delete(unitId);
+  host.units.set(unitId, state);
+  for (const oldest of host.units.keys()) {
+    if (host.units.size <= ATTENTION_LIMIT) break;
+    host.units.delete(oldest);
+  }
+  return state;
+}
 var requestedSessions = /* @__PURE__ */ new Set();
 function requestFocusSession(unitId) {
   requestedSessions.add(unitId);
@@ -43341,6 +43379,27 @@ function openStage2(context, stageId) {
   if (context.stage.id === stageId) context.view.render();
   else void context.view.selectStage(stageId);
 }
+function leaveForLecture(context, destinationId) {
+  const { view, unit, stage, map, state, host } = context;
+  if (state.lastKey) state.scroll.set(state.lastKey, view.contentEl.scrollTop);
+  if (host.detour?.destinationId === unit.id) host.detour.destinationId = destinationId;
+  else {
+    host.detour = { destinationId, origin: {
+      unitId: unit.id,
+      title: unit.title,
+      stageId: stage.id,
+      stageNumber: map.stages.findIndex((item) => item.id === stage.id) + 1,
+      attention: copyAttention(state)
+    } };
+  }
+  void view.plugin.nav.openUnit(destinationId);
+}
+function returnFromDetour(context, detour) {
+  const { host, view } = context;
+  host.detour = null;
+  rememberAttention(host, detour.origin.unitId, copyAttention(detour.origin.attention));
+  void view.plugin.nav.openUnit(detour.origin.unitId, detour.origin.stageId);
+}
 function stageState(stage, map) {
   return stage.status === "complete" ? "Complete" : stage.status === "skipped" ? "Skipped" : stage.id === map.currentStageId ? "Current" : "Not started";
 }
@@ -43362,25 +43421,23 @@ function renderFocusUnit(view) {
   return rendered;
 }
 function renderFocusUnitContent(view) {
+  const host = hostAttention(view);
+  if (host.shownUnitId !== view.unitId) {
+    const left = host.shownUnitId ? host.units.get(host.shownUnitId) : void 0;
+    if (left?.lastKey) {
+      left.scroll.set(left.lastKey, view.contentEl.scrollTop);
+      delete left.lastKey;
+    }
+    host.shownUnitId = view.unitId;
+  }
   const unit = readUnitRecord(view.unitId ? view.plugin.store.get(view.unitId) : null, view.unitId);
   const projected = unit ? view.plugin.store.mapForUnit(unit.id) : null;
   if (!unit || !projected) return false;
   const durable = readStudyMap(projected);
   const { studyMap: map, temporary } = sittingStudyMap(view, unit.id, durable);
   if (!map.stages[0]) return false;
-  let state = attention.get(view);
-  if (!state || state.unitId !== unit.id) {
-    state = {
-      unitId: unit.id,
-      mode: "plan",
-      materialScope: "stage",
-      filters: { stage: emptyMaterialFilters(), unit: emptyMaterialFilters(), course: emptyMaterialFilters() },
-      scroll: /* @__PURE__ */ new Map(),
-      materialsReturn: "plan",
-      materialsVisited: false
-    };
-    attention.set(view, state);
-  }
+  if (host.detour?.origin.unitId === unit.id) host.detour = null;
+  const state = rememberAttention(host, unit.id);
   if (requestedSessions.delete(unit.id)) state.mode = "session";
   const stage = selectedStage(view, unit.id, map, map.stages[0], Boolean(temporary));
   const context = {
@@ -43392,6 +43449,7 @@ function renderFocusUnitContent(view) {
     temporary: Boolean(temporary),
     options: stageMaterialOptions(view, unit),
     state,
+    host,
     guards: view.plugin.store.artifactGuard(unit.id, asString(durable.record.id))
   };
   if (state.lastKey) state.scroll.set(state.lastKey, view.contentEl.scrollTop);
@@ -43405,6 +43463,15 @@ function renderFocusUnitContent(view) {
     module2 ? asLabel(module2) : "",
     () => view.plugin.nav.openModule(unit.moduleId)
   );
+  const detour = host.detour;
+  if (detour?.destinationId === unit.id) {
+    button(
+      actions,
+      `Back to ${detour.origin.title} \xB7 Stage ${detour.origin.stageNumber}`,
+      () => returnFromDetour(context, detour),
+      "quiet"
+    );
+  }
   if (state.mode !== "wrapup") button(actions, "End session", () => show(context, "wrapup"), "quiet");
   if (state.mode !== "wrapup") {
     const peers = root.createDiv({ cls: "focus-peer-nav" });
@@ -43521,8 +43588,8 @@ function session(root, context) {
     const section3 = center.createDiv({ cls: "focus-criteria" });
     const head2 = section3.createDiv({ cls: "focus-section-head" });
     head2.createEl("h2", { text: "Done when" });
-    const count4 = head2.createSpan({ cls: "focus-muted", attr: { "aria-live": "polite" } });
-    const recount = () => count4.setText(`${stage.doneWhen.filter((_, index) => marks[index]).length} of ${stage.doneWhen.length} criteria checked`);
+    const count5 = head2.createSpan({ cls: "focus-muted", attr: { "aria-live": "polite" } });
+    const recount = () => count5.setText(`${stage.doneWhen.filter((_, index) => marks[index]).length} of ${stage.doneWhen.length} criteria checked`);
     recount();
     section3.createEl("p", { cls: "focus-muted focus-criteria-meaning", text: "Checks are your local working marks. Complete stage records progress; learner evidence is recorded separately." });
     stage.doneWhen.forEach((criterion, index) => {
@@ -43673,7 +43740,7 @@ function materials(root, context) {
             },
             { missingLocationLabel: "Location needed" }
           );
-          button(section3, "Go to lecture", () => view.plugin.nav.openUnit(owner.id), "quiet");
+          button(section3, "Go to lecture", () => leaveForLecture(context, owner.id), "quiet");
         }
       },
       "Purpose"
@@ -44444,8 +44511,8 @@ var BoundaryView = class extends import_obsidian12.ItemView {
           const primary = lists[0] ?? "Other original lists";
           groups.set(primary, [...groups.get(primary) ?? [], source]);
         }
-        const count4 = [...groups.values()].reduce((total, rows2) => total + rows2.length, 0);
-        results.createDiv({ cls: "los-micro", text: `${count4} matching source${count4 === 1 ? "" : "s"}` });
+        const count5 = [...groups.values()].reduce((total, rows2) => total + rows2.length, 0);
+        results.createDiv({ cls: "los-micro", text: `${count5} matching source${count5 === 1 ? "" : "s"}` });
         for (const [name, entries2] of [...groups].sort(([a], [b]) => compareStrings(a, b))) {
           const group3 = disclosure(results, `${name} (${entries2.length})`, "los-masters-group");
           if (query) group3.parentElement?.setAttribute("open", "");
@@ -46146,7 +46213,7 @@ function renderHome(view, root) {
     cls: "los-group-grid los-library-group-grid"
   });
   for (const group3 of groups) {
-    const count4 = view.collection === "topic-packs" ? view.plugin.store.topicPacksForGroup(group3.id).length : view.plugin.store.sourcesForGroup(group3.id).length;
+    const count5 = view.collection === "topic-packs" ? view.plugin.store.topicPacksForGroup(group3.id).length : view.plugin.store.sourcesForGroup(group3.id).length;
     const card = grid.createEl(
       "button",
       {
@@ -46166,10 +46233,10 @@ function renderHome(view, root) {
         text: group3.title
       }
     );
-    const countLabel = view.collection === "topic-packs" ? `pack${count4 === 1 ? "" : "s"}` : `source${count4 === 1 ? "" : "s"}`;
+    const countLabel = view.collection === "topic-packs" ? `pack${count5 === 1 ? "" : "s"}` : `source${count5 === 1 ? "" : "s"}`;
     head.createSpan({
       cls: "los-group-count",
-      text: `${count4} ${countLabel}`
+      text: `${count5} ${countLabel}`
     });
     if (group3.description) {
       card.createEl(
@@ -46855,8 +46922,8 @@ function unavailable(path) {
     sourceId: null
   };
 }
-function plural6(count4, noun) {
-  return `${count4} ${noun}${count4 === 1 ? "" : "s"}`;
+function plural6(count5, noun) {
+  return `${count5} ${noun}${count5 === 1 ? "" : "s"}`;
 }
 function rootEntries(context) {
   const { index, store } = context;
@@ -46959,15 +47026,15 @@ function domainEntries(context, groupId) {
     (source) => typeIdOf(index, source)
   );
   for (const [type, label2, icon2] of MATERIAL_TYPES2) {
-    const count4 = counts.get(type) ?? 0;
-    if (!count4) continue;
+    const count5 = counts.get(type) ?? 0;
+    if (!count5) continue;
     entries2.push(folderEntry({
       segment: segment("type", type),
       kind: "bucket",
       name: label2,
       icon: icon2,
       kindLabel: "Folder",
-      count: count4
+      count: count5
     }));
   }
   return entries2;
@@ -46980,15 +47047,15 @@ function moduleBucketEntries(context, moduleId) {
   );
   const entries2 = [];
   for (const [bucket, label2, icon2] of MODULE_BUCKETS) {
-    const count4 = counts.get(bucket) ?? 0;
-    if (!count4) continue;
+    const count5 = counts.get(bucket) ?? 0;
+    if (!count5) continue;
     entries2.push(folderEntry({
       segment: segment("bucket", bucket),
       kind: "bucket",
       name: label2,
       icon: icon2,
       kindLabel: "Folder",
-      count: count4
+      count: count5
     }));
   }
   return entries2;
@@ -47255,9 +47322,9 @@ var LAYOUTS2 = [
   ["list", "List"],
   ["columns", "Columns"]
 ];
-function itemCount(count4) {
-  if (count4 === null) return "";
-  return `${count4} item${count4 === 1 ? "" : "s"}`;
+function itemCount(count5) {
+  if (count5 === null) return "";
+  return `${count5} item${count5 === 1 ? "" : "s"}`;
 }
 function filterWords(query) {
   return foldCase(query.trim()).split(/\s+/).filter(Boolean);
@@ -47393,11 +47460,11 @@ function renderToolbar2(view, parent, folder2, shown, onQuery) {
     control.setAttribute("aria-pressed", String(active));
   }
   const total = folder2.entries.length;
-  const count4 = toolbar2.createSpan({
+  const count5 = toolbar2.createSpan({
     cls: "los-finder-count",
     text: shown === total ? itemCount(total) : `${shown} of ${total} items`
   });
-  return { input: search, count: count4 };
+  return { input: search, count: count5 };
 }
 function isCurrentFolder(view, path) {
   return path.length === view.folderPath.length && path.every((segment2, index) => segment2 === view.folderPath[index]);
@@ -47656,7 +47723,7 @@ function renderFinder(view, root) {
   renderSidebar(view, shell2, trail[0] ?? folder2);
   const main = shell2.createDiv({ cls: "los-finder-main" });
   renderPathBar(view, main, trail);
-  let count4 = null;
+  let count5 = null;
   let noteWrap = null;
   let body = null;
   let input = null;
@@ -47713,7 +47780,7 @@ function renderFinder(view, root) {
     const entries3 = folder2.entries.filter((entry) => matches2(entry, words3));
     const total = folder2.entries.length;
     const shown = entries3.length;
-    count4?.setText(
+    count5?.setText(
       shown === total ? itemCount(total) : `${shown} of ${total} items`
     );
     if (noteWrap) {
@@ -47749,7 +47816,7 @@ function renderFinder(view, root) {
   const entries2 = folder2.entries.filter((entry) => matches2(entry, words2));
   const toolbar2 = renderToolbar2(view, main, folder2, entries2.length, onQuery);
   input = toolbar2.input;
-  count4 = toolbar2.count;
+  count5 = toolbar2.count;
   main.createEl("p", {
     cls: "los-micro los-finder-interaction-hint",
     text: view.folderLayout === "columns" ? "Choose a folder to open it. Select a file to preview; press Enter or use its Open action to open it." : "Click to preview. Click the selected row again, double-click, or press Enter to open. Arrow keys move the selection."
@@ -47961,7 +48028,7 @@ function renderSourceBrowser(view, root) {
     );
     for (const [
       value,
-      count4
+      count5
     ] of ordered) {
       select2.createEl(
         "option",
@@ -47969,7 +48036,7 @@ function renderSourceBrowser(view, root) {
           text: `${view.sourceFilterLabel(
             dimension,
             value
-          )} (${count4})`,
+          )} (${count5})`,
           attr: {
             value
           }
@@ -49023,7 +49090,7 @@ var NavView = class extends import_obsidian18.ItemView {
   async onOpen() {
     this.render();
   }
-  nav(parent, iconName, label2, key, action, count4 = null) {
+  nav(parent, iconName, label2, key, action, count5 = null) {
     const active = this.plugin.activeNav === key;
     const row3 = parent.createEl("button", {
       cls: `los-app-nav-item is-clickable${active ? " is-active" : ""}`,
@@ -49031,9 +49098,9 @@ var NavView = class extends import_obsidian18.ItemView {
     });
     icon(row3.createSpan(), iconName);
     row3.createSpan({ text: label2 });
-    if (count4) {
-      row3.createSpan({ cls: "los-nav-count", text: String(count4) });
-      row3.setAttr("aria-label", `${label2}, ${count4} waiting`);
+    if (count5) {
+      row3.createSpan({ cls: "los-nav-count", text: String(count5) });
+      row3.setAttr("aria-label", `${label2}, ${count5} waiting`);
     }
     row3.addEventListener("click", action);
     return row3;
@@ -49402,10 +49469,10 @@ var ProgramView = class extends import_obsidian19.ItemView {
         attr: { role: "status", "aria-live": "polite" }
       });
     }
-    const count4 = this.plugin.store.data?.counts?.inbox_items || 0;
+    const count5 = this.plugin.store.data?.counts?.inbox_items || 0;
     const wrap = section(
       root,
-      `${count4} item${count4 === 1 ? "" : "s"} awaiting routing`
+      `${count5} item${count5 === 1 ? "" : "s"} awaiting routing`
     );
     const form = wrap.createDiv({
       cls: "los-capture-grid"
@@ -50471,10 +50538,10 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:9fe45b366a7ac137f737a74757dab691d01b73636ef0c2f56e58fa48ef20a91c" : "unavailable";
+  return true ? "sha256:b77ff681e86be33570ba2b4381d83a2c9bf683052e0a0507434c855ef4ff359d" : "unavailable";
 }
 function runtimeContractVersion() {
-  return true ? 18 : 0;
+  return true ? 17 : 0;
 }
 
 // src/infrastructure/los-runtime.ts
@@ -52287,8 +52354,8 @@ var DiagnosticsView = class extends import_obsidian21.ItemView {
       return ["\u2713", "Health checks passed", `All ${this.health.checks.length} checks passed. Checked ${this.health.generated_at}.`];
     }
     if (this.health?.status === "attention-required") {
-      const count4 = this.health.checks.filter((check) => check.status !== "ok").length;
-      return ["!", "Attention required", `${count4} check${count4 === 1 ? "" : "s"} need attention. Review the next action shown for each check below.`];
+      const count5 = this.health.checks.filter((check) => check.status !== "ok").length;
+      return ["!", "Attention required", `${count5} check${count5 === 1 ? "" : "s"} need attention. Review the next action shown for each check below.`];
     }
     if (this.healthError) return ["?", "Health unavailable", "The current checks could not be read. Refresh health to try again, or open Technical details to inspect the reported error."];
     return ["?", "Health not checked", "Refresh health to check the current system state."];
@@ -52562,38 +52629,151 @@ Tried: ${resolved.attempted.join(", ")}`;
 
 // src/views/shelving-view.ts
 var import_obsidian22 = require("obsidian");
-function readShelvingProposal(value) {
-  if (!isRecord(value) || value.state !== "proposed" || !Array.isArray(value.items)) {
-    return null;
+
+// src/features/shelving/proposal.ts
+var SHELVING_ITEM_FIELDS = [
+  "id",
+  "kind",
+  "title",
+  "destination",
+  "rationale",
+  "diff",
+  "content",
+  "metadata",
+  "selected"
+];
+var SHELVING_ACTED_FIELDS = [
+  "kind",
+  "title",
+  "destination",
+  "rationale",
+  "diff",
+  "content",
+  "metadata"
+];
+var KNOWN_FIELDS = new Set(SHELVING_ITEM_FIELDS);
+function readItem(candidate2) {
+  if (!isRecord(candidate2) || typeof candidate2.id !== "string" || typeof candidate2.title !== "string") {
+    return [];
   }
-  const items = [];
-  for (const candidate2 of value.items) {
-    if (!isRecord(candidate2) || typeof candidate2.id !== "string" || typeof candidate2.title !== "string") {
-      continue;
+  return [{
+    id: candidate2.id,
+    title: candidate2.title,
+    kind: optionalString(candidate2.kind),
+    destination: optionalString(candidate2.destination),
+    rationale: optionalString(candidate2.rationale),
+    diff: optionalString(candidate2.diff),
+    content: optionalString(candidate2.content),
+    metadata: isRecord(candidate2.metadata) ? candidate2.metadata : void 0,
+    selected: typeof candidate2.selected === "boolean" ? candidate2.selected : void 0,
+    unknownFields: Object.keys(candidate2).filter((field2) => !KNOWN_FIELDS.has(field2)).sort()
+  }];
+}
+function readShelvingPacket(value) {
+  if (!isRecord(value)) return { state: "none" };
+  const summary = optionalString(value.summary);
+  if (value.state === "draft") {
+    return { state: "draft", summary, proposalPath: optionalString(value.proposal_path) };
+  }
+  if (value.state !== "proposed" || !Array.isArray(value.items)) return { state: "none" };
+  const items = value.items.flatMap(readItem);
+  return items.length ? { state: "proposed", summary, items } : { state: "none" };
+}
+var KIND_LABELS = {
+  "durable-note": "Durable note",
+  garden: "Garden note",
+  "concept-relation": "Concept relation",
+  "archive-map": "Archive map"
+};
+function shelvingKindLabel(kind) {
+  return kind ? KIND_LABELS[kind] ?? kind : "";
+}
+
+// src/features/shelving/selection.ts
+function canonical2(value) {
+  if (Array.isArray(value)) return `[${value.map(canonical2).join(",")}]`;
+  if (isRecord(value)) {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical2(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value ?? null);
+}
+function itemFingerprint(item) {
+  return canonical2(Object.fromEntries(SHELVING_ACTED_FIELDS.map((field2) => [field2, item[field2] ?? null])));
+}
+var ShelvingChoiceStore = class {
+  units = /* @__PURE__ */ new Map();
+  /** The recorded choices, or null while Core's defaults still apply. */
+  choicesFor(unitId) {
+    return this.units.get(unitId) ?? null;
+  }
+  /**
+   * Record one tick. The first touch for a unit also adopts every tick then
+   * on screen, so each tick that reaches Core is one the learner saw.
+   */
+  choose(unitId, rows2, itemId, selected) {
+    let unit = this.units.get(unitId);
+    if (!unit) {
+      unit = new Map(rows2.filter((row4) => row4.approvable).map((row4) => [row4.item.id, { fingerprint: row4.fingerprint, selected: row4.selected }]));
+      this.units.set(unitId, unit);
     }
-    const item = {
-      id: candidate2.id,
-      title: candidate2.title,
-      destination: optionalString(candidate2.destination),
-      rationale: optionalString(candidate2.rationale),
-      diff: optionalString(candidate2.diff),
-      selected: typeof candidate2.selected === "boolean" ? candidate2.selected : void 0
-    };
-    items.push(item);
+    const row3 = rows2.find((candidate2) => candidate2.item.id === itemId);
+    if (row3?.approvable) unit.set(itemId, { fingerprint: row3.fingerprint, selected });
   }
+  /** IDs that left the proposal carry nothing forward. */
+  keepOnly(unitId, itemIds) {
+    const unit = this.units.get(unitId);
+    if (!unit) return;
+    for (const id of [...unit.keys()]) if (!itemIds.has(id)) unit.delete(id);
+  }
+  /** After a confirmed apply, its IDs carry nothing forward either. */
+  forgetApplied(unitId, itemIds) {
+    const unit = this.units.get(unitId);
+    for (const id of itemIds) unit?.delete(id);
+  }
+  clear() {
+    this.units.clear();
+  }
+};
+function reconcileItem(item, choices) {
+  const fingerprint = itemFingerprint(item);
+  const base = { item, fingerprint, approvable: item.unknownFields.length === 0 };
+  if (!base.approvable) return { ...base, selected: false, mark: null, kept: false };
+  if (!choices) return { ...base, selected: item.selected !== false, mark: null, kept: false };
+  const choice = choices.get(item.id);
+  if (!choice) return { ...base, selected: false, mark: "new", kept: false };
+  if (choice.fingerprint !== fingerprint) return { ...base, selected: false, mark: "changed", kept: false };
+  return { ...base, selected: choice.selected, mark: null, kept: true };
+}
+function reconcile(items, choices) {
+  const rows2 = items.map((item) => reconcileItem(item, choices));
   return {
-    state: "proposed",
-    summary: optionalString(value.summary),
-    items
+    rows: rows2,
+    kept: rows2.filter((row3) => row3.kept).length,
+    changed: rows2.filter((row3) => row3.mark === "changed").map((row3) => row3.item.title),
+    added: rows2.filter((row3) => row3.mark === "new").length
   };
 }
+function selectedIds(reconciliation) {
+  return reconciliation.rows.filter((row3) => row3.approvable && row3.selected).map((row3) => row3.item.id);
+}
+function count3(value, one, many) {
+  return `${value} ${value === 1 ? one : many}`;
+}
+function reconciliationSummary({ kept, changed, added }) {
+  if (!changed.length && !added) return null;
+  return [
+    kept ? `Kept your choice on ${count3(kept, "item", "items")}.` : "",
+    changed.length ? `${changed.length} changed since you looked and ${changed.length === 1 ? "is" : "are"} now unticked: ${changed.join(", ")}.` : "",
+    added ? `${count3(added, "new item", "new items")} ${added === 1 ? "is" : "are"} unticked.` : ""
+  ].filter(Boolean).join(" ");
+}
+
+// src/views/shelving-view.ts
+var CONTENT_PREVIEW_LINES = 12;
+var PROPOSAL_MOVED = "The proposal changed before your approval was sent. Nothing was written; review the current proposal and approve again.";
 var ShelvingView = class extends import_obsidian22.ItemView {
   plugin;
   unitId = null;
-  proposal = null;
-  selected = /* @__PURE__ */ new Set();
-  selectionScope = null;
-  expectedRevisions = {};
   constructor(leaf, plugin) {
     super(leaf);
     this.plugin = plugin;
@@ -52608,7 +52788,6 @@ var ShelvingView = class extends import_obsidian22.ItemView {
     if (typeof state.unitId === "string") {
       this.unitId = state.unitId;
     }
-    await this.loadProposal();
     this.render();
   }
   getState() {
@@ -52619,48 +52798,13 @@ var ShelvingView = class extends import_obsidian22.ItemView {
     if (typeof unitId === "string") {
       this.unitId = unitId;
     }
-    await this.loadProposal();
     this.render();
   }
-  async loadProposal() {
-    if (!this.unitId) {
-      this.proposal = null;
-      return;
-    }
-    const map = this.plugin.store.mapForUnit(this.unitId);
-    this.proposal = readShelvingProposal(map?.shelving);
-  }
-  selectionKey(unitId, map, proposal) {
-    const mapId = typeof map?.id === "string" ? map.id : "";
-    const revision = map?.revision == null ? "" : String(map.revision);
-    const proposalIds = proposal?.items.map((item) => item.id).join("") ?? "";
-    return JSON.stringify([
-      unitId,
-      mapId,
-      revision,
-      proposalIds
-    ]);
-  }
-  syncSelection(unitId, map, proposal) {
-    const scope = this.selectionKey(
-      unitId,
-      map,
-      proposal
-    );
-    if (scope === this.selectionScope) {
-      return;
-    }
-    this.selectionScope = scope;
-    this.selected.clear();
-    if (!proposal) {
-      return;
-    }
-    for (const item of proposal.items) {
-      if (item.selected !== false) {
-        this.selected.add(item.id);
-      }
-    }
-  }
+  /**
+   * One store read per render. The items on screen, the guard and the snapshot
+   * the approval carries all come from it, so the text approved is the text
+   * shown (Plan B S3). There is no proposal cache to drift from the guard.
+   */
   render() {
     const root = this.contentEl;
     root.empty();
@@ -52682,60 +52826,123 @@ var ShelvingView = class extends import_obsidian22.ItemView {
       return;
     }
     const map = this.plugin.store.mapForUnit(unit.id);
-    this.expectedRevisions = this.plugin.store.artifactGuard(
-      unit.id,
-      typeof map?.id === "string" ? map.id : null
-    );
-    const proposal = this.proposal ?? readShelvingProposal(map?.shelving);
-    if (!proposal?.items?.length) {
-      this.syncSelection(
-        unit.id,
-        map,
-        null
-      );
-      const wrap = section(root, "No proposal yet");
-      empty(
-        wrap,
-        "Prepare a deterministic proposal",
-        "The gateway derives candidates from this unit. AI may explain them, but cannot apply canonical changes.",
-        "Prepare proposal",
-        () => this.prepare()
-      );
-      button(wrap, "Ask AI to explain shelving criteria", () => this.plugin.askAiScoped(
-        "Explain which stage notes might be durable. Do not write or apply canonical changes.",
-        { moduleId: unit.module_id, unitId: unit.id }
-      ), "quiet");
+    const packet = readShelvingPacket(map?.shelving);
+    const shown = {
+      unitId: unit.id,
+      snapshotId: this.plugin.store.snapshotId,
+      guard: this.plugin.store.artifactGuard(unit.id, typeof map?.id === "string" ? map.id : null),
+      items: packet.state === "proposed" ? packet.items : []
+    };
+    if (packet.state === "draft") {
+      this.renderDraft(root, unit, packet.proposalPath, packet.summary);
       return;
     }
-    this.syncSelection(
-      unit.id,
-      map,
-      proposal
-    );
-    const summary = section(root, "Proposed changes", proposal.summary || "Select only changes you want to apply.");
-    for (const item of proposal.items) {
-      const row3 = summary.createDiv({ cls: "los-proposal-row" });
-      const toggle = row3.createEl("input", { attr: { type: "checkbox", "aria-label": `Select ${item.title}` } });
-      toggle.checked = this.selected.has(item.id);
-      toggle.addEventListener("change", () => {
-        if (toggle.checked) this.selected.add(item.id);
-        else this.selected.delete(item.id);
-      });
-      const copy = row3.createDiv();
-      copy.createEl("h3", { text: item.title });
-      if (item.destination) copy.createDiv({ cls: "los-detail-id", text: item.destination });
-      if (item.rationale) copy.createEl("p", { text: item.rationale });
-      if (item.diff) copy.createEl("pre", { cls: "los-proposal-diff", text: item.diff });
+    if (packet.state === "none") {
+      this.renderEmpty(root, unit, shown);
+      return;
     }
+    const choices = this.plugin.shelvingChoices;
+    choices.keepOnly(unit.id, new Set(packet.items.map((item) => item.id)));
+    const reconciliation = reconcile(packet.items, choices.choicesFor(unit.id));
+    const summary = section(root, "Proposed changes", packet.summary || "Select only changes you want to apply.");
+    const changes = reconciliationSummary(reconciliation);
+    if (changes) summary.createEl("p", { cls: "los-shelving-reconcile", text: changes, attr: { role: "status" } });
+    for (const row3 of reconciliation.rows) this.renderItem(summary, unit.id, reconciliation, row3);
     const guard = root.createDiv({ cls: "los-validation-preview" });
     guard.createEl("strong", { text: "Apply is explicit and selected-only." });
     guard.createEl("p", { text: "The core validates and regenerates atomically; broad AI writes are never accepted." });
     const actions = root.createDiv({ cls: "los-actions" });
-    button(actions, "Approve selected changes", () => this.apply(), "success");
+    button(actions, "Approve selected changes", () => this.apply(shown), "success");
     button(actions, "Ask AI to review proposal", () => this.plugin.askAiScoped(
-      `Review these shelving proposal IDs: ${[...this.selected].join(", ")}. Do not apply changes.`,
+      `Review these shelving proposal IDs: ${this.currentSelection(shown).join(", ")}. Do not apply changes.`,
       { moduleId: unit.module_id, unitId: unit.id }
     ), "warm");
+  }
+  renderItem(parent, unitId, reconciliation, row3) {
+    const { item } = row3;
+    const target = parent.createDiv({ cls: `los-proposal-row${row3.mark ? ` is-${row3.mark}` : ""}` });
+    if (row3.approvable) {
+      const toggle = target.createEl("input", { attr: { type: "checkbox", "aria-label": `Select ${item.title}` } });
+      toggle.checked = row3.selected;
+      toggle.addEventListener("change", () => {
+        this.plugin.shelvingChoices.choose(unitId, reconciliation.rows, item.id, toggle.checked);
+      });
+    } else {
+      target.createSpan({ cls: "los-proposal-blocked", attr: { "aria-hidden": "true" } });
+    }
+    const copy = target.createDiv({ cls: "los-proposal-copy" });
+    const head = copy.createDiv({ cls: "los-proposal-head" });
+    head.createEl("h3", { text: item.title });
+    if (row3.mark === "changed") badge(head, "Changed since you looked", "attention").addClass("los-proposal-mark");
+    if (row3.mark === "new") badge(head, "New", "info").addClass("los-proposal-mark");
+    const where = [shelvingKindLabel(item.kind), item.destination].filter(Boolean).join(" \xB7 ");
+    if (where) copy.createDiv({ cls: "los-detail-id", text: where });
+    if (!row3.approvable) {
+      copy.createEl("p", { cls: "los-proposal-refusal", text: `This item uses a field this version of LearningOS cannot show (${item.unknownFields.join(", ")}), so it cannot be approved here. Update the plugin, or review the packet with an agent.` });
+    }
+    if (item.rationale) copy.createEl("p", { text: item.rationale });
+    this.renderContent(copy, item.content);
+    if (item.diff) {
+      copy.createDiv({ cls: "los-proposal-label", text: "Diff" });
+      copy.createEl("pre", { cls: "los-proposal-diff", text: item.diff });
+    }
+    if (item.metadata && Object.keys(item.metadata).length) {
+      disclosure(copy, "Metadata").createEl("pre", { cls: "los-proposal-diff", text: JSON.stringify(item.metadata, null, 2) });
+    }
+  }
+  /** The text Core writes on apply, collapsed after about twelve lines. */
+  renderContent(parent, content) {
+    if (content === void 0 || !content.trim()) {
+      parent.createEl("p", { cls: "los-muted", text: "No text to write is attached to this item." });
+      return;
+    }
+    parent.createDiv({ cls: "los-proposal-label", text: "Text that will be written" });
+    const lines = content.split("\n");
+    const preview = lines.slice(0, CONTENT_PREVIEW_LINES).join("\n");
+    const text4 = parent.createEl("pre", { cls: "los-proposal-content", text: lines.length > CONTENT_PREVIEW_LINES ? preview : content });
+    if (lines.length <= CONTENT_PREVIEW_LINES) return;
+    let open = false;
+    const label2 = () => open ? "Show fewer lines" : `Show all ${lines.length} lines`;
+    const toggle = button(parent, label2(), () => {
+      open = !open;
+      text4.setText(open ? content : preview);
+      toggle.setText(label2());
+      toggle.setAttr("aria-expanded", String(open));
+    }, "quiet");
+    toggle.setAttr("aria-expanded", "false");
+  }
+  renderEmpty(root, unit, shown) {
+    const wrap = section(root, "No proposal yet");
+    empty(
+      wrap,
+      "Prepare a review packet",
+      "Prepare writes a review packet of this unit\u2019s notes and attachments. An agent then proposes items from it; nothing is applied until you approve selected items here.",
+      "Prepare proposal",
+      () => this.prepare(shown)
+    );
+    button(wrap, "Ask AI to explain shelving criteria", () => this.plugin.askAiScoped(
+      "Explain which stage notes might be durable. Do not write or apply canonical changes.",
+      { moduleId: unit.module_id, unitId: unit.id }
+    ), "quiet");
+  }
+  /** Core wrote the packet and recorded `draft`: items come from an agent. */
+  renderDraft(root, unit, proposalPath, summary) {
+    const wrap = section(
+      root,
+      "Waiting for proposal items",
+      "Prepare wrote a review packet of this unit\u2019s notes and attachments. An agent proposes items from it; nothing is applied until you approve selected items here."
+    );
+    wrap.createDiv({ cls: "los-detail-id", text: proposalPath ?? "Core did not record the packet path." });
+    if (summary) wrap.createEl("p", { cls: "los-muted", text: summary });
+    const where = proposalPath ? ` at ${proposalPath}` : "";
+    button(wrap, "Ask AI to propose items", () => this.plugin.askAiScoped(
+      `Propose shelving items for unit ${unit.id} from its review packet${where}. Write the items file and seal review.prepare against it, as system/procedures/shelving-session-closure.md describes, so the proposal appears in the Shelving screen. Stop once the proposal is created. Do not apply any item: only the learner approves selected items, in the app.`,
+      { moduleId: unit.module_id, unitId: unit.id }
+    ), "warm");
+  }
+  /** The learner's current ticks among the items one render showed. */
+  currentSelection(shown) {
+    return selectedIds(reconcile(shown.items, this.plugin.shelvingChoices.choicesFor(shown.unitId)));
   }
   renderQueue(root) {
     const wrap = section(root, "Ready to shelve");
@@ -52745,43 +52952,34 @@ var ShelvingView = class extends import_obsidian22.ItemView {
     if (!rows2.length) empty(wrap, "No unit is waiting", "Keep working from any active unit.");
     for (const unit of rows2) unitCard(wrap, this.plugin, unit);
   }
-  async prepare() {
-    const unitId = this.unitId;
-    if (!unitId) {
-      new import_obsidian22.Notice("Choose a unit before preparing shelving.");
-      return;
-    }
+  async prepare(shown) {
     try {
       await this.plugin.mutate(
-        () => this.plugin.gateway.prepareShelving(unitId, this.expectedRevisions)
+        () => this.plugin.gateway.prepareShelving(shown.unitId, shown.guard)
       );
-      await this.loadProposal();
       this.render();
     } catch (error) {
       new import_obsidian22.Notice(errorMessage(error));
     }
   }
-  async apply() {
-    const unitId = this.unitId;
-    if (!unitId) {
-      new import_obsidian22.Notice("Choose a unit before applying shelving.");
-      return;
-    }
-    if (!this.selected.size) {
+  /**
+   * Approve what this render showed. The IDs are read at the click; the guard
+   * is this render's. The write queue may run the request later, behind a
+   * refresh: if the projection moved on meanwhile, the newer render is already
+   * on screen and nothing is sent for the older one.
+   */
+  async apply(shown) {
+    const selected = this.currentSelection(shown);
+    if (!selected.length) {
       new import_obsidian22.Notice("Select at least one proposal.");
       return;
     }
     try {
-      await this.plugin.mutate(
-        () => this.plugin.gateway.applyShelving(
-          unitId,
-          [...this.selected],
-          this.expectedRevisions
-        )
-      );
-      this.proposal = null;
-      this.selected.clear();
-      this.selectionScope = null;
+      await this.plugin.mutate(() => {
+        if (this.plugin.store.snapshotId !== shown.snapshotId) throw new Error(PROPOSAL_MOVED);
+        return this.plugin.gateway.applyShelving(shown.unitId, selected, shown.guard);
+      });
+      this.plugin.shelvingChoices.forgetApplied(shown.unitId, selected);
       this.render();
     } catch (error) {
       new import_obsidian22.Notice(errorMessage(error));
@@ -52875,9 +53073,9 @@ function renderArtifacts(view, root, unit) {
   const artifacts = readArtifacts(
     unit.record.artifacts
   );
-  let count4 = 0;
+  let count5 = 0;
   for (const [key, id] of artifacts.named) {
-    count4 += 1;
+    count5 += 1;
     const card = wrap.createDiv({
       cls: "los-artifact-card"
     });
@@ -52894,7 +53092,7 @@ function renderArtifacts(view, root, unit) {
     );
   }
   for (const id of artifacts.other) {
-    count4 += 1;
+    count5 += 1;
     const record7 = view.plugin.store.get(id) ?? fallbackRecord(id);
     chip(
       wrap,
@@ -52904,7 +53102,7 @@ function renderArtifacts(view, root, unit) {
       )
     );
   }
-  if (!count4) {
+  if (!count5) {
     empty(
       wrap,
       "No durable artifact linked yet",
@@ -54228,7 +54426,7 @@ function record6(value) {
 function text3(value) {
   return typeof value === "string" && value.trim().length > 0 ? value : null;
 }
-function count3(value) {
+function count4(value) {
   return typeof value === "number" && Number.isInteger(value) && value >= 0 ? value : null;
 }
 function list2(value, project) {
@@ -54346,7 +54544,7 @@ function relatedEncounter(item) {
     objective: text3(item.objective),
     ability_ids: item.ability_ids,
     route_ids: routes,
-    route_total: count3(item.route_total) ?? routes.length,
+    route_total: count4(item.route_total) ?? routes.length,
     routes_truncated: item.routes_truncated === true
   };
 }
@@ -54373,7 +54571,7 @@ function asAbilityBrief(value) {
     truncated: value.truncated === true,
     bridges: list2(value.bridges, bridge),
     candidate_connections: candidates,
-    candidate_connection_count: count3(value.candidate_connection_count) ?? candidates.length
+    candidate_connection_count: count4(value.candidate_connection_count) ?? candidates.length
   };
 }
 function asAbilityFocus(value) {
@@ -54388,7 +54586,7 @@ function asAbilityFocus(value) {
     bridges: list2(value.bridges, bridge),
     encounters: list2(value.encounters, encounter),
     related_encounters: related,
-    related_encounters_total: count3(value.related_encounters_total) ?? related.length,
+    related_encounters_total: count4(value.related_encounters_total) ?? related.length,
     candidate_connections: list2(value.candidate_connections, candidate),
     shared_concept_candidates: value.shared_concept_candidates ?? []
   };
@@ -55439,6 +55637,7 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
     this.resources = new ResourceOpener(this.app);
     this.materials = new MaterialTree(this.app);
     this.gateway = new GatewayClient(this);
+    this.shelvingChoices = new ShelvingChoiceStore();
     this.abilityHorizon = new AbilityHorizon({
       gateway: this.gateway,
       store: this.store,
@@ -55510,6 +55709,7 @@ var LearningOSUI = class extends import_obsidian28.Plugin {
   }
   onunload() {
     this.drafts?.dispose();
+    this.shelvingChoices?.clear();
     if (this.isLifecycleActive() && this.settings) {
       void this.enqueueSettingsSave(cloneSettings(this.settings), {
         requireOwner: false

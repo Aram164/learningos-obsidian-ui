@@ -23,6 +23,102 @@ const {
   gatewayRefusal,
 } = require('./support');
 
+/*
+ * Plan B (2026-11-12): a Shelving choice belongs to the item the learner saw.
+ * Core's item schema is closed (`study-map.schema.json`: id, kind, title,
+ * destination, rationale, diff, content, metadata, selected). The fixture's
+ * two items carry no `content`, which Core's apply refuses, so these blocks
+ * patch the text Core would write into the projection instead of forking it.
+ */
+const SHELVING_UNIT = 'unit-fixture-thesis-landscape';
+const SHELVING_MAP = 'study-map-fixture-thesis';
+const NOTE_TEXT = '# Fixture synthesis\n\nThe reasoning, kept in the learner’s own words.';
+const GARDEN_TEXT = '# Open fixture question\n\nWhat still needs checking.';
+const REWRITTEN_TEXT = '# Fixture synthesis\n\nText an agent rewrote under the same ID.';
+const NEWER_SNAPSHOT = `sha256:${'e'.repeat(64)}`;
+
+function shelvingMapIn(manifest, unitId = SHELVING_UNIT) {
+  return manifest.study_maps.find((map) => map.unit_id === unitId);
+}
+function shelvingItem(manifest, id, unitId = SHELVING_UNIT) {
+  return shelvingMapIn(manifest, unitId).shelving.items.find((item) => item.id === id);
+}
+function withShelvingContent(manifest) {
+  shelvingItem(manifest, 'proposal-note').content = NOTE_TEXT;
+  shelvingItem(manifest, 'proposal-garden').content = GARDEN_TEXT;
+}
+/** A newer projection: the study map's revision and the snapshot both move on. */
+function newerProjection(manifest, unitId = SHELVING_UNIT) {
+  shelvingMapIn(manifest, unitId).revision += 1;
+  manifest._generated.snapshot_id = NEWER_SNAPSHOT;
+}
+/** The same item ID now carries different text, as an agent's re-proposal would. */
+function rewriteNote(manifest) {
+  const note = shelvingItem(manifest, 'proposal-note');
+  note.content = REWRITTEN_TEXT;
+  note.diff = '+ Rewritten fixture wording.';
+}
+function descendants(node) {
+  return [node, ...node.children.flatMap(descendants)];
+}
+function shelvingScreen(app) {
+  const view = app.workspace.getLeavesOfType(VIEW.shelving)[0]?.view;
+  const rows = () => view.contentEl.find('los-proposal-row');
+  const row = (title) => rows().find((candidate) => descendants(candidate)
+    .some((node) => node.tag === 'h3' && node.allText() === title)) || null;
+  const box = (title) => {
+    const target = row(title);
+    return target ? descendants(target).find((node) => node.tag === 'input'
+      && node.getAttribute('type') === 'checkbox') || null : null;
+  };
+  const set = (title, checked) => {
+    const target = box(title);
+    target.checked = checked;
+    target.fire('change');
+  };
+  const marks = (title) => (row(title)?.find('los-proposal-mark') || []).map((node) => node.allText());
+  const approve = () => view.contentEl.findText('los-btn', 'Approve selected changes');
+  const text = () => view.contentEl.allText();
+  return { view, rows, row, box, set, marks, approve, text };
+}
+function appliedEnvelopes(calls) {
+  return calls.envelopes.filter((envelope) => envelope.capability === 'review.apply');
+}
+/**
+ * Answer chosen calls differently and leave every other call to the harness.
+ * `answer(args, envelope)` returns a responder or null; answered calls are
+ * recorded exactly as the harness records its own.
+ */
+function answerWith({ plugin, calls }, answer) {
+  const base = plugin.runLos;
+  plugin.runLos = (args, callback, stdin) => {
+    const envelope = stdin ? JSON.parse(stdin) : null;
+    const reply = answer(args, envelope);
+    if (!reply) return base(args, callback, stdin);
+    calls.push(args);
+    if (envelope) calls.envelopes.push(envelope);
+    return reply(callback);
+  };
+}
+/** Core's receipt names the snapshot its own write produced. */
+function confirmedAt(snapshot, envelope, result = {}) {
+  return (callback) => {
+    const confirmation = gatewayConfirmation(envelope, result);
+    confirmation.snapshot_after = snapshot();
+    callback(null, JSON.stringify(confirmation), '');
+  };
+}
+function staleRefusal(envelope) {
+  return (callback) => callback(
+    Object.assign(new Error('Command failed'), { code: 3 }),
+    JSON.stringify(gatewayRefusal(
+      envelope, 'STALE_SNAPSHOT',
+      'los: projection conflict — authored files changed since the app loaded', true,
+    )),
+    '',
+  );
+}
+
 module.exports = async function run() {
   heading('selected-only shelving');
   {
@@ -93,7 +189,8 @@ module.exports = async function run() {
       ],
     };
 
-    await view.loadProposal();
+    // No proposal cache: a render reads the proposal and its guard from one
+    // store read, so a redraw alone shows the revised projection.
     view.render();
 
     const revisedRows =
@@ -101,14 +198,23 @@ module.exports = async function run() {
         'los-proposal-row',
       );
 
+    /* Changed deliberately by Plan B (S2). Once the learner has touched a box,
+     * Core's defaults never tick an item for them again, so the new item is
+     * unticked and marked. The invariant this check used to protect, that IDs
+     * which left the proposal are never sent, keeps its own check below. */
     check(
-      'proposal revision resets stale selected IDs before rendering',
+      'a proposal revision drops stale IDs and leaves a new item unticked and marked',
       revisedRows.length === 1
         && revisedRows[0].allText().includes(
           'Revised durable note',
         )
-        && revisedRows[0].children[0].checked === true,
+        && revisedRows[0].children[0].checked === false
+        && revisedRows[0].find('los-proposal-mark')
+          .some((node) => node.allText() === 'New'),
     );
+
+    revisedRows[0].children[0].checked = true;
+    revisedRows[0].children[0].fire('change');
 
     const approveButton = view.contentEl.findText(
       'los-btn',
@@ -563,5 +669,463 @@ module.exports = async function run() {
     check('https still opens normally',
       app.workspace.getLeavesOfType('webviewer').length === 0 || true);
     plugin.onunload();
+  }
+
+  /*
+   * Product research 2026-11-11, §2.3 failure case 1, reproduced as written:
+   * choose only proposal-garden, let Core refuse the approval as stale, let
+   * the refresh change the study map's revision, approve again. Before Plan B
+   * the retry sent ["proposal-note"] under a notice saying the draft was kept.
+   */
+  heading('Shelving: a refused approval retries exactly what the learner chose');
+  {
+    let rebuilt = false;
+    const context = await boot({ patchManifest(manifest) {
+      withShelvingContent(manifest);
+      // Core still defaults to proposal-note after the rebuild.
+      if (rebuilt) shelvingMapIn(manifest).revision += 1;
+    } });
+    const { app, plugin, calls } = context;
+    answerWith(context, (args, envelope) => {
+      if (args[0] === 'generate') return (callback) => { rebuilt = true; callback(null, 'rebuilt', ''); };
+      if (envelope?.capability === 'review.apply' && appliedEnvelopes(calls).length === 0) return staleRefusal(envelope);
+      return null;
+    });
+    await plugin.nav.openShelving(SHELVING_UNIT);
+    const screen = shelvingScreen(app);
+    check('Core defaults tick proposal-note before the learner touches anything',
+      screen.box('Fixture synthesis')?.checked === true
+      && screen.box('Open fixture question')?.checked === false);
+    screen.set('Fixture synthesis', false);
+    screen.set('Open fixture question', true);
+    Notice.log.length = 0;
+    screen.approve().fire('click');
+    await waitFor(() => rebuilt && appliedEnvelopes(calls).length === 1 && !plugin.gateway.isBusy);
+    check('the refused attempt sent only the learner’s choice',
+      JSON.stringify(appliedEnvelopes(calls)[0]?.payload.selected) === '["proposal-garden"]');
+    check('the rebuild after the refusal moved the study map’s revision',
+      plugin.store.mapForUnit(SHELVING_UNIT).revision === 2);
+    check('after the rebuild the screen keeps the learner’s choice, as the notice says',
+      Notice.log.some((line) => line.includes('Your draft was kept'))
+      && screen.box('Open fixture question')?.checked === true
+      && screen.box('Fixture synthesis')?.checked === false);
+    check('a refresh that changed no item adds no summary line',
+      !screen.text().includes('Kept your choice') && !screen.text().includes('since you looked'));
+    screen.approve().fire('click');
+    await waitFor(() => appliedEnvelopes(calls).length === 2 && !plugin.gateway.isBusy);
+    check('the retry sends proposal-garden although Core defaults to proposal-note',
+      JSON.stringify(appliedEnvelopes(calls)[1]?.payload.selected) === '["proposal-garden"]');
+    plugin.onunload();
+  }
+
+  heading('Shelving: a choice belongs to the item the learner saw');
+  {
+    let newer = false;
+    const context = await boot({ patchManifest(manifest) {
+      withShelvingContent(manifest);
+      if (!newer) return;
+      newerProjection(manifest);
+      rewriteNote(manifest);
+      shelvingMapIn(manifest).shelving.items.push({
+        id: 'proposal-extra', kind: 'durable-note', title: 'Fixture extra note',
+        destination: 'knowledge/notes/research/extra.md', rationale: 'Arrived after the first look.',
+        content: '# Fixture extra note\n\nLater text.', selected: true,
+      });
+    } });
+    const { app, plugin, calls } = context;
+    answerWith(context, (args, envelope) => (envelope?.capability === 'review.apply'
+      ? confirmedAt(() => plugin.store.snapshotId, envelope) : null));
+    await plugin.nav.openShelving(SHELVING_UNIT);
+    const screen = shelvingScreen(app);
+    check('each item shows the text Core will write and its destination',
+      screen.row('Fixture synthesis')?.allText().includes('The reasoning, kept in the learner’s own words.')
+      && screen.row('Fixture synthesis')?.allText().includes('knowledge/notes/research/note-fixture-synthesis.md')
+      && screen.row('Open fixture question')?.allText().includes('What still needs checking.'));
+    check('nothing is marked before anything changed',
+      !screen.text().includes('since you looked') && screen.marks('Fixture synthesis').length === 0);
+    screen.set('Open fixture question', true);
+    newer = true;
+    await plugin.reloadStore();
+    check('an unchanged item keeps the learner’s tick across a newer snapshot',
+      screen.box('Open fixture question')?.checked === true
+      && screen.marks('Open fixture question').length === 0);
+    check('an item whose text changed under the same ID is unticked and marked',
+      screen.box('Fixture synthesis')?.checked === false
+      && screen.marks('Fixture synthesis').includes('Changed since you looked')
+      && screen.row('Fixture synthesis')?.allText().includes('Text an agent rewrote under the same ID.'));
+    check('an item that arrived after the learner’s first touch is unticked and marked new',
+      screen.box('Fixture extra note')?.checked === false
+      && screen.marks('Fixture extra note').includes('New'));
+    check('one line says what the refresh did to the learner’s choices',
+      screen.text().includes('Kept your choice on 1 item. 1 changed since you looked and is now unticked: Fixture synthesis. 1 new item is unticked.'));
+    screen.approve().fire('click');
+    await waitFor(() => appliedEnvelopes(calls).length === 1 && !plugin.gateway.isBusy);
+    check('approval sends only the ticks the learner can see',
+      JSON.stringify(appliedEnvelopes(calls)[0]?.payload.selected) === '["proposal-garden"]');
+    check('the approval is guarded by the snapshot whose text is on screen',
+      appliedEnvelopes(calls)[0]?.expected_snapshot === NEWER_SNAPSHOT
+      && appliedEnvelopes(calls)[0]?.expected_revisions[SHELVING_MAP] === 2);
+    plugin.onunload();
+  }
+
+  heading('Shelving: long text is collapsed, never cut');
+  {
+    const lines = Array.from({ length: 30 }, (_, index) => `Line ${index + 1} of the durable note.`);
+    const { app, plugin } = await boot({ patchManifest(manifest) {
+      withShelvingContent(manifest);
+      shelvingItem(manifest, 'proposal-note').content = lines.join('\n');
+    } });
+    await plugin.nav.openShelving(SHELVING_UNIT);
+    const screen = shelvingScreen(app);
+    const block = () => screen.row('Fixture synthesis').find('los-proposal-content')[0];
+    const more = () => screen.row('Fixture synthesis').find('los-btn').find((node) => node.allText().startsWith('Show'));
+    check('text beyond twelve lines starts collapsed behind Show all',
+      block()?.allText() === lines.slice(0, 12).join('\n')
+      && more()?.allText() === 'Show all 30 lines' && more()?.getAttribute('aria-expanded') === 'false');
+    more()?.fire('click');
+    check('Show all reveals every line Core would write',
+      block()?.allText() === lines.join('\n')
+      && more()?.allText() === 'Show fewer lines' && more()?.getAttribute('aria-expanded') === 'true');
+    check('short text needs no control', !screen.row('Open fixture question').find('los-btn').length);
+    plugin.onunload();
+  }
+
+  heading('Shelving: applied and departed items never carry a tick forward');
+  {
+    let phase = 'first';
+    const context = await boot({ patchManifest(manifest) {
+      withShelvingContent(manifest);
+      const shelving = shelvingMapIn(manifest).shelving;
+      // Core removes applied items from the packet and keeps the remainder.
+      if (phase !== 'first') {
+        newerProjection(manifest);
+        shelving.items = shelving.items.filter((item) => item.id !== 'proposal-garden');
+      }
+      // An agent later proposes the same ID again with the same text.
+      if (phase === 'again') {
+        shelvingMapIn(manifest).revision += 1;
+        shelving.items.push({ ...shelvingItem(manifest, 'proposal-note'),
+          id: 'proposal-garden', kind: 'garden', title: 'Open fixture question',
+          destination: 'knowledge/garden/open-fixture.md', rationale: 'Still uncertain.',
+          diff: '+ Track uncertainty.', content: GARDEN_TEXT, selected: false });
+      }
+    } });
+    const { app, plugin, calls } = context;
+    answerWith(context, (args, envelope) => {
+      if (envelope?.capability !== 'review.apply') return null;
+      phase = 'applied';
+      return confirmedAt(() => NEWER_SNAPSHOT, envelope, { ok: true, applied: ['proposal-garden'] });
+    });
+    await plugin.nav.openShelving(SHELVING_UNIT);
+    const screen = shelvingScreen(app);
+    screen.set('Fixture synthesis', false);
+    screen.set('Open fixture question', true);
+    screen.approve().fire('click');
+    await waitFor(() => appliedEnvelopes(calls).length === 1 && !plugin.gateway.isBusy);
+    check('an applied item leaves the screen with Core’s packet',
+      JSON.stringify(appliedEnvelopes(calls)[0]?.payload.selected) === '["proposal-garden"]'
+      && screen.rows().length === 1 && screen.row('Open fixture question') === null);
+    check('the learner’s untick on the remaining item survives the apply',
+      screen.box('Fixture synthesis')?.checked === false);
+    phase = 'again';
+    await plugin.reloadStore();
+    check('an applied ID proposed again starts unticked and new, not with its old tick',
+      screen.box('Open fixture question')?.checked === false
+      && screen.marks('Open fixture question').includes('New'));
+    Notice.log.length = 0;
+    screen.approve().fire('click');
+    await waitFor(() => Notice.log.length > 0);
+    check('with nothing ticked, approval sends nothing',
+      appliedEnvelopes(calls).length === 1
+      && Notice.log.some((line) => line.includes('Select at least one proposal.')));
+    plugin.onunload();
+  }
+
+  /*
+   * Archived plan §8.2 F2. Before Plan B the screen kept the proposal it
+   * cached at open while the guard followed the store, so a newer snapshot
+   * left old text on screen under a guard that let Core write the new text.
+   */
+  heading('Shelving: what is approved is the text on screen');
+  {
+    let newer = false;
+    const context = await boot({ patchManifest(manifest) {
+      withShelvingContent(manifest);
+      if (newer) { newerProjection(manifest); rewriteNote(manifest); }
+    } });
+    const { app, plugin, calls } = context;
+    answerWith(context, (args, envelope) => (envelope?.capability === 'review.apply'
+      ? confirmedAt(() => plugin.store.snapshotId, envelope) : null));
+    await plugin.nav.openShelving(SHELVING_UNIT);
+    const screen = shelvingScreen(app);
+    check('the first render shows the text and diff Core would write now',
+      screen.row('Fixture synthesis')?.allText().includes('The reasoning, kept in the learner’s own words.')
+      && screen.row('Fixture synthesis')?.allText().includes('+ Preserve fixture wording.'));
+    newer = true;
+    await plugin.reloadStore();
+    check('a newer snapshot redraws the item with its current text and diff',
+      screen.row('Fixture synthesis')?.allText().includes('Text an agent rewrote under the same ID.')
+      && screen.row('Fixture synthesis')?.allText().includes('+ Rewritten fixture wording.')
+      && !screen.row('Fixture synthesis')?.allText().includes('+ Preserve fixture wording.'));
+    check('before any touch Core’s defaults still apply to the redrawn proposal',
+      screen.box('Fixture synthesis')?.checked === true
+      && screen.box('Open fixture question')?.checked === false);
+    screen.approve().fire('click');
+    await waitFor(() => appliedEnvelopes(calls).length === 1 && !plugin.gateway.isBusy);
+    const sent = appliedEnvelopes(calls)[0];
+    check('the guard sent belongs to the same snapshot as the text on screen',
+      JSON.stringify(sent?.payload.selected) === '["proposal-note"]'
+      && sent?.expected_snapshot === NEWER_SNAPSHOT
+      && sent?.expected_revisions[SHELVING_MAP] === 2);
+    plugin.onunload();
+  }
+
+  heading('Shelving: an approval queued behind a refresh cannot approve unseen text');
+  {
+    let newer = false;
+    const context = await boot({ patchManifest(manifest) {
+      withShelvingContent(manifest);
+      if (newer) { newerProjection(manifest); rewriteNote(manifest); }
+    } });
+    const { app, plugin, calls } = context;
+    let release = null;
+    answerWith(context, (args, envelope) => {
+      if (envelope?.capability === 'capture.create' && !release) {
+        return (callback) => {
+          release = () => callback(null, JSON.stringify({
+            ...gatewayConfirmation(envelope), snapshot_after: NEWER_SNAPSHOT,
+          }), '');
+        };
+      }
+      return envelope?.capability === 'review.apply'
+        ? confirmedAt(() => plugin.store.snapshotId, envelope) : null;
+    });
+    await plugin.nav.openShelving(SHELVING_UNIT);
+    const screen = shelvingScreen(app);
+    const shownGuard = plugin.store.artifactGuard(SHELVING_UNIT, SHELVING_MAP);
+    const shownSnapshot = plugin.store.snapshotId;
+    const blocking = plugin.mutate(() => plugin.gateway.captureText('an unrelated thought'));
+    await waitFor(() => Boolean(release));
+    newer = true; // the capture's own write publishes a newer projection
+    Notice.log.length = 0;
+    screen.approve().fire('click'); // clicked on the old render, queued behind the capture
+    release();
+    await blocking;
+    await waitFor(() => !plugin.gateway.isBusy && plugin.store.snapshotId === NEWER_SNAPSHOT);
+    await waitFor(() => Notice.log.length > 0 || appliedEnvelopes(calls).length > 0);
+    const sent = appliedEnvelopes(calls)[0];
+    check('a queued approval never pairs the old screen with a newer guard',
+      !sent || (sent.expected_snapshot === shownSnapshot
+        && JSON.stringify(sent.expected_revisions) === JSON.stringify(shownGuard)));
+    check('the learner sees the newer text and is told nothing was written',
+      screen.row('Fixture synthesis')?.allText().includes('Text an agent rewrote under the same ID.')
+      && Notice.log.some((line) => line.includes('Nothing was written')));
+    plugin.onunload();
+  }
+
+  heading('Shelving: choices outlive the tab and a refusal, not the plugin');
+  {
+    const context = await boot({ patchManifest: withShelvingContent });
+    const { app, plugin, calls } = context;
+    await plugin.nav.openShelving(SHELVING_UNIT);
+    let screen = shelvingScreen(app);
+    screen.set('Fixture synthesis', false);
+    screen.set('Open fixture question', true);
+    app.workspace.getLeavesOfType(VIEW.shelving)[0].detach();
+    await plugin.nav.openShelving(SHELVING_UNIT);
+    screen = shelvingScreen(app);
+    check('closing and reopening the Shelving tab keeps the learner’s ticks',
+      screen.box('Fixture synthesis')?.checked === false
+      && screen.box('Open fixture question')?.checked === true);
+    answerWith(context, (args, envelope) => (envelope?.capability === 'review.apply'
+      ? (callback) => callback(
+        Object.assign(new Error('Command failed'), { code: 2 }),
+        JSON.stringify(gatewayRefusal(envelope, 'INVALID_REQUEST',
+          'los: unsafe or existing shelving destination: knowledge/garden/open-fixture.md')),
+        '')
+      : null));
+    Notice.log.length = 0;
+    screen.approve().fire('click');
+    await waitFor(() => appliedEnvelopes(calls).length === 1 && !plugin.gateway.isBusy && Notice.log.length > 0);
+    check('a refused approval keeps the learner’s ticks and shows Core’s reason',
+      Notice.log.some((line) => line.includes('unsafe or existing shelving destination'))
+      && screen.box('Fixture synthesis')?.checked === false
+      && screen.box('Open fixture question')?.checked === true);
+    check('choices stay out of the plugin’s saved settings',
+      !JSON.stringify(plugin.settings).includes('proposal-garden'));
+    plugin.onunload();
+    const restarted = await boot({ patchManifest: withShelvingContent });
+    await restarted.plugin.nav.openShelving(SHELVING_UNIT);
+    const fresh = shelvingScreen(restarted.app);
+    check('a plugin restart returns to Core’s defaults',
+      fresh.box('Fixture synthesis')?.checked === true
+      && fresh.box('Open fixture question')?.checked === false);
+    restarted.plugin.onunload();
+  }
+
+  heading('Shelving: choices are scoped to their unit');
+  {
+    const SECOND = 'unit-fixture-aml-l03';
+    const { app, plugin } = await boot({ patchManifest(manifest) {
+      withShelvingContent(manifest);
+      shelvingMapIn(manifest, SECOND).shelving = JSON.parse(JSON.stringify(shelvingMapIn(manifest).shelving));
+    } });
+    await plugin.nav.openShelving(SHELVING_UNIT);
+    const screen = shelvingScreen(app);
+    screen.set('Fixture synthesis', false);
+    screen.set('Open fixture question', true);
+    await plugin.nav.openShelving(SECOND);
+    const second = shelvingScreen(app);
+    check('another unit with the same item IDs starts from its own Core defaults',
+      second.text().includes('AML Lecture 03')
+      && second.box('Fixture synthesis')?.checked === true
+      && second.box('Open fixture question')?.checked === false);
+    second.set('Open fixture question', true);
+    await plugin.nav.openShelving(SHELVING_UNIT);
+    const first = shelvingScreen(app);
+    check('returning to the first unit restores its own choices',
+      first.text().includes('Thesis landscape')
+      && first.box('Fixture synthesis')?.checked === false
+      && first.box('Open fixture question')?.checked === true);
+    plugin.onunload();
+  }
+
+  /*
+   * Product research §2.3 failure case 2. Without an items file Core writes
+   * the packet and records state `draft`; the screen used to show "No
+   * proposal yet" again and claim the gateway derives candidates.
+   */
+  heading('Shelving: a prepared packet waits for proposal items');
+  {
+    const DRAFT_UNIT = 'unit-fixture-aml-l04';
+    let prepared = false;
+    let packet = '';
+    const context = await boot({ patchManifest(manifest) {
+      const map = shelvingMapIn(manifest, DRAFT_UNIT);
+      packet = `${path.posix.dirname(map.path)}/shelving-proposal.md`;
+      if (prepared) {
+        map.shelving = { state: 'draft', proposal_path: packet,
+          summary: 'Review stage notes and attachments without rewriting learner wording.' };
+      }
+    } });
+    const { app, plugin, calls } = context;
+    answerWith(context, (args, envelope) => (envelope?.capability === 'review.prepare'
+      ? (callback) => {
+        prepared = true;
+        callback(null, JSON.stringify(gatewayConfirmation(envelope, {
+          ok: true, unit_id: DRAFT_UNIT, proposal_path: packet, state: 'draft',
+        })), '');
+      }
+      : null));
+    const prompts = [];
+    app.plugins = { plugins: { 'agentic-copilot': { sendToChat: async (prompt) => { prompts.push(prompt); } } } };
+    await plugin.nav.openShelving(DRAFT_UNIT);
+    const screen = shelvingScreen(app);
+    check('the empty state says what Prepare really does',
+      screen.text().includes('No proposal yet')
+      && !screen.text().includes('The gateway derives candidates from this unit')
+      && screen.text().includes('review packet'));
+    screen.view.contentEl.findText('los-btn', 'Prepare proposal').fire('click');
+    await waitFor(() => prepared && !plugin.gateway.isBusy);
+    check('Prepare asks Core for this unit’s packet',
+      calls.envelope('review.prepare')?.payload.unit_id === DRAFT_UNIT);
+    check('a packet without items is a visible draft with its path',
+      screen.text().includes('Waiting for proposal items')
+      && screen.text().includes(packet)
+      && !screen.text().includes('No proposal yet')
+      && screen.rows().length === 0);
+    const envelopesBefore = calls.envelopes.length;
+    screen.view.contentEl.findText('los-btn', 'Ask AI to propose items')?.fire('click');
+    await waitFor(() => prompts.length > 0);
+    check('Ask AI to propose items hands the unit and the review.prepare intent to the scoped port',
+      prompts.length === 1
+      && prompts[0].includes('review.prepare')
+      && prompts[0].includes(packet)
+      && prompts[0].includes(`"unit_id": "${DRAFT_UNIT}"`));
+    check('the request ends at proposal creation and never asks to apply',
+      prompts.length === 1 && prompts[0].includes('Do not apply'));
+    check('asking for proposal items sends nothing to the gateway and no model runs here',
+      calls.envelopes.length === envelopesBefore
+      && !calls.some((args) => args[0] === 'ai-action' || args.includes('review.apply')));
+    plugin.onunload();
+  }
+
+  /*
+   * Plan B risk 2: a decoder that drops an actionable field could carry an old
+   * tick onto changed meaning. The field list is read from the sibling Core's
+   * closed schema, so a field Core adds fails this block until the decoder and
+   * its fingerprint learn it. The validated manifest already refuses a field
+   * the locked contract does not know; the decoder refuses one too, in case a
+   * regenerated contract admits a field before the decoder does.
+   */
+  heading('Shelving: the fingerprint follows Core’s closed item schema');
+  {
+    const schemaPath = path.join(ROOT, '..', 'repository', 'system', 'schema', 'study-map.schema.json');
+    const fields = fs.existsSync(schemaPath)
+      ? Object.keys(JSON.parse(fs.readFileSync(schemaPath, 'utf8'))
+        .properties.shelving.properties.items.items.properties)
+      : ['id', 'kind', 'title', 'destination', 'rationale', 'diff', 'content', 'metadata', 'selected'];
+    const sample = {
+      id: 'proposal-note', kind: 'durable-note', title: 'Fixture synthesis',
+      destination: 'knowledge/notes/research/note-fixture-synthesis.md',
+      rationale: 'The reasoning has an independent purpose.', diff: '+ Preserve fixture wording.',
+      content: NOTE_TEXT, metadata: { origin: 'fixture', stages: ['stage-fixture-thesis'] }, selected: true,
+    };
+    const changed = {
+      kind: 'garden', title: 'Fixture synthesis, renamed', destination: 'knowledge/notes/research/elsewhere.md',
+      rationale: 'A different reason.', diff: '+ Different wording.', content: REWRITTEN_TEXT,
+      metadata: { origin: 'fixture', stages: ['stage-fixture-other'] },
+    };
+    const full = Object.fromEntries(fields.map((field) => [field, field in sample ? sample[field] : `fixture ${field}`]));
+    const { app, plugin, calls } = await boot({ patchManifest(manifest) {
+      withShelvingContent(manifest);
+      const shelving = shelvingMapIn(manifest).shelving;
+      shelving.items = [full, shelvingItem(manifest, 'proposal-garden')];
+    } });
+    check('the fixture with every schema field is a valid projection', plugin.store.ready, plugin.store.error);
+    await plugin.nav.openShelving(SHELVING_UNIT);
+    const screen = shelvingScreen(app);
+    check(`an item using every field of Core’s schema can be ticked (${fields.join(', ')})`,
+      fields.includes('content') && screen.box('Fixture synthesis')?.checked === true);
+    screen.set('Open fixture question', true);
+    const item = plugin.store.mapForUnit(SHELVING_UNIT).shelving.items[0];
+    const missed = [];
+    for (const field of fields.filter((name) => name !== 'id' && name !== 'selected')) {
+      const original = item[field];
+      item[field] = field in changed ? changed[field] : `changed ${field}`;
+      screen.view.render();
+      const caught = screen.box(item.title)?.checked === false
+        && screen.marks(item.title).includes('Changed since you looked');
+      item[field] = original;
+      screen.view.render();
+      const restored = screen.box('Fixture synthesis')?.checked === true
+        && screen.marks('Fixture synthesis').length === 0;
+      if (!caught || !restored) missed.push(field);
+    }
+    check('a change to any field Core acts on unticks and marks the item; undoing it restores the tick',
+      missed.length === 0, `not caught: ${missed.join(', ')}`);
+    item.selected = false;
+    screen.view.render();
+    check('a new Core default alone is not a change to the learner’s choice',
+      screen.box('Fixture synthesis')?.checked === true && screen.marks('Fixture synthesis').length === 0);
+    plugin.store.mapForUnit(SHELVING_UNIT).shelving.items[1].urgency = 'high';
+    screen.view.render();
+    check('an item with a field the decoder does not know cannot be ticked and says why',
+      screen.row('Open fixture question') !== null
+      && screen.box('Open fixture question') === null
+      && screen.row('Open fixture question').allText().includes('urgency'));
+    screen.approve()?.fire('click');
+    await waitFor(() => appliedEnvelopes(calls).length === 1 && !plugin.gateway.isBusy);
+    check('only the item the app can show is sent',
+      JSON.stringify(appliedEnvelopes(calls)[0]?.payload.selected) === '["proposal-note"]');
+    plugin.onunload();
+    const unknown = await boot({ patchManifest(manifest) {
+      withShelvingContent(manifest);
+      shelvingItem(manifest, 'proposal-garden').urgency = 'high';
+    } });
+    check('the validated projection already refuses an item field outside the locked contract',
+      unknown.plugin.store.ready === false
+      && /must NOT have additional properties/.test(String(unknown.plugin.store.error)));
+    unknown.plugin.onunload();
   }
 };

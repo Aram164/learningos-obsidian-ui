@@ -21,7 +21,54 @@ interface Attention {
   scroll: Map<string, number>; lastKey?: string;
   materialsReturn: 'plan' | 'session' | 'overview'; materialsVisited: boolean;
 }
-const attention = new WeakMap<UnitScreenHost, Attention>();
+/**
+ * Where a lecture detour left from. It carries its own copy of the origin's
+ * attention, so the way back stays exact even after the bounded map below has
+ * forgotten the origin.
+ */
+interface Detour {
+  readonly origin: { readonly unitId: string; readonly title: string; readonly stageId: string; readonly stageNumber: number; readonly attention: Attention };
+  /** The lecture the way back is offered on. A detour continued from it moves it on. */
+  destinationId: string;
+}
+/**
+ * Attention per lecture, per unit tab, in memory only (Plan B step 2). The map
+ * is kept in recency order and bounded, so a long-lived tab cannot grow it.
+ */
+interface HostAttention {
+  readonly units: Map<string, Attention>;
+  shownUnitId: string | null;
+  detour: Detour | null;
+}
+const ATTENTION_LIMIT = 8;
+const attention = new WeakMap<UnitScreenHost, HostAttention>();
+function hostAttention(view: UnitScreenHost): HostAttention {
+  let host = attention.get(view);
+  if (!host) { host = { units: new Map(), shownUnitId: null, detour: null }; attention.set(view, host); }
+  return host;
+}
+function freshAttention(unitId: string): Attention {
+  return { unitId, mode: 'plan', materialScope: 'stage',
+    filters: { stage: emptyMaterialFilters(), unit: emptyMaterialFilters(), course: emptyMaterialFilters() },
+    scroll: new Map(), materialsReturn: 'plan', materialsVisited: false };
+}
+/** A resting copy: no location is "current" until the copy is drawn again. */
+function copyAttention(state: Attention): Attention {
+  const copy: Attention = { ...state, scroll: new Map(state.scroll),
+    filters: { stage: { ...state.filters.stage }, unit: { ...state.filters.unit }, course: { ...state.filters.course } } };
+  delete copy.lastKey;
+  return copy;
+}
+/** The lecture's attention, now the most recent; the least recent beyond the bound is forgotten. */
+function rememberAttention(host: HostAttention, unitId: string, state = host.units.get(unitId) ?? freshAttention(unitId)): Attention {
+  host.units.delete(unitId);
+  host.units.set(unitId, state);
+  for (const oldest of host.units.keys()) {
+    if (host.units.size <= ATTENTION_LIMIT) break;
+    host.units.delete(oldest);
+  }
+  return state;
+}
 const requestedSessions = new Set<string>();
 /** A launch hint is consumed once; plan/session attention thereafter belongs to its leaf. */
 export function requestFocusSession(unitId: string): void { requestedSessions.add(unitId); }
@@ -34,6 +81,7 @@ interface Context {
   temporary: boolean;
   options: MaterialOptionView[];
   state: Attention;
+  host: HostAttention;
   guards: Readonly<Record<string, number>>;
 }
 function locationKey(mode: Mode, stageId: string, scope: MaterialScope): string {
@@ -63,6 +111,29 @@ function openStage(context: Context, stageId: string): void {
   if (context.stage.id === stageId) context.view.render();
   else void context.view.selectStage(stageId);
 }
+/**
+ * Leave for another lecture from Course sources. The origin is recorded before
+ * the destination opens; a detour continued from its own destination keeps the
+ * place the learner first left.
+ */
+function leaveForLecture(context: Context, destinationId: string): void {
+  const { view, unit, stage, map, state, host } = context;
+  if (state.lastKey) state.scroll.set(state.lastKey, view.contentEl.scrollTop);
+  if (host.detour?.destinationId === unit.id) host.detour.destinationId = destinationId;
+  else {
+    host.detour = { destinationId, origin: { unitId: unit.id, title: unit.title, stageId: stage.id,
+      stageNumber: map.stages.findIndex(item => item.id === stage.id) + 1, attention: copyAttention(state) } };
+  }
+  void view.plugin.nav.openUnit(destinationId);
+}
+/** Back to the origin by ID, never by history, with the attention it had. */
+function returnFromDetour(context: Context, detour: Detour): void {
+  const { host, view } = context;
+  host.detour = null;
+  rememberAttention(host, detour.origin.unitId, copyAttention(detour.origin.attention));
+  // A stage the newer snapshot removed falls back in selectedStage().
+  void view.plugin.nav.openUnit(detour.origin.unitId, detour.origin.stageId);
+}
 function stageState(stage: StageRecordView, map: StudyMapView): string {
   return stage.status === 'complete' ? 'Complete' : stage.status === 'skipped' ? 'Skipped' : stage.id === map.currentStageId ? 'Current' : 'Not started';
 }
@@ -80,23 +151,27 @@ export function renderFocusUnit(view: UnitScreenHost): boolean {
   return rendered;
 }
 function renderFocusUnitContent(view: UnitScreenHost): boolean {
+  const host = hostAttention(view);
+  if (host.shownUnitId !== view.unitId) {
+    // The tab still shows the lecture being left: keep its scroll with it, and
+    // never let its last location absorb the next lecture's scroll.
+    const left = host.shownUnitId ? host.units.get(host.shownUnitId) : undefined;
+    if (left?.lastKey) { left.scroll.set(left.lastKey, view.contentEl.scrollTop); delete left.lastKey; }
+    host.shownUnitId = view.unitId;
+  }
   const unit = readUnitRecord(view.unitId ? view.plugin.store.get(view.unitId) : null, view.unitId);
   const projected = unit ? view.plugin.store.mapForUnit(unit.id) : null;
   if (!unit || !projected) return false;
   const durable = readStudyMap(projected);
   const { studyMap: map, temporary } = sittingStudyMap(view, unit.id, durable);
   if (!map.stages[0]) return false;
-  let state = attention.get(view);
-  if (!state || state.unitId !== unit.id) {
-    state = { unitId: unit.id, mode: 'plan', materialScope: 'stage',
-      filters: { stage: emptyMaterialFilters(), unit: emptyMaterialFilters(), course: emptyMaterialFilters() },
-      scroll: new Map(), materialsReturn: 'plan', materialsVisited: false };
-    attention.set(view, state);
-  }
+  // The origin on screen again, by any route, ends the detour it started.
+  if (host.detour?.origin.unitId === unit.id) host.detour = null;
+  const state = rememberAttention(host, unit.id);
   if (requestedSessions.delete(unit.id)) state.mode = 'session';
   const stage = selectedStage(view, unit.id, map, map.stages[0], Boolean(temporary));
   const context: Context = { view, unit, durable, map, stage, temporary: Boolean(temporary),
-    options: stageMaterialOptions(view, unit), state,
+    options: stageMaterialOptions(view, unit), state, host,
     guards: view.plugin.store.artifactGuard(unit.id, asString(durable.record.id)) };
   if (state.lastKey) state.scroll.set(state.lastKey, view.contentEl.scrollTop);
   const scrollKey = locationKey(state.mode, stage.id, state.materialScope);
@@ -105,6 +180,11 @@ function renderFocusUnitContent(view: UnitScreenHost): boolean {
   const module = view.plugin.store.get(unit.moduleId);
   const actions = toolbar(root, state.mode === 'wrapup' ? 'End session' : unit.title,
     module ? asLabel(module) : '', () => view.plugin.nav.openModule(unit.moduleId));
+  const detour = host.detour;
+  if (detour?.destinationId === unit.id) {
+    button(actions, `Back to ${detour.origin.title} · Stage ${detour.origin.stageNumber}`,
+      () => returnFromDetour(context, detour), 'quiet');
+  }
   if (state.mode !== 'wrapup') button(actions, 'End session', () => show(context, 'wrapup'), 'quiet');
   if (state.mode !== 'wrapup') {
     const peers = root.createDiv({ cls: 'focus-peer-nav' });
@@ -327,7 +407,7 @@ function materials(root: HTMLElement, context: Context): void {
               renderer: stageResourceRenderer(view, unit, stage, context.guards, context.options),
               refresh: () => view.render(),
             }, { missingLocationLabel: 'Location needed' });
-          button(section, 'Go to lecture', () => view.plugin.nav.openUnit(owner.id), 'quiet');
+          button(section, 'Go to lecture', () => leaveForLecture(context, owner.id), 'quiet');
         }
       }, 'Purpose');
   } else {

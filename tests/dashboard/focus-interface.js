@@ -271,6 +271,164 @@ module.exports = async function run() {
       cards.length === 3 && purpose('pdf pp. 1-5') === 'Derive it' && purpose('pdf p. 7') === 'Build intuition');
     check('a placement without the id falls back to its authored action, never to a sibling route',
       purpose('pdf p. 8') === 'Read');
+
+  /*
+   * A lecture detour (product research 2026-11-11, §5 and the evidence
+   * appendix). Course sources → Go to lecture replaces the unit in the same
+   * tab. Before Plan B nothing on the destination led back, and the
+   * application's Back landed on the origin's Study plan with the comparison,
+   * its scope, filters and scroll discarded.
+   */
+  const ORIGIN = 'unit-fixture-sad-l04';
+  const ORIGIN_TITLE = 'SaD Lecture 04 — Probability & Bayes';
+  const DESTINATION = 'unit-fixture-sad-l02';
+  const otherLectureRoute = (manifest) => {
+    manifest.module_source_maps.find(item => item.module_id === 'module-fixture-m2').sources[0].unit_routes.push({
+      id: 'route-focus-other-unit', unit_id: DESTINATION, title: 'Fixture background chapter',
+      format: 'book', depth: 'orientation', scope: 'current', angle: 'Prepare for the later lecture.',
+      source_id: 'source-fixture-book', covers: ['knowledge-fixture-conditioning'] });
+  };
+  const detourReturn = (view) => view.contentEl.find('los-btn')
+    .find(node => node.allText().startsWith(`Back to ${ORIGIN_TITLE}`)) ?? null;
+  const criterion = (view) => view.contentEl.find('focus-criterion')[0]?.children.find(node => node.tag === 'input') ?? null;
+  const courseQuery = (view) => view.contentEl.find('los-material-filter-field')[0]?.children.find(node => node.tag === 'input') ?? null;
+  const where = (view) => `unit=${view.unitId} stage=${view.stageId} screen=${view.contentEl.getAttribute('data-focus-screen')}`
+    + ` title=${view.contentEl.find('focus-title')[0]?.allText() ?? ''} scroll=${view.contentEl.scrollTop} query=${courseQuery(view)?.value ?? ''}`
+    + ` return=${detourReturn(view)?.allText() ?? 'none'}`;
+  /** Stage N of the origin → tick → Compare all → Course sources → filter → scroll → Go to lecture. */
+  async function leaveForAnotherLecture(view, stageTitle, { tickCriterion = true, query = 'background', scroll = 333 } = {}) {
+    view.contentEl.find('focus-row').find(node => node.getAttribute('aria-label') === `Open stage: ${stageTitle}`).fire('click');
+    await waitFor(() => view.contentEl.getAttribute('data-focus-screen') === 'session');
+    if (tickCriterion) { const box = criterion(view); box.checked = true; box.fire('change'); }
+    view.contentEl.findText('los-btn', 'Compare all').fire('click');
+    view.contentEl.findText('los-filter-tab', 'Course sources').fire('click');
+    const search = courseQuery(view);
+    search.value = query; search.fire('input');
+    view.contentEl.scrollTop = scroll;
+    view.contentEl.findText('los-btn', 'Go to lecture').fire('click');
+    await waitFor(() => view.unitId === DESTINATION);
+  }
+
+  heading('Focus: a lecture detour returns to the exact comparison');
+  {
+    const { app, plugin, calls } = await boot({ patchManifest: otherLectureRoute });
+    await plugin.setInterfaceDesign('focus');
+    await plugin.nav.openUnit(ORIGIN);
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    check('a lecture opened in the ordinary way offers no detour return', detourReturn(view) === null);
+    const callsBefore = calls.length;
+    await leaveForAnotherLecture(view, 'Conditional probability and Bayes');
+    check('Go to lecture replaces the lecture in the same unit tab',
+      view.unitId === DESTINATION && app.workspace.getLeavesOfType(VIEW.unit).length === 1);
+    check('the destination names the way back to the origin and its stage',
+      detourReturn(view)?.allText() === `Back to ${ORIGIN_TITLE} · Stage 2`, where(view));
+    view.contentEl.findText('los-filter-tab', 'Overview')?.fire('click');
+    check('the way back survives moving around the destination lecture',
+      detourReturn(view) !== null);
+    view.contentEl.scrollTop = 0;
+    detourReturn(view)?.fire('click');
+    await waitFor(() => view.unitId === ORIGIN);
+    check('one click returns to the origin comparison, its course scope and its stage',
+      view.unitId === ORIGIN && view.stageId === 'stage-fixture-conditioning'
+      && view.contentEl.getAttribute('data-focus-screen') === 'materials'
+      && view.contentEl.find('focus-title')[0]?.allText() === 'Course sources'
+      && view.contentEl.allText().includes('This stage · 3'), where(view));
+    check('the return restores the course filter and the scroll position',
+      courseQuery(view)?.value === 'background' && view.contentEl.scrollTop === 333, where(view));
+    check('a used return is gone', detourReturn(view) === null);
+    view.contentEl.findText('los-btn', 'Back to session')?.fire('click');
+    check('the criterion ticked before the detour is still ticked',
+      view.contentEl.getAttribute('data-focus-screen') === 'session'
+      && view.contentEl.allText().includes('Conditional probability and Bayes')
+      && criterion(view)?.checked === true);
+    check('the whole detour and return makes no gateway or CLI call', calls.length === callsBefore);
+    check('remembered lecture attention stays out of the plugin’s saved settings',
+      !/materialScope|materialsReturn|Course sources|"background"/.test(JSON.stringify(plugin.settings)));
+    await plugin.nav.openUnit(DESTINATION);
+    check('reopening the destination in the ordinary way offers no detour return', detourReturn(view) === null);
+    plugin.onunload();
+  }
+  heading('Focus: the application Back also restores the lecture left for a detour');
+  {
+    const { app, plugin, calls } = await boot({ patchManifest: otherLectureRoute });
+    await plugin.setInterfaceDesign('focus');
+    await plugin.nav.openUnit(ORIGIN);
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    const callsBefore = calls.length;
+    await leaveForAnotherLecture(view, 'Conditional probability and Bayes', { scroll: 120 });
+    await plugin.nav.back();
+    await waitFor(() => view.unitId === ORIGIN);
+    check('Back to the origin keeps its comparison, course scope and stage',
+      view.unitId === ORIGIN && view.stageId === 'stage-fixture-conditioning'
+      && view.contentEl.getAttribute('data-focus-screen') === 'materials'
+      && view.contentEl.find('focus-title')[0]?.allText() === 'Course sources'
+      && courseQuery(view)?.value === 'background' && view.contentEl.scrollTop === 120, where(view));
+    check('showing the origin again ends the detour', detourReturn(view) === null);
+    await plugin.nav.openUnit(DESTINATION);
+    check('the destination reached afterwards in the ordinary way has no return', detourReturn(view) === null);
+    check('Back and ordinary navigation make no gateway or CLI call', calls.length === callsBefore);
+    plugin.onunload();
+  }
+  heading('Focus: a detour return survives a snapshot that removed the origin stage');
+  {
+    let removeStage = false;
+    const { app, plugin } = await boot({ patchManifest(manifest) {
+      otherLectureRoute(manifest);
+      if (!removeStage) return;
+      const map = manifest.study_maps.find(item => item.unit_id === ORIGIN);
+      map.stages = map.stages.filter(stage => stage.id !== 'stage-fixture-self-test');
+    } });
+    await plugin.setInterfaceDesign('focus');
+    await plugin.nav.openUnit(ORIGIN);
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    await leaveForAnotherLecture(view, 'Practice and self-test', { tickCriterion: false });
+    check('the return names the stage that was open', detourReturn(view)?.allText() === `Back to ${ORIGIN_TITLE} · Stage 3`);
+    removeStage = true;
+    await plugin.reloadStore();
+    detourReturn(view)?.fire('click');
+    await waitFor(() => view.unitId === ORIGIN);
+    check('a removed origin stage falls back to the recorded current stage',
+      view.unitId === ORIGIN && view.stageId === 'stage-fixture-conditioning', where(view));
+    check('the fallback still restores the comparison and its course scope',
+      view.contentEl.getAttribute('data-focus-screen') === 'materials'
+      && view.contentEl.find('focus-title')[0]?.allText() === 'Course sources'
+      && view.contentEl.allText().includes('This stage · 3'));
+    plugin.onunload();
+  }
+  heading('Focus: remembered lecture attention is bounded to eight lectures');
+  {
+    const extras = ['x1', 'x2', 'x3', 'x4'].map(suffix => `unit-fixture-sad-${suffix}`);
+    const { app, plugin } = await boot({ patchManifest(manifest) {
+      const unit = manifest.units.find(item => item?.id === DESTINATION);
+      const map = manifest.study_maps.find(item => item.unit_id === DESTINATION);
+      for (const [index, id] of extras.entries()) {
+        const mapId = `study-map-fixture-sad-${id.slice(-2)}`;
+        manifest.units.push({ ...unit, id, title: `SaD extra lecture ${index + 1}`, order: 10 + index,
+          current_study_map: mapId, path: `curriculum/modules/module-fixture-m2/units/${id}.yaml` });
+        manifest.study_maps.push({ ...map, id: mapId, unit_id: id,
+          path: `curriculum/modules/module-fixture-m2/study-maps/${mapId}.yaml` });
+        manifest.indexes.unit_to_study_map[id] = mapId;
+      }
+    } });
+    await plugin.setInterfaceDesign('focus');
+    await plugin.nav.openUnit(ORIGIN);
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    view.contentEl.findText('los-filter-tab', 'Materials').fire('click');
+    const others = ['unit-fixture-sad-l02', 'unit-fixture-aml-l03', 'unit-fixture-aml-l04',
+      'unit-fixture-python-oop', 'unit-fixture-thesis-landscape', ...extras];
+    const visit = async (ids) => { for (const id of ids) { await plugin.nav.openUnit(id); await waitFor(() => view.unitId === id); } };
+    await visit(others.slice(0, 7));
+    await plugin.nav.openUnit(ORIGIN);
+    await waitFor(() => view.unitId === ORIGIN);
+    check('the synthetic lectures load as ordinary units', plugin.store.ready
+      && others.every(id => plugin.store.mapForUnit(id)), plugin.store.error);
+    check('a lecture revisited within eight keeps its attention',
+      view.contentEl.getAttribute('data-focus-screen') === 'materials', where(view));
+    await visit(others.slice(1, 9));
+    await plugin.nav.openUnit(ORIGIN);
+    await waitFor(() => view.unitId === ORIGIN);
+    check('the least recently shown lecture is forgotten once eight others were shown',
+      view.contentEl.getAttribute('data-focus-screen') === 'plan', where(view));
     plugin.onunload();
   }
 };

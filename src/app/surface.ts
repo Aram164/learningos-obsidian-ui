@@ -40,6 +40,7 @@ import type { AIActionClient } from '../infrastructure/ai-action-client';
 import type { PythonResolution } from '../infrastructure/los-runtime';
 import type { ResourceOpener } from '../infrastructure/resource-opener';
 import type { ManifestStore } from '../manifest-store';
+import type { ShelvingChoiceStore } from '../features/shelving/selection';
 import type { LearningOSSettings } from './settings-contract';
 
 export type { LearningOSSettings } from './settings-contract';
@@ -63,6 +64,11 @@ export interface AppSurface {
    * Review and the navigator so they cannot disagree. Read-only.
    */
   readonly abilityHorizon: AbilityHorizon;
+  /**
+   * The learner's Shelving ticks, per unit, for this plugin load only. They
+   * outlive a closed tab and a refused approval, and never reach `data.json`.
+   */
+  readonly shelvingChoices: ShelvingChoiceStore;
   /**
    * Obsidian's own plugin manifest — read for the version in Diagnostics.
    * Optional at both levels because that is how the host declares it

@@ -17,12 +17,19 @@ second source of truth.
    done-when criteria, feedback and detours stay stage-scoped. The stage shows
    one Current work card; **Compare all** opens its materials by need (required
    now / if stuck / for reference) and the rest of the lecture and course, and
-   a local file's bounded excerpt is read from Core only on request. One session
-   note is added at unit level after the relevant stages.
+   a local file's bounded excerpt is read from Core only on request. In Focus,
+   **Go to lecture** from Course sources offers **Back to ‹lecture› · Stage N**
+   on the other lecture; it returns to the same stage, comparison, filters and
+   scroll. One session note is added at unit level after the relevant stages.
 4. Review Ultimate Reference, Exercise Bank, Mock Exam and other durable
    artifacts through stable unit references.
-5. Prepare shelving, review destinations/rationale/diffs, and apply only
-   selected proposal IDs through the guarded gateway.
+5. Prepare shelving, review each item's destination, rationale and the text
+   that will be written, and apply only selected proposal IDs through the
+   guarded gateway. Prepare without items writes a review packet and waits:
+   **Ask AI to propose items** hands the packet to an agent, which proposes but
+   never applies. Your ticks survive a refresh, a refusal and a closed tab for
+   as long as the plugin runs; an item whose text changed, or that arrived after
+   you started choosing, is unticked and marked.
 6. End the learning session deliberately: review the exact gateway ledger,
    then optionally commit and push only those files.
 7. Open **Atlas** on Concepts: search or browse every projected concept, inspect

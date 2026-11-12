@@ -69,6 +69,10 @@ presentation rules live in `src/styles/41-design-focus.css`; the interface
 registration and shared behavior remain governed by `docs/interface-designs.md`.
 Focus places current work before criteria, retains blocked task instructions,
 and offers optional material facets without changing authored order or obligation.
+*Go to lecture* from Course sources offers *Back to ‹lecture› · Stage N* on the
+other lecture, which returns by ID to the same stage, comparison scope, filters
+and scroll; attention is kept per lecture (the eight most recent) in the leaf's
+memory only.
 Both project entries open the complete project-module collection. Its detailed
 interaction decisions are recorded in `docs/interface-designs.md`.
 
@@ -254,7 +258,24 @@ maintenance is never mixed with study destinations.
   are not a source type. Back restores collection, group, query, filters,
   selected row and scroll. Omnisearch remains an optional full-text/OCR fallback.
 - **Shelving**: native selected-item review; apply is explicit and delegated to
-  the core. AI may explain or propose but cannot broadly write.
+  the core. AI may explain or propose but cannot broadly write. Amended
+  2026-11-12 (Plan B): each row shows its box, title, kind and destination,
+  rationale, and **Text that will be written** — the item's `content`, collapsed
+  after twelve lines behind *Show all* — with any diff after it as a supplement.
+  The items shown, the guard and the snapshot an approval carries come from one
+  store read, and an approval queued behind a newer projection is not sent. A
+  tick belongs to the item ID and a fingerprint of everything Core acts on
+  (kind, title, destination, rationale, diff, content, metadata). Core's
+  defaults apply until the learner's first touch; after it an unchanged item
+  keeps its choice, and a changed or new item is unticked and marked *Changed
+  since you looked* (amber) or *New* (blue), the word carrying the meaning. One
+  status line states what a refresh did: *Kept your choice on N items. M changed
+  since you looked and are now unticked: ‹titles›. K new items are unticked.*
+  Choices are per unit in plugin memory: they survive a refresh, a refusal and a
+  closed tab, and clear on restart and for applied IDs. A Prepare without items
+  shows the packet path under *Waiting for proposal items* with *Ask AI to
+  propose items*, a unit-scoped request that ends at proposal creation. An item
+  with a field outside Core's closed schema cannot be ticked and names the field.
 - **Inbox**: zero-friction text/file capture through `los.py capture`; the
   interface never asks the learner to choose a canonical destination.
 - **Garden and atlas**: the managed Garden Base and projected Domain Atlas are

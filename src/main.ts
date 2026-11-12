@@ -22,6 +22,7 @@ import {
 } from './application/draft-store';
 import type { AbilityDraft } from './application/ability-drafts';
 import { AbilityHorizon } from './application/ability-horizon';
+import { ShelvingChoiceStore } from './features/shelving/selection';
 import {
   SettingsGatewayRecoveryStore,
   projectionSettlement,
@@ -118,6 +119,8 @@ export class LearningOSUI extends Plugin implements AppSurface {
   declare activeNav: string;
   declare recovery: SettingsGatewayRecoveryStore;
   declare abilityHorizon: AbilityHorizon;
+  /** Shelving ticks for this load only: a restart is the honest boundary. */
+  declare shelvingChoices: ShelvingChoiceStore;
 
   lastAiPrompt = '';
   /** Set when startup found an unusable record; the app registers read-only. */
@@ -218,6 +221,7 @@ export class LearningOSUI extends Plugin implements AppSurface {
     this.resources = new ResourceOpener(this.app);
     this.materials = new MaterialTree(this.app);
     this.gateway = new GatewayClient(this);
+    this.shelvingChoices = new ShelvingChoiceStore();
     this.abilityHorizon = new AbilityHorizon({
       gateway: this.gateway,
       store: this.store,
@@ -301,6 +305,7 @@ export class LearningOSUI extends Plugin implements AppSurface {
 
   onunload(): void {
     this.drafts?.dispose();
+    this.shelvingChoices?.clear();
     if (this.isLifecycleActive() && this.settings) {
       // This final snapshot is already ordered before any replacement
       // instance's load.  It is allowed to finish even if that instance claims

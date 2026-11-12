@@ -186,3 +186,59 @@
   .los-review-draft-badge { position: static; margin-bottom: var(--los-2); }
   .los-review-eyebrow { padding-right: 0; }
 }
+
+/* ── Shelving approval gate (Plan B, 2026-11-12) ─────────────────────────────
+ * One row per proposed item: its box, then what Core will write and where.
+ * A changed or new item says so in words; the tone only repeats the word. */
+.los-shelving-view .los-proposal-row {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  gap: var(--los-3);
+  align-items: start;
+  margin-top: var(--los-3);
+  padding: var(--los-3) var(--los-4);
+  border: 1px solid var(--los-line);
+  border-radius: var(--los-r-md);
+  background: var(--los-paper-2);
+}
+.los-shelving-view .los-proposal-row.is-changed,
+.los-shelving-view .los-proposal-row.is-new { border-color: var(--los-line-strong); }
+.los-shelving-view .los-proposal-row > input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  margin: 4px 0 0;
+  accent-color: var(--los-accent);
+}
+.los-shelving-view .los-proposal-copy { min-width: 0; }
+.los-shelving-view .los-proposal-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--los-1) var(--los-2);
+}
+.los-shelving-view .los-proposal-head h3 { margin: 0; font-size: 15px; }
+.los-shelving-view .los-proposal-mark.los-badge--attention { color: var(--los-warning-strong); background: var(--los-warning-wash); }
+.los-shelving-view .los-proposal-mark.los-badge--info { color: var(--los-info-strong); background: var(--los-info-wash); }
+.los-shelving-view .los-proposal-label {
+  margin-top: var(--los-2);
+  color: var(--los-ink-soft);
+  font-size: 12px;
+}
+.los-shelving-view :is(.los-proposal-content, .los-proposal-diff) {
+  margin: var(--los-1) 0 0;
+  padding: var(--los-2) var(--los-3);
+  overflow-x: auto;
+  border-radius: var(--los-r-sm);
+  background: var(--los-surface);
+  color: var(--los-ink);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.los-shelving-view .los-proposal-refusal { color: var(--los-warning-strong); }
+.los-shelving-view .los-shelving-reconcile {
+  margin: 0 0 var(--los-2);
+  padding: var(--los-2) var(--los-3);
+  border-left: 3px solid var(--los-st-attention);
+  color: var(--los-ink);
+}
