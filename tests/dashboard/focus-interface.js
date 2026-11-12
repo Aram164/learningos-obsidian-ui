@@ -234,4 +234,43 @@ module.exports = async function run() {
       app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl.allText().includes('Notes & shelves'));
     plugin.onunload();
   }
+  heading('Focus: a placement keeps its route when its stage overrides the locator');
+  {
+    // Core manifest v18 writes the resolved route_id onto every expanded
+    // material_ref. Two routes share one source here; the second placement
+    // overrides its locator, so source + locator can no longer find its route.
+    const { app, plugin } = await boot({ patchManifest(manifest) {
+      const stage = manifest.study_maps.find(item => item.unit_id === 'unit-fixture-sad-l04').stages[1];
+      const sourceMap = manifest.module_source_maps.find(item => item.module_id === 'module-fixture-m2');
+      sourceMap.sources[0].unit_routes.push(
+        { id: 'route-identity-one', unit_id: 'unit-fixture-sad-l04', title: 'Identity part one',
+          format: 'book', depth: 'derivation', scope: 'current', locator: 'pdf pp. 1-5',
+          angle: 'Part one angle', source_id: 'source-fixture-book', covers: ['knowledge-fixture-conditioning'] },
+        { id: 'route-identity-two', unit_id: 'unit-fixture-sad-l04', title: 'Identity part two',
+          format: 'book', depth: 'intuition', scope: 'current', locator: 'pdf pp. 6-10',
+          angle: 'Part two angle', source_id: 'source-fixture-book', covers: ['knowledge-fixture-conditioning'] });
+      stage.resources = [
+        { id: 'resource-identity-one', kind: 'read', route_id: 'route-identity-one', source_id: 'source-fixture-book',
+          label: 'Identity part one', locator: 'pdf pp. 1-5', angle: 'Part one angle', scope_triage: 'required-now' },
+        { id: 'resource-identity-two', kind: 'read', route_id: 'route-identity-two', source_id: 'source-fixture-book',
+          label: 'Identity part two', locator: 'pdf p. 7', angle: 'Part two angle', scope_triage: 'required-now' },
+        { id: 'resource-identity-unnamed', kind: 'read', source_id: 'source-fixture-book',
+          label: 'Identity part two', locator: 'pdf p. 8', angle: 'Part two angle', scope_triage: 'helpful-now' },
+      ];
+    } });
+    await plugin.setInterfaceDesign('focus');
+    await plugin.nav.openUnit('unit-fixture-sad-l04');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    if (!plugin.store.ready) throw new Error(`Invalid route-identity fixture: ${plugin.store.error}`);
+    view.contentEl.findText('los-filter-tab', 'Session').fire('click');
+    view.contentEl.findText('los-btn', 'Compare all').fire('click');
+    const cards = view.contentEl.find('los-material-card');
+    const card = (locator) => cards.find(item => item.find('los-resource-locator')[0]?.allText() === locator);
+    const purpose = (locator) => card(locator)?.find('los-material-purpose')[0].allText();
+    check('both placements of the shared source show their own route purpose, the overridden one included',
+      cards.length === 3 && purpose('pdf pp. 1-5') === 'Derive it' && purpose('pdf p. 7') === 'Build intuition');
+    check('a placement without the id falls back to its authored action, never to a sibling route',
+      purpose('pdf p. 8') === 'Read');
+    plugin.onunload();
+  }
 };

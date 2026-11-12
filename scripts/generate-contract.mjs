@@ -22,8 +22,8 @@
  *
  * Usage:
  *   node scripts/generate-contract.mjs \
- *     --bundle ../repository/generated/contract-prototype/manifest-v17.bundle.json \
- *     --meta ../repository/generated/contract-prototype/manifest-v17.meta.json \
+ *     --bundle ../repository/generated/contract-prototype/manifest-v18.bundle.json \
+ *     --meta ../repository/generated/contract-prototype/manifest-v18.meta.json \
  *     --out contract-prototype/generated
  */
 import fs from 'node:fs';
