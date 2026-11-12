@@ -118,7 +118,7 @@ export class ShelvingView extends ItemView {
     guard.createEl('strong', { text: 'Apply is explicit and selected-only.' });
     guard.createEl('p', { text: 'The core validates and regenerates atomically; broad AI writes are never accepted.' });
     const actions = root.createDiv({ cls: 'los-actions' });
-    button(actions, 'Approve selected changes', () => this.apply(shown), 'success');
+    const approve = button(actions, 'Approve selected changes', () => this.apply(shown, approve), 'success');
     button(actions, 'Ask AI to review proposal', () => this.plugin.askAiScoped(
       `Review these shelving proposal IDs: ${this.currentSelection(shown).join(', ')}. Do not apply changes.`,
       { moduleId: unit.module_id, unitId: unit.id }), 'warm');
@@ -143,8 +143,11 @@ export class ShelvingView extends ItemView {
     if (row.mark === 'new') badge(head, 'New', 'info').addClass('los-proposal-mark');
     const where = [shelvingKindLabel(item.kind), item.destination].filter(Boolean).join(' · ');
     if (where) copy.createDiv({ cls: 'los-detail-id', text: where });
-    if (!row.approvable) {
+    if (row.blocked === 'unknown-fields') {
       copy.createEl('p', { cls: 'los-proposal-refusal', text: `This item uses a field this version of LearningOS cannot show (${item.unknownFields.join(', ')}), so it cannot be approved here. Update the plugin, or review the packet with an agent.` });
+    }
+    if (row.blocked === 'no-content') {
+      copy.createEl('p', { cls: 'los-proposal-refusal', text: 'This item has no text to write, so it cannot be approved here: Core refuses to apply an item without it. Ask an agent to propose it again with its text.' });
     }
     if (item.rationale) copy.createEl('p', { text: item.rationale });
     this.renderContent(copy, item.content);
@@ -159,10 +162,8 @@ export class ShelvingView extends ItemView {
 
   /** The text Core writes on apply, collapsed after about twelve lines. */
   private renderContent(parent: HTMLElement, content: string | undefined): void {
-    if (content === undefined || !content.trim()) {
-      parent.createEl('p', { cls: 'los-muted', text: 'No text to write is attached to this item.' });
-      return;
-    }
+    // A blank item is blocked, and its row already says why.
+    if (content === undefined || !content.trim()) return;
     parent.createDiv({ cls: 'los-proposal-label', text: 'Text that will be written' });
     const lines = content.split('\n');
     const preview = lines.slice(0, CONTENT_PREVIEW_LINES).join('\n');
@@ -231,14 +232,20 @@ export class ShelvingView extends ItemView {
    * is this render's. The write queue may run the request later, behind a
    * refresh: if the projection moved on meanwhile, the newer render is already
    * on screen and nothing is sent for the older one.
+   *
+   * One request per button: it is disabled while its write is pending, a click
+   * on it meanwhile is ignored, and a refusal enables it again. A success
+   * redraws the screen, and with it a new button.
    */
-  async apply(shown: ShownSnapshot): Promise<void> {
+  async apply(shown: ShownSnapshot, control: HTMLButtonElement): Promise<void> {
+    if (control.disabled) return;
     const selected = this.currentSelection(shown);
     if (!selected.length) {
       new Notice('Select at least one proposal.');
       return;
     }
 
+    control.disabled = true;
     try {
       await this.plugin.mutate(() => {
         if (this.plugin.store.snapshotId !== shown.snapshotId) throw new Error(PROPOSAL_MOVED);
@@ -247,6 +254,7 @@ export class ShelvingView extends ItemView {
       this.plugin.shelvingChoices.forgetApplied(shown.unitId, selected);
       this.render();
     } catch (error: unknown) {
+      control.disabled = false;
       new Notice(errorMessage(error));
     }
   }

@@ -122,11 +122,13 @@ function staleRefusal(envelope) {
 module.exports = async function run() {
   heading('selected-only shelving');
   {
+    // Core's apply refuses an item without text to write, so the fixture's
+    // two items get the text an agent's proposal would carry.
     const {
       app,
       plugin,
       calls,
-    } = await boot();
+    } = await boot({ patchManifest: withShelvingContent });
 
     await plugin.nav.openShelving(
       'unit-fixture-thesis-landscape',
@@ -184,6 +186,7 @@ module.exports = async function run() {
             'knowledge/notes/research/revised.md',
           rationale:
             'This is the new proposal revision.',
+          content: '# Revised durable note\n\nThe revised text.',
           selected: true,
         },
       ],
@@ -787,6 +790,96 @@ module.exports = async function run() {
       block()?.allText() === lines.join('\n')
       && more()?.allText() === 'Show fewer lines' && more()?.getAttribute('aria-expanded') === 'true');
     check('short text needs no control', !screen.row('Open fixture question').find('los-btn').length);
+    plugin.onunload();
+  }
+
+  /*
+   * External review of 3dc3ed3, defect 1. Core's apply refuses an item whose
+   * content is missing or blank (capture.py, site review.apply.empty-content),
+   * so the gate must not offer a tick for one, not even Core's own default.
+   */
+  heading('Shelving: an item with no text to write cannot be approved');
+  {
+    const { app, plugin, calls } = await boot({ patchManifest(manifest) {
+      withShelvingContent(manifest);
+      delete shelvingItem(manifest, 'proposal-note').content; // Core's default still ticks it
+      shelvingMapIn(manifest).shelving.items.push({
+        id: 'proposal-blank', kind: 'durable-note', title: 'Fixture blank note',
+        destination: 'knowledge/notes/research/blank.md', rationale: 'Arrived without its text.',
+        content: '  \n\t\n', selected: true,
+      });
+    } });
+    await plugin.nav.openShelving(SHELVING_UNIT);
+    const screen = shelvingScreen(app);
+    check('an item with no content offers no tick, even one Core’s default ticks',
+      screen.row('Fixture synthesis') !== null && screen.box('Fixture synthesis') === null);
+    check('an item whose content is only whitespace offers no tick either',
+      screen.row('Fixture blank note') !== null && screen.box('Fixture blank note') === null);
+    check('each such row says why it cannot be approved',
+      ['Fixture synthesis', 'Fixture blank note'].every((title) => screen.row(title)
+        ?.find('los-proposal-refusal').some((node) => node.allText().includes('no text to write'))));
+    check('an item with text stays approvable beside them',
+      screen.box('Open fixture question')?.checked === false);
+    Notice.log.length = 0;
+    screen.approve()?.fire('click');
+    await waitFor(() => Notice.log.length > 0 && !plugin.gateway.isBusy);
+    check('approving Core’s defaults sends nothing when only text-less items are ticked',
+      appliedEnvelopes(calls).length === 0
+      && Notice.log.some((line) => line.includes('Select at least one proposal.')));
+    screen.set('Open fixture question', true);
+    screen.approve()?.fire('click');
+    await waitFor(() => appliedEnvelopes(calls).length === 1 && !plugin.gateway.isBusy);
+    check('approval never sends an item Core would refuse for empty content',
+      JSON.stringify(appliedEnvelopes(calls)[0]?.payload.selected) === '["proposal-garden"]');
+    plugin.onunload();
+  }
+
+  /*
+   * External review of 3dc3ed3, defect 2. Two quick clicks used to queue two
+   * applies. Approve is disabled while its write is pending, ignores clicks
+   * meanwhile, and is enabled again by a refusal.
+   */
+  heading('Shelving: Approve sends one request at a time');
+  {
+    const context = await boot({ patchManifest: withShelvingContent });
+    const { app, plugin, calls } = context;
+    let settle = null;
+    answerWith(context, (args, envelope) => (envelope?.capability === 'review.apply'
+      ? (callback) => {
+        settle = () => callback(
+          Object.assign(new Error('Command failed'), { code: 2 }),
+          JSON.stringify(gatewayRefusal(envelope, 'INVALID_REQUEST',
+            'los: unsafe or existing shelving destination: knowledge/notes/research/note-fixture-synthesis.md')),
+          '');
+      }
+      : null));
+    await plugin.nav.openShelving(SHELVING_UNIT);
+    const screen = shelvingScreen(app);
+    const approve = screen.approve();
+    approve.fire('click');
+    approve.fire('click');
+    await waitFor(() => Boolean(settle));
+    approve.fire('click');
+    await frame();
+    check('Approve is disabled while its write is pending', approve.disabled === true);
+    Notice.log.length = 0;
+    const first = settle;
+    settle = null;
+    first();
+    await waitFor(() => !plugin.gateway.isBusy && Notice.log.length > 0);
+    await frame();
+    check('two quick clicks, and a third while pending, send exactly one request',
+      appliedEnvelopes(calls).length === 1, `sent ${appliedEnvelopes(calls).length}`);
+    check('a refusal enables Approve again and keeps the ticks',
+      screen.approve()?.disabled === false
+      && Notice.log.some((line) => line.includes('unsafe or existing shelving destination'))
+      && screen.box('Fixture synthesis')?.checked === true);
+    screen.approve()?.fire('click');
+    await waitFor(() => Boolean(settle));
+    check('a deliberate retry after the refusal sends one new request',
+      appliedEnvelopes(calls).length === 2, `sent ${appliedEnvelopes(calls).length}`);
+    settle?.();
+    await waitFor(() => !plugin.gateway.isBusy);
     plugin.onunload();
   }
 

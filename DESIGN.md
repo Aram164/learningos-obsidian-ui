@@ -275,7 +275,9 @@ maintenance is never mixed with study destinations.
   closed tab, and clear on restart and for applied IDs. A Prepare without items
   shows the packet path under *Waiting for proposal items* with *Ask AI to
   propose items*, a unit-scoped request that ends at proposal creation. An item
-  with a field outside Core's closed schema cannot be ticked and names the field.
+  with no text to write, or with a field outside Core's closed schema, offers no
+  tick, and its row says why. *Approve selected changes* is disabled while its
+  write is pending and enabled again by a refusal.
 - **Inbox**: zero-friction text/file capture through `los.py capture`; the
   interface never asks the learner to choose a canonical destination.
 - **Garden and atlas**: the managed Garden Base and projected Domain Atlas are

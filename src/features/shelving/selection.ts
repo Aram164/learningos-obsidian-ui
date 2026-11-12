@@ -69,10 +69,25 @@ export class ShelvingChoiceStore {
 
 export type ChoiceMark = 'changed' | 'new' | null;
 
+/** Why an item offers no tick here. */
+export type Unapprovable = 'unknown-fields' | 'no-content';
+
+/**
+ * Null when the item can be approved. Core's apply refuses an item whose
+ * `content` is missing or blank (`review.apply.empty-content`), so the gate
+ * never offers a tick for text it cannot show; Core still checks again.
+ */
+export function unapprovableReason(item: ShelvingProposalItem): Unapprovable | null {
+  if (item.unknownFields.length) return 'unknown-fields';
+  if (typeof item.content !== 'string' || !item.content.trim()) return 'no-content';
+  return null;
+}
+
 export interface ReconciledItem {
   readonly item: ShelvingProposalItem;
   readonly fingerprint: string;
-  /** False when the item uses a field outside Core's closed schema. */
+  readonly blocked: Unapprovable | null;
+  /** True exactly when `blocked` is null. */
   readonly approvable: boolean;
   readonly selected: boolean;
   readonly mark: ChoiceMark;
@@ -89,7 +104,8 @@ export interface Reconciliation {
 
 function reconcileItem(item: ShelvingProposalItem, choices: ReadonlyMap<string, ItemChoice> | null): ReconciledItem {
   const fingerprint = itemFingerprint(item);
-  const base = { item, fingerprint, approvable: item.unknownFields.length === 0 };
+  const blocked = unapprovableReason(item);
+  const base = { item, fingerprint, blocked, approvable: blocked === null };
   if (!base.approvable) return { ...base, selected: false, mark: null, kept: false };
   if (!choices) return { ...base, selected: item.selected !== false, mark: null, kept: false };
   const choice = choices.get(item.id);

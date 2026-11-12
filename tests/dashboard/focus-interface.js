@@ -271,6 +271,8 @@ module.exports = async function run() {
       cards.length === 3 && purpose('pdf pp. 1-5') === 'Derive it' && purpose('pdf p. 7') === 'Build intuition');
     check('a placement without the id falls back to its authored action, never to a sibling route',
       purpose('pdf p. 8') === 'Read');
+    plugin.onunload();
+  }
 
   /*
    * A lecture detour (product research 2026-11-11, §5 and the evidence
