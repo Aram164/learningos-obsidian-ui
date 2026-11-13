@@ -68,6 +68,32 @@ export function readResumePointer(
   };
 }
 
+export interface ResolvedResumeTarget {
+  readonly pointer: HomeResumePointer;
+  readonly unit: ProjectionRecord | null;
+  readonly map: ProjectionRecord | null;
+  readonly unitMap: ProjectionRecord | null;
+  readonly stage: ProjectionRecord | null;
+  readonly moduleId: string | null;
+  readonly module: ProjectionRecord | null;
+}
+
+export function resolveResumeTarget(store: {
+  readonly data?: { readonly resume_pointer?: unknown } | null;
+  get(id: string): ProjectionRecord | null;
+  stage(id: string): ProjectionRecord | null;
+  mapForUnit(id: string): ProjectionRecord | null;
+}): ResolvedResumeTarget {
+  const pointer = readResumePointer(store.data?.resume_pointer);
+  const unit = pointer.unit_id ? store.get(pointer.unit_id) : null;
+  const map = pointer.study_map_id ? store.get(pointer.study_map_id) : null;
+  const unitMap = pointer.unit_id ? store.mapForUnit(pointer.unit_id) : null;
+  const stage = pointer.stage_id ? store.stage(pointer.stage_id) : null;
+  const moduleId = unit ? projectedString(unit.module_id) : null;
+  const module = moduleId ? store.get(moduleId) : null;
+  return { pointer, unit, map, unitMap, stage, moduleId, module };
+}
+
 export function firstProjectedModuleId(
   value: unknown,
 ): string | null {

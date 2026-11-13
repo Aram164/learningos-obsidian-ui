@@ -1,7 +1,6 @@
 import { icon } from '../../components';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
-import { renderDesignSwitch } from '../../app/design-switch';
-import { reviewQueueCount } from '../../features/review/queue';
+import { mountNavMore, primaryNavItems, renderNavItems } from '../../app/nav-shared';
 import type { NavScreenHost } from '../screens';
 
 /**
@@ -43,32 +42,21 @@ export function renderDeskNav(view: NavScreenHost): void {
 
   const primary = root.createDiv({ cls: 'sd-nav-primary' });
   enableButtonGroupKeyboardNavigation(primary, 'vertical');
-  row(primary, 'home', 'Home', 'home', () => plugin.nav.openHome());
-  row(primary, 'folder', 'Modules', 'modules', () => plugin.nav.openModules());
-  row(primary, 'graduation-cap', 'Learn', 'learn', () => plugin.nav.openLearn());
-  row(primary, 'library', 'Library', 'library', () => plugin.nav.openLibrary());
-  row(primary, 'map', 'Atlas', 'abilities', () => plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' }));
-  row(primary, 'leaf', 'Garden', 'garden', () => plugin.nav.openGarden());
-  row(primary, 'circle-check', 'Review', 'review', () => plugin.nav.openReview(), reviewQueueCount({
-    items: plugin.store.reviewItems(),
-    drafts: plugin.listAbilityDrafts(),
-    horizon: plugin.abilityHorizon.current(),
-  }));
+  renderNavItems(
+    primary,
+    primaryNavItems(plugin, { icons: { modules: 'folder', garden: 'leaf', review: 'circle-check' } }),
+    row,
+  );
 
-  const more = root.createEl('details', { cls: 'sd-nav-more' });
-  if (plugin.settings.navMoreOpen) more.setAttr('open', 'open');
-  const summary = more.createEl('summary', { cls: 'sd-nav-item is-clickable' });
-  icon(summary.createSpan({ cls: 'sd-nav-glyph' }), 'ellipsis');
-  summary.createSpan({ cls: 'sd-nav-label', text: 'More' });
-  more.addEventListener('toggle', () => {
-    plugin.settings.navMoreOpen = more.hasAttribute('open');
-    plugin.scheduleDraftSave();
+  mountNavMore(root, plugin, {
+    detailsCls: 'sd-nav-more',
+    secondaryCls: 'sd-nav-secondary',
+    keyboardGroup: true,
+    buildSummary: (more) => {
+      const summary = more.createEl('summary', { cls: 'sd-nav-item is-clickable' });
+      icon(summary.createSpan({ cls: 'sd-nav-glyph' }), 'ellipsis');
+      summary.createSpan({ cls: 'sd-nav-label', text: 'More' });
+    },
+    draw: row,
   });
-  const secondary = more.createDiv({ cls: 'sd-nav-secondary' });
-  enableButtonGroupKeyboardNavigation(secondary, 'vertical');
-  row(secondary, 'plus', 'Capture', 'capture', () => plugin.nav.openCapture());
-  row(secondary, 'shield', 'Future Master’s Planning', 'masters', () => plugin.nav.openBoundary('program-masters-planning'));
-  row(secondary, 'activity', 'Diagnostics', 'diagnostics', () => plugin.nav.openDiagnostics());
-  row(secondary, 'refresh-cw', 'Rebuild projection', 'rebuild', () => plugin.generate());
-  renderDesignSwitch(secondary, plugin);
 }

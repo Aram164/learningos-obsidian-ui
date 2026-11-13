@@ -1,7 +1,6 @@
 import { icon } from '../../components';
-import { renderDesignSwitch } from '../../app/design-switch';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
-import { reviewQueueCount } from '../../features/review/queue';
+import { mountNavMore, primaryNavItems, renderNavItems } from '../../app/nav-shared';
 import type { NavScreenHost } from '../screens';
 import { designPalette } from '../../app/interface-design';
 import { openFocusCollection } from './collection';
@@ -27,13 +26,15 @@ export function renderFocusNav(view: NavScreenHost): void {
   };
   const primary = root.createDiv({ cls: 'focus-nav-primary', attr: { role: 'navigation', 'aria-label': 'Main destinations' } });
   enableButtonGroupKeyboardNavigation(primary, 'vertical');
-  item(primary, 'home', 'Home', 'home', () => plugin.nav.openHome());
-  item(primary, 'graduation-cap', 'Learn', 'learn', () => plugin.nav.openLearn());
-  item(primary, 'layout-grid', 'Modules', 'modules', () => openFocusCollection(plugin.nav, 'open'));
-  item(primary, 'library', 'Library', 'library', () => plugin.nav.openLibrary());
-  item(primary, 'map', 'Atlas', 'abilities', () => plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' }));
-  item(primary, 'leaf', 'Garden', 'garden', () => plugin.nav.openGarden());
-  item(primary, 'circle-check', 'Review', 'review', () => plugin.nav.openReview(), reviewQueueCount({ items: plugin.store.reviewItems(), drafts: plugin.listAbilityDrafts(), horizon: plugin.abilityHorizon.current() }));
+  renderNavItems(
+    primary,
+    primaryNavItems(plugin, {
+      icons: { garden: 'leaf', review: 'circle-check' },
+      learnFirst: true,
+      openModules: () => openFocusCollection(plugin.nav, 'open'),
+    }),
+    item,
+  );
   const areas = root.createDiv({ cls: 'focus-nav-areas', attr: { role: 'navigation', 'aria-label': 'Study areas' } });
   areas.createDiv({ cls: 'focus-eyebrow', text: 'Study areas' });
   for (const [id, label] of [['program-bachelors', 'Bachelor’s'], ['program-skills', 'Skills'], ['program-job', 'Job']] as const) {
@@ -42,14 +43,12 @@ export function renderFocusNav(view: NavScreenHost): void {
   item(areas, 'chevron-right', 'Thesis & projects', 'projects', () => openFocusCollection(plugin.nav, 'projects'));
   const footer = root.createDiv({ cls: 'focus-nav-footer' });
   item(footer, 'plus', 'Capture', 'capture', () => plugin.nav.openCapture());
-  const more = footer.createEl('details', { cls: 'focus-nav-more' });
-  if (plugin.settings.navMoreOpen) more.setAttr('open', 'open');
-  more.createEl('summary', { text: 'More', cls: 'focus-nav-item' });
-  more.addEventListener('toggle', () => { plugin.settings.navMoreOpen = more.hasAttribute('open'); plugin.scheduleDraftSave(); });
-  const secondary = more.createDiv({ cls: 'focus-nav-secondary' });
-  item(secondary, 'shield', 'Future Master’s Planning', 'masters', () => plugin.nav.openBoundary('program-masters-planning'));
-  item(secondary, 'activity', 'Diagnostics', 'diagnostics', () => plugin.nav.openDiagnostics());
-  item(secondary, 'refresh-cw', 'Rebuild projection', 'rebuild', () => plugin.generate());
-  renderDesignSwitch(secondary, plugin);
+  mountNavMore(footer, plugin, {
+    detailsCls: 'focus-nav-more',
+    secondaryCls: 'focus-nav-secondary',
+    includeCapture: false,
+    buildSummary: (more) => more.createEl('summary', { text: 'More', cls: 'focus-nav-item' }),
+    draw: item,
+  });
   footer.createDiv({ cls: 'focus-nav-status', text: `Focus · ${designPalette(plugin.settings) === 'nightfall' ? 'Dark' : 'Light'}` });
 }

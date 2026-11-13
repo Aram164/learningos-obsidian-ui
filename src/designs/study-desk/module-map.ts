@@ -8,6 +8,7 @@
  * in Search and the lists (D14). It draws the Atlas route's existing `module`
  * field; no route is new.
  */
+import { plural } from '../../components';
 import { renderAtlasVariants } from '../../features/atlas/domains';
 import type { AtlasHost } from '../../features/atlas/ports';
 import { nonNull, normalizeUnitRecord, orderModuleUnits, readModuleRecord } from '../../features/module/model';
@@ -65,9 +66,6 @@ export function moduleMaps(store: Store): ModuleMap[] {
   return store.modules().map((module) => asString(module.id)).filter(nonNull)
     .map((id) => moduleMap(store, id)).filter(nonNull);
 }
-
-const plural = (amount: number, noun: string) => `${amount} ${noun}${amount === 1 ? '' : 's'}`;
-
 
 /** "11 lectures · 71 ideas": what a module map holds, for a link to it. */
 export function moduleMapFacts(map: ModuleMap): string {

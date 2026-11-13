@@ -369,6 +369,11 @@ export function unitCard(
   return card;
 }
 
+/** Format a count with an English regular plural suffix (`1 stage` vs `2 stages`). */
+export function plural(amount: number, noun: string): string {
+  return `${amount} ${noun}${amount === 1 ? '' : 's'}`;
+}
+
 /**
  * The ownership statement is architecture policy, not study content. Repeating
  * it under every screen made the product read as internal tooling, so it is

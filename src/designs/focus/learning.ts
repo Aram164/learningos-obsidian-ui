@@ -1,7 +1,7 @@
 import { button, empty, filterTabs } from '../../components';
 import { elsewhereRows } from '../../features/home/elsewhere';
 import { todayItems } from '../../features/home/focus';
-import { readResumePointer } from '../../features/home/model';
+import { resolveResumeTarget } from '../../features/home/model';
 import { readStudyMap } from '../../features/unit/model';
 import { LEARN_AREAS } from '../../constants';
 import type { ManifestStore } from '../../manifest-store';
@@ -13,15 +13,12 @@ import { requestFocusSession } from './unit';
 import { openFocusCollection } from './collection';
 
 function resume(parent: HTMLElement, plugin: { store: ManifestStore; nav: Pick<AppNavigator, 'openUnit'> }): boolean {
-  const pointer = readResumePointer(plugin.store.data?.resume_pointer);
-  const unit = pointer.unit_id ? plugin.store.get(pointer.unit_id) : null;
-  const projected = pointer.unit_id ? plugin.store.mapForUnit(pointer.unit_id) : null;
+  const { pointer, unit, unitMap: projected, module } = resolveResumeTarget(plugin.store);
   const map = projected ? readStudyMap(projected) : null;
   const stage = map?.stages.find(item => item.id === pointer.stage_id);
   if (!unit || !stage || !map || !pointer.unit_id) return false;
   const unitId = pointer.unit_id;
   const card = parent.createDiv({ cls: 'focus-resume' });
-  const module = plugin.store.get(asString(unit.module_id) ?? '');
   card.createDiv({ cls: 'focus-eyebrow', text: 'Continue' });
   card.createSpan({ cls: 'focus-muted', text: module ? asLabel(module) : '' });
   card.createEl('h2', { text: asLabel(unit) });

@@ -5,8 +5,7 @@ import { VIEW_NAV } from '../constants';
 import type { AppSurface } from '../app/surface';
 import type { AppNavigator } from '../app/navigator';
 import { enableButtonGroupKeyboardNavigation } from '../accessibility/button-group';
-import { reviewQueueCount } from '../features/review/queue';
-import { renderDesignSwitch } from '../app/design-switch';
+import { mountNavMore, primaryNavItems, renderNavItems } from '../app/nav-shared';
 import { drawDesignScreen } from '../designs/registry';
 
 type NavPlugin = Pick<
@@ -86,16 +85,6 @@ export class NavView extends ItemView {
     return row;
   }
 
-  /** Review's live count: the same queue Review lists, never a second tally. */
-  private reviewCount(): number {
-    if (!this.plugin.store?.ready) return 0;
-    return reviewQueueCount({
-      items: this.plugin.store.reviewItems(),
-      drafts: this.plugin.listAbilityDrafts(),
-      horizon: this.plugin.abilityHorizon.current(),
-    });
-  }
-
   render() {
     if (drawDesignScreen(this.plugin, 'nav', this)) return;
     const root = this.contentEl; root.empty();
@@ -110,31 +99,25 @@ export class NavView extends ItemView {
     icon(search.createSpan(), 'search');
     search.addEventListener('click', () => this.plugin.nav.openGlobalSearch());
 
+    const draw = (
+      parent: HTMLElement,
+      glyph: string,
+      label: string,
+      key: string,
+      go: () => unknown,
+      count?: number,
+    ) => this.nav(parent, glyph, label, key, go, count ?? null);
+
     const primary = root.createDiv({ cls: 'los-nav-primary' });
     enableButtonGroupKeyboardNavigation(primary, 'vertical');
-    this.nav(primary, 'home', 'Home', 'home', () => this.plugin.nav.openHome());
-    this.nav(primary, 'layout-grid', 'Modules', 'modules', () => this.plugin.nav.openModules());
-    this.nav(primary, 'graduation-cap', 'Learn', 'learn', () => this.plugin.nav.openLearn());
-    this.nav(primary, 'library', 'Library', 'library', () => this.plugin.nav.openLibrary());
-    this.nav(primary, 'map', 'Atlas', 'abilities', () => this.plugin.nav.openAtlas({ concept: null, lens: 'prerequisites' }));
-    this.nav(primary, 'sprout', 'Garden', 'garden', () => this.plugin.nav.openGarden());
-    this.nav(primary, 'check-check', 'Review', 'review', () => this.plugin.nav.openReview(),
-      this.reviewCount());
+    renderNavItems(primary, primaryNavItems(this.plugin), draw);
 
-    const more = root.createEl('details', { cls: 'los-nav-more' });
-    if (this.plugin.settings.navMoreOpen) more.setAttr('open', 'open');
-    more.createEl('summary', { cls: 'los-nav-more-trigger', text: 'More' });
-    more.addEventListener('toggle', () => {
-      this.plugin.settings.navMoreOpen = more.hasAttribute('open');
-      this.plugin.scheduleDraftSave();
+    mountNavMore(root, this.plugin, {
+      detailsCls: 'los-nav-more',
+      secondaryCls: 'los-nav-secondary',
+      keyboardGroup: true,
+      buildSummary: (more) => more.createEl('summary', { cls: 'los-nav-more-trigger', text: 'More' }),
+      draw,
     });
-    const secondary = more.createDiv({ cls: 'los-nav-secondary' });
-    enableButtonGroupKeyboardNavigation(secondary, 'vertical');
-    this.nav(secondary, 'plus', 'Capture', 'capture', () => this.plugin.nav.openCapture());
-    this.nav(secondary, 'shield', 'Future Master’s Planning', 'masters',
-      () => this.plugin.nav.openBoundary('program-masters-planning'));
-    this.nav(secondary, 'activity', 'Diagnostics', 'diagnostics', () => this.plugin.nav.openDiagnostics());
-    this.nav(secondary, 'refresh-cw', 'Rebuild projection', 'rebuild', () => this.plugin.generate());
-    renderDesignSwitch(secondary, this.plugin);
   }
 }

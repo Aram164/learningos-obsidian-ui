@@ -1,4 +1,4 @@
-import { button, disclosure, filterTabs, icon, overflowMenu } from '../../components';
+import { button, disclosure, filterTabs, icon, overflowMenu, plural } from '../../components';
 import { placementAvailability, routeForResource } from '../../features/unit/material-card';
 import { readStudyMap, readUnitRecord, type MaterialOptionView, type StageRecordView, type StudyMapView, type UnitRecordView } from '../../features/unit/model';
 import { renderPlanControls, selectedStage, sittingStudyMap } from '../../features/unit/shell';
@@ -28,11 +28,10 @@ interface UnitContext {
 }
 
 const required = (resource: StageResourceView) => resource.scopeTriage === 'required-now' || !resource.scopeTriage;
-const count = (amount: number, noun: string) => `${amount} ${noun}${amount === 1 ? '' : 's'}`;
 
 function materialsLine(stage: StageRecordView): string {
   const need = stage.resources.filter(required).length;
-  return [count(stage.resources.length, 'material'), need ? `${need} required` : ''].filter(Boolean).join(' · ');
+  return [plural(stage.resources.length, 'material'), need ? `${need} required` : ''].filter(Boolean).join(' · ');
 }
 
 function crumbsFor(context: UnitContext, last?: string) {
@@ -103,7 +102,7 @@ function renderPlan(context: UnitContext, mode: 'plan' | 'materials'): void {
   copy.createDiv({ cls: 'sd-facts', text: mode === 'materials'
     ? lectureMaterialsFacts(context.materials(), context.durable.stages.length)
     : [
-      `${done} of ${count(studyMap.stages.length, 'stage')} done.`,
+      `${done} of ${plural(studyMap.stages.length, 'stage')} done.`,
       allCritical ? 'Every stage in this lecture is exam-critical.' : '',
     ].filter(Boolean).join(' ') });
   filterTabs(head.createDiv({ cls: 'sd-title-tools' }), 'Plan view', [['plan', 'Stages'], ['materials', 'Materials']] as const, mode, (next) => {
@@ -142,7 +141,7 @@ function renderRoute(parent: HTMLElement, context: UnitContext): void {
       body.createEl('h2', { cls: 'sd-heading', text: stage.title });
       if (stage.objective) body.createEl('p', { cls: 'sd-reading', text: stage.objective });
       const foot = body.createDiv({ cls: 'sd-stop-foot' });
-      foot.createSpan({ cls: 'sd-row-facts', text: [materialsLine(stage), stage.doneWhen.length ? `${count(stage.doneWhen.length, 'thing')} to prove` : ''].filter(Boolean).join(' · ') });
+      foot.createSpan({ cls: 'sd-row-facts', text: [materialsLine(stage), stage.doneWhen.length ? `${plural(stage.doneWhen.length, 'thing')} to prove` : ''].filter(Boolean).join(' · ') });
       button(foot, 'Continue stage', () => openStage(context, stage.id), 'cta');
       renderStageMaterialList(body, stageMaterials(context, stage));
       return;
@@ -171,7 +170,7 @@ function renderPlanSide(layout: HTMLElement, context: UnitContext): void {
   const materials = context.materials().length;
   const placements = studyMap.stages.reduce((sum, stage) => sum + stage.resources.length, 0);
   const about = sideGroup(side, 'Materials');
-  about.createEl('p', { cls: 'sd-note', text: `${count(materials, 'different material')} for the ${count(durable.stages.length, 'stage')}, placed ${placements} time${placements === 1 ? '' : 's'}, grouped by what each is for.` });
+  about.createEl('p', { cls: 'sd-note', text: `${plural(materials, 'different material')} for the ${plural(durable.stages.length, 'stage')}, placed ${plural(placements, 'time')}, grouped by what each is for.` });
   textLink(about, `See all ${materials}`, () => { setUnitMode(view, unit.id, 'materials'); view.render(); });
 
   const notes = sideGroup(side, 'Notes');

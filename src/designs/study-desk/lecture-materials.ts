@@ -12,7 +12,7 @@
  * groups fold and keep their counts until a search, a filter or a click opens
  * them. A filter narrows what each group shows, never what it counts.
  */
-import { disclosure, icon } from '../../components';
+import { disclosure, icon, plural } from '../../components';
 import { asRecords, asString } from '../../projection/readers';
 import { compareStrings } from '../../sorting';
 import { renderMaterialOverview } from '../../features/unit/materials';
@@ -62,8 +62,6 @@ export function lectureMaterialsFor(view: UnitScreenHost, unit: UnitRecordView, 
     sourceTypeOf: (id) => asString(view.plugin.store.get(id)?.source_type),
   });
 }
-
-const plural = (amount: number, noun: string) => `${amount} ${noun}${amount === 1 ? '' : 's'}`;
 
 /** The one facts line under the title (Figma: "29 materials for 6 stages · 4 from your course · …"). */
 export function lectureMaterialsFacts(materials: readonly LectureMaterial[], stages: number): string {

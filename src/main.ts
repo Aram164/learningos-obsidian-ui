@@ -323,19 +323,11 @@ export class LearningOSUI extends Plugin implements AppSurface {
   }
 
   /*
-   * `stageDraftKey`, `getStageDraft`, `setStageDraft` and `clearStageDraft`
-   * were four pass-throughs to DraftStore that nothing called — no view, no
-   * feature module, no test, and no entry in any host `Pick<>`. Removed
-   * 2026-08-21 (item 11).
-   *
-   * Worth knowing what their absence reveals rather than just deleting them:
-   * they were the only callers of `DraftStore.getStage/setStage/clearStage`,
-   * so nothing in the app writes a stage draft any more. `getUnitNote` still
-   * reads `uiDrafts.stages` to recover unsaved stage text into a unit note,
-   * which means that recovery path now reads a bag that is always empty. That
-   * is either a feature that was retired without removing its reader, or a
-   * regression from an earlier extraction. It is a behavioural question, not a
-   * mechanical one, so it is left for Aram rather than guessed at here.
+   * Legacy `uiDrafts.stages` recovery remains on `DraftStore.getUnitNote` /
+   * `clearUnitNote` so pre-existing unsaved stage drafts in `data.json` are
+   * recovered into the unit note and cleaned up once saved; the uncalled
+   * `DraftStore.getStage/setStage/clearStage` methods were removed after
+   * confirming no production code writes new stage drafts.
    */
   getUnitNoteDraft(
     unitId: string,

@@ -1,7 +1,7 @@
 import { button, empty } from '../../components';
 import { elsewhereRows } from '../../features/home/elsewhere';
 import { todayItems } from '../../features/home/focus';
-import { readResumePointer } from '../../features/home/model';
+import { resolveResumeTarget } from '../../features/home/model';
 import { LEARN_AREAS } from '../../constants';
 import { readStudyMap } from '../../features/unit/model';
 import { currentWorkResource } from '../../features/stage-resources';
@@ -25,10 +25,7 @@ interface HeroPlugin {
  */
 function renderHero(parent: HTMLElement, plugin: HeroPlugin): void {
   const { store } = plugin;
-  const pointer = readResumePointer(store.data?.resume_pointer);
-  const unit = pointer.unit_id ? store.get(pointer.unit_id) : null;
-  const stage = pointer.stage_id ? store.stage(pointer.stage_id) : null;
-  const projectedMap = pointer.unit_id ? store.mapForUnit(pointer.unit_id) : null;
+  const { pointer, unit, unitMap: projectedMap, stage, module } = resolveResumeTarget(store);
   if (!unit || !stage || !pointer.unit_id || !pointer.stage_id || !projectedMap) {
     const quiet = parent.createDiv({ cls: 'sd-hero is-empty' });
     const copy = quiet.createDiv({ cls: 'sd-hero-copy' });
@@ -40,8 +37,6 @@ function renderHero(parent: HTMLElement, plugin: HeroPlugin): void {
     return;
   }
   const map = readStudyMap(projectedMap);
-  const moduleId = asString(unit.module_id);
-  const module = moduleId ? store.get(moduleId) : null;
   const position = Math.max(map.stages.findIndex((row) => row.id === pointer.stage_id), 0);
   const done = map.stages.filter((row) => row.status === 'complete').length;
   const here = unitLabel(unit, module);

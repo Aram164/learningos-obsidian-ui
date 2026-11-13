@@ -1306,11 +1306,11 @@ function routerPlugin(settings = {}) {
 
     reloaded.clearUnitNote('unit-a', finalDraft.recoveredStages, { title: 'Different', text: 'Mismatched' });
     assert.equal(reloaded.getUnitNote('unit-a', stages).text, finalDraft.text, 'draft remains on failed save (mismatched match)');
-    assert.equal(reloaded.getStage('unit-a', 'stage-a').text, 'Original learner reasoning', 'stage draft is preserved on failed save');
+    assert.equal(serialized.uiDrafts.stages['unit-a::stage-a']?.text ?? '', 'Original learner reasoning', 'stage draft is preserved on failed save');
 
     reloaded.clearUnitNote('unit-a', finalDraft.recoveredStages, { title: finalDraft.title, text: finalDraft.text });
     assert.equal(reloaded.getUnitNote('unit-a', stages).text, '', 'unit draft is cleared on successful save');
-    assert.equal(reloaded.getStage('unit-a', 'stage-a').text, '', 'stage draft is cleared on successful save');
+    assert.equal(serialized.uiDrafts.stages['unit-a::stage-a']?.text ?? '', '', 'stage draft is cleared on successful save');
 
     reloaded.dispose();
     drafts.dispose();

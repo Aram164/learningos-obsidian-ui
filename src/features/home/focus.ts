@@ -14,7 +14,7 @@ import {
 } from '../../projection/readers';
 import {
   type HomeItem,
-  readResumePointer,
+  resolveResumeTarget,
   firstProjectedModuleId,
 } from './model';
 
@@ -23,25 +23,14 @@ export function renderContinue(
 
     root: HTMLElement,
   ): void {
-    const pointer = readResumePointer(
-      view.plugin.store.data?.resume_pointer,
-    );
-
-    const unit = pointer.unit_id
-      ? view.plugin.store.get(pointer.unit_id)
-      : null;
-
-    const map = pointer.study_map_id
-      ? view.plugin.store.get(
-        pointer.study_map_id,
-      )
-      : null;
-
-    const stage = pointer.stage_id
-      ? view.plugin.store.stage(
-        pointer.stage_id,
-      )
-      : null;
+    const {
+      pointer,
+      unit,
+      map,
+      stage,
+      moduleId: unitModuleId,
+      module,
+    } = resolveResumeTarget(view.plugin.store);
 
     const wrap = root.createDiv({
       cls: 'los-continue',
@@ -76,13 +65,6 @@ export function renderContinue(
     const copy = body.createDiv({
       cls: 'los-continue-copy',
     });
-
-    const unitModuleId =
-      projectedString(unit.module_id);
-
-    const module = unitModuleId
-      ? view.plugin.store.get(unitModuleId)
-      : null;
 
     copy.createDiv({
       cls: 'los-continue-module',

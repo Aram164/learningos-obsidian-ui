@@ -1,4 +1,4 @@
-import { button, disclosure, icon } from '../../components';
+import { button, disclosure, icon, plural } from '../../components';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 import { buildConceptContext, linkedConceptNotes } from '../../features/atlas/context';
 import { renderAtlasVariants } from '../../features/atlas/domains';
@@ -27,7 +27,6 @@ const REGION_PLACES: Readonly<Record<string, { x: number; y: number; w: number; 
   'data-systems': { x: 73, y: 62, w: 22, h: 26, cover: 'slate', designed: 12 },
 };
 
-const plural = (amount: number, noun: string) => `${amount} ${noun}${amount === 1 ? '' : 's'}`;
 const shortModule = (host: AtlasHost, id: string) => moduleShort(host.plugin.store.get(id));
 const shortModules = (host: AtlasHost, graph: AtlasGraph, concept: string) =>
   modulesFor(graph, concept).map((module) => shortModule(host, module.id));

@@ -157,23 +157,6 @@ export class DraftStore {
     return `${unitId}::${stageId}`;
   }
 
-  getStage(unitId: string, stageId: string, savedText = ''): { text: string; dirty: boolean } {
-    const entry = this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-    return { text: entry?.text ?? savedText, dirty: entry != null && entry.text !== savedText };
-  }
-
-  setStage(unitId: string, stageId: string, text: string, savedText = ''): void {
-    const key = this.stageKey(unitId, stageId);
-    if (text === savedText) delete this.settings.uiDrafts.stages[key];
-    else this.settings.uiDrafts.stages[key] = { text };
-    this.scheduleSave();
-  }
-
-  clearStage(unitId: string, stageId: string): void {
-    delete this.settings.uiDrafts.stages[this.stageKey(unitId, stageId)];
-    this.scheduleSave();
-  }
-
   getUnitNote(unitId: string, stages: readonly ProjectionRecord[] = []): UnitNoteDraft {
     const saved = this.settings.uiDrafts.unitNotes[unitId];
     const recovered: RecoveredStageDraft[] = [];

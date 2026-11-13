@@ -8,7 +8,7 @@
  * order is the lecture page's D13 rank with this stage's own triage first, so a
  * material ranks the same way wherever its row appears.
  */
-import { filterTabs, icon } from '../../components';
+import { filterTabs, icon, plural } from '../../components';
 import {
   groupByPurpose,
   rankMaterials,
@@ -40,8 +40,6 @@ export interface StageSplit {
   /** Deferred and kept for reference: nothing this stage asks you to read now. */
   readonly kept: readonly LectureMaterial[];
 }
-
-const plural = (amount: number, noun: string) => `${amount} ${noun}${amount === 1 ? '' : 's'}`;
 
 /** A stage's materials by its own triage, each part ranked with that triage first. */
 export function splitStage(materials: readonly LectureMaterial[], durable: StudyMapView, stage: StageRecordView): StageSplit {
