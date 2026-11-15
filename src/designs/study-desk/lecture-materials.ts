@@ -7,10 +7,8 @@
  * choices survives in the opened row; the lecture's idea map and reviewed
  * comparison stay one disclosure away (decision I9).
  *
- * Structure follows volume (decision I6): up to six materials read as one
- * ranked list, up to thirty as open purpose groups, and beyond that the
- * groups fold and keep their counts until a search, a filter or a click opens
- * them. A filter narrows what each group shows, never what it counts.
+ * Short lists read flat; larger lists keep their ranked purpose groups open.
+ * A pinned toolbar and purpose index keep long menus navigable.
  */
 import { disclosure, icon, plural } from '../../components';
 import { asRecords, asString } from '../../projection/readers';
@@ -26,6 +24,7 @@ import {
   MATERIAL_TYPES,
   purposeDef,
   type LectureMaterial,
+  type LectureLayout,
   type MaterialFilter,
   type MaterialTypeKey,
   type PurposeGroup,
@@ -70,9 +69,7 @@ export function lectureMaterialsFacts(materials: readonly LectureMaterial[], sta
   return [
     `${plural(materials.length, 'material')} for ${plural(stages, 'stage')}`,
     course ? `${course} from your course` : '',
-    layout === 'flat' ? 'best first' : layout === 'grouped'
-      ? 'grouped by what they are for, then type, best first'
-      : 'grouped by what they are for; search or open a group',
+    layout === 'flat' ? 'best first' : 'grouped by what they are for, then type, best first',
   ].filter(Boolean).join(' · ');
 }
 
@@ -93,7 +90,7 @@ function haystack(context: MaterialRowContext, material: LectureMaterial): strin
 
 export function renderLectureMaterials(main: HTMLElement, side: HTMLElement, context: LectureMaterialsContext): void {
   const { view, unit, durable, options } = context;
-  const state = materialsState(view, unit.id);
+  const state = materialsState(view.leaf, unit.id);
   const all = lectureMaterialsFor(view, unit, durable, options);
   const layout = lectureLayout(all.length);
   const rowContext = (stageIndex: number | null): MaterialRowContext => ({
@@ -105,7 +102,8 @@ export function renderLectureMaterials(main: HTMLElement, side: HTMLElement, con
   // A stage that left the plan since the filter was set stops filtering.
   if (state.filter.stage !== null && !durable.stages[state.filter.stage]) setFilter(state, { ...state.filter, stage: null });
 
-  const toolbar = main.createDiv({ cls: 'sd-mat-toolbar', attr: { role: 'search' } });
+  const pinned = main.createDiv({ cls: 'sd-mat-pinned' });
+  const toolbar = pinned.createDiv({ cls: 'sd-mat-toolbar', attr: { role: 'search' } });
   const field = toolbar.createEl('label', { cls: 'sd-mat-search' });
   icon(field.createSpan({ cls: 'sd-search-glyph' }), 'search');
   const input = field.createEl('input', {
@@ -128,7 +126,19 @@ export function renderLectureMaterials(main: HTMLElement, side: HTMLElement, con
   toolbar.createSpan({ cls: 'sd-mat-flex' });
   const count = toolbar.createSpan({ cls: 'sd-mat-count', attr: { 'aria-live': 'polite' } });
 
-  const note = main.createDiv({ cls: 'sd-mat-note' });
+  const note = pinned.createDiv({ cls: 'sd-mat-note' });
+  const columns = pinned.createDiv({ cls: 'sd-mat-stage-head' });
+  if (durable.stages.length > 9) {
+    columns.createSpan({ cls: 'sd-mrow-stages', text: `Stages 1–${durable.stages.length}` });
+  } else {
+    const numbers = columns.createDiv({ cls: 'sd-dots', attr: { role: 'group', 'aria-label': 'Material use by stage' } });
+    durable.stages.forEach((stage, index) => {
+      const current = stage.id === durable.currentStageId;
+      numbers.createSpan({ cls: `sd-mat-stage-number${current ? ' is-current' : ''}`, text: String(index + 1), attr: {
+        title: stage.title, ...(current ? { 'aria-current': 'step' } : {}),
+      } });
+    });
+  }
   const sheet = main.createDiv({ cls: 'sd-sheet sd-mat-sheet' });
   const extras = main.createDiv({ cls: 'sd-mat-extras' });
   const synthesis = view.plugin.store.materialSynthesisForUnit(unit.id);
@@ -157,9 +167,9 @@ export function renderLectureMaterials(main: HTMLElement, side: HTMLElement, con
     } else if (layout === 'flat') {
       renderFlat(sheet, groups, context, shown, narrowed);
     } else {
-      for (const group of groups) renderGroup(sheet, group, context, state, layout, shown, narrowed);
+      for (const group of groups) renderGroup(sheet, group, context, state, shown, narrowed);
     }
-    renderSide(side, state, context, groups, layout, shown, narrowed, all, durable);
+    renderSide(side, state, context, groups, layout, shown, narrowed, all, durable, sheet, pinned);
   };
 
   input.addEventListener('input', () => { setFilter(state, { ...state.filter, query: input.value }); draw(); });
@@ -259,7 +269,6 @@ function renderGroup(
   group: PurposeGroup,
   context: MaterialRowContext,
   state: MaterialsState,
-  layout: 'grouped' | 'collapsed',
   shown: (material: LectureMaterial) => boolean,
   narrowed: Narrowed,
 ): void {
@@ -268,8 +277,7 @@ function renderGroup(
   const matches = group.materials.filter(shown);
   const whole = !narrowed || state.whole.has(key);
   const explicit = state.folded.get(key);
-  // Folded by volume when there is nothing to show; a filter opens what it matches.
-  const folded = explicit ?? (narrowed ? !matches.length && !whole : layout === 'collapsed');
+  const folded = explicit ?? Boolean(narrowed && !matches.length && !whole);
   const section = sheet.createDiv({ cls: 'sd-purpose', attr: { 'data-purpose': key, id: purposeAnchor(context.unit.id, key) } });
   const best = total > 1 ? ' Best first.' : '';
   let counted = String(total);
@@ -345,34 +353,59 @@ function renderSide(
   state: MaterialsState,
   context: MaterialRowContext,
   groups: readonly PurposeGroup[],
-  layout: 'flat' | 'grouped' | 'collapsed',
+  layout: LectureLayout,
   shown: (material: LectureMaterial) => boolean,
   narrowed: Narrowed,
   all: readonly LectureMaterial[],
   durable: StudyMapView,
+  sheet: HTMLElement,
+  pinned: HTMLElement,
 ): void {
+  const root = context.view.contentEl;
+  root.onscroll = null;
   if (layout !== 'flat' && groups.length) {
-    const index = sideGroup(side, 'On this page').createDiv({ cls: 'sd-index', attr: { role: 'list' } });
+    const index = sideGroup(side, 'On this page').createEl('nav', { cls: 'sd-index', attr: { 'aria-label': 'Material groups' } });
+    const entries: Array<{ button: HTMLButtonElement; anchor: HTMLElement }> = [];
     for (const group of groups) {
       const matches = group.materials.filter(shown).length;
       const item = index.createEl('button', {
         cls: 'sd-index-item is-clickable',
-        attr: { type: 'button', role: 'listitem', 'aria-label': `Go to ${group.purpose.label}` },
+        attr: { type: 'button' },
       });
       icon(item.createSpan({ cls: 'sd-index-glyph' }), group.purpose.icon);
       item.createSpan({ cls: 'sd-index-label', text: group.purpose.label });
       item.createSpan({ cls: 'sd-index-count', text: narrowed && matches !== group.materials.length ? `${matches} of ${group.materials.length}` : String(group.materials.length) });
+      const id = purposeAnchor(context.unit.id, group.purpose.key);
+      const anchor = sheet.querySelector?.<HTMLElement>(`#${id}`);
+      if (anchor) entries.push({ button: item, anchor });
       item.addEventListener('click', () => {
-        state.folded.set(group.purpose.key, false);
-        context.refresh();
-        // The redraw replaced the sheet; find the group again by its anchor.
-        const anchor = context.view.contentEl.querySelector?.(`#${purposeAnchor(context.unit.id, group.purpose.key)}`);
-        (anchor as HTMLElement | null)?.scrollIntoView?.({ block: 'start', behavior: 'smooth' });
+        if (anchor?.querySelector('.sd-purpose-head')?.getAttribute('aria-expanded') === 'false') {
+          state.folded.set(group.purpose.key, false);
+          context.refresh();
+        }
+        const section = root.querySelector?.<HTMLElement>(`#${id}`);
+        if (!section || !section.getBoundingClientRect || !root.scrollTo) return;
+        const top = root.scrollTop + section.getBoundingClientRect().top - root.getBoundingClientRect().top - pinned.offsetHeight - 8;
+        const reducedMotion = root.ownerDocument.defaultView?.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        root.scrollTo({ top, behavior: reducedMotion ? 'instant' : 'smooth' });
       });
+    }
+    const syncIndex = () => {
+      const line = pinned.getBoundingClientRect().bottom + 12;
+      const atEnd = root.scrollTop > 0 && root.scrollHeight - root.clientHeight - root.scrollTop <= 2;
+      const current = atEnd ? entries.at(-1) : entries.filter(({ anchor }) => anchor.getBoundingClientRect().top <= line).at(-1) ?? entries[0];
+      for (const entry of entries) {
+        if (entry === current) entry.button.setAttr('aria-current', 'location');
+        else entry.button.removeAttribute('aria-current');
+      }
+    };
+    if (typeof pinned.getBoundingClientRect === 'function') {
+      root.onscroll = syncIndex;
+      syncIndex();
     }
   }
 
-  if (narrowed && layout === 'collapsed') {
+  if (narrowed && all.length > 30) {
     const byStage = durable.stages
       .map((stage, index) => ({ stage, index, count: all.filter((material) => material.uses[index] && shown(material)).length }))
       .filter((row) => row.count > 0);
@@ -394,9 +427,7 @@ function renderSide(
     line.createSpan({ text: words });
   }
 
-  if (layout === 'collapsed') {
-    sideGroup(side, 'At this size').createEl('p', { cls: 'sd-note', text: 'Above 30 materials, groups open only when you search, filter or ask, and every group keeps its count. Nothing is hidden; it is folded.' });
-  } else if (layout === 'grouped') {
+  if (layout !== 'flat') {
     sideGroup(side, 'A good order').createEl('p', { cls: 'sd-note', text: 'Start with the lecture. If an idea does not click, take one Intuition source, then go straight to Practice. Theory is for when you want the full argument; Going deeper can wait for after the exam.' });
     sideGroup(side, 'How each group is ordered').createEl('p', { cls: 'sd-note', text: 'Inside each type, best first: your picks, then what this lecture’s stages require, then what more of its stages use. The best row of the whole group is marked Best fit; a tie gets no mark.' });
   } else {

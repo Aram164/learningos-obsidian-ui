@@ -23,6 +23,7 @@ export type AtlasPlugin = Pick<
   | 'generate'
   | 'mutate'
   | 'openVaultPath'
+  | 'router'
   | 'settings'
   | 'store'
 > & {

@@ -1,93 +1,160 @@
 import { filterTabs, icon } from '../../components';
 import { readResumePointer } from '../../features/home/model';
+import { todayItems } from '../../features/home/focus';
 import { MODULE_TABS, nonNull, normalizeUnitRecord, orderModuleUnits, readModuleRecord } from '../../features/module/model';
 import { renderModuleUnitGroups } from '../../features/module/detail';
 import type { ProjectionRecord } from '../../contracts/manifest';
-import { asRecords, asString } from '../../projection/readers';
+import { asLabel, asString, asText } from '../../projection/readers';
 import { compareStrings, foldCase } from '../../sorting';
-import type { ModuleDetailScreenHost, ModuleListScreenHost } from '../screens';
-import { chevron, coverOf, deskHead, deskPage, deskRow, moduleLongTitle, moduleRow, moduleShort, stageBars, unitLabel } from './parts';
+import type { LearnScreenHost, ModuleDetailScreenHost, ModuleListScreenHost } from '../screens';
+import { chevron, coverOf, deskHead, deskPage, deskRow, moduleLongTitle, moduleName, moduleRow, moduleShort, sideGroup, stageBars, textLink, unitLabel } from './parts';
+import { currentSemesterKey, unitWork } from './study-work';
 
-const JOB_VISIBLE = 5;
+const AREAS = [
+  ['all', 'All'], ['program-bachelors', 'Bachelor’s'], ['program-skills', 'Skills'],
+  ['program-job', 'Job'], ['projects', 'Thesis & projects'],
+] as const;
 
-function group(parent: HTMLElement, title: string, count: string): HTMLElement {
-  const head = parent.createDiv({ cls: 'sd-group-head' });
-  head.createSpan({ cls: 'sd-group-title', text: title });
-  head.createSpan({ cls: 'sd-group-count', text: count });
-  return parent.createDiv({ cls: 'sd-module-list' });
+type Area = typeof AREAS[number][0];
+const moduleFilters = new WeakMap<object, { initial: Area; area: Area }>();
+
+function areaOf(module: ProjectionRecord): string {
+  return module.kind === 'project' ? 'projects' : asString(module.area_id) ?? '';
 }
 
-/**
- * Every module, grouped by what you would look for: enrolled first, then job,
- * skills and projects, with closed ones one click away rather than gone.
- */
 export function renderDeskModuleList(view: ModuleListScreenHost): boolean {
-  // A thematic group's list keeps its own screen for now, restyled.
   if (view.groupId) return false;
-  const { plugin } = view;
-  const root = deskPage(view.contentEl, 'modules', plugin.store);
-  deskHead(root, [{ label: 'Modules' }]);
+  renderModules(view, 'all', view.query, (query) => { view.query = query; });
+  return true;
+}
+
+/** Old program and Learn links land on the same screen with their area selected. */
+export function renderDeskLearn(view: LearnScreenHost): boolean {
+  const area = view.programId === 'program-thesis-projects' ? 'projects' : AREAS.find(([key]) => key === view.programId)?.[0];
+  if (!area || area === 'all') return false;
+  renderModules(view, area);
+  return true;
+}
+
+function renderModules(
+  view: ModuleListScreenHost | LearnScreenHost,
+  initial: Area,
+  query = '',
+  onQuery?: (query: string) => void,
+): void {
+  const { plugin: { store, nav }, leaf } = view;
+  let filter = moduleFilters.get(leaf);
+  if (!filter || filter.initial !== initial) {
+    filter = { initial, area: initial };
+    moduleFilters.set(leaf, filter);
+  }
+  const state = filter;
+  const root = deskPage(view.contentEl, 'modules', store);
+  deskHead(root, [{ label: 'Modules' }], view);
   const head = root.createDiv({ cls: 'sd-title-row' });
-  head.createEl('h1', { cls: 'sd-title', text: 'Modules' });
+  const copy = head.createDiv({ cls: 'sd-title-copy' });
+  copy.createEl('h1', { cls: 'sd-title', text: 'Modules' });
+  const facts = copy.createDiv({ cls: 'sd-facts' });
   const field = head.createEl('label', { cls: 'sd-search' });
   icon(field.createSpan({ cls: 'sd-search-glyph' }), 'search');
   const input = field.createEl('input', {
     cls: 'sd-search-input',
-    attr: { type: 'search', placeholder: 'Search', 'aria-label': 'Search modules' },
+    attr: { type: 'search', placeholder: 'Find a module or lecture', 'aria-label': 'Find a module or lecture' },
   });
-  input.value = view.query;
-
-  const body = root.createDiv({ cls: 'sd-modules-body' });
-  const openModule = (module: ProjectionRecord) => {
-    view.selectedElementId = asString(module.id);
-    return plugin.nav.openModuleDetail(asString(module.id) ?? '');
+  input.value = query;
+  const controls = root.createDiv({ cls: 'sd-title-tools' });
+  const layout = root.createDiv({ cls: 'sd-plan-layout sd-modules-layout' });
+  const body = layout.createDiv({ cls: 'sd-modules-body' });
+  const side = layout.createDiv({ cls: 'sd-side sd-modules-side' });
+  const upcoming = sideGroup(side, 'Coming up');
+  const dates = todayItems(view).filter((item) => item.actionLabel !== 'Open review');
+  if (!dates.length) upcoming.createEl('p', { cls: 'sd-note', text: 'No dates ahead.' });
+  for (const item of dates) {
+    if (item.action) textLink(upcoming, item.title, item.action);
+    else upcoming.createSpan({ text: item.title });
+    upcoming.createDiv({ cls: 'sd-row-facts', text: item.detail });
+  }
+  const modules = store.modules().filter((module) => !module.compatibility_only)
+    .sort((a, b) => compareStrings(asLabel(a), asLabel(b)));
+  const actionable = modules.filter((module) => module.is_actionable === true);
+  const current = currentSemesterKey(store);
+  const counts = AREAS.map(([key, label]) => {
+    const count = actionable.filter((module) => areaOf(module) === key).length;
+    return [key, key === 'all' ? label : `${label} · ${count}`] as const;
+  });
+  const open = (module: ProjectionRecord) => {
+    const id = asString(module.id);
+    if (!id) return;
+    if ('selectedElementId' in view) view.selectedElementId = id;
+    return nav.openModule(id);
   };
-  const draw = () => {
+  function drawFilters() {
+    controls.empty();
+    filterTabs(controls, 'Module areas', counts, state.area, (area) => {
+      state.area = area;
+      draw();
+      drawFilters();
+      controls.querySelector?.<HTMLButtonElement>('[aria-pressed="true"]')?.focus();
+    });
+  }
+
+  function draw() {
     body.empty();
-    const needle = foldCase(view.query.trim());
-    const all = plugin.store.modules()
-      .filter((module) => !needle || foldCase(String(module.title ?? '')).includes(needle))
-      .sort((a, b) => compareStrings(String(a.title ?? ''), String(b.title ?? '')));
-    const academic = new Set(plugin.store.openAcademicModules().map((module) => module.id));
-    const enrolled = all.filter((module) => academic.has(module.id) && module.is_actionable === true && asString(module.area_id) === 'program-bachelors' && !asString(module.id)?.startsWith('module-project-'));
-    const shown = new Set(enrolled.map((module) => module.id));
-    const others = all.filter((module) => module.is_actionable === true && !shown.has(module.id));
-    const closed = all.filter((module) => module.is_actionable !== true);
-    if (!all.length) {
-      body.createEl('p', { cls: 'sd-quiet', text: `No module matches “${view.query.trim()}”.` });
+    const needle = foldCase(input.value.trim());
+    const scoped = modules.filter((module) => state.area === 'all' || areaOf(module) === state.area);
+    const lectureMatches = new Map<ProjectionRecord, ProjectionRecord[]>();
+    const shown = scoped.filter((module) => {
+      const matches = needle && module.id ? store.unitsFor(module.id).filter((unit) => foldCase(asLabel(unit)).includes(needle)) : [];
+      if (matches.length) lectureMatches.set(module, matches);
+      return !needle || matches.length || foldCase(asLabel(module)).includes(needle);
+    });
+    const active = shown.filter((module) => module.is_actionable === true);
+    const closed = shown.filter((module) => module.is_actionable !== true);
+    facts.setText(`${active.length} open · ${closed.length} closed`);
+    if (!shown.length) {
+      body.createEl('p', { cls: 'sd-quiet', text: needle ? `No module or lecture matches “${input.value.trim()}”.` : 'No modules in this area.' });
       return;
     }
-    if (enrolled.length) {
-      const list = group(body, 'Enrolled', String(enrolled.length));
-      for (const module of enrolled) moduleRow(list, plugin.store, module, () => openModule(module));
-    }
-    if (others.length) {
-      const visible = needle ? others : others.slice(0, JOB_VISIBLE);
-      const list = group(body, 'Job, skills and projects', visible.length < others.length ? `${visible.length} of ${others.length}` : String(others.length));
-      for (const module of visible) moduleRow(list, plugin.store, module, () => openModule(module));
-      closedDisclosure(body, others.slice(visible.length), closed, openModule, plugin.store);
-    } else {
-      closedDisclosure(body, [], closed, openModule, plugin.store);
-    }
-  };
-  input.addEventListener('input', () => { view.query = input.value; draw(); });
-  draw();
-  return true;
-}
 
-function closedDisclosure(
-  parent: HTMLElement,
-  more: readonly ProjectionRecord[],
-  closed: readonly ProjectionRecord[],
-  open: (module: ProjectionRecord) => unknown,
-  store: ModuleListScreenHost['plugin']['store'],
-): void {
-  if (!more.length && !closed.length) return;
-  const parts = [more.length ? `${more.length} more` : '', closed.length ? `${closed.length} closed module${closed.length === 1 ? '' : 's'}` : ''].filter(Boolean);
-  const details = parent.createEl('details', { cls: 'sd-more-modules' });
-  details.createEl('summary', { cls: 'sd-more-summary', text: `Show ${parts.join(' and ')}` });
-  const list = details.createDiv({ cls: 'sd-module-list' });
-  for (const module of [...more, ...closed]) moduleRow(list, store, module, () => open(module));
+    const academics = active.filter((module) => module.kind === 'academic');
+    const currentCourses = current ? academics.filter((module) => module.semester === current) : [];
+    const past = academics.filter((module) => !currentCourses.includes(module));
+    const projects = active.filter((module) => areaOf(module) === 'projects');
+    const tracks = active.filter((module) => !academics.includes(module) && !projects.includes(module));
+    const append = (parent: HTMLElement, rows: readonly ProjectionRecord[]) => {
+      for (const module of rows) {
+        moduleRow(parent, store, module, () => open(module));
+        for (const unit of lectureMatches.get(module) ?? []) {
+          const id = asString(unit.id);
+          if (!id) continue;
+          const hit = deskRow(parent, 'sd-module-hit', asLabel(unit), () => nav.openUnit(id));
+          hit.createSpan({ cls: 'sd-row-copy', text: asLabel(unit) });
+          chevron(hit);
+        }
+      }
+    };
+    const groups = [
+      [store.currentSemester() ? `This semester · ${asLabel(store.currentSemester())}` : 'This semester', currentCourses],
+      [currentCourses.length ? 'Still open from earlier semesters' : 'Open courses', past],
+      ['Skills and job', tracks], ['Thesis and projects', projects],
+    ] as const;
+    for (const [title, rows] of groups) {
+      if (!rows.length) continue;
+      const group = body.createDiv({ cls: 'sd-sheet sd-module-list' });
+      group.createEl('h2', { cls: 'sd-group-head', text: `${title} · ${rows.length}` });
+      append(group, rows);
+    }
+    if (closed.length) {
+      const details = body.createEl('details', { cls: 'sd-more-modules' });
+      details.open = Boolean(needle);
+      details.createEl('summary', { cls: 'sd-more-summary', text: `${closed.length} closed module${closed.length === 1 ? '' : 's'}` });
+      append(details.createDiv({ cls: 'sd-sheet sd-module-list' }), closed);
+    }
+  }
+
+  input.addEventListener('input', () => { onQuery?.(input.value); draw(); });
+  drawFilters();
+  draw();
 }
 
 export function renderDeskModuleDetail(view: ModuleDetailScreenHost): boolean {
@@ -98,7 +165,7 @@ export function renderDeskModuleDetail(view: ModuleDetailScreenHost): boolean {
   const tab = view.tab ?? view.defaultTab(module);
   const short = moduleShort(record);
   const root = deskPage(view.contentEl, 'module', plugin.store);
-  deskHead(root, [{ label: 'Modules', go: () => plugin.nav.openModules() }, { label: short }]);
+  deskHead(root, [{ label: 'Modules', go: () => plugin.nav.openModules() }, { label: moduleName(record) }], view);
 
   const head = root.createDiv({ cls: 'sd-module-head', attr: { 'data-cover': coverOf(record) } });
   const cover = head.createDiv({ cls: 'sd-book', attr: { 'aria-hidden': 'true' } });
@@ -114,7 +181,18 @@ export function renderDeskModuleDetail(view: ModuleDetailScreenHost): boolean {
   if (tab === 'overview') view.renderOverview(root, module);
   else if (tab === 'resources') view.renderSources(root, module);
   else if (tab === 'logistics') view.renderLogistics(root, module);
-  else renderUnitSheet(root, view, record, module);
+  else {
+    const layout = root.createDiv({ cls: 'sd-plan-layout sd-modules-layout' });
+    const main = layout.createDiv({ cls: 'sd-plan-main' });
+    renderUnitSheet(main, view, record, module);
+    const workspace = plugin.store.workspacesForModule(module.id).find((row) => row.archived !== true && row.status !== 'complete' && asText(row.next_action));
+    if (workspace) {
+      const plan = sideGroup(layout.createDiv({ cls: 'sd-side sd-modules-side' }), 'Your plan');
+      plan.createEl('strong', { text: asLabel(workspace) });
+      plan.createEl('p', { cls: 'sd-note', text: asText(workspace.next_action) ?? '' });
+      textLink(plan, 'Open plan', () => view.selectTab('overview'));
+    }
+  }
   return true;
 }
 
@@ -138,9 +216,9 @@ function renderUnitSheet(
   const pointer = readResumePointer(plugin.store.data?.resume_pointer);
   const sheet = root.createDiv({ cls: 'sd-sheet sd-unit-sheet' });
   renderModuleUnitGroups(sheet, units, (parent, unit) => {
-    const map = plugin.store.mapForUnit(unit.id);
-    const stages = asRecords(map?.stages);
-    const done = stages.filter((stage) => stage.status === 'complete').length;
+    const work = unitWork(plugin.store, unit.id);
+    const stages = work?.map.stages ?? [];
+    const done = work?.done ?? 0;
     const label = unitLabel(plugin.store.get(unit.id), record);
     const here = pointer.unit_id === unit.id;
     const row = deskRow(parent, `sd-unit-row${here ? ' is-here' : ''}`, `Open unit: ${unit.title}`, () => {
@@ -148,14 +226,15 @@ function renderUnitSheet(
       return plugin.nav.openUnit(unit.id);
     });
     row.createSpan({ cls: 'sd-unit-number', text: label.number ?? '·' });
-    row.createSpan({ cls: 'sd-unit-title', text: label.title });
+    const copy = row.createSpan({ cls: 'sd-row-copy' });
+    copy.createSpan({ cls: 'sd-unit-title', text: label.title });
+    if (stages.length) copy.createSpan({ cls: 'sd-row-facts', text: `${done} of ${stages.length} stages done` });
     if (stages.length) stageBars(row, stages.length, done);
     row.createSpan({
       cls: `sd-row-next${done === stages.length && stages.length ? ' is-done' : ''}`,
-      text: !map ? 'No study plan yet'
+      text: !work ? (unit.record.needs_study_map === true ? 'Needs a study map' : 'No study plan yet')
         : done === stages.length && stages.length ? 'Done'
-          : done ? `${done} of ${stages.length}`
-            : `${stages.length} stage${stages.length === 1 ? '' : 's'}`,
+          : work.next ? `Stage ${stages.indexOf(work.next) + 1} · ${work.next.title}` : 'No open stage',
     });
     chevron(row);
   });

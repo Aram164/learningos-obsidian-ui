@@ -151,6 +151,7 @@ export type UnitPlugin = Pick<
     | 'openAtlas'
     | 'openLibrary'
     | 'openModule'
+    | 'openModules'
     | 'openRecord'
     | 'openShelving'
     | 'openUnit'

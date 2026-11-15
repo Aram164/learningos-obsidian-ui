@@ -3,7 +3,7 @@
  * rows are open and which groups are folded.
  *
  * Attention, not a route (decision I10; docs/interface-designs.md): it belongs
- * to the view that drew it, keyed by the view host in a WeakMap, so two open
+ * to the pane that drew it, keyed by leaf in a WeakMap, so two open
  * panes never share it and it is collected with the leaf. Nothing here is
  * written to Core or to the URL.
  */
@@ -13,7 +13,7 @@ export interface MaterialsState {
   filter: MaterialFilter;
   /** Row keys whose details are open. */
   readonly open: Set<string>;
-  /** A purpose's explicit fold, when the learner chose one; otherwise the volume rule decides. */
+  /** A purpose's explicit fold, when the learner chose one. */
   readonly folded: Map<PurposeKey, boolean>;
   /** Groups the learner asked to see whole while a search or filter is on. */
   readonly whole: Set<PurposeKey>;
@@ -45,8 +45,7 @@ export function materialsState(host: object, unitId: string): MaterialsState {
 }
 
 /**
- * A changed filter starts from the volume rule again: a filter opens the groups
- * it matches and folds the rest, so nothing stays open, or shut, by accident.
+ * A changed filter opens the groups it matches and folds the rest.
  */
 export function setFilter(state: MaterialsState, filter: MaterialFilter): void {
   state.filter = filter;

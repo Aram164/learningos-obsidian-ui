@@ -107,7 +107,7 @@ export function renderSessionMaterials(
   links: (parent: HTMLElement) => void,
 ): void {
   const { view, unit, stage } = context;
-  const state = materialsState(view, unit.id);
+  const state = materialsState(view.leaf, unit.id);
   const row = rowContext(context, state);
   const split = splitStage(context.materials, context.durable, stage);
   const also = split.required.filter((material) => !isCurrent(material, stage.id, current));
@@ -150,7 +150,7 @@ export function renderStageMaterialList(parent: HTMLElement, context: StageMater
   const split = splitStage(context.materials, context.durable, stage);
   const total = split.required.length + split.helps.length + split.kept.length;
   if (!total) return;
-  const state = materialsState(view, unit.id);
+  const state = materialsState(view.leaf, unit.id);
   const row = rowContext(context, state);
   const fold = parent.createEl('details', { cls: 'sd-stop-materials' });
   keepFold(fold, state, `stage:${stage.id}`, [...split.required, ...split.helps, ...split.kept].some((material) => row.open.has(material.key)));

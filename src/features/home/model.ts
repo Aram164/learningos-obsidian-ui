@@ -31,6 +31,7 @@ export type HomePlugin = Pick<
   AppSurface,
   | 'generate'
   | 'settings'
+  | 'router'
   | 'store'
 > & {
   readonly nav: Pick<
@@ -39,6 +40,7 @@ export type HomePlugin = Pick<
     | 'openGlobalSearch'
     | 'openLearn'
     | 'openModule'
+    | 'openModules'
     | 'openProject'
     | 'openReview'
     | 'openUnit'
