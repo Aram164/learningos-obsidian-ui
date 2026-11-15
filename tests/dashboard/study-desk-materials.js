@@ -212,8 +212,8 @@ module.exports = async function run() {
     check('under a stage filter, the filtered group still marks a strict leader',
       filtered.find((g) => g.purpose.key === 'practice').bestFit?.title === 'MIT 6.036 unit 2');
 
-    check('structure follows volume', mp.lectureLayout(6) === 'flat' && mp.lectureLayout(7) === 'grouped'
-      && mp.lectureLayout(30) === 'grouped' && mp.lectureLayout(31) === 'collapsed');
+    check('large lectures keep their purpose groups open by default', mp.lectureLayout(6) === 'flat' && mp.lectureLayout(7) === 'grouped'
+      && mp.lectureLayout(30) === 'grouped' && mp.lectureLayout(31) === 'grouped');
     const where = () => 'local';
     const text = (m) => `${m.title} ${m.locator ?? ''}`;
     const filter = (overrides) => ({ ...mp.NO_FILTER, ...overrides });
@@ -263,6 +263,11 @@ module.exports = async function run() {
       row('Fixture lecture deck').find('sd-mrow-meta')[0].allText());
     check('the side column indexes every group with its count',
       root().find('sd-index-item').length === 6 && root().findText('sd-index-item', 'Practice').allText().includes('2'));
+    const pinned = root().find('sd-mat-pinned')[0];
+    check('the pinned search and filters share a numbered header marking the recorded current stage',
+      pinned.find('sd-mat-search-input').length === 1
+      && pinned.find('sd-mat-stage-number').map((node) => node.allText()).join() === '1,2,3'
+      && pinned.find('sd-mat-stage-number')[1].getAttribute('aria-current') === 'step');
     check('the lecture’s full plan controls stay one tab away', root().findText('los-filter-tab', 'Stages') !== null);
 
     row('Fixture lecture deck').find('sd-mrow-open')[0].fire('click');

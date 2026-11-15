@@ -14,6 +14,7 @@ import {
 } from '../../projection/readers';
 import {
   type HomeItem,
+  type HomePlugin,
   resolveResumeTarget,
   firstProjectedModuleId,
 } from './model';
@@ -136,7 +137,7 @@ export function renderContinue(
   }
 
 export function todayItems(
-  view: Pick<HomeFocusHost, 'plugin'>,
+  view: { readonly plugin: Pick<HomePlugin, 'store'> & { readonly nav: Pick<HomePlugin['nav'], 'openModule' | 'openReview'> } },
 ): HomeItem[] {
     const items: HomeItem[] = [];
 

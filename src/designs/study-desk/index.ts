@@ -1,7 +1,7 @@
 import type { DesignScreens } from '../screens';
 import { renderDeskAtlas } from './atlas';
-import { renderDeskHome, renderDeskLearn } from './home';
-import { renderDeskModuleDetail, renderDeskModuleList } from './modules';
+import { renderDeskHome } from './home';
+import { renderDeskLearn, renderDeskModuleDetail, renderDeskModuleList } from './modules';
 import { renderDeskNav } from './nav';
 import { renderDeskUnit } from './unit';
 

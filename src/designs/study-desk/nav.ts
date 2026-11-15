@@ -2,6 +2,9 @@ import { icon } from '../../components';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 import { mountNavMore, primaryNavItems, renderNavItems } from '../../app/nav-shared';
 import type { NavScreenHost } from '../screens';
+import { coverOf, moduleName, unitLabel } from './parts';
+import { inProgressUnits } from './study-work';
+import { setUnitMode } from './unit-mode';
 
 /**
  * The one sidebar: search, seven destinations, the Review count, and maintenance
@@ -44,14 +47,35 @@ export function renderDeskNav(view: NavScreenHost): void {
   enableButtonGroupKeyboardNavigation(primary, 'vertical');
   renderNavItems(
     primary,
-    primaryNavItems(plugin, { icons: { modules: 'folder', garden: 'leaf', review: 'circle-check' } }),
+    primaryNavItems(plugin, { icons: { modules: 'folder', garden: 'leaf', review: 'circle-check' } }).filter((item) => item.key !== 'learn'),
     row,
   );
 
-  mountNavMore(root, plugin, {
+  const work = inProgressUnits(plugin.store);
+  if (work.length) {
+    const list = root.createDiv({ cls: 'sd-nav-work' });
+    list.createDiv({ cls: 'sd-eyebrow', text: 'In progress' });
+    const shortcuts = list.createDiv({ cls: 'sd-nav-primary' });
+    enableButtonGroupKeyboardNavigation(shortcuts, 'vertical');
+    for (const { module, unit, unitId, done, total, next } of work) {
+      const item = shortcuts.createEl('button', { cls: 'sd-nav-item sd-nav-shortcut', attr: { type: 'button', 'data-cover': coverOf(module) } });
+      const title = `${moduleName(module)} · ${unitLabel(unit, module).title}`;
+      item.createSpan({ cls: 'sd-nav-label', text: title, attr: { title } });
+      item.createSpan({ cls: 'sd-nav-count', text: `${done}/${total}` });
+      item.addEventListener('click', () => {
+        void plugin.nav.openUnit(unitId, next?.id, (leaf) => setUnitMode(leaf, unitId, next ? 'session' : 'plan'));
+      });
+    }
+  }
+
+  const foot = root.createDiv({ cls: 'sd-nav-foot' });
+  row(foot, 'plus', 'Capture', 'capture', () => plugin.nav.openCapture());
+
+  mountNavMore(foot, plugin, {
     detailsCls: 'sd-nav-more',
     secondaryCls: 'sd-nav-secondary',
     keyboardGroup: true,
+    includeCapture: false,
     buildSummary: (more) => {
       const summary = more.createEl('summary', { cls: 'sd-nav-item is-clickable' });
       icon(summary.createSpan({ cls: 'sd-nav-glyph' }), 'ellipsis');

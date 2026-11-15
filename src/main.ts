@@ -650,6 +650,8 @@ export class LearningOSUI extends Plugin implements AppSurface {
   private redrawForDesign(): void {
     applyInterfaceDesign([document.body], this.settings);
     if (!this.isLifecycleActive()) return;
+    const active = this.router.attendedRoute();
+    if (active) this.activeNav = this.router.descriptor(active).nav;
     for (const type of APPLICATION_VIEW_TYPES) {
       for (const leaf of this.app.workspace.getLeavesOfType(type)) leaf.view?.render?.();
     }

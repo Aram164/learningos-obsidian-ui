@@ -256,7 +256,7 @@ module.exports = async function run() {
     search.value = 'no such fixture module'; search.fire('input');
     check('a genuinely unmatched Study Desk module query keeps its empty state',
       modulesView.contentEl.find('sd-module-list').length === 0
-      && modulesView.contentEl.allText().includes('No module matches “no such fixture module”.'));
+      && modulesView.contentEl.allText().includes('No module or lecture matches “no such fixture module”.'));
 
     await plugin.nav.openUnit('unit-fixture-sad-l04');
     const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
@@ -265,12 +265,20 @@ module.exports = async function run() {
       ?? view.contentEl.findText('sd-stop-head', 'Event spaces');
     completed.fire('click');
     await waitFor(() => view.contentEl.find('sd-book-spread').length === 1);
-    check('a completed stage offers no Complete action',
+    const next = view.contentEl.findText('los-btn--cta', 'Next: stage 2');
+    check('a completed stage offers Next and shows the criteria without inventing checked proofs',
       view.contentEl.findText('los-btn', 'Complete stage') === null
-      && view.contentEl.findText('los-btn', 'Stage complete') !== null
-      && view.contentEl.findText('los-btn', 'Stage complete').disabled === true);
+      && next && view.contentEl.find('sd-proof').length === 0
+      && view.contentEl.find('sd-proof-criteria')[0]?.children.length > 0
+      && view.contentEl.findText('sd-proof-tally', 'Proof checks are session-only.'));
     check('the completed session keeps one filled action',
       view.contentEl.find('los-btn--cta').length === 1);
+    check('stage tabs expose the full stage name and status on hover',
+      view.contentEl.find('sd-strip-tab')[1].getAttribute('title').includes('Conditional probability and Bayes'));
+    next?.fire('click');
+    await waitFor(() => view.stageId === 'stage-fixture-conditioning');
+    check('Next opens the following stage in the session', view.stageId === 'stage-fixture-conditioning'
+      && view.contentEl.find('sd-book-spread').length === 1);
     plugin.onunload();
   }
   {
@@ -284,13 +292,68 @@ module.exports = async function run() {
     mode.clearUnitMode(hostA, 'unit-x');
     check('clearing a view mode leaves the default plan',
       mode.unitMode(hostA, 'unit-x') === 'plan');
-    mode.requestSession('unit-y');
-    check('a session request is consumed once by the next view',
-      mode.unitMode(hostB, 'unit-y') === 'session' && mode.unitMode(hostA, 'unit-y') === 'plan');
-    mode.setUnitMode(hostA, 'unit-z', 'plan');
-    mode.requestSession('unit-z');
-    check('a session request overrides a mode its view already recorded, without leaking',
-      mode.unitMode(hostA, 'unit-z') === 'session' && mode.unitMode(hostB, 'unit-z') === 'plan');
+  }
+
+  heading('Study Desk assessment: honest Home, legacy Learn and pane history');
+  {
+    const { app, plugin, calls } = await boot({
+      settings: { uiDesign: 'study-desk', pinHome: false },
+      patchManifest(manifest) { manifest.resume_pointer = {}; },
+    });
+    const pane = app.workspace.getLeavesOfType(VIEW.home)[0];
+    const root = () => pane.view.contentEl;
+    const control = (label) => root().find('sd-history-button').find((node) => node.getAttribute('aria-label') === label);
+    check('Home without a resume pointer offers a projected stage and distinguishes the suggestion',
+      root().findText('sd-hero-kicker', 'Suggested by your') && root().findText('los-btn--cta', 'Start stage')
+      && !root().findText('sd-hero-kicker', 'Continue where you stopped'));
+    await plugin.nav.openLearn('program-skills');
+    check('a legacy Learn route opens Modules with the corresponding area selected',
+      root().findText('sd-title', 'Modules') && root().findText('los-filter-tab', 'Skills').getAttribute('aria-pressed') === 'true'
+      && plugin.activeNav === 'modules');
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    root().findText('los-filter-tab', 'Materials').fire('click');
+    const other = app.workspace.getLeaf(true);
+    await other.setViewState({ type: VIEW.unit, state: { unitId: 'unit-fixture-sad-l04', stageId: 'stage-fixture-foundations' } });
+    app.workspace.setActiveLeaf(other);
+    check('another pane opens the same lecture with its own stage, mode, and empty history',
+      other.view.stageId === 'stage-fixture-foundations' && other.view.contentEl.find('sd-route').length === 1
+      && other.view.contentEl.find('sd-history-button').every((node) => node.disabled));
+    control('Back').fire('click');
+    await waitFor(() => root().findText('sd-title', 'Modules'));
+    check('Back follows the pane that owns the toolbar and enables Forward',
+      root().findText('sd-title', 'Modules') && !control('Forward').disabled);
+    control('Forward').fire('click');
+    await waitFor(() => root().find('sd-mat-sheet').length > 0);
+    check('Forward restores the lecture and its Materials view without changing the other pane',
+      root().find('sd-mat-sheet').length === 1 && pane.view.stageId === 'stage-fixture-conditioning'
+      && other.view.stageId === 'stage-fixture-foundations' && control('Forward').disabled);
+    root().findText('sd-crumb', 'Modules').fire('click');
+    await waitFor(() => root().find('sd-modules-body').length > 0);
+    check('the lecture’s Modules crumb opens the catalogue and browsing makes no Core writes',
+      root().find('sd-modules-body').length === 1 && calls.envelopes.length === 0);
+    plugin.onunload();
+  }
+
+  {
+    const { app, plugin } = await boot({ settings: { uiDesign: 'study-desk', pinHome: true } });
+    const home = app.workspace.getLeavesOfType(VIEW.home)[0];
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-foundations');
+    const readingPane = app.workspace.getLeavesOfType(VIEW.unit)[0];
+    readingPane.view.contentEl.scrollTop = 240;
+    await plugin.nav.openModules();
+    await plugin.nav.openHome();
+    await plugin.nav.openUnit('unit-fixture-analysis');
+    const secondReadingPane = app.workspace.getLeavesOfType(VIEW.unit)[0];
+    check('pinned Home opens a separate reading pane with empty history',
+      home.pinned && home.getViewState().type === VIEW.home
+      && secondReadingPane !== readingPane
+      && !plugin.router.paneHistoryAvailable(secondReadingPane, 'back'));
+    await plugin.router.movePaneHistory(readingPane, 'back');
+    check('Back on the earlier pane restores its lecture and scroll position',
+      readingPane.view.unitId === 'unit-fixture-sad-l04'
+      && readingPane.view.contentEl.scrollTop === 240
+      && secondReadingPane.view.unitId === 'unit-fixture-analysis');
+    plugin.onunload();
   }
 
   heading('interface designs: paused sessions stay quiet and explicitly reachable');
@@ -308,11 +371,11 @@ module.exports = async function run() {
     const root = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl;
     const paused = root.find('los-paused-units')[0];
     const elements = node => [node, ...node.children.flatMap(elements)];
-    const unitRows = elements(root).filter(node => node.tag === 'button'
-      && node.getAttribute('aria-label')?.startsWith('Open unit: '));
+    const name = (node) => node.getAttribute('aria-label') ?? node.find('los-sr-only')[0]?.allText();
+    const unitRows = elements(root).filter(node => node.tag === 'button' && name(node)?.startsWith('Open unit: '));
     const current = unitRows.filter(node => !paused?.contains(node));
     check(`${design}: current sessions retain authored order before the paused disclosure`,
-      current.map(row => row.getAttribute('aria-label')).join('|')
+      current.map(name).join('|')
         === 'Open unit: Analysis exam prep|Open unit: SaD Lecture 02 — Descriptive statistics'
       && unitRows.length === 3 && unitRows[2] === unitRows.find(row => paused?.contains(row)));
     check(`${design}: paused sessions use a closed native disclosure and remain labelled`,

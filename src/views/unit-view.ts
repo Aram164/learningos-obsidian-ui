@@ -87,8 +87,8 @@ export class UnitView extends ItemView {
         : null;
 
     this.stageId =
-      selectedStageId
-      ?? requestedStageId
+      requestedStageId
+      ?? selectedStageId
       ?? this.stageId;
 
     this.render();
@@ -122,12 +122,12 @@ export class UnitView extends ItemView {
         : null;
 
     this.stageId =
-      selectedStageId
-      ?? (
+      (
         state.hasStageId
           ? state.stageId ?? null
           : null
       )
+      ?? selectedStageId
       ?? this.stageId;
 
     this.render();

@@ -132,6 +132,7 @@ export type ModulePlugin = Pick<
     | 'openModule'
     | 'openModuleDetail'
     | 'openModules'
+    | 'openReview'
     | 'openUnit'
   >;
 };

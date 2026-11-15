@@ -465,12 +465,11 @@ export interface PurposeGroup {
   readonly bestFit: LectureMaterial | null;
 }
 
-/** Structure follows volume (BRIEF rule 4, decision I6). */
-export type LectureLayout = 'flat' | 'grouped' | 'collapsed';
+/** Short lists read flat. Long menus stay open and use the pinned index. */
+export type LectureLayout = 'flat' | 'grouped';
 
 export function lectureLayout(total: number): LectureLayout {
-  if (total <= 6) return 'flat';
-  return total <= 30 ? 'grouped' : 'collapsed';
+  return total <= 6 ? 'flat' : 'grouped';
 }
 
 /** Type sub-headings help only when a group is long and mixed. */

@@ -85,6 +85,7 @@ export function registerApplication(plugin: ApplicationPlugin): void {
   // Native tab attention is a display fact, not a navigation or persistence action.
   plugin.registerEvent(plugin.app.workspace.on('active-leaf-change', (leaf) => {
     if (!plugin.isLifecycleActive()) return;
+    plugin.router.noteAttention(leaf);
     const state = leaf?.getViewState();
     if (!state || state.type === VIEW_NAV
       || !APPLICATION_VIEW_TYPES.some((type) => type === state.type)) return;

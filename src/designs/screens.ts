@@ -15,9 +15,11 @@ import type { ModuleDetailHost, ModuleNavigationHost } from '../features/module/
 import type { UnitShellHost, UnitStageHost } from '../features/unit/ports';
 import type { AppNavigator } from '../app/navigator';
 import type { AppSurface } from '../app/surface';
+import type { WorkspaceLeaf } from 'obsidian';
 
 export interface DesignView {
   readonly contentEl: HTMLElement;
+  readonly leaf: WorkspaceLeaf;
 }
 
 export type NavScreenPlugin = Pick<
@@ -28,7 +30,7 @@ export type NavScreenPlugin = Pick<
   readonly nav: Pick<
     AppNavigator,
     | 'openAtlas' | 'openBoundary' | 'openCapture' | 'openDiagnostics' | 'openGarden' | 'openGlobalSearch'
-    | 'openHome' | 'openLearn' | 'openLibrary' | 'openModules' | 'openReview'
+    | 'openHome' | 'openLearn' | 'openLibrary' | 'openModules' | 'openReview' | 'openUnit'
   >;
 };
 
@@ -39,8 +41,8 @@ export interface NavScreenHost extends DesignView {
 export type HomeScreenHost = DesignView & HomeElsewhereHost;
 
 export interface LearnScreenHost extends DesignView {
-  readonly plugin: Pick<AppSurface, 'store'> & {
-    readonly nav: Pick<AppNavigator, 'openLearn' | 'openModule' | 'openModules' | 'openUnit'>;
+  readonly plugin: Pick<AppSurface, 'store' | 'router'> & {
+    readonly nav: Pick<AppNavigator, 'openLearn' | 'openModule' | 'openModules' | 'openUnit' | 'openReview'>;
   };
   readonly programId: string | null;
 }

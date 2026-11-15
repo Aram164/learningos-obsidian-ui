@@ -693,34 +693,34 @@ export function renderDeskAtlas(host: AtlasScreenHost): boolean {
   const glance = host.state.module && !conceptId && lens !== 'bridges' ? moduleMap(host.plugin.store, host.state.module) : null;
   const root = deskPage(host.contentEl, 'atlas', host.plugin.store);
   if (glance) {
-    deskHead(root, [{ label: 'Atlas', go: () => leaveModuleMap(host) }, { label: moduleName(host.plugin.store.get(glance.moduleId)) }]);
+    deskHead(root, [{ label: 'Atlas', go: () => leaveModuleMap(host) }, { label: moduleName(host.plugin.store.get(glance.moduleId)) }], host);
     renderModuleMap(root, host, glance);
     return true;
   }
   const atlas = { label: 'Atlas', go: () => host.showConceptOverview(null) };
   if (conceptId && lens !== 'bridges') {
     const crumb = regionCrumb(context, conceptId);
-    deskHead(root, [atlas, ...(crumb ? [crumb] : []), { label: conceptOf(graph, conceptId).label }]);
+    deskHead(root, [atlas, ...(crumb ? [crumb] : []), { label: conceptOf(graph, conceptId).label }], host);
     renderConcept(root, context, conceptId);
     return true;
   }
   if (lens === 'bridges') {
-    deskHead(root, [atlas, { label: 'Across modules' }]);
+    deskHead(root, [atlas, { label: 'Across modules' }], host);
     renderOverlap(root, context);
     return true;
   }
   const region = map.regions.find((row) => row.id === host.concepts.domain);
   if (region) {
-    deskHead(root, [atlas, { label: region.title }]);
+    deskHead(root, [atlas, { label: region.title }], host);
     renderRegion(root, context, region);
     return true;
   }
   if (host.concepts.browseAll) {
-    deskHead(root, [atlas, { label: 'All concepts' }]);
+    deskHead(root, [atlas, { label: 'All concepts' }], host);
     renderList(root, context);
     return true;
   }
-  deskHead(root, [{ label: 'Atlas' }]);
+  deskHead(root, [{ label: 'Atlas' }], host);
   renderMap(root, context);
   return true;
 }

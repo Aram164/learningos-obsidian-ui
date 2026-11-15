@@ -77,7 +77,7 @@ export class AppNavigator {
   /** Learn is one destination; the areas are sub-areas inside it. */
   openLearn(programId: string | null = null) {
     const requested = programId || this.settings.learnArea || LEARN_AREAS[0][0];
-    const area = requested === 'program-thesis-projects' ? 'program-bachelors' : requested;
+    const area = requested === 'program-thesis-projects' && this.settings.uiDesign !== 'study-desk' ? 'program-bachelors' : requested;
     this.settings.learnArea = area;
     this.drafts.scheduleSave();
     return this.router.navigate({ name: 'learn', programId: area });
@@ -123,10 +123,10 @@ export class AppNavigator {
     return this.openModuleDetail(moduleId, componentId);
   }
 
-  openUnit(unitId: string, stageId: string | null = null) {
+  openUnit(unitId: string, stageId: string | null = null, preparePane?: (leaf: object) => void) {
     const selectedStage = stageId || this.drafts.getSelectedStage(unitId);
     if (selectedStage) this.drafts.setSelectedStage(unitId, selectedStage);
-    return this.router.navigate({ name: 'unit', unitId, stageId: selectedStage });
+    return this.router.navigate({ name: 'unit', unitId, stageId: selectedStage }, preparePane ? { preparePane } : undefined);
   }
 
   openLibrary(
@@ -244,7 +244,7 @@ export class AppNavigator {
    * contract rather than rejected here.
    */
   openAtlas(target: AtlasTarget = {}, preferredLeaf?: WorkspaceLeaf) {
-    const current = this.router.snapshot().current;
+    const current = this.router.currentRoute(preferredLeaf);
     const changingAtlasState = current?.name === 'atlas';
 
     return this.router.navigate(
@@ -267,7 +267,7 @@ export class AppNavigator {
    * return from, so it pushes one.
    */
   openAbilities(target: AbilityTarget = {}, preferredLeaf?: WorkspaceLeaf) {
-    const current = this.router.snapshot().current;
+    const current = this.router.currentRoute(preferredLeaf);
     const inMap = current?.name === 'abilities';
     const detail = target.detail === true && Boolean(target.ability);
     const enteringDetail = detail && !(inMap && current.detail === true);

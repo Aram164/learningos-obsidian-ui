@@ -37,6 +37,7 @@ type ProgramPlugin = Pick<
   | 'generate'
   | 'getInboxDraft'
   | 'mutate'
+  | 'router'
   | 'setInboxDraft'
   | 'settings'
   | 'store'
@@ -47,6 +48,7 @@ type ProgramPlugin = Pick<
     | 'openModule'
     | 'openModules'
     | 'openProjects'
+    | 'openReview'
     | 'openUnit'
   >;
 };

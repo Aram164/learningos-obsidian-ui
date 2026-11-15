@@ -34,6 +34,7 @@ type NavPlugin = Pick<
     | 'openModules'
     | 'openProjects'
     | 'openReview'
+    | 'openUnit'
   >;
 } & {
   readonly activeNav: string;

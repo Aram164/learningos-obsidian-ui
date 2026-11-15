@@ -5,6 +5,7 @@ import {
 } from '../constants';
 import type {
   ApplicationRouteV1,
+  NavigationEntryV1,
   NavigationStateV1,
   OverlayStateV1,
 } from '../contracts/route-v1';
@@ -56,6 +57,7 @@ interface RouteDescriptor {
 
 interface NavigationOptions {
   preferredLeaf?: RouterLeaf;
+  preparePane?: (leaf: object) => void;
   preserveOverlay?: boolean;
   remember?: boolean;
   pushHistory?: boolean;
@@ -75,9 +77,12 @@ interface RouterViewSurface {
     scrollTop: number;
   };
   selectedElementId?: string | null;
+  getState?(): unknown;
 }
 
 interface RouterLeaf {
+  getViewState?(): LegacyViewState;
+  readonly pinned?: boolean;
   setViewState(state: {
     type: string;
     active: boolean;
@@ -104,12 +109,14 @@ interface RouterHost {
       active?: {
         view?: RouterViewSurface;
       };
+      activeLeaf?: RouterLeaf | null;
     };
   };
   settings: {
     navigation?: NavigationStateV1;
     lastView?: unknown;
     pinHome?: boolean;
+    uiDesign?: string;
   };
   store?: {
     get?(id: string): {
@@ -132,6 +139,8 @@ interface RouterHost {
  */
 export class ApplicationRouter {
   private readonly plugin: RouterHost;
+  private readonly paneHistories = new WeakMap<RouterLeaf, { back: NavigationEntryV1[]; forward: NavigationEntryV1[] }>();
+  private studyDeskAttention: RouterLeaf | null = null;
   navigation: NavigationStateV1;
   overlay: OverlayStateV1;
   constructor(plugin: RouterHost) {
@@ -152,7 +161,8 @@ export class ApplicationRouter {
 
   normalizeRoute(route: ApplicationRouteV1): ApplicationRouteV1 {
     if (!route || typeof route !== 'object') return { name: 'home' };
-    if ((route.name === 'learn' || route.name === 'program') && route.programId === 'program-thesis-projects') {
+    if ((route.name === 'learn' || route.name === 'program') && route.programId === 'program-thesis-projects'
+      && this.plugin.settings.uiDesign !== 'study-desk') {
       return { ...route, programId: 'program-bachelors' };
     }
     if (route.name === 'module-detail') {
@@ -182,9 +192,9 @@ export class ApplicationRouter {
     const state = asLegacyState(input.state);
     if (type === VIEW_PROGRAM) {
       const programId = asText(state.programId, LEARN_AREAS[0][0]);
-      return state.programId === 'inbox'
-        ? { name: 'capture' }
-        : { name: 'learn', programId: programId === 'program-thesis-projects' ? 'program-bachelors' : programId };
+      if (programId === 'inbox') return { name: 'capture' };
+      if (programId === 'queue-needs-map') return { name: 'program', programId };
+      return this.normalizeRoute({ name: 'learn', programId });
     }
     if (type === VIEW_MODULE) {
       if (state.screen === 'groups') return { name: 'module-groups' };
@@ -297,14 +307,14 @@ export class ApplicationRouter {
     route = this.normalizeRoute(route);
     switch (route?.name) {
       case 'home': return { type: VIEW_HOME, state: {}, nav: 'home', pin: true };
-      case 'learn': return { type: VIEW_PROGRAM, state: { programId: route.programId }, nav: 'learn' };
+      case 'learn': return { type: VIEW_PROGRAM, state: { programId: route.programId }, nav: this.curriculumNav };
       case 'capture': return { type: VIEW_PROGRAM, state: { programId: 'inbox' }, nav: 'capture' };
       case 'review': return { type: VIEW_REVIEW, state: { item: route.item || null }, nav: 'review' };
       case 'garden': return { type: VIEW_GARDEN, state: {}, nav: 'garden' };
       case 'diagnostics': return { type: VIEW_DIAGNOSTICS, state: {}, nav: 'diagnostics' };
       case 'program': return {
         type: VIEW_PROGRAM, state: { programId: route.programId },
-        nav: route.programId === 'queue-needs-map' ? 'review' : 'learn',
+        nav: route.programId === 'queue-needs-map' ? 'review' : this.curriculumNav,
       };
       case 'module-groups': return { type: VIEW_MODULE, state: { screen: 'groups' }, nav: 'modules' };
       case 'module-list': return {
@@ -324,7 +334,7 @@ export class ApplicationRouter {
       case 'unit': return {
         type: VIEW_UNIT,
         state: { unitId: route.unitId, stageId: route.stageId || null },
-        nav: 'learn',
+        nav: this.curriculumNav,
       };
       case 'library-folder': return {
         type: VIEW_LIBRARY,
@@ -424,6 +434,60 @@ export class ApplicationRouter {
     return JSON.stringify(left) === JSON.stringify(right);
   }
 
+  private get curriculumNav(): string {
+    return this.plugin.settings.uiDesign === 'study-desk' ? 'modules' : 'learn';
+  }
+
+  private paneEntry(leaf: RouterLeaf | null | undefined): NavigationEntryV1 | null {
+    const state = leaf?.getViewState?.();
+    if (typeof state?.type !== 'string' || !state.type.startsWith('learningos-') || state.type === VIEW_NAV) return null;
+    return {
+      route: this.fromLegacy({ ...state, state: leaf?.view?.getState?.() ?? state.state }),
+      scrollTop: leaf?.view?.contentEl?.scrollTop ?? 0,
+      ...(leaf?.view?.selectedElementId ? { selectedElementId: leaf.view.selectedElementId } : {}),
+    };
+  }
+
+  /** Sidebar focus leaves the last reading pane available to the sidebar buttons. */
+  noteAttention(leaf: RouterLeaf | null | undefined): void {
+    if (leaf && this.paneEntry(leaf)) this.studyDeskAttention = leaf;
+  }
+
+  private studyDeskPane(): RouterLeaf | null {
+    const workspace = this.plugin.app.workspace;
+    const active = (workspace.activeLeaf ?? workspace.active) as RouterLeaf | null | undefined;
+    if (active && this.paneEntry(active)) return active;
+    const last = this.studyDeskAttention;
+    const type = last?.getViewState?.().type;
+    return last && typeof type === 'string'
+      && workspace.getLeavesOfType(type).includes(last) ? last : null;
+  }
+
+  attendedRoute(leaf?: RouterLeaf): ApplicationRouteV1 | null {
+    return this.paneEntry(leaf ?? this.studyDeskPane())?.route ?? null;
+  }
+
+  currentRoute(leaf?: RouterLeaf): ApplicationRouteV1 {
+    return (this.plugin.settings.uiDesign === 'study-desk' ? this.attendedRoute(leaf) : null) ?? this.navigation.current;
+  }
+
+  paneHistoryAvailable(leaf: RouterLeaf, direction: 'back' | 'forward'): boolean {
+    return Boolean(this.paneHistories.get(leaf)?.[direction].length);
+  }
+
+  async movePaneHistory(leaf: RouterLeaf, direction: 'back' | 'forward'): Promise<void> {
+    const history = this.paneHistories.get(leaf);
+    const current = this.paneEntry(leaf);
+    if (!history || !current) return;
+    const entry = history[direction].pop();
+    if (!entry) return;
+    history[direction === 'back' ? 'forward' : 'back'].push(current);
+    await this.navigate(entry.route, {
+      preferredLeaf: leaf, pushHistory: false,
+      restoreScrollTop: entry.scrollTop, restoreSelectedElementId: entry.selectedElementId,
+    });
+  }
+
   async openLeaf(
     type: string,
     state: Record<string, unknown> = {},
@@ -477,7 +541,29 @@ export class ApplicationRouter {
     const remember = options.remember !== false;
     const pushHistory = options.pushHistory !== false;
     const prior = this.navigation.current;
-    if (remember && pushHistory && prior && !this.sameRoute(prior, route)) {
+    const studyDesk = this.plugin.settings.uiDesign === 'study-desk';
+    const workspace = this.plugin.app.workspace;
+    let pane = options.preferredLeaf ?? (studyDesk ? this.studyDeskPane() : null);
+    const panePrior = studyDesk ? this.paneEntry(pane) : null;
+    const pinHome = route.name === 'home' && this.plugin.settings.pinHome && !options.preferredLeaf;
+    if (studyDesk && !options.preferredLeaf) {
+      if (pinHome) {
+        const homes = workspace.getLeavesOfType(VIEW_HOME);
+        pane = homes.find((leaf) => leaf.pinned) ?? homes[0] ?? workspace.getLeaf(true);
+      } else if (!pane || (panePrior?.route.name === 'home' && pane.pinned)) {
+        pane = workspace.getLeaf(true);
+      }
+    }
+    if (studyDesk && pane && remember && pushHistory) {
+      const previous = this.paneEntry(pane);
+      if (previous && !this.sameRoute(previous.route, route)) {
+        const history = this.paneHistories.get(pane) ?? { back: [], forward: [] };
+        history.back = [...history.back, previous].slice(-50);
+        history.forward = [];
+        this.paneHistories.set(pane, history);
+      }
+    }
+    if (!studyDesk && remember && pushHistory && prior && !this.sameRoute(prior, route)) {
       const activeView = this.plugin.app.workspace.active?.view;
       const currentScroll = Number(options.scrollTop ?? activeView?.contentEl?.scrollTop ?? 0);
       const selectedElementId = options.selectedElementId || activeView?.selectedElementId || undefined;
@@ -489,14 +575,25 @@ export class ApplicationRouter {
       await this.persist();
     }
     this.plugin.setActiveNav(descriptor.nav);
-    const leaf = await this.openLeaf(descriptor.type, descriptor.state, 'main', options.preferredLeaf);
+    if (pane) options.preparePane?.(pane);
+    const leaf = studyDesk && pane
+      ? await this.showPane(pane, descriptor)
+      : await this.openLeaf(descriptor.type, descriptor.state, 'main', options.preferredLeaf);
     if (Number.isFinite(options.restoreScrollTop) && leaf?.view?.contentEl) {
       leaf.view.contentEl.scrollTop = Number(options.restoreScrollTop);
     }
     if (options.restoreSelectedElementId && leaf?.view) {
       leaf.view.selectedElementId = options.restoreSelectedElementId;
     }
-    if (descriptor.pin && this.plugin.settings.pinHome) leaf.setPinned?.(true);
+    if (descriptor.pin && this.plugin.settings.pinHome && !(studyDesk && options.preferredLeaf)) leaf.setPinned?.(true);
+    return leaf;
+  }
+
+  private async showPane(leaf: RouterLeaf, descriptor: RouteDescriptor): Promise<RouterLeaf> {
+    await leaf.setViewState({ type: descriptor.type, active: true, state: descriptor.state });
+    await this.plugin.app.workspace.revealLeaf(leaf);
+    this.plugin.app.workspace.setActiveLeaf?.(leaf, { focus: true });
+    this.noteAttention(leaf);
     return leaf;
   }
 
@@ -511,6 +608,11 @@ export class ApplicationRouter {
   }
 
   async back() {
+    const pane = this.plugin.settings.uiDesign === 'study-desk' ? this.studyDeskPane() : null;
+    if (pane) {
+      if (this.paneHistoryAvailable(pane, 'back')) return this.movePaneHistory(pane, 'back');
+      return this.navigate({ name: 'home' }, { pushHistory: false });
+    }
     const entry = this.navigation.history.pop();
     if (!entry) return this.navigate({ name: 'home' }, { pushHistory: false });
     const route = normalizeFolderRoute(entry.route);
