@@ -39,10 +39,11 @@ test('UI CI policy', () => {
         'GitHub expressions must cross into run-shell steps through env, never interpolation',
     );
     assert.match(yml, /RESOLVED_CORE_REF:\s*\$\{\{ steps\.producer-ref\.outputs\.ref \}\}/);
-    // The paired gate is Core's complete suite: live_install tests cannot pass
-    // in any checkout. Phase 4 Linux pytest alone took 86 minutes and the
-    // exact-pair run exhausted 90 minutes before artifact creation.
-    assert.match(yml, /PYTEST_ADDOPTS: '-m "not live_install"'/);
+    // The paired gate is Core's full collected suite (live_install retired).
+    // Phase 4 Linux pytest alone took 86 minutes and the exact-pair run
+    // exhausted 90 minutes before artifact creation.
+    assert.ok(!yml.includes('not live_install'), 'deprecated live_install deselection must stay removed');
+    assert.match(yml, /python3 install\.py --local-build\b/);
     const timeout = Number(yml.match(/timeout-minutes:\s*(\d+)/)?.[1]);
     assert.equal(timeout, 180, `timeout-minutes ${timeout} is not the 180-minute bound`);
     // SPEC (bm): the paired gate reproduces the verified project
@@ -58,11 +59,13 @@ test('UI CI policy', () => {
     assert.ok(venvAt >= 0, 'Core dependencies must install into a repository .venv');
     assert.ok(pipInstalls[0].indexOf('.venv/bin/python -m pip install -e ".[dev]"') > venvAt);
     // Core's suite runs its procedure transcripts under the pinned Scrut and
-    // compares its ratchets against origin/main, exactly as Core's validate.yml.
+    // compares its ratchets against a dynamically resolved base != HEAD.
     assert.match(yml, /scrut-v0\.5\.0-linux-x86_64\.tar\.gz/);
     assert.match(yml, /5c373d077a73dc4a5d4b43f3474e0f443dc72fb42f89b312ef55f934e6e6ba15 {2}\$dir\/scrut\.tar\.gz" \| sha256sum -c -/);
     assert.match(yml, /echo "LOS_SCRUT_BIN=\$bin" >> "\$GITHUB_ENV"/);
-    assert.match(yml, /LOS_RATCHET_BASE: origin\/main/);
+    assert.ok(!yml.includes('LOS_RATCHET_BASE: origin/main'), 'LOS_RATCHET_BASE must be computed dynamically rather than hardcoded to origin/main');
+    assert.match(yml, /id:\s*ratchet/);
+    assert.match(yml, /LOS_RATCHET_BASE:\s*\$\{\{ steps\.ratchet\.outputs\.base \}\}/);
     assert.match(yml, /path: repository\n\s*# Full history[^\n]*\n\s*fetch-depth: 0/);
     // Core's test_flows_pin resolves the UI commit FLOWS.md pins, which a
     // depth-1 UI checkout cannot reach: UI main's 2026-11-06 run failed on it.

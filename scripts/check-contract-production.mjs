@@ -2,12 +2,12 @@
  * Regenerate-and-compare check for production contract artifacts (F1 resolution).
  *
  * Rebuilds the Core contract bundle into a temporary directory from Core's
- * authoritative manifest schema (manifest-v18.schema.json), emits fresh
+ * authoritative manifest schema (manifest-v19.schema.json), emits fresh
  * validator, metadata, and lock into an isolated scratch directory, and
  * byte-compares every artifact against the authoritative production files:
  *   - src/contracts/generated/manifest.validator.cjs
  *   - src/contracts/generated/manifest.meta.ts
- *   - src/contracts/generated/manifest.prototype.lock.json
+ *   - src/contracts/generated/manifest.contract.lock.json
  *   - src/contracts/generated/manifest.types.ts
  *
  * Fails with exit 1 if any production artifact drifts from Core's schema closure,
@@ -31,7 +31,7 @@ function fail(message) {
 const mustVerify = process.env.LEARNINGOS_ALLOW_MISSING_CORE !== '1'
   && Boolean(process.env.CI || process.env.LEARNINGOS_REQUIRE_CORE_MIRROR);
 
-if (!fs.existsSync(coreRoot) || !fs.existsSync(path.join(coreRoot, 'system/contracts/manifest-v18.schema.json'))) {
+if (!fs.existsSync(coreRoot) || !fs.existsSync(path.join(coreRoot, 'system/contracts/manifest-v19.schema.json'))) {
   const msg = `Core repository not found beside obsidian-ui at ${coreRoot}; production validator regeneration check skipped.`;
   if (mustVerify) {
     fail(`${msg} Checked-out Core is required in CI or when LEARNINGOS_REQUIRE_CORE_MIRROR is set.`);
@@ -72,7 +72,7 @@ try {
   const artifacts = [
     'manifest.validator.cjs',
     'manifest.meta.ts',
-    'manifest.prototype.lock.json',
+    'manifest.contract.lock.json',
     'manifest.types.ts',
   ];
 

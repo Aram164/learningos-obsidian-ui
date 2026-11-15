@@ -1,5 +1,5 @@
 /*
- * Differential verdict helper for the contract prototype (Point 3).
+ * Differential verdict helper for Core vs UI manifest contracts.
  *
  * Validates JSON samples with the generated Ajv standalone validator and
  * prints machine-readable verdicts for the Core differential pytest driver:

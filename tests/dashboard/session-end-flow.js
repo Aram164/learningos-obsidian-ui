@@ -20,7 +20,7 @@ module.exports = async function run() {
     check('End learning session opens the change review with no commit flags',
       sessionEnds().length === 1
       && JSON.stringify(sessionEnds()[0])
-        === JSON.stringify(['session-end', '--session-id', 'ui'])
+        === JSON.stringify(['session-end', '--session-id', 'ui', '--json'])
       && modal?.contentEl?.getAttribute('aria-labelledby') === 'los-session-end-heading');
     modal.contentEl.find('los-search')[0].value = 'Evening session';
     modal.contentEl.findText('los-btn', 'Commit session-owned files').fire('click');
@@ -28,7 +28,7 @@ module.exports = async function run() {
     check('Commit session-owned files commits exactly the reviewed session',
       sessionEnds().length === 2
       && JSON.stringify(sessionEnds()[1]) === JSON.stringify(
-        ['session-end', '--session-id', 'ui', '--commit-message', 'Evening session']));
+        ['session-end', '--session-id', 'ui', '--commit-message', 'Evening session', '--json']));
     plugin.onunload();
   }
 

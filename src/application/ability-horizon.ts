@@ -31,7 +31,7 @@ function message(error: unknown): string {
 }
 
 function snapshotRefused(error: unknown): boolean {
-  return error instanceof GatewayError && error.exitCode === 3;
+  return error instanceof GatewayError && error.gatewayCode === 'STALE_SNAPSHOT';
 }
 
 /**

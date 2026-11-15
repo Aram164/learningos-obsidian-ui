@@ -4,6 +4,12 @@ on:
   push:
     branches: ['**']
   pull_request:
+  workflow_dispatch:
+    inputs:
+      core_ratchet_base:
+        description: "Optional Core base commit SHA (40 hex chars) for ratchet comparison"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -98,19 +104,41 @@ jobs:
           test "$("$bin" --version)" = "scrut 0.5.0"
           echo "LOS_SCRUT_BIN=$bin" >> "$GITHUB_ENV"
 
-      # `live_install` tests need state no checkout can carry: the
-      # maintainer's gitignored data, or the wrapper root above repository/.
-      # Deselected by name exactly as Core's validate.yml does; the live
-      # installation's own `make system-check` still runs them.
+      - name: Resolve Core ratchet comparison base
+        id: ratchet
+        working-directory: repository
+        env:
+          CORE_RATCHET_BASE_INPUT: ${{ github.event.inputs.core_ratchet_base }}
+        run: |
+          set -eu
+          head="$(git rev-parse HEAD)"
+          base=""
+          if [ -n "${CORE_RATCHET_BASE_INPUT:-}" ]; then
+            echo "$CORE_RATCHET_BASE_INPUT" | grep -Eq '^[0-9a-f]{40}$' \
+              || { echo "core_ratchet_base must be 40 lowercase hex characters" >&2; exit 1; }
+            base="$(git rev-parse --verify "${CORE_RATCHET_BASE_INPUT}^{commit}")"
+          fi
+          if [ -z "$base" ] && git rev-parse --verify --quiet "origin/main^{commit}" >/dev/null 2>&1; then
+            mb="$(git merge-base origin/main HEAD)"
+            if [ "$mb" != "$head" ]; then
+              base="$mb"
+            fi
+          fi
+          if [ -z "$base" ]; then
+            # UI changes commonly pair with Core main (HEAD == origin/main), whose
+            # prior commits were already gated by Core CI; fall back to HEAD^.
+            base="$(git rev-parse "${head}^")"
+          fi
+          printf 'base=%s\n' "$base" >> "$GITHUB_OUTPUT"
+
       - name: paired release gate (make system-check)
         working-directory: repository
         env:
-          PYTEST_ADDOPTS: '-m "not live_install"'
-          LOS_RATCHET_BASE: origin/main
+          LOS_RATCHET_BASE: ${{ steps.ratchet.outputs.base }}
         run: make system-check
 
       - name: Exercise the fixture installer path
-        run: python3 install.py --vault fixture-vault --dry-run --node "$(command -v node)"
+        run: python3 install.py --local-build --vault fixture-vault --dry-run --node "$(command -v node)"
 
       - name: Upload built plugin
         uses: actions/upload-artifact@v4

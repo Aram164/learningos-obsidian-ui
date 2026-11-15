@@ -1,5 +1,5 @@
 /*
- * Shared Ajv construction for the contract prototype (Point 3).
+ * Shared Ajv construction for manifest contract validation and codegen.
  *
  * The emitter (generate-contract.mjs) and the differential verdict helper
  * (ajv-verdict.mjs --subschema mode) must validate with identical semantics,

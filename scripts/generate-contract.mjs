@@ -1,36 +1,23 @@
 /*
- * Prototype contract emitter (Point 3).
+ * Contract emitter.
  *
  * Reads a Core contract bundle (tools/contract_bundle.py) and emits consumer
- * artifacts beside the handwritten contract layer:
+ * artifacts for the typed contract layer:
  *
- *   Phase 2: Ajv standalone validator (manifest.validator.cjs). WORKS.
- *   Phase 3: TypeScript wire types (manifest.types.ts) from the local
- *            symbolic emitter scripts/emit-contract-types.mjs (Phase 6
- *            6.C.1, decision C23). WORKS. The earlier json2ts route FAILED —
- *            json2ts@16 cannot consume this schema graph (root-level
- *            $ref with sibling keywords in unit-material-synthesis.schema.json
- *            plus cross-file back-edges and genuine $ref circularity; its
- *            bundler aborts with "Refs should have been resolved by the
- *            resolver!" in single-file, directory, and --imports modes, and
- *            full $RefParser dereference yields a circular structure); that
- *            attempt stays reproducible via scripts/stage-contract-types.mjs
- *            + the REPLAY.md record. The generated Ajv validator stays
- *            authoritative for validation.
- *   Phase 4: manifest.meta.ts + prototype lock (manifest.prototype.lock.json),
- *            both rendered purely from the bundle metadata.
+ *   - Ajv standalone validator (manifest.validator.cjs)
+ *   - TypeScript wire types (manifest.types.ts) via scripts/emit-contract-types.mjs
+ *   - manifest.meta.ts + manifest.contract.lock.json, rendered from bundle metadata.
  *
  * Usage:
- *   node scripts/generate-contract.mjs \
- *     --bundle ../repository/generated/contract-prototype/manifest-v18.bundle.json \
- *     --meta ../repository/generated/contract-prototype/manifest-v18.meta.json \
- *     --out contract-prototype/generated
+ *   node scripts/generate-contract.mjs [--bundle <path> --meta <path>] [--out <dir>]
  */
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import standaloneCode from 'ajv/dist/standalone/index.js';
 import { createAjv2020, registerBundleIdentities } from './ajv-options.mjs';
+import { generateCoreBundle } from './core-contract-bundle.mjs';
 import { emitTypes } from './emit-contract-types.mjs';
 
 const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -43,16 +30,30 @@ function argValue(argv, name, fallback = null) {
   return value;
 }
 
-const bundlePath = argValue(process.argv, '--bundle');
-if (!bundlePath) throw new Error('Missing required --bundle <path>.');
-const metaPath = argValue(process.argv, '--meta');
+let bundlePath = argValue(process.argv, '--bundle');
+let metaPath = argValue(process.argv, '--meta');
 const outDir = argValue(process.argv, '--out', 'src/contracts/generated');
 
-const bundle = JSON.parse(fs.readFileSync(path.resolve(root, bundlePath), 'utf8'));
-if (bundle.format !== 'learningos-contract-bundle/1') {
-  throw new Error(`Unsupported bundle format: ${bundle.format}.`);
+let scratchDir = null;
+let bundle;
+let meta;
+try {
+  if (!bundlePath) {
+    scratchDir = fs.mkdtempSync(path.join(os.tmpdir(), 'los-contract-gen-'));
+    const coreRoot = path.resolve(root, '../repository');
+    const generated = generateCoreBundle(coreRoot, scratchDir);
+    bundlePath = generated.bundlePath;
+    metaPath = metaPath ?? generated.metaPath;
+  }
+
+  bundle = JSON.parse(fs.readFileSync(path.resolve(root, bundlePath), 'utf8'));
+  if (bundle.format !== 'learningos-contract-bundle/1') {
+    throw new Error(`Unsupported bundle format: ${bundle.format}.`);
+  }
+  meta = metaPath ? JSON.parse(fs.readFileSync(path.resolve(root, metaPath), 'utf8')) : null;
+} finally {
+  if (scratchDir) fs.rmSync(scratchDir, { recursive: true, force: true });
 }
-const meta = metaPath ? JSON.parse(fs.readFileSync(path.resolve(root, metaPath), 'utf8')) : null;
 if (meta && meta.format !== 'learningos-contract-meta/1') {
   throw new Error(`Unsupported meta format: ${meta.format}.`);
 }
@@ -95,7 +96,7 @@ console.log(`validator: ${path.relative(root, validatorPath)} `
     + `${Object.keys(aliases).length} public aliases)`);
 }
 
-/* ---- Version/hash metadata + prototype lock ---- */
+/* ---- Version/hash metadata + generated contract lock ---- */
 if (typeof meta?.contract_version !== 'number') {
   throw new Error('Metadata emission needs --meta with a numeric contract_version.');
 }
@@ -117,8 +118,8 @@ if (!meta.root_schema || !meta.root_schema_sha256 || !meta.closure_sha256 || !me
   const lock = {
     _comment: [
       'GENERATED — do not edit. Regenerate with `npm run contract:generate`.',
-      'Prototype twin of contracts/manifest-v<N>.lock.json, rendered from the',
-      'Core bundle metadata instead of hand-mirrored.',
+      'Generated companion to contracts/manifest-v<N>.lock.json, rendered from',
+      'Core bundle metadata.',
     ],
     contract_version: meta.contract_version,
     mirrors: '../repository/system/contracts/manifest-contract.yaml',
@@ -130,7 +131,7 @@ if (!meta.root_schema || !meta.root_schema_sha256 || !meta.closure_sha256 || !me
     index_keys: meta.contract_keys.index_keys,
     forbidden_top_level_keys: meta.contract_keys.forbidden_top_level_keys,
   };
-  const lockPath = path.join(resolvedOut, 'manifest.prototype.lock.json');
+  const lockPath = path.join(resolvedOut, 'manifest.contract.lock.json');
   fs.writeFileSync(lockPath, `${JSON.stringify(lock, null, 2)}\n`);
   console.log(`lock: ${path.relative(root, lockPath)}`);
 }

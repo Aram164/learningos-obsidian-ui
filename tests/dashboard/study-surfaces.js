@@ -556,7 +556,7 @@ module.exports = async function run() {
     const span = deck().find('los-span-panel')[0];
     check('the material excerpt comes from Core, snapshot-bound and bounded',
       calls.some((args) => args.join(' ')
-        === `material-span unit-fixture-sad-l04 route-drawer-deck --extract --expected-snapshot ${FIXTURE_SNAPSHOT}`)
+        === `material-span unit-fixture-sad-l04 route-drawer-deck --extract --expected-snapshot ${FIXTURE_SNAPSHOT} --json`)
       && span.allText().includes('Local file read just now')
       && span.find('los-span-excerpt')[0].allText().includes('Conditioning on an event')
       && span.allText().includes('pages 1–2 of 12')

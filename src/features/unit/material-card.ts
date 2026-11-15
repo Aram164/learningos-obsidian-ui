@@ -189,7 +189,7 @@ function inspect(deps: MaterialCardDeps, routeId: string, placement?: PlacementS
       ? { status: 'ready', span }
       : { status: 'error', message: 'Core answered in a shape this build cannot read.', stale: false });
   }, (error: unknown) => {
-    const stale = error instanceof GatewayError && error.exitCode === 3;
+    const stale = error instanceof GatewayError && error.gatewayCode === 'STALE_SNAPSHOT';
     spans.set(key, {
       status: 'error',
       message: stale

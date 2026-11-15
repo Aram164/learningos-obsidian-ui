@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Install the LearningOS Obsidian interface into a vault (idempotent).
 
-    python3 install.py                 # into ../repository (the live vault)
-    python3 install.py --vault PATH    # into another vault (e.g. fixture-vault)
-    python3 install.py --dry-run       # print actions only
-    python3 install.py --ecosystem     # + pinned AI/search/OCR/PDF plugins
+    python3 install.py --accepted-artifact PATH --validate-run ID --ui-run ID
+        # default/recommended: install a receipt-bound hosted release
+    python3 install.py --local-build                 # local dev build -> ../repository
+    python3 install.py --local-build --vault PATH    # into another vault (e.g. fixture-vault)
+    python3 install.py --local-build --dry-run       # print actions only
+    python3 install.py --local-build --ecosystem     # + pinned AI/search/OCR/PDF plugins
 
 What it does (and nothing else):
   1. MERGES the managed safety keys of vault-config/app.json into
@@ -1444,6 +1446,8 @@ def main() -> int:
                     help="install pinned Agentic Copilot, Omnisearch, Text Extractor, and PDF++")
     ap.add_argument("--accepted-artifact", type=Path,
                     help="install a published receipt-bound hosted release without a local rebuild")
+    ap.add_argument("--local-build", action="store_true",
+                    help="explicitly install a local development build instead of --accepted-artifact")
     ap.add_argument("--previous-artifact", type=Path,
                     help="verified before-state authority for an existing installation")
     ap.add_argument("--legacy-rollback", type=Path,
@@ -1453,6 +1457,8 @@ def main() -> int:
     args = ap.parse_args()
 
     if args.accepted_artifact:
+        if args.local_build:
+            ap.error("--accepted-artifact cannot combine with --local-build")
         if args.skip_tests or args.ecosystem or not args.validate_run or not args.ui_run:
             ap.error("--accepted-artifact requires --validate-run and --ui-run and cannot combine with --skip-tests or --ecosystem")
         vault = Path(args.vault).resolve() if args.vault else (HERE.parent / "repository").resolve()
@@ -1466,6 +1472,8 @@ def main() -> int:
         return 0
     if args.previous_artifact or args.validate_run or args.ui_run:
         ap.error("artifact provenance options require --accepted-artifact")
+    if not args.local_build:
+        ap.error("install requires --accepted-artifact (recommended) or explicit --local-build")
 
     if not args.skip_tests:
         run_ui_tests(args.node)

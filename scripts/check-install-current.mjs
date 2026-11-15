@@ -260,7 +260,7 @@ function main() {
   const missingInstalled = assetRows.filter((asset) => !asset.installed);
   if (missingInstalled.length === assetRows.length) {
     console.log(`install: nothing installed at ${installedDir}`);
-    console.log('install: run `python3 install.py` to put this build in the vault.');
+    console.log('install: run `python3 install.py --accepted-artifact ...` (or `--local-build` for local dev) to install.');
     process.exit(1);
   }
 
@@ -329,7 +329,7 @@ function main() {
     console.log('install: or select the checkouts at the recorded revisions.');
   }
   if (problems.length) {
-    console.log('install: run `python3 install.py`, then reload Obsidian with Cmd+R.');
+    console.log('install: run `python3 install.py --accepted-artifact ...` (or `--local-build`), then reload Obsidian with Cmd+R.');
   }
   process.exit(1);
 }

@@ -331,7 +331,66 @@ function routerPlugin(settings = {}) {
         stageId: 'stage-exercises', resourceIndex: 1, extract: true, expectedSnapshot: SNAPSHOT,
       });
     assert.deepEqual(sent, ['material-span', 'unit-exercises', 'route-exercises',
-      '--stage', 'stage-exercises', '--resource-index', '1', '--extract', '--expected-snapshot', SNAPSHOT]);
+      '--stage', 'stage-exercises', '--resource-index', '1', '--extract', '--expected-snapshot', SNAPSHOT, '--json']);
+  });
+
+  await test('exit-code 3 without typed STALE_SNAPSHOT is not treated as projection conflict', async () => {
+    const { renderRouteCard } = loadWithHost('src/features/unit/material-card.ts');
+    const untypedExit3 = new GatewayError('file changed since reference was made', 3, {
+      code: 'INVALID_REQUEST',
+      retryable: false,
+    });
+    assert.equal(isProjectionConflict(untypedExit3), false);
+    const bareExit3 = new GatewayError('ambiguous exit 3', 3);
+    assert.equal(isProjectionConflict(bareExit3), false);
+    assert.equal(isProjectionConflict(new GatewayError('stale', 3, { code: 'STALE_SNAPSHOT', retryable: true })), true);
+    assert.equal(isProjectionConflict(new GatewayError('conflict', 2, { code: 'REVISION_CONFLICT', retryable: true })), true);
+
+    const card = renderRouteCard(new RuntimeElement('main'), {
+      routeId: 'route-exercises',
+      title: 'All exercises',
+      sourceId: 'source-exercises',
+      locator: 'All sheets',
+      depth: 'practice',
+      format: 'exercise',
+      covers: [],
+      record: { material_uri: 'material://exercises/parent.pdf' },
+    }, null, {
+      unitId: 'unit-exercises',
+      renderer: {},
+      refresh() {},
+      plugin: {
+        store: { snapshotId: SNAPSHOT },
+        generate() {},
+        gateway: {
+          async materialSpan() {
+            throw untypedExit3;
+          },
+        },
+      },
+    });
+    card.find('los-span-trigger')[0].fire('click');
+    await new Promise(setImmediate);
+    const reCard = renderRouteCard(new RuntimeElement('main'), {
+      routeId: 'route-exercises',
+      title: 'All exercises',
+      sourceId: 'source-exercises',
+      locator: 'All sheets',
+      depth: 'practice',
+      format: 'exercise',
+      covers: [],
+      record: { material_uri: 'material://exercises/parent.pdf' },
+    }, null, {
+      unitId: 'unit-exercises',
+      renderer: {},
+      refresh() {},
+      plugin: {
+        store: { snapshotId: SNAPSHOT },
+        generate() {},
+        gateway: { async materialSpan() { throw untypedExit3; } },
+      },
+    });
+    assert.equal(reCard.find('button').filter((b) => b.text === 'Rebuild projection').length, 0);
   });
 
   await test('contract list parser accepts PyYAML and indented YAML sequences', async () => {
@@ -532,6 +591,31 @@ function routerPlugin(settings = {}) {
     assert.match(store.error, /Unsupported manifest schema/);
   });
 
+  await test('ManifestStore rejects a manifest with a different closure digest', async () => {
+    const store = new ManifestStore(manifestApp((text) => {
+      const manifest = JSON.parse(text);
+      manifest._generated.closure_sha256 = `sha256:${'0'.repeat(64)}`;
+      return JSON.stringify(manifest);
+    }));
+    assert.equal(await store.load(), false);
+    assert.equal(store.ready, false);
+    assert.equal(store.data, null);
+    assert.match(store.error, /Unsupported manifest closure/);
+  });
+
+  await test('assertManifest checks version, schema, and closure pins before Ajv validation (D-20)', async () => {
+    const raw = JSON.parse(fs.readFileSync(FIXTURE_MANIFEST, 'utf8'));
+
+    const staleVersion = { _generated: { ...raw._generated, contract_version: CONTRACT - 1 } };
+    assert.throws(() => assertManifest(staleVersion), /Unsupported manifest contract/);
+
+    const staleSchema = { _generated: { ...raw._generated, schema_sha256: `sha256:${'1'.repeat(64)}` } };
+    assert.throws(() => assertManifest(staleSchema), /Unsupported manifest schema/);
+
+    const staleClosure = { _generated: { ...raw._generated, closure_sha256: `sha256:${'2'.repeat(64)}` } };
+    assert.throws(() => assertManifest(staleClosure), /Unsupported manifest closure/);
+  });
+
   await test('ManifestStore rejects an Atlas edge without evidence', async () => {
     const store = new ManifestStore(manifestApp((text) => {
       const manifest = JSON.parse(text);
@@ -702,7 +786,7 @@ function routerPlugin(settings = {}) {
     // D. Wrong contract versions remain refused
     const wrongContract = JSON.parse(JSON.stringify(rawFixture));
     wrongContract._generated.contract_version = 1;
-    assert.throws(() => instrumentedAssertManifest(wrongContract), /contract_version/);
+    assert.throws(() => instrumentedAssertManifest(wrongContract), /Unsupported manifest contract/);
     const wrongContractStore = new InstrumentedManifestStore(manifestApp((text) =>
       text.replace(`"contract_version": ${CONTRACT}`, '"contract_version": 1')));
     assert.equal(await wrongContractStore.load(), false);
@@ -1693,9 +1777,9 @@ function routerPlugin(settings = {}) {
     await gateway.endSession('learner message', true);
     // Without the explicit id a UI review would report an agent session's
     // rows, and a UI commit would stage them.
-    assert.deepEqual(seen[0], ['session-end', '--session-id', 'ui']);
+    assert.deepEqual(seen[0], ['session-end', '--session-id', 'ui', '--json']);
     assert.deepEqual(seen[1],
-      ['session-end', '--session-id', 'ui', '--commit-message', 'learner message', '--push']);
+      ['session-end', '--session-id', 'ui', '--commit-message', 'learner message', '--push', '--json']);
   });
 
   await test('LosRuntime stamps every child with the UI session identity', async () => {
@@ -2490,7 +2574,7 @@ function routerPlugin(settings = {}) {
     const calls = [];
     const gateway = new GatewayClient({ runLos(args, cb, stdin) { calls.push({ args, stdin }); cb(null, '{}', ''); }, store: { snapshotId: SNAPSHOT } });
     await gateway.studySequence('unit-a', ['b', 'a'], SNAPSHOT);
-    assert.deepEqual(calls, [{ args: ['study-sequence', 'unit-a', '--stage-ids-json', '["b","a"]', '--expected-snapshot', SNAPSHOT], stdin: undefined }]);
+    assert.deepEqual(calls, [{ args: ['study-sequence', 'unit-a', '--stage-ids-json', '["b","a"]', '--expected-snapshot', SNAPSHOT, '--json'], stdin: undefined }]);
   });
 
   await test('the four reviewed workflows send, and nothing else does', async () => {
@@ -3299,6 +3383,29 @@ function routerPlugin(settings = {}) {
       assert.equal(horizon.expansionError(requested), null);
     });
   }
+
+  await test('ability horizon refuses automatic refresh on non-STALE_SNAPSHOT exit 3', async () => {
+    let calls = 0;
+    const requested = 'ability-fixture-conditional';
+    const horizon = new AbilityHorizon({
+      store: { snapshotId: SNAPSHOT },
+      horizonChanged() {},
+      gateway: {
+        async abilityContext(options) {
+          calls += 1;
+          if (!options.abilityId) return abilityFixtures.abilityBrief();
+          throw new GatewayError('not a snapshot staleness conflict', 3, {
+            code: 'INVALID_REQUEST',
+            retryable: false,
+          });
+        },
+      },
+    });
+    await horizon.refresh();
+    await settledExpansion(horizon, requested);
+    assert.equal(calls, 2, 'must not trigger a refresh loop on non-STALE_SNAPSHOT exit 3');
+    assert.match(horizon.expansionError(requested), /not a snapshot staleness conflict/);
+  });
 
   /* ----------------------------------------------------------------------
    * Snapshot guard. guard() refuses rather than sending the string "null"

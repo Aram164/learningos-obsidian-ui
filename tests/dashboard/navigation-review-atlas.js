@@ -124,7 +124,7 @@ module.exports = async function run() {
       && masters.includes('concept-bayes')
       && masters.includes('Fixture candidate section — Probability notation.')
       && masters.includes('Fixture companion section — Odds notation.')
-      && calls.some((args) => args.join(' ') === 'masters-planning-dashboard --confirm-masters-planning'));
+      && calls.some((args) => args.join(' ') === 'masters-planning-dashboard --confirm-masters-planning --json'));
     await plugin.nav.openGarden();
     check('Garden marks Garden, not Review, as the active destination',
       nav.findText('los-app-nav-item', 'Garden')?.classes.has('is-active')

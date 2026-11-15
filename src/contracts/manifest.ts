@@ -14,10 +14,13 @@
  * The module and type names are deliberately stable. Contract version is data:
  * a bump changes this constant and the mirrored lock, not every import path.
  */
-export const MANIFEST_CONTRACT_VERSION = 18 as const;
+import { MANIFEST_CLOSURE_SHA256 } from './generated/manifest.meta';
+export { MANIFEST_CLOSURE_SHA256 };
+
+export const MANIFEST_CONTRACT_VERSION = 19 as const;
 import validateManifest from './generated/manifest.validator.cjs';
 
-export const MANIFEST_SCHEMA_SHA256 = 'sha256:5d442f3670da4e66266e1eb03ad920ba6b64f2e9d487621303b76736accc8c8f' as const;
+export const MANIFEST_SCHEMA_SHA256 = 'sha256:c1960c667a40f38e32c91723791fef2f6eeb235c90f72c9eea259a687f47222b' as const;
 
 interface AjvErrorLike {
   readonly instancePath?: string;
@@ -160,12 +163,15 @@ export interface ProjectionRecord extends JsonRecord {
  * Section Q); see the batch's subsumption record.
  */
 export function assertManifest(value: unknown): asserts value is Manifest {
-  if (!validateManifest(value)) {
-    throw new TypeError(
-      `Manifest does not match its schema: ${formatAjvErrors(validateManifest.errors)}`,
-    );
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    throw new TypeError('Manifest does not match its schema: / must be object');
   }
-  const generated = (value as Manifest)._generated;
+  const candidate = value as Record<string, unknown>;
+  const rawGenerated = candidate._generated;
+  if (typeof rawGenerated !== 'object' || rawGenerated === null || Array.isArray(rawGenerated)) {
+    throw new TypeError('Manifest does not match its schema: /_generated must be object');
+  }
+  const generated = rawGenerated as Record<string, unknown>;
   if (generated.contract_version !== MANIFEST_CONTRACT_VERSION) {
     throw new TypeError(
       `Unsupported manifest contract ${String(generated.contract_version)}; expected ${MANIFEST_CONTRACT_VERSION}.`,
@@ -174,6 +180,16 @@ export function assertManifest(value: unknown): asserts value is Manifest {
   if (generated.schema_sha256 !== MANIFEST_SCHEMA_SHA256) {
     throw new TypeError(
       `Unsupported manifest schema ${String(generated.schema_sha256)}; expected ${MANIFEST_SCHEMA_SHA256}.`,
+    );
+  }
+  if (generated.closure_sha256 !== MANIFEST_CLOSURE_SHA256) {
+    throw new TypeError(
+      `Unsupported manifest closure ${String(generated.closure_sha256)}; expected ${MANIFEST_CLOSURE_SHA256}.`,
+    );
+  }
+  if (!validateManifest(value)) {
+    throw new TypeError(
+      `Manifest does not match its schema: ${formatAjvErrors(validateManifest.errors)}`,
     );
   }
 }
