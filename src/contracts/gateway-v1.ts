@@ -53,8 +53,7 @@ export class GatewayError extends Error {
       : null;
   }
   get isProjectionConflict(): boolean {
-    return this.exitCode === EXIT_PROJECTION_CONFLICT
-      || this.gatewayCode === 'STALE_SNAPSHOT'
+    return this.gatewayCode === 'STALE_SNAPSHOT'
       || this.gatewayCode === 'REVISION_CONFLICT';
   }
 }

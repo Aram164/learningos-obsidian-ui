@@ -51,7 +51,7 @@ module.exports = async function run() {
       && new Set(root().find('los-ability-node').map((node) => node.getAttribute('data-ability'))).size === 6
       && root().find('los-ability-region-head').length === 3
       && root().allText().includes('6 of 6 abilities loaded')
-      && calls.some((args) => args.join(' ') === 'ability-context --limit 50')
+      && calls.some((args) => args.join(' ') === 'ability-context --limit 50 --json')
       && leafOf(app, VIEW.nav).contentEl.findText('los-app-nav-item', 'Atlas')?.classes.has('is-active'));
     const outline = root().find('los-ability-edge-outline')[0]?.children.map((item) => item.allText()) ?? [];
     check('the reduced preparation graph stays available as text with all full routes retained',
@@ -116,7 +116,7 @@ module.exports = async function run() {
     check('Details explicitly expands one snapshot-bound record and retains recorded evidence semantics',
       inspector.allText().includes('Compute P(A|B) from a joint table and name the conditioning event.')
       && inspector.allText().includes('No learner attempt has been recorded.')
-      && calls.some((args) => args.join(' ') === `ability-context ability-fixture-conditional --expected-snapshot ${FIXTURE_SNAPSHOT}`)
+      && calls.some((args) => args.join(' ') === `ability-context ability-fixture-conditional --expected-snapshot ${FIXTURE_SNAPSHOT} --json`)
       && selectionFits(leafOf(app, VIEW.abilities)));
     const detailsCamera = JSON.stringify(leafOf(app, VIEW.abilities).attention.camera);
     root().findText('los-btn', 'Open full ability detail').fire('click');
@@ -272,7 +272,7 @@ module.exports = async function run() {
     await waitFor(() => root().find('los-ability-detail').length === 1 && root().allText().includes('stated prior and likelihoods'));
     check('outside focused detail uses the original snapshot and does not expand global scope',
       root().allText().includes('Invert a conditional probability with Bayes theorem')
-      && calls.some((args) => args.join(' ') === `ability-context ability-fixture-bayes-m2 --expected-snapshot ${FIXTURE_SNAPSHOT}`)
+      && calls.some((args) => args.join(' ') === `ability-context ability-fixture-bayes-m2 --expected-snapshot ${FIXTURE_SNAPSHOT} --json`)
       && plugin.abilityHorizon.current().abilities.length === 5);
     root().findText('los-btn', 'Back to map').fire('click');
     await waitFor(() => root().find('los-ability-node').length === 5);
@@ -491,7 +491,7 @@ module.exports = async function run() {
     check('one confirmation is one write: no stage progress, no candidate, and the draft is cleared',
       calls.envelopes.length === 1
       && plugin.listAbilityDrafts().length === 0
-      && calls.filter((args) => args[0] === 'ability-context' && args.length <= 3).length >= 2);
+      && calls.filter((args) => args[0] === 'ability-context' && args.length <= 4).length >= 2);
     plugin.onunload();
   }
 

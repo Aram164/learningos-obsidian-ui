@@ -228,7 +228,7 @@ class InstallStatusTests(unittest.TestCase):
             }
             result = subprocess.run(
                 [sys.executable, str(ROOT / "install.py"),
-                 "--vault", str(vault), "--skip-tests"],
+                 "--local-build", "--vault", str(vault), "--skip-tests"],
                 capture_output=True, text=True, timeout=180, cwd=str(ROOT),
             )
             after = {
@@ -249,7 +249,7 @@ class InstallStatusTests(unittest.TestCase):
             (installed / "main.js").symlink_to(victim)
             result = subprocess.run(
                 [sys.executable, str(ROOT / "install.py"),
-                 "--vault", str(vault), "--skip-tests"],
+                 "--local-build", "--vault", str(vault), "--skip-tests"],
                 capture_output=True, text=True, timeout=180, cwd=str(ROOT),
             )
             victim_after = victim.read_text(encoding="utf-8")
@@ -273,7 +273,7 @@ class InstallStatusTests(unittest.TestCase):
                     installed.write_text("not a directory", encoding="utf-8")
                 result = subprocess.run(
                     [sys.executable, str(ROOT / "install.py"),
-                     "--vault", str(vault), "--skip-tests"],
+                     "--local-build", "--vault", str(vault), "--skip-tests"],
                     capture_output=True, text=True, timeout=180, cwd=str(ROOT),
                 )
                 self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -297,7 +297,7 @@ class InstallStatusTests(unittest.TestCase):
                 target.symlink_to(victim)
                 result = subprocess.run(
                     [sys.executable, str(ROOT / "install.py"),
-                     "--vault", str(vault), "--skip-tests"],
+                     "--local-build", "--vault", str(vault), "--skip-tests"],
                     capture_output=True, text=True, timeout=180, cwd=str(ROOT),
                 )
                 victim_after = victim.read_text(encoding="utf-8")
@@ -437,7 +437,7 @@ class InstallStatusTests(unittest.TestCase):
                 for path in sorted(vault.rglob("*")) if path.is_file()
             }
             result = subprocess.run(
-                [sys.executable, str(ROOT / "install.py"), "--vault", str(vault),
+                [sys.executable, str(ROOT / "install.py"), "--local-build", "--vault", str(vault),
                  "--skip-tests", "--dry-run"],
                 capture_output=True, text=True, timeout=180, cwd=str(ROOT),
             )
@@ -569,7 +569,7 @@ class InstallStatusTests(unittest.TestCase):
                         raise OSError("forced second restore failure")
                 return original_replace(source, destination)
 
-            argv = ["install.py", "--vault", str(vault), "--skip-tests"]
+            argv = ["install.py", "--local-build", "--vault", str(vault), "--skip-tests"]
             with mock.patch.object(sys, "argv", argv), mock.patch.object(
                 INSTALLER.os, "replace", side_effect=fail_second_restore,
             ):
@@ -665,7 +665,7 @@ class InstallStatusTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             vault = Path(directory) / "vault"
             vault.mkdir()
-            argv = ["install.py", "--vault", str(vault), "--skip-tests"]
+            argv = ["install.py", "--local-build", "--vault", str(vault), "--skip-tests"]
             with mock.patch.object(sys, "argv", argv), mock.patch.object(
                 INSTALLER,
                 "copy_shipped_plugin",
@@ -683,7 +683,7 @@ class InstallStatusTests(unittest.TestCase):
             vault = self._core_vault(directory)
             result = subprocess.run(
                 [sys.executable, str(ROOT / "install.py"),
-                 "--vault", str(vault), "--skip-tests"],
+                 "--local-build", "--vault", str(vault), "--skip-tests"],
                 capture_output=True, text=True, timeout=180, cwd=str(ROOT),
             )
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -783,7 +783,7 @@ class InstallStatusTests(unittest.TestCase):
             installed = vault / ".obsidian" / "plugins" / "learningos-ui"
             (installed / "unexplained.txt").write_text("keep me", encoding="utf-8")
             result = subprocess.run(
-                [sys.executable, str(ROOT / "install.py"), "--vault", str(vault),
+                [sys.executable, str(ROOT / "install.py"), "--local-build", "--vault", str(vault),
                  "--skip-tests", "--dry-run"],
                 capture_output=True, text=True, timeout=180, cwd=str(ROOT),
             )
@@ -917,11 +917,42 @@ class RealVaultInstallEndToEndTests(unittest.TestCase):
             vault = Path(directory) / "vault"
             vault.mkdir()
             result = subprocess.run(
-                [sys.executable, str(ROOT / "install.py"), "--vault", str(vault),
+                [sys.executable, str(ROOT / "install.py"), "--local-build", "--vault", str(vault),
                  "--skip-tests", "--dry-run"],
                 capture_output=True, text=True, timeout=180, cwd=str(ROOT),
             )
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_default_install_refuses_without_accepted_artifact_or_local_build(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            vault = Path(directory) / "vault"
+            vault.mkdir()
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "install.py"), "--vault", str(vault),
+                 "--skip-tests", "--dry-run"],
+                capture_output=True, text=True, timeout=180, cwd=str(ROOT),
+            )
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("--accepted-artifact", result.stderr)
+            self.assertIn("--local-build", result.stderr)
+            self.assertEqual(list(vault.iterdir()), [])
+
+    def test_accepted_artifact_cannot_combine_with_local_build(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            vault = Path(directory) / "vault"
+            artifact = Path(directory) / "artifact"
+            vault.mkdir()
+            artifact.mkdir()
+            result = subprocess.run(
+                [sys.executable, str(ROOT / "install.py"),
+                 "--vault", str(vault),
+                 "--accepted-artifact", str(artifact),
+                 "--validate-run", "1", "--ui-run", "2",
+                 "--local-build"],
+                capture_output=True, text=True, timeout=180, cwd=str(ROOT),
+            )
+            self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("--local-build", result.stderr)
 
 
 class LegacyLocalMetadataTests(unittest.TestCase):

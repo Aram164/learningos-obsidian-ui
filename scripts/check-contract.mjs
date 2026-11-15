@@ -56,6 +56,11 @@ if (fixture?._generated?.schema_sha256 !== lock.schema_sha256) {
     `Fixture schema ${fixture?._generated?.schema_sha256 ?? 'unknown'} does not match lock ${lock.schema_sha256 ?? 'unknown'}.`,
   );
 }
+if (fixture?._generated?.closure_sha256 !== lock.closure_sha256) {
+  throw new Error(
+    `Fixture closure ${fixture?._generated?.closure_sha256 ?? 'unknown'} does not match lock ${lock.closure_sha256 ?? 'unknown'}.`,
+  );
+}
 sameKeys(fixture, lock.top_level_keys, 'Manifest top-level contract');
 sameKeys(fixture._generated, lock.generated_keys, 'Manifest _generated contract');
 sameKeys(fixture.indexes, lock.index_keys, 'Manifest indexes contract');
@@ -76,6 +81,25 @@ if (typedDeclared !== lock.contract_version) {
 const typedSchema = typed.match(/MANIFEST_SCHEMA_SHA256\s*=\s*['"]([^'"]+)['"]/)?.[1];
 if (typedSchema !== lock.schema_sha256) {
   throw new Error(`Typed schema hash ${typedSchema ?? 'unknown'} does not match lock ${lock.schema_sha256 ?? 'unknown'}.`);
+}
+if (!/import\s*\{[^}]*\bMANIFEST_CLOSURE_SHA256\b[^}]*\}\s*from\s*['"]\.\/generated\/manifest\.meta['"]/.test(typed)) {
+  throw new Error('src/contracts/manifest.ts must import MANIFEST_CLOSURE_SHA256 from ./generated/manifest.meta.');
+}
+if (!/^sha256:[0-9a-f]{64}$/.test(String(lock.closure_sha256 ?? ''))) {
+  throw new Error(`UI lock must declare a valid closure_sha256 digest (got ${String(lock.closure_sha256)}).`);
+}
+const generatedMeta = fs.readFileSync(path.join(root, 'src/contracts/generated/manifest.meta.ts'), 'utf8');
+const generatedClosure = generatedMeta.match(/MANIFEST_CLOSURE_SHA256\s*=\s*['"]([^'"]+)['"]/)?.[1];
+if (generatedClosure !== lock.closure_sha256) {
+  throw new Error(
+    `Generated contract closure ${generatedClosure ?? 'unknown'} does not match lock ${lock.closure_sha256}.`,
+  );
+}
+const generatedLock = readJson('src/contracts/generated/manifest.contract.lock.json');
+if (generatedLock?.closure_sha256 !== lock.closure_sha256) {
+  throw new Error(
+    `Generated contract lock closure ${generatedLock?.closure_sha256 ?? 'unknown'} does not match lock ${lock.closure_sha256}.`,
+  );
 }
 
 const producerPath = path.resolve(root, lock.mirrors ?? '../repository/system/contracts/manifest-contract.yaml');
@@ -115,6 +139,7 @@ if (!fs.existsSync(producerPath)) {
   }
   const producerSchemaPath = yamlScalar(producer, 'schema_path');
   const producerSchemaSha256 = yamlScalar(producer, 'schema_sha256');
+  const producerClosureSha256 = yamlScalar(producer, 'closure_sha256');
   if (producerSchemaPath !== lock.schema_path) {
     throw new Error(
       `Core manifest schema path ${producerSchemaPath ?? 'unknown'} does not match UI lock ${lock.schema_path ?? 'unknown'}.`,
@@ -123,6 +148,11 @@ if (!fs.existsSync(producerPath)) {
   if (producerSchemaSha256 !== lock.schema_sha256) {
     throw new Error(
       `Core manifest schema hash ${producerSchemaSha256 ?? 'unknown'} does not match UI lock ${lock.schema_sha256 ?? 'unknown'}.`,
+    );
+  }
+  if (producerClosureSha256 !== lock.closure_sha256) {
+    throw new Error(
+      `Core manifest schema closure ${producerClosureSha256 ?? 'unknown'} does not match UI lock ${lock.closure_sha256 ?? 'unknown'}.`,
     );
   }
   const producerSchemaFile = path.resolve(producerRoot, producerSchemaPath);

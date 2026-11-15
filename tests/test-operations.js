@@ -87,8 +87,8 @@ async function testPorcelain() {
   await gateway.operationsList(30);
   await gateway.operationsDetail('request-ops-001');
   assert.deepEqual(seen, [
-    ['operations', '--limit', '30'],
-    ['operations', '--request-id', 'request-ops-001'],
+    ['operations', '--limit', '30', '--json'],
+    ['operations', '--request-id', 'request-ops-001', '--json'],
   ]);
 }
 

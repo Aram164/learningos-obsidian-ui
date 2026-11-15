@@ -1059,6 +1059,7 @@ export class GatewayClient {
     const args = ['session-end', '--session-id', UI_SESSION_ID];
     if (commitMessage) args.push('--commit-message', commitMessage);
     if (push) args.push('--push');
+    args.push('--json');
     return this.call(args);
   }
 
@@ -1100,6 +1101,7 @@ export class GatewayClient {
     const args = ['unit-map-import', unitId, '--file', file,
       '--file-sha256', digest, '--check'];
     if (replace) args.push('--replace');
+    args.push('--json');
     const result = record(await this.call(args));
     const revisions = record(result?.expected_revisions);
     if (!result || result.ok !== true || result.mode !== 'check'
@@ -1118,7 +1120,7 @@ export class GatewayClient {
 
   /** Read-only temporary Unit-stage order, pinned to the displayed snapshot. */
   studySequence(unitId: string, stageIds: readonly string[], expectedSnapshot: string) {
-    return this.call(['study-sequence', unitId, '--stage-ids-json', JSON.stringify(stageIds), '--expected-snapshot', expectedSnapshot]);
+    return this.call(['study-sequence', unitId, '--stage-ids-json', JSON.stringify(stageIds), '--expected-snapshot', expectedSnapshot, '--json']);
   }
 
   /** Temporary intent only; canonical state is written exclusively by Core.
@@ -1163,6 +1165,7 @@ export class GatewayClient {
     if (options.abilityId) args.push(options.abilityId);
     if (options.limit) args.push('--limit', String(options.limit));
     if (options.expectedSnapshot) args.push('--expected-snapshot', options.expectedSnapshot);
+    args.push('--json');
     return this.call(args);
   }
 
@@ -1180,6 +1183,7 @@ export class GatewayClient {
     if (options.resourceIndex !== undefined) args.push('--resource-index', String(options.resourceIndex));
     if (options.extract) args.push('--extract');
     if (options.expectedSnapshot) args.push('--expected-snapshot', options.expectedSnapshot);
+    args.push('--json');
     return this.call(args);
   }
 
@@ -1221,7 +1225,7 @@ export class GatewayClient {
   async projectionObservation(confirmation: { receipt_path: string; snapshot_after: string }): Promise<ProjectionSettlementWire> {
     const result: unknown = await this.call(['projection-observe', '--confirmation', JSON.stringify({
       receipt_path: confirmation.receipt_path, snapshot_after: confirmation.snapshot_after,
-    })]);
+    }), '--json']);
     if (!validateProjectionSettlementWire(result)) {
       throw new GatewayError('Core returned an invalid projection observation; recovery remains pending.', null,
         { code: 'PROJECTION_FAILED', retryable: true });
@@ -1231,12 +1235,12 @@ export class GatewayClient {
 
   /** Recent causal operations, newest first (Diagnostics → Operations). */
   operationsList(limit = 30) {
-    return this.call(['operations', '--limit', String(limit)]);
+    return this.call(['operations', '--limit', String(limit), '--json']);
   }
 
   /** Full diagnosis plus timeline for one request id. */
   operationsDetail(requestId: string) {
-    return this.call(['operations', '--request-id', requestId]);
+    return this.call(['operations', '--request-id', requestId, '--json']);
   }
 
   legacyArchiveStatus() {
@@ -1247,6 +1251,7 @@ export class GatewayClient {
     return this.call([
       'masters-planning-dashboard',
       '--confirm-masters-planning',
+      '--json',
     ]);
   }
 

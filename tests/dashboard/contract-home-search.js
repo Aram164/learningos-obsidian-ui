@@ -74,10 +74,11 @@ module.exports = async function run() {
     );
     const read = [...bundle.matchAll(/(?:store\.data|this\.data|manifest)\??\.([a-z_]+)/g)]
       .map((match) => match[1])
-      /* `json` comes from the "generated/manifest.json" literal and `ts` from
-       * the stable "contracts/manifest.ts" source path; the rest are
+      /* `json` comes from the "generated/manifest.json" literal, `ts` from
+       * the stable "contracts/manifest.ts" source path, and `validator` /
+       * `meta` from the generated contract module banners; the rest are
        * Array/Map members reached through a projected collection. */
-      .filter((key) => !['json', 'ts', 'validator', 'length', 'find', 'filter', 'map'].includes(key));
+      .filter((key) => !['json', 'ts', 'validator', 'meta', 'length', 'find', 'filter', 'map'].includes(key));
     const missing = [...new Set(read)].filter((key) => !(key in manifest));
     check('fixture declares every top-level key the app reads', !missing.length,
       `missing from fixture-vault: ${missing.join(', ')}`);
