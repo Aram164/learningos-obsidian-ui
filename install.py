@@ -1191,16 +1191,18 @@ def corroborate_hosted_pair(receipt: dict, validate_run: str, ui_run: str) -> No
         raise PluginAssetsError("UI hosted gate did not prove the exact producer checkout")
 
 
-def verified_artifact(vault: Path, artifact: Path) -> dict:
+def verified_artifact(vault: Path, artifact: Path, *, previous: bool = False) -> dict:
     for directory in (artifact, artifact / "plugin"):
         if directory_problem(directory):
             raise PluginAssetsError(f"artifact directory is missing, indirect or misshapen: {directory}")
     receipt_path = artifact / "pair-receipt.json"
     if shipped_file_problem(receipt_path):
         raise PluginAssetsError("artifact receipt must be a regular file")
+    contract_check = ["--artifact-only"] if previous else ["--core-root", str(vault)]
     result = subprocess.run(
         [str(vault / ".venv/bin/python"), str(vault / "tools/release_pair_receipt.py"),
-         "verify", "--receipt", str(receipt_path), "--artifact-dir", str(artifact)],
+         "verify", "--receipt", str(receipt_path), "--artifact-dir", str(artifact),
+         *contract_check],
         capture_output=True, text=True, timeout=60,
     )
     if result.returncode != 0:
@@ -1370,7 +1372,7 @@ def install_accepted_artifact(vault: Path, artifact: Path, previous: Path | None
         problems.append("artifact receipt does not name the current source pair")
     if problems:
         raise PluginAssetsError("; ".join(problems))
-    old = verified_artifact(vault, previous) if previous is not None else None
+    old = verified_artifact(vault, previous, previous=True) if previous is not None else None
     corroborate_hosted_pair(receipt, validate_run, ui_run)
     verify_published_artifact(artifact, receipt)
     source_journal = HERE / INSTALL_TRANSACTION

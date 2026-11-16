@@ -437,6 +437,43 @@ export function openMaterialComparison(
   }).open();
 }
 
+/** The one direct action a stage offers for its recorded state. */
+export interface StageAction {
+  readonly label: string;
+  readonly status: string;
+}
+
+export function stageActionFor(stage: StageRecordView): StageAction {
+  switch (stage.status) {
+    case 'active':
+      return { label: 'Complete stage', status: 'complete' };
+    case 'paused':
+      return { label: 'Resume stage', status: 'active' };
+    case 'complete':
+    case 'skipped':
+      return { label: 'Revisit stage', status: 'revisit' };
+    default:
+      return { label: 'Activate stage', status: 'active' };
+  }
+}
+
+/** Send the stage's one direct action: a single guarded gateway call. */
+export function runStageAction(
+  view: UnitStageHost,
+  unit: UnitRecordView,
+  stage: StageRecordView,
+  expectedRevisions: Readonly<Record<string, number>>,
+): Promise<void> {
+  const action = stageActionFor(stage);
+  if (action.status === 'complete') {
+    return completeStage(view, unit, stage, expectedRevisions);
+  }
+  return view.mutate(
+    () => view.plugin.gateway.progress(
+      unit.id, stage.id, action.status, expectedRevisions),
+  );
+}
+
 /** The one completion write, whichever design draws its button. */
 export function completeStage(
   view: UnitStageHost,
@@ -479,16 +516,21 @@ export function renderActionBar(
     /* Completing a stage is study progress. It never records a learner
      * attempt or ability evidence — that happens only when a claim is
      * confirmed in Review — so the rule says so where it is read. */
-    const rule = stage.doneWhen.length === 1
-      ? 'Finish only when the criterion above is true.'
-      : stage.doneWhen.length === 2
-        ? 'Finish only when both criteria are true.'
-        : stage.doneWhen.length
-          ? `Finish only when all ${stage.doneWhen.length} criteria are true.`
-          : '';
+    const action = stageActionFor(stage);
+    const rule = stage.status !== 'active'
+      ? ''
+      : stage.doneWhen.length === 1
+        ? 'Finish only when the criterion above is true.'
+        : stage.doneWhen.length === 2
+          ? 'Finish only when both criteria are true.'
+          : stage.doneWhen.length
+            ? `Finish only when all ${stage.doneWhen.length} criteria are true.`
+            : '';
     bar.createSpan({
       cls: 'los-micro los-unit-actionbar-rule',
-      text: `${rule ? `${rule} ` : ''}Completing it records progress, not a learner attempt.`,
+      text: stage.status === 'active'
+        ? `${rule ? `${rule} ` : ''}Completing it records progress, not a learner attempt.`
+        : `${action.label} records progress, not a learner attempt.`,
     });
 
     /* 14:600 — the primary action and one overflow, left-aligned at the foot
@@ -497,8 +539,8 @@ export function renderActionBar(
      * colour on a screen that already has one. */
     button(
       bar,
-      'Complete stage',
-      () => completeStage(view, unit, stage, expectedRevisions),
+      action.label,
+      () => runStageAction(view, unit, stage, expectedRevisions),
       'cta',
     );
 
@@ -509,15 +551,17 @@ export function renderActionBar(
     );
   }
 
-/** Everything a stage can do besides completing it: pause, skip, gap, shelve, ask. */
+/** Everything a stage can do besides its direct action: pause, skip, gap, shelve, ask. */
 export function stageMenuItems(
   view: UnitStageHost,
   unit: UnitRecordView,
   stage: StageRecordView,
   expectedRevisions: Readonly<Record<string, number>>,
 ): Array<[string, () => unknown] | false> {
+    const active = stage.status === 'active';
+    const recorded = stage.status === 'complete' || stage.status === 'skipped';
     return [
-      stage.status !== 'active'
+      recorded
       && [
         'Revisit stage',
         () => view.mutate(
@@ -530,7 +574,8 @@ export function stageMenuItems(
             ),
         ),
       ],
-      [
+      active
+      && [
         'Pause unit',
         () => view.mutate(
           () =>
@@ -542,7 +587,8 @@ export function stageMenuItems(
             ),
         ),
       ],
-      [
+      active
+      && [
         'Skip stage',
         () => view.mutate(
           () =>

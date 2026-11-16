@@ -87,13 +87,41 @@ export function resolveResumeTarget(store: {
   mapForUnit(id: string): ProjectionRecord | null;
 }): ResolvedResumeTarget {
   const pointer = readResumePointer(store.data?.resume_pointer);
-  const unit = pointer.unit_id ? store.get(pointer.unit_id) : null;
-  const map = pointer.study_map_id ? store.get(pointer.study_map_id) : null;
-  const unitMap = pointer.unit_id ? store.mapForUnit(pointer.unit_id) : null;
-  const stage = pointer.stage_id ? store.stage(pointer.stage_id) : null;
-  const moduleId = unit ? projectedString(unit.module_id) : null;
-  const module = moduleId ? store.get(moduleId) : null;
-  return { pointer, unit, map, unitMap, stage, moduleId, module };
+  const unresolved: ResolvedResumeTarget = {
+    pointer, unit: null, map: null, unitMap: null, stage: null,
+    moduleId: null, module: null,
+  };
+  // Core owns validity; this check keeps an older cached projection whose
+  // IDs are individually known but disagree on ownership from drawing a
+  // resume action into another module's or unit's stage.
+  if (!pointer.unit_id || !pointer.study_map_id
+      || !pointer.stage_id || !pointer.module_id) {
+    return unresolved;
+  }
+  const unit = store.get(pointer.unit_id);
+  if (!unit || projectedString(unit.module_id) !== pointer.module_id) {
+    return unresolved;
+  }
+  const unitMap = store.mapForUnit(pointer.unit_id);
+  if (!unitMap || projectedString(unitMap.id) !== pointer.study_map_id
+      || projectedString(unitMap.unit_id) !== pointer.unit_id
+      || projectedString(unitMap.module_id) !== pointer.module_id) {
+    return unresolved;
+  }
+  const map = store.get(pointer.study_map_id);
+  if (!map || projectedString(map.unit_id) !== pointer.unit_id
+      || projectedString(map.module_id) !== pointer.module_id) {
+    return unresolved;
+  }
+  // The stage every design shows is the matched row of the validated
+  // ordered map — never the flat index, whose row can disagree with it.
+  const stage = projectedRecords(unitMap.stages).find(
+    (row) => projectedString(row.id) === pointer.stage_id) ?? null;
+  if (!stage) {
+    return unresolved;
+  }
+  const module = store.get(pointer.module_id);
+  return { pointer, unit, map, unitMap, stage, moduleId: pointer.module_id, module };
 }
 
 export function firstProjectedModuleId(

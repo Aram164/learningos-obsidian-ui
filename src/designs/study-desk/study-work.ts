@@ -1,7 +1,7 @@
 import type { ProjectionRecord } from '../../contracts/manifest';
 import { normalizeUnitRecord, orderModuleUnits, readModuleRecord } from '../../features/module/model';
 import { readResumePointer } from '../../features/home/model';
-import { readStudyMap, type StageRecordView } from '../../features/unit/model';
+import { firstOpenStage, isOpenStage, readStudyMap } from '../../features/unit/model';
 import type { ManifestStore } from '../../manifest-store';
 import { asString } from '../../projection/readers';
 
@@ -20,9 +20,8 @@ export function unitWork(store: ManifestStore, unitId: string) {
   if (!record) return null;
   const map = readStudyMap(record);
   const done = map.stages.filter((stage) => stage.status === 'complete').length;
-  const available = (stage: StageRecordView) => stage.status !== 'complete' && stage.status !== 'skipped';
-  const next = map.stages.find((stage) => stage.id === map.currentStageId && available(stage))
-    ?? map.stages.find(available);
+  const next = map.stages.find((stage) => stage.id === map.currentStageId && isOpenStage(stage))
+    ?? firstOpenStage(map.stages);
   return { map, done, next };
 }
 
@@ -51,7 +50,7 @@ export function inProgressUnits(store: ManifestStore) {
       const unitId = asString(unit.id);
       if (!unitId || unit.status === 'complete' || unit.status === 'archived' || unit.status === 'paused') return [];
       const work = unitWork(store, unitId);
-      if (!work?.done || work.done === work.map.stages.length) return [];
+      if (!work?.done || !work.next || work.done === work.map.stages.length) return [];
       return [{ module, unit, unitId, done: work.done, total: work.map.stages.length, next: work.next }];
     });
   });

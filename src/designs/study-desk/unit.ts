@@ -1,8 +1,8 @@
 import { button, disclosure, filterTabs, icon, overflowMenu, plural } from '../../components';
 import { placementAvailability, routeForResource } from '../../features/unit/material-card';
-import { artifactLabel, readArtifacts, readStudyMap, readUnitRecord, type MaterialOptionView, type StageRecordView, type StudyMapView, type UnitRecordView } from '../../features/unit/model';
+import { artifactLabel, nextOpenStage, readArtifacts, readStudyMap, readUnitRecord, type MaterialOptionView, type StageRecordView, type StudyMapView, type UnitRecordView } from '../../features/unit/model';
 import { renderPlanControls, selectedStage, sittingStudyMap } from '../../features/unit/shell';
-import { completeStage, openMaterialComparison, stageMaterialOptions, stageMenuItems } from '../../features/unit/stage';
+import { openMaterialComparison, runStageAction, stageActionFor, stageMaterialOptions, stageMenuItems } from '../../features/unit/stage';
 import { currentWorkResource, type StageResourceView } from '../../features/stage-resources';
 import { hasDirectResourceTarget } from '../../infrastructure/resource-target';
 import { asLabel, asString, asText } from '../../projection/readers';
@@ -265,7 +265,7 @@ function renderSession(context: UnitContext): void {
 
   const position = Math.max(studyMap.stages.findIndex((row) => row.id === stage.id), 0);
   const done = stage.status === 'complete';
-  const next = studyMap.stages[position + 1];
+  const next = nextOpenStage(studyMap.stages, stage.id);
   const strip = root.createDiv({ cls: 'sd-strip', attr: { role: 'group', 'aria-label': 'Stages in this lecture' } });
   studyMap.stages.forEach((row, index) => {
     const state = row.id === stage.id ? 'is-current' : row.status === 'complete' ? 'is-done' : '';
@@ -394,10 +394,11 @@ function renderSession(context: UnitContext): void {
   overflowMenu(footActions, stageMenuItems(view, unit, stage, expected), 'More stage actions');
   if (before) button(footActions, 'Previous stage', () => { void view.selectStage(before.id); }, 'quiet');
   if (done) {
-    if (next) button(footActions, `Next: stage ${position + 2} · ${next.title}`, () => view.selectStage(next.id), 'cta');
+    if (next) button(footActions, `Next: stage ${studyMap.stages.indexOf(next) + 1} · ${next.title}`, () => view.selectStage(next.id), 'cta');
     else button(footActions, 'Return to all stages', () => showMode(context, 'plan'), 'cta');
   } else {
-    complete = button(footActions, 'Complete stage', () => completeStage(view, unit, stage, expected));
+    const action = stageActionFor(stage);
+    complete = button(footActions, action.label, () => runStageAction(view, unit, stage, expected));
   }
   refresh();
 }
