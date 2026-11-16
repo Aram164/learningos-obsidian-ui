@@ -1128,7 +1128,7 @@ class LegacyLocalMetadataTests(unittest.TestCase):
             return actual_run(args, **kwargs)
 
         with mock.patch.object(INSTALLER, "HERE", ui), \
-                mock.patch.object(INSTALLER, "verified_artifact", side_effect=lambda _, directory:
+                mock.patch.object(INSTALLER, "verified_artifact", side_effect=lambda _, directory, **kwargs:
                                   receipt if directory == artifact else self.old), \
                 mock.patch.object(INSTALLER, "real_vault_install_problems", return_value=[]), \
                 mock.patch.object(INSTALLER, "_git_rev_parse", side_effect=lambda directory:
@@ -1273,7 +1273,7 @@ class AcceptedArtifactTests(unittest.TestCase):
                     raise OSError('injected source promotion failure')
                 return original(source, destination)
 
-            with mock.patch.object(INSTALLER, 'verified_artifact', side_effect=lambda _, path:
+            with mock.patch.object(INSTALLER, 'verified_artifact', side_effect=lambda _, path, **kwargs:
                                    receipt if path == artifact else old), \
                     mock.patch.object(INSTALLER, 'corroborate_hosted_pair'), \
                     mock.patch.object(INSTALLER, 'verify_published_artifact'), \

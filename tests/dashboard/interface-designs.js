@@ -304,7 +304,7 @@ module.exports = async function run() {
     const root = () => pane.view.contentEl;
     const control = (label) => root().find('sd-history-button').find((node) => node.getAttribute('aria-label') === label);
     check('Home without a resume pointer offers a projected stage and distinguishes the suggestion',
-      root().findText('sd-hero-kicker', 'Suggested by your') && root().findText('los-btn--cta', 'Start stage')
+      root().findText('sd-hero-kicker', 'study map') && root().findText('los-btn--cta', 'Start stage')
       && !root().findText('sd-hero-kicker', 'Continue where you stopped'));
     await plugin.nav.openLearn('program-skills');
     check('a legacy Learn route opens Modules with the corresponding area selected',
@@ -335,6 +335,51 @@ module.exports = async function run() {
   }
 
   {
+    const { app, plugin } = await boot({
+      settings: { uiDesign: 'study-desk', pinHome: false },
+      patchManifest(manifest) {
+        manifest.resume_pointer = {};
+        manifest.records.find((row) => row.id === 'workspace-fixture-m2').next_action
+          = 'Revisit stage 1 Event spaces before continuing.';
+      },
+    });
+    const root = () => app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
+    const hero = root().find('sd-home-suggestion')[0];
+    check('the stage suggestion carries the stage it opens, not the workspace instruction',
+      hero && !hero.allText().includes('Revisit stage 1 Event spaces')
+      && hero.allText().includes('Work the central medical-test fixture'), hero?.allText());
+    check('the workspace instruction is shown verbatim as its own plan',
+      root().allText().includes('Revisit stage 1 Event spaces before continuing.'));
+    const start = root().findText('los-btn--cta', 'Start stage 2');
+    check('the primary stage action is labelled from its destination', start !== null);
+    start?.fire('click');
+    await waitFor(() => app.workspace.getLeavesOfType(VIEW.unit).length > 0);
+    const unit = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    check('the primary stage action opens stage 2 of the suggested lecture',
+      unit.unitId === 'unit-fixture-sad-l04' && unit.stageId === 'stage-fixture-conditioning',
+      `${unit.unitId}/${unit.stageId}`);
+    plugin.onunload();
+  }
+
+  {
+    const { app, plugin } = await boot({
+      settings: { uiDesign: 'study-desk', pinHome: false },
+      patchManifest(manifest) {
+        manifest.resume_pointer = {};
+        for (const map of manifest.study_maps) {
+          for (const stage of map.stages) stage.status = 'complete';
+        }
+        for (const stage of manifest.stages) stage.status = 'complete';
+      },
+    });
+    const root = () => app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
+    check('with no stage available the workspace fallback opens its module',
+      root().findText('los-btn--cta', 'Open module') !== null
+      && root().allText().includes('Work the Conditional probability and Bayes stage'));
+    plugin.onunload();
+  }
+
+  {
     const { app, plugin } = await boot({ settings: { uiDesign: 'study-desk', pinHome: true } });
     const home = app.workspace.getLeavesOfType(VIEW.home)[0];
     await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-foundations');
@@ -353,6 +398,184 @@ module.exports = async function run() {
       readingPane.view.unitId === 'unit-fixture-sad-l04'
       && readingPane.view.contentEl.scrollTop === 240
       && secondReadingPane.view.unitId === 'unit-fixture-analysis');
+    plugin.onunload();
+  }
+
+  heading('interface designs: an incoherent resume pointer draws no resume action');
+  for (const design of ['classic', 'focus', 'study-desk']) {
+    const { app, plugin } = await boot({ patchManifest(manifest) {
+      manifest.resume_pointer = { ...manifest.resume_pointer, module_id: 'module-fixture-aml' };
+    } });
+    await plugin.setInterfaceDesign(design);
+    await plugin.nav.openHome();
+    const home = app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
+    check(`${design}: a pointer owned by another module offers no resume action`,
+      !home.allText().includes('Continue where you stopped')
+      && !home.allText().includes('Continue learning')
+      && home.findText('los-btn', 'Continue session') === null
+      && home.findText('los-btn', 'Resume session') === null
+      && home.findText('los-btn--cta', 'Continue studying') === null);
+    check(`${design}: the ordinary fallback still renders`,
+      design === 'classic'
+        ? home.allText().includes('Nothing to resume yet')
+        : home.allText().length > 0);
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot();
+    await plugin.nav.openHome();
+    const home = app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
+    const resume = home.findText('los-btn', 'Continue session');
+    check('the valid Stats pointer keeps its resume action', resume !== null);
+    resume?.fire('click');
+    await waitFor(() => app.workspace.getLeavesOfType(VIEW.unit).length > 0);
+    const unit = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    check('the valid pointer opens its exact recorded destination',
+      unit.unitId === 'unit-fixture-sad-l04' && unit.stageId === 'stage-fixture-conditioning',
+      `${unit.unitId}/${unit.stageId}`);
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot({ patchManifest(manifest) {
+      manifest.stages.find((row) => row.id === 'stage-fixture-conditioning').title
+        = 'Foreign stage title';
+    } });
+    await plugin.nav.openHome();
+    const home = app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
+    check('Classic reads the resume stage from the validated map, not the flat index',
+      home.allText().includes('Conditional probability and Bayes')
+      && !home.allText().includes('Foreign stage title'), home.allText());
+    plugin.onunload();
+  }
+
+  heading('interface designs: stage actions follow the lifecycle');
+  {
+    const { app, plugin, calls } = await boot({ settings: { uiDesign: 'study-desk' } });
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    view.contentEl.findText('los-btn', 'Continue stage')?.fire('click');
+    await waitFor(() => view.contentEl.find('sd-book-spread').length === 1);
+    const before = calls.envelopes.length;
+    const tab = view.contentEl.find('sd-strip-tab')
+      .find((node) => node.getAttribute('title')?.includes('Practice and self-test'));
+    tab?.fire('click');
+    await waitFor(() => view.stageId === 'stage-fixture-self-test');
+    check('opening a pending stage from the rail writes nothing',
+      calls.envelopes.length === before);
+    check('a pending stage offers Activate, not Complete',
+      view.contentEl.findText('los-btn', 'Activate stage') !== null
+      && view.contentEl.findText('los-btn', 'Complete stage') === null);
+    view.contentEl.findText('los-btn', 'Activate stage')?.fire('click');
+    await waitFor(() => calls.envelope('stage.progress.update') && !plugin.gateway.isBusy);
+    const sent = calls.envelopes.slice(before);
+    check('activation sends one guarded stage.progress.update for the exact stage',
+      sent.length === 1 && sent[0].payload.unit_id === 'unit-fixture-sad-l04'
+      && sent[0].payload.stage_id === 'stage-fixture-self-test'
+      && sent[0].payload.status === 'active', JSON.stringify(sent));
+    plugin.onunload();
+  }
+  {
+    const { app, plugin, calls } = await boot({ patchManifest(manifest) {
+      const map = manifest.study_maps.find((row) => row.id === 'study-map-fixture-sad-l04');
+      map.stages.find((row) => row.id === 'stage-fixture-conditioning').status = 'paused';
+      manifest.stages.find((row) => row.id === 'stage-fixture-conditioning').status = 'paused';
+    } });
+    await plugin.setInterfaceDesign('study-desk');
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    view.contentEl.findText('los-btn', 'Continue stage')?.fire('click');
+    await waitFor(() => view.contentEl.find('sd-book-spread').length === 1);
+    check('a paused stage offers Resume, not Complete',
+      view.contentEl.findText('los-btn', 'Resume stage') !== null
+      && view.contentEl.findText('los-btn', 'Complete stage') === null);
+    const before = calls.envelopes.length;
+    view.contentEl.findText('los-btn', 'Resume stage')?.fire('click');
+    await waitFor(() => calls.envelope('stage.progress.update') && !plugin.gateway.isBusy);
+    const sent = calls.envelopes.slice(before);
+    check('resuming a paused stage sends the same activation transition',
+      sent.length === 1 && sent[0].payload.status === 'active'
+      && sent[0].payload.stage_id === 'stage-fixture-conditioning', JSON.stringify(sent));
+    plugin.onunload();
+  }
+  {
+    const { app, plugin, calls } = await boot();
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-self-test');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    check('Classic offers Activate for a pending stage and no Complete',
+      view.contentEl.findText('los-btn', 'Activate stage') !== null
+      && view.contentEl.findText('los-btn', 'Complete stage') === null);
+    const before = calls.envelopes.length;
+    view.contentEl.findText('los-btn', 'Activate stage')?.fire('click');
+    await waitFor(() => calls.envelope('stage.progress.update') && !plugin.gateway.isBusy);
+    check('Classic activation sends one activation envelope',
+      calls.envelopes.length === before + 1
+      && calls.envelope('stage.progress.update').payload.status === 'active');
+    plugin.onunload();
+  }
+
+  heading('interface designs: Next finds open work and the sidebar drops finished maps');
+  {
+    const skipMiddle = (manifest) => {
+      const map = manifest.study_maps.find((row) => row.id === 'study-map-fixture-sad-l04');
+      map.stages.find((row) => row.id === 'stage-fixture-conditioning').status = 'skipped';
+      map.stages.find((row) => row.id === 'stage-fixture-self-test').status = 'active';
+      map.current_stage = 'stage-fixture-self-test';
+      manifest.stages.find((row) => row.id === 'stage-fixture-conditioning').status = 'skipped';
+      manifest.stages.find((row) => row.id === 'stage-fixture-self-test').status = 'active';
+      manifest.resume_pointer = { ...manifest.resume_pointer, stage_id: 'stage-fixture-self-test' };
+    };
+    const { app, plugin } = await boot({ settings: { uiDesign: 'study-desk' }, patchManifest: skipMiddle });
+    await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-foundations');
+    const view = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    view.contentEl.find('sd-stop-head')
+      .find((node) => node.getAttribute?.('aria-label') === 'Open stage: Event spaces')?.fire('click');
+    await waitFor(() => view.contentEl.find('sd-book-spread').length === 1);
+    const next = view.contentEl.find('los-btn--cta')
+      .find((node) => node.allText().startsWith('Next:'));
+    check('Study Desk Next names the next open stage, skipping the skipped one',
+      next?.allText().includes('Practice and self-test'), next?.allText());
+    next?.fire('click');
+    await waitFor(() => view.stageId === 'stage-fixture-self-test');
+    check('Study Desk Next opens the self-test stage', view.stageId === 'stage-fixture-self-test');
+    const rail = view.contentEl.find('sd-strip-tab')
+      .find((node) => node.getAttribute('title')?.includes('Conditional probability and Bayes'));
+    rail?.fire('click');
+    await waitFor(() => view.stageId === 'stage-fixture-conditioning');
+    check('the stage rail can still open the skipped stage explicitly',
+      view.stageId === 'stage-fixture-conditioning');
+    plugin.onunload();
+
+    const focusRun = await boot({ settings: { uiDesign: 'focus' }, patchManifest: skipMiddle });
+    await focusRun.plugin.nav.openUnit('unit-fixture-sad-l04');
+    const focusView = focusRun.app.workspace.getLeavesOfType(VIEW.unit)[0].view;
+    focusView.contentEl.find('focus-row')
+      .find((node) => node.allText().includes('Event spaces'))?.fire('click');
+    await waitFor(() => focusView.stageId === 'stage-fixture-foundations');
+    const focusNext = focusView.contentEl.findText('los-btn', 'Next stage');
+    check('Focus offers Next stage from a completed stage', focusNext !== null);
+    focusNext?.fire('click');
+    await waitFor(() => focusView.stageId === 'stage-fixture-self-test');
+    check('Focus Next opens the next open stage', focusView.stageId === 'stage-fixture-self-test');
+    focusRun.plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot({ patchManifest(manifest) {
+      const map = manifest.study_maps.find((row) => row.id === 'study-map-fixture-sad-l04');
+      map.status = 'ready-to-shelve';
+      map.stages.find((row) => row.id === 'stage-fixture-conditioning').status = 'skipped';
+      map.stages.find((row) => row.id === 'stage-fixture-self-test').status = 'skipped';
+      manifest.stages.find((row) => row.id === 'stage-fixture-conditioning').status = 'skipped';
+      manifest.stages.find((row) => row.id === 'stage-fixture-self-test').status = 'skipped';
+      manifest.units.find((row) => row.id === 'unit-fixture-sad-l04').status = 'ready-to-shelve';
+    } });
+    await plugin.setInterfaceDesign('study-desk');
+    const nav = app.workspace.getLeavesOfType(VIEW.nav)[0].view.contentEl;
+    check('a ready-to-shelve map with no open stage leaves the In progress sidebar',
+      !nav.allText().includes('In progress') && !nav.allText().includes('1/3'));
+    await plugin.nav.openModule('module-fixture-m2');
+    const modules = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl;
+    check('the finished lecture stays reachable in Modules',
+      modules.allText().includes('Probability & Bayes'));
     plugin.onunload();
   }
 

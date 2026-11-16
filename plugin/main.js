@@ -36429,13 +36429,38 @@ function readResumePointer(value) {
 }
 function resolveResumeTarget(store) {
   const pointer2 = readResumePointer(store.data?.resume_pointer);
-  const unit = pointer2.unit_id ? store.get(pointer2.unit_id) : null;
-  const map = pointer2.study_map_id ? store.get(pointer2.study_map_id) : null;
-  const unitMap = pointer2.unit_id ? store.mapForUnit(pointer2.unit_id) : null;
-  const stage = pointer2.stage_id ? store.stage(pointer2.stage_id) : null;
-  const moduleId = unit ? asString(unit.module_id) : null;
-  const module2 = moduleId ? store.get(moduleId) : null;
-  return { pointer: pointer2, unit, map, unitMap, stage, moduleId, module: module2 };
+  const unresolved = {
+    pointer: pointer2,
+    unit: null,
+    map: null,
+    unitMap: null,
+    stage: null,
+    moduleId: null,
+    module: null
+  };
+  if (!pointer2.unit_id || !pointer2.study_map_id || !pointer2.stage_id || !pointer2.module_id) {
+    return unresolved;
+  }
+  const unit = store.get(pointer2.unit_id);
+  if (!unit || asString(unit.module_id) !== pointer2.module_id) {
+    return unresolved;
+  }
+  const unitMap = store.mapForUnit(pointer2.unit_id);
+  if (!unitMap || asString(unitMap.id) !== pointer2.study_map_id || asString(unitMap.unit_id) !== pointer2.unit_id || asString(unitMap.module_id) !== pointer2.module_id) {
+    return unresolved;
+  }
+  const map = store.get(pointer2.study_map_id);
+  if (!map || asString(map.unit_id) !== pointer2.unit_id || asString(map.module_id) !== pointer2.module_id) {
+    return unresolved;
+  }
+  const stage = asRecords(unitMap.stages).find(
+    (row3) => asString(row3.id) === pointer2.stage_id
+  ) ?? null;
+  if (!stage) {
+    return unresolved;
+  }
+  const module2 = store.get(pointer2.module_id);
+  return { pointer: pointer2, unit, map, unitMap, stage, moduleId: pointer2.module_id, module: module2 };
 }
 function firstProjectedModuleId(value) {
   for (const candidate2 of asRecords(value)) {
@@ -37292,6 +37317,17 @@ function artifactLabel(key) {
     ([candidate2]) => candidate2 === key
   )?.[1] ?? key;
 }
+function isOpenStage(stage) {
+  return stage.status !== "complete" && stage.status !== "skipped";
+}
+function firstOpenStage(stages) {
+  return stages.find(isOpenStage) ?? null;
+}
+function nextOpenStage(stages, stageId) {
+  const index = stages.findIndex((stage) => stage.id === stageId);
+  if (index < 0) return null;
+  return stages.slice(index + 1).find(isOpenStage) ?? null;
+}
 function fallbackRecord(id) {
   return {
     id,
@@ -37315,8 +37351,7 @@ function unitWork(store, unitId) {
   if (!record7) return null;
   const map = readStudyMap(record7);
   const done = map.stages.filter((stage) => stage.status === "complete").length;
-  const available = (stage) => stage.status !== "complete" && stage.status !== "skipped";
-  const next = map.stages.find((stage) => stage.id === map.currentStageId && available(stage)) ?? map.stages.find(available);
+  const next = map.stages.find((stage) => stage.id === map.currentStageId && isOpenStage(stage)) ?? firstOpenStage(map.stages);
   return { map, done, next };
 }
 function moduleWork(store, moduleId) {
@@ -37342,7 +37377,7 @@ function inProgressUnits(store) {
       const unitId = asString(unit.id);
       if (!unitId || unit.status === "complete" || unit.status === "archived" || unit.status === "paused") return [];
       const work = unitWork(store, unitId);
-      if (!work?.done || work.done === work.map.stages.length) return [];
+      if (!work?.done || !work.next || work.done === work.map.stages.length) return [];
       return [{ module: module2, unit, unitId, done: work.done, total: work.map.stages.length, next: work.next }];
     });
   });
@@ -38733,9 +38768,10 @@ function renderDeskHome(view) {
     return action && module2 && record7.archived !== true && record7.status !== "complete" ? [{ record: record7, module: module2, action }] : [];
   });
   const resume2 = resolveResumeTarget(store);
-  const resumeId = resume2.pointer.unit_id;
+  const resumeId = resume2.unit ? asString(resume2.unit.id) : null;
+  const resumeStageId = resume2.stage ? asString(resume2.stage.id) : null;
   const work = resumeId ? unitWork(store, resumeId) : null;
-  const stage = work?.map.stages.find((row3) => row3.id === resume2.pointer.stage_id);
+  const stage = work?.map.stages.find((row3) => row3.id === resumeStageId);
   let shownPlan = null;
   let focusModule = null;
   if (resumeId && resume2.unit && work && stage) {
@@ -38768,14 +38804,12 @@ function renderDeskHome(view) {
     const hero = main.createDiv({ cls: "sd-hero is-empty sd-home-suggestion" });
     const copy = hero.createDiv({ cls: "sd-hero-copy" });
     if (suggestion) {
-      const { module: module2, next, unitId, stage: nextStage, plan: plan2 } = suggestion;
+      const { module: module2, next, unitId, stage: nextStage } = suggestion;
       focusModule = module2;
-      shownPlan = plan2?.record ?? null;
       const place = unitLabel(next.unit, module2);
-      copy.createDiv({ cls: "sd-hero-kicker", text: `Suggested by your ${moduleName(module2)} plan` });
+      copy.createDiv({ cls: "sd-hero-kicker", text: `Suggested from the ${moduleName(module2)} study map` });
       copy.createEl("h2", { cls: "sd-hero-title", text: place.number ? `${place.place} \xB7 ${place.title}` : place.title });
-      copy.createEl("p", { cls: "sd-note sd-suggest-action", text: plan2?.action ?? (nextStage.objective || nextStage.title) });
-      if (plan2) copy.createEl("p", { cls: "sd-note", text: `From ${asLabel(plan2.record)}.` });
+      copy.createEl("p", { cls: "sd-note sd-suggest-action", text: nextStage.objective || nextStage.title });
       const actions = copy.createDiv({ cls: "sd-home-actions" });
       button(actions, `Start stage ${next.position}`, () => start(view, unitId, nextStage.id), "cta");
       textLink(actions, "See the lecture plan", () => nav.openUnit(unitId, nextStage.id, (leaf) => setUnitMode(leaf, unitId, "plan")));
@@ -38794,7 +38828,7 @@ function renderDeskHome(view) {
   }
   const others = plans.filter(({ record: record7 }) => record7 !== shownPlan).slice(0, 3);
   if (others.length) {
-    main.createEl("h2", { cls: "sd-heading", text: "Other plans suggest" });
+    main.createEl("h2", { cls: "sd-heading", text: "Plans suggest" });
     const list3 = main.createDiv({ cls: "sd-sheet sd-home-list" });
     for (const { action, record: record7, module: module2 } of others) {
       const row3 = deskRow(list3, "sd-today-row", action, () => nav.openModule(asString(module2.id) ?? ""));
@@ -41829,6 +41863,33 @@ function openMaterialComparison(view, unit, stage, expectedRevisions) {
     onChanged: () => view.render()
   }).open();
 }
+function stageActionFor(stage) {
+  switch (stage.status) {
+    case "active":
+      return { label: "Complete stage", status: "complete" };
+    case "paused":
+      return { label: "Resume stage", status: "active" };
+    case "complete":
+    case "skipped":
+      return { label: "Revisit stage", status: "revisit" };
+    default:
+      return { label: "Activate stage", status: "active" };
+  }
+}
+function runStageAction(view, unit, stage, expectedRevisions) {
+  const action = stageActionFor(stage);
+  if (action.status === "complete") {
+    return completeStage(view, unit, stage, expectedRevisions);
+  }
+  return view.mutate(
+    () => view.plugin.gateway.progress(
+      unit.id,
+      stage.id,
+      action.status,
+      expectedRevisions
+    )
+  );
+}
 function completeStage(view, unit, stage, expectedRevisions) {
   return view.mutate(
     () => view.plugin.gateway.progress(
@@ -41847,15 +41908,16 @@ function renderActionBar(view, root, unit, stage, expectedRevisions) {
   const bar = root.createDiv({
     cls: "los-unit-actionbar"
   });
-  const rule2 = stage.doneWhen.length === 1 ? "Finish only when the criterion above is true." : stage.doneWhen.length === 2 ? "Finish only when both criteria are true." : stage.doneWhen.length ? `Finish only when all ${stage.doneWhen.length} criteria are true.` : "";
+  const action = stageActionFor(stage);
+  const rule2 = stage.status !== "active" ? "" : stage.doneWhen.length === 1 ? "Finish only when the criterion above is true." : stage.doneWhen.length === 2 ? "Finish only when both criteria are true." : stage.doneWhen.length ? `Finish only when all ${stage.doneWhen.length} criteria are true.` : "";
   bar.createSpan({
     cls: "los-micro los-unit-actionbar-rule",
-    text: `${rule2 ? `${rule2} ` : ""}Completing it records progress, not a learner attempt.`
+    text: stage.status === "active" ? `${rule2 ? `${rule2} ` : ""}Completing it records progress, not a learner attempt.` : `${action.label} records progress, not a learner attempt.`
   });
   button(
     bar,
-    "Complete stage",
-    () => completeStage(view, unit, stage, expectedRevisions),
+    action.label,
+    () => runStageAction(view, unit, stage, expectedRevisions),
     "cta"
   );
   overflowMenu(
@@ -41865,8 +41927,10 @@ function renderActionBar(view, root, unit, stage, expectedRevisions) {
   );
 }
 function stageMenuItems(view, unit, stage, expectedRevisions) {
+  const active = stage.status === "active";
+  const recorded = stage.status === "complete" || stage.status === "skipped";
   return [
-    stage.status !== "active" && [
+    recorded && [
       "Revisit stage",
       () => view.mutate(
         () => view.plugin.gateway.progress(
@@ -41877,7 +41941,7 @@ function stageMenuItems(view, unit, stage, expectedRevisions) {
         )
       )
     ],
-    [
+    active && [
       "Pause unit",
       () => view.mutate(
         () => view.plugin.gateway.progress(
@@ -41888,7 +41952,7 @@ function stageMenuItems(view, unit, stage, expectedRevisions) {
         )
       )
     ],
-    [
+    active && [
       "Skip stage",
       () => view.mutate(
         () => view.plugin.gateway.progress(
@@ -43187,7 +43251,7 @@ function renderSession(context) {
   button(actions, "End session", () => view.plugin.reviewSessionEnd(), "quiet");
   const position = Math.max(studyMap.stages.findIndex((row3) => row3.id === stage.id), 0);
   const done = stage.status === "complete";
-  const next = studyMap.stages[position + 1];
+  const next = nextOpenStage(studyMap.stages, stage.id);
   const strip = root.createDiv({ cls: "sd-strip", attr: { role: "group", "aria-label": "Stages in this lecture" } });
   studyMap.stages.forEach((row3, index) => {
     const state = row3.id === stage.id ? "is-current" : row3.status === "complete" ? "is-done" : "";
@@ -43310,10 +43374,11 @@ function renderSession(context) {
     void view.selectStage(before.id);
   }, "quiet");
   if (done) {
-    if (next) button(footActions, `Next: stage ${position + 2} \xB7 ${next.title}`, () => view.selectStage(next.id), "cta");
+    if (next) button(footActions, `Next: stage ${studyMap.stages.indexOf(next) + 1} \xB7 ${next.title}`, () => view.selectStage(next.id), "cta");
     else button(footActions, "Return to all stages", () => showMode(context, "plan"), "cta");
   } else {
-    complete = button(footActions, "Complete stage", () => completeStage(view, unit, stage, expected));
+    const action = stageActionFor(stage);
+    complete = button(footActions, action.label, () => runStageAction(view, unit, stage, expected));
   }
   refresh();
 }
@@ -43994,7 +44059,7 @@ function session(root, context) {
   if (stage.status === "complete") {
     const bar = foot.createDiv({ cls: "los-unit-actionbar" });
     bar.createSpan({ cls: "los-micro los-unit-actionbar-rule", text: "This stage is recorded complete. Completion is study progress, not learner evidence." });
-    const next = map.stages.slice(position).find((item) => item.status !== "complete" && item.status !== "skipped");
+    const next = nextOpenStage(map.stages, stage.id);
     button(bar, next ? "Next stage" : "Review session", () => next ? openStage2(context, next.id) : show(context, "wrapup"), "cta");
     overflowMenu(bar, stageMenuItems(view, unit, stage, context.guards), "More unit actions");
   } else view.renderActionBar(foot, unit, stage, context.guards);
@@ -50867,7 +50932,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:6900a463d80737eb6dda7195cb19db321a2fe22960075b607dfc4ea7fb406131" : "unavailable";
+  return true ? "sha256:7c203e76d4e3ad298214e10b4f6d7419dc7aea8c3268cd53960eefda58f0298e" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 19 : 0;

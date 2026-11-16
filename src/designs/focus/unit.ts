@@ -4,7 +4,7 @@ import { triageGroup } from '../../features/unit/material-drawer';
 import { renderMaterialMenu, renderMaterialOverview } from '../../features/unit/materials';
 import { emptyMaterialFilters, materialMatches, renderMaterialFilters, type MaterialFacet, type MaterialFilters } from '../../features/unit/material-filters';
 import { learningActionLabel, materialTypeKey, materialTypeLabel } from '../../features/unit/material-types';
-import { readStudyMap, readUnitRecord, type MaterialOptionView, type StageRecordView, type StudyMapView, type UnitRecordView } from '../../features/unit/model';
+import { nextOpenStage, readStudyMap, readUnitRecord, type MaterialOptionView, type StageRecordView, type StudyMapView, type UnitRecordView } from '../../features/unit/model';
 import { renderPlanControls, selectedStage, sittingStudyMap } from '../../features/unit/shell';
 import { stageMaterialOptions, stageMenuItems, stageResourceRenderer } from '../../features/unit/stage';
 import { currentWorkResource, triageSummary, type StageResourceView } from '../../features/stage-resources';
@@ -319,7 +319,7 @@ function session(root: HTMLElement, context: Context): void {
   if (stage.status === 'complete') {
     const bar = foot.createDiv({ cls: 'los-unit-actionbar' });
     bar.createSpan({ cls: 'los-micro los-unit-actionbar-rule', text: 'This stage is recorded complete. Completion is study progress, not learner evidence.' });
-    const next = map.stages.slice(position).find(item => item.status !== 'complete' && item.status !== 'skipped');
+    const next = nextOpenStage(map.stages, stage.id);
     button(bar, next ? 'Next stage' : 'Review session', () => next ? openStage(context, next.id) : show(context, 'wrapup'), 'cta');
     overflowMenu(bar, stageMenuItems(view, unit, stage, context.guards), 'More unit actions');
   } else view.renderActionBar(foot, unit, stage, context.guards);

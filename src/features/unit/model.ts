@@ -558,6 +558,27 @@ export function artifactLabel(
   );
 }
 
+/** A stage that can still be worked: neither recorded complete nor skipped. */
+export function isOpenStage(stage: StageRecordView): boolean {
+  return stage.status !== 'complete' && stage.status !== 'skipped';
+}
+
+export function firstOpenStage(
+  stages: readonly StageRecordView[],
+): StageRecordView | null {
+  return stages.find(isOpenStage) ?? null;
+}
+
+/** The first open stage after ``stageId`` in the displayed (authored) order. */
+export function nextOpenStage(
+  stages: readonly StageRecordView[],
+  stageId: string,
+): StageRecordView | null {
+  const index = stages.findIndex((stage) => stage.id === stageId);
+  if (index < 0) return null;
+  return stages.slice(index + 1).find(isOpenStage) ?? null;
+}
+
 export function fallbackRecord(
   id: string,
 ): ProjectionRecord {

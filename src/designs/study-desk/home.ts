@@ -36,9 +36,10 @@ export function renderDeskHome(view: HomeScreenHost): void {
     return action && module && record.archived !== true && record.status !== 'complete' ? [{ record, module, action }] : [];
   });
   const resume = resolveResumeTarget(store);
-  const resumeId = resume.pointer.unit_id;
+  const resumeId = resume.unit ? asString(resume.unit.id) : null;
+  const resumeStageId = resume.stage ? asString(resume.stage.id) : null;
   const work = resumeId ? unitWork(store, resumeId) : null;
-  const stage = work?.map.stages.find((row) => row.id === resume.pointer.stage_id);
+  const stage = work?.map.stages.find((row) => row.id === resumeStageId);
   let shownPlan: ProjectionRecord | null = null;
   let focusModule: ProjectionRecord | null = null;
   if (resumeId && resume.unit && work && stage) {
@@ -73,14 +74,16 @@ export function renderDeskHome(view: HomeScreenHost): void {
     const hero = main.createDiv({ cls: 'sd-hero is-empty sd-home-suggestion' });
     const copy = hero.createDiv({ cls: 'sd-hero-copy' });
     if (suggestion) {
-      const { module, next, unitId, stage: nextStage, plan } = suggestion;
+      const { module, next, unitId, stage: nextStage } = suggestion;
       focusModule = module;
-      shownPlan = plan?.record ?? null;
+      // The workspace association above only ordered the candidates. The
+      // action below opens this stage, so its copy comes from the study
+      // map; the workspace's recorded instruction is listed with the
+      // other plans, verbatim, under its own label.
       const place = unitLabel(next.unit, module);
-      copy.createDiv({ cls: 'sd-hero-kicker', text: `Suggested by your ${moduleName(module)} plan` });
+      copy.createDiv({ cls: 'sd-hero-kicker', text: `Suggested from the ${moduleName(module)} study map` });
       copy.createEl('h2', { cls: 'sd-hero-title', text: place.number ? `${place.place} · ${place.title}` : place.title });
-      copy.createEl('p', { cls: 'sd-note sd-suggest-action', text: plan?.action ?? (nextStage.objective || nextStage.title) });
-      if (plan) copy.createEl('p', { cls: 'sd-note', text: `From ${asLabel(plan.record)}.` });
+      copy.createEl('p', { cls: 'sd-note sd-suggest-action', text: nextStage.objective || nextStage.title });
       const actions = copy.createDiv({ cls: 'sd-home-actions' });
       button(actions, `Start stage ${next.position}`, () => start(view, unitId, nextStage.id), 'cta');
       textLink(actions, 'See the lecture plan', () => nav.openUnit(unitId, nextStage.id, (leaf) => setUnitMode(leaf, unitId, 'plan')));
@@ -100,7 +103,7 @@ export function renderDeskHome(view: HomeScreenHost): void {
 
   const others = plans.filter(({ record }) => record !== shownPlan).slice(0, 3);
   if (others.length) {
-    main.createEl('h2', { cls: 'sd-heading', text: 'Other plans suggest' });
+    main.createEl('h2', { cls: 'sd-heading', text: 'Plans suggest' });
     const list = main.createDiv({ cls: 'sd-sheet sd-home-list' });
     for (const { action, record, module } of others) {
       const row = deskRow(list, 'sd-today-row', action, () => nav.openModule(asString(module.id) ?? ''));
