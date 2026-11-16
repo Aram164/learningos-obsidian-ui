@@ -6,3 +6,5 @@ fixture-vault/bases/
 fixture-vault/operations/diagnostics/
 .build/
 plugin/build-info.json
+plugin/main.js
+plugin/styles.css
