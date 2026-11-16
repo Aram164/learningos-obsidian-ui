@@ -255,22 +255,37 @@ async function main() {
       snapshot, {}, operation,
     );
     reported.G7 = JSON.parse(envelopeJson).request_id;
-    // First-publish failure, like S7-direct: with no projection files the
-    // rollback cannot restore anything identical, so Core reports the
-    // incomplete rollback as INTERNAL_FAILURE. (With a full projection
-    // present, the identical rollback completes silently and the same
-    // causality is mislabelled INVALID_REQUEST — a Core classifier gap the
-    // resolver faithfully reports but must not fix from here.)
+    // Projection-preparation failure, like S7-direct: publication is
+    // staged after the receipt now, so a read-only generated/ would fail
+    // only exposure — after the commit. The pre-receipt fault is injected
+    // at the builder through a sitecustomize the Core child loads, and
+    // Core reports the incomplete rollback as INTERNAL_FAILURE.
     const generated = path.join(repo, 'generated');
     for (const entry of fs.readdirSync(generated)) {
       if (entry !== 'reports') fs.rmSync(path.join(generated, entry), { force: true });
     }
-    fs.chmodSync(generated, 0o555);
+    const site = path.join(workspace, 'broken-projection-site');
+    fs.mkdirSync(site, { recursive: true });
+    fs.writeFileSync(path.join(site, 'sitecustomize.py'), [
+      'import os',
+      'if os.environ.get("LOS_BROKEN_PROJECTION"):',
+      '    try:',
+      '        from learning_os.derive.projection import outputs as _outputs',
+      '        def _broken(*_args, **_kwargs):',
+      '            raise OSError("injected projection preparation failure")',
+      '        _outputs.build_manifest = _broken',
+      '    except Exception:',
+      '        pass',
+      '',
+    ].join('\n'));
+    process.env.PYTHONPATH = site;
+    process.env.LOS_BROKEN_PROJECTION = '1';
     let outcome;
     try {
       outcome = await gateway.dispatchPreparedEnvelope(envelopeJson, { trace: operation });
     } finally {
-      fs.chmodSync(generated, 0o755);
+      delete process.env.PYTHONPATH;
+      delete process.env.LOS_BROKEN_PROJECTION;
     }
     assert.equal(outcome.outcome, 'ambiguous');
     await assert.rejects(gateway.settle(outcome, operation),
