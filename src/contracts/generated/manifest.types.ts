@@ -383,6 +383,8 @@ export type Manifest_ModuleRecord = {
   readonly id: string;
   readonly institution: string | null;
   readonly is_actionable: boolean;
+  readonly is_retired: boolean;
+  readonly is_settled: boolean;
   readonly kind: "academic" | "skill" | "project" | "foundation";
   readonly operational_state: "none" | "complete" | "active" | "paused";
   readonly path: string;
@@ -544,6 +546,7 @@ export type Manifest_ProjectedStage = {
   readonly estimate_minutes?: number;
   readonly exam_critical?: boolean;
   readonly id: string;
+  readonly is_open: boolean;
   readonly module_id?: string;
   readonly notes_text: string;
   readonly notes_updated: string | null;
@@ -615,6 +618,7 @@ export type Manifest_Resource = {
   readonly angle?: string;
   readonly angle_detail?: string;
   readonly id?: string;
+  readonly is_entry: boolean;
   readonly kind: string;
   readonly label: string;
   readonly locator?: string;
@@ -817,6 +821,7 @@ export type Manifest_WorkspaceRecord = {
   readonly concepts: readonly string[];
   readonly deadline: string | null;
   readonly id: string;
+  readonly is_open: boolean;
   readonly module_ids: readonly string[];
   readonly next_action: string;
   readonly notes: readonly string[];

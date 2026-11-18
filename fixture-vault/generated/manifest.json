@@ -1,10 +1,10 @@
 {
   "_generated": {
-    "closure_sha256": "sha256:7d7e52f8a532452c06caeca70c0789021569c127f9025f294ffbab6edb2b1402",
+    "closure_sha256": "sha256:7250f565e3cfb16e583a1d22e2dbaa267a87274c8654977d6160afa638cf4253",
     "contract_version": 20,
     "generated_at": "2099-04-01",
     "generator": "synthetic-fixture-v8",
-    "schema_sha256": "sha256:1ef7031be9ea88e02740cfde92fae5bf64e8eb60b5cbfd1f32d840099e4cabc1",
+    "schema_sha256": "sha256:e2169561904ad15b60c6956eb0f7b97d4f810589cd1684639808c4ef24ae3236",
     "snapshot_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "source_dirty": false,
     "source_fingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
@@ -585,7 +585,9 @@
         "unit-fixture-sad-l02",
         "unit-fixture-sad-l04",
         "unit-fixture-analysis"
-      ]
+      ],
+      "is_settled": false,
+      "is_retired": false
     },
     {
       "administrative_status": "enrolled",
@@ -615,7 +617,9 @@
       "unit_order": [
         "unit-fixture-aml-l03",
         "unit-fixture-aml-l04"
-      ]
+      ],
+      "is_settled": false,
+      "is_retired": false
     },
     {
       "administrative_status": null,
@@ -643,7 +647,9 @@
       "type": "module",
       "unit_order": [
         "unit-fixture-python-oop"
-      ]
+      ],
+      "is_settled": false,
+      "is_retired": false
     },
     {
       "id": "module-fixture-thesis",
@@ -671,7 +677,9 @@
       "unit_order": [
         "unit-fixture-thesis-landscape"
       ],
-      "source_map": "source-map.yaml"
+      "source_map": "source-map.yaml",
+      "is_settled": false,
+      "is_retired": false
     }
   ],
   "programs": [
@@ -852,11 +860,11 @@
           "useful_sections": [
             {
               "note": "the whole regression argument",
-              "section": "Chapter 3 \u00a7\u00a73.1\u20133.3"
+              "section": "Chapter 3 §§3.1–3.3"
             },
             {
               "note": "exact selections, nothing around them",
-              "section": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2"
+              "section": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2"
             }
           ],
           "weaknesses": [
@@ -999,7 +1007,8 @@
       "type": "workspace",
       "unit_ids": [
         "unit-fixture-sad-l04"
-      ]
+      ],
+      "is_open": true
     },
     {
       "id": "coordination",
@@ -1044,7 +1053,7 @@
         {
           "group": "tier-1-now",
           "source": "source-fixture-book",
-          "why": "The spine \u2014 read this before anything else on the shelf."
+          "why": "The spine — read this before anything else on the shelf."
         },
         {
           "group": "tier-2-optional",
@@ -1297,7 +1306,8 @@
       "type": "workspace",
       "unit_ids": [
         "unit-fixture-thesis-landscape"
-      ]
+      ],
+      "is_open": true
     },
     {
       "id": "project-fixture-thesis",
@@ -1457,7 +1467,8 @@
       "study_map_id": "study-map-fixture-sad-l02",
       "title": "Lecture 02 start",
       "unit_id": "unit-fixture-sad-l02",
-      "working_note": "curriculum/fixture/l02/stages/stage-l02-start/notes.md"
+      "working_note": "curriculum/fixture/l02/stages/stage-l02-start/notes.md",
+      "is_open": true
     },
     {
       "attachments": [],
@@ -1475,7 +1486,8 @@
           "kind": "read",
           "label": "Fixture book, Chapter 1",
           "locator": "Chapter 1",
-          "source_id": "source-fixture-book"
+          "source_id": "source-fixture-book",
+          "is_entry": true
         }
       ],
       "scope_triage": "required-now",
@@ -1484,7 +1496,8 @@
       "study_map_id": "study-map-fixture-sad-l04",
       "title": "Event spaces",
       "unit_id": "unit-fixture-sad-l04",
-      "working_note": "curriculum/fixture/l04/stages/stage-fixture-foundations/notes.md"
+      "working_note": "curriculum/fixture/l04/stages/stage-fixture-foundations/notes.md",
+      "is_open": false
     },
     {
       "attachments": [],
@@ -1506,13 +1519,15 @@
         {
           "kind": "watch",
           "label": "Fixture Bayes explainer",
-          "url": "https://example.invalid/bayes"
+          "url": "https://example.invalid/bayes",
+          "is_entry": true
         },
         {
           "kind": "practise",
           "label": "Fixture exercise B3",
           "source_id": "source-fixture-islp",
-          "vault_path": "knowledge/notes/mathematics/note-fixture-probability.md"
+          "vault_path": "knowledge/notes/mathematics/note-fixture-probability.md",
+          "is_entry": false
         }
       ],
       "scope_triage": "required-now",
@@ -1521,7 +1536,8 @@
       "study_map_id": "study-map-fixture-sad-l04",
       "title": "Conditional probability and Bayes",
       "unit_id": "unit-fixture-sad-l04",
-      "working_note": "curriculum/fixture/l04/stages/stage-fixture-conditioning/notes.md"
+      "working_note": "curriculum/fixture/l04/stages/stage-fixture-conditioning/notes.md",
+      "is_open": true
     },
     {
       "attachments": [],
@@ -1540,7 +1556,8 @@
       "study_map_id": "study-map-fixture-sad-l04",
       "title": "Practice and self-test",
       "unit_id": "unit-fixture-sad-l04",
-      "working_note": "curriculum/fixture/l04/stages/stage-fixture-self-test/notes.md"
+      "working_note": "curriculum/fixture/l04/stages/stage-fixture-self-test/notes.md",
+      "is_open": true
     },
     {
       "attachments": [],
@@ -1555,9 +1572,10 @@
       "resources": [
         {
           "kind": "read",
-          "label": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3",
-          "locator": "Chapter 3 \u00a7\u00a73.1\u20133.3",
-          "source_id": "source-fixture-islp"
+          "label": "ISLP Chapter 3 §§3.1–3.3",
+          "locator": "Chapter 3 §§3.1–3.3",
+          "source_id": "source-fixture-islp",
+          "is_entry": true
         }
       ],
       "scope_triage": "required-now",
@@ -1566,7 +1584,8 @@
       "study_map_id": "study-map-fixture-aml-l03",
       "title": "Regression geometry",
       "unit_id": "unit-fixture-aml-l03",
-      "working_note": "curriculum/fixture/aml-l03/stages/stage-aml-l03/notes.md"
+      "working_note": "curriculum/fixture/aml-l03/stages/stage-aml-l03/notes.md",
+      "is_open": true
     },
     {
       "attachments": [],
@@ -1582,8 +1601,9 @@
         {
           "kind": "read",
           "label": "ISLP selected sections",
-          "locator": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2",
-          "source_id": "source-fixture-islp"
+          "locator": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2",
+          "source_id": "source-fixture-islp",
+          "is_entry": true
         }
       ],
       "scope_triage": "required-now",
@@ -1592,7 +1612,8 @@
       "study_map_id": "study-map-fixture-aml-l04",
       "title": "Classification scope",
       "unit_id": "unit-fixture-aml-l04",
-      "working_note": "curriculum/fixture/aml-l04/stages/stage-aml-l04/notes.md"
+      "working_note": "curriculum/fixture/aml-l04/stages/stage-aml-l04/notes.md",
+      "is_open": true
     },
     {
       "attachments": [],
@@ -1614,7 +1635,8 @@
       "study_map_id": "study-map-fixture-aml-l04",
       "title": "Bayes decision rule",
       "unit_id": "unit-fixture-aml-l04",
-      "working_note": "curriculum/fixture/aml-l04/stages/stage-fixture-aml-bayes/notes.md"
+      "working_note": "curriculum/fixture/aml-l04/stages/stage-fixture-aml-bayes/notes.md",
+      "is_open": true
     },
     {
       "attachments": [],
@@ -1633,7 +1655,8 @@
       "study_map_id": "study-map-fixture-python-oop",
       "title": "Object collaboration",
       "unit_id": "unit-fixture-python-oop",
-      "working_note": "curriculum/fixture/python/stages/stage-python-oop/notes.md"
+      "working_note": "curriculum/fixture/python/stages/stage-python-oop/notes.md",
+      "is_open": true
     },
     {
       "attachments": [],
@@ -1652,7 +1675,8 @@
       "study_map_id": "study-map-fixture-thesis",
       "title": "Evidence landscape",
       "unit_id": "unit-fixture-thesis-landscape",
-      "working_note": "curriculum/fixture/thesis/stages/stage-thesis-landscape/notes.md"
+      "working_note": "curriculum/fixture/thesis/stages/stage-thesis-landscape/notes.md",
+      "is_open": true
     }
   ],
   "study_maps": [
@@ -1685,7 +1709,8 @@
           "source_feedback": [],
           "status": "active",
           "title": "Lecture 02 start",
-          "working_note": "curriculum/fixture/l02/stages/stage-l02-start/notes.md"
+          "working_note": "curriculum/fixture/l02/stages/stage-l02-start/notes.md",
+          "is_open": true
         }
       ],
       "status": "ready",
@@ -1723,14 +1748,16 @@
               "kind": "read",
               "label": "Fixture book, Chapter 1",
               "locator": "Chapter 1",
-              "source_id": "source-fixture-book"
+              "source_id": "source-fixture-book",
+              "is_entry": true
             }
           ],
           "scope_triage": "required-now",
           "source_feedback": [],
           "status": "complete",
           "title": "Event spaces",
-          "working_note": "curriculum/fixture/l04/stages/stage-fixture-foundations/notes.md"
+          "working_note": "curriculum/fixture/l04/stages/stage-fixture-foundations/notes.md",
+          "is_open": false
         },
         {
           "attachments": [],
@@ -1753,7 +1780,8 @@
               "kind": "watch",
               "label": "Fixture Bayes explainer",
               "scope_triage": "required-now",
-              "url": "https://example.invalid/bayes"
+              "url": "https://example.invalid/bayes",
+              "is_entry": true
             },
             {
               "id": "resource-fixture-exercise-b3",
@@ -1761,19 +1789,22 @@
               "label": "Fixture exercise B3",
               "scope_triage": "deferred",
               "source_id": "source-fixture-islp",
-              "vault_path": "knowledge/notes/mathematics/note-fixture-probability.md"
+              "vault_path": "knowledge/notes/mathematics/note-fixture-probability.md",
+              "is_entry": false
             },
             {
               "kind": "read",
               "label": "Fixture unranked reading",
-              "source_id": "source-fixture-islp"
+              "source_id": "source-fixture-islp",
+              "is_entry": false
             }
           ],
           "scope_triage": "required-now",
           "source_feedback": [],
           "status": "active",
           "title": "Conditional probability and Bayes",
-          "working_note": "curriculum/fixture/l04/stages/stage-fixture-conditioning/notes.md"
+          "working_note": "curriculum/fixture/l04/stages/stage-fixture-conditioning/notes.md",
+          "is_open": true
         },
         {
           "attachments": [],
@@ -1789,7 +1820,8 @@
           "source_feedback": [],
           "status": "pending",
           "title": "Practice and self-test",
-          "working_note": "curriculum/fixture/l04/stages/stage-fixture-self-test/notes.md"
+          "working_note": "curriculum/fixture/l04/stages/stage-fixture-self-test/notes.md",
+          "is_open": true
         }
       ],
       "status": "active",
@@ -1824,16 +1856,18 @@
           "resources": [
             {
               "kind": "read",
-              "label": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3",
-              "locator": "Chapter 3 \u00a7\u00a73.1\u20133.3",
-              "source_id": "source-fixture-islp"
+              "label": "ISLP Chapter 3 §§3.1–3.3",
+              "locator": "Chapter 3 §§3.1–3.3",
+              "source_id": "source-fixture-islp",
+              "is_entry": true
             }
           ],
           "scope_triage": "required-now",
           "source_feedback": [],
           "status": "active",
           "title": "Regression geometry",
-          "working_note": "curriculum/fixture/aml-l03/stages/stage-aml-l03/notes.md"
+          "working_note": "curriculum/fixture/aml-l03/stages/stage-aml-l03/notes.md",
+          "is_open": true
         }
       ],
       "status": "ready",
@@ -1869,15 +1903,17 @@
             {
               "kind": "read",
               "label": "ISLP selected sections",
-              "locator": "\u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2",
-              "source_id": "source-fixture-islp"
+              "locator": "§3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2",
+              "source_id": "source-fixture-islp",
+              "is_entry": true
             }
           ],
           "scope_triage": "required-now",
           "source_feedback": [],
           "status": "active",
           "title": "Classification scope",
-          "working_note": "curriculum/fixture/aml-l04/stages/stage-aml-l04/notes.md"
+          "working_note": "curriculum/fixture/aml-l04/stages/stage-aml-l04/notes.md",
+          "is_open": true
         },
         {
           "attachments": [],
@@ -1896,7 +1932,8 @@
           "source_feedback": [],
           "status": "pending",
           "title": "Bayes decision rule",
-          "working_note": "curriculum/fixture/aml-l04/stages/stage-fixture-aml-bayes/notes.md"
+          "working_note": "curriculum/fixture/aml-l04/stages/stage-fixture-aml-bayes/notes.md",
+          "is_open": true
         }
       ],
       "status": "ready",
@@ -1933,7 +1970,8 @@
           "source_feedback": [],
           "status": "active",
           "title": "Object collaboration",
-          "working_note": "curriculum/fixture/python/stages/stage-python-oop/notes.md"
+          "working_note": "curriculum/fixture/python/stages/stage-python-oop/notes.md",
+          "is_open": true
         }
       ],
       "status": "ready",
@@ -1991,7 +2029,8 @@
           "source_feedback": [],
           "status": "active",
           "title": "Evidence landscape",
-          "working_note": "curriculum/fixture/thesis/stages/stage-thesis-landscape/notes.md"
+          "working_note": "curriculum/fixture/thesis/stages/stage-thesis-landscape/notes.md",
+          "is_open": true
         }
       ],
       "status": "ready-to-shelve",
@@ -2008,7 +2047,7 @@
       "title": "Mathematics"
     },
     {
-      "description": "Convex, numerical and combinatorial optimization; statistical learning theory and kernel methods \u2014 the bridge between mathematics and learning.",
+      "description": "Convex, numerical and combinatorial optimization; statistical learning theory and kernel methods — the bridge between mathematics and learning.",
       "id": "thematic-group-optimization",
       "order": 20,
       "title": "Optimization & Learning Theory"
@@ -2044,7 +2083,7 @@
       "title": "Software & Languages"
     },
     {
-      "description": "Research method, degree regulations, and dataset catalogues \u2014 small, but everything needs a home or it becomes invisible.",
+      "description": "Research method, degree regulations, and dataset catalogues — small, but everything needs a home or it becomes invisible.",
       "id": "thematic-group-method-admin",
       "order": 80,
       "title": "Method & Administration"
@@ -2194,7 +2233,7 @@
       "scope_sources": [],
       "source_selections": [],
       "status": "ready",
-      "title": "SaD Lecture 02 \u2014 Descriptive statistics",
+      "title": "SaD Lecture 02 — Descriptive statistics",
       "type": "unit",
       "workspace_ids": []
     },
@@ -2229,7 +2268,7 @@
       "scope_sources": [],
       "source_selections": [],
       "status": "active",
-      "title": "SaD Lecture 04 \u2014 Probability & Bayes",
+      "title": "SaD Lecture 04 — Probability & Bayes",
       "type": "unit",
       "working_note": "curriculum/modules/module-fixture-m2/units/unit-fixture-sad-l04/notes.md",
       "workspace_ids": [
@@ -2270,11 +2309,11 @@
       "order": 3,
       "path": "curriculum/modules/module-fixture-aml/units/unit-fixture-aml-l03.yaml",
       "revision": 1,
-      "scope": "ISLP Chapter 3 \u00a7\u00a73.1\u20133.3.",
+      "scope": "ISLP Chapter 3 §§3.1–3.3.",
       "scope_sources": [],
       "source_selections": [],
       "status": "ready",
-      "title": "AML Lecture 03 \u2014 Linear regression",
+      "title": "AML Lecture 03 — Linear regression",
       "type": "unit",
       "workspace_ids": []
     },
@@ -2291,11 +2330,11 @@
       "order": 4,
       "path": "curriculum/modules/module-fixture-aml/units/unit-fixture-aml-l04.yaml",
       "revision": 1,
-      "scope": "ISLP \u00a73.2; \u00a77.1 only; \u00a72.2.2; \u00a7\u00a76.2.1\u20136.2.2.",
+      "scope": "ISLP §3.2; §7.1 only; §2.2.2; §§6.2.1–6.2.2.",
       "scope_sources": [],
       "source_selections": [],
       "status": "ready",
-      "title": "AML Lecture 04 \u2014 Classification",
+      "title": "AML Lecture 04 — Classification",
       "type": "unit",
       "workspace_ids": []
     },

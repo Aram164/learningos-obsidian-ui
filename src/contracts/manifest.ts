@@ -20,7 +20,7 @@ export { MANIFEST_CLOSURE_SHA256 };
 export const MANIFEST_CONTRACT_VERSION = 20 as const;
 import validateManifest from './generated/manifest.validator.cjs';
 
-export const MANIFEST_SCHEMA_SHA256 = 'sha256:1ef7031be9ea88e02740cfde92fae5bf64e8eb60b5cbfd1f32d840099e4cabc1' as const;
+export const MANIFEST_SCHEMA_SHA256 = 'sha256:e2169561904ad15b60c6956eb0f7b97d4f810589cd1684639808c4ef24ae3236' as const;
 
 interface AjvErrorLike {
   readonly instancePath?: string;
@@ -129,6 +129,11 @@ export interface ProjectionRecord extends JsonRecord {
   deadline?: string;
   standing?: boolean;
   available?: boolean;
+  is_open?: boolean;
+  is_entry?: boolean;
+  is_settled?: boolean;
+  is_retired?: boolean;
+  is_study_candidate?: boolean;
   aliases?: readonly string[];
   authors?: readonly string[];
   concepts?: readonly string[];
