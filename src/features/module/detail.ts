@@ -26,6 +26,7 @@ import {
   semesterLabel,
 } from './logistics';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
+import { stageProgress } from '../unit/model';
 
 export function renderModuleDetail(
   view: ModuleDetailHost,
@@ -233,12 +234,10 @@ export function renderOverview(
         .filter(nonNull),
     );
 
-    const next =
-      units.find(
-        (unit) =>
-          unit.status === 'active',
-      )
-      ?? units.find((unit) => unit.status !== 'paused');
+    const next = units.find(
+      (unit) =>
+        view.plugin.store.mapForUnit(unit.id)?.is_study_candidate === true,
+    );
 
     if (next) {
       button(
@@ -403,9 +402,7 @@ export function renderUnits(
         ? projectedRecords(map.stages)
         : [];
 
-      const complete = stages.filter(
-        (stage) => stage.status === 'complete',
-      ).length;
+      const { done: complete } = stageProgress(stages);
 
       const currentStageId = map
         ? projectedString(map.current_stage)

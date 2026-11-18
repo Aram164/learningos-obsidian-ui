@@ -19,6 +19,7 @@ import {
   readUnitRecord,
   readStudyMap,
   readMaterialOptions,
+  stageProgress,
 } from './model';
 import { renderMaterialOverview } from './materials';
 import { renderLearningRouteRail } from '../learning-route';
@@ -491,15 +492,11 @@ export function renderRail(
     studyMap: StudyMapView,
     current: StageRecordView,
   ): void {
-    const completedCount =
-      studyMap.stages.filter(
-        (stage) =>
-          stage.status === 'complete',
-      ).length;
+    const { done: completedCount } = stageProgress(studyMap.stages);
 
     const temporary = view.temporarySequence.active;
     const fullMap = readStudyMap(view.plugin.store.mapForUnit(unit.id)!);
-    const fullCompleted = fullMap.stages.filter(stage => stage.status === 'complete').length;
+    const { done: fullCompleted } = stageProgress(fullMap.stages);
     const currentIndex = studyMap.stages.findIndex(
       (stage) => stage.id === current.id,
     );

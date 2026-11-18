@@ -451,7 +451,7 @@ module.exports = async function run() {
         stage.resources.push(...['first', 'second'].map((name, index) => ({
           id: `resource-distinct-${name}`, route_id: 'route-drawer-deck', source_id: 'source-fixture-book',
           kind: 'watch', label: `${name} exact video`, locator: `Lecture ${index + 1}`,
-          url: `https://example.org/video-${name}`, angle: `${name} stage instruction`, scope_triage: 'reference-only',
+          url: `https://example.org/video-${name}`, angle: `${name} stage instruction`, scope_triage: 'reference-only', is_entry: false,
         })));
       },
     });
@@ -659,18 +659,18 @@ module.exports = async function run() {
           {
             id: 'resource-optional-helpful', route_id: 'route-optional-derivation',
             source_id: 'source-fixture-book', kind: 'read',
-            label: 'Waiting-time derivation', locator: 'ch 4', scope_triage: 'helpful-now',
+            label: 'Waiting-time derivation', locator: 'ch 4', scope_triage: 'helpful-now', is_entry: false,
           },
           {
             id: 'resource-optional-reference', route_id: 'route-optional-orientation',
             source_id: 'source-fixture-book', kind: 'watch',
-            label: 'Waiting-time picture', locator: 'clip', scope_triage: 'reference-only',
+            label: 'Waiting-time picture', locator: 'clip', scope_triage: 'reference-only', is_entry: false,
           },
           {
             id: 'resource-optional-solutions', route_id: 'route-optional-solutions',
             source_id: 'source-fixture-book', kind: 'practise',
             label: 'Waiting-time worked answers', locator: 'pp. 20-24',
-            scope_triage: 'helpful-now',
+            scope_triage: 'helpful-now', is_entry: false,
           },
         ];
       },

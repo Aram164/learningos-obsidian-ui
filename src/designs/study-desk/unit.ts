@@ -1,6 +1,6 @@
 import { button, disclosure, filterTabs, icon, overflowMenu, plural } from '../../components';
 import { placementAvailability, routeForResource } from '../../features/unit/material-card';
-import { artifactLabel, nextOpenStage, readArtifacts, readStudyMap, readUnitRecord, type MaterialOptionView, type StageRecordView, type StudyMapView, type UnitRecordView } from '../../features/unit/model';
+import { artifactLabel, nextOpenStage, readArtifacts, readStudyMap, readUnitRecord, stageProgress, type MaterialOptionView, type StageRecordView, type StudyMapView, type UnitRecordView } from '../../features/unit/model';
 import { renderPlanControls, selectedStage, sittingStudyMap } from '../../features/unit/shell';
 import { openMaterialComparison, runStageAction, stageActionFor, stageMaterialOptions, stageMenuItems } from '../../features/unit/stage';
 import { currentWorkResource, type StageResourceView } from '../../features/stage-resources';
@@ -103,7 +103,7 @@ function renderPlan(context: UnitContext, mode: 'plan' | 'materials'): void {
   const actions = deskHead(root, crumbsFor(context, mode), view);
   button(actions, 'End session', () => view.plugin.reviewSessionEnd(), 'quiet');
   const module = view.plugin.store.get(unit.moduleId);
-  const done = studyMap.stages.filter((stage) => stage.status === 'complete').length;
+  const { done } = stageProgress(studyMap.stages);
   // Title on the left, the lecture's views on the right (Figma C1, C2).
   const head = root.createDiv({ cls: 'sd-title-row sd-plan-head' });
   const copy = head.createDiv({ cls: 'sd-title-copy' });
@@ -188,7 +188,7 @@ function renderPlanSide(layout: HTMLElement, context: UnitContext): void {
   const { view, unit, durable, studyMap } = context;
   const side = layout.createDiv({ cls: 'sd-side' });
   const progress = sideGroup(side, 'Progress');
-  const done = studyMap.stages.filter((stage) => stage.status === 'complete').length;
+  const { done } = stageProgress(studyMap.stages);
   stageBars(progress, studyMap.stages.length, done, studyMap.stages.findIndex((stage) => stage.id === studyMap.currentStageId));
   progress.createEl('p', { cls: 'sd-note', text: `${done} of ${plural(studyMap.stages.length, 'stage')} done.` });
 

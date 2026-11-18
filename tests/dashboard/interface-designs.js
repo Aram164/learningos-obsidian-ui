@@ -369,9 +369,15 @@ module.exports = async function run() {
       patchManifest(manifest) {
         manifest.resume_pointer = {};
         for (const map of manifest.study_maps) {
-          for (const stage of map.stages) stage.status = 'complete';
+          for (const stage of map.stages) {
+            stage.status = 'complete';
+            stage.is_open = false;
+          }
         }
-        for (const stage of manifest.stages) stage.status = 'complete';
+        for (const stage of manifest.stages) {
+          stage.status = 'complete';
+          stage.is_open = false;
+        }
       },
     });
     const root = () => app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
@@ -436,7 +442,9 @@ module.exports = async function run() {
       const map = manifest.study_maps.find((row) => row.id === 'study-map-fixture-python-oop');
       map.is_study_candidate = true;
       map.status = 'ready-to-shelve';
-      map.stages.find((stage) => stage.id === map.current_stage).status = 'complete';
+      const current = map.stages.find((stage) => stage.id === map.current_stage);
+      current.status = 'complete';
+      current.is_open = false;
       manifest.modules.find((row) => row.id === 'module-fixture-python').status = 'completed';
     } });
     const root = () => app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
@@ -494,7 +502,7 @@ module.exports = async function run() {
   }
   {
     const { app, plugin } = await boot({ settings: { uiDesign: 'study-desk' }, patchManifest(manifest) {
-      manifest.resume_pointer = { ...manifest.resume_pointer, module_id: 'module-fixture-aml' };
+      manifest.resume_pointer = { ...manifest.resume_pointer, study_map_id: 'study-map-fixture-sad-l02' };
     } });
     await plugin.nav.openAtlas({ lens: 'prerequisites' });
     const atlas = () => app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl;
@@ -533,12 +541,12 @@ module.exports = async function run() {
   heading('interface designs: an incoherent resume pointer draws no resume action');
   for (const design of ['classic', 'focus', 'study-desk']) {
     const { app, plugin } = await boot({ patchManifest(manifest) {
-      manifest.resume_pointer = { ...manifest.resume_pointer, module_id: 'module-fixture-aml' };
+      manifest.resume_pointer = { ...manifest.resume_pointer, study_map_id: 'study-map-fixture-sad-l02' };
     } });
     await plugin.setInterfaceDesign(design);
     await plugin.nav.openHome();
     const home = app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
-    check(`${design}: a pointer owned by another module offers no resume action`,
+    check(`${design}: an unresolvable pointer offers no resume action`,
       !home.allText().includes('Continue where you stopped')
       && !home.allText().includes('Continue learning')
       && home.findText('los-btn', 'Continue session') === null
@@ -646,10 +654,14 @@ module.exports = async function run() {
   {
     const skipMiddle = (manifest) => {
       const map = manifest.study_maps.find((row) => row.id === 'study-map-fixture-sad-l04');
-      map.stages.find((row) => row.id === 'stage-fixture-conditioning').status = 'skipped';
+      const cond = map.stages.find((row) => row.id === 'stage-fixture-conditioning');
+      cond.status = 'skipped';
+      cond.is_open = false;
       map.stages.find((row) => row.id === 'stage-fixture-self-test').status = 'active';
       map.current_stage = 'stage-fixture-self-test';
-      manifest.stages.find((row) => row.id === 'stage-fixture-conditioning').status = 'skipped';
+      const flatCond = manifest.stages.find((row) => row.id === 'stage-fixture-conditioning');
+      flatCond.status = 'skipped';
+      flatCond.is_open = false;
       manifest.stages.find((row) => row.id === 'stage-fixture-self-test').status = 'active';
       manifest.resume_pointer = { ...manifest.resume_pointer, stage_id: 'stage-fixture-self-test' };
     };
@@ -691,10 +703,15 @@ module.exports = async function run() {
     const { app, plugin } = await boot({ patchManifest(manifest) {
       const map = manifest.study_maps.find((row) => row.id === 'study-map-fixture-sad-l04');
       map.status = 'ready-to-shelve';
-      map.stages.find((row) => row.id === 'stage-fixture-conditioning').status = 'skipped';
-      map.stages.find((row) => row.id === 'stage-fixture-self-test').status = 'skipped';
-      manifest.stages.find((row) => row.id === 'stage-fixture-conditioning').status = 'skipped';
-      manifest.stages.find((row) => row.id === 'stage-fixture-self-test').status = 'skipped';
+      map.is_study_candidate = false;
+      for (const id of ['stage-fixture-conditioning', 'stage-fixture-self-test']) {
+        const mapStage = map.stages.find((row) => row.id === id);
+        mapStage.status = 'skipped';
+        mapStage.is_open = false;
+        const flatStage = manifest.stages.find((row) => row.id === id);
+        flatStage.status = 'skipped';
+        flatStage.is_open = false;
+      }
       manifest.units.find((row) => row.id === 'unit-fixture-sad-l04').status = 'ready-to-shelve';
     } });
     await plugin.setInterfaceDesign('study-desk');

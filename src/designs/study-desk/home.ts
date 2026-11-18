@@ -1,10 +1,9 @@
 import { button } from '../../components';
 import { todayItems } from '../../features/home/focus';
-import { resolveResumeTarget } from '../../features/home/model';
+import { candidateModules, resolveResumeTarget } from '../../features/home/model';
 import { currentWorkResource } from '../../features/stage-resources';
 import type { ProjectionRecord } from '../../contracts/manifest';
 import { asLabel, asString, asStrings, asText } from '../../projection/readers';
-import { compareStrings } from '../../sorting';
 import type { HomeScreenHost } from '../screens';
 import { setUnitMode } from './unit-mode';
 import { deskHead, deskPage, deskRow, moduleName, moduleRow, sideGroup, stageBars, textLink, unitLabel } from './parts';
@@ -12,28 +11,6 @@ import { unitWork } from './study-work';
 
 function start(view: HomeScreenHost, unitId: string, stageId: string) {
   return view.plugin.nav.openUnit(unitId, stageId, (leaf) => setUnitMode(leaf, unitId, 'session'));
-}
-
-/**
- * The candidate pool, exactly as Core publishes it: one fact per study map.
- * `is_study_candidate` means eligibility only — never priority or a
- * recommendation — and the UI adds no status or stage rules of its own. The
- * home list shows the modules owning at least one candidate, in the pinned
- * module-ID order. Units that still owe a study map are not candidates and
- * appear only under their own browsing category.
- */
-function openPool(view: HomeScreenHost): ProjectionRecord[] {
-  const { store } = view.plugin;
-  const moduleIds = new Set<string>();
-  for (const map of store.rows('study_maps')) {
-    if (map.is_study_candidate !== true) continue;
-    const moduleId = asString(map.module_id);
-    if (moduleId) moduleIds.add(moduleId);
-  }
-  return [...moduleIds]
-    .map((id) => store.get(id))
-    .filter((row): row is ProjectionRecord => row !== null)
-    .sort((a, b) => compareStrings(asString(a.id) ?? '', asString(b.id) ?? ''));
 }
 
 export function renderDeskHome(view: HomeScreenHost): void {
@@ -52,7 +29,7 @@ export function renderDeskHome(view: HomeScreenHost): void {
   const plans = store.of('workspace').flatMap((record) => {
     const action = asText(record.next_action);
     const module = asStrings(record.module_ids).map((id) => byId.get(id)).find((row) => row !== undefined);
-    return action && module && record.archived !== true && record.status !== 'complete' ? [{ record, module, action }] : [];
+    return action && module && record.is_open === true ? [{ record, module, action }] : [];
   });
   const resume = resolveResumeTarget(store);
   const resumeId = resume.unit ? asString(resume.unit.id) : null;
@@ -80,7 +57,7 @@ export function renderDeskHome(view: HomeScreenHost): void {
   // The module list is the same neutral list on both paths: the candidate pool
   // under the pinned ordering. With a session to continue it reads as the
   // places around the resume target; without one it is the browse entry.
-  const pool = openPool(view);
+  const pool = candidateModules(store);
   const courses = pool.filter((module) => module !== focusModule);
   main.createEl('h2', { cls: 'sd-heading', text: resumed ? 'Continue elsewhere' : 'Modules' });
   const list = main.createDiv({ cls: 'sd-sheet sd-home-list' });

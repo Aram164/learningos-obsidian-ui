@@ -1,8 +1,8 @@
 import { button, empty, filterTabs } from '../../components';
 import { elsewhereRows } from '../../features/home/elsewhere';
 import { todayItems } from '../../features/home/focus';
-import { resolveResumeTarget } from '../../features/home/model';
-import { readStudyMap } from '../../features/unit/model';
+import { candidateModules, resolveResumeTarget } from '../../features/home/model';
+import { readStudyMap, stageProgress } from '../../features/unit/model';
 import { LEARN_AREAS } from '../../constants';
 import type { ManifestStore } from '../../manifest-store';
 import type { HomeScreenHost, LearnScreenHost } from '../screens';
@@ -24,7 +24,8 @@ function resume(parent: HTMLElement, plugin: { store: ManifestStore; nav: Pick<A
   card.createEl('h2', { text: asLabel(unit) });
   card.createEl('p', { text: `Next: ${stage.title}` });
   const foot = card.createDiv({ cls: 'focus-resume-foot' });
-  progress(foot, map.stages.filter(item => item.status === 'complete').length, map.stages.length);
+  const { done, total } = stageProgress(map.stages);
+  progress(foot, done, total);
   button(foot, 'Resume session', () => { requestFocusSession(unitId); return plugin.nav.openUnit(unitId, stage.id); }, 'cta');
   return true;
 }
@@ -43,7 +44,7 @@ export function renderFocusLearn(view: LearnScreenHost): boolean {
   head.createEl('h2', { text: 'Continue elsewhere' });
   button(head, 'All modules', () => openFocusCollection(plugin.nav, 'all'), 'quiet');
   const list = body.createDiv({ cls: 'focus-module-list' });
-  const modules = plugin.store.modulesFor(view.programId).filter(module => module.is_actionable === true);
+  const modules = candidateModules(plugin.store).filter(module => module.area_id === view.programId);
   for (const module of modules) moduleRow(list, plugin.store, module, () => plugin.nav.openModule(asString(module.id) ?? ''));
   if (!modules.length) empty(list, 'No open modules in this area', 'All modules keeps the complete curriculum available.');
   return true;

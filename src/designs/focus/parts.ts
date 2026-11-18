@@ -2,6 +2,7 @@ import { button, icon, manifestFreshness } from '../../components';
 import type { ManifestStore } from '../../manifest-store';
 import type { ProjectionRecord } from '../../contracts/manifest';
 import { semesterLabel } from '../../features/module/logistics';
+import { stageProgress } from '../../features/unit/model';
 import { asLabel, asRecords, asString } from '../../projection/readers';
 
 export function page(root: HTMLElement, name: string, store: ManifestStore): HTMLElement {
@@ -47,9 +48,9 @@ export function moduleRow(parent: HTMLElement, store: ManifestStore, module: Pro
   copy.createEl('strong', { text: asLabel(module) });
   const units = store.unitsFor(asString(module.id) ?? '');
   const stages = units.flatMap(unit => asRecords(store.mapForUnit(asString(unit.id) ?? '')?.stages));
-  const done = stages.filter(stage => stage.status === 'complete').length;
+  const { done, total } = stageProgress(stages);
   copy.createSpan({ cls: 'focus-muted', text: [semesterLabel(asString(module.semester) ?? ''), `${units.length} unit${units.length === 1 ? '' : 's'}`].filter(Boolean).join(' · ') });
-  target.createSpan({ cls: 'focus-row-state', text: done ? `${done} of ${stages.length} stages complete` : asString(module.status)?.replaceAll('-', ' ') ?? 'Open module' });
+  target.createSpan({ cls: 'focus-row-state', text: done ? `${done} of ${total} stages complete` : asString(module.status)?.replaceAll('-', ' ') ?? 'Open module' });
   chevron(target);
   return target;
 }

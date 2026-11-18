@@ -105,10 +105,11 @@ module.exports = async function run() {
         format: 'book', depth: 'orientation', scope: 'current', angle: 'Prepare for the later lecture.',
         source_id: 'source-fixture-book', covers: ['knowledge-fixture-conditioning'] });
       stage.resources[0] = { id: 'resource-fixture-setup', kind: 'read', route_id: 'route-focus-setup',
-        scope_triage: 'required-now', label: 'Freeze the fixture environment', locator: 'fixture.lock',
+        scope_triage: 'required-now', is_entry: true, label: 'Freeze the fixture environment', locator: 'fixture.lock',
         angle: 'Pin the environment before checking the backend.',
         angle_detail: 'Run the version probe.\nKeep its exact output with the parity results.' };
       stage.resources[1].scope_triage = 'required-now';
+      stage.resources[1].is_entry = false;
       stage.resources[1].route_id = 'route-focus-exercise';
     } });
     await plugin.setInterfaceDesign('focus');
@@ -251,11 +252,11 @@ module.exports = async function run() {
           angle: 'Part two angle', source_id: 'source-fixture-book', covers: ['knowledge-fixture-conditioning'] });
       stage.resources = [
         { id: 'resource-identity-one', kind: 'read', route_id: 'route-identity-one', source_id: 'source-fixture-book',
-          label: 'Identity part one', locator: 'pdf pp. 1-5', angle: 'Part one angle', scope_triage: 'required-now' },
+          label: 'Identity part one', locator: 'pdf pp. 1-5', angle: 'Part one angle', scope_triage: 'required-now', is_entry: true },
         { id: 'resource-identity-two', kind: 'read', route_id: 'route-identity-two', source_id: 'source-fixture-book',
-          label: 'Identity part two', locator: 'pdf p. 7', angle: 'Part two angle', scope_triage: 'required-now' },
+          label: 'Identity part two', locator: 'pdf p. 7', angle: 'Part two angle', scope_triage: 'required-now', is_entry: false },
         { id: 'resource-identity-unnamed', kind: 'read', source_id: 'source-fixture-book',
-          label: 'Identity part two', locator: 'pdf p. 8', angle: 'Part two angle', scope_triage: 'helpful-now' },
+          label: 'Identity part two', locator: 'pdf p. 8', angle: 'Part two angle', scope_triage: 'helpful-now', is_entry: false },
       ];
     } });
     await plugin.setInterfaceDesign('focus');

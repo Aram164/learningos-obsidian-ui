@@ -180,7 +180,7 @@ module.exports = async function run() {
       && !text.includes('Recent Garden capture'));
     check('Continue elsewhere is a short resume list, not the complete catalogue',
       element.find('los-home-row').length <= 8
-      && text.includes('Fixture Advanced ML') && !text.includes('Python') && text.includes('Bachelor thesis'));
+      && text.includes('Fixture Advanced ML') && text.includes('Python') && !text.includes('Bachelor thesis'));
     check('Home no longer renders module progress rows or a queue dashboard',
       element.find('los-learning-row').length === 0
       && element.find('los-queue-card').length === 0
@@ -193,21 +193,25 @@ module.exports = async function run() {
     plugin.onunload();
   }
 
-  /* Home used to read `module.status`, which answers an administrative
-   * question, so a dropped module and a module awaiting a grade both counted as
-   * current work. Core now decides; Home obeys. */
+  /* Core decides which study maps are study candidates (`is_study_candidate`);
+   * Home consumes that published candidate set directly. */
   {
     const { plugin, home } = await boot({
       patchManifest: (manifest) => {
-        for (const row of [...(manifest.modules || []), ...(manifest.records || [])]) {
-          if (row && row.id === 'module-fixture-aml') row.is_actionable = false;
+        for (const map of manifest.study_maps || []) {
+          if (map && map.module_id === 'module-fixture-aml') map.is_study_candidate = false;
+        }
+        for (const row of manifest.records || []) {
+          if (row && row.type === 'study-map' && row.module_id === 'module-fixture-aml') {
+            row.is_study_candidate = false;
+          }
         }
       },
     });
     const text = home.view.contentEl.allText();
-    check('a module the core marks non-actionable leaves Continue elsewhere',
-      !text.includes('Fixture Advanced ML') && !text.includes('Python')
-      && text.includes('Bachelor thesis'));
+    check('a module whose study maps are not candidates leaves Continue elsewhere',
+      !text.includes('Fixture Advanced ML') && text.includes('Python')
+      && !text.includes('Bachelor thesis'));
     plugin.onunload();
   }
 

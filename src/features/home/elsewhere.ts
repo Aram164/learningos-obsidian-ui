@@ -16,6 +16,7 @@ import {
 import {
   type HomeItem,
   type ElsewhereRow,
+  candidateModules,
   readResumePointer,
 } from './model';
 
@@ -30,7 +31,7 @@ export function elsewhereRows(
 
     for (
       const record of
-      view.plugin.store.openAcademicModules()
+      candidateModules(view.plugin.store)
     ) {
       const recordId =
         projectedString(record.id);
@@ -39,21 +40,6 @@ export function elsewhereRows(
         !recordId
         || recordId === pointer.module_id
       ) {
-        continue;
-      }
-
-      /*
-       * `module.status` answers an administrative question — what the
-       * university thinks — so reading it here listed dropped Algo 2 and
-       * grade-pending PPDS as current work. It was also comparing against
-       * 'complete' while module records use 'completed', so the filter had
-       * never excluded anything at all.
-       *
-       * Core now derives operational state from the units and projects
-       * `is_actionable`. Consuming it keeps the semantics where they belong
-       * (engineering audit 2026-08-08, finding 4).
-       */
-      if (record.is_actionable !== true) {
         continue;
       }
 
@@ -258,18 +244,11 @@ export function moduleNextAction(
       view.plugin.store
         .of('workspace')
         .filter(
-          (row: ProjectionRecord) => {
-            const status =
-              projectedString(row.status);
-
-            return (
-              row.archived !== true
-              && status !== 'complete'
-              && projectedStrings(
-                row.module_ids,
-              ).includes(moduleId)
-            );
-          },
+          (row: ProjectionRecord) =>
+            row.is_open === true
+            && projectedStrings(
+              row.module_ids,
+            ).includes(moduleId),
         )
         .sort(
           (
@@ -331,8 +310,7 @@ export function moduleNextAction(
         )
         ?? stages.find(
           (row: ProjectionRecord) =>
-            projectedString(row.status)
-            !== 'complete',
+            row.is_open === true,
         );
 
       const stageTitle =

@@ -12,7 +12,7 @@ import { plural } from '../../components';
 import { renderAtlasVariants } from '../../features/atlas/domains';
 import type { AtlasHost } from '../../features/atlas/ports';
 import { nonNull, normalizeUnitRecord, orderModuleUnits, readModuleRecord } from '../../features/module/model';
-import { readStudyMap, readUnitRecord, type KnowledgeNodeView, type UnitRecordView } from '../../features/unit/model';
+import { readStudyMap, readUnitRecord, stageProgress, type KnowledgeNodeView, type UnitRecordView } from '../../features/unit/model';
 import { asString } from '../../projection/readers';
 import type { AtlasScreenHost } from '../screens';
 import { layoutLectureMap } from './atlas-model';
@@ -77,10 +77,10 @@ function progressTag(store: Store, unitId: string): { text: string; tone: 'succe
   const projected = store.mapForUnit(unitId);
   if (!projected) return null;
   const stages = readStudyMap(projected).stages;
-  const done = stages.filter((stage) => stage.status === 'complete').length;
-  if (!stages.length || !done) return null;
-  if (done === stages.length) return { text: 'Studied', tone: 'success' };
-  return { text: `In progress · ${done} of ${plural(stages.length, 'stage')}`, tone: 'accent' };
+  const { done, total } = stageProgress(stages);
+  if (!total || !done) return null;
+  if (done === total) return { text: 'Studied', tone: 'success' };
+  return { text: `In progress · ${done} of ${plural(total, 'stage')}`, tone: 'accent' };
 }
 
 /** Ids for lecture headings, unique across panes that draw the same module. */

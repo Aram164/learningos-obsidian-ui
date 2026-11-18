@@ -57,7 +57,10 @@ function richLecture(manifest) {
       route('route-fx-unplaced', 'source-fixture-video', 'Fixture deep-dive video', 'video', 'advanced-reference', 'optional', 'Lecture 9', { url: 'https://example.org/lecture-9' }),
     ] },
   );
-  const place = (routeId, sourceId, label, kind, triage, locator) => ({ route_id: routeId, source_id: sourceId, label, kind, scope_triage: triage, locator, angle: `${label}: why here.` });
+  const place = (routeId, sourceId, label, kind, triage, locator, isEntry = false) => ({
+    route_id: routeId, source_id: sourceId, label, kind, scope_triage: triage, locator,
+    angle: `${label}: why here.`, is_entry: isEntry,
+  });
   const studyMap = manifest.study_maps.find((row) => row.unit_id === unitId);
   const stage = (id) => studyMap.stages.find((row) => row.id === id);
   stage('stage-fixture-foundations').resources.push(place('route-fx-deck', 'source-fixture-slides', 'Fixture lecture deck', 'read', 'required-now', 'lecture-slides/VL 04.pdf'));
@@ -67,7 +70,7 @@ function richLecture(manifest) {
     place('route-fx-islp', 'source-fixture-islp', 'ISLP fixture intuition', 'read', 'helpful-now', 'islp.pdf §2.1'),
   );
   stage('stage-fixture-self-test').resources.push(
-    place('route-fx-sheet', 'source-fixture-slides', 'Fixture exercise sheet 4', 'practise', 'required-now', 'exercises/blatt-04.pdf'),
+    place('route-fx-sheet', 'source-fixture-slides', 'Fixture exercise sheet 4', 'practise', 'required-now', 'exercises/blatt-04.pdf', true),
     place('route-fx-old', 'source-fixture-slides', 'Older fixture deck', 'reference', 'reference-only', 'old/VL 04.pdf'),
     place('route-fx-islp', 'source-fixture-islp', 'ISLP fixture intuition', 'read', 'helpful-now', 'islp.pdf §2.1'),
   );
@@ -326,7 +329,7 @@ module.exports = async function run() {
       const studyMap = manifest.study_maps.find((row) => row.unit_id === 'unit-fixture-sad-l04');
       studyMap.stages.find((row) => row.id === 'stage-fixture-conditioning').resources.push({
         route_id: 'route-fx-unplaced', source_id: 'source-fixture-video', label: 'Fixture deep-dive video', kind: 'watch',
-        scope_triage: 'helpful-now', locator: 'Lecture 9', angle: 'Fixture deep-dive video: why here.',
+        scope_triage: 'helpful-now', is_entry: false, locator: 'Lecture 9', angle: 'Fixture deep-dive video: why here.',
       });
     };
     const { app, plugin, calls } = await boot({ patchManifest: twoPurposes });

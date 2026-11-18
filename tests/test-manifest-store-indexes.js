@@ -29,12 +29,16 @@ function fixtureManifest() {
     type: 'module',
     title: 'Active module',
     status: 'enrolled',
+    is_settled: false,
+    is_retired: false,
   };
   const archivedModule = {
     id: 'module-archived',
     type: 'module',
     title: 'Archived module',
     status: 'archived',
+    is_settled: true,
+    is_retired: true,
   };
   const activeUnit = {
     id: 'unit-active',
@@ -280,6 +284,7 @@ function fixtureManifest() {
     { id: 'module-os', title: 'Operating Systems', kind: 'academic', status: 'enrolled', semester: 'wise-2099' },
     { id: 'module-icop', title: 'Combinatorial Optimization', kind: 'academic', status: 'enrolled', semester: 'wise-2099' },
     { id: 'module-undated', title: 'Undated course', kind: 'academic', status: 'enrolled', semester: null },
+    { id: 'module-awaiting', title: 'Awaiting grade course', kind: 'academic', status: 'awaiting-grade', semester: 'wise-2099' },
     { id: 'module-completed', title: 'Completed course', kind: 'academic', status: 'completed', semester: 'wise-2099' },
     { id: 'module-dropped', title: 'Dropped course', kind: 'academic', status: 'dropped', semester: 'wise-2099' },
     { id: 'module-archived', title: 'Archived course', kind: 'academic', status: 'archived', semester: 'wise-2099' },
@@ -288,7 +293,12 @@ function fixtureManifest() {
     { id: 'module-compat-thesis', title: 'Compatibility thesis', kind: 'project', status: 'active', compatibility_only: true },
     { id: 'module-boundary', title: 'Boundary', kind: 'boundary', status: 'active' },
     { id: 'module-skill', title: 'Python', kind: 'skill', status: 'active', semester: null },
-  ].map(row => ({ ...row, type: 'module' }));
+  ].map((row) => ({
+    ...row,
+    type: 'module',
+    is_retired: row.status === 'dropped' || row.status === 'archived',
+    is_settled: ['awaiting-grade', 'completed', 'dropped', 'archived'].includes(row.status),
+  }));
   const acrossSemesters = {
     ...fixtureManifest(),
     modules: crossSemesterModules,

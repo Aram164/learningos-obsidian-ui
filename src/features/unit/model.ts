@@ -81,6 +81,7 @@ export interface StageRecordView {
   readonly id: string;
   readonly title: string;
   readonly status: string;
+  readonly isOpen: boolean;
   readonly scopeTriage: string;
   readonly objective: string | null;
   readonly estimateMinutes: string | null;
@@ -381,6 +382,8 @@ export function readResource(
       projectedString(record.source_id),
     scopeTriage:
       projectedString(record.scope_triage),
+    isEntry:
+      record.is_entry === true,
     canOpen:
       hasDirectResourceTarget(record),
   };
@@ -454,6 +457,8 @@ export function readStage(
     status:
       projectedString(record.status)
       ?? 'active',
+    isOpen:
+      record.is_open === true,
     scopeTriage:
       projectedText(record.scope_triage)
       ?? '',
@@ -558,15 +563,11 @@ export function artifactLabel(
   );
 }
 
-/** A stage that can still be worked: neither recorded complete nor skipped. */
-export function isOpenStage(stage: StageRecordView): boolean {
-  return stage.status !== 'complete' && stage.status !== 'skipped';
-}
+export { stageProgress } from '../../components';
 
-export function firstOpenStage(
-  stages: readonly StageRecordView[],
-): StageRecordView | null {
-  return stages.find(isOpenStage) ?? null;
+/** A stage Core still considers open (not complete or skipped). */
+export function isOpenStage(stage: StageRecordView): boolean {
+  return stage.isOpen;
 }
 
 /** The first open stage after ``stageId`` in the displayed (authored) order. */

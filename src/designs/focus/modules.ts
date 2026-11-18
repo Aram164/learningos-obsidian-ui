@@ -2,6 +2,7 @@ import { button, filterTabs } from '../../components';
 import { MODULE_TABS, nonNull, normalizeUnitRecord, orderModuleUnits, readModuleRecord } from '../../features/module/model';
 import { renderModuleUnitGroups } from '../../features/module/detail';
 import { readResumePointer } from '../../features/home/model';
+import { stageProgress } from '../../features/unit/model';
 import { asLabel, asRecords, asString } from '../../projection/readers';
 import { compareStrings, foldCase } from '../../sorting';
 import type { ModuleDetailScreenHost, ModuleListScreenHost } from '../screens';
@@ -80,11 +81,11 @@ export function renderFocusModule(view: ModuleDetailScreenHost): boolean {
     const units = orderModuleUnits(module, plugin.store.unitsFor(module.id, view.componentId).map(normalizeUnitRecord).filter(nonNull));
     renderModuleUnitGroups(body, units, (parent, unit) => {
       const stages = asRecords(plugin.store.mapForUnit(unit.id)?.stages);
-      const done = stages.filter(stage => stage.status === 'complete').length;
+      const { done, total } = stageProgress(stages);
       const target = row(parent, `Open unit: ${unit.title}`, () => { view.selectedElementId = unit.id; return plugin.nav.openUnit(unit.id); });
       const copy = target.createDiv({ cls: 'focus-row-copy' });
       copy.createEl('strong', { text: unit.title });
-      copy.createSpan({ cls: 'focus-muted', text: stages.length ? `${stages.length} stages · ${done} complete` : 'No study map yet' });
+      copy.createSpan({ cls: 'focus-muted', text: total ? `${total} stages · ${done} complete` : 'No study map yet' });
       target.createSpan({ cls: 'focus-row-state', text: unit.status.replaceAll('-', ' ') });
       chevron(target);
     });

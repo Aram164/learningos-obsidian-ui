@@ -4,7 +4,7 @@ import { triageGroup } from '../../features/unit/material-drawer';
 import { renderMaterialMenu, renderMaterialOverview } from '../../features/unit/materials';
 import { emptyMaterialFilters, materialMatches, renderMaterialFilters, type MaterialFacet, type MaterialFilters } from '../../features/unit/material-filters';
 import { learningActionLabel, materialTypeKey, materialTypeLabel } from '../../features/unit/material-types';
-import { nextOpenStage, readStudyMap, readUnitRecord, type MaterialOptionView, type StageRecordView, type StudyMapView, type UnitRecordView } from '../../features/unit/model';
+import { nextOpenStage, readStudyMap, readUnitRecord, stageProgress, type MaterialOptionView, type StageRecordView, type StudyMapView, type UnitRecordView } from '../../features/unit/model';
 import { renderPlanControls, selectedStage, sittingStudyMap } from '../../features/unit/shell';
 import { stageMaterialOptions, stageMenuItems, stageResourceRenderer } from '../../features/unit/stage';
 import { currentWorkResource, triageSummary, type StageResourceView } from '../../features/stage-resources';
@@ -137,7 +137,7 @@ function returnFromDetour(context: Context, detour: Detour): void {
 function stageState(stage: StageRecordView, map: StudyMapView): string {
   return stage.status === 'complete' ? 'Complete' : stage.status === 'skipped' ? 'Skipped' : stage.id === map.currentStageId ? 'Current' : 'Not started';
 }
-function countDone(map: StudyMapView): number { return map.stages.filter(stage => stage.status === 'complete').length; }
+function countDone(map: StudyMapView): number { return stageProgress(map.stages).done; }
 function adjust(parent: HTMLElement, context: Context): void {
   const details = disclosure(parent, 'Adjust study plan', 'focus-adjust-plan');
   renderPlanControls(context.view, details, context.unit, context.durable, context.map, context.temporary, context.options);

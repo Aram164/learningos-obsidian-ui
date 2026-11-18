@@ -257,6 +257,7 @@ module.exports = async function run() {
       label: 'A whole lecture collection is not one exact resource',
       locator: 'Choose lecture 11',
       source_id: 'source-fixture-book',
+      is_entry: true,
     }];
     const source = plugin.store.get('source-fixture-book');
     source.material_path = 'materials/fixture-lectures';
@@ -332,6 +333,7 @@ module.exports = async function run() {
       material_uri: 'material://source-fixture/projected.pdf',
       material_path: 'materials/source-fixture/projected.pdf',
       material_exists: true,
+      is_entry: true,
     }];
 
     await plugin.nav.openUnit('unit-fixture-sad-l04', 'stage-fixture-conditioning');

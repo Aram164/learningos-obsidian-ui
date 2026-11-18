@@ -559,7 +559,7 @@ export function stageMenuItems(
   expectedRevisions: Readonly<Record<string, number>>,
 ): Array<[string, () => unknown] | false> {
     const active = stage.status === 'active';
-    const recorded = stage.status === 'complete' || stage.status === 'skipped';
+    const recorded = !stage.isOpen;
     return [
       recorded
       && [

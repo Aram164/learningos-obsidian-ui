@@ -312,7 +312,7 @@ var require_manifest_validator = __commonJS({
     "use strict";
     module2.exports = validate20;
     module2.exports.default = validate20;
-    var schema31 = { "$defs": { "academicDeadline": { "additionalProperties": false, "properties": { "end_date": { "format": "date", "type": "string" }, "kind": { "minLength": 1, "type": "string" }, "label": { "minLength": 1, "type": "string" }, "module_id": { "type": "string" }, "modules": { "items": { "$ref": "#/$defs/deadlineModule" }, "type": "array" }, "notes": { "type": ["string", "null"] }, "registration_state": { "type": "string" }, "start_date": { "format": "date", "type": "string" }, "termin": { "minimum": 1, "type": "integer" }, "time": { "type": ["string", "null"] }, "title": { "type": "string" } }, "required": ["kind", "label", "start_date", "end_date"], "type": "object" }, "aiAction": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "interaction_mode": { "minLength": 1, "type": "string" }, "status": { "enum": ["planned", "implemented"] }, "supported_providers": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "target_kinds": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "description", "target_kinds", "interaction_mode", "status", "supported_providers"], "type": "object" }, "aiActions": { "additionalProperties": false, "properties": { "available": { "items": { "$ref": "#/$defs/aiAction" }, "type": "array" }, "contract_version": { "const": 1 }, "provider_adapters": { "items": { "$ref": "#/$defs/aiProviderAdapter" }, "type": "array" }, "requests": { "items": { "$ref": "#/$defs/aiRequest" }, "type": "array" } }, "required": ["available", "contract_version", "provider_adapters", "requests"], "type": "object" }, "aiProviderAdapter": { "additionalProperties": false, "properties": { "adapter": { "minLength": 1, "type": "string" }, "available": { "type": "boolean" }, "id": { "minLength": 1, "type": "string" }, "supported_modes": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "supports_direct_delivery": { "type": "boolean" } }, "required": ["id", "adapter", "available", "supported_modes", "supports_direct_delivery"], "type": "object" }, "aiRequest": { "additionalProperties": false, "properties": { "action_id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "bundle_path": { "pattern": "^operations/ai-actions/requests/[^/]+$", "type": "string" }, "created_at": { "format": "date-time", "type": "string" }, "delivery_id": { "type": ["string", "null"] }, "id": { "pattern": "^ai-request-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "provider": { "minLength": 1, "type": "string" }, "receipt_id": { "type": ["string", "null"] }, "status": { "enum": ["prepared", "delivery-ready", "completed"] }, "target": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "kind": { "minLength": 1, "type": "string" } }, "required": ["kind", "id"], "type": "object" } }, "required": ["id", "action_id", "target", "provider", "status", "created_at", "delivery_id", "receipt_id", "bundle_path"], "type": "object" }, "backlinks": { "additionalProperties": false, "properties": { "concept_relations": { "$ref": "#/$defs/jsonObject" }, "concept_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "note_incoming": { "$ref": "#/$defs/stringArrayMap" }, "source_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_notes": { "$ref": "#/$defs/stringArrayMap" } }, "type": "object" }, "collectionRecord": { "additionalProperties": false, "properties": { "collection_kind": { "enum": ["catalogue", "topic-pack"] }, "domain": { "minLength": 1, "type": "string" }, "entries": { "items": { "additionalProperties": false, "properties": { "group": { "type": ["string", "null"] }, "source": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "why": { "type": ["string", "null"] } }, "required": ["source", "group", "why"], "type": "object" }, "type": "array" }, "id": { "minLength": 1, "type": "string" }, "path": { "pattern": "^sources/collections/.+\\.yaml$", "type": "string" }, "purpose": { "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "enum": ["collection", "topic-pack"] } }, "required": ["id", "type", "revision", "collection_kind", "title", "path", "thematic_group_ids", "purpose", "sources", "summary", "domain", "entries"], "type": "object" }, "compatibilityAlias": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "path": { "const": "projects/aliases.yaml" }, "target_id": { "pattern": "^(module|unit|workspace)-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "target_type": { "enum": ["module", "unit", "workspace"] }, "type": { "const": "compatibility-alias" } }, "required": ["id", "type", "target_id", "target_type", "path"], "type": "object" }, "conceptRecord": { "additionalProperties": false, "properties": { "aliases": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "deprecated": { "type": "boolean" }, "id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "concept" } }, "required": ["id", "type", "title", "path", "aliases", "deprecated"], "type": "object" }, "coordinationRecord": { "additionalProperties": false, "properties": { "id": { "const": "coordination" }, "path": { "const": "work/COORDINATION.md" }, "sections": { "additionalProperties": false, "properties": { "Commitments": { "type": "string" }, "Deferrals": { "type": "string" }, "Dependencies": { "type": "string" }, "Priorities": { "type": "string" } }, "required": ["Commitments", "Priorities", "Dependencies", "Deferrals"], "type": "object" }, "type": { "const": "coordination" } }, "required": ["id", "type", "path", "sections"], "type": "object" }, "counts": { "additionalProperties": false, "properties": { "ai_action_requests": { "minimum": 0, "type": "integer" }, "collections": { "minimum": 0, "type": "integer" }, "concepts": { "minimum": 0, "type": "integer" }, "garden_entries": { "minimum": 0, "type": "integer" }, "inbox_items": { "minimum": 0, "type": "integer" }, "modules": { "minimum": 0, "type": "integer" }, "notes": { "minimum": 0, "type": "integer" }, "notes_reviewed": { "minimum": 0, "type": "integer" }, "notes_with_evidence": { "minimum": 0, "type": "integer" }, "programs": { "minimum": 0, "type": "integer" }, "relations": { "minimum": 0, "type": "integer" }, "source_feedback_records": { "minimum": 0, "type": "integer" }, "sources": { "minimum": 0, "type": "integer" }, "sources_with_topics": { "minimum": 0, "type": "integer" }, "stages": { "minimum": 0, "type": "integer" }, "stages_complete": { "minimum": 0, "type": "integer" }, "study_maps": { "minimum": 0, "type": "integer" }, "thematic_groups": { "minimum": 0, "type": "integer" }, "topic_packs": { "minimum": 0, "type": "integer" }, "topics": { "minimum": 0, "type": "integer" }, "units": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "workspaces_active": { "minimum": 0, "type": "integer" }, "workspaces_archived": { "minimum": 0, "type": "integer" } }, "required": ["ai_action_requests", "collections", "concepts", "garden_entries", "inbox_items", "modules", "notes", "notes_reviewed", "notes_with_evidence", "programs", "relations", "source_feedback_records", "sources", "sources_with_topics", "stages", "stages_complete", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "units_needing_map", "workspaces_active", "workspaces_archived"], "type": "object" }, "deadlineModule": { "additionalProperties": false, "properties": { "action": { "type": ["string", "null"] }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "termins": { "items": { "maximum": 3, "minimum": 1, "type": "integer" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["module_id", "title", "action", "termins"], "type": "object" }, "domainCatalogEntry": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "label": { "minLength": 1, "type": "string" }, "order": { "minimum": 1, "type": "integer" } }, "required": ["id", "label", "order"], "type": "object" }, "flatStage": { "allOf": [{ "$ref": "#/$defs/projectedStage" }, { "required": ["study_map_id", "unit_id", "module_id"] }] }, "gardenEntry": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "last_ai_request_id": { "type": ["string", "null"] }, "path": { "type": "string" }, "revision": { "type": "string" }, "state": { "type": "string" }, "tags": { "items": { "type": "string" }, "type": "array" }, "title": { "type": "string" }, "transcription_path": { "type": ["string", "null"] }, "type": { "const": "garden-note" } }, "required": ["id", "last_ai_request_id", "path", "revision", "state", "tags", "title", "transcription_path", "type"], "type": "object" }, "generated": { "additionalProperties": false, "properties": { "closure_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "contract_version": { "const": 20 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["closure_sha256", "contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" }, "indexes": { "additionalProperties": false, "properties": { "component_to_units": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "source_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_material_synthesis": { "additionalProperties": { "pattern": "^material-synthesis-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "object" }, "unit_to_study_map": { "$ref": "#/$defs/stringMap" }, "workspace_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_units": { "$ref": "#/$defs/stringArrayMap" } }, "required": ["component_to_units", "concept_to_modules", "concept_to_units", "module_to_concepts", "module_to_units", "project_aliases", "source_to_modules", "source_to_units", "unit_to_concepts", "unit_to_material_synthesis", "unit_to_study_map", "workspace_to_modules", "workspace_to_units"], "type": "object" }, "integerMap": { "additionalProperties": { "minimum": 0, "type": "integer" }, "type": "object" }, "jsonObject": { "additionalProperties": { "$ref": "#/$defs/jsonValue" }, "propertyNames": { "type": "string" }, "type": "object" }, "jsonValue": { "oneOf": [{ "type": "null" }, { "type": "boolean" }, { "type": "number" }, { "type": "string" }, { "items": { "$ref": "#/$defs/jsonValue" }, "type": "array" }, { "$ref": "#/$defs/jsonObject" }] }, "knowledgeNode": { "additionalProperties": false, "properties": { "builds_on": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "concept_ids": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "summary": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "summary"], "type": "object" }, "knowledgeNodeEvidence": { "additionalProperties": false, "description": "A knowledge-map node's reviewed `concept_ids`. Retains unit and node identity.", "properties": { "kind": { "const": "knowledge-node" }, "node_id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "node_id"], "type": "object" }, "moduleConceptEdge": { "additionalProperties": false, "properties": { "concept_id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "evidence": { "description": "Why this cell is filled. At least one item: an edge with no evidence is an inferred edge, and this projection does not publish those.", "items": { "oneOf": [{ "$ref": "#/$defs/stageConceptEvidence" }, { "$ref": "#/$defs/knowledgeNodeEvidence" }] }, "minItems": 1, "type": "array" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["module_id", "concept_id", "evidence"], "type": "object" }, "moduleRecord": { "additionalProperties": false, "properties": { "administrative_status": { "enum": ["planned", "enrolled", "awaiting-grade", "completed", "dropped", "archived", null], "type": ["string", "null"] }, "area_id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "attempts": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/attempts" }, "code": { "type": ["string", "null"] }, "components": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/components" }, "credits": { "minimum": 0, "type": ["number", "null"] }, "examination": { "oneOf": [{ "type": "null" }, { "$ref": "https://learningos.local/schema/module.schema.json#/properties/examination" }] }, "grade": { "maximum": 5, "minimum": 1, "type": ["number", "null"] }, "id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "institution": { "type": ["string", "null"] }, "is_actionable": { "type": "boolean" }, "kind": { "enum": ["academic", "skill", "project", "foundation"] }, "operational_state": { "enum": ["none", "complete", "active", "paused"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester": { "pattern": "^(sose|wise)-[0-9]{4}$", "type": ["string", "null"] }, "source_map": { "oneOf": [{ "const": "source-map.yaml" }, { "type": "null" }] }, "status": { "enum": ["planned", "enrolled", "active", "paused", "awaiting-grade", "completed", "dropped", "archived"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "module" }, "unit_order": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/unit_order" } }, "required": ["id", "type", "title", "revision", "path", "kind", "area_id", "thematic_group_ids", "status", "administrative_status", "operational_state", "is_actionable", "institution", "code", "credits", "semester", "components", "examination", "attempts", "grade", "unit_order", "source_map"], "type": "object" }, "moduleSourceMap": { "additionalProperties": false, "properties": { "id": { "pattern": "^source-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "additionalProperties": false, "properties": { "priority": { "minimum": 0, "type": "integer" }, "role": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_routes": { "items": { "oneOf": [{ "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, { "$ref": "#/$defs/projectedRoute" }] }, "type": "array" }, "when": { "type": "string" }, "why": { "minLength": 1, "type": "string" } }, "required": ["source_id", "role", "why", "priority", "unit_routes"], "type": "object" }, "type": "array" }, "type": { "const": "module-source-map" } }, "required": ["id", "type", "module_id", "sources", "revision", "path"], "type": "object" }, "noteRecord": { "additionalProperties": false, "properties": { "atlas_question": { "additionalProperties": false, "properties": { "answer_notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["open", "resolved"] }, "target": { "oneOf": [{ "additionalProperties": false, "properties": { "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "maxItems": 2, "minItems": 1, "type": "array", "uniqueItems": true } }, "required": ["concepts"], "type": "object" }, { "additionalProperties": false, "properties": { "from": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "to": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": { "enum": ["requires", "builds-on", "derives", "generalizes", "contrasts-with", "equivalent-to", "applies-in", "motivates"] } }, "required": ["from", "type", "to"], "type": "object" }] } }, "required": ["state", "target"], "type": ["object", "null"] }, "attachments": { "items": { "type": "string" }, "type": "array" }, "authorship": { "enum": ["user", "mixed", "external", "operator-drafted", null], "type": ["string", "null"] }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "contexts": { "items": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "domain": { "type": "string" }, "domain_bucket": { "minLength": 1, "type": "string" }, "evidence": { "$ref": "https://learningos.local/schema/note.schema.json#/properties/evidence" }, "id": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "material_analysis": { "additionalProperties": false, "allOf": [{ "else": { "not": { "required": ["source_id"] } }, "if": { "properties": { "resolution": { "const": "resolved" } } }, "then": { "required": ["source_id"] } }], "properties": { "anchors": { "items": { "additionalProperties": false, "properties": { "locator": { "minLength": 1, "type": "string" }, "note": { "type": "string" }, "purpose": { "minLength": 1, "type": "string" }, "topic": { "minLength": 1, "type": "string" } }, "required": ["topic", "purpose", "locator"], "type": "object" }, "type": "array" }, "built": { "format": "date", "type": "string" }, "frozen_input_bytes": { "minimum": 1, "type": "integer" }, "frozen_input_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "inspected_range": { "additionalProperties": false, "properties": { "end": { "minimum": 1, "type": "integer" }, "start": { "minimum": 1, "type": "integer" } }, "required": ["start", "end"], "type": "object" }, "live_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "material": { "minLength": 1, "type": "string" }, "model": { "type": "string" }, "recorded_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "resolution": { "enum": ["resolved", "unresolved", "unavailable", "stale"] }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["resolution", "material", "recorded_source_digest", "inspected_range", "frozen_input_sha256", "frozen_input_bytes"], "type": ["object", "null"] }, "path": { "minLength": 1, "type": "string" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "role": { "enum": ["synthesis", "reference", "derivation", "exercise-bank", "mock-exam", "implementation", "question", "crosswalk"] }, "semantic_review": { "enum": ["unreviewed", "user-reviewed", null], "type": ["string", "null"] }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["rough", "evolving", "mature", "deprecated", null], "type": ["string", "null"] }, "summary": { "type": "string" }, "supersedes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "transcription": { "enum": ["none", "manual", "ai-assisted", null], "type": ["string", "null"] }, "type": { "const": "note" } }, "required": ["id", "type", "title", "path", "domain", "domain_bucket", "summary", "role", "state", "authorship", "concepts", "sources", "contexts", "attachments", "evidence", "supersedes", "reviewed", "transcription", "semantic_review", "atlas_question", "material_analysis"], "type": "object" }, "programRecord": { "additionalProperties": false, "properties": { "boundary_action": { "type": "string" }, "default": { "type": "boolean" }, "description": { "type": "string" }, "id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "enum": ["academic", "skills", "projects"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester_bound": { "type": "boolean" }, "semesters": { "items": { "$ref": "#/$defs/programSemester" }, "type": "array" }, "status": { "enum": ["active", "metadata-only", "archived"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "program" } }, "required": ["id", "type", "title", "kind", "status", "default", "semester_bound", "revision", "path"], "type": "object" }, "programSemester": { "additionalProperties": false, "properties": { "id": { "pattern": "^semester-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "order": { "minimum": 0, "type": "integer" }, "status": { "enum": ["current", "previous", "future", "archived"] }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "status", "order"], "type": "object" }, "progress": { "additionalProperties": { "additionalProperties": false, "properties": { "stages_complete": { "minimum": 0, "type": "integer" }, "stages_total": { "minimum": 0, "type": "integer" }, "units_complete": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "units_total": { "minimum": 0, "type": "integer" } }, "required": ["stages_complete", "stages_total", "units_complete", "units_needing_map", "units_total"], "type": "object" }, "type": "object" }, "projectedRecord": { "oneOf": [{ "$ref": "#/$defs/noteRecord" }, { "$ref": "#/$defs/conceptRecord" }, { "$ref": "#/$defs/sourceRecord" }, { "$ref": "#/$defs/compatibilityAlias" }, { "$ref": "#/$defs/moduleRecord" }, { "$ref": "#/$defs/collectionRecord" }, { "$ref": "#/$defs/workspaceRecord" }, { "$ref": "#/$defs/programRecord" }, { "$ref": "#/$defs/projectedUnit" }, { "$ref": "#/$defs/studyMap" }, { "$ref": "#/$defs/moduleSourceMap" }, { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, { "$ref": "#/$defs/coordinationRecord" }] }, "projectedRoute": { "additionalProperties": false, "properties": { "angle": { "minLength": 1, "type": "string" }, "angle_detail": { "minLength": 1, "type": "string" }, "covers": { "items": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "minItems": 1, "type": "array", "uniqueItems": true }, "depth": { "minLength": 1, "type": "string" }, "exposes_solutions_for": { "description": "Route ids whose activities this material answers \u2014 a verifiable claim about content, that opening this hands over the worked solutions to those tasks, never a judgment of quality. The session compiler refuses to put such a route in the same proposal as an evidence step it answers: explaining with the answer key and then asking for unaided transfer on that same task measures nothing (audit workbench/audits/synthetic-learner-2026-09-12, F03).", "items": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "format": { "minLength": 1, "type": "string" }, "id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "requires_assets": { "description": "Files the activity itself needs before it can be done \u2014 a dataset it analyses, a code template it fills in. Distinct from the material being reachable: `_resource_available` answers 'can he open the worksheet', and this answers 'can he do what the worksheet asks'. Blatt 4 Aufgabe 3(b) needs International_Education_Costs.csv and aufgabe3.py from Moodle, neither registered here, and the session still reported the route ready (audit workbench/audits/synthetic-learner-2026-09-12, F06). An entry with no `material_uri` is by definition unregistered; the session keeps the route and names the parts that cannot be attempted, rather than dropping the runnable work or inventing a substitute dataset.", "items": { "additionalProperties": false, "properties": { "material_uri": { "pattern": "^material://", "type": "string" }, "name": { "minLength": 1, "type": "string" }, "needed_for": { "description": "Which part of the activity, in the sheet's own numbering.", "minLength": 1, "type": "string" }, "obtain_from": { "description": "Where the exact file comes from. Never a substitute.", "minLength": 1, "type": "string" } }, "required": ["name"], "type": "object" }, "minItems": 1, "type": "array" }, "scope": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "title": { "minLength": 1, "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["id", "unit_id", "source_id", "title", "format", "angle", "covers", "depth", "scope"], "type": "object" }, "projectedStage": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "completed": { "type": "string" }, "concepts": { "items": { "type": "string" }, "type": "array" }, "detour_id": { "type": "string" }, "done_when": { "items": { "type": "string" }, "type": "array" }, "estimate_minutes": { "minimum": 1, "type": "integer" }, "exam_critical": { "type": "boolean" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "number": { "minimum": 1, "type": "integer" }, "objective": { "type": "string" }, "resources": { "items": { "$ref": "#/$defs/resource" }, "type": "array" }, "scope_triage": { "type": "string" }, "source_feedback": { "items": { "$ref": "#/$defs/sourceFeedback" }, "type": "array" }, "status": { "type": "string" }, "study_map_id": { "type": "string" }, "title": { "type": "string" }, "unit_id": { "type": "string" }, "working_note": { "type": "string" } }, "required": ["id", "title", "status", "objective", "done_when", "resources", "working_note", "attachments", "source_feedback", "scope_triage", "notes_text", "notes_updated"], "type": "object" }, "projectedUnit": { "additionalProperties": false, "properties": { "artifacts": { "$ref": "https://learningos.local/schema/unit.schema.json#/properties/artifacts" }, "child_unit_ids": { "items": { "type": "string" }, "type": "array" }, "component_id": { "type": "string" }, "current_study_map": { "type": "string" }, "id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "type": "string" }, "knowledge_map": { "additionalProperties": false, "properties": { "nodes": { "items": { "$ref": "#/$defs/knowledgeNode" }, "type": "array" }, "summary": { "type": "string" } }, "required": ["summary", "nodes"], "type": "object" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "needs_study_map": { "type": "boolean" }, "note_sections": { "items": { "$ref": "#/$defs/unitNoteSection" }, "type": "array" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "order": { "minimum": 0, "type": "integer" }, "parent_unit_id": { "type": "string" }, "path": { "type": "string" }, "related_module_ids": { "items": { "type": "string" }, "type": "array" }, "revision": { "minimum": 0, "type": "integer" }, "scope": { "type": "string" }, "scope_sources": { "items": { "additionalProperties": false, "properties": { "authority": { "type": "string" }, "locator": { "type": "string" }, "source_id": { "type": "string" } }, "required": ["source_id", "authority"], "type": "object" }, "type": "array" }, "source_selections": { "items": { "additionalProperties": false, "properties": { "locator": { "type": "string" }, "purpose": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "type": "string" }, "stage_ids": { "items": { "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["source_id", "locator", "purpose"], "type": "object" }, "type": "array" }, "status": { "type": "string" }, "title": { "type": "string" }, "type": { "const": "unit" }, "working_note": { "type": "string" }, "workspace_ids": { "items": { "type": "string" }, "type": "array" } }, "required": ["id", "type", "module_id", "kind", "title", "order", "scope", "status", "artifacts", "workspace_ids", "source_selections", "scope_sources", "revision", "path", "needs_study_map", "notes_text", "note_sections", "notes_updated"], "type": "object" }, "relation": { "additionalProperties": false, "properties": { "context": { "type": ["string", "null"] }, "from": { "type": ["string", "null"] }, "source": { "type": ["string", "null"] }, "to": { "type": ["string", "null"] }, "type": { "type": ["string", "null"] } }, "required": ["from", "type", "to", "context", "source"], "type": "object" }, "resource": { "additionalProperties": false, "properties": { "angle": { "type": "string" }, "angle_detail": { "type": "string" }, "id": { "type": "string" }, "kind": { "type": "string" }, "label": { "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "scope_triage": { "type": "string" }, "source_id": { "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["kind", "label"], "type": "object" }, "resumePointer": { "oneOf": [{ "maxProperties": 0, "type": "object" }, { "additionalProperties": false, "properties": { "module_id": { "type": "string" }, "stage_id": { "type": "string" }, "study_map_id": { "type": "string" }, "type": { "const": "resume-pointer" }, "unit_id": { "type": "string" }, "updated": { "type": "string" } }, "required": ["type", "module_id", "unit_id", "study_map_id", "stage_id", "updated"], "type": "object" }] }, "reviewItem": { "additionalProperties": false, "properties": { "category": { "type": "string" }, "context": { "type": "string" }, "id": { "type": "string" }, "reason": { "type": "string" }, "target": { "$ref": "#/$defs/jsonObject" }, "title": { "type": "string" } }, "required": ["category", "context", "id", "reason", "target", "title"], "type": "object" }, "routeId": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "semester": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "order": { "type": "integer" }, "program_id": { "type": "string" }, "status": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "order", "program_id", "status", "title"], "type": "object" }, "sourceEvaluation": { "additionalProperties": false, "properties": { "audience": { "items": { "type": "string" }, "type": "array" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "level": { "enum": ["introductory", "intermediate", "advanced", "reference", null], "type": ["string", "null"] }, "prerequisites": { "items": { "type": "string" }, "type": "array" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "roles": { "items": { "type": "string" }, "type": "array" }, "strengths": { "items": { "type": "string" }, "type": "array" }, "useful_sections": { "items": { "additionalProperties": false, "properties": { "note": { "type": "string" }, "section": { "type": "string" } }, "required": ["section", "note"], "type": "object" }, "type": "array" }, "weaknesses": { "items": { "type": "string" }, "type": "array" } }, "required": ["roles", "level", "audience", "prerequisites", "strengths", "weaknesses", "reviewed", "concepts", "useful_sections"], "type": "object" }, "sourceExamination": { "additionalProperties": false, "properties": { "approved_analysis_count": { "minimum": 0, "type": "integer" }, "evaluated": { "type": "boolean" }, "metadata_placed": { "type": "boolean" } }, "required": ["evaluated", "approved_analysis_count", "metadata_placed"], "type": "object" }, "sourceFeedback": { "additionalProperties": false, "properties": { "feedback": { "enum": ["helpful", "too-advanced", "wrong-perspective", "useful-for-derivation", "useful-for-review", "skipped"] }, "note": { "type": "string" }, "recorded": { "format": "date", "type": "string" }, "resource_id": { "pattern": "^resource-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["source_id", "feedback", "recorded"], "type": "object" }, "sourceRecord": { "additionalProperties": false, "properties": { "authors": { "items": { "type": "string" }, "type": "array" }, "discovery": { "anyOf": [{ "$ref": "https://learningos.local/schema/sources.schema.json#/properties/sources/items/properties/discovery" }, { "type": "null" }] }, "evaluations": { "items": { "$ref": "#/$defs/sourceEvaluation" }, "type": "array" }, "examination": { "$ref": "#/$defs/sourceExamination" }, "id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "identifiers": { "additionalProperties": { "type": "string" }, "type": "object" }, "material": { "pattern": "^material://.+", "type": ["string", "null"] }, "material_exists": { "type": "boolean" }, "material_path": { "type": ["string", "null"] }, "organization": { "type": ["string", "null"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "roles": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "source_type": { "enum": ["book", "paper", "lecture", "course", "video", "website", "documentation", "software", "conversation", "other"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "topics": { "items": { "pattern": "^topic-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "type": { "const": "source" }, "url": { "format": "uri", "type": ["string", "null"] }, "year": { "maximum": 2100, "minimum": 1800, "type": ["integer", "null"] } }, "required": ["id", "type", "title", "revision", "path", "source_type", "thematic_group_ids", "topics", "url", "material", "material_path", "material_exists", "authors", "organization", "year", "identifiers", "roles", "evaluations", "discovery", "examination"], "type": "object" }, "stageAttachment": { "additionalProperties": false, "properties": { "label": { "minLength": 1, "type": "string" }, "path": { "minLength": 1, "type": "string" } }, "required": ["path", "label"], "type": "object" }, "stageConceptEvidence": { "additionalProperties": false, "description": "A stage's explicit `concepts` tag. Retains unit, study-map and stage identity, so a filled cell drills into the exact stage.", "properties": { "kind": { "const": "stage-concept" }, "stage_id": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "study_map_id": { "pattern": "^study-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "study_map_id", "stage_id"], "type": "object" }, "stringArrayMap": { "additionalProperties": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "type": "object" }, "stringMap": { "additionalProperties": { "type": "string" }, "type": "object" }, "studyMap": { "additionalProperties": false, "properties": { "current_stage": { "type": "string" }, "detours": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/detours" }, "id": { "type": "string" }, "is_study_candidate": { "type": "boolean" }, "module_id": { "type": "string" }, "path": { "type": "string" }, "plan_template_version": { "minimum": 1, "type": "integer" }, "revision": { "minimum": 0, "type": "integer" }, "shelving": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/shelving" }, "source_plan": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/source_plan" }, "stages": { "items": { "$ref": "#/$defs/projectedStage" }, "type": "array" }, "status": { "type": "string" }, "type": { "const": "study-map" }, "unit_id": { "type": "string" } }, "required": ["id", "type", "unit_id", "module_id", "status", "is_study_candidate", "current_stage", "source_plan", "stages", "shelving", "revision", "path"], "type": "object" }, "thematicGroup": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "type": "string" }, "order": { "type": "integer" }, "title": { "type": "string" } }, "required": ["id", "title", "description", "order"], "type": "object" }, "topic": { "additionalProperties": false, "properties": { "domain": { "type": "string" }, "id": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "title", "domain"], "type": "object" }, "unitMaterialSynthesisProjection": { "allOf": [{ "$ref": "https://learningos.local/schema/unit-material-synthesis.schema.json#/$defs/canonicalRecord" }, { "properties": { "completeness": { "additionalProperties": false, "properties": { "assessed_route_count": { "minimum": 0, "type": "integer" }, "complete": { "type": "boolean" }, "current_route_count": { "minimum": 0, "type": "integer" }, "deep_reviewed_count": { "minimum": 0, "type": "integer" }, "duplicate_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "missing_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "orphaned_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "screened_count": { "minimum": 0, "type": "integer" }, "unavailable_count": { "minimum": 0, "type": "integer" }, "unevaluated_count": { "minimum": 0, "type": "integer" } }, "required": ["complete", "current_route_count", "assessed_route_count", "deep_reviewed_count", "screened_count", "unevaluated_count", "unavailable_count", "missing_route_ids", "orphaned_route_ids", "duplicate_route_ids"], "type": "object" }, "freshness": { "additionalProperties": false, "properties": { "reasons": { "items": { "enum": ["source_map_revision", "source_map_checksum", "route_set_checksum", "material_checksums", "policy", "current-basis-unavailable", "analysis-refs-stale"] }, "type": "array", "uniqueItems": true }, "status": { "enum": ["current", "stale"] } }, "required": ["status", "reasons"], "type": "object" } }, "required": ["freshness", "completeness"], "type": "object" }], "unevaluatedProperties": false }, "unitNoteSection": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "recorded_at": { "type": ["string", "null"] }, "stage_ids": { "items": { "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "text": { "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["recorded_at", "title", "stage_ids", "attachments", "text", "summary"], "type": "object" }, "workspaceRecord": { "additionalProperties": false, "properties": { "archived": { "type": "boolean" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "deadline": { "format": "date", "type": ["string", "null"] }, "id": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_ids": { "items": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "next_action": { "type": "string" }, "notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "objective": { "type": "string" }, "path": { "minLength": 1, "type": "string" }, "program_ids": { "items": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "project_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "standing": { "type": "boolean" }, "status": { "enum": ["active", "blocked", "complete"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "workspace" }, "unit_ids": { "items": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["id", "type", "title", "revision", "path", "status", "standing", "archived", "deadline", "objective", "next_action", "concepts", "notes", "sources", "program_ids", "module_ids", "unit_ids", "project_id"], "type": "object" } }, "$id": "https://learningos.local/contracts/manifest-v20.schema.json", "$schema": "https://json-schema.org/draft/2020-12/schema", "additionalProperties": false, "properties": { "_generated": { "$ref": "#/$defs/generated" }, "academic_deadlines": { "items": { "$ref": "#/$defs/academicDeadline" }, "type": "array" }, "ai_actions": { "$ref": "#/$defs/aiActions" }, "artifact_revisions": { "$ref": "#/$defs/integerMap" }, "backlinks": { "$ref": "#/$defs/backlinks" }, "counts": { "$ref": "#/$defs/counts" }, "domains": { "description": "The ordered domain catalog (D5): the known atlas domains in fixed order, then observed future buckets sorted. Covers every domain id the published notes (domain_bucket) and shelves (domain) reference; 'not yet grouped' is a UI presentation concept and never appears here.", "items": { "$ref": "#/$defs/domainCatalogEntry" }, "type": "array" }, "garden_entries": { "items": { "$ref": "#/$defs/gardenEntry" }, "type": "array" }, "indexes": { "$ref": "#/$defs/indexes" }, "module_concept_edges": { "description": "The Module x Concept crossing. One row per (module, concept) pair for which at least one EXPLICIT authored tag exists - a stage's `concepts` tag or a knowledge-map node's reviewed `concept_ids`. Never inferred from titles, prose, notes, sources, or similarity; absence means not mapped, never that no relationship exists. Ordered by (module_id, concept_id).", "items": { "$ref": "#/$defs/moduleConceptEdge" }, "type": "array" }, "module_source_maps": { "items": { "$ref": "#/$defs/moduleSourceMap" }, "type": "array" }, "modules": { "items": { "$ref": "#/$defs/moduleRecord" }, "type": "array" }, "programs": { "items": { "$ref": "#/$defs/programRecord" }, "type": "array" }, "progress": { "$ref": "#/$defs/progress" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "records": { "items": { "$ref": "#/$defs/projectedRecord" }, "type": "array" }, "relations": { "items": { "$ref": "#/$defs/relation" }, "type": "array" }, "resume_pointer": { "$ref": "#/$defs/resumePointer" }, "review_items": { "items": { "$ref": "#/$defs/reviewItem" }, "type": "array" }, "semesters": { "items": { "$ref": "#/$defs/semester" }, "type": "array" }, "stages": { "items": { "$ref": "#/$defs/flatStage" }, "type": "array" }, "study_maps": { "items": { "$ref": "#/$defs/studyMap" }, "type": "array" }, "thematic_groups": { "items": { "$ref": "#/$defs/thematicGroup" }, "type": "array" }, "topic_packs": { "items": { "$ref": "#/$defs/collectionRecord" }, "type": "array" }, "topics": { "items": { "$ref": "#/$defs/topic" }, "type": "array" }, "unit_material_syntheses": { "items": { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, "type": "array" }, "units": { "items": { "$ref": "#/$defs/projectedUnit" }, "type": "array" } }, "required": ["_generated", "academic_deadlines", "ai_actions", "artifact_revisions", "backlinks", "counts", "domains", "garden_entries", "indexes", "module_concept_edges", "module_source_maps", "modules", "programs", "progress", "project_aliases", "records", "relations", "resume_pointer", "review_items", "semesters", "stages", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "unit_material_syntheses"], "title": "LearningOS atomic manifest v20", "type": "object" };
+    var schema31 = { "$defs": { "academicDeadline": { "additionalProperties": false, "properties": { "end_date": { "format": "date", "type": "string" }, "kind": { "minLength": 1, "type": "string" }, "label": { "minLength": 1, "type": "string" }, "module_id": { "type": "string" }, "modules": { "items": { "$ref": "#/$defs/deadlineModule" }, "type": "array" }, "notes": { "type": ["string", "null"] }, "registration_state": { "type": "string" }, "start_date": { "format": "date", "type": "string" }, "termin": { "minimum": 1, "type": "integer" }, "time": { "type": ["string", "null"] }, "title": { "type": "string" } }, "required": ["kind", "label", "start_date", "end_date"], "type": "object" }, "aiAction": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "interaction_mode": { "minLength": 1, "type": "string" }, "status": { "enum": ["planned", "implemented"] }, "supported_providers": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "target_kinds": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "description", "target_kinds", "interaction_mode", "status", "supported_providers"], "type": "object" }, "aiActions": { "additionalProperties": false, "properties": { "available": { "items": { "$ref": "#/$defs/aiAction" }, "type": "array" }, "contract_version": { "const": 1 }, "provider_adapters": { "items": { "$ref": "#/$defs/aiProviderAdapter" }, "type": "array" }, "requests": { "items": { "$ref": "#/$defs/aiRequest" }, "type": "array" } }, "required": ["available", "contract_version", "provider_adapters", "requests"], "type": "object" }, "aiProviderAdapter": { "additionalProperties": false, "properties": { "adapter": { "minLength": 1, "type": "string" }, "available": { "type": "boolean" }, "id": { "minLength": 1, "type": "string" }, "supported_modes": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "supports_direct_delivery": { "type": "boolean" } }, "required": ["id", "adapter", "available", "supported_modes", "supports_direct_delivery"], "type": "object" }, "aiRequest": { "additionalProperties": false, "properties": { "action_id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "bundle_path": { "pattern": "^operations/ai-actions/requests/[^/]+$", "type": "string" }, "created_at": { "format": "date-time", "type": "string" }, "delivery_id": { "type": ["string", "null"] }, "id": { "pattern": "^ai-request-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "provider": { "minLength": 1, "type": "string" }, "receipt_id": { "type": ["string", "null"] }, "status": { "enum": ["prepared", "delivery-ready", "completed"] }, "target": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "kind": { "minLength": 1, "type": "string" } }, "required": ["kind", "id"], "type": "object" } }, "required": ["id", "action_id", "target", "provider", "status", "created_at", "delivery_id", "receipt_id", "bundle_path"], "type": "object" }, "backlinks": { "additionalProperties": false, "properties": { "concept_relations": { "$ref": "#/$defs/jsonObject" }, "concept_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "note_incoming": { "$ref": "#/$defs/stringArrayMap" }, "source_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_notes": { "$ref": "#/$defs/stringArrayMap" } }, "type": "object" }, "collectionRecord": { "additionalProperties": false, "properties": { "collection_kind": { "enum": ["catalogue", "topic-pack"] }, "domain": { "minLength": 1, "type": "string" }, "entries": { "items": { "additionalProperties": false, "properties": { "group": { "type": ["string", "null"] }, "source": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "why": { "type": ["string", "null"] } }, "required": ["source", "group", "why"], "type": "object" }, "type": "array" }, "id": { "minLength": 1, "type": "string" }, "path": { "pattern": "^sources/collections/.+\\.yaml$", "type": "string" }, "purpose": { "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "enum": ["collection", "topic-pack"] } }, "required": ["id", "type", "revision", "collection_kind", "title", "path", "thematic_group_ids", "purpose", "sources", "summary", "domain", "entries"], "type": "object" }, "compatibilityAlias": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "path": { "const": "projects/aliases.yaml" }, "target_id": { "pattern": "^(module|unit|workspace)-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "target_type": { "enum": ["module", "unit", "workspace"] }, "type": { "const": "compatibility-alias" } }, "required": ["id", "type", "target_id", "target_type", "path"], "type": "object" }, "conceptRecord": { "additionalProperties": false, "properties": { "aliases": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "deprecated": { "type": "boolean" }, "id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "concept" } }, "required": ["id", "type", "title", "path", "aliases", "deprecated"], "type": "object" }, "coordinationRecord": { "additionalProperties": false, "properties": { "id": { "const": "coordination" }, "path": { "const": "work/COORDINATION.md" }, "sections": { "additionalProperties": false, "properties": { "Commitments": { "type": "string" }, "Deferrals": { "type": "string" }, "Dependencies": { "type": "string" }, "Priorities": { "type": "string" } }, "required": ["Commitments", "Priorities", "Dependencies", "Deferrals"], "type": "object" }, "type": { "const": "coordination" } }, "required": ["id", "type", "path", "sections"], "type": "object" }, "counts": { "additionalProperties": false, "properties": { "ai_action_requests": { "minimum": 0, "type": "integer" }, "collections": { "minimum": 0, "type": "integer" }, "concepts": { "minimum": 0, "type": "integer" }, "garden_entries": { "minimum": 0, "type": "integer" }, "inbox_items": { "minimum": 0, "type": "integer" }, "modules": { "minimum": 0, "type": "integer" }, "notes": { "minimum": 0, "type": "integer" }, "notes_reviewed": { "minimum": 0, "type": "integer" }, "notes_with_evidence": { "minimum": 0, "type": "integer" }, "programs": { "minimum": 0, "type": "integer" }, "relations": { "minimum": 0, "type": "integer" }, "source_feedback_records": { "minimum": 0, "type": "integer" }, "sources": { "minimum": 0, "type": "integer" }, "sources_with_topics": { "minimum": 0, "type": "integer" }, "stages": { "minimum": 0, "type": "integer" }, "stages_complete": { "minimum": 0, "type": "integer" }, "study_maps": { "minimum": 0, "type": "integer" }, "thematic_groups": { "minimum": 0, "type": "integer" }, "topic_packs": { "minimum": 0, "type": "integer" }, "topics": { "minimum": 0, "type": "integer" }, "units": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "workspaces_active": { "minimum": 0, "type": "integer" }, "workspaces_archived": { "minimum": 0, "type": "integer" } }, "required": ["ai_action_requests", "collections", "concepts", "garden_entries", "inbox_items", "modules", "notes", "notes_reviewed", "notes_with_evidence", "programs", "relations", "source_feedback_records", "sources", "sources_with_topics", "stages", "stages_complete", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "units_needing_map", "workspaces_active", "workspaces_archived"], "type": "object" }, "deadlineModule": { "additionalProperties": false, "properties": { "action": { "type": ["string", "null"] }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "termins": { "items": { "maximum": 3, "minimum": 1, "type": "integer" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["module_id", "title", "action", "termins"], "type": "object" }, "domainCatalogEntry": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "label": { "minLength": 1, "type": "string" }, "order": { "minimum": 1, "type": "integer" } }, "required": ["id", "label", "order"], "type": "object" }, "flatStage": { "allOf": [{ "$ref": "#/$defs/projectedStage" }, { "required": ["study_map_id", "unit_id", "module_id"] }] }, "gardenEntry": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "last_ai_request_id": { "type": ["string", "null"] }, "path": { "type": "string" }, "revision": { "type": "string" }, "state": { "type": "string" }, "tags": { "items": { "type": "string" }, "type": "array" }, "title": { "type": "string" }, "transcription_path": { "type": ["string", "null"] }, "type": { "const": "garden-note" } }, "required": ["id", "last_ai_request_id", "path", "revision", "state", "tags", "title", "transcription_path", "type"], "type": "object" }, "generated": { "additionalProperties": false, "properties": { "closure_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "contract_version": { "const": 20 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["closure_sha256", "contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" }, "indexes": { "additionalProperties": false, "properties": { "component_to_units": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "source_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_material_synthesis": { "additionalProperties": { "pattern": "^material-synthesis-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "object" }, "unit_to_study_map": { "$ref": "#/$defs/stringMap" }, "workspace_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_units": { "$ref": "#/$defs/stringArrayMap" } }, "required": ["component_to_units", "concept_to_modules", "concept_to_units", "module_to_concepts", "module_to_units", "project_aliases", "source_to_modules", "source_to_units", "unit_to_concepts", "unit_to_material_synthesis", "unit_to_study_map", "workspace_to_modules", "workspace_to_units"], "type": "object" }, "integerMap": { "additionalProperties": { "minimum": 0, "type": "integer" }, "type": "object" }, "jsonObject": { "additionalProperties": { "$ref": "#/$defs/jsonValue" }, "propertyNames": { "type": "string" }, "type": "object" }, "jsonValue": { "oneOf": [{ "type": "null" }, { "type": "boolean" }, { "type": "number" }, { "type": "string" }, { "items": { "$ref": "#/$defs/jsonValue" }, "type": "array" }, { "$ref": "#/$defs/jsonObject" }] }, "knowledgeNode": { "additionalProperties": false, "properties": { "builds_on": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "concept_ids": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "summary": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "summary"], "type": "object" }, "knowledgeNodeEvidence": { "additionalProperties": false, "description": "A knowledge-map node's reviewed `concept_ids`. Retains unit and node identity.", "properties": { "kind": { "const": "knowledge-node" }, "node_id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "node_id"], "type": "object" }, "moduleConceptEdge": { "additionalProperties": false, "properties": { "concept_id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "evidence": { "description": "Why this cell is filled. At least one item: an edge with no evidence is an inferred edge, and this projection does not publish those.", "items": { "oneOf": [{ "$ref": "#/$defs/stageConceptEvidence" }, { "$ref": "#/$defs/knowledgeNodeEvidence" }] }, "minItems": 1, "type": "array" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["module_id", "concept_id", "evidence"], "type": "object" }, "moduleRecord": { "additionalProperties": false, "properties": { "administrative_status": { "enum": ["planned", "enrolled", "awaiting-grade", "completed", "dropped", "archived", null], "type": ["string", "null"] }, "area_id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "attempts": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/attempts" }, "code": { "type": ["string", "null"] }, "components": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/components" }, "credits": { "minimum": 0, "type": ["number", "null"] }, "examination": { "oneOf": [{ "type": "null" }, { "$ref": "https://learningos.local/schema/module.schema.json#/properties/examination" }] }, "grade": { "maximum": 5, "minimum": 1, "type": ["number", "null"] }, "id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "institution": { "type": ["string", "null"] }, "is_actionable": { "type": "boolean" }, "is_retired": { "type": "boolean" }, "is_settled": { "type": "boolean" }, "kind": { "enum": ["academic", "skill", "project", "foundation"] }, "operational_state": { "enum": ["none", "complete", "active", "paused"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester": { "pattern": "^(sose|wise)-[0-9]{4}$", "type": ["string", "null"] }, "source_map": { "oneOf": [{ "const": "source-map.yaml" }, { "type": "null" }] }, "status": { "enum": ["planned", "enrolled", "active", "paused", "awaiting-grade", "completed", "dropped", "archived"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "module" }, "unit_order": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/unit_order" } }, "required": ["id", "type", "title", "revision", "path", "kind", "area_id", "thematic_group_ids", "status", "administrative_status", "operational_state", "is_actionable", "is_settled", "is_retired", "institution", "code", "credits", "semester", "components", "examination", "attempts", "grade", "unit_order", "source_map"], "type": "object" }, "moduleSourceMap": { "additionalProperties": false, "properties": { "id": { "pattern": "^source-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "additionalProperties": false, "properties": { "priority": { "minimum": 0, "type": "integer" }, "role": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_routes": { "items": { "oneOf": [{ "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, { "$ref": "#/$defs/projectedRoute" }] }, "type": "array" }, "when": { "type": "string" }, "why": { "minLength": 1, "type": "string" } }, "required": ["source_id", "role", "why", "priority", "unit_routes"], "type": "object" }, "type": "array" }, "type": { "const": "module-source-map" } }, "required": ["id", "type", "module_id", "sources", "revision", "path"], "type": "object" }, "noteRecord": { "additionalProperties": false, "properties": { "atlas_question": { "additionalProperties": false, "properties": { "answer_notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["open", "resolved"] }, "target": { "oneOf": [{ "additionalProperties": false, "properties": { "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "maxItems": 2, "minItems": 1, "type": "array", "uniqueItems": true } }, "required": ["concepts"], "type": "object" }, { "additionalProperties": false, "properties": { "from": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "to": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": { "enum": ["requires", "builds-on", "derives", "generalizes", "contrasts-with", "equivalent-to", "applies-in", "motivates"] } }, "required": ["from", "type", "to"], "type": "object" }] } }, "required": ["state", "target"], "type": ["object", "null"] }, "attachments": { "items": { "type": "string" }, "type": "array" }, "authorship": { "enum": ["user", "mixed", "external", "operator-drafted", null], "type": ["string", "null"] }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "contexts": { "items": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "domain": { "type": "string" }, "domain_bucket": { "minLength": 1, "type": "string" }, "evidence": { "$ref": "https://learningos.local/schema/note.schema.json#/properties/evidence" }, "id": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "material_analysis": { "additionalProperties": false, "allOf": [{ "else": { "not": { "required": ["source_id"] } }, "if": { "properties": { "resolution": { "const": "resolved" } } }, "then": { "required": ["source_id"] } }], "properties": { "anchors": { "items": { "additionalProperties": false, "properties": { "locator": { "minLength": 1, "type": "string" }, "note": { "type": "string" }, "purpose": { "minLength": 1, "type": "string" }, "topic": { "minLength": 1, "type": "string" } }, "required": ["topic", "purpose", "locator"], "type": "object" }, "type": "array" }, "built": { "format": "date", "type": "string" }, "frozen_input_bytes": { "minimum": 1, "type": "integer" }, "frozen_input_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "inspected_range": { "additionalProperties": false, "properties": { "end": { "minimum": 1, "type": "integer" }, "start": { "minimum": 1, "type": "integer" } }, "required": ["start", "end"], "type": "object" }, "live_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "material": { "minLength": 1, "type": "string" }, "model": { "type": "string" }, "recorded_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "resolution": { "enum": ["resolved", "unresolved", "unavailable", "stale"] }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["resolution", "material", "recorded_source_digest", "inspected_range", "frozen_input_sha256", "frozen_input_bytes"], "type": ["object", "null"] }, "path": { "minLength": 1, "type": "string" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "role": { "enum": ["synthesis", "reference", "derivation", "exercise-bank", "mock-exam", "implementation", "question", "crosswalk"] }, "semantic_review": { "enum": ["unreviewed", "user-reviewed", null], "type": ["string", "null"] }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["rough", "evolving", "mature", "deprecated", null], "type": ["string", "null"] }, "summary": { "type": "string" }, "supersedes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "transcription": { "enum": ["none", "manual", "ai-assisted", null], "type": ["string", "null"] }, "type": { "const": "note" } }, "required": ["id", "type", "title", "path", "domain", "domain_bucket", "summary", "role", "state", "authorship", "concepts", "sources", "contexts", "attachments", "evidence", "supersedes", "reviewed", "transcription", "semantic_review", "atlas_question", "material_analysis"], "type": "object" }, "programRecord": { "additionalProperties": false, "properties": { "boundary_action": { "type": "string" }, "default": { "type": "boolean" }, "description": { "type": "string" }, "id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "enum": ["academic", "skills", "projects"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester_bound": { "type": "boolean" }, "semesters": { "items": { "$ref": "#/$defs/programSemester" }, "type": "array" }, "status": { "enum": ["active", "metadata-only", "archived"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "program" } }, "required": ["id", "type", "title", "kind", "status", "default", "semester_bound", "revision", "path"], "type": "object" }, "programSemester": { "additionalProperties": false, "properties": { "id": { "pattern": "^semester-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "order": { "minimum": 0, "type": "integer" }, "status": { "enum": ["current", "previous", "future", "archived"] }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "status", "order"], "type": "object" }, "progress": { "additionalProperties": { "additionalProperties": false, "properties": { "stages_complete": { "minimum": 0, "type": "integer" }, "stages_total": { "minimum": 0, "type": "integer" }, "units_complete": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "units_total": { "minimum": 0, "type": "integer" } }, "required": ["stages_complete", "stages_total", "units_complete", "units_needing_map", "units_total"], "type": "object" }, "type": "object" }, "projectedRecord": { "oneOf": [{ "$ref": "#/$defs/noteRecord" }, { "$ref": "#/$defs/conceptRecord" }, { "$ref": "#/$defs/sourceRecord" }, { "$ref": "#/$defs/compatibilityAlias" }, { "$ref": "#/$defs/moduleRecord" }, { "$ref": "#/$defs/collectionRecord" }, { "$ref": "#/$defs/workspaceRecord" }, { "$ref": "#/$defs/programRecord" }, { "$ref": "#/$defs/projectedUnit" }, { "$ref": "#/$defs/studyMap" }, { "$ref": "#/$defs/moduleSourceMap" }, { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, { "$ref": "#/$defs/coordinationRecord" }] }, "projectedRoute": { "additionalProperties": false, "properties": { "angle": { "minLength": 1, "type": "string" }, "angle_detail": { "minLength": 1, "type": "string" }, "covers": { "items": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "minItems": 1, "type": "array", "uniqueItems": true }, "depth": { "minLength": 1, "type": "string" }, "exposes_solutions_for": { "description": "Route ids whose activities this material answers \u2014 a verifiable claim about content, that opening this hands over the worked solutions to those tasks, never a judgment of quality. The session compiler refuses to put such a route in the same proposal as an evidence step it answers: explaining with the answer key and then asking for unaided transfer on that same task measures nothing (audit workbench/audits/synthetic-learner-2026-09-12, F03).", "items": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "format": { "minLength": 1, "type": "string" }, "id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "requires_assets": { "description": "Files the activity itself needs before it can be done \u2014 a dataset it analyses, a code template it fills in. Distinct from the material being reachable: `_resource_available` answers 'can he open the worksheet', and this answers 'can he do what the worksheet asks'. Blatt 4 Aufgabe 3(b) needs International_Education_Costs.csv and aufgabe3.py from Moodle, neither registered here, and the session still reported the route ready (audit workbench/audits/synthetic-learner-2026-09-12, F06). An entry with no `material_uri` is by definition unregistered; the session keeps the route and names the parts that cannot be attempted, rather than dropping the runnable work or inventing a substitute dataset.", "items": { "additionalProperties": false, "properties": { "material_uri": { "pattern": "^material://", "type": "string" }, "name": { "minLength": 1, "type": "string" }, "needed_for": { "description": "Which part of the activity, in the sheet's own numbering.", "minLength": 1, "type": "string" }, "obtain_from": { "description": "Where the exact file comes from. Never a substitute.", "minLength": 1, "type": "string" } }, "required": ["name"], "type": "object" }, "minItems": 1, "type": "array" }, "scope": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "title": { "minLength": 1, "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["id", "unit_id", "source_id", "title", "format", "angle", "covers", "depth", "scope"], "type": "object" }, "projectedStage": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "completed": { "type": "string" }, "concepts": { "items": { "type": "string" }, "type": "array" }, "detour_id": { "type": "string" }, "done_when": { "items": { "type": "string" }, "type": "array" }, "estimate_minutes": { "minimum": 1, "type": "integer" }, "exam_critical": { "type": "boolean" }, "id": { "type": "string" }, "is_open": { "type": "boolean" }, "module_id": { "type": "string" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "number": { "minimum": 1, "type": "integer" }, "objective": { "type": "string" }, "resources": { "items": { "$ref": "#/$defs/resource" }, "type": "array" }, "scope_triage": { "type": "string" }, "source_feedback": { "items": { "$ref": "#/$defs/sourceFeedback" }, "type": "array" }, "status": { "type": "string" }, "study_map_id": { "type": "string" }, "title": { "type": "string" }, "unit_id": { "type": "string" }, "working_note": { "type": "string" } }, "required": ["id", "title", "status", "is_open", "objective", "done_when", "resources", "working_note", "attachments", "source_feedback", "scope_triage", "notes_text", "notes_updated"], "type": "object" }, "projectedUnit": { "additionalProperties": false, "properties": { "artifacts": { "$ref": "https://learningos.local/schema/unit.schema.json#/properties/artifacts" }, "child_unit_ids": { "items": { "type": "string" }, "type": "array" }, "component_id": { "type": "string" }, "current_study_map": { "type": "string" }, "id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "type": "string" }, "knowledge_map": { "additionalProperties": false, "properties": { "nodes": { "items": { "$ref": "#/$defs/knowledgeNode" }, "type": "array" }, "summary": { "type": "string" } }, "required": ["summary", "nodes"], "type": "object" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "needs_study_map": { "type": "boolean" }, "note_sections": { "items": { "$ref": "#/$defs/unitNoteSection" }, "type": "array" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "order": { "minimum": 0, "type": "integer" }, "parent_unit_id": { "type": "string" }, "path": { "type": "string" }, "related_module_ids": { "items": { "type": "string" }, "type": "array" }, "revision": { "minimum": 0, "type": "integer" }, "scope": { "type": "string" }, "scope_sources": { "items": { "additionalProperties": false, "properties": { "authority": { "type": "string" }, "locator": { "type": "string" }, "source_id": { "type": "string" } }, "required": ["source_id", "authority"], "type": "object" }, "type": "array" }, "source_selections": { "items": { "additionalProperties": false, "properties": { "locator": { "type": "string" }, "purpose": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "type": "string" }, "stage_ids": { "items": { "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["source_id", "locator", "purpose"], "type": "object" }, "type": "array" }, "status": { "type": "string" }, "title": { "type": "string" }, "type": { "const": "unit" }, "working_note": { "type": "string" }, "workspace_ids": { "items": { "type": "string" }, "type": "array" } }, "required": ["id", "type", "module_id", "kind", "title", "order", "scope", "status", "artifacts", "workspace_ids", "source_selections", "scope_sources", "revision", "path", "needs_study_map", "notes_text", "note_sections", "notes_updated"], "type": "object" }, "relation": { "additionalProperties": false, "properties": { "context": { "type": ["string", "null"] }, "from": { "type": ["string", "null"] }, "source": { "type": ["string", "null"] }, "to": { "type": ["string", "null"] }, "type": { "type": ["string", "null"] } }, "required": ["from", "type", "to", "context", "source"], "type": "object" }, "resource": { "additionalProperties": false, "properties": { "angle": { "type": "string" }, "angle_detail": { "type": "string" }, "id": { "type": "string" }, "is_entry": { "type": "boolean" }, "kind": { "type": "string" }, "label": { "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "scope_triage": { "type": "string" }, "source_id": { "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["kind", "label", "is_entry"], "type": "object" }, "resumePointer": { "oneOf": [{ "maxProperties": 0, "type": "object" }, { "additionalProperties": false, "properties": { "module_id": { "type": "string" }, "stage_id": { "type": "string" }, "study_map_id": { "type": "string" }, "type": { "const": "resume-pointer" }, "unit_id": { "type": "string" }, "updated": { "type": "string" } }, "required": ["type", "module_id", "unit_id", "study_map_id", "stage_id", "updated"], "type": "object" }] }, "reviewItem": { "additionalProperties": false, "properties": { "category": { "type": "string" }, "context": { "type": "string" }, "id": { "type": "string" }, "reason": { "type": "string" }, "target": { "$ref": "#/$defs/jsonObject" }, "title": { "type": "string" } }, "required": ["category", "context", "id", "reason", "target", "title"], "type": "object" }, "routeId": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "semester": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "order": { "type": "integer" }, "program_id": { "type": "string" }, "status": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "order", "program_id", "status", "title"], "type": "object" }, "sourceEvaluation": { "additionalProperties": false, "properties": { "audience": { "items": { "type": "string" }, "type": "array" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "level": { "enum": ["introductory", "intermediate", "advanced", "reference", null], "type": ["string", "null"] }, "prerequisites": { "items": { "type": "string" }, "type": "array" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "roles": { "items": { "type": "string" }, "type": "array" }, "strengths": { "items": { "type": "string" }, "type": "array" }, "useful_sections": { "items": { "additionalProperties": false, "properties": { "note": { "type": "string" }, "section": { "type": "string" } }, "required": ["section", "note"], "type": "object" }, "type": "array" }, "weaknesses": { "items": { "type": "string" }, "type": "array" } }, "required": ["roles", "level", "audience", "prerequisites", "strengths", "weaknesses", "reviewed", "concepts", "useful_sections"], "type": "object" }, "sourceExamination": { "additionalProperties": false, "properties": { "approved_analysis_count": { "minimum": 0, "type": "integer" }, "evaluated": { "type": "boolean" }, "metadata_placed": { "type": "boolean" } }, "required": ["evaluated", "approved_analysis_count", "metadata_placed"], "type": "object" }, "sourceFeedback": { "additionalProperties": false, "properties": { "feedback": { "enum": ["helpful", "too-advanced", "wrong-perspective", "useful-for-derivation", "useful-for-review", "skipped"] }, "note": { "type": "string" }, "recorded": { "format": "date", "type": "string" }, "resource_id": { "pattern": "^resource-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["source_id", "feedback", "recorded"], "type": "object" }, "sourceRecord": { "additionalProperties": false, "properties": { "authors": { "items": { "type": "string" }, "type": "array" }, "discovery": { "anyOf": [{ "$ref": "https://learningos.local/schema/sources.schema.json#/properties/sources/items/properties/discovery" }, { "type": "null" }] }, "evaluations": { "items": { "$ref": "#/$defs/sourceEvaluation" }, "type": "array" }, "examination": { "$ref": "#/$defs/sourceExamination" }, "id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "identifiers": { "additionalProperties": { "type": "string" }, "type": "object" }, "material": { "pattern": "^material://.+", "type": ["string", "null"] }, "material_exists": { "type": "boolean" }, "material_path": { "type": ["string", "null"] }, "organization": { "type": ["string", "null"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "roles": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "source_type": { "enum": ["book", "paper", "lecture", "course", "video", "website", "documentation", "software", "conversation", "other"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "topics": { "items": { "pattern": "^topic-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "type": { "const": "source" }, "url": { "format": "uri", "type": ["string", "null"] }, "year": { "maximum": 2100, "minimum": 1800, "type": ["integer", "null"] } }, "required": ["id", "type", "title", "revision", "path", "source_type", "thematic_group_ids", "topics", "url", "material", "material_path", "material_exists", "authors", "organization", "year", "identifiers", "roles", "evaluations", "discovery", "examination"], "type": "object" }, "stageAttachment": { "additionalProperties": false, "properties": { "label": { "minLength": 1, "type": "string" }, "path": { "minLength": 1, "type": "string" } }, "required": ["path", "label"], "type": "object" }, "stageConceptEvidence": { "additionalProperties": false, "description": "A stage's explicit `concepts` tag. Retains unit, study-map and stage identity, so a filled cell drills into the exact stage.", "properties": { "kind": { "const": "stage-concept" }, "stage_id": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "study_map_id": { "pattern": "^study-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "study_map_id", "stage_id"], "type": "object" }, "stringArrayMap": { "additionalProperties": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "type": "object" }, "stringMap": { "additionalProperties": { "type": "string" }, "type": "object" }, "studyMap": { "additionalProperties": false, "properties": { "current_stage": { "type": "string" }, "detours": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/detours" }, "id": { "type": "string" }, "is_study_candidate": { "type": "boolean" }, "module_id": { "type": "string" }, "path": { "type": "string" }, "plan_template_version": { "minimum": 1, "type": "integer" }, "revision": { "minimum": 0, "type": "integer" }, "shelving": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/shelving" }, "source_plan": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/source_plan" }, "stages": { "items": { "$ref": "#/$defs/projectedStage" }, "type": "array" }, "status": { "type": "string" }, "type": { "const": "study-map" }, "unit_id": { "type": "string" } }, "required": ["id", "type", "unit_id", "module_id", "status", "is_study_candidate", "current_stage", "source_plan", "stages", "shelving", "revision", "path"], "type": "object" }, "thematicGroup": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "type": "string" }, "order": { "type": "integer" }, "title": { "type": "string" } }, "required": ["id", "title", "description", "order"], "type": "object" }, "topic": { "additionalProperties": false, "properties": { "domain": { "type": "string" }, "id": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "title", "domain"], "type": "object" }, "unitMaterialSynthesisProjection": { "allOf": [{ "$ref": "https://learningos.local/schema/unit-material-synthesis.schema.json#/$defs/canonicalRecord" }, { "properties": { "completeness": { "additionalProperties": false, "properties": { "assessed_route_count": { "minimum": 0, "type": "integer" }, "complete": { "type": "boolean" }, "current_route_count": { "minimum": 0, "type": "integer" }, "deep_reviewed_count": { "minimum": 0, "type": "integer" }, "duplicate_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "missing_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "orphaned_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "screened_count": { "minimum": 0, "type": "integer" }, "unavailable_count": { "minimum": 0, "type": "integer" }, "unevaluated_count": { "minimum": 0, "type": "integer" } }, "required": ["complete", "current_route_count", "assessed_route_count", "deep_reviewed_count", "screened_count", "unevaluated_count", "unavailable_count", "missing_route_ids", "orphaned_route_ids", "duplicate_route_ids"], "type": "object" }, "freshness": { "additionalProperties": false, "properties": { "reasons": { "items": { "enum": ["source_map_revision", "source_map_checksum", "route_set_checksum", "material_checksums", "policy", "current-basis-unavailable", "analysis-refs-stale"] }, "type": "array", "uniqueItems": true }, "status": { "enum": ["current", "stale"] } }, "required": ["status", "reasons"], "type": "object" } }, "required": ["freshness", "completeness"], "type": "object" }], "unevaluatedProperties": false }, "unitNoteSection": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "recorded_at": { "type": ["string", "null"] }, "stage_ids": { "items": { "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "text": { "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["recorded_at", "title", "stage_ids", "attachments", "text", "summary"], "type": "object" }, "workspaceRecord": { "additionalProperties": false, "properties": { "archived": { "type": "boolean" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "deadline": { "format": "date", "type": ["string", "null"] }, "id": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "is_open": { "type": "boolean" }, "module_ids": { "items": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "next_action": { "type": "string" }, "notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "objective": { "type": "string" }, "path": { "minLength": 1, "type": "string" }, "program_ids": { "items": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "project_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "standing": { "type": "boolean" }, "status": { "enum": ["active", "blocked", "complete"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "workspace" }, "unit_ids": { "items": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["id", "type", "title", "revision", "path", "status", "standing", "archived", "is_open", "deadline", "objective", "next_action", "concepts", "notes", "sources", "program_ids", "module_ids", "unit_ids", "project_id"], "type": "object" } }, "$id": "https://learningos.local/contracts/manifest-v20.schema.json", "$schema": "https://json-schema.org/draft/2020-12/schema", "additionalProperties": false, "properties": { "_generated": { "$ref": "#/$defs/generated" }, "academic_deadlines": { "items": { "$ref": "#/$defs/academicDeadline" }, "type": "array" }, "ai_actions": { "$ref": "#/$defs/aiActions" }, "artifact_revisions": { "$ref": "#/$defs/integerMap" }, "backlinks": { "$ref": "#/$defs/backlinks" }, "counts": { "$ref": "#/$defs/counts" }, "domains": { "description": "The ordered domain catalog (D5): the known atlas domains in fixed order, then observed future buckets sorted. Covers every domain id the published notes (domain_bucket) and shelves (domain) reference; 'not yet grouped' is a UI presentation concept and never appears here.", "items": { "$ref": "#/$defs/domainCatalogEntry" }, "type": "array" }, "garden_entries": { "items": { "$ref": "#/$defs/gardenEntry" }, "type": "array" }, "indexes": { "$ref": "#/$defs/indexes" }, "module_concept_edges": { "description": "The Module x Concept crossing. One row per (module, concept) pair for which at least one EXPLICIT authored tag exists - a stage's `concepts` tag or a knowledge-map node's reviewed `concept_ids`. Never inferred from titles, prose, notes, sources, or similarity; absence means not mapped, never that no relationship exists. Ordered by (module_id, concept_id).", "items": { "$ref": "#/$defs/moduleConceptEdge" }, "type": "array" }, "module_source_maps": { "items": { "$ref": "#/$defs/moduleSourceMap" }, "type": "array" }, "modules": { "items": { "$ref": "#/$defs/moduleRecord" }, "type": "array" }, "programs": { "items": { "$ref": "#/$defs/programRecord" }, "type": "array" }, "progress": { "$ref": "#/$defs/progress" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "records": { "items": { "$ref": "#/$defs/projectedRecord" }, "type": "array" }, "relations": { "items": { "$ref": "#/$defs/relation" }, "type": "array" }, "resume_pointer": { "$ref": "#/$defs/resumePointer" }, "review_items": { "items": { "$ref": "#/$defs/reviewItem" }, "type": "array" }, "semesters": { "items": { "$ref": "#/$defs/semester" }, "type": "array" }, "stages": { "items": { "$ref": "#/$defs/flatStage" }, "type": "array" }, "study_maps": { "items": { "$ref": "#/$defs/studyMap" }, "type": "array" }, "thematic_groups": { "items": { "$ref": "#/$defs/thematicGroup" }, "type": "array" }, "topic_packs": { "items": { "$ref": "#/$defs/collectionRecord" }, "type": "array" }, "topics": { "items": { "$ref": "#/$defs/topic" }, "type": "array" }, "unit_material_syntheses": { "items": { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, "type": "array" }, "units": { "items": { "$ref": "#/$defs/projectedUnit" }, "type": "array" } }, "required": ["_generated", "academic_deadlines", "ai_actions", "artifact_revisions", "backlinks", "counts", "domains", "garden_entries", "indexes", "module_concept_edges", "module_source_maps", "modules", "programs", "progress", "project_aliases", "records", "relations", "resume_pointer", "review_items", "semesters", "stages", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "unit_material_syntheses"], "title": "LearningOS atomic manifest v20", "type": "object" };
     var schema32 = { "additionalProperties": false, "properties": { "closure_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "contract_version": { "const": 20 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["closure_sha256", "contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" };
     var schema51 = { "additionalProperties": false, "properties": { "ai_action_requests": { "minimum": 0, "type": "integer" }, "collections": { "minimum": 0, "type": "integer" }, "concepts": { "minimum": 0, "type": "integer" }, "garden_entries": { "minimum": 0, "type": "integer" }, "inbox_items": { "minimum": 0, "type": "integer" }, "modules": { "minimum": 0, "type": "integer" }, "notes": { "minimum": 0, "type": "integer" }, "notes_reviewed": { "minimum": 0, "type": "integer" }, "notes_with_evidence": { "minimum": 0, "type": "integer" }, "programs": { "minimum": 0, "type": "integer" }, "relations": { "minimum": 0, "type": "integer" }, "source_feedback_records": { "minimum": 0, "type": "integer" }, "sources": { "minimum": 0, "type": "integer" }, "sources_with_topics": { "minimum": 0, "type": "integer" }, "stages": { "minimum": 0, "type": "integer" }, "stages_complete": { "minimum": 0, "type": "integer" }, "study_maps": { "minimum": 0, "type": "integer" }, "thematic_groups": { "minimum": 0, "type": "integer" }, "topic_packs": { "minimum": 0, "type": "integer" }, "topics": { "minimum": 0, "type": "integer" }, "units": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "workspaces_active": { "minimum": 0, "type": "integer" }, "workspaces_archived": { "minimum": 0, "type": "integer" } }, "required": ["ai_action_requests", "collections", "concepts", "garden_entries", "inbox_items", "modules", "notes", "notes_reviewed", "notes_with_evidence", "programs", "relations", "source_feedback_records", "sources", "sources_with_topics", "stages", "stages_complete", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "units_needing_map", "workspaces_active", "workspaces_archived"], "type": "object" };
     var schema53 = { "additionalProperties": false, "properties": { "id": { "type": "string" }, "last_ai_request_id": { "type": ["string", "null"] }, "path": { "type": "string" }, "revision": { "type": "string" }, "state": { "type": "string" }, "tags": { "items": { "type": "string" }, "type": "array" }, "title": { "type": "string" }, "transcription_path": { "type": ["string", "null"] }, "type": { "const": "garden-note" } }, "required": ["id", "last_ai_request_id", "path", "revision", "state", "tags", "title", "transcription_path", "type"], "type": "object" };
@@ -4546,7 +4546,7 @@ var require_manifest_validator = __commonJS({
       return errors === 0;
     }
     validate35.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    var schema72 = { "additionalProperties": false, "properties": { "administrative_status": { "enum": ["planned", "enrolled", "awaiting-grade", "completed", "dropped", "archived", null], "type": ["string", "null"] }, "area_id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "attempts": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/attempts" }, "code": { "type": ["string", "null"] }, "components": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/components" }, "credits": { "minimum": 0, "type": ["number", "null"] }, "examination": { "oneOf": [{ "type": "null" }, { "$ref": "https://learningos.local/schema/module.schema.json#/properties/examination" }] }, "grade": { "maximum": 5, "minimum": 1, "type": ["number", "null"] }, "id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "institution": { "type": ["string", "null"] }, "is_actionable": { "type": "boolean" }, "kind": { "enum": ["academic", "skill", "project", "foundation"] }, "operational_state": { "enum": ["none", "complete", "active", "paused"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester": { "pattern": "^(sose|wise)-[0-9]{4}$", "type": ["string", "null"] }, "source_map": { "oneOf": [{ "const": "source-map.yaml" }, { "type": "null" }] }, "status": { "enum": ["planned", "enrolled", "active", "paused", "awaiting-grade", "completed", "dropped", "archived"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "module" }, "unit_order": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/unit_order" } }, "required": ["id", "type", "title", "revision", "path", "kind", "area_id", "thematic_group_ids", "status", "administrative_status", "operational_state", "is_actionable", "institution", "code", "credits", "semester", "components", "examination", "attempts", "grade", "unit_order", "source_map"], "type": "object" };
+    var schema72 = { "additionalProperties": false, "properties": { "administrative_status": { "enum": ["planned", "enrolled", "awaiting-grade", "completed", "dropped", "archived", null], "type": ["string", "null"] }, "area_id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "attempts": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/attempts" }, "code": { "type": ["string", "null"] }, "components": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/components" }, "credits": { "minimum": 0, "type": ["number", "null"] }, "examination": { "oneOf": [{ "type": "null" }, { "$ref": "https://learningos.local/schema/module.schema.json#/properties/examination" }] }, "grade": { "maximum": 5, "minimum": 1, "type": ["number", "null"] }, "id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "institution": { "type": ["string", "null"] }, "is_actionable": { "type": "boolean" }, "is_retired": { "type": "boolean" }, "is_settled": { "type": "boolean" }, "kind": { "enum": ["academic", "skill", "project", "foundation"] }, "operational_state": { "enum": ["none", "complete", "active", "paused"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester": { "pattern": "^(sose|wise)-[0-9]{4}$", "type": ["string", "null"] }, "source_map": { "oneOf": [{ "const": "source-map.yaml" }, { "type": "null" }] }, "status": { "enum": ["planned", "enrolled", "active", "paused", "awaiting-grade", "completed", "dropped", "archived"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "module" }, "unit_order": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/unit_order" } }, "required": ["id", "type", "title", "revision", "path", "kind", "area_id", "thematic_group_ids", "status", "administrative_status", "operational_state", "is_actionable", "is_settled", "is_retired", "institution", "code", "credits", "semester", "components", "examination", "attempts", "grade", "unit_order", "source_map"], "type": "object" };
     var schema74 = { "items": { "additionalProperties": false, "properties": { "date": { "format": "date", "type": "string" }, "grade": { "maximum": 5, "minimum": 1, "type": "number" }, "notes": { "type": "string" }, "result": { "enum": ["registered", "withdrawn", "sat", "passed", "failed"] }, "termin": { "maximum": 3, "minimum": 1, "type": "integer" } }, "required": ["termin", "result"], "type": "object" }, "type": "array" };
     var schema76 = { "additionalProperties": false, "properties": { "notes": { "type": "string" }, "registration_windows": { "items": { "additionalProperties": false, "properties": { "action": { "minLength": 1, "type": "string" }, "closes": { "format": "date", "type": "string" }, "label": { "minLength": 1, "type": "string" }, "opens": { "format": "date", "type": "string" }, "termins": { "items": { "maximum": 3, "minimum": 1, "type": "integer" }, "type": "array", "uniqueItems": true } }, "required": ["opens", "closes", "label"], "type": "object" }, "type": "array" }, "sittings": { "items": { "additionalProperties": false, "properties": { "date": { "format": "date", "type": "string" }, "end_date": { "format": "date", "type": "string" }, "label": { "minLength": 1, "type": "string" }, "notes": { "type": "string" }, "termin": { "maximum": 3, "minimum": 1, "type": "integer" }, "time": { "minLength": 1, "type": "string" }, "withdrawal_deadline": { "format": "date", "type": "string" } }, "required": ["termin", "date"], "type": "object" }, "type": "array" }, "type": { "enum": ["klausur", "muendlich", "portfolio", "project", "hausarbeit", "other"] } }, "type": "object" };
     var pattern31 = new RegExp("^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "u");
@@ -4565,7 +4565,7 @@ var require_manifest_validator = __commonJS({
       if (errors === 0) {
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing0;
-          if (data.id === void 0 && (missing0 = "id") || data.type === void 0 && (missing0 = "type") || data.title === void 0 && (missing0 = "title") || data.revision === void 0 && (missing0 = "revision") || data.path === void 0 && (missing0 = "path") || data.kind === void 0 && (missing0 = "kind") || data.area_id === void 0 && (missing0 = "area_id") || data.thematic_group_ids === void 0 && (missing0 = "thematic_group_ids") || data.status === void 0 && (missing0 = "status") || data.administrative_status === void 0 && (missing0 = "administrative_status") || data.operational_state === void 0 && (missing0 = "operational_state") || data.is_actionable === void 0 && (missing0 = "is_actionable") || data.institution === void 0 && (missing0 = "institution") || data.code === void 0 && (missing0 = "code") || data.credits === void 0 && (missing0 = "credits") || data.semester === void 0 && (missing0 = "semester") || data.components === void 0 && (missing0 = "components") || data.examination === void 0 && (missing0 = "examination") || data.attempts === void 0 && (missing0 = "attempts") || data.grade === void 0 && (missing0 = "grade") || data.unit_order === void 0 && (missing0 = "unit_order") || data.source_map === void 0 && (missing0 = "source_map")) {
+          if (data.id === void 0 && (missing0 = "id") || data.type === void 0 && (missing0 = "type") || data.title === void 0 && (missing0 = "title") || data.revision === void 0 && (missing0 = "revision") || data.path === void 0 && (missing0 = "path") || data.kind === void 0 && (missing0 = "kind") || data.area_id === void 0 && (missing0 = "area_id") || data.thematic_group_ids === void 0 && (missing0 = "thematic_group_ids") || data.status === void 0 && (missing0 = "status") || data.administrative_status === void 0 && (missing0 = "administrative_status") || data.operational_state === void 0 && (missing0 = "operational_state") || data.is_actionable === void 0 && (missing0 = "is_actionable") || data.is_settled === void 0 && (missing0 = "is_settled") || data.is_retired === void 0 && (missing0 = "is_retired") || data.institution === void 0 && (missing0 = "institution") || data.code === void 0 && (missing0 = "code") || data.credits === void 0 && (missing0 = "credits") || data.semester === void 0 && (missing0 = "semester") || data.components === void 0 && (missing0 = "components") || data.examination === void 0 && (missing0 = "examination") || data.attempts === void 0 && (missing0 = "attempts") || data.grade === void 0 && (missing0 = "grade") || data.unit_order === void 0 && (missing0 = "unit_order") || data.source_map === void 0 && (missing0 = "source_map")) {
             validate37.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
             return false;
           } else {
@@ -5656,11 +5656,10 @@ var require_manifest_validator = __commonJS({
                                     var valid0 = true;
                                   }
                                   if (valid0) {
-                                    if (data.kind !== void 0) {
-                                      let data41 = data.kind;
+                                    if (data.is_retired !== void 0) {
                                       const _errs94 = errors;
-                                      if (!(data41 === "academic" || data41 === "skill" || data41 === "project" || data41 === "foundation")) {
-                                        validate37.errors = [{ instancePath: instancePath + "/kind", schemaPath: "#/properties/kind/enum", keyword: "enum", params: { allowedValues: schema72.properties.kind.enum }, message: "must be equal to one of the allowed values" }];
+                                      if (typeof data.is_retired !== "boolean") {
+                                        validate37.errors = [{ instancePath: instancePath + "/is_retired", schemaPath: "#/properties/is_retired/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                                         return false;
                                       }
                                       var valid0 = _errs94 === errors;
@@ -5668,70 +5667,53 @@ var require_manifest_validator = __commonJS({
                                       var valid0 = true;
                                     }
                                     if (valid0) {
-                                      if (data.operational_state !== void 0) {
-                                        let data42 = data.operational_state;
-                                        const _errs95 = errors;
-                                        if (!(data42 === "none" || data42 === "complete" || data42 === "active" || data42 === "paused")) {
-                                          validate37.errors = [{ instancePath: instancePath + "/operational_state", schemaPath: "#/properties/operational_state/enum", keyword: "enum", params: { allowedValues: schema72.properties.operational_state.enum }, message: "must be equal to one of the allowed values" }];
+                                      if (data.is_settled !== void 0) {
+                                        const _errs96 = errors;
+                                        if (typeof data.is_settled !== "boolean") {
+                                          validate37.errors = [{ instancePath: instancePath + "/is_settled", schemaPath: "#/properties/is_settled/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                                           return false;
                                         }
-                                        var valid0 = _errs95 === errors;
+                                        var valid0 = _errs96 === errors;
                                       } else {
                                         var valid0 = true;
                                       }
                                       if (valid0) {
-                                        if (data.path !== void 0) {
-                                          let data43 = data.path;
-                                          const _errs96 = errors;
-                                          if (errors === _errs96) {
-                                            if (typeof data43 === "string") {
-                                              if (func3(data43) < 1) {
-                                                validate37.errors = [{ instancePath: instancePath + "/path", schemaPath: "#/properties/path/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
-                                                return false;
-                                              }
-                                            } else {
-                                              validate37.errors = [{ instancePath: instancePath + "/path", schemaPath: "#/properties/path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                              return false;
-                                            }
+                                        if (data.kind !== void 0) {
+                                          let data43 = data.kind;
+                                          const _errs98 = errors;
+                                          if (!(data43 === "academic" || data43 === "skill" || data43 === "project" || data43 === "foundation")) {
+                                            validate37.errors = [{ instancePath: instancePath + "/kind", schemaPath: "#/properties/kind/enum", keyword: "enum", params: { allowedValues: schema72.properties.kind.enum }, message: "must be equal to one of the allowed values" }];
+                                            return false;
                                           }
-                                          var valid0 = _errs96 === errors;
+                                          var valid0 = _errs98 === errors;
                                         } else {
                                           var valid0 = true;
                                         }
                                         if (valid0) {
-                                          if (data.revision !== void 0) {
-                                            let data44 = data.revision;
-                                            const _errs98 = errors;
-                                            if (!(typeof data44 == "number" && (!(data44 % 1) && !isNaN(data44)) && isFinite(data44))) {
-                                              validate37.errors = [{ instancePath: instancePath + "/revision", schemaPath: "#/properties/revision/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
+                                          if (data.operational_state !== void 0) {
+                                            let data44 = data.operational_state;
+                                            const _errs99 = errors;
+                                            if (!(data44 === "none" || data44 === "complete" || data44 === "active" || data44 === "paused")) {
+                                              validate37.errors = [{ instancePath: instancePath + "/operational_state", schemaPath: "#/properties/operational_state/enum", keyword: "enum", params: { allowedValues: schema72.properties.operational_state.enum }, message: "must be equal to one of the allowed values" }];
                                               return false;
                                             }
-                                            if (errors === _errs98) {
-                                              if (typeof data44 == "number" && isFinite(data44)) {
-                                                if (data44 < 0 || isNaN(data44)) {
-                                                  validate37.errors = [{ instancePath: instancePath + "/revision", schemaPath: "#/properties/revision/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
-                                                  return false;
-                                                }
-                                              }
-                                            }
-                                            var valid0 = _errs98 === errors;
+                                            var valid0 = _errs99 === errors;
                                           } else {
                                             var valid0 = true;
                                           }
                                           if (valid0) {
-                                            if (data.semester !== void 0) {
-                                              let data45 = data.semester;
+                                            if (data.path !== void 0) {
+                                              let data45 = data.path;
                                               const _errs100 = errors;
-                                              if (typeof data45 !== "string" && data45 !== null) {
-                                                validate37.errors = [{ instancePath: instancePath + "/semester", schemaPath: "#/properties/semester/type", keyword: "type", params: { type: schema72.properties.semester.type }, message: "must be string,null" }];
-                                                return false;
-                                              }
                                               if (errors === _errs100) {
                                                 if (typeof data45 === "string") {
-                                                  if (!pattern37.test(data45)) {
-                                                    validate37.errors = [{ instancePath: instancePath + "/semester", schemaPath: "#/properties/semester/pattern", keyword: "pattern", params: { pattern: "^(sose|wise)-[0-9]{4}$" }, message: 'must match pattern "^(sose|wise)-[0-9]{4}$"' }];
+                                                  if (func3(data45) < 1) {
+                                                    validate37.errors = [{ instancePath: instancePath + "/path", schemaPath: "#/properties/path/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
                                                     return false;
                                                   }
+                                                } else {
+                                                  validate37.errors = [{ instancePath: instancePath + "/path", schemaPath: "#/properties/path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                  return false;
                                                 }
                                               }
                                               var valid0 = _errs100 === errors;
@@ -5739,64 +5721,18 @@ var require_manifest_validator = __commonJS({
                                               var valid0 = true;
                                             }
                                             if (valid0) {
-                                              if (data.source_map !== void 0) {
-                                                let data46 = data.source_map;
+                                              if (data.revision !== void 0) {
+                                                let data46 = data.revision;
                                                 const _errs102 = errors;
-                                                const _errs103 = errors;
-                                                let valid16 = false;
-                                                let passing1 = null;
-                                                const _errs104 = errors;
-                                                if ("source-map.yaml" !== data46) {
-                                                  const err41 = { instancePath: instancePath + "/source_map", schemaPath: "#/properties/source_map/oneOf/0/const", keyword: "const", params: { allowedValue: "source-map.yaml" }, message: "must be equal to constant" };
-                                                  if (vErrors === null) {
-                                                    vErrors = [err41];
-                                                  } else {
-                                                    vErrors.push(err41);
-                                                  }
-                                                  errors++;
-                                                }
-                                                var _valid1 = _errs104 === errors;
-                                                if (_valid1) {
-                                                  valid16 = true;
-                                                  passing1 = 0;
-                                                }
-                                                const _errs105 = errors;
-                                                if (data46 !== null) {
-                                                  const err42 = { instancePath: instancePath + "/source_map", schemaPath: "#/properties/source_map/oneOf/1/type", keyword: "type", params: { type: "null" }, message: "must be null" };
-                                                  if (vErrors === null) {
-                                                    vErrors = [err42];
-                                                  } else {
-                                                    vErrors.push(err42);
-                                                  }
-                                                  errors++;
-                                                }
-                                                var _valid1 = _errs105 === errors;
-                                                if (_valid1 && valid16) {
-                                                  valid16 = false;
-                                                  passing1 = [passing1, 1];
-                                                } else {
-                                                  if (_valid1) {
-                                                    valid16 = true;
-                                                    passing1 = 1;
-                                                  }
-                                                }
-                                                if (!valid16) {
-                                                  const err43 = { instancePath: instancePath + "/source_map", schemaPath: "#/properties/source_map/oneOf", keyword: "oneOf", params: { passingSchemas: passing1 }, message: "must match exactly one schema in oneOf" };
-                                                  if (vErrors === null) {
-                                                    vErrors = [err43];
-                                                  } else {
-                                                    vErrors.push(err43);
-                                                  }
-                                                  errors++;
-                                                  validate37.errors = vErrors;
+                                                if (!(typeof data46 == "number" && (!(data46 % 1) && !isNaN(data46)) && isFinite(data46))) {
+                                                  validate37.errors = [{ instancePath: instancePath + "/revision", schemaPath: "#/properties/revision/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
                                                   return false;
-                                                } else {
-                                                  errors = _errs103;
-                                                  if (vErrors !== null) {
-                                                    if (_errs103) {
-                                                      vErrors.length = _errs103;
-                                                    } else {
-                                                      vErrors = null;
+                                                }
+                                                if (errors === _errs102) {
+                                                  if (typeof data46 == "number" && isFinite(data46)) {
+                                                    if (data46 < 0 || isNaN(data46)) {
+                                                      validate37.errors = [{ instancePath: instancePath + "/revision", schemaPath: "#/properties/revision/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
+                                                      return false;
                                                     }
                                                   }
                                                 }
@@ -5805,159 +5741,247 @@ var require_manifest_validator = __commonJS({
                                                 var valid0 = true;
                                               }
                                               if (valid0) {
-                                                if (data.status !== void 0) {
-                                                  let data47 = data.status;
-                                                  const _errs107 = errors;
-                                                  if (!(data47 === "planned" || data47 === "enrolled" || data47 === "active" || data47 === "paused" || data47 === "awaiting-grade" || data47 === "completed" || data47 === "dropped" || data47 === "archived")) {
-                                                    validate37.errors = [{ instancePath: instancePath + "/status", schemaPath: "#/properties/status/enum", keyword: "enum", params: { allowedValues: schema72.properties.status.enum }, message: "must be equal to one of the allowed values" }];
+                                                if (data.semester !== void 0) {
+                                                  let data47 = data.semester;
+                                                  const _errs104 = errors;
+                                                  if (typeof data47 !== "string" && data47 !== null) {
+                                                    validate37.errors = [{ instancePath: instancePath + "/semester", schemaPath: "#/properties/semester/type", keyword: "type", params: { type: schema72.properties.semester.type }, message: "must be string,null" }];
                                                     return false;
                                                   }
-                                                  var valid0 = _errs107 === errors;
+                                                  if (errors === _errs104) {
+                                                    if (typeof data47 === "string") {
+                                                      if (!pattern37.test(data47)) {
+                                                        validate37.errors = [{ instancePath: instancePath + "/semester", schemaPath: "#/properties/semester/pattern", keyword: "pattern", params: { pattern: "^(sose|wise)-[0-9]{4}$" }, message: 'must match pattern "^(sose|wise)-[0-9]{4}$"' }];
+                                                        return false;
+                                                      }
+                                                    }
+                                                  }
+                                                  var valid0 = _errs104 === errors;
                                                 } else {
                                                   var valid0 = true;
                                                 }
                                                 if (valid0) {
-                                                  if (data.thematic_group_ids !== void 0) {
-                                                    let data48 = data.thematic_group_ids;
+                                                  if (data.source_map !== void 0) {
+                                                    let data48 = data.source_map;
+                                                    const _errs106 = errors;
+                                                    const _errs107 = errors;
+                                                    let valid16 = false;
+                                                    let passing1 = null;
                                                     const _errs108 = errors;
-                                                    if (errors === _errs108) {
-                                                      if (Array.isArray(data48)) {
-                                                        var valid17 = true;
-                                                        const len5 = data48.length;
-                                                        for (let i6 = 0; i6 < len5; i6++) {
-                                                          let data49 = data48[i6];
-                                                          const _errs110 = errors;
-                                                          if (errors === _errs110) {
-                                                            if (typeof data49 === "string") {
-                                                              if (!pattern39.test(data49)) {
-                                                                validate37.errors = [{ instancePath: instancePath + "/thematic_group_ids/" + i6, schemaPath: "#/properties/thematic_group_ids/items/pattern", keyword: "pattern", params: { pattern: "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
-                                                                return false;
-                                                              }
-                                                            } else {
-                                                              validate37.errors = [{ instancePath: instancePath + "/thematic_group_ids/" + i6, schemaPath: "#/properties/thematic_group_ids/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                              return false;
-                                                            }
-                                                          }
-                                                          var valid17 = _errs110 === errors;
-                                                          if (!valid17) {
-                                                            break;
-                                                          }
-                                                        }
-                                                        if (valid17) {
-                                                          let i7 = data48.length;
-                                                          let j1;
-                                                          if (i7 > 1) {
-                                                            const indices1 = {};
-                                                            for (; i7--; ) {
-                                                              let item1 = data48[i7];
-                                                              if (typeof item1 !== "string") {
-                                                                continue;
-                                                              }
-                                                              if (typeof indices1[item1] == "number") {
-                                                                j1 = indices1[item1];
-                                                                validate37.errors = [{ instancePath: instancePath + "/thematic_group_ids", schemaPath: "#/properties/thematic_group_ids/uniqueItems", keyword: "uniqueItems", params: { i: i7, j: j1 }, message: "must NOT have duplicate items (items ## " + j1 + " and " + i7 + " are identical)" }];
-                                                                return false;
-                                                                break;
-                                                              }
-                                                              indices1[item1] = i7;
-                                                            }
-                                                          }
-                                                        }
+                                                    if ("source-map.yaml" !== data48) {
+                                                      const err41 = { instancePath: instancePath + "/source_map", schemaPath: "#/properties/source_map/oneOf/0/const", keyword: "const", params: { allowedValue: "source-map.yaml" }, message: "must be equal to constant" };
+                                                      if (vErrors === null) {
+                                                        vErrors = [err41];
                                                       } else {
-                                                        validate37.errors = [{ instancePath: instancePath + "/thematic_group_ids", schemaPath: "#/properties/thematic_group_ids/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
-                                                        return false;
+                                                        vErrors.push(err41);
+                                                      }
+                                                      errors++;
+                                                    }
+                                                    var _valid1 = _errs108 === errors;
+                                                    if (_valid1) {
+                                                      valid16 = true;
+                                                      passing1 = 0;
+                                                    }
+                                                    const _errs109 = errors;
+                                                    if (data48 !== null) {
+                                                      const err42 = { instancePath: instancePath + "/source_map", schemaPath: "#/properties/source_map/oneOf/1/type", keyword: "type", params: { type: "null" }, message: "must be null" };
+                                                      if (vErrors === null) {
+                                                        vErrors = [err42];
+                                                      } else {
+                                                        vErrors.push(err42);
+                                                      }
+                                                      errors++;
+                                                    }
+                                                    var _valid1 = _errs109 === errors;
+                                                    if (_valid1 && valid16) {
+                                                      valid16 = false;
+                                                      passing1 = [passing1, 1];
+                                                    } else {
+                                                      if (_valid1) {
+                                                        valid16 = true;
+                                                        passing1 = 1;
                                                       }
                                                     }
-                                                    var valid0 = _errs108 === errors;
+                                                    if (!valid16) {
+                                                      const err43 = { instancePath: instancePath + "/source_map", schemaPath: "#/properties/source_map/oneOf", keyword: "oneOf", params: { passingSchemas: passing1 }, message: "must match exactly one schema in oneOf" };
+                                                      if (vErrors === null) {
+                                                        vErrors = [err43];
+                                                      } else {
+                                                        vErrors.push(err43);
+                                                      }
+                                                      errors++;
+                                                      validate37.errors = vErrors;
+                                                      return false;
+                                                    } else {
+                                                      errors = _errs107;
+                                                      if (vErrors !== null) {
+                                                        if (_errs107) {
+                                                          vErrors.length = _errs107;
+                                                        } else {
+                                                          vErrors = null;
+                                                        }
+                                                      }
+                                                    }
+                                                    var valid0 = _errs106 === errors;
                                                   } else {
                                                     var valid0 = true;
                                                   }
                                                   if (valid0) {
-                                                    if (data.title !== void 0) {
-                                                      let data50 = data.title;
-                                                      const _errs112 = errors;
-                                                      if (errors === _errs112) {
-                                                        if (typeof data50 === "string") {
-                                                          if (func3(data50) < 1) {
-                                                            validate37.errors = [{ instancePath: instancePath + "/title", schemaPath: "#/properties/title/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
-                                                            return false;
-                                                          }
-                                                        } else {
-                                                          validate37.errors = [{ instancePath: instancePath + "/title", schemaPath: "#/properties/title/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                          return false;
-                                                        }
+                                                    if (data.status !== void 0) {
+                                                      let data49 = data.status;
+                                                      const _errs111 = errors;
+                                                      if (!(data49 === "planned" || data49 === "enrolled" || data49 === "active" || data49 === "paused" || data49 === "awaiting-grade" || data49 === "completed" || data49 === "dropped" || data49 === "archived")) {
+                                                        validate37.errors = [{ instancePath: instancePath + "/status", schemaPath: "#/properties/status/enum", keyword: "enum", params: { allowedValues: schema72.properties.status.enum }, message: "must be equal to one of the allowed values" }];
+                                                        return false;
                                                       }
-                                                      var valid0 = _errs112 === errors;
+                                                      var valid0 = _errs111 === errors;
                                                     } else {
                                                       var valid0 = true;
                                                     }
                                                     if (valid0) {
-                                                      if (data.type !== void 0) {
-                                                        const _errs114 = errors;
-                                                        if ("module" !== data.type) {
-                                                          validate37.errors = [{ instancePath: instancePath + "/type", schemaPath: "#/properties/type/const", keyword: "const", params: { allowedValue: "module" }, message: "must be equal to constant" }];
-                                                          return false;
+                                                      if (data.thematic_group_ids !== void 0) {
+                                                        let data50 = data.thematic_group_ids;
+                                                        const _errs112 = errors;
+                                                        if (errors === _errs112) {
+                                                          if (Array.isArray(data50)) {
+                                                            var valid17 = true;
+                                                            const len5 = data50.length;
+                                                            for (let i6 = 0; i6 < len5; i6++) {
+                                                              let data51 = data50[i6];
+                                                              const _errs114 = errors;
+                                                              if (errors === _errs114) {
+                                                                if (typeof data51 === "string") {
+                                                                  if (!pattern39.test(data51)) {
+                                                                    validate37.errors = [{ instancePath: instancePath + "/thematic_group_ids/" + i6, schemaPath: "#/properties/thematic_group_ids/items/pattern", keyword: "pattern", params: { pattern: "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
+                                                                    return false;
+                                                                  }
+                                                                } else {
+                                                                  validate37.errors = [{ instancePath: instancePath + "/thematic_group_ids/" + i6, schemaPath: "#/properties/thematic_group_ids/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                  return false;
+                                                                }
+                                                              }
+                                                              var valid17 = _errs114 === errors;
+                                                              if (!valid17) {
+                                                                break;
+                                                              }
+                                                            }
+                                                            if (valid17) {
+                                                              let i7 = data50.length;
+                                                              let j1;
+                                                              if (i7 > 1) {
+                                                                const indices1 = {};
+                                                                for (; i7--; ) {
+                                                                  let item1 = data50[i7];
+                                                                  if (typeof item1 !== "string") {
+                                                                    continue;
+                                                                  }
+                                                                  if (typeof indices1[item1] == "number") {
+                                                                    j1 = indices1[item1];
+                                                                    validate37.errors = [{ instancePath: instancePath + "/thematic_group_ids", schemaPath: "#/properties/thematic_group_ids/uniqueItems", keyword: "uniqueItems", params: { i: i7, j: j1 }, message: "must NOT have duplicate items (items ## " + j1 + " and " + i7 + " are identical)" }];
+                                                                    return false;
+                                                                    break;
+                                                                  }
+                                                                  indices1[item1] = i7;
+                                                                }
+                                                              }
+                                                            }
+                                                          } else {
+                                                            validate37.errors = [{ instancePath: instancePath + "/thematic_group_ids", schemaPath: "#/properties/thematic_group_ids/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                                            return false;
+                                                          }
                                                         }
-                                                        var valid0 = _errs114 === errors;
+                                                        var valid0 = _errs112 === errors;
                                                       } else {
                                                         var valid0 = true;
                                                       }
                                                       if (valid0) {
-                                                        if (data.unit_order !== void 0) {
-                                                          let data52 = data.unit_order;
-                                                          const _errs115 = errors;
+                                                        if (data.title !== void 0) {
+                                                          let data52 = data.title;
                                                           const _errs116 = errors;
                                                           if (errors === _errs116) {
-                                                            if (Array.isArray(data52)) {
-                                                              var valid20 = true;
-                                                              const len6 = data52.length;
-                                                              for (let i8 = 0; i8 < len6; i8++) {
-                                                                let data53 = data52[i8];
-                                                                const _errs118 = errors;
-                                                                if (errors === _errs118) {
-                                                                  if (typeof data53 === "string") {
-                                                                    if (!pattern17.test(data53)) {
-                                                                      validate37.errors = [{ instancePath: instancePath + "/unit_order/" + i8, schemaPath: "https://learningos.local/schema/module.schema.json#/properties/unit_order/items/pattern", keyword: "pattern", params: { pattern: "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
-                                                                      return false;
-                                                                    }
-                                                                  } else {
-                                                                    validate37.errors = [{ instancePath: instancePath + "/unit_order/" + i8, schemaPath: "https://learningos.local/schema/module.schema.json#/properties/unit_order/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                                    return false;
-                                                                  }
-                                                                }
-                                                                var valid20 = _errs118 === errors;
-                                                                if (!valid20) {
-                                                                  break;
-                                                                }
-                                                              }
-                                                              if (valid20) {
-                                                                let i9 = data52.length;
-                                                                let j2;
-                                                                if (i9 > 1) {
-                                                                  const indices2 = {};
-                                                                  for (; i9--; ) {
-                                                                    let item2 = data52[i9];
-                                                                    if (typeof item2 !== "string") {
-                                                                      continue;
-                                                                    }
-                                                                    if (typeof indices2[item2] == "number") {
-                                                                      j2 = indices2[item2];
-                                                                      validate37.errors = [{ instancePath: instancePath + "/unit_order", schemaPath: "https://learningos.local/schema/module.schema.json#/properties/unit_order/uniqueItems", keyword: "uniqueItems", params: { i: i9, j: j2 }, message: "must NOT have duplicate items (items ## " + j2 + " and " + i9 + " are identical)" }];
-                                                                      return false;
-                                                                      break;
-                                                                    }
-                                                                    indices2[item2] = i9;
-                                                                  }
-                                                                }
+                                                            if (typeof data52 === "string") {
+                                                              if (func3(data52) < 1) {
+                                                                validate37.errors = [{ instancePath: instancePath + "/title", schemaPath: "#/properties/title/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                                                return false;
                                                               }
                                                             } else {
-                                                              validate37.errors = [{ instancePath: instancePath + "/unit_order", schemaPath: "https://learningos.local/schema/module.schema.json#/properties/unit_order/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                                              validate37.errors = [{ instancePath: instancePath + "/title", schemaPath: "#/properties/title/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                               return false;
                                                             }
                                                           }
-                                                          var valid0 = _errs115 === errors;
+                                                          var valid0 = _errs116 === errors;
                                                         } else {
                                                           var valid0 = true;
+                                                        }
+                                                        if (valid0) {
+                                                          if (data.type !== void 0) {
+                                                            const _errs118 = errors;
+                                                            if ("module" !== data.type) {
+                                                              validate37.errors = [{ instancePath: instancePath + "/type", schemaPath: "#/properties/type/const", keyword: "const", params: { allowedValue: "module" }, message: "must be equal to constant" }];
+                                                              return false;
+                                                            }
+                                                            var valid0 = _errs118 === errors;
+                                                          } else {
+                                                            var valid0 = true;
+                                                          }
+                                                          if (valid0) {
+                                                            if (data.unit_order !== void 0) {
+                                                              let data54 = data.unit_order;
+                                                              const _errs119 = errors;
+                                                              const _errs120 = errors;
+                                                              if (errors === _errs120) {
+                                                                if (Array.isArray(data54)) {
+                                                                  var valid20 = true;
+                                                                  const len6 = data54.length;
+                                                                  for (let i8 = 0; i8 < len6; i8++) {
+                                                                    let data55 = data54[i8];
+                                                                    const _errs122 = errors;
+                                                                    if (errors === _errs122) {
+                                                                      if (typeof data55 === "string") {
+                                                                        if (!pattern17.test(data55)) {
+                                                                          validate37.errors = [{ instancePath: instancePath + "/unit_order/" + i8, schemaPath: "https://learningos.local/schema/module.schema.json#/properties/unit_order/items/pattern", keyword: "pattern", params: { pattern: "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
+                                                                          return false;
+                                                                        }
+                                                                      } else {
+                                                                        validate37.errors = [{ instancePath: instancePath + "/unit_order/" + i8, schemaPath: "https://learningos.local/schema/module.schema.json#/properties/unit_order/items/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                        return false;
+                                                                      }
+                                                                    }
+                                                                    var valid20 = _errs122 === errors;
+                                                                    if (!valid20) {
+                                                                      break;
+                                                                    }
+                                                                  }
+                                                                  if (valid20) {
+                                                                    let i9 = data54.length;
+                                                                    let j2;
+                                                                    if (i9 > 1) {
+                                                                      const indices2 = {};
+                                                                      for (; i9--; ) {
+                                                                        let item2 = data54[i9];
+                                                                        if (typeof item2 !== "string") {
+                                                                          continue;
+                                                                        }
+                                                                        if (typeof indices2[item2] == "number") {
+                                                                          j2 = indices2[item2];
+                                                                          validate37.errors = [{ instancePath: instancePath + "/unit_order", schemaPath: "https://learningos.local/schema/module.schema.json#/properties/unit_order/uniqueItems", keyword: "uniqueItems", params: { i: i9, j: j2 }, message: "must NOT have duplicate items (items ## " + j2 + " and " + i9 + " are identical)" }];
+                                                                          return false;
+                                                                          break;
+                                                                        }
+                                                                        indices2[item2] = i9;
+                                                                      }
+                                                                    }
+                                                                  }
+                                                                } else {
+                                                                  validate37.errors = [{ instancePath: instancePath + "/unit_order", schemaPath: "https://learningos.local/schema/module.schema.json#/properties/unit_order/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                                                  return false;
+                                                                }
+                                                              }
+                                                              var valid0 = _errs119 === errors;
+                                                            } else {
+                                                              var valid0 = true;
+                                                            }
+                                                          }
                                                         }
                                                       }
                                                     }
@@ -6319,7 +6343,7 @@ var require_manifest_validator = __commonJS({
     }
     validate40.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
     var schema92 = { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "path": { "const": "projects/aliases.yaml" }, "target_id": { "pattern": "^(module|unit|workspace)-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "target_type": { "enum": ["module", "unit", "workspace"] }, "type": { "const": "compatibility-alias" } }, "required": ["id", "type", "target_id", "target_type", "path"], "type": "object" };
-    var schema94 = { "additionalProperties": false, "properties": { "archived": { "type": "boolean" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "deadline": { "format": "date", "type": ["string", "null"] }, "id": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_ids": { "items": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "next_action": { "type": "string" }, "notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "objective": { "type": "string" }, "path": { "minLength": 1, "type": "string" }, "program_ids": { "items": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "project_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "standing": { "type": "boolean" }, "status": { "enum": ["active", "blocked", "complete"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "workspace" }, "unit_ids": { "items": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["id", "type", "title", "revision", "path", "status", "standing", "archived", "deadline", "objective", "next_action", "concepts", "notes", "sources", "program_ids", "module_ids", "unit_ids", "project_id"], "type": "object" };
+    var schema94 = { "additionalProperties": false, "properties": { "archived": { "type": "boolean" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "deadline": { "format": "date", "type": ["string", "null"] }, "id": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "is_open": { "type": "boolean" }, "module_ids": { "items": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "next_action": { "type": "string" }, "notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "objective": { "type": "string" }, "path": { "minLength": 1, "type": "string" }, "program_ids": { "items": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "project_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "standing": { "type": "boolean" }, "status": { "enum": ["active", "blocked", "complete"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "workspace" }, "unit_ids": { "items": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["id", "type", "title", "revision", "path", "status", "standing", "archived", "is_open", "deadline", "objective", "next_action", "concepts", "notes", "sources", "program_ids", "module_ids", "unit_ids", "project_id"], "type": "object" };
     var schema83 = { "additionalProperties": false, "properties": { "atlas_question": { "additionalProperties": false, "properties": { "answer_notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["open", "resolved"] }, "target": { "oneOf": [{ "additionalProperties": false, "properties": { "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "maxItems": 2, "minItems": 1, "type": "array", "uniqueItems": true } }, "required": ["concepts"], "type": "object" }, { "additionalProperties": false, "properties": { "from": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "to": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": { "enum": ["requires", "builds-on", "derives", "generalizes", "contrasts-with", "equivalent-to", "applies-in", "motivates"] } }, "required": ["from", "type", "to"], "type": "object" }] } }, "required": ["state", "target"], "type": ["object", "null"] }, "attachments": { "items": { "type": "string" }, "type": "array" }, "authorship": { "enum": ["user", "mixed", "external", "operator-drafted", null], "type": ["string", "null"] }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "contexts": { "items": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "domain": { "type": "string" }, "domain_bucket": { "minLength": 1, "type": "string" }, "evidence": { "$ref": "https://learningos.local/schema/note.schema.json#/properties/evidence" }, "id": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "material_analysis": { "additionalProperties": false, "allOf": [{ "else": { "not": { "required": ["source_id"] } }, "if": { "properties": { "resolution": { "const": "resolved" } } }, "then": { "required": ["source_id"] } }], "properties": { "anchors": { "items": { "additionalProperties": false, "properties": { "locator": { "minLength": 1, "type": "string" }, "note": { "type": "string" }, "purpose": { "minLength": 1, "type": "string" }, "topic": { "minLength": 1, "type": "string" } }, "required": ["topic", "purpose", "locator"], "type": "object" }, "type": "array" }, "built": { "format": "date", "type": "string" }, "frozen_input_bytes": { "minimum": 1, "type": "integer" }, "frozen_input_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "inspected_range": { "additionalProperties": false, "properties": { "end": { "minimum": 1, "type": "integer" }, "start": { "minimum": 1, "type": "integer" } }, "required": ["start", "end"], "type": "object" }, "live_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "material": { "minLength": 1, "type": "string" }, "model": { "type": "string" }, "recorded_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "resolution": { "enum": ["resolved", "unresolved", "unavailable", "stale"] }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["resolution", "material", "recorded_source_digest", "inspected_range", "frozen_input_sha256", "frozen_input_bytes"], "type": ["object", "null"] }, "path": { "minLength": 1, "type": "string" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "role": { "enum": ["synthesis", "reference", "derivation", "exercise-bank", "mock-exam", "implementation", "question", "crosswalk"] }, "semantic_review": { "enum": ["unreviewed", "user-reviewed", null], "type": ["string", "null"] }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["rough", "evolving", "mature", "deprecated", null], "type": ["string", "null"] }, "summary": { "type": "string" }, "supersedes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "transcription": { "enum": ["none", "manual", "ai-assisted", null], "type": ["string", "null"] }, "type": { "const": "note" } }, "required": ["id", "type", "title", "path", "domain", "domain_bucket", "summary", "role", "state", "authorship", "concepts", "sources", "contexts", "attachments", "evidence", "supersedes", "reviewed", "transcription", "semantic_review", "atlas_question", "material_analysis"], "type": "object" };
     var schema85 = { "items": { "additionalProperties": false, "properties": { "ref": { "minLength": 1, "type": "string" }, "type": { "enum": ["derivation", "explanation", "implementation", "exercise", "exam", "external"] } }, "required": ["type", "ref"], "type": "object" }, "type": "array" };
     var pattern48 = new RegExp("^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "u");
@@ -10321,8 +10345,8 @@ var require_manifest_validator = __commonJS({
     var schema122 = { "additionalProperties": false, "properties": { "path": { "minLength": 1, "type": "string" }, "provenance": { "enum": ["migrated-mini-plan", "learner", "ai-proposed", "operator", "durable-note"] } }, "required": ["path", "provenance"], "type": "object" };
     var pattern168 = new RegExp("^detour-[a-z0-9]+(?:-[a-z0-9]+)*$", "u");
     var pattern210 = new RegExp("^proposal-[a-z0-9]+(?:-[a-z0-9]+)*$", "u");
-    var schema123 = { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "completed": { "type": "string" }, "concepts": { "items": { "type": "string" }, "type": "array" }, "detour_id": { "type": "string" }, "done_when": { "items": { "type": "string" }, "type": "array" }, "estimate_minutes": { "minimum": 1, "type": "integer" }, "exam_critical": { "type": "boolean" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "number": { "minimum": 1, "type": "integer" }, "objective": { "type": "string" }, "resources": { "items": { "$ref": "#/$defs/resource" }, "type": "array" }, "scope_triage": { "type": "string" }, "source_feedback": { "items": { "$ref": "#/$defs/sourceFeedback" }, "type": "array" }, "status": { "type": "string" }, "study_map_id": { "type": "string" }, "title": { "type": "string" }, "unit_id": { "type": "string" }, "working_note": { "type": "string" } }, "required": ["id", "title", "status", "objective", "done_when", "resources", "working_note", "attachments", "source_feedback", "scope_triage", "notes_text", "notes_updated"], "type": "object" };
-    var schema125 = { "additionalProperties": false, "properties": { "angle": { "type": "string" }, "angle_detail": { "type": "string" }, "id": { "type": "string" }, "kind": { "type": "string" }, "label": { "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "scope_triage": { "type": "string" }, "source_id": { "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["kind", "label"], "type": "object" };
+    var schema123 = { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "completed": { "type": "string" }, "concepts": { "items": { "type": "string" }, "type": "array" }, "detour_id": { "type": "string" }, "done_when": { "items": { "type": "string" }, "type": "array" }, "estimate_minutes": { "minimum": 1, "type": "integer" }, "exam_critical": { "type": "boolean" }, "id": { "type": "string" }, "is_open": { "type": "boolean" }, "module_id": { "type": "string" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "number": { "minimum": 1, "type": "integer" }, "objective": { "type": "string" }, "resources": { "items": { "$ref": "#/$defs/resource" }, "type": "array" }, "scope_triage": { "type": "string" }, "source_feedback": { "items": { "$ref": "#/$defs/sourceFeedback" }, "type": "array" }, "status": { "type": "string" }, "study_map_id": { "type": "string" }, "title": { "type": "string" }, "unit_id": { "type": "string" }, "working_note": { "type": "string" } }, "required": ["id", "title", "status", "is_open", "objective", "done_when", "resources", "working_note", "attachments", "source_feedback", "scope_triage", "notes_text", "notes_updated"], "type": "object" };
+    var schema125 = { "additionalProperties": false, "properties": { "angle": { "type": "string" }, "angle_detail": { "type": "string" }, "id": { "type": "string" }, "is_entry": { "type": "boolean" }, "kind": { "type": "string" }, "label": { "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "scope_triage": { "type": "string" }, "source_id": { "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["kind", "label", "is_entry"], "type": "object" };
     var schema126 = { "additionalProperties": false, "properties": { "feedback": { "enum": ["helpful", "too-advanced", "wrong-perspective", "useful-for-derivation", "useful-for-review", "skipped"] }, "note": { "type": "string" }, "recorded": { "format": "date", "type": "string" }, "resource_id": { "pattern": "^resource-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["source_id", "feedback", "recorded"], "type": "object" };
     var pattern148 = new RegExp("^resource-[a-z0-9]+(?:-[a-z0-9]+)*$", "u");
     function validate69(data, { instancePath = "", parentData, parentDataProperty, rootData = data, dynamicAnchors = {} } = {}) {
@@ -10338,7 +10362,7 @@ var require_manifest_validator = __commonJS({
       if (errors === 0) {
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing0;
-          if (data.id === void 0 && (missing0 = "id") || data.title === void 0 && (missing0 = "title") || data.status === void 0 && (missing0 = "status") || data.objective === void 0 && (missing0 = "objective") || data.done_when === void 0 && (missing0 = "done_when") || data.resources === void 0 && (missing0 = "resources") || data.working_note === void 0 && (missing0 = "working_note") || data.attachments === void 0 && (missing0 = "attachments") || data.source_feedback === void 0 && (missing0 = "source_feedback") || data.scope_triage === void 0 && (missing0 = "scope_triage") || data.notes_text === void 0 && (missing0 = "notes_text") || data.notes_updated === void 0 && (missing0 = "notes_updated")) {
+          if (data.id === void 0 && (missing0 = "id") || data.title === void 0 && (missing0 = "title") || data.status === void 0 && (missing0 = "status") || data.is_open === void 0 && (missing0 = "is_open") || data.objective === void 0 && (missing0 = "objective") || data.done_when === void 0 && (missing0 = "done_when") || data.resources === void 0 && (missing0 = "resources") || data.working_note === void 0 && (missing0 = "working_note") || data.attachments === void 0 && (missing0 = "attachments") || data.source_feedback === void 0 && (missing0 = "source_feedback") || data.scope_triage === void 0 && (missing0 = "scope_triage") || data.notes_text === void 0 && (missing0 = "notes_text") || data.notes_updated === void 0 && (missing0 = "notes_updated")) {
             validate69.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
             return false;
           } else {
@@ -10558,10 +10582,10 @@ var require_manifest_validator = __commonJS({
                               var valid0 = true;
                             }
                             if (valid0) {
-                              if (data.module_id !== void 0) {
+                              if (data.is_open !== void 0) {
                                 const _errs30 = errors;
-                                if (typeof data.module_id !== "string") {
-                                  validate69.errors = [{ instancePath: instancePath + "/module_id", schemaPath: "#/properties/module_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                if (typeof data.is_open !== "boolean") {
+                                  validate69.errors = [{ instancePath: instancePath + "/is_open", schemaPath: "#/properties/is_open/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                                   return false;
                                 }
                                 var valid0 = _errs30 === errors;
@@ -10569,10 +10593,10 @@ var require_manifest_validator = __commonJS({
                                 var valid0 = true;
                               }
                               if (valid0) {
-                                if (data.notes_text !== void 0) {
+                                if (data.module_id !== void 0) {
                                   const _errs32 = errors;
-                                  if (typeof data.notes_text !== "string") {
-                                    validate69.errors = [{ instancePath: instancePath + "/notes_text", schemaPath: "#/properties/notes_text/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                  if (typeof data.module_id !== "string") {
+                                    validate69.errors = [{ instancePath: instancePath + "/module_id", schemaPath: "#/properties/module_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                     return false;
                                   }
                                   var valid0 = _errs32 === errors;
@@ -10580,11 +10604,10 @@ var require_manifest_validator = __commonJS({
                                   var valid0 = true;
                                 }
                                 if (valid0) {
-                                  if (data.notes_updated !== void 0) {
-                                    let data15 = data.notes_updated;
+                                  if (data.notes_text !== void 0) {
                                     const _errs34 = errors;
-                                    if (typeof data15 !== "string" && data15 !== null) {
-                                      validate69.errors = [{ instancePath: instancePath + "/notes_updated", schemaPath: "#/properties/notes_updated/type", keyword: "type", params: { type: schema123.properties.notes_updated.type }, message: "must be string,null" }];
+                                    if (typeof data.notes_text !== "string") {
+                                      validate69.errors = [{ instancePath: instancePath + "/notes_text", schemaPath: "#/properties/notes_text/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                       return false;
                                     }
                                     var valid0 = _errs34 === errors;
@@ -10592,79 +10615,80 @@ var require_manifest_validator = __commonJS({
                                     var valid0 = true;
                                   }
                                   if (valid0) {
-                                    if (data.number !== void 0) {
-                                      let data16 = data.number;
+                                    if (data.notes_updated !== void 0) {
+                                      let data16 = data.notes_updated;
                                       const _errs36 = errors;
-                                      if (!(typeof data16 == "number" && (!(data16 % 1) && !isNaN(data16)) && isFinite(data16))) {
-                                        validate69.errors = [{ instancePath: instancePath + "/number", schemaPath: "#/properties/number/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
+                                      if (typeof data16 !== "string" && data16 !== null) {
+                                        validate69.errors = [{ instancePath: instancePath + "/notes_updated", schemaPath: "#/properties/notes_updated/type", keyword: "type", params: { type: schema123.properties.notes_updated.type }, message: "must be string,null" }];
                                         return false;
-                                      }
-                                      if (errors === _errs36) {
-                                        if (typeof data16 == "number" && isFinite(data16)) {
-                                          if (data16 < 1 || isNaN(data16)) {
-                                            validate69.errors = [{ instancePath: instancePath + "/number", schemaPath: "#/properties/number/minimum", keyword: "minimum", params: { comparison: ">=", limit: 1 }, message: "must be >= 1" }];
-                                            return false;
-                                          }
-                                        }
                                       }
                                       var valid0 = _errs36 === errors;
                                     } else {
                                       var valid0 = true;
                                     }
                                     if (valid0) {
-                                      if (data.objective !== void 0) {
+                                      if (data.number !== void 0) {
+                                        let data17 = data.number;
                                         const _errs38 = errors;
-                                        if (typeof data.objective !== "string") {
-                                          validate69.errors = [{ instancePath: instancePath + "/objective", schemaPath: "#/properties/objective/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                        if (!(typeof data17 == "number" && (!(data17 % 1) && !isNaN(data17)) && isFinite(data17))) {
+                                          validate69.errors = [{ instancePath: instancePath + "/number", schemaPath: "#/properties/number/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
                                           return false;
+                                        }
+                                        if (errors === _errs38) {
+                                          if (typeof data17 == "number" && isFinite(data17)) {
+                                            if (data17 < 1 || isNaN(data17)) {
+                                              validate69.errors = [{ instancePath: instancePath + "/number", schemaPath: "#/properties/number/minimum", keyword: "minimum", params: { comparison: ">=", limit: 1 }, message: "must be >= 1" }];
+                                              return false;
+                                            }
+                                          }
                                         }
                                         var valid0 = _errs38 === errors;
                                       } else {
                                         var valid0 = true;
                                       }
                                       if (valid0) {
-                                        if (data.resources !== void 0) {
-                                          let data18 = data.resources;
+                                        if (data.objective !== void 0) {
                                           const _errs40 = errors;
-                                          if (errors === _errs40) {
-                                            if (Array.isArray(data18)) {
-                                              var valid6 = true;
-                                              const len3 = data18.length;
-                                              for (let i3 = 0; i3 < len3; i3++) {
-                                                let data19 = data18[i3];
-                                                const _errs42 = errors;
-                                                const _errs43 = errors;
-                                                if (errors === _errs43) {
-                                                  if (data19 && typeof data19 == "object" && !Array.isArray(data19)) {
-                                                    let missing2;
-                                                    if (data19.kind === void 0 && (missing2 = "kind") || data19.label === void 0 && (missing2 = "label")) {
-                                                      validate69.errors = [{ instancePath: instancePath + "/resources/" + i3, schemaPath: "#/$defs/resource/required", keyword: "required", params: { missingProperty: missing2 }, message: "must have required property '" + missing2 + "'" }];
-                                                      return false;
-                                                    } else {
-                                                      const _errs45 = errors;
-                                                      for (const key2 in data19) {
-                                                        if (!func1.call(schema125.properties, key2)) {
-                                                          validate69.errors = [{ instancePath: instancePath + "/resources/" + i3, schemaPath: "#/$defs/resource/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" }];
-                                                          return false;
-                                                          break;
-                                                        }
-                                                      }
-                                                      if (_errs45 === errors) {
-                                                        if (data19.angle !== void 0) {
-                                                          const _errs46 = errors;
-                                                          if (typeof data19.angle !== "string") {
-                                                            validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/angle", schemaPath: "#/$defs/resource/properties/angle/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                          if (typeof data.objective !== "string") {
+                                            validate69.errors = [{ instancePath: instancePath + "/objective", schemaPath: "#/properties/objective/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                            return false;
+                                          }
+                                          var valid0 = _errs40 === errors;
+                                        } else {
+                                          var valid0 = true;
+                                        }
+                                        if (valid0) {
+                                          if (data.resources !== void 0) {
+                                            let data19 = data.resources;
+                                            const _errs42 = errors;
+                                            if (errors === _errs42) {
+                                              if (Array.isArray(data19)) {
+                                                var valid6 = true;
+                                                const len3 = data19.length;
+                                                for (let i3 = 0; i3 < len3; i3++) {
+                                                  let data20 = data19[i3];
+                                                  const _errs44 = errors;
+                                                  const _errs45 = errors;
+                                                  if (errors === _errs45) {
+                                                    if (data20 && typeof data20 == "object" && !Array.isArray(data20)) {
+                                                      let missing2;
+                                                      if (data20.kind === void 0 && (missing2 = "kind") || data20.label === void 0 && (missing2 = "label") || data20.is_entry === void 0 && (missing2 = "is_entry")) {
+                                                        validate69.errors = [{ instancePath: instancePath + "/resources/" + i3, schemaPath: "#/$defs/resource/required", keyword: "required", params: { missingProperty: missing2 }, message: "must have required property '" + missing2 + "'" }];
+                                                        return false;
+                                                      } else {
+                                                        const _errs47 = errors;
+                                                        for (const key2 in data20) {
+                                                          if (!func1.call(schema125.properties, key2)) {
+                                                            validate69.errors = [{ instancePath: instancePath + "/resources/" + i3, schemaPath: "#/$defs/resource/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" }];
                                                             return false;
+                                                            break;
                                                           }
-                                                          var valid8 = _errs46 === errors;
-                                                        } else {
-                                                          var valid8 = true;
                                                         }
-                                                        if (valid8) {
-                                                          if (data19.angle_detail !== void 0) {
+                                                        if (_errs47 === errors) {
+                                                          if (data20.angle !== void 0) {
                                                             const _errs48 = errors;
-                                                            if (typeof data19.angle_detail !== "string") {
-                                                              validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/angle_detail", schemaPath: "#/$defs/resource/properties/angle_detail/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                            if (typeof data20.angle !== "string") {
+                                                              validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/angle", schemaPath: "#/$defs/resource/properties/angle/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                               return false;
                                                             }
                                                             var valid8 = _errs48 === errors;
@@ -10672,10 +10696,10 @@ var require_manifest_validator = __commonJS({
                                                             var valid8 = true;
                                                           }
                                                           if (valid8) {
-                                                            if (data19.id !== void 0) {
+                                                            if (data20.angle_detail !== void 0) {
                                                               const _errs50 = errors;
-                                                              if (typeof data19.id !== "string") {
-                                                                validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/id", schemaPath: "#/$defs/resource/properties/id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                              if (typeof data20.angle_detail !== "string") {
+                                                                validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/angle_detail", schemaPath: "#/$defs/resource/properties/angle_detail/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                                 return false;
                                                               }
                                                               var valid8 = _errs50 === errors;
@@ -10683,10 +10707,10 @@ var require_manifest_validator = __commonJS({
                                                               var valid8 = true;
                                                             }
                                                             if (valid8) {
-                                                              if (data19.kind !== void 0) {
+                                                              if (data20.id !== void 0) {
                                                                 const _errs52 = errors;
-                                                                if (typeof data19.kind !== "string") {
-                                                                  validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/kind", schemaPath: "#/$defs/resource/properties/kind/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                if (typeof data20.id !== "string") {
+                                                                  validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/id", schemaPath: "#/$defs/resource/properties/id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                                   return false;
                                                                 }
                                                                 var valid8 = _errs52 === errors;
@@ -10694,10 +10718,10 @@ var require_manifest_validator = __commonJS({
                                                                 var valid8 = true;
                                                               }
                                                               if (valid8) {
-                                                                if (data19.label !== void 0) {
+                                                                if (data20.is_entry !== void 0) {
                                                                   const _errs54 = errors;
-                                                                  if (typeof data19.label !== "string") {
-                                                                    validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/label", schemaPath: "#/$defs/resource/properties/label/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                  if (typeof data20.is_entry !== "boolean") {
+                                                                    validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/is_entry", schemaPath: "#/$defs/resource/properties/is_entry/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                                                                     return false;
                                                                   }
                                                                   var valid8 = _errs54 === errors;
@@ -10705,10 +10729,10 @@ var require_manifest_validator = __commonJS({
                                                                   var valid8 = true;
                                                                 }
                                                                 if (valid8) {
-                                                                  if (data19.locator !== void 0) {
+                                                                  if (data20.kind !== void 0) {
                                                                     const _errs56 = errors;
-                                                                    if (typeof data19.locator !== "string") {
-                                                                      validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/locator", schemaPath: "#/$defs/resource/properties/locator/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                    if (typeof data20.kind !== "string") {
+                                                                      validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/kind", schemaPath: "#/$defs/resource/properties/kind/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                                       return false;
                                                                     }
                                                                     var valid8 = _errs56 === errors;
@@ -10716,10 +10740,10 @@ var require_manifest_validator = __commonJS({
                                                                     var valid8 = true;
                                                                   }
                                                                   if (valid8) {
-                                                                    if (data19.material_exists !== void 0) {
+                                                                    if (data20.label !== void 0) {
                                                                       const _errs58 = errors;
-                                                                      if (typeof data19.material_exists !== "boolean") {
-                                                                        validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/material_exists", schemaPath: "#/$defs/resource/properties/material_exists/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
+                                                                      if (typeof data20.label !== "string") {
+                                                                        validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/label", schemaPath: "#/$defs/resource/properties/label/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                                         return false;
                                                                       }
                                                                       var valid8 = _errs58 === errors;
@@ -10727,10 +10751,10 @@ var require_manifest_validator = __commonJS({
                                                                       var valid8 = true;
                                                                     }
                                                                     if (valid8) {
-                                                                      if (data19.material_path !== void 0) {
+                                                                      if (data20.locator !== void 0) {
                                                                         const _errs60 = errors;
-                                                                        if (typeof data19.material_path !== "string") {
-                                                                          validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/material_path", schemaPath: "#/$defs/resource/properties/material_path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                        if (typeof data20.locator !== "string") {
+                                                                          validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/locator", schemaPath: "#/$defs/resource/properties/locator/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                                           return false;
                                                                         }
                                                                         var valid8 = _errs60 === errors;
@@ -10738,10 +10762,10 @@ var require_manifest_validator = __commonJS({
                                                                         var valid8 = true;
                                                                       }
                                                                       if (valid8) {
-                                                                        if (data19.material_uri !== void 0) {
+                                                                        if (data20.material_exists !== void 0) {
                                                                           const _errs62 = errors;
-                                                                          if (typeof data19.material_uri !== "string") {
-                                                                            validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/material_uri", schemaPath: "#/$defs/resource/properties/material_uri/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                          if (typeof data20.material_exists !== "boolean") {
+                                                                            validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/material_exists", schemaPath: "#/$defs/resource/properties/material_exists/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                                                                             return false;
                                                                           }
                                                                           var valid8 = _errs62 === errors;
@@ -10749,29 +10773,21 @@ var require_manifest_validator = __commonJS({
                                                                           var valid8 = true;
                                                                         }
                                                                         if (valid8) {
-                                                                          if (data19.route_id !== void 0) {
-                                                                            let data29 = data19.route_id;
+                                                                          if (data20.material_path !== void 0) {
                                                                             const _errs64 = errors;
-                                                                            if (errors === _errs64) {
-                                                                              if (typeof data29 === "string") {
-                                                                                if (!pattern26.test(data29)) {
-                                                                                  validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/route_id", schemaPath: "#/$defs/resource/properties/route_id/pattern", keyword: "pattern", params: { pattern: "^route-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^route-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
-                                                                                  return false;
-                                                                                }
-                                                                              } else {
-                                                                                validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/route_id", schemaPath: "#/$defs/resource/properties/route_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                                                return false;
-                                                                              }
+                                                                            if (typeof data20.material_path !== "string") {
+                                                                              validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/material_path", schemaPath: "#/$defs/resource/properties/material_path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                              return false;
                                                                             }
                                                                             var valid8 = _errs64 === errors;
                                                                           } else {
                                                                             var valid8 = true;
                                                                           }
                                                                           if (valid8) {
-                                                                            if (data19.scope_triage !== void 0) {
+                                                                            if (data20.material_uri !== void 0) {
                                                                               const _errs66 = errors;
-                                                                              if (typeof data19.scope_triage !== "string") {
-                                                                                validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/scope_triage", schemaPath: "#/$defs/resource/properties/scope_triage/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                              if (typeof data20.material_uri !== "string") {
+                                                                                validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/material_uri", schemaPath: "#/$defs/resource/properties/material_uri/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                                                 return false;
                                                                               }
                                                                               var valid8 = _errs66 === errors;
@@ -10779,47 +10795,79 @@ var require_manifest_validator = __commonJS({
                                                                               var valid8 = true;
                                                                             }
                                                                             if (valid8) {
-                                                                              if (data19.source_id !== void 0) {
+                                                                              if (data20.route_id !== void 0) {
+                                                                                let data31 = data20.route_id;
                                                                                 const _errs68 = errors;
-                                                                                if (typeof data19.source_id !== "string") {
-                                                                                  validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/source_id", schemaPath: "#/$defs/resource/properties/source_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                                                  return false;
+                                                                                if (errors === _errs68) {
+                                                                                  if (typeof data31 === "string") {
+                                                                                    if (!pattern26.test(data31)) {
+                                                                                      validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/route_id", schemaPath: "#/$defs/resource/properties/route_id/pattern", keyword: "pattern", params: { pattern: "^route-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^route-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
+                                                                                      return false;
+                                                                                    }
+                                                                                  } else {
+                                                                                    validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/route_id", schemaPath: "#/$defs/resource/properties/route_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                                    return false;
+                                                                                  }
                                                                                 }
                                                                                 var valid8 = _errs68 === errors;
                                                                               } else {
                                                                                 var valid8 = true;
                                                                               }
                                                                               if (valid8) {
-                                                                                if (data19.url !== void 0) {
-                                                                                  let data32 = data19.url;
+                                                                                if (data20.scope_triage !== void 0) {
                                                                                   const _errs70 = errors;
-                                                                                  if (errors === _errs70) {
-                                                                                    if (errors === _errs70) {
-                                                                                      if (typeof data32 === "string") {
-                                                                                        if (!formats6(data32)) {
-                                                                                          validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/url", schemaPath: "#/$defs/resource/properties/url/format", keyword: "format", params: { format: "uri" }, message: 'must match format "uri"' }];
-                                                                                          return false;
-                                                                                        }
-                                                                                      } else {
-                                                                                        validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/url", schemaPath: "#/$defs/resource/properties/url/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                                                        return false;
-                                                                                      }
-                                                                                    }
+                                                                                  if (typeof data20.scope_triage !== "string") {
+                                                                                    validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/scope_triage", schemaPath: "#/$defs/resource/properties/scope_triage/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                                    return false;
                                                                                   }
                                                                                   var valid8 = _errs70 === errors;
                                                                                 } else {
                                                                                   var valid8 = true;
                                                                                 }
                                                                                 if (valid8) {
-                                                                                  if (data19.vault_path !== void 0) {
+                                                                                  if (data20.source_id !== void 0) {
                                                                                     const _errs72 = errors;
-                                                                                    if (typeof data19.vault_path !== "string") {
-                                                                                      validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/vault_path", schemaPath: "#/$defs/resource/properties/vault_path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                                    if (typeof data20.source_id !== "string") {
+                                                                                      validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/source_id", schemaPath: "#/$defs/resource/properties/source_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                                                       return false;
                                                                                     }
                                                                                     var valid8 = _errs72 === errors;
                                                                                   } else {
                                                                                     var valid8 = true;
+                                                                                  }
+                                                                                  if (valid8) {
+                                                                                    if (data20.url !== void 0) {
+                                                                                      let data34 = data20.url;
+                                                                                      const _errs74 = errors;
+                                                                                      if (errors === _errs74) {
+                                                                                        if (errors === _errs74) {
+                                                                                          if (typeof data34 === "string") {
+                                                                                            if (!formats6(data34)) {
+                                                                                              validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/url", schemaPath: "#/$defs/resource/properties/url/format", keyword: "format", params: { format: "uri" }, message: 'must match format "uri"' }];
+                                                                                              return false;
+                                                                                            }
+                                                                                          } else {
+                                                                                            validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/url", schemaPath: "#/$defs/resource/properties/url/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                                            return false;
+                                                                                          }
+                                                                                        }
+                                                                                      }
+                                                                                      var valid8 = _errs74 === errors;
+                                                                                    } else {
+                                                                                      var valid8 = true;
+                                                                                    }
+                                                                                    if (valid8) {
+                                                                                      if (data20.vault_path !== void 0) {
+                                                                                        const _errs76 = errors;
+                                                                                        if (typeof data20.vault_path !== "string") {
+                                                                                          validate69.errors = [{ instancePath: instancePath + "/resources/" + i3 + "/vault_path", schemaPath: "#/$defs/resource/properties/vault_path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                                          return false;
+                                                                                        }
+                                                                                        var valid8 = _errs76 === errors;
+                                                                                      } else {
+                                                                                        var valid8 = true;
+                                                                                      }
+                                                                                    }
                                                                                   }
                                                                                 }
                                                                               }
@@ -10835,225 +10883,225 @@ var require_manifest_validator = __commonJS({
                                                           }
                                                         }
                                                       }
+                                                    } else {
+                                                      validate69.errors = [{ instancePath: instancePath + "/resources/" + i3, schemaPath: "#/$defs/resource/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                                      return false;
                                                     }
-                                                  } else {
-                                                    validate69.errors = [{ instancePath: instancePath + "/resources/" + i3, schemaPath: "#/$defs/resource/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
-                                                    return false;
+                                                  }
+                                                  var valid6 = _errs44 === errors;
+                                                  if (!valid6) {
+                                                    break;
                                                   }
                                                 }
-                                                var valid6 = _errs42 === errors;
-                                                if (!valid6) {
-                                                  break;
-                                                }
+                                              } else {
+                                                validate69.errors = [{ instancePath: instancePath + "/resources", schemaPath: "#/properties/resources/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                                return false;
                                               }
-                                            } else {
-                                              validate69.errors = [{ instancePath: instancePath + "/resources", schemaPath: "#/properties/resources/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
-                                              return false;
                                             }
-                                          }
-                                          var valid0 = _errs40 === errors;
-                                        } else {
-                                          var valid0 = true;
-                                        }
-                                        if (valid0) {
-                                          if (data.scope_triage !== void 0) {
-                                            const _errs74 = errors;
-                                            if (typeof data.scope_triage !== "string") {
-                                              validate69.errors = [{ instancePath: instancePath + "/scope_triage", schemaPath: "#/properties/scope_triage/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                              return false;
-                                            }
-                                            var valid0 = _errs74 === errors;
+                                            var valid0 = _errs42 === errors;
                                           } else {
                                             var valid0 = true;
                                           }
                                           if (valid0) {
-                                            if (data.source_feedback !== void 0) {
-                                              let data35 = data.source_feedback;
-                                              const _errs76 = errors;
-                                              if (errors === _errs76) {
-                                                if (Array.isArray(data35)) {
-                                                  var valid9 = true;
-                                                  const len4 = data35.length;
-                                                  for (let i4 = 0; i4 < len4; i4++) {
-                                                    let data36 = data35[i4];
-                                                    const _errs78 = errors;
-                                                    const _errs79 = errors;
-                                                    if (errors === _errs79) {
-                                                      if (data36 && typeof data36 == "object" && !Array.isArray(data36)) {
-                                                        let missing3;
-                                                        if (data36.source_id === void 0 && (missing3 = "source_id") || data36.feedback === void 0 && (missing3 = "feedback") || data36.recorded === void 0 && (missing3 = "recorded")) {
-                                                          validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4, schemaPath: "#/$defs/sourceFeedback/required", keyword: "required", params: { missingProperty: missing3 }, message: "must have required property '" + missing3 + "'" }];
-                                                          return false;
-                                                        } else {
-                                                          const _errs81 = errors;
-                                                          for (const key3 in data36) {
-                                                            if (!(key3 === "feedback" || key3 === "note" || key3 === "recorded" || key3 === "resource_id" || key3 === "source_id")) {
-                                                              validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4, schemaPath: "#/$defs/sourceFeedback/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key3 }, message: "must NOT have additional properties" }];
-                                                              return false;
-                                                              break;
-                                                            }
-                                                          }
-                                                          if (_errs81 === errors) {
-                                                            if (data36.feedback !== void 0) {
-                                                              let data37 = data36.feedback;
-                                                              const _errs82 = errors;
-                                                              if (!(data37 === "helpful" || data37 === "too-advanced" || data37 === "wrong-perspective" || data37 === "useful-for-derivation" || data37 === "useful-for-review" || data37 === "skipped")) {
-                                                                validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/feedback", schemaPath: "#/$defs/sourceFeedback/properties/feedback/enum", keyword: "enum", params: { allowedValues: schema126.properties.feedback.enum }, message: "must be equal to one of the allowed values" }];
-                                                                return false;
-                                                              }
-                                                              var valid11 = _errs82 === errors;
-                                                            } else {
-                                                              var valid11 = true;
-                                                            }
-                                                            if (valid11) {
-                                                              if (data36.note !== void 0) {
-                                                                const _errs83 = errors;
-                                                                if (typeof data36.note !== "string") {
-                                                                  validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/note", schemaPath: "#/$defs/sourceFeedback/properties/note/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                                  return false;
-                                                                }
-                                                                var valid11 = _errs83 === errors;
-                                                              } else {
-                                                                var valid11 = true;
-                                                              }
-                                                              if (valid11) {
-                                                                if (data36.recorded !== void 0) {
-                                                                  let data39 = data36.recorded;
-                                                                  const _errs85 = errors;
-                                                                  if (errors === _errs85) {
-                                                                    if (errors === _errs85) {
-                                                                      if (typeof data39 === "string") {
-                                                                        if (!formats0.validate(data39)) {
-                                                                          validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/recorded", schemaPath: "#/$defs/sourceFeedback/properties/recorded/format", keyword: "format", params: { format: "date" }, message: 'must match format "date"' }];
-                                                                          return false;
-                                                                        }
-                                                                      } else {
-                                                                        validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/recorded", schemaPath: "#/$defs/sourceFeedback/properties/recorded/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                                        return false;
-                                                                      }
-                                                                    }
-                                                                  }
-                                                                  var valid11 = _errs85 === errors;
-                                                                } else {
-                                                                  var valid11 = true;
-                                                                }
-                                                                if (valid11) {
-                                                                  if (data36.resource_id !== void 0) {
-                                                                    let data40 = data36.resource_id;
-                                                                    const _errs87 = errors;
-                                                                    if (errors === _errs87) {
-                                                                      if (typeof data40 === "string") {
-                                                                        if (!pattern148.test(data40)) {
-                                                                          validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/resource_id", schemaPath: "#/$defs/sourceFeedback/properties/resource_id/pattern", keyword: "pattern", params: { pattern: "^resource-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^resource-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
-                                                                          return false;
-                                                                        }
-                                                                      } else {
-                                                                        validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/resource_id", schemaPath: "#/$defs/sourceFeedback/properties/resource_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                                        return false;
-                                                                      }
-                                                                    }
-                                                                    var valid11 = _errs87 === errors;
-                                                                  } else {
-                                                                    var valid11 = true;
-                                                                  }
-                                                                  if (valid11) {
-                                                                    if (data36.source_id !== void 0) {
-                                                                      let data41 = data36.source_id;
-                                                                      const _errs89 = errors;
-                                                                      if (errors === _errs89) {
-                                                                        if (typeof data41 === "string") {
-                                                                          if (!pattern23.test(data41)) {
-                                                                            validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/source_id", schemaPath: "#/$defs/sourceFeedback/properties/source_id/pattern", keyword: "pattern", params: { pattern: "^source-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^source-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
-                                                                            return false;
-                                                                          }
-                                                                        } else {
-                                                                          validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/source_id", schemaPath: "#/$defs/sourceFeedback/properties/source_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                                          return false;
-                                                                        }
-                                                                      }
-                                                                      var valid11 = _errs89 === errors;
-                                                                    } else {
-                                                                      var valid11 = true;
-                                                                    }
-                                                                  }
-                                                                }
-                                                              }
-                                                            }
-                                                          }
-                                                        }
-                                                      } else {
-                                                        validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4, schemaPath: "#/$defs/sourceFeedback/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
-                                                        return false;
-                                                      }
-                                                    }
-                                                    var valid9 = _errs78 === errors;
-                                                    if (!valid9) {
-                                                      break;
-                                                    }
-                                                  }
-                                                } else {
-                                                  validate69.errors = [{ instancePath: instancePath + "/source_feedback", schemaPath: "#/properties/source_feedback/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
-                                                  return false;
-                                                }
+                                            if (data.scope_triage !== void 0) {
+                                              const _errs78 = errors;
+                                              if (typeof data.scope_triage !== "string") {
+                                                validate69.errors = [{ instancePath: instancePath + "/scope_triage", schemaPath: "#/properties/scope_triage/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                return false;
                                               }
-                                              var valid0 = _errs76 === errors;
+                                              var valid0 = _errs78 === errors;
                                             } else {
                                               var valid0 = true;
                                             }
                                             if (valid0) {
-                                              if (data.status !== void 0) {
-                                                const _errs91 = errors;
-                                                if (typeof data.status !== "string") {
-                                                  validate69.errors = [{ instancePath: instancePath + "/status", schemaPath: "#/properties/status/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                  return false;
+                                              if (data.source_feedback !== void 0) {
+                                                let data37 = data.source_feedback;
+                                                const _errs80 = errors;
+                                                if (errors === _errs80) {
+                                                  if (Array.isArray(data37)) {
+                                                    var valid9 = true;
+                                                    const len4 = data37.length;
+                                                    for (let i4 = 0; i4 < len4; i4++) {
+                                                      let data38 = data37[i4];
+                                                      const _errs82 = errors;
+                                                      const _errs83 = errors;
+                                                      if (errors === _errs83) {
+                                                        if (data38 && typeof data38 == "object" && !Array.isArray(data38)) {
+                                                          let missing3;
+                                                          if (data38.source_id === void 0 && (missing3 = "source_id") || data38.feedback === void 0 && (missing3 = "feedback") || data38.recorded === void 0 && (missing3 = "recorded")) {
+                                                            validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4, schemaPath: "#/$defs/sourceFeedback/required", keyword: "required", params: { missingProperty: missing3 }, message: "must have required property '" + missing3 + "'" }];
+                                                            return false;
+                                                          } else {
+                                                            const _errs85 = errors;
+                                                            for (const key3 in data38) {
+                                                              if (!(key3 === "feedback" || key3 === "note" || key3 === "recorded" || key3 === "resource_id" || key3 === "source_id")) {
+                                                                validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4, schemaPath: "#/$defs/sourceFeedback/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key3 }, message: "must NOT have additional properties" }];
+                                                                return false;
+                                                                break;
+                                                              }
+                                                            }
+                                                            if (_errs85 === errors) {
+                                                              if (data38.feedback !== void 0) {
+                                                                let data39 = data38.feedback;
+                                                                const _errs86 = errors;
+                                                                if (!(data39 === "helpful" || data39 === "too-advanced" || data39 === "wrong-perspective" || data39 === "useful-for-derivation" || data39 === "useful-for-review" || data39 === "skipped")) {
+                                                                  validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/feedback", schemaPath: "#/$defs/sourceFeedback/properties/feedback/enum", keyword: "enum", params: { allowedValues: schema126.properties.feedback.enum }, message: "must be equal to one of the allowed values" }];
+                                                                  return false;
+                                                                }
+                                                                var valid11 = _errs86 === errors;
+                                                              } else {
+                                                                var valid11 = true;
+                                                              }
+                                                              if (valid11) {
+                                                                if (data38.note !== void 0) {
+                                                                  const _errs87 = errors;
+                                                                  if (typeof data38.note !== "string") {
+                                                                    validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/note", schemaPath: "#/$defs/sourceFeedback/properties/note/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                    return false;
+                                                                  }
+                                                                  var valid11 = _errs87 === errors;
+                                                                } else {
+                                                                  var valid11 = true;
+                                                                }
+                                                                if (valid11) {
+                                                                  if (data38.recorded !== void 0) {
+                                                                    let data41 = data38.recorded;
+                                                                    const _errs89 = errors;
+                                                                    if (errors === _errs89) {
+                                                                      if (errors === _errs89) {
+                                                                        if (typeof data41 === "string") {
+                                                                          if (!formats0.validate(data41)) {
+                                                                            validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/recorded", schemaPath: "#/$defs/sourceFeedback/properties/recorded/format", keyword: "format", params: { format: "date" }, message: 'must match format "date"' }];
+                                                                            return false;
+                                                                          }
+                                                                        } else {
+                                                                          validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/recorded", schemaPath: "#/$defs/sourceFeedback/properties/recorded/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                          return false;
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                    var valid11 = _errs89 === errors;
+                                                                  } else {
+                                                                    var valid11 = true;
+                                                                  }
+                                                                  if (valid11) {
+                                                                    if (data38.resource_id !== void 0) {
+                                                                      let data42 = data38.resource_id;
+                                                                      const _errs91 = errors;
+                                                                      if (errors === _errs91) {
+                                                                        if (typeof data42 === "string") {
+                                                                          if (!pattern148.test(data42)) {
+                                                                            validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/resource_id", schemaPath: "#/$defs/sourceFeedback/properties/resource_id/pattern", keyword: "pattern", params: { pattern: "^resource-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^resource-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
+                                                                            return false;
+                                                                          }
+                                                                        } else {
+                                                                          validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/resource_id", schemaPath: "#/$defs/sourceFeedback/properties/resource_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                          return false;
+                                                                        }
+                                                                      }
+                                                                      var valid11 = _errs91 === errors;
+                                                                    } else {
+                                                                      var valid11 = true;
+                                                                    }
+                                                                    if (valid11) {
+                                                                      if (data38.source_id !== void 0) {
+                                                                        let data43 = data38.source_id;
+                                                                        const _errs93 = errors;
+                                                                        if (errors === _errs93) {
+                                                                          if (typeof data43 === "string") {
+                                                                            if (!pattern23.test(data43)) {
+                                                                              validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/source_id", schemaPath: "#/$defs/sourceFeedback/properties/source_id/pattern", keyword: "pattern", params: { pattern: "^source-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^source-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
+                                                                              return false;
+                                                                            }
+                                                                          } else {
+                                                                            validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4 + "/source_id", schemaPath: "#/$defs/sourceFeedback/properties/source_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                            return false;
+                                                                          }
+                                                                        }
+                                                                        var valid11 = _errs93 === errors;
+                                                                      } else {
+                                                                        var valid11 = true;
+                                                                      }
+                                                                    }
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        } else {
+                                                          validate69.errors = [{ instancePath: instancePath + "/source_feedback/" + i4, schemaPath: "#/$defs/sourceFeedback/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                                          return false;
+                                                        }
+                                                      }
+                                                      var valid9 = _errs82 === errors;
+                                                      if (!valid9) {
+                                                        break;
+                                                      }
+                                                    }
+                                                  } else {
+                                                    validate69.errors = [{ instancePath: instancePath + "/source_feedback", schemaPath: "#/properties/source_feedback/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                                    return false;
+                                                  }
                                                 }
-                                                var valid0 = _errs91 === errors;
+                                                var valid0 = _errs80 === errors;
                                               } else {
                                                 var valid0 = true;
                                               }
                                               if (valid0) {
-                                                if (data.study_map_id !== void 0) {
-                                                  const _errs93 = errors;
-                                                  if (typeof data.study_map_id !== "string") {
-                                                    validate69.errors = [{ instancePath: instancePath + "/study_map_id", schemaPath: "#/properties/study_map_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                if (data.status !== void 0) {
+                                                  const _errs95 = errors;
+                                                  if (typeof data.status !== "string") {
+                                                    validate69.errors = [{ instancePath: instancePath + "/status", schemaPath: "#/properties/status/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                     return false;
                                                   }
-                                                  var valid0 = _errs93 === errors;
+                                                  var valid0 = _errs95 === errors;
                                                 } else {
                                                   var valid0 = true;
                                                 }
                                                 if (valid0) {
-                                                  if (data.title !== void 0) {
-                                                    const _errs95 = errors;
-                                                    if (typeof data.title !== "string") {
-                                                      validate69.errors = [{ instancePath: instancePath + "/title", schemaPath: "#/properties/title/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                  if (data.study_map_id !== void 0) {
+                                                    const _errs97 = errors;
+                                                    if (typeof data.study_map_id !== "string") {
+                                                      validate69.errors = [{ instancePath: instancePath + "/study_map_id", schemaPath: "#/properties/study_map_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                       return false;
                                                     }
-                                                    var valid0 = _errs95 === errors;
+                                                    var valid0 = _errs97 === errors;
                                                   } else {
                                                     var valid0 = true;
                                                   }
                                                   if (valid0) {
-                                                    if (data.unit_id !== void 0) {
-                                                      const _errs97 = errors;
-                                                      if (typeof data.unit_id !== "string") {
-                                                        validate69.errors = [{ instancePath: instancePath + "/unit_id", schemaPath: "#/properties/unit_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                    if (data.title !== void 0) {
+                                                      const _errs99 = errors;
+                                                      if (typeof data.title !== "string") {
+                                                        validate69.errors = [{ instancePath: instancePath + "/title", schemaPath: "#/properties/title/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                         return false;
                                                       }
-                                                      var valid0 = _errs97 === errors;
+                                                      var valid0 = _errs99 === errors;
                                                     } else {
                                                       var valid0 = true;
                                                     }
                                                     if (valid0) {
-                                                      if (data.working_note !== void 0) {
-                                                        const _errs99 = errors;
-                                                        if (typeof data.working_note !== "string") {
-                                                          validate69.errors = [{ instancePath: instancePath + "/working_note", schemaPath: "#/properties/working_note/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                      if (data.unit_id !== void 0) {
+                                                        const _errs101 = errors;
+                                                        if (typeof data.unit_id !== "string") {
+                                                          validate69.errors = [{ instancePath: instancePath + "/unit_id", schemaPath: "#/properties/unit_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                                           return false;
                                                         }
-                                                        var valid0 = _errs99 === errors;
+                                                        var valid0 = _errs101 === errors;
                                                       } else {
                                                         var valid0 = true;
+                                                      }
+                                                      if (valid0) {
+                                                        if (data.working_note !== void 0) {
+                                                          const _errs103 = errors;
+                                                          if (typeof data.working_note !== "string") {
+                                                            validate69.errors = [{ instancePath: instancePath + "/working_note", schemaPath: "#/properties/working_note/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                            return false;
+                                                          }
+                                                          var valid0 = _errs103 === errors;
+                                                        } else {
+                                                          var valid0 = true;
+                                                        }
                                                       }
                                                     }
                                                   }
@@ -15181,7 +15229,7 @@ var require_manifest_validator = __commonJS({
                 if (errors === _errs72) {
                   if (data && typeof data == "object" && !Array.isArray(data)) {
                     let missing4;
-                    if (data.id === void 0 && (missing4 = "id") || data.type === void 0 && (missing4 = "type") || data.title === void 0 && (missing4 = "title") || data.revision === void 0 && (missing4 = "revision") || data.path === void 0 && (missing4 = "path") || data.status === void 0 && (missing4 = "status") || data.standing === void 0 && (missing4 = "standing") || data.archived === void 0 && (missing4 = "archived") || data.deadline === void 0 && (missing4 = "deadline") || data.objective === void 0 && (missing4 = "objective") || data.next_action === void 0 && (missing4 = "next_action") || data.concepts === void 0 && (missing4 = "concepts") || data.notes === void 0 && (missing4 = "notes") || data.sources === void 0 && (missing4 = "sources") || data.program_ids === void 0 && (missing4 = "program_ids") || data.module_ids === void 0 && (missing4 = "module_ids") || data.unit_ids === void 0 && (missing4 = "unit_ids") || data.project_id === void 0 && (missing4 = "project_id")) {
+                    if (data.id === void 0 && (missing4 = "id") || data.type === void 0 && (missing4 = "type") || data.title === void 0 && (missing4 = "title") || data.revision === void 0 && (missing4 = "revision") || data.path === void 0 && (missing4 = "path") || data.status === void 0 && (missing4 = "status") || data.standing === void 0 && (missing4 = "standing") || data.archived === void 0 && (missing4 = "archived") || data.is_open === void 0 && (missing4 = "is_open") || data.deadline === void 0 && (missing4 = "deadline") || data.objective === void 0 && (missing4 = "objective") || data.next_action === void 0 && (missing4 = "next_action") || data.concepts === void 0 && (missing4 = "concepts") || data.notes === void 0 && (missing4 = "notes") || data.sources === void 0 && (missing4 = "sources") || data.program_ids === void 0 && (missing4 = "program_ids") || data.module_ids === void 0 && (missing4 = "module_ids") || data.unit_ids === void 0 && (missing4 = "unit_ids") || data.project_id === void 0 && (missing4 = "project_id")) {
                       const err56 = { instancePath, schemaPath: "#/$defs/workspaceRecord/required", keyword: "required", params: { missingProperty: missing4 }, message: "must have required property '" + missing4 + "'" };
                       if (vErrors === null) {
                         vErrors = [err56];
@@ -15357,286 +15405,226 @@ var require_manifest_validator = __commonJS({
                                 var valid15 = true;
                               }
                               if (valid15) {
-                                if (data.module_ids !== void 0) {
-                                  let data35 = data.module_ids;
+                                if (data.is_open !== void 0) {
                                   const _errs85 = errors;
-                                  if (errors === _errs85) {
-                                    if (Array.isArray(data35)) {
-                                      var valid18 = true;
-                                      const len5 = data35.length;
-                                      for (let i8 = 0; i8 < len5; i8++) {
-                                        let data36 = data35[i8];
-                                        const _errs87 = errors;
-                                        if (errors === _errs87) {
-                                          if (typeof data36 === "string") {
-                                            if (!pattern8.test(data36)) {
-                                              const err67 = { instancePath: instancePath + "/module_ids/" + i8, schemaPath: "#/$defs/workspaceRecord/properties/module_ids/items/pattern", keyword: "pattern", params: { pattern: "^module-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^module-[a-z0-9]+(?:-[a-z0-9]+)*$"' };
-                                              if (vErrors === null) {
-                                                vErrors = [err67];
-                                              } else {
-                                                vErrors.push(err67);
-                                              }
-                                              errors++;
-                                            }
-                                          } else {
-                                            const err68 = { instancePath: instancePath + "/module_ids/" + i8, schemaPath: "#/$defs/workspaceRecord/properties/module_ids/items/type", keyword: "type", params: { type: "string" }, message: "must be string" };
-                                            if (vErrors === null) {
-                                              vErrors = [err68];
-                                            } else {
-                                              vErrors.push(err68);
-                                            }
-                                            errors++;
-                                          }
-                                        }
-                                        var valid18 = _errs87 === errors;
-                                        if (!valid18) {
-                                          break;
-                                        }
-                                      }
-                                      if (valid18) {
-                                        let i9 = data35.length;
-                                        let j3;
-                                        if (i9 > 1) {
-                                          const indices3 = {};
-                                          for (; i9--; ) {
-                                            let item3 = data35[i9];
-                                            if (typeof item3 !== "string") {
-                                              continue;
-                                            }
-                                            if (typeof indices3[item3] == "number") {
-                                              j3 = indices3[item3];
-                                              const err69 = { instancePath: instancePath + "/module_ids", schemaPath: "#/$defs/workspaceRecord/properties/module_ids/uniqueItems", keyword: "uniqueItems", params: { i: i9, j: j3 }, message: "must NOT have duplicate items (items ## " + j3 + " and " + i9 + " are identical)" };
-                                              if (vErrors === null) {
-                                                vErrors = [err69];
-                                              } else {
-                                                vErrors.push(err69);
-                                              }
-                                              errors++;
-                                              break;
-                                            }
-                                            indices3[item3] = i9;
-                                          }
-                                        }
-                                      }
+                                  if (typeof data.is_open !== "boolean") {
+                                    const err67 = { instancePath: instancePath + "/is_open", schemaPath: "#/$defs/workspaceRecord/properties/is_open/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
+                                    if (vErrors === null) {
+                                      vErrors = [err67];
                                     } else {
-                                      const err70 = { instancePath: instancePath + "/module_ids", schemaPath: "#/$defs/workspaceRecord/properties/module_ids/type", keyword: "type", params: { type: "array" }, message: "must be array" };
-                                      if (vErrors === null) {
-                                        vErrors = [err70];
-                                      } else {
-                                        vErrors.push(err70);
-                                      }
-                                      errors++;
+                                      vErrors.push(err67);
                                     }
+                                    errors++;
                                   }
                                   var valid15 = _errs85 === errors;
                                 } else {
                                   var valid15 = true;
                                 }
                                 if (valid15) {
-                                  if (data.next_action !== void 0) {
-                                    const _errs89 = errors;
-                                    if (typeof data.next_action !== "string") {
-                                      const err71 = { instancePath: instancePath + "/next_action", schemaPath: "#/$defs/workspaceRecord/properties/next_action/type", keyword: "type", params: { type: "string" }, message: "must be string" };
-                                      if (vErrors === null) {
-                                        vErrors = [err71];
+                                  if (data.module_ids !== void 0) {
+                                    let data36 = data.module_ids;
+                                    const _errs87 = errors;
+                                    if (errors === _errs87) {
+                                      if (Array.isArray(data36)) {
+                                        var valid18 = true;
+                                        const len5 = data36.length;
+                                        for (let i8 = 0; i8 < len5; i8++) {
+                                          let data37 = data36[i8];
+                                          const _errs89 = errors;
+                                          if (errors === _errs89) {
+                                            if (typeof data37 === "string") {
+                                              if (!pattern8.test(data37)) {
+                                                const err68 = { instancePath: instancePath + "/module_ids/" + i8, schemaPath: "#/$defs/workspaceRecord/properties/module_ids/items/pattern", keyword: "pattern", params: { pattern: "^module-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^module-[a-z0-9]+(?:-[a-z0-9]+)*$"' };
+                                                if (vErrors === null) {
+                                                  vErrors = [err68];
+                                                } else {
+                                                  vErrors.push(err68);
+                                                }
+                                                errors++;
+                                              }
+                                            } else {
+                                              const err69 = { instancePath: instancePath + "/module_ids/" + i8, schemaPath: "#/$defs/workspaceRecord/properties/module_ids/items/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                                              if (vErrors === null) {
+                                                vErrors = [err69];
+                                              } else {
+                                                vErrors.push(err69);
+                                              }
+                                              errors++;
+                                            }
+                                          }
+                                          var valid18 = _errs89 === errors;
+                                          if (!valid18) {
+                                            break;
+                                          }
+                                        }
+                                        if (valid18) {
+                                          let i9 = data36.length;
+                                          let j3;
+                                          if (i9 > 1) {
+                                            const indices3 = {};
+                                            for (; i9--; ) {
+                                              let item3 = data36[i9];
+                                              if (typeof item3 !== "string") {
+                                                continue;
+                                              }
+                                              if (typeof indices3[item3] == "number") {
+                                                j3 = indices3[item3];
+                                                const err70 = { instancePath: instancePath + "/module_ids", schemaPath: "#/$defs/workspaceRecord/properties/module_ids/uniqueItems", keyword: "uniqueItems", params: { i: i9, j: j3 }, message: "must NOT have duplicate items (items ## " + j3 + " and " + i9 + " are identical)" };
+                                                if (vErrors === null) {
+                                                  vErrors = [err70];
+                                                } else {
+                                                  vErrors.push(err70);
+                                                }
+                                                errors++;
+                                                break;
+                                              }
+                                              indices3[item3] = i9;
+                                            }
+                                          }
+                                        }
                                       } else {
-                                        vErrors.push(err71);
+                                        const err71 = { instancePath: instancePath + "/module_ids", schemaPath: "#/$defs/workspaceRecord/properties/module_ids/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+                                        if (vErrors === null) {
+                                          vErrors = [err71];
+                                        } else {
+                                          vErrors.push(err71);
+                                        }
+                                        errors++;
                                       }
-                                      errors++;
                                     }
-                                    var valid15 = _errs89 === errors;
+                                    var valid15 = _errs87 === errors;
                                   } else {
                                     var valid15 = true;
                                   }
                                   if (valid15) {
-                                    if (data.notes !== void 0) {
-                                      let data38 = data.notes;
+                                    if (data.next_action !== void 0) {
                                       const _errs91 = errors;
-                                      if (errors === _errs91) {
-                                        if (Array.isArray(data38)) {
-                                          var valid20 = true;
-                                          const len6 = data38.length;
-                                          for (let i10 = 0; i10 < len6; i10++) {
-                                            let data39 = data38[i10];
-                                            const _errs93 = errors;
-                                            if (errors === _errs93) {
-                                              if (typeof data39 === "string") {
-                                                if (!pattern48.test(data39)) {
-                                                  const err72 = { instancePath: instancePath + "/notes/" + i10, schemaPath: "#/$defs/workspaceRecord/properties/notes/items/pattern", keyword: "pattern", params: { pattern: "^note-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^note-[a-z0-9]+(?:-[a-z0-9]+)*$"' };
-                                                  if (vErrors === null) {
-                                                    vErrors = [err72];
-                                                  } else {
-                                                    vErrors.push(err72);
-                                                  }
-                                                  errors++;
-                                                }
-                                              } else {
-                                                const err73 = { instancePath: instancePath + "/notes/" + i10, schemaPath: "#/$defs/workspaceRecord/properties/notes/items/type", keyword: "type", params: { type: "string" }, message: "must be string" };
-                                                if (vErrors === null) {
-                                                  vErrors = [err73];
-                                                } else {
-                                                  vErrors.push(err73);
-                                                }
-                                                errors++;
-                                              }
-                                            }
-                                            var valid20 = _errs93 === errors;
-                                            if (!valid20) {
-                                              break;
-                                            }
-                                          }
-                                          if (valid20) {
-                                            let i11 = data38.length;
-                                            let j4;
-                                            if (i11 > 1) {
-                                              const indices4 = {};
-                                              for (; i11--; ) {
-                                                let item4 = data38[i11];
-                                                if (typeof item4 !== "string") {
-                                                  continue;
-                                                }
-                                                if (typeof indices4[item4] == "number") {
-                                                  j4 = indices4[item4];
-                                                  const err74 = { instancePath: instancePath + "/notes", schemaPath: "#/$defs/workspaceRecord/properties/notes/uniqueItems", keyword: "uniqueItems", params: { i: i11, j: j4 }, message: "must NOT have duplicate items (items ## " + j4 + " and " + i11 + " are identical)" };
-                                                  if (vErrors === null) {
-                                                    vErrors = [err74];
-                                                  } else {
-                                                    vErrors.push(err74);
-                                                  }
-                                                  errors++;
-                                                  break;
-                                                }
-                                                indices4[item4] = i11;
-                                              }
-                                            }
-                                          }
+                                      if (typeof data.next_action !== "string") {
+                                        const err72 = { instancePath: instancePath + "/next_action", schemaPath: "#/$defs/workspaceRecord/properties/next_action/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                                        if (vErrors === null) {
+                                          vErrors = [err72];
                                         } else {
-                                          const err75 = { instancePath: instancePath + "/notes", schemaPath: "#/$defs/workspaceRecord/properties/notes/type", keyword: "type", params: { type: "array" }, message: "must be array" };
-                                          if (vErrors === null) {
-                                            vErrors = [err75];
-                                          } else {
-                                            vErrors.push(err75);
-                                          }
-                                          errors++;
+                                          vErrors.push(err72);
                                         }
+                                        errors++;
                                       }
                                       var valid15 = _errs91 === errors;
                                     } else {
                                       var valid15 = true;
                                     }
                                     if (valid15) {
-                                      if (data.objective !== void 0) {
-                                        const _errs95 = errors;
-                                        if (typeof data.objective !== "string") {
-                                          const err76 = { instancePath: instancePath + "/objective", schemaPath: "#/$defs/workspaceRecord/properties/objective/type", keyword: "type", params: { type: "string" }, message: "must be string" };
-                                          if (vErrors === null) {
-                                            vErrors = [err76];
+                                      if (data.notes !== void 0) {
+                                        let data39 = data.notes;
+                                        const _errs93 = errors;
+                                        if (errors === _errs93) {
+                                          if (Array.isArray(data39)) {
+                                            var valid20 = true;
+                                            const len6 = data39.length;
+                                            for (let i10 = 0; i10 < len6; i10++) {
+                                              let data40 = data39[i10];
+                                              const _errs95 = errors;
+                                              if (errors === _errs95) {
+                                                if (typeof data40 === "string") {
+                                                  if (!pattern48.test(data40)) {
+                                                    const err73 = { instancePath: instancePath + "/notes/" + i10, schemaPath: "#/$defs/workspaceRecord/properties/notes/items/pattern", keyword: "pattern", params: { pattern: "^note-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^note-[a-z0-9]+(?:-[a-z0-9]+)*$"' };
+                                                    if (vErrors === null) {
+                                                      vErrors = [err73];
+                                                    } else {
+                                                      vErrors.push(err73);
+                                                    }
+                                                    errors++;
+                                                  }
+                                                } else {
+                                                  const err74 = { instancePath: instancePath + "/notes/" + i10, schemaPath: "#/$defs/workspaceRecord/properties/notes/items/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                                                  if (vErrors === null) {
+                                                    vErrors = [err74];
+                                                  } else {
+                                                    vErrors.push(err74);
+                                                  }
+                                                  errors++;
+                                                }
+                                              }
+                                              var valid20 = _errs95 === errors;
+                                              if (!valid20) {
+                                                break;
+                                              }
+                                            }
+                                            if (valid20) {
+                                              let i11 = data39.length;
+                                              let j4;
+                                              if (i11 > 1) {
+                                                const indices4 = {};
+                                                for (; i11--; ) {
+                                                  let item4 = data39[i11];
+                                                  if (typeof item4 !== "string") {
+                                                    continue;
+                                                  }
+                                                  if (typeof indices4[item4] == "number") {
+                                                    j4 = indices4[item4];
+                                                    const err75 = { instancePath: instancePath + "/notes", schemaPath: "#/$defs/workspaceRecord/properties/notes/uniqueItems", keyword: "uniqueItems", params: { i: i11, j: j4 }, message: "must NOT have duplicate items (items ## " + j4 + " and " + i11 + " are identical)" };
+                                                    if (vErrors === null) {
+                                                      vErrors = [err75];
+                                                    } else {
+                                                      vErrors.push(err75);
+                                                    }
+                                                    errors++;
+                                                    break;
+                                                  }
+                                                  indices4[item4] = i11;
+                                                }
+                                              }
+                                            }
                                           } else {
-                                            vErrors.push(err76);
+                                            const err76 = { instancePath: instancePath + "/notes", schemaPath: "#/$defs/workspaceRecord/properties/notes/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+                                            if (vErrors === null) {
+                                              vErrors = [err76];
+                                            } else {
+                                              vErrors.push(err76);
+                                            }
+                                            errors++;
                                           }
-                                          errors++;
                                         }
-                                        var valid15 = _errs95 === errors;
+                                        var valid15 = _errs93 === errors;
                                       } else {
                                         var valid15 = true;
                                       }
                                       if (valid15) {
-                                        if (data.path !== void 0) {
-                                          let data41 = data.path;
+                                        if (data.objective !== void 0) {
                                           const _errs97 = errors;
-                                          if (errors === _errs97) {
-                                            if (typeof data41 === "string") {
-                                              if (func3(data41) < 1) {
-                                                const err77 = { instancePath: instancePath + "/path", schemaPath: "#/$defs/workspaceRecord/properties/path/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
-                                                if (vErrors === null) {
-                                                  vErrors = [err77];
-                                                } else {
-                                                  vErrors.push(err77);
-                                                }
-                                                errors++;
-                                              }
+                                          if (typeof data.objective !== "string") {
+                                            const err77 = { instancePath: instancePath + "/objective", schemaPath: "#/$defs/workspaceRecord/properties/objective/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                                            if (vErrors === null) {
+                                              vErrors = [err77];
                                             } else {
-                                              const err78 = { instancePath: instancePath + "/path", schemaPath: "#/$defs/workspaceRecord/properties/path/type", keyword: "type", params: { type: "string" }, message: "must be string" };
-                                              if (vErrors === null) {
-                                                vErrors = [err78];
-                                              } else {
-                                                vErrors.push(err78);
-                                              }
-                                              errors++;
+                                              vErrors.push(err77);
                                             }
+                                            errors++;
                                           }
                                           var valid15 = _errs97 === errors;
                                         } else {
                                           var valid15 = true;
                                         }
                                         if (valid15) {
-                                          if (data.program_ids !== void 0) {
-                                            let data42 = data.program_ids;
+                                          if (data.path !== void 0) {
+                                            let data42 = data.path;
                                             const _errs99 = errors;
                                             if (errors === _errs99) {
-                                              if (Array.isArray(data42)) {
-                                                var valid22 = true;
-                                                const len7 = data42.length;
-                                                for (let i12 = 0; i12 < len7; i12++) {
-                                                  let data43 = data42[i12];
-                                                  const _errs101 = errors;
-                                                  if (errors === _errs101) {
-                                                    if (typeof data43 === "string") {
-                                                      if (!pattern31.test(data43)) {
-                                                        const err79 = { instancePath: instancePath + "/program_ids/" + i12, schemaPath: "#/$defs/workspaceRecord/properties/program_ids/items/pattern", keyword: "pattern", params: { pattern: "^program-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^program-[a-z0-9]+(?:-[a-z0-9]+)*$"' };
-                                                        if (vErrors === null) {
-                                                          vErrors = [err79];
-                                                        } else {
-                                                          vErrors.push(err79);
-                                                        }
-                                                        errors++;
-                                                      }
-                                                    } else {
-                                                      const err80 = { instancePath: instancePath + "/program_ids/" + i12, schemaPath: "#/$defs/workspaceRecord/properties/program_ids/items/type", keyword: "type", params: { type: "string" }, message: "must be string" };
-                                                      if (vErrors === null) {
-                                                        vErrors = [err80];
-                                                      } else {
-                                                        vErrors.push(err80);
-                                                      }
-                                                      errors++;
-                                                    }
+                                              if (typeof data42 === "string") {
+                                                if (func3(data42) < 1) {
+                                                  const err78 = { instancePath: instancePath + "/path", schemaPath: "#/$defs/workspaceRecord/properties/path/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
+                                                  if (vErrors === null) {
+                                                    vErrors = [err78];
+                                                  } else {
+                                                    vErrors.push(err78);
                                                   }
-                                                  var valid22 = _errs101 === errors;
-                                                  if (!valid22) {
-                                                    break;
-                                                  }
-                                                }
-                                                if (valid22) {
-                                                  let i13 = data42.length;
-                                                  let j5;
-                                                  if (i13 > 1) {
-                                                    const indices5 = {};
-                                                    for (; i13--; ) {
-                                                      let item5 = data42[i13];
-                                                      if (typeof item5 !== "string") {
-                                                        continue;
-                                                      }
-                                                      if (typeof indices5[item5] == "number") {
-                                                        j5 = indices5[item5];
-                                                        const err81 = { instancePath: instancePath + "/program_ids", schemaPath: "#/$defs/workspaceRecord/properties/program_ids/uniqueItems", keyword: "uniqueItems", params: { i: i13, j: j5 }, message: "must NOT have duplicate items (items ## " + j5 + " and " + i13 + " are identical)" };
-                                                        if (vErrors === null) {
-                                                          vErrors = [err81];
-                                                        } else {
-                                                          vErrors.push(err81);
-                                                        }
-                                                        errors++;
-                                                        break;
-                                                      }
-                                                      indices5[item5] = i13;
-                                                    }
-                                                  }
+                                                  errors++;
                                                 }
                                               } else {
-                                                const err82 = { instancePath: instancePath + "/program_ids", schemaPath: "#/$defs/workspaceRecord/properties/program_ids/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+                                                const err79 = { instancePath: instancePath + "/path", schemaPath: "#/$defs/workspaceRecord/properties/path/type", keyword: "type", params: { type: "string" }, message: "must be string" };
                                                 if (vErrors === null) {
-                                                  vErrors = [err82];
+                                                  vErrors = [err79];
                                                 } else {
-                                                  vErrors.push(err82);
+                                                  vErrors.push(err79);
                                                 }
                                                 errors++;
                                               }
@@ -15646,56 +15634,102 @@ var require_manifest_validator = __commonJS({
                                             var valid15 = true;
                                           }
                                           if (valid15) {
-                                            if (data.project_id !== void 0) {
-                                              let data44 = data.project_id;
-                                              const _errs103 = errors;
-                                              if (typeof data44 !== "string" && data44 !== null) {
-                                                const err83 = { instancePath: instancePath + "/project_id", schemaPath: "#/$defs/workspaceRecord/properties/project_id/type", keyword: "type", params: { type: schema94.properties.project_id.type }, message: "must be string,null" };
-                                                if (vErrors === null) {
-                                                  vErrors = [err83];
-                                                } else {
-                                                  vErrors.push(err83);
-                                                }
-                                                errors++;
-                                              }
-                                              if (errors === _errs103) {
-                                                if (typeof data44 === "string") {
-                                                  if (!pattern35.test(data44)) {
-                                                    const err84 = { instancePath: instancePath + "/project_id", schemaPath: "#/$defs/workspaceRecord/properties/project_id/pattern", keyword: "pattern", params: { pattern: "^project-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^project-[a-z0-9]+(?:-[a-z0-9]+)*$"' };
-                                                    if (vErrors === null) {
-                                                      vErrors = [err84];
-                                                    } else {
-                                                      vErrors.push(err84);
+                                            if (data.program_ids !== void 0) {
+                                              let data43 = data.program_ids;
+                                              const _errs101 = errors;
+                                              if (errors === _errs101) {
+                                                if (Array.isArray(data43)) {
+                                                  var valid22 = true;
+                                                  const len7 = data43.length;
+                                                  for (let i12 = 0; i12 < len7; i12++) {
+                                                    let data44 = data43[i12];
+                                                    const _errs103 = errors;
+                                                    if (errors === _errs103) {
+                                                      if (typeof data44 === "string") {
+                                                        if (!pattern31.test(data44)) {
+                                                          const err80 = { instancePath: instancePath + "/program_ids/" + i12, schemaPath: "#/$defs/workspaceRecord/properties/program_ids/items/pattern", keyword: "pattern", params: { pattern: "^program-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^program-[a-z0-9]+(?:-[a-z0-9]+)*$"' };
+                                                          if (vErrors === null) {
+                                                            vErrors = [err80];
+                                                          } else {
+                                                            vErrors.push(err80);
+                                                          }
+                                                          errors++;
+                                                        }
+                                                      } else {
+                                                        const err81 = { instancePath: instancePath + "/program_ids/" + i12, schemaPath: "#/$defs/workspaceRecord/properties/program_ids/items/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                                                        if (vErrors === null) {
+                                                          vErrors = [err81];
+                                                        } else {
+                                                          vErrors.push(err81);
+                                                        }
+                                                        errors++;
+                                                      }
                                                     }
-                                                    errors++;
+                                                    var valid22 = _errs103 === errors;
+                                                    if (!valid22) {
+                                                      break;
+                                                    }
                                                   }
+                                                  if (valid22) {
+                                                    let i13 = data43.length;
+                                                    let j5;
+                                                    if (i13 > 1) {
+                                                      const indices5 = {};
+                                                      for (; i13--; ) {
+                                                        let item5 = data43[i13];
+                                                        if (typeof item5 !== "string") {
+                                                          continue;
+                                                        }
+                                                        if (typeof indices5[item5] == "number") {
+                                                          j5 = indices5[item5];
+                                                          const err82 = { instancePath: instancePath + "/program_ids", schemaPath: "#/$defs/workspaceRecord/properties/program_ids/uniqueItems", keyword: "uniqueItems", params: { i: i13, j: j5 }, message: "must NOT have duplicate items (items ## " + j5 + " and " + i13 + " are identical)" };
+                                                          if (vErrors === null) {
+                                                            vErrors = [err82];
+                                                          } else {
+                                                            vErrors.push(err82);
+                                                          }
+                                                          errors++;
+                                                          break;
+                                                        }
+                                                        indices5[item5] = i13;
+                                                      }
+                                                    }
+                                                  }
+                                                } else {
+                                                  const err83 = { instancePath: instancePath + "/program_ids", schemaPath: "#/$defs/workspaceRecord/properties/program_ids/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+                                                  if (vErrors === null) {
+                                                    vErrors = [err83];
+                                                  } else {
+                                                    vErrors.push(err83);
+                                                  }
+                                                  errors++;
                                                 }
                                               }
-                                              var valid15 = _errs103 === errors;
+                                              var valid15 = _errs101 === errors;
                                             } else {
                                               var valid15 = true;
                                             }
                                             if (valid15) {
-                                              if (data.revision !== void 0) {
-                                                let data45 = data.revision;
+                                              if (data.project_id !== void 0) {
+                                                let data45 = data.project_id;
                                                 const _errs105 = errors;
-                                                if (!(typeof data45 == "number" && (!(data45 % 1) && !isNaN(data45)) && isFinite(data45))) {
-                                                  const err85 = { instancePath: instancePath + "/revision", schemaPath: "#/$defs/workspaceRecord/properties/revision/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
+                                                if (typeof data45 !== "string" && data45 !== null) {
+                                                  const err84 = { instancePath: instancePath + "/project_id", schemaPath: "#/$defs/workspaceRecord/properties/project_id/type", keyword: "type", params: { type: schema94.properties.project_id.type }, message: "must be string,null" };
                                                   if (vErrors === null) {
-                                                    vErrors = [err85];
+                                                    vErrors = [err84];
                                                   } else {
-                                                    vErrors.push(err85);
+                                                    vErrors.push(err84);
                                                   }
                                                   errors++;
                                                 }
                                                 if (errors === _errs105) {
-                                                  if (typeof data45 == "number" && isFinite(data45)) {
-                                                    if (data45 < 0 || isNaN(data45)) {
-                                                      const err86 = { instancePath: instancePath + "/revision", schemaPath: "#/$defs/workspaceRecord/properties/revision/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
+                                                  if (typeof data45 === "string") {
+                                                    if (!pattern35.test(data45)) {
+                                                      const err85 = { instancePath: instancePath + "/project_id", schemaPath: "#/$defs/workspaceRecord/properties/project_id/pattern", keyword: "pattern", params: { pattern: "^project-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^project-[a-z0-9]+(?:-[a-z0-9]+)*$"' };
                                                       if (vErrors === null) {
-                                                        vErrors = [err86];
+                                                        vErrors = [err85];
                                                       } else {
-                                                        vErrors.push(err86);
+                                                        vErrors.push(err85);
                                                       }
                                                       errors++;
                                                     }
@@ -15706,75 +15740,29 @@ var require_manifest_validator = __commonJS({
                                                 var valid15 = true;
                                               }
                                               if (valid15) {
-                                                if (data.sources !== void 0) {
-                                                  let data46 = data.sources;
+                                                if (data.revision !== void 0) {
+                                                  let data46 = data.revision;
                                                   const _errs107 = errors;
-                                                  if (errors === _errs107) {
-                                                    if (Array.isArray(data46)) {
-                                                      var valid24 = true;
-                                                      const len8 = data46.length;
-                                                      for (let i14 = 0; i14 < len8; i14++) {
-                                                        let data47 = data46[i14];
-                                                        const _errs109 = errors;
-                                                        if (errors === _errs109) {
-                                                          if (typeof data47 === "string") {
-                                                            if (!pattern23.test(data47)) {
-                                                              const err87 = { instancePath: instancePath + "/sources/" + i14, schemaPath: "#/$defs/workspaceRecord/properties/sources/items/pattern", keyword: "pattern", params: { pattern: "^source-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^source-[a-z0-9]+(?:-[a-z0-9]+)*$"' };
-                                                              if (vErrors === null) {
-                                                                vErrors = [err87];
-                                                              } else {
-                                                                vErrors.push(err87);
-                                                              }
-                                                              errors++;
-                                                            }
-                                                          } else {
-                                                            const err88 = { instancePath: instancePath + "/sources/" + i14, schemaPath: "#/$defs/workspaceRecord/properties/sources/items/type", keyword: "type", params: { type: "string" }, message: "must be string" };
-                                                            if (vErrors === null) {
-                                                              vErrors = [err88];
-                                                            } else {
-                                                              vErrors.push(err88);
-                                                            }
-                                                            errors++;
-                                                          }
-                                                        }
-                                                        var valid24 = _errs109 === errors;
-                                                        if (!valid24) {
-                                                          break;
-                                                        }
-                                                      }
-                                                      if (valid24) {
-                                                        let i15 = data46.length;
-                                                        let j6;
-                                                        if (i15 > 1) {
-                                                          const indices6 = {};
-                                                          for (; i15--; ) {
-                                                            let item6 = data46[i15];
-                                                            if (typeof item6 !== "string") {
-                                                              continue;
-                                                            }
-                                                            if (typeof indices6[item6] == "number") {
-                                                              j6 = indices6[item6];
-                                                              const err89 = { instancePath: instancePath + "/sources", schemaPath: "#/$defs/workspaceRecord/properties/sources/uniqueItems", keyword: "uniqueItems", params: { i: i15, j: j6 }, message: "must NOT have duplicate items (items ## " + j6 + " and " + i15 + " are identical)" };
-                                                              if (vErrors === null) {
-                                                                vErrors = [err89];
-                                                              } else {
-                                                                vErrors.push(err89);
-                                                              }
-                                                              errors++;
-                                                              break;
-                                                            }
-                                                            indices6[item6] = i15;
-                                                          }
-                                                        }
-                                                      }
+                                                  if (!(typeof data46 == "number" && (!(data46 % 1) && !isNaN(data46)) && isFinite(data46))) {
+                                                    const err86 = { instancePath: instancePath + "/revision", schemaPath: "#/$defs/workspaceRecord/properties/revision/type", keyword: "type", params: { type: "integer" }, message: "must be integer" };
+                                                    if (vErrors === null) {
+                                                      vErrors = [err86];
                                                     } else {
-                                                      const err90 = { instancePath: instancePath + "/sources", schemaPath: "#/$defs/workspaceRecord/properties/sources/type", keyword: "type", params: { type: "array" }, message: "must be array" };
-                                                      if (vErrors === null) {
-                                                        vErrors = [err90];
-                                                      } else {
-                                                        vErrors.push(err90);
+                                                      vErrors.push(err86);
+                                                    }
+                                                    errors++;
+                                                  }
+                                                  if (errors === _errs107) {
+                                                    if (typeof data46 == "number" && isFinite(data46)) {
+                                                      if (data46 < 0 || isNaN(data46)) {
+                                                        const err87 = { instancePath: instancePath + "/revision", schemaPath: "#/$defs/workspaceRecord/properties/revision/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" };
+                                                        if (vErrors === null) {
+                                                          vErrors = [err87];
+                                                        } else {
+                                                          vErrors.push(err87);
+                                                        }
+                                                        errors++;
                                                       }
-                                                      errors++;
                                                     }
                                                   }
                                                   var valid15 = _errs107 === errors;
@@ -15782,27 +15770,86 @@ var require_manifest_validator = __commonJS({
                                                   var valid15 = true;
                                                 }
                                                 if (valid15) {
-                                                  if (data.standing !== void 0) {
-                                                    const _errs111 = errors;
-                                                    if (typeof data.standing !== "boolean") {
-                                                      const err91 = { instancePath: instancePath + "/standing", schemaPath: "#/$defs/workspaceRecord/properties/standing/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
-                                                      if (vErrors === null) {
-                                                        vErrors = [err91];
+                                                  if (data.sources !== void 0) {
+                                                    let data47 = data.sources;
+                                                    const _errs109 = errors;
+                                                    if (errors === _errs109) {
+                                                      if (Array.isArray(data47)) {
+                                                        var valid24 = true;
+                                                        const len8 = data47.length;
+                                                        for (let i14 = 0; i14 < len8; i14++) {
+                                                          let data48 = data47[i14];
+                                                          const _errs111 = errors;
+                                                          if (errors === _errs111) {
+                                                            if (typeof data48 === "string") {
+                                                              if (!pattern23.test(data48)) {
+                                                                const err88 = { instancePath: instancePath + "/sources/" + i14, schemaPath: "#/$defs/workspaceRecord/properties/sources/items/pattern", keyword: "pattern", params: { pattern: "^source-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^source-[a-z0-9]+(?:-[a-z0-9]+)*$"' };
+                                                                if (vErrors === null) {
+                                                                  vErrors = [err88];
+                                                                } else {
+                                                                  vErrors.push(err88);
+                                                                }
+                                                                errors++;
+                                                              }
+                                                            } else {
+                                                              const err89 = { instancePath: instancePath + "/sources/" + i14, schemaPath: "#/$defs/workspaceRecord/properties/sources/items/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                                                              if (vErrors === null) {
+                                                                vErrors = [err89];
+                                                              } else {
+                                                                vErrors.push(err89);
+                                                              }
+                                                              errors++;
+                                                            }
+                                                          }
+                                                          var valid24 = _errs111 === errors;
+                                                          if (!valid24) {
+                                                            break;
+                                                          }
+                                                        }
+                                                        if (valid24) {
+                                                          let i15 = data47.length;
+                                                          let j6;
+                                                          if (i15 > 1) {
+                                                            const indices6 = {};
+                                                            for (; i15--; ) {
+                                                              let item6 = data47[i15];
+                                                              if (typeof item6 !== "string") {
+                                                                continue;
+                                                              }
+                                                              if (typeof indices6[item6] == "number") {
+                                                                j6 = indices6[item6];
+                                                                const err90 = { instancePath: instancePath + "/sources", schemaPath: "#/$defs/workspaceRecord/properties/sources/uniqueItems", keyword: "uniqueItems", params: { i: i15, j: j6 }, message: "must NOT have duplicate items (items ## " + j6 + " and " + i15 + " are identical)" };
+                                                                if (vErrors === null) {
+                                                                  vErrors = [err90];
+                                                                } else {
+                                                                  vErrors.push(err90);
+                                                                }
+                                                                errors++;
+                                                                break;
+                                                              }
+                                                              indices6[item6] = i15;
+                                                            }
+                                                          }
+                                                        }
                                                       } else {
-                                                        vErrors.push(err91);
+                                                        const err91 = { instancePath: instancePath + "/sources", schemaPath: "#/$defs/workspaceRecord/properties/sources/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+                                                        if (vErrors === null) {
+                                                          vErrors = [err91];
+                                                        } else {
+                                                          vErrors.push(err91);
+                                                        }
+                                                        errors++;
                                                       }
-                                                      errors++;
                                                     }
-                                                    var valid15 = _errs111 === errors;
+                                                    var valid15 = _errs109 === errors;
                                                   } else {
                                                     var valid15 = true;
                                                   }
                                                   if (valid15) {
-                                                    if (data.status !== void 0) {
-                                                      let data49 = data.status;
+                                                    if (data.standing !== void 0) {
                                                       const _errs113 = errors;
-                                                      if (!(data49 === "active" || data49 === "blocked" || data49 === "complete")) {
-                                                        const err92 = { instancePath: instancePath + "/status", schemaPath: "#/$defs/workspaceRecord/properties/status/enum", keyword: "enum", params: { allowedValues: schema94.properties.status.enum }, message: "must be equal to one of the allowed values" };
+                                                      if (typeof data.standing !== "boolean") {
+                                                        const err92 = { instancePath: instancePath + "/standing", schemaPath: "#/$defs/workspaceRecord/properties/standing/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" };
                                                         if (vErrors === null) {
                                                           vErrors = [err92];
                                                         } else {
@@ -15815,125 +15862,143 @@ var require_manifest_validator = __commonJS({
                                                       var valid15 = true;
                                                     }
                                                     if (valid15) {
-                                                      if (data.title !== void 0) {
-                                                        let data50 = data.title;
-                                                        const _errs114 = errors;
-                                                        if (errors === _errs114) {
-                                                          if (typeof data50 === "string") {
-                                                            if (func3(data50) < 1) {
-                                                              const err93 = { instancePath: instancePath + "/title", schemaPath: "#/$defs/workspaceRecord/properties/title/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
-                                                              if (vErrors === null) {
-                                                                vErrors = [err93];
-                                                              } else {
-                                                                vErrors.push(err93);
-                                                              }
-                                                              errors++;
-                                                            }
+                                                      if (data.status !== void 0) {
+                                                        let data50 = data.status;
+                                                        const _errs115 = errors;
+                                                        if (!(data50 === "active" || data50 === "blocked" || data50 === "complete")) {
+                                                          const err93 = { instancePath: instancePath + "/status", schemaPath: "#/$defs/workspaceRecord/properties/status/enum", keyword: "enum", params: { allowedValues: schema94.properties.status.enum }, message: "must be equal to one of the allowed values" };
+                                                          if (vErrors === null) {
+                                                            vErrors = [err93];
                                                           } else {
-                                                            const err94 = { instancePath: instancePath + "/title", schemaPath: "#/$defs/workspaceRecord/properties/title/type", keyword: "type", params: { type: "string" }, message: "must be string" };
-                                                            if (vErrors === null) {
-                                                              vErrors = [err94];
-                                                            } else {
-                                                              vErrors.push(err94);
-                                                            }
-                                                            errors++;
+                                                            vErrors.push(err93);
                                                           }
+                                                          errors++;
                                                         }
-                                                        var valid15 = _errs114 === errors;
+                                                        var valid15 = _errs115 === errors;
                                                       } else {
                                                         var valid15 = true;
                                                       }
                                                       if (valid15) {
-                                                        if (data.type !== void 0) {
+                                                        if (data.title !== void 0) {
+                                                          let data51 = data.title;
                                                           const _errs116 = errors;
-                                                          if ("workspace" !== data.type) {
-                                                            const err95 = { instancePath: instancePath + "/type", schemaPath: "#/$defs/workspaceRecord/properties/type/const", keyword: "const", params: { allowedValue: "workspace" }, message: "must be equal to constant" };
-                                                            if (vErrors === null) {
-                                                              vErrors = [err95];
+                                                          if (errors === _errs116) {
+                                                            if (typeof data51 === "string") {
+                                                              if (func3(data51) < 1) {
+                                                                const err94 = { instancePath: instancePath + "/title", schemaPath: "#/$defs/workspaceRecord/properties/title/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" };
+                                                                if (vErrors === null) {
+                                                                  vErrors = [err94];
+                                                                } else {
+                                                                  vErrors.push(err94);
+                                                                }
+                                                                errors++;
+                                                              }
                                                             } else {
-                                                              vErrors.push(err95);
+                                                              const err95 = { instancePath: instancePath + "/title", schemaPath: "#/$defs/workspaceRecord/properties/title/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                                                              if (vErrors === null) {
+                                                                vErrors = [err95];
+                                                              } else {
+                                                                vErrors.push(err95);
+                                                              }
+                                                              errors++;
                                                             }
-                                                            errors++;
                                                           }
                                                           var valid15 = _errs116 === errors;
                                                         } else {
                                                           var valid15 = true;
                                                         }
                                                         if (valid15) {
-                                                          if (data.unit_ids !== void 0) {
-                                                            let data52 = data.unit_ids;
-                                                            const _errs117 = errors;
-                                                            if (errors === _errs117) {
-                                                              if (Array.isArray(data52)) {
-                                                                var valid26 = true;
-                                                                const len9 = data52.length;
-                                                                for (let i16 = 0; i16 < len9; i16++) {
-                                                                  let data53 = data52[i16];
-                                                                  const _errs119 = errors;
-                                                                  if (errors === _errs119) {
-                                                                    if (typeof data53 === "string") {
-                                                                      if (!pattern17.test(data53)) {
-                                                                        const err96 = { instancePath: instancePath + "/unit_ids/" + i16, schemaPath: "#/$defs/workspaceRecord/properties/unit_ids/items/pattern", keyword: "pattern", params: { pattern: "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$"' };
-                                                                        if (vErrors === null) {
-                                                                          vErrors = [err96];
-                                                                        } else {
-                                                                          vErrors.push(err96);
+                                                          if (data.type !== void 0) {
+                                                            const _errs118 = errors;
+                                                            if ("workspace" !== data.type) {
+                                                              const err96 = { instancePath: instancePath + "/type", schemaPath: "#/$defs/workspaceRecord/properties/type/const", keyword: "const", params: { allowedValue: "workspace" }, message: "must be equal to constant" };
+                                                              if (vErrors === null) {
+                                                                vErrors = [err96];
+                                                              } else {
+                                                                vErrors.push(err96);
+                                                              }
+                                                              errors++;
+                                                            }
+                                                            var valid15 = _errs118 === errors;
+                                                          } else {
+                                                            var valid15 = true;
+                                                          }
+                                                          if (valid15) {
+                                                            if (data.unit_ids !== void 0) {
+                                                              let data53 = data.unit_ids;
+                                                              const _errs119 = errors;
+                                                              if (errors === _errs119) {
+                                                                if (Array.isArray(data53)) {
+                                                                  var valid26 = true;
+                                                                  const len9 = data53.length;
+                                                                  for (let i16 = 0; i16 < len9; i16++) {
+                                                                    let data54 = data53[i16];
+                                                                    const _errs121 = errors;
+                                                                    if (errors === _errs121) {
+                                                                      if (typeof data54 === "string") {
+                                                                        if (!pattern17.test(data54)) {
+                                                                          const err97 = { instancePath: instancePath + "/unit_ids/" + i16, schemaPath: "#/$defs/workspaceRecord/properties/unit_ids/items/pattern", keyword: "pattern", params: { pattern: "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$"' };
+                                                                          if (vErrors === null) {
+                                                                            vErrors = [err97];
+                                                                          } else {
+                                                                            vErrors.push(err97);
+                                                                          }
+                                                                          errors++;
                                                                         }
-                                                                        errors++;
-                                                                      }
-                                                                    } else {
-                                                                      const err97 = { instancePath: instancePath + "/unit_ids/" + i16, schemaPath: "#/$defs/workspaceRecord/properties/unit_ids/items/type", keyword: "type", params: { type: "string" }, message: "must be string" };
-                                                                      if (vErrors === null) {
-                                                                        vErrors = [err97];
                                                                       } else {
-                                                                        vErrors.push(err97);
-                                                                      }
-                                                                      errors++;
-                                                                    }
-                                                                  }
-                                                                  var valid26 = _errs119 === errors;
-                                                                  if (!valid26) {
-                                                                    break;
-                                                                  }
-                                                                }
-                                                                if (valid26) {
-                                                                  let i17 = data52.length;
-                                                                  let j7;
-                                                                  if (i17 > 1) {
-                                                                    const indices7 = {};
-                                                                    for (; i17--; ) {
-                                                                      let item7 = data52[i17];
-                                                                      if (typeof item7 !== "string") {
-                                                                        continue;
-                                                                      }
-                                                                      if (typeof indices7[item7] == "number") {
-                                                                        j7 = indices7[item7];
-                                                                        const err98 = { instancePath: instancePath + "/unit_ids", schemaPath: "#/$defs/workspaceRecord/properties/unit_ids/uniqueItems", keyword: "uniqueItems", params: { i: i17, j: j7 }, message: "must NOT have duplicate items (items ## " + j7 + " and " + i17 + " are identical)" };
+                                                                        const err98 = { instancePath: instancePath + "/unit_ids/" + i16, schemaPath: "#/$defs/workspaceRecord/properties/unit_ids/items/type", keyword: "type", params: { type: "string" }, message: "must be string" };
                                                                         if (vErrors === null) {
                                                                           vErrors = [err98];
                                                                         } else {
                                                                           vErrors.push(err98);
                                                                         }
                                                                         errors++;
-                                                                        break;
                                                                       }
-                                                                      indices7[item7] = i17;
+                                                                    }
+                                                                    var valid26 = _errs121 === errors;
+                                                                    if (!valid26) {
+                                                                      break;
                                                                     }
                                                                   }
-                                                                }
-                                                              } else {
-                                                                const err99 = { instancePath: instancePath + "/unit_ids", schemaPath: "#/$defs/workspaceRecord/properties/unit_ids/type", keyword: "type", params: { type: "array" }, message: "must be array" };
-                                                                if (vErrors === null) {
-                                                                  vErrors = [err99];
+                                                                  if (valid26) {
+                                                                    let i17 = data53.length;
+                                                                    let j7;
+                                                                    if (i17 > 1) {
+                                                                      const indices7 = {};
+                                                                      for (; i17--; ) {
+                                                                        let item7 = data53[i17];
+                                                                        if (typeof item7 !== "string") {
+                                                                          continue;
+                                                                        }
+                                                                        if (typeof indices7[item7] == "number") {
+                                                                          j7 = indices7[item7];
+                                                                          const err99 = { instancePath: instancePath + "/unit_ids", schemaPath: "#/$defs/workspaceRecord/properties/unit_ids/uniqueItems", keyword: "uniqueItems", params: { i: i17, j: j7 }, message: "must NOT have duplicate items (items ## " + j7 + " and " + i17 + " are identical)" };
+                                                                          if (vErrors === null) {
+                                                                            vErrors = [err99];
+                                                                          } else {
+                                                                            vErrors.push(err99);
+                                                                          }
+                                                                          errors++;
+                                                                          break;
+                                                                        }
+                                                                        indices7[item7] = i17;
+                                                                      }
+                                                                    }
+                                                                  }
                                                                 } else {
-                                                                  vErrors.push(err99);
+                                                                  const err100 = { instancePath: instancePath + "/unit_ids", schemaPath: "#/$defs/workspaceRecord/properties/unit_ids/type", keyword: "type", params: { type: "array" }, message: "must be array" };
+                                                                  if (vErrors === null) {
+                                                                    vErrors = [err100];
+                                                                  } else {
+                                                                    vErrors.push(err100);
+                                                                  }
+                                                                  errors++;
                                                                 }
-                                                                errors++;
                                                               }
+                                                              var valid15 = _errs119 === errors;
+                                                            } else {
+                                                              var valid15 = true;
                                                             }
-                                                            var valid15 = _errs117 === errors;
-                                                          } else {
-                                                            var valid15 = true;
                                                           }
                                                         }
                                                       }
@@ -15955,11 +16020,11 @@ var require_manifest_validator = __commonJS({
                       }
                     }
                   } else {
-                    const err100 = { instancePath, schemaPath: "#/$defs/workspaceRecord/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+                    const err101 = { instancePath, schemaPath: "#/$defs/workspaceRecord/type", keyword: "type", params: { type: "object" }, message: "must be object" };
                     if (vErrors === null) {
-                      vErrors = [err100];
+                      vErrors = [err101];
                     } else {
-                      vErrors.push(err100);
+                      vErrors.push(err101);
                     }
                     errors++;
                   }
@@ -15976,12 +16041,12 @@ var require_manifest_validator = __commonJS({
                       props0 = true;
                     }
                   }
-                  const _errs121 = errors;
+                  const _errs123 = errors;
                   if (!validate40(data, { instancePath, parentData, parentDataProperty, rootData, dynamicAnchors })) {
                     vErrors = vErrors === null ? validate40.errors : vErrors.concat(validate40.errors);
                     errors = vErrors.length;
                   }
-                  var _valid0 = _errs121 === errors;
+                  var _valid0 = _errs123 === errors;
                   if (_valid0 && valid0) {
                     valid0 = false;
                     passing0 = [passing0, 7];
@@ -15993,12 +16058,12 @@ var require_manifest_validator = __commonJS({
                         props0 = true;
                       }
                     }
-                    const _errs122 = errors;
+                    const _errs124 = errors;
                     if (!validate51(data, { instancePath, parentData, parentDataProperty, rootData, dynamicAnchors })) {
                       vErrors = vErrors === null ? validate51.errors : vErrors.concat(validate51.errors);
                       errors = vErrors.length;
                     }
-                    var _valid0 = _errs122 === errors;
+                    var _valid0 = _errs124 === errors;
                     if (_valid0 && valid0) {
                       valid0 = false;
                       passing0 = [passing0, 8];
@@ -16010,12 +16075,12 @@ var require_manifest_validator = __commonJS({
                           props0 = true;
                         }
                       }
-                      const _errs123 = errors;
+                      const _errs125 = errors;
                       if (!validate56(data, { instancePath, parentData, parentDataProperty, rootData, dynamicAnchors })) {
                         vErrors = vErrors === null ? validate56.errors : vErrors.concat(validate56.errors);
                         errors = vErrors.length;
                       }
-                      var _valid0 = _errs123 === errors;
+                      var _valid0 = _errs125 === errors;
                       if (_valid0 && valid0) {
                         valid0 = false;
                         passing0 = [passing0, 9];
@@ -16027,12 +16092,12 @@ var require_manifest_validator = __commonJS({
                             props0 = true;
                           }
                         }
-                        const _errs124 = errors;
+                        const _errs126 = errors;
                         if (!validate35(data, { instancePath, parentData, parentDataProperty, rootData, dynamicAnchors })) {
                           vErrors = vErrors === null ? validate35.errors : vErrors.concat(validate35.errors);
                           errors = vErrors.length;
                         }
-                        var _valid0 = _errs124 === errors;
+                        var _valid0 = _errs126 === errors;
                         if (_valid0 && valid0) {
                           valid0 = false;
                           passing0 = [passing0, 10];
@@ -16044,12 +16109,12 @@ var require_manifest_validator = __commonJS({
                               props0 = true;
                             }
                           }
-                          const _errs125 = errors;
+                          const _errs127 = errors;
                           if (!validate73(data, { instancePath, parentData, parentDataProperty, rootData, dynamicAnchors })) {
                             vErrors = vErrors === null ? validate73.errors : vErrors.concat(validate73.errors);
                             errors = vErrors.length;
                           }
-                          var _valid0 = _errs125 === errors;
+                          var _valid0 = _errs127 === errors;
                           if (_valid0 && valid0) {
                             valid0 = false;
                             passing0 = [passing0, 11];
@@ -16061,155 +16126,155 @@ var require_manifest_validator = __commonJS({
                                 props0 = true;
                               }
                             }
-                            const _errs126 = errors;
-                            const _errs127 = errors;
-                            if (errors === _errs127) {
+                            const _errs128 = errors;
+                            const _errs129 = errors;
+                            if (errors === _errs129) {
                               if (data && typeof data == "object" && !Array.isArray(data)) {
                                 let missing5;
                                 if (data.id === void 0 && (missing5 = "id") || data.type === void 0 && (missing5 = "type") || data.path === void 0 && (missing5 = "path") || data.sections === void 0 && (missing5 = "sections")) {
-                                  const err101 = { instancePath, schemaPath: "#/$defs/coordinationRecord/required", keyword: "required", params: { missingProperty: missing5 }, message: "must have required property '" + missing5 + "'" };
+                                  const err102 = { instancePath, schemaPath: "#/$defs/coordinationRecord/required", keyword: "required", params: { missingProperty: missing5 }, message: "must have required property '" + missing5 + "'" };
                                   if (vErrors === null) {
-                                    vErrors = [err101];
+                                    vErrors = [err102];
                                   } else {
-                                    vErrors.push(err101);
+                                    vErrors.push(err102);
                                   }
                                   errors++;
                                 } else {
-                                  const _errs129 = errors;
+                                  const _errs131 = errors;
                                   for (const key5 in data) {
                                     if (!(key5 === "id" || key5 === "path" || key5 === "sections" || key5 === "type")) {
-                                      const err102 = { instancePath, schemaPath: "#/$defs/coordinationRecord/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key5 }, message: "must NOT have additional properties" };
+                                      const err103 = { instancePath, schemaPath: "#/$defs/coordinationRecord/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key5 }, message: "must NOT have additional properties" };
                                       if (vErrors === null) {
-                                        vErrors = [err102];
+                                        vErrors = [err103];
                                       } else {
-                                        vErrors.push(err102);
+                                        vErrors.push(err103);
                                       }
                                       errors++;
                                       break;
                                     }
                                   }
-                                  if (_errs129 === errors) {
+                                  if (_errs131 === errors) {
                                     if (data.id !== void 0) {
-                                      const _errs130 = errors;
+                                      const _errs132 = errors;
                                       if ("coordination" !== data.id) {
-                                        const err103 = { instancePath: instancePath + "/id", schemaPath: "#/$defs/coordinationRecord/properties/id/const", keyword: "const", params: { allowedValue: "coordination" }, message: "must be equal to constant" };
+                                        const err104 = { instancePath: instancePath + "/id", schemaPath: "#/$defs/coordinationRecord/properties/id/const", keyword: "const", params: { allowedValue: "coordination" }, message: "must be equal to constant" };
                                         if (vErrors === null) {
-                                          vErrors = [err103];
+                                          vErrors = [err104];
                                         } else {
-                                          vErrors.push(err103);
+                                          vErrors.push(err104);
                                         }
                                         errors++;
                                       }
-                                      var valid29 = _errs130 === errors;
+                                      var valid29 = _errs132 === errors;
                                     } else {
                                       var valid29 = true;
                                     }
                                     if (valid29) {
                                       if (data.path !== void 0) {
-                                        const _errs131 = errors;
+                                        const _errs133 = errors;
                                         if ("work/COORDINATION.md" !== data.path) {
-                                          const err104 = { instancePath: instancePath + "/path", schemaPath: "#/$defs/coordinationRecord/properties/path/const", keyword: "const", params: { allowedValue: "work/COORDINATION.md" }, message: "must be equal to constant" };
+                                          const err105 = { instancePath: instancePath + "/path", schemaPath: "#/$defs/coordinationRecord/properties/path/const", keyword: "const", params: { allowedValue: "work/COORDINATION.md" }, message: "must be equal to constant" };
                                           if (vErrors === null) {
-                                            vErrors = [err104];
+                                            vErrors = [err105];
                                           } else {
-                                            vErrors.push(err104);
+                                            vErrors.push(err105);
                                           }
                                           errors++;
                                         }
-                                        var valid29 = _errs131 === errors;
+                                        var valid29 = _errs133 === errors;
                                       } else {
                                         var valid29 = true;
                                       }
                                       if (valid29) {
                                         if (data.sections !== void 0) {
-                                          let data56 = data.sections;
-                                          const _errs132 = errors;
-                                          if (errors === _errs132) {
-                                            if (data56 && typeof data56 == "object" && !Array.isArray(data56)) {
+                                          let data57 = data.sections;
+                                          const _errs134 = errors;
+                                          if (errors === _errs134) {
+                                            if (data57 && typeof data57 == "object" && !Array.isArray(data57)) {
                                               let missing6;
-                                              if (data56.Commitments === void 0 && (missing6 = "Commitments") || data56.Priorities === void 0 && (missing6 = "Priorities") || data56.Dependencies === void 0 && (missing6 = "Dependencies") || data56.Deferrals === void 0 && (missing6 = "Deferrals")) {
-                                                const err105 = { instancePath: instancePath + "/sections", schemaPath: "#/$defs/coordinationRecord/properties/sections/required", keyword: "required", params: { missingProperty: missing6 }, message: "must have required property '" + missing6 + "'" };
+                                              if (data57.Commitments === void 0 && (missing6 = "Commitments") || data57.Priorities === void 0 && (missing6 = "Priorities") || data57.Dependencies === void 0 && (missing6 = "Dependencies") || data57.Deferrals === void 0 && (missing6 = "Deferrals")) {
+                                                const err106 = { instancePath: instancePath + "/sections", schemaPath: "#/$defs/coordinationRecord/properties/sections/required", keyword: "required", params: { missingProperty: missing6 }, message: "must have required property '" + missing6 + "'" };
                                                 if (vErrors === null) {
-                                                  vErrors = [err105];
+                                                  vErrors = [err106];
                                                 } else {
-                                                  vErrors.push(err105);
+                                                  vErrors.push(err106);
                                                 }
                                                 errors++;
                                               } else {
-                                                const _errs134 = errors;
-                                                for (const key6 in data56) {
+                                                const _errs136 = errors;
+                                                for (const key6 in data57) {
                                                   if (!(key6 === "Commitments" || key6 === "Deferrals" || key6 === "Dependencies" || key6 === "Priorities")) {
-                                                    const err106 = { instancePath: instancePath + "/sections", schemaPath: "#/$defs/coordinationRecord/properties/sections/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key6 }, message: "must NOT have additional properties" };
+                                                    const err107 = { instancePath: instancePath + "/sections", schemaPath: "#/$defs/coordinationRecord/properties/sections/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key6 }, message: "must NOT have additional properties" };
                                                     if (vErrors === null) {
-                                                      vErrors = [err106];
+                                                      vErrors = [err107];
                                                     } else {
-                                                      vErrors.push(err106);
+                                                      vErrors.push(err107);
                                                     }
                                                     errors++;
                                                     break;
                                                   }
                                                 }
-                                                if (_errs134 === errors) {
-                                                  if (data56.Commitments !== void 0) {
-                                                    const _errs135 = errors;
-                                                    if (typeof data56.Commitments !== "string") {
-                                                      const err107 = { instancePath: instancePath + "/sections/Commitments", schemaPath: "#/$defs/coordinationRecord/properties/sections/properties/Commitments/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                                                if (_errs136 === errors) {
+                                                  if (data57.Commitments !== void 0) {
+                                                    const _errs137 = errors;
+                                                    if (typeof data57.Commitments !== "string") {
+                                                      const err108 = { instancePath: instancePath + "/sections/Commitments", schemaPath: "#/$defs/coordinationRecord/properties/sections/properties/Commitments/type", keyword: "type", params: { type: "string" }, message: "must be string" };
                                                       if (vErrors === null) {
-                                                        vErrors = [err107];
+                                                        vErrors = [err108];
                                                       } else {
-                                                        vErrors.push(err107);
+                                                        vErrors.push(err108);
                                                       }
                                                       errors++;
                                                     }
-                                                    var valid30 = _errs135 === errors;
+                                                    var valid30 = _errs137 === errors;
                                                   } else {
                                                     var valid30 = true;
                                                   }
                                                   if (valid30) {
-                                                    if (data56.Deferrals !== void 0) {
-                                                      const _errs137 = errors;
-                                                      if (typeof data56.Deferrals !== "string") {
-                                                        const err108 = { instancePath: instancePath + "/sections/Deferrals", schemaPath: "#/$defs/coordinationRecord/properties/sections/properties/Deferrals/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                                                    if (data57.Deferrals !== void 0) {
+                                                      const _errs139 = errors;
+                                                      if (typeof data57.Deferrals !== "string") {
+                                                        const err109 = { instancePath: instancePath + "/sections/Deferrals", schemaPath: "#/$defs/coordinationRecord/properties/sections/properties/Deferrals/type", keyword: "type", params: { type: "string" }, message: "must be string" };
                                                         if (vErrors === null) {
-                                                          vErrors = [err108];
+                                                          vErrors = [err109];
                                                         } else {
-                                                          vErrors.push(err108);
+                                                          vErrors.push(err109);
                                                         }
                                                         errors++;
                                                       }
-                                                      var valid30 = _errs137 === errors;
+                                                      var valid30 = _errs139 === errors;
                                                     } else {
                                                       var valid30 = true;
                                                     }
                                                     if (valid30) {
-                                                      if (data56.Dependencies !== void 0) {
-                                                        const _errs139 = errors;
-                                                        if (typeof data56.Dependencies !== "string") {
-                                                          const err109 = { instancePath: instancePath + "/sections/Dependencies", schemaPath: "#/$defs/coordinationRecord/properties/sections/properties/Dependencies/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                                                      if (data57.Dependencies !== void 0) {
+                                                        const _errs141 = errors;
+                                                        if (typeof data57.Dependencies !== "string") {
+                                                          const err110 = { instancePath: instancePath + "/sections/Dependencies", schemaPath: "#/$defs/coordinationRecord/properties/sections/properties/Dependencies/type", keyword: "type", params: { type: "string" }, message: "must be string" };
                                                           if (vErrors === null) {
-                                                            vErrors = [err109];
+                                                            vErrors = [err110];
                                                           } else {
-                                                            vErrors.push(err109);
+                                                            vErrors.push(err110);
                                                           }
                                                           errors++;
                                                         }
-                                                        var valid30 = _errs139 === errors;
+                                                        var valid30 = _errs141 === errors;
                                                       } else {
                                                         var valid30 = true;
                                                       }
                                                       if (valid30) {
-                                                        if (data56.Priorities !== void 0) {
-                                                          const _errs141 = errors;
-                                                          if (typeof data56.Priorities !== "string") {
-                                                            const err110 = { instancePath: instancePath + "/sections/Priorities", schemaPath: "#/$defs/coordinationRecord/properties/sections/properties/Priorities/type", keyword: "type", params: { type: "string" }, message: "must be string" };
+                                                        if (data57.Priorities !== void 0) {
+                                                          const _errs143 = errors;
+                                                          if (typeof data57.Priorities !== "string") {
+                                                            const err111 = { instancePath: instancePath + "/sections/Priorities", schemaPath: "#/$defs/coordinationRecord/properties/sections/properties/Priorities/type", keyword: "type", params: { type: "string" }, message: "must be string" };
                                                             if (vErrors === null) {
-                                                              vErrors = [err110];
+                                                              vErrors = [err111];
                                                             } else {
-                                                              vErrors.push(err110);
+                                                              vErrors.push(err111);
                                                             }
                                                             errors++;
                                                           }
-                                                          var valid30 = _errs141 === errors;
+                                                          var valid30 = _errs143 === errors;
                                                         } else {
                                                           var valid30 = true;
                                                         }
@@ -16219,24 +16284,7 @@ var require_manifest_validator = __commonJS({
                                                 }
                                               }
                                             } else {
-                                              const err111 = { instancePath: instancePath + "/sections", schemaPath: "#/$defs/coordinationRecord/properties/sections/type", keyword: "type", params: { type: "object" }, message: "must be object" };
-                                              if (vErrors === null) {
-                                                vErrors = [err111];
-                                              } else {
-                                                vErrors.push(err111);
-                                              }
-                                              errors++;
-                                            }
-                                          }
-                                          var valid29 = _errs132 === errors;
-                                        } else {
-                                          var valid29 = true;
-                                        }
-                                        if (valid29) {
-                                          if (data.type !== void 0) {
-                                            const _errs143 = errors;
-                                            if ("coordination" !== data.type) {
-                                              const err112 = { instancePath: instancePath + "/type", schemaPath: "#/$defs/coordinationRecord/properties/type/const", keyword: "const", params: { allowedValue: "coordination" }, message: "must be equal to constant" };
+                                              const err112 = { instancePath: instancePath + "/sections", schemaPath: "#/$defs/coordinationRecord/properties/sections/type", keyword: "type", params: { type: "object" }, message: "must be object" };
                                               if (vErrors === null) {
                                                 vErrors = [err112];
                                               } else {
@@ -16244,7 +16292,24 @@ var require_manifest_validator = __commonJS({
                                               }
                                               errors++;
                                             }
-                                            var valid29 = _errs143 === errors;
+                                          }
+                                          var valid29 = _errs134 === errors;
+                                        } else {
+                                          var valid29 = true;
+                                        }
+                                        if (valid29) {
+                                          if (data.type !== void 0) {
+                                            const _errs145 = errors;
+                                            if ("coordination" !== data.type) {
+                                              const err113 = { instancePath: instancePath + "/type", schemaPath: "#/$defs/coordinationRecord/properties/type/const", keyword: "const", params: { allowedValue: "coordination" }, message: "must be equal to constant" };
+                                              if (vErrors === null) {
+                                                vErrors = [err113];
+                                              } else {
+                                                vErrors.push(err113);
+                                              }
+                                              errors++;
+                                            }
+                                            var valid29 = _errs145 === errors;
                                           } else {
                                             var valid29 = true;
                                           }
@@ -16254,16 +16319,16 @@ var require_manifest_validator = __commonJS({
                                   }
                                 }
                               } else {
-                                const err113 = { instancePath, schemaPath: "#/$defs/coordinationRecord/type", keyword: "type", params: { type: "object" }, message: "must be object" };
+                                const err114 = { instancePath, schemaPath: "#/$defs/coordinationRecord/type", keyword: "type", params: { type: "object" }, message: "must be object" };
                                 if (vErrors === null) {
-                                  vErrors = [err113];
+                                  vErrors = [err114];
                                 } else {
-                                  vErrors.push(err113);
+                                  vErrors.push(err114);
                                 }
                                 errors++;
                               }
                             }
-                            var _valid0 = _errs126 === errors;
+                            var _valid0 = _errs128 === errors;
                             if (_valid0 && valid0) {
                               valid0 = false;
                               passing0 = [passing0, 12];
@@ -16288,11 +16353,11 @@ var require_manifest_validator = __commonJS({
         }
       }
       if (!valid0) {
-        const err114 = { instancePath, schemaPath: "#/oneOf", keyword: "oneOf", params: { passingSchemas: passing0 }, message: "must match exactly one schema in oneOf" };
+        const err115 = { instancePath, schemaPath: "#/oneOf", keyword: "oneOf", params: { passingSchemas: passing0 }, message: "must match exactly one schema in oneOf" };
         if (vErrors === null) {
-          vErrors = [err114];
+          vErrors = [err115];
         } else {
-          vErrors.push(err114);
+          vErrors.push(err115);
         }
         errors++;
         validate42.errors = vErrors;
@@ -30154,12 +30219,12 @@ var fs5 = __toESM(require("node:fs"));
 var nodePath5 = __toESM(require("node:path"));
 
 // src/contracts/generated/manifest.meta.ts
-var MANIFEST_CLOSURE_SHA256 = "sha256:7d7e52f8a532452c06caeca70c0789021569c127f9025f294ffbab6edb2b1402";
+var MANIFEST_CLOSURE_SHA256 = "sha256:7250f565e3cfb16e583a1d22e2dbaa267a87274c8654977d6160afa638cf4253";
 
 // src/contracts/manifest.ts
 var import_manifest_validator = __toESM(require_manifest_validator());
 var MANIFEST_CONTRACT_VERSION = 20;
-var MANIFEST_SCHEMA_SHA256 = "sha256:1ef7031be9ea88e02740cfde92fae5bf64e8eb60b5cbfd1f32d840099e4cabc1";
+var MANIFEST_SCHEMA_SHA256 = "sha256:e2169561904ad15b60c6956eb0f7b97d4f810589cd1684639808c4ef24ae3236";
 function formatAjvErrors(errors) {
   if (!Array.isArray(errors) || errors.length === 0) {
     return "unknown validation error";
@@ -30472,6 +30537,13 @@ function safeWebUrl(value) {
 }
 
 // src/components.ts
+function stageProgress(stages) {
+  let done = 0;
+  for (const stage of stages) {
+    if (stage.status === "complete") done += 1;
+  }
+  return { done, total: stages.length };
+}
 function manifestFreshness(parent, store) {
   if (!store.stale) return;
   const banner = parent.createDiv({
@@ -30661,10 +30733,8 @@ function unitCard(parent, plugin, unit) {
   const map = unitId ? plugin.store.mapForUnit(unitId) : null;
   if (map) {
     const stages = asRecords(map.stages);
-    const done = stages.filter(
-      (row3) => row3.status === "complete"
-    ).length;
-    card.createDiv({ cls: "los-progress-copy", text: `${done} of ${stages.length} stages complete` });
+    const { done, total } = stageProgress(stages);
+    card.createDiv({ cls: "los-progress-copy", text: `${done} of ${total} stages complete` });
   } else {
     card.createDiv({ cls: "los-progress-copy", text: "No study map yet" });
   }
@@ -36583,6 +36653,29 @@ function readResumePointer(value) {
     module_id: asString(value.module_id) ?? void 0
   };
 }
+function candidateModules(store) {
+  const seen = /* @__PURE__ */ new Set();
+  const modules = [];
+  for (const map of store.rows("study_maps")) {
+    if (map.is_study_candidate !== true) {
+      continue;
+    }
+    const moduleId = asString(map.module_id);
+    if (!moduleId || seen.has(moduleId)) {
+      continue;
+    }
+    const module2 = store.get(moduleId);
+    if (!module2) {
+      continue;
+    }
+    seen.add(moduleId);
+    modules.push(module2);
+  }
+  return modules.sort((a, b) => compareStrings(
+    asString(a.id) ?? "",
+    asString(b.id) ?? ""
+  ));
+}
 function resolveResumeTarget(store) {
   const pointer2 = readResumePointer(store.data?.resume_pointer);
   const unresolved = {
@@ -36598,15 +36691,10 @@ function resolveResumeTarget(store) {
     return unresolved;
   }
   const unit = store.get(pointer2.unit_id);
-  if (!unit || asString(unit.module_id) !== pointer2.module_id) {
-    return unresolved;
-  }
   const unitMap = store.mapForUnit(pointer2.unit_id);
-  if (!unitMap || asString(unitMap.id) !== pointer2.study_map_id || asString(unitMap.unit_id) !== pointer2.unit_id || asString(unitMap.module_id) !== pointer2.module_id) {
-    return unresolved;
-  }
   const map = store.get(pointer2.study_map_id);
-  if (!map || asString(map.unit_id) !== pointer2.unit_id || asString(map.module_id) !== pointer2.module_id) {
+  const module2 = store.get(pointer2.module_id);
+  if (!unit || !unitMap || !map || !module2 || asString(unitMap.id) !== pointer2.study_map_id) {
     return unresolved;
   }
   const stage = asRecords(unitMap.stages).find(
@@ -36615,7 +36703,6 @@ function resolveResumeTarget(store) {
   if (!stage) {
     return unresolved;
   }
-  const module2 = store.get(pointer2.module_id);
   return { pointer: pointer2, unit, map, unitMap, stage, moduleId: pointer2.module_id, module: module2 };
 }
 function firstProjectedModuleId(value) {
@@ -37531,6 +37618,7 @@ function readResource(record7) {
     locator: asText(record7.locator),
     sourceId: asString(record7.source_id),
     scopeTriage: asString(record7.scope_triage),
+    isEntry: record7.is_entry === true,
     canOpen: hasDirectResourceTarget(record7)
   };
 }
@@ -37571,6 +37659,7 @@ function readStage(record7) {
     id,
     title: asString(record7.title) ?? id,
     status: asString(record7.status) ?? "active",
+    isOpen: record7.is_open === true,
     scopeTriage: asText(record7.scope_triage) ?? "",
     objective: asText(record7.objective),
     estimateMinutes: asText(record7.estimate_minutes),
@@ -37633,7 +37722,7 @@ function artifactLabel(key) {
   )?.[1] ?? key;
 }
 function isOpenStage(stage) {
-  return stage.status !== "complete" && stage.status !== "skipped";
+  return stage.isOpen;
 }
 function nextOpenStage(stages, stageId) {
   const index = stages.findIndex((stage) => stage.id === stageId);
@@ -37678,10 +37767,10 @@ function progressTag(store, unitId) {
   const projected = store.mapForUnit(unitId);
   if (!projected) return null;
   const stages = readStudyMap(projected).stages;
-  const done = stages.filter((stage) => stage.status === "complete").length;
-  if (!stages.length || !done) return null;
-  if (done === stages.length) return { text: "Studied", tone: "success" };
-  return { text: `In progress \xB7 ${done} of ${plural(stages.length, "stage")}`, tone: "accent" };
+  const { done, total } = stageProgress(stages);
+  if (!total || !done) return null;
+  if (done === total) return { text: "Studied", tone: "success" };
+  return { text: `In progress \xB7 ${done} of ${plural(total, "stage")}`, tone: "accent" };
 }
 var headings = 0;
 var landing = /* @__PURE__ */ new WeakMap();
@@ -38729,11 +38818,7 @@ function triageSummary(resources) {
   return parts.join(" \xB7 ");
 }
 function currentWorkResource(resources) {
-  return resources.find(
-    (resource) => resource.scopeTriage === "required-now"
-  ) ?? resources.find(
-    (resource) => !resource.scopeTriage
-  ) ?? null;
+  return resources.find((resource) => resource.isEntry === true) ?? null;
 }
 var MATERIAL_TYPE_ICON = {
   "course-material": "presentation",
@@ -38859,21 +38944,21 @@ function unitWork(store, unitId) {
   const record7 = store.mapForUnit(unitId);
   if (!record7) return null;
   const map = readStudyMap(record7);
-  const done = map.stages.filter((stage) => stage.status === "complete").length;
+  const { done } = stageProgress(map.stages);
   const next = map.stages.find((stage) => stage.id === map.currentStageId && isOpenStage(stage)) ?? null;
   return { map, done, next };
 }
 function inProgressUnits(store) {
   const target = resolveResumeTarget(store);
   const pointerUnitId = target.unit ? target.pointer.unit_id : null;
-  const rows2 = store.modules().filter((module2) => module2.is_actionable === true).flatMap((module2) => {
+  const rows2 = candidateModules(store).flatMap((module2) => {
     const moduleId = asString(module2.id);
     if (!moduleId) return [];
     return orderedUnits(store, moduleId).flatMap((unit) => {
       const unitId = asString(unit.id);
-      if (!unitId || unit.status === "complete" || unit.status === "archived" || unit.status === "paused") return [];
+      if (!unitId) return [];
       const work = unitWork(store, unitId);
-      if (!work?.done || !work.next || work.done === work.map.stages.length) return [];
+      if (!work || work.map.record.is_study_candidate !== true || work.done <= 0 || work.next === null || work.done >= work.map.stages.length) return [];
       return [{ module: module2, unit, unitId, done: work.done, total: work.map.stages.length, next: work.next }];
     });
   });
@@ -38886,16 +38971,6 @@ function currentSemesterKey(store) {
 // src/designs/study-desk/home.ts
 function start(view, unitId, stageId) {
   return view.plugin.nav.openUnit(unitId, stageId, (leaf) => setUnitMode(leaf, unitId, "session"));
-}
-function openPool(view) {
-  const { store } = view.plugin;
-  const moduleIds = /* @__PURE__ */ new Set();
-  for (const map of store.rows("study_maps")) {
-    if (map.is_study_candidate !== true) continue;
-    const moduleId = asString(map.module_id);
-    if (moduleId) moduleIds.add(moduleId);
-  }
-  return [...moduleIds].map((id) => store.get(id)).filter((row3) => row3 !== null).sort((a, b) => compareStrings(asString(a.id) ?? "", asString(b.id) ?? ""));
 }
 function renderDeskHome(view) {
   const { plugin: { nav, store } } = view;
@@ -38914,7 +38989,7 @@ function renderDeskHome(view) {
   const plans = store.of("workspace").flatMap((record7) => {
     const action = asText(record7.next_action);
     const module2 = asStrings(record7.module_ids).map((id) => byId.get(id)).find((row3) => row3 !== void 0);
-    return action && module2 && record7.archived !== true && record7.status !== "complete" ? [{ record: record7, module: module2, action }] : [];
+    return action && module2 && record7.is_open === true ? [{ record: record7, module: module2, action }] : [];
   });
   const resume2 = resolveResumeTarget(store);
   const resumeId = resume2.unit ? asString(resume2.unit.id) : null;
@@ -38938,7 +39013,7 @@ function renderDeskHome(view) {
     const material = currentWorkResource(stage.resources);
     if (material) action.createDiv({ cls: "sd-hero-note", text: `Starts with ${material.label}` });
   }
-  const pool = openPool(view);
+  const pool = candidateModules(store);
   const courses = pool.filter((module2) => module2 !== focusModule);
   main.createEl("h2", { cls: "sd-heading", text: resumed ? "Continue elsewhere" : "Modules" });
   const list3 = main.createDiv({ cls: "sd-sheet sd-home-list" });
@@ -39117,8 +39192,8 @@ function renderOverview(view, root, module2) {
     ).filter(nonNull)
   );
   const next = units.find(
-    (unit) => unit.status === "active"
-  ) ?? units.find((unit) => unit.status !== "paused");
+    (unit) => view.plugin.store.mapForUnit(unit.id)?.is_study_candidate === true
+  );
   if (next) {
     button(
       wrap,
@@ -39222,9 +39297,7 @@ function renderUnits(view, root, module2) {
       unit.id
     );
     const stages = map ? asRecords(map.stages) : [];
-    const complete = stages.filter(
-      (stage) => stage.status === "complete"
-    ).length;
+    const { done: complete } = stageProgress(stages);
     const currentStageId = map ? asString(map.current_stage) : null;
     const currentStage = currentStageId ? stages.find(
       (stage) => stage.id === currentStageId
@@ -39444,7 +39517,7 @@ function renderDeskModuleDetail(view) {
     const layout = root.createDiv({ cls: "sd-plan-layout sd-modules-layout" });
     const main = layout.createDiv({ cls: "sd-plan-main" });
     renderUnitSheet(main, view, record7, module2);
-    const workspace = plugin.store.workspacesForModule(module2.id).find((row3) => row3.archived !== true && row3.status !== "complete" && asText(row3.next_action));
+    const workspace = plugin.store.workspacesForModule(module2.id).find((row3) => row3.is_open === true && asText(row3.next_action));
     if (workspace) {
       const plan2 = sideGroup(layout.createDiv({ cls: "sd-side sd-modules-side" }), "Your plan");
       plan2.createEl("strong", { text: asLabel(workspace) });
@@ -41372,12 +41445,10 @@ function selectedStage(view, unitId, studyMap, firstStage, temporary) {
   ) ?? firstStage;
 }
 function renderRail(view, layout, unit, studyMap, current) {
-  const completedCount = studyMap.stages.filter(
-    (stage) => stage.status === "complete"
-  ).length;
+  const { done: completedCount } = stageProgress(studyMap.stages);
   const temporary = view.temporarySequence.active;
   const fullMap = readStudyMap(view.plugin.store.mapForUnit(unit.id));
-  const fullCompleted = fullMap.stages.filter((stage) => stage.status === "complete").length;
+  const { done: fullCompleted } = stageProgress(fullMap.stages);
   const currentIndex = studyMap.stages.findIndex(
     (stage) => stage.id === current.id
   );
@@ -42057,7 +42128,7 @@ function renderActionBar(view, root, unit, stage, expectedRevisions) {
 }
 function stageMenuItems(view, unit, stage, expectedRevisions) {
   const active = stage.status === "active";
-  const recorded = stage.status === "complete" || stage.status === "skipped";
+  const recorded = !stage.isOpen;
   return [
     recorded && [
       "Revisit stage",
@@ -43230,7 +43301,7 @@ function renderPlan(context, mode) {
   const actions = deskHead(root, crumbsFor(context, mode), view);
   button(actions, "End session", () => view.plugin.reviewSessionEnd(), "quiet");
   const module2 = view.plugin.store.get(unit.moduleId);
-  const done = studyMap.stages.filter((stage) => stage.status === "complete").length;
+  const { done } = stageProgress(studyMap.stages);
   const head = root.createDiv({ cls: "sd-title-row sd-plan-head" });
   const copy = head.createDiv({ cls: "sd-title-copy" });
   copy.createEl("h1", { cls: "sd-title", text: unitLabel(unit.record, module2).title });
@@ -43312,7 +43383,7 @@ function renderPlanSide(layout, context) {
   const { view, unit, durable, studyMap } = context;
   const side = layout.createDiv({ cls: "sd-side" });
   const progress2 = sideGroup(side, "Progress");
-  const done = studyMap.stages.filter((stage) => stage.status === "complete").length;
+  const { done } = stageProgress(studyMap.stages);
   stageBars(progress2, studyMap.stages.length, done, studyMap.stages.findIndex((stage) => stage.id === studyMap.currentStageId));
   progress2.createEl("p", { cls: "sd-note", text: `${done} of ${plural(studyMap.stages.length, "stage")} done.` });
   const { store, nav } = view.plugin;
@@ -43599,12 +43670,9 @@ function elsewhereRows(view) {
     view.plugin.store.data?.resume_pointer
   );
   const rows2 = [];
-  for (const record7 of view.plugin.store.openAcademicModules()) {
+  for (const record7 of candidateModules(view.plugin.store)) {
     const recordId = asString(record7.id);
     if (!recordId || recordId === pointer2.module_id) {
-      continue;
-    }
-    if (record7.is_actionable !== true) {
       continue;
     }
     rows2.push({
@@ -43721,12 +43789,9 @@ function moduleNextAction(view, module2) {
     return "";
   }
   const workspace = view.plugin.store.of("workspace").filter(
-    (row3) => {
-      const status = asString(row3.status);
-      return row3.archived !== true && status !== "complete" && asStrings(
-        row3.module_ids
-      ).includes(moduleId);
-    }
+    (row3) => row3.is_open === true && asStrings(
+      row3.module_ids
+    ).includes(moduleId)
   ).sort(
     (left, right) => compareStrings(view.nextWorkspaceDate(left), view.nextWorkspaceDate(right))
   )[0];
@@ -43756,7 +43821,7 @@ function moduleNextAction(view, module2) {
     ) : void 0) ?? stages.find(
       (row3) => asString(row3.status) === "active"
     ) ?? stages.find(
-      (row3) => asString(row3.status) !== "complete"
+      (row3) => row3.is_open === true
     );
     const stageTitle = stage ? asString(stage.title) : null;
     if (stageTitle) {
@@ -43810,9 +43875,9 @@ function moduleRow2(parent, store, module2, open) {
   copy.createEl("strong", { text: asLabel(module2) });
   const units = store.unitsFor(asString(module2.id) ?? "");
   const stages = units.flatMap((unit) => asRecords(store.mapForUnit(asString(unit.id) ?? "")?.stages));
-  const done = stages.filter((stage) => stage.status === "complete").length;
+  const { done, total } = stageProgress(stages);
   copy.createSpan({ cls: "focus-muted", text: [semesterLabel(asString(module2.semester) ?? ""), `${units.length} unit${units.length === 1 ? "" : "s"}`].filter(Boolean).join(" \xB7 ") });
-  target.createSpan({ cls: "focus-row-state", text: done ? `${done} of ${stages.length} stages complete` : asString(module2.status)?.replaceAll("-", " ") ?? "Open module" });
+  target.createSpan({ cls: "focus-row-state", text: done ? `${done} of ${total} stages complete` : asString(module2.status)?.replaceAll("-", " ") ?? "Open module" });
   chevron2(target);
   return target;
 }
@@ -43978,7 +44043,7 @@ function stageState(stage, map) {
   return stage.status === "complete" ? "Complete" : stage.status === "skipped" ? "Skipped" : stage.id === map.currentStageId ? "Current" : "Not started";
 }
 function countDone(map) {
-  return map.stages.filter((stage) => stage.status === "complete").length;
+  return stageProgress(map.stages).done;
 }
 function adjust(parent, context) {
   const details = disclosure(parent, "Adjust study plan", "focus-adjust-plan");
@@ -44386,7 +44451,8 @@ function resume(parent, plugin) {
   card.createEl("h2", { text: asLabel(unit) });
   card.createEl("p", { text: `Next: ${stage.title}` });
   const foot = card.createDiv({ cls: "focus-resume-foot" });
-  progress(foot, map.stages.filter((item) => item.status === "complete").length, map.stages.length);
+  const { done, total } = stageProgress(map.stages);
+  progress(foot, done, total);
   button(foot, "Resume session", () => {
     requestFocusSession(unitId);
     return plugin.nav.openUnit(unitId, stage.id);
@@ -44408,7 +44474,7 @@ function renderFocusLearn(view) {
   head.createEl("h2", { text: "Continue elsewhere" });
   button(head, "All modules", () => openFocusCollection(plugin.nav, "all"), "quiet");
   const list3 = body.createDiv({ cls: "focus-module-list" });
-  const modules = plugin.store.modulesFor(view.programId).filter((module2) => module2.is_actionable === true);
+  const modules = candidateModules(plugin.store).filter((module2) => module2.area_id === view.programId);
   for (const module2 of modules) moduleRow2(list3, plugin.store, module2, () => plugin.nav.openModule(asString(module2.id) ?? ""));
   if (!modules.length) empty(list3, "No open modules in this area", "All modules keeps the complete curriculum available.");
   return true;
@@ -44516,14 +44582,14 @@ function renderFocusModule(view) {
     const units = orderModuleUnits(module2, plugin.store.unitsFor(module2.id, view.componentId).map(normalizeUnitRecord).filter(nonNull));
     renderModuleUnitGroups(body, units, (parent, unit) => {
       const stages = asRecords(plugin.store.mapForUnit(unit.id)?.stages);
-      const done = stages.filter((stage) => stage.status === "complete").length;
+      const { done, total } = stageProgress(stages);
       const target = row(parent, `Open unit: ${unit.title}`, () => {
         view.selectedElementId = unit.id;
         return plugin.nav.openUnit(unit.id);
       });
       const copy = target.createDiv({ cls: "focus-row-copy" });
       copy.createEl("strong", { text: unit.title });
-      copy.createSpan({ cls: "focus-muted", text: stages.length ? `${stages.length} stages \xB7 ${done} complete` : "No study map yet" });
+      copy.createSpan({ cls: "focus-muted", text: total ? `${total} stages \xB7 ${done} complete` : "No study map yet" });
       target.createSpan({ cls: "focus-row-state", text: unit.status.replaceAll("-", " ") });
       chevron2(target);
     });
@@ -51061,7 +51127,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:bf06dd1934bcdabb6354d57068ee438ca1bbf74601fbe8d4cb25e04a54680012" : "unavailable";
+  return true ? "sha256:68393718cec0b0d1079a9763bac72fc8fba1e2aa6b496dbd4adf8ea20b8b7b10" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 20 : 0;
@@ -54994,7 +55060,7 @@ var UnitNoteModal = class extends import_obsidian26.Modal {
       )
     );
     return stages.filter(
-      (stage) => ["complete", "skipped"].includes(String(stage.status)) && typeof stage.id === "string" && !already.has(stage.id)
+      (stage) => stage.is_open === false && typeof stage.id === "string" && !already.has(stage.id)
     ).map((stage) => String(stage.id));
   }
   async save() {
@@ -55725,7 +55791,7 @@ function emptyStoreIndexes() {
   };
 }
 function isArchivedRecord(record7, archivedModuleIds) {
-  if (record7.type === "module" && record7.status === "archived") {
+  if (record7.type === "module" && record7.is_retired === true) {
     return true;
   }
   return typeof record7.module_id === "string" && archivedModuleIds.has(record7.module_id);
@@ -55737,7 +55803,7 @@ function projectedRows(value) {
 }
 function buildStoreIndexes(manifest, records) {
   const archivedModuleIds = new Set(
-    manifest.modules.flatMap((module2) => module2.status === "archived" && typeof module2.id === "string" ? [module2.id] : [])
+    manifest.modules.flatMap((module2) => module2.is_retired === true && typeof module2.id === "string" ? [module2.id] : [])
   );
   const rowsByGroup = /* @__PURE__ */ new Map();
   for (const [group2, value] of Object.entries(manifest)) {
@@ -55945,7 +56011,7 @@ var ManifestStore = class {
     return this.modules().filter((row3) => {
       if (row3.compatibility_only) return false;
       if (row3.kind !== "academic" && row3.kind !== "project") return false;
-      if (["completed", "archived", "dropped"].includes(String(row3.status || ""))) return false;
+      if (row3.is_settled === true) return false;
       return true;
     }).sort((a, b) => compareStrings(String(a.title || a.id || ""), String(b.title || b.id || "")));
   }

@@ -73,7 +73,7 @@ function isArchivedRecord(
   record: ProjectionRecord,
   archivedModuleIds: ReadonlySet<string>,
 ): boolean {
-  if (record.type === 'module' && record.status === 'archived') {
+  if (record.type === 'module' && record.is_retired === true) {
     return true;
   }
 
@@ -95,7 +95,7 @@ function buildStoreIndexes(
 ): StoreIndexes {
   const archivedModuleIds = new Set(
     manifest.modules.flatMap((module) =>
-      module.status === 'archived' && typeof module.id === 'string'
+      module.is_retired === true && typeof module.id === 'string'
         ? [module.id]
         : []),
   );
@@ -350,7 +350,7 @@ export class ManifestStore {
       .filter((row) => {
         if (row.compatibility_only) return false;
         if (row.kind !== 'academic' && row.kind !== 'project') return false;
-        if (['completed', 'archived', 'dropped'].includes(String(row.status || ''))) return false;
+        if (row.is_settled === true) return false;
         return true;
       })
       .sort((a, b) => compareStrings(String(a.title || a.id || ''), String(b.title || b.id || '')))

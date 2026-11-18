@@ -324,6 +324,28 @@ function routerPlugin(settings = {}) {
     assert.equal(calls[2].options.resourceIndex, undefined);
   });
 
+  await test('stage openness, stage progress, and entry resource trust published Core verdicts', async () => {
+    const { isOpenStage, readStage, stageProgress } = loadWithHost('src/features/unit/model.ts');
+    const { currentWorkResource } = loadWithHost('src/features/stage-resources.ts');
+    const openStage = readStage({
+      id: 'stage-open',
+      status: 'complete',
+      is_open: true,
+      resources: [
+        { id: 'r1', kind: 'read', label: 'Required not entry', scope_triage: 'required-now', is_entry: false },
+        { id: 'r2', kind: 'read', label: 'Published entry', scope_triage: 'deferred', is_entry: true },
+      ],
+    });
+    const closedStage = readStage({ id: 'stage-closed', status: 'active', is_open: false, resources: [] });
+    assert.equal(isOpenStage(openStage), true);
+    assert.equal(isOpenStage(closedStage), false);
+    assert.equal(currentWorkResource(openStage.resources)?.id, 'r2');
+    assert.deepEqual(
+      stageProgress([{ status: 'complete' }, { status: 'skipped' }, { status: 'active' }]),
+      { done: 1, total: 3 },
+    );
+  });
+
   await test('material span sends the exact canonical stage position to Core', async () => {
     let sent;
     await GatewayClient.prototype.materialSpan.call({ call(args) { sent = args; } },
@@ -1636,7 +1658,7 @@ function routerPlugin(settings = {}) {
     assert.equal(store.get('missing'), null);
   });
 
-  await test('archived modules and their learning records stay out of every UI lookup', async () => {
+  await test('retired (archived and dropped) modules and their learning records stay out of every UI lookup', async () => {
     const store = new ManifestStore(manifestApp((text) => {
       const manifest = JSON.parse(text);
       const archivedModule = {
@@ -1644,6 +1666,8 @@ function routerPlugin(settings = {}) {
         id: 'module-archived-fixture',
         title: 'Archived fixture module',
         status: 'archived',
+        is_settled: true,
+        is_retired: true,
         unit_order: ['unit-archived-fixture'],
       };
       const archivedUnit = {
@@ -1652,27 +1676,49 @@ function routerPlugin(settings = {}) {
         title: 'Archived fixture unit',
         module_id: archivedModule.id,
       };
-      manifest.modules.push(archivedModule);
-      manifest.units.push(archivedUnit);
-      manifest.records.push(archivedModule, archivedUnit);
+      const droppedModule = {
+        ...manifest.modules[0],
+        id: 'module-dropped-fixture',
+        title: 'Dropped fixture module',
+        status: 'dropped',
+        is_settled: true,
+        is_retired: true,
+        unit_order: ['unit-dropped-fixture'],
+      };
+      const droppedUnit = {
+        ...manifest.units[0],
+        id: 'unit-dropped-fixture',
+        title: 'Dropped fixture unit',
+        module_id: droppedModule.id,
+      };
+      manifest.modules.push(archivedModule, droppedModule);
+      manifest.units.push(archivedUnit, droppedUnit);
+      manifest.records.push(archivedModule, archivedUnit, droppedModule, droppedUnit);
       return JSON.stringify(manifest);
     }));
 
     assert.equal(await store.load(), true);
     assert.equal(store.get('module-archived-fixture'), null);
     assert.equal(store.get('unit-archived-fixture'), null);
+    assert.equal(store.get('module-dropped-fixture'), null);
+    assert.equal(store.get('unit-dropped-fixture'), null);
     assert.equal(
-      store.modules().some((row) => row.id === 'module-archived-fixture'),
+      store.modules().some((row) => row.id === 'module-archived-fixture' || row.id === 'module-dropped-fixture'),
       false,
     );
     assert.equal(
-      store.units().some((row) => row.id === 'unit-archived-fixture'),
+      store.units().some((row) => row.id === 'unit-archived-fixture' || row.id === 'unit-dropped-fixture'),
       false,
     );
     assert.equal(
-      store.search('archived fixture').some(
-        (row) => row.id === 'module-archived-fixture'
-          || row.id === 'unit-archived-fixture',
+      store.search('fixture module').some(
+        (row) => row.id === 'module-archived-fixture' || row.id === 'module-dropped-fixture',
+      ),
+      false,
+    );
+    assert.equal(
+      store.search('fixture unit').some(
+        (row) => row.id === 'unit-archived-fixture' || row.id === 'unit-dropped-fixture',
       ),
       false,
     );

@@ -186,7 +186,7 @@ export class UnitNoteModal extends Modal {
     return stages
       .filter(
         (stage: ProjectionRecord) =>
-          ['complete', 'skipped'].includes(String(stage.status))
+          stage.is_open === false
           && typeof stage.id === 'string'
           && !already.has(stage.id),
       )

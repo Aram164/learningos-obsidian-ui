@@ -185,7 +185,7 @@ export function renderDeskModuleDetail(view: ModuleDetailScreenHost): boolean {
     const layout = root.createDiv({ cls: 'sd-plan-layout sd-modules-layout' });
     const main = layout.createDiv({ cls: 'sd-plan-main' });
     renderUnitSheet(main, view, record, module);
-    const workspace = plugin.store.workspacesForModule(module.id).find((row) => row.archived !== true && row.status !== 'complete' && asText(row.next_action));
+    const workspace = plugin.store.workspacesForModule(module.id).find((row) => row.is_open === true && asText(row.next_action));
     if (workspace) {
       const plan = sideGroup(layout.createDiv({ cls: 'sd-side sd-modules-side' }), 'Your plan');
       plan.createEl('strong', { text: asLabel(workspace) });

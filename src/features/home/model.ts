@@ -1,6 +1,7 @@
 import type { ProjectionRecord } from '../../contracts/manifest';
 import type { AppSurface } from '../../app/surface';
 import type { AppNavigator } from '../../app/navigator';
+import { compareStrings } from '../../sorting';
 import {
   asRecords as projectedRecords,
   asString as projectedString,
@@ -80,6 +81,33 @@ export interface ResolvedResumeTarget {
   readonly module: ProjectionRecord | null;
 }
 
+export function candidateModules(store: {
+  get(id: string): ProjectionRecord | null;
+  rows(group: string): ProjectionRecord[];
+}): ProjectionRecord[] {
+  const seen = new Set<string>();
+  const modules: ProjectionRecord[] = [];
+  for (const map of store.rows('study_maps')) {
+    if (map.is_study_candidate !== true) {
+      continue;
+    }
+    const moduleId = projectedString(map.module_id);
+    if (!moduleId || seen.has(moduleId)) {
+      continue;
+    }
+    const module = store.get(moduleId);
+    if (!module) {
+      continue;
+    }
+    seen.add(moduleId);
+    modules.push(module);
+  }
+  return modules.sort((a, b) => compareStrings(
+    projectedString(a.id) ?? '',
+    projectedString(b.id) ?? '',
+  ));
+}
+
 export function resolveResumeTarget(store: {
   readonly data?: { readonly resume_pointer?: unknown } | null;
   get(id: string): ProjectionRecord | null;
@@ -91,26 +119,18 @@ export function resolveResumeTarget(store: {
     pointer, unit: null, map: null, unitMap: null, stage: null,
     moduleId: null, module: null,
   };
-  // Core owns validity; this check keeps an older cached projection whose
-  // IDs are individually known but disagree on ownership from drawing a
-  // resume action into another module's or unit's stage.
+  // Core owns ownership coherence; UI resolves the published IDs and guards
+  // against a pointer whose study map disagrees with the unit's current map.
   if (!pointer.unit_id || !pointer.study_map_id
       || !pointer.stage_id || !pointer.module_id) {
     return unresolved;
   }
   const unit = store.get(pointer.unit_id);
-  if (!unit || projectedString(unit.module_id) !== pointer.module_id) {
-    return unresolved;
-  }
   const unitMap = store.mapForUnit(pointer.unit_id);
-  if (!unitMap || projectedString(unitMap.id) !== pointer.study_map_id
-      || projectedString(unitMap.unit_id) !== pointer.unit_id
-      || projectedString(unitMap.module_id) !== pointer.module_id) {
-    return unresolved;
-  }
   const map = store.get(pointer.study_map_id);
-  if (!map || projectedString(map.unit_id) !== pointer.unit_id
-      || projectedString(map.module_id) !== pointer.module_id) {
+  const module = store.get(pointer.module_id);
+  if (!unit || !unitMap || !map || !module
+      || projectedString(unitMap.id) !== pointer.study_map_id) {
     return unresolved;
   }
   // The stage every design shows is the matched row of the validated
@@ -120,7 +140,6 @@ export function resolveResumeTarget(store: {
   if (!stage) {
     return unresolved;
   }
-  const module = store.get(pointer.module_id);
   return { pointer, unit, map, unitMap, stage, moduleId: pointer.module_id, module };
 }
 

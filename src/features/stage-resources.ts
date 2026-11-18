@@ -17,6 +17,7 @@ export interface StageResourceView {
   readonly locator: string | null;
   readonly sourceId: string | null;
   readonly scopeTriage: string | null;
+  readonly isEntry?: boolean;
   readonly canOpen: boolean;
 }
 
@@ -90,21 +91,12 @@ export function triageSummary(
 }
 
 /**
- * The single resource the stage is asking for right now, or null.
- *
- * "Required now" first; an unranked pre-v2 row counts as primary, never as
- * deprioritised, which is the same rule the ordering already follows. When a
- * stage names several required resources there is no basis for preferring one,
- * so the first in authored order is used and the rest stay one click away.
+ * The single resource Core selected as the stage's entry point (`is_entry`), or null.
  */
 export function currentWorkResource(
   resources: readonly StageResourceView[],
 ): StageResourceView | null {
-  return resources.find(
-    (resource) => resource.scopeTriage === 'required-now',
-  ) ?? resources.find(
-    (resource) => !resource.scopeTriage,
-  ) ?? null;
+  return resources.find((resource) => resource.isEntry === true) ?? null;
 }
 
 const MATERIAL_TYPE_ORDER = [

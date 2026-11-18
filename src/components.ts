@@ -7,6 +7,17 @@ import { asLabel, asRecords, asString } from './projection/readers';
 import { enableButtonGroupKeyboardNavigation } from './accessibility/button-group';
 export { safeWebUrl } from './security/safe-url';
 
+/** Count complete stages alongside total stages for display summaries. */
+export function stageProgress(
+  stages: readonly { readonly status?: unknown }[],
+): { readonly done: number; readonly total: number } {
+  let done = 0;
+  for (const stage of stages) {
+    if (stage.status === 'complete') done += 1;
+  }
+  return { done, total: stages.length };
+}
+
 /**
  * The card components read the projection and navigate. That is the whole
  * surface they need — they must not reach further into the plugin.
@@ -358,10 +369,8 @@ export function unitCard(
   const map = unitId ? plugin.store.mapForUnit(unitId) : null;
   if (map) {
     const stages = asRecords(map.stages);
-    const done = stages.filter(
-      (row: ProjectionRecord) => row.status === 'complete',
-    ).length;
-    card.createDiv({ cls: 'los-progress-copy', text: `${done} of ${stages.length} stages complete` });
+    const { done, total } = stageProgress(stages);
+    card.createDiv({ cls: 'los-progress-copy', text: `${done} of ${total} stages complete` });
   } else {
     card.createDiv({ cls: 'los-progress-copy', text: 'No study map yet' });
   }
