@@ -114,6 +114,7 @@ function spawnCoreFaulted(args, stdin) {
     'import glob, os, runpy, stat, sys',
     'los, repo = sys.argv[1], sys.argv[2]',
     'sys.argv = [los, "--root", repo] + sys.argv[3:]',
+    'sys.path.insert(0, os.path.dirname(os.path.abspath(los)))',
     'real_fsync = os.fsync',
     'receipt_glob = os.path.join(',
     '    repo, "operations", "transactions", "transaction-*.yaml")',
