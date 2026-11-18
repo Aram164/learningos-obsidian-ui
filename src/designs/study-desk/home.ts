@@ -8,31 +8,31 @@ import { compareStrings } from '../../sorting';
 import type { HomeScreenHost } from '../screens';
 import { setUnitMode } from './unit-mode';
 import { deskHead, deskPage, deskRow, moduleName, moduleRow, sideGroup, stageBars, textLink, unitLabel } from './parts';
-import { orderedUnits, unitWork } from './study-work';
+import { unitWork } from './study-work';
 
 function start(view: HomeScreenHost, unitId: string, stageId: string) {
   return view.plugin.nav.openUnit(unitId, stageId, (leaf) => setUnitMode(leaf, unitId, 'session'));
 }
 
 /**
- * The study candidate pool, read once per render: every actionable module of
- * any kind that still owns open work — a unit with an open stage, or a unit
- * still needing its study map. Ordered the way Core orders candidates:
- * module ID ascending. No status preference, no semester, no ranking.
+ * The candidate pool, exactly as Core publishes it: one fact per study map.
+ * `is_study_candidate` means eligibility only — never priority or a
+ * recommendation — and the UI adds no status or stage rules of its own. The
+ * home list shows the modules owning at least one candidate, in the pinned
+ * module-ID order. Units that still owe a study map are not candidates and
+ * appear only under their own browsing category.
  */
 function openPool(view: HomeScreenHost): ProjectionRecord[] {
   const { store } = view.plugin;
-  return store.modules()
-    .filter((module) => module.is_actionable === true && module.compatibility_only !== true)
-    .filter((module) => {
-      const moduleId = asString(module.id);
-      if (!moduleId) return false;
-      return orderedUnits(store, moduleId).some((unit) => {
-        if (unit.status === 'complete' || unit.status === 'archived') return false;
-        return unit.needs_study_map === true
-          || Boolean(unitWork(store, asString(unit.id) ?? '')?.next);
-      });
-    })
+  const moduleIds = new Set<string>();
+  for (const map of store.rows('study_maps')) {
+    if (map.is_study_candidate !== true) continue;
+    const moduleId = asString(map.module_id);
+    if (moduleId) moduleIds.add(moduleId);
+  }
+  return [...moduleIds]
+    .map((id) => store.get(id))
+    .filter((row): row is ProjectionRecord => row !== null)
     .sort((a, b) => compareStrings(asString(a.id) ?? '', asString(b.id) ?? ''));
 }
 
@@ -103,6 +103,21 @@ export function renderDeskHome(view: HomeScreenHost): void {
       const copy = row.createDiv({ cls: 'sd-row-copy' });
       copy.createEl('strong', { text: action });
       copy.createDiv({ cls: 'sd-row-facts', text: asLabel(record) });
+    }
+  }
+
+  // A unit the producer says still owes a study map is browsing material, not
+  // an eligible study choice. It gets its own category so it never masquerades
+  // as a candidate, and the UI infers no stage for it.
+  const needsMap = store.units().filter((unit) => unit.needs_study_map === true);
+  if (needsMap.length) {
+    const group = sideGroup(side, 'Needs a study map');
+    for (const unit of needsMap.slice(0, 5)) {
+      const module = store.get(asString(unit.module_id) ?? '');
+      textLink(group, unitLabel(unit, module).title, () => nav.openUnit(asString(unit.id) ?? ''));
+    }
+    if (needsMap.length > 5) {
+      group.createEl('p', { cls: 'sd-note', text: `${needsMap.length - 5} more units still need a map.` });
     }
   }
 

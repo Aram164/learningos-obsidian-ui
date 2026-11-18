@@ -744,6 +744,7 @@ export type Manifest_StudyMap = {
   readonly current_stage: string;
   readonly detours?: StudyMap_Properties_Detours;
   readonly id: string;
+  readonly is_study_candidate: boolean;
   readonly module_id: string;
   readonly path: string;
   readonly plan_template_version?: number;

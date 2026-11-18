@@ -5,8 +5,8 @@
   "contract_version": 20,
   "mirrors": "../repository/system/contracts/manifest-contract.yaml",
   "schema_path": "system/contracts/manifest-v20.schema.json",
-  "schema_sha256": "sha256:050a6163b16b9cdcc9bc737e6a15215d3e11e4f91213d6bb532dc66415d40017",
-  "closure_sha256": "sha256:0d039aa7a31617f10c2ecbbad9350892208b76b5205ee68a297b0397dfa34f79",
+  "schema_sha256": "sha256:1ef7031be9ea88e02740cfde92fae5bf64e8eb60b5cbfd1f32d840099e4cabc1",
+  "closure_sha256": "sha256:7d7e52f8a532452c06caeca70c0789021569c127f9025f294ffbab6edb2b1402",
   "top_level_keys": [
     "_generated",
     "academic_deadlines",

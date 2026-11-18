@@ -188,7 +188,7 @@ module.exports = async function run() {
       concepts, conceptById: new Map(concepts.map((row) => [row.id, row])), edges,
       modulesByConcept: new Map([['a', ['m1', 'm2']], ['b', ['m1']]]),
     };
-    const note = (folder, ...ids) => ({ path: `knowledge/notes/${folder}/n.md`, concepts: ids });
+    const note = (bucket, ...ids) => ({ path: 'knowledge/notes/anywhere/n.md', domain_bucket: bucket, concepts: ids });
     const catalog = [{ id: 'mathematics', label: 'Mathematics', order: 1 }, { id: 'systems', label: 'Systems', order: 2 }];
     const map = buildConceptMap(catalog, [note('mathematics', 'a', 'b'), note('systems', 'b'), note('mathematics', 'b'), note('systems', 'c', 'd')], graph);
     check('a concept is placed where most of its notes live', map.regionOf.get('b') === 'mathematics' && map.regionOf.get('c') === 'systems');
@@ -201,7 +201,7 @@ module.exports = async function run() {
     check('the browse view lists every concept the domain carries, not only the drawing majority',
       browsingRegion(map, graph, 'systems').concepts.join('|') === 'b|c|d'
       && browsingRegion(map, graph, 'systems').linked === 3);
-    check('a published bucket differing from the path wins',
+    check('the published bucket is the only bucket the UI reads — the path is never consulted',
       buildConceptMap(catalog, [{ path: 'knowledge/notes/systems/n.md', concepts: ['a'], domain_bucket: 'mathematics' }], graph).regionOf.get('a') === 'mathematics');
     const order = studyOrderLayout(['a', 'b', 'lonely'], graph);
     const at = (id) => order.placed.find((row) => row.id === id);
@@ -391,7 +391,7 @@ module.exports = async function run() {
     const root = () => app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
     const ids = root().find('sd-module-row').map((row) => row.getAttribute('data-record-id'));
     check('the home list is the candidate pool ordered by module ID ascending, closed work excluded',
-      JSON.stringify(ids) === JSON.stringify(['module-fixture-aml', 'module-fixture-m2', 'module-fixture-python', 'module-fixture-thesis']), JSON.stringify(ids));
+      JSON.stringify(ids) === JSON.stringify(['module-fixture-aml', 'module-fixture-m2', 'module-fixture-python']), JSON.stringify(ids));
     check('a second active unit promotes nothing: rows keep their aggregate factual state',
       root().find('sd-module-row').every((row) => {
         const next = row.find('sd-row-next')[0]?.allText() ?? '';
@@ -399,6 +399,50 @@ module.exports = async function run() {
       }));
     check('every pool row is a plain module target, not a stage shortcut',
       root().find('sd-module-row').every((row) => row.tag === 'button' && (row.getAttribute('aria-labelledby') ?? '').length > 0));
+    plugin.onunload();
+  }
+
+  heading('study desk: Home consumes Core\u2019s published candidate fact');
+  {
+    const { app, plugin } = await boot({ settings: { uiDesign: 'study-desk', pinHome: false }, patchManifest(manifest) {
+      manifest.resume_pointer = {};
+      // Administrative status is metadata, never a filter: the paused module
+      // keeps both of its candidate maps.
+      manifest.modules.find((row) => row.id === 'module-fixture-m2').status = 'paused';
+      // The flags alone decide. Even a map whose authored status and stage
+      // would read open is out when Core published false.
+      for (const id of ['study-map-fixture-aml-l03', 'study-map-fixture-aml-l04', 'study-map-fixture-python-oop']) {
+        manifest.study_maps.find((row) => row.id === id).is_study_candidate = false;
+      }
+      // unit-fixture-analysis has no study map: no candidate row, no rescue.
+    } });
+    const root = () => app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
+    const ids = root().find('sd-module-row').map((row) => row.getAttribute('data-record-id'));
+    check('the flag filters the pool without re-reading map status, stage status, or module status',
+      JSON.stringify(ids) === JSON.stringify(['module-fixture-m2']), JSON.stringify(ids));
+    check('units that still owe a study map are a separate browsing category, not candidates',
+      root().findText('sd-eyebrow', 'Needs a study map') !== null
+      && root().allText().includes('Analysis exam prep')
+      && !ids.includes('unit-fixture-analysis'));
+    plugin.onunload();
+  }
+
+  {
+    const { app, plugin } = await boot({ settings: { uiDesign: 'study-desk', pinHome: false }, patchManifest(manifest) {
+      manifest.resume_pointer = {};
+      for (const map of manifest.study_maps) map.is_study_candidate = false;
+      // A published true wins even when every authored fact looks closed: the
+      // consumer reads the fact, never a second rule.
+      const map = manifest.study_maps.find((row) => row.id === 'study-map-fixture-python-oop');
+      map.is_study_candidate = true;
+      map.status = 'ready-to-shelve';
+      map.stages.find((stage) => stage.id === map.current_stage).status = 'complete';
+      manifest.modules.find((row) => row.id === 'module-fixture-python').status = 'completed';
+    } });
+    const root = () => app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
+    const ids = root().find('sd-module-row').map((row) => row.getAttribute('data-record-id'));
+    check('a published candidate stays a candidate under contradictory authored display facts',
+      JSON.stringify(ids) === JSON.stringify(['module-fixture-python']), JSON.stringify(ids));
     plugin.onunload();
   }
 

@@ -312,7 +312,7 @@ var require_manifest_validator = __commonJS({
     "use strict";
     module2.exports = validate20;
     module2.exports.default = validate20;
-    var schema31 = { "$defs": { "academicDeadline": { "additionalProperties": false, "properties": { "end_date": { "format": "date", "type": "string" }, "kind": { "minLength": 1, "type": "string" }, "label": { "minLength": 1, "type": "string" }, "module_id": { "type": "string" }, "modules": { "items": { "$ref": "#/$defs/deadlineModule" }, "type": "array" }, "notes": { "type": ["string", "null"] }, "registration_state": { "type": "string" }, "start_date": { "format": "date", "type": "string" }, "termin": { "minimum": 1, "type": "integer" }, "time": { "type": ["string", "null"] }, "title": { "type": "string" } }, "required": ["kind", "label", "start_date", "end_date"], "type": "object" }, "aiAction": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "interaction_mode": { "minLength": 1, "type": "string" }, "status": { "enum": ["planned", "implemented"] }, "supported_providers": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "target_kinds": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "description", "target_kinds", "interaction_mode", "status", "supported_providers"], "type": "object" }, "aiActions": { "additionalProperties": false, "properties": { "available": { "items": { "$ref": "#/$defs/aiAction" }, "type": "array" }, "contract_version": { "const": 1 }, "provider_adapters": { "items": { "$ref": "#/$defs/aiProviderAdapter" }, "type": "array" }, "requests": { "items": { "$ref": "#/$defs/aiRequest" }, "type": "array" } }, "required": ["available", "contract_version", "provider_adapters", "requests"], "type": "object" }, "aiProviderAdapter": { "additionalProperties": false, "properties": { "adapter": { "minLength": 1, "type": "string" }, "available": { "type": "boolean" }, "id": { "minLength": 1, "type": "string" }, "supported_modes": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "supports_direct_delivery": { "type": "boolean" } }, "required": ["id", "adapter", "available", "supported_modes", "supports_direct_delivery"], "type": "object" }, "aiRequest": { "additionalProperties": false, "properties": { "action_id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "bundle_path": { "pattern": "^operations/ai-actions/requests/[^/]+$", "type": "string" }, "created_at": { "format": "date-time", "type": "string" }, "delivery_id": { "type": ["string", "null"] }, "id": { "pattern": "^ai-request-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "provider": { "minLength": 1, "type": "string" }, "receipt_id": { "type": ["string", "null"] }, "status": { "enum": ["prepared", "delivery-ready", "completed"] }, "target": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "kind": { "minLength": 1, "type": "string" } }, "required": ["kind", "id"], "type": "object" } }, "required": ["id", "action_id", "target", "provider", "status", "created_at", "delivery_id", "receipt_id", "bundle_path"], "type": "object" }, "backlinks": { "additionalProperties": false, "properties": { "concept_relations": { "$ref": "#/$defs/jsonObject" }, "concept_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "note_incoming": { "$ref": "#/$defs/stringArrayMap" }, "source_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_notes": { "$ref": "#/$defs/stringArrayMap" } }, "type": "object" }, "collectionRecord": { "additionalProperties": false, "properties": { "collection_kind": { "enum": ["catalogue", "topic-pack"] }, "domain": { "minLength": 1, "type": "string" }, "entries": { "items": { "additionalProperties": false, "properties": { "group": { "type": ["string", "null"] }, "source": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "why": { "type": ["string", "null"] } }, "required": ["source", "group", "why"], "type": "object" }, "type": "array" }, "id": { "minLength": 1, "type": "string" }, "path": { "pattern": "^sources/collections/.+\\.yaml$", "type": "string" }, "purpose": { "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "enum": ["collection", "topic-pack"] } }, "required": ["id", "type", "revision", "collection_kind", "title", "path", "thematic_group_ids", "purpose", "sources", "summary", "domain", "entries"], "type": "object" }, "compatibilityAlias": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "path": { "const": "projects/aliases.yaml" }, "target_id": { "pattern": "^(module|unit|workspace)-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "target_type": { "enum": ["module", "unit", "workspace"] }, "type": { "const": "compatibility-alias" } }, "required": ["id", "type", "target_id", "target_type", "path"], "type": "object" }, "conceptRecord": { "additionalProperties": false, "properties": { "aliases": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "deprecated": { "type": "boolean" }, "id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "concept" } }, "required": ["id", "type", "title", "path", "aliases", "deprecated"], "type": "object" }, "coordinationRecord": { "additionalProperties": false, "properties": { "id": { "const": "coordination" }, "path": { "const": "work/COORDINATION.md" }, "sections": { "additionalProperties": false, "properties": { "Commitments": { "type": "string" }, "Deferrals": { "type": "string" }, "Dependencies": { "type": "string" }, "Priorities": { "type": "string" } }, "required": ["Commitments", "Priorities", "Dependencies", "Deferrals"], "type": "object" }, "type": { "const": "coordination" } }, "required": ["id", "type", "path", "sections"], "type": "object" }, "counts": { "additionalProperties": false, "properties": { "ai_action_requests": { "minimum": 0, "type": "integer" }, "collections": { "minimum": 0, "type": "integer" }, "concepts": { "minimum": 0, "type": "integer" }, "garden_entries": { "minimum": 0, "type": "integer" }, "inbox_items": { "minimum": 0, "type": "integer" }, "modules": { "minimum": 0, "type": "integer" }, "notes": { "minimum": 0, "type": "integer" }, "notes_reviewed": { "minimum": 0, "type": "integer" }, "notes_with_evidence": { "minimum": 0, "type": "integer" }, "programs": { "minimum": 0, "type": "integer" }, "relations": { "minimum": 0, "type": "integer" }, "source_feedback_records": { "minimum": 0, "type": "integer" }, "sources": { "minimum": 0, "type": "integer" }, "sources_with_topics": { "minimum": 0, "type": "integer" }, "stages": { "minimum": 0, "type": "integer" }, "stages_complete": { "minimum": 0, "type": "integer" }, "study_maps": { "minimum": 0, "type": "integer" }, "thematic_groups": { "minimum": 0, "type": "integer" }, "topic_packs": { "minimum": 0, "type": "integer" }, "topics": { "minimum": 0, "type": "integer" }, "units": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "workspaces_active": { "minimum": 0, "type": "integer" }, "workspaces_archived": { "minimum": 0, "type": "integer" } }, "required": ["ai_action_requests", "collections", "concepts", "garden_entries", "inbox_items", "modules", "notes", "notes_reviewed", "notes_with_evidence", "programs", "relations", "source_feedback_records", "sources", "sources_with_topics", "stages", "stages_complete", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "units_needing_map", "workspaces_active", "workspaces_archived"], "type": "object" }, "deadlineModule": { "additionalProperties": false, "properties": { "action": { "type": ["string", "null"] }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "termins": { "items": { "maximum": 3, "minimum": 1, "type": "integer" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["module_id", "title", "action", "termins"], "type": "object" }, "domainCatalogEntry": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "label": { "minLength": 1, "type": "string" }, "order": { "minimum": 1, "type": "integer" } }, "required": ["id", "label", "order"], "type": "object" }, "flatStage": { "allOf": [{ "$ref": "#/$defs/projectedStage" }, { "required": ["study_map_id", "unit_id", "module_id"] }] }, "gardenEntry": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "last_ai_request_id": { "type": ["string", "null"] }, "path": { "type": "string" }, "revision": { "type": "string" }, "state": { "type": "string" }, "tags": { "items": { "type": "string" }, "type": "array" }, "title": { "type": "string" }, "transcription_path": { "type": ["string", "null"] }, "type": { "const": "garden-note" } }, "required": ["id", "last_ai_request_id", "path", "revision", "state", "tags", "title", "transcription_path", "type"], "type": "object" }, "generated": { "additionalProperties": false, "properties": { "closure_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "contract_version": { "const": 20 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["closure_sha256", "contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" }, "indexes": { "additionalProperties": false, "properties": { "component_to_units": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "source_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_material_synthesis": { "additionalProperties": { "pattern": "^material-synthesis-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "object" }, "unit_to_study_map": { "$ref": "#/$defs/stringMap" }, "workspace_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_units": { "$ref": "#/$defs/stringArrayMap" } }, "required": ["component_to_units", "concept_to_modules", "concept_to_units", "module_to_concepts", "module_to_units", "project_aliases", "source_to_modules", "source_to_units", "unit_to_concepts", "unit_to_material_synthesis", "unit_to_study_map", "workspace_to_modules", "workspace_to_units"], "type": "object" }, "integerMap": { "additionalProperties": { "minimum": 0, "type": "integer" }, "type": "object" }, "jsonObject": { "additionalProperties": { "$ref": "#/$defs/jsonValue" }, "propertyNames": { "type": "string" }, "type": "object" }, "jsonValue": { "oneOf": [{ "type": "null" }, { "type": "boolean" }, { "type": "number" }, { "type": "string" }, { "items": { "$ref": "#/$defs/jsonValue" }, "type": "array" }, { "$ref": "#/$defs/jsonObject" }] }, "knowledgeNode": { "additionalProperties": false, "properties": { "builds_on": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "concept_ids": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "summary": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "summary"], "type": "object" }, "knowledgeNodeEvidence": { "additionalProperties": false, "description": "A knowledge-map node's reviewed `concept_ids`. Retains unit and node identity.", "properties": { "kind": { "const": "knowledge-node" }, "node_id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "node_id"], "type": "object" }, "moduleConceptEdge": { "additionalProperties": false, "properties": { "concept_id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "evidence": { "description": "Why this cell is filled. At least one item: an edge with no evidence is an inferred edge, and this projection does not publish those.", "items": { "oneOf": [{ "$ref": "#/$defs/stageConceptEvidence" }, { "$ref": "#/$defs/knowledgeNodeEvidence" }] }, "minItems": 1, "type": "array" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["module_id", "concept_id", "evidence"], "type": "object" }, "moduleRecord": { "additionalProperties": false, "properties": { "administrative_status": { "enum": ["planned", "enrolled", "awaiting-grade", "completed", "dropped", "archived", null], "type": ["string", "null"] }, "area_id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "attempts": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/attempts" }, "code": { "type": ["string", "null"] }, "components": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/components" }, "credits": { "minimum": 0, "type": ["number", "null"] }, "examination": { "oneOf": [{ "type": "null" }, { "$ref": "https://learningos.local/schema/module.schema.json#/properties/examination" }] }, "grade": { "maximum": 5, "minimum": 1, "type": ["number", "null"] }, "id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "institution": { "type": ["string", "null"] }, "is_actionable": { "type": "boolean" }, "kind": { "enum": ["academic", "skill", "project", "foundation"] }, "operational_state": { "enum": ["none", "complete", "active", "paused"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester": { "pattern": "^(sose|wise)-[0-9]{4}$", "type": ["string", "null"] }, "source_map": { "oneOf": [{ "const": "source-map.yaml" }, { "type": "null" }] }, "status": { "enum": ["planned", "enrolled", "active", "paused", "awaiting-grade", "completed", "dropped", "archived"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "module" }, "unit_order": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/unit_order" } }, "required": ["id", "type", "title", "revision", "path", "kind", "area_id", "thematic_group_ids", "status", "administrative_status", "operational_state", "is_actionable", "institution", "code", "credits", "semester", "components", "examination", "attempts", "grade", "unit_order", "source_map"], "type": "object" }, "moduleSourceMap": { "additionalProperties": false, "properties": { "id": { "pattern": "^source-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "additionalProperties": false, "properties": { "priority": { "minimum": 0, "type": "integer" }, "role": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_routes": { "items": { "oneOf": [{ "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, { "$ref": "#/$defs/projectedRoute" }] }, "type": "array" }, "when": { "type": "string" }, "why": { "minLength": 1, "type": "string" } }, "required": ["source_id", "role", "why", "priority", "unit_routes"], "type": "object" }, "type": "array" }, "type": { "const": "module-source-map" } }, "required": ["id", "type", "module_id", "sources", "revision", "path"], "type": "object" }, "noteRecord": { "additionalProperties": false, "properties": { "atlas_question": { "additionalProperties": false, "properties": { "answer_notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["open", "resolved"] }, "target": { "oneOf": [{ "additionalProperties": false, "properties": { "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "maxItems": 2, "minItems": 1, "type": "array", "uniqueItems": true } }, "required": ["concepts"], "type": "object" }, { "additionalProperties": false, "properties": { "from": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "to": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": { "enum": ["requires", "builds-on", "derives", "generalizes", "contrasts-with", "equivalent-to", "applies-in", "motivates"] } }, "required": ["from", "type", "to"], "type": "object" }] } }, "required": ["state", "target"], "type": ["object", "null"] }, "attachments": { "items": { "type": "string" }, "type": "array" }, "authorship": { "enum": ["user", "mixed", "external", "operator-drafted", null], "type": ["string", "null"] }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "contexts": { "items": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "domain": { "type": "string" }, "domain_bucket": { "minLength": 1, "type": "string" }, "evidence": { "$ref": "https://learningos.local/schema/note.schema.json#/properties/evidence" }, "id": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "material_analysis": { "additionalProperties": false, "allOf": [{ "else": { "not": { "required": ["source_id"] } }, "if": { "properties": { "resolution": { "const": "resolved" } } }, "then": { "required": ["source_id"] } }], "properties": { "anchors": { "items": { "additionalProperties": false, "properties": { "locator": { "minLength": 1, "type": "string" }, "note": { "type": "string" }, "purpose": { "minLength": 1, "type": "string" }, "topic": { "minLength": 1, "type": "string" } }, "required": ["topic", "purpose", "locator"], "type": "object" }, "type": "array" }, "built": { "format": "date", "type": "string" }, "frozen_input_bytes": { "minimum": 1, "type": "integer" }, "frozen_input_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "inspected_range": { "additionalProperties": false, "properties": { "end": { "minimum": 1, "type": "integer" }, "start": { "minimum": 1, "type": "integer" } }, "required": ["start", "end"], "type": "object" }, "live_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "material": { "minLength": 1, "type": "string" }, "model": { "type": "string" }, "recorded_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "resolution": { "enum": ["resolved", "unresolved", "unavailable", "stale"] }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["resolution", "material", "recorded_source_digest", "inspected_range", "frozen_input_sha256", "frozen_input_bytes"], "type": ["object", "null"] }, "path": { "minLength": 1, "type": "string" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "role": { "enum": ["synthesis", "reference", "derivation", "exercise-bank", "mock-exam", "implementation", "question", "crosswalk"] }, "semantic_review": { "enum": ["unreviewed", "user-reviewed", null], "type": ["string", "null"] }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["rough", "evolving", "mature", "deprecated", null], "type": ["string", "null"] }, "summary": { "type": "string" }, "supersedes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "transcription": { "enum": ["none", "manual", "ai-assisted", null], "type": ["string", "null"] }, "type": { "const": "note" } }, "required": ["id", "type", "title", "path", "domain", "domain_bucket", "summary", "role", "state", "authorship", "concepts", "sources", "contexts", "attachments", "evidence", "supersedes", "reviewed", "transcription", "semantic_review", "atlas_question", "material_analysis"], "type": "object" }, "programRecord": { "additionalProperties": false, "properties": { "boundary_action": { "type": "string" }, "default": { "type": "boolean" }, "description": { "type": "string" }, "id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "enum": ["academic", "skills", "projects"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester_bound": { "type": "boolean" }, "semesters": { "items": { "$ref": "#/$defs/programSemester" }, "type": "array" }, "status": { "enum": ["active", "metadata-only", "archived"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "program" } }, "required": ["id", "type", "title", "kind", "status", "default", "semester_bound", "revision", "path"], "type": "object" }, "programSemester": { "additionalProperties": false, "properties": { "id": { "pattern": "^semester-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "order": { "minimum": 0, "type": "integer" }, "status": { "enum": ["current", "previous", "future", "archived"] }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "status", "order"], "type": "object" }, "progress": { "additionalProperties": { "additionalProperties": false, "properties": { "stages_complete": { "minimum": 0, "type": "integer" }, "stages_total": { "minimum": 0, "type": "integer" }, "units_complete": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "units_total": { "minimum": 0, "type": "integer" } }, "required": ["stages_complete", "stages_total", "units_complete", "units_needing_map", "units_total"], "type": "object" }, "type": "object" }, "projectedRecord": { "oneOf": [{ "$ref": "#/$defs/noteRecord" }, { "$ref": "#/$defs/conceptRecord" }, { "$ref": "#/$defs/sourceRecord" }, { "$ref": "#/$defs/compatibilityAlias" }, { "$ref": "#/$defs/moduleRecord" }, { "$ref": "#/$defs/collectionRecord" }, { "$ref": "#/$defs/workspaceRecord" }, { "$ref": "#/$defs/programRecord" }, { "$ref": "#/$defs/projectedUnit" }, { "$ref": "#/$defs/studyMap" }, { "$ref": "#/$defs/moduleSourceMap" }, { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, { "$ref": "#/$defs/coordinationRecord" }] }, "projectedRoute": { "additionalProperties": false, "properties": { "angle": { "minLength": 1, "type": "string" }, "angle_detail": { "minLength": 1, "type": "string" }, "covers": { "items": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "minItems": 1, "type": "array", "uniqueItems": true }, "depth": { "minLength": 1, "type": "string" }, "exposes_solutions_for": { "description": "Route ids whose activities this material answers \u2014 a verifiable claim about content, that opening this hands over the worked solutions to those tasks, never a judgment of quality. The session compiler refuses to put such a route in the same proposal as an evidence step it answers: explaining with the answer key and then asking for unaided transfer on that same task measures nothing (audit workbench/audits/synthetic-learner-2026-09-12, F03).", "items": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "format": { "minLength": 1, "type": "string" }, "id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "requires_assets": { "description": "Files the activity itself needs before it can be done \u2014 a dataset it analyses, a code template it fills in. Distinct from the material being reachable: `_resource_available` answers 'can he open the worksheet', and this answers 'can he do what the worksheet asks'. Blatt 4 Aufgabe 3(b) needs International_Education_Costs.csv and aufgabe3.py from Moodle, neither registered here, and the session still reported the route ready (audit workbench/audits/synthetic-learner-2026-09-12, F06). An entry with no `material_uri` is by definition unregistered; the session keeps the route and names the parts that cannot be attempted, rather than dropping the runnable work or inventing a substitute dataset.", "items": { "additionalProperties": false, "properties": { "material_uri": { "pattern": "^material://", "type": "string" }, "name": { "minLength": 1, "type": "string" }, "needed_for": { "description": "Which part of the activity, in the sheet's own numbering.", "minLength": 1, "type": "string" }, "obtain_from": { "description": "Where the exact file comes from. Never a substitute.", "minLength": 1, "type": "string" } }, "required": ["name"], "type": "object" }, "minItems": 1, "type": "array" }, "scope": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "title": { "minLength": 1, "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["id", "unit_id", "source_id", "title", "format", "angle", "covers", "depth", "scope"], "type": "object" }, "projectedStage": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "completed": { "type": "string" }, "concepts": { "items": { "type": "string" }, "type": "array" }, "detour_id": { "type": "string" }, "done_when": { "items": { "type": "string" }, "type": "array" }, "estimate_minutes": { "minimum": 1, "type": "integer" }, "exam_critical": { "type": "boolean" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "number": { "minimum": 1, "type": "integer" }, "objective": { "type": "string" }, "resources": { "items": { "$ref": "#/$defs/resource" }, "type": "array" }, "scope_triage": { "type": "string" }, "source_feedback": { "items": { "$ref": "#/$defs/sourceFeedback" }, "type": "array" }, "status": { "type": "string" }, "study_map_id": { "type": "string" }, "title": { "type": "string" }, "unit_id": { "type": "string" }, "working_note": { "type": "string" } }, "required": ["id", "title", "status", "objective", "done_when", "resources", "working_note", "attachments", "source_feedback", "scope_triage", "notes_text", "notes_updated"], "type": "object" }, "projectedUnit": { "additionalProperties": false, "properties": { "artifacts": { "$ref": "https://learningos.local/schema/unit.schema.json#/properties/artifacts" }, "child_unit_ids": { "items": { "type": "string" }, "type": "array" }, "component_id": { "type": "string" }, "current_study_map": { "type": "string" }, "id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "type": "string" }, "knowledge_map": { "additionalProperties": false, "properties": { "nodes": { "items": { "$ref": "#/$defs/knowledgeNode" }, "type": "array" }, "summary": { "type": "string" } }, "required": ["summary", "nodes"], "type": "object" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "needs_study_map": { "type": "boolean" }, "note_sections": { "items": { "$ref": "#/$defs/unitNoteSection" }, "type": "array" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "order": { "minimum": 0, "type": "integer" }, "parent_unit_id": { "type": "string" }, "path": { "type": "string" }, "related_module_ids": { "items": { "type": "string" }, "type": "array" }, "revision": { "minimum": 0, "type": "integer" }, "scope": { "type": "string" }, "scope_sources": { "items": { "additionalProperties": false, "properties": { "authority": { "type": "string" }, "locator": { "type": "string" }, "source_id": { "type": "string" } }, "required": ["source_id", "authority"], "type": "object" }, "type": "array" }, "source_selections": { "items": { "additionalProperties": false, "properties": { "locator": { "type": "string" }, "purpose": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "type": "string" }, "stage_ids": { "items": { "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["source_id", "locator", "purpose"], "type": "object" }, "type": "array" }, "status": { "type": "string" }, "title": { "type": "string" }, "type": { "const": "unit" }, "working_note": { "type": "string" }, "workspace_ids": { "items": { "type": "string" }, "type": "array" } }, "required": ["id", "type", "module_id", "kind", "title", "order", "scope", "status", "artifacts", "workspace_ids", "source_selections", "scope_sources", "revision", "path", "needs_study_map", "notes_text", "note_sections", "notes_updated"], "type": "object" }, "relation": { "additionalProperties": false, "properties": { "context": { "type": ["string", "null"] }, "from": { "type": ["string", "null"] }, "source": { "type": ["string", "null"] }, "to": { "type": ["string", "null"] }, "type": { "type": ["string", "null"] } }, "required": ["from", "type", "to", "context", "source"], "type": "object" }, "resource": { "additionalProperties": false, "properties": { "angle": { "type": "string" }, "angle_detail": { "type": "string" }, "id": { "type": "string" }, "kind": { "type": "string" }, "label": { "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "scope_triage": { "type": "string" }, "source_id": { "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["kind", "label"], "type": "object" }, "resumePointer": { "oneOf": [{ "maxProperties": 0, "type": "object" }, { "additionalProperties": false, "properties": { "module_id": { "type": "string" }, "stage_id": { "type": "string" }, "study_map_id": { "type": "string" }, "type": { "const": "resume-pointer" }, "unit_id": { "type": "string" }, "updated": { "type": "string" } }, "required": ["type", "module_id", "unit_id", "study_map_id", "stage_id", "updated"], "type": "object" }] }, "reviewItem": { "additionalProperties": false, "properties": { "category": { "type": "string" }, "context": { "type": "string" }, "id": { "type": "string" }, "reason": { "type": "string" }, "target": { "$ref": "#/$defs/jsonObject" }, "title": { "type": "string" } }, "required": ["category", "context", "id", "reason", "target", "title"], "type": "object" }, "routeId": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "semester": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "order": { "type": "integer" }, "program_id": { "type": "string" }, "status": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "order", "program_id", "status", "title"], "type": "object" }, "sourceEvaluation": { "additionalProperties": false, "properties": { "audience": { "items": { "type": "string" }, "type": "array" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "level": { "enum": ["introductory", "intermediate", "advanced", "reference", null], "type": ["string", "null"] }, "prerequisites": { "items": { "type": "string" }, "type": "array" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "roles": { "items": { "type": "string" }, "type": "array" }, "strengths": { "items": { "type": "string" }, "type": "array" }, "useful_sections": { "items": { "additionalProperties": false, "properties": { "note": { "type": "string" }, "section": { "type": "string" } }, "required": ["section", "note"], "type": "object" }, "type": "array" }, "weaknesses": { "items": { "type": "string" }, "type": "array" } }, "required": ["roles", "level", "audience", "prerequisites", "strengths", "weaknesses", "reviewed", "concepts", "useful_sections"], "type": "object" }, "sourceExamination": { "additionalProperties": false, "properties": { "approved_analysis_count": { "minimum": 0, "type": "integer" }, "evaluated": { "type": "boolean" }, "metadata_placed": { "type": "boolean" } }, "required": ["evaluated", "approved_analysis_count", "metadata_placed"], "type": "object" }, "sourceFeedback": { "additionalProperties": false, "properties": { "feedback": { "enum": ["helpful", "too-advanced", "wrong-perspective", "useful-for-derivation", "useful-for-review", "skipped"] }, "note": { "type": "string" }, "recorded": { "format": "date", "type": "string" }, "resource_id": { "pattern": "^resource-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["source_id", "feedback", "recorded"], "type": "object" }, "sourceRecord": { "additionalProperties": false, "properties": { "authors": { "items": { "type": "string" }, "type": "array" }, "discovery": { "anyOf": [{ "$ref": "https://learningos.local/schema/sources.schema.json#/properties/sources/items/properties/discovery" }, { "type": "null" }] }, "evaluations": { "items": { "$ref": "#/$defs/sourceEvaluation" }, "type": "array" }, "examination": { "$ref": "#/$defs/sourceExamination" }, "id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "identifiers": { "additionalProperties": { "type": "string" }, "type": "object" }, "material": { "pattern": "^material://.+", "type": ["string", "null"] }, "material_exists": { "type": "boolean" }, "material_path": { "type": ["string", "null"] }, "organization": { "type": ["string", "null"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "roles": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "source_type": { "enum": ["book", "paper", "lecture", "course", "video", "website", "documentation", "software", "conversation", "other"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "topics": { "items": { "pattern": "^topic-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "type": { "const": "source" }, "url": { "format": "uri", "type": ["string", "null"] }, "year": { "maximum": 2100, "minimum": 1800, "type": ["integer", "null"] } }, "required": ["id", "type", "title", "revision", "path", "source_type", "thematic_group_ids", "topics", "url", "material", "material_path", "material_exists", "authors", "organization", "year", "identifiers", "roles", "evaluations", "discovery", "examination"], "type": "object" }, "stageAttachment": { "additionalProperties": false, "properties": { "label": { "minLength": 1, "type": "string" }, "path": { "minLength": 1, "type": "string" } }, "required": ["path", "label"], "type": "object" }, "stageConceptEvidence": { "additionalProperties": false, "description": "A stage's explicit `concepts` tag. Retains unit, study-map and stage identity, so a filled cell drills into the exact stage.", "properties": { "kind": { "const": "stage-concept" }, "stage_id": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "study_map_id": { "pattern": "^study-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "study_map_id", "stage_id"], "type": "object" }, "stringArrayMap": { "additionalProperties": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "type": "object" }, "stringMap": { "additionalProperties": { "type": "string" }, "type": "object" }, "studyMap": { "additionalProperties": false, "properties": { "current_stage": { "type": "string" }, "detours": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/detours" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "path": { "type": "string" }, "plan_template_version": { "minimum": 1, "type": "integer" }, "revision": { "minimum": 0, "type": "integer" }, "shelving": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/shelving" }, "source_plan": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/source_plan" }, "stages": { "items": { "$ref": "#/$defs/projectedStage" }, "type": "array" }, "status": { "type": "string" }, "type": { "const": "study-map" }, "unit_id": { "type": "string" } }, "required": ["id", "type", "unit_id", "module_id", "status", "current_stage", "source_plan", "stages", "shelving", "revision", "path"], "type": "object" }, "thematicGroup": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "type": "string" }, "order": { "type": "integer" }, "title": { "type": "string" } }, "required": ["id", "title", "description", "order"], "type": "object" }, "topic": { "additionalProperties": false, "properties": { "domain": { "type": "string" }, "id": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "title", "domain"], "type": "object" }, "unitMaterialSynthesisProjection": { "allOf": [{ "$ref": "https://learningos.local/schema/unit-material-synthesis.schema.json#/$defs/canonicalRecord" }, { "properties": { "completeness": { "additionalProperties": false, "properties": { "assessed_route_count": { "minimum": 0, "type": "integer" }, "complete": { "type": "boolean" }, "current_route_count": { "minimum": 0, "type": "integer" }, "deep_reviewed_count": { "minimum": 0, "type": "integer" }, "duplicate_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "missing_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "orphaned_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "screened_count": { "minimum": 0, "type": "integer" }, "unavailable_count": { "minimum": 0, "type": "integer" }, "unevaluated_count": { "minimum": 0, "type": "integer" } }, "required": ["complete", "current_route_count", "assessed_route_count", "deep_reviewed_count", "screened_count", "unevaluated_count", "unavailable_count", "missing_route_ids", "orphaned_route_ids", "duplicate_route_ids"], "type": "object" }, "freshness": { "additionalProperties": false, "properties": { "reasons": { "items": { "enum": ["source_map_revision", "source_map_checksum", "route_set_checksum", "material_checksums", "policy", "current-basis-unavailable", "analysis-refs-stale"] }, "type": "array", "uniqueItems": true }, "status": { "enum": ["current", "stale"] } }, "required": ["status", "reasons"], "type": "object" } }, "required": ["freshness", "completeness"], "type": "object" }], "unevaluatedProperties": false }, "unitNoteSection": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "recorded_at": { "type": ["string", "null"] }, "stage_ids": { "items": { "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "text": { "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["recorded_at", "title", "stage_ids", "attachments", "text", "summary"], "type": "object" }, "workspaceRecord": { "additionalProperties": false, "properties": { "archived": { "type": "boolean" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "deadline": { "format": "date", "type": ["string", "null"] }, "id": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_ids": { "items": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "next_action": { "type": "string" }, "notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "objective": { "type": "string" }, "path": { "minLength": 1, "type": "string" }, "program_ids": { "items": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "project_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "standing": { "type": "boolean" }, "status": { "enum": ["active", "blocked", "complete"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "workspace" }, "unit_ids": { "items": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["id", "type", "title", "revision", "path", "status", "standing", "archived", "deadline", "objective", "next_action", "concepts", "notes", "sources", "program_ids", "module_ids", "unit_ids", "project_id"], "type": "object" } }, "$id": "https://learningos.local/contracts/manifest-v20.schema.json", "$schema": "https://json-schema.org/draft/2020-12/schema", "additionalProperties": false, "properties": { "_generated": { "$ref": "#/$defs/generated" }, "academic_deadlines": { "items": { "$ref": "#/$defs/academicDeadline" }, "type": "array" }, "ai_actions": { "$ref": "#/$defs/aiActions" }, "artifact_revisions": { "$ref": "#/$defs/integerMap" }, "backlinks": { "$ref": "#/$defs/backlinks" }, "counts": { "$ref": "#/$defs/counts" }, "domains": { "description": "The ordered domain catalog (D5): the known atlas domains in fixed order, then observed future buckets sorted. Covers every domain id the published notes (domain_bucket) and shelves (domain) reference; 'not yet grouped' is a UI presentation concept and never appears here.", "items": { "$ref": "#/$defs/domainCatalogEntry" }, "type": "array" }, "garden_entries": { "items": { "$ref": "#/$defs/gardenEntry" }, "type": "array" }, "indexes": { "$ref": "#/$defs/indexes" }, "module_concept_edges": { "description": "The Module x Concept crossing. One row per (module, concept) pair for which at least one EXPLICIT authored tag exists - a stage's `concepts` tag or a knowledge-map node's reviewed `concept_ids`. Never inferred from titles, prose, notes, sources, or similarity; absence means not mapped, never that no relationship exists. Ordered by (module_id, concept_id).", "items": { "$ref": "#/$defs/moduleConceptEdge" }, "type": "array" }, "module_source_maps": { "items": { "$ref": "#/$defs/moduleSourceMap" }, "type": "array" }, "modules": { "items": { "$ref": "#/$defs/moduleRecord" }, "type": "array" }, "programs": { "items": { "$ref": "#/$defs/programRecord" }, "type": "array" }, "progress": { "$ref": "#/$defs/progress" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "records": { "items": { "$ref": "#/$defs/projectedRecord" }, "type": "array" }, "relations": { "items": { "$ref": "#/$defs/relation" }, "type": "array" }, "resume_pointer": { "$ref": "#/$defs/resumePointer" }, "review_items": { "items": { "$ref": "#/$defs/reviewItem" }, "type": "array" }, "semesters": { "items": { "$ref": "#/$defs/semester" }, "type": "array" }, "stages": { "items": { "$ref": "#/$defs/flatStage" }, "type": "array" }, "study_maps": { "items": { "$ref": "#/$defs/studyMap" }, "type": "array" }, "thematic_groups": { "items": { "$ref": "#/$defs/thematicGroup" }, "type": "array" }, "topic_packs": { "items": { "$ref": "#/$defs/collectionRecord" }, "type": "array" }, "topics": { "items": { "$ref": "#/$defs/topic" }, "type": "array" }, "unit_material_syntheses": { "items": { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, "type": "array" }, "units": { "items": { "$ref": "#/$defs/projectedUnit" }, "type": "array" } }, "required": ["_generated", "academic_deadlines", "ai_actions", "artifact_revisions", "backlinks", "counts", "domains", "garden_entries", "indexes", "module_concept_edges", "module_source_maps", "modules", "programs", "progress", "project_aliases", "records", "relations", "resume_pointer", "review_items", "semesters", "stages", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "unit_material_syntheses"], "title": "LearningOS atomic manifest v20", "type": "object" };
+    var schema31 = { "$defs": { "academicDeadline": { "additionalProperties": false, "properties": { "end_date": { "format": "date", "type": "string" }, "kind": { "minLength": 1, "type": "string" }, "label": { "minLength": 1, "type": "string" }, "module_id": { "type": "string" }, "modules": { "items": { "$ref": "#/$defs/deadlineModule" }, "type": "array" }, "notes": { "type": ["string", "null"] }, "registration_state": { "type": "string" }, "start_date": { "format": "date", "type": "string" }, "termin": { "minimum": 1, "type": "integer" }, "time": { "type": ["string", "null"] }, "title": { "type": "string" } }, "required": ["kind", "label", "start_date", "end_date"], "type": "object" }, "aiAction": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "interaction_mode": { "minLength": 1, "type": "string" }, "status": { "enum": ["planned", "implemented"] }, "supported_providers": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "target_kinds": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "description", "target_kinds", "interaction_mode", "status", "supported_providers"], "type": "object" }, "aiActions": { "additionalProperties": false, "properties": { "available": { "items": { "$ref": "#/$defs/aiAction" }, "type": "array" }, "contract_version": { "const": 1 }, "provider_adapters": { "items": { "$ref": "#/$defs/aiProviderAdapter" }, "type": "array" }, "requests": { "items": { "$ref": "#/$defs/aiRequest" }, "type": "array" } }, "required": ["available", "contract_version", "provider_adapters", "requests"], "type": "object" }, "aiProviderAdapter": { "additionalProperties": false, "properties": { "adapter": { "minLength": 1, "type": "string" }, "available": { "type": "boolean" }, "id": { "minLength": 1, "type": "string" }, "supported_modes": { "items": { "minLength": 1, "type": "string" }, "type": "array", "uniqueItems": true }, "supports_direct_delivery": { "type": "boolean" } }, "required": ["id", "adapter", "available", "supported_modes", "supports_direct_delivery"], "type": "object" }, "aiRequest": { "additionalProperties": false, "properties": { "action_id": { "pattern": "^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$", "type": "string" }, "bundle_path": { "pattern": "^operations/ai-actions/requests/[^/]+$", "type": "string" }, "created_at": { "format": "date-time", "type": "string" }, "delivery_id": { "type": ["string", "null"] }, "id": { "pattern": "^ai-request-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "provider": { "minLength": 1, "type": "string" }, "receipt_id": { "type": ["string", "null"] }, "status": { "enum": ["prepared", "delivery-ready", "completed"] }, "target": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "kind": { "minLength": 1, "type": "string" } }, "required": ["kind", "id"], "type": "object" } }, "required": ["id", "action_id", "target", "provider", "status", "created_at", "delivery_id", "receipt_id", "bundle_path"], "type": "object" }, "backlinks": { "additionalProperties": false, "properties": { "concept_relations": { "$ref": "#/$defs/jsonObject" }, "concept_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "note_incoming": { "$ref": "#/$defs/stringArrayMap" }, "source_to_notes": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_workspaces": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_notes": { "$ref": "#/$defs/stringArrayMap" } }, "type": "object" }, "collectionRecord": { "additionalProperties": false, "properties": { "collection_kind": { "enum": ["catalogue", "topic-pack"] }, "domain": { "minLength": 1, "type": "string" }, "entries": { "items": { "additionalProperties": false, "properties": { "group": { "type": ["string", "null"] }, "source": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "why": { "type": ["string", "null"] } }, "required": ["source", "group", "why"], "type": "object" }, "type": "array" }, "id": { "minLength": 1, "type": "string" }, "path": { "pattern": "^sources/collections/.+\\.yaml$", "type": "string" }, "purpose": { "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "enum": ["collection", "topic-pack"] } }, "required": ["id", "type", "revision", "collection_kind", "title", "path", "thematic_group_ids", "purpose", "sources", "summary", "domain", "entries"], "type": "object" }, "compatibilityAlias": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "path": { "const": "projects/aliases.yaml" }, "target_id": { "pattern": "^(module|unit|workspace)-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "target_type": { "enum": ["module", "unit", "workspace"] }, "type": { "const": "compatibility-alias" } }, "required": ["id", "type", "target_id", "target_type", "path"], "type": "object" }, "conceptRecord": { "additionalProperties": false, "properties": { "aliases": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "deprecated": { "type": "boolean" }, "id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "concept" } }, "required": ["id", "type", "title", "path", "aliases", "deprecated"], "type": "object" }, "coordinationRecord": { "additionalProperties": false, "properties": { "id": { "const": "coordination" }, "path": { "const": "work/COORDINATION.md" }, "sections": { "additionalProperties": false, "properties": { "Commitments": { "type": "string" }, "Deferrals": { "type": "string" }, "Dependencies": { "type": "string" }, "Priorities": { "type": "string" } }, "required": ["Commitments", "Priorities", "Dependencies", "Deferrals"], "type": "object" }, "type": { "const": "coordination" } }, "required": ["id", "type", "path", "sections"], "type": "object" }, "counts": { "additionalProperties": false, "properties": { "ai_action_requests": { "minimum": 0, "type": "integer" }, "collections": { "minimum": 0, "type": "integer" }, "concepts": { "minimum": 0, "type": "integer" }, "garden_entries": { "minimum": 0, "type": "integer" }, "inbox_items": { "minimum": 0, "type": "integer" }, "modules": { "minimum": 0, "type": "integer" }, "notes": { "minimum": 0, "type": "integer" }, "notes_reviewed": { "minimum": 0, "type": "integer" }, "notes_with_evidence": { "minimum": 0, "type": "integer" }, "programs": { "minimum": 0, "type": "integer" }, "relations": { "minimum": 0, "type": "integer" }, "source_feedback_records": { "minimum": 0, "type": "integer" }, "sources": { "minimum": 0, "type": "integer" }, "sources_with_topics": { "minimum": 0, "type": "integer" }, "stages": { "minimum": 0, "type": "integer" }, "stages_complete": { "minimum": 0, "type": "integer" }, "study_maps": { "minimum": 0, "type": "integer" }, "thematic_groups": { "minimum": 0, "type": "integer" }, "topic_packs": { "minimum": 0, "type": "integer" }, "topics": { "minimum": 0, "type": "integer" }, "units": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "workspaces_active": { "minimum": 0, "type": "integer" }, "workspaces_archived": { "minimum": 0, "type": "integer" } }, "required": ["ai_action_requests", "collections", "concepts", "garden_entries", "inbox_items", "modules", "notes", "notes_reviewed", "notes_with_evidence", "programs", "relations", "source_feedback_records", "sources", "sources_with_topics", "stages", "stages_complete", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "units_needing_map", "workspaces_active", "workspaces_archived"], "type": "object" }, "deadlineModule": { "additionalProperties": false, "properties": { "action": { "type": ["string", "null"] }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "termins": { "items": { "maximum": 3, "minimum": 1, "type": "integer" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" } }, "required": ["module_id", "title", "action", "termins"], "type": "object" }, "domainCatalogEntry": { "additionalProperties": false, "properties": { "id": { "minLength": 1, "type": "string" }, "label": { "minLength": 1, "type": "string" }, "order": { "minimum": 1, "type": "integer" } }, "required": ["id", "label", "order"], "type": "object" }, "flatStage": { "allOf": [{ "$ref": "#/$defs/projectedStage" }, { "required": ["study_map_id", "unit_id", "module_id"] }] }, "gardenEntry": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "last_ai_request_id": { "type": ["string", "null"] }, "path": { "type": "string" }, "revision": { "type": "string" }, "state": { "type": "string" }, "tags": { "items": { "type": "string" }, "type": "array" }, "title": { "type": "string" }, "transcription_path": { "type": ["string", "null"] }, "type": { "const": "garden-note" } }, "required": ["id", "last_ai_request_id", "path", "revision", "state", "tags", "title", "transcription_path", "type"], "type": "object" }, "generated": { "additionalProperties": false, "properties": { "closure_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "contract_version": { "const": 20 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["closure_sha256", "contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" }, "indexes": { "additionalProperties": false, "properties": { "component_to_units": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "concept_to_units": { "$ref": "#/$defs/stringArrayMap" }, "module_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "module_to_units": { "$ref": "#/$defs/stringArrayMap" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "source_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "source_to_units": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_concepts": { "$ref": "#/$defs/stringArrayMap" }, "unit_to_material_synthesis": { "additionalProperties": { "pattern": "^material-synthesis-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "object" }, "unit_to_study_map": { "$ref": "#/$defs/stringMap" }, "workspace_to_modules": { "$ref": "#/$defs/stringArrayMap" }, "workspace_to_units": { "$ref": "#/$defs/stringArrayMap" } }, "required": ["component_to_units", "concept_to_modules", "concept_to_units", "module_to_concepts", "module_to_units", "project_aliases", "source_to_modules", "source_to_units", "unit_to_concepts", "unit_to_material_synthesis", "unit_to_study_map", "workspace_to_modules", "workspace_to_units"], "type": "object" }, "integerMap": { "additionalProperties": { "minimum": 0, "type": "integer" }, "type": "object" }, "jsonObject": { "additionalProperties": { "$ref": "#/$defs/jsonValue" }, "propertyNames": { "type": "string" }, "type": "object" }, "jsonValue": { "oneOf": [{ "type": "null" }, { "type": "boolean" }, { "type": "number" }, { "type": "string" }, { "items": { "$ref": "#/$defs/jsonValue" }, "type": "array" }, { "$ref": "#/$defs/jsonObject" }] }, "knowledgeNode": { "additionalProperties": false, "properties": { "builds_on": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "concept_ids": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "summary": { "minLength": 1, "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "summary"], "type": "object" }, "knowledgeNodeEvidence": { "additionalProperties": false, "description": "A knowledge-map node's reviewed `concept_ids`. Retains unit and node identity.", "properties": { "kind": { "const": "knowledge-node" }, "node_id": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "node_id"], "type": "object" }, "moduleConceptEdge": { "additionalProperties": false, "properties": { "concept_id": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "evidence": { "description": "Why this cell is filled. At least one item: an edge with no evidence is an inferred edge, and this projection does not publish those.", "items": { "oneOf": [{ "$ref": "#/$defs/stageConceptEvidence" }, { "$ref": "#/$defs/knowledgeNodeEvidence" }] }, "minItems": 1, "type": "array" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["module_id", "concept_id", "evidence"], "type": "object" }, "moduleRecord": { "additionalProperties": false, "properties": { "administrative_status": { "enum": ["planned", "enrolled", "awaiting-grade", "completed", "dropped", "archived", null], "type": ["string", "null"] }, "area_id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "attempts": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/attempts" }, "code": { "type": ["string", "null"] }, "components": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/components" }, "credits": { "minimum": 0, "type": ["number", "null"] }, "examination": { "oneOf": [{ "type": "null" }, { "$ref": "https://learningos.local/schema/module.schema.json#/properties/examination" }] }, "grade": { "maximum": 5, "minimum": 1, "type": ["number", "null"] }, "id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "institution": { "type": ["string", "null"] }, "is_actionable": { "type": "boolean" }, "kind": { "enum": ["academic", "skill", "project", "foundation"] }, "operational_state": { "enum": ["none", "complete", "active", "paused"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester": { "pattern": "^(sose|wise)-[0-9]{4}$", "type": ["string", "null"] }, "source_map": { "oneOf": [{ "const": "source-map.yaml" }, { "type": "null" }] }, "status": { "enum": ["planned", "enrolled", "active", "paused", "awaiting-grade", "completed", "dropped", "archived"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "module" }, "unit_order": { "$ref": "https://learningos.local/schema/module.schema.json#/properties/unit_order" } }, "required": ["id", "type", "title", "revision", "path", "kind", "area_id", "thematic_group_ids", "status", "administrative_status", "operational_state", "is_actionable", "institution", "code", "credits", "semester", "components", "examination", "attempts", "grade", "unit_order", "source_map"], "type": "object" }, "moduleSourceMap": { "additionalProperties": false, "properties": { "id": { "pattern": "^source-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "path": { "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "additionalProperties": false, "properties": { "priority": { "minimum": 0, "type": "integer" }, "role": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_routes": { "items": { "oneOf": [{ "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, { "$ref": "#/$defs/projectedRoute" }] }, "type": "array" }, "when": { "type": "string" }, "why": { "minLength": 1, "type": "string" } }, "required": ["source_id", "role", "why", "priority", "unit_routes"], "type": "object" }, "type": "array" }, "type": { "const": "module-source-map" } }, "required": ["id", "type", "module_id", "sources", "revision", "path"], "type": "object" }, "noteRecord": { "additionalProperties": false, "properties": { "atlas_question": { "additionalProperties": false, "properties": { "answer_notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["open", "resolved"] }, "target": { "oneOf": [{ "additionalProperties": false, "properties": { "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "maxItems": 2, "minItems": 1, "type": "array", "uniqueItems": true } }, "required": ["concepts"], "type": "object" }, { "additionalProperties": false, "properties": { "from": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "to": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": { "enum": ["requires", "builds-on", "derives", "generalizes", "contrasts-with", "equivalent-to", "applies-in", "motivates"] } }, "required": ["from", "type", "to"], "type": "object" }] } }, "required": ["state", "target"], "type": ["object", "null"] }, "attachments": { "items": { "type": "string" }, "type": "array" }, "authorship": { "enum": ["user", "mixed", "external", "operator-drafted", null], "type": ["string", "null"] }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "contexts": { "items": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "domain": { "type": "string" }, "domain_bucket": { "minLength": 1, "type": "string" }, "evidence": { "$ref": "https://learningos.local/schema/note.schema.json#/properties/evidence" }, "id": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "material_analysis": { "additionalProperties": false, "allOf": [{ "else": { "not": { "required": ["source_id"] } }, "if": { "properties": { "resolution": { "const": "resolved" } } }, "then": { "required": ["source_id"] } }], "properties": { "anchors": { "items": { "additionalProperties": false, "properties": { "locator": { "minLength": 1, "type": "string" }, "note": { "type": "string" }, "purpose": { "minLength": 1, "type": "string" }, "topic": { "minLength": 1, "type": "string" } }, "required": ["topic", "purpose", "locator"], "type": "object" }, "type": "array" }, "built": { "format": "date", "type": "string" }, "frozen_input_bytes": { "minimum": 1, "type": "integer" }, "frozen_input_sha256": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "inspected_range": { "additionalProperties": false, "properties": { "end": { "minimum": 1, "type": "integer" }, "start": { "minimum": 1, "type": "integer" } }, "required": ["start", "end"], "type": "object" }, "live_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "material": { "minLength": 1, "type": "string" }, "model": { "type": "string" }, "recorded_source_digest": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "resolution": { "enum": ["resolved", "unresolved", "unavailable", "stale"] }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["resolution", "material", "recorded_source_digest", "inspected_range", "frozen_input_sha256", "frozen_input_bytes"], "type": ["object", "null"] }, "path": { "minLength": 1, "type": "string" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "role": { "enum": ["synthesis", "reference", "derivation", "exercise-bank", "mock-exam", "implementation", "question", "crosswalk"] }, "semantic_review": { "enum": ["unreviewed", "user-reviewed", null], "type": ["string", "null"] }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "state": { "enum": ["rough", "evolving", "mature", "deprecated", null], "type": ["string", "null"] }, "summary": { "type": "string" }, "supersedes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "transcription": { "enum": ["none", "manual", "ai-assisted", null], "type": ["string", "null"] }, "type": { "const": "note" } }, "required": ["id", "type", "title", "path", "domain", "domain_bucket", "summary", "role", "state", "authorship", "concepts", "sources", "contexts", "attachments", "evidence", "supersedes", "reviewed", "transcription", "semantic_review", "atlas_question", "material_analysis"], "type": "object" }, "programRecord": { "additionalProperties": false, "properties": { "boundary_action": { "type": "string" }, "default": { "type": "boolean" }, "description": { "type": "string" }, "id": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "enum": ["academic", "skills", "projects"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "semester_bound": { "type": "boolean" }, "semesters": { "items": { "$ref": "#/$defs/programSemester" }, "type": "array" }, "status": { "enum": ["active", "metadata-only", "archived"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "program" } }, "required": ["id", "type", "title", "kind", "status", "default", "semester_bound", "revision", "path"], "type": "object" }, "programSemester": { "additionalProperties": false, "properties": { "id": { "pattern": "^semester-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "order": { "minimum": 0, "type": "integer" }, "status": { "enum": ["current", "previous", "future", "archived"] }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "status", "order"], "type": "object" }, "progress": { "additionalProperties": { "additionalProperties": false, "properties": { "stages_complete": { "minimum": 0, "type": "integer" }, "stages_total": { "minimum": 0, "type": "integer" }, "units_complete": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "units_total": { "minimum": 0, "type": "integer" } }, "required": ["stages_complete", "stages_total", "units_complete", "units_needing_map", "units_total"], "type": "object" }, "type": "object" }, "projectedRecord": { "oneOf": [{ "$ref": "#/$defs/noteRecord" }, { "$ref": "#/$defs/conceptRecord" }, { "$ref": "#/$defs/sourceRecord" }, { "$ref": "#/$defs/compatibilityAlias" }, { "$ref": "#/$defs/moduleRecord" }, { "$ref": "#/$defs/collectionRecord" }, { "$ref": "#/$defs/workspaceRecord" }, { "$ref": "#/$defs/programRecord" }, { "$ref": "#/$defs/projectedUnit" }, { "$ref": "#/$defs/studyMap" }, { "$ref": "#/$defs/moduleSourceMap" }, { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, { "$ref": "#/$defs/coordinationRecord" }] }, "projectedRoute": { "additionalProperties": false, "properties": { "angle": { "minLength": 1, "type": "string" }, "angle_detail": { "minLength": 1, "type": "string" }, "covers": { "items": { "pattern": "^knowledge-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "minItems": 1, "type": "array", "uniqueItems": true }, "depth": { "minLength": 1, "type": "string" }, "exposes_solutions_for": { "description": "Route ids whose activities this material answers \u2014 a verifiable claim about content, that opening this hands over the worked solutions to those tasks, never a judgment of quality. The session compiler refuses to put such a route in the same proposal as an evidence step it answers: explaining with the answer key and then asking for unaided transfer on that same task measures nothing (audit workbench/audits/synthetic-learner-2026-09-12, F03).", "items": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "format": { "minLength": 1, "type": "string" }, "id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "requires_assets": { "description": "Files the activity itself needs before it can be done \u2014 a dataset it analyses, a code template it fills in. Distinct from the material being reachable: `_resource_available` answers 'can he open the worksheet', and this answers 'can he do what the worksheet asks'. Blatt 4 Aufgabe 3(b) needs International_Education_Costs.csv and aufgabe3.py from Moodle, neither registered here, and the session still reported the route ready (audit workbench/audits/synthetic-learner-2026-09-12, F06). An entry with no `material_uri` is by definition unregistered; the session keeps the route and names the parts that cannot be attempted, rather than dropping the runnable work or inventing a substitute dataset.", "items": { "additionalProperties": false, "properties": { "material_uri": { "pattern": "^material://", "type": "string" }, "name": { "minLength": 1, "type": "string" }, "needed_for": { "description": "Which part of the activity, in the sheet's own numbering.", "minLength": 1, "type": "string" }, "obtain_from": { "description": "Where the exact file comes from. Never a substitute.", "minLength": 1, "type": "string" } }, "required": ["name"], "type": "object" }, "minItems": 1, "type": "array" }, "scope": { "minLength": 1, "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "title": { "minLength": 1, "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["id", "unit_id", "source_id", "title", "format", "angle", "covers", "depth", "scope"], "type": "object" }, "projectedStage": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "completed": { "type": "string" }, "concepts": { "items": { "type": "string" }, "type": "array" }, "detour_id": { "type": "string" }, "done_when": { "items": { "type": "string" }, "type": "array" }, "estimate_minutes": { "minimum": 1, "type": "integer" }, "exam_critical": { "type": "boolean" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "number": { "minimum": 1, "type": "integer" }, "objective": { "type": "string" }, "resources": { "items": { "$ref": "#/$defs/resource" }, "type": "array" }, "scope_triage": { "type": "string" }, "source_feedback": { "items": { "$ref": "#/$defs/sourceFeedback" }, "type": "array" }, "status": { "type": "string" }, "study_map_id": { "type": "string" }, "title": { "type": "string" }, "unit_id": { "type": "string" }, "working_note": { "type": "string" } }, "required": ["id", "title", "status", "objective", "done_when", "resources", "working_note", "attachments", "source_feedback", "scope_triage", "notes_text", "notes_updated"], "type": "object" }, "projectedUnit": { "additionalProperties": false, "properties": { "artifacts": { "$ref": "https://learningos.local/schema/unit.schema.json#/properties/artifacts" }, "child_unit_ids": { "items": { "type": "string" }, "type": "array" }, "component_id": { "type": "string" }, "current_study_map": { "type": "string" }, "id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "type": "string" }, "knowledge_map": { "additionalProperties": false, "properties": { "nodes": { "items": { "$ref": "#/$defs/knowledgeNode" }, "type": "array" }, "summary": { "type": "string" } }, "required": ["summary", "nodes"], "type": "object" }, "module_id": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "needs_study_map": { "type": "boolean" }, "note_sections": { "items": { "$ref": "#/$defs/unitNoteSection" }, "type": "array" }, "notes_text": { "type": "string" }, "notes_updated": { "type": ["string", "null"] }, "order": { "minimum": 0, "type": "integer" }, "parent_unit_id": { "type": "string" }, "path": { "type": "string" }, "related_module_ids": { "items": { "type": "string" }, "type": "array" }, "revision": { "minimum": 0, "type": "integer" }, "scope": { "type": "string" }, "scope_sources": { "items": { "additionalProperties": false, "properties": { "authority": { "type": "string" }, "locator": { "type": "string" }, "source_id": { "type": "string" } }, "required": ["source_id", "authority"], "type": "object" }, "type": "array" }, "source_selections": { "items": { "additionalProperties": false, "properties": { "locator": { "type": "string" }, "purpose": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "type": "string" }, "stage_ids": { "items": { "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["source_id", "locator", "purpose"], "type": "object" }, "type": "array" }, "status": { "type": "string" }, "title": { "type": "string" }, "type": { "const": "unit" }, "working_note": { "type": "string" }, "workspace_ids": { "items": { "type": "string" }, "type": "array" } }, "required": ["id", "type", "module_id", "kind", "title", "order", "scope", "status", "artifacts", "workspace_ids", "source_selections", "scope_sources", "revision", "path", "needs_study_map", "notes_text", "note_sections", "notes_updated"], "type": "object" }, "relation": { "additionalProperties": false, "properties": { "context": { "type": ["string", "null"] }, "from": { "type": ["string", "null"] }, "source": { "type": ["string", "null"] }, "to": { "type": ["string", "null"] }, "type": { "type": ["string", "null"] } }, "required": ["from", "type", "to", "context", "source"], "type": "object" }, "resource": { "additionalProperties": false, "properties": { "angle": { "type": "string" }, "angle_detail": { "type": "string" }, "id": { "type": "string" }, "kind": { "type": "string" }, "label": { "type": "string" }, "locator": { "type": "string" }, "material_exists": { "type": "boolean" }, "material_path": { "type": "string" }, "material_uri": { "type": "string" }, "route_id": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "scope_triage": { "type": "string" }, "source_id": { "type": "string" }, "url": { "format": "uri", "type": "string" }, "vault_path": { "type": "string" } }, "required": ["kind", "label"], "type": "object" }, "resumePointer": { "oneOf": [{ "maxProperties": 0, "type": "object" }, { "additionalProperties": false, "properties": { "module_id": { "type": "string" }, "stage_id": { "type": "string" }, "study_map_id": { "type": "string" }, "type": { "const": "resume-pointer" }, "unit_id": { "type": "string" }, "updated": { "type": "string" } }, "required": ["type", "module_id", "unit_id", "study_map_id", "stage_id", "updated"], "type": "object" }] }, "reviewItem": { "additionalProperties": false, "properties": { "category": { "type": "string" }, "context": { "type": "string" }, "id": { "type": "string" }, "reason": { "type": "string" }, "target": { "$ref": "#/$defs/jsonObject" }, "title": { "type": "string" } }, "required": ["category", "context", "id", "reason", "target", "title"], "type": "object" }, "routeId": { "pattern": "^route-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "semester": { "additionalProperties": false, "properties": { "id": { "type": "string" }, "order": { "type": "integer" }, "program_id": { "type": "string" }, "status": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "order", "program_id", "status", "title"], "type": "object" }, "sourceEvaluation": { "additionalProperties": false, "properties": { "audience": { "items": { "type": "string" }, "type": "array" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "level": { "enum": ["introductory", "intermediate", "advanced", "reference", null], "type": ["string", "null"] }, "prerequisites": { "items": { "type": "string" }, "type": "array" }, "reviewed": { "format": "date", "type": ["string", "null"] }, "roles": { "items": { "type": "string" }, "type": "array" }, "strengths": { "items": { "type": "string" }, "type": "array" }, "useful_sections": { "items": { "additionalProperties": false, "properties": { "note": { "type": "string" }, "section": { "type": "string" } }, "required": ["section", "note"], "type": "object" }, "type": "array" }, "weaknesses": { "items": { "type": "string" }, "type": "array" } }, "required": ["roles", "level", "audience", "prerequisites", "strengths", "weaknesses", "reviewed", "concepts", "useful_sections"], "type": "object" }, "sourceExamination": { "additionalProperties": false, "properties": { "approved_analysis_count": { "minimum": 0, "type": "integer" }, "evaluated": { "type": "boolean" }, "metadata_placed": { "type": "boolean" } }, "required": ["evaluated", "approved_analysis_count", "metadata_placed"], "type": "object" }, "sourceFeedback": { "additionalProperties": false, "properties": { "feedback": { "enum": ["helpful", "too-advanced", "wrong-perspective", "useful-for-derivation", "useful-for-review", "skipped"] }, "note": { "type": "string" }, "recorded": { "format": "date", "type": "string" }, "resource_id": { "pattern": "^resource-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "source_id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["source_id", "feedback", "recorded"], "type": "object" }, "sourceRecord": { "additionalProperties": false, "properties": { "authors": { "items": { "type": "string" }, "type": "array" }, "discovery": { "anyOf": [{ "$ref": "https://learningos.local/schema/sources.schema.json#/properties/sources/items/properties/discovery" }, { "type": "null" }] }, "evaluations": { "items": { "$ref": "#/$defs/sourceEvaluation" }, "type": "array" }, "examination": { "$ref": "#/$defs/sourceExamination" }, "id": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "identifiers": { "additionalProperties": { "type": "string" }, "type": "object" }, "material": { "pattern": "^material://.+", "type": ["string", "null"] }, "material_exists": { "type": "boolean" }, "material_path": { "type": ["string", "null"] }, "organization": { "type": ["string", "null"] }, "path": { "minLength": 1, "type": "string" }, "revision": { "minimum": 0, "type": "integer" }, "roles": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "source_type": { "enum": ["book", "paper", "lecture", "course", "video", "website", "documentation", "software", "conversation", "other"] }, "thematic_group_ids": { "items": { "pattern": "^thematic-group-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "title": { "minLength": 1, "type": "string" }, "topics": { "items": { "pattern": "^topic-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "type": { "const": "source" }, "url": { "format": "uri", "type": ["string", "null"] }, "year": { "maximum": 2100, "minimum": 1800, "type": ["integer", "null"] } }, "required": ["id", "type", "title", "revision", "path", "source_type", "thematic_group_ids", "topics", "url", "material", "material_path", "material_exists", "authors", "organization", "year", "identifiers", "roles", "evaluations", "discovery", "examination"], "type": "object" }, "stageAttachment": { "additionalProperties": false, "properties": { "label": { "minLength": 1, "type": "string" }, "path": { "minLength": 1, "type": "string" } }, "required": ["path", "label"], "type": "object" }, "stageConceptEvidence": { "additionalProperties": false, "description": "A stage's explicit `concepts` tag. Retains unit, study-map and stage identity, so a filled cell drills into the exact stage.", "properties": { "kind": { "const": "stage-concept" }, "stage_id": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "study_map_id": { "pattern": "^study-map-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "unit_id": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" } }, "required": ["kind", "unit_id", "study_map_id", "stage_id"], "type": "object" }, "stringArrayMap": { "additionalProperties": { "items": { "type": "string" }, "type": "array", "uniqueItems": true }, "type": "object" }, "stringMap": { "additionalProperties": { "type": "string" }, "type": "object" }, "studyMap": { "additionalProperties": false, "properties": { "current_stage": { "type": "string" }, "detours": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/detours" }, "id": { "type": "string" }, "is_study_candidate": { "type": "boolean" }, "module_id": { "type": "string" }, "path": { "type": "string" }, "plan_template_version": { "minimum": 1, "type": "integer" }, "revision": { "minimum": 0, "type": "integer" }, "shelving": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/shelving" }, "source_plan": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/source_plan" }, "stages": { "items": { "$ref": "#/$defs/projectedStage" }, "type": "array" }, "status": { "type": "string" }, "type": { "const": "study-map" }, "unit_id": { "type": "string" } }, "required": ["id", "type", "unit_id", "module_id", "status", "is_study_candidate", "current_stage", "source_plan", "stages", "shelving", "revision", "path"], "type": "object" }, "thematicGroup": { "additionalProperties": false, "properties": { "description": { "type": "string" }, "id": { "type": "string" }, "order": { "type": "integer" }, "title": { "type": "string" } }, "required": ["id", "title", "description", "order"], "type": "object" }, "topic": { "additionalProperties": false, "properties": { "domain": { "type": "string" }, "id": { "type": "string" }, "title": { "type": "string" } }, "required": ["id", "title", "domain"], "type": "object" }, "unitMaterialSynthesisProjection": { "allOf": [{ "$ref": "https://learningos.local/schema/unit-material-synthesis.schema.json#/$defs/canonicalRecord" }, { "properties": { "completeness": { "additionalProperties": false, "properties": { "assessed_route_count": { "minimum": 0, "type": "integer" }, "complete": { "type": "boolean" }, "current_route_count": { "minimum": 0, "type": "integer" }, "deep_reviewed_count": { "minimum": 0, "type": "integer" }, "duplicate_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "missing_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "orphaned_route_ids": { "items": { "$ref": "#/$defs/routeId" }, "type": "array", "uniqueItems": true }, "screened_count": { "minimum": 0, "type": "integer" }, "unavailable_count": { "minimum": 0, "type": "integer" }, "unevaluated_count": { "minimum": 0, "type": "integer" } }, "required": ["complete", "current_route_count", "assessed_route_count", "deep_reviewed_count", "screened_count", "unevaluated_count", "unavailable_count", "missing_route_ids", "orphaned_route_ids", "duplicate_route_ids"], "type": "object" }, "freshness": { "additionalProperties": false, "properties": { "reasons": { "items": { "enum": ["source_map_revision", "source_map_checksum", "route_set_checksum", "material_checksums", "policy", "current-basis-unavailable", "analysis-refs-stale"] }, "type": "array", "uniqueItems": true }, "status": { "enum": ["current", "stale"] } }, "required": ["status", "reasons"], "type": "object" } }, "required": ["freshness", "completeness"], "type": "object" }], "unevaluatedProperties": false }, "unitNoteSection": { "additionalProperties": false, "properties": { "attachments": { "items": { "$ref": "#/$defs/stageAttachment" }, "type": "array" }, "recorded_at": { "type": ["string", "null"] }, "stage_ids": { "items": { "type": "string" }, "type": "array" }, "summary": { "type": "string" }, "text": { "type": "string" }, "title": { "minLength": 1, "type": "string" } }, "required": ["recorded_at", "title", "stage_ids", "attachments", "text", "summary"], "type": "object" }, "workspaceRecord": { "additionalProperties": false, "properties": { "archived": { "type": "boolean" }, "concepts": { "items": { "pattern": "^concept-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "deadline": { "format": "date", "type": ["string", "null"] }, "id": { "pattern": "^workspace-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "module_ids": { "items": { "pattern": "^module-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "next_action": { "type": "string" }, "notes": { "items": { "pattern": "^note-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "objective": { "type": "string" }, "path": { "minLength": 1, "type": "string" }, "program_ids": { "items": { "pattern": "^program-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "project_id": { "pattern": "^project-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": ["string", "null"] }, "revision": { "minimum": 0, "type": "integer" }, "sources": { "items": { "pattern": "^source-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true }, "standing": { "type": "boolean" }, "status": { "enum": ["active", "blocked", "complete"] }, "title": { "minLength": 1, "type": "string" }, "type": { "const": "workspace" }, "unit_ids": { "items": { "pattern": "^unit-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "type": "array", "uniqueItems": true } }, "required": ["id", "type", "title", "revision", "path", "status", "standing", "archived", "deadline", "objective", "next_action", "concepts", "notes", "sources", "program_ids", "module_ids", "unit_ids", "project_id"], "type": "object" } }, "$id": "https://learningos.local/contracts/manifest-v20.schema.json", "$schema": "https://json-schema.org/draft/2020-12/schema", "additionalProperties": false, "properties": { "_generated": { "$ref": "#/$defs/generated" }, "academic_deadlines": { "items": { "$ref": "#/$defs/academicDeadline" }, "type": "array" }, "ai_actions": { "$ref": "#/$defs/aiActions" }, "artifact_revisions": { "$ref": "#/$defs/integerMap" }, "backlinks": { "$ref": "#/$defs/backlinks" }, "counts": { "$ref": "#/$defs/counts" }, "domains": { "description": "The ordered domain catalog (D5): the known atlas domains in fixed order, then observed future buckets sorted. Covers every domain id the published notes (domain_bucket) and shelves (domain) reference; 'not yet grouped' is a UI presentation concept and never appears here.", "items": { "$ref": "#/$defs/domainCatalogEntry" }, "type": "array" }, "garden_entries": { "items": { "$ref": "#/$defs/gardenEntry" }, "type": "array" }, "indexes": { "$ref": "#/$defs/indexes" }, "module_concept_edges": { "description": "The Module x Concept crossing. One row per (module, concept) pair for which at least one EXPLICIT authored tag exists - a stage's `concepts` tag or a knowledge-map node's reviewed `concept_ids`. Never inferred from titles, prose, notes, sources, or similarity; absence means not mapped, never that no relationship exists. Ordered by (module_id, concept_id).", "items": { "$ref": "#/$defs/moduleConceptEdge" }, "type": "array" }, "module_source_maps": { "items": { "$ref": "#/$defs/moduleSourceMap" }, "type": "array" }, "modules": { "items": { "$ref": "#/$defs/moduleRecord" }, "type": "array" }, "programs": { "items": { "$ref": "#/$defs/programRecord" }, "type": "array" }, "progress": { "$ref": "#/$defs/progress" }, "project_aliases": { "$ref": "#/$defs/stringMap" }, "records": { "items": { "$ref": "#/$defs/projectedRecord" }, "type": "array" }, "relations": { "items": { "$ref": "#/$defs/relation" }, "type": "array" }, "resume_pointer": { "$ref": "#/$defs/resumePointer" }, "review_items": { "items": { "$ref": "#/$defs/reviewItem" }, "type": "array" }, "semesters": { "items": { "$ref": "#/$defs/semester" }, "type": "array" }, "stages": { "items": { "$ref": "#/$defs/flatStage" }, "type": "array" }, "study_maps": { "items": { "$ref": "#/$defs/studyMap" }, "type": "array" }, "thematic_groups": { "items": { "$ref": "#/$defs/thematicGroup" }, "type": "array" }, "topic_packs": { "items": { "$ref": "#/$defs/collectionRecord" }, "type": "array" }, "topics": { "items": { "$ref": "#/$defs/topic" }, "type": "array" }, "unit_material_syntheses": { "items": { "$ref": "#/$defs/unitMaterialSynthesisProjection" }, "type": "array" }, "units": { "items": { "$ref": "#/$defs/projectedUnit" }, "type": "array" } }, "required": ["_generated", "academic_deadlines", "ai_actions", "artifact_revisions", "backlinks", "counts", "domains", "garden_entries", "indexes", "module_concept_edges", "module_source_maps", "modules", "programs", "progress", "project_aliases", "records", "relations", "resume_pointer", "review_items", "semesters", "stages", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "unit_material_syntheses"], "title": "LearningOS atomic manifest v20", "type": "object" };
     var schema32 = { "additionalProperties": false, "properties": { "closure_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "contract_version": { "const": 20 }, "generated_at": { "type": "string" }, "generator": { "minLength": 1, "type": "string" }, "schema_sha256": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "snapshot_id": { "pattern": "^sha256:[0-9a-f]{64}$", "type": "string" }, "source_dirty": { "type": "boolean" }, "source_fingerprint": { "pattern": "^[0-9a-f]{64}$", "type": "string" }, "source_revision": { "type": ["string", "null"] }, "warning": { "type": "string" } }, "required": ["closure_sha256", "contract_version", "generated_at", "generator", "schema_sha256", "snapshot_id", "source_dirty", "source_fingerprint", "source_revision", "warning"], "type": "object" };
     var schema51 = { "additionalProperties": false, "properties": { "ai_action_requests": { "minimum": 0, "type": "integer" }, "collections": { "minimum": 0, "type": "integer" }, "concepts": { "minimum": 0, "type": "integer" }, "garden_entries": { "minimum": 0, "type": "integer" }, "inbox_items": { "minimum": 0, "type": "integer" }, "modules": { "minimum": 0, "type": "integer" }, "notes": { "minimum": 0, "type": "integer" }, "notes_reviewed": { "minimum": 0, "type": "integer" }, "notes_with_evidence": { "minimum": 0, "type": "integer" }, "programs": { "minimum": 0, "type": "integer" }, "relations": { "minimum": 0, "type": "integer" }, "source_feedback_records": { "minimum": 0, "type": "integer" }, "sources": { "minimum": 0, "type": "integer" }, "sources_with_topics": { "minimum": 0, "type": "integer" }, "stages": { "minimum": 0, "type": "integer" }, "stages_complete": { "minimum": 0, "type": "integer" }, "study_maps": { "minimum": 0, "type": "integer" }, "thematic_groups": { "minimum": 0, "type": "integer" }, "topic_packs": { "minimum": 0, "type": "integer" }, "topics": { "minimum": 0, "type": "integer" }, "units": { "minimum": 0, "type": "integer" }, "units_needing_map": { "minimum": 0, "type": "integer" }, "workspaces_active": { "minimum": 0, "type": "integer" }, "workspaces_archived": { "minimum": 0, "type": "integer" } }, "required": ["ai_action_requests", "collections", "concepts", "garden_entries", "inbox_items", "modules", "notes", "notes_reviewed", "notes_with_evidence", "programs", "relations", "source_feedback_records", "sources", "sources_with_topics", "stages", "stages_complete", "study_maps", "thematic_groups", "topic_packs", "topics", "units", "units_needing_map", "workspaces_active", "workspaces_archived"], "type": "object" };
     var schema53 = { "additionalProperties": false, "properties": { "id": { "type": "string" }, "last_ai_request_id": { "type": ["string", "null"] }, "path": { "type": "string" }, "revision": { "type": "string" }, "state": { "type": "string" }, "tags": { "items": { "type": "string" }, "type": "array" }, "title": { "type": "string" }, "transcription_path": { "type": ["string", "null"] }, "type": { "const": "garden-note" } }, "required": ["id", "last_ai_request_id", "path", "revision", "state", "tags", "title", "transcription_path", "type"], "type": "object" };
@@ -10315,7 +10315,7 @@ var require_manifest_validator = __commonJS({
       return errors === 0;
     }
     validate51.evaluated = { "props": true, "dynamicProps": false, "dynamicItems": false };
-    var schema101 = { "additionalProperties": false, "properties": { "current_stage": { "type": "string" }, "detours": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/detours" }, "id": { "type": "string" }, "module_id": { "type": "string" }, "path": { "type": "string" }, "plan_template_version": { "minimum": 1, "type": "integer" }, "revision": { "minimum": 0, "type": "integer" }, "shelving": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/shelving" }, "source_plan": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/source_plan" }, "stages": { "items": { "$ref": "#/$defs/projectedStage" }, "type": "array" }, "status": { "type": "string" }, "type": { "const": "study-map" }, "unit_id": { "type": "string" } }, "required": ["id", "type", "unit_id", "module_id", "status", "current_stage", "source_plan", "stages", "shelving", "revision", "path"], "type": "object" };
+    var schema101 = { "additionalProperties": false, "properties": { "current_stage": { "type": "string" }, "detours": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/detours" }, "id": { "type": "string" }, "is_study_candidate": { "type": "boolean" }, "module_id": { "type": "string" }, "path": { "type": "string" }, "plan_template_version": { "minimum": 1, "type": "integer" }, "revision": { "minimum": 0, "type": "integer" }, "shelving": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/shelving" }, "source_plan": { "$ref": "https://learningos.local/schema/study-map.schema.json#/properties/source_plan" }, "stages": { "items": { "$ref": "#/$defs/projectedStage" }, "type": "array" }, "status": { "type": "string" }, "type": { "const": "study-map" }, "unit_id": { "type": "string" } }, "required": ["id", "type", "unit_id", "module_id", "status", "is_study_candidate", "current_stage", "source_plan", "stages", "shelving", "revision", "path"], "type": "object" };
     var schema120 = { "items": { "additionalProperties": false, "properties": { "classification": { "enum": ["required-now", "helpful-now", "deferred", "reference-only"] }, "id": { "pattern": "^detour-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "resolution": { "type": "string" }, "return_to_stage": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "spawned_by_stage": { "pattern": "^stage-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "status": { "enum": ["open", "resolved", "deferred"] }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "title", "spawned_by_stage", "classification", "status", "return_to_stage"], "type": "object" }, "type": "array" };
     var schema121 = { "additionalProperties": false, "properties": { "items": { "items": { "additionalProperties": false, "properties": { "content": { "type": "string" }, "destination": { "minLength": 1, "type": "string" }, "diff": { "type": "string" }, "id": { "pattern": "^proposal-[a-z0-9]+(?:-[a-z0-9]+)*$", "type": "string" }, "kind": { "enum": ["durable-note", "garden", "concept-relation", "archive-map"] }, "metadata": { "type": "object" }, "rationale": { "minLength": 1, "type": "string" }, "selected": { "type": "boolean" }, "title": { "minLength": 1, "type": "string" } }, "required": ["id", "kind", "title", "destination", "rationale"], "type": "object" }, "type": "array" }, "proposal_path": { "type": "string" }, "state": { "enum": ["none", "draft", "proposed", "approved", "applied"] }, "summary": { "type": "string" } }, "required": ["state"], "type": "object" };
     var schema122 = { "additionalProperties": false, "properties": { "path": { "minLength": 1, "type": "string" }, "provenance": { "enum": ["migrated-mini-plan", "learner", "ai-proposed", "operator", "durable-note"] } }, "required": ["path", "provenance"], "type": "object" };
@@ -11099,7 +11099,7 @@ var require_manifest_validator = __commonJS({
       if (errors === 0) {
         if (data && typeof data == "object" && !Array.isArray(data)) {
           let missing0;
-          if (data.id === void 0 && (missing0 = "id") || data.type === void 0 && (missing0 = "type") || data.unit_id === void 0 && (missing0 = "unit_id") || data.module_id === void 0 && (missing0 = "module_id") || data.status === void 0 && (missing0 = "status") || data.current_stage === void 0 && (missing0 = "current_stage") || data.source_plan === void 0 && (missing0 = "source_plan") || data.stages === void 0 && (missing0 = "stages") || data.shelving === void 0 && (missing0 = "shelving") || data.revision === void 0 && (missing0 = "revision") || data.path === void 0 && (missing0 = "path")) {
+          if (data.id === void 0 && (missing0 = "id") || data.type === void 0 && (missing0 = "type") || data.unit_id === void 0 && (missing0 = "unit_id") || data.module_id === void 0 && (missing0 = "module_id") || data.status === void 0 && (missing0 = "status") || data.is_study_candidate === void 0 && (missing0 = "is_study_candidate") || data.current_stage === void 0 && (missing0 = "current_stage") || data.source_plan === void 0 && (missing0 = "source_plan") || data.stages === void 0 && (missing0 = "stages") || data.shelving === void 0 && (missing0 = "shelving") || data.revision === void 0 && (missing0 = "revision") || data.path === void 0 && (missing0 = "path")) {
             validate56.errors = [{ instancePath, schemaPath: "#/required", keyword: "required", params: { missingProperty: missing0 }, message: "must have required property '" + missing0 + "'" }];
             return false;
           } else {
@@ -11299,10 +11299,10 @@ var require_manifest_validator = __commonJS({
                     var valid0 = true;
                   }
                   if (valid0) {
-                    if (data.module_id !== void 0) {
+                    if (data.is_study_candidate !== void 0) {
                       const _errs24 = errors;
-                      if (typeof data.module_id !== "string") {
-                        validate56.errors = [{ instancePath: instancePath + "/module_id", schemaPath: "#/properties/module_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                      if (typeof data.is_study_candidate !== "boolean") {
+                        validate56.errors = [{ instancePath: instancePath + "/is_study_candidate", schemaPath: "#/properties/is_study_candidate/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
                         return false;
                       }
                       var valid0 = _errs24 === errors;
@@ -11310,10 +11310,10 @@ var require_manifest_validator = __commonJS({
                       var valid0 = true;
                     }
                     if (valid0) {
-                      if (data.path !== void 0) {
+                      if (data.module_id !== void 0) {
                         const _errs26 = errors;
-                        if (typeof data.path !== "string") {
-                          validate56.errors = [{ instancePath: instancePath + "/path", schemaPath: "#/properties/path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                        if (typeof data.module_id !== "string") {
+                          validate56.errors = [{ instancePath: instancePath + "/module_id", schemaPath: "#/properties/module_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                           return false;
                         }
                         var valid0 = _errs26 === errors;
@@ -11321,37 +11321,28 @@ var require_manifest_validator = __commonJS({
                         var valid0 = true;
                       }
                       if (valid0) {
-                        if (data.plan_template_version !== void 0) {
-                          let data13 = data.plan_template_version;
+                        if (data.path !== void 0) {
                           const _errs28 = errors;
-                          if (!(typeof data13 == "number" && (!(data13 % 1) && !isNaN(data13)) && isFinite(data13))) {
-                            validate56.errors = [{ instancePath: instancePath + "/plan_template_version", schemaPath: "#/properties/plan_template_version/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
+                          if (typeof data.path !== "string") {
+                            validate56.errors = [{ instancePath: instancePath + "/path", schemaPath: "#/properties/path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                             return false;
-                          }
-                          if (errors === _errs28) {
-                            if (typeof data13 == "number" && isFinite(data13)) {
-                              if (data13 < 1 || isNaN(data13)) {
-                                validate56.errors = [{ instancePath: instancePath + "/plan_template_version", schemaPath: "#/properties/plan_template_version/minimum", keyword: "minimum", params: { comparison: ">=", limit: 1 }, message: "must be >= 1" }];
-                                return false;
-                              }
-                            }
                           }
                           var valid0 = _errs28 === errors;
                         } else {
                           var valid0 = true;
                         }
                         if (valid0) {
-                          if (data.revision !== void 0) {
-                            let data14 = data.revision;
+                          if (data.plan_template_version !== void 0) {
+                            let data14 = data.plan_template_version;
                             const _errs30 = errors;
                             if (!(typeof data14 == "number" && (!(data14 % 1) && !isNaN(data14)) && isFinite(data14))) {
-                              validate56.errors = [{ instancePath: instancePath + "/revision", schemaPath: "#/properties/revision/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
+                              validate56.errors = [{ instancePath: instancePath + "/plan_template_version", schemaPath: "#/properties/plan_template_version/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
                               return false;
                             }
                             if (errors === _errs30) {
                               if (typeof data14 == "number" && isFinite(data14)) {
-                                if (data14 < 0 || isNaN(data14)) {
-                                  validate56.errors = [{ instancePath: instancePath + "/revision", schemaPath: "#/properties/revision/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
+                                if (data14 < 1 || isNaN(data14)) {
+                                  validate56.errors = [{ instancePath: instancePath + "/plan_template_version", schemaPath: "#/properties/plan_template_version/minimum", keyword: "minimum", params: { comparison: ">=", limit: 1 }, message: "must be >= 1" }];
                                   return false;
                                 }
                               }
@@ -11361,255 +11352,19 @@ var require_manifest_validator = __commonJS({
                             var valid0 = true;
                           }
                           if (valid0) {
-                            if (data.shelving !== void 0) {
-                              let data15 = data.shelving;
+                            if (data.revision !== void 0) {
+                              let data15 = data.revision;
                               const _errs32 = errors;
-                              const _errs33 = errors;
-                              if (errors === _errs33) {
-                                if (data15 && typeof data15 == "object" && !Array.isArray(data15)) {
-                                  let missing2;
-                                  if (data15.state === void 0 && (missing2 = "state")) {
-                                    validate56.errors = [{ instancePath: instancePath + "/shelving", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/required", keyword: "required", params: { missingProperty: missing2 }, message: "must have required property '" + missing2 + "'" }];
+                              if (!(typeof data15 == "number" && (!(data15 % 1) && !isNaN(data15)) && isFinite(data15))) {
+                                validate56.errors = [{ instancePath: instancePath + "/revision", schemaPath: "#/properties/revision/type", keyword: "type", params: { type: "integer" }, message: "must be integer" }];
+                                return false;
+                              }
+                              if (errors === _errs32) {
+                                if (typeof data15 == "number" && isFinite(data15)) {
+                                  if (data15 < 0 || isNaN(data15)) {
+                                    validate56.errors = [{ instancePath: instancePath + "/revision", schemaPath: "#/properties/revision/minimum", keyword: "minimum", params: { comparison: ">=", limit: 0 }, message: "must be >= 0" }];
                                     return false;
-                                  } else {
-                                    const _errs35 = errors;
-                                    for (const key2 in data15) {
-                                      if (!(key2 === "items" || key2 === "proposal_path" || key2 === "state" || key2 === "summary")) {
-                                        validate56.errors = [{ instancePath: instancePath + "/shelving", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" }];
-                                        return false;
-                                        break;
-                                      }
-                                    }
-                                    if (_errs35 === errors) {
-                                      if (data15.items !== void 0) {
-                                        let data16 = data15.items;
-                                        const _errs36 = errors;
-                                        if (errors === _errs36) {
-                                          if (Array.isArray(data16)) {
-                                            var valid6 = true;
-                                            const len1 = data16.length;
-                                            for (let i1 = 0; i1 < len1; i1++) {
-                                              let data17 = data16[i1];
-                                              const _errs38 = errors;
-                                              if (errors === _errs38) {
-                                                if (data17 && typeof data17 == "object" && !Array.isArray(data17)) {
-                                                  let missing3;
-                                                  if (data17.id === void 0 && (missing3 = "id") || data17.kind === void 0 && (missing3 = "kind") || data17.title === void 0 && (missing3 = "title") || data17.destination === void 0 && (missing3 = "destination") || data17.rationale === void 0 && (missing3 = "rationale")) {
-                                                    validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1, schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/required", keyword: "required", params: { missingProperty: missing3 }, message: "must have required property '" + missing3 + "'" }];
-                                                    return false;
-                                                  } else {
-                                                    const _errs40 = errors;
-                                                    for (const key3 in data17) {
-                                                      if (!func1.call(schema121.properties.items.items.properties, key3)) {
-                                                        validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1, schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key3 }, message: "must NOT have additional properties" }];
-                                                        return false;
-                                                        break;
-                                                      }
-                                                    }
-                                                    if (_errs40 === errors) {
-                                                      if (data17.content !== void 0) {
-                                                        const _errs41 = errors;
-                                                        if (typeof data17.content !== "string") {
-                                                          validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/content", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/content/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                          return false;
-                                                        }
-                                                        var valid7 = _errs41 === errors;
-                                                      } else {
-                                                        var valid7 = true;
-                                                      }
-                                                      if (valid7) {
-                                                        if (data17.destination !== void 0) {
-                                                          let data19 = data17.destination;
-                                                          const _errs43 = errors;
-                                                          if (errors === _errs43) {
-                                                            if (typeof data19 === "string") {
-                                                              if (func3(data19) < 1) {
-                                                                validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/destination", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/destination/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
-                                                                return false;
-                                                              }
-                                                            } else {
-                                                              validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/destination", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/destination/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                              return false;
-                                                            }
-                                                          }
-                                                          var valid7 = _errs43 === errors;
-                                                        } else {
-                                                          var valid7 = true;
-                                                        }
-                                                        if (valid7) {
-                                                          if (data17.diff !== void 0) {
-                                                            const _errs45 = errors;
-                                                            if (typeof data17.diff !== "string") {
-                                                              validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/diff", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/diff/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                              return false;
-                                                            }
-                                                            var valid7 = _errs45 === errors;
-                                                          } else {
-                                                            var valid7 = true;
-                                                          }
-                                                          if (valid7) {
-                                                            if (data17.id !== void 0) {
-                                                              let data21 = data17.id;
-                                                              const _errs47 = errors;
-                                                              if (errors === _errs47) {
-                                                                if (typeof data21 === "string") {
-                                                                  if (!pattern210.test(data21)) {
-                                                                    validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/id", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/id/pattern", keyword: "pattern", params: { pattern: "^proposal-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^proposal-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
-                                                                    return false;
-                                                                  }
-                                                                } else {
-                                                                  validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/id", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                                  return false;
-                                                                }
-                                                              }
-                                                              var valid7 = _errs47 === errors;
-                                                            } else {
-                                                              var valid7 = true;
-                                                            }
-                                                            if (valid7) {
-                                                              if (data17.kind !== void 0) {
-                                                                let data22 = data17.kind;
-                                                                const _errs49 = errors;
-                                                                if (!(data22 === "durable-note" || data22 === "garden" || data22 === "concept-relation" || data22 === "archive-map")) {
-                                                                  validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/kind", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/kind/enum", keyword: "enum", params: { allowedValues: schema121.properties.items.items.properties.kind.enum }, message: "must be equal to one of the allowed values" }];
-                                                                  return false;
-                                                                }
-                                                                var valid7 = _errs49 === errors;
-                                                              } else {
-                                                                var valid7 = true;
-                                                              }
-                                                              if (valid7) {
-                                                                if (data17.metadata !== void 0) {
-                                                                  let data23 = data17.metadata;
-                                                                  const _errs50 = errors;
-                                                                  if (!(data23 && typeof data23 == "object" && !Array.isArray(data23))) {
-                                                                    validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/metadata", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/metadata/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
-                                                                    return false;
-                                                                  }
-                                                                  var valid7 = _errs50 === errors;
-                                                                } else {
-                                                                  var valid7 = true;
-                                                                }
-                                                                if (valid7) {
-                                                                  if (data17.rationale !== void 0) {
-                                                                    let data24 = data17.rationale;
-                                                                    const _errs52 = errors;
-                                                                    if (errors === _errs52) {
-                                                                      if (typeof data24 === "string") {
-                                                                        if (func3(data24) < 1) {
-                                                                          validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/rationale", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/rationale/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
-                                                                          return false;
-                                                                        }
-                                                                      } else {
-                                                                        validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/rationale", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/rationale/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                                        return false;
-                                                                      }
-                                                                    }
-                                                                    var valid7 = _errs52 === errors;
-                                                                  } else {
-                                                                    var valid7 = true;
-                                                                  }
-                                                                  if (valid7) {
-                                                                    if (data17.selected !== void 0) {
-                                                                      const _errs54 = errors;
-                                                                      if (typeof data17.selected !== "boolean") {
-                                                                        validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/selected", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/selected/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
-                                                                        return false;
-                                                                      }
-                                                                      var valid7 = _errs54 === errors;
-                                                                    } else {
-                                                                      var valid7 = true;
-                                                                    }
-                                                                    if (valid7) {
-                                                                      if (data17.title !== void 0) {
-                                                                        let data26 = data17.title;
-                                                                        const _errs56 = errors;
-                                                                        if (errors === _errs56) {
-                                                                          if (typeof data26 === "string") {
-                                                                            if (func3(data26) < 1) {
-                                                                              validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/title", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/title/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
-                                                                              return false;
-                                                                            }
-                                                                          } else {
-                                                                            validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/title", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/title/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                                            return false;
-                                                                          }
-                                                                        }
-                                                                        var valid7 = _errs56 === errors;
-                                                                      } else {
-                                                                        var valid7 = true;
-                                                                      }
-                                                                    }
-                                                                  }
-                                                                }
-                                                              }
-                                                            }
-                                                          }
-                                                        }
-                                                      }
-                                                    }
-                                                  }
-                                                } else {
-                                                  validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1, schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
-                                                  return false;
-                                                }
-                                              }
-                                              var valid6 = _errs38 === errors;
-                                              if (!valid6) {
-                                                break;
-                                              }
-                                            }
-                                          } else {
-                                            validate56.errors = [{ instancePath: instancePath + "/shelving/items", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
-                                            return false;
-                                          }
-                                        }
-                                        var valid5 = _errs36 === errors;
-                                      } else {
-                                        var valid5 = true;
-                                      }
-                                      if (valid5) {
-                                        if (data15.proposal_path !== void 0) {
-                                          const _errs58 = errors;
-                                          if (typeof data15.proposal_path !== "string") {
-                                            validate56.errors = [{ instancePath: instancePath + "/shelving/proposal_path", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/proposal_path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                            return false;
-                                          }
-                                          var valid5 = _errs58 === errors;
-                                        } else {
-                                          var valid5 = true;
-                                        }
-                                        if (valid5) {
-                                          if (data15.state !== void 0) {
-                                            let data28 = data15.state;
-                                            const _errs60 = errors;
-                                            if (!(data28 === "none" || data28 === "draft" || data28 === "proposed" || data28 === "approved" || data28 === "applied")) {
-                                              validate56.errors = [{ instancePath: instancePath + "/shelving/state", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/state/enum", keyword: "enum", params: { allowedValues: schema121.properties.state.enum }, message: "must be equal to one of the allowed values" }];
-                                              return false;
-                                            }
-                                            var valid5 = _errs60 === errors;
-                                          } else {
-                                            var valid5 = true;
-                                          }
-                                          if (valid5) {
-                                            if (data15.summary !== void 0) {
-                                              const _errs61 = errors;
-                                              if (typeof data15.summary !== "string") {
-                                                validate56.errors = [{ instancePath: instancePath + "/shelving/summary", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/summary/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                                return false;
-                                              }
-                                              var valid5 = _errs61 === errors;
-                                            } else {
-                                              var valid5 = true;
-                                            }
-                                          }
-                                        }
-                                      }
-                                    }
                                   }
-                                } else {
-                                  validate56.errors = [{ instancePath: instancePath + "/shelving", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
-                                  return false;
                                 }
                               }
                               var valid0 = _errs32 === errors;
@@ -11617,112 +11372,357 @@ var require_manifest_validator = __commonJS({
                               var valid0 = true;
                             }
                             if (valid0) {
-                              if (data.source_plan !== void 0) {
-                                let data30 = data.source_plan;
-                                const _errs63 = errors;
-                                const _errs64 = errors;
-                                if (errors === _errs64) {
-                                  if (data30 && typeof data30 == "object" && !Array.isArray(data30)) {
-                                    let missing4;
-                                    if (data30.path === void 0 && (missing4 = "path") || data30.provenance === void 0 && (missing4 = "provenance")) {
-                                      validate56.errors = [{ instancePath: instancePath + "/source_plan", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/source_plan/required", keyword: "required", params: { missingProperty: missing4 }, message: "must have required property '" + missing4 + "'" }];
+                              if (data.shelving !== void 0) {
+                                let data16 = data.shelving;
+                                const _errs34 = errors;
+                                const _errs35 = errors;
+                                if (errors === _errs35) {
+                                  if (data16 && typeof data16 == "object" && !Array.isArray(data16)) {
+                                    let missing2;
+                                    if (data16.state === void 0 && (missing2 = "state")) {
+                                      validate56.errors = [{ instancePath: instancePath + "/shelving", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/required", keyword: "required", params: { missingProperty: missing2 }, message: "must have required property '" + missing2 + "'" }];
                                       return false;
                                     } else {
-                                      const _errs66 = errors;
-                                      for (const key4 in data30) {
-                                        if (!(key4 === "path" || key4 === "provenance")) {
-                                          validate56.errors = [{ instancePath: instancePath + "/source_plan", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/source_plan/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key4 }, message: "must NOT have additional properties" }];
+                                      const _errs37 = errors;
+                                      for (const key2 in data16) {
+                                        if (!(key2 === "items" || key2 === "proposal_path" || key2 === "state" || key2 === "summary")) {
+                                          validate56.errors = [{ instancePath: instancePath + "/shelving", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key2 }, message: "must NOT have additional properties" }];
                                           return false;
                                           break;
                                         }
                                       }
-                                      if (_errs66 === errors) {
-                                        if (data30.path !== void 0) {
-                                          let data31 = data30.path;
-                                          const _errs67 = errors;
-                                          if (errors === _errs67) {
-                                            if (typeof data31 === "string") {
-                                              if (func3(data31) < 1) {
-                                                validate56.errors = [{ instancePath: instancePath + "/source_plan/path", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/source_plan/properties/path/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
-                                                return false;
+                                      if (_errs37 === errors) {
+                                        if (data16.items !== void 0) {
+                                          let data17 = data16.items;
+                                          const _errs38 = errors;
+                                          if (errors === _errs38) {
+                                            if (Array.isArray(data17)) {
+                                              var valid6 = true;
+                                              const len1 = data17.length;
+                                              for (let i1 = 0; i1 < len1; i1++) {
+                                                let data18 = data17[i1];
+                                                const _errs40 = errors;
+                                                if (errors === _errs40) {
+                                                  if (data18 && typeof data18 == "object" && !Array.isArray(data18)) {
+                                                    let missing3;
+                                                    if (data18.id === void 0 && (missing3 = "id") || data18.kind === void 0 && (missing3 = "kind") || data18.title === void 0 && (missing3 = "title") || data18.destination === void 0 && (missing3 = "destination") || data18.rationale === void 0 && (missing3 = "rationale")) {
+                                                      validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1, schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/required", keyword: "required", params: { missingProperty: missing3 }, message: "must have required property '" + missing3 + "'" }];
+                                                      return false;
+                                                    } else {
+                                                      const _errs42 = errors;
+                                                      for (const key3 in data18) {
+                                                        if (!func1.call(schema121.properties.items.items.properties, key3)) {
+                                                          validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1, schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key3 }, message: "must NOT have additional properties" }];
+                                                          return false;
+                                                          break;
+                                                        }
+                                                      }
+                                                      if (_errs42 === errors) {
+                                                        if (data18.content !== void 0) {
+                                                          const _errs43 = errors;
+                                                          if (typeof data18.content !== "string") {
+                                                            validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/content", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/content/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                            return false;
+                                                          }
+                                                          var valid7 = _errs43 === errors;
+                                                        } else {
+                                                          var valid7 = true;
+                                                        }
+                                                        if (valid7) {
+                                                          if (data18.destination !== void 0) {
+                                                            let data20 = data18.destination;
+                                                            const _errs45 = errors;
+                                                            if (errors === _errs45) {
+                                                              if (typeof data20 === "string") {
+                                                                if (func3(data20) < 1) {
+                                                                  validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/destination", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/destination/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                                                  return false;
+                                                                }
+                                                              } else {
+                                                                validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/destination", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/destination/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                return false;
+                                                              }
+                                                            }
+                                                            var valid7 = _errs45 === errors;
+                                                          } else {
+                                                            var valid7 = true;
+                                                          }
+                                                          if (valid7) {
+                                                            if (data18.diff !== void 0) {
+                                                              const _errs47 = errors;
+                                                              if (typeof data18.diff !== "string") {
+                                                                validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/diff", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/diff/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                return false;
+                                                              }
+                                                              var valid7 = _errs47 === errors;
+                                                            } else {
+                                                              var valid7 = true;
+                                                            }
+                                                            if (valid7) {
+                                                              if (data18.id !== void 0) {
+                                                                let data22 = data18.id;
+                                                                const _errs49 = errors;
+                                                                if (errors === _errs49) {
+                                                                  if (typeof data22 === "string") {
+                                                                    if (!pattern210.test(data22)) {
+                                                                      validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/id", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/id/pattern", keyword: "pattern", params: { pattern: "^proposal-[a-z0-9]+(?:-[a-z0-9]+)*$" }, message: 'must match pattern "^proposal-[a-z0-9]+(?:-[a-z0-9]+)*$"' }];
+                                                                      return false;
+                                                                    }
+                                                                  } else {
+                                                                    validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/id", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                    return false;
+                                                                  }
+                                                                }
+                                                                var valid7 = _errs49 === errors;
+                                                              } else {
+                                                                var valid7 = true;
+                                                              }
+                                                              if (valid7) {
+                                                                if (data18.kind !== void 0) {
+                                                                  let data23 = data18.kind;
+                                                                  const _errs51 = errors;
+                                                                  if (!(data23 === "durable-note" || data23 === "garden" || data23 === "concept-relation" || data23 === "archive-map")) {
+                                                                    validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/kind", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/kind/enum", keyword: "enum", params: { allowedValues: schema121.properties.items.items.properties.kind.enum }, message: "must be equal to one of the allowed values" }];
+                                                                    return false;
+                                                                  }
+                                                                  var valid7 = _errs51 === errors;
+                                                                } else {
+                                                                  var valid7 = true;
+                                                                }
+                                                                if (valid7) {
+                                                                  if (data18.metadata !== void 0) {
+                                                                    let data24 = data18.metadata;
+                                                                    const _errs52 = errors;
+                                                                    if (!(data24 && typeof data24 == "object" && !Array.isArray(data24))) {
+                                                                      validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/metadata", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/metadata/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                                                      return false;
+                                                                    }
+                                                                    var valid7 = _errs52 === errors;
+                                                                  } else {
+                                                                    var valid7 = true;
+                                                                  }
+                                                                  if (valid7) {
+                                                                    if (data18.rationale !== void 0) {
+                                                                      let data25 = data18.rationale;
+                                                                      const _errs54 = errors;
+                                                                      if (errors === _errs54) {
+                                                                        if (typeof data25 === "string") {
+                                                                          if (func3(data25) < 1) {
+                                                                            validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/rationale", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/rationale/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                                                            return false;
+                                                                          }
+                                                                        } else {
+                                                                          validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/rationale", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/rationale/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                          return false;
+                                                                        }
+                                                                      }
+                                                                      var valid7 = _errs54 === errors;
+                                                                    } else {
+                                                                      var valid7 = true;
+                                                                    }
+                                                                    if (valid7) {
+                                                                      if (data18.selected !== void 0) {
+                                                                        const _errs56 = errors;
+                                                                        if (typeof data18.selected !== "boolean") {
+                                                                          validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/selected", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/selected/type", keyword: "type", params: { type: "boolean" }, message: "must be boolean" }];
+                                                                          return false;
+                                                                        }
+                                                                        var valid7 = _errs56 === errors;
+                                                                      } else {
+                                                                        var valid7 = true;
+                                                                      }
+                                                                      if (valid7) {
+                                                                        if (data18.title !== void 0) {
+                                                                          let data27 = data18.title;
+                                                                          const _errs58 = errors;
+                                                                          if (errors === _errs58) {
+                                                                            if (typeof data27 === "string") {
+                                                                              if (func3(data27) < 1) {
+                                                                                validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/title", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/title/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                                                                return false;
+                                                                              }
+                                                                            } else {
+                                                                              validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1 + "/title", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/properties/title/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                                              return false;
+                                                                            }
+                                                                          }
+                                                                          var valid7 = _errs58 === errors;
+                                                                        } else {
+                                                                          var valid7 = true;
+                                                                        }
+                                                                      }
+                                                                    }
+                                                                  }
+                                                                }
+                                                              }
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  } else {
+                                                    validate56.errors = [{ instancePath: instancePath + "/shelving/items/" + i1, schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/items/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                                    return false;
+                                                  }
+                                                }
+                                                var valid6 = _errs40 === errors;
+                                                if (!valid6) {
+                                                  break;
+                                                }
                                               }
                                             } else {
-                                              validate56.errors = [{ instancePath: instancePath + "/source_plan/path", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/source_plan/properties/path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                              validate56.errors = [{ instancePath: instancePath + "/shelving/items", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/items/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
                                               return false;
                                             }
                                           }
-                                          var valid9 = _errs67 === errors;
+                                          var valid5 = _errs38 === errors;
                                         } else {
-                                          var valid9 = true;
+                                          var valid5 = true;
                                         }
-                                        if (valid9) {
-                                          if (data30.provenance !== void 0) {
-                                            let data32 = data30.provenance;
-                                            const _errs69 = errors;
-                                            if (!(data32 === "migrated-mini-plan" || data32 === "learner" || data32 === "ai-proposed" || data32 === "operator" || data32 === "durable-note")) {
-                                              validate56.errors = [{ instancePath: instancePath + "/source_plan/provenance", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/source_plan/properties/provenance/enum", keyword: "enum", params: { allowedValues: schema122.properties.provenance.enum }, message: "must be equal to one of the allowed values" }];
+                                        if (valid5) {
+                                          if (data16.proposal_path !== void 0) {
+                                            const _errs60 = errors;
+                                            if (typeof data16.proposal_path !== "string") {
+                                              validate56.errors = [{ instancePath: instancePath + "/shelving/proposal_path", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/proposal_path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                               return false;
+                                            }
+                                            var valid5 = _errs60 === errors;
+                                          } else {
+                                            var valid5 = true;
+                                          }
+                                          if (valid5) {
+                                            if (data16.state !== void 0) {
+                                              let data29 = data16.state;
+                                              const _errs62 = errors;
+                                              if (!(data29 === "none" || data29 === "draft" || data29 === "proposed" || data29 === "approved" || data29 === "applied")) {
+                                                validate56.errors = [{ instancePath: instancePath + "/shelving/state", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/state/enum", keyword: "enum", params: { allowedValues: schema121.properties.state.enum }, message: "must be equal to one of the allowed values" }];
+                                                return false;
+                                              }
+                                              var valid5 = _errs62 === errors;
+                                            } else {
+                                              var valid5 = true;
+                                            }
+                                            if (valid5) {
+                                              if (data16.summary !== void 0) {
+                                                const _errs63 = errors;
+                                                if (typeof data16.summary !== "string") {
+                                                  validate56.errors = [{ instancePath: instancePath + "/shelving/summary", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/properties/summary/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                  return false;
+                                                }
+                                                var valid5 = _errs63 === errors;
+                                              } else {
+                                                var valid5 = true;
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  } else {
+                                    validate56.errors = [{ instancePath: instancePath + "/shelving", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/shelving/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
+                                    return false;
+                                  }
+                                }
+                                var valid0 = _errs34 === errors;
+                              } else {
+                                var valid0 = true;
+                              }
+                              if (valid0) {
+                                if (data.source_plan !== void 0) {
+                                  let data31 = data.source_plan;
+                                  const _errs65 = errors;
+                                  const _errs66 = errors;
+                                  if (errors === _errs66) {
+                                    if (data31 && typeof data31 == "object" && !Array.isArray(data31)) {
+                                      let missing4;
+                                      if (data31.path === void 0 && (missing4 = "path") || data31.provenance === void 0 && (missing4 = "provenance")) {
+                                        validate56.errors = [{ instancePath: instancePath + "/source_plan", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/source_plan/required", keyword: "required", params: { missingProperty: missing4 }, message: "must have required property '" + missing4 + "'" }];
+                                        return false;
+                                      } else {
+                                        const _errs68 = errors;
+                                        for (const key4 in data31) {
+                                          if (!(key4 === "path" || key4 === "provenance")) {
+                                            validate56.errors = [{ instancePath: instancePath + "/source_plan", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/source_plan/additionalProperties", keyword: "additionalProperties", params: { additionalProperty: key4 }, message: "must NOT have additional properties" }];
+                                            return false;
+                                            break;
+                                          }
+                                        }
+                                        if (_errs68 === errors) {
+                                          if (data31.path !== void 0) {
+                                            let data32 = data31.path;
+                                            const _errs69 = errors;
+                                            if (errors === _errs69) {
+                                              if (typeof data32 === "string") {
+                                                if (func3(data32) < 1) {
+                                                  validate56.errors = [{ instancePath: instancePath + "/source_plan/path", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/source_plan/properties/path/minLength", keyword: "minLength", params: { limit: 1 }, message: "must NOT have fewer than 1 characters" }];
+                                                  return false;
+                                                }
+                                              } else {
+                                                validate56.errors = [{ instancePath: instancePath + "/source_plan/path", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/source_plan/properties/path/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                                return false;
+                                              }
                                             }
                                             var valid9 = _errs69 === errors;
                                           } else {
                                             var valid9 = true;
                                           }
-                                        }
-                                      }
-                                    }
-                                  } else {
-                                    validate56.errors = [{ instancePath: instancePath + "/source_plan", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/source_plan/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
-                                    return false;
-                                  }
-                                }
-                                var valid0 = _errs63 === errors;
-                              } else {
-                                var valid0 = true;
-                              }
-                              if (valid0) {
-                                if (data.stages !== void 0) {
-                                  let data33 = data.stages;
-                                  const _errs70 = errors;
-                                  if (errors === _errs70) {
-                                    if (Array.isArray(data33)) {
-                                      var valid10 = true;
-                                      const len2 = data33.length;
-                                      for (let i2 = 0; i2 < len2; i2++) {
-                                        const _errs72 = errors;
-                                        if (!validate69(data33[i2], { instancePath: instancePath + "/stages/" + i2, parentData: data33, parentDataProperty: i2, rootData, dynamicAnchors })) {
-                                          vErrors = vErrors === null ? validate69.errors : vErrors.concat(validate69.errors);
-                                          errors = vErrors.length;
-                                        }
-                                        var valid10 = _errs72 === errors;
-                                        if (!valid10) {
-                                          break;
+                                          if (valid9) {
+                                            if (data31.provenance !== void 0) {
+                                              let data33 = data31.provenance;
+                                              const _errs71 = errors;
+                                              if (!(data33 === "migrated-mini-plan" || data33 === "learner" || data33 === "ai-proposed" || data33 === "operator" || data33 === "durable-note")) {
+                                                validate56.errors = [{ instancePath: instancePath + "/source_plan/provenance", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/source_plan/properties/provenance/enum", keyword: "enum", params: { allowedValues: schema122.properties.provenance.enum }, message: "must be equal to one of the allowed values" }];
+                                                return false;
+                                              }
+                                              var valid9 = _errs71 === errors;
+                                            } else {
+                                              var valid9 = true;
+                                            }
+                                          }
                                         }
                                       }
                                     } else {
-                                      validate56.errors = [{ instancePath: instancePath + "/stages", schemaPath: "#/properties/stages/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                      validate56.errors = [{ instancePath: instancePath + "/source_plan", schemaPath: "https://learningos.local/schema/study-map.schema.json#/properties/source_plan/type", keyword: "type", params: { type: "object" }, message: "must be object" }];
                                       return false;
                                     }
                                   }
-                                  var valid0 = _errs70 === errors;
+                                  var valid0 = _errs65 === errors;
                                 } else {
                                   var valid0 = true;
                                 }
                                 if (valid0) {
-                                  if (data.status !== void 0) {
-                                    const _errs73 = errors;
-                                    if (typeof data.status !== "string") {
-                                      validate56.errors = [{ instancePath: instancePath + "/status", schemaPath: "#/properties/status/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
-                                      return false;
+                                  if (data.stages !== void 0) {
+                                    let data34 = data.stages;
+                                    const _errs72 = errors;
+                                    if (errors === _errs72) {
+                                      if (Array.isArray(data34)) {
+                                        var valid10 = true;
+                                        const len2 = data34.length;
+                                        for (let i2 = 0; i2 < len2; i2++) {
+                                          const _errs74 = errors;
+                                          if (!validate69(data34[i2], { instancePath: instancePath + "/stages/" + i2, parentData: data34, parentDataProperty: i2, rootData, dynamicAnchors })) {
+                                            vErrors = vErrors === null ? validate69.errors : vErrors.concat(validate69.errors);
+                                            errors = vErrors.length;
+                                          }
+                                          var valid10 = _errs74 === errors;
+                                          if (!valid10) {
+                                            break;
+                                          }
+                                        }
+                                      } else {
+                                        validate56.errors = [{ instancePath: instancePath + "/stages", schemaPath: "#/properties/stages/type", keyword: "type", params: { type: "array" }, message: "must be array" }];
+                                        return false;
+                                      }
                                     }
-                                    var valid0 = _errs73 === errors;
+                                    var valid0 = _errs72 === errors;
                                   } else {
                                     var valid0 = true;
                                   }
                                   if (valid0) {
-                                    if (data.type !== void 0) {
+                                    if (data.status !== void 0) {
                                       const _errs75 = errors;
-                                      if ("study-map" !== data.type) {
-                                        validate56.errors = [{ instancePath: instancePath + "/type", schemaPath: "#/properties/type/const", keyword: "const", params: { allowedValue: "study-map" }, message: "must be equal to constant" }];
+                                      if (typeof data.status !== "string") {
+                                        validate56.errors = [{ instancePath: instancePath + "/status", schemaPath: "#/properties/status/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
                                         return false;
                                       }
                                       var valid0 = _errs75 === errors;
@@ -11730,15 +11730,27 @@ var require_manifest_validator = __commonJS({
                                       var valid0 = true;
                                     }
                                     if (valid0) {
-                                      if (data.unit_id !== void 0) {
-                                        const _errs76 = errors;
-                                        if (typeof data.unit_id !== "string") {
-                                          validate56.errors = [{ instancePath: instancePath + "/unit_id", schemaPath: "#/properties/unit_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                      if (data.type !== void 0) {
+                                        const _errs77 = errors;
+                                        if ("study-map" !== data.type) {
+                                          validate56.errors = [{ instancePath: instancePath + "/type", schemaPath: "#/properties/type/const", keyword: "const", params: { allowedValue: "study-map" }, message: "must be equal to constant" }];
                                           return false;
                                         }
-                                        var valid0 = _errs76 === errors;
+                                        var valid0 = _errs77 === errors;
                                       } else {
                                         var valid0 = true;
+                                      }
+                                      if (valid0) {
+                                        if (data.unit_id !== void 0) {
+                                          const _errs78 = errors;
+                                          if (typeof data.unit_id !== "string") {
+                                            validate56.errors = [{ instancePath: instancePath + "/unit_id", schemaPath: "#/properties/unit_id/type", keyword: "type", params: { type: "string" }, message: "must be string" }];
+                                            return false;
+                                          }
+                                          var valid0 = _errs78 === errors;
+                                        } else {
+                                          var valid0 = true;
+                                        }
                                       }
                                     }
                                   }
@@ -30142,12 +30154,12 @@ var fs5 = __toESM(require("node:fs"));
 var nodePath5 = __toESM(require("node:path"));
 
 // src/contracts/generated/manifest.meta.ts
-var MANIFEST_CLOSURE_SHA256 = "sha256:0d039aa7a31617f10c2ecbbad9350892208b76b5205ee68a297b0397dfa34f79";
+var MANIFEST_CLOSURE_SHA256 = "sha256:7d7e52f8a532452c06caeca70c0789021569c127f9025f294ffbab6edb2b1402";
 
 // src/contracts/manifest.ts
 var import_manifest_validator = __toESM(require_manifest_validator());
 var MANIFEST_CONTRACT_VERSION = 20;
-var MANIFEST_SCHEMA_SHA256 = "sha256:050a6163b16b9cdcc9bc737e6a15215d3e11e4f91213d6bb532dc66415d40017";
+var MANIFEST_SCHEMA_SHA256 = "sha256:1ef7031be9ea88e02740cfde92fae5bf64e8eb60b5cbfd1f32d840099e4cabc1";
 function formatAjvErrors(errors) {
   if (!Array.isArray(errors) || errors.length === 0) {
     return "unknown validation error";
@@ -31110,10 +31122,7 @@ function domainRank(catalog) {
   };
 }
 function noteDomain(record7) {
-  const published = asText(record7.domain_bucket);
-  if (published) return published;
-  const parts = asText(record7.path)?.split("/") ?? [];
-  return parts[0] === "knowledge" && parts[1] === "notes" && parts[2] && !parts[2].endsWith(".md") ? parts[2] : CROSS_DOMAIN;
+  return asText(record7.domain_bucket) ?? CROSS_DOMAIN;
 }
 
 // src/features/atlas/domains.ts
@@ -37626,9 +37635,6 @@ function artifactLabel(key) {
 function isOpenStage(stage) {
   return stage.status !== "complete" && stage.status !== "skipped";
 }
-function firstOpenStage(stages) {
-  return stages.find(isOpenStage) ?? null;
-}
 function nextOpenStage(stages, stageId) {
   const index = stages.findIndex((stage) => stage.id === stageId);
   if (index < 0) return null;
@@ -38854,7 +38860,7 @@ function unitWork(store, unitId) {
   if (!record7) return null;
   const map = readStudyMap(record7);
   const done = map.stages.filter((stage) => stage.status === "complete").length;
-  const next = map.stages.find((stage) => stage.id === map.currentStageId && isOpenStage(stage)) ?? firstOpenStage(map.stages);
+  const next = map.stages.find((stage) => stage.id === map.currentStageId && isOpenStage(stage)) ?? null;
   return { map, done, next };
 }
 function inProgressUnits(store) {
@@ -38883,14 +38889,13 @@ function start(view, unitId, stageId) {
 }
 function openPool(view) {
   const { store } = view.plugin;
-  return store.modules().filter((module2) => module2.is_actionable === true && module2.compatibility_only !== true).filter((module2) => {
-    const moduleId = asString(module2.id);
-    if (!moduleId) return false;
-    return orderedUnits(store, moduleId).some((unit) => {
-      if (unit.status === "complete" || unit.status === "archived") return false;
-      return unit.needs_study_map === true || Boolean(unitWork(store, asString(unit.id) ?? "")?.next);
-    });
-  }).sort((a, b) => compareStrings(asString(a.id) ?? "", asString(b.id) ?? ""));
+  const moduleIds = /* @__PURE__ */ new Set();
+  for (const map of store.rows("study_maps")) {
+    if (map.is_study_candidate !== true) continue;
+    const moduleId = asString(map.module_id);
+    if (moduleId) moduleIds.add(moduleId);
+  }
+  return [...moduleIds].map((id) => store.get(id)).filter((row3) => row3 !== null).sort((a, b) => compareStrings(asString(a.id) ?? "", asString(b.id) ?? ""));
 }
 function renderDeskHome(view) {
   const { plugin: { nav, store } } = view;
@@ -38953,6 +38958,17 @@ function renderDeskHome(view) {
       const copy = row3.createDiv({ cls: "sd-row-copy" });
       copy.createEl("strong", { text: action });
       copy.createDiv({ cls: "sd-row-facts", text: asLabel(record7) });
+    }
+  }
+  const needsMap = store.units().filter((unit) => unit.needs_study_map === true);
+  if (needsMap.length) {
+    const group2 = sideGroup(side, "Needs a study map");
+    for (const unit of needsMap.slice(0, 5)) {
+      const module2 = store.get(asString(unit.module_id) ?? "");
+      textLink(group2, unitLabel(unit, module2).title, () => nav.openUnit(asString(unit.id) ?? ""));
+    }
+    if (needsMap.length > 5) {
+      group2.createEl("p", { cls: "sd-note", text: `${needsMap.length - 5} more units still need a map.` });
     }
   }
   const upcoming = sideGroup(side, "Coming up");
@@ -51045,7 +51061,7 @@ var import_node_process = __toESM(require("node:process"));
 
 // src/build-identity.ts
 function runtimeSourceFingerprint() {
-  return true ? "sha256:d5953d322977506058dfa67fe78d7d8a806c9d3406d2dfeedd63dbaa245fba73" : "unavailable";
+  return true ? "sha256:bf06dd1934bcdabb6354d57068ee438ca1bbf74601fbe8d4cb25e04a54680012" : "unavailable";
 }
 function runtimeContractVersion() {
   return true ? 20 : 0;

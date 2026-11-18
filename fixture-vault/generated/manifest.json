@@ -1,10 +1,10 @@
 {
   "_generated": {
-    "closure_sha256": "sha256:0d039aa7a31617f10c2ecbbad9350892208b76b5205ee68a297b0397dfa34f79",
+    "closure_sha256": "sha256:7d7e52f8a532452c06caeca70c0789021569c127f9025f294ffbab6edb2b1402",
     "contract_version": 20,
     "generated_at": "2099-04-01",
     "generator": "synthetic-fixture-v8",
-    "schema_sha256": "sha256:050a6163b16b9cdcc9bc737e6a15215d3e11e4f91213d6bb532dc66415d40017",
+    "schema_sha256": "sha256:1ef7031be9ea88e02740cfde92fae5bf64e8eb60b5cbfd1f32d840099e4cabc1",
     "snapshot_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "source_dirty": false,
     "source_fingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
@@ -1690,7 +1690,8 @@
       ],
       "status": "ready",
       "type": "study-map",
-      "unit_id": "unit-fixture-sad-l02"
+      "unit_id": "unit-fixture-sad-l02",
+      "is_study_candidate": true
     },
     {
       "current_stage": "stage-fixture-conditioning",
@@ -1793,7 +1794,8 @@
       ],
       "status": "active",
       "type": "study-map",
-      "unit_id": "unit-fixture-sad-l04"
+      "unit_id": "unit-fixture-sad-l04",
+      "is_study_candidate": true
     },
     {
       "current_stage": "stage-aml-l03",
@@ -1836,7 +1838,8 @@
       ],
       "status": "ready",
       "type": "study-map",
-      "unit_id": "unit-fixture-aml-l03"
+      "unit_id": "unit-fixture-aml-l03",
+      "is_study_candidate": true
     },
     {
       "current_stage": "stage-aml-l04",
@@ -1898,7 +1901,8 @@
       ],
       "status": "ready",
       "type": "study-map",
-      "unit_id": "unit-fixture-aml-l04"
+      "unit_id": "unit-fixture-aml-l04",
+      "is_study_candidate": true
     },
     {
       "current_stage": "stage-python-oop",
@@ -1934,7 +1938,8 @@
       ],
       "status": "ready",
       "type": "study-map",
-      "unit_id": "unit-fixture-python-oop"
+      "unit_id": "unit-fixture-python-oop",
+      "is_study_candidate": true
     },
     {
       "current_stage": "stage-thesis-landscape",
@@ -1991,7 +1996,8 @@
       ],
       "status": "ready-to-shelve",
       "type": "study-map",
-      "unit_id": "unit-fixture-thesis-landscape"
+      "unit_id": "unit-fixture-thesis-landscape",
+      "is_study_candidate": false
     }
   ],
   "thematic_groups": [
