@@ -55,17 +55,13 @@ export function domainRank(catalog: DomainCatalog): (id: string) => number {
 }
 
 /**
- * The bucket a note is published into. A published `domain_bucket` wins over
- * the path: the projection is the record, and a note that moved on disk keeps
- * its published domain. The path only fills for records that predate the
- * field, and anything unplaceable is cross-domain.
+ * The bucket a note is published into. Core assigns domains; the UI displays
+ * them — the note's path on disk is never consulted. Manifest v20 publishes
+ * a bucket for every note, so cross-domain stands in only for a record that
+ * predates the required field.
  */
 export function noteDomain(record: ProjectionRecord): string {
-  const published = asText(record.domain_bucket);
-  if (published) return published;
-  const parts = asText(record.path)?.split('/') ?? [];
-  return parts[0] === 'knowledge' && parts[1] === 'notes' && parts[2] && !parts[2].endsWith('.md')
-    ? parts[2] : CROSS_DOMAIN;
+  return asText(record.domain_bucket) ?? CROSS_DOMAIN;
 }
 
 /**

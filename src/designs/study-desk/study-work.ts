@@ -1,7 +1,7 @@
 import type { ProjectionRecord } from '../../contracts/manifest';
 import { normalizeUnitRecord, orderModuleUnits, readModuleRecord } from '../../features/module/model';
 import { resolveResumeTarget } from '../../features/home/model';
-import { firstOpenStage, isOpenStage, readStudyMap } from '../../features/unit/model';
+import { isOpenStage, readStudyMap } from '../../features/unit/model';
 import type { ManifestStore } from '../../manifest-store';
 import { asString } from '../../projection/readers';
 
@@ -20,8 +20,10 @@ export function unitWork(store: ManifestStore, unitId: string) {
   if (!record) return null;
   const map = readStudyMap(record);
   const done = map.stages.filter((stage) => stage.status === 'complete').length;
+  // The map's own cursor is what Core maintains; a closed or absent cursor is
+  // displayed honestly rather than rescued by guessing the first open stage.
   const next = map.stages.find((stage) => stage.id === map.currentStageId && isOpenStage(stage))
-    ?? firstOpenStage(map.stages);
+    ?? null;
   return { map, done, next };
 }
 
