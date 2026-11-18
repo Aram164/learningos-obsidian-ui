@@ -5,13 +5,9 @@ import type { AppNavigator } from '../../app/navigator';
 import type { ProjectionRecord } from '../../contracts/manifest';
 import { asStrings, asText, isRecord } from '../../projection/readers';
 import { compareStrings, foldCase } from '../../sorting';
+import { CROSS_DOMAIN, domainLabel, domainRank, noteDomain, readDomainCatalog } from './domain-model';
 import type { AtlasHost, DomainAtlasState } from './ports';
 
-export const KNOWN_DOMAINS: ReadonlyArray<readonly [string, string]> = [
-  ['mathematics', 'Mathematics'], ['machine-learning', 'Machine learning'],
-  ['systems', 'Systems'], ['data-systems', 'Data systems'], ['algorithms', 'Algorithms'],
-  ['programming', 'Programming'], ['cross-domain', 'Across domains'],
-];
 const ROLE_LABELS: Readonly<Record<string, string>> = {
   crosswalk: 'Crosswalk', reference: 'Reference', synthesis: 'Synthesis', derivation: 'Derivation',
   'exercise-bank': 'Exercise bank', 'mock-exam': 'Mock exam', implementation: 'Implementation', question: 'Question',
@@ -43,30 +39,25 @@ const prose = (value: unknown) => {
   const text = asText(value)?.trim() ?? '';
   return text.startsWith('<!--') ? '' : text;
 };
-const domainTitle = (id: string) => KNOWN_DOMAINS.find(([key]) => key === id)?.[1]
-  ?? id.split('-').map((part) => part ? part.charAt(0).toUpperCase() + part.slice(1) : '').join(' ');
 const byTitle = (a: ProjectionRecord, b: ProjectionRecord) => compareStrings(title(a), title(b))
   || compareStrings(asText(a.id) ?? '', asText(b.id) ?? '');
 
-/** Match the generated atlas's buckets using published path metadata only. */
-export function noteBucket(record: ProjectionRecord): string {
-  const parts = asText(record.path)?.split('/') ?? [];
-  return parts[0] === 'knowledge' && parts[1] === 'notes' && parts[2] && !parts[2].endsWith('.md')
-    ? parts[2] : 'cross-domain';
-}
 function domainIndex(host: AtlasHost): DomainIndex {
   const notes = host.plugin.store.of('note');
   const shelves = [...host.plugin.store.catalogues(), ...host.plugin.store.topicPacks()];
-  const ids = new Set(KNOWN_DOMAINS.map(([id]) => id));
-  for (const note of notes) ids.add(noteBucket(note));
-  for (const shelf of shelves) ids.add(asText(shelf.domain) ?? 'cross-domain');
-  const known = KNOWN_DOMAINS.map(([id]) => id);
-  const ordered = [...known, ...[...ids].filter((id) => !known.includes(id)).sort(compareStrings)];
+  // Labels and order are Core's published catalog; the UI never re-derives a
+  // bucket when the projection published one.
+  const catalog = readDomainCatalog(host.plugin.store);
+  const rank = domainRank(catalog);
+  const ids = new Set(catalog.map((row) => row.id));
+  for (const note of notes) ids.add(noteDomain(note));
+  for (const shelf of shelves) ids.add(asText(shelf.domain) ?? CROSS_DOMAIN);
+  const ordered = [...ids].sort((a, b) => rank(a) - rank(b) || compareStrings(a, b));
   return {
     notes,
-    domains: ordered.map((id) => ({ id, title: domainTitle(id),
-      notes: notes.filter((note) => noteBucket(note) === id).sort(byTitle),
-      shelves: shelves.filter((shelf) => (asText(shelf.domain) ?? 'cross-domain') === id).sort(byTitle),
+    domains: ordered.map((id) => ({ id, title: domainLabel(catalog, id),
+      notes: notes.filter((note) => noteDomain(note) === id).sort(byTitle),
+      shelves: shelves.filter((shelf) => (asText(shelf.domain) ?? CROSS_DOMAIN) === id).sort(byTitle),
     })),
     sources: new Map(host.plugin.store.sources().flatMap((source) => {
       const id = asText(source.id);

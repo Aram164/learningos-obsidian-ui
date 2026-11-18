@@ -45,9 +45,11 @@ module.exports = async function run() {
   const { app, plugin, calls } = await boot({ patchManifest(manifest) {
     const note = manifest.records.find((row) => row.id === 'note-fixture-probability');
     manifest.records.push({ ...note, id: 'note-fixture-future-domain', title: 'Future biophysics wiring',
-      domain: 'specialized-biophysics', path: 'knowledge/notes/biophysics/note-fixture-future-domain.md', role: 'crosswalk' });
+      domain: 'specialized-biophysics', path: 'knowledge/notes/biophysics/note-fixture-future-domain.md', role: 'crosswalk',
+      domain_bucket: 'biophysics' });
     manifest.records.push({ ...note, id: 'note-fixture-nested-domain', title: 'Nested data systems reference',
-      domain: 'narrow-data-topic', path: 'knowledge/notes/data-systems/narrow-topic/note-fixture-nested-domain.md' });
+      domain: 'narrow-data-topic', path: 'knowledge/notes/data-systems/narrow-topic/note-fixture-nested-domain.md',
+      domain_bucket: 'data-systems' });
     manifest.counts.notes += 2;
     const shelf = manifest.records.find((row) => row.id === 'fixture-math-bookshelf');
     shelf.entries.push({ source: shelf.entries[0].source, group: 'revisit', why: 'The same source in a second ordered placement.' });
@@ -199,7 +201,8 @@ module.exports = async function run() {
         material_analysis: {resolution: 'resolved', material: 'fixture-analysis.pdf', inspected_range: {start: 1, end: 2},
           recorded_source_digest: 'a'.repeat(64), frozen_input_sha256: 'b'.repeat(64), frozen_input_bytes: 100,
           source_id: ai === 0 ? 'source-fixture-book' : 'source-fixture-unavailable'} ,
-        path: `knowledge/notes/${ri % 2 ? 'future-domain' : 'mathematics'}/${id}.md` });
+        path: `knowledge/notes/${ri % 2 ? 'future-domain' : 'mathematics'}/${id}.md`,
+        domain_bucket: ri % 2 ? 'future-domain' : 'mathematics' });
     }
     manifest.counts.notes += 40;
     const shelf = manifest.records.find((row) => row.id === 'fixture-math-bookshelf');
@@ -311,4 +314,20 @@ module.exports = async function run() {
     && viewOf(invalidContext.app).contentEl.allText().includes('Notes & shelves unavailable')
     && invalidContext.calls.envelopes.length === 0);
   invalidContext.plugin.onunload();
+
+  heading('Notes & shelves: the published bucket wins over the path');
+  const moved = await boot({ patchManifest(manifest) {
+    const note = manifest.records.find((row) => row.id === 'note-fixture-probability');
+    // The copy keeps the published mathematics bucket while its path claims
+    // systems: the projection is the record, the folder is not.
+    manifest.records.push({ ...note, id: 'note-fixture-moved-bucket', title: 'Published bucket wins',
+      path: 'knowledge/notes/systems/note-fixture-moved-bucket.md' });
+    manifest.counts.notes += 1;
+  } });
+  await moved.plugin.nav.openAtlas({ lens: 'domains' });
+  const movedRoot = browserDom(viewOf(moved.app).contentEl);
+  check('a note whose path disagrees with its published bucket appears in the published domain only',
+    choose(movedRoot, 'mathematics').allText().includes('6 notes')
+    && choose(movedRoot, 'systems').allText().includes('0 notes'));
+  moved.plugin.onunload();
 };

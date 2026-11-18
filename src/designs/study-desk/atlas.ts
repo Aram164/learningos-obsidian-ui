@@ -2,7 +2,8 @@ import { button, disclosure, icon, plural } from '../../components';
 import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-group';
 import { buildConceptContext, linkedConceptNotes } from '../../features/atlas/context';
 import { renderAtlasVariants } from '../../features/atlas/domains';
-import { readResumePointer } from '../../features/home/model';
+import { readDomainCatalog } from '../../features/atlas/domain-model';
+import { resolveResumeTarget } from '../../features/home/model';
 import { mountEdges } from '../../features/atlas/edge-layer';
 import { renderOutline, renderPath } from '../../features/atlas/focused-graph';
 import { buildAtlasGraph, conceptOf, modulesFor, neighbourhood, relationPhrase, strictPath, type AtlasEdge, type AtlasGraph } from '../../features/atlas/graph';
@@ -12,7 +13,7 @@ import type { AtlasHost } from '../../features/atlas/ports';
 import { asLabel, asString, asStrings } from '../../projection/readers';
 import { compareStrings } from '../../sorting';
 import type { AtlasScreenHost } from '../screens';
-import { buildConceptMap, moduleOverlap, overlapKey, studyOrderLayout, UNGROUPED, type ConceptMap, type Region } from './atlas-model';
+import { buildConceptMap, browsingRegion, moduleOverlap, overlapKey, studyOrderLayout, UNGROUPED, type ConceptMap, type Region } from './atlas-model';
 import { chevron, deskHead, deskPage, deskRow, moduleName, moduleShort, sideGroup, textLink, unitLabel, type Cover } from './parts';
 import { leaveModuleMap, moduleMap, moduleMapFacts, moduleMaps, openModuleMap, renderModuleMap } from './module-map';
 
@@ -41,12 +42,11 @@ interface AtlasContext {
 /** The subject of the session you last stopped in, if Core recorded one. */
 function studyConcept(host: AtlasHost): { id: string; facts: string } | null {
   const { store } = host.plugin;
-  const pointer = readResumePointer(store.data?.resume_pointer);
-  const stage = pointer.stage_id ? store.stage(pointer.stage_id) : null;
+  // The same validated resolver Home uses: an older projection whose ids are
+  // individually known but disagree on ownership draws no study marker.
+  const { stage, unit, module } = resolveResumeTarget(store);
   const id = asStrings(stage?.concepts)[0];
   if (!stage || !id || !store.get(id)) return null;
-  const unit = pointer.unit_id ? store.get(pointer.unit_id) : null;
-  const module = pointer.module_id ? store.get(pointer.module_id) : null;
   return { id, facts: [unit ? unitLabel(unit, module).place : '', asLabel(stage)].filter(Boolean).join(' · ') };
 }
 
@@ -366,9 +366,21 @@ function renderRegionSide(layout: HTMLElement, context: AtlasContext, region: Re
 
 /* ───────────────────────────── E3 · one concept ─────────────────────────── */
 
+/**
+ * The region a concept is read from: the selected browse domain while the
+ * concept remains a browsing member of it, else its canonical drawing place
+ * (deep links and search arrive without a browse context).
+ */
+function regionOfFor(context: AtlasContext, id: string): string | null {
+  const { host, map } = context;
+  const browse = host.concepts.domain;
+  if (browse && map.memberships.get(id)?.has(browse)) return browse;
+  return map.regionOf.get(id) ?? null;
+}
+
 function regionCrumb(context: AtlasContext, id: string) {
   const { host, map } = context;
-  const regionId = map.regionOf.get(id);
+  const regionId = regionOfFor(context, id);
   const region = map.regions.find((row) => row.id === regionId);
   return region ? { label: region.title, go: () => host.showConceptOverview(region.id) } : null;
 }
@@ -381,7 +393,7 @@ function conceptCard(parent: HTMLElement, context: AtlasContext, edge: AtlasEdge
   });
   card.createEl('strong', { text: conceptOf(graph, id).label });
   const modules = shortModules(host, graph, id).join(' · ');
-  const elsewhere = map.regionOf.get(id) !== map.regionOf.get(focusId)
+  const elsewhere = map.regionOf.get(id) !== regionOfFor(context, focusId)
     ? map.regions.find((region) => region.id === map.regionOf.get(id))?.title : null;
   const facts = [relationPhrase(edge.type), modules, elsewhere ? `from ${elsewhere}` : ''].filter(Boolean).join(' · ');
   if (facts) card.createDiv({ cls: 'sd-node-meta', text: facts });
@@ -686,7 +698,7 @@ export function renderDeskAtlas(host: AtlasScreenHost): boolean {
   if (lens === 'domains' || lens === 'diagnostics') return false;
   const graph = buildAtlasGraph(host.plugin.store);
   if (!graph.concepts.length) return false;
-  const map = buildConceptMap(host.plugin.store.of('note'), graph);
+  const map = buildConceptMap(readDomainCatalog(host.plugin.store), host.plugin.store.of('note'), graph);
   const context: AtlasContext = { host, graph, map };
   const conceptId = host.state.concept;
   // A module named on the route, with no concept in focus, draws that module's map (F5).
@@ -711,8 +723,11 @@ export function renderDeskAtlas(host: AtlasScreenHost): boolean {
   }
   const region = map.regions.find((row) => row.id === host.concepts.domain);
   if (region) {
-    deskHead(root, [atlas, { label: region.title }], host);
-    renderRegion(root, context, region);
+    // The region view is the browse view: it lists every concept the domain's
+    // published notes carry, not only the canonical majority placement.
+    const browse = browsingRegion(map, graph, region.id) ?? region;
+    deskHead(root, [atlas, { label: browse.title }], host);
+    renderRegion(root, context, browse);
     return true;
   }
   if (host.concepts.browseAll) {

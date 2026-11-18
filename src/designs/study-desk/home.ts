@@ -4,31 +4,50 @@ import { resolveResumeTarget } from '../../features/home/model';
 import { currentWorkResource } from '../../features/stage-resources';
 import type { ProjectionRecord } from '../../contracts/manifest';
 import { asLabel, asString, asStrings, asText } from '../../projection/readers';
+import { compareStrings } from '../../sorting';
 import type { HomeScreenHost } from '../screens';
 import { setUnitMode } from './unit-mode';
 import { deskHead, deskPage, deskRow, moduleName, moduleRow, sideGroup, stageBars, textLink, unitLabel } from './parts';
-import { currentSemesterKey, moduleWork, unitWork } from './study-work';
+import { orderedUnits, unitWork } from './study-work';
 
 function start(view: HomeScreenHost, unitId: string, stageId: string) {
   return view.plugin.nav.openUnit(unitId, stageId, (leaf) => setUnitMode(leaf, unitId, 'session'));
+}
+
+/**
+ * The study candidate pool, read once per render: every actionable module of
+ * any kind that still owns open work — a unit with an open stage, or a unit
+ * still needing its study map. Ordered the way Core orders candidates:
+ * module ID ascending. No status preference, no semester, no ranking.
+ */
+function openPool(view: HomeScreenHost): ProjectionRecord[] {
+  const { store } = view.plugin;
+  return store.modules()
+    .filter((module) => module.is_actionable === true && module.compatibility_only !== true)
+    .filter((module) => {
+      const moduleId = asString(module.id);
+      if (!moduleId) return false;
+      return orderedUnits(store, moduleId).some((unit) => {
+        if (unit.status === 'complete' || unit.status === 'archived') return false;
+        return unit.needs_study_map === true
+          || Boolean(unitWork(store, asString(unit.id) ?? '')?.next);
+      });
+    })
+    .sort((a, b) => compareStrings(asString(a.id) ?? '', asString(b.id) ?? ''));
 }
 
 export function renderDeskHome(view: HomeScreenHost): void {
   const { plugin: { nav, store } } = view;
   const root = deskPage(view.contentEl, 'home', store);
   deskHead(root, [{ label: 'Home' }], view);
-  const semester = store.currentSemester();
   root.createEl('h1', { cls: 'sd-title', text: new Intl.DateTimeFormat('en-GB', {
     weekday: 'long', day: 'numeric', month: 'long',
   }).format(new Date()) });
-  if (semester) root.createDiv({ cls: 'sd-facts', text: asLabel(semester) });
 
   const layout = root.createDiv({ cls: 'sd-home-columns' });
   const main = layout.createDiv({ cls: 'sd-home-main' });
   const side = layout.createDiv({ cls: 'sd-side sd-home-side' });
   const academic = store.openAcademicModules().filter((module) => module.is_actionable === true);
-  const current = currentSemesterKey(store);
-  const thisSemester = current ? academic.filter((module) => module.semester === current) : [];
   const byId = new Map(academic.map((module) => [module.id, module]));
   const plans = store.of('workspace').flatMap((record) => {
     const action = asText(record.next_action);
@@ -40,9 +59,10 @@ export function renderDeskHome(view: HomeScreenHost): void {
   const resumeStageId = resume.stage ? asString(resume.stage.id) : null;
   const work = resumeId ? unitWork(store, resumeId) : null;
   const stage = work?.map.stages.find((row) => row.id === resumeStageId);
-  let shownPlan: ProjectionRecord | null = null;
+  let resumed = false;
   let focusModule: ProjectionRecord | null = null;
   if (resumeId && resume.unit && work && stage) {
+    resumed = true;
     focusModule = resume.module;
     const position = work.map.stages.indexOf(stage);
     const hero = main.createDiv({ cls: 'sd-hero' });
@@ -55,69 +75,35 @@ export function renderDeskHome(view: HomeScreenHost): void {
     button(action, 'Continue studying', () => start(view, resumeId, stage.id), 'choice').addClass('sd-hero-button');
     const material = currentWorkResource(stage.resources);
     if (material) action.createDiv({ cls: 'sd-hero-note', text: `Starts with ${material.label}` });
-  } else {
-    const candidates = [...thisSemester, ...academic.filter((module) => !thisSemester.includes(module))];
-    const ready = candidates.flatMap((module) => {
-      const moduleId = asString(module.id);
-      const next = moduleId ? moduleWork(store, moduleId) : null;
-      const unitId = asString(next?.unit.id);
-      if (!next?.stage || !unitId) return [];
-      const plan = plans.find(({ module: owner, record }) => {
-        const units = asStrings(record.unit_ids);
-        return owner === module && units.includes(unitId);
-      });
-      return [{ module, next, unitId, stage: next.stage, plan }];
-    });
-    const suggestion = ready.find(({ module, plan }) => thisSemester.includes(module) && plan)
-      ?? ready.find(({ module }) => thisSemester.includes(module))
-      ?? ready.find(({ plan }) => plan) ?? ready[0];
-    const hero = main.createDiv({ cls: 'sd-hero is-empty sd-home-suggestion' });
-    const copy = hero.createDiv({ cls: 'sd-hero-copy' });
-    if (suggestion) {
-      const { module, next, unitId, stage: nextStage } = suggestion;
-      focusModule = module;
-      // The workspace association above only ordered the candidates. The
-      // action below opens this stage, so its copy comes from the study
-      // map; the workspace's recorded instruction is listed with the
-      // other plans, verbatim, under its own label.
-      const place = unitLabel(next.unit, module);
-      copy.createDiv({ cls: 'sd-hero-kicker', text: `Suggested from the ${moduleName(module)} study map` });
-      copy.createEl('h2', { cls: 'sd-hero-title', text: place.number ? `${place.place} · ${place.title}` : place.title });
-      copy.createEl('p', { cls: 'sd-note sd-suggest-action', text: nextStage.objective || nextStage.title });
-      const actions = copy.createDiv({ cls: 'sd-home-actions' });
-      button(actions, `Start stage ${next.position}`, () => start(view, unitId, nextStage.id), 'cta');
-      textLink(actions, 'See the lecture plan', () => nav.openUnit(unitId, nextStage.id, (leaf) => setUnitMode(leaf, unitId, 'plan')));
-    } else if (plans[0] && plans[0].module.id) {
-      const { module, record, action } = plans[0];
-      focusModule = module;
-      shownPlan = record;
-      copy.createDiv({ cls: 'sd-hero-kicker', text: `Suggested by your ${moduleName(module)} plan` });
-      copy.createEl('h2', { cls: 'sd-hero-title', text: asLabel(record) });
-      copy.createEl('p', { cls: 'sd-note sd-suggest-action', text: action });
-      button(copy.createDiv({ cls: 'sd-home-actions' }), 'Open module', () => nav.openModule(asString(module.id) ?? ''), 'cta');
-    } else {
-      copy.createEl('h2', { cls: 'sd-hero-title', text: 'No study session to resume' });
-      textLink(copy, 'Browse modules', () => nav.openModules());
-    }
   }
 
-  const others = plans.filter(({ record }) => record !== shownPlan).slice(0, 3);
+  // The module list is the same neutral list on both paths: the candidate pool
+  // under the pinned ordering. With a session to continue it reads as the
+  // places around the resume target; without one it is the browse entry.
+  const pool = openPool(view);
+  const courses = pool.filter((module) => module !== focusModule);
+  main.createEl('h2', { cls: 'sd-heading', text: resumed ? 'Continue elsewhere' : 'Modules' });
+  const list = main.createDiv({ cls: 'sd-sheet sd-home-list' });
+  if (courses.length) {
+    for (const module of courses.slice(0, 5)) moduleRow(list, store, module, () => nav.openModule(asString(module.id) ?? ''));
+    if (courses.length > 5) textLink(list, 'Browse all modules', () => nav.openModules());
+  } else {
+    list.createEl('p', { cls: 'sd-quiet', text: 'No open module work.' });
+    textLink(list, 'Browse modules', () => nav.openModules());
+  }
+
+  // Plans are shown for themselves, verbatim, under their own label — never
+  // promoted into a suggestion or used to order anything above.
+  const others = plans.slice(0, 3);
   if (others.length) {
     main.createEl('h2', { cls: 'sd-heading', text: 'Plans suggest' });
-    const list = main.createDiv({ cls: 'sd-sheet sd-home-list' });
+    const sheet = main.createDiv({ cls: 'sd-sheet sd-home-list' });
     for (const { action, record, module } of others) {
-      const row = deskRow(list, 'sd-today-row', action, () => nav.openModule(asString(module.id) ?? ''));
+      const row = deskRow(sheet, 'sd-today-row', action, () => nav.openModule(asString(module.id) ?? ''));
       const copy = row.createDiv({ cls: 'sd-row-copy' });
       copy.createEl('strong', { text: action });
       copy.createDiv({ cls: 'sd-row-facts', text: asLabel(record) });
     }
-  }
-
-  const courses = (thisSemester.length ? thisSemester : academic.filter((module) => module !== focusModule)).slice(0, 5);
-  if (courses.length) {
-    main.createEl('h2', { cls: 'sd-heading', text: thisSemester.length ? 'This semester' : 'Continue elsewhere' });
-    const list = main.createDiv({ cls: 'sd-sheet sd-home-list' });
-    for (const module of courses) moduleRow(list, store, module, () => nav.openModule(asString(module.id) ?? ''));
   }
 
   const upcoming = sideGroup(side, 'Coming up');

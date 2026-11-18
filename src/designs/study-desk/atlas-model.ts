@@ -9,7 +9,7 @@
  * published note folders. A concept with no linked note stays "Not yet grouped".
  */
 import type { ProjectionRecord } from '../../contracts/manifest';
-import { KNOWN_DOMAINS, noteBucket } from '../../features/atlas/domains';
+import { domainLabel, domainRank, noteDomain, type DomainCatalog } from '../../features/atlas/domain-model';
 import type { AtlasEdge, AtlasGraph } from '../../features/atlas/graph';
 import { asStrings } from '../../projection/readers';
 import { compareStrings } from '../../sorting';
@@ -33,17 +33,18 @@ export interface RegionLink {
 export interface ConceptMap {
   readonly regions: readonly Region[];
   readonly regionOf: ReadonlyMap<string, string>;
+  /** Browsing membership: every published domain a concept's notes live in. */
+  readonly memberships: ReadonlyMap<string, ReadonlySet<string>>;
   readonly links: readonly RegionLink[];
 }
 
-const title = (id: string) => KNOWN_DOMAINS.find(([key]) => key === id)?.[1]
-  ?? (id === UNGROUPED ? 'Not yet grouped'
-    : id.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' '));
+const regionTitle = (catalog: DomainCatalog, id: string) => id === UNGROUPED ? 'Not yet grouped'
+  : domainLabel(catalog, id);
 
-export function buildConceptMap(notes: readonly ProjectionRecord[], graph: AtlasGraph): ConceptMap {
+export function buildConceptMap(catalog: DomainCatalog, notes: readonly ProjectionRecord[], graph: AtlasGraph): ConceptMap {
   const tally = new Map<string, Map<string, number>>();
   for (const note of notes) {
-    const bucket = noteBucket(note);
+    const bucket = noteDomain(note);
     for (const id of asStrings(note.concepts)) {
       if (!graph.conceptById.get(id)?.record) continue;
       const counts = tally.get(id) ?? new Map<string, number>();
@@ -51,8 +52,7 @@ export function buildConceptMap(notes: readonly ProjectionRecord[], graph: Atlas
       tally.set(id, counts);
     }
   }
-  const order = KNOWN_DOMAINS.map(([id]) => id);
-  const rank = (id: string) => { const at = order.indexOf(id); return at < 0 ? order.length : at; };
+  const rank = domainRank(catalog);
   const regionOf = new Map<string, string>();
   for (const concept of graph.concepts) {
     if (!concept.record) continue;
@@ -63,7 +63,7 @@ export function buildConceptMap(notes: readonly ProjectionRecord[], graph: Atlas
   }
   const touched = new Set(graph.edges.flatMap((edge) => [edge.from, edge.to]));
   const members = new Map<string, string[]>();
-  for (const [id] of KNOWN_DOMAINS) members.set(id, []);
+  for (const row of catalog) members.set(row.id, []);
   for (const [concept, region] of regionOf) {
     if (!members.has(region)) members.set(region, []);
     members.get(region)!.push(concept);
@@ -71,7 +71,7 @@ export function buildConceptMap(notes: readonly ProjectionRecord[], graph: Atlas
   const labelOf = (id: string) => graph.conceptById.get(id)?.label ?? id;
   const regions = [...members.entries()].map(([id, concepts]) => ({
     id,
-    title: title(id),
+    title: regionTitle(catalog, id),
     concepts: [...concepts].sort((a, b) => compareStrings(labelOf(a), labelOf(b))),
     linked: concepts.filter((concept) => touched.has(concept)).length,
   }));
@@ -84,7 +84,27 @@ export function buildConceptMap(notes: readonly ProjectionRecord[], graph: Atlas
     const key = `${a}\u0000${b}`;
     pairs.set(key, { a, b, count: (pairs.get(key)?.count ?? 0) + 1 });
   }
-  return { regions, regionOf, links: [...pairs.values()] };
+  return { regions, regionOf, memberships: new Map([...tally].map(([id, counts]) => [id, new Set(counts.keys())])), links: [...pairs.values()] };
+}
+
+/**
+ * The region as browsing sees it: every concept with at least one linked note
+ * published into this domain, whether or not drawing places it here. Drawing
+ * (placement, chips, counts, links) stays canonical; the browse view and the
+ * return location are what read this. "Not yet grouped" has no published
+ * bucket, so its browsing members are its drawing members.
+ */
+export function browsingRegion(map: ConceptMap, graph: AtlasGraph, id: string): Region | null {
+  const drawing = map.regions.find((row) => row.id === id);
+  if (!drawing) return null;
+  if (id === UNGROUPED) return drawing;
+  const labelOf = (concept: string) => graph.conceptById.get(concept)?.label ?? concept;
+  // Memberships are keyed by concept; the region is every concept published
+  // into this domain at least once.
+  const concepts = [...map.memberships].filter(([, domains]) => domains.has(id)).map(([concept]) => concept)
+    .sort((a, b) => compareStrings(labelOf(a), labelOf(b)));
+  const touched = new Set(graph.edges.flatMap((edge) => [edge.from, edge.to]));
+  return { id, title: drawing.title, concepts, linked: concepts.filter((concept) => touched.has(concept)).length };
 }
 
 export interface PlacedConcept {

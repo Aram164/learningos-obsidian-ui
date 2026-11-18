@@ -3,7 +3,7 @@ import { enableButtonGroupKeyboardNavigation } from '../../accessibility/button-
 import { asStrings, asText } from '../../projection/readers';
 import { compareStrings } from '../../sorting';
 import { linkedConceptNotes } from './context';
-import { KNOWN_DOMAINS, noteBucket } from './domains';
+import { domainLabel, noteDomain, readDomainCatalog } from './domain-model';
 import { conceptOf, neighbourhood, type AtlasGraph } from './graph';
 import { plural, moduleTrail } from './narrative';
 import type { AtlasHost } from './ports';
@@ -17,20 +17,21 @@ interface BrowsePlace {
   shelves: number;
 }
 
-const label = (id: string) => KNOWN_DOMAINS.find(([key]) => key === id)?.[1]
-  ?? id.split('-').map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+/** Labels and order come from Core's published catalog, read per render. */
+const placeLabel = (host: AtlasHost, id: string) => domainLabel(readDomainCatalog(host.plugin.store), id);
 
 /** Browse aliases from explicit note links and published folders, never a taxonomy or graph edge. */
 export function conceptPlaces(host: AtlasHost, graph: AtlasGraph): BrowsePlace[] {
+  const catalog = readDomainCatalog(host.plugin.store);
   const places = new Map<string, BrowsePlace>();
   const place = (id: string) => {
-    if (!places.has(id)) places.set(id, { id, title: label(id), concepts: new Set(), folders: new Map(), notes: 0, shelves: 0 });
+    if (!places.has(id)) places.set(id, { id, title: domainLabel(catalog, id), concepts: new Set(), folders: new Map(), notes: 0, shelves: 0 });
     return places.get(id)!;
   };
-  for (const [id] of KNOWN_DOMAINS) place(id);
+  for (const row of catalog) place(row.id);
   const assigned = new Set<string>();
   for (const note of host.plugin.store.of('note')) {
-    const bucket = place(noteBucket(note));
+    const bucket = place(noteDomain(note));
     bucket.notes++;
     const path = asText(note.path)?.split('/') ?? [];
     const folder = path.length > 4 ? path.slice(3, -1).join('/') : 'ungrouped';
@@ -81,11 +82,11 @@ export function renderConceptBreadcrumb(parent: HTMLElement, host: AtlasHost): v
   button(crumbs, 'All domains', () => chooseDomain(host, null), 'tertiary');
   if (host.concepts.domain) {
     crumbs.createSpan({ text: ' / ', attr: { 'aria-hidden': 'true' } });
-    button(crumbs, host.concepts.domain === 'ungrouped' ? 'Not yet grouped' : label(host.concepts.domain),
+    button(crumbs, host.concepts.domain === 'ungrouped' ? 'Not yet grouped' : placeLabel(host, host.concepts.domain),
       () => chooseDomain(host, host.concepts.domain), 'tertiary');
   }
   if (host.concepts.subdomain) {
-    crumbs.createSpan({ text: ` / ${host.concepts.subdomain === 'ungrouped' ? 'Not yet grouped' : label(host.concepts.subdomain)}` });
+    crumbs.createSpan({ text: ` / ${host.concepts.subdomain === 'ungrouped' ? 'Not yet grouped' : placeLabel(host, host.concepts.subdomain)}` });
   }
 }
 
@@ -179,7 +180,7 @@ export function renderConceptBrowser(parent: HTMLElement, host: AtlasHost, graph
     content.createDiv({ cls: 'los-micro', text: 'Subdomains from linked note folders. A concept can appear in more than one place.' });
     const list = content.createDiv({ cls: 'los-atlas-browse-panel' });
     for (const [id, ids] of place.folders) {
-      button(list, `${id === 'ungrouped' ? 'Not yet grouped' : label(id)} · ${plural(ids.size, 'concept')}`, () => {
+      button(list, `${id === 'ungrouped' ? 'Not yet grouped' : placeLabel(host, id)} · ${plural(ids.size, 'concept')}`, () => {
         host.concepts.subdomain = id; host.concepts.selected = null; host.render();
       }, 'quiet').addClass('los-atlas-subdomain');
     }
@@ -187,7 +188,7 @@ export function renderConceptBrowser(parent: HTMLElement, host: AtlasHost, graph
     return;
   }
   const heading = query ? 'Concept results' : host.concepts.recentsOnly ? 'Recently visited'
-    : host.concepts.subdomain ? label(host.concepts.subdomain) : place?.title ?? 'Browse concepts';
+    : host.concepts.subdomain ? placeLabel(host, host.concepts.subdomain) : place?.title ?? 'Browse concepts';
   content.createEl('h2', { text: heading });
   const related = content.createDiv({ cls: 'los-actions los-atlas-browser-related' });
   if (place && place.id !== 'ungrouped') for (const [collection, title] of [['notes', 'Notes'], ['shelves', 'Source shelves']] as const) {

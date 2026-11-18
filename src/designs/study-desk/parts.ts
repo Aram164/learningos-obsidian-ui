@@ -10,7 +10,6 @@ import { semesterLabel } from '../../features/module/logistics';
 import { asLabel, asString } from '../../projection/readers';
 import type { ApplicationRouter } from '../../app/router';
 import type { DesignView } from '../screens';
-import { moduleWork } from './study-work';
 
 export type Cover = 'wine' | 'teal' | 'ochre' | 'moss' | 'slate' | 'plum' | 'stone';
 const pageClasses = new WeakMap<HTMLElement, string>();
@@ -187,12 +186,7 @@ function shortSemester(value: string): string {
 
 /** How far along, in words, from the same counts Core publishes. Never a judgement. */
 function moduleState(store: ManifestStore, module: ProjectionRecord): string {
-  const id = asString(module.id) ?? '';
-  const progress = store.progress(id);
-  if (module.is_actionable === true) {
-    const work = moduleWork(store, id);
-    if (work) return `${unitLabel(work.unit, module).place} · ${work.stage?.title ?? 'Needs a study map'}`;
-  }
+  const progress = store.progress(asString(module.id) ?? '');
   if (progress.stages_total && progress.stages_complete === progress.stages_total) return 'Done';
   return asString(module.status)?.replaceAll('-', ' ') ?? '';
 }
@@ -221,7 +215,6 @@ export function moduleRow(
   }
   progressCell.createSpan({ cls: 'sd-row-facts', text: progress.stages_total ? `${progress.stages_complete} of ${progress.stages_total} stages` : 'No study plan yet' });
   const next = row.createSpan({ cls: 'sd-row-next sd-module-next' });
-  if (module.is_actionable === true && state.includes(' · ')) next.createSpan({ cls: 'sd-eyebrow', text: 'Next' });
   next.createSpan({ text: state });
   chevron(row);
   return row;

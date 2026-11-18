@@ -179,7 +179,7 @@ module.exports = async function run() {
   heading('interface designs: the model and the stylesheet');
   {
     const load = createSourceModuleLoader(ROOT);
-    const { buildConceptMap, studyOrderLayout, moduleOverlap, overlapKey, UNGROUPED, layoutLectureMap } = load('src/designs/study-desk/atlas-model.ts');
+    const { buildConceptMap, browsingRegion, studyOrderLayout, moduleOverlap, overlapKey, UNGROUPED, layoutLectureMap } = load('src/designs/study-desk/atlas-model.ts');
     const concept = (id) => ({ id, label: id, sortKey: id, record: { id } });
     const edge = (from, to, layer = 'strict') => ({ id: `${from}--requires--${to}`, from, to, type: 'requires', layer, studyFrom: from, studyTo: to, prerequisiteId: from, dependentId: to, context: null, source: null });
     const concepts = ['a', 'b', 'c', 'd', 'lonely'].map(concept);
@@ -189,11 +189,20 @@ module.exports = async function run() {
       modulesByConcept: new Map([['a', ['m1', 'm2']], ['b', ['m1']]]),
     };
     const note = (folder, ...ids) => ({ path: `knowledge/notes/${folder}/n.md`, concepts: ids });
-    const map = buildConceptMap([note('mathematics', 'a', 'b'), note('systems', 'b'), note('mathematics', 'b'), note('systems', 'c', 'd')], graph);
+    const catalog = [{ id: 'mathematics', label: 'Mathematics', order: 1 }, { id: 'systems', label: 'Systems', order: 2 }];
+    const map = buildConceptMap(catalog, [note('mathematics', 'a', 'b'), note('systems', 'b'), note('mathematics', 'b'), note('systems', 'c', 'd')], graph);
     check('a concept is placed where most of its notes live', map.regionOf.get('b') === 'mathematics' && map.regionOf.get('c') === 'systems');
     check('a concept with no note stays Not yet grouped, never guessed', map.regionOf.get('lonely') === UNGROUPED);
     check('links between regions are counted from authored relations',
       map.links.length === 1 && map.links[0].count === 1);
+    check('browsing membership is the union of published buckets, separate from drawing placement',
+      map.memberships.get('b').has('mathematics') && map.memberships.get('b').has('systems')
+      && map.regionOf.get('b') === 'mathematics');
+    check('the browse view lists every concept the domain carries, not only the drawing majority',
+      browsingRegion(map, graph, 'systems').concepts.join('|') === 'b|c|d'
+      && browsingRegion(map, graph, 'systems').linked === 3);
+    check('a published bucket differing from the path wins',
+      buildConceptMap(catalog, [{ path: 'knowledge/notes/systems/n.md', concepts: ['a'], domain_bucket: 'mathematics' }], graph).regionOf.get('a') === 'mathematics');
     const order = studyOrderLayout(['a', 'b', 'lonely'], graph);
     const at = (id) => order.placed.find((row) => row.id === id);
     check('reading left to right never asks for something not yet introduced',
@@ -303,8 +312,9 @@ module.exports = async function run() {
     const pane = app.workspace.getLeavesOfType(VIEW.home)[0];
     const root = () => pane.view.contentEl;
     const control = (label) => root().find('sd-history-button').find((node) => node.getAttribute('aria-label') === label);
-    check('Home without a resume pointer offers a projected stage and distinguishes the suggestion',
-      root().findText('sd-hero-kicker', 'study map') && root().findText('los-btn--cta', 'Start stage')
+    check('Home without a resume pointer suggests nothing and lists modules neutrally',
+      root().find('sd-home-suggestion').length === 0 && root().findText('los-btn--cta', 'Start stage') === null
+      && root().findText('sd-heading', 'Modules') !== null && root().find('sd-module-row').length > 0
       && !root().findText('sd-hero-kicker', 'Continue where you stopped'));
     await plugin.nav.openLearn('program-skills');
     check('a legacy Learn route opens Modules with the corresponding area selected',
@@ -344,20 +354,12 @@ module.exports = async function run() {
       },
     });
     const root = () => app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
-    const hero = root().find('sd-home-suggestion')[0];
-    check('the stage suggestion carries the stage it opens, not the workspace instruction',
-      hero && !hero.allText().includes('Revisit stage 1 Event spaces')
-      && hero.allText().includes('Work the central medical-test fixture'), hero?.allText());
+    check('no stage is suggested or promoted from the study map or the workspace',
+      root().find('sd-home-suggestion').length === 0 && root().findText('los-btn--cta', 'Start stage') === null);
     check('the workspace instruction is shown verbatim as its own plan',
       root().allText().includes('Revisit stage 1 Event spaces before continuing.'));
-    const start = root().findText('los-btn--cta', 'Start stage 2');
-    check('the primary stage action is labelled from its destination', start !== null);
-    start?.fire('click');
-    await waitFor(() => app.workspace.getLeavesOfType(VIEW.unit).length > 0);
-    const unit = app.workspace.getLeavesOfType(VIEW.unit)[0].view;
-    check('the primary stage action opens stage 2 of the suggested lecture',
-      unit.unitId === 'unit-fixture-sad-l04' && unit.stageId === 'stage-fixture-conditioning',
-      `${unit.unitId}/${unit.stageId}`);
+    check('workspace facts cannot reorder or relabel the neutral rows',
+      root().find('sd-module-row').every((row) => !(row.find('sd-row-next')[0]?.allText() ?? '').includes(' · ')));
     plugin.onunload();
   }
 
@@ -373,9 +375,92 @@ module.exports = async function run() {
       },
     });
     const root = () => app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
-    check('with no stage available the workspace fallback opens its module',
-      root().findText('los-btn--cta', 'Open module') !== null
+    check('with no stage available there is no fallback hero and the plan still speaks for itself',
+      root().findText('los-btn--cta', 'Open module') === null
+      && root().find('sd-home-suggestion').length === 0
       && root().allText().includes('Work the Conditional probability and Bayes stage'));
+    plugin.onunload();
+  }
+
+  heading('study desk: the Home list is the neutral candidate pool');
+  {
+    const { app, plugin } = await boot({ settings: { uiDesign: 'study-desk', pinHome: false }, patchManifest(manifest) {
+      manifest.resume_pointer = {};
+      manifest.units.find((row) => row.id === 'unit-fixture-aml-l04').status = 'active';
+    } });
+    const root = () => app.workspace.getLeavesOfType(VIEW.home)[0].view.contentEl;
+    const ids = root().find('sd-module-row').map((row) => row.getAttribute('data-record-id'));
+    check('the home list is the candidate pool ordered by module ID ascending, closed work excluded',
+      JSON.stringify(ids) === JSON.stringify(['module-fixture-aml', 'module-fixture-m2', 'module-fixture-python', 'module-fixture-thesis']), JSON.stringify(ids));
+    check('a second active unit promotes nothing: rows keep their aggregate factual state',
+      root().find('sd-module-row').every((row) => {
+        const next = row.find('sd-row-next')[0]?.allText() ?? '';
+        return !row.find('sd-eyebrow').length && next !== '' && !next.includes(' · ') && !next.includes('Stage ');
+      }));
+    check('every pool row is a plain module target, not a stage shortcut',
+      root().find('sd-module-row').every((row) => row.tag === 'button' && (row.getAttribute('aria-labelledby') ?? '').length > 0));
+    plugin.onunload();
+  }
+
+  heading('study desk: one validated study marker and browse-context navigation');
+  {
+    const { app, plugin } = await boot({ settings: { uiDesign: 'study-desk' }, patchManifest(manifest) {
+      const note = manifest.records.find((row) => row.id === 'note-fixture-probability');
+      manifest.records.push({ ...note, id: 'note-fixture-cross-domain', title: 'Systems cross note',
+        path: 'knowledge/notes/systems/note-fixture-cross-domain.md', concepts: ['concept-bayes'],
+        domain_bucket: 'systems' });
+      manifest.counts.notes += 1;
+    } });
+    await plugin.nav.openAtlas({ lens: 'prerequisites' });
+    const atlas = () => app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl;
+    const mathematics = atlas().find('sd-region').find((card) => card.getAttribute('data-region') === 'mathematics');
+    check('one drawing marker: the study chip sits where drawing places the concept',
+      mathematics?.findText('sd-chip-button', 'You are here: Bayes theorem') !== null
+      && atlas().find('sd-chip-button').filter((chip) => chip.classes.has('is-here')).length === 1);
+    atlas().find('sd-region-head').find((card) => card.getAttribute('aria-label')?.includes('Systems')).fire('click');
+    await waitFor(() => atlas().find('sd-order-grid').length === 1);
+    atlas().findText('sd-node', 'Bayes theorem').fire('click');
+    await waitFor(() => atlas().findText('los-btn', 'Focus on this') !== null);
+    atlas().findText('los-btn', 'Focus on this').fire('click');
+    await waitFor(() => atlas().find('sd-crumb').map((node) => node.allText()).includes('Bayes theorem'));
+    const crumbs = atlas().find('sd-crumb').map((node) => node.allText());
+    check('opened from Systems, the return crumb keeps the browsed domain even though drawing places Bayes in Mathematics',
+      crumbs.includes('Systems') && crumbs.includes('Bayes theorem'), crumbs.join('|'));
+    await plugin.nav.openModule('module-fixture-m2');
+    await waitFor(() => app.workspace.getLeavesOfType(VIEW.module)[0]?.view.contentEl.find('sd-unit-sheet').length === 1);
+    const sheet = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl;
+    check('the validated pointer marks exactly its own unit row in the module sheet',
+      sheet.find('sd-unit-row').filter((row) => row.classes.has('is-here')).length === 1);
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot({ settings: { uiDesign: 'study-desk' }, patchManifest(manifest) {
+      const note = manifest.records.find((row) => row.id === 'note-fixture-probability');
+      manifest.records.push({ ...note, id: 'note-fixture-cross-domain', title: 'Systems cross note',
+        path: 'knowledge/notes/systems/note-fixture-cross-domain.md', concepts: ['concept-bayes'],
+        domain_bucket: 'systems' });
+      manifest.counts.notes += 1;
+    } });
+    await plugin.nav.openAtlas({ concept: 'concept-bayes', lens: 'prerequisites' });
+    await waitFor(() => app.workspace.getLeavesOfType(VIEW.atlas)[0]?.view.contentEl.find('sd-crumb').length > 0);
+    const crumbs = app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl.find('sd-crumb').map((node) => node.allText());
+    check('a deep link without a browse context returns to the canonical drawing place',
+      crumbs.includes('Mathematics') && !crumbs.includes('Systems'), crumbs.join('|'));
+    plugin.onunload();
+  }
+  {
+    const { app, plugin } = await boot({ settings: { uiDesign: 'study-desk' }, patchManifest(manifest) {
+      manifest.resume_pointer = { ...manifest.resume_pointer, module_id: 'module-fixture-aml' };
+    } });
+    await plugin.nav.openAtlas({ lens: 'prerequisites' });
+    const atlas = () => app.workspace.getLeavesOfType(VIEW.atlas)[0].view.contentEl;
+    check('an incoherent pointer draws no study marker on the atlas',
+      atlas().findText('sd-chip-button', 'You are here') === null);
+    await plugin.nav.openModule('module-fixture-m2');
+    await waitFor(() => app.workspace.getLeavesOfType(VIEW.module)[0]?.view.contentEl.find('sd-unit-sheet').length === 1);
+    const sheet = app.workspace.getLeavesOfType(VIEW.module)[0].view.contentEl;
+    check('an incoherent pointer marks no unit row as here',
+      sheet.find('sd-unit-row').every((row) => !row.classes.has('is-here')));
     plugin.onunload();
   }
 

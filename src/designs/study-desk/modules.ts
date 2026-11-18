@@ -1,5 +1,5 @@
 import { filterTabs, icon } from '../../components';
-import { readResumePointer } from '../../features/home/model';
+import { resolveResumeTarget } from '../../features/home/model';
 import { todayItems } from '../../features/home/focus';
 import { MODULE_TABS, nonNull, normalizeUnitRecord, orderModuleUnits, readModuleRecord } from '../../features/module/model';
 import { renderModuleUnitGroups } from '../../features/module/detail';
@@ -213,14 +213,17 @@ function renderUnitSheet(
     root.createEl('p', { cls: 'sd-quiet', text: 'No units in this component. Choose All components.' });
     return;
   }
-  const pointer = readResumePointer(plugin.store.data?.resume_pointer);
+  // Only a pointer Core would resolve marks a row as here: an older projection
+  // whose ids disagree on ownership marks nothing.
+  const target = resolveResumeTarget(plugin.store);
+  const pointerUnitId = target.unit ? target.pointer.unit_id : null;
   const sheet = root.createDiv({ cls: 'sd-sheet sd-unit-sheet' });
   renderModuleUnitGroups(sheet, units, (parent, unit) => {
     const work = unitWork(plugin.store, unit.id);
     const stages = work?.map.stages ?? [];
     const done = work?.done ?? 0;
     const label = unitLabel(plugin.store.get(unit.id), record);
-    const here = pointer.unit_id === unit.id;
+    const here = pointerUnitId !== null && pointerUnitId === unit.id;
     const row = deskRow(parent, `sd-unit-row${here ? ' is-here' : ''}`, `Open unit: ${unit.title}`, () => {
       view.selectedElementId = unit.id;
       return plugin.nav.openUnit(unit.id);

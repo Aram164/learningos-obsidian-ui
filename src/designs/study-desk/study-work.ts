@@ -1,6 +1,6 @@
 import type { ProjectionRecord } from '../../contracts/manifest';
 import { normalizeUnitRecord, orderModuleUnits, readModuleRecord } from '../../features/module/model';
-import { readResumePointer } from '../../features/home/model';
+import { resolveResumeTarget } from '../../features/home/model';
 import { firstOpenStage, isOpenStage, readStudyMap } from '../../features/unit/model';
 import type { ManifestStore } from '../../manifest-store';
 import { asString } from '../../projection/readers';
@@ -25,24 +25,11 @@ export function unitWork(store: ManifestStore, unitId: string) {
   return { map, done, next };
 }
 
-/** Show the recorded lecture first, then authored course order. */
-export function moduleWork(store: ManifestStore, moduleId: string) {
-  const pointer = readResumePointer(store.data?.resume_pointer);
-  const units = orderedUnits(store, moduleId);
-  const first = units.find((unit) => unit.id === pointer.unit_id) ?? units.find((unit) => unit.status === 'active');
-  let owed: ProjectionRecord | null = null;
-  for (const unit of first ? [first, ...units.filter((row) => row !== first)] : units) {
-    const id = asString(unit.id);
-    if (!id || unit.status === 'complete' || unit.status === 'archived' || unit.status === 'paused') continue;
-    const work = unitWork(store, id);
-    if (work?.next) return { unit, stage: work.next, position: work.map.stages.indexOf(work.next) + 1 };
-    if (unit.needs_study_map === true && !owed) owed = unit;
-  }
-  return owed ? { unit: owed, stage: null, position: 0 } : null;
-}
-
 export function inProgressUnits(store: ManifestStore) {
-  const pointer = readResumePointer(store.data?.resume_pointer);
+  // The pointer-first sort reads the validated pointer: a projection whose ids
+  // are individually known but disagree on ownership sorts nothing first.
+  const target = resolveResumeTarget(store);
+  const pointerUnitId = target.unit ? target.pointer.unit_id : null;
   const rows = store.modules().filter((module) => module.is_actionable === true).flatMap((module) => {
     const moduleId = asString(module.id);
     if (!moduleId) return [];
@@ -54,7 +41,7 @@ export function inProgressUnits(store: ManifestStore) {
       return [{ module, unit, unitId, done: work.done, total: work.map.stages.length, next: work.next }];
     });
   });
-  return rows.sort((left, right) => Number(right.unitId === pointer.unit_id) - Number(left.unitId === pointer.unit_id));
+  return rows.sort((left, right) => Number(right.unitId === pointerUnitId) - Number(left.unitId === pointerUnitId));
 }
 
 export function currentSemesterKey(store: ManifestStore): string | null {

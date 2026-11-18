@@ -10,7 +10,8 @@ module.exports = async function run() {
     manifest.counts.concepts++;
     const note = manifest.records.find((row) => row.id === 'note-fixture-probability');
     manifest.records.push({ ...note, id: 'note-browse-alias', title: 'Recorded nested note',
-      path: 'knowledge/notes/data-systems/dataframe-semantics/note-browse-alias.md', concepts: ['concept-bayes'] });
+      path: 'knowledge/notes/data-systems/dataframe-semantics/note-browse-alias.md', concepts: ['concept-bayes'],
+      domain_bucket: 'data-systems' });
     manifest.counts.notes++;
   } });
   await plugin.nav.openAtlas();
@@ -23,6 +24,9 @@ module.exports = async function run() {
   check('the complete domain inventory retains Programming alongside Not yet grouped',
     Boolean(domain('programming')) && Boolean(root().find('los-atlas-domain-row').find((row) => row.getAttribute('data-browse-domain') === 'programming'))
     && root().allText().includes('A concept can appear in more than one domain'));
+  check('browsing membership is the union of published buckets: the concept is reachable from both domains',
+    root().find('los-atlas-domain-row').find((row) => row.getAttribute('data-browse-domain') === 'data-systems')?.allText().includes('1 concept')
+    && root().find('los-atlas-domain-row').find((row) => row.getAttribute('data-browse-domain') === 'mathematics')?.allText().includes('2 concepts'));
   domain('data-systems').fire('click');
   check('only published nested folders become subdomains', root().find('los-atlas-subdomain').length === 1
     && root().allText().includes('Dataframe Semantics') && !root().allText().includes('Probability & statistics'));
