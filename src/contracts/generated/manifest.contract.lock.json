@@ -4,11 +4,11 @@
     "Generated companion to contracts/manifest-v<N>.lock.json, rendered from",
     "Core bundle metadata."
   ],
-  "contract_version": 19,
+  "contract_version": 20,
   "mirrors": "../repository/system/contracts/manifest-contract.yaml",
-  "schema_path": "system/contracts/manifest-v19.schema.json",
-  "schema_sha256": "sha256:c1960c667a40f38e32c91723791fef2f6eeb235c90f72c9eea259a687f47222b",
-  "closure_sha256": "sha256:82d0fd3886fd69dcc1cee51fb53f7b90640c6fce7795cb91166ba8a1610e6b18",
+  "schema_path": "system/contracts/manifest-v20.schema.json",
+  "schema_sha256": "sha256:050a6163b16b9cdcc9bc737e6a15215d3e11e4f91213d6bb532dc66415d40017",
+  "closure_sha256": "sha256:0d039aa7a31617f10c2ecbbad9350892208b76b5205ee68a297b0397dfa34f79",
   "top_level_keys": [
     "_generated",
     "academic_deadlines",
@@ -16,6 +16,7 @@
     "artifact_revisions",
     "backlinks",
     "counts",
+    "domains",
     "garden_entries",
     "indexes",
     "module_concept_edges",

@@ -17,10 +17,10 @@
 import { MANIFEST_CLOSURE_SHA256 } from './generated/manifest.meta';
 export { MANIFEST_CLOSURE_SHA256 };
 
-export const MANIFEST_CONTRACT_VERSION = 19 as const;
+export const MANIFEST_CONTRACT_VERSION = 20 as const;
 import validateManifest from './generated/manifest.validator.cjs';
 
-export const MANIFEST_SCHEMA_SHA256 = 'sha256:c1960c667a40f38e32c91723791fef2f6eeb235c90f72c9eea259a687f47222b' as const;
+export const MANIFEST_SCHEMA_SHA256 = 'sha256:050a6163b16b9cdcc9bc737e6a15215d3e11e4f91213d6bb532dc66415d40017' as const;
 
 interface AjvErrorLike {
   readonly instancePath?: string;

@@ -1,10 +1,10 @@
 {
   "_generated": {
-    "closure_sha256": "sha256:82d0fd3886fd69dcc1cee51fb53f7b90640c6fce7795cb91166ba8a1610e6b18",
-    "contract_version": 19,
+    "closure_sha256": "sha256:0d039aa7a31617f10c2ecbbad9350892208b76b5205ee68a297b0397dfa34f79",
+    "contract_version": 20,
     "generated_at": "2099-04-01",
     "generator": "synthetic-fixture-v8",
-    "schema_sha256": "sha256:c1960c667a40f38e32c91723791fef2f6eeb235c90f72c9eea259a687f47222b",
+    "schema_sha256": "sha256:050a6163b16b9cdcc9bc737e6a15215d3e11e4f91213d6bb532dc66415d40017",
     "snapshot_id": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "source_dirty": false,
     "source_fingerprint": "2222222222222222222222222222222222222222222222222222222222222222",
@@ -267,6 +267,43 @@
     "workspaces_active": 2,
     "workspaces_archived": 0
   },
+  "domains": [
+    {
+      "id": "mathematics",
+      "label": "Mathematics",
+      "order": 1
+    },
+    {
+      "id": "machine-learning",
+      "label": "Machine learning",
+      "order": 2
+    },
+    {
+      "id": "systems",
+      "label": "Systems",
+      "order": 3
+    },
+    {
+      "id": "data-systems",
+      "label": "Data systems",
+      "order": 4
+    },
+    {
+      "id": "algorithms",
+      "label": "Algorithms",
+      "order": 5
+    },
+    {
+      "id": "programming",
+      "label": "Programming",
+      "order": 6
+    },
+    {
+      "id": "cross-domain",
+      "label": "Across domains",
+      "order": 7
+    }
+  ],
   "garden_entries": [
     {
       "id": "garden-note-fixture-soft-knn",
@@ -916,6 +953,7 @@
         "workspace-fixture-m2"
       ],
       "domain": "mathematics",
+      "domain_bucket": "mathematics",
       "evidence": [],
       "id": "note-fixture-probability",
       "material_analysis": null,
@@ -981,6 +1019,7 @@
       "concepts": [],
       "contexts": [],
       "domain": "programming",
+      "domain_bucket": "programming",
       "evidence": [],
       "id": "note-fixture-python-wiring",
       "material_analysis": null,
@@ -1125,6 +1164,7 @@
       "concepts": [],
       "contexts": [],
       "domain": "mathematics",
+      "domain_bucket": "mathematics",
       "evidence": [],
       "id": "note-fixture-question-concepts",
       "material_analysis": null,
@@ -1154,6 +1194,7 @@
       "concepts": [],
       "contexts": [],
       "domain": "mathematics",
+      "domain_bucket": "mathematics",
       "evidence": [],
       "id": "note-fixture-question-relation",
       "material_analysis": null,
@@ -1183,6 +1224,7 @@
       "concepts": [],
       "contexts": [],
       "domain": "mathematics",
+      "domain_bucket": "mathematics",
       "evidence": [],
       "id": "note-fixture-question-stale",
       "material_analysis": null,
@@ -1215,6 +1257,7 @@
       "concepts": [],
       "contexts": [],
       "domain": "mathematics",
+      "domain_bucket": "mathematics",
       "evidence": [],
       "id": "note-fixture-question-resolved",
       "material_analysis": null,

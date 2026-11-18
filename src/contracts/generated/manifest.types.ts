@@ -117,7 +117,7 @@ export type LearningPlan_StageCore = {
 /** learning-plan.schema.json#/ */
 export type LearningPlanSchema = unknown;
 
-/** manifest-v19.schema.json#/$defs/academicDeadline */
+/** manifest-v20.schema.json#/$defs/academicDeadline */
 export type Manifest_AcademicDeadline = {
   readonly end_date: string;
   readonly kind: string;
@@ -132,7 +132,7 @@ export type Manifest_AcademicDeadline = {
   readonly title?: string;
 };
 
-/** manifest-v19.schema.json#/$defs/aiAction */
+/** manifest-v20.schema.json#/$defs/aiAction */
 export type Manifest_AiAction = {
   readonly description: string;
   readonly id: string;
@@ -143,7 +143,7 @@ export type Manifest_AiAction = {
   readonly title: string;
 };
 
-/** manifest-v19.schema.json#/$defs/aiActions */
+/** manifest-v20.schema.json#/$defs/aiActions */
 export type Manifest_AiActions = {
   readonly available: readonly Manifest_AiAction[];
   readonly contract_version: 1;
@@ -151,7 +151,7 @@ export type Manifest_AiActions = {
   readonly requests: readonly Manifest_AiRequest[];
 };
 
-/** manifest-v19.schema.json#/$defs/aiProviderAdapter */
+/** manifest-v20.schema.json#/$defs/aiProviderAdapter */
 export type Manifest_AiProviderAdapter = {
   readonly adapter: string;
   readonly available: boolean;
@@ -160,7 +160,7 @@ export type Manifest_AiProviderAdapter = {
   readonly supports_direct_delivery: boolean;
 };
 
-/** manifest-v19.schema.json#/$defs/aiRequest */
+/** manifest-v20.schema.json#/$defs/aiRequest */
 export type Manifest_AiRequest = {
   readonly action_id: string;
   readonly bundle_path: string;
@@ -176,7 +176,7 @@ export type Manifest_AiRequest = {
   };
 };
 
-/** manifest-v19.schema.json#/$defs/backlinks */
+/** manifest-v20.schema.json#/$defs/backlinks */
 export type Manifest_Backlinks = {
   readonly concept_relations?: Manifest_JsonObject;
   readonly concept_to_notes?: Manifest_StringArrayMap;
@@ -189,7 +189,7 @@ export type Manifest_Backlinks = {
   readonly workspace_to_notes?: Manifest_StringArrayMap;
 };
 
-/** manifest-v19.schema.json#/$defs/collectionRecord */
+/** manifest-v20.schema.json#/$defs/collectionRecord */
 export type Manifest_CollectionRecord = {
   readonly collection_kind: "catalogue" | "topic-pack";
   readonly domain: string;
@@ -209,7 +209,7 @@ export type Manifest_CollectionRecord = {
   readonly type: "collection" | "topic-pack";
 };
 
-/** manifest-v19.schema.json#/$defs/compatibilityAlias */
+/** manifest-v20.schema.json#/$defs/compatibilityAlias */
 export type Manifest_CompatibilityAlias = {
   readonly id: string;
   readonly path: "projects/aliases.yaml";
@@ -218,7 +218,7 @@ export type Manifest_CompatibilityAlias = {
   readonly type: "compatibility-alias";
 };
 
-/** manifest-v19.schema.json#/$defs/conceptRecord */
+/** manifest-v20.schema.json#/$defs/conceptRecord */
 export type Manifest_ConceptRecord = {
   readonly aliases: readonly string[];
   readonly deprecated: boolean;
@@ -228,7 +228,7 @@ export type Manifest_ConceptRecord = {
   readonly type: "concept";
 };
 
-/** manifest-v19.schema.json#/$defs/coordinationRecord */
+/** manifest-v20.schema.json#/$defs/coordinationRecord */
 export type Manifest_CoordinationRecord = {
   readonly id: "coordination";
   readonly path: "work/COORDINATION.md";
@@ -241,7 +241,7 @@ export type Manifest_CoordinationRecord = {
   readonly type: "coordination";
 };
 
-/** manifest-v19.schema.json#/$defs/counts */
+/** manifest-v20.schema.json#/$defs/counts */
 export type Manifest_Counts = {
   readonly ai_action_requests: number;
   readonly collections: number;
@@ -269,7 +269,7 @@ export type Manifest_Counts = {
   readonly workspaces_archived: number;
 };
 
-/** manifest-v19.schema.json#/$defs/deadlineModule */
+/** manifest-v20.schema.json#/$defs/deadlineModule */
 export type Manifest_DeadlineModule = {
   readonly action: string | null;
   readonly module_id: string;
@@ -277,14 +277,21 @@ export type Manifest_DeadlineModule = {
   readonly title: string;
 };
 
-/** manifest-v19.schema.json#/$defs/flatStage */
+/** manifest-v20.schema.json#/$defs/domainCatalogEntry */
+export type Manifest_DomainCatalogEntry = {
+  readonly id: string;
+  readonly label: string;
+  readonly order: number;
+};
+
+/** manifest-v20.schema.json#/$defs/flatStage */
 export type Manifest_FlatStage = Manifest_ProjectedStage & {
     readonly study_map_id: unknown;
     readonly unit_id: unknown;
     readonly module_id: unknown;
   };
 
-/** manifest-v19.schema.json#/$defs/gardenEntry */
+/** manifest-v20.schema.json#/$defs/gardenEntry */
 export type Manifest_GardenEntry = {
   readonly id: string;
   readonly last_ai_request_id: string | null;
@@ -297,10 +304,10 @@ export type Manifest_GardenEntry = {
   readonly type: "garden-note";
 };
 
-/** manifest-v19.schema.json#/$defs/generated */
+/** manifest-v20.schema.json#/$defs/generated */
 export type Manifest_Generated = {
   readonly closure_sha256: string;
-  readonly contract_version: 19;
+  readonly contract_version: 20;
   readonly generated_at: string;
   readonly generator: string;
   readonly schema_sha256: string;
@@ -311,7 +318,7 @@ export type Manifest_Generated = {
   readonly warning: string;
 };
 
-/** manifest-v19.schema.json#/$defs/indexes */
+/** manifest-v20.schema.json#/$defs/indexes */
 export type Manifest_Indexes = {
   readonly component_to_units: Manifest_StringArrayMap;
   readonly concept_to_modules: Manifest_StringArrayMap;
@@ -328,16 +335,16 @@ export type Manifest_Indexes = {
   readonly workspace_to_units: Manifest_StringArrayMap;
 };
 
-/** manifest-v19.schema.json#/$defs/integerMap */
+/** manifest-v20.schema.json#/$defs/integerMap */
 export type Manifest_IntegerMap = { readonly [key: string]: number };
 
-/** manifest-v19.schema.json#/$defs/jsonObject */
+/** manifest-v20.schema.json#/$defs/jsonObject */
 export type Manifest_JsonObject = { readonly [key: string]: Manifest_JsonValue };
 
-/** manifest-v19.schema.json#/$defs/jsonValue */
+/** manifest-v20.schema.json#/$defs/jsonValue */
 export type Manifest_JsonValue = null | boolean | number | string | readonly Manifest_JsonValue[] | Manifest_JsonObject;
 
-/** manifest-v19.schema.json#/$defs/knowledgeNode */
+/** manifest-v20.schema.json#/$defs/knowledgeNode */
 export type Manifest_KnowledgeNode = {
   readonly builds_on?: readonly string[];
   readonly concept_ids?: readonly string[];
@@ -346,24 +353,24 @@ export type Manifest_KnowledgeNode = {
   readonly title: string;
 };
 
-/** manifest-v19.schema.json#/$defs/knowledgeNodeEvidence */
+/** manifest-v20.schema.json#/$defs/knowledgeNodeEvidence */
 export type Manifest_KnowledgeNodeEvidence = {
   readonly kind: "knowledge-node";
   readonly node_id: string;
   readonly unit_id: string;
 };
 
-/** manifest-v19.schema.json#/$defs/moduleConceptEdge */
+/** manifest-v20.schema.json#/$defs/moduleConceptEdge */
 export type Manifest_ModuleConceptEdge = {
   readonly concept_id: string;
   readonly evidence: readonly Manifest_ModuleConceptEdge_Properties_Evidence_Items[];
   readonly module_id: string;
 };
 
-/** manifest-v19.schema.json#/$defs/moduleConceptEdge/properties/evidence/items */
+/** manifest-v20.schema.json#/$defs/moduleConceptEdge/properties/evidence/items */
 export type Manifest_ModuleConceptEdge_Properties_Evidence_Items = Manifest_StageConceptEvidence | Manifest_KnowledgeNodeEvidence;
 
-/** manifest-v19.schema.json#/$defs/moduleRecord */
+/** manifest-v20.schema.json#/$defs/moduleRecord */
 export type Manifest_ModuleRecord = {
   readonly administrative_status: "planned" | "enrolled" | "awaiting-grade" | "completed" | "dropped" | "archived" | null;
   readonly area_id: string | null;
@@ -389,7 +396,7 @@ export type Manifest_ModuleRecord = {
   readonly unit_order: Module_Properties_UnitOrder;
 };
 
-/** manifest-v19.schema.json#/$defs/moduleSourceMap */
+/** manifest-v20.schema.json#/$defs/moduleSourceMap */
 export type Manifest_ModuleSourceMap = {
   readonly id: string;
   readonly module_id: string;
@@ -406,7 +413,7 @@ export type Manifest_ModuleSourceMap = {
   readonly type: "module-source-map";
 };
 
-/** manifest-v19.schema.json#/$defs/noteRecord */
+/** manifest-v20.schema.json#/$defs/noteRecord */
 export type Manifest_NoteRecord = {
   readonly atlas_question: {
     readonly answer_notes?: readonly string[];
@@ -424,6 +431,7 @@ export type Manifest_NoteRecord = {
   readonly concepts: readonly string[];
   readonly contexts: readonly string[];
   readonly domain: string;
+  readonly domain_bucket: string;
   readonly evidence: Note_Properties_Evidence;
   readonly id: string;
   readonly material_analysis: unknown & ({
@@ -460,7 +468,7 @@ export type Manifest_NoteRecord = {
   readonly type: "note";
 };
 
-/** manifest-v19.schema.json#/$defs/programRecord */
+/** manifest-v20.schema.json#/$defs/programRecord */
 export type Manifest_ProgramRecord = {
   readonly boundary_action?: string;
   readonly default: boolean;
@@ -476,7 +484,7 @@ export type Manifest_ProgramRecord = {
   readonly type: "program";
 };
 
-/** manifest-v19.schema.json#/$defs/programSemester */
+/** manifest-v20.schema.json#/$defs/programSemester */
 export type Manifest_ProgramSemester = {
   readonly id: string;
   readonly order: number;
@@ -484,10 +492,10 @@ export type Manifest_ProgramSemester = {
   readonly title: string;
 };
 
-/** manifest-v19.schema.json#/$defs/progress */
+/** manifest-v20.schema.json#/$defs/progress */
 export type Manifest_Progress = { readonly [key: string]: Manifest_Progress_AdditionalProperties };
 
-/** manifest-v19.schema.json#/$defs/progress/additionalProperties */
+/** manifest-v20.schema.json#/$defs/progress/additionalProperties */
 export type Manifest_Progress_AdditionalProperties = {
   readonly stages_complete: number;
   readonly stages_total: number;
@@ -496,10 +504,10 @@ export type Manifest_Progress_AdditionalProperties = {
   readonly units_total: number;
 };
 
-/** manifest-v19.schema.json#/$defs/projectedRecord */
+/** manifest-v20.schema.json#/$defs/projectedRecord */
 export type Manifest_ProjectedRecord = Manifest_NoteRecord | Manifest_ConceptRecord | Manifest_SourceRecord | Manifest_CompatibilityAlias | Manifest_ModuleRecord | Manifest_CollectionRecord | Manifest_WorkspaceRecord | Manifest_ProgramRecord | Manifest_ProjectedUnit | Manifest_StudyMap | Manifest_ModuleSourceMap | Manifest_UnitMaterialSynthesisProjection | Manifest_CoordinationRecord;
 
-/** manifest-v19.schema.json#/$defs/projectedRoute */
+/** manifest-v20.schema.json#/$defs/projectedRoute */
 export type Manifest_ProjectedRoute = {
   readonly angle: string;
   readonly angle_detail?: string;
@@ -526,7 +534,7 @@ export type Manifest_ProjectedRoute = {
   readonly vault_path?: string;
 };
 
-/** manifest-v19.schema.json#/$defs/projectedStage */
+/** manifest-v20.schema.json#/$defs/projectedStage */
 export type Manifest_ProjectedStage = {
   readonly attachments: readonly Manifest_StageAttachment[];
   readonly completed?: string;
@@ -551,7 +559,7 @@ export type Manifest_ProjectedStage = {
   readonly working_note: string;
 };
 
-/** manifest-v19.schema.json#/$defs/projectedUnit */
+/** manifest-v20.schema.json#/$defs/projectedUnit */
 export type Manifest_ProjectedUnit = {
   readonly artifacts: Unit_Properties_Artifacts;
   readonly child_unit_ids?: readonly string[];
@@ -593,7 +601,7 @@ export type Manifest_ProjectedUnit = {
   readonly workspace_ids: readonly string[];
 };
 
-/** manifest-v19.schema.json#/$defs/relation */
+/** manifest-v20.schema.json#/$defs/relation */
 export type Manifest_Relation = {
   readonly context: string | null;
   readonly from: string | null;
@@ -602,7 +610,7 @@ export type Manifest_Relation = {
   readonly type: string | null;
 };
 
-/** manifest-v19.schema.json#/$defs/resource */
+/** manifest-v20.schema.json#/$defs/resource */
 export type Manifest_Resource = {
   readonly angle?: string;
   readonly angle_detail?: string;
@@ -620,10 +628,10 @@ export type Manifest_Resource = {
   readonly vault_path?: string;
 };
 
-/** manifest-v19.schema.json#/$defs/resumePointer */
+/** manifest-v20.schema.json#/$defs/resumePointer */
 export type Manifest_ResumePointer = { readonly [key: string]: unknown } | Manifest_ResumePointer_OneOf_1;
 
-/** manifest-v19.schema.json#/$defs/resumePointer/oneOf/1 */
+/** manifest-v20.schema.json#/$defs/resumePointer/oneOf/1 */
 export type Manifest_ResumePointer_OneOf_1 = {
   readonly module_id: string;
   readonly stage_id: string;
@@ -633,7 +641,7 @@ export type Manifest_ResumePointer_OneOf_1 = {
   readonly updated: string;
 };
 
-/** manifest-v19.schema.json#/$defs/reviewItem */
+/** manifest-v20.schema.json#/$defs/reviewItem */
 export type Manifest_ReviewItem = {
   readonly category: string;
   readonly context: string;
@@ -643,10 +651,10 @@ export type Manifest_ReviewItem = {
   readonly title: string;
 };
 
-/** manifest-v19.schema.json#/$defs/routeId */
+/** manifest-v20.schema.json#/$defs/routeId */
 export type Manifest_RouteId = string;
 
-/** manifest-v19.schema.json#/$defs/semester */
+/** manifest-v20.schema.json#/$defs/semester */
 export type Manifest_Semester = {
   readonly id: string;
   readonly order: number;
@@ -655,7 +663,7 @@ export type Manifest_Semester = {
   readonly title: string;
 };
 
-/** manifest-v19.schema.json#/$defs/sourceEvaluation */
+/** manifest-v20.schema.json#/$defs/sourceEvaluation */
 export type Manifest_SourceEvaluation = {
   readonly audience: readonly string[];
   readonly concepts: readonly string[];
@@ -671,14 +679,14 @@ export type Manifest_SourceEvaluation = {
   readonly weaknesses: readonly string[];
 };
 
-/** manifest-v19.schema.json#/$defs/sourceExamination */
+/** manifest-v20.schema.json#/$defs/sourceExamination */
 export type Manifest_SourceExamination = {
   readonly approved_analysis_count: number;
   readonly evaluated: boolean;
   readonly metadata_placed: boolean;
 };
 
-/** manifest-v19.schema.json#/$defs/sourceFeedback */
+/** manifest-v20.schema.json#/$defs/sourceFeedback */
 export type Manifest_SourceFeedback = {
   readonly feedback: "helpful" | "too-advanced" | "wrong-perspective" | "useful-for-derivation" | "useful-for-review" | "skipped";
   readonly note?: string;
@@ -687,7 +695,7 @@ export type Manifest_SourceFeedback = {
   readonly source_id: string;
 };
 
-/** manifest-v19.schema.json#/$defs/sourceRecord */
+/** manifest-v20.schema.json#/$defs/sourceRecord */
 export type Manifest_SourceRecord = {
   readonly authors: readonly string[];
   readonly discovery: Sources_Properties_Sources_Items_Properties_Discovery | null;
@@ -711,13 +719,13 @@ export type Manifest_SourceRecord = {
   readonly year: number | null;
 };
 
-/** manifest-v19.schema.json#/$defs/stageAttachment */
+/** manifest-v20.schema.json#/$defs/stageAttachment */
 export type Manifest_StageAttachment = {
   readonly label: string;
   readonly path: string;
 };
 
-/** manifest-v19.schema.json#/$defs/stageConceptEvidence */
+/** manifest-v20.schema.json#/$defs/stageConceptEvidence */
 export type Manifest_StageConceptEvidence = {
   readonly kind: "stage-concept";
   readonly stage_id: string;
@@ -725,13 +733,13 @@ export type Manifest_StageConceptEvidence = {
   readonly unit_id: string;
 };
 
-/** manifest-v19.schema.json#/$defs/stringArrayMap */
+/** manifest-v20.schema.json#/$defs/stringArrayMap */
 export type Manifest_StringArrayMap = { readonly [key: string]: readonly string[] };
 
-/** manifest-v19.schema.json#/$defs/stringMap */
+/** manifest-v20.schema.json#/$defs/stringMap */
 export type Manifest_StringMap = { readonly [key: string]: string };
 
-/** manifest-v19.schema.json#/$defs/studyMap */
+/** manifest-v20.schema.json#/$defs/studyMap */
 export type Manifest_StudyMap = {
   readonly current_stage: string;
   readonly detours?: StudyMap_Properties_Detours;
@@ -748,7 +756,7 @@ export type Manifest_StudyMap = {
   readonly unit_id: string;
 };
 
-/** manifest-v19.schema.json#/$defs/thematicGroup */
+/** manifest-v20.schema.json#/$defs/thematicGroup */
 export type Manifest_ThematicGroup = {
   readonly description: string;
   readonly id: string;
@@ -756,20 +764,20 @@ export type Manifest_ThematicGroup = {
   readonly title: string;
 };
 
-/** manifest-v19.schema.json#/$defs/topic */
+/** manifest-v20.schema.json#/$defs/topic */
 export type Manifest_Topic = {
   readonly domain: string;
   readonly id: string;
   readonly title: string;
 };
 
-/** manifest-v19.schema.json#/$defs/unitMaterialSynthesisProjection */
+/** manifest-v20.schema.json#/$defs/unitMaterialSynthesisProjection */
 export type Manifest_UnitMaterialSynthesisProjection = UnitMaterialSynthesis_CanonicalRecord & {
     readonly completeness: Manifest_UnitMaterialSynthesisProjection_AllOf_1_Properties_Completeness;
     readonly freshness: Manifest_UnitMaterialSynthesisProjection_AllOf_1_Properties_Freshness;
   };
 
-/** manifest-v19.schema.json#/$defs/unitMaterialSynthesisProjection/allOf/1/properties/completeness */
+/** manifest-v20.schema.json#/$defs/unitMaterialSynthesisProjection/allOf/1/properties/completeness */
 export type Manifest_UnitMaterialSynthesisProjection_AllOf_1_Properties_Completeness = {
   readonly assessed_route_count: number;
   readonly complete: boolean;
@@ -783,16 +791,16 @@ export type Manifest_UnitMaterialSynthesisProjection_AllOf_1_Properties_Complete
   readonly unevaluated_count: number;
 };
 
-/** manifest-v19.schema.json#/$defs/unitMaterialSynthesisProjection/allOf/1/properties/freshness */
+/** manifest-v20.schema.json#/$defs/unitMaterialSynthesisProjection/allOf/1/properties/freshness */
 export type Manifest_UnitMaterialSynthesisProjection_AllOf_1_Properties_Freshness = {
   readonly reasons: readonly Manifest_UnitMaterialSynthesisProjection_AllOf_1_Properties_Freshness_Properties_Reasons_Items[];
   readonly status: "current" | "stale";
 };
 
-/** manifest-v19.schema.json#/$defs/unitMaterialSynthesisProjection/allOf/1/properties/freshness/properties/reasons/items */
+/** manifest-v20.schema.json#/$defs/unitMaterialSynthesisProjection/allOf/1/properties/freshness/properties/reasons/items */
 export type Manifest_UnitMaterialSynthesisProjection_AllOf_1_Properties_Freshness_Properties_Reasons_Items = "source_map_revision" | "source_map_checksum" | "route_set_checksum" | "material_checksums" | "policy" | "current-basis-unavailable" | "analysis-refs-stale";
 
-/** manifest-v19.schema.json#/$defs/unitNoteSection */
+/** manifest-v20.schema.json#/$defs/unitNoteSection */
 export type Manifest_UnitNoteSection = {
   readonly attachments: readonly Manifest_StageAttachment[];
   readonly recorded_at: string | null;
@@ -802,7 +810,7 @@ export type Manifest_UnitNoteSection = {
   readonly title: string;
 };
 
-/** manifest-v19.schema.json#/$defs/workspaceRecord */
+/** manifest-v20.schema.json#/$defs/workspaceRecord */
 export type Manifest_WorkspaceRecord = {
   readonly archived: boolean;
   readonly concepts: readonly string[];
@@ -824,7 +832,7 @@ export type Manifest_WorkspaceRecord = {
   readonly unit_ids: readonly string[];
 };
 
-/** manifest-v19.schema.json#/ */
+/** manifest-v20.schema.json#/ */
 export type ManifestSchema = {
   readonly _generated: Manifest_Generated;
   readonly academic_deadlines: readonly Manifest_AcademicDeadline[];
@@ -832,6 +840,7 @@ export type ManifestSchema = {
   readonly artifact_revisions: Manifest_IntegerMap;
   readonly backlinks: Manifest_Backlinks;
   readonly counts: Manifest_Counts;
+  readonly domains: readonly Manifest_DomainCatalogEntry[];
   readonly garden_entries: readonly Manifest_GardenEntry[];
   readonly indexes: Manifest_Indexes;
   readonly module_concept_edges: readonly Manifest_ModuleConceptEdge[];
