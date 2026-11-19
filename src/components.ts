@@ -3,20 +3,10 @@ import { webUtils } from 'electron';
 import { ICONS } from './constants';
 import type { ProjectionRecord } from './contracts/manifest';
 import type { ManifestStore } from './manifest-store';
-import { asLabel, asRecords, asString } from './projection/readers';
+import { asLabel, asRecords, asString, stageProgress } from './projection/readers';
 import { enableButtonGroupKeyboardNavigation } from './accessibility/button-group';
 export { safeWebUrl } from './security/safe-url';
-
-/** Count complete stages alongside total stages for display summaries. */
-export function stageProgress(
-  stages: readonly { readonly status?: unknown }[],
-): { readonly done: number; readonly total: number } {
-  let done = 0;
-  for (const stage of stages) {
-    if (stage.status === 'complete') done += 1;
-  }
-  return { done, total: stages.length };
-}
+export { stageProgress };
 
 /**
  * The card components read the projection and navigate. That is the whole

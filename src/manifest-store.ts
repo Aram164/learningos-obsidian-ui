@@ -73,7 +73,7 @@ function isArchivedRecord(
   record: ProjectionRecord,
   archivedModuleIds: ReadonlySet<string>,
 ): boolean {
-  if (record.type === 'module' && record.is_retired === true) {
+  if (record.type === 'module' && record.status === 'archived') {
     return true;
   }
 
@@ -95,7 +95,7 @@ function buildStoreIndexes(
 ): StoreIndexes {
   const archivedModuleIds = new Set(
     manifest.modules.flatMap((module) =>
-      module.is_retired === true && typeof module.id === 'string'
+      module.status === 'archived' && typeof module.id === 'string'
         ? [module.id]
         : []),
   );

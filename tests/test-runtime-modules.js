@@ -1658,7 +1658,7 @@ function routerPlugin(settings = {}) {
     assert.equal(store.get('missing'), null);
   });
 
-  await test('retired (archived and dropped) modules and their learning records stay out of every UI lookup', async () => {
+  await test('archived modules leave the store while dropped modules remain inspectable as closed history', async () => {
     const store = new ManifestStore(manifestApp((text) => {
       const manifest = JSON.parse(text);
       const archivedModule = {
@@ -1668,6 +1668,7 @@ function routerPlugin(settings = {}) {
         status: 'archived',
         is_settled: true,
         is_retired: true,
+        is_actionable: false,
         unit_order: ['unit-archived-fixture'],
       };
       const archivedUnit = {
@@ -1683,6 +1684,7 @@ function routerPlugin(settings = {}) {
         status: 'dropped',
         is_settled: true,
         is_retired: true,
+        is_actionable: false,
         unit_order: ['unit-dropped-fixture'],
       };
       const droppedUnit = {
@@ -1700,28 +1702,61 @@ function routerPlugin(settings = {}) {
     assert.equal(await store.load(), true);
     assert.equal(store.get('module-archived-fixture'), null);
     assert.equal(store.get('unit-archived-fixture'), null);
-    assert.equal(store.get('module-dropped-fixture'), null);
-    assert.equal(store.get('unit-dropped-fixture'), null);
+    assert.equal(store.get('module-dropped-fixture')?.id, 'module-dropped-fixture');
+    assert.equal(store.get('unit-dropped-fixture')?.id, 'unit-dropped-fixture');
     assert.equal(
-      store.modules().some((row) => row.id === 'module-archived-fixture' || row.id === 'module-dropped-fixture'),
+      store.openAcademicModules().some((row) => row.id === 'module-archived-fixture' || row.id === 'module-dropped-fixture'),
       false,
     );
     assert.equal(
-      store.units().some((row) => row.id === 'unit-archived-fixture' || row.id === 'unit-dropped-fixture'),
+      store.modules().some((row) => row.id === 'module-archived-fixture'),
       false,
     );
     assert.equal(
-      store.search('fixture module').some(
-        (row) => row.id === 'module-archived-fixture' || row.id === 'module-dropped-fixture',
-      ),
+      store.units().some((row) => row.id === 'unit-archived-fixture'),
       false,
     );
     assert.equal(
-      store.search('fixture unit').some(
-        (row) => row.id === 'unit-archived-fixture' || row.id === 'unit-dropped-fixture',
-      ),
+      store.search('fixture module').some((row) => row.id === 'module-archived-fixture'),
       false,
     );
+    assert.equal(
+      store.search('fixture unit').some((row) => row.id === 'unit-archived-fixture'),
+      false,
+    );
+  });
+
+  await test('resolveResumeTarget enforces cross-record ownership across module, unit, and study map', () => {
+    const { resolveResumeTarget } = loadWithHost('src/features/home/model.ts');
+    const makeStore = (unitModuleId = 'module-a', mapModuleId = 'module-a', mapUnitId = 'unit-a') => {
+      const module = { id: 'module-a', type: 'module' };
+      const unit = { id: 'unit-a', type: 'unit', module_id: unitModuleId };
+      const map = {
+        id: 'map-a',
+        type: 'study-map',
+        module_id: mapModuleId,
+        unit_id: mapUnitId,
+        stages: [{ id: 'stage-a', type: 'stage', is_open: true }],
+      };
+      const byId = new Map([['module-a', module], ['unit-a', unit], ['map-a', map]]);
+      return {
+        data: {
+          resume_pointer: {
+            module_id: 'module-a',
+            unit_id: 'unit-a',
+            study_map_id: 'map-a',
+            stage_id: 'stage-a',
+          },
+        },
+        get: (id) => byId.get(id) ?? null,
+        stage: () => null,
+        mapForUnit: (id) => (id === 'unit-a' ? map : null),
+      };
+    };
+    assert.equal(resolveResumeTarget(makeStore()).stage?.id, 'stage-a');
+    assert.equal(resolveResumeTarget(makeStore('module-other', 'module-a', 'unit-a')).stage, null);
+    assert.equal(resolveResumeTarget(makeStore('module-a', 'module-other', 'unit-a')).stage, null);
+    assert.equal(resolveResumeTarget(makeStore('module-a', 'module-a', 'unit-other')).stage, null);
   });
 
   await test('button groups gain arrow, Home, and End navigation without changing selection', async () => {

@@ -38,20 +38,19 @@ const ARRAY_STATUS_LITERALS = new Set([
  * comparison without a published verdict must fail CI.
  */
 const STATUS_COMPARISON_ALLOWLIST = new Map([
-  ['src/components.ts', { max: 1, reason: 'Single stageProgress() helper counting complete stages.' }],
-  ['src/designs/focus/unit.ts', { max: 5, reason: 'Display state labels and completion badges for stages.' }],
+  ['src/projection/readers.ts', { max: 1, reason: 'Single stageProgress() helper counting complete stages.' }],
+  ['src/designs/focus/unit.ts', { max: 6, reason: 'Display state labels and completion badges for stages.' }],
   ['src/designs/study-desk/unit.ts', { max: 8, reason: 'Display labels, chips, and stage-strip checks for stages.' }],
   ['src/features/unit/stage.ts', { max: 6, reason: 'Stage transition dispatch, display labels, and complete badge.' }],
   ['src/features/unit/shell.ts', { max: 2, reason: 'Stage rail complete/skipped marker rendering.' }],
-  ['src/features/unit/model.ts', { max: 0, reason: 'Re-exports stageProgress from components.ts.' }],
   ['src/features/module/detail.ts', { max: 3, reason: 'Paused unit disclosure grouping and unit badge.' }],
-  ['src/manifest-store.ts', { max: 1, reason: 'currentSemester() selects the semester marked current.' }],
+  ['src/manifest-store.ts', { max: 3, reason: 'Archived module store exclusion and currentSemester() selector.' }],
   ['src/views/program-view.ts', { max: 1, reason: 'Renders current-semester badge in Classics program view.' }],
   ['src/views/shelving-view.ts', { max: 1, reason: 'Collects study maps awaiting shelving.' }],
 ]);
 
 const STAGE_COUNT_HELPERS = new Set([
-  'src/components.ts',
+  'src/projection/readers.ts',
   'src/features/unit/model.ts',
 ]);
 

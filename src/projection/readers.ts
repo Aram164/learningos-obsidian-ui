@@ -154,3 +154,14 @@ export function projectedListLength(
   const value = record?.[key];
   return Array.isArray(value) ? value.length : 0;
 }
+
+/** Count complete stages alongside total stages for display summaries. */
+export function stageProgress(
+  stages: readonly { readonly status?: unknown }[],
+): { readonly done: number; readonly total: number } {
+  let done = 0;
+  for (const stage of stages) {
+    if (stage.status === 'complete') done += 1;
+  }
+  return { done, total: stages.length };
+}

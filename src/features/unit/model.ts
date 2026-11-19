@@ -563,7 +563,7 @@ export function artifactLabel(
   );
 }
 
-export { stageProgress } from '../../components';
+export { stageProgress } from '../../projection/readers';
 
 /** A stage Core still considers open (not complete or skipped). */
 export function isOpenStage(stage: StageRecordView): boolean {

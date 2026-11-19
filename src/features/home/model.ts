@@ -130,7 +130,10 @@ export function resolveResumeTarget(store: {
   const map = store.get(pointer.study_map_id);
   const module = store.get(pointer.module_id);
   if (!unit || !unitMap || !map || !module
-      || projectedString(unitMap.id) !== pointer.study_map_id) {
+      || projectedString(unit.module_id) !== pointer.module_id
+      || projectedString(unitMap.id) !== pointer.study_map_id
+      || projectedString(unitMap.unit_id) !== pointer.unit_id
+      || projectedString(unitMap.module_id) !== pointer.module_id) {
     return unresolved;
   }
   // The stage every design shows is the matched row of the validated
